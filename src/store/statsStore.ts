@@ -1,0 +1,100 @@
+// Stats store. The only place that runs the calibration engine and writes
+// derived numbers to the DB. Holds no business math itself — it loads raw
+// predictions, hands them to src/engine, and persists the result.
+
+import { create } from 'zustand';
+
+import {
+  listPendingPredictions,
+  listResolvedPredictions,
+} from '@/db/predictions';
+import {
+  getUserStat,
+  listCategoryStats,
+  upsertCategoryStat,
+  upsertUserStat,
+} from '@/db/stats';
+import { computeCalibration, evaluateBadge } from '@/engine/calibration';
+import { computeStreak } from '@/engine/streak';
+import type {
+  Category,
+  CategoryStat,
+  Prediction,
+  UserStat,
+} from '@/types';
+
+interface StatsState {
+  userStat: UserStat | null;
+  categoryStats: CategoryStat[];
+  /** Pull persisted stats from the DB into the store (no recompute). */
+  loadForUser: (userId: string) => Promise<void>;
+  /** Re-run the engine over all of a user's predictions and persist. */
+  recomputeForUser: (userId: string) => Promise<void>;
+}
+
+const CATEGORIES: readonly Category[] = [
+  'work',
+  'health',
+  'finance',
+  'social',
+  'personal',
+];
+
+function isYesNo(p: Prediction): boolean {
+  return p.status === 'resolved_yes' || p.status === 'resolved_no';
+}
+
+export const useStatsStore = create<StatsState>((set) => ({
+  userStat: null,
+  categoryStats: [],
+
+  loadForUser: async (userId) => {
+    const [userStat, categoryStats] = await Promise.all([
+      getUserStat(userId),
+      listCategoryStats(userId),
+    ]);
+    set({ userStat, categoryStats });
+  },
+
+  recomputeForUser: async (userId) => {
+    // Full recompute: simpler and bug-free vs incremental. N is small.
+    const [pending, resolved] = await Promise.all([
+      listPendingPredictions(userId),
+      listResolvedPredictions(userId),
+    ]);
+    const all = [...pending, ...resolved];
+
+    // ---- User-level ----
+    const userCalc = computeCalibration(resolved);
+    const userStat: UserStat = {
+      user_id: userId,
+      calibration_rating: userCalc.rating,
+      total_predictions: all.length,
+      total_resolved: resolved.filter(isYesNo).length,
+      current_streak: computeStreak(resolved),
+    };
+    await upsertUserStat(userStat);
+
+    // ---- Per-category ----
+    const categoryStats: CategoryStat[] = [];
+    for (const category of CATEGORIES) {
+      const subsetAll = all.filter((p) => p.category === category);
+      if (subsetAll.length === 0) continue;
+      const subsetResolved = resolved.filter((p) => p.category === category);
+      const calc = computeCalibration(subsetResolved);
+      const resolvedCount = subsetResolved.filter(isYesNo).length;
+      const stat: CategoryStat = {
+        user_id: userId,
+        category,
+        predictions_made: subsetAll.length,
+        predictions_resolved: resolvedCount,
+        calibration_score: calc.rating,
+        badge_level: evaluateBadge(resolvedCount, calc.rating),
+      };
+      await upsertCategoryStat(stat);
+      categoryStats.push(stat);
+    }
+
+    set({ userStat, categoryStats });
+  },
+}));
