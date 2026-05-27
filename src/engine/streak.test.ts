@@ -68,4 +68,14 @@ describe('computeStreak', () => {
     const c = p({ id: 'c', resolved_at: '2026-05-19T08:00:00.000Z' });
     expect(computeStreak([c, a, b])).toBe(3);
   });
+
+  it('ignores skipped resolutions even when resolved_at is set', () => {
+    const preds = [
+      p({ id: 'a', status: 'resolved_yes', resolved_at: '2026-05-17T08:00:00.000Z' }),
+      p({ id: 'b', status: 'skipped',      resolved_at: '2026-05-18T08:00:00.000Z' }),
+      p({ id: 'c', status: 'resolved_no',  resolved_at: '2026-05-19T08:00:00.000Z' }),
+    ];
+    // 5/18 is a skip → gap. Streak from 5/19 alone is 1.
+    expect(computeStreak(preds)).toBe(1);
+  });
 });

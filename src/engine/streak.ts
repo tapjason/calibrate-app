@@ -16,8 +16,12 @@ function dayKey(iso: string): string {
 }
 
 export const computeStreak: ComputeStreak = (resolved) => {
+  // Only yes/no resolutions count: a skip is an explicit "don't score this",
+  // and letting it carry the streak would reward the user for dismissing
+  // their own predictions — against the integrity-first design.
   const days = new Set<string>();
   for (const p of resolved) {
+    if (p.status !== 'resolved_yes' && p.status !== 'resolved_no') continue;
     if (p.resolved_at) days.add(dayKey(p.resolved_at));
   }
   if (days.size === 0) return 0;
