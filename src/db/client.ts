@@ -96,9 +96,22 @@ export function getDb(): DbAdapter {
  * Convenience: wrap an async function in a SQLite transaction. Stores (L4)
  * call this to keep multi-step writes — e.g. resolve + recompute stats —
  * atomic without importing the adapter directly.
+ *
+ * Concurrent callers are serialized through a single promise chain: SQLite
+ * rejects nested BEGINs on the same connection ("cannot start a transaction
+ * within a transaction"), so awaiting the previous transaction before
+ * starting the next is the only safe option on a single-connection adapter.
  */
+let txQueue: Promise<unknown> = Promise.resolve();
 export function withTransaction<T>(fn: () => Promise<T>): Promise<T> {
-  return getDb().transaction(fn);
+  const next = txQueue.then(
+    () => getDb().transaction(fn),
+    () => getDb().transaction(fn),
+  );
+  // Swallow errors on the queue head so one failed transaction doesn't
+  // poison the chain — each caller still sees its own error via `next`.
+  txQueue = next.catch(() => undefined);
+  return next;
 }
 
 /**
