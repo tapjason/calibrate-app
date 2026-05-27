@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { initDb } from '@/db/client';
+import { initDigest } from '@/notifications/digest';
 import { initNotifications } from '@/notifications/scheduler';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useAuthStore } from '@/store/authStore';
@@ -35,6 +36,10 @@ export default function RootLayout() {
         initNotifications().catch((e) => {
           // eslint-disable-next-line no-console
           console.warn('[notifications] init failed:', e);
+        });
+        initDigest().catch((e) => {
+          // eslint-disable-next-line no-console
+          console.warn('[digest] init failed:', e);
         });
         setReady(true);
       } catch (e) {
