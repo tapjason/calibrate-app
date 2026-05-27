@@ -22,10 +22,13 @@ interface LogPredictionFormProps {
 }
 
 export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
+  // Presets are frozen at mount: regenerating them every render would change
+  // the ISO strings each tick and break chip-selection comparison below.
+  const [presets, setPresets] = useState(datePresets);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Category>('work');
   const [confidence, setConfidence] = useState(50);
-  const [dueDate, setDueDate] = useState(defaultDueDate());
+  const [dueDate, setDueDate] = useState(presets[1].iso);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,7 +44,9 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
       });
       setTitle('');
       setConfidence(50);
-      setDueDate(defaultDueDate());
+      const next = datePresets();
+      setPresets(next);
+      setDueDate(next[1].iso);
       onSubmitted?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -110,7 +115,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
       <View style={styles.block}>
         <Text style={styles.label}>Due date</Text>
         <View style={styles.row}>
-          {datePresets().map((preset) => (
+          {presets.map((preset) => (
             <Pressable
               key={preset.label}
               onPress={() => setDueDate(preset.iso)}
@@ -144,12 +149,6 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
       />
     </View>
   );
-}
-
-function defaultDueDate(): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + 7);
-  return d.toISOString();
 }
 
 function datePresets(): { label: string; iso: string }[] {
