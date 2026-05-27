@@ -32,11 +32,14 @@ export interface DbAdapter {
 let db: DbAdapter | null = null;
 let initPromise: Promise<DbAdapter> | null = null;
 
-function createExpoAdapter(): DbAdapter {
+async function createExpoAdapter(): Promise<DbAdapter> {
   // Lazy require so Jest never tries to load the native module.
+  // openDatabaseAsync (not Sync): on web, the sync API depends on
+  // SharedArrayBuffer + COOP/COEP headers the Expo dev server doesn't
+  // send by default, and times out. Async works on web, iOS, and Android.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const SQLite = require('expo-sqlite') as typeof import('expo-sqlite');
-  const conn = SQLite.openDatabaseSync('calibrate.db');
+  const conn = await SQLite.openDatabaseAsync('calibrate.db');
   const adapter: DbAdapter = {
     async run(sql: string, params: unknown[] = []) {
       await conn.runAsync(sql, params as never[]);
@@ -73,7 +76,7 @@ function createExpoAdapter(): DbAdapter {
 export function initDb(): Promise<DbAdapter> {
   if (!initPromise) {
     initPromise = (async () => {
-      const adapter = createExpoAdapter();
+      const adapter = await createExpoAdapter();
       await adapter.exec(MIGRATION_001);
       db = adapter;
       return adapter;
