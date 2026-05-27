@@ -18,6 +18,7 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
 
   return (
     <Pressable
+      testID={`prediction-card-${prediction.id}`}
       onPress={() => onPress?.(prediction.id)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
