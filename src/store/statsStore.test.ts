@@ -26,7 +26,11 @@ const p = (overrides: Partial<Prediction> = {}): Prediction => ({
 beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.setState({ userId: null });
-  useStatsStore.setState({ userStat: null, categoryStats: [] });
+  useStatsStore.setState({
+    userStat: null,
+    categoryStats: [],
+    calibration: { rating: 0, buckets: [] },
+  });
   await useAuthStore.getState().initialize();
 });
 
@@ -87,10 +91,40 @@ describe('statsStore.recomputeForUser', () => {
     await resolvePrediction('x', 'resolved_yes');
     await useStatsStore.getState().recomputeForUser(USER);
 
-    useStatsStore.setState({ userStat: null, categoryStats: [] });
+    useStatsStore.setState({
+      userStat: null,
+      categoryStats: [],
+      calibration: { rating: 0, buckets: [] },
+    });
     await useStatsStore.getState().loadForUser(USER);
 
     expect(useStatsStore.getState().userStat).not.toBeNull();
     expect(useStatsStore.getState().categoryStats).toHaveLength(1);
+  });
+
+  it('exposes calibration buckets in store state (no L3 import needed from screens)', async () => {
+    // 4 confidence-90 predictions, 2 yes / 2 no → overconfident bucket [80,100).
+    for (let i = 0; i < 4; i++) {
+      await insertPrediction(
+        p({ id: `q${i}`, category: 'work', confidence: 90 }),
+      );
+      await resolvePrediction(`q${i}`, i < 2 ? 'resolved_yes' : 'resolved_no');
+    }
+    await useStatsStore.getState().recomputeForUser(USER);
+
+    const { calibration } = useStatsStore.getState();
+    expect(calibration.buckets).toHaveLength(1);
+    expect(calibration.buckets[0].low).toBe(80);
+    expect(calibration.buckets[0].total_resolved).toBe(4);
+    expect(calibration.buckets[0].actual_rate).toBe(0.5);
+
+    // loadForUser must rebuild buckets too — they're not persisted.
+    useStatsStore.setState({
+      userStat: null,
+      categoryStats: [],
+      calibration: { rating: 0, buckets: [] },
+    });
+    await useStatsStore.getState().loadForUser(USER);
+    expect(useStatsStore.getState().calibration.buckets).toHaveLength(1);
   });
 });

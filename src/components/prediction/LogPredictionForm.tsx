@@ -136,7 +136,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.dateValue}>{dueDate.slice(0, 10)}</Text>
+        <Text style={styles.dateValue}>{new Date(dueDate).toLocaleDateString()}</Text>
       </View>
 
       {error && <Text style={styles.error} testID="log-error">{error}</Text>}
@@ -152,9 +152,13 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
 }
 
 function datePresets(): { label: string; iso: string }[] {
+  // Add days in LOCAL time so "tomorrow" means the user's tomorrow, not
+  // UTC's. Anchor at noon local so the resulting UTC timestamp falls on
+  // the same calendar date for every timezone between UTC-12 and UTC+12.
   const make = (daysAhead: number): string => {
     const d = new Date();
-    d.setUTCDate(d.getUTCDate() + daysAhead);
+    d.setDate(d.getDate() + daysAhead);
+    d.setHours(12, 0, 0, 0);
     return d.toISOString();
   };
   return [

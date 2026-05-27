@@ -18,6 +18,7 @@ import {
 import { computeCalibration, evaluateBadge } from '@/engine/calibration';
 import { computeStreak } from '@/engine/streak';
 import type {
+  CalibrationResult,
   Category,
   CategoryStat,
   Prediction,
@@ -27,11 +28,20 @@ import type {
 interface StatsState {
   userStat: UserStat | null;
   categoryStats: CategoryStat[];
-  /** Pull persisted stats from the DB into the store (no recompute). */
+  /**
+   * User-level calibration buckets, recomputed on every load and resolve.
+   * Held in memory only — derived from the resolved-predictions list and
+   * cheap to rebuild. Screens read this instead of importing the L3 engine
+   * directly, keeping the L6 → L4 → L3 dependency arrow intact.
+   */
+  calibration: CalibrationResult;
+  /** Pull persisted stats from the DB into the store and refresh buckets. */
   loadForUser: (userId: string) => Promise<void>;
   /** Re-run the engine over all of a user's predictions and persist. */
   recomputeForUser: (userId: string) => Promise<void>;
 }
+
+const EMPTY_CALIBRATION: CalibrationResult = { rating: 0, buckets: [] };
 
 const CATEGORIES: readonly Category[] = [
   'work',
@@ -48,13 +58,22 @@ function isYesNo(p: Prediction): boolean {
 export const useStatsStore = create<StatsState>((set) => ({
   userStat: null,
   categoryStats: [],
+  calibration: EMPTY_CALIBRATION,
 
   loadForUser: async (userId) => {
-    const [userStat, categoryStats] = await Promise.all([
+    // Persisted scalars + an on-demand bucket recompute. The buckets aren't
+    // stored (cheap to rebuild, no schema cost), so a fresh load fetches
+    // the resolved list too.
+    const [userStat, categoryStats, resolved] = await Promise.all([
       getUserStat(userId),
       listCategoryStats(userId),
+      listResolvedPredictions(userId),
     ]);
-    set({ userStat, categoryStats });
+    set({
+      userStat,
+      categoryStats,
+      calibration: computeCalibration(resolved),
+    });
   },
 
   recomputeForUser: async (userId) => {
@@ -101,6 +120,6 @@ export const useStatsStore = create<StatsState>((set) => ({
       categoryStats.push(stat);
     }
 
-    set({ userStat, categoryStats });
+    set({ userStat, categoryStats, calibration: userCalc });
   },
 }));

@@ -1,4 +1,5 @@
 import { setDbForTests } from '@/db/client';
+import { insertPrediction } from '@/db/predictions';
 import { getUserStat, listCategoryStats } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 
@@ -11,7 +12,11 @@ beforeEach(async () => {
   // Reset every Zustand singleton to a clean state.
   useAuthStore.setState({ userId: null });
   usePredictionStore.setState({ pending: [], resolved: [] });
-  useStatsStore.setState({ userStat: null, categoryStats: [] });
+  useStatsStore.setState({
+    userStat: null,
+    categoryStats: [],
+    calibration: { rating: 0, buckets: [] },
+  });
   await useAuthStore.getState().initialize();
 });
 
@@ -87,6 +92,43 @@ describe('predictionStore.create', () => {
         due_date: '2026-06-01T00:00:00.000Z',
       }),
     ).rejects.toThrow(/No active user/);
+  });
+});
+
+describe('predictionStore.getById', () => {
+  it('returns the prediction when it exists and belongs to the current user', async () => {
+    const created = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 50,
+      due_date: '2026-06-01T00:00:00.000Z',
+    });
+    const got = await usePredictionStore.getState().getById(created.id);
+    expect(got?.id).toBe(created.id);
+    expect(got?.title).toBe('Ship it');
+  });
+
+  it('returns null for an unknown id', async () => {
+    const got = await usePredictionStore.getState().getById('missing');
+    expect(got).toBeNull();
+  });
+
+  it('returns null for a row that belongs to a different user (deep-link safety)', async () => {
+    await insertPrediction({
+      id: 'foreign',
+      user_id: 'someone-else',
+      title: 't',
+      category: 'work',
+      confidence: 50,
+      created_at: '2026-01-01T00:00:00.000Z',
+      due_date: '2026-06-01T00:00:00.000Z',
+      status: 'pending',
+      resolved_at: null,
+      reflection: null,
+      integrity_bonus: true,
+    });
+    const got = await usePredictionStore.getState().getById('foreign');
+    expect(got).toBeNull();
   });
 });
 

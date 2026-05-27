@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { withTransaction } from '@/db/client';
 import {
   deletePrediction,
+  getPrediction,
   insertPrediction,
   listPendingPredictions,
   listResolvedPredictions,
@@ -31,6 +32,13 @@ interface PredictionState {
   resolved: Prediction[];
   loadPending: () => Promise<void>;
   loadResolved: () => Promise<void>;
+  /**
+   * Fetch a single prediction by id. Returns null when missing or when the
+   * row belongs to a different user — that filter exists here (not in the L2
+   * helper) so deep-linked screens never have to reach into the auth store
+   * directly, and a future Supabase swap doesn't leak other users' rows.
+   */
+  getById: (id: string) => Promise<Prediction | null>;
   create: (input: CreatePredictionInput) => Promise<Prediction>;
   resolve: (
     id: string,
@@ -82,6 +90,13 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   loadResolved: async () => {
     const userId = requireUserId();
     set({ resolved: await listResolvedPredictions(userId) });
+  },
+
+  getById: async (id) => {
+    const userId = requireUserId();
+    const p = await getPrediction(id);
+    if (!p || p.user_id !== userId) return null;
+    return p;
   },
 
   create: async (input) => {
