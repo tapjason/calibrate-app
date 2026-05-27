@@ -95,10 +95,14 @@ export const listResolvedPredictions: ListResolvedPredictions = async (userId) =
 };
 
 export const resolvePrediction: ResolvePrediction = async (id, outcome, reflection) => {
+  // `AND status = 'pending'` makes a second resolve a no-op instead of
+  // overwriting the original outcome/resolved_at. The UI already guards
+  // this, but defense-in-depth matters once notifications can deep-link
+  // into Resolve twice (e.g. user taps a stale push).
   await getDb().run(
     `UPDATE predictions
        SET status = ?, resolved_at = ?, reflection = ?
-       WHERE id = ?`,
+       WHERE id = ? AND status = 'pending'`,
     [outcome, new Date().toISOString(), reflection ?? null, id],
   );
 };
