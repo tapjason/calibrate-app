@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { initDb } from '@/db/client';
+import { initNotifications } from '@/notifications/scheduler';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useAuthStore } from '@/store/authStore';
 import { useStatsStore } from '@/store/statsStore';
@@ -28,6 +29,13 @@ export default function RootLayout() {
             useStatsStore.getState().loadForUser(userId),
           ]);
         }
+        // Fire-and-forget: notifications are a retention enhancer, not a
+        // critical-path dependency. A failure here (denied permission,
+        // missing module, web) must not block the ready gate.
+        initNotifications().catch((e) => {
+          // eslint-disable-next-line no-console
+          console.warn('[notifications] init failed:', e);
+        });
         setReady(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
