@@ -122,4 +122,8 @@ export type GetCategoryStat = (
   category: Category,
 ) => Promise<CategoryStat | null>;
 export type UpsertCategoryStat = (stat: CategoryStat) => Promise<void>;
+export type DeleteCategoryStat = (
+  userId: string,
+  category: Category,
+) => Promise<void>;
 export type ListCategoryStats = (userId: string) => Promise<CategoryStat[]>;

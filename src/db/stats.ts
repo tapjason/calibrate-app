@@ -7,6 +7,7 @@ import type {
   UpsertUserStat,
   GetCategoryStat,
   UpsertCategoryStat,
+  DeleteCategoryStat,
   ListCategoryStats,
 } from '@/types';
 
@@ -69,6 +70,13 @@ export const upsertCategoryStat: UpsertCategoryStat = async (s) => {
       s.calibration_score,
       s.badge_level,
     ],
+  );
+};
+
+export const deleteCategoryStat: DeleteCategoryStat = async (userId, category) => {
+  await getDb().run(
+    `DELETE FROM category_stats WHERE user_id = ? AND category = ?`,
+    [userId, category],
   );
 };
 

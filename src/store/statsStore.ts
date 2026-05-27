@@ -9,6 +9,7 @@ import {
   listResolvedPredictions,
 } from '@/db/predictions';
 import {
+  deleteCategoryStat,
   getUserStat,
   listCategoryStats,
   upsertCategoryStat,
@@ -76,10 +77,15 @@ export const useStatsStore = create<StatsState>((set) => ({
     await upsertUserStat(userStat);
 
     // ---- Per-category ----
+    // Iterate ALL categories: empty ones get their stale row deleted so the
+    // next loadForUser doesn't resurrect a ghost category from disk.
     const categoryStats: CategoryStat[] = [];
     for (const category of CATEGORIES) {
       const subsetAll = all.filter((p) => p.category === category);
-      if (subsetAll.length === 0) continue;
+      if (subsetAll.length === 0) {
+        await deleteCategoryStat(userId, category);
+        continue;
+      }
       const subsetResolved = resolved.filter((p) => p.category === category);
       const calc = computeCalibration(subsetResolved);
       const resolvedCount = subsetResolved.filter(isYesNo).length;
