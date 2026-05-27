@@ -76,7 +76,7 @@ function makeFakeNotifications(
 
 beforeEach(async () => {
   setDbForTests(await createTestDb());
-  useAuthStore.setState({ userId: null });
+  useAuthStore.getState().reset();
   usePredictionStore.setState({ pending: [], resolved: [] });
   useStatsStore.setState({
     userStat: null,

@@ -10,7 +10,7 @@ import { useStatsStore } from './statsStore';
 beforeEach(async () => {
   setDbForTests(await createTestDb());
   // Reset every Zustand singleton to a clean state.
-  useAuthStore.setState({ userId: null });
+  useAuthStore.getState().reset();
   usePredictionStore.setState({ pending: [], resolved: [] });
   useStatsStore.setState({
     userStat: null,

@@ -25,7 +25,7 @@ const p = (overrides: Partial<Prediction> = {}): Prediction => ({
 
 beforeEach(async () => {
   setDbForTests(await createTestDb());
-  useAuthStore.setState({ userId: null });
+  useAuthStore.getState().reset();
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
