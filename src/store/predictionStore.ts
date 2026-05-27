@@ -114,8 +114,15 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       reflection: null,
       integrity_bonus: isIntegrityBonus(input.confidence),
     };
-    await insertPrediction(prediction);
-    set({ pending: [...get().pending, prediction] });
+    // Atomic: insert + stats recompute go together so total_predictions and
+    // per-category predictions_made never lag behind the prediction list.
+    await withTransaction(async () => {
+      await insertPrediction(prediction);
+      await useStatsStore.getState().recomputeForUser(userId);
+    });
+    // Reload instead of appending: the DB query sorts by due_date, and the
+    // newly-inserted row may belong before existing entries.
+    await get().loadPending();
     return prediction;
   },
 
@@ -127,15 +134,18 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       await useStatsStore.getState().recomputeForUser(userId);
     });
     // Refresh local lists from the source of truth.
-    await get().loadPending();
-    await get().loadResolved();
+    await Promise.all([get().loadPending(), get().loadResolved()]);
   },
 
   remove: async (id) => {
-    await deletePrediction(id);
-    set({
-      pending: get().pending.filter((p) => p.id !== id),
-      resolved: get().resolved.filter((p) => p.id !== id),
+    const userId = requireUserId();
+    // Deleting a resolved prediction changes calibration, streak, and per-
+    // category counts — recompute inside the same transaction so the stats
+    // never reflect a ghost prediction.
+    await withTransaction(async () => {
+      await deletePrediction(id);
+      await useStatsStore.getState().recomputeForUser(userId);
     });
+    await Promise.all([get().loadPending(), get().loadResolved()]);
   },
 }));
