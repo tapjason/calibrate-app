@@ -30,9 +30,13 @@ const samplePending = (overrides: Partial<Prediction> = {}): Prediction => ({
 
 beforeEach(async () => {
   setDbForTests(await createTestDb());
-  useAuthStore.setState({ userId: null });
+  useAuthStore.getState().reset();
   usePredictionStore.setState({ pending: [], resolved: [] });
-  useStatsStore.setState({ userStat: null, categoryStats: [] });
+  useStatsStore.setState({
+    userStat: null,
+    categoryStats: [],
+    calibration: { rating: 0, buckets: [] },
+  });
   await useAuthStore.getState().initialize();
 });
 

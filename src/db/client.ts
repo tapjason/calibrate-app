@@ -7,12 +7,10 @@
 // Tests swap the backend with setDbForTests() before any helper is called;
 // production code calls initDb() once at app start.
 //
-// Migration system caveat: 001_initial.ts is run on every startup, idempotent
-// via `CREATE ... IF NOT EXISTS`. This works only because the schema doesn't
-// change. The first schema change will require a real migration runner that
-// tracks applied migrations in a _migrations table.
+// Migrations are tracked in a `_migrations` table; see ./migrations/index.ts.
+// initDb() runs the registered migrations through that runner on every start.
 
-import { MIGRATION_001 } from './migrations/001_initial';
+import { runMigrations } from './migrations';
 
 export interface DbAdapter {
   run(sql: string, params?: unknown[]): Promise<void>;
@@ -77,7 +75,7 @@ export function initDb(): Promise<DbAdapter> {
   if (!initPromise) {
     initPromise = (async () => {
       const adapter = await createExpoAdapter();
-      await adapter.exec(MIGRATION_001);
+      await runMigrations(adapter);
       db = adapter;
       return adapter;
     })();

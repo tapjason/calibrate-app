@@ -8,7 +8,7 @@ interface PredictionCardProps {
 }
 
 export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
-  const due = prediction.due_date.slice(0, 10);
+  const due = new Date(prediction.due_date).toLocaleDateString();
   const statusLabel: Record<Prediction['status'], string> = {
     pending: 'Pending',
     resolved_yes: 'Yes ✓',

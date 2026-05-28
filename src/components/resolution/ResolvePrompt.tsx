@@ -3,8 +3,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
-import { getPrediction } from '@/db/predictions';
-import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import type { Prediction, ResolvedStatus } from '@/types';
 
@@ -18,11 +16,9 @@ interface ResolvePromptProps {
 /**
  * Renders the yes/no/skip prompt for a single prediction.
  *
- * Security note: the id arrives untrusted (URL or notification payload). We
- * load it through the db helper and refuse to render if the row doesn't
- * exist or doesn't belong to the current user — that closes the loophole
- * where a crafted deep-link could expose another user's prediction (matters
- * once L5 puts multi-user data on the device).
+ * The id arrives untrusted (URL or notification payload). predictionStore
+ * .getById applies the current-user filter, so a crafted deep-link can't
+ * surface another user's prediction once Supabase auth lands in L5.
  */
 export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) {
   const [loading, setLoading] = useState(true);
@@ -34,13 +30,8 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
   useEffect(() => {
     (async () => {
       try {
-        const userId = useAuthStore.getState().userId;
-        const p = await getPrediction(predictionId);
-        if (!p || p.user_id !== userId) {
-          setPrediction(null);
-        } else {
-          setPrediction(p);
-        }
+        const p = await usePredictionStore.getState().getById(predictionId);
+        setPrediction(p);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
