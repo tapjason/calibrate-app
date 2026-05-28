@@ -8,6 +8,16 @@ import { useStatsStore } from '@/store/statsStore';
 
 import { LogPredictionForm } from './LogPredictionForm';
 
+// Default mock: refine returns null (Supabase isn't configured under tests).
+// Individual tests override this via mockResolvedValueOnce.
+jest.mock('@/ai/refine', () => ({
+  refinePrediction: jest.fn(async () => null),
+}));
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { refinePrediction } = require('@/ai/refine') as {
+  refinePrediction: jest.Mock;
+};
+
 beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.getState().reset();
@@ -18,6 +28,8 @@ beforeEach(async () => {
     calibration: { rating: 0, buckets: [] },
   });
   await useAuthStore.getState().initialize();
+  refinePrediction.mockReset();
+  refinePrediction.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -54,6 +66,78 @@ describe('LogPredictionForm', () => {
       expect(screen.getByTestId('log-error')).toBeTruthy();
     });
     expect(usePredictionStore.getState().pending).toHaveLength(0);
+  });
+
+  it('disables the refine button when the title is empty', () => {
+    render(<LogPredictionForm />);
+    const btn = screen.getByTestId('refine-button');
+    fireEvent.press(btn);
+    expect(refinePrediction).not.toHaveBeenCalled();
+  });
+
+  it('shows the suggestion when refine returns a rewrite, replaces title on Accept', async () => {
+    refinePrediction.mockResolvedValueOnce('Ship 3 priority tasks by Friday');
+    render(<LogPredictionForm />);
+
+    fireEvent.changeText(screen.getByTestId('title-field'), "do better at work");
+    fireEvent.press(screen.getByTestId('refine-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('refine-suggestion')).toBeTruthy();
+    });
+    expect(screen.getByText('Ship 3 priority tasks by Friday')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('refine-accept'));
+
+    // Submit and verify the saved title is the accepted suggestion
+    fireEvent.press(screen.getByTestId('submit-button'));
+    await waitFor(() => {
+      expect(usePredictionStore.getState().pending).toHaveLength(1);
+    });
+    expect(usePredictionStore.getState().pending[0].title).toBe(
+      'Ship 3 priority tasks by Friday',
+    );
+  });
+
+  it('Dismiss hides the suggestion without changing the title', async () => {
+    refinePrediction.mockResolvedValueOnce('Suggested rewrite');
+    render(<LogPredictionForm />);
+
+    fireEvent.changeText(screen.getByTestId('title-field'), 'original');
+    fireEvent.press(screen.getByTestId('refine-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('refine-suggestion')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('refine-dismiss'));
+
+    expect(screen.queryByTestId('refine-suggestion')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('submit-button'));
+    await waitFor(() => {
+      expect(usePredictionStore.getState().pending).toHaveLength(1);
+    });
+    expect(usePredictionStore.getState().pending[0].title).toBe('original');
+  });
+
+  it('save flow is unaffected when refine returns null', async () => {
+    refinePrediction.mockResolvedValueOnce(null);
+    render(<LogPredictionForm />);
+
+    fireEvent.changeText(screen.getByTestId('title-field'), 'plain prediction');
+    fireEvent.press(screen.getByTestId('refine-button'));
+
+    // wait for refine to settle, then save normally
+    await waitFor(() => {
+      expect(refinePrediction).toHaveBeenCalled();
+    });
+    expect(screen.queryByTestId('refine-suggestion')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('submit-button'));
+    await waitFor(() => {
+      expect(usePredictionStore.getState().pending).toHaveLength(1);
+    });
+    expect(usePredictionStore.getState().pending[0].title).toBe('plain prediction');
   });
 
   it('clamps confidence steppers at 0 and 100', async () => {

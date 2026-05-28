@@ -21,6 +21,46 @@ schema is safe.
 - `migrations/001_predictions.sql` — `public.predictions` table + RLS policies.
   Mirror of the local SQLite predictions table; client always writes
   `updated_at` so last-write-wins works deterministically.
+- `functions/refine/index.ts` — Edge Function that rewrites a user-typed
+  prediction via OpenAI GPT-4o-mini. Called from `src/ai/refine.ts`.
+
+## Edge Functions
+
+### refine
+
+Rewrites a user prediction into a concise yes/no-resolvable form. The mobile
+client treats every failure as silent (`src/ai/refine.ts` returns `null`), so
+the function can be down without breaking the save flow.
+
+**One-time setup**
+
+```sh
+# Install the CLI if you haven't: https://supabase.com/docs/guides/cli
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase secrets set OPENAI_API_KEY=sk-...
+```
+
+**Deploy**
+
+```sh
+supabase functions deploy refine --no-verify-jwt
+```
+
+`--no-verify-jwt` lets guest-mode users (no Supabase session) still call
+refine. Cost protection comes from the 500-char input cap inside the function
+and from Supabase's per-project function rate limits.
+
+**Verify**
+
+```sh
+curl -X POST 'https://<project-ref>.functions.supabase.co/refine' \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+  -d '{"prediction": "I will do better at work this week"}'
+```
+
+Expected: `{"refined":"..."}` with a tight rewrite under ~15 words.
 
 ## Notes for future schema changes
 

@@ -1,8 +1,8 @@
 # Calibrate — Implementation Checkpoint
 
-**As of:** 2026-05-27
+**As of:** 2026-05-28
 **Branch:** `feat/supabase-auth`
-**Latest commit:** `df4a9c7 feat: Supabase auth foundation`
+**Latest commit:** AI refine landed on top of `96b137a docs: add implementation checkpoint`
 
 This document captures the state of the implementation as a checkpoint. It maps
 what exists against the layered plan in `BUILD_PLAN.md` and the product spec in
@@ -13,21 +13,26 @@ re-deriving everything from the source.
 
 ## TL;DR — what works today
 
-The offline core loop is complete and tested. Notifications and Supabase auth
-are wired in. Sync, AI refine, badges-as-UI, and App Store packaging are not yet
-built.
+The offline core loop is complete and tested. Notifications, Supabase auth,
+predictions sync, and AI refine are wired in. Badges-as-UI, Victory Native
+chart, real Settings toggles, and App Store packaging are not yet built.
 
 - **Log → Resolve → Stats** works end-to-end against a local SQLite DB.
 - **Auth** is wired up (Apple / Google / email-password) with a guest-mode
   fallback. Guest data migrates to the user on first sign-in.
+- **Sync**: predictions push/pull against Postgres with a per-user cursor and
+  last-write-wins on `updated_at`. Stats are derived locally after pull.
 - **Notifications**: per-prediction resolution reminders + weekly Sunday digest,
   both observing the prediction store.
-- **Tests**: 13 test files covering L1–L6. The calibration engine, streak math,
-  db helpers, stores, scheduler, and the two critical screens (Log, Resolve)
-  all have unit/component coverage.
+- **AI refine**: `src/ai/refine.ts` + `supabase/functions/refine/index.ts`
+  (OpenAI GPT-4o-mini). Failure path returns null silently; save flow is
+  unaffected by network/server/timeouts.
+- **Tests**: 17 test files / 139 tests covering L1–L6. The calibration
+  engine, streak math, db helpers, stores, scheduler, sync, refine, and the
+  two critical screens (Log, Resolve) all have unit/component coverage.
 
-Not yet built: Supabase Postgres sync, AI refine Edge Function, badge UI
-surfaces, Victory Native charts, app icon/splash, EAS build config.
+Not yet built: badge UI surfaces, Victory Native charts, Settings toggles
+(notifications + AI), app icon/splash, EAS build config.
 
 ---
 
@@ -45,7 +50,7 @@ surfaces, Victory Native charts, app icon/splash, EAS build config.
 | Web target enabled for the offline-loop verifier | ✅ | commit `cde2bf7` |
 | `eas.json` | ⚠️ present but empty placeholder |
 | Folder skeleton (`src/{types,db,engine,store,supabase,notifications,components,constants}`) | ✅ | — |
-| `src/ai/` folder | ❌ not created yet |
+| `src/ai/` folder | ✅ | `src/ai/refine.ts` |
 
 ### Layer 1 — Types & Contracts ✅
 
@@ -125,15 +130,24 @@ Both modules:
 | `src/supabase/client.ts` | Lazy singleton `SupabaseClient` (PKCE flow, `AsyncStorage` session storage, polyfilled URL). `isSupabaseConfigured()` returns true when env vars present or test client injected. |
 | `src/supabase/auth.ts` | `signInWithApple` (iOS only), `signInWithGoogle` (expo-auth-session PKCE + `exchangeCodeForSession`), `signInWithEmail`, `signUpWithEmail`, `signOut`. All return `AuthOutcome = { ok: true } \| { ok: false, error }`. |
 
-#### Supabase sync ❌ not built
-`src/supabase/sync.ts` does not exist yet. Predictions live only in local SQLite
-even when authenticated. Need: schema mirror in Postgres, local→remote push on
-mutation, remote→local pull on app open / auth change.
+#### Supabase sync ✅
+| File | Purpose |
+|------|---------|
+| `src/supabase/sync.ts` | `pullRemote` + `pushDirty` + `syncNow` orchestrator. Per-user cursor in AsyncStorage; remote wins iff `remote.updated_at > local.updated_at`. Batch upsert with per-row fallback. Recomputes stats after successful pull. All failures `console.warn` + swallow. |
+| `supabase/migrations/001_predictions.sql` | Postgres mirror of the predictions table + per-user RLS policies. |
 
-#### AI refine ❌ not built
-- No `src/ai/refine.ts`.
-- No `supabase/functions/refine/index.ts`.
-- No `supabase/` directory at all.
+Stats tables are NOT mirrored — they're derived from predictions and rebuilt
+locally via `recomputeForUser` after pull.
+
+#### AI refine ✅
+| File | Purpose |
+|------|---------|
+| `src/ai/refine.ts` | Client wrapper. Calls `supabase.functions.invoke('refine', ...)` with the user's text, returns the rewrite on 2xx or `null` on any failure (missing config, network, non-2xx, missing/empty `refined`, 8s timeout). Logs `console.warn` on failure paths; never throws. |
+| `supabase/functions/refine/index.ts` | Edge Function. Validates input (≤500 chars), calls OpenAI `gpt-4o-mini` with the rewrite prompt from `CLAUDE.md`, returns `{ refined }`. Caps output at 200 chars defensively. Logs server-side errors but the client treats every non-2xx as silent. |
+
+Per `CLAUDE.md`, refine is never in the critical path. The `LogPredictionForm`
+shows a ✨ Refine button next to the title field; on null the user's text is
+untouched. Deploy is documented in `supabase/README.md`.
 
 ### Layer 6 — Presentation 🟡 (core complete, polish pending)
 
@@ -169,7 +183,8 @@ directly.
 
 ## Test coverage
 
-13 test files, all co-located next to source (Jest preset: `jest-expo`).
+17 test files / 139 tests, all co-located next to source (Jest preset:
+`jest-expo`).
 
 | Area | Test file |
 |------|-----------|
@@ -184,6 +199,8 @@ directly.
 | Auth store | `src/store/authStore.test.ts` |
 | Notification scheduler | `src/notifications/scheduler.test.ts` |
 | Weekly digest scheduler | `src/notifications/digest.test.ts` |
+| Supabase sync | `src/supabase/sync.test.ts` |
+| AI refine client | `src/ai/refine.test.ts` |
 | LogPredictionForm component | `src/components/prediction/LogPredictionForm.test.tsx` |
 | ResolvePrompt component | `src/components/resolution/ResolvePrompt.test.tsx` |
 
@@ -249,17 +266,13 @@ Integrity bonus: `confidence ∈ [35, 65]` (inclusive both ends).
 
 In rough priority order:
 
-1. **Supabase sync** — schema mirror in Postgres + local→remote push on
-   mutations + remote→local pull on auth change. Without this, signed-in users
-   still lose data when they reinstall.
-2. **AI refine** — `src/ai/refine.ts` + Edge Function. Must fail silently per
-   `CLAUDE.md` — never block the save flow.
-3. **Stats chart** — replace the text-bar `CalibrationView` with a Victory
+1. **Stats chart** — replace the text-bar `CalibrationView` with a Victory
    Native diagonal plot (the "perfectly calibrated = straight line" intuition).
-4. **Badges UI** — `badge_level` is computed and persisted but not surfaced in
+2. **Badges UI** — `badge_level` is computed and persisted but not surfaced in
    any screen beyond the per-category row in stats.
-5. **Settings screen** — notifications toggle + AI refine toggle.
-6. **EAS / App Store** — flesh out `eas.json`, ship app icon/splash, configure
+3. **Settings screen** — notifications toggle + AI refine toggle (the refine
+   button is currently always on; needs a way for users to disable it).
+4. **EAS / App Store** — flesh out `eas.json`, ship app icon/splash, configure
    APNs, run a TestFlight build.
 
 ---

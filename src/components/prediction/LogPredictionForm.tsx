@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { refinePrediction } from '@/ai/refine';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -31,6 +32,30 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
   const [dueDate, setDueDate] = useState(presets[1].iso);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+
+  const onRefine = async () => {
+    // Fire-and-forget by design: per CLAUDE.md, refine must never block the
+    // save flow. A null result silently leaves the user's text untouched.
+    setSuggestion(null);
+    setRefining(true);
+    try {
+      const result = await refinePrediction(title);
+      if (result && result !== title.trim()) {
+        setSuggestion(result);
+      }
+    } finally {
+      setRefining(false);
+    }
+  };
+
+  const acceptSuggestion = () => {
+    if (suggestion) {
+      setTitle(suggestion);
+      setSuggestion(null);
+    }
+  };
 
   const onSubmit = async () => {
     setError(null);
@@ -60,11 +85,51 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
       <TextField
         label="Prediction"
         value={title}
-        onChangeText={setTitle}
+        onChangeText={(v) => {
+          setTitle(v);
+          if (suggestion) setSuggestion(null);
+        }}
         placeholder="e.g. I'll ship 3 priority tasks before Friday"
         maxLength={TITLE_MAX_LENGTH}
         testID="title-field"
       />
+
+      <View style={styles.refineRow}>
+        <Pressable
+          onPress={onRefine}
+          disabled={refining || title.trim().length === 0}
+          testID="refine-button"
+          style={({ pressed }) => [
+            styles.refineButton,
+            (refining || title.trim().length === 0) && styles.refineDisabled,
+            pressed && styles.refinePressed,
+          ]}
+        >
+          <Text style={styles.refineLabel}>
+            {refining ? 'Refining…' : '✨ Refine'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {suggestion && (
+        <View style={styles.suggestion} testID="refine-suggestion">
+          <Text style={styles.suggestionLabel}>Suggested rewrite</Text>
+          <Text style={styles.suggestionText}>{suggestion}</Text>
+          <View style={styles.suggestionActions}>
+            <Button
+              label="Use this"
+              onPress={acceptSuggestion}
+              testID="refine-accept"
+            />
+            <Button
+              label="Dismiss"
+              variant="secondary"
+              onPress={() => setSuggestion(null)}
+              testID="refine-dismiss"
+            />
+          </View>
+        </View>
+      )}
 
       <View style={styles.block}>
         <Text style={styles.label}>Category</Text>
@@ -186,4 +251,32 @@ const styles = StyleSheet.create({
   bonus: { marginTop: 8, color: '#059669', fontSize: 13 },
   dateValue: { marginTop: 8, color: '#374151' },
   error: { color: '#dc2626', marginBottom: 12 },
+  refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
+  refineButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#7c3aed',
+    backgroundColor: '#f5f3ff',
+  },
+  refinePressed: { opacity: 0.7 },
+  refineDisabled: { opacity: 0.4 },
+  refineLabel: { color: '#6d28d9', fontWeight: '600', fontSize: 13 },
+  suggestion: {
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1,
+    borderColor: '#ddd6fe',
+  },
+  suggestionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6d28d9',
+    marginBottom: 4,
+  },
+  suggestionText: { fontSize: 15, color: '#1f2937', marginBottom: 12 },
+  suggestionActions: { flexDirection: 'row', gap: 8 },
 });
