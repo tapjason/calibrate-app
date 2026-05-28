@@ -10,7 +10,7 @@
 import type { Database, SqlJsStatic } from 'sql.js';
 
 import type { DbAdapter } from './client';
-import { MIGRATION_001 } from './migrations/001_initial';
+import { runMigrations } from './migrations';
 
 let SQL: SqlJsStatic | null = null;
 
@@ -79,6 +79,6 @@ export async function createTestDb(): Promise<DbAdapter> {
   }
   const db = new SQL.Database();
   const adapter = adaptSqlJs(db);
-  await adapter.exec(MIGRATION_001);
+  await runMigrations(adapter);
   return adapter;
 }
