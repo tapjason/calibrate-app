@@ -11,8 +11,11 @@
 //
 // Failure modes that return null:
 //   • Supabase not configured (guest-mode dev build with no env vars).
+//   • Not signed in — the Edge Function requires a real user JWT and returns
+//     401 for the anon key (guest mode). Refine is a signed-in-only nicety;
+//     guests just keep their typed text.
 //   • Network / fetch error.
-//   • Edge Function returned non-2xx.
+//   • Edge Function returned non-2xx (incl. 401 unauthenticated, 429 rate-limited).
 //   • Response body is malformed or `refined` is empty.
 //   • Request timed out (default 8s).
 //

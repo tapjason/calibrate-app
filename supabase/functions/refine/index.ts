@@ -3,8 +3,11 @@
 //
 // Contract — kept in lockstep with src/ai/refine.ts:
 //   Request:   POST { prediction: string }      // 1..500 chars after trim
+//              Authorization: Bearer <user JWT>  // a real signed-in user
 //   Response:  200 { refined: string }          // <= 200 chars
 //              400 { error: string }            // input failed validation
+//              401 { error: string }            // missing / non-user token
+//              429 { error: string }            // per-user rate limit hit
 //              500 { error: string }            // OpenAI or server error
 //
 // The client (src/ai/refine.ts) treats every non-2xx response as a silent
@@ -12,18 +15,25 @@
 // shape doesn't bubble into the UI — but we return useful messages for
 // dashboard/log debugging.
 //
-// Auth: the function is invoked through the Supabase client which attaches
-// the user's JWT (or the anon key in guest mode). We do NOT require an
-// authenticated user here — refine is meant to work pre-signin too. Cost
-// control comes from input-length validation + Supabase function rate
-// limits, not auth gating.
+// Auth: the function is invoked through the Supabase client, which attaches
+// the user's JWT when signed in or the public anon key in guest mode. We
+// require a *real authenticated user* — the bare anon key is rejected with
+// 401. This closes the abuse vector where anyone holding the public anon key
+// (it ships in the client bundle) could call refine and burn OpenAI tokens.
+// Refine is non-essential and the client degrades to the user's original
+// text on any non-2xx, so gating it behind sign-in costs nothing in guest
+// mode. Cost control is defense-in-depth: auth gate + per-user rate limit +
+// input-length validation.
 //
-// Deploy:
-//   supabase functions deploy refine --no-verify-jwt
+// Deploy (verify_jwt left ON so the gateway also rejects malformed tokens):
+//   supabase functions deploy refine
 //   supabase secrets set OPENAI_API_KEY=sk-...
+// SUPABASE_URL and SUPABASE_ANON_KEY are injected by the platform.
 
 // @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
 import OpenAI from 'npm:openai@4.104.0';
+// @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // @ts-expect-error — Deno global, not present in the project's TS lib.
 const env = Deno.env;
@@ -37,6 +47,23 @@ const CORS_HEADERS: Record<string, string> = {
 
 const MAX_INPUT_LEN = 500;
 const MAX_OUTPUT_LEN = 200;
+
+// Per-user rate limit. Best-effort, in-memory, per-isolate — Supabase may run
+// several isolates so the effective ceiling is a small multiple of this, which
+// is fine: the goal is to blunt a single user hammering the endpoint, not to
+// meter billing precisely. State resets whenever an isolate is recycled.
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 15;
+const hits = new Map<string, number[]>();
+
+function rateLimited(userId: string): boolean {
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  const recent = (hits.get(userId) ?? []).filter((t) => t > cutoff);
+  recent.push(now);
+  hits.set(userId, recent);
+  return recent.length > RATE_LIMIT_MAX;
+}
 
 const PROMPT = (prediction: string): string =>
   `Rewrite this prediction to be concise and resolvable with a clear yes/no. ` +
@@ -57,6 +84,35 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== 'POST') {
     return json({ error: 'Method not allowed' }, 405);
+  }
+
+  // --- Auth gate: require a real signed-in user, not the bare anon key. ---
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    return json({ error: 'Missing Authorization header' }, 401);
+  }
+
+  const supabaseUrl = env.get('SUPABASE_URL');
+  const supabaseAnonKey = env.get('SUPABASE_ANON_KEY');
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('SUPABASE_URL / SUPABASE_ANON_KEY not set');
+    return json({ error: 'Server misconfigured' }, 500);
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  // getUser validates the JWT signature/expiry server-side and resolves the
+  // user. The anon key carries no user, so guests fall through to 401.
+  const { data: userData, error: authError } = await supabase.auth.getUser(token);
+  const user = userData?.user;
+  if (authError || !user) {
+    return json({ error: 'A signed-in account is required to use refine' }, 401);
+  }
+
+  if (rateLimited(user.id)) {
+    return json({ error: 'Rate limit exceeded, try again shortly' }, 429);
   }
 
   let prediction: unknown;
