@@ -15,6 +15,14 @@ import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import { createTestDb } from '@/db/testing';
 import { setSupabaseClientForTests } from '@/supabase/client';
 
+// Stub the L5 sync module so authStore's fire-and-forget syncNow on signin
+// doesn't try to hit a real Supabase client or AsyncStorage during tests.
+// Coverage of sync itself lives in src/supabase/sync.test.ts.
+jest.mock('@/supabase/sync', () => ({
+  syncNow: jest.fn().mockResolvedValue({ pulled: 0, pushed: 0 }),
+  __resetSyncStateForTests: jest.fn(),
+}));
+
 import { useAuthStore } from './authStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';

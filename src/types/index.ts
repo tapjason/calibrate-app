@@ -61,6 +61,30 @@ export interface CategoryStat {
   badge_level: BadgeLevel;
 }
 
+/**
+ * Wire-shape of a prediction crossing the Supabase boundary. Same fields as
+ * Prediction plus `updated_at` (the last-write-wins timestamp). The local
+ * `dirty` flag is NOT included — it lives only in SQLite and is meaningless
+ * to Postgres.
+ *
+ * Intentionally not surfaced into the UI. The L4 stores still hand out
+ * Prediction objects; only L5 sync code reaches for this shape.
+ */
+export interface PredictionWireRow {
+  id: string;
+  user_id: string;
+  title: string;
+  category: Category;
+  confidence: number;
+  created_at: string;
+  due_date: string;
+  status: PredictionStatus;
+  resolved_at: string | null;
+  reflection: string | null;
+  integrity_bonus: boolean;
+  updated_at: string;
+}
+
 /** Per-bucket result produced by the calibration engine. */
 export interface BucketStat {
   low: number;                    // bucket lower bound (inclusive), e.g. 60

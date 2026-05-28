@@ -32,6 +32,7 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '@/supabase/client';
+import { syncNow } from '@/supabase/sync';
 
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
@@ -126,6 +127,13 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
       // eslint-disable-next-line no-console
       console.warn('[auth] post-signin store reload failed:', e);
     }
+  }
+
+  // Fire-and-forget Supabase sync for authenticated users. syncNow no-ops
+  // for guests, no-ops when Supabase isn't configured, and swallows its own
+  // errors — auth init must not block on network.
+  if (next.status === 'authenticated') {
+    void syncNow(next.userId);
   }
 }
 

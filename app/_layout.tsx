@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
@@ -8,6 +8,7 @@ import { initNotifications } from '@/notifications/scheduler';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useAuthStore } from '@/store/authStore';
 import { useStatsStore } from '@/store/statsStore';
+import { syncNow } from '@/supabase/sync';
 
 // Root layout = the auth + DB gate. Until both finish initializing, no screen
 // renders. Without this, any screen that calls getDb() or requireUserId()
@@ -46,6 +47,20 @@ export default function RootLayout() {
         setError(e instanceof Error ? e.message : String(e));
       }
     })();
+  }, []);
+
+  // Foreground sync. Sign-in already triggers one sweep via authStore; this
+  // catches every subsequent return to the app so other devices' writes
+  // land without a manual refresh. syncNow is no-op for guests, idempotent
+  // for concurrent calls, and swallows its own errors.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      const userId = useAuthStore.getState().userId;
+      if (!userId) return;
+      void syncNow(userId);
+    });
+    return () => sub.remove();
   }, []);
 
   if (error) {
