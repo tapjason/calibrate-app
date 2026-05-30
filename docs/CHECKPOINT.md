@@ -14,8 +14,8 @@ re-deriving everything from the source.
 ## TL;DR — what works today
 
 The offline core loop is complete and tested. Notifications, Supabase auth,
-predictions sync, and AI refine are wired in. Badges-as-UI, Victory Native
-chart, real Settings toggles, and App Store packaging are not yet built.
+predictions sync, AI refine, and the calibration-curve chart are wired in.
+Badges-as-UI, real Settings toggles, and App Store packaging are not yet built.
 
 - **Log → Resolve → Stats** works end-to-end against a local SQLite DB.
 - **Auth** is wired up (Apple / Google / email-password) with a guest-mode
@@ -31,8 +31,8 @@ chart, real Settings toggles, and App Store packaging are not yet built.
   engine, streak math, db helpers, stores, scheduler, sync, refine, and the
   two critical screens (Log, Resolve) all have unit/component coverage.
 
-Not yet built: badge UI surfaces, Victory Native charts, Settings toggles
-(notifications + AI), app icon/splash, EAS build config.
+Not yet built: badge UI surfaces, Settings toggles (notifications + AI),
+app icon/splash, EAS build config.
 
 ---
 
@@ -159,7 +159,7 @@ Screens (Expo Router under `app/`):
 | Tabs layout | `app/(tabs)/_layout.tsx` | ✅ |
 | Home / Dashboard | `app/(tabs)/index.tsx` | ✅ — rating + pending list |
 | Log | `app/(tabs)/log.tsx` + `src/components/prediction/LogPredictionForm.tsx` | ✅ — title, category chips, ±5 confidence buttons, date presets (tomorrow/+1 week/+1 month), integrity-bonus hint |
-| Stats | `app/(tabs)/stats.tsx` + `src/components/stats/CalibrationView.tsx` | ✅ functionally — text rows + simple horizontal bars per non-empty bucket. **Victory Native chart not yet integrated.** |
+| Stats | `app/(tabs)/stats.tsx` + `src/components/stats/CalibrationView.tsx` + `CalibrationChart.tsx` | ✅ — calibration-curve chart (stated vs. actual, dashed perfect-calibration diagonal, marker radius scales with bucket n) rendered via `react-native-svg`, plus per-bucket numeric detail rows below it. |
 | History | `app/(tabs)/history.tsx` | ✅ — filterable by category |
 | Settings | `app/(tabs)/settings.tsx` | ⚠️ placeholder — no real toggles yet |
 | Resolve (deep-linked from notifications) | `app/resolve/[id].tsx` + `src/components/resolution/ResolvePrompt.tsx` | ✅ — yes/no/skip + optional reflection; defends against missing or other-user ids |
@@ -266,8 +266,10 @@ Integrity bonus: `confidence ∈ [35, 65]` (inclusive both ends).
 
 In rough priority order:
 
-1. **Stats chart** — replace the text-bar `CalibrationView` with a Victory
-   Native diagonal plot (the "perfectly calibrated = straight line" intuition).
+1. ~~**Stats chart**~~ ✅ Done — `CalibrationChart.tsx` renders the stated-vs-actual
+   curve with a dashed perfect-calibration diagonal via `react-native-svg`.
+   (Built with `react-native-svg` rather than Victory Native to avoid a
+   Skia/dev-client dependency and keep the web verifier working.)
 2. **Badges UI** — `badge_level` is computed and persisted but not surfaced in
    any screen beyond the per-category row in stats.
 3. **Settings screen** — notifications toggle + AI refine toggle (the refine

@@ -18,7 +18,7 @@ The two primary goals:
 | Local storage | SQLite via Expo SQLite |
 | Backend / sync | Supabase (Postgres + Auth + Edge Functions) |
 | Push notifications | Expo Notifications |
-| Charts | Victory Native |
+| Charts | react-native-svg (calibration curve drawn directly; no Victory/Skia dependency) |
 | State management | Zustand |
 | AI (optional) | OpenAI GPT-4o-mini via Supabase Edge Function |
 
