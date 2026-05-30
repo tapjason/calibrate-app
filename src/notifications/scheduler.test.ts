@@ -15,6 +15,7 @@ import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 
 import {
@@ -23,6 +24,9 @@ import {
   type NotificationsApi,
   type Navigator,
 } from './scheduler';
+
+/** Let fire-and-forget schedule/cancel work settle. */
+const flush = () => new Promise((r) => setImmediate(r));
 
 interface ScheduledRecord {
   id: string; // OS identifier we hand back
@@ -126,6 +130,11 @@ beforeEach(async () => {
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+  });
+  useSettingsStore.setState({
+    notificationsEnabled: true,
+    aiRefineEnabled: true,
+    hydrated: false,
   });
   await useAuthStore.getState().initialize();
   __setDepsForTests(null); // reset scheduler module state
@@ -309,6 +318,101 @@ describe('scheduler: web platform', () => {
     } finally {
       Object.defineProperty(Platform, 'OS', { get: () => original, configurable: true });
     }
+  });
+});
+
+describe('scheduler: notifications toggle (kill-switch)', () => {
+  it('cancels all scheduled reminders when notifications are turned off', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    await usePredictionStore.getState().create({
+      title: 'A',
+      category: 'work',
+      confidence: 50,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().create({
+      title: 'B',
+      category: 'work',
+      confidence: 50,
+      due_date: '2026-06-02T12:00:00.000Z',
+    });
+    await flush();
+    expect(notifications.scheduled.size).toBe(2);
+
+    useSettingsStore.setState({ notificationsEnabled: false });
+    await flush();
+
+    expect(notifications.scheduled.size).toBe(0);
+    expect(notifications.cancelled).toHaveLength(2);
+  });
+
+  it('does not schedule new reminders while notifications are off', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    useSettingsStore.setState({ notificationsEnabled: false });
+    await flush();
+
+    await usePredictionStore.getState().create({
+      title: 'While off',
+      category: 'work',
+      confidence: 50,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await flush();
+
+    expect(notifications.scheduleCalls).toBe(0);
+  });
+
+  it('reschedules for current pending when notifications are turned back on', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    // Created while off → not scheduled yet.
+    useSettingsStore.setState({ notificationsEnabled: false });
+    await flush();
+    await usePredictionStore.getState().create({
+      title: 'Pending through the toggle',
+      category: 'work',
+      confidence: 50,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await flush();
+    expect(notifications.scheduled.size).toBe(0);
+
+    // Turning on reschedules everything currently pending.
+    useSettingsStore.setState({ notificationsEnabled: true });
+    await flush();
+
+    expect(notifications.scheduled.size).toBe(1);
+    const [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.body).toBe('Pending through the toggle');
+  });
+
+  it('honors an off toggle that was set before init (never schedules)', async () => {
+    useSettingsStore.setState({ notificationsEnabled: false });
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    await usePredictionStore.getState().create({
+      title: 'Off from the start',
+      category: 'work',
+      confidence: 50,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await flush();
+
+    expect(notifications.scheduleCalls).toBe(0);
   });
 });
 

@@ -25,6 +25,7 @@ import { Platform } from 'react-native';
 
 import type { Prediction } from '@/types';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 // Injected dependencies (the platform Notifications module and the navigator).
 // Pulled to the top so tests can swap them in via __setDepsForTests without
@@ -56,6 +57,9 @@ interface Deps {
 let deps: Deps | null = null;
 let initialized = false;
 let permissionGranted = false;
+// Mirrors settingsStore.notificationsEnabled. Seeded at init and kept in sync
+// by a store subscription so the user can turn reminders off at runtime.
+let notificationsEnabled = true;
 
 // Maps prediction id → the OS-level identifier returned by
 // scheduleNotificationAsync. We keep this rather than re-deriving an id from
@@ -69,6 +73,7 @@ const scheduledByPredictionId = new Map<string, string>();
 let lastPendingById = new Map<string, Prediction>();
 
 let storeUnsub: (() => void) | null = null;
+let settingsUnsub: (() => void) | null = null;
 let listenerSub: { remove: () => void } | null = null;
 
 function defaultNavigator(): Navigator {
@@ -134,11 +139,16 @@ export function __setDepsForTests(next: Deps | null): void {
   deps = next;
   initialized = false;
   permissionGranted = false;
+  notificationsEnabled = true;
   scheduledByPredictionId.clear();
   lastPendingById = new Map();
   if (storeUnsub) {
     storeUnsub();
     storeUnsub = null;
+  }
+  if (settingsUnsub) {
+    settingsUnsub();
+    settingsUnsub = null;
   }
   if (listenerSub) {
     listenerSub.remove();
@@ -153,7 +163,8 @@ function trimBody(title: string): string {
 }
 
 async function schedule(p: Prediction): Promise<void> {
-  if (!deps || !deps.notifications || !permissionGranted) return;
+  if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled)
+    return;
   const fireDate = new Date(p.due_date);
   if (Number.isNaN(fireDate.getTime())) {
     // Bad date string would throw at the OS layer — bail rather than crash.
@@ -191,6 +202,32 @@ async function cancel(predictionId: string): Promise<void> {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[notifications] cancel failed:', e);
+  }
+}
+
+/**
+ * React to the user flipping the notifications toggle. Off → cancel every
+ * reminder we've scheduled (the full kill-switch: nothing fires after the
+ * user opts out). On → reschedule for everything currently pending, which
+ * also (re)covers predictions that were pending before this ran.
+ */
+async function applyEnabled(enabled: boolean): Promise<void> {
+  if (enabled === notificationsEnabled) return;
+  notificationsEnabled = enabled;
+  if (!deps || !deps.notifications || !permissionGranted) return;
+
+  if (!enabled) {
+    // Snapshot keys first — cancel() mutates scheduledByPredictionId.
+    for (const predictionId of [...scheduledByPredictionId.keys()]) {
+      void cancel(predictionId);
+    }
+    return;
+  }
+
+  for (const p of usePredictionStore.getState().pending) {
+    if (!scheduledByPredictionId.has(p.id)) {
+      void schedule(p);
+    }
   }
 }
 
@@ -283,6 +320,14 @@ export async function initNotifications(): Promise<void> {
   }
 
   installTapHandler();
+
+  // Seed the toggle state and react to future flips. Off cancels everything;
+  // on reschedules from pending.
+  notificationsEnabled = useSettingsStore.getState().notificationsEnabled;
+  settingsUnsub = useSettingsStore.subscribe((state, prev) => {
+    if (state.notificationsEnabled === prev.notificationsEnabled) return;
+    void applyEnabled(state.notificationsEnabled);
+  });
 
   // Seed the baseline from whatever's already in the store. Per the
   // "out of scope" note in the task: we do NOT schedule for these existing

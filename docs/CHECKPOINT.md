@@ -30,10 +30,11 @@ yet built.
   unaffected by network/server/timeouts.
 - **Badges**: per-category badge level is surfaced in Stats as a colored chip
   (emoji + label) with a one-line progress hint toward the next badge.
-- **Tests**: 19 test files / 151 tests covering L1–L6. The calibration
-  engine, streak math, db helpers, stores, scheduler, sync, refine, and the
-  critical screens (Log, Resolve) plus the chart and category badges all have
-  unit/component coverage.
+- **Tests**: 20 test files / 171 tests covering L1–L6. The calibration
+  engine, streak math, db helpers, stores (incl. settings + the notification
+  kill-switch), scheduler, digest, sync, refine, and the critical screens
+  (Log, Resolve) plus the chart and category badges all have unit/component
+  coverage.
 
 Not yet built: Settings toggles (notifications + AI), app icon/splash,
 EAS build config.
@@ -108,6 +109,7 @@ Pure module — only imports from `@/types`. No I/O, no stores.
 | `src/store/predictionStore.ts` | `loadPending`, `loadResolved`, `getById` (user-scoped), `create`, `resolve`, `remove`. All mutations wrap `insertPrediction` + `recomputeForUser` in a single `withTransaction`. |
 | `src/store/statsStore.ts` | `loadForUser`, `recomputeForUser` — full recompute (N is small). Iterates all categories so empties get `deleteCategoryStat`'d. Buckets and the per-category `nextBadges` map are derived in-memory only (the `nextBadge` engine call lives here so L6 never imports the engine). |
 | `src/store/authStore.ts` | `initialize` + `reset` (test-only). Subscribes to `onAuthStateChange`. On guest→authenticated transition: runs `migrateGuestDataToUser` then `recomputeForUser`. Falls back to guest mode silently if env vars missing. |
+| `src/store/settingsStore.ts` | Device-local prefs `notificationsEnabled` + `aiRefineEnabled`. `hydrate` loads from AsyncStorage (injectable persistence for tests); setters persist + swallow write errors. Not synced to Supabase. The L5 notification services subscribe to it — the store never reaches into L5. |
 
 Stores hold no calibration math — they orchestrate L2 (db) + L3 (engine).
 Layer rule enforced: stores never call `expo-sqlite` directly.
@@ -119,6 +121,13 @@ Layer rule enforced: stores never call `expo-sqlite` directly.
 |------|---------|
 | `src/notifications/scheduler.ts` | Resolution reminders. Permission request → `setNotificationHandler` → install tap handler (`router.push('/resolve/[id]')`) → subscribe to `predictionStore.pending` and diff to schedule/cancel per-prediction `DATE` triggers |
 | `src/notifications/digest.ts` | Weekly digest. Sunday 18:00 local via `WEEKLY` trigger, stable identifier `calibrate-weekly-digest` so re-scheduling replaces in place. Body refreshes when pending count changes. |
+
+Both modules also subscribe to `settingsStore.notificationsEnabled` and obey a
+single runtime toggle: turning notifications **off** cancels every reminder the
+scheduler has queued and the standing weekly digest; turning it back **on**
+reschedules from the current pending set (which also covers predictions that
+were pending before the toggle). The toggle state is seeded at init and kept in
+sync via the store subscription.
 
 Both modules:
 - Are no-ops on web (`Platform.OS === 'web'`).
@@ -165,7 +174,7 @@ Screens (Expo Router under `app/`):
 | Log | `app/(tabs)/log.tsx` + `src/components/prediction/LogPredictionForm.tsx` | ✅ — title, category chips, ±5 confidence buttons, date presets (tomorrow/+1 week/+1 month), integrity-bonus hint |
 | Stats | `app/(tabs)/stats.tsx` + `src/components/stats/CalibrationView.tsx` + `CalibrationChart.tsx` + `CategoryBadge.tsx` | ✅ — calibration-curve chart (stated vs. actual, dashed perfect-calibration diagonal, marker radius scales with bucket n) via `react-native-svg`, per-bucket numeric detail rows, and a per-category badge chip (emoji + label, colored per level from `src/constants/badges.ts`) with a one-line next-badge progress hint. |
 | History | `app/(tabs)/history.tsx` | ✅ — filterable by category |
-| Settings | `app/(tabs)/settings.tsx` | ⚠️ placeholder — no real toggles yet |
+| Settings | `app/(tabs)/settings.tsx` | ⚠️ screen still a placeholder, but the logic behind it is done: `settingsStore` persists both toggles and the notification services already obey the kill-switch. Only the toggle UI (+ gating the ✨ Refine button on `aiRefineEnabled`) remains. |
 | Resolve (deep-linked from notifications) | `app/resolve/[id].tsx` + `src/components/resolution/ResolvePrompt.tsx` | ✅ — yes/no/skip + optional reflection; defends against missing or other-user ids |
 
 UI primitives: `src/components/ui/{Button,TextField}.tsx`.
@@ -187,7 +196,7 @@ directly.
 
 ## Test coverage
 
-19 test files / 151 tests, all co-located next to source (Jest preset:
+20 test files / 171 tests, all co-located next to source (Jest preset:
 `jest-expo`).
 
 | Area | Test file |
@@ -205,6 +214,7 @@ directly.
 | Weekly digest scheduler | `src/notifications/digest.test.ts` |
 | Supabase sync | `src/supabase/sync.test.ts` |
 | AI refine client | `src/ai/refine.test.ts` |
+| Settings store | `src/store/settingsStore.test.ts` |
 | LogPredictionForm component | `src/components/prediction/LogPredictionForm.test.tsx` |
 | ResolvePrompt component | `src/components/resolution/ResolvePrompt.test.tsx` |
 | CalibrationChart component | `src/components/stats/CalibrationChart.test.tsx` |
@@ -280,8 +290,12 @@ In rough priority order:
    as a colored chip (emoji + label from `src/constants/badges.ts`) with a
    one-line next-badge progress hint. The `nextBadge` engine helper feeds the
    hint through the stats store, so L6 never imports the engine.
-3. **Settings screen** — notifications toggle + AI refine toggle (the refine
-   button is currently always on; needs a way for users to disable it).
+3. **Settings screen** — 🟡 logic done, UI pending. `settingsStore` persists
+   `notificationsEnabled` + `aiRefineEnabled` (local AsyncStorage), and the
+   scheduler + digest already obey the notifications kill-switch at runtime.
+   Remaining: the actual toggle UI on `app/(tabs)/settings.tsx`, and gating the
+   ✨ Refine button in `LogPredictionForm` on `aiRefineEnabled`. (Both deferred
+   pending a visual pass.)
 4. **EAS / App Store** — flesh out `eas.json`, ship app icon/splash, configure
    APNs, run a TestFlight build.
 

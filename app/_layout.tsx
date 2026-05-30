@@ -7,6 +7,7 @@ import { initDigest } from '@/notifications/digest';
 import { initNotifications } from '@/notifications/scheduler';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useAuthStore } from '@/store/authStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { syncNow } from '@/supabase/sync';
 
@@ -31,6 +32,10 @@ export default function RootLayout() {
             useStatsStore.getState().loadForUser(userId),
           ]);
         }
+        // Load persisted toggles before notifications init so the scheduler
+        // and digest seed the correct enabled state. hydrate() swallows its
+        // own errors and always resolves, so it can't block the gate.
+        await useSettingsStore.getState().hydrate();
         // Fire-and-forget: notifications are a retention enhancer, not a
         // critical-path dependency. A failure here (denied permission,
         // missing module, web) must not block the ready gate.

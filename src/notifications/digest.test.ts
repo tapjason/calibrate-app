@@ -11,6 +11,7 @@ import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 
 import {
@@ -18,6 +19,9 @@ import {
   initDigest,
   type DigestNotificationsApi,
 } from './digest';
+
+/** Let fire-and-forget schedule/cancel work settle. */
+const flush = () => new Promise((r) => setImmediate(r));
 
 interface ScheduledRecord {
   identifier: string;
@@ -82,6 +86,11 @@ beforeEach(async () => {
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+  });
+  useSettingsStore.setState({
+    notificationsEnabled: true,
+    aiRefineEnabled: true,
+    hydrated: false,
   });
   await useAuthStore.getState().initialize();
   __setDepsForTests(null);
@@ -291,6 +300,45 @@ describe('digest: schedule failure is non-fatal', () => {
     expect(p.id).toBeTruthy();
 
     warnSpy.mockRestore();
+  });
+});
+
+describe('digest: notifications toggle (kill-switch)', () => {
+  it('cancels the standing digest when notifications are turned off', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications });
+    await initDigest();
+    expect(notifications.scheduled.size).toBe(1);
+
+    useSettingsStore.setState({ notificationsEnabled: false });
+    await flush();
+
+    expect(notifications.cancelled).toContain('calibrate-weekly-digest');
+    expect(notifications.scheduled.size).toBe(0);
+  });
+
+  it('reschedules the digest when notifications are turned back on', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications });
+    await initDigest();
+
+    useSettingsStore.setState({ notificationsEnabled: false });
+    await flush();
+    expect(notifications.scheduled.size).toBe(0);
+
+    useSettingsStore.setState({ notificationsEnabled: true });
+    await flush();
+
+    expect(notifications.scheduled.size).toBe(1);
+  });
+
+  it('schedules nothing on init when notifications are off', async () => {
+    useSettingsStore.setState({ notificationsEnabled: false });
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications });
+    await initDigest();
+
+    expect(notifications.scheduleCalls).toBe(0);
   });
 });
 

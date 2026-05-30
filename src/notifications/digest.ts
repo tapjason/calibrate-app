@@ -29,6 +29,7 @@
 import { Platform } from 'react-native';
 
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 // Sunday at 18:00 local. expo-notifications weekday is 1..7 with 1 = Sunday.
 const DIGEST_WEEKDAY = 1;
@@ -57,7 +58,11 @@ let deps: Deps | null = null;
 let initialized = false;
 let permissionGranted = false;
 let lastScheduledCount: number | null = null;
+// Mirrors settingsStore.notificationsEnabled — the digest obeys the same
+// single toggle as resolution reminders.
+let notificationsEnabled = true;
 let storeUnsub: (() => void) | null = null;
+let settingsUnsub: (() => void) | null = null;
 
 function defaultNotificationsApi(): DigestNotificationsApi | null {
   if (Platform.OS === 'web') {
@@ -99,9 +104,14 @@ export function __setDepsForTests(next: Deps | null): void {
   initialized = false;
   permissionGranted = false;
   lastScheduledCount = null;
+  notificationsEnabled = true;
   if (storeUnsub) {
     storeUnsub();
     storeUnsub = null;
+  }
+  if (settingsUnsub) {
+    settingsUnsub();
+    settingsUnsub = null;
   }
 }
 
@@ -116,7 +126,8 @@ function buildBody(pendingCount: number): string {
 }
 
 async function scheduleDigest(pendingCount: number): Promise<void> {
-  if (!deps || !deps.notifications || !permissionGranted) return;
+  if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled)
+    return;
   if (lastScheduledCount === pendingCount) return;
 
   try {
@@ -141,6 +152,32 @@ async function scheduleDigest(pendingCount: number): Promise<void> {
     // eslint-disable-next-line no-console
     console.warn('[digest] schedule failed:', e);
   }
+}
+
+/**
+ * React to the notifications toggle. Off → cancel the standing weekly digest
+ * and forget the last-scheduled count so a later re-enable reschedules. On →
+ * schedule afresh from the current pending count.
+ */
+async function applyEnabled(enabled: boolean): Promise<void> {
+  if (enabled === notificationsEnabled) return;
+  notificationsEnabled = enabled;
+  if (!deps || !deps.notifications || !permissionGranted) return;
+
+  if (!enabled) {
+    lastScheduledCount = null;
+    try {
+      await deps.notifications.cancelScheduledNotificationAsync(
+        DIGEST_NOTIFICATION_ID,
+      );
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[digest] cancel failed:', e);
+    }
+    return;
+  }
+
+  await scheduleDigest(usePredictionStore.getState().pending.length);
 }
 
 /**
@@ -172,11 +209,17 @@ export async function initDigest(): Promise<void> {
     return;
   }
 
+  notificationsEnabled = useSettingsStore.getState().notificationsEnabled;
   await scheduleDigest(usePredictionStore.getState().pending.length);
 
   storeUnsub = usePredictionStore.subscribe((state, prev) => {
     if (state.pending === prev.pending) return;
     if (state.pending.length === prev.pending.length) return;
     void scheduleDigest(state.pending.length);
+  });
+
+  settingsUnsub = useSettingsStore.subscribe((state, prev) => {
+    if (state.notificationsEnabled === prev.notificationsEnabled) return;
+    void applyEnabled(state.notificationsEnabled);
   });
 }
