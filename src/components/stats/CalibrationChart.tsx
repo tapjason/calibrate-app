@@ -120,6 +120,7 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
           {/* the user's curve through the bucket points */}
           {points.length > 1 ? (
             <Polyline
+              testID="calibration-curve-line"
               points={polyline}
               fill="none"
               stroke={CURVE}
