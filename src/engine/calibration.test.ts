@@ -1,6 +1,6 @@
 import type { Prediction } from '@/types';
 
-import { computeCalibration, evaluateBadge } from './calibration';
+import { computeCalibration, evaluateBadge, nextBadge } from './calibration';
 
 const p = (overrides: Partial<Prediction> = {}): Prediction => ({
   id: 'p',
@@ -132,5 +132,49 @@ describe('evaluateBadge', () => {
   it('returns sharp (not oracle) when score > 90 but <100 resolved', () => {
     expect(evaluateBadge(99, 95)).toBe('sharp');
     expect(evaluateBadge(50, 100)).toBe('sharp');
+  });
+});
+
+describe('nextBadge', () => {
+  it('points a guesser at tracker with its resolution threshold', () => {
+    expect(nextBadge(0, 0)).toEqual({
+      badge: 'tracker',
+      needResolved: 20,
+      needScore: null,
+    });
+  });
+
+  it('points a tracker at forecaster with its score threshold', () => {
+    expect(nextBadge(25, 50)).toEqual({
+      badge: 'forecaster',
+      needResolved: null,
+      needScore: 70,
+    });
+  });
+
+  it('points a forecaster at sharp', () => {
+    expect(nextBadge(30, 75)).toEqual({
+      badge: 'sharp',
+      needResolved: null,
+      needScore: 85,
+    });
+  });
+
+  it('points a sharp at oracle with both thresholds', () => {
+    expect(nextBadge(30, 88)).toEqual({
+      badge: 'oracle',
+      needResolved: 100,
+      needScore: 90,
+    });
+  });
+
+  it('returns null when the user is already an oracle', () => {
+    expect(nextBadge(120, 95)).toBeNull();
+  });
+
+  it("uses the badge ladder, not raw thresholds, to pick what's next", () => {
+    // High score, few resolutions → currently sharp; next is oracle even
+    // though tracker's resolution count was never met.
+    expect(nextBadge(5, 95)?.badge).toBe('oracle');
   });
 });

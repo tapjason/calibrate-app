@@ -1,12 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
-import type { CalibrationResult, CategoryStat, UserStat } from '@/types';
+import { CategoryBadge } from '@/components/stats/CategoryBadge';
+import type {
+  CalibrationResult,
+  Category,
+  CategoryStat,
+  NextBadgeTarget,
+  UserStat,
+} from '@/types';
 
 interface CalibrationViewProps {
   userStat: UserStat | null;
   calibration: CalibrationResult;
   categoryStats: CategoryStat[];
+  nextBadges: Partial<Record<Category, NextBadgeTarget | null>>;
 }
 
 const BUCKET_LABELS = ['0–20', '20–40', '40–60', '60–80', '80–100'];
@@ -21,6 +29,7 @@ export function CalibrationView({
   userStat,
   calibration,
   categoryStats,
+  nextBadges,
 }: CalibrationViewProps) {
   return (
     <View style={styles.wrap}>
@@ -61,18 +70,16 @@ export function CalibrationView({
         </>
       )}
 
-      <Text style={styles.sectionTitle}>By category</Text>
+      <Text style={styles.sectionTitle}>Category badges</Text>
       {categoryStats.length === 0 ? (
         <Text style={styles.empty}>No category data yet.</Text>
       ) : (
         categoryStats.map((c) => (
-          <View key={c.category} style={styles.catRow} testID={`category-${c.category}`}>
-            <Text style={styles.catName}>{c.category}</Text>
-            <Text style={styles.catBadge}>{c.badge_level}</Text>
-            <Text style={styles.catScore}>
-              {Math.round(c.calibration_score)} · {c.predictions_resolved}/{c.predictions_made}
-            </Text>
-          </View>
+          <CategoryBadge
+            key={c.category}
+            stat={c}
+            next={nextBadges[c.category] ?? null}
+          />
         ))
       )}
     </View>
@@ -103,14 +110,4 @@ const styles = StyleSheet.create({
   bucketLabel: { fontSize: 13, fontWeight: '500', color: '#374151', width: 64 },
   bucketDetail: { flex: 1, fontSize: 13, color: '#6b7280' },
   bucketCount: { fontSize: 11, color: '#9ca3af', width: 40, textAlign: 'right' },
-  catRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  catName: { flex: 1, color: '#111827', textTransform: 'capitalize' },
-  catBadge: { color: '#2563eb', fontWeight: '500', marginRight: 12 },
-  catScore: { color: '#6b7280', fontSize: 13 },
 });

@@ -15,12 +15,17 @@ import {
   upsertCategoryStat,
   upsertUserStat,
 } from '@/db/stats';
-import { computeCalibration, evaluateBadge } from '@/engine/calibration';
+import {
+  computeCalibration,
+  evaluateBadge,
+  nextBadge,
+} from '@/engine/calibration';
 import { computeStreak } from '@/engine/streak';
 import type {
   CalibrationResult,
   Category,
   CategoryStat,
+  NextBadgeTarget,
   Prediction,
   UserStat,
 } from '@/types';
@@ -28,6 +33,12 @@ import type {
 interface StatsState {
   userStat: UserStat | null;
   categoryStats: CategoryStat[];
+  /**
+   * Per-category next-badge target keyed by category. Held in memory only and
+   * recomputed alongside categoryStats. Lets the badge UI show "what's next"
+   * without importing the L3 engine, keeping the L6 → L4 → L3 arrow intact.
+   */
+  nextBadges: Partial<Record<Category, NextBadgeTarget | null>>;
   /**
    * User-level calibration buckets, recomputed on every load and resolve.
    * Held in memory only — derived from the resolved-predictions list and
@@ -42,6 +53,17 @@ interface StatsState {
 }
 
 const EMPTY_CALIBRATION: CalibrationResult = { rating: 0, buckets: [] };
+
+/** Map each category to its next-badge target (engine call lives here, in L4). */
+function deriveNextBadges(
+  stats: CategoryStat[],
+): Partial<Record<Category, NextBadgeTarget | null>> {
+  const out: Partial<Record<Category, NextBadgeTarget | null>> = {};
+  for (const s of stats) {
+    out[s.category] = nextBadge(s.predictions_resolved, s.calibration_score);
+  }
+  return out;
+}
 
 const CATEGORIES: readonly Category[] = [
   'work',
@@ -58,6 +80,7 @@ function isYesNo(p: Prediction): boolean {
 export const useStatsStore = create<StatsState>((set) => ({
   userStat: null,
   categoryStats: [],
+  nextBadges: {},
   calibration: EMPTY_CALIBRATION,
 
   loadForUser: async (userId) => {
@@ -72,6 +95,7 @@ export const useStatsStore = create<StatsState>((set) => ({
     set({
       userStat,
       categoryStats,
+      nextBadges: deriveNextBadges(categoryStats),
       calibration: computeCalibration(resolved),
     });
   },
@@ -120,6 +144,11 @@ export const useStatsStore = create<StatsState>((set) => ({
       categoryStats.push(stat);
     }
 
-    set({ userStat, categoryStats, calibration: userCalc });
+    set({
+      userStat,
+      categoryStats,
+      nextBadges: deriveNextBadges(categoryStats),
+      calibration: userCalc,
+    });
   },
 }));

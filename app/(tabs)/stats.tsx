@@ -7,6 +7,7 @@ export default function StatsScreen() {
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const calibration = useStatsStore((s) => s.calibration);
+  const nextBadges = useStatsStore((s) => s.nextBadges);
 
   return (
     <ScrollView>
@@ -14,6 +15,7 @@ export default function StatsScreen() {
         userStat={userStat}
         calibration={calibration}
         categoryStats={categoryStats}
+        nextBadges={nextBadges}
       />
     </ScrollView>
   );

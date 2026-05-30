@@ -14,8 +14,9 @@ re-deriving everything from the source.
 ## TL;DR — what works today
 
 The offline core loop is complete and tested. Notifications, Supabase auth,
-predictions sync, AI refine, and the calibration-curve chart are wired in.
-Badges-as-UI, real Settings toggles, and App Store packaging are not yet built.
+predictions sync, AI refine, the calibration-curve chart, and per-category
+badge UI are wired in. Real Settings toggles and App Store packaging are not
+yet built.
 
 - **Log → Resolve → Stats** works end-to-end against a local SQLite DB.
 - **Auth** is wired up (Apple / Google / email-password) with a guest-mode
@@ -27,12 +28,15 @@ Badges-as-UI, real Settings toggles, and App Store packaging are not yet built.
 - **AI refine**: `src/ai/refine.ts` + `supabase/functions/refine/index.ts`
   (OpenAI GPT-4o-mini). Failure path returns null silently; save flow is
   unaffected by network/server/timeouts.
-- **Tests**: 17 test files / 139 tests covering L1–L6. The calibration
+- **Badges**: per-category badge level is surfaced in Stats as a colored chip
+  (emoji + label) with a one-line progress hint toward the next badge.
+- **Tests**: 19 test files / 151 tests covering L1–L6. The calibration
   engine, streak math, db helpers, stores, scheduler, sync, refine, and the
-  two critical screens (Log, Resolve) all have unit/component coverage.
+  critical screens (Log, Resolve) plus the chart and category badges all have
+  unit/component coverage.
 
-Not yet built: badge UI surfaces, Settings toggles (notifications + AI),
-app icon/splash, EAS build config.
+Not yet built: Settings toggles (notifications + AI), app icon/splash,
+EAS build config.
 
 ---
 
@@ -88,7 +92,7 @@ Notable invariants:
 
 | File | Purpose |
 |------|---------|
-| `src/engine/calibration.ts` | `computeCalibration` (5 buckets of 20%, top bucket is `[80,100]` inclusive), `evaluateBadge` |
+| `src/engine/calibration.ts` | `computeCalibration` (5 buckets of 20%, top bucket is `[80,100]` inclusive), `evaluateBadge`, `nextBadge` (the next badge up the ladder + its thresholds, for the UI progress hint) |
 | `src/engine/streak.ts` | `computeStreak` — counts consecutive UTC days back from latest `resolved_at`; skips don't count |
 
 Empty input convention: `computeCalibration([])` returns `rating: 0` and
@@ -102,7 +106,7 @@ Pure module — only imports from `@/types`. No I/O, no stores.
 | Store | Purpose |
 |-------|---------|
 | `src/store/predictionStore.ts` | `loadPending`, `loadResolved`, `getById` (user-scoped), `create`, `resolve`, `remove`. All mutations wrap `insertPrediction` + `recomputeForUser` in a single `withTransaction`. |
-| `src/store/statsStore.ts` | `loadForUser`, `recomputeForUser` — full recompute (N is small). Iterates all categories so empties get `deleteCategoryStat`'d. Buckets are derived in-memory only. |
+| `src/store/statsStore.ts` | `loadForUser`, `recomputeForUser` — full recompute (N is small). Iterates all categories so empties get `deleteCategoryStat`'d. Buckets and the per-category `nextBadges` map are derived in-memory only (the `nextBadge` engine call lives here so L6 never imports the engine). |
 | `src/store/authStore.ts` | `initialize` + `reset` (test-only). Subscribes to `onAuthStateChange`. On guest→authenticated transition: runs `migrateGuestDataToUser` then `recomputeForUser`. Falls back to guest mode silently if env vars missing. |
 
 Stores hold no calibration math — they orchestrate L2 (db) + L3 (engine).
@@ -159,7 +163,7 @@ Screens (Expo Router under `app/`):
 | Tabs layout | `app/(tabs)/_layout.tsx` | ✅ |
 | Home / Dashboard | `app/(tabs)/index.tsx` | ✅ — rating + pending list |
 | Log | `app/(tabs)/log.tsx` + `src/components/prediction/LogPredictionForm.tsx` | ✅ — title, category chips, ±5 confidence buttons, date presets (tomorrow/+1 week/+1 month), integrity-bonus hint |
-| Stats | `app/(tabs)/stats.tsx` + `src/components/stats/CalibrationView.tsx` + `CalibrationChart.tsx` | ✅ — calibration-curve chart (stated vs. actual, dashed perfect-calibration diagonal, marker radius scales with bucket n) rendered via `react-native-svg`, plus per-bucket numeric detail rows below it. |
+| Stats | `app/(tabs)/stats.tsx` + `src/components/stats/CalibrationView.tsx` + `CalibrationChart.tsx` + `CategoryBadge.tsx` | ✅ — calibration-curve chart (stated vs. actual, dashed perfect-calibration diagonal, marker radius scales with bucket n) via `react-native-svg`, per-bucket numeric detail rows, and a per-category badge chip (emoji + label, colored per level from `src/constants/badges.ts`) with a one-line next-badge progress hint. |
 | History | `app/(tabs)/history.tsx` | ✅ — filterable by category |
 | Settings | `app/(tabs)/settings.tsx` | ⚠️ placeholder — no real toggles yet |
 | Resolve (deep-linked from notifications) | `app/resolve/[id].tsx` + `src/components/resolution/ResolvePrompt.tsx` | ✅ — yes/no/skip + optional reflection; defends against missing or other-user ids |
@@ -183,7 +187,7 @@ directly.
 
 ## Test coverage
 
-17 test files / 139 tests, all co-located next to source (Jest preset:
+19 test files / 151 tests, all co-located next to source (Jest preset:
 `jest-expo`).
 
 | Area | Test file |
@@ -203,6 +207,8 @@ directly.
 | AI refine client | `src/ai/refine.test.ts` |
 | LogPredictionForm component | `src/components/prediction/LogPredictionForm.test.tsx` |
 | ResolvePrompt component | `src/components/resolution/ResolvePrompt.test.tsx` |
+| CalibrationChart component | `src/components/stats/CalibrationChart.test.tsx` |
+| CategoryBadge component | `src/components/stats/CategoryBadge.test.tsx` |
 
 Run with `npm test`. DB tests use the sql.js adapter from
 `src/db/testing.ts` (real SQLite WASM in Node, not a mock).
@@ -270,8 +276,10 @@ In rough priority order:
    curve with a dashed perfect-calibration diagonal via `react-native-svg`.
    (Built with `react-native-svg` rather than Victory Native to avoid a
    Skia/dev-client dependency and keep the web verifier working.)
-2. **Badges UI** — `badge_level` is computed and persisted but not surfaced in
-   any screen beyond the per-category row in stats.
+2. ~~**Badges UI**~~ ✅ Done — `CategoryBadge.tsx` renders each category's badge
+   as a colored chip (emoji + label from `src/constants/badges.ts`) with a
+   one-line next-badge progress hint. The `nextBadge` engine helper feeds the
+   hint through the stats store, so L6 never imports the engine.
 3. **Settings screen** — notifications toggle + AI refine toggle (the refine
    button is currently always on; needs a way for users to disable it).
 4. **EAS / App Store** — flesh out `eas.json`, ship app icon/splash, configure

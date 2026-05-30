@@ -121,6 +121,24 @@ export type EvaluateBadge = (
   calibrationScore: number,
 ) => BadgeLevel;
 
+/**
+ * The next badge above the user's current one, with the absolute thresholds
+ * required to reach it. `null` fields mean that dimension isn't a gate for
+ * this badge. The whole result is `null` when the user is already at the top
+ * (oracle).
+ */
+export interface NextBadgeTarget {
+  badge: BadgeLevel;
+  needResolved: number | null; // total resolutions required (≥)
+  needScore: number | null; // calibration score must exceed this (>)
+}
+
+/** Look up the next badge up the ladder and what it takes to get there. */
+export type NextBadge = (
+  predictionsResolved: number,
+  calibrationScore: number,
+) => NextBadgeTarget | null;
+
 /** Consecutive days, counting back from the latest resolved_at, with ≥1 resolution. */
 export type ComputeStreak = (resolved: Prediction[]) => number;
 

@@ -12,6 +12,8 @@ import type {
   CalibrationResult,
   ComputeCalibration,
   EvaluateBadge,
+  NextBadge,
+  NextBadgeTarget,
   Prediction,
 } from '@/types';
 
@@ -102,4 +104,36 @@ export const evaluateBadge: EvaluateBadge = (
   if (calibrationScore > 70) return 'forecaster';
   if (predictionsResolved >= 20) return 'tracker';
   return 'guesser' satisfies BadgeLevel;
+};
+
+// Badges from lowest to highest, with the absolute thresholds each one gates
+// on. Mirrors evaluateBadge — keep the two in sync.
+const BADGE_LADDER: BadgeLevel[] = [
+  'guesser',
+  'tracker',
+  'forecaster',
+  'sharp',
+  'oracle',
+];
+
+const BADGE_REQUIREMENTS: Record<BadgeLevel, NextBadgeTarget> = {
+  guesser: { badge: 'guesser', needResolved: null, needScore: null },
+  tracker: { badge: 'tracker', needResolved: 20, needScore: null },
+  forecaster: { badge: 'forecaster', needResolved: null, needScore: 70 },
+  sharp: { badge: 'sharp', needResolved: null, needScore: 85 },
+  oracle: { badge: 'oracle', needResolved: 100, needScore: 90 },
+};
+
+/**
+ * The badge one rank above the user's current one, with its thresholds, so the
+ * UI can show "what's next". Returns null when the user is already an oracle.
+ * The "next" badge is purely positional on the ladder — a forecaster's next is
+ * always sharp even if they skipped tracker's resolution count, matching
+ * evaluateBadge's highest-qualifying rule.
+ */
+export const nextBadge: NextBadge = (predictionsResolved, calibrationScore) => {
+  const current = evaluateBadge(predictionsResolved, calibrationScore);
+  const idx = BADGE_LADDER.indexOf(current);
+  if (idx >= BADGE_LADDER.length - 1) return null;
+  return BADGE_REQUIREMENTS[BADGE_LADDER[idx + 1]];
 };
