@@ -21,8 +21,6 @@ export function SettingsView() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Settings</Text>
-
       <ToggleRow
         label="Notifications"
         description="Resolution reminders on due dates and the Sunday weekly digest."
@@ -68,7 +66,6 @@ function ToggleRow({
 
 const styles = StyleSheet.create({
   wrap: { padding: 24 },
-  title: { fontSize: 22, fontWeight: '600', marginBottom: 20 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
