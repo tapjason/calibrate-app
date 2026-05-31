@@ -98,16 +98,16 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
         testID="title-field"
       />
 
-      {aiRefineEnabled && (
+      {aiRefineEnabled && title.trim().length > 0 && (
         <>
           <View style={styles.refineRow}>
             <Pressable
               onPress={onRefine}
-              disabled={refining || title.trim().length === 0}
+              disabled={refining}
               testID="refine-button"
               style={({ pressed }) => [
                 styles.refineButton,
-                (refining || title.trim().length === 0) && styles.refineDisabled,
+                refining && styles.refineDisabled,
                 pressed && styles.refinePressed,
               ]}
             >

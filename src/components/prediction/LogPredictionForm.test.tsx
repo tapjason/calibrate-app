@@ -94,11 +94,12 @@ describe('LogPredictionForm', () => {
     expect(refinePrediction).not.toHaveBeenCalled();
   });
 
-  it('disables the refine button when the title is empty', () => {
+  it('hides the refine button until the title has text', () => {
     render(<LogPredictionForm />);
-    const btn = screen.getByTestId('refine-button');
-    fireEvent.press(btn);
-    expect(refinePrediction).not.toHaveBeenCalled();
+    // No orphaned, disabled pill on the empty default form.
+    expect(screen.queryByTestId('refine-button')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('title-field'), 'something to refine');
+    expect(screen.getByTestId('refine-button')).toBeTruthy();
   });
 
   it('shows the suggestion when refine returns a rewrite, replaces title on Accept', async () => {
