@@ -56,7 +56,7 @@ EAS build config.
 | `jest-expo` preset + RNTL | ✅ | `package.json` `jest` block |
 | `app.json` (bundle id, scheme, plugins) | ✅ | `app.json` |
 | Web target enabled for the offline-loop verifier | ✅ | commit `cde2bf7` |
-| `eas.json` | ⚠️ present but empty placeholder |
+| `eas.json` | ✅ standard development / preview / production build profiles + a `submit.production` stub (no account-specific config yet) |
 | Folder skeleton (`src/{types,db,engine,store,supabase,notifications,components,constants}`) | ✅ | — |
 | `src/ai/` folder | ✅ | `src/ai/refine.ts` |
 
@@ -186,14 +186,19 @@ Layer rule enforced: components import only from `@/store` and `@/types`. They
 never reach into `@/db`, `@/engine`, `@/supabase`, or `@/notifications`
 directly.
 
-### Layer 7 — Native Integration & App Store ❌
+### Layer 7 — Native Integration & App Store 🟡 (scaffolded, not shipped)
 
 - `app.json` declares `bundleIdentifier: com.calibrate.app`, `scheme: calibrate`,
-  `usesAppleSignIn: true`, and the four required plugins. ✅
-- No app icon / splash assets configured.
-- `eas.json` is an empty placeholder — no build profiles defined.
-- No notification entitlements / APNs cert work.
-- Not built or shipped to TestFlight.
+  `usesAppleSignIn: true`, and now registers all five plugins incl.
+  `expo-notifications`. ✅
+- `eas.json` has standard development / preview / production build profiles. ✅
+- No app icon / splash assets configured. ← design asset, blocked.
+- No notification entitlements / APNs cert work. ← needs Apple Developer account.
+- Not built or shipped to TestFlight. ← needs `eas login` + credentials.
+
+The remaining work is account/credential/asset-bound and can't be done in the
+repo alone: provide an Apple Developer account + EAS login, add app icon/splash
+assets, then `eas build` → `eas submit`.
 
 ---
 
