@@ -51,7 +51,7 @@ interface FakeNavigator extends Navigator {
 
 function makeFakeNotifications(
   granted: boolean,
-  options: { scheduleThrows?: boolean } = {},
+  options: { scheduleThrows?: boolean; launchPredictionId?: string } = {},
 ): FakeNotifications {
   let tapListener:
     | ((event: {
@@ -107,6 +107,18 @@ function makeFakeNotifications(
           },
         },
       });
+    },
+    async getLastNotificationResponseAsync() {
+      // Simulates the cold-start launch response: null when the app was
+      // opened normally, a response payload when launched by a reminder tap.
+      if (!options.launchPredictionId) return null;
+      return {
+        notification: {
+          request: {
+            content: { data: { predictionId: options.launchPredictionId } },
+          },
+        },
+      };
     },
   };
   return fake;
@@ -254,6 +266,29 @@ describe('scheduler: tap handler', () => {
     // Reach into the listener directly with no data — should no-op, not throw.
     // We use triggerTap with an empty string and expect no push.
     expect(() => notifications.triggerTap('')).not.toThrow();
+    expect(navigator.pushed).toHaveLength(0);
+  });
+});
+
+describe('scheduler: cold-start deep link', () => {
+  it('routes to /resolve/[id] when a reminder tap launched the app', async () => {
+    const notifications = makeFakeNotifications(true, {
+      launchPredictionId: 'cold123',
+    });
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    // The runtime listener never fired — this came from the launching response.
+    expect(navigator.pushed).toEqual(['/resolve/cold123']);
+  });
+
+  it('does not navigate on a normal launch (no launching response)', async () => {
+    const notifications = makeFakeNotifications(true); // getLast… returns null
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
     expect(navigator.pushed).toHaveLength(0);
   });
 });

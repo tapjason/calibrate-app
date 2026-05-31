@@ -43,6 +43,15 @@ export interface NotificationsApi {
       notification: { request: { content: { data?: Record<string, unknown> } } };
     }) => void,
   ): { remove: () => void };
+  /**
+   * The notification response that launched the app from a killed state, or
+   * null if the app was opened normally. addNotificationResponseReceivedListener
+   * only fires for taps received while it is installed, so the launching tap
+   * (cold start) has to be read explicitly via this call.
+   */
+  getLastNotificationResponseAsync(): Promise<{
+    notification: { request: { content: { data?: Record<string, unknown> } } };
+  } | null>;
 }
 
 export interface Navigator {
@@ -126,6 +135,9 @@ function defaultNotificationsApi(): NotificationsApi | null {
           typeof Notifications.addNotificationResponseReceivedListener
         >[0],
       );
+    },
+    async getLastNotificationResponseAsync() {
+      return await Notifications.getLastNotificationResponseAsync();
     },
   };
 }
@@ -257,22 +269,29 @@ function handleStoreUpdate(pending: Prediction[]): void {
   lastPendingById = nextById;
 }
 
+/**
+ * Deep-link to a prediction's Resolve screen from a notification's data
+ * payload. Shared by the runtime tap listener and the cold-start launch path.
+ * A missing/invalid id is ignored; navigating to an already-resolved or
+ * deleted prediction degrades gracefully (ResolvePrompt shows a fallback).
+ */
+function routeToResolve(data: Record<string, unknown> | undefined): void {
+  const predictionId = data?.predictionId;
+  if (typeof predictionId !== 'string' || predictionId.length === 0) {
+    return;
+  }
+  try {
+    deps?.navigator.push(`/resolve/${predictionId}`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] navigation failed:', e);
+  }
+}
+
 function installTapHandler(): void {
   if (!deps || !deps.notifications) return;
   listenerSub = deps.notifications.addNotificationResponseReceivedListener(
-    (event) => {
-      const data = event.notification.request.content.data;
-      const predictionId = data?.predictionId;
-      if (typeof predictionId !== 'string' || predictionId.length === 0) {
-        return;
-      }
-      try {
-        deps?.navigator.push(`/resolve/${predictionId}`);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('[notifications] navigation failed:', e);
-      }
-    },
+    (event) => routeToResolve(event.notification.request.content.data),
   );
 }
 
@@ -341,4 +360,18 @@ export async function initNotifications(): Promise<void> {
     if (state.pending === prev.pending) return; // referential equality fast-path
     handleStoreUpdate(state.pending);
   });
+
+  // Cold start: when a reminder tap launches the app from a killed state, the
+  // listener above is installed too late to see it. Read the launching
+  // response explicitly and route from it. This runs last — after the root
+  // layout's setReady() has mounted the navigator — so the push lands.
+  try {
+    const last = await deps.notifications.getLastNotificationResponseAsync();
+    if (last) {
+      routeToResolve(last.notification.request.content.data);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] cold-start deep link failed:', e);
+  }
 }
