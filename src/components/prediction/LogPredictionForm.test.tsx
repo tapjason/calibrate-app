@@ -4,6 +4,7 @@ import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 
 import { LogPredictionForm } from './LogPredictionForm';
@@ -26,6 +27,11 @@ beforeEach(async () => {
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+  });
+  useSettingsStore.setState({
+    notificationsEnabled: true,
+    aiRefineEnabled: true,
+    hydrated: false,
   });
   await useAuthStore.getState().initialize();
   refinePrediction.mockReset();
@@ -66,6 +72,26 @@ describe('LogPredictionForm', () => {
       expect(screen.getByTestId('log-error')).toBeTruthy();
     });
     expect(usePredictionStore.getState().pending).toHaveLength(0);
+  });
+
+  it('hides the refine button when AI refine is disabled in settings', () => {
+    useSettingsStore.setState({ aiRefineEnabled: false });
+    render(<LogPredictionForm />);
+    expect(screen.queryByTestId('refine-button')).toBeNull();
+  });
+
+  it('still saves normally with AI refine disabled', async () => {
+    useSettingsStore.setState({ aiRefineEnabled: false });
+    render(<LogPredictionForm />);
+
+    fireEvent.changeText(screen.getByTestId('title-field'), 'no refine here');
+    fireEvent.press(screen.getByTestId('submit-button'));
+
+    await waitFor(() => {
+      expect(usePredictionStore.getState().pending).toHaveLength(1);
+    });
+    expect(usePredictionStore.getState().pending[0].title).toBe('no refine here');
+    expect(refinePrediction).not.toHaveBeenCalled();
   });
 
   it('disables the refine button when the title is empty', () => {

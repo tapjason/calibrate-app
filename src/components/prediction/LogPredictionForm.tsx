@@ -5,6 +5,7 @@ import { refinePrediction } from '@/ai/refine';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import type { Category } from '@/types';
 
 const CATEGORIES: readonly Category[] = [
@@ -34,6 +35,9 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [refining, setRefining] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  // Refine is opt-out via Settings. When off, the button + suggestion UI are
+  // hidden entirely; the rest of the save flow is untouched.
+  const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
 
   const onRefine = async () => {
     // Fire-and-forget by design: per CLAUDE.md, refine must never block the
@@ -94,41 +98,45 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
         testID="title-field"
       />
 
-      <View style={styles.refineRow}>
-        <Pressable
-          onPress={onRefine}
-          disabled={refining || title.trim().length === 0}
-          testID="refine-button"
-          style={({ pressed }) => [
-            styles.refineButton,
-            (refining || title.trim().length === 0) && styles.refineDisabled,
-            pressed && styles.refinePressed,
-          ]}
-        >
-          <Text style={styles.refineLabel}>
-            {refining ? 'Refining…' : '✨ Refine'}
-          </Text>
-        </Pressable>
-      </View>
-
-      {suggestion && (
-        <View style={styles.suggestion} testID="refine-suggestion">
-          <Text style={styles.suggestionLabel}>Suggested rewrite</Text>
-          <Text style={styles.suggestionText}>{suggestion}</Text>
-          <View style={styles.suggestionActions}>
-            <Button
-              label="Use this"
-              onPress={acceptSuggestion}
-              testID="refine-accept"
-            />
-            <Button
-              label="Dismiss"
-              variant="secondary"
-              onPress={() => setSuggestion(null)}
-              testID="refine-dismiss"
-            />
+      {aiRefineEnabled && (
+        <>
+          <View style={styles.refineRow}>
+            <Pressable
+              onPress={onRefine}
+              disabled={refining || title.trim().length === 0}
+              testID="refine-button"
+              style={({ pressed }) => [
+                styles.refineButton,
+                (refining || title.trim().length === 0) && styles.refineDisabled,
+                pressed && styles.refinePressed,
+              ]}
+            >
+              <Text style={styles.refineLabel}>
+                {refining ? 'Refining…' : '✨ Refine'}
+              </Text>
+            </Pressable>
           </View>
-        </View>
+
+          {suggestion && (
+            <View style={styles.suggestion} testID="refine-suggestion">
+              <Text style={styles.suggestionLabel}>Suggested rewrite</Text>
+              <Text style={styles.suggestionText}>{suggestion}</Text>
+              <View style={styles.suggestionActions}>
+                <Button
+                  label="Use this"
+                  onPress={acceptSuggestion}
+                  testID="refine-accept"
+                />
+                <Button
+                  label="Dismiss"
+                  variant="secondary"
+                  onPress={() => setSuggestion(null)}
+                  testID="refine-dismiss"
+                />
+              </View>
+            </View>
+          )}
+        </>
       )}
 
       <View style={styles.block}>

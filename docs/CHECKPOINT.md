@@ -14,9 +14,9 @@ re-deriving everything from the source.
 ## TL;DR — what works today
 
 The offline core loop is complete and tested. Notifications, Supabase auth,
-predictions sync, AI refine, the calibration-curve chart, and per-category
-badge UI are wired in. Real Settings toggles and App Store packaging are not
-yet built.
+predictions sync, AI refine, the calibration-curve chart, per-category badge
+UI, and the Settings toggles are all wired in. App Store packaging is the main
+piece not yet built.
 
 - **Log → Resolve → Stats** works end-to-end against a local SQLite DB.
 - **Auth** is wired up (Apple / Google / email-password) with a guest-mode
@@ -30,11 +30,14 @@ yet built.
   unaffected by network/server/timeouts.
 - **Badges**: per-category badge level is surfaced in Stats as a colored chip
   (emoji + label) with a one-line progress hint toward the next badge.
-- **Tests**: 20 test files / 171 tests covering L1–L6. The calibration
+- **Settings**: working Notifications + AI Refine toggles, persisted locally.
+  Notifications drives the runtime kill-switch; AI Refine shows/hides the
+  ✨ Refine button on the Log screen.
+- **Tests**: 21 test files / 177 tests covering L1–L6. The calibration
   engine, streak math, db helpers, stores (incl. settings + the notification
   kill-switch), scheduler, digest, sync, refine, and the critical screens
-  (Log, Resolve) plus the chart and category badges all have unit/component
-  coverage.
+  (Log, Resolve, Settings) plus the chart and category badges all have
+  unit/component coverage.
 
 Not yet built: Settings toggles (notifications + AI), app icon/splash,
 EAS build config.
@@ -174,7 +177,7 @@ Screens (Expo Router under `app/`):
 | Log | `app/(tabs)/log.tsx` + `src/components/prediction/LogPredictionForm.tsx` | ✅ — title, category chips, ±5 confidence buttons, date presets (tomorrow/+1 week/+1 month), integrity-bonus hint |
 | Stats | `app/(tabs)/stats.tsx` + `src/components/stats/CalibrationView.tsx` + `CalibrationChart.tsx` + `CategoryBadge.tsx` | ✅ — calibration-curve chart (stated vs. actual, dashed perfect-calibration diagonal, marker radius scales with bucket n) via `react-native-svg`, per-bucket numeric detail rows, and a per-category badge chip (emoji + label, colored per level from `src/constants/badges.ts`) with a one-line next-badge progress hint. |
 | History | `app/(tabs)/history.tsx` | ✅ — filterable by category |
-| Settings | `app/(tabs)/settings.tsx` | ⚠️ screen still a placeholder, but the logic behind it is done: `settingsStore` persists both toggles and the notification services already obey the kill-switch. Only the toggle UI (+ gating the ✨ Refine button on `aiRefineEnabled`) remains. |
+| Settings | `app/(tabs)/settings.tsx` + `src/components/settings/SettingsView.tsx` | ✅ — Notifications + AI Refine toggles (RN `Switch`) bound to `settingsStore`. Notifications drives the kill-switch; AI Refine gates the ✨ Refine button in `LogPredictionForm`. |
 | Resolve (deep-linked from notifications) | `app/resolve/[id].tsx` + `src/components/resolution/ResolvePrompt.tsx` | ✅ — yes/no/skip + optional reflection; defends against missing or other-user ids |
 
 UI primitives: `src/components/ui/{Button,TextField}.tsx`.
@@ -196,7 +199,7 @@ directly.
 
 ## Test coverage
 
-20 test files / 171 tests, all co-located next to source (Jest preset:
+21 test files / 177 tests, all co-located next to source (Jest preset:
 `jest-expo`).
 
 | Area | Test file |
@@ -219,6 +222,7 @@ directly.
 | ResolvePrompt component | `src/components/resolution/ResolvePrompt.test.tsx` |
 | CalibrationChart component | `src/components/stats/CalibrationChart.test.tsx` |
 | CategoryBadge component | `src/components/stats/CategoryBadge.test.tsx` |
+| SettingsView component | `src/components/settings/SettingsView.test.tsx` |
 
 Run with `npm test`. DB tests use the sql.js adapter from
 `src/db/testing.ts` (real SQLite WASM in Node, not a mock).
@@ -290,14 +294,12 @@ In rough priority order:
    as a colored chip (emoji + label from `src/constants/badges.ts`) with a
    one-line next-badge progress hint. The `nextBadge` engine helper feeds the
    hint through the stats store, so L6 never imports the engine.
-3. **Settings screen** — 🟡 logic done, UI pending. `settingsStore` persists
-   `notificationsEnabled` + `aiRefineEnabled` (local AsyncStorage), and the
-   scheduler + digest already obey the notifications kill-switch at runtime.
-   Remaining: the actual toggle UI on `app/(tabs)/settings.tsx`, and gating the
-   ✨ Refine button in `LogPredictionForm` on `aiRefineEnabled`. (Both deferred
-   pending a visual pass.)
+3. ~~**Settings screen**~~ ✅ Done — `SettingsView.tsx` renders Notifications +
+   AI Refine toggles bound to `settingsStore`; the notification services obey
+   the kill-switch and the ✨ Refine button is gated on `aiRefineEnabled`.
+   (Logic + UI are tested; a visual pass on the screen is still worthwhile.)
 4. **EAS / App Store** — flesh out `eas.json`, ship app icon/splash, configure
-   APNs, run a TestFlight build.
+   APNs, run a TestFlight build. ← needs your Expo account + credentials.
 
 ---
 
