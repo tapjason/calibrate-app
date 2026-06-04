@@ -1,10 +1,13 @@
-import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Stack, useRootNavigationState } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
-import { initNotifications } from '@/notifications/scheduler';
+import {
+  initNotifications,
+  routeFromLaunchNotification,
+} from '@/notifications/scheduler';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -17,6 +20,10 @@ import { syncNow } from '@/supabase/sync';
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Becomes defined once the root navigator has mounted; until then any
+  // router.push throws ("navigate before mounting the Root Layout").
+  const navState = useRootNavigationState();
+  const launchRouted = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -53,6 +60,19 @@ export default function RootLayout() {
       }
     })();
   }, []);
+
+  // Cold-start deep link. We can only navigate once the root navigator is
+  // mounted (navState defined) and the app gate is open (ready). Gating here —
+  // rather than inside the fire-and-forget initNotifications() — is what keeps
+  // the launch push from racing the navigator mount. Runs at most once.
+  useEffect(() => {
+    if (!ready || !navState?.key || launchRouted.current) return;
+    launchRouted.current = true;
+    routeFromLaunchNotification().catch((e) => {
+      // eslint-disable-next-line no-console
+      console.warn('[notifications] launch deep link failed:', e);
+    });
+  }, [ready, navState?.key]);
 
   // Foreground sync. Sign-in already triggers one sweep via authStore; this
   // catches every subsequent return to the app so other devices' writes

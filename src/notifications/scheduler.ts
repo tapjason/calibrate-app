@@ -40,17 +40,22 @@ export interface NotificationsApi {
   setNotificationHandler(handler: unknown): void;
   addNotificationResponseReceivedListener(
     listener: (event: {
-      notification: { request: { content: { data?: Record<string, unknown> } } };
+      notification: {
+        request: { identifier: string; content: { data?: Record<string, unknown> } };
+      };
     }) => void,
   ): { remove: () => void };
   /**
    * The notification response that launched the app from a killed state, or
-   * null if the app was opened normally. addNotificationResponseReceivedListener
-   * only fires for taps received while it is installed, so the launching tap
-   * (cold start) has to be read explicitly via this call.
+   * null if the app was opened normally. The launching tap (cold start) is
+   * read explicitly via this call. Note that addNotificationResponseReceivedListener
+   * may *also* replay the same launching response to a freshly-installed
+   * listener, so both paths dedupe on request.identifier to navigate once.
    */
   getLastNotificationResponseAsync(): Promise<{
-    notification: { request: { content: { data?: Record<string, unknown> } } };
+    notification: {
+      request: { identifier: string; content: { data?: Record<string, unknown> } };
+    };
   } | null>;
 }
 
@@ -80,6 +85,13 @@ const scheduledByPredictionId = new Map<string, string>();
 // Snapshot of the last pending set we observed. Used to compute the diff on
 // every store update.
 let lastPendingById = new Map<string, Prediction>();
+
+// Identifiers of notification responses we've already navigated from. Guards
+// against handling the same launching tap twice: the OS can deliver the
+// cold-start response to BOTH the runtime listener (replayed once installed)
+// and getLastNotificationResponseAsync. Whichever routes first records the id;
+// the other is then a no-op.
+const routedResponseIdentifiers = new Set<string>();
 
 let storeUnsub: (() => void) | null = null;
 let settingsUnsub: (() => void) | null = null;
@@ -153,6 +165,7 @@ export function __setDepsForTests(next: Deps | null): void {
   permissionGranted = false;
   notificationsEnabled = true;
   scheduledByPredictionId.clear();
+  routedResponseIdentifiers.clear();
   lastPendingById = new Map();
   if (storeUnsub) {
     storeUnsub();
@@ -270,18 +283,27 @@ function handleStoreUpdate(pending: Prediction[]): void {
 }
 
 /**
- * Deep-link to a prediction's Resolve screen from a notification's data
- * payload. Shared by the runtime tap listener and the cold-start launch path.
- * A missing/invalid id is ignored; navigating to an already-resolved or
- * deleted prediction degrades gracefully (ResolvePrompt shows a fallback).
+ * Deep-link to a prediction's Resolve screen from a notification response.
+ * Shared by the runtime tap listener and the cold-start launch path. A
+ * missing/invalid id is ignored; navigating to an already-resolved or deleted
+ * prediction degrades gracefully (ResolvePrompt shows a fallback). Responses
+ * are deduped on identifier so the launching tap routes exactly once even if
+ * it reaches us through both paths. The identifier is only recorded after a
+ * successful push, so a push that fails (e.g. navigator not yet mounted) can
+ * still be retried by the other path.
  */
-function routeToResolve(data: Record<string, unknown> | undefined): void {
-  const predictionId = data?.predictionId;
+function routeToResolve(request: {
+  identifier: string;
+  content: { data?: Record<string, unknown> };
+}): void {
+  if (routedResponseIdentifiers.has(request.identifier)) return;
+  const predictionId = request.content.data?.predictionId;
   if (typeof predictionId !== 'string' || predictionId.length === 0) {
     return;
   }
   try {
     deps?.navigator.push(`/resolve/${predictionId}`);
+    routedResponseIdentifiers.add(request.identifier);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[notifications] navigation failed:', e);
@@ -291,8 +313,32 @@ function routeToResolve(data: Record<string, unknown> | undefined): void {
 function installTapHandler(): void {
   if (!deps || !deps.notifications) return;
   listenerSub = deps.notifications.addNotificationResponseReceivedListener(
-    (event) => routeToResolve(event.notification.request.content.data),
+    (event) => routeToResolve(event.notification.request),
   );
+}
+
+/**
+ * Cold start: when a reminder tap launches the app from a killed state, the
+ * runtime listener is installed too late to reliably see it, so we read the
+ * launching response explicitly and route from it.
+ *
+ * This is intentionally NOT called from initNotifications(): init is fired
+ * before the root navigator mounts, and an early router.push throws ("navigate
+ * before mounting the Root Layout"). The root layout calls this only once the
+ * navigator is ready, which gives the push a mounted target. Dedup on
+ * request.identifier keeps this from double-navigating with the tap listener.
+ */
+export async function routeFromLaunchNotification(): Promise<void> {
+  if (!deps || !deps.notifications) return;
+  try {
+    const last = await deps.notifications.getLastNotificationResponseAsync();
+    if (last) {
+      routeToResolve(last.notification.request);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] cold-start deep link failed:', e);
+  }
 }
 
 /**
@@ -361,17 +407,7 @@ export async function initNotifications(): Promise<void> {
     handleStoreUpdate(state.pending);
   });
 
-  // Cold start: when a reminder tap launches the app from a killed state, the
-  // listener above is installed too late to see it. Read the launching
-  // response explicitly and route from it. This runs last — after the root
-  // layout's setReady() has mounted the navigator — so the push lands.
-  try {
-    const last = await deps.notifications.getLastNotificationResponseAsync();
-    if (last) {
-      routeToResolve(last.notification.request.content.data);
-    }
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[notifications] cold-start deep link failed:', e);
-  }
+  // The cold-start deep link (the tap that launched the app) is handled
+  // separately by routeFromLaunchNotification(), which the root layout calls
+  // once the navigator has mounted. Doing it here would race that mount.
 }

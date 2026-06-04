@@ -21,6 +21,7 @@ import { useStatsStore } from '@/store/statsStore';
 import {
   __setDepsForTests,
   initNotifications,
+  routeFromLaunchNotification,
   type NotificationsApi,
   type Navigator,
 } from './scheduler';
@@ -41,8 +42,12 @@ interface FakeNotifications extends NotificationsApi {
   cancelled: string[];
   scheduleCalls: number;
   cancelCalls: number;
-  /** Fire the tap handler with a given prediction id, as if the user tapped. */
-  triggerTap(predictionId: string): void;
+  /**
+   * Fire the tap handler with a given prediction id, as if the user tapped.
+   * Pass an explicit identifier to simulate the OS replaying a specific
+   * response (e.g. the launching tap) to the runtime listener.
+   */
+  triggerTap(predictionId: string, identifier?: string): void;
 }
 
 interface FakeNavigator extends Navigator {
@@ -55,7 +60,9 @@ function makeFakeNotifications(
 ): FakeNotifications {
   let tapListener:
     | ((event: {
-        notification: { request: { content: { data?: Record<string, unknown> } } };
+        notification: {
+          request: { identifier: string; content: { data?: Record<string, unknown> } };
+        };
       }) => void)
     | null = null;
   let nextId = 1;
@@ -98,11 +105,12 @@ function makeFakeNotifications(
         },
       };
     },
-    triggerTap(predictionId: string) {
+    triggerTap(predictionId: string, identifier = `tap-${predictionId}-${nextId++}`) {
       if (!tapListener) throw new Error('no tap listener installed');
       tapListener({
         notification: {
           request: {
+            identifier,
             content: { data: { predictionId } },
           },
         },
@@ -111,10 +119,12 @@ function makeFakeNotifications(
     async getLastNotificationResponseAsync() {
       // Simulates the cold-start launch response: null when the app was
       // opened normally, a response payload when launched by a reminder tap.
+      // The identifier is stable so a replayed tap of the same launch dedupes.
       if (!options.launchPredictionId) return null;
       return {
         notification: {
           request: {
+            identifier: `launch-${options.launchPredictionId}`,
             content: { data: { predictionId: options.launchPredictionId } },
           },
         },
@@ -279,7 +289,9 @@ describe('scheduler: cold-start deep link', () => {
     __setDepsForTests({ notifications, navigator });
     await initNotifications();
 
-    // The runtime listener never fired — this came from the launching response.
+    // The runtime listener never fired — this came from the launching response,
+    // read once the navigator is mounted (the root layout's job in production).
+    await routeFromLaunchNotification();
     expect(navigator.pushed).toEqual(['/resolve/cold123']);
   });
 
@@ -289,7 +301,49 @@ describe('scheduler: cold-start deep link', () => {
     __setDepsForTests({ notifications, navigator });
     await initNotifications();
 
+    await routeFromLaunchNotification();
     expect(navigator.pushed).toHaveLength(0);
+  });
+
+  it('navigates once when the launching tap reaches both the listener and getLast', async () => {
+    const notifications = makeFakeNotifications(true, {
+      launchPredictionId: 'cold123',
+    });
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    // The OS replays the launching response to the freshly-installed listener
+    // using the same identifier getLast reports — both must dedupe to one push.
+    notifications.triggerTap('cold123', 'launch-cold123');
+    await routeFromLaunchNotification();
+
+    expect(navigator.pushed).toEqual(['/resolve/cold123']);
+  });
+
+  it('does not record the response id when the navigator push fails, so a retry can route', async () => {
+    const notifications = makeFakeNotifications(true, {
+      launchPredictionId: 'cold123',
+    });
+    let throwOnce = true;
+    const navigator: FakeNavigator = {
+      pushed: [],
+      push(path: string) {
+        if (throwOnce) {
+          throwOnce = false;
+          throw new Error('navigate before mounting the Root Layout');
+        }
+        navigator.pushed.push(path);
+      },
+    };
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    await routeFromLaunchNotification(); // push throws, id NOT recorded
+    expect(navigator.pushed).toHaveLength(0);
+
+    await routeFromLaunchNotification(); // retry succeeds
+    expect(navigator.pushed).toEqual(['/resolve/cold123']);
   });
 });
 
