@@ -20,6 +20,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "02491cb4-6c7c-464e-8193-81c813ed87cd"
+      }
+    },
+    "owner": "tapjason"
   }
 }
