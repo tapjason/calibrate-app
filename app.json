@@ -26,7 +26,20 @@
       "expo-sqlite",
       "expo-web-browser",
       "expo-apple-authentication",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#4F46E5",
+          "dark": {
+            "image": "./assets/images/splash-icon.png",
+            "backgroundColor": "#1E1B4B"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
