@@ -1,8 +1,8 @@
 # Calibrate — Implementation Checkpoint
 
-**As of:** 2026-05-28
-**Branch:** `feat/supabase-auth`
-**Latest commit:** AI refine landed on top of `96b137a docs: add implementation checkpoint`
+**As of:** 2026-06-16
+**Branch:** `master`
+**Latest commit:** `3c76f4b feat: add placeholder app icon + wire icon/adaptive/favicon assets`
 
 This document captures the state of the implementation as a checkpoint. It maps
 what exists against the layered plan in `BUILD_PLAN.md` and the product spec in
@@ -15,8 +15,10 @@ re-deriving everything from the source.
 
 The offline core loop is complete and tested. Notifications, Supabase auth,
 predictions sync, AI refine, the calibration-curve chart, per-category badge
-UI, and the Settings toggles are all wired in. App Store packaging is the main
-piece not yet built.
+UI, and the Settings toggles are all wired in. The app icon is in place and the
+EAS project is linked; the remaining App Store work (splash polish, APNs, the
+`submit.production` block, an actual TestFlight build) is the main piece not yet
+done.
 
 - **Log → Resolve → Stats** works end-to-end against a local SQLite DB.
 - **Auth** is wired up (Apple / Google / email-password) with a guest-mode
@@ -33,14 +35,15 @@ piece not yet built.
 - **Settings**: working Notifications + AI Refine toggles, persisted locally.
   Notifications drives the runtime kill-switch; AI Refine shows/hides the
   ✨ Refine button on the Log screen.
-- **Tests**: 21 test files / 177 tests covering L1–L6. The calibration
-  engine, streak math, db helpers, stores (incl. settings + the notification
-  kill-switch), scheduler, digest, sync, refine, and the critical screens
-  (Log, Resolve, Settings) plus the chart and category badges all have
-  unit/component coverage.
+- **Tests**: 21 test files / 183 tests covering L1–L6. The calibration
+  engine, streak math, db helpers (incl. the migration runner and sync
+  metadata), stores (incl. settings + the notification kill-switch), scheduler,
+  digest, sync, refine, and the critical screens (Log, Resolve, Settings) plus
+  the chart and category badges all have unit/component coverage.
 
-Not yet built: Settings toggles (notifications + AI), app icon/splash,
-EAS build config.
+Not yet shipped: splash polish, APNs/notification entitlements, the
+`submit.production` EAS block, and an actual TestFlight build (all
+account/credential-bound — see Layer 7).
 
 ---
 
@@ -56,7 +59,7 @@ EAS build config.
 | `jest-expo` preset + RNTL | ✅ | `package.json` `jest` block |
 | `app.json` (bundle id, scheme, plugins) | ✅ | `app.json` |
 | Web target enabled for the offline-loop verifier | ✅ | commit `cde2bf7` |
-| `eas.json` | ✅ standard development / preview / production build profiles + a `submit.production` stub (no account-specific config yet) |
+| `eas.json` | ✅ standard development / preview / production build profiles + a `submit.production` stub. EAS project is linked (`extra.eas.projectId` in `app.json`, owner `tapjason`); the `submit.production` block still holds no account-specific config |
 | Folder skeleton (`src/{types,db,engine,store,supabase,notifications,components,constants}`) | ✅ | — |
 | `src/ai/` folder | ✅ | `src/ai/refine.ts` |
 
@@ -89,8 +92,15 @@ Notable invariants:
   rejects nested BEGINs on a single connection (`commit 372df4e`).
 - DB opens via `openDatabaseAsync` (not Sync) — Sync needs SharedArrayBuffer +
   COOP/COEP headers the Expo dev server doesn't send on web (`commit 89b8671`).
-- Migration system caveat: 001 is run on every startup. The first schema change
-  will need a `_migrations` tracking table.
+- Migrations run through a version-gated runner (`src/db/migrations/index.ts`):
+  a `_migrations(id, applied_at)` table records what has run on the device, and
+  each unapplied migration is applied in id order inside its own transaction.
+  002 (`ALTER TABLE ... ADD COLUMN`) already exercises the non-idempotent path.
+  Legacy devices that pre-date the runner (which ran 001 directly on every boot)
+  upgrade cleanly — 001 is `IF NOT EXISTS` so it no-ops and is recorded, then 002
+  applies and backfills. Both the legacy-upgrade and the mid-migration-rollback
+  paths are covered in `runner.test.ts`. Add a migration by appending to
+  `MIGRATIONS` with a new id; never edit or reorder existing entries.
 
 ### Layer 3 — Calibration Engine ✅
 
@@ -122,7 +132,7 @@ Layer rule enforced: stores never call `expo-sqlite` directly.
 #### Notifications ✅
 | File | Purpose |
 |------|---------|
-| `src/notifications/scheduler.ts` | Resolution reminders. Permission request → `setNotificationHandler` → install tap handler (`router.push('/resolve/[id]')`) → subscribe to `predictionStore.pending` and diff to schedule/cancel per-prediction `DATE` triggers |
+| `src/notifications/scheduler.ts` | Resolution reminders. Permission request → `setNotificationHandler` → install tap handler (`router.push('/resolve/[id]')`, incl. the cold-start tap via `getLastNotificationResponseAsync`, deduped on `request.identifier` so the launching tap routes exactly once) → subscribe to `predictionStore.pending` and diff to schedule/cancel per-prediction `DATE` triggers |
 | `src/notifications/digest.ts` | Weekly digest. Sunday 18:00 local via `WEEKLY` trigger, stable identifier `calibrate-weekly-digest` so re-scheduling replaces in place. Body refreshes when pending count changes. |
 
 Both modules also subscribe to `settingsStore.notificationsEnabled` and obey a
@@ -173,8 +183,8 @@ Screens (Expo Router under `app/`):
 |--------|------|-------|
 | Root layout (auth + DB gate) | `app/_layout.tsx` | ✅ — awaits `initDb` → `auth.initialize` → store warm-up → fire-and-forget notifications init |
 | Tabs layout | `app/(tabs)/_layout.tsx` | ✅ |
-| Home / Dashboard | `app/(tabs)/index.tsx` | ✅ — rating + pending list |
-| Log | `app/(tabs)/log.tsx` + `src/components/prediction/LogPredictionForm.tsx` | ✅ — title, category chips, ±5 confidence buttons, date presets (tomorrow/+1 week/+1 month), integrity-bonus hint |
+| Home / Dashboard | `app/(tabs)/index.tsx` | ✅ — rating + pending list; overdue predictions (past `due_date`) are flagged |
+| Log | `app/(tabs)/log.tsx` + `src/components/prediction/LogPredictionForm.tsx` | ✅ — title, category chips, ±5 confidence buttons, date presets (tomorrow/+1 week/+1 month), integrity-bonus hint. ✨ Refine button is hidden until the title has text |
 | Stats | `app/(tabs)/stats.tsx` + `src/components/stats/CalibrationView.tsx` + `CalibrationChart.tsx` + `CategoryBadge.tsx` | ✅ — calibration-curve chart (stated vs. actual, dashed perfect-calibration diagonal, marker radius scales with bucket n) via `react-native-svg`, per-bucket numeric detail rows, and a per-category badge chip (emoji + label, colored per level from `src/constants/badges.ts`) with a one-line next-badge progress hint. |
 | History | `app/(tabs)/history.tsx` | ✅ — filterable by category |
 | Settings | `app/(tabs)/settings.tsx` + `src/components/settings/SettingsView.tsx` | ✅ — Notifications + AI Refine toggles (RN `Switch`) bound to `settingsStore`. Notifications drives the kill-switch; AI Refine gates the ✨ Refine button in `LogPredictionForm`. |
@@ -191,28 +201,36 @@ directly.
 - `app.json` declares `bundleIdentifier: com.calibrate.app`, `scheme: calibrate`,
   `usesAppleSignIn: true`, and now registers all five plugins incl.
   `expo-notifications`. ✅
-- `eas.json` has standard development / preview / production build profiles. ✅
-- No app icon / splash assets configured. ← design asset, blocked.
+- `eas.json` has standard development / preview / production build profiles, and
+  the EAS project is linked (`extra.eas.projectId`, owner `tapjason`). ✅
+- App icon, Android adaptive icon, and web favicon are wired
+  (`assets/icons/*.png` via `app.json`). ✅ Placeholder art — a real icon pass is
+  still worthwhile. `assets/images/splash-icon.png` exists but no splash screen
+  is configured in `app.json` yet.
 - No notification entitlements / APNs cert work. ← needs Apple Developer account.
+- The `submit.production` block in `eas.json` holds no account-specific config. ←
+  needs Apple credentials.
 - Not built or shipped to TestFlight. ← needs `eas login` + credentials.
 
-The remaining work is account/credential/asset-bound and can't be done in the
-repo alone: provide an Apple Developer account + EAS login, add app icon/splash
-assets, then `eas build` → `eas submit`.
+The remaining work is account/credential-bound and can't be done in the repo
+alone: provide an Apple Developer account + EAS login, configure the splash
+screen, fill `submit.production`, then `eas build` → `eas submit`.
 
 ---
 
 ## Test coverage
 
-21 test files / 177 tests, all co-located next to source (Jest preset:
+21 test files / 183 tests, all co-located next to source (Jest preset:
 `jest-expo`).
 
 | Area | Test file |
 |------|-----------|
 | Constants smoke | `src/constants/app.test.ts` |
 | DB predictions | `src/db/predictions.test.ts` |
+| DB predictions sync metadata | `src/db/predictions.sync.test.ts` |
 | DB stats | `src/db/stats.test.ts` |
 | Guest data migration | `src/db/migrateGuestData.test.ts` |
+| Migration runner (legacy upgrade + rollback) | `src/db/migrations/runner.test.ts` |
 | Calibration engine | `src/engine/calibration.test.ts` |
 | Streak engine | `src/engine/streak.test.ts` |
 | Prediction store | `src/store/predictionStore.test.ts` |
@@ -236,7 +254,7 @@ Run with `npm test`. DB tests use the sql.js adapter from
 
 ## Data model snapshot
 
-Schema (from `src/db/migrations/001_initial.ts`):
+Schema (from `src/db/migrations/001_initial.ts` + `002_sync_metadata.ts`):
 
 ```sql
 predictions (
@@ -246,9 +264,11 @@ predictions (
   created_at, due_date,
   status          CHECK IN ('pending','resolved_yes','resolved_no','skipped'),
   resolved_at, reflection,
-  integrity_bonus INTEGER 0|1
+  integrity_bonus INTEGER 0|1,
+  updated_at      TEXT     -- 002: ISO of last local write (last-write-wins + cursor)
+  dirty           INTEGER 0|1  -- 002: 1 = unsynced local changes, 0 after push
 )
-  + idx (user_id, status), (user_id, due_date)
+  + idx (user_id, status), (user_id, due_date), (dirty) WHERE dirty = 1
 
 user_stats (
   user_id PK, calibration_rating, total_predictions,
@@ -262,7 +282,8 @@ category_stats (
 )
 ```
 
-Calibration math (per `src/engine/calibration.ts`):
+Calibration math (per `src/engine/calibration.ts`; full reference in
+`docs/CALIBRATION.md`):
 
 ```
 For each non-empty bucket:
@@ -303,8 +324,11 @@ In rough priority order:
    AI Refine toggles bound to `settingsStore`; the notification services obey
    the kill-switch and the ✨ Refine button is gated on `aiRefineEnabled`.
    (Logic + UI are tested; a visual pass on the screen is still worthwhile.)
-4. **EAS / App Store** — flesh out `eas.json`, ship app icon/splash, configure
-   APNs, run a TestFlight build. ← needs your Expo account + credentials.
+4. ~~**Migration versioning**~~ ✅ Done — version-gated runner with a
+   `_migrations` table; legacy-upgrade and mid-migration-rollback paths tested.
+5. **EAS / App Store** — app icon is in; ship splash, configure APNs, fill the
+   `submit.production` block in `eas.json`, run a TestFlight build. ← needs your
+   Expo account + Apple credentials.
 
 ---
 

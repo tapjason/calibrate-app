@@ -32,7 +32,13 @@ export const MIGRATIONS: readonly Migration[] = [
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();
 
-export async function runMigrations(adapter: DbAdapter): Promise<void> {
+// `migrations` is injectable for tests only (e.g. to drive a deliberately
+// failing migration through the runner). Production callers omit it and get
+// the registered MIGRATIONS list.
+export async function runMigrations(
+  adapter: DbAdapter,
+  migrations: readonly Migration[] = MIGRATIONS,
+): Promise<void> {
   await adapter.exec(
     `CREATE TABLE IF NOT EXISTS _migrations (
        id         TEXT PRIMARY KEY,
@@ -45,7 +51,7 @@ export async function runMigrations(adapter: DbAdapter): Promise<void> {
   );
   const applied = new Set(appliedRows.map((r) => r.id));
 
-  for (const migration of MIGRATIONS) {
+  for (const migration of migrations) {
     if (applied.has(migration.id)) continue;
 
     // Each migration is its own transaction so a half-applied schema can't

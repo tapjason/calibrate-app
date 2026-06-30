@@ -84,9 +84,13 @@ Runs after every resolution. Groups predictions into confidence buckets and comp
 ```
 Calibration Score = 100 - (mean of all bucket_errors × 100)
 
-Where:
-  actual_rate = resolved_yes / total_resolved_in_bucket
-  bucket_error = (stated_confidence/100 - actual_rate)²
+Where (per bucket):
+  stated_confidence_mean = mean of stated confidences of predictions in the bucket
+  actual_rate            = resolved_yes / total_resolved_in_bucket
+  bucket_error           = (stated_confidence_mean/100 - actual_rate)²
+
+The mean is over non-empty buckets only. See docs/CALIBRATION.md for the full
+reference (boundaries, ranges, worked examples).
 ```
 
 Buckets: 0–20%, 20–40%, 40–60%, 60–80%, 80–100%
@@ -114,7 +118,7 @@ Bonus awarded for logging predictions with confidence in the 35–65% range. The
 ### Badge Levels (per category)
 | Level | Name | Criteria |
 |---|---|---|
-| 1 | Guesser | First 5 predictions resolved |
+| 1 | Guesser | Default starting badge (no threshold) |
 | 2 | Tracker | 20 predictions resolved |
 | 3 | Forecaster | Calibration score above 70 |
 | 4 | Sharp | Calibration score above 85 |

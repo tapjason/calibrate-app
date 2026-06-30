@@ -62,10 +62,12 @@ function adaptSqlJs(db: Database): DbAdapter {
 }
 
 /**
- * Create a fresh in-memory DB adapter with the migration already applied.
- * Pass the return value to setDbForTests() in a beforeEach hook.
+ * Create a fresh in-memory DB adapter with NO migrations applied. Lets a test
+ * simulate a legacy device (one that pre-dates the migration runner) by exec'ing
+ * the old schema by hand before running the runner. Most tests want
+ * createTestDb() instead.
  */
-export async function createTestDb(): Promise<DbAdapter> {
+export async function createRawTestDb(): Promise<DbAdapter> {
   restoreNodeEnv();
   if (!SQL) {
     // Use the pure asm.js build, not the WASM one — Emscripten's WASM runtime
@@ -77,8 +79,15 @@ export async function createTestDb(): Promise<DbAdapter> {
     ) => Promise<SqlJsStatic>;
     SQL = await initSqlJs();
   }
-  const db = new SQL.Database();
-  const adapter = adaptSqlJs(db);
+  return adaptSqlJs(new SQL.Database());
+}
+
+/**
+ * Create a fresh in-memory DB adapter with the migrations already applied.
+ * Pass the return value to setDbForTests() in a beforeEach hook.
+ */
+export async function createTestDb(): Promise<DbAdapter> {
+  const adapter = await createRawTestDb();
   await runMigrations(adapter);
   return adapter;
 }
