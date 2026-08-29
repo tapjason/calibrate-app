@@ -37,8 +37,13 @@ Stats, History, Settings) plus the calibration curve and category badges.
 `src/store/warmupStore.ts`, the quiz + verdict components, `app/warmup/`, and the
 first-run redirect in `app/_layout.tsx`.
 
-**Next, in sequence:** share-card export → identity card → Wrapped → billing →
-paywall → Coach. See *Recommended Sequence* below for why that order.
+**Just landed — the share loop:** `src/share/export.ts` (view-shot → PNG → OS share
+sheet, fail-soft), the category identity card and its copy helper, `app/share/`, and
+a share entry point on Stats. Free, unconditionally — no entitlement check anywhere
+in that path.
+
+**Next, in sequence:** Calibration Wrapped → billing → paywall → Coach. See
+*Recommended Sequence* below for why that order.
 
 Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
 gates, and re-verifying market pricing before the paywall ships.

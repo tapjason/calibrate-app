@@ -229,6 +229,33 @@ export interface WarmupQuestion {
   fact: string;
 }
 
+// ---- Share cards ----
+//
+// The growth engine. Per CLAUDE.md nothing that produces a shareable artifact
+// is ever paywalled, and the per-category contrast ("Sharp in health, Guesser
+// in money") is the thing that actually travels.
+
+/** One category as it appears on a share card. */
+export interface ShareCardCategory {
+  category: Category;
+  badge_level: BadgeLevel;
+}
+
+/**
+ * Everything a share card needs to render and export. Data only — the copy is
+ * built from it by components/share/cardCopy.ts.
+ *
+ * `rating` is null while the overall rating is provisional. A card is the most
+ * public thing this app produces, so it is the last place a number built on
+ * noise belongs; the card shows progress toward the threshold instead.
+ */
+export interface ShareCard {
+  /** Best badge first, worst last — the contrast is the point. */
+  categories: ShareCardCategory[];
+  rating: number | null;
+  total_resolved: number;
+}
+
 /**
  * A completed Warmup, as persisted. Only the raw answers are stored: the
  * scored WarmupResult is derived by the engine (L3) on read, so a scoring
