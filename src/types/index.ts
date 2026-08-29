@@ -124,7 +124,7 @@ export interface CoachContext {
     calibration_score: number;
     mean_stated_confidence: number;
     actual_rate: number;
-    direction: 'overconfident' | 'underconfident' | 'calibrated';
+    direction: Direction;
   }>;
   /** Deterministic patterns from the L3 engine (e.g. day-of-week accuracy). */
   patterns: Array<{ kind: string; value: number }>;
@@ -196,6 +196,13 @@ export interface CalibrationResult {
   buckets: BucketStat[]; // one entry per non-empty bucket
 }
 
+/**
+ * Whether stated confidence ran ahead of, behind, or in line with reality.
+ * One shared definition for the Warmup verdict, per-category Coach direction,
+ * and any other over/under read — see engine/patterns.ts `classifyDirection`.
+ */
+export type Direction = 'overconfident' | 'underconfident' | 'calibrated';
+
 // ---- Warmup (onboarding quiz) ----
 //
 // The Day-0 aha: a short estimation quiz scored by the SAME calibration engine.
@@ -219,7 +226,7 @@ export interface WarmupResult {
   mean_confidence: number;  // mean stated confidence, 0–100
   accuracy: number;         // fraction correct, 0–1
   mini_score: number;       // 0–100 calibration score
-  direction: 'overconfident' | 'underconfident' | 'calibrated';
+  direction: Direction;
   buckets: BucketStat[];    // non-empty confidence buckets, for the chart
 }
 
