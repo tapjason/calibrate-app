@@ -38,12 +38,15 @@ Stats, History, Settings) plus the calibration curve and category badges.
 first-run redirect in `app/_layout.tsx`.
 
 **Just landed — the share loop:** `src/share/export.ts` (view-shot → PNG → OS share
-sheet, fail-soft), the category identity card and its copy helper, `app/share/`, and
-a share entry point on Stats. Free, unconditionally — no entitlement check anywhere
-in that path.
+sheet, fail-soft), the category identity card, Calibration Wrapped over weekly and
+yearly windows (`src/engine/wrapped.ts`), `app/share/` with a Card / This week /
+This year selector, and a share entry point on Stats. Free, unconditionally — no
+entitlement check anywhere in that path.
 
-**Next, in sequence:** Calibration Wrapped → billing → paywall → Coach. See
-*Recommended Sequence* below for why that order.
+**Next:** billing → paywall → Coach. But note the validation checkpoint below: the
+Warmup and the share loop are now both shippable, and measuring D0 aha completion and
+share rate is what decides whether freemium is the right model at all. That
+measurement is meant to happen *before* the checkout exists.
 
 Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
 gates, and re-verifying market pricing before the paywall ships.
