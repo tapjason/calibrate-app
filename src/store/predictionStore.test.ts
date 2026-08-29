@@ -183,8 +183,8 @@ describe('predictionStore.resolve (L4 gate)', () => {
     const userId = useAuthStore.getState().userId!;
     const userStat = await getUserStat(userId);
     // Calibration math (verified independently in calibration.test.ts):
-    //   stated_mean=0.9, actual_rate=0.5, error=0.16 → rating=84
-    expect(userStat?.calibration_rating).toBeCloseTo(84, 1);
+    //   stated_mean=0.9, actual_rate=0.5, |0.9−0.5| = 0.40 → rating=60
+    expect(userStat?.calibration_rating).toBeCloseTo(60, 1);
     expect(userStat?.total_resolved).toBe(10);
   });
 

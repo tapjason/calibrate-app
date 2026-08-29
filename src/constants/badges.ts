@@ -36,14 +36,14 @@ export const BADGE_META: Record<BadgeLevel, BadgeMeta> = {
     emoji: '🔭',
     color: '#2563eb',
     background: '#eff6ff',
-    tagline: 'Calibration above 70',
+    tagline: 'Above 70 over 20+ predictions',
   },
   sharp: {
     label: 'Sharp',
     emoji: '🎯',
     color: '#7c3aed',
     background: '#f5f3ff',
-    tagline: 'Calibration above 85',
+    tagline: 'Above 85 over 50+ predictions',
   },
   oracle: {
     label: 'Oracle',

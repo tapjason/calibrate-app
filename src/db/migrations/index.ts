@@ -19,6 +19,8 @@ import type { DbAdapter } from '../client';
 
 import { MIGRATION_001 } from './001_initial';
 import { MIGRATION_002 } from './002_sync_metadata';
+import { MIGRATION_003 } from './003_provisional_flags';
+import { MIGRATION_004 } from './004_entitlements';
 
 export interface Migration {
   id: string;
@@ -28,6 +30,8 @@ export interface Migration {
 export const MIGRATIONS: readonly Migration[] = [
   { id: '001_initial', sql: MIGRATION_001 },
   { id: '002_sync_metadata', sql: MIGRATION_002 },
+  { id: '003_provisional_flags', sql: MIGRATION_003 },
+  { id: '004_entitlements', sql: MIGRATION_004 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();

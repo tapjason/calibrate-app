@@ -10,6 +10,7 @@ function stat(overrides: Partial<CategoryStat> = {}): CategoryStat {
     predictions_made: 10,
     predictions_resolved: 8,
     calibration_score: 60,
+    score_is_provisional: true,
     badge_level: 'guesser',
     ...overrides,
   };

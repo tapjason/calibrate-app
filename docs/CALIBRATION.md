@@ -3,8 +3,8 @@
 The single authoritative description of every scoring formula in the app. This
 documents **what the code actually does** (`src/engine/calibration.ts`,
 `src/engine/streak.ts`, `src/store/predictionStore.ts`, `src/store/statsStore.ts`),
-verified against the unit tests. Where this disagrees with `CLAUDE.md`, the
-divergence is called out explicitly in [Known inconsistencies](#known-inconsistencies).
+verified against the unit tests. It is aligned with the canonical spec in `CLAUDE.md`;
+the history of how the two were reconciled lives in [Spec reconciliation](#spec-reconciliation).
 
 All engine functions are pure: plain `Prediction` objects in, plain numbers/objects
 out. No I/O, no clamping tricks — the ranges below fall out of the algebra.
@@ -64,13 +64,14 @@ For each non-empty bucket, over the calibratable predictions that fell in it:
 ```
 stated_confidence_mean = mean(confidence of predictions in bucket)   // 0..100
 actual_rate            = resolved_yes / total_resolved_in_bucket     // 0..1
-bucket_error           = (stated_confidence_mean / 100 − actual_rate)²  // 0..1
+bucket_error           = | stated_confidence_mean / 100 − actual_rate |  // 0..1
 ```
 
 Note `stated_confidence_mean` is the **mean of the actual stated confidences in the
 bucket**, not the bucket midpoint and not a single nominal value. This is the
 standard reliability-diagram / Expected Calibration Error construction.
 
+The error is **absolute (mean absolute error), not squared** — see §4 for why.
 Because both terms are in `[0,1]`, `bucket_error ∈ [0,1]`.
 
 ---
@@ -84,7 +85,8 @@ rating = 100 − ( mean(bucket_error over non-empty buckets) × 100 )
 Properties:
 
 - **Range:** `rating ∈ [0, 100]`, provably — each `bucket_error ∈ [0,1]`, so their
-  mean is in `[0,1]`, so `rating ∈ [0,100]`. No clamping is applied or needed.
+  mean is in `[0,1]`, so `rating ∈ [0,100]`. The code clamps to `[0,100]` as a cheap
+  guard against float drift; the algebra never requires it.
 - **Unweighted:** the mean is over *buckets*, not predictions. A bucket with 1
   prediction influences the score exactly as much as a bucket with 50. This is a
   deliberate "each confidence region weighted equally" choice; it differs from a
@@ -93,19 +95,49 @@ Properties:
   buckets: [] }`. Rating `0` (not `100`) so callers can distinguish "no data" from
   "perfectly calibrated" by checking `buckets.length`.
 
+**Why absolute, not squared.** Squared error compresses the usable range into roughly
+84–100 for anyone who isn't at an extreme — a user stating 90% who is right 50% of the
+time would score 84, one point below "Sharp." Absolute error drops the score about one
+point per average percentage point of miscalibration: discriminating, and directly
+interpretable to the user.
+
 Stored unrounded in `UserStat.calibration_rating` and
 `CategoryStat.calibration_score` (the same `rating` value, computed over the
 category's subset).
 
-### Worked examples (from the unit tests)
+### Worked examples (from the unit tests / CLAUDE.md)
 
 | Scenario | stated_mean | actual_rate | bucket_error | rating |
 |----------|:---:|:---:|:---:|:---:|
-| 10 preds @ 100% conf, all yes | 1.00 | 1.00 | 0.00 | **100** |
-| 10 preds @ 90% conf, 5 yes (overconfident) | 0.90 | 0.50 | 0.16 | **84** |
-| 10 preds @ 30% conf, 7 yes (underconfident) | 0.30 | 0.70 | 0.16 | **84** |
+| Perfect (10 preds @ 90%, 9 yes) | 0.90 | 0.90 | 0.00 | **100** |
+| Slightly off (@ 90%, 85% yes) | 0.90 | 0.85 | 0.05 | **95** |
+| Moderately overconfident (@ 80%, 60% yes) | 0.80 | 0.60 | 0.20 | **80** |
+| Badly overconfident (@ 90%, 50% yes) | 0.90 | 0.50 | 0.40 | **60** |
+| Underconfident (@ 60%, 85% yes) | 0.60 | 0.85 | 0.25 | **75** |
+| Multi-bucket (errors 0.05, 0.20, 0.35) | — | — | mean 0.20 | **80** |
 
-Over- and under-confidence are penalized symmetrically because the error is squared.
+Over- and under-confidence are penalized symmetrically (the error is an absolute value).
+
+---
+
+## 4a. Minimum-N gating
+
+Small samples make `actual_rate` meaningless — with two resolved predictions a bucket
+can only read 0, 0.5, or 1.0. So a score is **provisional** until it rests on enough
+data:
+
+```
+MIN_N_OVERALL  = 20   // UserStat.rating_is_provisional  = total_resolved < 20
+MIN_N_CATEGORY = 15   // CategoryStat.score_is_provisional = predictions_resolved < 15
+```
+
+- `isRatingProvisional(totalResolved)` and `isScoreProvisional(resolvedCount)` are pure
+  engine predicates; the stats store persists their results onto the stat rows.
+- While provisional the engine still computes the score (for internal trend use), but
+  the **UI must not headline it** — it shows progress toward the threshold instead
+  ("12 more resolutions until your finance score unlocks").
+- No badge above `tracker` is awarded while provisional; the badge resolution gates
+  (§5) already enforce this, since every gate above tracker requires ≥ 20 > 15 resolved.
 
 ---
 
@@ -117,10 +149,15 @@ the user qualifies for. Evaluated top-down:
 | Badge | Criteria (as implemented) |
 |-------|---------------------------|
 | `oracle` | `score > 90` **AND** `resolved ≥ 100` |
-| `sharp` | `score > 85` |
-| `forecaster` | `score > 70` |
+| `sharp` | `score > 85` **AND** `resolved ≥ 50` |
+| `forecaster` | `score > 70` **AND** `resolved ≥ 20` |
 | `tracker` | `resolved ≥ 20` |
 | `guesser` | default floor (no threshold) |
+
+Every badge above `tracker` gates on **both** a score threshold and a resolution
+minimum. The minimums are required, not decorative — a badge earned on three lucky
+predictions actively misleads the user about themselves, the opposite of the app's
+purpose. They also subsume the "no badge above tracker while provisional" rule (§4a).
 
 Boundary conventions: **scores use strict `>`** (a score of exactly 85 is *not*
 sharp), **counts use inclusive `≥`** (exactly 20 resolved *is* a tracker).
@@ -138,8 +175,8 @@ next is always `sharp`, even if they never met tracker's resolution count. Retur
 | Current | Next | Threshold shown |
 |---------|------|-----------------|
 | guesser | tracker | `needResolved: 20` |
-| tracker | forecaster | `needScore: 70` |
-| forecaster | sharp | `needScore: 85` |
+| tracker | forecaster | `needResolved: 20, needScore: 70` |
+| forecaster | sharp | `needResolved: 50, needScore: 85` |
 | sharp | oracle | `needResolved: 100, needScore: 90` |
 | oracle | — | `null` |
 
@@ -175,16 +212,25 @@ into the calibration rating, badges, or streak.
 
 ## Spec reconciliation
 
-Two earlier `CLAUDE.md` wordings disagreed with the implementation; both were
-resolved in favor of the code (the code, tests, and this doc were already
-consistent — only the spec wording changed):
+`CLAUDE.md` is the canonical spec; the code and this doc now match it. History of
+the alignments, for context:
 
 1. **Guesser badge.** `CLAUDE.md` used to list Guesser as *"First 5 predictions
    resolved,"* but `evaluateBadge` has no such gate — `guesser` is the
    unconditional default floor (`evaluateBadge(4, 50) === 'guesser'`, asserted in
-   the tests). The spec now reads "Default starting badge (no threshold)."
+   the tests). The spec reads "Default starting badge (no threshold)."
 
-2. **`bucket_error`.** `CLAUDE.md` used to write `(stated_confidence/100 −
-   actual_rate)²`, which read as a single nominal value; the implementation uses
-   the per-bucket **mean** stated confidence (§3). The spec now spells out
-   `stated_confidence_mean`.
+2. **`bucket_error` shape.** `CLAUDE.md` used to write a single nominal value; the
+   implementation uses the per-bucket **mean** stated confidence (§3). The spec now
+   spells out `stated_confidence_mean`.
+
+3. **Absolute, not squared error** *(adopted from the canonical spec)*. The engine
+   previously used squared error (`… ² `, scores compressed into 84–100). The spec
+   now mandates **mean absolute error**; `computeCalibration` uses
+   `| stated_mean/100 − actual_rate |` and clamps to `[0,100]` (§3, §4). The worked
+   examples and the store/prediction tests were updated to the MAE values.
+
+4. **Badge resolution minimums** *(adopted from the canonical spec)*. Forecaster now
+   also requires `resolved ≥ 20` and Sharp `resolved ≥ 50` (§5), so a high score on a
+   handful of calls can no longer earn a top badge — this is the same principle as the
+   min-N provisional gating (§4a).

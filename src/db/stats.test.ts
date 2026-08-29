@@ -16,6 +16,7 @@ const userStat = (overrides: Partial<UserStat> = {}): UserStat => ({
   total_predictions: 0,
   total_resolved: 0,
   current_streak: 0,
+  rating_is_provisional: true,
   ...overrides,
 });
 
@@ -25,6 +26,7 @@ const categoryStat = (overrides: Partial<CategoryStat> = {}): CategoryStat => ({
   predictions_made: 0,
   predictions_resolved: 0,
   calibration_score: 0,
+  score_is_provisional: true,
   badge_level: 'guesser',
   ...overrides,
 });
@@ -42,8 +44,13 @@ describe('user_stats db', () => {
     expect(await getUserStat('u1')).toBeNull();
   });
 
-  it('upserts and round-trips a UserStat', async () => {
-    const s = userStat({ calibration_rating: 72, total_resolved: 10, current_streak: 3 });
+  it('upserts and round-trips a UserStat, preserving the provisional flag', async () => {
+    const s = userStat({
+      calibration_rating: 72,
+      total_resolved: 30,
+      current_streak: 3,
+      rating_is_provisional: false,
+    });
     await upsertUserStat(s);
     expect(await getUserStat('u1')).toEqual(s);
   });
@@ -61,8 +68,12 @@ describe('category_stats db', () => {
     expect(await getCategoryStat('u1', 'work')).toBeNull();
   });
 
-  it('upserts and round-trips a CategoryStat', async () => {
-    const s = categoryStat({ calibration_score: 88, badge_level: 'sharp' });
+  it('upserts and round-trips a CategoryStat, preserving the provisional flag', async () => {
+    const s = categoryStat({
+      calibration_score: 88,
+      score_is_provisional: false,
+      badge_level: 'sharp',
+    });
     await upsertCategoryStat(s);
     expect(await getCategoryStat('u1', 'work')).toEqual(s);
   });

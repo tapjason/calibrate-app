@@ -6,15 +6,17 @@
 // Layer rule: this file may only import from @/types. Never reach into
 // src/db/, src/store/, or anywhere else.
 
-import type {
-  BadgeLevel,
-  BucketStat,
-  CalibrationResult,
-  ComputeCalibration,
-  EvaluateBadge,
-  NextBadge,
-  NextBadgeTarget,
-  Prediction,
+import {
+  MIN_N_CATEGORY,
+  MIN_N_OVERALL,
+  type BadgeLevel,
+  type BucketStat,
+  type CalibrationResult,
+  type ComputeCalibration,
+  type EvaluateBadge,
+  type NextBadge,
+  type NextBadgeTarget,
+  type Prediction,
 } from '@/types';
 
 // 5 buckets of 20% each: [0,20) [20,40) [40,60) [60,80) [80,100]
@@ -34,11 +36,16 @@ function isCalibratable(p: Prediction): boolean {
 
 /**
  * Bucket calibratable predictions by stated confidence, compute per-bucket
- * accuracy, and average the squared error into a 0–100 rolling score.
+ * accuracy, and average the mean-absolute error into a 0–100 rolling score.
  *
  *   actual_rate  = resolved_yes / total_resolved_in_bucket
- *   bucket_error = (stated_confidence_mean/100 − actual_rate)²
+ *   bucket_error = | stated_confidence_mean/100 − actual_rate |
  *   rating       = 100 − (mean bucket_error) × 100
+ *
+ * Absolute (not squared) error per CLAUDE.md: it drops the score ~1 point per
+ * average percentage point of miscalibration, which is discriminating and
+ * directly interpretable, where squared error compresses everyone non-extreme
+ * into 84–100.
  *
  * Empty input returns rating=0 (not 100) so callers can distinguish "no
  * data" from "perfectly calibrated" by checking buckets.length.
@@ -67,7 +74,7 @@ export const computeCalibration: ComputeCalibration = (resolved) => {
   for (const [i, a] of ordered) {
     const statedMean = a.confidenceSum / a.total;
     const actualRate = a.yes / a.total;
-    const error = (statedMean / 100 - actualRate) ** 2;
+    const error = Math.abs(statedMean / 100 - actualRate);
     errorTotal += error;
     buckets.push({
       low: i * BUCKET_WIDTH,
@@ -80,28 +87,56 @@ export const computeCalibration: ComputeCalibration = (resolved) => {
     });
   }
 
-  const rating =
+  const rawRating =
     buckets.length === 0 ? 0 : 100 - (errorTotal / buckets.length) * 100;
+  // Clamp to [0,100]. With absolute error each bucket_error ∈ [0,1] so the mean
+  // is ≤ 1 and rating ≥ 0 already — the clamp is a cheap guard against float
+  // drift, matching the "Score is clamped to [0, 100]" line in CLAUDE.md.
+  const rating = Math.max(0, Math.min(100, rawRating));
 
   return { rating, buckets };
 };
 
 /**
- * Choose the highest badge the user qualifies for per CLAUDE.md:
+ * Overall rating is provisional (must not be shown as a headline number) until
+ * the user has at least MIN_N_OVERALL resolved predictions. Below that, a
+ * bucket's actual_rate is too coarse to trust.
+ */
+export const isRatingProvisional = (totalResolved: number): boolean =>
+  totalResolved < MIN_N_OVERALL;
+
+/**
+ * A category score is provisional until MIN_N_CATEGORY resolved predictions in
+ * that category. While provisional, no badge above `tracker` may be awarded —
+ * which the resolution gates in evaluateBadge already enforce, since every
+ * badge above tracker requires ≥20 ≥ MIN_N_CATEGORY resolved.
+ */
+export const isScoreProvisional = (resolvedCount: number): boolean =>
+  resolvedCount < MIN_N_CATEGORY;
+
+/**
+ * Choose the highest badge the user qualifies for per CLAUDE.md. Every badge
+ * above tracker requires BOTH a score threshold AND a resolution minimum — a
+ * badge earned on a handful of lucky calls misleads the user about themselves,
+ * which is the opposite of the app's purpose:
  *
  *   Oracle      score > 90 AND predictionsResolved ≥ 100
- *   Sharp       score > 85
- *   Forecaster  score > 70
- *   Tracker                       predictionsResolved ≥ 20
+ *   Sharp       score > 85 AND predictionsResolved ≥ 50
+ *   Forecaster  score > 70 AND predictionsResolved ≥ 20
+ *   Tracker                     predictionsResolved ≥ 20
  *   Guesser     default floor
+ *
+ * The resolution gates also enforce "no badge above tracker while provisional":
+ * every gate above tracker is ≥ 20 > MIN_N_CATEGORY, so a provisional category
+ * (< 15 resolved) can only ever be a guesser.
  */
 export const evaluateBadge: EvaluateBadge = (
   predictionsResolved,
   calibrationScore,
 ) => {
   if (predictionsResolved >= 100 && calibrationScore > 90) return 'oracle';
-  if (calibrationScore > 85) return 'sharp';
-  if (calibrationScore > 70) return 'forecaster';
+  if (predictionsResolved >= 50 && calibrationScore > 85) return 'sharp';
+  if (predictionsResolved >= 20 && calibrationScore > 70) return 'forecaster';
   if (predictionsResolved >= 20) return 'tracker';
   return 'guesser' satisfies BadgeLevel;
 };
@@ -119,8 +154,8 @@ const BADGE_LADDER: BadgeLevel[] = [
 const BADGE_REQUIREMENTS: Record<BadgeLevel, NextBadgeTarget> = {
   guesser: { badge: 'guesser', needResolved: null, needScore: null },
   tracker: { badge: 'tracker', needResolved: 20, needScore: null },
-  forecaster: { badge: 'forecaster', needResolved: null, needScore: 70 },
-  sharp: { badge: 'sharp', needResolved: null, needScore: 85 },
+  forecaster: { badge: 'forecaster', needResolved: 20, needScore: 70 },
+  sharp: { badge: 'sharp', needResolved: 50, needScore: 85 },
   oracle: { badge: 'oracle', needResolved: 100, needScore: 90 },
 };
 

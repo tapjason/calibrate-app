@@ -272,15 +272,16 @@ predictions (
 
 user_stats (
   user_id PK, calibration_rating, total_predictions,
-  total_resolved, current_streak
+  total_resolved, current_streak, rating_is_provisional
 )
 
 category_stats (
   PK (user_id, category),
   predictions_made, predictions_resolved,
-  calibration_score, badge_level
+  calibration_score, score_is_provisional, badge_level
 )
 ```
+(provisional flags added in migration `003_provisional_flags`)
 
 Calibration math (per `src/engine/calibration.ts`; full reference in
 `docs/CALIBRATION.md`):
@@ -289,9 +290,9 @@ Calibration math (per `src/engine/calibration.ts`; full reference in
 For each non-empty bucket:
   stated_mean   = mean(confidence in bucket)
   actual_rate   = resolved_yes / total_resolved_in_bucket
-  bucket_error  = (stated_mean/100 − actual_rate)²
+  bucket_error  = | stated_mean/100 − actual_rate |      // absolute (MAE)
 
-rating = 100 − mean(bucket_error) × 100      // 0 if no buckets
+rating = 100 − mean(bucket_error) × 100      // clamped [0,100]; 0 if no buckets
 ```
 
 Badge thresholds (per `evaluateBadge`):
@@ -299,8 +300,8 @@ Badge thresholds (per `evaluateBadge`):
 | Badge | Criteria |
 |-------|----------|
 | oracle | score > 90 AND ≥100 resolved |
-| sharp | score > 85 |
-| forecaster | score > 70 |
+| sharp | score > 85 AND ≥50 resolved |
+| forecaster | score > 70 AND ≥20 resolved |
 | tracker | ≥20 resolved |
 | guesser | default |
 

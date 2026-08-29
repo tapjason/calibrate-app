@@ -18,6 +18,8 @@ import {
 import {
   computeCalibration,
   evaluateBadge,
+  isRatingProvisional,
+  isScoreProvisional,
   nextBadge,
 } from '@/engine/calibration';
 import { computeStreak } from '@/engine/streak';
@@ -110,12 +112,14 @@ export const useStatsStore = create<StatsState>((set) => ({
 
     // ---- User-level ----
     const userCalc = computeCalibration(resolved);
+    const totalResolved = resolved.filter(isYesNo).length;
     const userStat: UserStat = {
       user_id: userId,
       calibration_rating: userCalc.rating,
       total_predictions: all.length,
-      total_resolved: resolved.filter(isYesNo).length,
+      total_resolved: totalResolved,
       current_streak: computeStreak(resolved),
+      rating_is_provisional: isRatingProvisional(totalResolved),
     };
     await upsertUserStat(userStat);
 
@@ -138,6 +142,7 @@ export const useStatsStore = create<StatsState>((set) => ({
         predictions_made: subsetAll.length,
         predictions_resolved: resolvedCount,
         calibration_score: calc.rating,
+        score_is_provisional: isScoreProvisional(resolvedCount),
         badge_level: evaluateBadge(resolvedCount, calc.rating),
       };
       await upsertCategoryStat(stat);

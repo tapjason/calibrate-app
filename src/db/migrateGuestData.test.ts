@@ -54,6 +54,7 @@ describe('migrateGuestDataToUser', () => {
       total_predictions: 1,
       total_resolved: 0,
       current_streak: 0,
+      rating_is_provisional: true,
     });
     await upsertCategoryStat({
       user_id: LOCAL_GUEST_USER_ID,
@@ -61,6 +62,7 @@ describe('migrateGuestDataToUser', () => {
       predictions_made: 1,
       predictions_resolved: 0,
       calibration_score: 0,
+      score_is_provisional: true,
       badge_level: 'guesser',
     });
 
@@ -81,6 +83,7 @@ describe('migrateGuestDataToUser', () => {
       total_predictions: 50,
       total_resolved: 50,
       current_streak: 7,
+      rating_is_provisional: false,
     });
 
     await migrateGuestDataToUser('real-user');

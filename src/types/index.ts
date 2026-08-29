@@ -12,6 +12,22 @@
 // 1. Data shapes
 // ----------------------------------------------------------------------------
 
+// ---- Calibration constants ----
+// Runtime values, not just types. Kept in L1 so both the engine (L3, which may
+// import only from @/types) and the stores read the same source of truth.
+
+/**
+ * Minimum resolved predictions before the overall rating stops being
+ * provisional. Below this, a bucket's actual_rate is too noisy to headline.
+ */
+export const MIN_N_OVERALL = 20;
+
+/**
+ * Minimum resolved predictions in a single category before its score stops
+ * being provisional and badges above `tracker` may be awarded.
+ */
+export const MIN_N_CATEGORY = 15;
+
 export type Category = 'work' | 'health' | 'finance' | 'social' | 'personal';
 
 export type PredictionStatus =
@@ -50,6 +66,7 @@ export interface UserStat {
   total_predictions: number;
   total_resolved: number;
   current_streak: number;
+  rating_is_provisional: boolean; // true while total_resolved < MIN_N_OVERALL
 }
 
 export interface CategoryStat {
@@ -58,7 +75,84 @@ export interface CategoryStat {
   predictions_made: number;
   predictions_resolved: number;
   calibration_score: number;
+  score_is_provisional: boolean; // true while predictions_resolved < MIN_N_CATEGORY
   badge_level: BadgeLevel;
+}
+
+/** Where a Plus entitlement came from. `none` = free tier. */
+export type EntitlementSource =
+  | 'none'
+  | 'trial'
+  | 'monthly'
+  | 'annual'
+  | 'lifetime';
+
+/**
+ * Plus entitlement. Source of truth is RevenueCat server-side; SQLite holds a
+ * local mirror for offline gating. Absence or any error must default to FREE
+ * (`is_plus: false`), never to Plus — see CLAUDE.md.
+ */
+export interface Entitlement {
+  is_plus: boolean;
+  source: EntitlementSource;
+  expires_at: string | null;
+}
+
+/**
+ * The safe default. Every read that finds no row or errors resolves to this —
+ * the app fails to FREE, never to Plus.
+ */
+export const FREE_ENTITLEMENT: Entitlement = {
+  is_plus: false,
+  source: 'none',
+  expires_at: null,
+};
+
+// ---- Coach agent (Plus). Authoritative shapes: COACH_AGENT.md §4 and §6. ----
+
+/**
+ * The minimal, aggregated snapshot the Coach sees. Numbers only — raw
+ * prediction titles / reflections are NOT included by default (freetext rule,
+ * COACH_AGENT.md §4). The app computes every figure here; the model only
+ * interprets them.
+ */
+export interface CoachContext {
+  overall: { calibration_rating: number; total_resolved: number };
+  by_category: Array<{
+    category: Category;
+    resolved: number;
+    calibration_score: number;
+    mean_stated_confidence: number;
+    actual_rate: number;
+    direction: 'overconfident' | 'underconfident' | 'calibrated';
+  }>;
+  /** Deterministic patterns from the L3 engine (e.g. day-of-week accuracy). */
+  patterns: Array<{ kind: string; value: number }>;
+}
+
+export type CoachInsightType =
+  | 'overconfidence'
+  | 'underconfidence'
+  | 'strength'
+  | 'pattern'
+  | 'encouragement';
+
+export interface CoachInsight {
+  type: CoachInsightType;
+  category: Category | 'overall';
+  message: string; // <= 240 chars, framed around the data
+  evidence: number; // must match a value in CoachContext, or the insight is dropped
+  suggestion?: string; // optional, calibration-focused only
+}
+
+/**
+ * Coach response. `safe: false` means the input tripped the crisis pre-filter
+ * (COACH_AGENT.md §5.5) — suppress all insights and show the support surface.
+ * `insights` is 0–3 items; 0 is valid (e.g. insufficient data).
+ */
+export interface CoachOutput {
+  insights: CoachInsight[];
+  safe: boolean;
 }
 
 /**
@@ -93,7 +187,7 @@ export interface BucketStat {
   resolved_yes: number;
   stated_confidence_mean: number; // mean user-stated confidence in this bucket
   actual_rate: number;            // resolved_yes / total_resolved
-  bucket_error: number;           // (stated_confidence_mean/100 − actual_rate)²
+  bucket_error: number;           // | stated_confidence_mean/100 − actual_rate |
 }
 
 /** Aggregate result of running the calibration engine on a set of predictions. */
@@ -169,3 +263,12 @@ export type DeleteCategoryStat = (
   category: Category,
 ) => Promise<void>;
 export type ListCategoryStats = (userId: string) => Promise<CategoryStat[]>;
+
+// ---- DB: entitlements (L2) ----
+//
+// A device-local mirror of the RevenueCat entitlement, for offline gating.
+// getEntitlement never returns null — a missing row resolves to FREE_ENTITLEMENT
+// so callers cannot accidentally treat "no data" as Plus.
+
+export type GetEntitlement = () => Promise<Entitlement>;
+export type UpsertEntitlement = (e: Entitlement) => Promise<void>;

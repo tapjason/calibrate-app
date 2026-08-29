@@ -56,12 +56,15 @@ describe('statsStore.recomputeForUser', () => {
     expect(userStat).not.toBeNull();
     expect(userStat?.total_predictions).toBe(3);
     expect(userStat?.total_resolved).toBe(2);
+    // 2 resolved is far below MIN_N_OVERALL (20) → rating stays provisional.
+    expect(userStat?.rating_is_provisional).toBe(true);
 
     const work = categoryStats.find((s) => s.category === 'work');
     expect(work?.predictions_made).toBe(2);
     expect(work?.predictions_resolved).toBe(2);
-    // overconfident bucket: stated_mean=0.9 actual=0.5 → error=0.16 → 84
-    expect(work?.calibration_score).toBeCloseTo(84, 1);
+    // overconfident bucket: stated_mean=0.9 actual=0.5 → |0.9−0.5| = 0.40 → 60
+    expect(work?.calibration_score).toBeCloseTo(60, 1);
+    expect(work?.score_is_provisional).toBe(true);
 
     const health = categoryStats.find((s) => s.category === 'health');
     expect(health?.predictions_made).toBe(1);
@@ -70,8 +73,9 @@ describe('statsStore.recomputeForUser', () => {
 
   it('assigns badge levels according to the calibration table', async () => {
     // 25 resolved predictions in work, all confidence 100 + resolved_yes
-    // → perfect calibration → score = 100 → expect 'sharp'
-    // (oracle requires 100+ resolved)
+    // → perfect calibration → score = 100. Sharp requires ≥50 resolved and
+    // oracle ≥100, so 25 resolutions caps the badge at 'forecaster' (score >70
+    // AND ≥20 resolved). 25 ≥ MIN_N_CATEGORY (15) so the score is not provisional.
     for (let i = 0; i < 25; i++) {
       await insertPrediction(
         p({ id: `w${i}`, category: 'work', confidence: 100 }),
@@ -82,7 +86,8 @@ describe('statsStore.recomputeForUser', () => {
 
     const { categoryStats } = useStatsStore.getState();
     const work = categoryStats.find((s) => s.category === 'work');
-    expect(work?.badge_level).toBe('sharp');
+    expect(work?.badge_level).toBe('forecaster');
+    expect(work?.score_is_provisional).toBe(false);
   });
 
   it('loadForUser reads persisted stats without recomputing', async () => {
