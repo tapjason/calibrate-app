@@ -35,10 +35,20 @@ function isCalibratable(p: Prediction): boolean {
 }
 
 /**
- * Bucket calibratable predictions by stated confidence, compute per-bucket
- * accuracy, and average the mean-absolute error into a 0–100 rolling score.
+ * A single calibratable outcome: a stated confidence and whether it came true.
+ * The lowest-level unit the bucketing works on — both real predictions and
+ * Warmup quiz answers reduce to this, so they score through one code path.
+ */
+export interface CalibrationPoint {
+  confidence: number; // 0–100 stated confidence
+  yes: boolean;       // did the outcome happen / was the answer correct
+}
+
+/**
+ * The shared bucketing core. Bucket outcomes by stated confidence, compute
+ * per-bucket accuracy, and average the mean-absolute error into a 0–100 score.
  *
- *   actual_rate  = resolved_yes / total_resolved_in_bucket
+ *   actual_rate  = yes / total_in_bucket
  *   bucket_error = | stated_confidence_mean/100 − actual_rate |
  *   rating       = 100 − (mean bucket_error) × 100
  *
@@ -50,19 +60,20 @@ function isCalibratable(p: Prediction): boolean {
  * Empty input returns rating=0 (not 100) so callers can distinguish "no
  * data" from "perfectly calibrated" by checking buckets.length.
  */
-export const computeCalibration: ComputeCalibration = (resolved) => {
+export function computeCalibrationPoints(
+  points: readonly CalibrationPoint[],
+): CalibrationResult {
   // Accumulate only into buckets that have data — preserves "non-empty
   // buckets only" without allocating five empty bucket structs.
   type Acc = { total: number; yes: number; confidenceSum: number };
   const sums = new Map<number, Acc>();
 
-  for (const p of resolved) {
-    if (!isCalibratable(p)) continue;
-    const i = bucketIndex(p.confidence);
+  for (const pt of points) {
+    const i = bucketIndex(pt.confidence);
     const a = sums.get(i) ?? { total: 0, yes: 0, confidenceSum: 0 };
     a.total += 1;
-    a.confidenceSum += p.confidence;
-    if (p.status === 'resolved_yes') a.yes += 1;
+    a.confidenceSum += pt.confidence;
+    if (pt.yes) a.yes += 1;
     sums.set(i, a);
   }
 
@@ -95,7 +106,19 @@ export const computeCalibration: ComputeCalibration = (resolved) => {
   const rating = Math.max(0, Math.min(100, rawRating));
 
   return { rating, buckets };
-};
+}
+
+/**
+ * Score a set of resolved predictions. Thin adapter over
+ * computeCalibrationPoints: keep only yes/no outcomes and reduce each to a
+ * {confidence, yes} point.
+ */
+export const computeCalibration: ComputeCalibration = (resolved) =>
+  computeCalibrationPoints(
+    resolved
+      .filter(isCalibratable)
+      .map((p) => ({ confidence: p.confidence, yes: p.status === 'resolved_yes' })),
+  );
 
 /**
  * Overall rating is provisional (must not be shown as a headline number) until

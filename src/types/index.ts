@@ -196,6 +196,33 @@ export interface CalibrationResult {
   buckets: BucketStat[]; // one entry per non-empty bucket
 }
 
+// ---- Warmup (onboarding quiz) ----
+//
+// The Day-0 aha: a short estimation quiz scored by the SAME calibration engine.
+// Warmup data is stored separately and NEVER mixed into real UserStat /
+// CategoryStat (CLAUDE.md Warmup Module).
+
+/** One answered Warmup question: a binary-choice item with a 50–100% confidence. */
+export interface WarmupAnswer {
+  confidence: number; // 50–100 stated confidence (50 = coin flip on a 2-way choice)
+  correct: boolean;   // whether the user's pick was right
+}
+
+/**
+ * Scored Warmup result. `direction` is the headline verdict ("you run
+ * overconfident") from overall stated confidence vs. actual accuracy;
+ * `mini_score` and `buckets` drive the mini calibration chart, using the same
+ * MAE engine as real predictions.
+ */
+export interface WarmupResult {
+  answered: number;         // questions answered
+  mean_confidence: number;  // mean stated confidence, 0–100
+  accuracy: number;         // fraction correct, 0–1
+  mini_score: number;       // 0–100 calibration score
+  direction: 'overconfident' | 'underconfident' | 'calibrated';
+  buckets: BucketStat[];    // non-empty confidence buckets, for the chart
+}
+
 // ----------------------------------------------------------------------------
 // 2. Contracts — function-type aliases
 //
