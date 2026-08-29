@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
+import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import type {
   CalibrationResult,
   Category,
@@ -31,12 +32,30 @@ export function CalibrationView({
   categoryStats,
   nextBadges,
 }: CalibrationViewProps) {
+  const headline = ratingHeadline(userStat);
+
   return (
     <View style={styles.wrap}>
-      {userStat ? (
+      {userStat && headline ? (
         <View style={styles.summary}>
-          <Text style={styles.rating}>{Math.round(userStat.calibration_rating)}</Text>
-          <Text style={styles.ratingLabel}>calibration rating</Text>
+          {headline.provisional ? (
+            <>
+              <Text style={styles.rating} testID="rating-provisional">
+                {headline.remaining}
+              </Text>
+              <Text style={styles.ratingLabel}>
+                more {headline.remaining === 1 ? 'resolution' : 'resolutions'} until
+                your rating unlocks
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.rating} testID="rating-value">
+                {headline.rating}
+              </Text>
+              <Text style={styles.ratingLabel}>calibration rating</Text>
+            </>
+          )}
           <Text style={styles.subtle}>
             {userStat.total_resolved} resolved · streak {userStat.current_streak}
           </Text>

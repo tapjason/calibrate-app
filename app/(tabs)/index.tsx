@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -9,14 +10,30 @@ export default function HomeScreen() {
   const router = useRouter();
   const pending = usePredictionStore((s) => s.pending);
   const userStat = useStatsStore((s) => s.userStat);
+  const headline = ratingHeadline(userStat);
 
   return (
     <View style={styles.wrap}>
       <View style={styles.summary}>
-        <Text style={styles.summaryNumber}>
-          {userStat ? Math.round(userStat.calibration_rating) : '—'}
-        </Text>
-        <Text style={styles.summaryLabel}>calibration rating</Text>
+        {!headline ? (
+          <>
+            <Text style={styles.summaryNumber}>—</Text>
+            <Text style={styles.summaryLabel}>calibration rating</Text>
+          </>
+        ) : headline.provisional ? (
+          <>
+            <Text style={styles.summaryNumber}>{headline.remaining}</Text>
+            <Text style={styles.summaryLabel}>
+              {headline.remaining === 1 ? 'resolution' : 'resolutions'} until your
+              rating unlocks
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.summaryNumber}>{headline.rating}</Text>
+            <Text style={styles.summaryLabel}>calibration rating</Text>
+          </>
+        )}
       </View>
       <Text style={styles.sectionTitle}>Open predictions</Text>
       {pending.length === 0 ? (
