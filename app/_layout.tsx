@@ -1,4 +1,4 @@
-import { Stack, useRootNavigationState } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
@@ -12,6 +12,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
+import { selectHasCompletedWarmup, useWarmupStore } from '@/store/warmupStore';
 import { syncNow } from '@/supabase/sync';
 
 // Root layout = the auth + DB gate. Until both finish initializing, no screen
@@ -23,6 +24,7 @@ export default function RootLayout() {
   // Becomes defined once the root navigator has mounted; until then any
   // router.push throws ("navigate before mounting the Root Layout").
   const navState = useRootNavigationState();
+  const router = useRouter();
   const launchRouted = useRef(false);
 
   useEffect(() => {
@@ -43,6 +45,9 @@ export default function RootLayout() {
         // and digest seed the correct enabled state. hydrate() swallows its
         // own errors and always resolves, so it can't block the gate.
         await useSettingsStore.getState().hydrate();
+        // Onboarding state, needed before the first-run redirect below can
+        // decide anything. Like settings, hydrate() swallows its own errors.
+        await useWarmupStore.getState().hydrate();
         // Fire-and-forget: notifications are a retention enhancer, not a
         // critical-path dependency. A failure here (denied permission,
         // missing module, web) must not block the ready gate.
@@ -68,11 +73,20 @@ export default function RootLayout() {
   useEffect(() => {
     if (!ready || !navState?.key || launchRouted.current) return;
     launchRouted.current = true;
-    routeFromLaunchNotification().catch((e) => {
-      // eslint-disable-next-line no-console
-      console.warn('[notifications] launch deep link failed:', e);
-    });
-  }, [ready, navState?.key]);
+    (async () => {
+      await routeFromLaunchNotification().catch((e) => {
+        // eslint-disable-next-line no-console
+        console.warn('[notifications] launch deep link failed:', e);
+      });
+      // First run: nobody has taken the Warmup, so onboarding owns the first
+      // screen. Sequenced after the deep link rather than racing it — though
+      // the two can't realistically collide, since a pending resolution
+      // notification only exists for someone who is already past onboarding.
+      if (!selectHasCompletedWarmup(useWarmupStore.getState())) {
+        router.replace('/warmup' as never);
+      }
+    })();
+  }, [ready, navState?.key, router]);
 
   // Foreground sync. Sign-in already triggers one sweep via authStore; this
   // catches every subsequent return to the app so other devices' writes

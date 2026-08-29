@@ -27,6 +27,24 @@ directly — it goes through a store.
 
 ---
 
+## Where the build is
+
+Layers 0–4 are complete and green. L5 has notifications, Supabase auth + sync, and
+the JWT-verified `refine` function; L6 has the offline core loop (Home, Log, Resolve,
+Stats, History, Settings) plus the calibration curve and category badges.
+
+**Just landed — Warmup (the Day-0 aha):** `005_warmup` migration, `src/db/warmup.ts`,
+`src/store/warmupStore.ts`, the quiz + verdict components, `app/warmup/`, and the
+first-run redirect in `app/_layout.tsx`.
+
+**Next, in sequence:** share-card export → identity card → Wrapped → billing →
+paywall → Coach. See *Recommended Sequence* below for why that order.
+
+Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
+gates, and re-verifying market pricing before the paywall ships.
+
+---
+
 ## Layer 0 — Project Scaffold & Config
 
 **Purpose:** A buildable, empty Expo app with tooling in place.
@@ -74,14 +92,21 @@ runtime code.
 SQLite client.
 
 **Build:**
-- `src/db/client.ts` — Expo SQLite setup.
-- `src/db/migrations/001_initial.sql` — tables for predictions and stats.
-- `src/db/migrations/002_entitlements_warmup.sql` — local entitlement mirror +
-  warmup results table (kept separate from real prediction data).
+- `src/db/client.ts` — Expo SQLite setup behind a `DbAdapter` seam, so tests run
+  against real SQLite (sql.js) without the native module.
+- `src/db/migrations/` — numbered TypeScript modules registered in `index.ts` and
+  applied once each by the runner, tracked in a `_migrations` table. Never edit or
+  reorder a shipped migration; append a new one.
+  - `001_initial` predictions + stats · `002_sync_metadata` · `003_provisional_flags`
+  - `004_entitlements` — local entitlement mirror (singleton row)
+  - `005_warmup` — warmup results (singleton row, no `user_id` and no join to
+    predictions, so Warmup data is *structurally* unable to reach real stats)
 - `src/db/predictions.ts` — CRUD helpers, all `async/await`.
 - `src/db/stats.ts` — read/write `UserStat` and `CategoryStat` (including the
   provisional flags).
 - `src/db/entitlements.ts` — read/write the local entitlement mirror.
+- `src/db/warmup.ts` — read/write the stored Warmup. Persists raw answers only;
+  scoring stays in the engine so no stale verdict can be cached on disk.
 
 **Depends on:** Layers 0–1.
 

@@ -216,6 +216,31 @@ export interface WarmupAnswer {
 }
 
 /**
+ * A Warmup quiz item. Two options, one right — a binary choice is what makes
+ * 50% the honest floor of the confidence slider, since a coin flip already
+ * gets you there.
+ */
+export interface WarmupQuestion {
+  id: string;
+  prompt: string;
+  options: readonly [string, string];
+  correctIndex: 0 | 1;
+  /** Shown after answering — the "oh, really?" beat that makes the quiz stick. */
+  fact: string;
+}
+
+/**
+ * A completed Warmup, as persisted. Only the raw answers are stored: the
+ * scored WarmupResult is derived by the engine (L3) on read, so a scoring
+ * change can never leave a stale verdict on disk. `completed_at` doubles as
+ * the "has this user finished onboarding?" flag.
+ */
+export interface WarmupRecord {
+  completed_at: string; // ISO timestamp
+  answers: WarmupAnswer[];
+}
+
+/**
  * Scored Warmup result. `direction` is the headline verdict ("you run
  * overconfident") from overall stated confidence vs. actual accuracy;
  * `mini_score` and `buckets` drive the mini calibration chart, using the same
@@ -306,3 +331,15 @@ export type ListCategoryStats = (userId: string) => Promise<CategoryStat[]>;
 
 export type GetEntitlement = () => Promise<Entitlement>;
 export type UpsertEntitlement = (e: Entitlement) => Promise<void>;
+
+// ---- DB: warmup (L2) ----
+//
+// Onboarding-quiz storage, deliberately in its own table with no user_id and
+// no join to predictions. Warmup answers are NOT predictions and must never
+// reach UserStat / CategoryStat (CLAUDE.md Warmup Module) — keeping them
+// physically unjoinable is what makes that guarantee structural rather than a
+// convention someone has to remember.
+
+export type GetWarmupRecord = () => Promise<WarmupRecord | null>;
+export type SaveWarmupRecord = (record: WarmupRecord) => Promise<void>;
+export type ClearWarmupRecord = () => Promise<void>;
