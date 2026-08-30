@@ -7,6 +7,8 @@ import { useSettingsStore } from '@/store/settingsStore';
  *   - Notifications — the single kill-switch for resolution reminders + the
  *     weekly digest. The L5 services react to this via store subscription.
  *   - AI Refine — shows/hides the ✨ Refine button on the Log screen.
+ *   - Coach — the Plus-only AI insight surface on Stats. Off until the user
+ *     turns it on, per COACH_AGENT.md §5.6.
  *
  * Pure presentation: reads + writes the store, no other logic. The setters
  * persist to AsyncStorage and swallow their own errors.
@@ -18,6 +20,8 @@ export function SettingsView() {
     (s) => s.setNotificationsEnabled,
   );
   const setAiRefineEnabled = useSettingsStore((s) => s.setAiRefineEnabled);
+  const coachEnabled = useSettingsStore((s) => s.coachEnabled);
+  const setCoachEnabled = useSettingsStore((s) => s.setCoachEnabled);
 
   return (
     <View style={styles.wrap}>
@@ -35,6 +39,14 @@ export function SettingsView() {
         value={aiRefineEnabled}
         onValueChange={(v) => void setAiRefineEnabled(v)}
         testID="toggle-ai-refine"
+      />
+
+      <ToggleRow
+        label="Coach (AI)"
+        description="Plus only. Sends your calibration numbers — never your prediction text — to get written feedback."
+        value={coachEnabled}
+        onValueChange={(v) => void setCoachEnabled(v)}
+        testID="toggle-coach"
       />
     </View>
   );

@@ -12,6 +12,8 @@ import { create } from 'zustand';
 export interface StoredSettings {
   notificationsEnabled: boolean;
   aiRefineEnabled: boolean;
+  /** Plus-only Coach insights on the Stats screen. Opt-in — see DEFAULTS. */
+  coachEnabled: boolean;
 }
 
 /** Injectable persistence so tests don't touch the native AsyncStorage. */
@@ -27,13 +29,19 @@ interface SettingsState extends StoredSettings {
   hydrate: () => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   setAiRefineEnabled: (enabled: boolean) => Promise<void>;
+  setCoachEnabled: (enabled: boolean) => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
 // resolution reminders fire until the user opts out.
+//
+// Coach is the exception and defaults to OFF. COACH_AGENT.md §5.6 requires it
+// be off until the user opts in — it is the one feature that sends a picture
+// of the user's judgment to a model, so it waits to be asked.
 const DEFAULTS: StoredSettings = {
   notificationsEnabled: true,
   aiRefineEnabled: true,
+  coachEnabled: false,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -92,6 +100,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           notificationsEnabled:
             stored.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
           aiRefineEnabled: stored.aiRefineEnabled ?? DEFAULTS.aiRefineEnabled,
+          coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
         });
       }
     } catch (e) {
@@ -105,17 +114,29 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setNotificationsEnabled: async (enabled) => {
     set({ notificationsEnabled: enabled });
-    await persist({
-      notificationsEnabled: enabled,
-      aiRefineEnabled: get().aiRefineEnabled,
-    });
+    await persist(snapshot(get()));
   },
 
   setAiRefineEnabled: async (enabled) => {
     set({ aiRefineEnabled: enabled });
-    await persist({
-      notificationsEnabled: get().notificationsEnabled,
-      aiRefineEnabled: enabled,
-    });
+    await persist(snapshot(get()));
+  },
+
+  setCoachEnabled: async (enabled) => {
+    set({ coachEnabled: enabled });
+    await persist(snapshot(get()));
   },
 }));
+
+/**
+ * The persistable slice of the store. Each setter writes the whole snapshot
+ * after updating state, so adding a toggle no longer means editing every
+ * other setter — the bug that shape invited.
+ */
+function snapshot(state: StoredSettings): StoredSettings {
+  return {
+    notificationsEnabled: state.notificationsEnabled,
+    aiRefineEnabled: state.aiRefineEnabled,
+    coachEnabled: state.coachEnabled,
+  };
+}

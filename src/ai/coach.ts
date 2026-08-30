@@ -29,8 +29,13 @@ import { scanForCrisis, type CrisisTopic } from './crisisFilter';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 
-/** Nothing to show, nothing wrong. The default for every failure path. */
-const EMPTY: CoachResult = { insights: [], safe: true, crisisTopic: null };
+/** Nothing to show. The default for every path that produced no answer. */
+const EMPTY: CoachResult = {
+  insights: [],
+  safe: true,
+  crisisTopic: null,
+  ok: false,
+};
 
 export interface CoachResult extends CoachOutput {
   /**
@@ -38,6 +43,16 @@ export interface CoachResult extends CoachOutput {
    * surface for this topic instead of any coaching (§5.5).
    */
   crisisTopic: CrisisTopic | null;
+  /**
+   * Whether this is an answer or an absence.
+   *
+   * `insights: []` is ambiguous on its own — it means both "the Coach had
+   * nothing to say" and "the request never happened". A caller keeping a
+   * last-good cache (§5.8) has to tell those apart, or it will throw away
+   * good cards on a legitimate empty response and keep stale ones forever
+   * on a persistent outage.
+   */
+  ok: boolean;
 }
 
 export interface CoachDeps {
@@ -71,7 +86,7 @@ export async function fetchCoachInsights(
   // 2. Crisis pre-filter, before anything leaves the device.
   const scan = scanForCrisis(deps.freetext ?? []);
   if (!scan.safe) {
-    return { insights: [], safe: false, crisisTopic: scan.topic };
+    return { insights: [], safe: false, crisisTopic: scan.topic, ok: true };
   }
 
   // 3. Nothing resolved means nothing to interpret. Skipping the call here
@@ -93,7 +108,7 @@ export async function fetchCoachInsights(
     }
 
     const validated = validateCoachOutput(result.data, context);
-    return { ...validated, crisisTopic: null };
+    return { ...validated, crisisTopic: null, ok: true };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.warn('[coach] request failed:', message);

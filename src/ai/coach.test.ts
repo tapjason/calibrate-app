@@ -67,7 +67,7 @@ describe('fetchCoachInsights — gating', () => {
 
     const out = await fetchCoachInsights(CONTEXT, false, { client });
 
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null });
+    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
     expect(calls).toHaveLength(0);
   });
 
@@ -86,7 +86,7 @@ describe('fetchCoachInsights — gating', () => {
 
   it('returns empty when Supabase is unavailable', async () => {
     const out = await fetchCoachInsights(CONTEXT, true, { client: null });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null });
+    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
   });
 });
 
@@ -162,10 +162,23 @@ describe('fetchCoachInsights — happy path', () => {
     expect(out.safe).toBe(false);
   });
 
-  it('treats zero insights as an ordinary outcome, not an error', async () => {
+  // An empty answer and a missing answer look identical in `insights`, so
+  // `ok` is what lets the store tell "nothing to say" from "never ran".
+  it('treats zero insights as an ordinary answer, not an absence', async () => {
     const { client } = ok({ insights: [], safe: true });
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null });
+    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: true });
+  });
+
+  it('marks every failure path as not-ok so the caller can keep its cache', async () => {
+    const { client: erroring } = makeClient(async () => ({
+      data: null,
+      error: { message: 'rate limited' },
+    }));
+    expect((await fetchCoachInsights(CONTEXT, true, { client: erroring })).ok).toBe(
+      false,
+    );
+    expect((await fetchCoachInsights(CONTEXT, true, { client: null })).ok).toBe(false);
   });
 });
 
@@ -176,7 +189,7 @@ describe('fetchCoachInsights — failure modes', () => {
       error: { message: 'rate limited' },
     }));
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null });
+    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
   });
 
   it('returns empty on a malformed body', async () => {
@@ -190,7 +203,7 @@ describe('fetchCoachInsights — failure modes', () => {
       throw new Error('network down');
     });
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null });
+    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
   });
 
   it('returns empty when the request times out', async () => {
@@ -201,7 +214,7 @@ describe('fetchCoachInsights — failure modes', () => {
       client,
       timeoutMs: 10,
     });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null });
+    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
   });
 
   it('never throws, whatever the endpoint does', async () => {

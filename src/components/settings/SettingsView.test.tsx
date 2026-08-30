@@ -62,6 +62,7 @@ describe('SettingsView', () => {
       expect(saved).toContainEqual({
         notificationsEnabled: false,
         aiRefineEnabled: true,
+        coachEnabled: false,
       });
     });
   });

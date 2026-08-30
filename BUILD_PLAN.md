@@ -55,7 +55,12 @@ parser, server-side validation) and `src/ai/coach.ts` (Plus gate → crisis pre-
 call → re-validate, empty result on every failure). Not yet deployed; needs the
 migration applied and `OPENAI_API_KEY` set.
 
-**Next:** billing → paywall → Coach store and Stats cards. But note
+**Just landed — the Coach surface:** `src/store/coachStore.ts` (pull-model request
+state + last-good cache), `CoachPanel` and `SupportSurface` on Stats, and the Coach
+toggle in Settings, off by default per §5.6. Layer 5 and 6 of the Coach are now
+complete; what remains is deploying the function.
+
+**Next:** billing → paywall. But note
 the validation checkpoint below: the
 Warmup and the share loop are now both shippable, and measuring D0 aha completion and
 share rate is what decides whether freemium is the right model at all. That

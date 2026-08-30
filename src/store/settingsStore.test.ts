@@ -99,7 +99,11 @@ describe('settingsStore: setters persist', () => {
 
     expect(useSettingsStore.getState().notificationsEnabled).toBe(false);
     expect(saved).toHaveLength(1);
-    expect(saved[0]).toEqual({ notificationsEnabled: false, aiRefineEnabled: true });
+    expect(saved[0]).toEqual({
+      notificationsEnabled: false,
+      aiRefineEnabled: true,
+      coachEnabled: false,
+    });
   });
 
   it('updates state and persists both values on setAiRefineEnabled', async () => {
@@ -109,7 +113,11 @@ describe('settingsStore: setters persist', () => {
     await useSettingsStore.getState().setAiRefineEnabled(false);
 
     expect(useSettingsStore.getState().aiRefineEnabled).toBe(false);
-    expect(saved[0]).toEqual({ notificationsEnabled: true, aiRefineEnabled: false });
+    expect(saved[0]).toEqual({
+      notificationsEnabled: true,
+      aiRefineEnabled: false,
+      coachEnabled: false,
+    });
   });
 
   it('keeps the in-memory value but swallows a failed write', async () => {

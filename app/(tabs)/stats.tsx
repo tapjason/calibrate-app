@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CalibrationView } from '@/components/stats/CalibrationView';
+import { CoachPanel } from '@/components/stats/CoachPanel';
 import { Button } from '@/components/ui/Button';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -20,6 +21,7 @@ export default function StatsScreen() {
         categoryStats={categoryStats}
         nextBadges={nextBadges}
       />
+      <CoachPanel />
       <View style={styles.actions}>
         <Button
           label="Share my card"
