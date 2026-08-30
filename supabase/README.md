@@ -21,8 +21,15 @@ schema is safe.
 - `migrations/001_predictions.sql` — `public.predictions` table + RLS policies.
   Mirror of the local SQLite predictions table; client always writes
   `updated_at` so last-write-wins works deterministically.
+- `migrations/002_coach_usage.sql` — per-user daily Coach call ledger + the
+  `bump_coach_usage` function. RLS on with no policies: only the service role
+  (i.e. the coach Edge Function) touches it.
 - `functions/refine/index.ts` — Edge Function that rewrites a user-typed
   prediction via OpenAI GPT-4o-mini. Called from `src/ai/refine.ts`.
+- `functions/coach/index.ts` — Edge Function that interprets calibration stats
+  into grounded insights. Called from `src/ai/coach.ts`. Its validation logic
+  is deliberately duplicated from `src/ai/coachValidate.ts` (Deno cannot import
+  the RN bundle) — the two must stay in lockstep.
 
 ## Edge Functions
 
@@ -44,12 +51,16 @@ supabase secrets set OPENAI_API_KEY=sk-...
 **Deploy**
 
 ```sh
-supabase functions deploy refine --no-verify-jwt
+supabase functions deploy refine
 ```
 
-`--no-verify-jwt` lets guest-mode users (no Supabase session) still call
-refine. Cost protection comes from the 500-char input cap inside the function
-and from Supabase's per-project function rate limits.
+JWT verification stays **on**. An earlier version deployed with
+`--no-verify-jwt` so guest-mode users could call refine, but the function now
+requires a real signed-in user and rejects the bare anon key with 401 — the
+anon key ships in the client bundle, so anyone holding it could otherwise burn
+OpenAI tokens. Guests simply keep their typed text, which costs nothing since
+refine is a signed-in-only nicety. Cost protection is layered: the auth gate,
+a per-user rate limit, and the 500-char input cap inside the function.
 
 **Verify**
 
@@ -60,7 +71,58 @@ curl -X POST 'https://<project-ref>.functions.supabase.co/refine' \
   -d '{"prediction": "I will do better at work this week"}'
 ```
 
-Expected: `{"refined":"..."}` with a tight rewrite under ~15 words.
+Expected: `{"refined":"..."}` with a tight rewrite under ~15 words. Note that
+the anon key alone now returns 401 — use a real user's access token.
+
+### coach
+
+Interprets a user's calibration statistics and returns 0–3 grounded insights.
+Plus-gated, and non-essential by design: `src/ai/coach.ts` turns every failure
+into an empty result, so the surface simply doesn't render.
+
+`COACH_AGENT.md` is the authoritative spec for this function. Its safeguards —
+grounding, minimum-N, out-of-domain, and the crisis pre-filter — are not
+optional extras; read §5 before changing anything here.
+
+**One-time setup**
+
+```sh
+supabase secrets set OPENAI_API_KEY=sk-...
+# Apply migrations/002_coach_usage.sql first — the function fails closed
+# without the usage ledger, so Coach will 500 until the table and the
+# bump_coach_usage function exist.
+```
+
+**Deploy**
+
+```sh
+supabase functions deploy coach
+```
+
+Cost protection is layered: a signed-in-user gate, a per-isolate burst limit
+(4/min), a **durable** per-user daily ceiling in `public.coach_usage`, an
+8KB body cap, and a strict payload parser that rejects anything but numbers
+and enum values.
+
+The daily ceiling **fails closed**. If the usage ledger is unreachable the
+function returns 500 rather than letting the call through — a spend cap that
+opens when its bookkeeping breaks is not a spend cap, and the client degrades
+to rendering nothing.
+
+**Verify**
+
+```sh
+curl -X POST 'https://<project-ref>.functions.supabase.co/coach' \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
+  -d '{"context":{"overall":{"calibration_rating":72,"total_resolved":40},
+       "by_category":[{"category":"finance","resolved":25,
+       "calibration_score":61,"mean_stated_confidence":80,
+       "actual_rate":0.55,"direction":"overconfident"}],"patterns":[]}}'
+```
+
+Expected: `{"insights":[...],"safe":true}` with 0–3 items, every `evidence`
+value matching a number in the request.
 
 ## Notes for future schema changes
 
