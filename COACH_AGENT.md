@@ -124,6 +124,11 @@ cheapest safeguard available.
 - **No numeric health coaching.** It never issues diet, weight, calorie, or exercise
   targets off health/fitness predictions — that content can reinforce disordered
   patterns and is out of scope entirely.
+- **Enforced in the validator, not only the prompt.** `src/ai/coachValidate.ts` drops
+  any insight carrying substantive medical, financial, or legal direction or a numeric
+  health target. Grounding alone does not cover this: "move 40% into bonds" cites a
+  real number whenever 40 appears in the context, so it would otherwise pass. A prompt
+  is a request; a validator is a guarantee.
 
 ### 5.5 Crisis & sensitive-content handling (hard safeguard)
 - If any freetext that reaches the pipeline signals self-harm, suicidal ideation,

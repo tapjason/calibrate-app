@@ -43,7 +43,14 @@ yearly windows (`src/engine/wrapped.ts`), `app/share/` with a Card / This week /
 This year selector, and a share entry point on Stats. Free, unconditionally — no
 entitlement check anywhere in that path.
 
-**Next:** billing → paywall → Coach. But note the validation checkpoint below: the
+**Just landed — the Coach's deterministic core:** `src/ai/coachContext.ts` (aggregated,
+freetext-free payload), `src/ai/coachValidate.ts` (schema + grounding + min-N +
+out-of-domain), and `src/ai/crisisFilter.ts` (the §5.5 pre-filter and its support
+resources). The `COACH_AGENT.md` §9 fixtures are green. No key, network, or account is
+involved — this is the half that has to be right before any model call exists.
+
+**Next:** billing → paywall → Coach Edge Function, client, store, and cards. But note
+the validation checkpoint below: the
 Warmup and the share loop are now both shippable, and measuring D0 aha completion and
 share rate is what decides whether freemium is the right model at all. That
 measurement is meant to happen *before* the checkout exists.
