@@ -66,7 +66,16 @@ const MAX_PATTERNS = 24;
 const MAX_INSIGHTS = 3;
 const MAX_MESSAGE_LENGTH = 240;
 const MAX_SUGGESTION_LENGTH = 240;
-const EVIDENCE_TOLERANCE = 0.5;
+// Per-scale tolerances. Half a unit absorbs rounding on a 0-100 figure; applied
+// to a 0-1 rate it would be a +/-50-percentage-point window and would ground
+// essentially any fabricated rate. Kept in lockstep with
+// src/ai/coachValidate.ts.
+const TOLERANCE_ABSOLUTE = 0.5;
+const TOLERANCE_RATE = 0.005;
+// Integers carry no display rounding to absorb, and granting them +/-0.5 turns
+// a small value into a wide window: a weekday index of 1 would ground any claim
+// from 0.5 to 1.5.
+const TOLERANCE_EXACT = 1e-9;
 
 const MIN_N_OVERALL = 20;
 const MIN_N_CATEGORY = 15;
@@ -194,18 +203,34 @@ const DOMAIN_ADVICE = [
   /\bBMI\b/,
 ];
 
-function groundedValues(context: CoachContext): number[] {
-  const values: number[] = [
-    context.overall.calibration_rating,
-    context.overall.total_resolved,
-  ];
+interface GroundedValue {
+  value: number;
+  tolerance: number;
+}
+
+function toleranceFor(value: number, scale: 'rate' | 'absolute'): number {
+  if (Number.isInteger(value)) return TOLERANCE_EXACT;
+  return scale === 'rate' ? TOLERANCE_RATE : TOLERANCE_ABSOLUTE;
+}
+
+function groundedValues(context: CoachContext): GroundedValue[] {
+  const values: GroundedValue[] = [];
+  const absolute = (value: number) =>
+    values.push({ value, tolerance: toleranceFor(value, 'absolute') });
+
+  absolute(context.overall.calibration_rating);
+  absolute(context.overall.total_resolved);
+
   for (const c of context.by_category) {
-    values.push(c.resolved, c.calibration_score, c.mean_stated_confidence, c.actual_rate);
-    // Rates are 0–1 but models routinely cite them as percentages. Same fact,
-    // different unit — accepting both avoids dropping correct insights.
-    if (c.actual_rate >= 0 && c.actual_rate <= 1) values.push(c.actual_rate * 100);
+    absolute(c.resolved);
+    absolute(c.calibration_score);
+    absolute(c.mean_stated_confidence);
+    values.push({ value: c.actual_rate, tolerance: toleranceFor(c.actual_rate, 'rate') });
+    // Rates are 0-1 but models routinely cite them as percentages. Same fact,
+    // different unit - accepting both avoids dropping correct insights.
+    if (c.actual_rate >= 0 && c.actual_rate <= 1) absolute(c.actual_rate * 100);
   }
-  for (const p of context.patterns) values.push(p.value);
+  for (const p of context.patterns) absolute(p.value);
   return values;
 }
 
@@ -251,7 +276,8 @@ function validateOutput(raw: unknown, context: CoachContext): {
     if (!isNum(i.evidence)) continue;
 
     // Grounding: the cited number must exist in what the model was given.
-    if (!values.some((v) => Math.abs(v - (i.evidence as number)) <= EVIDENCE_TOLERANCE)) {
+    const evidence = i.evidence as number;
+    if (!values.some((v) => Math.abs(v.value - evidence) <= v.tolerance)) {
       continue;
     }
 
@@ -373,10 +399,44 @@ Deno.serve(async (req: Request) => {
   const context = parseContext((parsedBody as { context?: unknown })?.context);
   if (!context) return json({ error: 'Invalid context payload' }, 400);
 
-  // --- Daily cost ceiling (§5.7). Durable, so it survives isolate recycling. ---
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  // --- Plus gate. Server-side, because the client-side one is a suggestion. ---
+  //
+  // Coach is a paid feature calling a paid model. Checking entitlement only in
+  // src/ai/coach.ts means any signed-in free user, or anyone posting here
+  // directly, gets it on your billing.
+  //
+  // COACH_ALLOW_UNENTITLED=true bypasses this, for testing the endpoint before
+  // billing exists to populate the table. Leave it unset in production —
+  // with it set, this gate does nothing.
+  if (env.get('COACH_ALLOW_UNENTITLED') !== 'true') {
+    const { data: ent, error: entError } = await admin
+      .from('entitlements')
+      .select('is_plus, expires_at')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (entError) {
+      // Fail closed, same reasoning as the ceiling below: an entitlement check
+      // that opens when its lookup breaks is not an entitlement check.
+      console.error('entitlement lookup failed', entError);
+      return json({ error: 'Entitlement check unavailable' }, 500);
+    }
+
+    // No row means free (CLAUDE.md: absence defaults to free, never Plus).
+    const expired =
+      ent?.expires_at != null && Date.parse(ent.expires_at) <= Date.now();
+    if (ent?.is_plus !== true || expired) {
+      return json({ error: 'Coach requires Calibrate Plus' }, 403);
+    }
+  }
+
+  // --- Daily cost ceiling (§5.7). Durable, so it survives isolate recycling. ---
+  // Bumped after the Plus gate, so a rejected free user neither consumes quota
+  // nor leaves usage rows that misrepresent who is actually costing money.
   const { data: calls, error: usageError } = await admin.rpc('bump_coach_usage', {
     p_user_id: user.id,
   });

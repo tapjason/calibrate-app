@@ -40,3 +40,12 @@ as $$
 $$;
 
 revoke all on function public.bump_coach_usage(uuid) from public, anon, authenticated;
+
+-- Granted back explicitly rather than relying on inherited defaults. CREATE
+-- FUNCTION grants EXECUTE to PUBLIC, and the revoke above takes that away — if
+-- service_role's access came via PUBLIC rather than its own grant, every
+-- bump_coach_usage call would fail with "permission denied", the coach
+-- function's fail-closed branch would turn that into a 500, and Coach would be
+-- 100% dead in production with nothing but a server-side console.error to say
+-- so. Not worth leaving to a default that may or may not have applied.
+grant execute on function public.bump_coach_usage(uuid) to service_role;

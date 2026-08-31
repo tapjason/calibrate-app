@@ -29,11 +29,29 @@ const MAX_MESSAGE_LENGTH = 240;
 const MAX_SUGGESTION_LENGTH = 240;
 
 /**
- * How close a cited number must be to a real one. Half a unit absorbs the
- * rounding a model does when it writes 55 for 54.7 — it cannot manufacture a
- * figure that isn't in the data.
+ * How close a cited number must be to a real one, PER SCALE.
+ *
+ * Half a unit absorbs the rounding a model does when it writes 55 for 54.7 on
+ * a 0–100 figure. Applied to a 0–1 rate it is a ±50-percentage-point window,
+ * which grounds essentially any fabricated rate: with an actual_rate of 0.5,
+ * "you hit 90% of your health calls" (evidence 0.9) would pass. The tolerance
+ * has to match the scale of the value it is checking.
  */
-const EVIDENCE_TOLERANCE = 0.5;
+const TOLERANCE_ABSOLUTE = 0.5; // fractional 0–100 figures — scores, means
+const TOLERANCE_RATE = 0.005; // fractional 0–1 rates; absorbs 0.548 → 0.55
+const TOLERANCE_EXACT = 1e-9; // integers — see below
+
+/**
+ * Tolerance exists to absorb display rounding, and an integer has none to
+ * absorb: a resolution count of 25 is cited as 25, a weekday index of 1 as 1.
+ * Granting those ±0.5 makes small values into wide windows — a day index of 1
+ * would ground any claim between 0.5 and 1.5, which is how a fabricated
+ * `0.9` hit rate slips through on the back of an unrelated pattern value.
+ */
+function toleranceFor(value: number, scale: 'rate' | 'absolute'): number {
+  if (Number.isInteger(value)) return TOLERANCE_EXACT;
+  return scale === 'rate' ? TOLERANCE_RATE : TOLERANCE_ABSOLUTE;
+}
 
 /**
  * Out-of-domain advice the Coach must never give (§5.4): substantive medical,
@@ -79,8 +97,18 @@ const CATEGORIES: readonly Category[] = [
   'personal',
 ];
 
-/** Nothing to show. Every rejection path lands here or on a subset of insights. */
-const EMPTY: CoachOutput = { insights: [], safe: true };
+/**
+ * Nothing to show. A factory, not a shared constant: the returned object ends
+ * up in Zustand state, and handing every caller the same `insights` array
+ * would let one future in-place mutation leak across unrelated results.
+ */
+const empty = (): CoachOutput => ({ insights: [], safe: true });
+
+/** A number the model was allowed to see, with the tolerance for its scale. */
+interface GroundedValue {
+  value: number;
+  tolerance: number;
+}
 
 /**
  * Every number the model was allowed to see.
@@ -88,27 +116,33 @@ const EMPTY: CoachOutput = { insights: [], safe: true };
  * Rates arrive as 0–1 and the model routinely cites them as percentages, so
  * each rate is admissible in both forms. That is not a loosening of grounding:
  * 0.55 and 55% are the same fact, and the alternative is dropping correct
- * insights over a unit convention.
+ * insights over a unit convention. Each form carries its own tolerance.
  */
-function groundedValues(context: CoachContext): number[] {
-  const values: number[] = [
-    context.overall.calibration_rating,
-    context.overall.total_resolved,
-  ];
+function groundedValues(context: CoachContext): GroundedValue[] {
+  const values: GroundedValue[] = [];
+  const absolute = (value: number) =>
+    values.push({ value, tolerance: toleranceFor(value, 'absolute') });
+  const rate = (value: number) =>
+    values.push({ value, tolerance: toleranceFor(value, 'rate') });
+
+  absolute(context.overall.calibration_rating);
+  absolute(context.overall.total_resolved);
 
   for (const c of context.by_category) {
-    values.push(c.resolved, c.calibration_score, c.mean_stated_confidence);
-    values.push(c.actual_rate);
-    if (c.actual_rate >= 0 && c.actual_rate <= 1) values.push(c.actual_rate * 100);
+    absolute(c.resolved);
+    absolute(c.calibration_score);
+    absolute(c.mean_stated_confidence);
+    rate(c.actual_rate);
+    if (c.actual_rate >= 0 && c.actual_rate <= 1) absolute(c.actual_rate * 100);
   }
 
-  for (const p of context.patterns) values.push(p.value);
+  for (const p of context.patterns) absolute(p.value);
 
   return values;
 }
 
-function isGrounded(evidence: number, values: readonly number[]): boolean {
-  return values.some((v) => Math.abs(v - evidence) <= EVIDENCE_TOLERANCE);
+function isGrounded(evidence: number, values: readonly GroundedValue[]): boolean {
+  return values.some((v) => Math.abs(v.value - evidence) <= v.tolerance);
 }
 
 function isNonEmptyString(v: unknown, max: number): v is string {
@@ -180,12 +214,12 @@ export function validateCoachOutput(
   raw: unknown,
   context: CoachContext,
 ): CoachOutput {
-  if (typeof raw !== 'object' || raw === null) return EMPTY;
+  if (typeof raw !== 'object' || raw === null) return empty();
   const r = raw as Record<string, unknown>;
 
   if (r.safe === false) return { insights: [], safe: false };
 
-  if (!Array.isArray(r.insights)) return EMPTY;
+  if (!Array.isArray(r.insights)) return empty();
 
   const values = groundedValues(context);
   const insights: CoachInsight[] = [];

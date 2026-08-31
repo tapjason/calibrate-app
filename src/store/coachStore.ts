@@ -71,7 +71,21 @@ export const useCoachStore = create<CoachState>((set) => ({
     set({ loading: true });
     try {
       const context = buildCoachContext(userStat, resolved);
-      const result = await fetchCoachInsights(context, isPlus, deps);
+      const result = await fetchCoachInsights(context, isPlus, {
+        ...deps,
+        // The crisis pre-filter screens the user's own words (§5.5). Derived
+        // HERE, from the predictions the store already holds, rather than at
+        // the call site: the panel previously passed no deps at all, which
+        // left the filter scanning an empty array and made the whole
+        // support-surface path unreachable in the shipped app. A safeguard
+        // that depends on every future caller remembering to wire it is not a
+        // safeguard.
+        //
+        // Titles as well as reflections: distress can be written into either.
+        // None of this is sent — buildCoachContext has no freetext channel.
+        freetext:
+          deps?.freetext ?? resolved.flatMap((p) => [p.title, p.reflection]),
+      });
 
       if (!result.ok) {
         // No answer. Keep the last-good insights rather than blanking the

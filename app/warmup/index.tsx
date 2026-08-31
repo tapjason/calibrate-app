@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WarmupQuiz } from '@/components/warmup/WarmupQuiz';
 import { WarmupVerdictScreen } from '@/components/warmup/WarmupVerdict';
+import { Button } from '@/components/ui/Button';
 import { selectCurrentQuestion, useWarmupStore } from '@/store/warmupStore';
 
 /**
@@ -35,7 +36,19 @@ export default function WarmupScreen() {
         {finished ? (
           <WarmupVerdictScreen onContinue={() => router.replace('/log' as never)} />
         ) : (
-          <WarmupQuiz />
+          <>
+            <WarmupQuiz />
+            {/* An escape hatch, because this route replaces the stack. Without
+                it the only way out is answering all ten questions, which turns
+                any mis-fire of the first-run redirect into a user locked away
+                from their own data. */}
+            <Button
+              label="Skip for now"
+              variant="secondary"
+              testID="warmup-skip"
+              onPress={() => router.replace('/' as never)}
+            />
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

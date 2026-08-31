@@ -24,6 +24,9 @@ schema is safe.
 - `migrations/002_coach_usage.sql` — per-user daily Coach call ledger + the
   `bump_coach_usage` function. RLS on with no policies: only the service role
   (i.e. the coach Edge Function) touches it.
+- `migrations/003_entitlements.sql` — server-side Plus mirror. Written by the
+  service role only (a RevenueCat webhook, once billing lands); users may read
+  their own row. Absence of a row means free.
 - `functions/refine/index.ts` — Edge Function that rewrites a user-typed
   prediction via OpenAI GPT-4o-mini. Called from `src/ai/refine.ts`.
 - `functions/coach/index.ts` — Edge Function that interprets calibration stats
@@ -88,10 +91,22 @@ optional extras; read §5 before changing anything here.
 
 ```sh
 supabase secrets set OPENAI_API_KEY=sk-...
-# Apply migrations/002_coach_usage.sql first — the function fails closed
-# without the usage ledger, so Coach will 500 until the table and the
-# bump_coach_usage function exist.
+# Apply BOTH migrations/002_coach_usage.sql and migrations/003_entitlements.sql
+# first. The function fails closed on either, so Coach 500s until the usage
+# ledger and the entitlements table both exist.
 ```
+
+**Before billing exists**, no row in `entitlements` means nobody is Plus, so
+every request is refused with 403 — correct for a paid feature nobody has
+bought, but it makes the endpoint impossible to exercise. To test it:
+
+```sh
+supabase secrets set COACH_ALLOW_UNENTITLED=true   # unset before launch
+```
+
+With that set the Plus gate is skipped entirely. It is the only thing standing
+between a signed-in free user and your OpenAI bill, so unset it the moment
+billing populates the table.
 
 **Deploy**
 
@@ -99,15 +114,20 @@ supabase secrets set OPENAI_API_KEY=sk-...
 supabase functions deploy coach
 ```
 
-Cost protection is layered: a signed-in-user gate, a per-isolate burst limit
-(4/min), a **durable** per-user daily ceiling in `public.coach_usage`, an
-8KB body cap, and a strict payload parser that rejects anything but numbers
-and enum values.
+Cost protection is layered: a signed-in-user gate, a **server-side Plus
+check** against `public.entitlements`, a per-isolate burst limit (4/min), a
+**durable** per-user daily ceiling in `public.coach_usage`, an 8KB body cap,
+and a strict payload parser that rejects anything but numbers and enum values.
 
-The daily ceiling **fails closed**. If the usage ledger is unreachable the
-function returns 500 rather than letting the call through — a spend cap that
-opens when its bookkeeping breaks is not a spend cap, and the client degrades
-to rendering nothing.
+The Plus check is server-side because the one in `src/ai/coach.ts` is a
+suggestion — anyone can post to the endpoint directly with a valid JWT. The
+daily ceiling bounds what an unentitled caller could cost you; it does not stop
+them getting the feature.
+
+Both the entitlement check and the daily ceiling **fail closed**. If either
+lookup is unreachable the function returns 500 rather than letting the call
+through — a spend cap that opens when its bookkeeping breaks is not a spend
+cap — and the client degrades to rendering nothing.
 
 **Verify**
 

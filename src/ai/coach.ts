@@ -29,13 +29,19 @@ import { scanForCrisis, type CrisisTopic } from './crisisFilter';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 
-/** Nothing to show. The default for every path that produced no answer. */
-const EMPTY: CoachResult = {
+/**
+ * Nothing to show. The default for every path that produced no answer.
+ *
+ * A factory, not a constant: the result's `insights` array lands in Zustand
+ * state, and a single shared instance handed to every caller is one in-place
+ * mutation away from leaking across unrelated results.
+ */
+const empty = (): CoachResult => ({
   insights: [],
   safe: true,
   crisisTopic: null,
   ok: false,
-};
+});
 
 export interface CoachResult extends CoachOutput {
   /**
@@ -81,7 +87,7 @@ export async function fetchCoachInsights(
 ): Promise<CoachResult> {
   // 1. Plus gate. No request is attempted for a free user, so there is no
   //    network call to intercept and no cost to incur.
-  if (!isPlus) return EMPTY;
+  if (!isPlus) return empty();
 
   // 2. Crisis pre-filter, before anything leaves the device.
   const scan = scanForCrisis(deps.freetext ?? []);
@@ -91,10 +97,10 @@ export async function fetchCoachInsights(
 
   // 3. Nothing resolved means nothing to interpret. Skipping the call here
   //    saves a round trip that could only ever return "keep logging".
-  if (context.overall.total_resolved === 0) return EMPTY;
+  if (context.overall.total_resolved === 0) return empty();
 
   const client = resolveClient(deps);
-  if (!client) return EMPTY;
+  if (!client) return empty();
 
   try {
     const result = await withTimeout(
@@ -104,7 +110,7 @@ export async function fetchCoachInsights(
 
     if (result.error) {
       console.warn('[coach] edge function error:', result.error.message);
-      return EMPTY;
+      return empty();
     }
 
     const validated = validateCoachOutput(result.data, context);
@@ -112,7 +118,7 @@ export async function fetchCoachInsights(
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.warn('[coach] request failed:', message);
-    return EMPTY;
+    return empty();
   }
 }
 

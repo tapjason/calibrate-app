@@ -154,6 +154,34 @@ describe('validateCoachOutput — grounding', () => {
     expect(out.insights).toEqual([]);
   });
 
+  // The tolerance is per-scale. A flat 0.5 applied to a 0-1 rate is a
+  // +/-50-percentage-point window, which grounds almost any fabricated rate.
+  it('rejects a fabricated rate that a flat 0.5 tolerance would have admitted', () => {
+    const out = validateCoachOutput(
+      {
+        insights: [
+          {
+            type: 'strength',
+            category: 'finance',
+            message: 'You hit 90% of your finance calls.',
+            evidence: 0.9, // actual_rate is 0.55; |0.55 - 0.9| = 0.35
+          },
+        ],
+        safe: true,
+      },
+      CONTEXT,
+    );
+    expect(out.insights).toEqual([]);
+  });
+
+  it('still absorbs rounding within the rate scale', () => {
+    const out = validateCoachOutput(
+      { insights: [{ ...GOOD_INSIGHT, evidence: 0.552 }], safe: true },
+      CONTEXT,
+    );
+    expect(out.insights).toHaveLength(1);
+  });
+
   it('accepts a rate cited either as a fraction or a percentage', () => {
     const asFraction = validateCoachOutput(
       { insights: [{ ...GOOD_INSIGHT, evidence: 0.55 }], safe: true },
@@ -167,17 +195,39 @@ describe('validateCoachOutput — grounding', () => {
     expect(asPercent.insights).toHaveLength(1);
   });
 
-  it('absorbs rounding but not invention', () => {
+  it('absorbs rounding of a fractional figure but not invention', () => {
+    // A real score is rarely a round number; the model reports it rounded.
+    const fractional: CoachContext = {
+      ...CONTEXT,
+      by_category: [{ ...CONTEXT.by_category[0], calibration_score: 61.37 }],
+    };
+
     const rounded = validateCoachOutput(
-      { insights: [{ ...GOOD_INSIGHT, evidence: 61.4 }], safe: true },
-      CONTEXT,
+      { insights: [{ ...GOOD_INSIGHT, evidence: 61 }], safe: true },
+      fractional,
     );
     const invented = validateCoachOutput(
       { insights: [{ ...GOOD_INSIGHT, evidence: 64 }], safe: true },
-      CONTEXT,
+      fractional,
     );
     expect(rounded.insights).toHaveLength(1);
     expect(invented.insights).toEqual([]);
+  });
+
+  // Tolerance exists to absorb rounding, and an integer has none to absorb.
+  // Granting integers ±0.5 is what let a fabricated 0.9 hit rate ground itself
+  // against an unrelated weekday index of 1.
+  it('requires an exact citation of an integer figure', () => {
+    const off = validateCoachOutput(
+      { insights: [{ ...GOOD_INSIGHT, evidence: 61.4 }], safe: true },
+      CONTEXT, // calibration_score is exactly 61
+    );
+    const exact = validateCoachOutput(
+      { insights: [{ ...GOOD_INSIGHT, evidence: 61 }], safe: true },
+      CONTEXT,
+    );
+    expect(off.insights).toEqual([]);
+    expect(exact.insights).toHaveLength(1);
   });
 
   it('can cite a deterministic pattern value', () => {

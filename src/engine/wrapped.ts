@@ -88,19 +88,31 @@ export function yearWindow(now: Date): { start: string; end: string } {
   };
 }
 
-/** Resolved predictions whose resolved_at falls in [start, end], both inclusive. */
+/**
+ * Resolved predictions whose resolved_at falls in [start, end], both inclusive.
+ *
+ * Compared as instants, not as strings. Locally-written timestamps are all
+ * canonical `...Z`, but `upsertPredictionFromRemote` stores what PostgREST
+ * sends verbatim, and `2026-08-29T12:00:00+00:00` does not sort against
+ * `2026-08-29T12:00:00.000Z` — '+' precedes '.' in ASCII, so a row synced from
+ * another device could fall on the wrong side of a boundary. The sibling
+ * engines (patterns, streak) already parse; this now matches them.
+ */
 export function inWindow(
   resolved: readonly Prediction[],
   start: string,
   end: string,
 ): Prediction[] {
-  return resolved.filter(
-    (p) =>
-      isYesNo(p) &&
-      p.resolved_at !== null &&
-      p.resolved_at >= start &&
-      p.resolved_at <= end,
-  );
+  const startMs = Date.parse(start);
+  const endMs = Date.parse(end);
+
+  return resolved.filter((p) => {
+    if (!isYesNo(p) || p.resolved_at === null) return false;
+    const at = Date.parse(p.resolved_at);
+    // An unparseable timestamp belongs to no window rather than to every one.
+    if (Number.isNaN(at)) return false;
+    return at >= startMs && at <= endMs;
+  });
 }
 
 function rollUpCategories(preds: readonly Prediction[]): WrappedCategory[] {
@@ -148,7 +160,12 @@ function boldest(
   });
 }
 
-const EMPTY = {
+/**
+ * The zeroed body of an empty recap. A factory, not a constant: as a constant
+ * every caller shared one `categories` array instance, since spreading the
+ * object copies the reference rather than the array.
+ */
+const emptyBody = () => ({
   resolved: 0,
   hit_rate: 0,
   mean_confidence: 0,
@@ -159,7 +176,7 @@ const EMPTY = {
   integrity_count: 0,
   boldest_hit: null,
   biggest_miss: null,
-};
+});
 
 /**
  * Build the recap for one window. An empty window returns a zeroed summary
@@ -174,7 +191,7 @@ export function buildWrapped(
   const { start, end } = span === 'week' ? weekWindow(now) : yearWindow(now);
   const preds = inWindow(resolved, start, end);
 
-  if (preds.length === 0) return { span, start, end, ...EMPTY };
+  if (preds.length === 0) return { span, start, end, ...emptyBody() };
 
   const { rating } = computeCalibrationPoints(toPoints(preds));
   const meanConfidence =

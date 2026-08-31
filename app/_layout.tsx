@@ -82,7 +82,16 @@ export default function RootLayout() {
       // screen. Sequenced after the deep link rather than racing it — though
       // the two can't realistically collide, since a pending resolution
       // notification only exists for someone who is already past onboarding.
-      if (!selectHasCompletedWarmup(useWarmupStore.getState())) {
+      //
+      // "No Warmup record" is NOT sufficient on its own. An install upgrading
+      // past migration 005 has no warmup_results row, and warmupStore.hydrate()
+      // deliberately swallows read errors and reports "not taken" — either
+      // would drop a user with months of history into an unskippable quiz with
+      // no route back to their own data. Existing predictions are proof this
+      // is not a first run, whatever the Warmup table says.
+      const { pending, resolved } = usePredictionStore.getState();
+      const isFirstRun = pending.length === 0 && resolved.length === 0;
+      if (isFirstRun && !selectHasCompletedWarmup(useWarmupStore.getState())) {
         router.replace('/warmup' as never);
       }
     })();

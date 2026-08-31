@@ -154,6 +154,10 @@ cheapest safeguard available.
 - **JWT-verify the endpoint** (this also closes the open-proxy gap flagged for the
   existing `refine` function). Per-user rate limits, max-token caps, input-size caps,
   and a per-user daily cost ceiling.
+- **Check entitlement server-side too.** A JWT proves who is calling, not what they
+  have paid for. The `isPlus` check in `src/ai/coach.ts` is a client-side suggestion —
+  anyone can POST to the function directly — so the endpoint verifies Plus against
+  `public.entitlements` before spending a token. Absence of a row means free.
 
 ### 5.8 Reliability / fail-safe
 - Timeout + silent failure + cached last-good insight. Any error → the Coach surface

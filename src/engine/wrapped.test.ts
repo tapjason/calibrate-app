@@ -79,6 +79,29 @@ describe('windows', () => {
     expect(w.resolved).toBe(1);
   });
 
+  // Synced rows keep PostgREST's serialization; '+' sorts before '.' in ASCII,
+  // so string comparison put same-instant boundary rows on the wrong side.
+  it('compares instants, not strings, so synced offset timestamps land right', () => {
+    const { start, end } = weekWindow(NOW);
+    const got = inWindow(
+      [
+        prediction({ resolved_at: '2026-08-29T12:00:00+00:00' }), // == end
+        prediction({ resolved_at: '2026-08-22T12:00:00+00:00' }), // == start
+        prediction({ resolved_at: '2026-08-22T11:00:00+00:00' }), // an hour early
+      ],
+      start,
+      end,
+    );
+    expect(got).toHaveLength(2);
+  });
+
+  it('excludes a row whose timestamp cannot be parsed at all', () => {
+    const { start, end } = weekWindow(NOW);
+    expect(inWindow([prediction({ resolved_at: 'not a date' })], start, end)).toEqual(
+      [],
+    );
+  });
+
   it('excludes pending and skipped predictions', () => {
     const preds = [
       prediction({ status: 'pending', resolved_at: null }),

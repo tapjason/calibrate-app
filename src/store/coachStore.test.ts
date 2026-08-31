@@ -246,6 +246,55 @@ describe('coachStore — crisis path', () => {
   });
 });
 
+// The bug this guards: CoachPanel called requestInsights with no deps, so the
+// pre-filter scanned an empty array and the whole support-surface path was
+// unreachable in the shipped app. The store now derives freetext itself.
+describe('coachStore — screens the user’s own words unprompted', () => {
+  it('catches distress in a reflection with no freetext passed in', async () => {
+    const { client, calls } = responds({ insights: [INSIGHT], safe: true });
+    const withDistress = [
+      ...RESOLVED,
+      prediction({ reflection: 'I cannot go on like this' }),
+    ];
+
+    await useCoachStore
+      .getState()
+      .requestInsights(request({ resolved: withDistress }), { client });
+
+    const s = useCoachStore.getState();
+    expect(s.crisisTopic).toBe('distress');
+    expect(s.insights).toEqual([]);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('catches distress written into a title', async () => {
+    const { client, calls } = responds({ insights: [INSIGHT], safe: true });
+    const withDistress = [
+      ...RESOLVED,
+      prediction({ title: 'I want to die before this ships' }),
+    ];
+
+    await useCoachStore
+      .getState()
+      .requestInsights(request({ resolved: withDistress }), { client });
+
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('leaves ordinary reflections alone', async () => {
+    const { client, calls } = responds({ insights: [INSIGHT], safe: true });
+    const ordinary = [...RESOLVED, prediction({ reflection: 'Shipped it early' })];
+
+    await useCoachStore
+      .getState()
+      .requestInsights(request({ resolved: ordinary }), { client });
+
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
+    expect(calls).toHaveLength(1);
+  });
+});
+
 describe('coachStore — reset', () => {
   it('drops everything', async () => {
     const { client } = responds({ insights: [INSIGHT], safe: true });
