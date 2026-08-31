@@ -24,33 +24,75 @@ up because Calibrate's growth depends on free users producing shareable artifact
 Freemium is the correct model *only* when free users drive word-of-mouth — which is our
 entire growth thesis. If that loop doesn't materialize, revisit this decision.
 
+**Be honest about the asymmetry in that argument.** The 5x and 8x figures are measured.
+The compensating virality is not: RevenueCat's 2026 report does not address
+word-of-mouth or sharing at all, so nothing in the cited data says a strong share loop
+recovers the gap. We are trading a quantified loss for an unquantified hope. That can
+still be the right call — it is how Habitica and Duolingo got their distribution — but
+it means §7's share-rate metric is not a nice-to-have dashboard tile. It is the single
+number that tells us whether this document's central premise is true, and it is the one
+thing that should gate building a checkout.
+
 ---
 
-## 2. Market Research & Benchmarks (2026)
+## 2. Market Research & Benchmarks
+
+*Re-verified against primary sources 2026-08-31. Figures below were checked directly;
+where the original draft's number could not be reproduced it is marked.*
 
 **Subscription conversion** *(RevenueCat, State of Subscription Apps 2026 — 115K apps,
 $16B+ revenue)*
-- Hard paywall vs freemium: ~10.7% vs ~2.1% Day-35 trial-to-paid (~5x); revenue per
-  install at day 60 ~$3.09 vs ~$0.38 (~8x).
-- Year-1 retention is nearly identical between models (~27–28%) — freemium's weakness
-  is conversion *speed/rate*, not long-term stickiness.
-- ~55% of 3-day-trial cancellations happen on **Day 0** — the "aha" must land in the
-  first session.
-- Longer trials convert far better: 17–32 day trials ~42.5% vs ~25.5% for trials under
-  4 days.
-- **AI features sell but don't stick:** AI-powered apps earn ~41% more revenue per
-  payer but churn ~30% faster. Use AI to drive conversion, not as the retention spine.
-- The market is a sorting machine: top-decile apps grew ~306% while the median grew
-  ~5.3%. Positioning and shareability are what separate them.
+- Hard paywall vs freemium: **10.7% vs 2.1%** Day-35 trial-to-paid (~5x); revenue per
+  install at day 60 **$3.09 vs $0.38** (~8x). Also $2.32 vs $0.27 at day 14. ✅ verified
+- Year-1 retention is nearly identical between models (**27% hard paywall, 28%
+  freemium**) — freemium's weakness is conversion *rate*, not long-term stickiness.
+  ✅ verified
+- **55.4%** of 3-day-trial cancellations happen on **Day 0**, and 84% by Day 1 — up
+  ~4 points from 2025. The "aha" must land in the first session. ✅ verified
+- Longer trials convert far better: 17–32 day trials **42.5%** vs **25.5%** for trials
+  under 4 days (~70% better). Note the industry is moving the *other* way — 46.5% of
+  apps shortened to under 4 days in 2026, under pressure to show fast revenue. Being
+  contrarian here is cheap for us. ✅ verified
+- **AI features sell but don't stick.** Sharper than the original framing: AI apps show
+  **41% higher Year-1 realized LTV ($30.16 vs $21.37)**, but AI *monthly* plans retain
+  **36% worse over 12 months**. The retention penalty concentrates in monthly plans,
+  which is an argument for pushing annual on AI-driven signups specifically.
+  ✅ verified, refined
+- The market is a sorting machine: **top-quartile apps grew 80%+ YoY MRR while the
+  bottom quartile shrank by a third** — a 113-point spread. ⚠️ *The draft's "top-decile
+  +306% vs median +5.3%" could not be reproduced in the 2026 report; it may be from the
+  2025 edition. Replaced with the figures actually published for 2026.*
 
-**Pricing anchors** *(2026 habit/wellness app roundups)*
-- One-time: Streaks ~$5.99, Productive ~$3.99, HabitNow ~$11.99.
-- Subscription band: mostly **$3.99–9.99/mo** and **~$20–60/yr**. Examples: Routinery
-  ~$4.99/mo or ~$47.99/yr; HabitBull ~$4.99/mo or ~$19.99/yr; Me+ ~$9.99/mo or
-  ~$59.99/yr; Finch ~$9.99/mo or ~$69.99/yr (with a complete free tier).
-- **Habitica** is the model to copy: every core feature free with no time limit;
+**Pricing anchors** *(habit/wellness roundups, spot-checked 2026-08-31)*
+- One-time: Streaks **$5.99** ✅, Productive ~$3.99, HabitNow ~$11.99.
+- Subscription band holds: mostly **$3.99–9.99/mo** and **~$20–70/yr**. Finch
+  **$9.99/mo or $69.99/yr** ✅ (with a genuinely usable free tier); Routinery
+  **$4.99/mo or $47.99/yr** ✅; HabitBull ~$4.99/mo or ~$19.99/yr; Me+ ~$9.99/mo or
+  ~$59.99/yr. Prices vary by platform and region.
+- Routinery is worth noting twice: its subscription buys **cosmetic perks only**, and
+  it sits mid-band while doing it. That is direct evidence the Habitica pattern prices
+  normally — a cosmetics-and-depth subscription does not have to be discounted.
+- **Habitica** remains the model to copy: every core feature free with no time limit;
   the subscription buys cosmetics and extras only. This is "light monetization" done
   right — the paywall never touches the thing that makes the app work.
+
+**Store commission and link-out economics** *(new since this document was drafted —
+unsettled, watch it)*
+- Following the April 2025 injunction in *Epic v. Apple*, Apple **cannot currently
+  charge any commission** on US purchases made through an external link out of the app,
+  and cannot impede developers from telling users about them.
+- In **August 2026** Apple proposed link-out commissions of **15% standard / 5% for
+  Small Business Program** developers. Epic opposes it, arguing the correct figure is
+  0%. **Not settled** — do not plan on a specific number.
+- Why this matters here more than it would for most apps: our whole model concedes a
+  low revenue-per-install, so take rate is proportionally larger. On a $29.99 annual
+  plan, App Store IAP at the Small Business 15% nets **$25.49**; a web link-out nets
+  **$29.99** today, or **$28.49** if Apple's proposed 5% survives. That is a 12–18%
+  swing on every renewal, for a plan whose stated expectation is "modest and slow".
+- Practical stance for now: ship IAP through RevenueCat as planned (it is what the
+  sandbox and restore flows need, and it is the path of least friction on Day 0), but
+  treat a web-checkout link as a live option worth revisiting once there is revenue to
+  optimize. Do not build it before the share-rate gate in §8 clears.
 
 **The growth loop** *(Spotify Wrapped case analyses)*
 - Shareability is baked into the product, turning users into the marketing channel and
@@ -98,6 +140,23 @@ This formalizes the "Optional AI Features (V2+), gated behind Pro" note already 
   points convert at least as well and set a "serious tool" frame consistent with the
   calibration positioning.
 
+**Still current as of 2026-08-31.** The band was re-checked against live pricing and
+$4.99/$29.99 remains mid-market; Finch at $9.99/$69.99 and Routinery at $4.99/$47.99
+bracket it. Two refinements from the re-verification:
+
+- **Consider 17+ days rather than exactly 14.** The measured cliff is between "under 4
+  days" (25.5%) and "17–32 days" (42.5%); 14 sits in the unmeasured gap between them.
+  Nothing says 14 is wrong, but if we are picking a number off this data, 17–21 is the
+  band it actually supports. It also fits our specific problem better than most apps':
+  Plus value is legible only once predictions *resolve*, and a 14-day trial gives a
+  new user roughly one resolution cycle.
+- **Push annual harder for AI-driven signups.** The AI retention penalty concentrates
+  in monthly plans (36% worse over 12 months). If Coach is what converts someone, a
+  monthly plan is the worst container for that subscription.
+
+Net revenue depends on an unsettled legal question — see the link-out note in §2 before
+treating $29.99/yr as $29.99/yr.
+
 ---
 
 ## 5. The Three Mechanics That Make This Work
@@ -131,6 +190,14 @@ analytics, cosmetics) so the subscription survives past the novelty.
 ## 6. Build Reroute — Amendments to `BUILD_PLAN.md`
 
 Same abstraction-layer discipline and Gates. New/changed items only.
+
+> **Status, 2026-08-31.** Most of this section is now built — see `BUILD_PLAN.md`'s
+> "Where the build is" for the current state, which is the one to trust. Everything
+> below is done except: RevenueCat billing, the paywall screen, `usePaywallStore`,
+> and Plus cosmetics. Two things drifted from what this section predicted:
+> the AI endpoint shipped as **`/functions/v1/coach`**, specified in detail by
+> `COACH_AGENT.md` (there is no `/functions/v1/insights`), and the weekly digest is a
+> local Expo notification (`src/notifications/digest.ts`), not an Edge Function.
 
 **L1 — Types & Contracts**
 - Add `Entitlement` (`{ isPlus: boolean; source; expiresAt }`), `ShareCard` payload,
@@ -222,7 +289,29 @@ This preserves the existing principle: the app is fully usable — and now fully
 ---
 
 ## Sources
-RevenueCat *State of Subscription Apps 2026*; 2026 habit/wellness app pricing roundups
-(2sync, RoutineBase, HabitBox, loggd.life); Spotify Wrapped growth-loop case studies
-(NoGood, Growth Academy, and others). Figures are directional and paraphrased; re-verify
-pricing at implementation time.
+
+Re-verified 2026-08-31. Figures marked ✅ in §2 were checked against these directly;
+everything else remains directional and paraphrased.
+
+- RevenueCat, *State of Subscription Apps 2026* (115K apps, $16B+ revenue) —
+  [report](https://www.revenuecat.com/state-of-subscription-apps) ·
+  [10-minute summary](https://www.revenuecat.com/blog/growth/subscription-app-trends-benchmarks-2026)
+- AI revenue/retention split —
+  [PPC Land summary](https://ppc.land/ai-apps-earn-41-more-per-user-but-churn-30-faster-revenuecat-finds/) ·
+  [TechCrunch](https://techcrunch.com/2026/03/10/ai-powered-apps-struggle-with-long-term-retention-new-report-shows)
+- Trial length —
+  [RevenueCat on choosing trial duration](https://www.revenuecat.com/blog/growth/7-day-trial-subscription-app)
+- Apple link-out commissions, Aug 2026 proposal —
+  [TechCrunch](https://techcrunch.com/2026/08/14/apple-proposes-to-take-a-15-cut-of-purchases-made-outside-the-app-store/) ·
+  [9to5Mac](https://9to5mac.com/2026/08/13/apple-proposes-commissions-of-up-to-15-for-off-app-store-purchases-in-the-us/) ·
+  [RevenueCat on what the ruling means for developers](https://www.revenuecat.com/blog/growth/apple-anti-steering-ruling-monetization-strategy)
+- Pricing roundups — [2sync](https://2sync.com/blog/best-habit-tracker-apps) ·
+  [RoutineBase](https://routinebase.com/best-habit-tracker-apps/) ·
+  [HabitBox](https://habitbox.app/blog/best-habit-tracker-app)
+- Spotify Wrapped growth-loop case studies (NoGood, Growth Academy, and others) —
+  not re-verified this pass.
+
+**Two caveats worth carrying.** The RevenueCat report says nothing about word-of-mouth
+or virality, so it cannot be cited in support of the share loop — only against the
+conversion cost of freemium. And the link-out commission position is actively
+litigated; re-check it before it enters a pricing calculation.

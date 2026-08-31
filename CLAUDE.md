@@ -232,7 +232,12 @@ Plus sells insight, depth, and cosmetics only.
 | Card/badge cosmetics | — | ✅ |
 
 Pricing intent: ~$4.99/mo, ~$29.99/yr (annual anchored, shown first), optional lifetime;
-14-day trial on annual. **Re-verify current market pricing before implementing.**
+trial on annual. Re-verified 2026-08-31 — the band still holds. Two open points carried
+in `GROWTH_AND_MONETIZATION.md` §4: the trial should probably be **17–21 days rather
+than 14** (the measured conversion cliff is between "under 4 days" and "17–32 days", and
+Plus value is only legible once predictions resolve), and **net revenue depends on the
+unsettled Apple link-out commission question** — $29.99/yr is not $29.99 in hand.
+**Re-verify both before implementing.**
 
 Rule: the paywall never touches the core loop or anything shareable.
 
