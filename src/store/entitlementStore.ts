@@ -70,9 +70,16 @@ export const useEntitlementStore = create<EntitlementState>((set) => ({
 
   setEntitlement: async (e) => {
     // Update memory first so gating reacts immediately, then persist the
-    // mirror. The expiry check applies here too, so an already-lapsed
-    // entitlement handed in by a service can't flip gating back on.
-    set({ entitlement: e, isPlus: isEntitlementActive(e) });
+    // mirror.
+    //
+    // No expiry check here, deliberately. What arrives through this action is
+    // a fresh answer from RevenueCat, which knows things the local clock does
+    // not — a billing grace period, a promotional grant, a device whose clock
+    // is simply wrong. Re-deciding it here would also let memory and the
+    // persisted row disagree: the mirror would say is_plus while gating said
+    // free. The clock only gets a vote in hydrate(), where there is nothing
+    // fresher to trust.
+    set({ entitlement: e, isPlus: e.is_plus });
     try {
       await upsertEntitlement(e);
     } catch (err) {

@@ -42,6 +42,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
 
   const busy = purchasing !== null || restoring;
   const message = noticeText(notice);
+  const terms = termsLine(plans);
 
   if (isPlus) {
     return (
@@ -112,7 +113,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
         testID="paywall-restore"
       />
 
-      <Text style={styles.terms}>{termsLine(plans)}</Text>
+      {terms !== '' && <Text style={styles.terms}>{terms}</Text>}
 
       {onClose && (
         <Button

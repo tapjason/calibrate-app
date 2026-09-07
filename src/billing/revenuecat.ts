@@ -133,6 +133,8 @@ export interface RcOfferings {
 export interface BillingDeps {
   configure(apiKey: string, appUserId: string | null): Promise<void>;
   logIn(appUserId: string): Promise<void>;
+  /** Drop back to a fresh anonymous identity (sign-out). */
+  logOut(): Promise<void>;
   getOfferings(): Promise<RcOfferings>;
   getCustomerInfo(): Promise<RcCustomerInfo>;
   purchasePackage(pkg: RcPackage): Promise<RcCustomerInfo>;
@@ -173,6 +175,9 @@ function defaultDeps(): BillingDeps | null {
     },
     async logIn(appUserId) {
       await Purchases.logIn(appUserId);
+    },
+    async logOut() {
+      await Purchases.logOut();
     },
     async getOfferings() {
       return (await Purchases.getOfferings()) as unknown as RcOfferings;
@@ -324,6 +329,12 @@ export function plansFromOfferings(offerings: unknown): PlusPlan[] {
  * `userId` is the Supabase user id, so RevenueCat's app user id matches the id
  * everything else in the app keys on — that is what lets a purchase follow the
  * user to a new device.
+ *
+ * Pass **null** for a signed-out user. Never a placeholder: the app's guest id
+ * is one shared constant across every install, and RevenueCat treats the app
+ * user id as the account — one guest's purchase would then read as active for
+ * every other guest device on earth. Null makes the SDK mint a per-install
+ * anonymous id, which `logIn()` later aliases onto the real account.
  */
 export async function configureBilling(userId: string | null): Promise<boolean> {
   const d = getDeps();
@@ -343,6 +354,22 @@ export async function configureBilling(userId: string | null): Promise<boolean> 
     // eslint-disable-next-line no-console
     console.warn('[billing] configure failed:', e);
     return false;
+  }
+}
+
+/**
+ * Drop the RevenueCat identity on sign-out, so whoever uses this device next
+ * starts anonymous instead of inheriting the previous account's purchases.
+ * No-op when billing was never configured.
+ */
+export async function logOutBilling(): Promise<void> {
+  const d = getDeps();
+  if (!d || !apiKeyForPlatform() || !configured) return;
+  try {
+    await d.logOut();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[billing] logout failed:', e);
   }
 }
 

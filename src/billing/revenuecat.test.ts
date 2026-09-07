@@ -78,6 +78,7 @@ function fakeDeps(overrides: Partial<BillingDeps> = {}): BillingDeps {
   return {
     configure: jest.fn(async () => {}),
     logIn: jest.fn(async () => {}),
+    logOut: jest.fn(async () => {}),
     getOfferings: jest.fn(async () => OFFERINGS),
     getCustomerInfo: jest.fn(async () => customerInfo({})),
     purchasePackage: jest.fn(async () => customerInfo({})),

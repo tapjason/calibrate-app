@@ -1,5 +1,5 @@
 import { setDbForTests } from '@/db/client';
-import { upsertEntitlement } from '@/db/entitlements';
+import { getEntitlement, upsertEntitlement } from '@/db/entitlements';
 import { createTestDb } from '@/db/testing';
 import { FREE_ENTITLEMENT, type Entitlement } from '@/types';
 
@@ -80,13 +80,19 @@ describe('entitlementStore', () => {
     expect(useEntitlementStore.getState().isPlus).toBe(false);
   });
 
-  it('does not let a service hand in an already-expired entitlement', async () => {
-    await useEntitlementStore.getState().setEntitlement({
+  // The clock does not overrule a fresh answer from RevenueCat, which knows
+  // about grace periods and promotional grants that a past expiry alone
+  // doesn't explain. It also keeps memory and the persisted row from
+  // disagreeing — the failure that made a completed purchase render as free.
+  it('trusts what a service hands in, even with a past expiry', async () => {
+    const graced = {
       is_plus: true,
       source: 'monthly',
       expires_at: '2020-01-01T00:00:00.000Z',
-    });
-    expect(useEntitlementStore.getState().isPlus).toBe(false);
+    } as const;
+    await useEntitlementStore.getState().setEntitlement(graced);
+    expect(useEntitlementStore.getState().isPlus).toBe(true);
+    await expect(getEntitlement()).resolves.toEqual(graced);
   });
 
   it('fails to free (never Plus) when the read throws', async () => {

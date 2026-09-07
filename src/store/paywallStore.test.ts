@@ -48,6 +48,7 @@ function fakeDeps(overrides: Partial<BillingDeps> = {}): BillingDeps {
   return {
     configure: jest.fn(async () => {}),
     logIn: jest.fn(async () => {}),
+    logOut: jest.fn(async () => {}),
     getOfferings: jest.fn(async () => OFFERINGS),
     getCustomerInfo: jest.fn(async () => PLUS_INFO),
     purchasePackage: jest.fn(async () => PLUS_INFO),
@@ -95,16 +96,31 @@ describe('loadPlans', () => {
     const s = usePaywallStore.getState();
     expect(s.available).toBe(false);
     expect(s.plans).toEqual([]);
-    expect(s.notice).toBe('unavailable');
     expect(s.loadingPlans).toBe(false);
   });
 
-  it('reports unavailable when the offering comes back empty', async () => {
+  it('ends with no plans when the offering comes back empty', async () => {
     __setBillingDepsForTests(
       fakeDeps({ getOfferings: jest.fn(async () => ({ current: null })) }),
     );
     await usePaywallStore.getState().loadPlans();
-    expect(usePaywallStore.getState().notice).toBe('unavailable');
+    expect(usePaywallStore.getState().plans).toEqual([]);
+    expect(usePaywallStore.getState().loadingPlans).toBe(false);
+  });
+
+  // `notice` reports what happened when the user did something. An empty
+  // offering is a state the screen renders on its own; setting a notice too
+  // put the same sentence on screen twice.
+  it('sets no notice for an empty or unavailable offering', async () => {
+    __setBillingDepsForTests(
+      fakeDeps({ getOfferings: jest.fn(async () => ({ current: null })) }),
+    );
+    await usePaywallStore.getState().loadPlans();
+    expect(usePaywallStore.getState().notice).toBeNull();
+
+    delete process.env[KEY_VAR];
+    await usePaywallStore.getState().loadPlans();
+    expect(usePaywallStore.getState().notice).toBeNull();
   });
 });
 

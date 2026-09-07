@@ -60,8 +60,15 @@ export function priceLine(plan: PlusPlan): string {
   return trialLine(plan) ?? plan.priceString;
 }
 
-/** Renewal terms. Required by App Review, and honest besides. */
+/**
+ * Renewal terms. Required by App Review, and honest besides.
+ *
+ * Empty string for an empty offering: with no plans loaded there are no terms
+ * to state, and the lifetime-only branch would otherwise assert "no
+ * subscription" on the very screen that just said Plus is unavailable.
+ */
 export function termsLine(plans: readonly PlusPlan[]): string {
+  if (plans.length === 0) return '';
   const hasSubscription = plans.some((p) => p.plan !== 'lifetime');
   if (!hasSubscription) return 'One-time purchase. No subscription, no renewal.';
   return (

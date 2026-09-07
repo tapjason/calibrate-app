@@ -57,8 +57,11 @@ describe('termsLine', () => {
     expect(termsLine([lifetime])).toMatch(/One-time purchase/);
   });
 
-  it('treats an empty offering as non-subscription', () => {
-    expect(termsLine([])).toMatch(/One-time purchase/);
+  // With no plans loaded there is nothing to state terms about, and the
+  // lifetime branch would assert "no subscription" on the very screen that
+  // just said Plus is unavailable.
+  it('states nothing at all for an empty offering', () => {
+    expect(termsLine([])).toBe('');
   });
 });
 

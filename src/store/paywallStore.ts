@@ -83,18 +83,17 @@ export const usePaywallStore = create<PaywallState>((set) => ({
     set({ loadingPlans: true });
     const available = isBillingAvailable();
     if (!available) {
-      // Expo Go, web, or a build with no API key. Say so once and stop —
-      // calling into the SDK from here would just log the same warning again.
-      set({ ...INITIAL, available: false, notice: 'unavailable' });
+      // Expo Go, web, or a build with no API key. Calling into the SDK from
+      // here would just log the same warning again.
+      set({ ...INITIAL, available: false });
       return;
     }
     const plans = await fetchPlans(); // never throws; [] on any failure
-    set({
-      plans,
-      loadingPlans: false,
-      available: true,
-      notice: plans.length === 0 ? 'unavailable' : null,
-    });
+    // No notice on an empty offering. `notice` reports the outcome of
+    // something the user *did*; the screen renders its own unavailable line
+    // from an empty plan list, and setting both stacked the same sentence
+    // twice.
+    set({ plans, loadingPlans: false, available: true });
   },
 
   purchase: async (packageId) => {
