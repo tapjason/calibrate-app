@@ -14,6 +14,8 @@
 
 import { create } from 'zustand';
 
+import { track } from '@/analytics/track';
+
 import { WARMUP_QUESTIONS } from '@/constants/warmupQuestions';
 import {
   clearWarmupRecord,
@@ -111,7 +113,14 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
     // Last question: score it, show the verdict, then persist. Scoring first
     // means a storage failure still leaves the user with their Day-0 result.
     const completedAt = new Date().toISOString();
-    set({ result: scoreWarmup(next), completedAt });
+    const result = scoreWarmup(next);
+    set({ result, completedAt });
+    // Numerator of D0 aha completion (GROWTH §7). The denominator is
+    // warmup_started, fired when the quiz screen mounts.
+    void track('warmup_completed', {
+      score: result.mini_score,
+      question_count: next.length,
+    });
     try {
       await saveWarmupRecord({ completed_at: completedAt, answers: next });
     } catch (e) {

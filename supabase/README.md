@@ -37,6 +37,10 @@ schema is safe.
   subscription.
 - `functions/refine/index.ts` — Edge Function that rewrites a user-typed
   prediction via OpenAI GPT-4o-mini. Called from `src/ai/refine.ts`.
+- `migrations/005_analytics_events.sql` — product analytics events. Append-only
+  by policy (insert + select for the owning user, no update or delete grant),
+  with CHECK constraints keeping `props` a small JSON object. There is no
+  column freetext could go in.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decision logic lives in
   `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can

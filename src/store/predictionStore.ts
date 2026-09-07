@@ -6,6 +6,8 @@
 
 import { create } from 'zustand';
 
+import { track } from '@/analytics/track';
+
 import { withTransaction } from '@/db/client';
 import {
   deletePrediction,
@@ -138,6 +140,14 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // Reload instead of appending: the DB query sorts by due_date, and the
     // newly-inserted row may belong before existing entries.
     await get().loadPending();
+    // After the transaction, never inside it: analytics must not be able to
+    // roll back a saved prediction. The confidence value goes, the title does
+    // not — it is the number that says whether the integrity-bonus nudge is
+    // working (CLAUDE.md's range-coverage caveat).
+    void track('prediction_logged', {
+      confidence: prediction.confidence,
+      integrity_bonus: prediction.integrity_bonus,
+    });
     return prediction;
   },
 
@@ -150,6 +160,13 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     });
     // Refresh local lists from the source of truth.
     await Promise.all([get().loadPending(), get().loadResolved()]);
+    const resolvedPrediction = get().resolved.find((p) => p.id === id);
+    if (resolvedPrediction) {
+      void track('prediction_resolved', {
+        confidence: resolvedPrediction.confidence,
+        correct: outcome === 'resolved_yes',
+      });
+    }
   },
 
   remove: async (id) => {

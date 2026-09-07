@@ -70,6 +70,7 @@ describe('SettingsView', () => {
         notificationsEnabled: false,
         aiRefineEnabled: true,
         coachEnabled: false,
+      analyticsEnabled: true,
       });
     });
   });

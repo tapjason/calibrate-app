@@ -100,6 +100,21 @@ anonymous RevenueCat id is acknowledged and ignored. Still needs deploying with
 `--no-verify-jwt` and wiring in the RevenueCat dashboard (see
 `docs/HUMAN_VERIFICATION.md`).
 
+**Just landed — product instrumentation:** `src/analytics/` (a closed event
+catalogue, `track()`, and a flush that mirrors sync's shape), the local queue in
+migration `006_analytics`, `supabase/migrations/005_analytics_events.sql`, and an
+"Anonymous usage stats" toggle in Settings. The validation checkpoint below was
+not merely unanswered before this — it was unanswerable, because nothing counted
+a Warmup completion or a share.
+
+The design constraint is that the catalogue is a whitelist, not a convenience:
+every event and property is declared in `src/analytics/events.ts`, property
+values are numbers, booleans and declared enums, and there is no open string
+type — so "we never send your predictions" is structural rather than a promise.
+Events queue locally, flush on foreground alongside sync, never flush for a
+guest, and the queue is capped so a permanently-offline install can't grow it
+without bound.
+
 **Ship blockers before a build with a live paywall reaches anyone:**
 - The paywall names three Plus features; only Coach exists. Build the advanced
   analytics and the cosmetics, or cut those bullets from
@@ -110,11 +125,11 @@ anonymous RevenueCat id is acknowledged and ignored. Still needs deploying with
   its unavailable state, which is the correct behavior, not a bug.
 - The sandbox-purchase gate below needs a human and a device.
 
-**Next:** the validation checkpoint. The Warmup and the share loop are both
-shippable, and measuring D0 aha completion and share rate is what decides whether
-freemium is the right model at all — that measurement is meant to happen *before*
-the checkout goes live. After it: Plus cosmetics and advanced analytics (the two
-unbuilt paywall promises), then L7.
+**Next:** the validation checkpoint — now instrumented, so it needs users
+rather than code. D0 aha completion is `warmup_completed / warmup_started`;
+share rate is `share_completed` per active user. That measurement is meant to
+happen *before* the checkout goes live. In parallel: Plus cosmetics and advanced
+analytics (the two unbuilt paywall promises), then L7.
 
 Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
 gates, the App Store Connect / RevenueCat product setup, and the trial-length call
@@ -178,6 +193,8 @@ SQLite client.
   - `004_entitlements` — local entitlement mirror (singleton row)
   - `005_warmup` — warmup results (singleton row, no `user_id` and no join to
     predictions, so Warmup data is *structurally* unable to reach real stats)
+  - `006_analytics` — the local product-analytics queue, capped and
+    push-then-delete
 - `src/db/predictions.ts` — CRUD helpers, all `async/await`.
 - `src/db/stats.ts` — read/write `UserStat` and `CategoryStat` (including the
   provisional flags).
@@ -254,6 +271,9 @@ persists stats correctly. Toggling entitlement flips gated selectors. With
 fails gracefully.
 
 **Build:**
+- `src/analytics/{events,track,flush}.ts` — the closed event catalogue, the
+  fire-and-forget recorder, and the batched push. Backed by the local queue in
+  `src/db/analytics.ts` (L2) and `analytics_events` in Postgres.
 - `src/notifications/scheduler.ts` — schedule resolution reminders on `due_date`.
 - `src/notifications/digest.ts` — Sunday weekly digest.
 - `src/supabase/{client,auth,sync}.ts` — auth + background local→remote sync.
@@ -368,7 +388,9 @@ that is the moment to revisit the model — before you've built a checkout.
 ## Validation Checkpoints (non-code gates)
 
 - **After Warmup + share cards ship:** measure D0 aha completion and share rate. This
-  decides whether freemium is the right model at all.
+  decides whether freemium is the right model at all. Instrumented as of
+  2026-09-07 — `warmup_started` / `warmup_completed` for the first,
+  `share_opened` / `share_completed` for the second.
 - **After billing ships:** measure trial-to-paid; run a trial-length experiment.
 - **After Coach ships:** measure Plus churn split by AI-heavy vs analytics/cosmetic use —
   AI drives conversion but churns faster, so confirm the sticky layer is working.

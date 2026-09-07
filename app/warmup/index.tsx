@@ -1,6 +1,9 @@
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { track } from '@/analytics/track';
 
 import { WarmupQuiz } from '@/components/warmup/WarmupQuiz';
 import { WarmupVerdictScreen } from '@/components/warmup/WarmupVerdict';
@@ -18,6 +21,16 @@ export default function WarmupScreen() {
   const router = useRouter();
   const question = useWarmupStore(selectCurrentQuestion);
   const finished = question === null;
+
+  // Denominator of D0 aha completion (GROWTH §7): everyone who reached the
+  // quiz, against the warmup_completed events. Fired on mount rather than on
+  // the first answer, because someone who opens the quiz and leaves is exactly
+  // who that metric is about.
+  useEffect(() => {
+    if (!finished) void track('warmup_started');
+    // Deliberately once per mount, not per question.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reached via first-run redirect, and the root Stack draws no header, so
   // this route insets its own top edge.

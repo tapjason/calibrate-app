@@ -103,6 +103,7 @@ describe('settingsStore: setters persist', () => {
       notificationsEnabled: false,
       aiRefineEnabled: true,
       coachEnabled: false,
+      analyticsEnabled: true,
     });
   });
 
@@ -117,6 +118,7 @@ describe('settingsStore: setters persist', () => {
       notificationsEnabled: true,
       aiRefineEnabled: false,
       coachEnabled: false,
+      analyticsEnabled: true,
     });
   });
 

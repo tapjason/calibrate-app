@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { track } from '@/analytics/track';
 import { ShareCardPanel } from '@/components/share/ShareCardPanel';
 import { WrappedPanel } from '@/components/share/WrappedPanel';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +27,14 @@ const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
 export default function ShareScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('card');
+
+  // Opened vs. completed is the difference between "people look at this" and
+  // "people send this to someone", and only the second one is the growth loop.
+  useEffect(() => {
+    void track('share_opened', {
+      surface: tab === 'card' ? 'card' : tab === 'week' ? 'weekly' : 'yearly',
+    });
+  }, [tab]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

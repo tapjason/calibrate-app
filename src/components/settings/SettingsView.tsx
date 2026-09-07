@@ -27,6 +27,8 @@ export function SettingsView({
   const setAiRefineEnabled = useSettingsStore((s) => s.setAiRefineEnabled);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
   const setCoachEnabled = useSettingsStore((s) => s.setCoachEnabled);
+  const analyticsEnabled = useSettingsStore((s) => s.analyticsEnabled);
+  const setAnalyticsEnabled = useSettingsStore((s) => s.setAnalyticsEnabled);
 
   return (
     <View style={styles.wrap}>
@@ -77,6 +79,14 @@ export function SettingsView({
         value={coachEnabled}
         onValueChange={(v) => void setCoachEnabled(v)}
         testID="toggle-coach"
+      />
+
+      <ToggleRow
+        label="Anonymous usage stats"
+        description="Counts of which features get used — never your predictions, reflections, or any text. Turning this off deletes what's queued."
+        value={analyticsEnabled}
+        onValueChange={(v) => void setAnalyticsEnabled(v)}
+        testID="toggle-analytics"
       />
     </View>
   );

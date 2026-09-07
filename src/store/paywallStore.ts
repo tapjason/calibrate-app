@@ -14,6 +14,8 @@
 
 import { create } from 'zustand';
 
+import { track } from '@/analytics/track';
+
 import {
   fetchEntitlement,
   fetchPlans,
@@ -105,6 +107,14 @@ export const usePaywallStore = create<PaywallState>((set) => ({
       // never repaints as "free, idle" for a frame between the two.
       await useEntitlementStore.getState().setEntitlement(result.entitlement);
       set({ purchasing: null, notice: 'purchased' });
+      // Booleans rather than a plan string: the event catalogue has no open
+      // string type, by design (src/analytics/events.ts).
+      void track('purchase_completed', {
+        plan_annual: result.entitlement.source === 'annual',
+        plan_monthly: result.entitlement.source === 'monthly',
+        plan_lifetime: result.entitlement.source === 'lifetime',
+        trial: result.entitlement.source === 'trial',
+      });
       return true;
     }
 
@@ -113,6 +123,7 @@ export const usePaywallStore = create<PaywallState>((set) => ({
       purchasing: null,
       notice: result.status === 'cancelled' ? null : result.status,
     });
+    if (result.status === 'cancelled') void track('purchase_abandoned');
     return false;
   },
 

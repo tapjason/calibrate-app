@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { track } from '@/analytics/track';
 import { shareCard, type ShareOutcome } from '@/share/export';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -46,6 +47,10 @@ export function ShareCardPanel() {
     try {
       const outcome = await shareCard(cardRef);
       setMessage(outcome === 'shared' ? null : MESSAGES[outcome]);
+      // Share rate is the number that decides whether the generous free tier
+      // pays for itself (GROWTH §7-8). Only a card that actually reached the
+      // share sheet counts.
+      if (outcome === 'shared') void track('share_completed', { surface: 'card' });
     } finally {
       setSharing(false);
     }

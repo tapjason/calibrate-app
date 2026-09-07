@@ -7,7 +7,9 @@ export default function SettingsScreen() {
   const router = useRouter();
   return (
     <ScrollView>
-      <SettingsView onOpenPaywall={() => router.push('/paywall' as never)} />
+      <SettingsView
+        onOpenPaywall={() => router.push('/paywall?from=settings' as never)}
+      />
     </ScrollView>
   );
 }

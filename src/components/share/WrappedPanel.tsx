@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { buildWrapped, type WrappedSpan } from '@/engine/wrapped';
 import { Button } from '@/components/ui/Button';
+import { track } from '@/analytics/track';
 import { shareCard, type ShareOutcome } from '@/share/export';
 import { usePredictionStore } from '@/store/predictionStore';
 
@@ -44,6 +45,11 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     try {
       const outcome = await shareCard(cardRef);
       setMessage(outcome === 'shared' ? null : MESSAGES[outcome]);
+      if (outcome === 'shared') {
+        void track('share_completed', {
+          surface: span === 'week' ? 'weekly' : 'yearly',
+        });
+      }
     } finally {
       setSharing(false);
     }

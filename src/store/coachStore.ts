@@ -14,6 +14,7 @@
 import { create } from 'zustand';
 
 import { fetchCoachInsights, type CoachDeps } from '@/ai/coach';
+import { track } from '@/analytics/track';
 import { buildCoachContext } from '@/ai/coachContext';
 import type { CrisisTopic } from '@/ai/crisisFilter';
 import type { CoachInsight, Prediction, UserStat } from '@/types';
@@ -114,6 +115,9 @@ export const useCoachStore = create<CoachState>((set) => ({
         lastAnsweredAt: new Date().toISOString(),
         lastRequestFailed: false,
       });
+      // Plus churn is meant to be split by AI-heavy vs analytics/cosmetic use
+      // (GROWTH §7). The count, not the content — no insight text is recorded.
+      void track('coach_requested', { insight_count: result.insights.length });
     } catch (e) {
       // fetchCoachInsights already swallows its own errors; this is belt and
       // braces so a store action can never reject into a component.

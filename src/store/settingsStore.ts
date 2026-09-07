@@ -9,11 +9,18 @@
 
 import { create } from 'zustand';
 
+import { clearEvents } from '@/db/analytics';
+
 export interface StoredSettings {
   notificationsEnabled: boolean;
   aiRefineEnabled: boolean;
   /** Plus-only Coach insights on the Stats screen. Opt-in — see DEFAULTS. */
   coachEnabled: boolean;
+  /**
+   * Anonymous product analytics — a closed list of events with no freetext
+   * (src/analytics/events.ts). On by default; turning it off clears the queue.
+   */
+  analyticsEnabled: boolean;
 }
 
 /** Injectable persistence so tests don't touch the native AsyncStorage. */
@@ -30,6 +37,7 @@ interface SettingsState extends StoredSettings {
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   setAiRefineEnabled: (enabled: boolean) => Promise<void>;
   setCoachEnabled: (enabled: boolean) => Promise<void>;
+  setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -38,10 +46,17 @@ interface SettingsState extends StoredSettings {
 // Coach is the exception and defaults to OFF. COACH_AGENT.md §5.6 requires it
 // be off until the user opts in — it is the one feature that sends a picture
 // of the user's judgment to a model, so it waits to be asked.
+// Analytics defaults ON, unlike Coach. The difference is what is being sent:
+// Coach sends a picture of the user's judgment to a model, while this sends a
+// counted list of which screens got used, with no freetext and nothing derived
+// about the person. Off by default would produce a sample skewed toward
+// whoever reads settings screens, which is not a sample worth deciding the
+// business model on.
 const DEFAULTS: StoredSettings = {
   notificationsEnabled: true,
   aiRefineEnabled: true,
   coachEnabled: false,
+  analyticsEnabled: true,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -101,6 +116,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             stored.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
           aiRefineEnabled: stored.aiRefineEnabled ?? DEFAULTS.aiRefineEnabled,
           coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
+          analyticsEnabled:
+            stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
         });
       }
     } catch (e) {
@@ -126,6 +143,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ coachEnabled: enabled });
     await persist(snapshot(get()));
   },
+
+  setAnalyticsEnabled: async (enabled) => {
+    set({ analyticsEnabled: enabled });
+    await persist(snapshot(get()));
+    // Opting out means what it says: the queue of what was already recorded
+    // goes too, not just future events. clearEvents swallows its own errors.
+    if (!enabled) await clearEvents();
+  },
 }));
 
 /**
@@ -138,5 +163,6 @@ function snapshot(state: StoredSettings): StoredSettings {
     notificationsEnabled: state.notificationsEnabled,
     aiRefineEnabled: state.aiRefineEnabled,
     coachEnabled: state.coachEnabled,
+    analyticsEnabled: state.analyticsEnabled,
   };
 }

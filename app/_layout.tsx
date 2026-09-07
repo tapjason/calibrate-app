@@ -2,6 +2,7 @@ import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
+import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
@@ -68,6 +69,10 @@ export default function RootLayout() {
           // eslint-disable-next-line no-console
           console.warn('[digest] init failed:', e);
         });
+        // One sweep at startup so a queue built up offline doesn't wait for
+        // the next foreground. Fire-and-forget; it returns 0 and logs on any
+        // failure, including for guests, who never flush at all.
+        void flushEvents(useAuthStore.getState().userId);
         setReady(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -120,6 +125,9 @@ export default function RootLayout() {
       // happen outside this process. Foreground is the only moment we get to
       // notice them.
       void refreshBilling();
+      // Analytics rides along on the same trigger. Queued locally as it
+      // happens, pushed when the app is already doing network work anyway.
+      void flushEvents(userId);
     });
     return () => sub.remove();
   }, []);

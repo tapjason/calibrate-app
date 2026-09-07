@@ -96,14 +96,16 @@ Refine — the button must fail silently and the text must save unchanged.
 **Report:** the rewrite you got, and confirmation that the offline save was
 unaffected.
 
-### A3. Confirm the deployed migration state
+### A3. Apply the new migrations and confirm state
 
 ```sh
+npx supabase db push          # 004_entitlement_event_cursor, 005_analytics_events
 npx supabase migration list
 ```
 
-**Pass:** `001_predictions`, `002_coach_usage`, `003_entitlements` all show as
-applied remotely.
+**Pass:** `001_predictions`, `002_coach_usage`, `003_entitlements`,
+`004_entitlement_event_cursor` and `005_analytics_events` all show as applied
+remotely.
 
 ### A4. Keep `COACH_ALLOW_UNENTITLED` unset
 
@@ -313,5 +315,17 @@ Listed here only so the human checklist isn't mistaken for the whole list.
 - **The two unbuilt Plus features.** The paywall names three: Coach exists;
   advanced analytics and cosmetics don't. They get built or the copy gets cut
   before a live paywall reaches anyone.
-- **Product instrumentation.** Nothing measures D0 aha completion or share rate
-  today, so the validation checkpoint above cannot currently be answered.
+- ~~Product instrumentation.~~ Built. Once A3 is applied and people are using
+  the app, the two questions that decide the business model are:
+
+  ```sql
+  -- D0 aha completion
+  select count(*) filter (where name = 'warmup_completed')::float
+       / nullif(count(*) filter (where name = 'warmup_started'), 0) as aha_rate
+    from public.analytics_events;
+
+  -- Share rate: shares per user who did anything at all
+  select count(*) filter (where name = 'share_completed')::float
+       / nullif(count(distinct user_id), 0) as shares_per_active_user
+    from public.analytics_events;
+  ```
