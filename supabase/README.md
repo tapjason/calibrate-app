@@ -5,12 +5,16 @@ Postgres-side schema for Calibrate. The local SQLite source of truth lives in
 
 ## Applying migrations
 
-There is no Supabase CLI workflow in this repo yet. To apply a migration:
+The project is linked to the Supabase CLI (project ref `otopheizhjstoeyndcvc`).
+Migrations are applied with:
 
-1. Open the Supabase dashboard for the project.
-2. Go to **SQL Editor → New query**.
-3. Paste the contents of each file in `supabase/migrations/` in numeric order.
-4. Run it.
+```sh
+npx supabase db push        # applies anything in migrations/ not yet on remote
+npx supabase migration list # shows local vs. remote state
+```
+
+The dashboard route still works if you prefer it — **SQL Editor → New query**, paste
+each file in `supabase/migrations/` in numeric order, run.
 
 Each script is idempotent (`create table if not exists`, `drop policy if
 exists` before re-creating), so re-running on a project that already has the

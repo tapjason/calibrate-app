@@ -52,13 +52,27 @@ involved — this is the half that has to be right before any model call exists.
 **Just landed — the Coach endpoint and client:** `supabase/functions/coach/` (JWT gate,
 burst limit, durable daily cost ceiling backed by `002_coach_usage.sql`, strict payload
 parser, server-side validation) and `src/ai/coach.ts` (Plus gate → crisis pre-filter →
-call → re-validate, empty result on every failure). Not yet deployed; needs the
-migration applied and `OPENAI_API_KEY` set.
+call → re-validate, empty result on every failure). **Deployed 2026-09-07** — see
+the deploy note below.
 
 **Just landed — the Coach surface:** `src/store/coachStore.ts` (pull-model request
 state + last-good cache), `CoachPanel` and `SupportSurface` on Stats, and the Coach
 toggle in Settings, off by default per §5.6. Layer 5 and 6 of the Coach are now
-complete; what remains is deploying the function.
+complete.
+
+**Just landed — Coach deployed to Supabase (2026-09-07):** project `calibrate`
+(ref `otopheizhjstoeyndcvc`, us-east-1). All three SQL migrations applied;
+`functions deploy coach` live with `verify_jwt: true`. Verified against the L5 gate:
+401 unauthenticated, 401 malformed JWT, 403 for a signed-in user with no Plus row,
+400 for an oversized body / malformed JSON / non-numeric stat, and 400 for an
+injection string in `category` — rejected by the enum parser before reaching the
+model. The durable daily ledger increments as specified. Both Edge Functions were
+also patched to stop echoing upstream error text to callers (it leaked the AI
+provider and its billing state); they now return a generic `internal`.
+
+Still unverified: **live generation and grounding on real model output**, blocked on
+an unfunded OpenAI account (`429 no credits`). Everything up to and including the
+model call is confirmed working. `refine` remains undeployed.
 
 **Next:** billing → paywall. But note
 the validation checkpoint below: the

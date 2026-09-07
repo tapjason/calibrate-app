@@ -163,7 +163,9 @@ Deno.serve(async (req: Request) => {
     return json({ refined: clipped });
   } catch (e) {
     console.error('OpenAI request failed', e);
-    const message = e instanceof Error ? e.message : String(e);
-    return json({ error: message }, 500);
+    // Detail stays server-side. Echoing e.message to the caller leaks the
+    // upstream provider, its account billing state, and its dashboard URL to
+    // anyone holding a JWT; the client discards this body regardless.
+    return json({ error: 'internal' }, 500);
   }
 });

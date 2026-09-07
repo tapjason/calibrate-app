@@ -25,3 +25,6 @@ android/
 # Misc
 *.log
 .DS_Store
+
+# Supabase CLI local state (project ref, pooler URL, CLI version cache)
+supabase/.temp/
