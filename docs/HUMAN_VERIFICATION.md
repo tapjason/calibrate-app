@@ -24,7 +24,7 @@ and no purchase has ever been made.
 | Thing | Needed for | Notes |
 |---|---|---|
 | OpenAI account with credit | A1, A2 | Currently unfunded — every call returns `429 no credits`. A few dollars covers all testing; `gpt-4o-mini` at our token caps is fractions of a cent per call. |
-| Supabase dashboard access | A3, A4 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is already linked. |
+| Supabase dashboard access | A3, A4, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is already linked. |
 | RevenueCat account | B1 | Free tier is enough (it bills on revenue). |
 | Apple Developer account ($99/yr) | B2, D, E | Also gates APNs, sandbox purchases, and TestFlight. |
 | A Mac with Xcode + iOS simulator | C | Simulator alone is fine for C. |
@@ -124,10 +124,8 @@ npx supabase functions deploy coach            # secrets take effect on deploy
 **Pass:** a signed-in user with no `entitlements` row gets `403` from
 `/functions/v1/coach`.
 
-**Note:** the server-side Plus check reads `public.entitlements`, which nothing
-writes yet. A RevenueCat webhook into that table is the missing piece (see the
-Open Work section at the bottom) — until it exists, a real paying subscriber is
-Plus on their device but still reads as free to the Coach endpoint.
+**Note:** the server-side Plus check reads `public.entitlements`. The webhook
+that populates it is now written — deploying and wiring it is B3.
 
 ---
 
@@ -173,6 +171,31 @@ behavior rather than a bug.
 
 **Report:** the trial length you chose, and confirmation that all three
 products are "Ready to Submit".
+
+### B3. Deploy and wire the RevenueCat webhook
+
+This is what makes a purchase visible to the *server*. Without it billing works
+on the device and the Coach endpoint still answers 403 to a paying subscriber.
+
+```sh
+npx supabase db push        # applies 004_entitlement_event_cursor.sql
+npx supabase secrets set REVENUECAT_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+npx supabase functions deploy revenuecat-webhook --no-verify-jwt
+```
+
+`--no-verify-jwt` is required: RevenueCat has no Supabase session. The shared
+secret is the gate, and the function refuses every request when it isn't set.
+
+Then RevenueCat → Project settings → Integrations → Webhooks:
+- URL: `https://otopheizhjstoeyndcvc.functions.supabase.co/revenuecat-webhook`
+- Authorization header: the same secret.
+
+**Pass:** RevenueCat's "Send test event" returns 200 with
+`{"ok":true,"action":"ignored"}` (a TEST event writes nothing, by design), and
+after the sandbox purchase in D2 a row appears in `public.entitlements` with
+`is_plus = true`.
+
+**Report:** the test-event response, and the row after D2.
 
 ---
 
@@ -244,7 +267,7 @@ Expo Go — notifications and RevenueCat are both native modules.
       foreground.
 
 ### D3. Coach end-to-end as a real subscriber
-Only possible after D2 **and** the entitlements webhook exists (see Open Work).
+Only possible after D2 and B3 (the webhook is what tells the server you paid).
 - [ ] Turn Coach on in Settings; tap "Get feedback"; insights render with the
       AI label.
 - [ ] Every number in an insight matches a number on the Stats screen.
@@ -287,9 +310,6 @@ Only possible after D2 **and** the entitlements webhook exists (see Open Work).
 
 Listed here only so the human checklist isn't mistaken for the whole list.
 
-- **RevenueCat → `public.entitlements` webhook.** Without it the Coach endpoint
-  can't see that a subscriber is Plus (A4). This is the one gap between billing
-  working on-device and Plus features working end-to-end.
 - **The two unbuilt Plus features.** The paywall names three: Coach exists;
   advanced analytics and cosmetics don't. They get built or the copy gets cut
   before a live paywall reaches anyone.

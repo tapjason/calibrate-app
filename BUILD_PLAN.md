@@ -88,6 +88,18 @@ ask" have to be different values or an offline launch strips Plus from a subscri
 And nothing in the core loop routes to the paywall: every path into it is a user
 tapping something optional.
 
+**Just landed — the RevenueCat webhook:** `supabase/functions/revenuecat-webhook/`
+plus migration `004_entitlement_event_cursor.sql`. This is what makes a purchase
+visible to the *server*: until it existed, billing worked on-device while the
+Coach endpoint still answered 403 to a paying subscriber, because its Plus gate
+reads `public.entitlements` and nothing wrote there. The decision logic sits in
+its own Deno-import-free module so Jest can test it (28 cases) — `CANCELLATION`
+deliberately does not revoke (auto-renew off is not end-of-access), an
+out-of-order delivery can't resurrect a lapsed subscription, and an event for an
+anonymous RevenueCat id is acknowledged and ignored. Still needs deploying with
+`--no-verify-jwt` and wiring in the RevenueCat dashboard (see
+`docs/HUMAN_VERIFICATION.md`).
+
 **Ship blockers before a build with a live paywall reaches anyone:**
 - The paywall names three Plus features; only Coach exists. Build the advanced
   analytics and the cosmetics, or cut those bullets from
@@ -254,6 +266,8 @@ fails gracefully.
   the current user, refresh on sign-in and on foreground.
 - `supabase/functions/refine/index.ts` — OpenAI proxy. **JWT-verified**, rate-limited,
   input-capped, full error handling (see `CLAUDE.md` for the reference implementation).
+- `supabase/functions/revenuecat-webhook/index.ts` — RevenueCat → Postgres
+  entitlement mirror, so the server can gate Plus without trusting the client.
 - `supabase/functions/coach/index.ts` — Coach endpoint. JWT-verified, rate-limited,
   per-user daily cost ceiling, JSON-schema output validation, grounding validation
   (every `evidence` value must match the input), and the **crisis pre-filter that runs

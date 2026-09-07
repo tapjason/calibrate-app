@@ -29,10 +29,18 @@ schema is safe.
   `bump_coach_usage` function. RLS on with no policies: only the service role
   (i.e. the coach Edge Function) touches it.
 - `migrations/003_entitlements.sql` — server-side Plus mirror. Written by the
-  service role only (a RevenueCat webhook, once billing lands); users may read
-  their own row. Absence of a row means free.
+  service role only (the RevenueCat webhook below); users may read their own
+  row. Absence of a row means free.
+- `migrations/004_entitlement_event_cursor.sql` — `last_event_ms` cursor plus
+  `apply_entitlement_event()`, the guarded upsert the webhook calls. The guard
+  is what stops an out-of-order delivery from resurrecting a lapsed
+  subscription.
 - `functions/refine/index.ts` — Edge Function that rewrites a user-typed
   prediction via OpenAI GPT-4o-mini. Called from `src/ai/refine.ts`.
+- `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
+  keeps `public.entitlements` current. Its decision logic lives in
+  `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can
+  test it (`entitlementFromEvent.test.ts`, 28 cases).
 - `functions/coach/index.ts` — Edge Function that interprets calibration stats
   into grounded insights. Called from `src/ai/coach.ts`. Its validation logic
   is deliberately duplicated from `src/ai/coachValidate.ts` (Deno cannot import
@@ -156,3 +164,49 @@ value matching a number in the request.
 - Stats tables (`user_stats`, `category_stats`) intentionally do NOT live here
   — those are derived from predictions and rebuilt locally via
   `recomputeForUser` after every pull. See `docs/CHECKPOINT.md`.
+
+### revenuecat-webhook
+
+Keeps `public.entitlements` in step with what people own, so the Coach's
+server-side Plus gate has something true to read. Without it, billing works
+on-device and the Coach endpoint still answers 403 to a paying subscriber.
+
+**One-time setup**
+
+```sh
+# Any long random string. This IS the authentication for the endpoint.
+npx supabase secrets set REVENUECAT_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+npx supabase db push        # applies 004_entitlement_event_cursor.sql
+```
+
+**Deploy — note the flag**
+
+```sh
+npx supabase functions deploy revenuecat-webhook --no-verify-jwt
+```
+
+`--no-verify-jwt` is required and is not a weakening: RevenueCat has no
+Supabase session and cannot send a user JWT. The shared secret in the
+`Authorization` header is the gate, it is compared in length-independent time,
+and the function returns 500 to *every* request when the secret isn't
+configured rather than running unauthenticated.
+
+Then in RevenueCat → Project settings → Integrations → Webhooks, set the URL to
+`https://<project-ref>.functions.supabase.co/revenuecat-webhook` and the
+Authorization header to the same secret.
+
+**Verify**
+
+RevenueCat's "Send test event" button should return 200 with
+`{"ok":true,"action":"ignored"}` — a TEST event is acknowledged and writes
+nothing. A real sandbox purchase should then produce a row in
+`public.entitlements` with `is_plus = true`.
+
+**What it does and does not revoke**
+
+`EXPIRATION`, `REFUND` and `SUBSCRIPTION_PAUSED` revoke. `CANCELLATION` does
+**not** — that fires when someone turns off auto-renew, often weeks before
+their access ends, and revoking on it would take away time they paid for.
+`BILLING_ISSUE` doesn't revoke either, because access continues through the
+grace period. Everything else is decided by the expiry: a grant whose
+`expiration_at_ms` has already passed writes free.
