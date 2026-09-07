@@ -21,7 +21,7 @@ export default function StatsScreen() {
         categoryStats={categoryStats}
         nextBadges={nextBadges}
       />
-      <CoachPanel />
+      <CoachPanel onUpgrade={() => router.push('/paywall' as never)} />
       <View style={styles.actions}>
         <Button
           label="Share my card"

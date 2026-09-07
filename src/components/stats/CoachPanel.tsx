@@ -20,7 +20,7 @@ import { SupportSurface } from './SupportSurface';
  * The AI label is not decoration — §5.6 requires the Coach be clearly marked
  * as AI wherever it speaks.
  */
-export function CoachPanel() {
+export function CoachPanel({ onUpgrade }: { onUpgrade?: () => void } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
   const userStat = useStatsStore((s) => s.userStat);
@@ -34,12 +34,24 @@ export function CoachPanel() {
   const requestInsights = useCoachStore((s) => s.requestInsights);
 
   if (!isPlus) {
+    // Soft, contextual, and one line (§5.3). The upsell sits below the user's
+    // own numbers rather than over them, and it never blocks anything on this
+    // screen — the score, the curve, the badges, and the share card are all
+    // free and already rendered above.
     return (
       <View style={styles.wrap} testID="coach-upsell">
         <Text style={styles.heading}>Coach</Text>
         <Text style={styles.muted}>
           Plus reads your calibration numbers and tells you what they mean.
         </Text>
+        {onUpgrade && (
+          <Button
+            label="See Plus"
+            variant="secondary"
+            testID="coach-upsell-cta"
+            onPress={onUpgrade}
+          />
+        )}
       </View>
     );
   }

@@ -193,8 +193,11 @@ Same abstraction-layer discipline and Gates. New/changed items only.
 
 > **Status, 2026-08-31.** Most of this section is now built — see `BUILD_PLAN.md`'s
 > "Where the build is" for the current state, which is the one to trust. Everything
-> below is done except: RevenueCat billing, the paywall screen, `usePaywallStore`,
-> and Plus cosmetics. Two things drifted from what this section predicted:
+> below is done except **Plus cosmetics and the advanced-analytics tier** — as of
+> 2026-09-07 RevenueCat billing, the paywall screen, and the paywall store (shipped as
+> `usePaywallStore` in `src/store/paywallStore.ts`) are built. The paywall currently
+> names those two unbuilt features; they get built or the copy gets cut before it goes
+> live. Two things drifted from what this section predicted:
 > the AI endpoint shipped as **`/functions/v1/coach`**, specified in detail by
 > `COACH_AGENT.md` (there is no `/functions/v1/insights`), and the weekly digest is a
 > local Expo notification (`src/notifications/digest.ts`), not an Edge Function.

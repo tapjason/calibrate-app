@@ -28,6 +28,24 @@ interface EntitlementState {
   setEntitlement: (e: Entitlement) => Promise<void>;
 }
 
+/**
+ * Whether a mirrored entitlement is still good at `now`.
+ *
+ * The mirror is only refreshed when RevenueCat can be reached, so without this
+ * an expired annual plan would keep granting Plus forever to a device that
+ * never comes back online. A null `expires_at` means lifetime (or a plan the
+ * store reports as non-expiring) and never lapses; an unparseable date is
+ * treated as expired, because the cardinal rule is that ambiguity resolves to
+ * free.
+ */
+export function isEntitlementActive(e: Entitlement, now: Date = new Date()): boolean {
+  if (!e.is_plus) return false;
+  if (e.expires_at === null) return true;
+  const expiry = Date.parse(e.expires_at);
+  if (Number.isNaN(expiry)) return false;
+  return expiry > now.getTime();
+}
+
 export const useEntitlementStore = create<EntitlementState>((set) => ({
   entitlement: FREE_ENTITLEMENT,
   isPlus: false,
@@ -36,7 +54,10 @@ export const useEntitlementStore = create<EntitlementState>((set) => ({
   hydrate: async () => {
     try {
       const e = await getEntitlement(); // never null — resolves to FREE if absent
-      set({ entitlement: e, isPlus: e.is_plus });
+      // A lapsed mirror is not Plus. The row is left on disk as-is: a refresh
+      // from RevenueCat is what corrects it, and rewriting it here would just
+      // guess at a source of truth this layer doesn't have.
+      set({ entitlement: e, isPlus: isEntitlementActive(e) });
     } catch (err) {
       // Fail to free — a read error must never grant Plus or block startup.
       set({ entitlement: FREE_ENTITLEMENT, isPlus: false });
@@ -48,8 +69,10 @@ export const useEntitlementStore = create<EntitlementState>((set) => ({
   },
 
   setEntitlement: async (e) => {
-    // Update memory first so gating reacts immediately, then persist the mirror.
-    set({ entitlement: e, isPlus: e.is_plus });
+    // Update memory first so gating reacts immediately, then persist the
+    // mirror. The expiry check applies here too, so an already-lapsed
+    // entitlement handed in by a service can't flip gating back on.
+    set({ entitlement: e, isPlus: isEntitlementActive(e) });
     try {
       await upsertEntitlement(e);
     } catch (err) {

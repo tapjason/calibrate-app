@@ -1,12 +1,19 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { useEntitlementStore } from '@/store/entitlementStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
+import { FREE_ENTITLEMENT } from '@/types';
 
 import { SettingsView } from './SettingsView';
 
 beforeEach(() => {
   // In-memory persistence so toggling doesn't touch native AsyncStorage.
   __setPersistenceForTests({ load: async () => null, save: async () => {} });
+  useEntitlementStore.setState({
+    entitlement: FREE_ENTITLEMENT,
+    isPlus: false,
+    hydrated: true,
+  });
 });
 
 afterEach(() => {
@@ -65,5 +72,26 @@ describe('SettingsView', () => {
         coachEnabled: false,
       });
     });
+  });
+
+  it('offers a route to Plus for a free user', () => {
+    const onOpenPaywall = jest.fn();
+    render(<SettingsView onOpenPaywall={onOpenPaywall} />);
+
+    fireEvent.press(screen.getByTestId('settings-plus'));
+    expect(onOpenPaywall).toHaveBeenCalled();
+  });
+
+  // Settings is the permanent route to Restore Purchases — the paywall carries
+  // the button, and a subscriber who reinstalled has no other way in.
+  it('keeps the route available to an existing subscriber', () => {
+    useEntitlementStore.setState({
+      entitlement: { is_plus: true, source: 'annual', expires_at: null },
+      isPlus: true,
+    });
+    render(<SettingsView onOpenPaywall={jest.fn()} />);
+
+    expect(screen.getByTestId('settings-plus')).toBeTruthy();
+    expect(screen.getByText(/Active\./)).toBeTruthy();
   });
 });

@@ -2,6 +2,7 @@ import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
+import { initBilling, refreshBilling } from '@/billing/init';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
 import {
@@ -45,6 +46,14 @@ export default function RootLayout() {
         // and digest seed the correct enabled state. hydrate() swallows its
         // own errors and always resolves, so it can't block the gate.
         await useSettingsStore.getState().hydrate();
+        // Entitlement mirror + RevenueCat. Awaited only as far as the local
+        // SQLite read inside initBilling — the network half of it swallows its
+        // own errors, and a user who can't be reached by RevenueCat is a free
+        // user with a fully working app.
+        await initBilling().catch((e) => {
+          // eslint-disable-next-line no-console
+          console.warn('[billing] init failed:', e);
+        });
         // Onboarding state, needed before the first-run redirect below can
         // decide anything. Like settings, hydrate() swallows its own errors.
         await useWarmupStore.getState().hydrate();
@@ -107,6 +116,10 @@ export default function RootLayout() {
       const userId = useAuthStore.getState().userId;
       if (!userId) return;
       void syncNow(userId);
+      // Renewals, lapses, refunds, and purchases made on another device all
+      // happen outside this process. Foreground is the only moment we get to
+      // notice them.
+      void refreshBilling();
     });
     return () => sub.remove();
   }, []);

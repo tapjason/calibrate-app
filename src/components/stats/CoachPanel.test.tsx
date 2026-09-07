@@ -176,4 +176,24 @@ describe('CoachPanel — crisis path', () => {
     expect(screen.queryByText(/\d+%/)).toBeNull();
     expect(screen.queryByTestId('coach-insight-finance')).toBeNull();
   });
+
+  // The upsell is the only Plus surface a free user meets on Stats, and it
+  // sits below their own numbers — the score, curve, badges and share card
+  // above it are free and already rendered.
+  it('routes a free user to the paywall without gating anything else', () => {
+    seed({ isPlus: false });
+    const onUpgrade = jest.fn();
+    render(<CoachPanel onUpgrade={onUpgrade} />);
+
+    fireEvent.press(screen.getByTestId('coach-upsell-cta'));
+    expect(onUpgrade).toHaveBeenCalled();
+  });
+
+  it('shows no upsell button when the screen offers no route to one', () => {
+    seed({ isPlus: false });
+    render(<CoachPanel />);
+
+    expect(screen.getByTestId('coach-upsell')).toBeTruthy();
+    expect(screen.queryByTestId('coach-upsell-cta')).toBeNull();
+  });
 });

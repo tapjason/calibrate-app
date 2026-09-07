@@ -74,14 +74,39 @@ Still unverified: **live generation and grounding on real model output**, blocke
 an unfunded OpenAI account (`429 no credits`). Everything up to and including the
 model call is confirmed working. `refine` remains undeployed.
 
-**Next:** billing → paywall. But note
-the validation checkpoint below: the
-Warmup and the share loop are now both shippable, and measuring D0 aha completion and
-share rate is what decides whether freemium is the right model at all. That
-measurement is meant to happen *before* the checkout exists.
+**Just landed — billing and the paywall:** `react-native-purchases` installed,
+`src/billing/revenuecat.ts` (SDK behind a deps seam, so Expo Go / web / Jest run
+without it), `src/billing/init.ts` (mirror hydrate → configure → refresh, plus the
+sign-in handoff and a foreground refresh), `src/store/paywallStore.ts`, the paywall
+screen at `app/paywall.tsx`, and the two soft entry points — the Coach upsell on
+Stats and a Plus row in Settings. `entitlementStore` now expires a stale mirror, so
+a lapsed plan can't grant Plus to a device that never comes back online.
+
+Two things this deliberately does *not* do. `fetchEntitlement()` returns **null**
+when it can't reach RevenueCat rather than collapsing to free — "free" and "couldn't
+ask" have to be different values or an offline launch strips Plus from a subscriber.
+And nothing in the core loop routes to the paywall: every path into it is a user
+tapping something optional.
+
+**Ship blockers before a build with a live paywall reaches anyone:**
+- The paywall names three Plus features; only Coach exists. Build the advanced
+  analytics and the cosmetics, or cut those bullets from
+  `src/components/paywall/paywallCopy.ts`.
+- Products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) and the `plus`
+  entitlement have to exist in App Store Connect and the RevenueCat dashboard, and
+  the public SDK key has to be in the build's env. Until then the paywall renders
+  its unavailable state, which is the correct behavior, not a bug.
+- The sandbox-purchase gate below needs a human and a device.
+
+**Next:** the validation checkpoint. The Warmup and the share loop are both
+shippable, and measuring D0 aha completion and share rate is what decides whether
+freemium is the right model at all — that measurement is meant to happen *before*
+the checkout goes live. After it: Plus cosmetics and advanced analytics (the two
+unbuilt paywall promises), then L7.
 
 Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
-gates, and re-verifying market pricing before the paywall ships.
+gates, the App Store Connect / RevenueCat product setup, and the trial-length call
+(17–21 days, not 14 — see `GROWTH_AND_MONETIZATION.md` §4).
 
 ---
 
@@ -223,7 +248,10 @@ fails gracefully.
 - `src/share/export.ts` — rasterize a share card to PNG for the OS share sheet.
 - `src/ai/refine.ts` — call `/functions/v1/refine`; fail silently.
 - `src/ai/coach.ts` — call `/functions/v1/coach`; fail silently; Plus-gated.
-- `src/billing/revenuecat.ts` — configure SDK, purchase, restore, entitlement sync.
+- `src/billing/revenuecat.ts` — configure SDK, purchase, restore, entitlement sync,
+  all behind a deps seam and all failing to FREE.
+- `src/billing/init.ts` — startup wiring: hydrate the mirror, configure RevenueCat for
+  the current user, refresh on sign-in and on foreground.
 - `supabase/functions/refine/index.ts` — OpenAI proxy. **JWT-verified**, rate-limited,
   input-capped, full error handling (see `CLAUDE.md` for the reference implementation).
 - `supabase/functions/coach/index.ts` — Coach endpoint. JWT-verified, rate-limited,
@@ -281,8 +309,12 @@ sandbox subscribe → Coach cards and cosmetics unlock.
 **Build:**
 - iOS permissions/entitlements in `app.json` (notifications).
 - Push notification credentials, deep-link config verified on a device.
-- IAP products (monthly / annual / lifetime) configured in App Store Connect and the
-  RevenueCat dashboard; 14-day trial on annual.
+- IAP products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) configured in App
+  Store Connect and mapped to the `plus` entitlement in the RevenueCat dashboard;
+  free trial on annual. **17–21 days, not 14** — the measured conversion cliff sits
+  between "under 4 days" and "17–32 days", and 14 falls in the unmeasured gap
+  (`GROWTH_AND_MONETIZATION.md` §4). The app renders whatever trial the store
+  reports, so this is a dashboard decision, not a code change.
 - Subscription + AI privacy declarations; app icon, splash, screenshots.
 - `eas build --platform ios` → TestFlight → App Store submission.
 

@@ -1,5 +1,7 @@
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
+import { Button } from '@/components/ui/Button';
+import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 /**
@@ -13,7 +15,10 @@ import { useSettingsStore } from '@/store/settingsStore';
  * Pure presentation: reads + writes the store, no other logic. The setters
  * persist to AsyncStorage and swallow their own errors.
  */
-export function SettingsView() {
+export function SettingsView({
+  onOpenPaywall,
+}: { onOpenPaywall?: () => void } = {}) {
+  const isPlus = useEntitlementStore((s) => s.isPlus);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
   const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
   const setNotificationsEnabled = useSettingsStore(
@@ -25,6 +30,31 @@ export function SettingsView() {
 
   return (
     <View style={styles.wrap}>
+      {/*
+        Subscription status lives at the top because it is also where a
+        subscriber goes to restore a purchase after a reinstall — the paywall
+        carries the Restore button, and this is the only permanent route to it
+        for someone who has already paid.
+      */}
+      <View style={styles.row}>
+        <View style={styles.rowText}>
+          <Text style={styles.rowLabel}>Calibrate Plus</Text>
+          <Text style={styles.rowDescription}>
+            {isPlus
+              ? 'Active. Coach and advanced analytics are unlocked.'
+              : 'Coach, advanced analytics, and extra card themes.'}
+          </Text>
+        </View>
+        {onOpenPaywall && (
+          <Button
+            label={isPlus ? 'Manage' : 'See Plus'}
+            variant="secondary"
+            onPress={onOpenPaywall}
+            testID="settings-plus"
+          />
+        )}
+      </View>
+
       <ToggleRow
         label="Notifications"
         description="Resolution reminders on due dates and the Sunday weekly digest."
