@@ -45,12 +45,19 @@ export const EVENT_NAMES = [
 
   // --- Plus usage mix (§7, metric 4: AI-heavy vs analytics/cosmetic) --------
   'coach_requested',
+  /** The Plus analytics tier being used — the non-AI half of the split. */
+  'data_exported',
 ] as const;
 
 export type EventName = (typeof EVENT_NAMES)[number];
 
 /** Where a paywall view came from. Enum, so no free-form strings leak in. */
-export const PAYWALL_SOURCES = ['stats_coach', 'settings', 'deep_link'] as const;
+export const PAYWALL_SOURCES = [
+  'stats_coach',
+  'stats_trends',
+  'settings',
+  'deep_link',
+] as const;
 export type PaywallSource = (typeof PAYWALL_SOURCES)[number];
 
 /** Which share surface produced the event. */
@@ -77,6 +84,7 @@ export const EVENT_PROPS = {
   purchase_completed: ['plan_annual', 'plan_monthly', 'plan_lifetime', 'trial'],
   purchase_abandoned: [],
   coach_requested: ['insight_count'],
+  data_exported: ['row_count'],
 } as const satisfies Record<EventName, readonly string[]>;
 
 export type EventProps = Partial<Record<string, EventPropValue>>;

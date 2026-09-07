@@ -225,7 +225,12 @@ Tick each:
       diagonal.
 - [ ] History filters by category.
 - [ ] Share → identity card, This week, This year all render and export.
-- [ ] Settings toggles work; Coach is **off** by default.
+- [ ] Settings toggles work; Coach is **off** by default, usage stats **on**.
+- [ ] Stats shows the Trends section locked for a free user, and tapping
+      "See Plus" opens the paywall.
+- [ ] As Plus (after D2): Trends renders months and categories, and "Export CSV"
+      produces a file the share sheet accepts. Open it in a spreadsheet and
+      confirm a title starting with `=` shows as text, not a formula.
 - [ ] Stats shows the Coach upsell (free user), and tapping "See Plus" opens
       the paywall.
 - [ ] Settings → "See Plus" opens the paywall.
@@ -312,8 +317,8 @@ Only possible after D2 and B3 (the webhook is what tells the server you paid).
 
 Listed here only so the human checklist isn't mistaken for the whole list.
 
-- **The two unbuilt Plus features.** The paywall names three: Coach exists;
-  advanced analytics and cosmetics don't. They get built or the copy gets cut
+- **The last unbuilt Plus feature.** The paywall names three: Coach and Trends
+  exist as of 2026-09-07; cosmetics don't. That gets built or the copy gets cut
   before a live paywall reaches anyone.
 - ~~Product instrumentation.~~ Built. Once A3 is applied and people are using
   the app, the two questions that decide the business model are:

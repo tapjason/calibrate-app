@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
+import { TrendsPanel } from '@/components/stats/TrendsPanel';
 import { Button } from '@/components/ui/Button';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -23,6 +24,9 @@ export default function StatsScreen() {
       />
       <CoachPanel
         onUpgrade={() => router.push('/paywall?from=stats_coach' as never)}
+      />
+      <TrendsPanel
+        onUpgrade={() => router.push('/paywall?from=stats_trends' as never)}
       />
       <View style={styles.actions}>
         <Button

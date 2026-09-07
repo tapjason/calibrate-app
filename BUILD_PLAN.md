@@ -115,9 +115,22 @@ Events queue locally, flush on foreground alongside sync, never flush for a
 guest, and the queue is capped so a permanently-offline install can't grow it
 without bound.
 
+**Just landed — the Plus analytics tier:** `src/engine/trends.ts` (monthly
+calibration, per-category drill-down, confidence-range coverage, recent-vs-earlier
+delta — all pure, all carrying their own min-N flags), the CSV export
+(`src/export/`), and `TrendsPanel` on Stats. This is the sticky non-AI half of
+Plus that GROWTH §5.3 asks for: AI converts but churns faster, and a long
+calibration record is worth more the longer someone keeps logging. A free user
+sees the section with its numbers withheld rather than nothing at all.
+
+Two details that carry the project's rules into the new surface: a provisional
+month or category shows a resolution count, never a score, and the CSV escapes
+leading `=`, `+`, `-` and `@` so an exported prediction title can't execute as a
+formula in Excel or Sheets.
+
 **Ship blockers before a build with a live paywall reaches anyone:**
-- The paywall names three Plus features; only Coach exists. Build the advanced
-  analytics and the cosmetics, or cut those bullets from
+- The paywall names three Plus features; Coach and Trends now exist, **cosmetics
+  do not**. Build them or cut that bullet from
   `src/components/paywall/paywallCopy.ts`.
 - Products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) and the `plus`
   entitlement have to exist in App Store Connect and the RevenueCat dashboard, and
@@ -226,6 +239,9 @@ queries.
   - Badge evaluation — requires **both** the score threshold and the resolution
     minimum (see `CLAUDE.md` badge table).
   - Bucket-coverage metric (how much of the 0–100 range the user has actually used).
+- `src/engine/trends.ts` — the Plus analytics math: month-by-month calibration,
+  per-category standing sorted worst-first (provisional categories last), range
+  coverage, and the recent-vs-earlier delta.
 - `src/engine/warmup.ts` — scores the onboarding quiz by reusing the same bucketing
   and error functions.
 - `src/engine/patterns.ts` — **deterministic** pattern derivations (day-of-week

@@ -23,6 +23,7 @@ import {
   nextBadge,
 } from '@/engine/calibration';
 import { computeStreak } from '@/engine/streak';
+import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import type {
   CalibrationResult,
   Category,
@@ -48,6 +49,15 @@ interface StatsState {
    * directly, keeping the L6 → L4 → L3 dependency arrow intact.
    */
   calibration: CalibrationResult;
+  /**
+   * The Plus analytics tier's numbers — monthly trend, category drill-down,
+   * range coverage. Derived here for the same reason as `calibration`: the
+   * engine call belongs in L4 so L6 never imports L3. Computed for everyone
+   * regardless of entitlement; the *surface* is what Plus gates, and gating
+   * the arithmetic would only mean recomputing it at the moment someone
+   * subscribes.
+   */
+  trends: TrendSummary;
   /** Pull persisted stats from the DB into the store and refresh buckets. */
   loadForUser: (userId: string) => Promise<void>;
   /** Re-run the engine over all of a user's predictions and persist. */
@@ -55,6 +65,8 @@ interface StatsState {
 }
 
 const EMPTY_CALIBRATION: CalibrationResult = { rating: 0, buckets: [] };
+
+const EMPTY_TRENDS: TrendSummary = buildTrendSummary([]);
 
 /** Map each category to its next-badge target (engine call lives here, in L4). */
 function deriveNextBadges(
@@ -84,6 +96,7 @@ export const useStatsStore = create<StatsState>((set) => ({
   categoryStats: [],
   nextBadges: {},
   calibration: EMPTY_CALIBRATION,
+  trends: EMPTY_TRENDS,
 
   loadForUser: async (userId) => {
     // Persisted scalars + an on-demand bucket recompute. The buckets aren't
@@ -99,6 +112,7 @@ export const useStatsStore = create<StatsState>((set) => ({
       categoryStats,
       nextBadges: deriveNextBadges(categoryStats),
       calibration: computeCalibration(resolved),
+      trends: buildTrendSummary(resolved),
     });
   },
 
@@ -154,6 +168,7 @@ export const useStatsStore = create<StatsState>((set) => ({
       categoryStats,
       nextBadges: deriveNextBadges(categoryStats),
       calibration: userCalc,
+      trends: buildTrendSummary(resolved),
     });
   },
 }));

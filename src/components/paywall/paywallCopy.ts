@@ -25,15 +25,15 @@ export const PLAN_TAGLINES: Record<PlanId, string> = {
  * What Plus actually buys. Deliberately short, and deliberately led by the
  * Coach — §5.3 makes the insight tier the conversion hook.
  *
- * **Ship blocker.** Only the Coach bullet is built today. The analytics and
- * cosmetics bullets describe the intended tier, and they must either exist or
- * come out of this list before a build with a live paywall reaches anyone —
- * charging for two of three named features is a refund request with extra
- * steps. See BUILD_PLAN.md L6/L7.
+ * **Ship blocker (one left).** Coach and the advanced analytics both exist as
+ * of 2026-09-07. Cosmetics do not: that bullet must either be built or come
+ * out of this list before a build with a live paywall reaches anyone —
+ * charging for a named feature that doesn't exist is a refund request with
+ * extra steps. See BUILD_PLAN.md L6/L7.
  */
 export const PLUS_FEATURES: readonly string[] = [
   'Coach — AI feedback that reads your calibration numbers and tells you what they mean',
-  'Advanced analytics — long-range trends, cross-category drill-down, CSV export',
+  'Trends — your calibration month by month, per-category drill-down, and a CSV export of everything',
   'Extra card and badge themes for your share cards and Wrapped',
 ];
 
