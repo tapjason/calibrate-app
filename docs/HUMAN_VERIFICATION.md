@@ -225,6 +225,9 @@ Tick each:
       diagonal.
 - [ ] History filters by category.
 - [ ] Share → identity card, This week, This year all render and export.
+- [ ] The theme picker shows locks on the Plus themes for a free user, tapping
+      one opens the paywall, and the free theme still exports a full-quality
+      card.
 - [ ] Settings toggles work; Coach is **off** by default, usage stats **on**.
 - [ ] Stats shows the Trends section locked for a free user, and tapping
       "See Plus" opens the paywall.
@@ -317,9 +320,9 @@ Only possible after D2 and B3 (the webhook is what tells the server you paid).
 
 Listed here only so the human checklist isn't mistaken for the whole list.
 
-- **The last unbuilt Plus feature.** The paywall names three: Coach and Trends
-  exist as of 2026-09-07; cosmetics don't. That gets built or the copy gets cut
-  before a live paywall reaches anyone.
+- ~~The unbuilt Plus features.~~ All three the paywall names now exist: Coach,
+  Trends, and the card themes. Keep it that way — a bullet on that screen the
+  app doesn't do is a refund request with extra steps.
 - ~~Product instrumentation.~~ Built. Once A3 is applied and people are using
   the app, the two questions that decide the business model are:
 

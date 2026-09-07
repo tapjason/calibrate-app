@@ -71,6 +71,7 @@ describe('SettingsView', () => {
         aiRefineEnabled: true,
         coachEnabled: false,
       analyticsEnabled: true,
+      cardThemeId: 'midnight',
       });
     });
   });

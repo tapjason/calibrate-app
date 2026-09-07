@@ -104,6 +104,7 @@ describe('settingsStore: setters persist', () => {
       aiRefineEnabled: true,
       coachEnabled: false,
       analyticsEnabled: true,
+      cardThemeId: 'midnight',
     });
   });
 
@@ -119,6 +120,7 @@ describe('settingsStore: setters persist', () => {
       aiRefineEnabled: false,
       coachEnabled: false,
       analyticsEnabled: true,
+      cardThemeId: 'midnight',
     });
   });
 

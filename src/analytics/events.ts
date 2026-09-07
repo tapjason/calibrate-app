@@ -55,6 +55,7 @@ export type EventName = (typeof EVENT_NAMES)[number];
 export const PAYWALL_SOURCES = [
   'stats_coach',
   'stats_trends',
+  'share_theme',
   'settings',
   'deep_link',
 ] as const;

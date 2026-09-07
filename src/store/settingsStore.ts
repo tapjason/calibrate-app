@@ -10,6 +10,7 @@
 import { create } from 'zustand';
 
 import { clearEvents } from '@/db/analytics';
+import { DEFAULT_THEME } from '@/constants/cardThemes';
 
 export interface StoredSettings {
   notificationsEnabled: boolean;
@@ -21,6 +22,12 @@ export interface StoredSettings {
    * (src/analytics/events.ts). On by default; turning it off clears the queue.
    */
   analyticsEnabled: boolean;
+  /**
+   * Chosen share-card theme id (src/constants/cardThemes.ts). Cosmetic only —
+   * an id the user is not entitled to resolves back to the free theme at
+   * render time, so a lapsed subscriber keeps every card, in the free look.
+   */
+  cardThemeId: string;
 }
 
 /** Injectable persistence so tests don't touch the native AsyncStorage. */
@@ -38,6 +45,7 @@ interface SettingsState extends StoredSettings {
   setAiRefineEnabled: (enabled: boolean) => Promise<void>;
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
+  setCardThemeId: (id: string) => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -57,6 +65,7 @@ const DEFAULTS: StoredSettings = {
   aiRefineEnabled: true,
   coachEnabled: false,
   analyticsEnabled: true,
+  cardThemeId: DEFAULT_THEME.id,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -118,6 +127,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
           analyticsEnabled:
             stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
+          cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
         });
       }
     } catch (e) {
@@ -151,6 +161,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     // goes too, not just future events. clearEvents swallows its own errors.
     if (!enabled) await clearEvents();
   },
+
+  setCardThemeId: async (id) => {
+    set({ cardThemeId: id });
+    await persist(snapshot(get()));
+  },
 }));
 
 /**
@@ -164,5 +179,6 @@ function snapshot(state: StoredSettings): StoredSettings {
     aiRefineEnabled: state.aiRefineEnabled,
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,
+    cardThemeId: state.cardThemeId,
   };
 }

@@ -3,10 +3,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { track } from '@/analytics/track';
+import { resolveTheme } from '@/constants/cardThemes';
 import { shareCard, type ShareOutcome } from '@/share/export';
+import { useEntitlementStore } from '@/store/entitlementStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 
 import { IdentityCard } from './IdentityCard';
+import { ThemePicker } from './ThemePicker';
 import { buildShareCard } from './cardCopy';
 
 const MESSAGES: Record<Exclude<ShareOutcome, 'shared'>, string> = {
@@ -21,14 +25,19 @@ const MESSAGES: Record<Exclude<ShareOutcome, 'shared'>, string> = {
  * Free forever, per CLAUDE.md — this component checks no entitlement, and it
  * never should. The free tier is the marketing budget.
  */
-export function ShareCardPanel() {
+export function ShareCardPanel({ onUpgrade }: { onUpgrade?: () => void } = {}) {
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
+  const isPlus = useEntitlementStore((s) => s.isPlus);
+  const cardThemeId = useSettingsStore((s) => s.cardThemeId);
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const card = buildShareCard(userStat, categoryStats);
+  // resolveTheme, not a raw lookup: a Plus theme held by someone who has
+  // lapsed falls back to the free one instead of erroring or rendering blank.
+  const theme = resolveTheme(cardThemeId, isPlus);
 
   if (!card) {
     return (
@@ -58,7 +67,9 @@ export function ShareCardPanel() {
 
   return (
     <View style={styles.wrap} testID="share-panel">
-      <IdentityCard ref={cardRef} card={card} />
+      <IdentityCard ref={cardRef} card={card} theme={theme} />
+
+      <ThemePicker onUpgrade={onUpgrade} />
 
       <Button
         label={sharing ? 'Preparing…' : 'Share my card'}

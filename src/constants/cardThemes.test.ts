@@ -1,0 +1,60 @@
+import {
+  CARD_THEMES,
+  DEFAULT_THEME,
+  WRAPPED_DEFAULT_THEME,
+  availableThemes,
+  resolveTheme,
+} from './cardThemes';
+
+describe('the theme catalogue', () => {
+  // CLAUDE.md: nothing that produces a shareable artifact is ever paywalled.
+  // A free user must always have a working theme.
+  it('keeps the default theme free', () => {
+    expect(DEFAULT_THEME.plus).toBe(false);
+    expect(WRAPPED_DEFAULT_THEME.plus).toBe(false);
+    expect(availableThemes(false)).toContainEqual(DEFAULT_THEME);
+  });
+
+  it('offers extra themes to Plus', () => {
+    expect(availableThemes(true).length).toBeGreaterThan(
+      availableThemes(false).length,
+    );
+  });
+
+  it('has unique ids', () => {
+    const ids = CARD_THEMES.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('gives every theme a full palette', () => {
+    for (const theme of CARD_THEMES) {
+      for (const key of ['background', 'foreground', 'muted', 'accent', 'divider'] as const) {
+        expect(theme[key]).toMatch(/^#[0-9a-f]{6}$/i);
+      }
+    }
+  });
+});
+
+describe('resolveTheme', () => {
+  it('returns a chosen theme for a subscriber', () => {
+    expect(resolveTheme('forest', true).id).toBe('forest');
+  });
+
+  // A lapsed subscriber keeps every card they can make, just in the free look.
+  // Never an error, never a blank card.
+  it('falls back to free when the user is not entitled', () => {
+    expect(resolveTheme('forest', false)).toEqual(DEFAULT_THEME);
+  });
+
+  it.each([
+    ['an unknown id', 'chartreuse'],
+    ['null', null],
+    ['undefined', undefined],
+  ])('falls back to free for %s', (_label, id) => {
+    expect(resolveTheme(id, true)).toEqual(DEFAULT_THEME);
+  });
+
+  it('lets a free user keep using the free theme', () => {
+    expect(resolveTheme(DEFAULT_THEME.id, false)).toEqual(DEFAULT_THEME);
+  });
+});

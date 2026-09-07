@@ -3,12 +3,19 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { BADGE_META } from '@/constants/badges';
 import { APP_NAME } from '@/constants/app';
+import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import type { ShareCard } from '@/types';
 
 import { shareHeadline, shareSubline } from './cardCopy';
 
 interface IdentityCardProps {
   card: ShareCard;
+  /**
+   * Cosmetic only (Plus). Defaults to the free theme, so this card renders and
+   * exports identically whether or not anyone has paid — the artifact is never
+   * gated, only its palette.
+   */
+  theme?: CardTheme;
 }
 
 /**
@@ -26,13 +33,22 @@ interface IdentityCardProps {
  * Forwards a ref so the screen can hand the whole card to captureCard().
  */
 export const IdentityCard = forwardRef<View, IdentityCardProps>(
-  function IdentityCard({ card }, ref) {
+  function IdentityCard({ card, theme = DEFAULT_THEME }, ref) {
     return (
-      <View ref={ref} style={styles.card} testID="identity-card" collapsable={false}>
-        <Text style={styles.eyebrow}>My calibration</Text>
+      <View
+        ref={ref}
+        style={[styles.card, { backgroundColor: theme.background }]}
+        testID="identity-card"
+        collapsable={false}
+      >
+        <Text style={[styles.eyebrow, { color: theme.accent }]}>My calibration</Text>
 
-        <Text style={styles.headline}>{shareHeadline(card)}</Text>
-        <Text style={styles.subline}>{shareSubline(card)}</Text>
+        <Text style={[styles.headline, { color: theme.foreground }]}>
+          {shareHeadline(card)}
+        </Text>
+        <Text style={[styles.subline, { color: theme.muted }]}>
+          {shareSubline(card)}
+        </Text>
 
         <View style={styles.badges}>
           {card.categories.map((c) => {
@@ -52,9 +68,13 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(
           })}
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerMark}>{APP_NAME}</Text>
-          <Text style={styles.footerHook}>Find out where your judgment holds up</Text>
+        <View style={[styles.footer, { borderTopColor: theme.divider }]}>
+          <Text style={[styles.footerMark, { color: theme.foreground }]}>
+            {APP_NAME}
+          </Text>
+          <Text style={[styles.footerHook, { color: theme.accent }]}>
+            Find out where your judgment holds up
+          </Text>
         </View>
       </View>
     );
@@ -63,20 +83,18 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#0f172a',
     borderRadius: 20,
     gap: 10,
     padding: 24,
   },
   eyebrow: {
-    color: '#64748b',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  headline: { color: '#f8fafc', fontSize: 26, fontWeight: '800', lineHeight: 32 },
-  subline: { color: '#94a3b8', fontSize: 14 },
+  headline: { fontSize: 26, fontWeight: '800', lineHeight: 32 },
+  subline: { fontSize: 14 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
   chip: {
     alignItems: 'center',
@@ -89,12 +107,11 @@ const styles = StyleSheet.create({
   chipEmoji: { fontSize: 13 },
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
   footer: {
-    borderTopColor: '#1e293b',
     borderTopWidth: 1,
     gap: 2,
     marginTop: 14,
     paddingTop: 14,
   },
-  footerMark: { color: '#e2e8f0', fontSize: 14, fontWeight: '700' },
-  footerHook: { color: '#64748b', fontSize: 12 },
+  footerMark: { fontSize: 14, fontWeight: '700' },
+  footerHook: { fontSize: 12 },
 });

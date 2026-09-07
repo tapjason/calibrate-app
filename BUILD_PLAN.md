@@ -128,10 +128,17 @@ month or category shows a resolution count, never a score, and the CSV escapes
 leading `=`, `+`, `-` and `@` so an exported prediction title can't execute as a
 formula in Excel or Sheets.
 
+**Just landed — the cosmetic tier:** `src/constants/cardThemes.ts` and the
+`ThemePicker` on the Share screen. Five themes; the default is free and every
+card exports at full quality in it, so the artifact is never paywalled — Plus
+sells the palette, not the card. `resolveTheme()` falls back to the free theme
+for an unknown id *and* for a Plus theme held by someone who has lapsed, so a
+former subscriber keeps every card they can make, in the free look. Tapping a
+locked swatch opens the paywall rather than doing nothing.
+
+That closes the paywall's three promises: Coach, Trends, themes.
+
 **Ship blockers before a build with a live paywall reaches anyone:**
-- The paywall names three Plus features; Coach and Trends now exist, **cosmetics
-  do not**. Build them or cut that bullet from
-  `src/components/paywall/paywallCopy.ts`.
 - Products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) and the `plus`
   entitlement have to exist in App Store Connect and the RevenueCat dashboard, and
   the public SDK key has to be in the build's env. Until then the paywall renders
@@ -341,7 +348,9 @@ touches the SQLite client or the engine directly.
 - Coach insight cards on Stats (Plus), plus the support surface for the
   `safe: false` path.
 - Soft contextual upsell on Stats; AI + Coach toggles in Settings.
-- Cosmetic theming for cards and badges (Plus).
+- Cosmetic theming for cards (Plus) — `src/constants/cardThemes.ts`, applied by
+  `IdentityCard` / `WrappedCard` and chosen in `ThemePicker`. The free theme is
+  never gated.
 
 **Depends on:** Layers 1–5.
 

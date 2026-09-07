@@ -4,7 +4,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { buildWrapped, type WrappedSpan } from '@/engine/wrapped';
 import { Button } from '@/components/ui/Button';
 import { track } from '@/analytics/track';
+import { resolveTheme, WRAPPED_DEFAULT_THEME } from '@/constants/cardThemes';
 import { shareCard, type ShareOutcome } from '@/share/export';
+import { useEntitlementStore } from '@/store/entitlementStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { usePredictionStore } from '@/store/predictionStore';
 
 import { WrappedCard } from './WrappedCard';
@@ -28,6 +31,8 @@ const MESSAGES: Record<Exclude<ShareOutcome, 'shared'>, string> = {
  */
 export function WrappedPanel({ span }: WrappedPanelProps) {
   const resolved = usePredictionStore((s) => s.resolved);
+  const isPlus = useEntitlementStore((s) => s.isPlus);
+  const cardThemeId = useSettingsStore((s) => s.cardThemeId);
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -38,6 +43,12 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     () => buildWrapped(resolved, span, new Date()),
     [resolved, span],
   );
+
+  // Wrapped's own free look is indigo, so an unthemed card keeps it; a chosen
+  // Plus theme applies to both cards, which is what makes it feel like a look
+  // rather than a per-screen setting.
+  const chosen = resolveTheme(cardThemeId, isPlus);
+  const theme = chosen.plus ? chosen : WRAPPED_DEFAULT_THEME;
 
   const onShare = async () => {
     setSharing(true);
@@ -57,7 +68,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
 
   return (
     <View style={styles.wrap} testID={`wrapped-panel-${span}`}>
-      <WrappedCard ref={cardRef} summary={summary} />
+      <WrappedCard ref={cardRef} summary={summary} theme={theme} />
 
       <Button
         label={sharing ? 'Preparing…' : 'Share my recap'}

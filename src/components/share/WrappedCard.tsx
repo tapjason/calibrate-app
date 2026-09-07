@@ -3,12 +3,15 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { APP_NAME } from '@/constants/app';
 import { BADGE_META } from '@/constants/badges';
+import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import { wrappedStory } from './wrappedCopy';
 
 interface WrappedCardProps {
   summary: WrappedSummary;
+  /** Cosmetic only (Plus); the free theme is the default. */
+  theme?: CardTheme;
 }
 
 /**
@@ -23,21 +26,32 @@ interface WrappedCardProps {
  * four resolutions.
  */
 export const WrappedCard = forwardRef<View, WrappedCardProps>(
-  function WrappedCard({ summary }, ref) {
+  function WrappedCard({ summary, theme = WRAPPED_DEFAULT_THEME }, ref) {
     const story = wrappedStory(summary);
 
     return (
-      <View ref={ref} style={styles.card} testID="wrapped-card" collapsable={false}>
-        <Text style={styles.eyebrow}>{story.title}</Text>
-        <Text style={styles.stat}>{story.stat}</Text>
+      <View
+        ref={ref}
+        style={[styles.card, { backgroundColor: theme.background }]}
+        testID="wrapped-card"
+        collapsable={false}
+      >
+        <Text style={[styles.eyebrow, { color: theme.accent }]}>{story.title}</Text>
+        <Text style={[styles.stat, { color: theme.foreground }]}>{story.stat}</Text>
 
         {story.verdict && (
-          <Text style={styles.verdict} testID="wrapped-verdict">
+          <Text
+            style={[styles.verdict, { color: theme.muted }]}
+            testID="wrapped-verdict"
+          >
             {story.verdict}
           </Text>
         )}
         {story.provisionalNote && (
-          <Text style={styles.provisional} testID="wrapped-provisional">
+          <Text
+            style={[styles.provisional, { color: theme.accent }]}
+            testID="wrapped-provisional"
+          >
             {story.provisionalNote}
           </Text>
         )}
@@ -63,23 +77,33 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
         )}
 
         {summary.boldest_hit && (
-          <Text style={styles.line} testID="wrapped-boldest-hit">
+          <Text
+            style={[styles.line, { color: theme.muted }]}
+            testID="wrapped-boldest-hit"
+          >
             Boldest call that landed · {summary.boldest_hit.confidence}% ·{' '}
             {summary.boldest_hit.title}
           </Text>
         )}
         {summary.biggest_miss && (
-          <Text style={styles.line} testID="wrapped-biggest-miss">
+          <Text
+            style={[styles.line, { color: theme.muted }]}
+            testID="wrapped-biggest-miss"
+          >
             Surest thing that didn&apos;t · {summary.biggest_miss.confidence}% ·{' '}
             {summary.biggest_miss.title}
           </Text>
         )}
 
-        <Text style={styles.note}>{story.note}</Text>
+        <Text style={[styles.note, { color: theme.muted }]}>{story.note}</Text>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerMark}>{APP_NAME}</Text>
-          <Text style={styles.footerHook}>Find out where your judgment holds up</Text>
+        <View style={[styles.footer, { borderTopColor: theme.divider }]}>
+          <Text style={[styles.footerMark, { color: theme.foreground }]}>
+            {APP_NAME}
+          </Text>
+          <Text style={[styles.footerHook, { color: theme.accent }]}>
+            Find out where your judgment holds up
+          </Text>
         </View>
       </View>
     );
@@ -88,21 +112,19 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1e1b4b',
     borderRadius: 20,
     gap: 8,
     padding: 24,
   },
   eyebrow: {
-    color: '#a5b4fc',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  stat: { color: '#f8fafc', fontSize: 24, fontWeight: '800', lineHeight: 30 },
-  verdict: { color: '#c7d2fe', fontSize: 15, lineHeight: 21 },
-  provisional: { color: '#818cf8', fontSize: 14, lineHeight: 20 },
+  stat: { fontSize: 24, fontWeight: '800', lineHeight: 30 },
+  verdict: { fontSize: 15, lineHeight: 21 },
+  provisional: { fontSize: 14, lineHeight: 20 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   chip: {
     alignItems: 'center',
@@ -114,15 +136,14 @@ const styles = StyleSheet.create({
   },
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
   chipCount: { color: '#6b7280', fontSize: 12, fontWeight: '600' },
-  line: { color: '#a5b4fc', fontSize: 13, lineHeight: 19 },
-  note: { color: '#c7d2fe', fontSize: 13, lineHeight: 19, marginTop: 4 },
+  line: { fontSize: 13, lineHeight: 19 },
+  note: { fontSize: 13, lineHeight: 19, marginTop: 4 },
   footer: {
-    borderTopColor: '#312e81',
     borderTopWidth: 1,
     gap: 2,
     marginTop: 12,
     paddingTop: 14,
   },
-  footerMark: { color: '#e2e8f0', fontSize: 14, fontWeight: '700' },
-  footerHook: { color: '#818cf8', fontSize: 12 },
+  footerMark: { fontSize: 14, fontWeight: '700' },
+  footerHook: { fontSize: 12 },
 });

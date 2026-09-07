@@ -65,7 +65,13 @@ export default function ShareScreen() {
           ))}
         </View>
 
-        {tab === 'card' ? <ShareCardPanel /> : <WrappedPanel span={tab} />}
+        {tab === 'card' ? (
+          <ShareCardPanel
+            onUpgrade={() => router.push('/paywall?from=share_theme' as never)}
+          />
+        ) : (
+          <WrappedPanel span={tab} />
+        )}
 
         <Button label="Done" variant="secondary" onPress={() => router.back()} />
       </ScrollView>

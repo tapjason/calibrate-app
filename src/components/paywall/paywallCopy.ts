@@ -25,16 +25,15 @@ export const PLAN_TAGLINES: Record<PlanId, string> = {
  * What Plus actually buys. Deliberately short, and deliberately led by the
  * Coach — §5.3 makes the insight tier the conversion hook.
  *
- * **Ship blocker (one left).** Coach and the advanced analytics both exist as
- * of 2026-09-07. Cosmetics do not: that bullet must either be built or come
- * out of this list before a build with a live paywall reaches anyone —
- * charging for a named feature that doesn't exist is a refund request with
- * extra steps. See BUILD_PLAN.md L6/L7.
+ * All three exist as of 2026-09-07 — Coach (`src/ai/coach.ts`), Trends
+ * (`src/engine/trends.ts` + the CSV export), and the card themes
+ * (`src/constants/cardThemes.ts`). Keep it that way: a bullet here that the
+ * app doesn't do is a refund request with extra steps.
  */
 export const PLUS_FEATURES: readonly string[] = [
   'Coach — AI feedback that reads your calibration numbers and tells you what they mean',
   'Trends — your calibration month by month, per-category drill-down, and a CSV export of everything',
-  'Extra card and badge themes for your share cards and Wrapped',
+  'Extra themes for your share cards and Wrapped — the cards themselves stay free',
 ];
 
 /**
