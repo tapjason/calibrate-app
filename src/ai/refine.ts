@@ -1,6 +1,14 @@
 // AI refine client. Calls the `refine` Edge Function to rewrite a typed
 // prediction into a concise yes/no-resolvable form.
 //
+// *** DORMANT — refine is cut from the first release. ***
+// `REFINE_ENABLED` in `src/constants/app.ts` is false, so nothing calls this
+// module in a build, and the Edge Function is not deployed. The code and its
+// tests are kept intact rather than deleted: what cut the feature was the
+// prompt's output, not this client. Bringing it back is flipping the flag,
+// fixing the prompt, and deploying the function — the reasoning is on the
+// constant.
+//
 // Layer rule: L5 (services). Imports from @/supabase only. Components import
 // THIS module — never the supabase client directly.
 //

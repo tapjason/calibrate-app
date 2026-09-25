@@ -13,6 +13,15 @@ import type { CoverageGap } from '@/engine/coverageNudge';
 
 import { LogPredictionForm } from './LogPredictionForm';
 
+// Refine is CUT from the release (`REFINE_ENABLED = false`), so these tests
+// force the flag on. The behavior stays covered while the feature is dormant,
+// which is the point of keeping the code rather than deleting it. That the cut
+// itself holds is asserted in the companion `*.refineCut.test.tsx` file.
+jest.mock('@/constants/app', () => ({
+  ...jest.requireActual('@/constants/app'),
+  REFINE_ENABLED: true,
+}));
+
 // Default mock: refine returns null (Supabase isn't configured under tests).
 // Individual tests override this via mockResolvedValueOnce.
 jest.mock('@/ai/refine', () => ({

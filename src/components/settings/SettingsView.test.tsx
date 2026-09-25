@@ -6,6 +6,15 @@ import { FREE_ENTITLEMENT } from '@/types';
 
 import { SettingsView } from './SettingsView';
 
+// Refine is CUT from the release (`REFINE_ENABLED = false`), so these tests
+// force the flag on. The behavior stays covered while the feature is dormant,
+// which is the point of keeping the code rather than deleting it. That the cut
+// itself holds is asserted in the companion `*.refineCut.test.tsx` file.
+jest.mock('@/constants/app', () => ({
+  ...jest.requireActual('@/constants/app'),
+  REFINE_ENABLED: true,
+}));
+
 beforeEach(() => {
   // In-memory persistence so toggling doesn't touch native AsyncStorage.
   __setPersistenceForTests({ load: async () => null, save: async () => {} });

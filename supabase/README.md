@@ -54,6 +54,14 @@ schema is safe.
 
 ### refine
 
+> **Not deployed — cut from the first release (2026-09-24).** The first live
+> run against a funded OpenAI account showed the prompt turning predictions
+> into *questions* ("I'll finish the report" → "Will I finish the report?"),
+> four inputs out of four. `REFINE_ENABLED` in `src/constants/app.ts` is false
+> and the function is intentionally absent from the project, so
+> `/functions/v1/refine` answers 404. Everything below still applies when it
+> comes back; fix the prompt first.
+
 Rewrites a user prediction into a concise yes/no-resolvable form. The mobile
 client treats every failure as silent (`src/ai/refine.ts` returns `null`), so
 the function can be down without breaking the save flow.

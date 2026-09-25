@@ -6,6 +6,7 @@ import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { REFINE_ENABLED } from '@/constants/app';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
@@ -42,7 +43,9 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [refining, setRefining] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
-  // Refine is opt-out via Settings. When off, the button + suggestion UI are
+  // REFINE_ENABLED is the release-level switch (currently off — see the
+  // constant). Settings is the user-level one on top of it. When either is
+  // off, the button + suggestion UI are
   // hidden entirely; the rest of the save flow is untouched.
   const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
 
@@ -135,7 +138,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
         testID="title-field"
       />
 
-      {aiRefineEnabled && title.trim().length > 0 && (
+      {REFINE_ENABLED && aiRefineEnabled && title.trim().length > 0 && (
         <>
           <View style={styles.refineRow}>
             <Pressable

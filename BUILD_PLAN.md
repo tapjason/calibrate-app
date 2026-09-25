@@ -70,9 +70,11 @@ model. The durable daily ledger increments as specified. Both Edge Functions wer
 also patched to stop echoing upstream error text to callers (it leaked the AI
 provider and its billing state); they now return a generic `internal`.
 
-Still unverified: **live generation and grounding on real model output**, blocked on
-an unfunded OpenAI account (`429 no credits`). Everything up to and including the
-model call is confirmed working. `refine` remains undeployed.
+Still unverified: **live generation and grounding on real model output.** The
+OpenAI blocker is gone (see the 2026-09-24 note below), but the endpoint's Plus
+gate reads `public.entitlements`, and granting a test user Plus there needs the
+service role — so the last step is a human one. `refine` is now cut, not
+pending.
 
 **Just landed — billing and the paywall:** `react-native-purchases` installed,
 `src/billing/revenuecat.ts` (SDK behind a deps seam, so Expo Go / web / Jest run
@@ -160,6 +162,37 @@ silences it immediately rather than nagging the one user who did what was
 asked; and it is capped at once a week, because this fires in the core loop and
 the core loop must not become a place that lectures you.
 
+**Batch A, first live run (2026-09-24):**
+
+- **The OpenAI account is funded and working.** `gpt-4o-mini` returns 200 on the
+  refine prompt. The SHA-256 of the local key matches the digest Supabase
+  reports for its stored `OPENAI_API_KEY` exactly, so the deployed functions
+  are on the same funded key — no secret needed re-setting.
+- **The Supabase project had paused** (free tier, idle since 2026-09-07 — DNS
+  stopped resolving entirely). Restored from the dashboard; there is no CLI
+  verb for it. Worth knowing it will pause again if left alone for a week.
+- **The Coach's auth gate re-verified live:** 401 with no header, 401 on a
+  malformed JWT. Live *generation* is still unverified — the Plus gate reads
+  `public.entitlements`, whose writes are service-role-only by design, so
+  granting a test user Plus is a dashboard step.
+- **Migrations 004 and 005 are still unapplied remotely** (001–003 are on).
+  `supabase db push` is the remaining step.
+
+**Cut — refine (2026-09-24).** The first live output was the reason. The prompt
+turns predictions into *questions* ("I'll finish the report" → "Will I finish
+the report?", four inputs out of four), which is no more resolvable than what
+the user typed. Asking for specificity makes the model invent it (`$100,000`,
+a 2023 deadline); forbidding invention makes it a no-op. A vague prediction
+can't be made checkable without information only the user has — a product
+question, not a prompt bug.
+
+So `REFINE_ENABLED` in `src/constants/app.ts` is false: the ✨ button and its
+Settings row are hidden, the Edge Function stays undeployed, and the client,
+function and every test for both are kept intact and dormant behind the flag.
+Reviving it is fix the prompt against fixtures → flip the flag → deploy.
+Cutting it cost nothing precisely because `CLAUDE.md` required it never be in
+the critical path.
+
 **Ship blockers before a build with a live paywall reaches anyone:**
 - Products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) and the `plus`
   entitlement have to exist in App Store Connect and the RevenueCat dashboard, and
@@ -167,8 +200,9 @@ the core loop must not become a place that lectures you.
   its unavailable state, which is the correct behavior, not a bug.
 - The sandbox-purchase gate below needs a human and a device.
 
-**Next:** the validation checkpoint — now instrumented, so it needs users
-rather than code. D0 aha completion is `warmup_completed / warmup_started`;
+**Next:** finish Batch A (grant a test user Plus, verify live Coach
+generation, `db push`), then the validation checkpoint — now instrumented, so
+it needs users rather than code. D0 aha completion is `warmup_completed / warmup_started`;
 share rate is `share_completed` per active user. That measurement is meant to
 happen *before* the checkout goes live. Then L7.
 
@@ -343,7 +377,9 @@ fails gracefully.
 - `src/notifications/digest.ts` — Sunday weekly digest.
 - `src/supabase/{client,auth,sync}.ts` — auth + background local→remote sync.
 - `src/share/export.ts` — rasterize a share card to PNG for the OS share sheet.
-- `src/ai/refine.ts` — call `/functions/v1/refine`; fail silently.
+- `src/ai/refine.ts` — call `/functions/v1/refine`; fail silently. **Dormant:
+  refine is cut from v1 (`REFINE_ENABLED = false`), the function is not
+  deployed, and no build calls this.**
 - `src/ai/coach.ts` — call `/functions/v1/coach`; fail silently; Plus-gated.
 - `src/billing/revenuecat.ts` — configure SDK, purchase, restore, entitlement sync,
   all behind a deps seam and all failing to FREE.
@@ -351,6 +387,7 @@ fails gracefully.
   the current user, refresh on sign-in and on foreground.
 - `supabase/functions/refine/index.ts` — OpenAI proxy. **JWT-verified**, rate-limited,
   input-capped, full error handling (see `CLAUDE.md` for the reference implementation).
+  Written and tested; **deliberately not deployed** — see the cut note above.
 - `supabase/functions/revenuecat-webhook/index.ts` — RevenueCat → Postgres
   entitlement mirror, so the server can gate Plus without trusting the client.
 - `supabase/functions/coach/index.ts` — Coach endpoint. JWT-verified, rate-limited,
@@ -362,7 +399,9 @@ fails gracefully.
 
 **Gate:**
 - A scheduled notification fires; sync round-trips a record.
-- `refine` returns a suggestion AND a forced failure leaves the save flow unaffected.
+- ~~`refine` returns a suggestion AND a forced failure leaves the save flow
+  unaffected.~~ Deferred with the feature; the save flow never depended on it,
+  which is what made the cut free.
 - An unauthenticated call to either function is rejected with 401.
 - A sandbox purchase unlocks `isPlus`; restore works; a fresh install with no purchase
   reads as free.

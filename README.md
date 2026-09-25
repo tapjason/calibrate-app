@@ -141,7 +141,7 @@ supabase secrets set OPENAI_API_KEY=sk-...
 
 ## Current Status
 
-The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, the AI refine button, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation.
+The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation.
 
 **What remains is verification, not code.** Everything that needs a funded account, a dashboard login, a simulator, a device, or a judgment call about money is written up batch by batch — what to do, what "pass" looks like, and what to report — in [`docs/HUMAN_VERIFICATION.md`](./docs/HUMAN_VERIFICATION.md). Start there.
 

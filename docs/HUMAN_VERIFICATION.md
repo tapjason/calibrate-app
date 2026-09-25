@@ -16,10 +16,15 @@ be done at a desk; D needs a device; E is the ship.
 
 Nothing here blocks further coding — the offline core loop, the Warmup, the
 share loop, the Coach's deterministic half, billing, the Plus tier (Coach,
-Trends, card themes) and the range-coverage nudge are all done and tested (644
-tests green). What is blocked is *verification*: the Coach has never produced a
-real model response (unfunded OpenAI account), `refine` has never been deployed,
-and no purchase has ever been made.
+Trends, card themes) and the range-coverage nudge are all done and tested.
+What is blocked is *verification*.
+
+**Changed 2026-09-24:** the OpenAI account is funded and verified working, and
+the Supabase project (which had auto-paused) is restored. `refine` is **cut**
+rather than pending — the first live run showed its prompt makes predictions
+worse, so it is switched off behind a flag until the prompt is fixed; see
+`CLAUDE.md` § AI Integration A. What remains unverified: the Coach has still
+never produced a real model response, and no purchase has ever been made.
 
 With the paywall's three promises built, **nearly every remaining item in this
 file is the whole remaining critical path.** The one exception, found on
@@ -32,8 +37,8 @@ path**, and Apple requires one. That is code, and it is listed at the bottom.
 
 | Thing | Needed for | Notes |
 |---|---|---|
-| OpenAI account with credit | A1, A2 | Currently unfunded — every call returns `429 no credits`. A few dollars covers all testing; `gpt-4o-mini` at our token caps is fractions of a cent per call. |
-| Supabase dashboard access | A3, A4, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is already linked. |
+| OpenAI account with credit | A1 | **Funded and verified 2026-09-24.** `gpt-4o-mini` at our token caps is fractions of a cent per call. |
+| Supabase dashboard access | A1, A3, A4, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is already linked. **Free-tier projects pause after ~7 days idle** — it had to be restored on 2026-09-24, and there is no CLI command for it. If DNS stops resolving, that's why. |
 | RevenueCat account | B1 | Free tier is enough (it bills on revenue). |
 | Apple Developer account ($99/yr) | B2, D, E | Also gates APNs, sandbox purchases, and TestFlight. |
 | A Mac with Xcode + iOS simulator | C | Simulator alone is fine for C. |
@@ -43,14 +48,24 @@ path**, and Apple requires one. That is code, and it is listed at the bottom.
 
 ## Batch A — Backend (desk, ~30 min, no device)
 
-### A1. Fund OpenAI and verify live Coach generation
+### A1. Verify live Coach generation
 
 The Coach is deployed and every guard is verified *except* the one thing that
 needs a real model response: that generation is grounded and the validator
 drops what isn't.
 
-1. Add credit to the OpenAI account whose key is in Supabase secrets
-   (`OPENAI_API_KEY` is set — verified 2026-09-07).
+**Step 1 is done (2026-09-24).** The account is funded, `gpt-4o-mini` returns
+200, and the SHA-256 of the local key matches the digest Supabase reports for
+its stored `OPENAI_API_KEY` — so the deployed functions are on that same
+funded key. The auth gate was re-verified live at the same time: 401 with no
+header, 401 on a malformed JWT.
+
+**Step 3 is the one that needs you** — `public.entitlements` is
+service-role-write-only by design, so an agent with the anon key cannot grant
+Plus to a test user. Do that in the dashboard and the rest can be run for you.
+
+1. ~~Add credit to the OpenAI account whose key is in Supabase secrets.~~ Done
+   2026-09-24.
 2. Get a real user access token (sign in on the app, or via the Supabase
    dashboard's user impersonation) — the anon key returns 401 by design.
 3. **Grant yourself Plus server-side.** The endpoint's Plus gate reads
@@ -88,24 +103,30 @@ validator in Jest, but not against real model output:
 - Send a category with an obviously wrong stat and confirm no insight cites a
   number you didn't send.
 
-### A2. Deploy and verify `refine`
+### A2. ~~Deploy and verify `refine`~~ — CUT (2026-09-24)
 
-`refine` is written, JWT-gated, and tested, but has never been deployed.
+**Nothing to do here.** Refine is deferred out of v1, not pending. Testing the
+prompt against the now-funded account is what cut it: it turns predictions into
+*questions* — "I'll finish the report" → "Will I finish the report?", four
+inputs out of four — which is no more resolvable than what the user typed.
 
-```sh
-npx supabase functions deploy refine
-```
+Two rewrites showed it isn't a wording problem. Ask for specificity and the
+model invents it ("at least $100,000 in sales"; a deadline in 2023, in a field
+where the app already stores the due date). Forbid invention and it hands back
+the input with the hedging stripped. **A vague prediction can't be made
+checkable without information only the user has.**
 
-Then run the verify curl in `supabase/README.md` with a **real user token**.
-
-**Pass:** `{"refined":"..."}`, a rewrite under ~15 words. Then confirm the
-failure path in the app: turn on airplane mode, type a prediction, tap ✨
-Refine — the button must fail silently and the text must save unchanged.
-
-**Report:** the rewrite you got, and confirmation that the offline save was
-unaffected.
+`REFINE_ENABLED` in `src/constants/app.ts` is `false`, so the ✨ button and its
+Settings row are hidden and the function stays undeployed (`/functions/v1/refine`
+answers 404 — verified). The client, the function and all their tests are kept
+intact behind the flag. Reviving it: fix the prompt against fixtures, flip the
+flag, deploy. Full reasoning on the constant and in `CLAUDE.md` § AI A.
 
 ### A3. Apply the new migrations and confirm state
+
+**Confirmed pending 2026-09-24:** `migration list` shows 001, 002 and 003
+applied remotely; **004 and 005 are not**. Both are additive (an `alter table`,
+a function, a `create table if not exists` plus indexes and RLS policies).
 
 ```sh
 npx supabase db push          # 004_entitlement_event_cursor, 005_analytics_events
@@ -115,6 +136,10 @@ npx supabase migration list
 **Pass:** `001_predictions`, `002_coach_usage`, `003_entitlements`,
 `004_entitlement_event_cursor` and `005_analytics_events` all show as applied
 remotely.
+
+Until 005 lands, nothing can write `analytics_events` — which is the table the
+validation checkpoint's two queries read, so this gates the business question,
+not just the schema.
 
 ### A4. Keep `COACH_ALLOW_UNENTITLED` unset
 

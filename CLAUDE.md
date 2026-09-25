@@ -184,7 +184,8 @@ stored separately and **never** mixed into real `UserStat` / `CategoryStat` data
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,
 category. Minimal friction — completable in under 15 seconds.
 
-Optional AI refine button (see AI section). Never blocks the save flow.
+An optional AI refine button is specced but **deferred** (see AI § A). Nothing
+about the save flow depends on it — which is why cutting it cost nothing.
 
 ### 3. Resolution Module
 Triggered by push notification on due_date. User taps yes/no + optional one-line
@@ -248,7 +249,31 @@ Rule: the paywall never touches the core loop or anything shareable.
 AI is a non-essential utility layer. The app works fully without it. Two distinct
 features, both optional and both fail-silent:
 
-### A. Refine (free, user-initiated)
+### A. Refine (free, user-initiated) — **CUT from v1, deferred**
+
+> **Status (2026-09-24): built, not shipped, not deployed.**
+> `REFINE_ENABLED` in `src/constants/app.ts` is `false`; the ✨ button and its
+> Settings row are hidden, and `supabase/functions/refine/` is not deployed.
+> The first live run against a funded OpenAI account found the prompt below
+> turns predictions into **questions** — "I'll finish the report" came back as
+> "Will I finish the report?", four inputs out of four — which is no more
+> resolvable than what the user typed.
+>
+> Two rewrites showed this is not a wording bug. Ask for specificity and the
+> model invents it ("at least $100,000 in sales"; a deadline in 2023, in a
+> field where the app already stores the due date). Forbid invention and it
+> returns the input with the hedging stripped. **A vague prediction cannot be
+> made checkable without information only the user has** — and the worked
+> example below quietly assumes invention is fine ("3", "priority tasks" and
+> "Friday" appear nowhere in its input).
+>
+> That is a product decision, not a prompt fix, and the feature is explicitly
+> optional — so it waits. A user who accepts an invented number has logged a
+> prediction they never made, and their calibration data now measures the
+> model. The client, the function and their tests are kept intact and dormant.
+> Reviving it means: fix the prompt against fixtures, flip the flag, deploy.
+
+The spec as designed, for when it returns:
 A single ✨ Refine button after the user types a prediction. Sends the text to the backend
 and returns a rewritten version. User accepts or ignores.
 
@@ -404,13 +429,13 @@ User taps notification on due_date
 |---|---|---|
 | Warmup (onboarding) | Estimation quiz → instant calibration verdict → first share card | Free |
 | Home / Dashboard | Pending predictions + calibration rating summary | Free |
-| Log Prediction | Title, confidence slider, due date, category, optional refine | Free |
+| Log Prediction | Title, confidence slider, due date, category (refine deferred) | Free |
 | Resolve | Yes / No prompt + optional reflection | Free |
 | Stats | Calibration curve + category breakdown + badges + Coach cards | Free (Coach = Plus) |
 | Share / Wrapped | Identity card + weekly/yearly recap, export & share | Free |
 | History | Full list of past predictions, filterable | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
-| Settings | Notification prefs, AI refine toggle, Coach toggle, subscription mgmt | Free |
+| Settings | Notification prefs, Coach toggle, usage stats, subscription mgmt | Free |
 
 ---
 
@@ -423,7 +448,7 @@ Build in this order (mirrors `BUILD_PLAN.md`):
 4. Share cards + Wrapped (the growth loop)
 5. Push notifications for due dates
 6. Supabase sync + auth
-7. AI refine button (Edge Function + OpenAI)
+7. ~~AI refine button (Edge Function + OpenAI)~~ — **deferred, see AI § A**
 8. Badge system
 9. Weekly digest notification
 10. Billing + paywall + Plus gating

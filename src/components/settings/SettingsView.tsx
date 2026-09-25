@@ -2,13 +2,16 @@ import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { useEntitlementStore } from '@/store/entitlementStore';
+import { REFINE_ENABLED } from '@/constants/app';
 import { useSettingsStore } from '@/store/settingsStore';
 
 /**
  * Settings surface. Two device-local toggles backed by settingsStore:
  *   - Notifications — the single kill-switch for resolution reminders + the
  *     weekly digest. The L5 services react to this via store subscription.
- *   - AI Refine — shows/hides the ✨ Refine button on the Log screen.
+ *   - AI Refine — shows/hides the ✨ Refine button on the Log screen. The
+ *     row is hidden entirely while REFINE_ENABLED is false (the feature is
+ *     cut from the first release); the stored preference survives.
  *   - Coach — the Plus-only AI insight surface on Stats. Off until the user
  *     turns it on, per COACH_AGENT.md §5.6.
  *
@@ -65,13 +68,19 @@ export function SettingsView({
         testID="toggle-notifications"
       />
 
-      <ToggleRow
-        label="AI Refine"
-        description="Show the ✨ Refine button to rewrite predictions for a clear yes/no."
-        value={aiRefineEnabled}
-        onValueChange={(v) => void setAiRefineEnabled(v)}
-        testID="toggle-ai-refine"
-      />
+      {/* Hidden while refine is cut from the release — a toggle for a button
+          that doesn't exist is worse than no toggle. The stored preference is
+          left untouched, so flipping REFINE_ENABLED back on restores whatever
+          the user had chosen. */}
+      {REFINE_ENABLED && (
+        <ToggleRow
+          label="AI Refine"
+          description="Show the ✨ Refine button to rewrite predictions for a clear yes/no."
+          value={aiRefineEnabled}
+          onValueChange={(v) => void setAiRefineEnabled(v)}
+          testID="toggle-ai-refine"
+        />
+      )}
 
       <ToggleRow
         label="Coach (AI)"
