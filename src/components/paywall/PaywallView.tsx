@@ -1,8 +1,10 @@
+import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { Button } from '@/components/ui/Button';
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
 
@@ -123,6 +125,8 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
 
       {terms !== '' && <Text style={styles.terms}>{terms}</Text>}
 
+      <LegalLinks />
+
       {onClose && (
         <Button
           label="Not now"
@@ -130,6 +134,41 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
           onPress={onClose}
           testID="paywall-close"
         />
+      )}
+    </View>
+  );
+}
+
+/**
+ * Terms of use and privacy policy. Guideline 3.1.2 requires both to be
+ * reachable from the purchase screen itself, and a missing link is one of the
+ * most common subscription rejections. Shown whether or not plans loaded: the
+ * terms are the same either way.
+ */
+function LegalLinks() {
+  const open = (url: string) => {
+    openBrowserAsync(url).catch((e: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[paywall] could not open link:', e);
+    });
+  };
+  return (
+    <View style={styles.legal}>
+      <Pressable
+        accessibilityRole="link"
+        onPress={() => open(TERMS_OF_USE_URL)}
+        testID="paywall-terms-link"
+      >
+        <Text style={styles.legalLink}>Terms of Use</Text>
+      </Pressable>
+      {PRIVACY_POLICY_URL && (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => open(PRIVACY_POLICY_URL as string)}
+          testID="paywall-privacy-link"
+        >
+          <Text style={styles.legalLink}>Privacy Policy</Text>
+        </Pressable>
       )}
     </View>
   );
@@ -188,4 +227,11 @@ const styles = StyleSheet.create({
   freeNote: { fontSize: 13, lineHeight: 19, color: '#6b7280' },
   muted: { fontSize: 14, color: '#6b7280' },
   terms: { fontSize: 11, lineHeight: 16, color: '#9ca3af' },
+  legal: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
+  legalLink: {
+    color: '#6b7280',
+    fontSize: 12,
+    paddingVertical: 8,
+    textDecorationLine: 'underline',
+  },
 });

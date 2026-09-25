@@ -23,3 +23,19 @@ export const APP_NAME = 'Calibrate';
  * worse. See `docs/HUMAN_VERIFICATION.md` and `CLAUDE.md` § AI Integration.
  */
 export const REFINE_ENABLED = false;
+
+/**
+ * Terms of use for Plus: Apple's standard EULA, which is what applies unless
+ * the app ships its own. App Review Guideline 3.1.2 requires a working link to
+ * the terms of use *inside the app* for auto-renewing subscriptions, not only
+ * in the store listing.
+ */
+export const TERMS_OF_USE_URL =
+  'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+
+/**
+ * Where `docs/PRIVACY_POLICY.md` is published. **Null until it is hosted** —
+ * the paywall omits the link rather than shipping one that 404s. 3.1.2 needs
+ * this set before submission; `docs/HUMAN_VERIFICATION.md` Batch E tracks it.
+ */
+export const PRIVACY_POLICY_URL: string | null = null;

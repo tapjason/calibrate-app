@@ -7,6 +7,10 @@ import { FREE_ENTITLEMENT } from '@/types';
 
 import { PaywallView } from './PaywallView';
 
+jest.mock('expo-web-browser', () => ({
+  openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
+}));
+
 // The shipped offering: one calendar month free on annual only — a user is
 // eligible for an introductory offer once per subscription group, so putting
 // it on the anchored plan is the point (GROWTH_AND_MONETIZATION.md §4).
@@ -164,5 +168,25 @@ describe('PaywallView', () => {
     render(<PaywallView onClose={onClose} />);
     fireEvent.press(screen.getByTestId('paywall-close'));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // Guideline 3.1.2: the terms of use must be reachable from the purchase
+  // screen itself, not only from the store listing.
+  it('links to the terms of use', () => {
+    const { openBrowserAsync } = jest.requireMock('expo-web-browser');
+    seed();
+    render(<PaywallView />);
+
+    fireEvent.press(screen.getByTestId('paywall-terms-link'));
+    expect(openBrowserAsync).toHaveBeenCalledWith(
+      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+    );
+  });
+
+  // A link that 404s is worse than none; it appears once the policy is hosted.
+  it('omits the privacy link while no policy URL is configured', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.queryByTestId('paywall-privacy-link')).toBeNull();
   });
 });

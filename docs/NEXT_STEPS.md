@@ -115,7 +115,11 @@ Tier 1's free Android billing test needs it. `eas.json`'s `development` profile
 sets `developmentClient: true`, but the package isn't installed. One
 `npx expo install expo-dev-client` plus a green test run.
 
-### 5. The paywall has no Terms or Privacy links
+### 5. The paywall has no Terms or Privacy links — **built 2026-09-25**
+
+> A Terms of Use link (Apple's standard EULA) is live. The Privacy Policy
+> link appears once `PRIVACY_POLICY_URL` in `src/constants/app.ts` is set,
+> which waits on hosting the policy.
 
 `PaywallView` shows the renewal terms and the 24-hour trial line, but it has no
 link to a privacy policy or terms of use. Guideline 3.1.2 requires both **in the

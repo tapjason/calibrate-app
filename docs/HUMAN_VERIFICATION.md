@@ -625,7 +625,11 @@ What is still yours:
       - `appleTeamId` — developer.apple.com → Membership details → Team ID.
 
 - [ ] Privacy policy URL — App Store Connect requires one, and
-      `docs/APP_PRIVACY.md` §5 lists the five things it has to say.
+      `docs/APP_PRIVACY.md` §5 lists the five things it has to say. A draft
+      is in `docs/PRIVACY_POLICY.md`. **Once it's hosted, put the URL in
+      `PRIVACY_POLICY_URL` (`src/constants/app.ts`)**. The paywall shows
+      its Privacy Policy link only when that's set, and 3.1.2 requires the
+      link in the app, not only in the listing.
 - [ ] `npx expo install --check` before the build. `expo-doctor` is 19/20
       green; the one failure is patch drift inside SDK 55 (14 packages, e.g.
       `expo` 55.0.26 → 55.0.31). Not urgent, but a build is the moment to take
