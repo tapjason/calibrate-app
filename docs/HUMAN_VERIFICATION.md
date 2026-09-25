@@ -359,9 +359,11 @@ Then RevenueCat → Project settings → Integrations → Webhooks:
 - URL: `https://otopheizhjstoeyndcvc.functions.supabase.co/revenuecat-webhook`
 - Authorization header: the same secret.
 
-**Not yet present in RevenueCat (re-checked 2026-09-25):** the v2 API lists no
-webhook integration on project `projb27eccad`, so either the dashboard form
-wasn't saved or it went to a different project.
+**Dashboard half DONE 2026-09-25.** Webhook `Supabase entitlements`
+(`whintgr5c5e59b2a4`) is registered on project `projb27eccad`, covering all apps,
+all environments and all event types, and RevenueCat's "Send test event" came back 200.
+What remains of the Pass line below is the `entitlements` row after the first
+purchase.
 
 **Open question for launch:** the webhook does not look at `environment`, so a
 SANDBOX or Test Store purchase grants server-side Plus exactly like a real one.
