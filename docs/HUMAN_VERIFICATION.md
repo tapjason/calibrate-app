@@ -1,45 +1,95 @@
 # Calibrate — Human Verification Checklist
 
-**As of:** 2026-09-25 · **Branch:** `master`
+**As of:** 2026-09-25 (re-evaluated) · **Branch:** `master`
 
-*(No commit hash here on purpose — it went stale within a day last time. The
-content below tracks what is unverified, not what was last written.)*
+Everything the build needs that an agent can't do from the repo. Each item says
+**what to do**, **what "pass" looks like**, and **what to report back**.
 
-Everything the build needs that an agent cannot do from the repo: things that
-need a funded account, a dashboard login, a simulator, a physical device, or a
-judgment call about money. Each item says **what to do**, **what "pass" looks
-like**, and **what to report back** so the result can be recorded in
-`BUILD_PLAN.md`.
+---
 
-Batches are ordered by what they unblock, not by difficulty. A, B and C can all
-be done at a desk; D needs a device; E is the ship.
+## Where things stand: ordered by what it costs you
 
-Nothing here blocks further coding — the offline core loop, the Warmup, the
-share loop, the Coach's deterministic half, billing, the Plus tier (Coach,
-Trends, card themes) and the range-coverage nudge are all done and tested.
-What is blocked is *verification*.
+Re-evaluated 2026-09-25 under one constraint: **spend nothing until everything
+that can be verified for free has been.** The batches below (A–E) are the
+detailed procedures; this section is the order to do them in.
 
-**Changed 2026-09-24/25:**
+### Done, verified live
 
-- The OpenAI account is **funded and verified working**, and the Supabase
-  project (which had auto-paused) is restored.
-- **A3 is done** — all five migrations are applied remotely, and RLS was
-  verified live.
-- `refine` is **cut**, not pending. The first live run showed its prompt makes
-  predictions worse, so it is off behind a flag until the prompt is fixed; see
-  `CLAUDE.md` § AI Integration A. Batch C's refine checkbox is now inverted:
-  the button must be *absent*.
-- **The trial is decided: one free month on annual**, auto-renewing. B2 below
-  is no longer a judgment call, just a setting to enter.
+| Item | Verified |
+|---|---|
+| OpenAI funded; Coach generates grounded output (A1) | 2026-09-25 |
+| All five migrations applied, RLS holds (A3) | 2026-09-24 |
+| Coach refuses users without Plus with a 403 (A4) | 2026-09-25 |
+| RevenueCat Test Store configured: `plus` entitlement, three `calibrate_plus_*` products, current offering; the app's `test_` key confirmed to belong to it (B1, Test Store half) | 2026-09-25 |
+| Webhook deployed, secret set, registered in RevenueCat, test event 200 (B3) | 2026-09-25 |
+| App icon, splash, Android adaptive icon: real artwork, 1024², wired in `app.json` | 2026-09-25 |
 
-**Batch A is now complete.** The Coach produced its first real model response
-on 2026-09-25 and every guard held (A1 below). What remains unverified:
-**no purchase has ever been made** — Batches B, C and D.
+### Tier 0: free, at a desk, no phone
 
-With the paywall's three promises built, **nearly every remaining item in this
-file is the whole remaining critical path.** The one exception, found on
-2026-09-24 while deriving the App Privacy answers: **there is no account-deletion
-path**, and Apple requires one. That is code, and it is listed at the bottom.
+- [ ] **Test Store trial and prices.** In the RevenueCat dashboard, open the Test
+      Store app and set `calibrate_plus_annual` to a 1-month free trial, with prices
+      $4.99 / $29.99 / $59.99. The API can't set either one. Ask the agent to
+      confirm the trial afterwards, since `trial_duration` is readable.
+- [ ] **Say which phone you have.** It decides which Tier 1 path applies.
+
+### Tier 1: free, with a phone you already own
+
+**Test Store purchases cost nothing.** RevenueCat simulates them; no card is
+involved and no store account is needed. So the whole billing path, from
+paywall to purchase to webhook to `entitlements` row, can be proven without an
+Apple account.
+
+What runs where, from a Windows machine:
+
+| Path | Cost | Core loop, Warmup, share, notifications | Real Test Store purchase + webhook |
+|---|---|---|---|
+| **Expo Go** on iPhone or Android (`npx expo start`, scan the QR) | free | ✅ | ❌ In Expo Go, RevenueCat does not reach the real store, so a paywall result there proves nothing about the configuration. |
+| **Android dev build** via EAS (free tier), installed as an APK | free | ✅ | ✅ The `test_` key is not tied to a platform. |
+| **iOS dev build** | $99/yr Apple account | ✅ | ✅ |
+| iOS simulator | needs a Mac | ✅ | ✅ |
+
+So:
+
+- [ ] **Expo Go run-through: Batch C, minus billing.** Every Batch C box except
+      the paywall/plan-listing ones can be ticked in Expo Go, on whatever phone
+      you have. Sign in with **email** (Apple sign-in needs the paid account;
+      Google isn't configured). Email sign-in, sync and the Coach 403 for a free
+      user all work here.
+- [ ] **If you have (or can borrow) an Android phone:** an EAS Android dev
+      build gives the full billing test for free. It needs these first:
+      1. `npx expo install expo-dev-client`. The `development` profile in
+         `eas.json` sets `developmentClient: true`, but the package isn't
+         installed. (Code; the agent can do it.)
+      2. **EAS environment variables.** EAS uploads the repo minus
+         `.gitignore`, and `.env.*` is ignored, so **a cloud build currently
+         gets no Supabase URL and no RevenueCat key.** Set the `EXPO_PUBLIC_*`
+         values with `eas env:create` (development environment), and set
+         `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` to the same `test_` key. Never
+         the `sk_`, `OPENAI_` or webhook secrets; those stay server-side.
+      3. `npx eas login` (the project is owned by `tapjason`), then
+         `eas build --profile development --platform android`.
+
+      Then the purchase check: sign in by email → the paywall shows annual first
+      with "1 month free, then $29.99" → buy → Plus turns on in the app → the agent
+      confirms a `public.entitlements` row with `is_plus = true, source = 'trial'`.
+      That proves D2/D3's logic end to end, on the Test Store.
+
+### Tier 2: costs money, so only after Tiers 0–1 pass
+
+- **Apple Developer Program, $99/yr.** Unlocks B0, B2, the `appl_` key, D
+  (StoreKit sandbox) and E (TestFlight, submission). Sandbox purchases are free;
+  the $99 is the only spend.
+- **Supabase free tier pauses after ~7 days idle.** Not a cost, but it breaks
+  testing silently. Restore it from the dashboard if DNS stops resolving.
+
+### Not yet produced (assets and text)
+
+| Thing | Status | Needed for |
+|---|---|---|
+| App Store screenshots | **Not made.** The identity card and calibration curve are the two that sell it. Needs the app running with real-looking data. | E |
+| Privacy policy page + public URL | **Not written.** `docs/APP_PRIVACY.md` §5 lists what it must say. An agent can draft it; hosting it needs a URL you control. | E |
+| App Store listing text (name, subtitle, description, keywords) | **Not written.** An agent can draft it from `CLAUDE.md`. | E |
+| Account deletion (Guideline 5.1.1(v)) | **Not built.** Code, not you; see the bottom of this file. | E |
 
 ---
 
@@ -47,12 +97,13 @@ path**, and Apple requires one. That is code, and it is listed at the bottom.
 
 | Thing | Needed for | Notes |
 |---|---|---|
-| OpenAI account with credit | A1 | **Funded and verified 2026-09-24.** `gpt-4o-mini` at our token caps is fractions of a cent per call. |
-| Supabase dashboard access | A1, A3, A4, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is already linked. **Free-tier projects pause after ~7 days idle** — it had to be restored on 2026-09-24, and there is no CLI command for it. If DNS stops resolving, that's why. |
-| RevenueCat account | B1 | Free tier is enough (it bills on revenue). A **Test Store** key (`test_…`) is already in `.env.local` — good enough to exercise the paywall and the entitlement flip without Apple, but not a substitute for D2's real StoreKit purchase, which needs an `appl_` key from an App Store app entry. |
-| Apple Developer account ($99/yr) | B2, D, E | Gates sandbox purchases and TestFlight. **Not** APNs — this app sends only local notifications, so no push credentials are needed (see Batch E). |
-| A Mac with Xcode + iOS simulator | C | Simulator alone is fine for C. |
-| A physical iPhone | D | Push, deep links, and sandbox purchases can't be fully trusted on a simulator. |
+| OpenAI account with credit | A1 | **Funded and verified 2026-09-24.** |
+| Supabase dashboard access | A, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is linked. Pauses after ~7 days idle. |
+| RevenueCat account | B1 | Free tier. Project `projb27eccad`. `test_` public key and `sk_` v2 secret key (project config R/W, customers read) are in `.env.local`. |
+| Expo account | Tier 1 Android build | Owner `tapjason`; the CLI is not currently logged in. The EAS free tier covers dev builds. |
+| A phone | Tier 1 | Any iPhone or Android for Expo Go; an **Android** phone for the free billing test. |
+| Apple Developer account ($99/yr) | B0, B2, D, E | **Deferred until Tiers 0–1 pass.** Not needed for APNs; this app only sends local notifications. |
+| A Mac with Xcode | only the iOS simulator | Not required: Expo Go and EAS cloud builds cover everything from Windows. |
 
 ---
 
@@ -381,11 +432,16 @@ after the sandbox purchase in D2 a row appears in `public.entitlements` with
 
 ---
 
-## Batch C — Simulator run-through (Mac, ~30 min)
+## Batch C — App run-through (~30 min; Expo Go on a phone, or a simulator)
 
-This is the Layer 6 gate. Run `npx expo start --ios` on a build with
-`.env.local` filled in, on a **fresh install** (delete the app first so the
-first-run path is real).
+This is the Layer 6 gate. From Windows: run `npx expo start` and scan the QR
+code with **Expo Go** on your phone. `.env.local` is read by the dev server, so
+no env setup is needed for this path. Start from a **fresh state** (in Expo Go,
+clear the app's data or reinstall Expo Go) so the first-run path is real.
+
+In Expo Go, skip the paywall/plan boxes: RevenueCat doesn't reach the real
+store there. Those need an Android dev build (free, see Tier 1) or an iOS
+build. Sign in with **email**.
 
 Tick each:
 
