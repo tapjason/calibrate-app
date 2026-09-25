@@ -175,8 +175,10 @@ the core loop must not become a place that lectures you.
   malformed JWT. Live *generation* is still unverified — the Plus gate reads
   `public.entitlements`, whose writes are service-role-only by design, so
   granting a test user Plus is a dashboard step.
-- **Migrations 004 and 005 are still unapplied remotely** (001–003 are on).
-  `supabase db push` is the remaining step.
+- **All five migrations are now applied remotely.** `db push` landed 004 and
+  005. Verified after: `analytics_events` exists, and an anon write to
+  `entitlements` is refused with `42501` — the RLS rule that stops a client
+  granting itself Plus, holding in production.
 
 **Cut — refine (2026-09-24).** The first live output was the reason. The prompt
 turns predictions into *questions* ("I'll finish the report" → "Will I finish
@@ -200,8 +202,9 @@ the critical path.
   its unavailable state, which is the correct behavior, not a bug.
 - The sandbox-purchase gate below needs a human and a device.
 
-**Next:** finish Batch A (grant a test user Plus, verify live Coach
-generation, `db push`), then the validation checkpoint — now instrumented, so
+**Next:** finish Batch A — grant a test user Plus in the dashboard (the one
+step an agent structurally cannot do) and verify live Coach generation. Then
+the validation checkpoint — now instrumented, so
 it needs users rather than code. D0 aha completion is `warmup_completed / warmup_started`;
 share rate is `share_completed` per active user. That measurement is meant to
 happen *before* the checkout goes live. Then L7.

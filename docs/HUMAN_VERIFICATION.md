@@ -122,11 +122,17 @@ answers 404 — verified). The client, the function and all their tests are kept
 intact behind the flag. Reviving it: fix the prompt against fixtures, flip the
 flag, deploy. Full reasoning on the constant and in `CLAUDE.md` § AI A.
 
-### A3. Apply the new migrations and confirm state
+### A3. ~~Apply the new migrations and confirm state~~ — DONE 2026-09-24
 
-**Confirmed pending 2026-09-24:** `migration list` shows 001, 002 and 003
-applied remotely; **004 and 005 are not**. Both are additive (an `alter table`,
-a function, a `create table if not exists` plus indexes and RLS policies).
+**Passed.** `db push` applied 004 and 005; `migration list` now shows all five
+local migrations matching remote. Verified live afterwards: `analytics_events`
+and `entitlements` both exist, an anon read of each returns `[]` (RLS scoping
+to the owning user), and an anon *write* to `entitlements` is refused with
+`42501 new row violates row-level security policy`.
+
+That last one is the design property from `003_entitlements.sql` holding in
+production — a client cannot grant itself Plus — and it is also precisely why
+the A1 Plus grant below needs a human with dashboard access.
 
 ```sh
 npx supabase db push          # 004_entitlement_event_cursor, 005_analytics_events
@@ -137,9 +143,9 @@ npx supabase migration list
 `004_entitlement_event_cursor` and `005_analytics_events` all show as applied
 remotely.
 
-Until 005 lands, nothing can write `analytics_events` — which is the table the
-validation checkpoint's two queries read, so this gates the business question,
-not just the schema.
+With 005 applied, `analytics_events` is live, so the validation checkpoint's
+two queries at the bottom of this file now have a table to read. They will
+return nothing until real users arrive — that is the point of the checkpoint.
 
 ### A4. Keep `COACH_ALLOW_UNENTITLED` unset
 
