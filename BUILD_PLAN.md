@@ -70,11 +70,16 @@ model. The durable daily ledger increments as specified. Both Edge Functions wer
 also patched to stop echoing upstream error text to callers (it leaked the AI
 provider and its billing state); they now return a generic `internal`.
 
-Still unverified: **live generation and grounding on real model output.** The
-OpenAI blocker is gone (see the 2026-09-24 note below), but the endpoint's Plus
-gate reads `public.entitlements`, and granting a test user Plus there needs the
-service role — so the last step is a human one. `refine` is now cut, not
-pending.
+**Verified live 2026-09-25 — the Coach works end to end.** A Plus-granted test
+user got a real model response: `HTTP 200`, `safe: true`, one insight whose
+every number (61, 80, 0.55, `evidence: 25`) came from the request. A category
+with `resolved: 3` returned `insights: []` — min-N gating holding against real
+output, not a fixture. A three-category context returned the full cap of three
+insights with **zero** numerals not present in the input.
+
+The one path still unexercised is the validator *dropping* a hallucinated
+number, because the model never produced one; that stays covered by the
+`COACH_AGENT.md` §9 fixtures. `refine` is cut, not pending.
 
 **Just landed — billing and the paywall:** `react-native-purchases` installed,
 `src/billing/revenuecat.ts` (SDK behind a deps seam, so Expo Go / web / Jest run
@@ -172,9 +177,9 @@ the core loop must not become a place that lectures you.
   stopped resolving entirely). Restored from the dashboard; there is no CLI
   verb for it. Worth knowing it will pause again if left alone for a week.
 - **The Coach's auth gate re-verified live:** 401 with no header, 401 on a
-  malformed JWT. Live *generation* is still unverified — the Plus gate reads
-  `public.entitlements`, whose writes are service-role-only by design, so
-  granting a test user Plus is a dashboard step.
+  malformed JWT. Live generation followed on 2026-09-25, once a test user was
+  granted Plus in the dashboard — see the paragraph above. **Batch A is
+  complete.**
 - **All five migrations are now applied remotely.** `db push` landed 004 and
   005. Verified after: `analytics_events` exists, and an anon write to
   `entitlements` is refused with `42501` — the RLS rule that stops a client
@@ -222,9 +227,9 @@ so both halves already knew a trialist from a subscriber.
   its unavailable state, which is the correct behavior, not a bug.
 - The sandbox-purchase gate below needs a human and a device.
 
-**Next:** finish Batch A — grant a test user Plus in the dashboard (the one
-step an agent structurally cannot do) and verify live Coach generation. Then
-the validation checkpoint — now instrumented, so
+**Next:** Batch B — the RevenueCat and App Store Connect setup, including the
+one-month introductory offer on `calibrate_plus_annual`, and deploying the
+webhook. Then the validation checkpoint — now instrumented, so
 it needs users rather than code. D0 aha completion is `warmup_completed / warmup_started`;
 share rate is `share_completed` per active user. That measurement is meant to
 happen *before* the checkout goes live. Then L7.
