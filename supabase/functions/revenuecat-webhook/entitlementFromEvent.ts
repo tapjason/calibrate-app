@@ -41,6 +41,20 @@ export interface RevenueCatEvent {
   entitlement_ids?: unknown;
   /** Deprecated single-entitlement field; still sent by older integrations. */
   entitlement_id?: unknown;
+  /** 'SANDBOX' or 'PRODUCTION'. */
+  environment?: unknown;
+}
+
+export interface DecisionOptions {
+  /**
+   * Acknowledge and skip every SANDBOX event. Off by default, and it should
+   * stay off through App Review: reviewers buy with sandbox accounts, so with
+   * this on, a reviewer who subscribes gets a Coach that answers 403, and
+   * that's a rejection. The cost of leaving it off is that TestFlight testers
+   * (also sandbox) get server-side Plus, bounded by the Coach's daily ceiling.
+   * Set REVENUECAT_IGNORE_SANDBOX=true on the function to turn it on.
+   */
+  ignoreSandbox?: boolean;
 }
 
 export interface EntitlementDecision {
@@ -131,7 +145,11 @@ function sourceFor(event: RevenueCatEvent, expiresAtMs: number | null): Entitlem
  * `now` is injected so the expiry comparison is testable; the caller passes
  * Date.now().
  */
-export function decideFromEvent(body: unknown, now: number): EntitlementDecision {
+export function decideFromEvent(
+  body: unknown,
+  now: number,
+  options: DecisionOptions = {},
+): EntitlementDecision {
   const event = (body as { event?: RevenueCatEvent } | null)?.event;
   if (!event || typeof event !== 'object') return ignore('no event object');
 
@@ -141,6 +159,16 @@ export function decideFromEvent(body: unknown, now: number): EntitlementDecision
   const eventMs = num(event.event_timestamp_ms) ?? now;
 
   if (IGNORED_TYPES.has(type)) return ignore(`ignored event type ${type}`, eventMs);
+
+  // All of a sandbox user's events, revocations included: with this on, no
+  // sandbox grant was ever written, so there is nothing for one to revoke.
+  if (
+    options.ignoreSandbox &&
+    typeof event.environment === 'string' &&
+    event.environment.toUpperCase() === 'SANDBOX'
+  ) {
+    return ignore('sandbox event ignored in this deployment', eventMs);
+  }
 
   // The app configures RevenueCat with the Supabase user id, so a well-formed
   // event carries one. Anything else — an anonymous id from a purchase made

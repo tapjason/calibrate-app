@@ -197,7 +197,12 @@ Only 4 files under `src/components/` and `app/` set `accessibilityLabel` or
 
 Add RNTL assertions on labels, so this doesn't regress.
 
-### 10. Webhook: decide what production does with SANDBOX purchases
+### 10. Webhook: decide what production does with SANDBOX purchases — **built 2026-09-25**
+
+> `REVENUECAT_IGNORE_SANDBOX=true` switches it on; the default is unchanged.
+> **Research changed the recommendation: keep it off**, at least through
+> review. App Review purchases are sandbox too, so ignoring them would hand
+> the reviewer a Coach that answers 403.
 
 The open question in `HUMAN_VERIFICATION.md` B3: after launch, TestFlight
 purchases are sandbox, so testers would get server-side Plus. **Build** (the

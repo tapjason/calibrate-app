@@ -418,12 +418,14 @@ all environments and all event types, and RevenueCat's "Send test event" came ba
 What remains of the Pass line below is the `entitlements` row after the first
 purchase.
 
-**Open question for launch:** the webhook does not look at `environment`, so a
-SANDBOX or Test Store purchase grants server-side Plus exactly like a real one.
-That is what testing needs right now. After launch, though, TestFlight
-purchases are sandbox, so any tester would get the Coach for free. Decide
-before the public build whether production should ignore `environment:
-SANDBOX`.
+**Sandbox purchases (decided in code 2026-09-25, switchable).** By default a
+SANDBOX or Test Store purchase grants server-side Plus exactly like a real
+one. `REVENUECAT_IGNORE_SANDBOX=true` on the function turns that off. **Leave it
+off through App Review.** Reviewers buy with sandbox accounts, and a reviewer
+who subscribes and then gets a Coach answering 403 is a rejection. The cost of
+leaving it off is that TestFlight testers get the Coach free, bounded by its
+daily ceiling. If you ever turn it on, redeploy the webhook for it to take
+effect.
 
 **Pass:** RevenueCat's "Send test event" returns 200 with
 `{"ok":true,"action":"ignored"}` (a TEST event writes nothing, by design), and

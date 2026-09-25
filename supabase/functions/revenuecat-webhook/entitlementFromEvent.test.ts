@@ -153,3 +153,35 @@ describe('event cursor', () => {
     ).toBe(NOW);
   });
 });
+
+describe('sandbox events', () => {
+  // The default. App Review buys with a sandbox account, and a reviewer who
+  // subscribes and then gets a Coach answering 403 rejects the app.
+  it('grants from a sandbox purchase unless told otherwise', () => {
+    expect(decideFromEvent(event({ environment: 'SANDBOX' }), NOW)).toMatchObject({
+      action: 'write',
+      isPlus: true,
+    });
+  });
+
+  it('ignores a sandbox purchase when configured to', () => {
+    expect(
+      decideFromEvent(event({ environment: 'SANDBOX' }), NOW, { ignoreSandbox: true }),
+    ).toMatchObject({ action: 'ignore', reason: 'sandbox event ignored in this deployment' });
+  });
+
+  it('ignores sandbox revocations too, since no sandbox grant was written', () => {
+    expect(
+      decideFromEvent(event({ environment: 'SANDBOX', type: 'EXPIRATION' }), NOW, {
+        ignoreSandbox: true,
+      }),
+    ).toMatchObject({ action: 'ignore' });
+  });
+
+  it('still grants production purchases when ignoring sandbox', () => {
+    expect(
+      decideFromEvent(event({ environment: 'PRODUCTION' }), NOW, { ignoreSandbox: true }),
+    ).toMatchObject({ action: 'write', isPlus: true });
+  });
+});
+

@@ -88,7 +88,9 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'bad_request' }, 400);
   }
 
-  const decision = decideFromEvent(body, Date.now());
+  const decision = decideFromEvent(body, Date.now(), {
+    ignoreSandbox: env.get('REVENUECAT_IGNORE_SANDBOX') === 'true',
+  });
 
   // An ignored event is a success. Returning anything else makes RevenueCat
   // retry a delivery that will never do anything, forever.
