@@ -1,3 +1,4 @@
+import { __setTimeZoneForTests } from './localTime';
 import type { Category, Prediction } from '@/types';
 
 import {
@@ -47,7 +48,7 @@ function month(
 }
 
 describe('monthlyTrend', () => {
-  it('groups by UTC month, oldest first', () => {
+  it('groups by month, oldest first', () => {
     const rows = [...month('2026-03', 2, 2), ...month('2026-01', 3, 3)];
     expect(monthlyTrend(rows).map((m) => m.period)).toEqual(['2026-01', '2026-03']);
   });
@@ -209,5 +210,16 @@ describe('buildTrendSummary', () => {
       },
       delta_recent: null,
     });
+  });
+});
+
+describe('monthlyTrend — local months', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  // 20:00 on Jan 31 in California is Feb 1 in UTC. It's January's.
+  it("files a resolution on the evening of the 31st under that month", () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    const rows = [p(90, true, '2026-02-01T04:00:00.000Z')];
+    expect(monthlyTrend(rows).map((m) => m.period)).toEqual(['2026-01']);
   });
 });

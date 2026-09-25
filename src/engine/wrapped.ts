@@ -2,9 +2,9 @@
 // recap the Share/Wrapped screen tells a story from.
 //
 // Pure like the rest of the engine: plain objects in, plain objects out, no
-// I/O and no clock of its own — the caller passes `now`. Windows are computed
-// in UTC to match the streak and pattern engines, which deliberately don't
-// trust a device's local offset.
+// I/O and no clock of its own — the caller passes `now`. The yearly window is
+// the device's local calendar year, like the streak and weekday engines: "your
+// 2026" should start at the user's midnight on Jan 1, not London's.
 //
 // Layer rule: imports only from @/types and sibling engine files.
 
@@ -16,6 +16,7 @@ import {
 } from '@/types';
 
 import { computeCalibrationPoints } from './calibration';
+import { localMidnight, localParts } from './localTime';
 import { classifyDirection } from './patterns';
 
 export type WrappedSpan = 'week' | 'year';
@@ -79,12 +80,12 @@ export function weekWindow(now: Date): { start: string; end: string } {
   return { start, end };
 }
 
-/** The calendar year containing `now`, in UTC, from Jan 1 to the last instant of Dec 31. */
+/** The local calendar year containing `now`, from Jan 1 to the last instant of Dec 31. */
 export function yearWindow(now: Date): { start: string; end: string } {
-  const year = now.getUTCFullYear();
+  const { year } = localParts(now);
   return {
-    start: new Date(Date.UTC(year, 0, 1)).toISOString(),
-    end: new Date(Date.UTC(year + 1, 0, 1) - 1).toISOString(),
+    start: localMidnight(year, 0, 1).toISOString(),
+    end: new Date(localMidnight(year + 1, 0, 1).getTime() - 1).toISOString(),
   };
 }
 

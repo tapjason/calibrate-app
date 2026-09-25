@@ -58,6 +58,7 @@
     "typescript": "~5.9.2"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "globalSetup": "<rootDir>/jest.globalSetup.js"
   }
 }

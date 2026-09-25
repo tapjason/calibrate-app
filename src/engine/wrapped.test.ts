@@ -1,5 +1,6 @@
 import { MIN_N_OVERALL, type Category, type Prediction } from '@/types';
 
+import { __setTimeZoneForTests } from './localTime';
 import { buildWrapped, inWindow, weekWindow, yearWindow } from './wrapped';
 
 const NOW = new Date('2026-08-29T12:00:00.000Z');
@@ -46,7 +47,7 @@ describe('windows', () => {
     expect(end).toBe('2026-08-29T12:00:00.000Z');
   });
 
-  it('yearWindow spans the UTC calendar year', () => {
+  it('yearWindow spans the calendar year (UTC under Jest)', () => {
     const { start, end } = yearWindow(NOW);
     expect(start).toBe('2026-01-01T00:00:00.000Z');
     expect(end).toBe('2026-12-31T23:59:59.999Z');
@@ -235,5 +236,24 @@ describe('buildWrapped', () => {
     );
     expect(w.span).toBe('year');
     expect(w.resolved).toBe(2);
+  });
+});
+
+describe('yearWindow — local year', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  // "Your 2026" starts at the user's midnight on Jan 1, not London's.
+  it('starts and ends at local midnight', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    const { start, end } = yearWindow(new Date('2026-08-29T12:00:00.000Z'));
+    expect(start).toBe('2026-01-01T08:00:00.000Z');
+    expect(end).toBe('2027-01-01T07:59:59.999Z');
+  });
+
+  // New Year's Eve evening in California is already next year in UTC.
+  it("picks the local year on New Year's Eve", () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    const { start } = yearWindow(new Date('2027-01-01T05:00:00.000Z'));
+    expect(start).toBe('2026-01-01T08:00:00.000Z');
   });
 });

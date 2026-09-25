@@ -184,16 +184,26 @@ next is always `sharp`, even if they never met tracker's resolution count. Retur
 
 ## 6. Streak
 
-`computeStreak(resolved)` counts **consecutive UTC days** with at least one yes/no
-resolution, walking backward from the most recent.
+`computeStreak(resolved, { now })` counts **consecutive local calendar days**
+with at least one yes/no resolution, walking backward from the most recent.
 
-- **Day key:** the `YYYY-MM-DD` UTC slice of `resolved_at`.
-- **Anchor:** the *latest* `resolved_at` day in the input — **not** real "today."
-  This keeps the result deterministic offline (device clocks are untrusted). The
-  trade-off: a streak doesn't expire just because today passed without a
-  resolution; the next resolution still chains to the previous day. Switch the
-  anchor to trusted server time once available.
+- **Day key:** the device's local calendar day of `resolved_at`
+  (`src/engine/localTime.ts`). Changed from the UTC slice on 2026-09-25: in
+  UTC, a Pacific-time user resolving at 10:00 Monday and 18:00 Tuesday had
+  resolved on Monday and *Wednesday*, and the streak broke over a day they
+  never missed. The zone is on the device and needs no trusted clock.
+- **Expiry:** with `now`, a streak whose latest day is before yesterday has
+  ended and reads `0`. Yesterday still counts, so it doesn't vanish at midnight
+  before the user can extend it today. `statsStore` passes `now` both when it
+  recomputes and when it loads, so a lapsed streak shows `0` on the next
+  launch. Without `now` it anchors at the latest resolution, as before.
+- **DST-proof:** days are compared as calendar dates, not as 24-hour spans.
 - **Skips don't count** (see §1). Empty input → `0`.
+
+The same local-calendar rule applies to the weekday pattern the Coach sees
+(`patterns.ts`), the monthly trend (`trends.ts`) and the yearly Wrapped window
+(`wrapped.ts`). Jest pins the zone to UTC (`jest.globalSetup.js`). Tests for
+other zones use `__setTimeZoneForTests`.
 
 ---
 

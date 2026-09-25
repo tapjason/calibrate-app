@@ -1,5 +1,6 @@
 import type { Prediction } from '@/types';
 
+import { __setTimeZoneForTests } from './localTime';
 import { computeStreak } from './streak';
 
 const p = (overrides: Partial<Prediction> = {}): Prediction => ({
@@ -77,5 +78,71 @@ describe('computeStreak', () => {
     ];
     // 5/18 is a skip → gap. Streak from 5/19 alone is 1.
     expect(computeStreak(preds)).toBe(1);
+  });
+});
+
+describe('computeStreak — local days', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  // The regression: in UTC, Pacific-time resolutions at 10:00 Monday and
+  // 18:00 Tuesday land on Monday and *Wednesday*, and the streak breaks over
+  // a day the user never missed.
+  it('counts consecutive local days that are not consecutive in UTC', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    const preds = [
+      p({ id: 'mon', resolved_at: '2026-05-18T17:00:00.000Z' }), // Mon 10:00 PDT
+      p({ id: 'tue', resolved_at: '2026-05-20T01:00:00.000Z' }), // Tue 18:00 PDT
+    ];
+    expect(computeStreak(preds)).toBe(2);
+  });
+
+  // And the reverse: two UTC days that are one local evening.
+  it('collapses one local evening that spans UTC midnight', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    const preds = [
+      p({ id: 'a', resolved_at: '2026-05-19T23:30:00.000Z' }), // Tue 16:30 PDT
+      p({ id: 'b', resolved_at: '2026-05-20T02:30:00.000Z' }), // Tue 19:30 PDT
+    ];
+    expect(computeStreak(preds)).toBe(1);
+  });
+
+  it('survives a DST change mid-streak', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    const preds = [
+      p({ id: 'sat', resolved_at: '2026-03-07T20:00:00.000Z' }),
+      p({ id: 'sun', resolved_at: '2026-03-08T20:00:00.000Z' }), // clocks moved
+      p({ id: 'mon', resolved_at: '2026-03-09T20:00:00.000Z' }),
+    ];
+    expect(computeStreak(preds)).toBe(3);
+  });
+});
+
+describe('computeStreak — expiry', () => {
+  const run = [
+    p({ id: 'a', resolved_at: '2026-05-17T08:00:00.000Z' }),
+    p({ id: 'b', resolved_at: '2026-05-18T08:00:00.000Z' }),
+    p({ id: 'c', resolved_at: '2026-05-19T08:00:00.000Z' }),
+  ];
+
+  it('is current when the latest resolution was today', () => {
+    expect(computeStreak(run, { now: new Date('2026-05-19T20:00:00.000Z') })).toBe(3);
+  });
+
+  // Not yet broken: there's still today to extend it.
+  it('is still current when the latest resolution was yesterday', () => {
+    expect(computeStreak(run, { now: new Date('2026-05-20T20:00:00.000Z') })).toBe(3);
+  });
+
+  // The old behavior showed "streak 3" forever after the user stopped.
+  it('has ended once a whole day passes with no resolution', () => {
+    expect(computeStreak(run, { now: new Date('2026-05-21T00:30:00.000Z') })).toBe(0);
+  });
+
+  it('judges "yesterday" in local days', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    // Latest: Tue 19 May 01:00 PDT. Now: Wed 20 May 23:00 PDT → yesterday.
+    const preds = [p({ resolved_at: '2026-05-19T08:00:00.000Z' })];
+    expect(computeStreak(preds, { now: new Date('2026-05-21T06:00:00.000Z') })).toBe(1);
+    __setTimeZoneForTests(null);
   });
 });

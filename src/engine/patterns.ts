@@ -9,6 +9,7 @@
 import type { Direction, Prediction } from '@/types';
 
 import { computeCalibrationPoints } from './calibration';
+import { localParts } from './localTime';
 
 // A gap this large (5 percentage points) between mean stated confidence and the
 // actual outcome rate earns an over/under verdict; anything smaller is "close
@@ -45,17 +46,18 @@ function isYesNo(p: Prediction): boolean {
 }
 
 export interface DayOfWeekStat {
-  day: number; // 0 = Sunday … 6 = Saturday, from resolved_at in UTC
+  day: number; // 0 = Sunday … 6 = Saturday, the device's local weekday of resolved_at
   resolved: number; // yes/no count on that weekday
   hit_rate: number; // resolved_yes / resolved, 0–1
   score: number; // calibration score (0–100) for that weekday's predictions
 }
 
 /**
- * Per-weekday breakdown of resolved predictions, keyed by the UTC weekday of
+ * Per-weekday breakdown of resolved predictions, keyed by the LOCAL weekday of
  * `resolved_at`. Only weekdays with at least one yes/no resolution appear, and
- * the result is sorted Sunday→Saturday. UTC (not local) keeps it deterministic
- * offline, matching the streak engine's untrusted-clock stance.
+ * the result is sorted Sunday→Saturday. Local, because this becomes a sentence
+ * the Coach says to the user about "your Mondays" — in UTC, a US user's
+ * Monday-evening resolutions would be filed under Tuesday.
  */
 export function dayOfWeekAccuracy(
   resolved: readonly Prediction[],
@@ -63,7 +65,7 @@ export function dayOfWeekAccuracy(
   const byDay = new Map<number, Prediction[]>();
   for (const p of resolved) {
     if (!isYesNo(p) || !p.resolved_at) continue;
-    const day = new Date(p.resolved_at).getUTCDay();
+    const day = localParts(new Date(p.resolved_at)).weekday;
     const list = byDay.get(day) ?? [];
     list.push(p);
     byDay.set(day, list);

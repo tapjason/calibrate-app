@@ -10,6 +10,7 @@
 // shape of a trend without asserting a score that three resolutions produced.
 
 import { computeCalibrationPoints, type CalibrationPoint } from './calibration';
+import { localParts } from './localTime';
 import { classifyDirection } from './patterns';
 import {
   MIN_N_CATEGORY,
@@ -28,7 +29,7 @@ export const MIN_N_PERIOD = 8;
 
 /** One month of resolved predictions. */
 export interface PeriodStat {
-  /** 'YYYY-MM' in UTC — same untrusted-clock stance as the streak engine. */
+  /** 'YYYY-MM', the device's local month — a resolution at 20:00 on Jan 31 is January's. */
   period: string;
   resolved: number;
   /** Calibration score for the period, 0–100. Meaningless if provisional. */
@@ -97,9 +98,10 @@ function timeline(resolved: readonly Prediction[]): Prediction[] {
     .sort((a, b) => (a.resolved_at! < b.resolved_at! ? -1 : 1));
 }
 
-/** 'YYYY-MM' of an ISO timestamp, in UTC. */
+/** 'YYYY-MM' of an ISO timestamp, in the device's local time. */
 function monthKey(iso: string): string {
-  return iso.slice(0, 7);
+  const { year, month } = localParts(new Date(iso));
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
 }
 
 function summarize(points: CalibrationPoint[]): {

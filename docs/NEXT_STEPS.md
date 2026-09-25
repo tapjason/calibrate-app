@@ -143,7 +143,7 @@ render.
 
 ## P1 — Correctness and quality
 
-### 6. Day boundaries are UTC; users live in local time
+### 6. Day boundaries are UTC; users live in local time — **fixed 2026-09-25**
 
 `streak.ts`, `patterns.ts` (`getUTCDay`), `wrapped.ts` and `trends.ts` all key
 days and months by UTC, by deliberate choice ("untrusted clock"). But the time

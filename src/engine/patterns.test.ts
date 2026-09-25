@@ -1,5 +1,6 @@
 import type { Prediction } from '@/types';
 
+import { __setTimeZoneForTests } from './localTime';
 import {
   categoryDrift,
   classifyDirection,
@@ -42,7 +43,7 @@ describe('classifyDirection', () => {
 });
 
 describe('dayOfWeekAccuracy', () => {
-  // 2026-02-02 is a Monday (UTC). getUTCDay: Sun=0 … Mon=1.
+  // 2026-02-02 is a Monday. Jest runs in UTC (jest.globalSetup.js). Sun=0 … Mon=1.
   const MON = '2026-02-02T12:00:00.000Z';
   const TUE = '2026-02-03T12:00:00.000Z';
 
@@ -54,7 +55,7 @@ describe('dayOfWeekAccuracy', () => {
     expect(stats).toEqual([]);
   });
 
-  it('groups by UTC weekday with hit rate and calibration score', () => {
+  it('groups by weekday with hit rate and calibration score', () => {
     const stats = dayOfWeekAccuracy([
       p({ id: 'm1', resolved_at: MON, confidence: 90, status: 'resolved_yes' }),
       p({ id: 'm2', resolved_at: MON, confidence: 90, status: 'resolved_no' }),
@@ -138,5 +139,20 @@ describe('categoryDrift', () => {
     ]);
     // Older half (both no) scores 0-ish vs newer half (both yes) 100 → positive delta.
     expect(drift!.delta).toBeGreaterThan(0);
+  });
+});
+
+describe('dayOfWeekAccuracy — local weekdays', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  // This value reaches the Coach as "weakest_day_of_week". In UTC, a US
+  // user's Monday-evening resolutions would be reported as Tuesday's.
+  it('files a Monday-evening Pacific resolution under Monday', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    const stats = dayOfWeekAccuracy([
+      // Tue 03:00 UTC = Mon 19:00 PST
+      p({ id: 'eve', resolved_at: '2026-02-03T03:00:00.000Z', status: 'resolved_yes' }),
+    ]);
+    expect(stats.map((s) => s.day)).toEqual([1]);
   });
 });

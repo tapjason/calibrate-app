@@ -319,8 +319,12 @@ export type NextBadge = (
   calibrationScore: number,
 ) => NextBadgeTarget | null;
 
-/** Consecutive days, counting back from the latest resolved_at, with ≥1 resolution. */
-export type ComputeStreak = (resolved: Prediction[]) => number;
+/**
+ * Consecutive local calendar days with ≥1 resolution, counting back from the
+ * latest. With `now`, a streak whose latest day is before yesterday has ended
+ * and reads 0.
+ */
+export type ComputeStreak = (resolved: Prediction[], opts?: { now?: Date }) => number;
 
 // ---- DB: predictions (L2) ----
 

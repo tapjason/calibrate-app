@@ -128,7 +128,12 @@ export const useStatsStore = create<StatsState>((set) => ({
       listPendingPredictions(userId),
     ]);
     set({
-      userStat,
+      // The stored streak was computed at the last resolution. Re-derive it
+      // against today, so one that ended days ago reads 0 on the next launch
+      // rather than waiting for a resolution to notice.
+      userStat: userStat
+        ? { ...userStat, current_streak: computeStreak(resolved, { now: new Date() }) }
+        : null,
       categoryStats,
       nextBadges: deriveNextBadges(categoryStats),
       calibration: computeCalibration(resolved),
@@ -153,7 +158,7 @@ export const useStatsStore = create<StatsState>((set) => ({
       calibration_rating: userCalc.rating,
       total_predictions: all.length,
       total_resolved: totalResolved,
-      current_streak: computeStreak(resolved),
+      current_streak: computeStreak(resolved, { now: new Date() }),
       rating_is_provisional: isRatingProvisional(totalResolved),
     };
     await upsertUserStat(userStat);
