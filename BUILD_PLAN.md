@@ -238,6 +238,12 @@ With the nudge landed, **`docs/HUMAN_VERIFICATION.md` is very nearly the entire
 remaining critical path** — batches A–E, from funding the OpenAI account to a
 TestFlight build.
 
+**Update 2026-09-25: this was not the only piece.** A re-read against the
+human checklist found more code work: no sign-in screen exists, analytics
+has a queue-poisoning bug and never sees the Warmup, and the paywall lacks
+Terms/Privacy links. See `docs/NEXT_STEPS.md` (ordered) and
+`docs/ACCOUNT_SPEC.md`. The original note follows.
+
 **One piece of code work remains, and it blocks submission.** Deriving the App
 Store privacy answers from the source (`docs/APP_PRIVACY.md`, 2026-09-24) turned
 up the gap: the app supports account creation and has **no account-deletion

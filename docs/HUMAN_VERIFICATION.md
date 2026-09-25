@@ -87,8 +87,8 @@ So:
 | Thing | Status | Needed for |
 |---|---|---|
 | App Store screenshots | **Not made.** The identity card and calibration curve are the two that sell it. Needs the app running with real-looking data. | E |
-| Privacy policy page + public URL | **Not written.** `docs/APP_PRIVACY.md` §5 lists what it must say. An agent can draft it; hosting it needs a URL you control. | E |
-| App Store listing text (name, subtitle, description, keywords) | **Not written.** An agent can draft it from `CLAUDE.md`. | E |
+| Privacy policy page + public URL | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Fill in the placeholders; hosting needs a URL (GitHub Pages works, since the repo is public). | E |
+| App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **The name "Calibrate" is already taken twice on the App Store.** See §0 there; the choice is yours. | E |
 | Account deletion (Guideline 5.1.1(v)) | **Not built.** Code, not you; see the bottom of this file. | E |
 
 ---
@@ -163,7 +163,9 @@ delete from auth.users where email = 'test-plus-user-1377@gmail.com';
 
 That cascades — `entitlements`, `analytics_events` and `predictions` all
 declare `on delete cascade` — so deleting the account takes its data with it.
-Do that before real users exist; the password is `123456`.
+Do that before real users exist. Its password was printed here until
+2026-09-25, and this repository is public, so treat the account as compromised
+and delete it rather than reusing it.
 
 <details>
 <summary>The original procedure, kept for re-running it</summary>
@@ -443,6 +445,13 @@ In Expo Go, skip the paywall/plan boxes: RevenueCat doesn't reach the real
 store there. Those need an Android dev build (free, see Tier 1) or an iOS
 build. Sign in with **email**.
 
+> **Blocked as of 2026-09-25: there is no sign-in screen yet.** The auth
+> functions exist, but nothing in the UI calls them, so every install stays
+> a guest. Every box below that needs an account (sync, Coach, the 403
+> check) waits on that. Email sign-up also needs a dashboard decision first:
+> Supabase's built-in mailer only delivers to your own team. See
+> `docs/NEXT_STEPS.md` item 1 and `docs/ACCOUNT_SPEC.md` §1.
+
 Tick each:
 
 - [ ] First launch lands in the **Warmup**, not the tabs.
@@ -642,6 +651,9 @@ What is still yours:
 ## Open work that is code, not you
 
 Listed here only so the human checklist isn't mistaken for the whole list.
+**The full, current list is [`docs/NEXT_STEPS.md`](./NEXT_STEPS.md)**. As of
+2026-09-25 it includes a missing sign-in screen, an analytics bug and missing
+paywall links, found after the entries below were written.
 
 - **Account deletion (Guideline 5.1.1(v)).** Sign-in exists; a way to delete
   the account and its data does not. Apple rejects for this. The smallest

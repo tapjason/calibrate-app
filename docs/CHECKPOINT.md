@@ -1,5 +1,11 @@
 # Calibrate — Implementation Checkpoint
 
+> **Superseded (2026-09-25).** This snapshot is from June and is kept for
+> history. Parts of it are now wrong: Refine is cut, the Settings Refine
+> toggle is hidden, and the icon and splash are done. For current state read
+> `BUILD_PLAN.md` ("Where the build is"), `docs/HUMAN_VERIFICATION.md` and
+> `docs/NEXT_STEPS.md`.
+
 **As of:** 2026-06-16
 **Branch:** `master`
 **Latest commit:** `3c76f4b feat: add placeholder app icon + wire icon/adaptive/favicon assets`

@@ -17,7 +17,8 @@ The short version:
   log, resolve, stats, share — runs offline against local SQLite. Analytics
   never flushes for a guest (`src/analytics/flush.ts`), and sync has nothing to
   sync.
-- **Freetext never reaches the AI features except one, by explicit tap.**
+- **Freetext never reaches the AI.** The one feature that would have sent it,
+  Refine, is cut from v1 (2026-09-24). The Coach sends numbers only.
 
 ---
 
@@ -54,7 +55,7 @@ Analytics events land in `public.analytics_events`, scoped to the user id.
 
 | Feature | What is sent | Trigger |
 |---|---|---|
-| ✨ **Refine** | The prediction title the user just typed, and nothing else. Never reflections, never history. | An explicit tap, per prediction. Free. Toggleable in Settings. |
+| ✨ **Refine**: **cut from v1, not in any build** (`REFINE_ENABLED = false`, function undeployed). Declare nothing for it. If it returns, this row applies. | The prediction title the user just typed, and nothing else. Never reflections, never history. | An explicit tap, per prediction. Free. Toggleable in Settings. |
 | **Coach** (Plus) | **Aggregated numbers only** — `CoachContext` is a calibration rating, per-category resolved counts / scores / rates, and deterministic pattern values. There is no string field in it but the fixed category enum. | An explicit "Get feedback" tap. **Off by default** (`coachEnabled: false`, `src/store/settingsStore.ts`). |
 
 Both calls go through Supabase Edge Functions that verify the caller's JWT;
