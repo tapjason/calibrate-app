@@ -445,12 +445,14 @@ In Expo Go, skip the paywall/plan boxes: RevenueCat doesn't reach the real
 store there. Those need an Android dev build (free, see Tier 1) or an iOS
 build. Sign in with **email**.
 
-> **Blocked as of 2026-09-25: there is no sign-in screen yet.** The auth
-> functions exist, but nothing in the UI calls them, so every install stays
-> a guest. Every box below that needs an account (sync, Coach, the 403
-> check) waits on that. Email sign-up also needs a dashboard decision first:
-> Supabase's built-in mailer only delivers to your own team. See
-> `docs/NEXT_STEPS.md` item 1 and `docs/ACCOUNT_SPEC.md` §1.
+> **Sign-in exists as of 2026-09-25:** Settings → Account → Sign in. It has
+> been checked against the live project on the web build: a wrong password
+> round-trips "Invalid login credentials". A *successful* sign-in hasn't been
+> seen yet, because the A1 test user's password no longer works. **Before
+> creating an account by email**, decide on "Confirm email" (Supabase → Auth
+> → Providers → Email). With it on, the built-in mailer delivers only to
+> members of your Supabase team, so use your own address or turn it off. See
+> `docs/ACCOUNT_SPEC.md` §1.
 
 Tick each:
 
@@ -471,6 +473,14 @@ Tick each:
 - [ ] **The ✨ Refine button does NOT appear**, with any title text. Refine is
       cut from this release (`REFINE_ENABLED = false`), and the AI Refine row
       is gone from Settings too. If either shows up, the flag regressed.
+- [ ] **Account.** Settings shows "Not signed in". Sign in → create an
+      account by email (see the note above about confirmation). Back in
+      Settings it reads "Signed in as …", and the predictions you logged as
+      a guest are still there. Sign out: the lists go empty. Sign back in:
+      they return.
+- [ ] **Coach as a Plus guest** (needs Plus on the device, so it waits on a
+      dev build): signed out, the Coach panel says "Sign in to use Coach"
+      rather than offering a request that would fail.
 - [ ] Resolve it: yes/no + reflection saves.
 - [ ] Stats updates immediately after resolving.
 - [ ] With fewer than 20 resolutions, Stats shows **progress toward the

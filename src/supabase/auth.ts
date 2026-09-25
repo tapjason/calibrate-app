@@ -17,6 +17,15 @@ export type AuthOutcome =
   | { ok: true }
   | { ok: false; error: string };
 
+/**
+ * Sign-up can succeed without signing anyone in: with "Confirm email" on in
+ * the Supabase project, the account exists but has no session until the
+ * link in the email is clicked. The screen has to say which happened.
+ */
+export type SignUpOutcome =
+  | { ok: true; needsConfirmation: boolean }
+  | { ok: false; error: string };
+
 function errMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   return String(e);
@@ -125,14 +134,15 @@ export async function signInWithEmail(
 }
 
 /**
- * Email + password sign-up. By default Supabase sends a confirmation email;
- * the user clicks the link and lands back in the app (or signs in manually).
- * The session is set only after confirmation in that default flow.
+ * Email + password sign-up. With "Confirm email" on (the Supabase default),
+ * the account is created without a session and `needsConfirmation` is true:
+ * the user confirms from the email, then signs in here. With it off, the
+ * session arrives immediately and onAuthStateChange takes it from there.
  */
 export async function signUpWithEmail(
   email: string,
   password: string,
-): Promise<AuthOutcome> {
+): Promise<SignUpOutcome> {
   const trimmed = email.trim();
   if (!trimmed) return { ok: false, error: 'Email is required.' };
   if (password.length < 8) {
@@ -140,12 +150,12 @@ export async function signUpWithEmail(
   }
 
   try {
-    const { error } = await getSupabaseClient().auth.signUp({
+    const { data, error } = await getSupabaseClient().auth.signUp({
       email: trimmed,
       password,
     });
     if (error) return { ok: false, error: error.message };
-    return { ok: true };
+    return { ok: true, needsConfirmation: !data?.session };
   } catch (e) {
     return { ok: false, error: errMessage(e) };
   }

@@ -143,6 +143,8 @@ describe('authStore — with Supabase client', () => {
     await useAuthStore.getState().initialize();
     expect(useAuthStore.getState().status).toBe('guest');
     expect(useAuthStore.getState().userId).toBe(LOCAL_GUEST_USER_ID);
+    // A guest on a configured build can sign in, so Settings offers it.
+    expect(useAuthStore.getState().accountsAvailable).toBe(true);
   });
 
   it('starts authenticated when Supabase already has a session', async () => {

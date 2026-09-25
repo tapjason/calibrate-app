@@ -1,12 +1,15 @@
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { useEntitlementStore } from '@/store/entitlementStore';
 import { REFINE_ENABLED } from '@/constants/app';
+import { useAuthStore } from '@/store/authStore';
+import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 /**
- * Settings surface. Two device-local toggles backed by settingsStore:
+ * Settings surface. At the top, the account row (sign in, or who you are and
+ * sign out) — hidden on a build with no Supabase config, where accounts can't
+ * exist. Then the device-local toggles backed by settingsStore:
  *   - Notifications — the single kill-switch for resolution reminders + the
  *     weekly digest. The L5 services react to this via store subscription.
  *   - AI Refine — shows/hides the ✨ Refine button on the Log screen. The
@@ -20,7 +23,8 @@ import { useSettingsStore } from '@/store/settingsStore';
  */
 export function SettingsView({
   onOpenPaywall,
-}: { onOpenPaywall?: () => void } = {}) {
+  onOpenAccount,
+}: { onOpenPaywall?: () => void; onOpenAccount?: () => void } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
   const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
@@ -35,6 +39,8 @@ export function SettingsView({
 
   return (
     <View style={styles.wrap}>
+      <AccountRow onOpenAccount={onOpenAccount} />
+
       {/*
         Subscription status lives at the top because it is also where a
         subscriber goes to restore a purchase after a reinstall — the paywall
@@ -99,6 +105,70 @@ export function SettingsView({
       />
     </View>
   );
+}
+
+/**
+ * Signed out: what that means for your data, and a way in. Signed in: who you
+ * are, and a way out. Sign-out keeps local data under the account's id, so it
+ * needs no confirmation — signing back in shows everything again.
+ */
+function AccountRow({ onOpenAccount }: { onOpenAccount?: () => void }) {
+  const accountsAvailable = useAuthStore((s) => s.accountsAvailable);
+  const status = useAuthStore((s) => s.status);
+  const email = useAuthStore((s) => s.email);
+  const pending = useAuthStore((s) => s.pending);
+  const signOut = useAuthStore((s) => s.signOut);
+
+  if (!accountsAvailable) return null;
+
+  if (status === 'authenticated') {
+    return (
+      <View style={styles.row} testID="settings-account">
+        <View style={styles.rowText}>
+          <Text style={styles.rowLabel}>Account</Text>
+          <Text style={styles.rowDescription}>
+            {describeAccount(email)} Your predictions are backed up.
+          </Text>
+        </View>
+        <Button
+          label="Sign out"
+          variant="secondary"
+          disabled={pending}
+          onPress={() => void signOut()}
+          testID="settings-sign-out"
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.row} testID="settings-account">
+      <View style={styles.rowText}>
+        <Text style={styles.rowLabel}>Account</Text>
+        <Text style={styles.rowDescription}>
+          Not signed in. Your predictions live only on this phone.
+        </Text>
+      </View>
+      {onOpenAccount && (
+        <Button
+          label="Sign in"
+          variant="secondary"
+          onPress={onOpenAccount}
+          testID="settings-sign-in"
+        />
+      )}
+    </View>
+  );
+}
+
+/**
+ * Sign in with Apple can hand over a private relay address that the user has
+ * never seen, so it reads better as the method than as an address.
+ */
+function describeAccount(email: string | null): string {
+  if (!email) return 'Signed in.';
+  if (email.endsWith('@privaterelay.appleid.com')) return 'Signed in with Apple.';
+  return `Signed in as ${email}.`;
 }
 
 function ToggleRow({

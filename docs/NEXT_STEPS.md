@@ -14,7 +14,14 @@ Ordered by what each item unblocks, not by how big it is.
 
 ## P0 — Blocks the free human tests, or launch
 
-### 1. There is no sign-in screen
+### 1. There is no sign-in screen — **built 2026-09-25**
+
+> Settings → Account (sign in / signed in as … / sign out), `app/account`
+> (email sign-in and sign-up, Sign in with Apple on iOS), the confirmation-
+> pending state for sign-up, and a "Sign in to use Coach" state for a Plus
+> guest. Verified on the web build against the live project as far as a
+> wrong-password error. The email-confirmation setting below is still your
+> call.
 
 `src/supabase/auth.ts` exports `signInWithEmail`, `signUpWithEmail`,
 `signInWithApple`, `signInWithGoogle` and `signOut`. **No screen or component
@@ -45,7 +52,7 @@ configured. That choice is yours; the spec covers both. Sign in with Apple
 avoids email entirely, which is one more reason to make it the primary path on
 iOS.
 
-### 2. Analytics can't answer the question it was built for, and it has a queue-poisoning bug
+### 2. Analytics can't answer the question it was built for, and it has a queue-poisoning bug — **1 and 2 fixed 2026-09-25**
 
 The validation checkpoint (`BUILD_PLAN.md`) decides whether freemium is the right
 model at all: `warmup_completed / warmup_started` and shares per active user.

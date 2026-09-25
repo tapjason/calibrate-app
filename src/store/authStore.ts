@@ -28,6 +28,8 @@ import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
 } from '@/db/migrateGuestData';
+import * as auth from '@/supabase/auth';
+import type { AuthOutcome, SignUpOutcome } from '@/supabase/auth';
 import {
   getSupabaseClient,
   isSupabaseConfigured,
@@ -47,9 +49,33 @@ interface AuthState {
   userId: string | null;
   email: string | null;
   status: AuthStatus;
+  /**
+   * Whether signing in is possible at all on this build — false when the
+   * Supabase env vars are missing, in which case the app is guest-only and
+   * no screen should offer an account.
+   */
+  accountsAvailable: boolean;
+  /** A sign-in, sign-up or sign-out is in flight. */
+  pending: boolean;
 
   initialize: () => Promise<void>;
-  /** Test-only: drop the session. Production sign-out goes through supabase/auth. */
+  /**
+   * Account actions. Each returns the service's outcome unchanged so the
+   * screen can show the error; none of them touches local state directly.
+   * A new session arrives through onAuthStateChange, which already does the
+   * guest handoff, the store reload and the first sync — and billing follows
+   * the userId change on its own (src/billing/init.ts).
+   */
+  signInWithEmail: (email: string, password: string) => Promise<AuthOutcome>;
+  signUpWithEmail: (email: string, password: string) => Promise<SignUpOutcome>;
+  signInWithApple: () => Promise<AuthOutcome>;
+  /**
+   * Sign out. Local predictions stay on the device under the account's id —
+   * the app drops back to an empty guest view, and signing back in shows
+   * everything again. Nothing is lost, so nothing asks for confirmation.
+   */
+  signOut: () => Promise<AuthOutcome>;
+  /** Test-only: drop the session. */
   reset: () => void;
 }
 
@@ -137,10 +163,25 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
   }
 }
 
+/** Run one account action with `pending` held for its duration. */
+async function withPending<T>(
+  set: (s: Partial<AuthState>) => void,
+  action: () => Promise<T>,
+): Promise<T> {
+  set({ pending: true });
+  try {
+    return await action();
+  } finally {
+    set({ pending: false });
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   userId: null,
   email: null,
   status: 'loading',
+  accountsAvailable: false,
+  pending: false,
 
   initialize: async () => {
     if (didInitialize) return;
@@ -166,6 +207,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
 
+    set({ accountsAvailable: true });
+
     // Read whatever session AsyncStorage already has (warm start), then
     // subscribe to future changes.
     const { data } = await client.auth.getSession();
@@ -187,6 +230,19 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     didInitialize = false;
     lastUserId = null;
-    set({ userId: null, email: null, status: 'loading' });
+    set({
+      userId: null,
+      email: null,
+      status: 'loading',
+      accountsAvailable: false,
+      pending: false,
+    });
   },
+
+  signInWithEmail: (email, password) =>
+    withPending(set, () => auth.signInWithEmail(email, password)),
+  signUpWithEmail: (email, password) =>
+    withPending(set, () => auth.signUpWithEmail(email, password)),
+  signInWithApple: () => withPending(set, () => auth.signInWithApple()),
+  signOut: () => withPending(set, () => auth.signOut()),
 }));

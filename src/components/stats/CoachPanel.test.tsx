@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -29,7 +30,13 @@ const INSIGHT: CoachInsight = {
 function seed({
   isPlus = true,
   coachEnabled = true,
-}: { isPlus?: boolean; coachEnabled?: boolean } = {}): void {
+  signedIn = true,
+}: { isPlus?: boolean; coachEnabled?: boolean; signedIn?: boolean } = {}): void {
+  useAuthStore.setState(
+    signedIn
+      ? { userId: 'u1', email: 'u@example.com', status: 'authenticated' }
+      : { userId: 'local-user-v1', email: null, status: 'guest' },
+  );
   useEntitlementStore.setState({
     entitlement: isPlus
       ? { is_plus: true, source: 'annual', expires_at: null }
@@ -73,6 +80,27 @@ describe('CoachPanel — gating', () => {
 
     expect(screen.getByTestId('coach-disabled')).toBeTruthy();
     expect(screen.queryByTestId('coach-ask')).toBeNull();
+  });
+
+  // A guest can buy Plus on the device, but the Coach endpoint answers 401
+  // without a session — asking would render "unavailable" to a paying user.
+  it('asks a Plus guest to sign in instead of offering a request that must fail', () => {
+    seed({ signedIn: false });
+    const onSignIn = jest.fn();
+    render(<CoachPanel onSignIn={onSignIn} />);
+
+    expect(screen.getByTestId('coach-needs-account')).toBeTruthy();
+    expect(screen.queryByTestId('coach-ask')).toBeNull();
+    fireEvent.press(screen.getByTestId('coach-sign-in'));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+  });
+
+  it('still shows a free guest the upsell, not a sign-in prompt', () => {
+    seed({ isPlus: false, signedIn: false });
+    render(<CoachPanel />);
+
+    expect(screen.getByTestId('coach-upsell')).toBeTruthy();
+    expect(screen.queryByTestId('coach-needs-account')).toBeNull();
   });
 
   it('offers the ask button when Plus and enabled', () => {

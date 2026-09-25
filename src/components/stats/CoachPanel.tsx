@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -20,8 +21,12 @@ import { SupportSurface } from './SupportSurface';
  * The AI label is not decoration — §5.6 requires the Coach be clearly marked
  * as AI wherever it speaks.
  */
-export function CoachPanel({ onUpgrade }: { onUpgrade?: () => void } = {}) {
+export function CoachPanel({
+  onUpgrade,
+  onSignIn,
+}: { onUpgrade?: () => void; onSignIn?: () => void } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
+  const authStatus = useAuthStore((s) => s.status);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
   const userStat = useStatsStore((s) => s.userStat);
   const resolved = usePredictionStore((s) => s.resolved);
@@ -50,6 +55,29 @@ export function CoachPanel({ onUpgrade }: { onUpgrade?: () => void } = {}) {
             variant="secondary"
             testID="coach-upsell-cta"
             onPress={onUpgrade}
+          />
+        )}
+      </View>
+    );
+  }
+
+  // Plus is on the device (a guest can buy it), but the Coach runs on the
+  // server, which answers 401 to anyone without a session. Asking anyway just
+  // renders "unavailable" to someone who paid for this, so say what's needed.
+  if (authStatus === 'guest') {
+    return (
+      <View style={styles.wrap} testID="coach-needs-account">
+        <Text style={styles.heading}>Coach</Text>
+        <Text style={styles.muted}>
+          Sign in to use Coach. It runs on our server, which needs to know it's
+          you. Your predictions come with you.
+        </Text>
+        {onSignIn && (
+          <Button
+            label="Sign in"
+            variant="secondary"
+            testID="coach-sign-in"
+            onPress={onSignIn}
           />
         )}
       </View>

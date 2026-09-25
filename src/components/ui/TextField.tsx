@@ -1,4 +1,10 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from 'react-native';
 
 interface TextFieldProps {
   label: string;
@@ -9,6 +15,11 @@ interface TextFieldProps {
   maxLength?: number;
   testID?: string;
   accessibilityLabel?: string;
+  /** Credential fields: passwords, and email keyboards without autocorrect. */
+  secureTextEntry?: boolean;
+  keyboardType?: TextInputProps['keyboardType'];
+  autoCapitalize?: TextInputProps['autoCapitalize'];
+  autoComplete?: TextInputProps['autoComplete'];
 }
 
 export function TextField({
@@ -20,6 +31,10 @@ export function TextField({
   maxLength,
   testID,
   accessibilityLabel,
+  secureTextEntry,
+  keyboardType,
+  autoCapitalize,
+  autoComplete,
 }: TextFieldProps) {
   return (
     <View style={styles.wrap}>
@@ -32,6 +47,11 @@ export function TextField({
         placeholder={placeholder}
         multiline={multiline}
         maxLength={maxLength}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoComplete={autoComplete}
+        autoCorrect={secureTextEntry || keyboardType === 'email-address' ? false : undefined}
         style={[styles.input, multiline && styles.multiline]}
       />
     </View>

@@ -24,6 +24,7 @@ export default function StatsScreen() {
       />
       <CoachPanel
         onUpgrade={() => router.push('/paywall?from=stats_coach' as never)}
+        onSignIn={() => router.push('/account' as never)}
       />
       <TrendsPanel
         onUpgrade={() => router.push('/paywall?from=stats_trends' as never)}

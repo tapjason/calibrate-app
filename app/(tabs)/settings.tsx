@@ -9,6 +9,7 @@ export default function SettingsScreen() {
     <ScrollView>
       <SettingsView
         onOpenPaywall={() => router.push('/paywall?from=settings' as never)}
+        onOpenAccount={() => router.push('/account' as never)}
       />
     </ScrollView>
   );

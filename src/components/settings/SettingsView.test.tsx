@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import { FREE_ENTITLEMENT } from '@/types';
@@ -105,5 +106,61 @@ describe('SettingsView', () => {
 
     expect(screen.getByTestId('settings-plus')).toBeTruthy();
     expect(screen.getByText(/Active\./)).toBeTruthy();
+  });
+});
+
+describe('SettingsView — account', () => {
+  const signOut = jest.fn().mockResolvedValue({ ok: true });
+
+  beforeEach(() => {
+    signOut.mockClear();
+  });
+
+  it('offers sign-in to a guest, and says where their data lives', () => {
+    useAuthStore.setState({
+      accountsAvailable: true,
+      status: 'guest',
+      email: null,
+    });
+    const onOpenAccount = jest.fn();
+    render(<SettingsView onOpenAccount={onOpenAccount} />);
+
+    expect(screen.getByText(/live only on this phone/)).toBeTruthy();
+    fireEvent.press(screen.getByTestId('settings-sign-in'));
+    expect(onOpenAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows who is signed in and signs out without a confirmation', () => {
+    useAuthStore.setState({
+      accountsAvailable: true,
+      status: 'authenticated',
+      email: 'a@b.co',
+      signOut,
+    });
+    render(<SettingsView />);
+
+    expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+    fireEvent.press(screen.getByTestId('settings-sign-out'));
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  // An Apple private relay address is one the user has usually never seen.
+  it('names Sign in with Apple instead of a relay address', () => {
+    useAuthStore.setState({
+      accountsAvailable: true,
+      status: 'authenticated',
+      email: 'x7k2@privaterelay.appleid.com',
+    });
+    render(<SettingsView />);
+
+    expect(screen.getByText(/Signed in with Apple\./)).toBeTruthy();
+    expect(screen.queryByText(/privaterelay/)).toBeNull();
+  });
+
+  it('shows no account row on a build where accounts cannot exist', () => {
+    useAuthStore.setState({ accountsAvailable: false, status: 'guest' });
+    render(<SettingsView onOpenAccount={jest.fn()} />);
+
+    expect(screen.queryByTestId('settings-account')).toBeNull();
   });
 });
