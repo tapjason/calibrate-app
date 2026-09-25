@@ -105,6 +105,7 @@ describe('settingsStore: setters persist', () => {
       coachEnabled: false,
       analyticsEnabled: true,
       cardThemeId: 'midnight',
+      coverageNudgeLastShownAt: null,
     });
   });
 
@@ -121,6 +122,7 @@ describe('settingsStore: setters persist', () => {
       coachEnabled: false,
       analyticsEnabled: true,
       cardThemeId: 'midnight',
+      coverageNudgeLastShownAt: null,
     });
   });
 
@@ -135,5 +137,45 @@ describe('settingsStore: setters persist', () => {
     expect(useSettingsStore.getState().notificationsEnabled).toBe(false);
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+});
+
+describe('settingsStore: coverage-nudge cooldown', () => {
+  it('defaults to never shown', () => {
+    __setPersistenceForTests(makeFakePersistence().persistence);
+    expect(useSettingsStore.getState().coverageNudgeLastShownAt).toBeNull();
+  });
+
+  it('markCoverageNudgeShown stamps now and persists it', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+
+    const before = Date.now();
+    await useSettingsStore.getState().markCoverageNudgeShown();
+    const stamp = useSettingsStore.getState().coverageNudgeLastShownAt;
+
+    expect(stamp).not.toBeNull();
+    expect(Date.parse(stamp!)).toBeGreaterThanOrEqual(before);
+    expect(saved.at(-1)?.coverageNudgeLastShownAt).toBe(stamp);
+  });
+
+  it('survives a restart via hydrate', async () => {
+    const stamp = '2026-09-01T12:00:00.000Z';
+    __setPersistenceForTests(
+      makeFakePersistence({ coverageNudgeLastShownAt: stamp }).persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().coverageNudgeLastShownAt).toBe(stamp);
+  });
+
+  it('is not clobbered when another setting is written', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+
+    await useSettingsStore.getState().markCoverageNudgeShown();
+    const stamp = useSettingsStore.getState().coverageNudgeLastShownAt;
+    await useSettingsStore.getState().setAiRefineEnabled(false);
+
+    expect(saved.at(-1)?.coverageNudgeLastShownAt).toBe(stamp);
   });
 });

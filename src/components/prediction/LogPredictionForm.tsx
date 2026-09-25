@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
+import { track } from '@/analytics/track';
+import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import {
+  coverageNudgeNow,
+  useStatsStore,
+  type CoverageNudgeDecision,
+} from '@/store/statsStore';
 import type { Category } from '@/types';
 
 const CATEGORIES: readonly Category[] = [
@@ -38,6 +45,28 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
   // Refine is opt-out via Settings. When off, the button + suggestion UI are
   // hidden entirely; the rest of the save flow is untouched.
   const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
+
+  // The range-coverage nudge (CLAUDE.md, "Range coverage caveat"). Latched
+  // once shown: marking it shown starts the cooldown, which would otherwise
+  // re-hide the panel on the very next render.
+  const coverageGap = useStatsStore((s) => s.coverageGap);
+  const [nudge, setNudge] = useState<CoverageNudgeDecision | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+
+  useEffect(() => {
+    if (nudge || nudgeDismissed) return;
+    const decision = coverageNudgeNow();
+    if (!decision.show) return;
+    setNudge(decision);
+    void track('coverage_nudge_shown', { buckets_used: decision.buckets_used });
+    void useSettingsStore.getState().markCoverageNudgeShown();
+  }, [coverageGap, nudge, nudgeDismissed]);
+
+  const acceptNudge = () => {
+    if (nudge) setConfidence(nudge.suggested_confidence);
+    setNudgeDismissed(true);
+    void track('coverage_nudge_accepted');
+  };
 
   const onRefine = async () => {
     // Fire-and-forget by design: per CLAUDE.md, refine must never block the
@@ -86,6 +115,14 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
 
   return (
     <View>
+      {nudge && !nudgeDismissed && (
+        <CoverageNudge
+          suggestedConfidence={nudge.suggested_confidence}
+          onAccept={acceptNudge}
+          onDismiss={() => setNudgeDismissed(true)}
+        />
+      )}
+
       <TextField
         label="Prediction"
         value={title}

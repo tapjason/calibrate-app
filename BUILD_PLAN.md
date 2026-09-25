@@ -138,6 +138,28 @@ locked swatch opens the paywall rather than doing nothing.
 
 That closes the paywall's three promises: Coach, Trends, themes.
 
+**Just landed — the range-coverage nudge:** `src/engine/coverageNudge.ts`, the
+`coverageGap` derivation in `statsStore`, a cooldown timestamp in
+`settingsStore`, and `CoverageNudge` on the Log screen. This is the last open
+item in `CLAUDE.md`'s engine section — "the Log screen should periodically
+nudge users to log a prediction they think is unlikely" — and it was the one
+piece of the spec that no layer implemented.
+
+It is not cosmetic. The calibration score is the mean of per-bucket errors over
+*non-empty* buckets, so a user who only ever logs at 80%+ gets a score computed
+from one bucket and presented as a score about them. `confidenceCoverage` in
+`trends.ts` already measured that gap, but only inside the Plus analytics
+surface — measuring it for the people who had paid, and doing nothing for
+everyone else.
+
+Three decisions worth carrying: the gap is computed over the most recent 20
+logs including **pending** ones (the habit being measured is what the user
+logs, so a 20% prediction counts the day it is made, not weeks later when it
+resolves); a single low log switches the nudge off, which means accepting it
+silences it immediately rather than nagging the one user who did what was
+asked; and it is capped at once a week, because this fires in the core loop and
+the core loop must not become a place that lectures you.
+
 **Ship blockers before a build with a live paywall reaches anyone:**
 - Products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) and the `plus`
   entitlement have to exist in App Store Connect and the RevenueCat dashboard, and
@@ -148,8 +170,11 @@ That closes the paywall's three promises: Coach, Trends, themes.
 **Next:** the validation checkpoint — now instrumented, so it needs users
 rather than code. D0 aha completion is `warmup_completed / warmup_started`;
 share rate is `share_completed` per active user. That measurement is meant to
-happen *before* the checkout goes live. In parallel: Plus cosmetics and advanced
-analytics (the two unbuilt paywall promises), then L7.
+happen *before* the checkout goes live. Then L7.
+
+With the nudge landed, **`docs/HUMAN_VERIFICATION.md` is the entire remaining
+critical path** — batches A–E, from funding the OpenAI account to a TestFlight
+build. No code work is queued behind it.
 
 Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
 gates, the App Store Connect / RevenueCat product setup, and the trial-length call
@@ -249,6 +274,9 @@ queries.
 - `src/engine/trends.ts` — the Plus analytics math: month-by-month calibration,
   per-category standing sorted worst-first (provisional categories last), range
   coverage, and the recent-vs-earlier delta.
+- `src/engine/coverageNudge.ts` — when to ask for a prediction the user thinks
+  is *unlikely*: the recent-window coverage gap, the minimum history, and the
+  weekly cooldown. Pure; the Log screen reads the decision through `statsStore`.
 - `src/engine/warmup.ts` — scores the onboarding quiz by reusing the same bucketing
   and error functions.
 - `src/engine/patterns.ts` — **deterministic** pattern derivations (day-of-week
@@ -345,6 +373,8 @@ touches the SQLite client or the engine directly.
 - `app/_layout.tsx` — root layout + auth gate; `resolve/[id].tsx` deep-linked from
   notifications; first-run routing into Warmup.
 - Provisional-state UI: progress toward threshold instead of a headline number.
+- `CoverageNudge` on the Log screen — the range-coverage caveat's answer, free
+  and throttled to once a week.
 - Coach insight cards on Stats (Plus), plus the support surface for the
   `safe: false` path.
 - Soft contextual upsell on Stats; AI + Coach toggles in Settings.

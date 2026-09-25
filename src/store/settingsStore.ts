@@ -28,6 +28,13 @@ export interface StoredSettings {
    * render time, so a lapsed subscriber keeps every card, in the free look.
    */
   cardThemeId: string;
+  /**
+   * ISO timestamp of the last range-coverage nudge on the Log screen, or null
+   * if it has never fired. Not a preference the user sets — it is the
+   * cooldown's memory, and it lives here because it is device-local, survives
+   * a restart, and is never synced, which is exactly what this store is.
+   */
+  coverageNudgeLastShownAt: string | null;
 }
 
 /** Injectable persistence so tests don't touch the native AsyncStorage. */
@@ -46,6 +53,8 @@ interface SettingsState extends StoredSettings {
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
   setCardThemeId: (id: string) => Promise<void>;
+  /** Start the coverage-nudge cooldown from now. */
+  markCoverageNudgeShown: () => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -66,6 +75,7 @@ const DEFAULTS: StoredSettings = {
   coachEnabled: false,
   analyticsEnabled: true,
   cardThemeId: DEFAULT_THEME.id,
+  coverageNudgeLastShownAt: null,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -128,6 +138,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           analyticsEnabled:
             stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
           cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
+          coverageNudgeLastShownAt:
+            stored.coverageNudgeLastShownAt ??
+            DEFAULTS.coverageNudgeLastShownAt,
         });
       }
     } catch (e) {
@@ -166,6 +179,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ cardThemeId: id });
     await persist(snapshot(get()));
   },
+
+  markCoverageNudgeShown: async () => {
+    set({ coverageNudgeLastShownAt: new Date().toISOString() });
+    await persist(snapshot(get()));
+  },
 }));
 
 /**
@@ -180,5 +198,6 @@ function snapshot(state: StoredSettings): StoredSettings {
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,
     cardThemeId: state.cardThemeId,
+    coverageNudgeLastShownAt: state.coverageNudgeLastShownAt,
   };
 }

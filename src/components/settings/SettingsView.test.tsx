@@ -70,8 +70,9 @@ describe('SettingsView', () => {
         notificationsEnabled: false,
         aiRefineEnabled: true,
         coachEnabled: false,
-      analyticsEnabled: true,
-      cardThemeId: 'midnight',
+        analyticsEnabled: true,
+        cardThemeId: 'midnight',
+        coverageNudgeLastShownAt: null,
       });
     });
   });

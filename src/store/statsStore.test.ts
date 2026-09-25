@@ -4,7 +4,11 @@ import { createTestDb } from '@/db/testing';
 import type { Prediction } from '@/types';
 
 import { useAuthStore } from './authStore';
-import { useStatsStore } from './statsStore';
+import {
+  __setPersistenceForTests,
+  useSettingsStore,
+} from './settingsStore';
+import { coverageNudgeNow, useStatsStore } from './statsStore';
 
 const USER = 'local-user-v1';
 
@@ -31,11 +35,13 @@ beforeEach(async () => {
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
   });
+  __setPersistenceForTests({ load: async () => null, save: async () => {} });
   await useAuthStore.getState().initialize();
 });
 
 afterEach(() => {
   setDbForTests(null);
+  __setPersistenceForTests(null);
 });
 
 describe('statsStore.recomputeForUser', () => {
@@ -131,5 +137,45 @@ describe('statsStore.recomputeForUser', () => {
     });
     await useStatsStore.getState().loadForUser(USER);
     expect(useStatsStore.getState().calibration.buckets).toHaveLength(1);
+  });
+});
+
+describe('statsStore: coverage gap and the Log-screen nudge', () => {
+  it('counts pending predictions, so a low log silences the nudge at once', async () => {
+    // Eight high-confidence logs: enough history, low end untouched.
+    for (let i = 0; i < 8; i++) {
+      await insertPrediction(p({ id: `h${i}`, confidence: 90 }));
+    }
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().coverageGap.low_end_empty).toBe(true);
+    expect(coverageNudgeNow().show).toBe(true);
+
+    // One prediction at 20%, still pending. The habit has changed today, not
+    // whenever this happens to resolve.
+    await insertPrediction(p({ id: 'low', confidence: 20 }));
+    await useStatsStore.getState().recomputeForUser(USER);
+
+    expect(useStatsStore.getState().coverageGap.low_end_empty).toBe(false);
+    expect(coverageNudgeNow().show).toBe(false);
+  });
+
+  it('rebuilds the gap on loadForUser, not only on recompute', async () => {
+    for (let i = 0; i < 8; i++) {
+      await insertPrediction(p({ id: `h${i}`, confidence: 90 }));
+    }
+    await useStatsStore.getState().loadForUser(USER);
+
+    expect(useStatsStore.getState().coverageGap.logged).toBe(8);
+    expect(coverageNudgeNow().show).toBe(true);
+  });
+
+  it('respects the cooldown recorded in settings', async () => {
+    for (let i = 0; i < 8; i++) {
+      await insertPrediction(p({ id: `h${i}`, confidence: 90 }));
+    }
+    await useStatsStore.getState().recomputeForUser(USER);
+    await useSettingsStore.getState().markCoverageNudgeShown();
+
+    expect(coverageNudgeNow().show).toBe(false);
   });
 });

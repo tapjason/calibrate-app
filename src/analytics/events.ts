@@ -43,6 +43,16 @@ export const EVENT_NAMES = [
   /** A purchase was started and did not complete. */
   'purchase_abandoned',
 
+  // --- Range coverage (CLAUDE.md's range-coverage caveat) ------------------
+  // "Track bucket coverage as a product metric." Coverage itself is derivable
+  // from `prediction_logged.confidence`, which every log carries — these two
+  // answer the second question: whether the nudge that exists to widen that
+  // coverage does anything.
+  /** The Log screen's "log something unlikely" nudge was shown. */
+  'coverage_nudge_shown',
+  /** The user took it, and the slider was pre-set low. */
+  'coverage_nudge_accepted',
+
   // --- Plus usage mix (§7, metric 4: AI-heavy vs analytics/cosmetic) --------
   'coach_requested',
   /** The Plus analytics tier being used — the non-AI half of the split. */
@@ -84,6 +94,8 @@ export const EVENT_PROPS = {
   paywall_viewed: ['source'],
   purchase_completed: ['plan_annual', 'plan_monthly', 'plan_lifetime', 'trial'],
   purchase_abandoned: [],
+  coverage_nudge_shown: ['buckets_used'],
+  coverage_nudge_accepted: [],
   coach_requested: ['insight_count'],
   data_exported: ['row_count'],
 } as const satisfies Record<EventName, readonly string[]>;

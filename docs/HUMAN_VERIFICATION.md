@@ -1,6 +1,9 @@
 # Calibrate — Human Verification Checklist
 
-**As of:** 2026-09-07 · **Branch:** `master` · **Latest commit:** `cfaf237`
+**As of:** 2026-09-09 · **Branch:** `master`
+
+*(No commit hash here on purpose — it went stale within a day last time. The
+content below tracks what is unverified, not what was last written.)*
 
 Everything the build needs that an agent cannot do from the repo: things that
 need a funded account, a dashboard login, a simulator, a physical device, or a
@@ -12,10 +15,15 @@ Batches are ordered by what they unblock, not by difficulty. A, B and C can all
 be done at a desk; D needs a device; E is the ship.
 
 Nothing here blocks further coding — the offline core loop, the Warmup, the
-share loop, and the Coach's deterministic half are all done and tested (495
+share loop, the Coach's deterministic half, billing, the Plus tier (Coach,
+Trends, card themes) and the range-coverage nudge are all done and tested (644
 tests green). What is blocked is *verification*: the Coach has never produced a
 real model response (unfunded OpenAI account), `refine` has never been deployed,
 and no purchase has ever been made.
+
+With the paywall's three promises built, **every remaining item in this file is
+the whole remaining critical path.** There is no meaningful code work queued
+behind it.
 
 ---
 
@@ -215,6 +223,14 @@ Tick each:
 - [ ] Warmup results do **not** appear in Stats (they are structurally
       separate — this is worth confirming visually once).
 - [ ] Log a prediction: under 15 seconds, all four fields work.
+- [ ] **The range-coverage nudge.** Log 8 predictions, all above 40%
+      confidence, then open the Log tab again: a panel offers to start one at
+      25%. Tapping it pre-sets the slider; "Not now" dismisses it. Log one
+      below 40% and it stops appearing entirely (a low log is the thing it was
+      asking for), as does dismissing it — for a week. This is the
+      free-tier answer to `CLAUDE.md`'s range-coverage caveat: without it a
+      user who only logs at 80%+ gets a calibration score computed from a
+      single bucket.
 - [ ] The ✨ Refine button appears once the title has text (needs A2 deployed).
 - [ ] Resolve it: yes/no + reflection saves.
 - [ ] Stats updates immediately after resolving.

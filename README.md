@@ -141,17 +141,19 @@ supabase secrets set OPENAI_API_KEY=sk-...
 
 ## Current Status
 
-The offline core is built and tested: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats screen flow, resolution & weekly-digest notifications, Supabase auth + background sync, and the AI refine button. The stats screen currently renders the calibration curve as text rows + simple bars.
+The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, the AI refine button, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation.
+
+**What remains is verification, not code.** Everything that needs a funded account, a dashboard login, a simulator, a device, or a judgment call about money is written up batch by batch — what to do, what "pass" looks like, and what to report — in [`docs/HUMAN_VERIFICATION.md`](./docs/HUMAN_VERIFICATION.md). Start there.
 
 ---
 
 ## Future TODO
 
 **Near-term**
-- [ ] **Real calibration chart** — replace the text/bar view with a Victory Native diagonal plot (stated vs. actual per bucket).
-- [ ] **Badge system polish** — surface the per-category badge levels (Guesser → Tracker → Forecaster → Sharp → Oracle) prominently in the UI.
-- [ ] **History filtering** — filter past predictions by category and outcome.
-- [ ] **Resolve native integration** — verify notification deep-links land on `resolve/[id]` on a physical device.
+- [x] **Real calibration chart** — the curve is drawn directly with `react-native-svg` (no Victory/Skia dependency), with the dashed perfect-calibration diagonal.
+- [x] **Badge system polish** — per-category badge levels surfaced in Stats with a progress hint toward the next one.
+- [x] **History filtering** — past predictions filter by category.
+- [ ] **Resolve native integration** — verify notification deep-links land on `resolve/[id]` on a physical device (`docs/HUMAN_VERIFICATION.md`, batch D1).
 
 **Backend & platform (Layer 7)**
 - [ ] iOS notification entitlements, push credentials, and deep-link config verified on-device.
@@ -160,7 +162,7 @@ The offline core is built and tested: SQLite persistence, the calibration engine
 - [ ] Clear remaining transitive dependency advisories once the Expo SDK upgrade allows it (currently only resolvable via a breaking `--force`).
 
 **AI features (V2+, Pro-gated, never in the critical path)**
-- [ ] **Suggested confidence nudge** — compare an input against the user's historical accuracy on similar predictions.
+- [ ] **Suggested confidence nudge** — compare an input against the user's historical accuracy on similar predictions. (Distinct from the shipped *range-coverage* nudge, which is deterministic and free.)
 - [ ] **AI weekly digest** — plain-English summary of calibration trends.
 - [ ] **Pattern detection** — surface non-obvious patterns ("Your Monday predictions are 30% less accurate").
 - [ ] **Pre-mortem mode** — stress-test high-stakes predictions before logging.

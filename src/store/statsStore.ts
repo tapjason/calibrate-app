@@ -22,6 +22,12 @@ import {
   isScoreProvisional,
   nextBadge,
 } from '@/engine/calibration';
+import {
+  coverageGap as computeCoverageGap,
+  evaluateCoverageNudge,
+  type CoverageGap,
+  type CoverageNudgeDecision,
+} from '@/engine/coverageNudge';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import type {
@@ -32,6 +38,8 @@ import type {
   Prediction,
   UserStat,
 } from '@/types';
+
+import { useSettingsStore } from './settingsStore';
 
 interface StatsState {
   userStat: UserStat | null;
@@ -58,6 +66,12 @@ interface StatsState {
    * subscribes.
    */
   trends: TrendSummary;
+  /**
+   * The confidence range this user's recent logs occupy — pending included,
+   * because what it measures is the logging habit, not resolved outcomes.
+   * Feeds the Log screen's range-coverage nudge via `coverageNudgeNow()`.
+   */
+  coverageGap: CoverageGap;
   /** Pull persisted stats from the DB into the store and refresh buckets. */
   loadForUser: (userId: string) => Promise<void>;
   /** Re-run the engine over all of a user's predictions and persist. */
@@ -67,6 +81,8 @@ interface StatsState {
 const EMPTY_CALIBRATION: CalibrationResult = { rating: 0, buckets: [] };
 
 const EMPTY_TRENDS: TrendSummary = buildTrendSummary([]);
+
+const EMPTY_COVERAGE_GAP: CoverageGap = computeCoverageGap([]);
 
 /** Map each category to its next-badge target (engine call lives here, in L4). */
 function deriveNextBadges(
@@ -97,15 +113,19 @@ export const useStatsStore = create<StatsState>((set) => ({
   nextBadges: {},
   calibration: EMPTY_CALIBRATION,
   trends: EMPTY_TRENDS,
+  coverageGap: EMPTY_COVERAGE_GAP,
 
   loadForUser: async (userId) => {
     // Persisted scalars + an on-demand bucket recompute. The buckets aren't
     // stored (cheap to rebuild, no schema cost), so a fresh load fetches
     // the resolved list too.
-    const [userStat, categoryStats, resolved] = await Promise.all([
+    // Pending comes along for the coverage gap only: the nudge counts what the
+    // user LOGS, so a prediction made at 20% has to count the day it is made.
+    const [userStat, categoryStats, resolved, pending] = await Promise.all([
       getUserStat(userId),
       listCategoryStats(userId),
       listResolvedPredictions(userId),
+      listPendingPredictions(userId),
     ]);
     set({
       userStat,
@@ -113,6 +133,7 @@ export const useStatsStore = create<StatsState>((set) => ({
       nextBadges: deriveNextBadges(categoryStats),
       calibration: computeCalibration(resolved),
       trends: buildTrendSummary(resolved),
+      coverageGap: computeCoverageGap([...pending, ...resolved]),
     });
   },
 
@@ -169,6 +190,29 @@ export const useStatsStore = create<StatsState>((set) => ({
       nextBadges: deriveNextBadges(categoryStats),
       calibration: userCalc,
       trends: buildTrendSummary(resolved),
+      coverageGap: computeCoverageGap(all),
     });
   },
 }));
+
+/**
+ * Whether the Log screen should nudge for an unlikely prediction right now.
+ *
+ * The engine call lives here, in L4, so the Log screen never imports L3. Reads
+ * the cooldown timestamp from settings rather than subscribing to it: the only
+ * writer is the nudge itself, and the screen latches visibility once shown, so
+ * a reactive read would just re-hide the panel the instant it appeared.
+ */
+export function coverageNudgeNow(): CoverageNudgeDecision {
+  return evaluateCoverageNudge(
+    useStatsStore.getState().coverageGap,
+    useSettingsStore.getState().coverageNudgeLastShownAt,
+    new Date().toISOString(),
+  );
+}
+
+/**
+ * Re-exported so Layer 6 never imports the engine directly. The decision is
+ * produced here by `coverageNudgeNow()`; the type travels with it.
+ */
+export type { CoverageGap, CoverageNudgeDecision };

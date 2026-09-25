@@ -4,8 +4,12 @@ import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import {
+  __setPersistenceForTests,
+  useSettingsStore,
+} from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
+import type { CoverageGap } from '@/engine/coverageNudge';
 
 import { LogPredictionForm } from './LogPredictionForm';
 
@@ -19,18 +23,36 @@ const { refinePrediction } = require('@/ai/refine') as {
   refinePrediction: jest.Mock;
 };
 
+/** A user with no history — never eligible for the coverage nudge. */
+const NO_GAP: CoverageGap = { logged: 0, buckets_used: 0, low_end_empty: true };
+
+/** A user clustered high for long enough to be nudged. */
+const CLUSTERED_HIGH: CoverageGap = {
+  logged: 12,
+  buckets_used: 1,
+  low_end_empty: true,
+};
+
 beforeEach(async () => {
   setDbForTests(await createTestDb());
+  // In-memory persistence: AsyncStorage isn't available under jest, and the
+  // store would otherwise warn on every write it swallows.
+  __setPersistenceForTests({
+    load: async () => null,
+    save: async () => {},
+  });
   useAuthStore.getState().reset();
   usePredictionStore.setState({ pending: [], resolved: [] });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+    coverageGap: NO_GAP,
   });
   useSettingsStore.setState({
     notificationsEnabled: true,
     aiRefineEnabled: true,
+    coverageNudgeLastShownAt: null,
     hydrated: false,
   });
   await useAuthStore.getState().initialize();
@@ -40,6 +62,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   setDbForTests(null);
+  __setPersistenceForTests(null);
 });
 
 describe('LogPredictionForm', () => {
@@ -180,5 +203,84 @@ describe('LogPredictionForm', () => {
       expect(usePredictionStore.getState().pending).toHaveLength(1);
     });
     expect(usePredictionStore.getState().pending[0].confidence).toBe(0);
+  });
+
+  describe('range-coverage nudge', () => {
+    it('stays hidden for a user with no history', () => {
+      render(<LogPredictionForm />);
+      expect(screen.queryByTestId('coverage-nudge')).toBeNull();
+    });
+
+    it('appears for a user whose recent logs never touch the low end', async () => {
+      useStatsStore.setState({ coverageGap: CLUSTERED_HIGH });
+      render(<LogPredictionForm />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-nudge')).toBeTruthy();
+      });
+    });
+
+    it('starts the cooldown as soon as it is shown', async () => {
+      useStatsStore.setState({ coverageGap: CLUSTERED_HIGH });
+      render(<LogPredictionForm />);
+
+      await waitFor(() => {
+        expect(
+          useSettingsStore.getState().coverageNudgeLastShownAt,
+        ).not.toBeNull();
+      });
+      // Still on screen: marking it shown must not re-hide it mid-session.
+      expect(screen.getByTestId('coverage-nudge')).toBeTruthy();
+    });
+
+    it('stays hidden while the cooldown is running', () => {
+      useStatsStore.setState({ coverageGap: CLUSTERED_HIGH });
+      useSettingsStore.setState({
+        coverageNudgeLastShownAt: new Date().toISOString(),
+      });
+      render(<LogPredictionForm />);
+      expect(screen.queryByTestId('coverage-nudge')).toBeNull();
+    });
+
+    it('pre-sets a low confidence when accepted, and saves it', async () => {
+      useStatsStore.setState({ coverageGap: CLUSTERED_HIGH });
+      render(<LogPredictionForm />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-nudge')).toBeTruthy();
+      });
+      fireEvent.press(screen.getByTestId('coverage-nudge-accept'));
+
+      expect(screen.queryByTestId('coverage-nudge')).toBeNull();
+      fireEvent.changeText(
+        screen.getByTestId('title-field'),
+        'It will rain on Saturday',
+      );
+      fireEvent.press(screen.getByTestId('submit-button'));
+
+      await waitFor(() => {
+        expect(usePredictionStore.getState().pending).toHaveLength(1);
+      });
+      expect(usePredictionStore.getState().pending[0].confidence).toBe(25);
+    });
+
+    it('dismisses without touching the confidence value', async () => {
+      useStatsStore.setState({ coverageGap: CLUSTERED_HIGH });
+      render(<LogPredictionForm />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-nudge')).toBeTruthy();
+      });
+      fireEvent.press(screen.getByTestId('coverage-nudge-dismiss'));
+
+      expect(screen.queryByTestId('coverage-nudge')).toBeNull();
+      fireEvent.changeText(screen.getByTestId('title-field'), 'unchanged');
+      fireEvent.press(screen.getByTestId('submit-button'));
+
+      await waitFor(() => {
+        expect(usePredictionStore.getState().pending).toHaveLength(1);
+      });
+      expect(usePredictionStore.getState().pending[0].confidence).toBe(50);
+    });
   });
 });
