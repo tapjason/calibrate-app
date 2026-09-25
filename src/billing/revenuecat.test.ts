@@ -173,6 +173,41 @@ describe('plansFromOfferings', () => {
     expect(plans.find((p) => p.plan === 'monthly')?.trialDays).toBeNull();
   });
 
+  it('keeps the trial unit the store reported, alongside the day count', () => {
+    // The shipped offer is one calendar MONTH free on annual. 30 days is the
+    // arithmetic; "1 month" is what the user is actually granted, and the
+    // paywall reads the latter.
+    const plans = plansFromOfferings({
+      current: {
+        availablePackages: [
+          pkg(PRODUCT_IDS.annual, '$29.99', {
+            periodNumberOfUnits: 1,
+            periodUnit: 'MONTH',
+            price: 0,
+          }),
+        ],
+      },
+    });
+    expect(plans[0].trialPeriod).toEqual({ count: 1, unit: 'MONTH' });
+    expect(plans[0].trialDays).toBe(30);
+  });
+
+  it('has no trial period when the intro offer is not free', () => {
+    const plans = plansFromOfferings({
+      current: {
+        availablePackages: [
+          pkg(PRODUCT_IDS.annual, '$29.99', {
+            periodNumberOfUnits: 1,
+            periodUnit: 'MONTH',
+            price: 9.99,
+          }),
+        ],
+      },
+    });
+    expect(plans[0].trialPeriod).toBeNull();
+    expect(plans[0].trialDays).toBeNull();
+  });
+
   it('converts non-day trial periods', () => {
     const plans = plansFromOfferings({
       current: {

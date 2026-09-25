@@ -1,27 +1,87 @@
 import type { PlusPlan } from '@/billing/revenuecat';
 
-import { noticeText, priceLine, termsLine, trialLine } from './paywallCopy';
+import {
+  noticeText,
+  priceLine,
+  termsLine,
+  trialLabel,
+  trialLine,
+  trialTermsLine,
+} from './paywallCopy';
 
 const annual: PlusPlan = {
   packageId: 'pkg_annual',
   plan: 'annual',
   priceString: '$29.99',
   trialDays: 21,
+  trialPeriod: null,
+};
+
+/** The shipped offer: one calendar month free on annual. */
+const annualMonthTrial: PlusPlan = {
+  packageId: 'pkg_annual',
+  plan: 'annual',
+  priceString: '$29.99',
+  trialDays: 30,
+  trialPeriod: { count: 1, unit: 'MONTH' },
 };
 const monthly: PlusPlan = {
   packageId: 'pkg_monthly',
   plan: 'monthly',
   priceString: '$4.99',
   trialDays: null,
+  trialPeriod: null,
 };
 const lifetime: PlusPlan = {
   packageId: 'pkg_lifetime',
   plan: 'lifetime',
   priceString: '$59.99',
   trialDays: null,
+  trialPeriod: null,
 };
 
+describe('trialLabel', () => {
+  it('says a one-month trial in months, not days', () => {
+    // The whole point: 30 days is not a calendar month, and this is a
+    // billing screen.
+    expect(trialLabel(annualMonthTrial)).toBe('1 month');
+  });
+
+  it('pluralizes multi-unit periods', () => {
+    expect(
+      trialLabel({ ...annualMonthTrial, trialPeriod: { count: 2, unit: 'WEEK' } }),
+    ).toBe('2 weeks');
+  });
+
+  it('falls back to the day count when the store reports no period', () => {
+    expect(trialLabel(annual)).toBe('21 days');
+  });
+
+  it('is null with no trial at all', () => {
+    expect(trialLabel(monthly)).toBeNull();
+  });
+});
+
+describe('trialTermsLine', () => {
+  it('warns that the trial converts, and names the 24-hour deadline', () => {
+    const line = trialTermsLine([annualMonthTrial, monthly]);
+    expect(line).toContain('turns into a paid subscription');
+    // Apple only stops the charge if you cancel a day early. Saying "before
+    // it ends" would be a promise the platform does not keep.
+    expect(line).toContain('24 hours');
+  });
+
+  it('is empty when nothing on offer has a trial', () => {
+    expect(trialTermsLine([monthly, lifetime])).toBe('');
+    expect(trialTermsLine([])).toBe('');
+  });
+});
+
 describe('trialLine', () => {
+  it('leads a month-long trial with the month', () => {
+    expect(trialLine(annualMonthTrial)).toBe('1 month free, then $29.99');
+  });
+
   it('states the trial length and what happens after it', () => {
     expect(trialLine(annual)).toBe('21 days free, then $29.99');
   });

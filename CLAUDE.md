@@ -232,13 +232,21 @@ Plus sells insight, depth, and cosmetics only.
 | Advanced analytics, trends, export | — | ✅ |
 | Card/badge cosmetics | — | ✅ |
 
-Pricing intent: ~$4.99/mo, ~$29.99/yr (annual anchored, shown first), optional lifetime;
-trial on annual. Re-verified 2026-08-31 — the band still holds. Two open points carried
-in `GROWTH_AND_MONETIZATION.md` §4: the trial should probably be **17–21 days rather
-than 14** (the measured conversion cliff is between "under 4 days" and "17–32 days", and
-Plus value is only legible once predictions resolve), and **net revenue depends on the
-unsettled Apple link-out commission question** — $29.99/yr is not $29.99 in hand.
-**Re-verify both before implementing.**
+Pricing intent: ~$4.99/mo, ~$29.99/yr (annual anchored, shown first), optional lifetime.
+
+**Trial: one free month on the annual plan** (decided 2026-09-25), auto-renewing
+into the paid year unless cancelled. A calendar month sits inside the measured
+42.5%-conversion band ("17–32 days") instead of the unmeasured gap 14 days falls
+in, and Plus only becomes legible once predictions *resolve* — a month is more
+than one resolution cycle. This is a store-side setting: the app renders whatever
+trial the store reports, per plan, in the store's own units ("1 month", not "30
+days" — a calendar month is 28–31 days and this is a billing screen). The paywall
+must also state that the trial converts and that cancelling takes **24 hours'**
+notice, which is Apple's actual rule.
+
+One open point remains in `GROWTH_AND_MONETIZATION.md` §4: **net revenue depends
+on the unsettled Apple link-out commission question** — $29.99/yr is not $29.99 in
+hand. Re-verify before relying on a revenue number.
 
 Rule: the paywall never touches the core loop or anything shareable.
 

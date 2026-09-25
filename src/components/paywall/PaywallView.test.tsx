@@ -7,10 +7,31 @@ import { FREE_ENTITLEMENT } from '@/types';
 
 import { PaywallView } from './PaywallView';
 
+// The shipped offering: one calendar month free on annual only — a user is
+// eligible for an introductory offer once per subscription group, so putting
+// it on the anchored plan is the point (GROWTH_AND_MONETIZATION.md §4).
 const PLANS: PlusPlan[] = [
-  { packageId: 'pkg_annual', plan: 'annual', priceString: '$29.99', trialDays: 21 },
-  { packageId: 'pkg_monthly', plan: 'monthly', priceString: '$4.99', trialDays: null },
-  { packageId: 'pkg_lifetime', plan: 'lifetime', priceString: '$59.99', trialDays: null },
+  {
+    packageId: 'pkg_annual',
+    plan: 'annual',
+    priceString: '$29.99',
+    trialDays: 30,
+    trialPeriod: { count: 1, unit: 'MONTH' },
+  },
+  {
+    packageId: 'pkg_monthly',
+    plan: 'monthly',
+    priceString: '$4.99',
+    trialDays: null,
+    trialPeriod: null,
+  },
+  {
+    packageId: 'pkg_lifetime',
+    plan: 'lifetime',
+    priceString: '$59.99',
+    trialDays: null,
+    trialPeriod: null,
+  },
 ];
 
 // The store's own actions are covered in paywallStore.test.ts; here they are
@@ -66,8 +87,22 @@ describe('PaywallView', () => {
     seed();
     render(<PaywallView />);
     expect(screen.getByTestId('plan-annual')).toBeTruthy();
-    expect(screen.getByText('21 days free, then $29.99')).toBeTruthy();
+    expect(screen.getByText('1 month free, then $29.99')).toBeTruthy();
     expect(screen.getByText('$4.99')).toBeTruthy();
+  });
+
+  it('states that the trial converts, and the 24-hour cancel deadline', () => {
+    seed();
+    render(<PaywallView />);
+    const terms = screen.getByTestId('paywall-trial-terms');
+    expect(terms).toBeTruthy();
+    expect(terms.props.children).toContain('24 hours');
+  });
+
+  it('omits the trial terms when no plan on offer has a trial', () => {
+    seed({ plans: PLANS.map((p) => ({ ...p, trialDays: null, trialPeriod: null })) });
+    render(<PaywallView />);
+    expect(screen.queryByTestId('paywall-trial-terms')).toBeNull();
   });
 
   it('buys the plan that was tapped', async () => {

@@ -72,8 +72,22 @@ export interface PlusPlan {
   plan: PlanId;
   /** Localized, store-formatted price ("$29.99"). Never assembled by us. */
   priceString: string;
-  /** Free-trial length in days, or null when the plan has no free intro offer. */
+  /**
+   * Free-trial length in days, or null when the plan has no free intro offer.
+   * An approximation for anything expressed in months or years — use
+   * `trialPeriod` for anything the user reads.
+   */
   trialDays: number | null;
+  /**
+   * The trial exactly as the store expresses it: `{ count: 1, unit: 'MONTH' }`
+   * for a one-month free trial.
+   *
+   * Kept alongside `trialDays` because a calendar month is 28–31 days, and
+   * this is the one screen where being three days off is a billing claim
+   * rather than a rounding error. Copy reads this; arithmetic reads
+   * `trialDays`.
+   */
+  trialPeriod: TrialPeriod | null;
 }
 
 export type PurchaseResult =
@@ -96,6 +110,15 @@ export type RestoreResult =
 // ---------------------------------------------------------------------------
 // The SDK seam
 // ---------------------------------------------------------------------------
+
+/** How a store expresses an introductory period. */
+export type TrialUnit = 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
+
+/** A free-trial length in the store's own units. */
+export interface TrialPeriod {
+  count: number;
+  unit: TrialUnit;
+}
 
 /** The subset of RevenueCat's CustomerInfo we read. */
 export interface RcEntitlementInfo {
@@ -275,13 +298,25 @@ const DAYS_PER_UNIT: Record<string, number> = {
   YEAR: 365,
 };
 
-function trialDaysFor(pkg: RcPackage): number | null {
+/**
+ * The free-trial period a package offers, in the store's own units, or null.
+ *
+ * A discounted intro price is not a trial — only a free one is.
+ */
+function trialPeriodFor(pkg: RcPackage): TrialPeriod | null {
   const intro = pkg.product.introPrice;
-  // A discounted intro price is not a trial. Only a free one is.
   if (!intro || intro.price !== 0) return null;
-  const perUnit = DAYS_PER_UNIT[intro.periodUnit?.toUpperCase() ?? ''];
-  if (!perUnit || !Number.isFinite(intro.periodNumberOfUnits)) return null;
-  return intro.periodNumberOfUnits * perUnit;
+  const unit = intro.periodUnit?.toUpperCase();
+  if (!unit || !(unit in DAYS_PER_UNIT)) return null;
+  const count = intro.periodNumberOfUnits;
+  if (!Number.isFinite(count) || count <= 0) return null;
+  return { count, unit: unit as TrialUnit };
+}
+
+/** The same trial as a day count, for arithmetic and analytics. */
+function trialDaysFor(period: TrialPeriod | null): number | null {
+  if (!period) return null;
+  return period.count * DAYS_PER_UNIT[period.unit];
 }
 
 function planFor(productId: string): PlanId | null {
@@ -310,7 +345,8 @@ export function plansFromOfferings(offerings: unknown): PlusPlan[] {
       packageId: pkg.identifier,
       plan,
       priceString: pkg.product.priceString,
-      trialDays: trialDaysFor(pkg),
+      trialDays: trialDaysFor(trialPeriodFor(pkg)),
+      trialPeriod: trialPeriodFor(pkg),
     });
   }
 

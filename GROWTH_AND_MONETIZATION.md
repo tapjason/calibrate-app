@@ -133,9 +133,21 @@ This formalizes the "Optional AI Features (V2+), gated behind Pro" note already 
 
 - **Calibrate Plus: $4.99/mo or $29.99/yr** (annual anchored and shown first),
   optional **$59.99 lifetime** for the indie/one-time-payment crowd this app attracts.
-- **14-day trial on the annual plan.** The data strongly favors trials in the ~2-week+
-  range over short ones; 14 days also gives enough resolutions to make the AI insight
-  value legible before the charge.
+- **DECIDED 2026-09-25: a one-month free trial on the annual plan**, auto-renewing
+  into $29.99/yr unless cancelled. This supersedes the 14-day figure below and the
+  17–21 day refinement under it. One calendar month sits inside the measured
+  42.5% band ("17–32 days") rather than in the unmeasured gap, and it fits this
+  app's specific shape: Plus value is legible only once predictions *resolve*, and
+  a month is comfortably more than one resolution cycle. It is a store-side
+  setting — the app renders whatever trial the store reports.
+
+  What it costs: revenue is deferred a month per signup, and a trialist has Coach
+  for that month. The latter is bounded by the per-user daily cost ceiling the
+  Coach endpoint already enforces, so the exposure is capped rather than open.
+
+  The original reasoning, kept because the trial length is worth re-testing once
+  there is conversion data: 14-day trial on the annual plan; the data strongly
+  favors trials in the ~2-week+ range over short ones.
 - Keep the price in the middle of the band. Don't undercut to $1.99 — higher price
   points convert at least as well and set a "serious tool" frame consistent with the
   calibration positioning.

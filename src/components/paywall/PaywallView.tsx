@@ -14,6 +14,7 @@ import {
   noticeText,
   priceLine,
   termsLine,
+  trialTermsLine,
 } from './paywallCopy';
 
 /**
@@ -43,6 +44,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   const busy = purchasing !== null || restoring;
   const message = noticeText(notice);
   const terms = termsLine(plans);
+  const trialTerms = trialTermsLine(plans);
 
   if (isPlus) {
     return (
@@ -112,6 +114,12 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
         onPress={() => void restore()}
         testID="paywall-restore"
       />
+
+      {trialTerms !== '' && (
+        <Text style={styles.terms} testID="paywall-trial-terms">
+          {trialTerms}
+        </Text>
+      )}
 
       {terms !== '' && <Text style={styles.terms}>{terms}</Text>}
 

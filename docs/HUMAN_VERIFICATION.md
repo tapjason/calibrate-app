@@ -1,6 +1,6 @@
 # Calibrate — Human Verification Checklist
 
-**As of:** 2026-09-24 · **Branch:** `master`
+**As of:** 2026-09-25 · **Branch:** `master`
 
 *(No commit hash here on purpose — it went stale within a day last time. The
 content below tracks what is unverified, not what was last written.)*
@@ -19,12 +19,21 @@ share loop, the Coach's deterministic half, billing, the Plus tier (Coach,
 Trends, card themes) and the range-coverage nudge are all done and tested.
 What is blocked is *verification*.
 
-**Changed 2026-09-24:** the OpenAI account is funded and verified working, and
-the Supabase project (which had auto-paused) is restored. `refine` is **cut**
-rather than pending — the first live run showed its prompt makes predictions
-worse, so it is switched off behind a flag until the prompt is fixed; see
-`CLAUDE.md` § AI Integration A. What remains unverified: the Coach has still
-never produced a real model response, and no purchase has ever been made.
+**Changed 2026-09-24/25:**
+
+- The OpenAI account is **funded and verified working**, and the Supabase
+  project (which had auto-paused) is restored.
+- **A3 is done** — all five migrations are applied remotely, and RLS was
+  verified live.
+- `refine` is **cut**, not pending. The first live run showed its prompt makes
+  predictions worse, so it is off behind a flag until the prompt is fixed; see
+  `CLAUDE.md` § AI Integration A. Batch C's refine checkbox is now inverted:
+  the button must be *absent*.
+- **The trial is decided: one free month on annual**, auto-renewing. B2 below
+  is no longer a judgment call, just a setting to enter.
+
+What remains unverified: the Coach has still never produced a real model
+response, and **no purchase has ever been made**.
 
 With the paywall's three promises built, **nearly every remaining item in this
 file is the whole remaining critical path.** The one exception, found on
@@ -39,8 +48,8 @@ path**, and Apple requires one. That is code, and it is listed at the bottom.
 |---|---|---|
 | OpenAI account with credit | A1 | **Funded and verified 2026-09-24.** `gpt-4o-mini` at our token caps is fractions of a cent per call. |
 | Supabase dashboard access | A1, A3, A4, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is already linked. **Free-tier projects pause after ~7 days idle** — it had to be restored on 2026-09-24, and there is no CLI command for it. If DNS stops resolving, that's why. |
-| RevenueCat account | B1 | Free tier is enough (it bills on revenue). |
-| Apple Developer account ($99/yr) | B2, D, E | Also gates APNs, sandbox purchases, and TestFlight. |
+| RevenueCat account | B1 | Free tier is enough (it bills on revenue). A **Test Store** key (`test_…`) is already in `.env.local` — good enough to exercise the paywall and the entitlement flip without Apple, but not a substitute for D2's real StoreKit purchase, which needs an `appl_` key from an App Store app entry. |
+| Apple Developer account ($99/yr) | B2, D, E | Gates sandbox purchases and TestFlight. **Not** APNs — this app sends only local notifications, so no push credentials are needed (see Batch E). |
 | A Mac with Xcode + iOS simulator | C | Simulator alone is fine for C. |
 | A physical iPhone | D | Push, deep links, and sandbox purchases can't be fully trusted on a simulator. |
 
@@ -152,8 +161,9 @@ return nothing until real users arrive — that is the point of the checkpoint.
 That secret bypasses the server-side Plus check entirely — with it set, any
 signed-in user can spend your OpenAI budget up to the daily ceiling.
 
-**Currently unset on the deployed project (checked 2026-09-07), which is
-correct.** No action needed; this entry exists so it doesn't get switched on for
+**Currently unset on the deployed project (re-checked 2026-09-24 —
+`secrets list` returns only `OPENAI_API_KEY` and the `SUPABASE_*` set), which
+is correct.** No action needed; this entry exists so it doesn't get switched on for
 a test and left on. If you ever set it, unset it and redeploy in the same
 sitting:
 
@@ -195,24 +205,39 @@ behavior rather than a bug.
    the paywall lists all three before assuming it worked.
 4. Put all three in the **current** offering. The app reads
    `offerings.current` and nothing else.
-5. Copy the **public app key** into `.env.local`:
-   `EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_...`
+5. Copy the **public app key** into `.env.local` as
+   `EXPO_PUBLIC_REVENUECAT_IOS_KEY`. A `test_…` Test Store key is already set
+   there; replace it with the `appl_…` key once the App Store app entry
+   exists, or D2 cannot test a real purchase.
+6. **The one-month free trial is read from the store, not set here.** Configure
+   it as an introductory offer on `calibrate_plus_annual` in App Store Connect
+   (B2); RevenueCat surfaces it and the app renders it. If you are testing
+   against the Test Store first, set the trial on the Test Store product too,
+   or the paywall will correctly show no trial.
 
 ### B2. App Store Connect
 
 1. Create the same three IAP products with the same identifiers and prices.
-2. **Free trial on annual: 17–21 days, not 14.** The measured conversion cliff
-   sits between "under 4 days" (25.5%) and "17–32 days" (42.5%), and 14 falls
-   in the unmeasured gap — plus Calibrate's own value is only legible once
-   predictions *resolve*, and 14 days is roughly one resolution cycle
-   (`GROWTH_AND_MONETIZATION.md` §4). **21 is the recommendation.** The app
-   renders whatever trial the store reports, so this is a dashboard decision
-   with no code change.
+2. **Free trial on annual: one month.** Decided 2026-09-25 — no longer a
+   judgment call. Set it as an *introductory offer* of type "free trial",
+   duration **1 month**, on `calibrate_plus_annual` only.
+
+   Annual only is deliberate: a user is eligible for an introductory offer
+   **once per subscription group**, so offering it on monthly as well just
+   means some people burn it on the weaker container (the AI retention penalty
+   concentrates in monthly plans — `GROWTH_AND_MONETIZATION.md` §4).
+
+   One month sits inside the measured 42.5%-conversion band ("17–32 days")
+   rather than the unmeasured gap 14 days falls into, and Plus is only legible
+   once predictions *resolve* — a month is more than one resolution cycle.
+
+   The app renders whatever the store reports, in the store's own unit, so it
+   will read "1 month free, then $29.99" with no code change.
 3. Create a sandbox tester account (Users and Access → Sandbox Testers) for
    Batch D.
 
-**Report:** the trial length you chose, and confirmation that all three
-products are "Ready to Submit".
+**Report:** confirmation that the annual product shows a 1-month free trial
+introductory offer, and that all three products are "Ready to Submit".
 
 ### B3. Deploy and wire the RevenueCat webhook
 
@@ -220,7 +245,7 @@ This is what makes a purchase visible to the *server*. Without it billing works
 on the device and the Coach endpoint still answers 403 to a paying subscriber.
 
 ```sh
-npx supabase db push        # applies 004_entitlement_event_cursor.sql
+# db push is already done (A3) — 004 and 005 are applied remotely.
 npx supabase secrets set REVENUECAT_WEBHOOK_SECRET="$(openssl rand -hex 32)"
 npx supabase functions deploy revenuecat-webhook --no-verify-jwt
 ```
@@ -263,7 +288,9 @@ Tick each:
       free-tier answer to `CLAUDE.md`'s range-coverage caveat: without it a
       user who only logs at 80%+ gets a calibration score computed from a
       single bucket.
-- [ ] The ✨ Refine button appears once the title has text (needs A2 deployed).
+- [ ] **The ✨ Refine button does NOT appear**, with any title text. Refine is
+      cut from this release (`REFINE_ENABLED = false`), and the AI Refine row
+      is gone from Settings too. If either shows up, the flag regressed.
 - [ ] Resolve it: yes/no + reflection saves.
 - [ ] Stats updates immediately after resolving.
 - [ ] With fewer than 20 resolutions, Stats shows **progress toward the
@@ -287,6 +314,13 @@ Tick each:
 - [ ] Settings → "See Plus" opens the paywall.
 - [ ] The paywall lists annual first with its trial, then monthly, then
       lifetime (after Batch B; before it, it shows the unavailable state).
+- [ ] **Annual reads "1 month free, then $29.99"** — one *month*, not "30
+      days". If it says days, the store reported an unstructured period and
+      the fallback fired; check the offer's configured unit.
+- [ ] **The trial terms line is present** under the plans: the trial turns
+      into a paid subscription, cancel at least **24 hours** before it ends.
+      That 24-hour figure is Apple's actual rule, not ours — without it the
+      screen promises something the platform doesn't do.
 - [ ] Nothing in Log → Resolve → Stats → Share ever hits a paywall.
 
 **Report:** which boxes failed, with a screenshot for anything visual.
@@ -311,9 +345,24 @@ Expo Go — notifications and RevenueCat are both native modules.
 
 ### D2. Sandbox purchase — the Layer 5 billing gate
 - [ ] Sign in with the sandbox tester account (Settings → App Store on device).
-- [ ] Buy the annual plan. The trial terms shown match what you configured.
+- [ ] Buy the annual plan. The screen says **"1 month free, then $29.99"** and
+      Apple's own confirmation sheet agrees. If the two disagree, Apple is
+      right and the offer is misconfigured.
 - [ ] `isPlus` flips: the Coach upsell on Stats is replaced by the Coach panel,
       and Settings shows "Active".
+- [ ] **While the trial is running, `source` reads `trial`** — not `annual`.
+      The client maps RevenueCat's `periodType` (TRIAL/INTRO) ahead of the
+      product, and the webhook does the same with `period_type`, so a mismatch
+      means one of the two paths is wrong. Check Settings copy or the dev
+      console.
+- [ ] **The trial converts.** Sandbox compresses subscription durations — a
+      one-month trial runs in minutes, not a month (check Apple's current
+      compression table for the exact figure). Let it run out and confirm the
+      app is still Plus afterwards, with `source` now reading `annual`.
+- [ ] **Cancelling during the trial stops the charge.** Cancel from the device's
+      App Store subscription settings before the compressed trial ends, let it
+      expire, and confirm the app drops to free rather than converting. This is
+      the promise the paywall makes — it should be tested once, not assumed.
 - [ ] Force-quit and relaunch **in airplane mode**: still Plus. (This is the
       local mirror doing its job.)
 - [ ] Delete and reinstall the app → reads as **free**.
@@ -401,7 +450,12 @@ What is still yours:
 
 ## Decisions only you can make
 
-1. **Trial length** — 17, 21, or something else. See B2. Recommendation: 21.
+1. ~~**Trial length.**~~ **Decided 2026-09-25: one free month on annual**,
+   auto-renewing into $29.99/yr, cancellable up to 24 hours before it ends.
+   Recorded in `GROWTH_AND_MONETIZATION.md` §4 and `CLAUDE.md`; B2 is now a
+   setting to enter, not a call to make. Worth re-testing against real
+   conversion data later — that is the trial-length experiment the validation
+   checkpoints already list.
 2. **Apple link-out commission.** Since the April 2025 Epic injunction Apple
    cannot charge commission on US link-out purchases; in August 2026 it
    proposed 15%/5% and Epic is contesting it. Unsettled, and worth 12–18% of

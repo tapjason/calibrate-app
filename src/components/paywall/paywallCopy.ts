@@ -2,7 +2,7 @@
 // as one piece. Every claim here has to be true of the shipped app — this is
 // the screen where an over-promise turns into a refund.
 
-import type { PlanId, PlusPlan } from '@/billing/revenuecat';
+import type { PlanId, PlusPlan, TrialUnit } from '@/billing/revenuecat';
 
 /** Plan names, as the user sees them. */
 export const PLAN_LABELS: Record<PlanId, string> = {
@@ -47,11 +47,37 @@ export const FREE_FOREVER_NOTE =
   'Logging, resolving, your score, the curve, badges, streaks, full history, ' +
   'and every share card stay free forever. Plus adds interpretation, not access.';
 
+const TRIAL_UNIT_NOUN: Record<TrialUnit, string> = {
+  DAY: 'day',
+  WEEK: 'week',
+  MONTH: 'month',
+  YEAR: 'year',
+};
+
+/**
+ * The trial length as the user should read it — "1 month", not "30 days".
+ *
+ * Says it in the store's own unit because that is what the store actually
+ * grants: a one-month trial started on 31 January ends on 28 February, and
+ * promising "30 days" on a billing screen is a claim we'd be breaking by two
+ * days. Falls back to the day count when a store reports no structured
+ * period.
+ */
+export function trialLabel(plan: PlusPlan): string | null {
+  const period = plan.trialPeriod;
+  if (period && period.count > 0) {
+    const noun = TRIAL_UNIT_NOUN[period.unit];
+    return `${period.count} ${noun}${period.count === 1 ? '' : 's'}`;
+  }
+  if (!plan.trialDays || plan.trialDays <= 0) return null;
+  return `${plan.trialDays} ${plan.trialDays === 1 ? 'day' : 'days'}`;
+}
+
 /** Trial line for a plan, or null when it has no free trial. */
 export function trialLine(plan: PlusPlan): string | null {
-  if (!plan.trialDays || plan.trialDays <= 0) return null;
-  const unit = plan.trialDays === 1 ? 'day' : 'days';
-  return `${plan.trialDays} ${unit} free, then ${plan.priceString}`;
+  const label = trialLabel(plan);
+  if (!label) return null;
+  return `${label} free, then ${plan.priceString}`;
 }
 
 /** The price row for a plan: trial if there is one, otherwise the raw price. */
@@ -73,6 +99,25 @@ export function termsLine(plans: readonly PlusPlan[]): string {
   return (
     'Subscriptions renew automatically until cancelled. Manage or cancel any ' +
     'time in your App Store account settings.'
+  );
+}
+
+/**
+ * What a free trial actually costs you if you forget — stated plainly.
+ *
+ * Empty when no plan on offer has a trial. The 24-hour clause is not
+ * hedging: Apple stops a trial converting only if it is cancelled at least a
+ * day before it ends, so "cancel any time before it ends" is a promise the
+ * platform doesn't keep. Saying so here costs a little conversion and saves
+ * the refund request and the one-star review that follow a surprise charge.
+ */
+export function trialTermsLine(plans: readonly PlusPlan[]): string {
+  const hasTrial = plans.some((p) => trialLabel(p) !== null);
+  if (!hasTrial) return '';
+  return (
+    'Your free trial turns into a paid subscription when it ends. Cancel at ' +
+    'least 24 hours before then in your App Store account settings and you ' +
+    "won't be charged."
   );
 }
 

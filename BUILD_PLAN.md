@@ -195,6 +195,26 @@ Reviving it is fix the prompt against fixtures → flip the flag → deploy.
 Cutting it cost nothing precisely because `CLAUDE.md` required it never be in
 the critical path.
 
+**Just landed — the one-month free trial (2026-09-25).** The length itself is
+a store setting, so most of this was making the app tell the truth about it.
+
+`PlusPlan` now carries `trialPeriod` — the offer in the store's own units —
+alongside the `trialDays` approximation, and the paywall reads the former.
+A calendar month is 28–31 days, so rendering a one-month trial as "30 days
+free" is a billing claim we would break by up to three days in February. It
+now reads "1 month free, then $29.99".
+
+Second addition: a trial terms line stating that the trial converts and that
+cancelling takes **24 hours' notice**. Apple only stops the charge if the user
+cancels at least a day before the trial ends, so "cancel any time before it
+ends" is a promise the platform does not keep. Saying so costs a little
+conversion and saves the refund and the one-star review that follow a surprise
+charge.
+
+The rest was already right: `periodType` TRIAL/INTRO already mapped to
+`source: 'trial'` on the client, and `period_type` did the same in the webhook,
+so both halves already knew a trialist from a subscriber.
+
 **Ship blockers before a build with a live paywall reaches anyone:**
 - Products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) and the `plus`
   entitlement have to exist in App Store Connect and the RevenueCat dashboard, and
@@ -228,8 +248,8 @@ scheduled one, with no push token requested anywhere — and the privacy
 declarations are now written down row by row with the file that proves each.
 
 Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
-gates, the App Store Connect / RevenueCat product setup, and the trial-length call
-(17–21 days, not 14 — see `GROWTH_AND_MONETIZATION.md` §4).
+gates, and the App Store Connect / RevenueCat product setup — which now includes
+configuring the one-month introductory offer on `calibrate_plus_annual`.
 
 ---
 
@@ -456,10 +476,11 @@ sandbox subscribe → Coach cards and cosmetics unlock.
 - Push notification credentials, deep-link config verified on a device.
 - IAP products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) configured in App
   Store Connect and mapped to the `plus` entitlement in the RevenueCat dashboard;
-  free trial on annual. **17–21 days, not 14** — the measured conversion cliff sits
-  between "under 4 days" and "17–32 days", and 14 falls in the unmeasured gap
-  (`GROWTH_AND_MONETIZATION.md` §4). The app renders whatever trial the store
-  reports, so this is a dashboard decision, not a code change.
+  free trial on annual: **one month, decided 2026-09-25** (inside the measured
+  "17–32 days" band, and more than one resolution cycle — `GROWTH_AND_MONETIZATION.md`
+  §4). The app renders whatever trial the store reports, so the length is a
+  dashboard setting; what *is* code is that it renders in the store's own unit
+  ("1 month", not "30 days") and states the 24-hour cancellation rule.
 - Subscription + AI privacy declarations; app icon, splash, screenshots.
 - `eas build --platform ios` → TestFlight → App Store submission.
 
