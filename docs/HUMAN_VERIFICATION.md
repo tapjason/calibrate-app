@@ -239,9 +239,33 @@ The billing code is done and fails safe: with no products configured, the
 paywall renders its "not available on this build yet" state, which is correct
 behavior rather than a bug.
 
+### B0. Apple prerequisites (do these first, since everything else waits on them)
+
+Added 2026-09-25. These were missing from this list, and each one blocks
+the store setup below:
+
+1. **Paid Applications Agreement.** App Store Connect → Business (formerly
+   Agreements, Tax, and Banking): accept it and fill in bank + tax info.
+   Until it is *Active*, StoreKit returns no products, **even in sandbox**.
+   The paywall then shows its unavailable state and nothing explains why.
+   Approval can take a day or more, so start it first.
+2. **Register the bundle id** `com.calibrate.app` (developer.apple.com →
+   Identifiers) and create the App Store Connect app record for it. Bundle ids
+   are unique across all of Apple, so if it is already taken, pick another
+   one (e.g. `com.<you>.calibrate`) and say so. It is set in `app.json`
+   and must be changed there too.
+3. **In-App Purchase Key** (App Store Connect → Users and Access →
+   Integrations → In-App Purchase → generate). Download the `.p8` once and note
+   its Key ID and your Issuer ID. RevenueCat needs it to validate StoreKit 2
+   purchases.
+
 ### B1. RevenueCat dashboard
 
-1. Create the project; add the iOS app with bundle id `com.calibrate.app`.
+1. Create the project (one already exists, since the `test_` key came from
+   it); add the iOS App Store app with bundle id `com.calibrate.app` and upload
+   the In-App Purchase Key from B0.3. Optionally copy RevenueCat's App Store
+   Server Notifications URL into App Store Connect → App Information, which
+   gives faster renewal/cancel events.
 2. Create entitlement **`plus`** — the identifier is hardcoded in
    `src/billing/revenuecat.ts` and must match exactly.
 3. Create products and attach all three to `plus`:
@@ -295,6 +319,14 @@ introductory offer, and that all three products are "Ready to Submit".
 
 This is what makes a purchase visible to the *server*. Without it billing works
 on the device and the Coach endpoint still answers 403 to a paying subscriber.
+
+**Server half DONE 2026-09-25.** The secret is set in Supabase and also saved
+as `REVENUECAT_WEBHOOK_SECRET` in `.env.local` (gitignored, no `EXPO_PUBLIC_`
+prefix, so it is never bundled). The function is deployed and verified live:
+no header → 401, wrong secret → 401, a TEST event with the right secret → 200
+`{"ok":true,"action":"ignored"}`. **What remains is the dashboard half**: paste
+the URL and `Bearer <secret>` into RevenueCat (below), send its test event, and
+look for the row after D2.
 
 ```sh
 # db push is already done (A3) — 004 and 005 are applied remotely.
