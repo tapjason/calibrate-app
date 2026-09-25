@@ -57,9 +57,9 @@ So:
       user all work here.
 - [ ] **If you have (or can borrow) an Android phone:** an EAS Android dev
       build gives the full billing test for free. It needs these first:
-      1. `npx expo install expo-dev-client`. The `development` profile in
-         `eas.json` sets `developmentClient: true`, but the package isn't
-         installed. (Code; the agent can do it.)
+      1. ~~`npx expo install expo-dev-client`.~~ Done 2026-09-25
+         (`~55.0.40`), so the `development` profile's
+         `developmentClient: true` now has the package it needs.
       2. **EAS environment variables.** EAS uploads the repo minus
          `.gitignore`, and `.env.*` is ignored, so **a cloud build currently
          gets no Supabase URL and no RevenueCat key.** Set the `EXPO_PUBLIC_*`
