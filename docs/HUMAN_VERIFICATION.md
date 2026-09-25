@@ -32,8 +32,9 @@ What is blocked is *verification*.
 - **The trial is decided: one free month on annual**, auto-renewing. B2 below
   is no longer a judgment call, just a setting to enter.
 
-What remains unverified: the Coach has still never produced a real model
-response, and **no purchase has ever been made**.
+**Batch A is now complete.** The Coach produced its first real model response
+on 2026-09-25 and every guard held (A1 below). What remains unverified:
+**no purchase has ever been made** — Batches B, C and D.
 
 With the paywall's three promises built, **nearly every remaining item in this
 file is the whole remaining critical path.** The one exception, found on
@@ -57,19 +58,55 @@ path**, and Apple requires one. That is code, and it is listed at the bottom.
 
 ## Batch A — Backend (desk, ~30 min, no device)
 
-### A1. Verify live Coach generation
+### A1. ~~Verify live Coach generation~~ — PASSED 2026-09-25
 
-The Coach is deployed and every guard is verified *except* the one thing that
-needs a real model response: that generation is grounded and the validator
-drops what isn't.
+**All three checks green.** The Coach produced its first real model output,
+and every guard held.
 
-**Step 1 is done (2026-09-24).** The account is funded, `gpt-4o-mini` returns
-200, and the SHA-256 of the local key matches the digest Supabase reports for
-its stored `OPENAI_API_KEY` — so the deployed functions are on that same
-funded key. The auth gate was re-verified live at the same time: 401 with no
-header, 401 on a malformed JWT.
+Setup used: a throwaway user `test-plus-user-1377@gmail.com`
+(`acde4a5f-…`), granted Plus with the SQL in step 3 below, token minted via
+`/auth/v1/token?grant_type=password` with the anon key.
 
-**Step 3 is the one that needs you** — `public.entitlements` is
+**1. Live generation.** `HTTP 200`, `safe: true`, one insight:
+
+```json
+{"insights":[{"type":"overconfidence","category":"finance",
+ "message":"The calibration score of 61 indicates overconfidence in finance
+ predictions, with a mean stated confidence of 80 and an actual rate of 0.55.",
+ "evidence":25,"suggestion":"Consider adjusting confidence levels based on past
+ outcomes."}],"safe":true}
+```
+
+Every number it cites — 61, 80, 0.55, and `evidence: 25` — was in the request.
+
+**2. Min-N gating.** A context whose only category had `resolved: 3` returned
+`{"insights":[],"safe":true}`. No verdict on three data points, which is the
+rule in `COACH_AGENT.md` §5 holding against real model output rather than
+against a fixture.
+
+**3. Grounding.** A three-category context came back with the full cap of
+three insights, and an audit of every numeral in every message found **zero**
+not present in the request. Each `evidence` value matched too (37, 88, 0.42).
+
+What this does *not* prove: that the validator drops a hallucinated number —
+the model never produced one to drop. That path stays covered by the Jest
+fixtures in `COACH_AGENT.md` §9.
+
+**Clean-up, when you want the free-user path back** (A4's pass condition, and
+Batch C's free-tier checks):
+
+```sql
+delete from public.entitlements
+ where user_id = 'acde4a5f-cac2-4da5-83e5-34df8d30040e';
+```
+
+That test account should be deleted outright before real users exist — its
+password is `123456`.
+
+<details>
+<summary>The original procedure, kept for re-running it</summary>
+
+**Step 3 is the one that needs a human** — `public.entitlements` is
 service-role-write-only by design, so an agent with the anon key cannot grant
 Plus to a test user. Do that in the dashboard and the rest can be run for you.
 
@@ -111,6 +148,8 @@ validator in Jest, but not against real model output:
   that category (min-N gating, `COACH_AGENT.md` §5).
 - Send a category with an obviously wrong stat and confirm no insight cites a
   number you didn't send.
+
+</details>
 
 ### A2. ~~Deploy and verify `refine`~~ — CUT (2026-09-24)
 
