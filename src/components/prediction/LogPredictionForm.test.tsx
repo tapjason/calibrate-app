@@ -293,3 +293,33 @@ describe('LogPredictionForm', () => {
     });
   });
 });
+
+describe('LogPredictionForm - accessibility', () => {
+  // VoiceOver users adjust the whole control with a swipe and hear the value,
+  // instead of hunting for two buttons called "-5" and "+5".
+  it('exposes confidence as one adjustable control', () => {
+    render(<LogPredictionForm />);
+    const control = screen.getByTestId('confidence-adjustable');
+    expect(control.props.accessibilityRole).toBe('adjustable');
+    expect(control.props.accessibilityValue).toMatchObject({ now: 50, text: '50%' });
+
+    fireEvent(control, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(55);
+
+    fireEvent(control, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
+    fireEvent(control, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(45);
+  });
+
+  it('announces which category is selected', () => {
+    render(<LogPredictionForm />);
+    fireEvent.press(screen.getByTestId('category-health'));
+    expect(screen.getByTestId('category-health').props.accessibilityState).toEqual({
+      selected: true,
+    });
+    expect(screen.getByTestId('category-work').props.accessibilityState).toEqual({
+      selected: false,
+    });
+  });
+});
+

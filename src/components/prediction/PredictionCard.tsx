@@ -31,6 +31,13 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
     <Pressable
       testID={`prediction-card-${prediction.id}`}
       onPress={() => onPress?.(prediction.id)}
+      accessibilityRole={onPress ? 'button' : undefined}
+      // One sentence instead of five fragments read in layout order, and
+      // without the ✓/✗ glyphs, which VoiceOver reads as "check mark".
+      accessibilityLabel={
+        `${prediction.title}. ${prediction.category}, ${prediction.confidence}% confident, ` +
+        `due ${due}. ${statusLabel[prediction.status].replace(/ [✓✗]$/, '')}.`
+      }
       style={({ pressed }) => [styles.card, overdue && styles.cardOverdue, pressed && styles.pressed]}
     >
       <View style={styles.header}>

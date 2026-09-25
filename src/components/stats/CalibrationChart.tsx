@@ -10,6 +10,8 @@ import Svg, {
 
 import type { BucketStat } from '@/types';
 
+import { describeCalibrationCurve } from './chartDescription';
+
 interface CalibrationChartProps {
   buckets: BucketStat[];
 }
@@ -63,7 +65,14 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
     .join(' ');
 
   return (
-    <View style={styles.wrap} onLayout={onLayout} testID="calibration-chart">
+    <View
+      style={styles.wrap}
+      onLayout={onLayout}
+      testID="calibration-chart"
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={describeCalibrationCurve(buckets)}
+    >
       {width > 0 ? (
         <Svg width={width} height={height}>
           {/* gridlines + axis ticks */}

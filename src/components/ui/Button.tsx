@@ -6,6 +6,8 @@ interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
   testID?: string;
+  /** Spoken instead of `label` — for labels like "+5" that mean nothing aloud. */
+  accessibilityLabel?: string;
 }
 
 export function Button({
@@ -14,12 +16,16 @@ export function Button({
   variant = 'primary',
   disabled,
   testID,
+  accessibilityLabel,
 }: ButtonProps) {
   return (
     <Pressable
       testID={testID}
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         styles.base,
         styles[variant],
@@ -34,6 +40,8 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
+    // 44pt: Apple's minimum comfortable tap target.
+    minHeight: 44,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,

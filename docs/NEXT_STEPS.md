@@ -176,7 +176,14 @@ later as its own piece of work.
 `app/(tabs)/_layout.tsx` sets titles only, so every tab gets the default
 placeholder glyph. It's the first thing a reviewer and a screenshot show.
 
-### 9. Accessibility pass
+### 9. Accessibility pass — **first pass done 2026-09-25**
+
+> Every `Button` now announces its role and disabled state, with a 44 pt
+> minimum height. The calibration chart has a spoken description of each
+> range's numbers. Confidence is one adjustable control on Log and Warmup
+> (swipe to change it, hear the value). Category and due-date chips announce
+> which is selected, and prediction cards read as one sentence. Not yet
+> checked with VoiceOver on a device, which is worth ten minutes in Batch C.
 
 Only 4 files under `src/components/` and `app/` set `accessibilityLabel` or
 `accessibilityRole`. Priorities:

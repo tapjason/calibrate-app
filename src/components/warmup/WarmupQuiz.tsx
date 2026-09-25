@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import {
   MAX_WARMUP_CONFIDENCE,
@@ -86,7 +87,18 @@ export function WarmupQuiz() {
         ))}
       </View>
 
-      <View style={styles.block}>
+      <View
+        style={styles.block}
+        testID="warmup-confidence-adjustable"
+        {...adjustableProps({
+          label: 'How sure are you?',
+          value: confidence,
+          min: MIN_WARMUP_CONFIDENCE,
+          max: MAX_WARMUP_CONFIDENCE,
+          step: STEP,
+          onChange: setConfidence,
+        })}
+      >
         <Text style={styles.label}>How sure are you? {confidence}%</Text>
         <Text style={styles.hint}>
           50% is a coin flip — there are only two options.
@@ -94,6 +106,7 @@ export function WarmupQuiz() {
         <View style={styles.row}>
           <Button
             label="−5"
+            accessibilityLabel="Lower confidence by 5"
             variant="secondary"
             testID="warmup-confidence-decrement"
             onPress={() =>
@@ -102,6 +115,7 @@ export function WarmupQuiz() {
           />
           <Button
             label="+5"
+            accessibilityLabel="Raise confidence by 5"
             variant="secondary"
             testID="warmup-confidence-increment"
             onPress={() =>

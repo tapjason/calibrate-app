@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
+import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { REFINE_ENABLED } from '@/constants/app';
@@ -187,6 +188,9 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
               key={c}
               onPress={() => setCategory(c)}
               testID={`category-${c}`}
+              accessibilityRole="radio"
+              accessibilityLabel={`Category: ${c}`}
+              accessibilityState={{ selected: category === c }}
               style={[styles.chip, category === c && styles.chipActive]}
             >
               <Text
@@ -203,20 +207,34 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
       </View>
 
       <View style={styles.block}>
-        <Text style={styles.label}>Confidence: {confidence}%</Text>
-        <View style={styles.row}>
-          <Button
-            label="−5"
-            variant="secondary"
-            onPress={() => setConfidence((v) => Math.max(0, v - 5))}
-            testID="confidence-decrement"
-          />
-          <Button
-            label="+5"
-            variant="secondary"
-            onPress={() => setConfidence((v) => Math.min(100, v + 5))}
-            testID="confidence-increment"
-          />
+        <View
+          testID="confidence-adjustable"
+          {...adjustableProps({
+            label: 'Confidence',
+            value: confidence,
+            min: 0,
+            max: 100,
+            step: 5,
+            onChange: setConfidence,
+          })}
+        >
+          <Text style={styles.label}>Confidence: {confidence}%</Text>
+          <View style={styles.row}>
+            <Button
+              label="−5"
+              accessibilityLabel="Lower confidence by 5"
+              variant="secondary"
+              onPress={() => setConfidence((v) => Math.max(0, v - 5))}
+              testID="confidence-decrement"
+            />
+            <Button
+              label="+5"
+              accessibilityLabel="Raise confidence by 5"
+              variant="secondary"
+              onPress={() => setConfidence((v) => Math.min(100, v + 5))}
+              testID="confidence-increment"
+            />
+          </View>
         </View>
         {confidence >= 35 && confidence <= 65 && (
           <Text style={styles.bonus}>
@@ -233,6 +251,9 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
               key={preset.label}
               onPress={() => setDueDate(preset.iso)}
               testID={`due-${preset.label}`}
+              accessibilityRole="radio"
+              accessibilityLabel={`Due ${preset.label}`}
+              accessibilityState={{ selected: dueDate === preset.iso }}
               style={[
                 styles.chip,
                 dueDate === preset.iso && styles.chipActive,
