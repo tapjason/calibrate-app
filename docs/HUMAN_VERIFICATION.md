@@ -261,6 +261,24 @@ the store setup below:
 
 ### B1. RevenueCat dashboard
 
+**Test Store half DONE 2026-09-25, via the v2 API** (`REVENUECAT_SECRET_KEY`
+in `.env.local`, project `projb27eccad`, Test Store app `app61065d48e2`).
+Onboarding had created an entitlement `calibrate_pro` and products `monthly` /
+`yearly` / `lifetime`, and none of those ids match the code. The paywall
+would have dropped every plan, and the webhook would have ignored every
+purchase. Now:
+
+- entitlement **`plus`** exists, with `calibrate_plus_monthly` / `_annual` /
+  `_lifetime` attached (Test Store products, P1M / P1Y / non-consumable);
+- the **current** offering (`default`) has `$rc_monthly` / `$rc_annual` /
+  `$rc_lifetime` pointing at those three;
+- the onboarding defaults are **archived**, not deleted, so they can be restored.
+
+**Still dashboard-only** (the API's create-product call takes neither a price
+nor a trial): set Test Store prices of $4.99 / $29.99 / $59.99, and a **1-month
+free trial** on `calibrate_plus_annual`. Without the trial the paywall
+correctly shows none. The App Store app half (steps below) waits on B0.
+
 1. Create the project (one already exists, since the `test_` key came from
    it); add the iOS App Store app with bundle id `com.calibrate.app` and upload
    the In-App Purchase Key from B0.3. Optionally copy RevenueCat's App Store
@@ -340,6 +358,17 @@ secret is the gate, and the function refuses every request when it isn't set.
 Then RevenueCat → Project settings → Integrations → Webhooks:
 - URL: `https://otopheizhjstoeyndcvc.functions.supabase.co/revenuecat-webhook`
 - Authorization header: the same secret.
+
+**Not yet present in RevenueCat (re-checked 2026-09-25):** the v2 API lists no
+webhook integration on project `projb27eccad`, so either the dashboard form
+wasn't saved or it went to a different project.
+
+**Open question for launch:** the webhook does not look at `environment`, so a
+SANDBOX or Test Store purchase grants server-side Plus exactly like a real one.
+That is what testing needs right now. After launch, though, TestFlight
+purchases are sandbox, so any tester would get the Coach for free. Decide
+before the public build whether production should ignore `environment:
+SANDBOX`.
 
 **Pass:** RevenueCat's "Send test event" returns 200 with
 `{"ok":true,"action":"ignored"}` (a TEST event writes nothing, by design), and
