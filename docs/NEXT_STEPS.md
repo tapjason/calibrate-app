@@ -109,7 +109,7 @@ The good news: all four server tables already declare `on delete cascade`, so
 `auth.admin.deleteUser` removes the server data in one call. Full spec:
 [`docs/ACCOUNT_SPEC.md`](./ACCOUNT_SPEC.md) §3.
 
-### 4. Install `expo-dev-client`
+### 4. Install `expo-dev-client` — **done 2026-09-25**
 
 Tier 1's free Android billing test needs it. `eas.json`'s `development` profile
 sets `developmentClient: true`, but the package isn't installed. One
@@ -155,7 +155,7 @@ parameter (keeping them pure and testable), anchor streak expiry to "today"
 with a one-day grace, and add fixtures for the Pacific-evening case. This
 reverses a documented decision, so it's flagged rather than done silently.
 
-### 7. Dark mode is declared but not designed
+### 7. Dark mode is declared but not designed — **set to light 2026-09-25**
 
 `app.json` sets `"userInterfaceStyle": "automatic"`, but nothing in `src/` or
 `app/` reads `useColorScheme`, and the navigators use the default light theme.
@@ -163,7 +163,7 @@ On a phone in dark mode the likely result is a mix of dark system chrome and a
 light app. **Build:** set it to `"light"` now (one line), and add a dark palette
 later as its own piece of work.
 
-### 8. Tab bar has no icons
+### 8. Tab bar has no icons — **built 2026-09-25** (Ionicons, filled when selected)
 
 `app/(tabs)/_layout.tsx` sets titles only, so every tab gets the default
 placeholder glyph. It's the first thing a reviewer and a screenshot show.
