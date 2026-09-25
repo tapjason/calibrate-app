@@ -8,6 +8,10 @@
 //
 // Strategy:
 //   • predictions: UPDATE user_id (PK is `id`, no collision possible).
+//   • analytics_events: UPDATE user_id, same reasoning. Queued guest events
+//     otherwise sit under an owner no session can ever insert as — and the
+//     Warmup, the first-run screen, is always recorded as a guest, so without
+//     this the D0 aha metric could never be measured at all.
 //   • user_stats / category_stats: DELETE both the guest's rows AND any
 //     pre-existing rows for the destination user_id, then leave it to the
 //     caller to recompute. Stats are derived; rebuilding is cheaper and
@@ -54,6 +58,11 @@ export async function migrateGuestDataToUser(
 
     await db.run(
       `UPDATE predictions SET user_id = ? WHERE user_id = ?`,
+      [newUserId, LOCAL_GUEST_USER_ID],
+    );
+
+    await db.run(
+      `UPDATE analytics_events SET user_id = ? WHERE user_id = ?`,
       [newUserId, LOCAL_GUEST_USER_ID],
     );
 

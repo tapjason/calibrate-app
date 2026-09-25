@@ -32,7 +32,9 @@ to be read, not skimmed past.
 
 ### If you don't sign in
 Nothing. Your predictions, results, and settings are stored in a database on
-your device. Usage events (§2.3) are recorded on the device but never sent.
+your device. Usage events (§2.3) are recorded on the device but never sent. If
+you later create an account, the ones still on the device are sent with it,
+unless you turned usage stats off, which deletes them.
 
 ### If you create an account
 

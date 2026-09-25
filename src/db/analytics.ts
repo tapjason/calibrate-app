@@ -122,16 +122,29 @@ export async function enqueueEvent(event: QueuedEvent): Promise<boolean> {
   }
 }
 
-/** The oldest unsynced events, up to `limit`. Empty on any failure. */
-export async function listUnsyncedEvents(limit: number): Promise<QueuedEvent[]> {
+/**
+ * The oldest unsynced events owned by `userId`, up to `limit`. Empty on any
+ * failure.
+ *
+ * Scoped to one user because only that user's session can insert them: RLS
+ * checks `auth.uid() = user_id`. An unscoped read handed the flush another
+ * owner's rows (a guest's, or a previous account's on a shared phone), every
+ * one of which the server refuses — and since refused rows stay queued and
+ * this reads oldest-first, the same unsendable batch came back on every
+ * sweep and the signed-in user's own events never went out.
+ */
+export async function listUnsyncedEvents(
+  userId: string,
+  limit: number,
+): Promise<QueuedEvent[]> {
   try {
     const rows = await getDb().all<EventRow>(
       `SELECT id, user_id, name, props_json, created_at
          FROM analytics_events
-        WHERE synced = 0
+        WHERE synced = 0 AND user_id = ?
         ORDER BY created_at ASC, id ASC
         LIMIT ?`,
-      [limit],
+      [userId, limit],
     );
     return rows.map(parseRow);
   } catch (e) {

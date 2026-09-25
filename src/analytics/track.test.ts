@@ -31,7 +31,7 @@ describe('track', () => {
   it('queues an event with its declared properties', async () => {
     await track('share_completed', { surface: 'card' });
 
-    const [event] = await listUnsyncedEvents(10);
+    const [event] = await listUnsyncedEvents(USER, 10);
     expect(event).toMatchObject({
       user_id: USER,
       name: 'share_completed',
@@ -70,7 +70,7 @@ describe('track', () => {
     await track('warmup_started');
     await track('warmup_started');
 
-    const events = await listUnsyncedEvents(10);
+    const events = await listUnsyncedEvents(USER, 10);
     expect(events).toHaveLength(2);
     expect(events[0].id).not.toBe(events[1].id);
   });
@@ -131,7 +131,7 @@ describe('the queue is bounded', () => {
     await trimQueue(10);
 
     await expect(countUnsyncedEvents()).resolves.toBe(10);
-    const [oldestKept] = await listUnsyncedEvents(1);
+    const [oldestKept] = await listUnsyncedEvents(USER, 1);
     expect(oldestKept.props.confidence).toBe(5);
   });
 

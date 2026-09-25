@@ -7,7 +7,10 @@
 // their own device serves nobody.
 //
 // Guests never flush. A guest has no Supabase row to own the events, and
-// analytics that can't be attributed is analytics not worth collecting.
+// analytics that can't be attributed is analytics not worth collecting. What
+// a guest records waits on the device: on sign-in, migrateGuestDataToUser
+// hands it to the new account along with the predictions, so the Warmup —
+// which always runs before any sign-in — is still counted.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -75,7 +78,7 @@ async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
           : null;
     if (!client) return 0;
 
-    const queued = await listUnsyncedEvents(BATCH_SIZE);
+    const queued = await listUnsyncedEvents(userId, BATCH_SIZE);
     if (queued.length === 0) return 0;
 
     const rows = queued.map(toWire);

@@ -140,6 +140,34 @@ describe('flushEvents', () => {
     await expect(countUnsyncedEvents()).resolves.toBe(2);
   });
 
+  // The regression: the read was unscoped, so after sign-in the oldest rows
+  // in the queue were a guest's (or a previous account's). The server refuses
+  // every one of those under RLS, refused rows stay queued, and oldest-first
+  // meant the same unsendable batch came back on every sweep — this user's
+  // own events never went out.
+  it("sends only this user's events, even behind a full batch of someone else's", async () => {
+    for (let i = 0; i < 150; i++) {
+      await enqueueEvent({
+        id: `other${i}`,
+        user_id: 'someone-else',
+        name: 'share_completed',
+        props: { surface: 'card' },
+        created_at: new Date(1_600_000_000_000 + i * 1000).toISOString(),
+      });
+    }
+    await seed(3);
+    const insert = ok();
+
+    await expect(
+      flushEvents(USER, { client: fakeClient(insert) }),
+    ).resolves.toBe(3);
+
+    const sent = insert.mock.calls.flatMap((c) => c[0]);
+    expect(sent.map((r) => r.user_id)).toEqual([USER, USER, USER]);
+    // Another owner's rows are left for that owner, not deleted.
+    await expect(countUnsyncedEvents()).resolves.toBe(150);
+  });
+
   it('sends nothing when the user has opted out', async () => {
     await seed(2);
     useSettingsStore.setState({ analyticsEnabled: false });

@@ -94,7 +94,10 @@ relay address — the app treats it as any other email).
   is no open string property type.** A prediction title cannot be put into an
   event, correctly or by accident, because there is no field shaped like one.
 - The queue is local (migration `006_analytics`), capped, push-then-delete, and
-  flushes only on foreground alongside sync — never for a guest.
+  flushes only on foreground alongside sync — never for a guest. A guest's
+  queued events move to the account on sign-in (`migrateGuestDataToUser`),
+  so they are sent then; the policy says so. Turning usage stats off clears
+  the queue first.
 - Users can turn it off: Settings → "Anonymous usage stats" (default on).
 
 The full list of events is 13 items and fits on a screen; the privacy policy can

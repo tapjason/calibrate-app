@@ -1,5 +1,6 @@
 import type { Prediction } from '@/types';
 
+import { enqueueEvent, listUnsyncedEvents } from './analytics';
 import { setDbForTests, getDb } from './client';
 import {
   LOCAL_GUEST_USER_ID,
@@ -94,6 +95,30 @@ describe('migrateGuestDataToUser', () => {
   it('is a safe no-op when there is no guest data', async () => {
     const result = await migrateGuestDataToUser('real-user');
     expect(result.predictionsMoved).toBe(0);
+  });
+
+  // The Warmup is the first-run screen, so it is always recorded as a guest.
+  // Left under the guest id those events could never be sent — no session can
+  // insert as 'local-user-v1' — and the D0 aha metric would read NULL forever.
+  it('hands queued guest analytics events to the new user', async () => {
+    const ev = (id: string, user_id: string) => ({
+      id,
+      user_id,
+      name: 'warmup_started',
+      props: {},
+      created_at: '2026-01-01T00:00:00.000Z',
+    });
+    await enqueueEvent(ev('g1', LOCAL_GUEST_USER_ID));
+    await enqueueEvent(ev('g2', LOCAL_GUEST_USER_ID));
+    await enqueueEvent(ev('x1', 'previous-account'));
+
+    await migrateGuestDataToUser('real-user');
+
+    await expect(listUnsyncedEvents(LOCAL_GUEST_USER_ID, 10)).resolves.toEqual([]);
+    const moved = await listUnsyncedEvents('real-user', 10);
+    expect(moved.map((e) => e.id).sort()).toEqual(['g1', 'g2']);
+    // Only the guest's events move; another account's stay that account's.
+    await expect(listUnsyncedEvents('previous-account', 10)).resolves.toHaveLength(1);
   });
 
   it('refuses to migrate to the guest id (would be a self-loop)', async () => {
