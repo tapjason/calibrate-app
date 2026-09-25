@@ -100,8 +100,19 @@ delete from public.entitlements
  where user_id = 'acde4a5f-cac2-4da5-83e5-34df8d30040e';
 ```
 
-That test account should be deleted outright before real users exist — its
-password is `123456`.
+Done 2026-09-25 — and the 403 that followed is what verified A4.
+
+Note this removes the **Plus grant**, not the account: the grant lives in
+`public.entitlements`, the account in `auth.users`. To remove the account
+itself, use Authentication → Users → Delete user, or:
+
+```sql
+delete from auth.users where email = 'test-plus-user-1377@gmail.com';
+```
+
+That cascades — `entitlements`, `analytics_events` and `predictions` all
+declare `on delete cascade` — so deleting the account takes its data with it.
+Do that before real users exist; the password is `123456`.
 
 <details>
 <summary>The original procedure, kept for re-running it</summary>
@@ -213,7 +224,9 @@ npx supabase functions deploy coach            # secrets take effect on deploy
 ```
 
 **Pass:** a signed-in user with no `entitlements` row gets `403` from
-`/functions/v1/coach`.
+`/functions/v1/coach`. **Verified live 2026-09-25**: after deleting the A1
+test user's entitlement row, the same token that had just produced insights
+got `403`. The gate reads the table on every call — no caching, no grace.
 
 **Note:** the server-side Plus check reads `public.entitlements`. The webhook
 that populates it is now written — deploying and wiring it is B3.
