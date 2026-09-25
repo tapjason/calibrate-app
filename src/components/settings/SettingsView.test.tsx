@@ -164,3 +164,24 @@ describe('SettingsView — account', () => {
     expect(screen.queryByTestId('settings-account')).toBeNull();
   });
 });
+
+describe('SettingsView — delete', () => {
+  it('offers account deletion to a signed-in user', () => {
+    useAuthStore.setState({ status: 'authenticated', accountsAvailable: true, email: 'a@b.co' });
+    const onOpenDelete = jest.fn();
+    render(<SettingsView onOpenDelete={onOpenDelete} />);
+
+    expect(screen.getByText('Delete account')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('settings-delete'));
+    expect(onOpenDelete).toHaveBeenCalledTimes(1);
+  });
+
+  // Apple requires guest data be deletable too. It's offered even on a build
+  // with no accounts, because the data on the phone exists either way.
+  it('offers a guest a way to erase this device, even without accounts', () => {
+    useAuthStore.setState({ status: 'guest', accountsAvailable: false });
+    render(<SettingsView onOpenDelete={jest.fn()} />);
+
+    expect(screen.getByText('Erase all data on this device')).toBeTruthy();
+  });
+});

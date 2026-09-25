@@ -134,9 +134,12 @@ The privacy policy URL App Store Connect requires must at minimum say:
 4. That subscriptions are processed by Apple and managed via RevenueCat.
 5. How to delete an account and its data.
 
-**Item 5 is the open one.** There is no in-app account deletion path today, and
-App Store Review Guideline 5.1.1(v) requires one for any app with account
-creation. This is a code item, not a checklist item — see the note added to
+**Item 5 is built (2026-09-25).** Settings → Delete account calls the
+`delete-account` Edge Function, which revokes Sign in with Apple (once its key
+is configured), deletes the RevenueCat customer (once a write key is), and
+deletes the auth user, whose rows cascade from every public table. The device
+is wiped only after the server confirms. Guests get "Erase all data on this
+device". The function still has to be deployed; see
 `docs/HUMAN_VERIFICATION.md` Batch E.
 
 ---

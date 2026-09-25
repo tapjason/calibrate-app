@@ -1,4 +1,4 @@
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { REFINE_ENABLED } from '@/constants/app';
@@ -24,7 +24,12 @@ import { useSettingsStore } from '@/store/settingsStore';
 export function SettingsView({
   onOpenPaywall,
   onOpenAccount,
-}: { onOpenPaywall?: () => void; onOpenAccount?: () => void } = {}) {
+  onOpenDelete,
+}: {
+  onOpenPaywall?: () => void;
+  onOpenAccount?: () => void;
+  onOpenDelete?: () => void;
+} = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
   const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
@@ -103,7 +108,31 @@ export function SettingsView({
         onValueChange={(v) => void setAnalyticsEnabled(v)}
         testID="toggle-analytics"
       />
+
+      {onOpenDelete && <DeleteRow onOpenDelete={onOpenDelete} />}
     </View>
+  );
+}
+
+/**
+ * The way out, at the bottom where destructive settings live. Apple requires
+ * account deletion be easy to find in the app (Guideline 5.1.1(v)); a guest
+ * gets the equivalent for data that only ever lived on this phone.
+ */
+function DeleteRow({ onOpenDelete }: { onOpenDelete: () => void }) {
+  const status = useAuthStore((s) => s.status);
+  if (status === 'loading') return null;
+  return (
+    <Pressable
+      onPress={onOpenDelete}
+      accessibilityRole="button"
+      style={styles.deleteRow}
+      testID="settings-delete"
+    >
+      <Text style={styles.deleteLabel}>
+        {status === 'authenticated' ? 'Delete account' : 'Erase all data on this device'}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -208,4 +237,6 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, paddingRight: 16 },
   rowLabel: { fontSize: 16, fontWeight: '500', color: '#111827' },
   rowDescription: { fontSize: 13, color: '#6b7280', marginTop: 4 },
+  deleteRow: { marginTop: 24, paddingVertical: 14 },
+  deleteLabel: { color: '#dc2626', fontSize: 16, fontWeight: '500' },
 });

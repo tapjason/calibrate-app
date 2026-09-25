@@ -170,3 +170,42 @@ export async function signOut(): Promise<AuthOutcome> {
     return { ok: false, error: errMessage(e) };
   }
 }
+
+/**
+ * Sign out of this device only. Used after account deletion: the server has
+ * already deleted the user and with it every session, so a global sign-out
+ * would call the server about a user that no longer exists. This just drops
+ * the stored session; onAuthStateChange takes the app back to guest.
+ */
+export async function signOutLocal(): Promise<AuthOutcome> {
+  try {
+    const { error } = await getSupabaseClient().auth.signOut({ scope: 'local' });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: errMessage(e) };
+  }
+}
+
+/**
+ * Ask Apple for a fresh authorization code for the signed-in Apple account,
+ * for account deletion (docs/ACCOUNT_SPEC.md §3.2 step 4). Apple requires the
+ * app's Sign in with Apple grant be revoked when the account is deleted, and
+ * revoking needs a code no older than ten minutes — which only a new trip
+ * through the system sheet produces.
+ *
+ * Null when unavailable or declined. Deletion goes ahead without it: making
+ * the user complete an extra sign-in to be allowed to leave is the
+ * "unnecessarily difficult" case Apple rejects for.
+ */
+export async function reauthenticateWithApple(): Promise<string | null> {
+  if (Platform.OS !== 'ios') return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const AppleAuthentication = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
+    const credential = await AppleAuthentication.signInAsync({ requestedScopes: [] });
+    return credential.authorizationCode ?? null;
+  } catch {
+    return null;
+  }
+}

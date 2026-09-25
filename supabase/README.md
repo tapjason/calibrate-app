@@ -45,6 +45,11 @@ schema is safe.
   keeps `public.entitlements` current. Its decision logic lives in
   `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can
   test it (`entitlementFromEvent.test.ts`, 28 cases).
+- `functions/delete-account/index.ts` — deletes the caller's account (App Store
+  Guideline 5.1.1(v)): revokes Sign in with Apple, deletes the RevenueCat
+  customer, then `auth.admin.deleteUser`, whose rows cascade out of every
+  public table. Called from `src/supabase/account.ts`. Decision logic in
+  `deletionPlan.ts`, Jest-tested (`deletionPlan.test.ts`).
 - `functions/coach/index.ts` — Edge Function that interprets calibration stats
   into grounded insights. Called from `src/ai/coach.ts`. Its validation logic
   is deliberately duplicated from `src/ai/coachValidate.ts` (Deno cannot import
@@ -222,3 +227,45 @@ their access ends, and revoking on it would take away time they paid for.
 `BILLING_ISSUE` doesn't revoke either, because access continues through the
 grace period. Everything else is decided by the expiry: a grant whose
 `expiration_at_ms` has already passed writes free.
+
+### delete-account
+
+Deletes the calling user's account. Spec: `docs/ACCOUNT_SPEC.md` §3.
+
+**Deploy** (JWT verification stays on; the caller is always deleting their
+own account):
+
+```sh
+npx supabase functions deploy delete-account
+```
+
+That alone is a working, compliant deletion: the auth user is removed, and
+`predictions`, `coach_usage`, `entitlements` and `analytics_events` cascade
+with it. Two optional legs switch on when all of their secrets are set, and
+are skipped and logged until then:
+
+```sh
+# Sign in with Apple token revocation. A key with "Sign in with Apple"
+# enabled (developer.apple.com → Keys), not the In-App Purchase key.
+npx supabase secrets set APPLE_TEAM_ID=... APPLE_SIWA_KEY_ID=...   APPLE_CLIENT_ID=com.calibrate.app   APPLE_SIWA_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"
+
+# RevenueCat customer deletion. A v2 secret key with customers *write*.
+# The existing sk_ key is read-only for customers and won't work.
+npx supabase secrets set REVENUECAT_DELETE_KEY=sk_...   REVENUECAT_PROJECT_ID=projb27eccad
+```
+
+**Verify**
+
+```sh
+curl -i -X POST https://<project-ref>.functions.supabase.co/delete-account
+# → 401. Then delete a throwaway account from the app (Settings → Delete
+# account) and confirm its auth.users row, and its rows in the four tables,
+# are gone.
+```
+
+A 200 always means the auth user is gone. Anything else means it isn't, and
+the app leaves the device untouched so the user can retry. The body's
+`skipped` array lists any best-effort leg that didn't run, and why.
+
+Smoke-tested locally under Deno 2 on 2026-09-25 against the live project's
+auth: 401 without a header, 401 for a bogus token, 405 for GET.

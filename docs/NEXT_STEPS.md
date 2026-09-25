@@ -87,7 +87,14 @@ promise, "no data is collected from users who never sign in", so the privacy
 answers and the policy would change with it. **Recommendation:** ship the fix
 now, and read the checkpoint numbers as *signed-in cohort* until you decide.
 
-### 3. Account deletion (App Store Guideline 5.1.1(v))
+### 3. Account deletion (App Store Guideline 5.1.1(v)) — **built 2026-09-25, not deployed**
+
+> Settings → Delete account (or Erase all data on this device, for a guest).
+> `supabase/functions/delete-account` handles the server side; the app wipes
+> the device only after the server confirms. The guest erase was checked end to
+> end on the web build. **Deploying the function is yours**
+> (`supabase/README.md` § delete-account). The Apple and RevenueCat legs switch
+> on when their keys exist.
 
 Already known. The research adds four requirements the current one-line
 description misses:
@@ -101,9 +108,10 @@ description misses:
   subscription management before deleting.
 - **The RevenueCat customer should be deleted too.** The current `sk_` key is
   *customers read*; deleting needs a write-scoped server key (a dashboard step).
-- **The webhook must survive deleted users.** A renewal event for a deleted
-  account hits the `entitlements` foreign key, returns 500, and RevenueCat keeps
-  retrying. Treat `23503` as acknowledge-and-ignore.
+- ~~**The webhook must survive deleted users.**~~ Already handled:
+  `apply_entitlement_event` (migration 004) catches `foreign_key_violation`
+  and returns normally, so an event for a deleted account gets a 200. (The
+  first draft of this list missed that.)
 
 The good news: all four server tables already declare `on delete cascade`, so
 `auth.admin.deleteUser` removes the server data in one call. Full spec:

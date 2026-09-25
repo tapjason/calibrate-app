@@ -24,10 +24,12 @@ import type {
   SupabaseClient,
 } from '@supabase/supabase-js';
 
+import { wipeLocalUserData } from '@/db/account';
 import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
 } from '@/db/migrateGuestData';
+import { deleteAccountOnServer } from '@/supabase/account';
 import * as auth from '@/supabase/auth';
 import type { AuthOutcome, SignUpOutcome } from '@/supabase/auth';
 import {
@@ -38,6 +40,7 @@ import { syncNow } from '@/supabase/sync';
 
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
+import { useWarmupStore } from './warmupStore';
 
 export type AuthStatus = 'loading' | 'guest' | 'authenticated';
 
@@ -49,6 +52,12 @@ interface AuthState {
   userId: string | null;
   email: string | null;
   status: AuthStatus;
+  /**
+   * How the signed-in account signs in ('email', 'apple', 'google'), from
+   * the session's app_metadata. Null for a guest. Deletion needs it: an Apple
+   * account's Sign in with Apple grant has to be revoked too.
+   */
+  provider: string | null;
   /**
    * Whether signing in is possible at all on this build — false when the
    * Supabase env vars are missing, in which case the app is guest-only and
@@ -75,6 +84,18 @@ interface AuthState {
    * everything again. Nothing is lost, so nothing asks for confirmation.
    */
   signOut: () => Promise<AuthOutcome>;
+  /**
+   * Delete the signed-in account (docs/ACCOUNT_SPEC.md §3.2). The server
+   * deletes first; only on its confirmation is this device wiped and the
+   * session dropped. A failure changes nothing anywhere, so the user can
+   * simply try again.
+   */
+  deleteAccount: () => Promise<AuthOutcome>;
+  /**
+   * A guest's equivalent (§3.5): erase everything the app stored on this
+   * device, the Warmup included. Nothing to call — it never left the phone.
+   */
+  eraseDeviceData: () => Promise<AuthOutcome>;
   /** Test-only: drop the session. */
   reset: () => void;
 }
@@ -104,14 +125,17 @@ function sessionToState(session: Session | null): {
   userId: string;
   email: string | null;
   status: AuthStatus;
+  provider: string | null;
 } {
   if (!session?.user) {
-    return { userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest' };
+    return { userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', provider: null };
   }
+  const provider = session.user.app_metadata?.provider;
   return {
     userId: session.user.id,
     email: session.user.email ?? null,
     status: 'authenticated',
+    provider: typeof provider === 'string' ? provider : null,
   };
 }
 
@@ -176,10 +200,11 @@ async function withPending<T>(
   }
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   email: null,
   status: 'loading',
+  provider: null,
   accountsAvailable: false,
   pending: false,
 
@@ -190,7 +215,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (!isSupabaseConfigured()) {
       // Pure offline mode — no Supabase wiring, just the guest placeholder.
       lastUserId = LOCAL_GUEST_USER_ID;
-      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest' });
+      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', provider: null });
       return;
     }
 
@@ -203,7 +228,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // eslint-disable-next-line no-console
       console.warn('[auth] Supabase client unavailable, running as guest:', e);
       lastUserId = LOCAL_GUEST_USER_ID;
-      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest' });
+      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', provider: null });
       return;
     }
 
@@ -234,6 +259,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       userId: null,
       email: null,
       status: 'loading',
+      provider: null,
       accountsAvailable: false,
       pending: false,
     });
@@ -245,4 +271,54 @@ export const useAuthStore = create<AuthState>((set) => ({
     withPending(set, () => auth.signUpWithEmail(email, password)),
   signInWithApple: () => withPending(set, () => auth.signInWithApple()),
   signOut: () => withPending(set, () => auth.signOut()),
+
+  deleteAccount: () =>
+    withPending(set, async (): Promise<AuthOutcome> => {
+      const { status, userId, provider } = get();
+      if (status !== 'authenticated' || !userId) {
+        return { ok: false, error: 'Not signed in.' };
+      }
+
+      // Null if declined or unavailable; the server then skips revocation.
+      const appleCode = provider === 'apple' ? await auth.reauthenticateWithApple() : null;
+
+      const outcome = await deleteAccountOnServer(appleCode);
+      if (!outcome.ok) return outcome;
+
+      // The account is gone. From here nothing may report failure — the
+      // user's request has been carried out, and "try again" would hit a
+      // deleted account. A local step that fails is logged and passed over.
+      try {
+        await wipeLocalUserData(userId);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[auth] local wipe after account deletion failed:', e);
+      }
+      // Local, not global: every server session died with the user. This
+      // fires onAuthStateChange, which returns the app to an empty guest and
+      // lets billing log out and drop Plus.
+      const signedOut = await auth.signOutLocal();
+      if (!signedOut.ok) {
+        // eslint-disable-next-line no-console
+        console.warn('[auth] local sign-out after account deletion failed:', signedOut.error);
+      }
+      return { ok: true };
+    }),
+
+  eraseDeviceData: () =>
+    withPending(set, async (): Promise<AuthOutcome> => {
+      if (get().status !== 'guest') {
+        return { ok: false, error: 'Signed-in accounts are deleted from Delete account.' };
+      }
+      try {
+        await wipeLocalUserData(LOCAL_GUEST_USER_ID);
+        await useWarmupStore.getState().retake();
+        await reloadForUser(LOCAL_GUEST_USER_ID);
+        return { ok: true };
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[auth] erase failed:', e);
+        return { ok: false, error: "Couldn't finish erasing your data. Try again." };
+      }
+    }),
 }));

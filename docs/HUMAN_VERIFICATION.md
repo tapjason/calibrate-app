@@ -89,7 +89,7 @@ So:
 | App Store screenshots | **Not made.** The identity card and calibration curve are the two that sell it. Needs the app running with real-looking data. | E |
 | Privacy policy page + public URL | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Fill in the placeholders; hosting needs a URL (GitHub Pages works, since the repo is public). | E |
 | App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **The name "Calibrate" is already taken twice on the App Store.** See §0 there; the choice is yours. | E |
-| Account deletion (Guideline 5.1.1(v)) | **Not built.** Code, not you; see the bottom of this file. | E |
+| Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25.** Deploying `delete-account` is yours (Batch E). | E |
 
 ---
 
@@ -478,6 +478,13 @@ Tick each:
       Settings it reads "Signed in as …", and the predictions you logged as
       a guest are still there. Sign out: the lists go empty. Sign back in:
       they return.
+- [ ] **Erase as a guest.** Signed out: Settings → "Erase all data on this
+      device" → Erase everything. Home is empty afterwards, and the next
+      cold launch opens the Warmup. (Verified on the web build 2026-09-25.)
+- [ ] **Delete as a signed-in user** (after `delete-account` is deployed):
+      Settings → Delete account → Delete my account. It reads "Your account
+      has been deleted", the app is an empty guest, and signing in with the
+      same email fails.
 - [ ] **Coach as a Plus guest** (needs Plus on the device, so it waits on a
       dev build): signed out, the Coach panel says "Sign in to use Coach"
       rather than offering a request that would fail.
@@ -598,10 +605,12 @@ code on 2026-09-24:
 
 What is still yours:
 
-- [ ] **Account deletion.** There is none today, and Review Guideline 5.1.1(v)
-      requires an in-app path for any app with account creation. This is
-      **code, not you** — flagged here because it blocks submission and nothing
-      else in the repo tracks it. See `docs/APP_PRIVACY.md` §5.
+- [ ] **Account deletion: built, needs deploying.** `npx supabase functions
+      deploy delete-account`. That alone is compliant. Then, when you have
+      them, set the Sign in with Apple key secrets (needs the $99 account)
+      and a customers-*write* RevenueCat key. See `supabase/README.md`
+      § delete-account. Test it by deleting a throwaway account from
+      Settings, then confirming its `auth.users` row is gone.
 - [ ] `submit.production` block filled in `eas.json` (currently `{}`). No
       placeholder was committed on purpose — an empty string fails more
       confusingly than a missing key, and `eas submit` prompts interactively
@@ -669,12 +678,9 @@ Listed here only so the human checklist isn't mistaken for the whole list.
 2026-09-25 it includes a missing sign-in screen, an analytics bug and missing
 paywall links, found after the entries below were written.
 
-- **Account deletion (Guideline 5.1.1(v)).** Sign-in exists; a way to delete
-  the account and its data does not. Apple rejects for this. The smallest
-  honest version is a Settings row that calls an authenticated Edge Function
-  which deletes the user's rows and the auth user, then clears local SQLite.
-  Surfaced while deriving `docs/APP_PRIVACY.md`; it is the one genuine piece
-  of code work left before submission.
+- ~~**Account deletion (Guideline 5.1.1(v)).**~~ Built 2026-09-25: Settings →
+  Delete account, the `delete-account` Edge Function, and a device wipe that
+  runs only after the server confirms. Deploying it is in Batch E.
 
 - ~~The unbuilt Plus features.~~ All three the paywall names now exist: Coach,
   Trends, and the card themes. Keep it that way — a bullet on that screen the

@@ -1,6 +1,6 @@
 # Calibrate — Account Spec: sign-in, sign-out, deletion
 
-**As of:** 2026-09-25 · **Status:** spec, not built · Items 1 and 3 of
+**As of:** 2026-09-25 · **Status:** built (§1–3); `delete-account` not yet deployed · Items 1 and 3 of
 [`NEXT_STEPS.md`](./NEXT_STEPS.md)
 
 The auth *functions* exist (`src/supabase/auth.ts`) and the guest→account
@@ -216,12 +216,13 @@ Guest data never left the phone, so this is `wipeLocalData(LOCAL_GUEST_USER_ID)`
 plus the Warmup row, behind the same one-tap confirm. It satisfies Apple's
 guest-account clause, and it's a useful reset in its own right.
 
-### 3.6 Webhook hardening (same change)
+### 3.6 Webhook and deleted users: already handled
 
-After deletion, RevenueCat can still send a `RENEWAL` or `EXPIRATION` for the
-deleted id. `apply_entitlement_event` then fails the `entitlements.user_id` foreign
-key, the function returns 500, and RevenueCat retries. Map Postgres `23503` to
-`200 { ok: true, action: 'ignored', reason: 'unknown_user' }`, with a test.
+A `RENEWAL` or `EXPIRATION` can still arrive for a deleted id. That's already
+safe: `apply_entitlement_event` (migration 004) catches
+`foreign_key_violation` and returns normally, so the webhook answers 200 and
+RevenueCat doesn't retry. Nothing to build. (The first draft of this spec
+missed that.)
 
 ### 3.7 Tests
 
@@ -232,7 +233,6 @@ key, the function returns 500, and RevenueCat retries. Map Postgres `23503` to
 - The delete screen: a subscriber sees the billing warning and a lifetime
   holder doesn't; a failed call leaves the stores untouched; success routes to
   a fresh guest.
-- Webhook: `23503` → 200 ignored.
 
 ---
 
