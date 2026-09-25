@@ -1,6 +1,6 @@
 # Calibrate — Human Verification Checklist
 
-**As of:** 2026-09-09 · **Branch:** `master`
+**As of:** 2026-09-24 · **Branch:** `master`
 
 *(No commit hash here on purpose — it went stale within a day last time. The
 content below tracks what is unverified, not what was last written.)*
@@ -21,9 +21,10 @@ tests green). What is blocked is *verification*: the Coach has never produced a
 real model response (unfunded OpenAI account), `refine` has never been deployed,
 and no purchase has ever been made.
 
-With the paywall's three promises built, **every remaining item in this file is
-the whole remaining critical path.** There is no meaningful code work queued
-behind it.
+With the paywall's three promises built, **nearly every remaining item in this
+file is the whole remaining critical path.** The one exception, found on
+2026-09-24 while deriving the App Privacy answers: **there is no account-deletion
+path**, and Apple requires one. That is code, and it is listed at the bottom.
 
 ---
 
@@ -302,14 +303,64 @@ Only possible after D2 and B3 (the webhook is what tells the server you paid).
 
 ## Batch E — Ship (needs everything above)
 
-- [ ] Splash screen configured in `app.json` (asset exists, config doesn't).
-- [ ] Real app icon (current one is a placeholder).
-- [ ] APNs key / push credentials configured via EAS.
-- [ ] `submit.production` block filled in `eas.json`.
-- [ ] App Privacy declarations — must cover: data sent to OpenAI (the Coach
-      sends **aggregated numbers only**, never prediction text or reflections;
-      refine sends the prediction text the user typed), Supabase storage, and
-      the subscription.
+Four items in this batch turned out not to be yours. Re-derived from the
+code on 2026-09-24:
+
+- [x] ~~Splash screen configured in `app.json`.~~ It already is —
+      `expo-splash-screen` with light and dark variants, verified resolving
+      through `npx expo config --type public`. The old note ("asset exists,
+      config doesn't") was stale.
+- [x] ~~Real app icon.~~ Not a placeholder: `assets/icons/icon.png` is the
+      calibration diagonal with four points on it, 1024×1024, in the brand
+      indigo. Worth a look if you want a different mark, but nothing is
+      blocked on it. (It carries an alpha channel; Expo flattens iOS icons at
+      build time, so confirm it looks right in the TestFlight build rather
+      than editing the PNG now.)
+- [x] ~~APNs key / push credentials.~~ **Not needed.** Every notification this
+      app sends is a *local* scheduled one. There is no `getExpoPushTokenAsync`
+      call, no device token, and nothing server-side that sends a push
+      (verified across `src/`, `app/`, `supabase/`). This becomes a real item
+      only if remote push is ever added.
+- [x] ~~App Privacy declarations.~~ Drafted from the code in
+      [`docs/APP_PRIVACY.md`](./APP_PRIVACY.md) — the App Store Connect answer
+      sheet row by row, each citing the file that proves it. Read it once and
+      transcribe; the one thing it asks you to decide is the privacy-policy URL.
+
+What is still yours:
+
+- [ ] **Account deletion.** There is none today, and Review Guideline 5.1.1(v)
+      requires an in-app path for any app with account creation. This is
+      **code, not you** — flagged here because it blocks submission and nothing
+      else in the repo tracks it. See `docs/APP_PRIVACY.md` §5.
+- [ ] `submit.production` block filled in `eas.json` (currently `{}`). No
+      placeholder was committed on purpose — an empty string fails more
+      confusingly than a missing key, and `eas submit` prompts interactively
+      when the block is absent. When you have the values, paste:
+
+      ```json
+      "submit": {
+        "production": {
+          "ios": {
+            "appleId": "you@example.com",
+            "ascAppId": "1234567890",
+            "appleTeamId": "ABCDE12345"
+          }
+        }
+      }
+      ```
+
+      - `appleId` — the Apple ID email of your developer account.
+      - `ascAppId` — App Store Connect → your app → App Information → Apple ID
+        (a 10-digit number, not the bundle id).
+      - `appleTeamId` — developer.apple.com → Membership details → Team ID.
+
+- [ ] Privacy policy URL — App Store Connect requires one, and
+      `docs/APP_PRIVACY.md` §5 lists the five things it has to say.
+- [ ] `npx expo install --check` before the build. `expo-doctor` is 19/20
+      green; the one failure is patch drift inside SDK 55 (14 packages, e.g.
+      `expo` 55.0.26 → 55.0.31). Not urgent, but a build is the moment to take
+      it — and re-run `npm test` after, since it moves `react-native` and
+      `jest-expo`.
 - [ ] Screenshots (the identity card and the calibration curve are the two
       that sell it).
 - [ ] `eas build --platform ios` → TestFlight → accepted.
@@ -335,6 +386,13 @@ Only possible after D2 and B3 (the webhook is what tells the server you paid).
 ## Open work that is code, not you
 
 Listed here only so the human checklist isn't mistaken for the whole list.
+
+- **Account deletion (Guideline 5.1.1(v)).** Sign-in exists; a way to delete
+  the account and its data does not. Apple rejects for this. The smallest
+  honest version is a Settings row that calls an authenticated Edge Function
+  which deletes the user's rows and the auth user, then clears local SQLite.
+  Surfaced while deriving `docs/APP_PRIVACY.md`; it is the one genuine piece
+  of code work left before submission.
 
 - ~~The unbuilt Plus features.~~ All three the paywall names now exist: Coach,
   Trends, and the card themes. Keep it that way — a bullet on that screen the

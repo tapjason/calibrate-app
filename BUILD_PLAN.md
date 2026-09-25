@@ -172,9 +172,23 @@ rather than code. D0 aha completion is `warmup_completed / warmup_started`;
 share rate is `share_completed` per active user. That measurement is meant to
 happen *before* the checkout goes live. Then L7.
 
-With the nudge landed, **`docs/HUMAN_VERIFICATION.md` is the entire remaining
-critical path** — batches A–E, from funding the OpenAI account to a TestFlight
-build. No code work is queued behind it.
+With the nudge landed, **`docs/HUMAN_VERIFICATION.md` is very nearly the entire
+remaining critical path** — batches A–E, from funding the OpenAI account to a
+TestFlight build.
+
+**One piece of code work remains, and it blocks submission.** Deriving the App
+Store privacy answers from the source (`docs/APP_PRIVACY.md`, 2026-09-24) turned
+up the gap: the app supports account creation and has **no account-deletion
+path**, which Review Guideline 5.1.1(v) requires. The smallest honest version is
+a Settings row calling an authenticated Edge Function that deletes the user's
+rows and the auth user, then clears local SQLite. Nothing else in the repo
+tracked this.
+
+The same pass closed four Batch E items without a build: the splash screen is
+already configured (the checklist line was stale), the app icon is not a
+placeholder, **no APNs key is needed** — every notification is a *local*
+scheduled one, with no push token requested anywhere — and the privacy
+declarations are now written down row by row with the file that proves each.
 
 Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
 gates, the App Store Connect / RevenueCat product setup, and the trial-length call
