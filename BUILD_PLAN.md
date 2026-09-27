@@ -452,6 +452,9 @@ fails gracefully.
 **Purpose:** The UI. Reads from stores (L4), calls service actions (L5). Never
 touches the SQLite client or the engine directly.
 
+**Design:** `docs/design/DESIGN_SYSTEM.md` (rules and tokens) and
+`docs/design/UI_ROADMAP.md` (redesign order and open decisions).
+
 **Build:**
 - `src/components/` — `ui/` primitives, then `prediction/`, `stats/`, `resolution/`,
   `share/`, `paywall/`.

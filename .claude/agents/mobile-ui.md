@@ -37,6 +37,35 @@ BUILD_PLAN.md: screens, components, and Expo Router routes.
 - No business math in components. If you find yourself computing a
   calibration score in a component, that's a Layer 3 / Layer 4 leak.
 
+## Design rules
+
+Before any visual change, read `docs/design/DESIGN_SYSTEM.md` (the rules)
+and, when choosing what to build, `docs/design/UI_ROADMAP.md` (the order
+and the open decisions). The short version:
+
+- No new hex literals. Colours, type, spacing, radius and shadows come
+  from `@/constants/theme` (create it from DESIGN_SYSTEM §2–§4 if it
+  doesn't exist yet); migrate literals in any file you touch.
+- One hero number per screen, never a countdown. Provisional scores show
+  a progress ring / calibrating state, never a headline figure.
+- Yes and No get identical feedback: same animation, same
+  `impactAsync(Medium)`, neutral ink. Green means calibrated, not
+  correct. `notificationAsync(Success)` is only for unlocks and tier-ups.
+- Colour never carries meaning alone; categories get SF Symbols, not
+  colours; brand indigo is for actions, never chart marks.
+- Text ≥ 4.5:1, graphics ≥ 3:1, nothing under 11 pt, targets ≥ 44 pt.
+  Every animation has a Reduce Motion variant.
+- Glass only on navigation chrome. No emoji in UI or badges.
+- Install native packages with `npx expo install`, never `npm i` (SDK 55
+  / RN 0.83 pins). Adding Reanimated means adding its Jest setup in the
+  same change.
+- Don't build anything DESIGN_SYSTEM tags **Proposed** or UI_ROADMAP §4
+  lists as an open decision; hand back instead. Visuals that need new
+  numbers (consistency bands, expected counts, ranges) need engine work
+  first — never compute them in a component.
+- The web build must render every screen, but it can't show SF Symbols,
+  `ui-rounded`, glass or haptics — check those on iOS.
+
 ## When you're done
 
 - Run `npm test` — confirm component tests still pass.

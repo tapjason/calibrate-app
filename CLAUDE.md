@@ -3,7 +3,7 @@
 **Canonical spec.** This file and `BUILD_PLAN.md` are the two always-current build
 documents. `GROWTH_AND_MONETIZATION.md` and `COACH_AGENT.md` are rationale/reference —
 read them for the *why*, but this file governs *what gets built*. If they ever conflict,
-this file wins.
+this file wins. Visual and interaction design lives in `docs/design/DESIGN_SYSTEM.md`.
 
 ## Project Overview
 
@@ -511,6 +511,15 @@ for, and validate that people actually share before betting on the free tier.
 ### Components & screens
 - Components are `PascalCase.tsx`, one component per file.
 - Expo Router screens stay thin — delegate data and logic to stores and `src/` modules.
+
+### Visual design
+- `docs/design/DESIGN_SYSTEM.md` governs how the app looks, moves and reads (tokens,
+  type, motion, haptics, chart, badge, share-card and paywall patterns, approved
+  libraries). `docs/design/UI_ROADMAP.md` holds the build order and the open design
+  decisions. Read both before UI work. This file wins on product behaviour.
+- No hex literals in components — use the tokens in `src/constants/theme.ts`.
+- Yes and No resolutions get identical feedback; colour never carries meaning alone.
+- Install native packages with `npx expo install`, never `npm i`.
 
 ### AI calls
 - AI requests go through `src/ai/refine.ts` and `src/ai/coach.ts` only. They must fail
