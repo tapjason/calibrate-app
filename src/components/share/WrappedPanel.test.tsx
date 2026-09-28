@@ -65,7 +65,7 @@ let warn: jest.SpyInstance;
 
 beforeEach(() => {
   seq = 0;
-  useStatsStore.setState({ userStat: null });
+  useStatsStore.setState({ userStat: null, categoryStats: [], nextBadges: {} });
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   __setShareDepsForTests(shareDeps());
 });
@@ -204,6 +204,36 @@ describe('WrappedPanel', () => {
       expect(screen.getByText(/screenshot it instead/)).toBeTruthy();
     });
     expect(screen.getByTestId('wrapped-card')).toBeTruthy();
+  });
+
+  it('shows the badge closest to hand, with a blueprint emblem', () => {
+    seed(run(4, 3));
+    useStatsStore.setState({
+      categoryStats: [
+        {
+          user_id: 'u1',
+          category: 'health',
+          predictions_made: 17,
+          predictions_resolved: 17,
+          calibration_score: 60,
+          score_is_provisional: false,
+          badge_level: 'guesser',
+        },
+      ],
+      nextBadges: { health: { badge: 'tracker', needResolved: 20, needScore: null } },
+    });
+    render(<WrappedPanel span="week" />);
+
+    expect(screen.getByTestId('wrapped-next-badge')).toBeTruthy();
+    expect(screen.getByText('Tracker in health: 3 to go')).toBeTruthy();
+    expect(screen.getByTestId('badge-blueprint-progress', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('hides the badge row when there is nothing to work toward', () => {
+    seed(run(4, 3));
+    render(<WrappedPanel span="week" />);
+
+    expect(screen.queryByTestId('wrapped-next-badge')).toBeNull();
   });
 
   it('renders the yearly window too', () => {

@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 
+import { nextBadgeProgress } from './nextBadgeCopy';
 import { WrappedCard } from './WrappedCard';
 
 interface WrappedPanelProps {
@@ -35,6 +36,8 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
   const userStat = useStatsStore((s) => s.userStat);
+  const categoryStats = useStatsStore((s) => s.categoryStats);
+  const nextBadges = useStatsStore((s) => s.nextBadges);
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -81,6 +84,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
               }
             : null
         }
+        badge={nextBadgeProgress(categoryStats, nextBadges)}
         theme={theme}
       />
 

@@ -6,12 +6,16 @@ import { BADGE_META } from '@/constants/badges';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import type { WrappedSummary } from '@/engine/wrapped';
 
+import { BadgeBlueprint } from './BadgeBlueprint';
+import type { BadgeProgress } from './nextBadgeCopy';
 import { wrappedStory, type OverallProgress } from './wrappedCopy';
 
 interface WrappedCardProps {
   summary: WrappedSummary;
   /** All-time progress, so a provisional week can point at the real unlock. */
   overall?: OverallProgress | null;
+  /** The badge closest to hand, from nextBadgeProgress(); null hides the row. */
+  badge?: BadgeProgress | null;
   /** Cosmetic only (Plus); the free theme is the default. */
   theme?: CardTheme;
 }
@@ -28,7 +32,10 @@ interface WrappedCardProps {
  * verdict built on four resolutions.
  */
 export const WrappedCard = forwardRef<View, WrappedCardProps>(
-  function WrappedCard({ summary, overall, theme = WRAPPED_DEFAULT_THEME }, ref) {
+  function WrappedCard(
+    { summary, overall, badge, theme = WRAPPED_DEFAULT_THEME },
+    ref,
+  ) {
     const story = wrappedStory(summary, overall);
 
     return (
@@ -64,6 +71,19 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
           >
             {story.provisionalNote}
           </Text>
+        )}
+
+        {badge && (
+          <View style={styles.badgeRow} testID="wrapped-next-badge">
+            <BadgeBlueprint
+              progress={badge.progress}
+              trackColor={theme.accent}
+              progressColor={theme.foreground}
+            />
+            <Text style={[styles.badgeText, { color: theme.foreground }]}>
+              {badge.text}
+            </Text>
+          </View>
         )}
 
         {summary.categories.length > 0 && (
@@ -147,6 +167,8 @@ const styles = StyleSheet.create({
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
   chipCount: { color: '#6b7280', fontSize: 12, fontWeight: '600' },
   line: { fontSize: 13, lineHeight: 19 },
+  badgeRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 4 },
+  badgeText: { flex: 1, fontSize: 15, fontWeight: '600', lineHeight: 20 },
   note: { fontSize: 13, lineHeight: 19, marginTop: 4 },
   footer: {
     borderTopWidth: 1,

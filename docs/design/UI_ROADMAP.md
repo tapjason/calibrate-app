@@ -48,8 +48,9 @@ keeps `npm test` green. Steps 1–5 need no product sign-off.
    digest's zero-open line no longer mentions the streak. Also done: the weekly
    Wrapped story (§7.14) — a receipt line from the busiest bucket
    (`WrappedSummary.receipt`) and a provisional line that points at overall progress
-   instead of asking for 20 resolutions in a week. The badge-progress line is still
-   to do.
+   instead of asking for 20 resolutions in a week — and the "next badge" line
+   ("Tracker in health: 3 to go") with an interim `BadgeBlueprint` emblem that step 8's
+   `LensEmblem` replaces.
 1. **Tokens.** Create `src/constants/theme.ts` (colour, type, space, radius, shadow
    from DESIGN_SYSTEM §2–§4), **shaped as light/dark pairs** even though only light
    ships (§2.4). Migrate files one PR at a time; start with the contrast
