@@ -6,6 +6,8 @@ import {
   type TextInputProps,
 } from 'react-native';
 
+import { colors, radius, space, type } from '@/constants/theme';
+
 interface TextFieldProps {
   label: string;
   value: string;
@@ -45,6 +47,7 @@ export function TextField({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
+        placeholderTextColor={colors.textTertiary}
         multiline={multiline}
         maxLength={maxLength}
         secureTextEntry={secureTextEntry}
@@ -59,16 +62,19 @@ export function TextField({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '500', color: '#6b7280', marginBottom: 6 },
+  wrap: { marginBottom: space.lg },
+  label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginBottom: 6 },
   input: {
+    // controlBorder: an input's edge is a UI boundary and needs 3:1 (the old
+    // #d1d5db was about 1.5:1 on white).
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: colors.controlBorder,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
     paddingVertical: 10,
-    fontSize: 16,
-    backgroundColor: 'white',
+    ...type.callout,
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
   },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
 });

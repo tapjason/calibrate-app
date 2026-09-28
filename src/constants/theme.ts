@@ -11,7 +11,7 @@
 // decision D7). Retro-fitting a flat object into a themed one would mean
 // touching every migrated file twice.
 
-import type { TextStyle } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
 
 export interface Palette {
   // Brand (indigo — matches the icon and splash). Chrome, never data.
@@ -130,9 +130,17 @@ export const colors: Palette = palettes.light;
 
 // ---- Type (DESIGN_SYSTEM §3) ----
 // System font; SF Rounded ('ui-rounded') for numerals and identity words only.
-// On web and Android 'ui-rounded' falls back to the default face.
+// Web needs an explicit fallback list: Chrome doesn't know 'ui-rounded' and a
+// bare unknown family falls through to the browser's serif default. Android
+// has no rounded system face, so it keeps the default.
 
-const ROUNDED = 'ui-rounded';
+export const roundedFamily: string | undefined = Platform.select({
+  ios: 'ui-rounded',
+  web: 'ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  default: undefined,
+});
+
+const ROUNDED = roundedFamily;
 
 export const type = {
   display: { fontFamily: ROUNDED, fontSize: 64, lineHeight: 68, fontWeight: '700' },

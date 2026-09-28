@@ -2,6 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 
+import { colors } from '@/constants/theme';
+
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 /**
@@ -16,7 +18,15 @@ function tabIcon(filled: IconName, outline: IconName) {
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: true }}>
+    <Tabs
+      screenOptions={{
+        headerShown: true,
+        // Indigo is chrome: selection tint matches the icon and the CTAs.
+        tabBarActiveTintColor: colors.brand600,
+        tabBarInactiveTintColor: colors.textTertiary,
+        sceneStyle: { backgroundColor: colors.canvas },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{ title: 'Home', tabBarIcon: tabIcon('home', 'home-outline') }}

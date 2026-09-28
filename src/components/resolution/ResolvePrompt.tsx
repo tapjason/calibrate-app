@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
-import { colors, space, tabularNums, type } from '@/constants/theme';
+import { colors, roundedFamily, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import type { Prediction, ResolvedStatus } from '@/types';
 
@@ -115,20 +115,24 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
       {/* Yes and No share one neutral style: a No is an outcome, not a
           failure, and red is for destructive actions (DESIGN_SYSTEM §7.10). */}
       <View style={styles.row}>
-        <Button
-          label={submitting ? '…' : 'Yes'}
-          variant="secondary"
-          onPress={() => submit('resolved_yes')}
-          disabled={submitting}
-          testID="resolve-yes"
-        />
-        <Button
-          label={submitting ? '…' : 'No'}
-          variant="secondary"
-          onPress={() => submit('resolved_no')}
-          disabled={submitting}
-          testID="resolve-no"
-        />
+        <View style={styles.answer}>
+          <Button
+            label={submitting ? '…' : 'Yes'}
+            variant="secondary"
+            onPress={() => submit('resolved_yes')}
+            disabled={submitting}
+            testID="resolve-yes"
+          />
+        </View>
+        <View style={styles.answer}>
+          <Button
+            label={submitting ? '…' : 'No'}
+            variant="secondary"
+            onPress={() => submit('resolved_no')}
+            disabled={submitting}
+            testID="resolve-no"
+          />
+        </View>
         <Button
           label="Skip"
           variant="secondary"
@@ -147,7 +151,7 @@ function formatLogged(iso: string): string {
 }
 
 const styles = StyleSheet.create({
-  wrap: { padding: space.lg, backgroundColor: colors.canvas },
+  wrap: { flex: 1, padding: space.lg, backgroundColor: colors.canvas },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -159,7 +163,7 @@ const styles = StyleSheet.create({
   statedNumber: {
     ...type.title1,
     ...tabularNums,
-    fontFamily: 'ui-rounded',
+    fontFamily: roundedFamily,
     color: colors.textPrimary,
   },
   category: {
@@ -172,6 +176,8 @@ const styles = StyleSheet.create({
   title: { ...type.title2, color: colors.textPrimary, marginBottom: space.xxl },
   question: { ...type.headline, color: colors.textPrimary, marginBottom: space.md },
   row: { flexDirection: 'row', gap: space.sm },
+  // Yes and No share the width equally; Skip takes only what it needs.
+  answer: { flex: 1 },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   notFoundTitle: { ...type.headline, color: colors.textPrimary, marginBottom: space.sm },
   notFoundBody: { ...type.subhead, color: colors.textSecondary, textAlign: 'center' },

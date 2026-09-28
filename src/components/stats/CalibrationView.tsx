@@ -4,7 +4,7 @@ import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
-import { colors, tabularNums, type } from '@/constants/theme';
+import { colors, space, tabularNums, type } from '@/constants/theme';
 import {
   MIN_N_OVERALL,
   type CalibrationResult,
@@ -60,9 +60,12 @@ export function CalibrationView({
               <Text style={styles.ratingLabel}>calibration rating</Text>
             </>
           )}
-          <Text style={styles.subtle}>
-            {userStat.total_resolved} resolved · streak {userStat.current_streak}
-          </Text>
+          {/* The progress bar already counts resolutions while provisional. */}
+          {!headline.provisional && (
+            <Text style={styles.subtle}>
+              {userStat.total_resolved} resolved · streak {userStat.current_streak}
+            </Text>
+          )}
         </View>
       ) : null}
 
@@ -116,23 +119,22 @@ const styles = StyleSheet.create({
   // good/bad (DESIGN_SYSTEM §2.4).
   rating: { ...type.display, ...tabularNums, color: colors.textPrimary },
   ratingLabel: { ...type.subhead, color: colors.textSecondary },
-  subtle: { fontSize: 13, color: colors.textTertiary, marginTop: 4 },
+  subtle: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
+  // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    marginTop: 16,
-    marginBottom: 8,
+    ...type.eyebrow,
+    color: colors.textSecondary,
+    marginTop: space.xxl,
+    marginBottom: space.sm,
   },
-  empty: { color: colors.textTertiary, fontStyle: 'italic' },
+  empty: { ...type.subhead, color: colors.textSecondary },
   bucketRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 6,
   },
-  bucketLabel: { fontSize: 13, fontWeight: '500', color: '#374151', width: 64 },
-  bucketDetail: { flex: 1, fontSize: 13, color: '#6b7280' },
+  bucketLabel: { ...type.footnote, fontWeight: '500', color: colors.textPrimary, width: 64 },
+  bucketDetail: { ...type.footnote, flex: 1, color: colors.textSecondary },
   bucketCount: { fontSize: 11, color: colors.textTertiary, width: 40, textAlign: 'right' },
 });

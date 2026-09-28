@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   },
   done: { backgroundColor: colors.brand600, borderColor: colors.brand600 },
   onTheWay: {
-    backgroundColor: colors.brand100,
+    backgroundColor: colors.brand200,
     borderColor: colors.brand600,
     borderStyle: 'dashed',
   },

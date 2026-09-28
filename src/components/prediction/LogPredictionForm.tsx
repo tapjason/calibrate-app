@@ -8,7 +8,7 @@ import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { REFINE_ENABLED } from '@/constants/app';
-import { colors, radius, type } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
@@ -197,6 +197,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
               <Text
                 style={[
                   styles.chipText,
+                  styles.capitalize,
                   category === c && styles.chipTextActive,
                 ]}
               >
@@ -251,11 +252,11 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
         <View style={styles.row}>
           {presets.map((preset) => (
             <Pressable
-              key={preset.label}
+              key={preset.id}
               onPress={() => setDueDate(preset.iso)}
-              testID={`due-${preset.label}`}
+              testID={`due-${preset.id}`}
               accessibilityRole="radio"
-              accessibilityLabel={`Due ${preset.label}`}
+              accessibilityLabel={`Due ${preset.label.toLowerCase()}`}
               accessibilityState={{ selected: dueDate === preset.iso }}
               style={[
                 styles.chip,
@@ -273,7 +274,14 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.dateValue}>{new Date(dueDate).toLocaleDateString()}</Text>
+        <Text style={styles.dateValue} testID="due-sentence">
+          Due{' '}
+          {new Date(dueDate).toLocaleDateString(undefined, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'short',
+          })}
+        </Text>
       </View>
 
       {error && <Text style={styles.error} testID="log-error">{error}</Text>}
@@ -288,7 +296,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
   );
 }
 
-function datePresets(): { label: string; iso: string }[] {
+function datePresets(): { id: string; label: string; iso: string }[] {
   // Add days in LOCAL time so "tomorrow" means the user's tomorrow, not
   // UTC's. Anchor at noon local so the resulting UTC timestamp falls on
   // the same calendar date for every timezone between UTC-12 and UTC+12.
@@ -299,27 +307,31 @@ function datePresets(): { label: string; iso: string }[] {
     return d.toISOString();
   };
   return [
-    { label: 'tomorrow', iso: make(1) },
-    { label: '+1 week', iso: make(7) },
-    { label: '+1 month', iso: make(30) },
+    // Words, not "+1 week" — that reads as arithmetic (DESIGN_SYSTEM §7.12).
+    { id: 'tomorrow', label: 'Tomorrow', iso: make(1) },
+    { id: 'week', label: 'In a week', iso: make(7) },
+    { id: 'month', label: 'In a month', iso: make(30) },
   ];
 }
 
 const styles = StyleSheet.create({
-  block: { marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '500', color: '#6b7280', marginBottom: 8 },
-  row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  block: { marginBottom: space.xl },
+  label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginBottom: space.sm },
+  row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: 'white',
+    borderColor: colors.controlBorder,
+    backgroundColor: colors.surface,
   },
-  chipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  chipText: { color: '#374151', fontWeight: '500' },
-  chipTextActive: { color: 'white' },
+  // Selected = tint + bolder label, not colour alone (DESIGN_SYSTEM §7.12).
+  chipActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  chipText: { ...type.subhead, color: colors.textPrimary },
+  capitalize: { textTransform: 'capitalize' },
+  chipTextActive: { color: colors.brand800, fontWeight: '700' },
   bonus: {
     alignSelf: 'flex-start',
     backgroundColor: colors.integrityBackground,
@@ -329,8 +341,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   bonusText: { ...type.footnote, color: colors.integrityText, fontWeight: '600' },
-  dateValue: { marginTop: 8, color: '#374151' },
-  error: { color: '#dc2626', marginBottom: 12 },
+  dateValue: { ...type.subhead, marginTop: space.sm, color: colors.textSecondary },
+  error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
   refineButton: {
     paddingHorizontal: 12,
