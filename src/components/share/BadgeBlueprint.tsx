@@ -1,3 +1,4 @@
+import { View } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
 
 interface BadgeBlueprintProps {
@@ -39,50 +40,52 @@ export function BadgeBlueprint({
   const inset = size * 0.3;
 
   return (
-    <Svg
-      width={size}
-      height={size}
+    // The accessibility props live on a View: react-native-svg forwards
+    // unknown props to the DOM on web, where React rejects them.
+    <View
       testID="badge-blueprint"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Rect
-        x={STROKE / 2}
-        y={STROKE / 2}
-        width={side}
-        height={side}
-        rx={r}
-        fill="none"
-        stroke={trackColor}
-        strokeWidth={STROKE}
-        strokeDasharray="4 4"
-        opacity={0.6}
-      />
-      <Line
-        x1={inset}
-        y1={size - inset}
-        x2={size - inset}
-        y2={inset}
-        stroke={trackColor}
-        strokeWidth={STROKE}
-        strokeDasharray="1 4"
-        strokeLinecap="round"
-      />
-      {clamped > 0 && (
+      <Svg width={size} height={size}>
         <Rect
-          testID="badge-blueprint-progress"
           x={STROKE / 2}
           y={STROKE / 2}
           width={side}
           height={side}
           rx={r}
           fill="none"
-          stroke={progressColor}
+          stroke={trackColor}
           strokeWidth={STROKE}
-          strokeDasharray={`${clamped * perimeter} ${perimeter}`}
+          strokeDasharray="4 4"
+          opacity={0.6}
+        />
+        <Line
+          x1={inset}
+          y1={size - inset}
+          x2={size - inset}
+          y2={inset}
+          stroke={trackColor}
+          strokeWidth={STROKE}
+          strokeDasharray="1 4"
           strokeLinecap="round"
         />
-      )}
-    </Svg>
+        {clamped > 0 && (
+          <Rect
+            testID="badge-blueprint-progress"
+            x={STROKE / 2}
+            y={STROKE / 2}
+            width={side}
+            height={side}
+            rx={r}
+            fill="none"
+            stroke={progressColor}
+            strokeWidth={STROKE}
+            strokeDasharray={`${clamped * perimeter} ${perimeter}`}
+            strokeLinecap="round"
+          />
+        )}
+      </Svg>
+    </View>
   );
 }
