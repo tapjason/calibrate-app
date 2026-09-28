@@ -112,3 +112,17 @@ describe('ResolvePrompt', () => {
     });
   });
 });
+
+describe('ResolvePrompt layout', () => {
+  // Hindsight bias: the stated number is read before the outcome is asked for.
+  it('leads with what the user said, then asks the question', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-stated')).toBeTruthy();
+    });
+    expect(screen.getByTestId('resolve-stated')).toHaveTextContent(/you said 80%/);
+    expect(screen.getByText('Did it happen?')).toBeTruthy();
+  });
+});

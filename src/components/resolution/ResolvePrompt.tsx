@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import type { Prediction, ResolvedStatus } from '@/types';
 
@@ -86,14 +87,21 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.eyebrow}>{prediction.category} · {prediction.confidence}%</Text>
+      {/* The stated confidence comes first, before the outcome is asked for:
+          once people know how it turned out they misremember how sure they
+          were (hindsight bias; DESIGN_SYSTEM §7.10). */}
+      <Text style={styles.stated} testID="resolve-stated">
+        On {formatLogged(prediction.created_at)} you said{' '}
+        <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
+      </Text>
+      <Text style={styles.category}>{prediction.category}</Text>
       <Text style={styles.title}>{prediction.title}</Text>
 
       <TextField
         label="Reflection (optional)"
         value={reflection}
         onChangeText={setReflection}
-        placeholder="What did you notice?"
+        placeholder="What surprised you?"
         multiline
         maxLength={500}
         testID="reflection-field"
@@ -101,6 +109,9 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
 
       {error && <Text style={styles.error}>{error}</Text>}
 
+      <Text style={styles.question} accessibilityRole="header">
+        Did it happen?
+      </Text>
       {/* Yes and No share one neutral style: a No is an outcome, not a
           failure, and red is for destructive actions (DESIGN_SYSTEM §7.10). */}
       <View style={styles.row}>
@@ -130,13 +141,38 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
   );
 }
 
+/** "3 Sep" in the user's locale. */
+function formatLogged(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 const styles = StyleSheet.create({
-  wrap: { padding: 16 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  eyebrow: { fontSize: 13, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6 },
-  title: { fontSize: 22, fontWeight: '600', marginBottom: 20, color: '#111827' },
-  row: { flexDirection: 'row', gap: 8 },
-  error: { color: '#dc2626', marginBottom: 12 },
-  notFoundTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  notFoundBody: { color: '#6b7280', textAlign: 'center' },
+  wrap: { padding: space.lg, backgroundColor: colors.canvas },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.xxl,
+    backgroundColor: colors.canvas,
+  },
+  stated: { ...type.title3, color: colors.textSecondary, marginBottom: space.md },
+  statedNumber: {
+    ...type.title1,
+    ...tabularNums,
+    fontFamily: 'ui-rounded',
+    color: colors.textPrimary,
+  },
+  category: {
+    ...type.footnote,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+    marginBottom: space.xs,
+  },
+  title: { ...type.title2, color: colors.textPrimary, marginBottom: space.xxl },
+  question: { ...type.headline, color: colors.textPrimary, marginBottom: space.md },
+  row: { flexDirection: 'row', gap: space.sm },
+  error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
+  notFoundTitle: { ...type.headline, color: colors.textPrimary, marginBottom: space.sm },
+  notFoundBody: { ...type.subhead, color: colors.textSecondary, textAlign: 'center' },
 });
