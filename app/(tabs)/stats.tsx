@@ -5,6 +5,7 @@ import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
 import { TrendsPanel } from '@/components/stats/TrendsPanel';
 import { Button } from '@/components/ui/Button';
+import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 
 export default function StatsScreen() {
@@ -13,6 +14,7 @@ export default function StatsScreen() {
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const calibration = useStatsStore((s) => s.calibration);
   const nextBadges = useStatsStore((s) => s.nextBadges);
+  const pendingCount = usePredictionStore((s) => s.pending.length);
 
   return (
     <ScrollView>
@@ -21,6 +23,7 @@ export default function StatsScreen() {
         calibration={calibration}
         categoryStats={categoryStats}
         nextBadges={nextBadges}
+        pendingCount={pendingCount}
       />
       <CoachPanel
         onUpgrade={() => router.push('/paywall?from=stats_coach' as never)}

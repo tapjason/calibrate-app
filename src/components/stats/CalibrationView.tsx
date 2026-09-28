@@ -3,13 +3,15 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
-import { colors } from '@/constants/theme';
-import type {
-  CalibrationResult,
-  Category,
-  CategoryStat,
-  NextBadgeTarget,
-  UserStat,
+import { UnlockProgress } from '@/components/stats/UnlockProgress';
+import { colors, tabularNums, type } from '@/constants/theme';
+import {
+  MIN_N_OVERALL,
+  type CalibrationResult,
+  type Category,
+  type CategoryStat,
+  type NextBadgeTarget,
+  type UserStat,
 } from '@/types';
 
 interface CalibrationViewProps {
@@ -17,6 +19,8 @@ interface CalibrationViewProps {
   calibration: CalibrationResult;
   categoryStats: CategoryStat[];
   nextBadges: Partial<Record<Category, NextBadgeTarget | null>>;
+  /** Open predictions, shown as "on their way" while the rating is provisional. */
+  pendingCount?: number;
 }
 
 const BUCKET_LABELS = ['0–20', '20–40', '40–60', '60–80', '80–100'];
@@ -32,6 +36,7 @@ export function CalibrationView({
   calibration,
   categoryStats,
   nextBadges,
+  pendingCount = 0,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
 
@@ -40,15 +45,13 @@ export function CalibrationView({
       {userStat && headline ? (
         <View style={styles.summary}>
           {headline.provisional ? (
-            <>
-              <Text style={styles.rating} testID="rating-provisional">
-                {headline.remaining}
-              </Text>
-              <Text style={styles.ratingLabel}>
-                more {headline.remaining === 1 ? 'resolution' : 'resolutions'} until
-                your rating unlocks
-              </Text>
-            </>
+            // Never a countdown in the hero slot: "12" reads as a score of 12.
+            <UnlockProgress
+              testID="rating-provisional"
+              resolved={userStat.total_resolved}
+              pending={pendingCount}
+              total={MIN_N_OVERALL}
+            />
           ) : (
             <>
               <Text style={styles.rating} testID="rating-value">
@@ -109,8 +112,10 @@ export function CalibrationView({
 const styles = StyleSheet.create({
   wrap: { padding: 16 },
   summary: { alignItems: 'center', marginBottom: 24 },
-  rating: { fontSize: 56, fontWeight: '700', color: '#2563eb' },
-  ratingLabel: { fontSize: 14, color: '#6b7280' },
+  // The hero numeral is always ink; colour belongs to direction, not to
+  // good/bad (DESIGN_SYSTEM §2.4).
+  rating: { ...type.display, ...tabularNums, color: colors.textPrimary },
+  ratingLabel: { ...type.subhead, color: colors.textSecondary },
   subtle: { fontSize: 13, color: colors.textTertiary, marginTop: 4 },
   sectionTitle: {
     fontSize: 13,

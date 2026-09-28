@@ -1,0 +1,72 @@
+import type { Prediction } from '@/types';
+
+import { daysUntilDue, groupByDue, isReadyToResolve } from './dueGroups';
+
+// Local noon on 10 Sep 2026; every due date below is built in local time too,
+// so the tests hold in any time zone.
+const NOW = new Date(2026, 8, 10, 12, 0, 0);
+
+function dueIn(days: number, id = `d${days}`, hour = 12): Prediction {
+  const due = new Date(2026, 8, 10 + days, hour, 0, 0);
+  return {
+    id,
+    user_id: 'u1',
+    title: id,
+    category: 'work',
+    confidence: 70,
+    created_at: '2026-09-01T00:00:00.000Z',
+    due_date: due.toISOString(),
+    status: 'pending',
+    resolved_at: null,
+    reflection: null,
+    integrity_bonus: false,
+  };
+}
+
+describe('daysUntilDue', () => {
+  it('counts local calendar days, not 24-hour spans', () => {
+    // Due at 08:00 tomorrow is 20 hours away but one calendar day.
+    expect(daysUntilDue(dueIn(1, 'a', 8), NOW)).toBe(1);
+    // Due at 23:00 today is still today.
+    expect(daysUntilDue(dueIn(0, 'b', 23), NOW)).toBe(0);
+    expect(daysUntilDue(dueIn(-3), NOW)).toBe(-3);
+  });
+});
+
+describe('isReadyToResolve', () => {
+  it('is true from the due day on, and only while pending', () => {
+    expect(isReadyToResolve(dueIn(0), NOW)).toBe(true);
+    expect(isReadyToResolve(dueIn(-2), NOW)).toBe(true);
+    expect(isReadyToResolve(dueIn(1), NOW)).toBe(false);
+    expect(isReadyToResolve({ ...dueIn(-2), status: 'resolved_yes' }, NOW)).toBe(false);
+  });
+});
+
+describe('groupByDue', () => {
+  it('returns nothing for no predictions', () => {
+    expect(groupByDue([], NOW)).toEqual([]);
+  });
+
+  it('groups into ready, this week and later, soonest first', () => {
+    const groups = groupByDue(
+      [dueIn(30), dueIn(3), dueIn(-1), dueIn(0), dueIn(7), dueIn(8)],
+      NOW,
+    );
+    expect(groups.map((g) => g.title)).toEqual(['Ready to resolve', 'This week', 'Later']);
+    expect(groups.map((g) => g.data.map((p) => p.id))).toEqual([
+      ['d-1', 'd0'],
+      ['d3', 'd7'],
+      ['d8', 'd30'],
+    ]);
+  });
+
+  it('leaves out empty groups', () => {
+    expect(groupByDue([dueIn(2)], NOW).map((g) => g.key)).toEqual(['week']);
+  });
+
+  it('keeps a prediction with a bad due date, under Later', () => {
+    const groups = groupByDue([{ ...dueIn(2), due_date: 'not a date' }], NOW);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('later');
+  });
+});

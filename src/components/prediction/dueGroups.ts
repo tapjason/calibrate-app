@@ -1,0 +1,67 @@
+// Presentation helper: group open predictions by when they come due, for the
+// Today list (DESIGN_SYSTEM §7.11).
+//
+// The group header carries the state, so no card has to: a prediction whose
+// day has come is "Ready to resolve", not an amber "Overdue". Coming due is
+// not a lapse — the user doesn't choose when the world answers.
+//
+// Days are the device's local calendar days, like the streak engine: "due
+// today" means the user's today.
+
+import type { Prediction } from '@/types';
+
+export interface DueGroup {
+  key: 'ready' | 'week' | 'later';
+  title: string;
+  data: Prediction[];
+}
+
+const TITLES: Record<DueGroup['key'], string> = {
+  ready: 'Ready to resolve',
+  week: 'This week',
+  later: 'Later',
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfLocalDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/**
+ * Whole local days from today until the due date: 0 = due today, negative =
+ * the day has passed. Rounded, so a DST shift inside the span can't turn one
+ * day into 0.96 of one.
+ */
+export function daysUntilDue(prediction: Prediction, now: Date): number {
+  const due = new Date(prediction.due_date);
+  return Math.round((startOfLocalDay(due) - startOfLocalDay(now)) / DAY_MS);
+}
+
+/** A prediction whose due day is today or earlier can be answered now. */
+export function isReadyToResolve(prediction: Prediction, now: Date): boolean {
+  return prediction.status === 'pending' && daysUntilDue(prediction, now) <= 0;
+}
+
+/**
+ * Non-empty groups in reading order, each sorted soonest first. Predictions
+ * with an unparseable due date go to "Later" rather than vanishing.
+ */
+export function groupByDue(pending: readonly Prediction[], now: Date): DueGroup[] {
+  const buckets: Record<DueGroup['key'], Prediction[]> = { ready: [], week: [], later: [] };
+
+  for (const p of pending) {
+    const days = daysUntilDue(p, now);
+    if (Number.isNaN(days)) buckets.later.push(p);
+    else if (days <= 0) buckets.ready.push(p);
+    else if (days <= 7) buckets.week.push(p);
+    else buckets.later.push(p);
+  }
+
+  const byDue = (a: Prediction, b: Prediction) =>
+    (Date.parse(a.due_date) || Infinity) - (Date.parse(b.due_date) || Infinity);
+
+  return (['ready', 'week', 'later'] as const)
+    .filter((key) => buckets[key].length > 0)
+    .map((key) => ({ key, title: TITLES[key], data: [...buckets[key]].sort(byDue) }));
+}

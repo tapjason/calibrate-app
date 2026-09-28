@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PredictionCard } from '@/components/prediction/PredictionCard';
-import { colors } from '@/constants/theme';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import type { Category } from '@/types';
 
@@ -31,6 +32,10 @@ export default function HistoryScreen() {
           <Pressable
             key={f}
             onPress={() => setFilter(f)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: filter === f }}
+            // 36pt chip + 4pt slop each side = the 44pt minimum target.
+            hitSlop={{ top: 4, bottom: 4 }}
             style={[styles.chip, filter === f && styles.chipActive]}
           >
             <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>
@@ -40,7 +45,14 @@ export default function HistoryScreen() {
         ))}
       </View>
       {filtered.length === 0 ? (
-        <Text style={styles.empty}>No resolved predictions yet.</Text>
+        <EmptyState
+          testID="history-empty"
+          message={
+            filter === 'all'
+              ? 'Resolved predictions collect here, with how each one turned out.'
+              : `Nothing resolved in ${filter} yet.`
+          }
+        />
       ) : (
         <FlatList
           data={filtered}
@@ -53,18 +65,19 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, padding: 16 },
-  row: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
+  wrap: { flex: 1, padding: space.lg, backgroundColor: colors.canvas },
+  row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', marginBottom: space.md },
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 4,
+    justifyContent: 'center',
+    minHeight: 36,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: 'white',
+    borderColor: colors.controlBorder,
+    backgroundColor: colors.surface,
   },
-  chipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  chipText: { fontSize: 13, color: '#374151' },
-  chipTextActive: { color: 'white' },
-  empty: { color: colors.textTertiary, fontStyle: 'italic' },
+  // Selected = tint + bolder label, not colour alone (DESIGN_SYSTEM §7.12).
+  chipActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  chipText: { ...type.subhead, color: colors.textPrimary, textTransform: 'capitalize' },
+  chipTextActive: { color: colors.brand800, fontWeight: '600' },
 });

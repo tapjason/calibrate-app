@@ -1,73 +1,84 @@
 import { useRouter } from 'expo-router';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, View } from 'react-native';
 
+import { groupByDue } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
-import { colors } from '@/constants/theme';
+import { UnlockProgress } from '@/components/stats/UnlockProgress';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
+import { MIN_N_OVERALL } from '@/types';
 
 export default function HomeScreen() {
   const router = useRouter();
   const pending = usePredictionStore((s) => s.pending);
   const userStat = useStatsStore((s) => s.userStat);
   const headline = ratingHeadline(userStat);
+  const groups = groupByDue(pending, new Date());
+
+  const hero =
+    headline && !headline.provisional ? (
+      <View style={styles.rated}>
+        <Text style={styles.ratingNumber} testID="home-rating">
+          {headline.rating}
+        </Text>
+        <Text style={styles.ratingLabel}>calibration rating</Text>
+      </View>
+    ) : (
+      // Never a countdown in the hero slot (DESIGN_SYSTEM §0 rule 2).
+      <UnlockProgress
+        testID="home-unlock-progress"
+        resolved={userStat?.total_resolved ?? 0}
+        pending={pending.length}
+        total={MIN_N_OVERALL}
+      />
+    );
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.summary}>
-        {!headline ? (
-          <>
-            <Text style={styles.summaryNumber}>—</Text>
-            <Text style={styles.summaryLabel}>calibration rating</Text>
-          </>
-        ) : headline.provisional ? (
-          <>
-            <Text style={styles.summaryNumber}>{headline.remaining}</Text>
-            <Text style={styles.summaryLabel}>
-              {headline.remaining === 1 ? 'resolution' : 'resolutions'} until your
-              rating unlocks
-            </Text>
-          </>
-        ) : (
-          <>
-            <Text style={styles.summaryNumber}>{headline.rating}</Text>
-            <Text style={styles.summaryLabel}>calibration rating</Text>
-          </>
-        )}
-      </View>
-      <Text style={styles.sectionTitle}>Open predictions</Text>
-      {pending.length === 0 ? (
-        <Text style={styles.empty}>
-          No predictions yet. Add one from the Log tab.
+    <SectionList
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      sections={groups}
+      keyExtractor={(p) => p.id}
+      stickySectionHeadersEnabled={false}
+      ListHeaderComponent={<View style={styles.hero}>{hero}</View>}
+      renderSectionHeader={({ section }) => (
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          {section.title} · {section.data.length}
         </Text>
-      ) : (
-        <FlatList
-          data={pending}
-          keyExtractor={(p) => p.id}
-          renderItem={({ item }) => (
-            <PredictionCard
-              prediction={item}
-              onPress={(id) => router.push(`/resolve/${id}` as never)}
-            />
-          )}
+      )}
+      renderItem={({ item }) => (
+        <PredictionCard
+          prediction={item}
+          onPress={(id) => router.push(`/resolve/${id}` as never)}
         />
       )}
-    </View>
+      ListEmptyComponent={
+        <EmptyState
+          testID="home-empty"
+          message="Nothing open. What do you think will happen this week?"
+          actionLabel="Log a prediction"
+          onAction={() => router.push('/log' as never)}
+        />
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, padding: 16 },
-  summary: { alignItems: 'center', marginBottom: 24 },
-  summaryNumber: { fontSize: 56, fontWeight: '700', color: '#2563eb' },
-  summaryLabel: { fontSize: 14, color: '#6b7280' },
+  screen: { backgroundColor: colors.canvas },
+  content: { padding: space.lg },
+  hero: { marginBottom: space.xxl },
+  rated: { alignItems: 'center' },
+  // The hero numeral is always ink (DESIGN_SYSTEM §2.4).
+  ratingNumber: { ...type.display, ...tabularNums, color: colors.textPrimary },
+  ratingLabel: { ...type.subhead, color: colors.textSecondary },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    marginBottom: 8,
+    ...type.eyebrow,
+    color: colors.textSecondary,
+    marginBottom: space.sm,
+    marginTop: space.md,
   },
-  empty: { color: colors.textTertiary, fontStyle: 'italic' },
 });

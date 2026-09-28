@@ -1,55 +1,67 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { colors, radius, space, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
+
+import { isReadyToResolve } from './dueGroups';
 
 interface PredictionCardProps {
   prediction: Prediction;
   onPress?: (id: string) => void;
 }
 
-/** A pending prediction whose due date is on a calendar day before today. */
-function isOverdue(prediction: Prediction): boolean {
-  if (prediction.status !== 'pending') return false;
-  const d = new Date(prediction.due_date);
-  const startOfDueDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  return startOfDueDay < startOfToday;
+/** "Fri, 3 Oct" in the user's locale. */
+function formatDue(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+/**
+ * Status in words, all in one neutral ink (DESIGN_SYSTEM §7.11). No ✓/✗ —
+ * those are the green/red idiom in disguise, and a No is an outcome, not a
+ * mistake. A prediction whose day has come is "ready", never "overdue".
+ */
+function statusLabel(prediction: Prediction, now: Date): string {
+  switch (prediction.status) {
+    case 'resolved_yes':
+      return 'Happened';
+    case 'resolved_no':
+      return "Didn't happen";
+    case 'skipped':
+      return 'Not scored';
+    case 'pending':
+      return isReadyToResolve(prediction, now) ? 'Ready to resolve' : 'Open';
+  }
 }
 
 export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
-  const due = new Date(prediction.due_date).toLocaleDateString();
-  const overdue = isOverdue(prediction);
-  const statusLabel: Record<Prediction['status'], string> = {
-    pending: overdue ? 'Overdue' : 'Pending',
-    resolved_yes: 'Yes ✓',
-    resolved_no: 'No ✗',
-    skipped: 'Skipped',
-  };
+  const due = formatDue(prediction.due_date);
+  const status = statusLabel(prediction, new Date());
 
   return (
     <Pressable
       testID={`prediction-card-${prediction.id}`}
       onPress={() => onPress?.(prediction.id)}
       accessibilityRole={onPress ? 'button' : undefined}
-      // One sentence instead of five fragments read in layout order, and
-      // without the ✓/✗ glyphs, which VoiceOver reads as "check mark".
+      // One sentence instead of fragments read in layout order.
       accessibilityLabel={
         `${prediction.title}. ${prediction.category}, ${prediction.confidence}% confident, ` +
-        `due ${due}. ${statusLabel[prediction.status].replace(/ [✓✗]$/, '')}.`
+        `due ${due}. ${status}.`
       }
-      style={({ pressed }) => [styles.card, overdue && styles.cardOverdue, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.header}>
-        <Text style={styles.category}>{prediction.category}</Text>
-        <Text style={styles.confidence}>{prediction.confidence}%</Text>
-      </View>
-      <Text style={styles.title}>{prediction.title}</Text>
+      <Text style={styles.category}>{prediction.category}</Text>
+      <Text style={styles.title} numberOfLines={3}>
+        {prediction.title}
+      </Text>
       <View style={styles.footer}>
-        <Text style={[styles.due, overdue && styles.overdueText]}>due {due}</Text>
-        <Text style={[styles.status, overdue && styles.overdueText]}>
-          {statusLabel[prediction.status]}
+        <Text style={styles.meta}>
+          {prediction.confidence}% · due {due}
         </Text>
+        <Text style={styles.status}>{status}</Text>
       </View>
     </Pressable>
   );
@@ -57,25 +69,28 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
 
 const styles = StyleSheet.create({
   card: {
+    backgroundColor: colors.surface,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: 'white',
+    gap: space.xs,
+    marginBottom: space.sm,
+    padding: space.lg,
   },
-  cardOverdue: { borderColor: '#fcd34d', backgroundColor: '#fffbeb' },
   pressed: { opacity: 0.7 },
-  overdueText: { color: '#b45309', fontWeight: '600' },
-  header: {
+  category: {
+    ...type.footnote,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  title: { ...type.body, color: colors.textPrimary },
+  footer: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginTop: space.xs,
   },
-  category: { fontSize: 12, color: '#6b7280', textTransform: 'uppercase' },
-  confidence: { fontSize: 12, color: '#2563eb', fontWeight: '600' },
-  title: { fontSize: 16, color: '#111827', marginBottom: 8 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between' },
-  due: { fontSize: 13, color: '#6b7280' },
-  status: { fontSize: 13, color: '#374151', fontWeight: '500' },
+  meta: { ...type.subhead, color: colors.textSecondary },
+  status: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },
 });

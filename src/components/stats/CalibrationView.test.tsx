@@ -29,7 +29,8 @@ describe('CalibrationView headline', () => {
     expect(queryByTestId('rating-value')).toBeNull();
     // …instead the remaining count (20 − 8 = 12) is shown.
     expect(getByTestId('rating-provisional')).toBeTruthy();
-    expect(getByText(/until\s+your rating unlocks/)).toBeTruthy();
+    expect(getByText('8 of 20 resolved')).toBeTruthy();
+    expect(getByText(/12 more resolutions and your score unlocks/)).toBeTruthy();
   });
 
   it('headlines the rounded rating once non-provisional', () => {
@@ -47,5 +48,25 @@ describe('CalibrationView headline', () => {
     );
     expect(getByTestId('rating-value').props.children).toBe(83);
     expect(queryByTestId('rating-provisional')).toBeNull();
+  });
+});
+
+describe('CalibrationView provisional progress', () => {
+  it('counts open predictions as on their way', () => {
+    const { getByText, getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 4 })}
+        calibration={EMPTY_CAL}
+        categoryStats={[]}
+        nextBadges={{}}
+        pendingCount={3}
+      />,
+    );
+    expect(getByText('4 of 20 resolved · 3 on their way')).toBeTruthy();
+    expect(getByTestId('rating-provisional').props.accessibilityValue).toEqual({
+      min: 0,
+      max: 20,
+      now: 4,
+    });
   });
 });
