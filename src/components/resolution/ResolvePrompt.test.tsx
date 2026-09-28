@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { setDbForTests } from '@/db/client';
@@ -73,6 +74,19 @@ describe('ResolvePrompt', () => {
     const userStat = await getUserStat(USER);
     expect(userStat?.total_resolved).toBe(1);
     expect(userStat?.calibration_rating).toBeGreaterThan(0);
+  });
+
+  // DESIGN_SYSTEM rule 0.4: Yes and No look identical; No is never red.
+  it('styles Yes and No identically', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+
+    const flat = (id: string) => StyleSheet.flatten(screen.getByTestId(id).props.style);
+    expect(flat('resolve-no')).toEqual(flat('resolve-yes'));
   });
 
   it('shows "not found" when the prediction id is unknown', async () => {

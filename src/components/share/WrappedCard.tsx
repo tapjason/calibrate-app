@@ -6,10 +6,12 @@ import { BADGE_META } from '@/constants/badges';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import type { WrappedSummary } from '@/engine/wrapped';
 
-import { wrappedStory } from './wrappedCopy';
+import { wrappedStory, type OverallProgress } from './wrappedCopy';
 
 interface WrappedCardProps {
   summary: WrappedSummary;
+  /** All-time progress, so a provisional week can point at the real unlock. */
+  overall?: OverallProgress | null;
   /** Cosmetic only (Plus); the free theme is the default. */
   theme?: CardTheme;
 }
@@ -21,13 +23,13 @@ interface WrappedCardProps {
  * exactly what is on screen, and a fixed "get your own" footer, because
  * Wrapped is free forever and is doing marketing work.
  *
- * When the window is provisional the card shows the counts and a line about
- * what it would take to earn a calibration read — never a verdict built on
- * four resolutions.
+ * When the window is provisional the card shows the counts, a receipt from the
+ * busiest bucket, and the user's progress toward a real score — never a
+ * verdict built on four resolutions.
  */
 export const WrappedCard = forwardRef<View, WrappedCardProps>(
-  function WrappedCard({ summary, theme = WRAPPED_DEFAULT_THEME }, ref) {
-    const story = wrappedStory(summary);
+  function WrappedCard({ summary, overall, theme = WRAPPED_DEFAULT_THEME }, ref) {
+    const story = wrappedStory(summary, overall);
 
     return (
       <View
@@ -39,6 +41,14 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
         <Text style={[styles.eyebrow, { color: theme.accent }]}>{story.title}</Text>
         <Text style={[styles.stat, { color: theme.foreground }]}>{story.stat}</Text>
 
+        {story.receipt && (
+          <Text
+            style={[styles.verdict, { color: theme.foreground }]}
+            testID="wrapped-receipt"
+          >
+            {story.receipt}
+          </Text>
+        )}
         {story.verdict && (
           <Text
             style={[styles.verdict, { color: theme.muted }]}

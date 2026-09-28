@@ -6,8 +6,14 @@
 // So `verdict` is null whenever the window is provisional, and the screen
 // tells the activity story instead. Counts are always safe to print — they are
 // facts, not inferences.
+//
+// A week almost never reaches MIN_N_OVERALL resolutions, so the weekly card is
+// nearly always provisional. It must not read as "not enough data" every
+// Sunday: it leads with counts and a receipt from the busiest bucket, and its
+// provisional line points at the user's overall progress rather than asking
+// for twenty resolutions inside seven days (DESIGN_SYSTEM §7.14).
 
-import type { WrappedSummary } from '@/engine/wrapped';
+import type { WrappedReceipt, WrappedSummary } from '@/engine/wrapped';
 import { MIN_N_OVERALL } from '@/types';
 
 export interface WrappedStory {
@@ -16,6 +22,11 @@ export interface WrappedStory {
   stat: string;
   /** The calibration read, or null while the window is too small to support one. */
   verdict: string | null;
+  /**
+   * One factual line from the busiest confidence bucket ("You said 80–100% 3
+   * times. 2 happened."). Counts only, so it shows provisional or not.
+   */
+  receipt: string | null;
   /** Why there is no verdict yet. Null once there is one. */
   provisionalNote: string | null;
   /** A closing line: honest-uncertainty count, or a nudge toward one. */
@@ -38,7 +49,16 @@ const EMPTY_NOTE = {
   year: 'Nothing resolved this year yet.',
 } as const;
 
-export function wrappedStory(summary: WrappedSummary): WrappedStory {
+/** The user's all-time progress toward an unlocked rating, from UserStat. */
+export interface OverallProgress {
+  resolved: number;
+  provisional: boolean;
+}
+
+export function wrappedStory(
+  summary: WrappedSummary,
+  overall?: OverallProgress | null,
+): WrappedStory {
   const { span, resolved } = summary;
 
   if (resolved === 0) {
@@ -46,6 +66,7 @@ export function wrappedStory(summary: WrappedSummary): WrappedStory {
       title: TITLES[span],
       stat: 'Nothing resolved yet',
       verdict: null,
+      receipt: null,
       provisionalNote: null,
       note: EMPTY_NOTE[span],
     };
@@ -61,11 +82,48 @@ export function wrappedStory(summary: WrappedSummary): WrappedStory {
     verdict: summary.score_is_provisional
       ? null
       : `${VERDICTS[summary.direction]} — ${stated}% confident on average, right ${hitRate}% of the time.`,
+    receipt: summary.receipt ? receiptLine(summary.receipt) : null,
     provisionalNote: summary.score_is_provisional
-      ? `${MIN_N_OVERALL - resolved} more resolutions and this window earns a calibration read.`
+      ? provisionalLine(summary, overall)
       : null,
     note: integrityNote(summary),
   };
+}
+
+/**
+ * Why there's no verdict. A year can plausibly reach the minimum, so it gets
+ * the countdown. A week can't, so it points at the unlock that is actually in
+ * reach — the overall rating — or, once that's unlocked, at where it lives.
+ */
+function provisionalLine(
+  summary: WrappedSummary,
+  overall: OverallProgress | null | undefined,
+): string {
+  if (summary.span === 'year') {
+    return `${MIN_N_OVERALL - summary.resolved} more resolutions and this year earns a calibration read.`;
+  }
+  if (overall?.provisional) {
+    return `${overall.resolved} of ${MIN_N_OVERALL} resolutions toward your first calibration score.`;
+  }
+  return 'A week is too short for a verdict. Your all-time score has the full story.';
+}
+
+/** "You said 80–100% 3 times. 2 happened." Bucket labels match TrendsPanel. */
+export function receiptLine(receipt: WrappedReceipt): string {
+  const { low, high, said, happened } = receipt;
+  const range = `${low}–${high}%`;
+  if (said === 1) {
+    return `You said ${range} once. ${happened === 1 ? 'It happened.' : "It didn't."}`;
+  }
+  const outcome =
+    happened === said
+      ? said === 2
+        ? 'Both happened.'
+        : `All ${said} happened.`
+      : happened === 0
+        ? 'None of them happened.'
+        : `${happened} of ${said} happened.`;
+  return `You said ${range} ${said} times. ${outcome}`;
 }
 
 /**

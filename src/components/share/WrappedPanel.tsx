@@ -9,6 +9,7 @@ import { shareCard, type ShareOutcome } from '@/share/export';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useStatsStore } from '@/store/statsStore';
 
 import { WrappedCard } from './WrappedCard';
 
@@ -33,6 +34,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const resolved = usePredictionStore((s) => s.resolved);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
+  const userStat = useStatsStore((s) => s.userStat);
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -68,7 +70,19 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
 
   return (
     <View style={styles.wrap} testID={`wrapped-panel-${span}`}>
-      <WrappedCard ref={cardRef} summary={summary} theme={theme} />
+      <WrappedCard
+        ref={cardRef}
+        summary={summary}
+        overall={
+          userStat
+            ? {
+                resolved: userStat.total_resolved,
+                provisional: userStat.rating_is_provisional,
+              }
+            : null
+        }
+        theme={theme}
+      />
 
       <Button
         label={sharing ? 'Preparing…' : 'Share my recap'}

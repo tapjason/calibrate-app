@@ -117,7 +117,9 @@ export function __setDepsForTests(next: Deps | null): void {
 
 function buildBody(pendingCount: number): string {
   if (pendingCount === 0) {
-    return 'No open predictions — log one to keep your streak going.';
+    // Never mention the streak: it counts resolutions, so logging can't extend
+    // it, and with nothing open it can't be extended this week at all.
+    return 'No open predictions. What do you think will happen this week?';
   }
   if (pendingCount === 1) {
     return 'You have 1 open prediction. Tap to check in.';

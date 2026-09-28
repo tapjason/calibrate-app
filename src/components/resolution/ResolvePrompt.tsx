@@ -101,16 +101,19 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
 
       {error && <Text style={styles.error}>{error}</Text>}
 
+      {/* Yes and No share one neutral style: a No is an outcome, not a
+          failure, and red is for destructive actions (DESIGN_SYSTEM §7.10). */}
       <View style={styles.row}>
         <Button
           label={submitting ? '…' : 'Yes'}
+          variant="secondary"
           onPress={() => submit('resolved_yes')}
           disabled={submitting}
           testID="resolve-yes"
         />
         <Button
           label={submitting ? '…' : 'No'}
-          variant="danger"
+          variant="secondary"
           onPress={() => submit('resolved_no')}
           disabled={submitting}
           testID="resolve-no"

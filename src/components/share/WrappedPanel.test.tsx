@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 
 import { __setShareDepsForTests, type ShareDeps } from '@/share/export';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL, type Prediction } from '@/types';
 
 import { WrappedPanel } from './WrappedPanel';
@@ -47,10 +48,24 @@ function seed(resolved: Prediction[]): void {
   usePredictionStore.setState({ pending: [], resolved });
 }
 
+function seedOverall(totalResolved: number): void {
+  useStatsStore.setState({
+    userStat: {
+      user_id: 'u1',
+      calibration_rating: 70,
+      total_predictions: totalResolved,
+      total_resolved: totalResolved,
+      current_streak: 0,
+      rating_is_provisional: totalResolved < MIN_N_OVERALL,
+    },
+  });
+}
+
 let warn: jest.SpyInstance;
 
 beforeEach(() => {
   seq = 0;
+  useStatsStore.setState({ userStat: null });
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   __setShareDepsForTests(shareDeps());
 });
@@ -91,7 +106,40 @@ describe('WrappedPanel', () => {
 
     expect(screen.queryByTestId('wrapped-verdict')).toBeNull();
     expect(screen.getByTestId('wrapped-provisional')).toBeTruthy();
-    expect(screen.getByText(/16 more resolutions/)).toBeTruthy();
+  });
+
+  // A week almost never reaches the minimum, so it must not ask for 20
+  // resolutions in seven days; it points at the overall unlock instead.
+  it('shows overall progress on a provisional week while the rating is locked', () => {
+    seed(run(4, 2));
+    seedOverall(12);
+    render(<WrappedPanel span="week" />);
+
+    expect(screen.getByText(/12 of 20 resolutions toward your first calibration score/)).toBeTruthy();
+    expect(screen.queryByText(/more resolutions and this/)).toBeNull();
+  });
+
+  it('points at the all-time score once the rating has unlocked', () => {
+    seed(run(4, 2));
+    seedOverall(MIN_N_OVERALL + 10);
+    render(<WrappedPanel span="week" />);
+
+    expect(screen.getByText(/A week is too short for a verdict/)).toBeTruthy();
+  });
+
+  it('keeps the countdown for a provisional year', () => {
+    seed(run(4, 2));
+    render(<WrappedPanel span="year" />);
+
+    expect(screen.getByText(/16 more resolutions and this year earns/)).toBeTruthy();
+  });
+
+  it('gives a factual receipt from the busiest bucket, even while provisional', () => {
+    seed([...run(3, 2, { confidence: 90 }), prediction({ confidence: 50 })]);
+    render(<WrappedPanel span="week" />);
+
+    expect(screen.getByTestId('wrapped-receipt')).toBeTruthy();
+    expect(screen.getByText('You said 80–100% 3 times. 2 of 3 happened.')).toBeTruthy();
   });
 
   it('gives the verdict once the window clears the minimum', () => {

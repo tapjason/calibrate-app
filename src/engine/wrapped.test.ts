@@ -153,6 +153,35 @@ describe('buildWrapped', () => {
     expect(enough.score_is_provisional).toBe(false);
   });
 
+  describe('receipt', () => {
+    it('is null for an empty window', () => {
+      expect(buildWrapped([], 'week', NOW).receipt).toBeNull();
+    });
+
+    it('counts the busiest bucket', () => {
+      const w = buildWrapped(
+        [...run(3, 2, { confidence: 90 }), ...run(1, 1, { confidence: 50 })],
+        'week',
+        NOW,
+      );
+      expect(w.receipt).toEqual({ low: 80, high: 100, said: 3, happened: 2 });
+    });
+
+    it('breaks a tie toward the higher bucket', () => {
+      const w = buildWrapped(
+        [...run(2, 1, { confidence: 30 }), ...run(2, 2, { confidence: 70 })],
+        'week',
+        NOW,
+      );
+      expect(w.receipt).toEqual({ low: 60, high: 80, said: 2, happened: 2 });
+    });
+
+    it('follows the fixed bucket edges: 20 lands in [20,40)', () => {
+      const w = buildWrapped(run(1, 0, { confidence: 20 }), 'week', NOW);
+      expect(w.receipt).toEqual({ low: 20, high: 40, said: 1, happened: 0 });
+    });
+  });
+
   it('still computes the score while provisional, for trend use', () => {
     const w = buildWrapped(run(4, 2), 'week', NOW);
     expect(w.score_is_provisional).toBe(true);

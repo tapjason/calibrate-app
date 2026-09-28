@@ -124,6 +124,8 @@ describe('digest: initial schedule', () => {
 
     const [rec] = Array.from(notifications.scheduled.values());
     expect(rec.body).toMatch(/No open predictions/i);
+    // The streak counts resolutions, so a nudge to log can't keep it going.
+    expect(rec.body).not.toMatch(/streak/i);
   });
 
   it('reflects the current pending count in the body at init', async () => {

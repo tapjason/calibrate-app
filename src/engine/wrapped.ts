@@ -10,6 +10,7 @@
 
 import {
   MIN_N_OVERALL,
+  type BucketStat,
   type Category,
   type Direction,
   type Prediction,
@@ -26,6 +27,18 @@ export interface WrappedCategory {
   resolved: number;
   score: number;
   direction: Direction;
+}
+
+/**
+ * One factual line from the window's busiest confidence bucket: "you said
+ * 80–100% three times; two happened". Counts, not an inference, so it is safe
+ * to show below the minimum — it is what a provisional week can honestly say.
+ */
+export interface WrappedReceipt {
+  low: number; // bucket lower bound, inclusive
+  high: number; // bucket upper bound (exclusive, except the closed top bucket)
+  said: number; // yes/no resolutions in the bucket
+  happened: number; // of those, resolved_yes
 }
 
 export interface WrappedSummary {
@@ -55,6 +68,8 @@ export interface WrappedSummary {
   /** Highest-confidence call that came in, and the one that didn't. */
   boldest_hit: Prediction | null;
   biggest_miss: Prediction | null;
+  /** The busiest bucket's counts, or null for an empty window. */
+  receipt: WrappedReceipt | null;
 }
 
 /** Predictions that count: yes/no outcomes only (skips and pending excluded). */
@@ -162,6 +177,27 @@ function boldest(
 }
 
 /**
+ * The bucket with the most resolutions. Ties go to the higher bucket: a
+ * confident call is the more interesting receipt, and the choice has to be
+ * stable so the same week always tells the same story.
+ */
+function busiestBucket(buckets: readonly BucketStat[]): WrappedReceipt | null {
+  if (buckets.length === 0) return null;
+  const top = buckets.reduce((best, b) =>
+    b.total_resolved > best.total_resolved ||
+    (b.total_resolved === best.total_resolved && b.low > best.low)
+      ? b
+      : best,
+  );
+  return {
+    low: top.low,
+    high: top.high,
+    said: top.total_resolved,
+    happened: top.resolved_yes,
+  };
+}
+
+/**
  * The zeroed body of an empty recap. A factory, not a constant: as a constant
  * every caller shared one `categories` array instance, since spreading the
  * object copies the reference rather than the array.
@@ -177,6 +213,7 @@ const emptyBody = () => ({
   integrity_count: 0,
   boldest_hit: null,
   biggest_miss: null,
+  receipt: null,
 });
 
 /**
@@ -194,7 +231,7 @@ export function buildWrapped(
 
   if (preds.length === 0) return { span, start, end, ...emptyBody() };
 
-  const { rating } = computeCalibrationPoints(toPoints(preds));
+  const { rating, buckets } = computeCalibrationPoints(toPoints(preds));
   const meanConfidence =
     preds.reduce((s, p) => s + p.confidence, 0) / preds.length;
   const hitRate =
@@ -214,5 +251,6 @@ export function buildWrapped(
     integrity_count: preds.filter((p) => p.integrity_bonus).length,
     boldest_hit: boldest(preds, 'resolved_yes'),
     biggest_miss: boldest(preds, 'resolved_no'),
+    receipt: busiestBucket(buckets),
   };
 }
