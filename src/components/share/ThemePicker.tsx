@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CARD_THEMES, resolveTheme } from '@/constants/cardThemes';
+import { colors } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -74,7 +75,7 @@ export function ThemePicker({ onUpgrade }: { onUpgrade?: () => void } = {}) {
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
   label: {
-    color: '#9ca3af',
+    color: colors.textTertiary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,

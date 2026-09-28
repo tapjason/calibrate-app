@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BADGE_META } from '@/constants/badges';
+import { colors } from '@/constants/theme';
 import type { CategoryStat, NextBadgeTarget } from '@/types';
 
 interface CategoryBadgeProps {
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     textTransform: 'capitalize',
   },
-  hint: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  hint: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',

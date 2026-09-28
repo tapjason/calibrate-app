@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -85,7 +86,7 @@ export function WarmupVerdictScreen({ onContinue }: WarmupVerdictScreenProps) {
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
   eyebrow: {
-    color: '#9ca3af',
+    color: colors.textTertiary,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,
@@ -97,7 +98,7 @@ const styles = StyleSheet.create({
   score: { color: '#2563eb', fontSize: 48, fontWeight: '800' },
   scoreMeta: { gap: 2 },
   scoreLabel: { fontSize: 15, fontWeight: '600' },
-  scoreSub: { color: '#9ca3af', fontSize: 13 },
+  scoreSub: { color: colors.textTertiary, fontSize: 13 },
   advice: { color: '#374151', fontSize: 15, lineHeight: 21 },
   disclaimer: {
     backgroundColor: '#f9fafb',
@@ -114,5 +115,5 @@ const styles = StyleSheet.create({
   keyBody: { flex: 1, gap: 2 },
   keyPrompt: { fontSize: 14, fontWeight: '600' },
   keyFact: { color: '#6b7280', fontSize: 13, lineHeight: 18 },
-  keyConfidence: { color: '#9ca3af', fontSize: 13 },
+  keyConfidence: { color: colors.textTertiary, fontSize: 13 },
 });

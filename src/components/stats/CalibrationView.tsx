@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
+import { colors } from '@/constants/theme';
 import type {
   CalibrationResult,
   Category,
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
   summary: { alignItems: 'center', marginBottom: 24 },
   rating: { fontSize: 56, fontWeight: '700', color: '#2563eb' },
   ratingLabel: { fontSize: 14, color: '#6b7280' },
-  subtle: { fontSize: 13, color: '#9ca3af', marginTop: 4 },
+  subtle: { fontSize: 13, color: colors.textTertiary, marginTop: 4 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
-  empty: { color: '#9ca3af', fontStyle: 'italic' },
+  empty: { color: colors.textTertiary, fontStyle: 'italic' },
   bucketRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -128,5 +129,5 @@ const styles = StyleSheet.create({
   },
   bucketLabel: { fontSize: 13, fontWeight: '500', color: '#374151', width: 64 },
   bucketDetail: { flex: 1, fontSize: 13, color: '#6b7280' },
-  bucketCount: { fontSize: 11, color: '#9ca3af', width: 40, textAlign: 'right' },
+  bucketCount: { fontSize: 11, color: colors.textTertiary, width: 40, textAlign: 'right' },
 });

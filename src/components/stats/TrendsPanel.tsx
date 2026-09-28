@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { track } from '@/analytics/track';
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 import { csvFileName, predictionsToCsv } from '@/export/csv';
 import { shareTextFile, type ExportOutcome } from '@/export/file';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
   delta: { color: '#111827', fontSize: 15, lineHeight: 21 },
   section: { gap: 4 },
   sectionTitle: {
-    color: '#9ca3af',
+    color: colors.textTertiary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,

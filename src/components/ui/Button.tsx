@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { colors, radius, type } from '@/constants/theme';
+
 interface ButtonProps {
   label: string;
   onPress: () => void;
@@ -44,17 +46,26 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    // Capsule (DESIGN_SYSTEM §4).
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primary: { backgroundColor: '#2563eb' },
-  secondary: { backgroundColor: '#e5e7eb' },
-  danger: { backgroundColor: '#dc2626' },
+  // One tinted primary per screen: brand600 fill, white label 6.29:1.
+  primary: { backgroundColor: colors.brand600 },
+  // Neutral: surface fill with a 3:1 outline so it reads as a control on
+  // white as well as on the canvas. Resolve's Yes and No both use this.
+  secondary: {
+    backgroundColor: colors.surface,
+    borderColor: colors.controlBorder,
+    borderWidth: 1,
+  },
+  // Destructive actions only (sign-out, delete) — never an outcome.
+  danger: { backgroundColor: colors.destructive },
   pressed: { opacity: 0.8 },
   disabled: { opacity: 0.4 },
-  labelBase: { fontSize: 16, fontWeight: '600' },
-  label_primary: { color: 'white' },
-  label_secondary: { color: '#111827' },
-  label_danger: { color: 'white' },
+  labelBase: type.headline,
+  label_primary: { color: colors.onBrand },
+  label_secondary: { color: colors.textPrimary },
+  label_danger: { color: colors.onBrand },
 });

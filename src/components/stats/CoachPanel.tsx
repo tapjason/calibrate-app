@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   category: {
-    color: '#9ca3af',
+    color: colors.textTertiary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,

@@ -113,5 +113,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   footerMark: { fontSize: 14, fontWeight: '700' },
-  footerHook: { fontSize: 12 },
+  // The growth hook: never the faintest line on the card (accent is ≥ 4.5:1).
+  footerHook: { fontSize: 13, fontWeight: '600' },
 });

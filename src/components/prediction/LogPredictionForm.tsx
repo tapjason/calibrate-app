@@ -8,6 +8,7 @@ import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { REFINE_ENABLED } from '@/constants/app';
+import { colors, radius, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
@@ -237,9 +238,11 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
           </View>
         </View>
         {confidence >= 35 && confidence <= 65 && (
-          <Text style={styles.bonus}>
-            ✨ Integrity bonus — honest uncertainty
-          </Text>
+          // A brand chip, not green text: honesty is rewarded, but green means
+          // "calibrated" and never "good job" (DESIGN_SYSTEM §2.3).
+          <View style={styles.bonus} testID="integrity-bonus">
+            <Text style={styles.bonusText}>Integrity bonus · honest uncertainty</Text>
+          </View>
         )}
       </View>
 
@@ -317,7 +320,15 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
   chipText: { color: '#374151', fontWeight: '500' },
   chipTextActive: { color: 'white' },
-  bonus: { marginTop: 8, color: '#059669', fontSize: 13 },
+  bonus: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.integrityBackground,
+    borderRadius: radius.pill,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  bonusText: { ...type.footnote, color: colors.integrityText, fontWeight: '600' },
   dateValue: { marginTop: 8, color: '#374151' },
   error: { color: '#dc2626', marginBottom: 12 },
   refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },

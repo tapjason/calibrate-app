@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { colors } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import type { Category } from '@/types';
 
@@ -65,5 +66,5 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
   chipText: { fontSize: 13, color: '#374151' },
   chipTextActive: { color: 'white' },
-  empty: { color: '#9ca3af', fontStyle: 'italic' },
+  empty: { color: colors.textTertiary, fontStyle: 'italic' },
 });

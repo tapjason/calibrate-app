@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
+import { colors } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -68,5 +69,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 8,
   },
-  empty: { color: '#9ca3af', fontStyle: 'italic' },
+  empty: { color: colors.textTertiary, fontStyle: 'italic' },
 });

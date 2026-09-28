@@ -39,7 +39,7 @@ export const DEFAULT_THEME: CardTheme = {
   background: '#0f172a',
   foreground: '#f8fafc',
   muted: '#94a3b8',
-  accent: '#64748b',
+  accent: '#7f8ea3', // 5.36:1 — was #64748b at 3.75:1
   divider: '#1e293b',
 };
 
@@ -67,8 +67,8 @@ export const CARD_THEMES: readonly CardTheme[] = [
     plus: true,
     background: '#faf7f2',
     foreground: '#1c1917',
-    muted: '#78716c',
-    accent: '#a8a29e',
+    muted: '#57534e',
+    accent: '#716b66', // 4.92:1 — was #a8a29e at 2.36:1
     divider: '#e7e5e4',
   },
   {
@@ -78,7 +78,7 @@ export const CARD_THEMES: readonly CardTheme[] = [
     background: '#111827',
     foreground: '#f9fafb',
     muted: '#9ca3af',
-    accent: '#6366f1',
+    accent: '#818cf8', // 5.95:1 — was #6366f1 at 3.97:1
     divider: '#374151',
   },
   {

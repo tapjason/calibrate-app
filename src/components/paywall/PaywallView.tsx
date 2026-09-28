@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import type { PlusPlan } from '@/billing/revenuecat';
 import { Button } from '@/components/ui/Button';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
+import { colors } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
 
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, lineHeight: 22, color: '#374151' },
   features: { gap: 8 },
   featureRow: { flexDirection: 'row', gap: 8 },
-  bullet: { color: '#9ca3af', fontSize: 15 },
+  bullet: { color: colors.textTertiary, fontSize: 15 },
   feature: { flex: 1, fontSize: 14, lineHeight: 20, color: '#374151' },
   planRow: {
     alignItems: 'center',
@@ -226,7 +227,7 @@ const styles = StyleSheet.create({
   notice: { fontSize: 14, color: '#111827' },
   freeNote: { fontSize: 13, lineHeight: 19, color: '#6b7280' },
   muted: { fontSize: 14, color: '#6b7280' },
-  terms: { fontSize: 11, lineHeight: 16, color: '#9ca3af' },
+  terms: { fontSize: 11, lineHeight: 16, color: colors.textTertiary },
   legal: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
   legalLink: {
     color: '#6b7280',

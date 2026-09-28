@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 import {
   MAX_WARMUP_CONFIDENCE,
   MIN_WARMUP_CONFIDENCE,
@@ -160,6 +161,6 @@ const styles = StyleSheet.create({
   optionTextActive: { color: '#1d4ed8', fontWeight: '600' },
   block: { gap: 8 },
   label: { fontSize: 15, fontWeight: '600' },
-  hint: { color: '#9ca3af', fontSize: 13 },
+  hint: { color: colors.textTertiary, fontSize: 13 },
   row: { flexDirection: 'row', gap: 10 },
 });

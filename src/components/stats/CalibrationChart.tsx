@@ -8,6 +8,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
+import { colors } from '@/constants/theme';
 import type { BucketStat } from '@/types';
 
 import { describeCalibrationCurve } from './chartDescription';
@@ -27,7 +28,7 @@ const TICKS = [0, 25, 50, 75, 100];
 const IDEAL = '#cbd5e1'; // dashed diagonal — perfect calibration
 const CURVE = '#2563eb'; // the user's actual curve
 const GRID = '#f1f5f9';
-const AXIS_LABEL = '#9ca3af';
+const AXIS_LABEL = colors.textTertiary;
 
 /**
  * The calibration curve: stated confidence (x) vs. actual hit rate (y), with
@@ -165,5 +166,5 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
 const styles = StyleSheet.create({
   wrap: { width: '100%', alignSelf: 'stretch' },
   axisCaption: { alignItems: 'center', marginTop: 4 },
-  axisCaptionText: { fontSize: 11, color: '#9ca3af' },
+  axisCaptionText: { fontSize: 11, color: colors.textTertiary },
 });
