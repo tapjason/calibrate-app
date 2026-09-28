@@ -184,8 +184,8 @@ describe('scheduler: schedule on create', () => {
     expect(notifications.scheduleCalls).toBe(1);
     expect(notifications.scheduled.size).toBe(1);
     const [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.title).toBe('Did it happen?');
-    expect(rec.body).toBe('Ship the prototype');
+    expect(rec.title).toBe('Did it happen');
+    expect(rec.body).toBe('Ship the prototype · You said 50%');
     expect(rec.data).toEqual({ predictionId: p.id });
     expect(rec.date.toISOString()).toBe('2026-06-01T12:00:00.000Z');
   });
@@ -483,7 +483,7 @@ describe('scheduler: notifications toggle (kill-switch)', () => {
 
     expect(notifications.scheduled.size).toBe(1);
     const [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.body).toBe('Pending through the toggle');
+    expect(rec.body).toBe('Pending through the toggle · You said 50%');
   });
 
   it('honors an off toggle that was set before init (never schedules)', async () => {
@@ -529,5 +529,51 @@ describe('scheduler: schedule failure is non-fatal', () => {
     expect(warnSpy).toHaveBeenCalled(); // and logged
 
     warnSpy.mockRestore();
+  });
+});
+
+// DESIGN_SYSTEM §7.15: people who hide previews get a generic line, not a
+// prediction title that may be about their health or money.
+describe('scheduler: hidden-preview placeholder', () => {
+  it('registers the reminder category and tags each reminder with it', async () => {
+    const notifications = makeFakeNotifications(true);
+    const setCategory = jest.fn(async () => undefined);
+    notifications.setNotificationCategoryAsync = setCategory;
+    const schedule = jest.spyOn(notifications, 'scheduleNotificationAsync');
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+
+    expect(setCategory).toHaveBeenCalledWith('calibrate-resolution-reminder', [], {
+      previewPlaceholder: 'A prediction is ready to resolve',
+    });
+
+    await usePredictionStore.getState().create({
+      title: 'See the doctor',
+      category: 'health',
+      confidence: 60,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    expect(schedule.mock.calls[0][0].content.categoryIdentifier).toBe(
+      'calibrate-resolution-reminder',
+    );
+  });
+
+  it('still schedules reminders if category registration fails', async () => {
+    const notifications = makeFakeNotifications(true);
+    notifications.setNotificationCategoryAsync = jest.fn(async () => {
+      throw new Error('no categories here');
+    });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+
+    await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 50,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    expect(notifications.scheduleCalls).toBe(1);
+    warn.mockRestore();
   });
 });

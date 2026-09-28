@@ -27,16 +27,37 @@ import type { Prediction } from '@/types';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
+import {
+  REMINDER_CATEGORY,
+  REMINDER_PLACEHOLDER,
+  REMINDER_TITLE,
+  reminderBody,
+} from './copy';
+
 // Injected dependencies (the platform Notifications module and the navigator).
 // Pulled to the top so tests can swap them in via __setDepsForTests without
 // jest.mock voodoo against a native module that wouldn't load in Node anyway.
 export interface NotificationsApi {
   requestPermissionsAsync(): Promise<{ granted: boolean }>;
   scheduleNotificationAsync(req: {
-    content: { title: string; body: string; data?: Record<string, unknown> };
+    content: {
+      title: string;
+      body: string;
+      data?: Record<string, unknown>;
+      categoryIdentifier?: string;
+    };
     trigger: { type: 'date'; date: Date };
   }): Promise<string>;
   cancelScheduledNotificationAsync(identifier: string): Promise<void>;
+  /**
+   * Registers a notification category. Optional: on iOS it carries the
+   * hidden-preview placeholder; elsewhere (and in tests) it may be absent.
+   */
+  setNotificationCategoryAsync?(
+    identifier: string,
+    actions: [],
+    options: { previewPlaceholder: string },
+  ): Promise<unknown>;
   setNotificationHandler(handler: unknown): void;
   addNotificationResponseReceivedListener(
     listener: (event: {
@@ -136,6 +157,9 @@ function defaultNotificationsApi(): NotificationsApi | null {
     async cancelScheduledNotificationAsync(id) {
       await Notifications.cancelScheduledNotificationAsync(id);
     },
+    async setNotificationCategoryAsync(identifier, actions, options) {
+      return await Notifications.setNotificationCategoryAsync(identifier, actions, options);
+    },
     setNotificationHandler(handler) {
       Notifications.setNotificationHandler(
         handler as Parameters<typeof Notifications.setNotificationHandler>[0],
@@ -181,12 +205,6 @@ export function __setDepsForTests(next: Deps | null): void {
   }
 }
 
-function trimBody(title: string): string {
-  const max = 80;
-  if (title.length <= max) return title;
-  return title.slice(0, max - 1).trimEnd() + '…'; // ellipsis
-}
-
 async function schedule(p: Prediction): Promise<void> {
   if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled)
     return;
@@ -202,9 +220,10 @@ async function schedule(p: Prediction): Promise<void> {
   try {
     const id = await deps.notifications.scheduleNotificationAsync({
       content: {
-        title: 'Did it happen?',
-        body: trimBody(p.title),
+        title: REMINDER_TITLE,
+        body: reminderBody(p.title, p.confidence),
         data: { predictionId: p.id },
+        categoryIdentifier: REMINDER_CATEGORY,
       },
       trigger: { type: 'date', date: fireDate },
     });
@@ -342,6 +361,22 @@ export async function routeFromLaunchNotification(): Promise<void> {
 }
 
 /**
+ * Registers the reminder category so iOS shows REMINDER_PLACEHOLDER instead of
+ * the prediction title when previews are hidden. Best-effort: a failure here
+ * leaves the reminder working with the system's generic placeholder.
+ */
+async function registerCategory(): Promise<void> {
+  try {
+    await deps?.notifications?.setNotificationCategoryAsync?.(REMINDER_CATEGORY, [], {
+      previewPlaceholder: REMINDER_PLACEHOLDER,
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] category registration failed:', e);
+  }
+}
+
+/**
  * Bootstraps notifications: requests permission, installs the tap handler,
  * and subscribes to predictionStore. Idempotent — safe to call more than
  * once. On web it logs once and returns.
@@ -385,6 +420,7 @@ export async function initNotifications(): Promise<void> {
   }
 
   installTapHandler();
+  await registerCategory();
 
   // Seed the toggle state and react to future flips. Off cancels everything;
   // on reschedules from pending.

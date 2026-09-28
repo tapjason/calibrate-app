@@ -113,7 +113,7 @@ describe('digest: initial schedule', () => {
     expect(rec.weekday).toBe(1); // Sunday
     expect(rec.hour).toBe(18);
     expect(rec.minute).toBe(0);
-    expect(rec.title).toBe('Weekly check-in');
+    expect(rec.title).toBe('Your week ahead');
     expect(rec.data).toEqual({ kind: 'digest' });
   });
 
@@ -148,7 +148,7 @@ describe('digest: initial schedule', () => {
     await initDigest();
 
     const [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.body).toBe('You have 2 open predictions. Tap to check in.');
+    expect(rec.body).toBe('2 predictions are open.');
   });
 });
 
@@ -173,7 +173,7 @@ describe('digest: re-schedule on pending count change', () => {
     expect(notifications.scheduleCalls).toBe(2);
     expect(notifications.scheduled.size).toBe(1); // same identifier, replaced
     const [rec] = Array.from(notifications.scheduled.values());
-    expect(rec.body).toBe('You have 1 open prediction. Tap to check in.');
+    expect(rec.body).toBe('1 prediction is open.');
   });
 
   it('refreshes the body when a pending prediction resolves', async () => {
@@ -191,7 +191,7 @@ describe('digest: re-schedule on pending count change', () => {
     // Init scheduled once with count = 1.
     expect(notifications.scheduleCalls).toBe(1);
     expect(Array.from(notifications.scheduled.values())[0].body).toMatch(
-      /1 open prediction/,
+      /1 prediction is open/,
     );
 
     await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
@@ -354,5 +354,23 @@ describe('digest: idempotent init', () => {
     await initDigest();
 
     expect(notifications.scheduleCalls).toBe(1);
+  });
+});
+
+describe('digest: presentation', () => {
+  it('is passive, and registers a hidden-preview placeholder', async () => {
+    const notifications = makeFakeNotifications(true);
+    const setCategory = jest.fn(async () => undefined);
+    notifications.setNotificationCategoryAsync = setCategory;
+    const schedule = jest.spyOn(notifications, 'scheduleNotificationAsync');
+    __setDepsForTests({ notifications });
+    await initDigest();
+
+    expect(setCategory).toHaveBeenCalledWith('calibrate-weekly-digest', [], {
+      previewPlaceholder: 'Weekly check-in',
+    });
+    const { content } = schedule.mock.calls[0][0];
+    expect(content.interruptionLevel).toBe('passive');
+    expect(content.categoryIdentifier).toBe('calibrate-weekly-digest');
   });
 });

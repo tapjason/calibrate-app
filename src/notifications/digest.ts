@@ -31,6 +31,8 @@ import { Platform } from 'react-native';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
+import { DIGEST_CATEGORY, DIGEST_PLACEHOLDER, DIGEST_TITLE, digestBody } from './copy';
+
 // Sunday at 18:00 local. expo-notifications weekday is 1..7 with 1 = Sunday.
 const DIGEST_WEEKDAY = 1;
 const DIGEST_HOUR = 18;
@@ -44,10 +46,26 @@ export interface DigestNotificationsApi {
   requestPermissionsAsync(): Promise<{ granted: boolean }>;
   scheduleNotificationAsync(req: {
     identifier: string;
-    content: { title: string; body: string; data?: Record<string, unknown> };
+    content: {
+      title: string;
+      body: string;
+      data?: Record<string, unknown>;
+      categoryIdentifier?: string;
+      /** HIG: a leisure read is Passive — it never breaks through a Focus. */
+      interruptionLevel?: 'passive';
+    };
     trigger: { type: 'weekly'; weekday: number; hour: number; minute: number };
   }): Promise<string>;
   cancelScheduledNotificationAsync(identifier: string): Promise<void>;
+  /**
+   * Registers a notification category. Optional: on iOS it carries the
+   * hidden-preview placeholder; elsewhere (and in tests) it may be absent.
+   */
+  setNotificationCategoryAsync?(
+    identifier: string,
+    actions: [],
+    options: { previewPlaceholder: string },
+  ): Promise<unknown>;
 }
 
 interface Deps {
@@ -92,6 +110,9 @@ function defaultNotificationsApi(): DigestNotificationsApi | null {
     async cancelScheduledNotificationAsync(id) {
       await Notifications.cancelScheduledNotificationAsync(id);
     },
+    async setNotificationCategoryAsync(identifier, actions, options) {
+      return await Notifications.setNotificationCategoryAsync(identifier, actions, options);
+    },
   };
 }
 
@@ -115,18 +136,6 @@ export function __setDepsForTests(next: Deps | null): void {
   }
 }
 
-function buildBody(pendingCount: number): string {
-  if (pendingCount === 0) {
-    // Never mention the streak: it counts resolutions, so logging can't extend
-    // it, and with nothing open it can't be extended this week at all.
-    return 'No open predictions. What do you think will happen this week?';
-  }
-  if (pendingCount === 1) {
-    return 'You have 1 open prediction. Tap to check in.';
-  }
-  return `You have ${pendingCount} open predictions. Tap to check in.`;
-}
-
 async function scheduleDigest(pendingCount: number): Promise<void> {
   if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled)
     return;
@@ -137,9 +146,11 @@ async function scheduleDigest(pendingCount: number): Promise<void> {
     await deps.notifications.scheduleNotificationAsync({
       identifier: DIGEST_NOTIFICATION_ID,
       content: {
-        title: 'Weekly check-in',
-        body: buildBody(pendingCount),
+        title: DIGEST_TITLE,
+        body: digestBody(pendingCount),
         data: { kind: 'digest' },
+        categoryIdentifier: DIGEST_CATEGORY,
+        interruptionLevel: 'passive',
       },
       trigger: {
         type: 'weekly',
@@ -209,6 +220,16 @@ export async function initDigest(): Promise<void> {
     // eslint-disable-next-line no-console
     console.warn('[digest] permission denied; weekly digest disabled');
     return;
+  }
+
+  // Best-effort: without it iOS falls back to its generic placeholder.
+  try {
+    await deps.notifications.setNotificationCategoryAsync?.(DIGEST_CATEGORY, [], {
+      previewPlaceholder: DIGEST_PLACEHOLDER,
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[digest] category registration failed:', e);
   }
 
   notificationsEnabled = useSettingsStore.getState().notificationsEnabled;
