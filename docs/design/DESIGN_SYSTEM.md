@@ -8,7 +8,8 @@ anyone builds them — they are listed with the other open questions in
 [`UI_ROADMAP.md`](UI_ROADMAP.md) §4.
 
 **Evidence:** every rule below traces to the sourced research in
-[`research/`](research/) (market, libraries, visual-language), done 2026-09-25. The
+[`research/`](research/) (market, libraries, visual-language, done 2026-09-25; patterns,
+done 2026-09-28 and behind §2.5 and §7.10–§7.15). The
 "before" screens are in [`baseline/`](baseline/) (web-build captures, so fonts and the
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
@@ -118,6 +119,33 @@ from `under` for tritan viewers — the reason for rule 0.6.
 - Categories are identified by SF Symbol + label only (§5).
 - The app is pinned to light (`app.json` `userInterfaceStyle: "light"`). The dark
   values above exist for share cards; a future dark mode maps onto them.
+- **Build the token file as light/dark pairs from the first commit** (e.g.
+  `colors.light` / `colors.dark` behind a `useTheme()` hook), even while only light
+  ships. The HIG says people "generally expect all apps … to respect their preference"
+  and warns against an in-app appearance toggle; retro-fitting a flat token object means
+  touching every file twice. Whether to ship dark is roadmap D7.
+
+### 2.5 Dark neutrals (**Proposed**, D7)
+
+Indigo-tinted, not an inversion. Ratios computed 2026-09-28 (WCAG 2.x).
+
+| Token | Dark hex | on `canvas` | on `surface` |
+|---|---|---|---|
+| `canvas` | `#0C0B16` | — | — |
+| `surface` | `#17162A` | — | — |
+| `surfaceSunken` | `#211F36` | — | — |
+| `hairline` | `#2E2C47` | decorative | |
+| `controlBorder` | `#6E6C88` | 3.87 | 3.51 |
+| `textPrimary` | `#F4F3FA` | 17.72 | 16.08 |
+| `textSecondary` | `#B9B7CE` | 9.98 | 9.06 |
+| `textTertiary` | `#9391AC` | 6.41 | 5.81 |
+| link / selection text | `brand400` `#818CF8` | 6.55 | 5.94 |
+| `destructive` | `#FF6B5E` | 6.99 | 6.35 |
+
+Calibration marks and text use the "Dark card" column of §2.3 (marks ≥ 4.79:1 even on
+dark `surfaceSunken`). The CTA keeps `brand600` + white (6.29:1); its fill is only
+2.82:1 against dark `surface`, so CTAs on dark cards rely on the label, never on fill
+alone.
 
 ---
 
@@ -397,6 +425,113 @@ Every empty state has an SF Symbol, one sentence in `textSecondary`, and a way f
 - Sentence case everywhere; no ALL-CAPS labels.
 - Badge gating is a trust feature — say it: "Badges need receipts."
 
+### 7.10 Resolve
+
+The most frequent meaningful moment in the app. Fast, neutral, honest, in that order.
+
+- **Confidence first.** Headline: "On 3 Sep you said **70%**" (the percentage in
+  `title1` Rounded), then the prediction text in `title2`, then the question "Did it
+  happen?". People misremember their prior confidence once they know the outcome
+  (Fischhoff 1975), so the stated number is read before the answer, never as small
+  metadata.
+- **Yes and No:** two equal capsules in the same neutral style (`surface` fill,
+  `controlBorder` outline, `textPrimary` label, `checkmark.circle.fill` /
+  `xmark.circle`). Neither is `brand600` and neither is red: rule 0.4, and HIG Buttons
+  reserves red for destructive actions.
+- **Skip is not a peer.** A text button below: "Can't tell / doesn't apply", with the
+  line "It won't count toward your score." Equal weight would make skipping a miss as
+  cheap as recording it. (The label is **Proposed**, roadmap D10.)
+- **After the tap:** the `resolve` motion (§6.1), then one factual line about the bucket
+  it landed in: "That's 6 of 9 in your 60–80% range." Counts, not a verdict, so safe
+  below min-N. The count comes from the store; the component doesn't compute buckets.
+  Then the optional one-line reflection ("What surprised you?"), never before the
+  answer.
+- Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states
+  follow §7.8.
+
+### 7.11 Prediction card and the Today list
+
+- Layout: category symbol + word, then title (`body`, up to 3 lines), then one metadata
+  line (`subhead`, `textSecondary`): "70% · due Fri 3 Oct". No ALL-CAPS, no brand
+  colour on the confidence.
+- **Due and past-due are neutral.** A prediction coming due is not a lapse. Group the
+  Today list by date ("Ready to resolve", "This week", "Later") and let the group
+  header carry the state. No amber, no "Overdue" label, no warning colour.
+- Resolved (History): outcome as neutral ink glyph + word ("Happened" / "Didn't"), never
+  ✓/✗ characters or green/red. Skipped reads "Not scored".
+- Tapping a ready card opens Resolve (§7.10). Keep the single-sentence
+  `accessibilityLabel`.
+
+### 7.12 Log form
+
+Completable in under 15 s (`CLAUDE.md`). Order: title → confidence (§7.3) → category →
+due date → Save.
+
+- **Category:** chips with SF Symbol + word; selected = `brand50` fill, `brand800`
+  text, plus a check symbol (not colour alone).
+- **Due date:** chips "Tomorrow", "In a week", "In a month" and **"Pick a date"**,
+  which opens the native picker (`@react-native-community/datetimepicker`, §9). Under
+  the chips, the resolved date as a sentence: "Due Friday, 3 Oct."
+- **Coverage nudge:** a quiet inline card on `surfaceSunken` above the title field. Its
+  accept button is secondary; Save is the only primary action on the screen. Keep the
+  current copy and the "Not now" cooldown.
+- **Save:** one primary capsule, disabled until the title is non-empty, `commit` motion.
+
+### 7.13 Coach cards and the support surface
+
+Sources: HIG Generative AI (updated 2026-06), Google PAIR Explainability + Trust.
+Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
+
+- **Lead with the receipt.** Each card: the `evidence` number in `title2` Rounded, what
+  it counts in `footnote` ("in your 80–100% range · 12 resolved"), then the message
+  (`body`), then the suggestion (`callout`, `textSecondary`). The number is already
+  validated against the input; showing it lets the user check the Coach against the
+  chart above it, which is the calibrated trust PAIR asks for.
+- "AI" chip on the panel header (COACH_AGENT.md §5.6), plus once, under the first card:
+  "Coach reads your numbers, not your predictions. It can be wrong."
+- Loading copy says what's happening ("Reading your 5 categories…"), not "Loading".
+- Each card has dismiss (×). Add 👍/👎 only once there's an analytics event to receive
+  it; feedback is always voluntary, with no follow-up prompt.
+- No celebration motion, no `oracleGold`; calibration hues only for the direction the
+  card describes.
+- **Support surface:** stays plain and visually unlike an insight: no AI chip, no
+  evidence number, no feedback buttons, no card chrome shared with Coach.
+
+### 7.14 Wrapped
+
+- **Weekly** is built from what is true at small n, because a week almost never reaches
+  20 resolutions and the verdict stays gated: (1) counts: "4 resolved · 3 logged · 1
+  honest coin-flip"; (2) one factual receipt in natural frequencies: "You said 90%
+  three times. All three happened."; (3) progress: the unlock ring or the next badge
+  ("Tracker in health: 3 to go"); (4) the verdict only when the window earns it.
+  Never a card whose main message is "not enough data".
+- **Yearly** follows §7.5 and the Spotify structure: archetype line, one receipt,
+  selective colour.
+- Motion: `reveal` without confetti (§6.2). The share button is disabled only when
+  nothing resolved in the window, and then the card says what *will* be there.
+
+### 7.15 Notifications
+
+HIG Notifications: no sensitive content, a hidden-preview placeholder, no repeats for
+the same thing, no instructions, title-style titles without ending punctuation.
+
+| Notification | Title | Body | `previewPlaceholder` | `interruptionLevel` |
+|---|---|---|---|---|
+| Resolution reminder | Did it happen | `{title}` · You said 70% | A prediction is ready to resolve | `active` |
+| Digest, open > 0 | Your week ahead | 3 predictions are coming due. | Weekly check-in | `passive` |
+| Digest, open = 0 | Your week ahead | Nothing open. What do you think will happen this week? | Weekly check-in | `passive` |
+
+- The confidence goes in the reminder so that resolving from the notification still
+  puts the stated number first (§7.10).
+- **Never mention the streak** in a notification.
+- One reminder per prediction; no follow-ups.
+- **Proposed** (roadmap D8): *Happened* / *Didn't* actions on the reminder via
+  `setNotificationCategoryAsync`, as foreground actions that open straight into the
+  resolved state. Background (no-open) action handling is only documented to reach JS on
+  Android; verify on an iOS device before relying on it.
+- **Proposed** (roadmap D9): fire the reminder in the evening of the due day, not at
+  noon.
+
 ---
 
 ## 8. Accessibility checklist (per change)
@@ -428,6 +563,7 @@ Pinned for **Expo SDK 55 / RN 0.83.6** (verified in
 | Icons | `expo-symbols` | ~55.0.9 | Ionicons as fallback. |
 | Haptics | `expo-haptics` | ~55.0.14 | Web: no-op, harmless. |
 | Slider | `@react-native-community/slider` | 5.1.2 | Works on web. |
+| Date picker | `@react-native-community/datetimepicker` | 8.6.0 | "Pick a date" on Log (§7.12). Check its web behaviour before relying on it in screenshots. |
 | Glass accents | `expo-glass-effect` | 55.0.11 | iOS 26+; check `isLiquidGlassAvailable()`. `opacity: 0` breaks it. |
 | Native tabs | `expo-router/unstable-native-tabs` | in expo-router 55 | Unstable until SDK 58. Keep JS `Tabs` in `_layout.web.tsx` (web renders a text-only top pill). |
 | Sheets | expo-router `formSheet` | built in | Adopts Liquid Glass on iOS 26+. |

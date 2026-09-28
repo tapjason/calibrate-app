@@ -1,6 +1,7 @@
 # Calibrate — UI Roadmap
 
-**As of:** 2026-09-26. The *what to build next* companion to
+**As of:** 2026-09-28 (second research round: [`research/patterns.md`](research/patterns.md)).
+The *what to build next* companion to
 [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) (which holds the rules). Evidence in
 [`research/`](research/); "before" screens in [`baseline/`](baseline/).
 
@@ -22,6 +23,19 @@ Captured from the web build on 2026-09-25.
 | 08 Paywall | Three equal cards with three "Choose" buttons, no preselection, no timeline. | Annual-first selector + honest timeline + one CTA (§7.6) |
 | All | UI is Tailwind blue `#2563eb`; icon/splash are indigo `#4F46E5`. ~200 hard-coded hex literals across 31 files (~40 distinct values). | Tokens (§2) |
 
+Found by reading the code on 2026-09-28 (screens not in the baseline captures;
+details in `research/patterns.md` §1):
+
+| Where | Problem | Fix (DESIGN_SYSTEM §) |
+|---|---|---|
+| Resolve | **No is a red `danger` button**, Yes is the brand fill — breaks non-negotiable 4. Skip has the same weight as Yes/No. The stated confidence is a small ALL-CAPS eyebrow. | Neutral equal Yes/No, Skip as a text button, confidence first (§7.10) |
+| Prediction card | Overdue cards turn amber and say "Overdue"; outcomes read "Yes ✓" / "No ✗". | Neutral grouping by date, ink glyphs + words (§7.11) |
+| Weekly digest | With nothing open it says "log one to keep your streak going" — **wrong**: the streak counts resolutions, not logs. | Digest copy table (§7.15) |
+| Reminders | Fire at 12:00 on the due day (presets anchor at noon), often before the outcome exists. Body is the raw title with no hidden-preview placeholder. | §7.15, D9 |
+| Log | Only three due-date chips; no way to pick another date. | "Pick a date" (§7.12) |
+| Coach | The validated `evidence` number is never shown; no dismiss. | Receipt-first cards (§7.13) |
+| Weekly Wrapped | Verdict gated on 20 resolutions *in the week*, so it will almost always read "N more resolutions…". Gating is right; the story isn't. | Counts + receipt + progress (§7.14) |
+
 ---
 
 ## 2. Build order
@@ -29,8 +43,16 @@ Captured from the web build on 2026-09-25.
 Biggest visual gain for the least risk first. Each step is shippable on its own and
 keeps `npm test` green. Steps 1–5 need no product sign-off.
 
+0. ~~**Two small correctness fixes**~~ — **done 2026-09-28:** Resolve's Yes and No
+   now share the neutral `secondary` style (a test pins them identical), and the
+   digest's zero-open line no longer mentions the streak. Also done: the weekly
+   Wrapped story (§7.14) — a receipt line from the busiest bucket
+   (`WrappedSummary.receipt`) and a provisional line that points at overall progress
+   instead of asking for 20 resolutions in a week. The badge-progress line is still
+   to do.
 1. **Tokens.** Create `src/constants/theme.ts` (colour, type, space, radius, shadow
-   from DESIGN_SYSTEM §2–§4). Migrate files one PR at a time; start with the contrast
+   from DESIGN_SYSTEM §2–§4), **shaped as light/dark pairs** even though only light
+   ships (§2.4). Migrate files one PR at a time; start with the contrast
    failures (`#9ca3af`, the integrity green, the share-card footer). Swap `Button` to
    `brand600` and a capsule shape. No new dependencies.
 2. **Icons and haptics.** `npx expo install expo-symbols expo-haptics`; symbols with
@@ -56,7 +78,17 @@ keeps `npm test` green. Steps 1–5 need no product sign-off.
    ≥ 32 px at ≥ 4.5:1, per-category show/hide.
 10. **Paywall restructure.** DESIGN_SYSTEM §7.6. Check the store config first (§3).
 11. **Sheets** for Resolve (medium detent) and Share (large). Needs a new dev build.
-12. Anything in §4 once decided.
+12. **Everyday surfaces.** Resolve layout (§7.10; the bucket-count line needs the count
+    from the store, so hand that to core-domain if it isn't exposed), prediction card
+    and date-grouped Today list (§7.11), Log fields and "Pick a date" (§7.12,
+    `npx expo install @react-native-community/datetimepicker`), receipt-first Coach
+    cards (§7.13), weekly Wrapped story (§7.14; copy lives in `wrappedCopy.ts`, and a
+    "next badge" line needs badge progress from the store). Update the Resolve, Log and
+    Coach tests.
+13. **Notification copy and placeholders** (§7.15): titles, bodies with "You said N%",
+    `previewPlaceholder` via a notification category, `interruptionLevel`. Services
+    layer (L5); no behaviour change beyond the text.
+14. Anything in §4 once decided.
 
 Verification for every step: `npm test`, then a web-build screenshot compared against
 `baseline/`, and for steps 2, 3, 6, 11 a run on an iOS simulator or device (web shows
@@ -85,6 +117,10 @@ no haptics, symbols, glass or `ui-rounded`).
 | D4 | Engine additions for honesty visuals | Per-bucket **consistency band** (binomial 50% range at n), **expected count** per bucket for the "Dots" view, optional **bootstrap range** on the score. | New engine outputs (core-domain / Layer 3). The UI must not compute them. |
 | D5 | Expo SDK upgrade | Stay on 55 for this design work. When upgrading, go to 57.0.9+ (or 58 for stable NativeTabs). | Cross-cutting; several recommended APIs (stable NativeTabs, `@expo/ui`, variable fonts) only arrive after 55. |
 | D6 | Milestone share cards and a "Year in Predictions" grid | Add share cards at Tracker unlock, first non-provisional score, and 50/100 resolutions; later, a Daylio-style one-cell-per-prediction grid. | New share surfaces; scope call. |
+| D7 | Dark mode | **Support the system setting, no in-app toggle**, after the token migration (step 1) is done. Neutrals proposed in DESIGN_SYSTEM §2.5, all text ≥ 5.2:1. | HIG: people "generally expect all apps … to respect their preference". It doubles the visual QA surface (every screen, share-card preview, both glass extremes), and `app.json` is currently pinned to light. |
+| D8 | Resolve from the notification | *Happened* / *Didn't* actions on the reminder, **foreground** first (opens straight into the resolved state). | Changes the resolve path and the notification service. Background actions reach JS only on Android per the Expo docs; iOS needs a device test. |
+| D9 | Reminder time | Fire in the **evening of the due day** (e.g. 19:00 local), or at a user-set check-in time defaulting to that. | Behaviour change in L5; existing scheduled reminders would need rescheduling. |
+| D10 | What Skip means | Relabel to "Can't tell / doesn't apply" with "It won't count toward your score", shown as a text button. | Visual weight is a design call, but the label states a product rule; confirm it matches how skips are treated everywhere (score, streak, Wrapped). |
 
 ---
 
