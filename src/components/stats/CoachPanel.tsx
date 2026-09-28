@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -38,6 +39,12 @@ export function CoachPanel({
   const failed = useCoachStore((s) => s.lastRequestFailed);
   const lastAnsweredAt = useCoachStore((s) => s.lastAnsweredAt);
   const requestInsights = useCoachStore((s) => s.requestInsights);
+
+  // Dismissed cards stay hidden until the next answer (HIG Generative AI:
+  // let people dismiss content they don't want). Keyed by position, and reset
+  // whenever a new answer lands so a fresh insight is never pre-hidden.
+  const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
+  useEffect(() => setDismissed(new Set()), [lastAnsweredAt]);
 
   if (!isPlus) {
     // Soft, contextual, and one line (§5.3). The upsell sits below the user's
@@ -110,9 +117,22 @@ export function CoachPanel({
         <SupportSurface topic={crisisTopic} />
       ) : (
         <>
-          {insights.map((insight, i) => (
-            <InsightCard key={`${insight.category}-${i}`} insight={insight} />
-          ))}
+          {insights.map((insight, i) =>
+            dismissed.has(i) ? null : (
+              <InsightCard
+                key={`${insight.category}-${i}`}
+                insight={insight}
+                onDismiss={() => setDismissed((prev) => new Set(prev).add(i))}
+              />
+            ),
+          )}
+
+          {insights.length > 0 && (
+            // Calibrated trust, not maximum trust (PAIR; DESIGN_SYSTEM §7.13).
+            <Text style={styles.caveat} testID="coach-caveat">
+              Coach reads your numbers, not your predictions. It can be wrong.
+            </Text>
+          )}
 
           {insights.length === 0 && lastAnsweredAt && !failed && (
             <Text style={styles.muted} testID="coach-nothing-to-say">
@@ -138,10 +158,27 @@ export function CoachPanel({
   );
 }
 
-function InsightCard({ insight }: { insight: CoachInsight }) {
+function InsightCard({
+  insight,
+  onDismiss,
+}: {
+  insight: CoachInsight;
+  onDismiss: () => void;
+}) {
   return (
     <View style={styles.card} testID={`coach-insight-${insight.category}`}>
-      <Text style={styles.category}>{insight.category}</Text>
+      <View style={styles.cardHeader}>
+        <Text style={styles.category}>{insight.category}</Text>
+        <Pressable
+          onPress={onDismiss}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss this insight"
+          hitSlop={12}
+          testID={`coach-dismiss-${insight.category}`}
+        >
+          <Text style={styles.dismiss}>×</Text>
+        </Pressable>
+      </View>
       <Text style={styles.message}>{insight.message}</Text>
       {insight.suggestion && (
         <Text style={styles.suggestion}>{insight.suggestion}</Text>
@@ -151,34 +188,38 @@ function InsightCard({ insight }: { insight: CoachInsight }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 10, padding: 16, paddingTop: 0 },
-  header: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  heading: { fontSize: 17, fontWeight: '700' },
+  wrap: { gap: space.md, padding: space.lg, paddingTop: 0 },
+  header: { alignItems: 'center', flexDirection: 'row', gap: space.sm },
+  heading: { ...type.headline, color: colors.textPrimary },
   aiLabel: {
-    backgroundColor: '#eef2ff',
-    borderRadius: 4,
-    color: '#4338ca',
-    fontSize: 11,
+    ...type.caption,
+    backgroundColor: colors.brand50,
+    borderRadius: radius.xs,
+    color: colors.brand800,
     fontWeight: '700',
-    letterSpacing: 0.5,
     overflow: 'hidden',
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  muted: { color: '#6b7280', fontSize: 14, lineHeight: 20 },
+  muted: { ...type.subhead, color: colors.textSecondary },
   card: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 10,
-    gap: 4,
-    padding: 14,
+    backgroundColor: colors.surface,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: space.xs,
+    padding: space.lg,
   },
+  cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
   category: {
-    color: colors.textTertiary,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    ...type.footnote,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
-  message: { color: '#111827', fontSize: 15, lineHeight: 21 },
-  suggestion: { color: '#4b5563', fontSize: 14, lineHeight: 20 },
+  dismiss: { ...type.title3, color: colors.textTertiary, lineHeight: 20 },
+  message: { ...type.body, color: colors.textPrimary },
+  suggestion: { ...type.callout, color: colors.textSecondary },
+  caveat: { ...type.footnote, color: colors.textTertiary },
 });

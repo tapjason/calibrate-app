@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { supportResource, type CrisisTopic } from '@/ai/crisisFilter';
+import { colors, radius, space, type } from '@/constants/theme';
 
 interface SupportSurfaceProps {
   topic: CrisisTopic;
@@ -33,16 +34,16 @@ export function SupportSurface({ topic }: SupportSurfaceProps) {
   );
 }
 
+// Sunken and borderless: nothing here borrows the Coach card's chrome
+// (DESIGN_SYSTEM §7.13).
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-    padding: 16,
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    gap: space.sm,
+    padding: space.lg,
   },
-  title: { color: '#0f172a', fontSize: 16, fontWeight: '700' },
-  body: { color: '#475569', fontSize: 14, lineHeight: 20 },
-  contact: { color: '#0f172a', fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  title: { ...type.headline, color: colors.textPrimary },
+  body: { ...type.subhead, color: colors.textSecondary },
+  contact: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },
 });

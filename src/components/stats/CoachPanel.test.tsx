@@ -225,3 +225,28 @@ describe('CoachPanel — crisis path', () => {
     expect(screen.queryByTestId('coach-upsell-cta')).toBeNull();
   });
 });
+
+describe('CoachPanel — control and trust', () => {
+  it('lets the user dismiss an insight', () => {
+    seed();
+    useCoachStore.setState({
+      insights: [INSIGHT],
+      lastAnsweredAt: '2026-08-29T12:00:00.000Z',
+    });
+    render(<CoachPanel />);
+
+    fireEvent.press(screen.getByTestId('coach-dismiss-finance'));
+    expect(screen.queryByTestId('coach-insight-finance')).toBeNull();
+  });
+
+  it('says once that the Coach can be wrong', () => {
+    seed();
+    useCoachStore.setState({
+      insights: [INSIGHT, { ...INSIGHT, category: 'health' }],
+      lastAnsweredAt: '2026-08-29T12:00:00.000Z',
+    });
+    render(<CoachPanel />);
+
+    expect(screen.getAllByTestId('coach-caveat')).toHaveLength(1);
+  });
+});
