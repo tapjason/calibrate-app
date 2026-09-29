@@ -56,6 +56,25 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         after {MIN_N_OVERALL} resolved predictions of your own.
       </Text>
 
+      {/* Actions before the answer key: the key is a long read, and the two
+          things to do next shouldn't sit below it. */}
+      <View style={styles.actions}>
+        <Button
+          label="Log my first prediction"
+          testID="warmup-continue"
+          onPress={onContinue}
+        />
+        {/* The first shareable moment (CLAUDE.md, Warmup module). */}
+        {onShare && (
+          <Button
+            label="Share my result"
+            variant="secondary"
+            testID="warmup-share"
+            onPress={onShare}
+          />
+        )}
+      </View>
+
       <View style={styles.key}>
         <Text style={styles.keyTitle}>The answers</Text>
         {questions.map((q, i) => {
@@ -76,20 +95,6 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         })}
       </View>
 
-      <Button
-        label="Log my first prediction"
-        testID="warmup-continue"
-        onPress={onContinue}
-      />
-      {/* The first shareable moment (CLAUDE.md, Warmup module). */}
-      {onShare && (
-        <Button
-          label="Share my result"
-          variant="secondary"
-          testID="warmup-share"
-          onPress={onShare}
-        />
-      )}
     </View>
   );
 }
@@ -117,6 +122,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     padding: 12,
   },
+  actions: { gap: 10 },
   key: { gap: 12, marginTop: 4 },
   keyTitle: { fontSize: 16, fontWeight: '700' },
   keyRow: { flexDirection: 'row', gap: 10 },

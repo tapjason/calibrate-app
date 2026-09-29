@@ -40,7 +40,8 @@ export default function WarmupScreen() {
       <ScrollView contentContainerStyle={styles.wrap}>
         {!finished && (
           <View style={styles.intro}>
-            <Text style={styles.title}>Before you start</Text>
+            <Text style={styles.brand}>Calibrate · 60-second warm-up</Text>
+            <Text style={styles.title}>How well do you know what you know?</Text>
             <Text style={styles.body}>
               Ten quick questions. Pick an answer, then say how sure you are.
               Being right matters less than knowing how right you are.
@@ -76,6 +77,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   wrap: { gap: 24, padding: 20, paddingBottom: 40 },
   intro: { gap: 8 },
-  title: { fontSize: 24, fontWeight: '700' },
+  brand: { color: colors.brandText, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
+  title: { color: colors.textPrimary, fontSize: 28, fontWeight: '800', lineHeight: 34 },
   body: { color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
 });

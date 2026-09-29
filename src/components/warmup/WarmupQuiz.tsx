@@ -56,10 +56,22 @@ export function WarmupQuiz() {
       <Text style={styles.progress}>
         Question {index + 1} of {total}
       </Text>
-      <View style={styles.progressTrack}>
-        <View
-          style={[styles.progressFill, { width: `${(index / total) * 100}%` }]}
-        />
+      {/* Segmented, one per question: answered, current, to come. */}
+      <View
+        style={styles.segments}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {Array.from({ length: total }, (_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.segment,
+              i < index && styles.segmentDone,
+              i === index && styles.segmentCurrent,
+            ]}
+          />
+        ))}
       </View>
 
       <Text style={styles.prompt}>{question.prompt}</Text>
@@ -74,6 +86,10 @@ export function WarmupQuiz() {
             onPress={() => setSelected(i as 0 | 1)}
             style={[styles.option, selected === i && styles.optionActive]}
           >
+            {/* A radio mark carries the selection without colour. */}
+            <View style={[styles.radio, selected === i && styles.radioOn]}>
+              {selected === i && <View style={styles.radioDot} />}
+            </View>
             <Text
               style={[
                 styles.optionText,
@@ -111,25 +127,37 @@ export function WarmupQuiz() {
 const styles = StyleSheet.create({
   wrap: { gap: 20 },
   progress: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  progressTrack: {
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: 999,
-    height: 4,
-    overflow: 'hidden',
-  },
-  progressFill: { backgroundColor: colors.brand600, height: 4 },
+  segments: { flexDirection: 'row', gap: 4 },
+  segment: { backgroundColor: colors.hairline, borderRadius: 999, flex: 1, height: 6 },
+  segmentDone: { backgroundColor: colors.brand600 },
+  segmentCurrent: { backgroundColor: colors.brand200 },
   prompt: { fontSize: 22, fontWeight: '700', lineHeight: 28 },
   options: { gap: 10 },
   option: {
-    backgroundColor: colors.surfaceSunken,
-    borderColor: colors.hairline,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.controlBorder,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 56,
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
   },
+  radio: {
+    alignItems: 'center',
+    borderColor: colors.controlBorder,
+    borderRadius: 999,
+    borderWidth: 2,
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  radioOn: { borderColor: colors.brand600 },
+  radioDot: { backgroundColor: colors.brand600, borderRadius: 999, height: 10, width: 10 },
   optionActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
-  optionText: { color: colors.textPrimary, fontSize: 16 },
+  optionText: { color: colors.textPrimary, flex: 1, fontSize: 17 },
   optionTextActive: { color: colors.brand700, fontWeight: '600' },
   block: { gap: 8 },
 });

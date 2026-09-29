@@ -22,6 +22,11 @@ describe('naturalFrequencyFor', () => {
     expect(naturalFrequencyFor(100)).toBe('every time');
     expect(naturalFrequencyFor(95)).toBe('almost every time');
     expect(naturalFrequencyFor(5)).toBe('about 1 time in 10');
+    expect(naturalFrequencyFor(75)).toBe('about 3 times in 4');
+    expect(naturalFrequencyFor(25)).toBe('about 1 time in 4');
+    // Halfway steps name both neighbours instead of rounding up.
+    expect(naturalFrequencyFor(85)).toBe('8 or 9 times in 10');
+    expect(naturalFrequencyFor(35)).toBe('3 or 4 times in 10');
   });
 });
 

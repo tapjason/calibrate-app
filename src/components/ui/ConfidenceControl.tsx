@@ -33,6 +33,14 @@ export function naturalFrequencyFor(percent: number): string {
   if (percent === 0) return 'never';
   if (percent === 100) return 'every time';
   if (percent === 50) return 'a coin flip';
+  if (percent === 25) return 'about 1 time in 4';
+  if (percent === 75) return 'about 3 times in 4';
+  // Halfway steps say both neighbours rather than rounding up: 85% is "8 or
+  // 9 times in 10", not a flat 9 that overstates it.
+  if (percent % 10 === 5 && percent > 5 && percent < 95) {
+    const lo = Math.floor(percent / 10);
+    return `${lo} or ${lo + 1} times in 10`;
+  }
   const inTen = Math.round(percent / 10);
   if (inTen === 0) return 'less than once in 10';
   if (inTen === 10) return 'almost every time';
