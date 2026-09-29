@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
+import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
@@ -43,6 +44,9 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
   const [category, setCategory] = useState<Category>('work');
   const [confidence, setConfidence] = useState(50);
   const [dueDate, setDueDate] = useState(presets[1].iso);
+  // Showing the inline picker (iOS compact / web date input).
+  const [picking, setPicking] = useState(false);
+  const isCustomDate = !presets.some((p) => p.iso === dueDate);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [refining, setRefining] = useState(false);
@@ -113,6 +117,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
       const next = datePresets();
       setPresets(next);
       setDueDate(next[1].iso);
+      setPicking(false);
       onSubmitted?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -233,7 +238,10 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
           {presets.map((preset) => (
             <Pressable
               key={preset.id}
-              onPress={() => setDueDate(preset.iso)}
+              onPress={() => {
+                setDueDate(preset.iso);
+                setPicking(false);
+              }}
               testID={`due-${preset.id}`}
               accessibilityRole="radio"
               accessibilityLabel={`Due ${preset.label.toLowerCase()}`}
@@ -253,7 +261,28 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
               </Text>
             </Pressable>
           ))}
+          <Pressable
+            onPress={() => {
+              if (Platform.OS === 'android') openDueDialog(dueDate, setDueDate);
+              else setPicking(true);
+            }}
+            testID="due-pick"
+            accessibilityRole="radio"
+            accessibilityLabel="Pick a date"
+            accessibilityState={{ selected: isCustomDate || picking }}
+            style={[styles.chip, (isCustomDate || picking) && styles.chipActive]}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                (isCustomDate || picking) && styles.chipTextActive,
+              ]}
+            >
+              Pick a date
+            </Text>
+          </Pressable>
         </View>
+        {picking && <DuePicker value={dueDate} onChange={setDueDate} />}
         <Text style={styles.dateValue} testID="due-sentence">
           Due{' '}
           {new Date(dueDate).toLocaleDateString(undefined, {

@@ -125,15 +125,6 @@ export function ConfidenceControl({
             />
           </View>
         )}
-        {showIntegrityZone && (
-          <View style={styles.zoneLabelTrack}>
-            <Text
-              style={[styles.zoneLabel, { left: `${zoneLeft}%`, width: `${zoneWidth}%` }]}
-            >
-              honest uncertainty
-            </Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.steppers}>
@@ -175,7 +166,9 @@ const styles = StyleSheet.create({
   frequency: { ...type.subhead, color: colors.textSecondary },
   hint: { ...type.footnote, color: colors.textSecondary, marginBottom: space.xs },
   slider: { height: 40, width: '100%' },
-  zoneTrack: { height: 6, marginHorizontal: THUMB_INSET },
+  // The band's meaning is spelled out by the integrity chip beneath the
+  // control, so the band itself stays wordless.
+  zoneTrack: { height: 6, marginBottom: 4, marginHorizontal: THUMB_INSET },
   zone: {
     backgroundColor: colors.brand100,
     borderRadius: radius.pill,
@@ -183,12 +176,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   zoneActive: { backgroundColor: colors.brand400 },
-  zoneLabelTrack: { height: 18, marginHorizontal: THUMB_INSET, marginTop: 2 },
-  zoneLabel: {
-    ...type.caption,
-    color: colors.integrityText,
-    position: 'absolute',
-    textAlign: 'center',
-  },
   steppers: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
 });

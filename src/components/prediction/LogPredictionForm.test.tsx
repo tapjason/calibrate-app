@@ -323,3 +323,20 @@ describe('LogPredictionForm - accessibility', () => {
   });
 });
 
+
+describe('LogPredictionForm due date', () => {
+  it('offers a date picker beyond the three presets', () => {
+    render(<LogPredictionForm />);
+    expect(screen.queryByTestId('due-picker')).toBeNull();
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(screen.getByTestId('due-picker')).toBeTruthy();
+    expect(screen.getByTestId('due-pick').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('closes the picker when a preset is chosen', () => {
+    render(<LogPredictionForm />);
+    fireEvent.press(screen.getByTestId('due-pick'));
+    fireEvent.press(screen.getByTestId('due-tomorrow'));
+    expect(screen.queryByTestId('due-picker')).toBeNull();
+  });
+});
