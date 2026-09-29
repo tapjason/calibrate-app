@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { haptics } from '@/components/ui/haptics';
 import { TextField } from '@/components/ui/TextField';
 import { colors, roundedFamily, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -65,6 +66,8 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
     setSubmitting(true);
     try {
       await usePredictionStore.getState().resolve(prediction.id, outcome);
+      // One haptic for Yes, No and Skip alike — a No is not an error.
+      haptics.resolve();
       if (outcome === 'skipped') {
         onResolved?.();
         return;

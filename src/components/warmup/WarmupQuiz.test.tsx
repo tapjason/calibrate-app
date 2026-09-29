@@ -90,7 +90,7 @@ describe('WarmupQuiz', () => {
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {
-      expect(screen.getByText('How sure are you? 75%')).toBeTruthy();
+      expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('75%');
     });
   });
 
@@ -99,12 +99,12 @@ describe('WarmupQuiz', () => {
     for (let i = 0; i < 8; i++) {
       fireEvent.press(screen.getByTestId('warmup-confidence-decrement'));
     }
-    expect(screen.getByText('How sure are you? 50%')).toBeTruthy();
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('50%');
 
     for (let i = 0; i < 20; i++) {
       fireEvent.press(screen.getByTestId('warmup-confidence-increment'));
     }
-    expect(screen.getByText('How sure are you? 100%')).toBeTruthy();
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('100%');
   });
 
   it('labels the last question as the finish and scores on submit', async () => {

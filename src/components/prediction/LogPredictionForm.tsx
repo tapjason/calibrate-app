@@ -4,8 +4,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
-import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
+import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
+import { haptics } from '@/components/ui/haptics';
 import { TextField } from '@/components/ui/TextField';
 import { REFINE_ENABLED } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -105,6 +106,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
         confidence,
         due_date: dueDate,
       });
+      haptics.commit();
       setTitle('');
       setConfidence(50);
       const next = datePresets();
@@ -209,35 +211,7 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
       </View>
 
       <View style={styles.block}>
-        <View
-          testID="confidence-adjustable"
-          {...adjustableProps({
-            label: 'Confidence',
-            value: confidence,
-            min: 0,
-            max: 100,
-            step: 5,
-            onChange: setConfidence,
-          })}
-        >
-          <Text style={styles.label}>Confidence: {confidence}%</Text>
-          <View style={styles.row}>
-            <Button
-              label="−5"
-              accessibilityLabel="Lower confidence by 5"
-              variant="secondary"
-              onPress={() => setConfidence((v) => Math.max(0, v - 5))}
-              testID="confidence-decrement"
-            />
-            <Button
-              label="+5"
-              accessibilityLabel="Raise confidence by 5"
-              variant="secondary"
-              onPress={() => setConfidence((v) => Math.min(100, v + 5))}
-              testID="confidence-increment"
-            />
-          </View>
-        </View>
+        <ConfidenceControl value={confidence} onChange={setConfidence} showIntegrityZone />
         {confidence >= 35 && confidence <= 65 && (
           // A brand chip, not green text: honesty is rewarded, but green means
           // "calibrated" and never "good job" (DESIGN_SYSTEM §2.3).

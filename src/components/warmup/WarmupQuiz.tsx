@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
+import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { colors } from '@/constants/theme';
 import {
   MAX_WARMUP_CONFIDENCE,
@@ -10,8 +10,6 @@ import {
   selectCurrentQuestion,
   useWarmupStore,
 } from '@/store/warmupStore';
-
-const STEP = 5;
 
 // Mid-scale, not the floor. Starting at 50 would anchor everyone to "coin
 // flip" and flatten the very spread the Warmup exists to reveal; starting at
@@ -88,42 +86,16 @@ export function WarmupQuiz() {
         ))}
       </View>
 
-      <View
-        style={styles.block}
-        testID="warmup-confidence-adjustable"
-        {...adjustableProps({
-          label: 'How sure are you?',
-          value: confidence,
-          min: MIN_WARMUP_CONFIDENCE,
-          max: MAX_WARMUP_CONFIDENCE,
-          step: STEP,
-          onChange: setConfidence,
-        })}
-      >
-        <Text style={styles.label}>How sure are you? {confidence}%</Text>
-        <Text style={styles.hint}>
-          50% is a coin flip — there are only two options.
-        </Text>
-        <View style={styles.row}>
-          <Button
-            label="−5"
-            accessibilityLabel="Lower confidence by 5"
-            variant="secondary"
-            testID="warmup-confidence-decrement"
-            onPress={() =>
-              setConfidence((v) => Math.max(MIN_WARMUP_CONFIDENCE, v - STEP))
-            }
-          />
-          <Button
-            label="+5"
-            accessibilityLabel="Raise confidence by 5"
-            variant="secondary"
-            testID="warmup-confidence-increment"
-            onPress={() =>
-              setConfidence((v) => Math.min(MAX_WARMUP_CONFIDENCE, v + STEP))
-            }
-          />
-        </View>
+      <View style={styles.block}>
+        <ConfidenceControl
+          value={confidence}
+          onChange={setConfidence}
+          min={MIN_WARMUP_CONFIDENCE}
+          max={MAX_WARMUP_CONFIDENCE}
+          label="How sure are you?"
+          hint="50% is a coin flip — there are only two options."
+          idPrefix="warmup-confidence"
+        />
       </View>
 
       <Button
@@ -160,7 +132,4 @@ const styles = StyleSheet.create({
   optionText: { color: colors.textPrimary, fontSize: 16 },
   optionTextActive: { color: colors.brand700, fontWeight: '600' },
   block: { gap: 8 },
-  label: { fontSize: 15, fontWeight: '600' },
-  hint: { color: colors.textTertiary, fontSize: 13 },
-  row: { flexDirection: 'row', gap: 10 },
 });
