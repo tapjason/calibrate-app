@@ -1,12 +1,16 @@
 import type { PlusPlan } from '@/billing/revenuecat';
 
 import {
+  ctaLabel,
+  defaultPlan,
   noticeText,
   priceLine,
+  sortPlans,
   termsLine,
   trialLabel,
   trialLine,
   trialTermsLine,
+  trialTimeline,
 } from './paywallCopy';
 
 const annual: PlusPlan = {
@@ -138,5 +142,51 @@ describe('noticeText', () => {
   // fails, and the one they will look for before contacting support.
   it('says nothing was charged when a purchase fails', () => {
     expect(noticeText('failed')).toMatch(/[Nn]othing was charged/);
+  });
+});
+
+describe('plan selector copy', () => {
+  const annual: PlusPlan = {
+    packageId: 'a',
+    plan: 'annual',
+    priceString: '$29.99',
+    trialDays: 30,
+    trialPeriod: { count: 1, unit: 'MONTH' },
+  };
+  const monthly: PlusPlan = {
+    packageId: 'm',
+    plan: 'monthly',
+    priceString: '$4.99',
+    trialDays: null,
+    trialPeriod: null,
+  };
+  const lifetime: PlusPlan = { ...monthly, packageId: 'l', plan: 'lifetime', priceString: '$59.99' };
+
+  it('orders annual first and preselects it', () => {
+    expect(sortPlans([lifetime, monthly, annual]).map((p) => p.plan)).toEqual([
+      'annual',
+      'monthly',
+      'lifetime',
+    ]);
+    expect(defaultPlan([monthly, annual])?.plan).toBe('annual');
+    expect(defaultPlan([])).toBeNull();
+  });
+
+  it('labels the one button by what the tap does', () => {
+    expect(ctaLabel(annual)).toBe('Start 1 month free');
+    expect(ctaLabel(monthly)).toBe('Subscribe for $4.99 a month');
+    expect(ctaLabel({ ...annual, trialDays: null, trialPeriod: null })).toBe(
+      'Subscribe for $29.99 a year',
+    );
+    expect(ctaLabel(lifetime)).toBe('Buy once for $59.99');
+  });
+
+  it('lays out the trial honestly, with the 24-hour rule and no promised reminder', () => {
+    const steps = trialTimeline(annual);
+    expect(steps?.map((s) => s.when)).toEqual(['Today', 'In 1 month']);
+    expect(steps?.[1].what).toContain('$29.99');
+    expect(steps?.[1].what).toContain('24 hours');
+    expect(JSON.stringify(steps)).not.toMatch(/remind/i);
+    expect(trialTimeline(monthly)).toBeNull();
   });
 });

@@ -22,7 +22,8 @@ export const PLAN_TAGLINES: Record<PlanId, string> = {
 };
 
 /**
- * What Plus actually buys. Deliberately short, and deliberately led by the
+ * What Plus actually buys, one line per benefit row on the paywall
+ * (DESIGN_SYSTEM §7.6). Deliberately short, and deliberately led by the
  * Coach — §5.3 makes the insight tier the conversion hook.
  *
  * All three exist as of 2026-09-07 — Coach (`src/ai/coach.ts`), Trends
@@ -31,9 +32,9 @@ export const PLAN_TAGLINES: Record<PlanId, string> = {
  * app doesn't do is a refund request with extra steps.
  */
 export const PLUS_FEATURES: readonly string[] = [
-  'Coach — AI feedback that reads your calibration numbers and tells you what they mean',
-  'Trends — your calibration month by month, per-category drill-down, and a CSV export of everything',
-  'Extra themes for your share cards and Wrapped — the cards themselves stay free',
+  'Coach: an AI read of what your calibration numbers mean',
+  'Trends: month by month, by category, with a CSV export',
+  'Extra themes for your cards; the cards themselves stay free',
 ];
 
 /**
@@ -139,4 +140,56 @@ export function noticeText(
     default:
       return null;
   }
+}
+
+/** Annual first — it carries the anchor and the trial (GROWTH §4). */
+const PLAN_ORDER: Record<PlanId, number> = { annual: 0, monthly: 1, lifetime: 2 };
+
+export function sortPlans(plans: readonly PlusPlan[]): PlusPlan[] {
+  return [...plans].sort((a, b) => PLAN_ORDER[a.plan] - PLAN_ORDER[b.plan]);
+}
+
+/** The plan preselected on open: annual when offered, else the first. */
+export function defaultPlan(plans: readonly PlusPlan[]): PlusPlan | null {
+  return sortPlans(plans)[0] ?? null;
+}
+
+const PERIOD: Record<PlanId, string> = {
+  annual: 'a year',
+  monthly: 'a month',
+  lifetime: 'once',
+};
+
+/**
+ * The single purchase button's label, for whichever plan is selected
+ * (DESIGN_SYSTEM §7.6). It says exactly what the tap does: a trial starts a
+ * trial, a subscription names its price and period, lifetime is one payment.
+ */
+export function ctaLabel(plan: PlusPlan): string {
+  const trial = trialLabel(plan);
+  if (trial) return `Start ${trial} free`;
+  if (plan.plan === 'lifetime') return `Buy once for ${plan.priceString}`;
+  return `Subscribe for ${plan.priceString} ${PERIOD[plan.plan]}`;
+}
+
+export interface TimelineStep {
+  when: string;
+  what: string;
+}
+
+/**
+ * The honest trial timeline (DESIGN_SYSTEM §7.6), or null when the selected
+ * plan has no trial. Two steps, not three: there is no reminder notification
+ * before the trial ends, so the screen doesn't promise one.
+ */
+export function trialTimeline(plan: PlusPlan): TimelineStep[] | null {
+  const trial = trialLabel(plan);
+  if (!trial) return null;
+  return [
+    { when: 'Today', what: 'Full Plus: Coach, Trends and every card theme.' },
+    {
+      when: `In ${trial}`,
+      what: `Your ${PLAN_LABELS[plan.plan].toLowerCase()} plan starts at ${plan.priceString}. Cancel at least 24 hours before to pay nothing.`,
+    },
+  ];
 }

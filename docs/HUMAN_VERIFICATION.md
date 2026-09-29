@@ -512,6 +512,9 @@ Tick each:
 - [ ] Settings → "See Plus" opens the paywall.
 - [ ] The paywall lists annual first with its trial, then monthly, then
       lifetime (after Batch B; before it, it shows the unavailable state).
+      Annual is **preselected** (filled radio), there is **one** purchase button
+      whose label follows the selected plan, and a Today / In 1 month timeline
+      shows only while a plan with a trial is selected.
 - [ ] **Annual reads "1 month free, then $29.99"** — one *month*, not "30
       days". If it says days, the store reported an unstructured period and
       the fallback fired; check the offer's configured unit.

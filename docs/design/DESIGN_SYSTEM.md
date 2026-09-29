@@ -392,9 +392,9 @@ Structure beats polish (design-only paywall tests win least often). Order: value
 preselected**, "$2.50/mo, billed yearly" equivalent, "1 month free" badge; Monthly with
 no trial; Lifetime as a smaller third row) → **honest timeline** → **one** CTA.
 
-- Timeline, in the store's own units: *Today* — full Plus access · *In 3 weeks* — we
-  remind you (only if notifications are granted) · *In 1 month* — your year starts;
-  cancel at least 24 hours before.
+- Timeline, in the store's own units: *Today* — full Plus access · *In 1 month* — your
+  year starts; cancel at least 24 hours before. (A "we remind you" step belongs here
+  only once the app actually schedules that reminder; it doesn't yet.)
 - The CTA label follows the selected plan ("Start free month" / "Subscribe for
   $4.99/mo").
 - **No trial toggle** — Apple rejects them under 3.1.2 since January 2026.

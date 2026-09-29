@@ -1,11 +1,12 @@
 import { openBrowserAsync } from 'expo-web-browser';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
-import { colors } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
 
@@ -14,11 +15,22 @@ import {
   PLAN_LABELS,
   PLAN_TAGLINES,
   PLUS_FEATURES,
+  ctaLabel,
+  defaultPlan,
   noticeText,
   priceLine,
+  sortPlans,
   termsLine,
   trialTermsLine,
+  trialTimeline,
 } from './paywallCopy';
+
+/** A symbol per benefit row, in PLUS_FEATURES order (DESIGN_SYSTEM §7.6). */
+const BENEFIT_ICONS = [
+  { sf: 'sparkles', ion: 'sparkles' },
+  { sf: 'chart.line.uptrend.xyaxis', ion: 'trending-up' },
+  { sf: 'paintpalette.fill', ion: 'color-palette' },
+] as const;
 
 /**
  * The paywall (L6). Reads plans and flow state from paywallStore; the purchase
@@ -43,6 +55,14 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     void loadPlans();
   }, [loadPlans]);
+
+  // Annual preselected (DESIGN_SYSTEM §7.6). Held as an id so a plan list
+  // that reloads doesn't reset a choice the user already made.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const ordered = sortPlans(plans);
+  const selected =
+    ordered.find((p) => p.packageId === selectedId) ?? defaultPlan(ordered);
+  const timeline = selected ? trialTimeline(selected) : null;
 
   const busy = purchasing !== null || restoring;
   const message = noticeText(notice);
@@ -74,12 +94,15 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
       </Text>
 
       <View style={styles.features}>
-        {PLUS_FEATURES.map((feature) => (
-          <View key={feature} style={styles.featureRow}>
-            <Text style={styles.bullet}>·</Text>
-            <Text style={styles.feature}>{feature}</Text>
-          </View>
-        ))}
+        {PLUS_FEATURES.map((feature, i) => {
+          const icon = BENEFIT_ICONS[i] ?? BENEFIT_ICONS[0];
+          return (
+            <View key={feature} style={styles.featureRow}>
+              <Icon sf={icon.sf} fallback={icon.ion} size={20} color={colors.brand600} />
+              <Text style={styles.feature}>{feature}</Text>
+            </View>
+          );
+        })}
       </View>
 
       {loadingPlans && <ActivityIndicator testID="paywall-loading" />}
@@ -90,15 +113,42 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
         </Text>
       )}
 
-      {plans.map((plan) => (
-        <PlanRow
-          key={plan.packageId}
-          plan={plan}
+      {ordered.length > 0 && (
+        <View style={styles.plans} accessibilityRole="radiogroup">
+          {ordered.map((plan) => (
+            <PlanOption
+              key={plan.packageId}
+              plan={plan}
+              selected={selected?.packageId === plan.packageId}
+              disabled={busy}
+              onPress={() => setSelectedId(plan.packageId)}
+            />
+          ))}
+        </View>
+      )}
+
+      {timeline && (
+        <View style={styles.timeline} testID="paywall-timeline">
+          {timeline.map((step) => (
+            <View key={step.when} style={styles.timelineRow}>
+              <View style={styles.timelineDot} />
+              <View style={styles.timelineText}>
+                <Text style={styles.timelineWhen}>{step.when}</Text>
+                <Text style={styles.timelineWhat}>{step.what}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {selected && (
+        <Button
+          label={purchasing ? 'Opening the App Store…' : ctaLabel(selected)}
           disabled={busy}
-          busy={purchasing === plan.packageId}
-          onPress={() => void purchase(plan.packageId)}
+          onPress={() => void purchase(selected.packageId)}
+          testID="paywall-cta"
         />
-      ))}
+      )}
 
       {message && (
         <Text style={styles.notice} testID="paywall-notice">
@@ -175,63 +225,116 @@ function LegalLinks() {
   );
 }
 
-function PlanRow({
+/**
+ * One radio card. Selecting it only changes what the single button below
+ * buys — nothing is charged from here.
+ */
+function PlanOption({
   plan,
+  selected,
   disabled,
-  busy,
   onPress,
 }: {
   plan: PlusPlan;
+  selected: boolean;
   disabled: boolean;
-  busy: boolean;
   onPress: () => void;
 }) {
   return (
-    <View style={styles.planRow} testID={`plan-${plan.plan}`}>
-      <View style={styles.planText}>
-        <Text style={styles.planLabel}>{PLAN_LABELS[plan.plan]}</Text>
-        <Text style={styles.planPrice}>{priceLine(plan)}</Text>
-        <Text style={styles.planTagline}>{PLAN_TAGLINES[plan.plan]}</Text>
+    <Pressable
+      testID={`plan-${plan.plan}`}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled }}
+      accessibilityLabel={`${PLAN_LABELS[plan.plan]}, ${priceLine(plan)}. ${PLAN_TAGLINES[plan.plan]}`}
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        styles.plan,
+        plan.plan === 'lifetime' && styles.planSmall,
+        selected && styles.planSelected,
+      ]}
+    >
+      {/* The radio mark carries selection without colour: filled vs hollow. */}
+      <View style={[styles.radio, selected && styles.radioOn]}>
+        {selected && <View style={styles.radioDot} />}
       </View>
-      <Button
-        label={busy ? '…' : 'Choose'}
-        disabled={disabled}
-        onPress={onPress}
-        testID={`plan-buy-${plan.plan}`}
-      />
-    </View>
+      <View style={styles.planText}>
+        <View style={styles.planHeader}>
+          <Text style={styles.planLabel}>{PLAN_LABELS[plan.plan]}</Text>
+          <Text style={styles.planTagline}>{PLAN_TAGLINES[plan.plan]}</Text>
+        </View>
+        <Text style={styles.planPrice}>{priceLine(plan)}</Text>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 14, padding: 24 },
-  title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
-  body: { fontSize: 15, lineHeight: 22, color: colors.textSecondary },
-  features: { gap: 8 },
-  featureRow: { flexDirection: 'row', gap: 8 },
-  bullet: { color: colors.textTertiary, fontSize: 15 },
-  feature: { flex: 1, fontSize: 14, lineHeight: 20, color: colors.textSecondary },
-  planRow: {
+  wrap: { gap: space.lg, padding: space.xxl },
+  title: { ...type.titleXL, color: colors.textPrimary },
+  body: { ...type.callout, color: colors.textSecondary },
+  features: { gap: space.md },
+  featureRow: { alignItems: 'flex-start', flexDirection: 'row', gap: space.md },
+  feature: { ...type.subhead, color: colors.textPrimary, flex: 1 },
+  plans: { gap: space.sm },
+  plan: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderColor: colors.controlBorder,
+    borderRadius: radius.md,
+    borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between',
-    padding: 16,
+    gap: space.md,
+    padding: space.lg,
+  },
+  planSmall: { paddingVertical: space.md },
+  planSelected: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  radio: {
+    alignItems: 'center',
+    borderColor: colors.controlBorder,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  radioOn: { borderColor: colors.brand600 },
+  radioDot: {
+    backgroundColor: colors.brand600,
+    borderRadius: radius.pill,
+    height: 10,
+    width: 10,
   },
   planText: { flex: 1, gap: 2 },
-  planLabel: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
-  planPrice: { fontSize: 15, color: colors.textPrimary },
-  planTagline: { fontSize: 12, color: colors.textSecondary },
-  notice: { fontSize: 14, color: colors.textPrimary },
-  freeNote: { fontSize: 13, lineHeight: 19, color: colors.textSecondary },
-  muted: { fontSize: 14, color: colors.textSecondary },
-  terms: { fontSize: 11, lineHeight: 16, color: colors.textTertiary },
+  planHeader: { alignItems: 'baseline', flexDirection: 'row', gap: space.sm },
+  planLabel: { ...type.headline, color: colors.textPrimary },
+  planTagline: { ...type.footnote, color: colors.textSecondary },
+  planPrice: { ...type.subhead, color: colors.textPrimary },
+  timeline: {
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    gap: space.md,
+    padding: space.lg,
+  },
+  timelineRow: { flexDirection: 'row', gap: space.md },
+  timelineDot: {
+    backgroundColor: colors.brand600,
+    borderRadius: radius.pill,
+    height: 8,
+    marginTop: 6,
+    width: 8,
+  },
+  timelineText: { flex: 1, gap: 2 },
+  timelineWhen: { ...type.headline, color: colors.textPrimary },
+  timelineWhat: { ...type.subhead, color: colors.textSecondary },
+  notice: { ...type.subhead, color: colors.textPrimary },
+  freeNote: { ...type.footnote, color: colors.textSecondary },
+  muted: { ...type.subhead, color: colors.textSecondary },
+  terms: { ...type.caption, fontWeight: '400', color: colors.textSecondary },
   legal: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
   legalLink: {
+    ...type.footnote,
     color: colors.textSecondary,
-    fontSize: 12,
     paddingVertical: 8,
     textDecorationLine: 'underline',
   },

@@ -109,11 +109,37 @@ describe('PaywallView', () => {
     expect(screen.queryByTestId('paywall-trial-terms')).toBeNull();
   });
 
-  it('buys the plan that was tapped', async () => {
+  it('buys the plan that was selected, through the one button', async () => {
     const { purchase } = seed();
     render(<PaywallView />);
-    fireEvent.press(screen.getByTestId('plan-buy-monthly'));
+    fireEvent.press(screen.getByTestId('plan-monthly'));
+    expect(screen.getByTestId('paywall-cta')).toHaveTextContent('Subscribe for $4.99 a month');
+    fireEvent.press(screen.getByTestId('paywall-cta'));
     await waitFor(() => expect(purchase).toHaveBeenCalledWith('pkg_monthly'));
+  });
+
+  // DESIGN_SYSTEM §7.6: annual first and preselected, one CTA, honest timeline.
+  it('preselects annual and offers its trial on the one button', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.getByTestId('plan-annual').props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId('paywall-cta')).toHaveTextContent('Start 1 month free');
+    expect(screen.getAllByTestId('paywall-cta')).toHaveLength(1);
+  });
+
+  it('lays out the trial timeline only for a plan that has one', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.getByTestId('paywall-timeline')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('plan-monthly'));
+    expect(screen.queryByTestId('paywall-timeline')).toBeNull();
+  });
+
+  it('puts the plans in annual, monthly, lifetime order whatever the store sends', () => {
+    seed({ plans: [...PLANS].reverse() });
+    render(<PaywallView />);
+    const ids = screen.getAllByRole('radio').map((r) => r.props.testID);
+    expect(ids).toEqual(['plan-annual', 'plan-monthly', 'plan-lifetime']);
   });
 
   it('restores purchases', async () => {
