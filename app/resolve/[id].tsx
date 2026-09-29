@@ -28,7 +28,11 @@ export default function ResolveScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ResolvePrompt
         predictionId={id}
-        onResolved={() => router.replace('/' as never)}
+        // A sheet closes back to wherever it opened from; a cold start from a
+        // notification has nowhere to go back to, so it lands on Home.
+        onResolved={() =>
+          router.canGoBack() ? router.back() : router.replace('/' as never)
+        }
       />
     </SafeAreaView>
   );

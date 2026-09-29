@@ -149,7 +149,34 @@ export default function RootLayout() {
     );
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  // Scoped tasks open as sheets with a grabber (DESIGN_SYSTEM §7.7): Resolve
+  // at a tall detent so the prompt and the Today list behind it both stay in
+  // mind, Share at full height; the paywall is a full-screen modal. Fixed
+  // detents, because fitToContents still has open sizing bugs. On web these
+  // fall back to ordinary modal presentation.
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="resolve/[id]"
+        options={{
+          presentation: 'formSheet',
+          sheetAllowedDetents: [0.75, 1.0],
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 24,
+        }}
+      />
+      <Stack.Screen
+        name="share/index"
+        options={{
+          presentation: 'formSheet',
+          sheetAllowedDetents: [1.0],
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 24,
+        }}
+      />
+      <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
+    </Stack>
+  );
 }
 
 const styles = StyleSheet.create({
