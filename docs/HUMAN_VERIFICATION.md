@@ -565,6 +565,45 @@ notification placeholder.
 - [ ] **Dynamic Type at the largest size:** Resolve, Home and Log still lay out with
       nothing clipped.
 
+Added 2026-09-29 (second pass):
+
+- [ ] **Confidence control (Log and Warmup):** a big "70%" with "about 7 times in
+      10" beside it, a slider that clicks every 5% (**feel the haptic tick on a
+      phone**), and on Log a tinted "honest uncertainty" band under 35–65%. ±5 still
+      work. VoiceOver: the whole control is one element; swipe up/down changes it.
+- [ ] **Resolve is a sheet** on iOS (grabber, ~¾ height) and closes back to Home.
+      After Yes/No you see "Recorded", a line like "In your 60–80% range, 6 of 9
+      have happened", and only then the reflection box and **Done**. Skip exits
+      straight away. Yes, No and Skip all give the same medium haptic.
+- [ ] **The 20th resolution** shows a "Your calibration score is unlocked" card
+      that springs in with a success haptic; reaching Tracker (20 in a category)
+      shows "Tracker in {category}" with its emblem. Neither ever appears for a drop.
+- [ ] **Stats chart:** a sentence title above it ("Your curve so far", or once
+      unlocked with ≥ 10 in a band "You're overconfident at 80–100%"), warm/cool
+      tinted regions labelled Overconfident/Underconfident, coloured dots with
+      "n=…", a five-box coverage row, and "Show as table".
+- [ ] **Warmup verdict:** the chart line draws in and the dot(s) appear after it.
+      With Reduce Motion on, no drawing. "Share my result" opens Share showing the
+      **warm-up card** ("I run hot", "77% sure, 50% right") — test on a fresh install
+      or after erasing the device's data, before any prediction resolves.
+- [ ] **Badges** are drawn emblems (dashed square for Guesser, filled indigo for
+      Forecaster, …), not emoji, in Stats and on the identity card.
+- [ ] **Icons:** SF Symbols in the tab bar and on category chips/cards on iOS;
+      Ionicons on Android/web.
+- [ ] **Buttons** shrink slightly when pressed (Reduce Motion: they dim instead).
+- [ ] **Hero rating** (once unlocked) rolls to its new value after a resolution
+      changes it, and does *not* re-roll when you just switch tabs.
+- [ ] **Share → Share as text:** pastes as "My calibration · Calibrate", your
+      headline, and (once unlocked) a row of five coloured squares with the score.
+      No prediction titles.
+- [ ] **Paywall** (after Batch B): Annual preselected, one purchase button whose
+      label changes with the plan, Today / In 1 month timeline for the trial.
+- [ ] **Stats, free user:** one "Calibrate Plus" card instead of two "See Plus"
+      blocks.
+- [ ] **Native packages added this pass** (expo-haptics, slider, expo-symbols,
+      reanimated + worklets): all ship in Expo Go for SDK 55; a custom dev build
+      needs rebuilding before testing.
+
 ---
 
 ## Batch D — Physical device (~45 min)

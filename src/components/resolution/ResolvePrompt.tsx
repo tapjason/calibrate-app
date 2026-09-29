@@ -7,7 +7,9 @@ import { TextField } from '@/components/ui/TextField';
 import { colors, roundedFamily, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
-import type { BucketStat, Prediction, ResolvedStatus } from '@/types';
+import type { BucketStat, Milestone, Prediction, ResolvedStatus } from '@/types';
+
+import { MilestoneCard } from './MilestoneCard';
 
 interface ResolvePromptProps {
   /** Prediction id read from the URL or notification payload. */
@@ -45,7 +47,10 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   /** Set once Yes or No has been recorded: the acknowledgement step. */
-  const [answered, setAnswered] = useState<{ line: string | null } | null>(null);
+  const [answered, setAnswered] = useState<{
+    line: string | null;
+    milestone: Milestone | null;
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -65,6 +70,9 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
     setError(null);
     setSubmitting(true);
     try {
+      // Anything left over belongs to an earlier change (a sync, say), not to
+      // this answer — clear it so the card below celebrates only this one.
+      useStatsStore.getState().clearMilestone();
       await usePredictionStore.getState().resolve(prediction.id, outcome);
       // One haptic for Yes, No and Skip alike — a No is not an error.
       haptics.resolve();
@@ -73,8 +81,10 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
         return;
       }
       // Stats recompute inside resolve(), so the bucket already counts this one.
-      const bucket = useStatsStore.getState().bucketFor(prediction.confidence);
-      setAnswered({ line: bucket ? bucketLine(bucket) : null });
+      const stats = useStatsStore.getState();
+      const bucket = stats.bucketFor(prediction.confidence);
+      setAnswered({ line: bucket ? bucketLine(bucket) : null, milestone: stats.milestone });
+      stats.clearMilestone();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -126,6 +136,7 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
           Recorded
         </Text>
         <Text style={styles.title}>{prediction.title}</Text>
+        {answered.milestone && <MilestoneCard milestone={answered.milestone} />}
         {answered.line && (
           <Text style={styles.bucketLine} testID="resolve-bucket-line">
             {answered.line}

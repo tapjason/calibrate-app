@@ -29,6 +29,7 @@ import {
   type CoverageGap,
   type CoverageNudgeDecision,
 } from '@/engine/coverageNudge';
+import { detectMilestone } from '@/engine/milestones';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import type {
@@ -36,6 +37,7 @@ import type {
   CalibrationResult,
   Category,
   CategoryStat,
+  Milestone,
   NextBadgeTarget,
   Prediction,
   UserStat,
@@ -80,6 +82,13 @@ interface StatsState {
    * the UI knowing the bucket convention.
    */
   bucketFor: (confidence: number) => BucketStat | null;
+  /**
+   * The line the last recompute crossed (score unlocked, badge tier-up), or
+   * null. Set only by recomputeForUser, never by a load — reopening the app
+   * is not an achievement. Whoever celebrates it clears it.
+   */
+  milestone: Milestone | null;
+  clearMilestone: () => void;
   /** Pull persisted stats from the DB into the store and refresh buckets. */
   loadForUser: (userId: string) => Promise<void>;
   /** Re-run the engine over all of a user's predictions and persist. */
@@ -122,6 +131,9 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   calibration: EMPTY_CALIBRATION,
   trends: EMPTY_TRENDS,
   coverageGap: EMPTY_COVERAGE_GAP,
+  milestone: null,
+
+  clearMilestone: () => set({ milestone: null }),
 
   bucketFor: (confidence) => {
     const low = bucketLowFor(confidence);
@@ -202,6 +214,14 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       categoryStats.push(stat);
     }
 
+    const prev = get();
+    const milestone = detectMilestone(
+      prev.userStat,
+      prev.categoryStats,
+      userStat,
+      categoryStats,
+    );
+
     set({
       userStat,
       categoryStats,
@@ -209,6 +229,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       calibration: userCalc,
       trends: buildTrendSummary(resolved),
       coverageGap: computeCoverageGap(all),
+      // Keep an uncelebrated milestone rather than overwrite it with null.
+      milestone: milestone ?? prev.milestone,
     });
   },
 }));

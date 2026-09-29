@@ -191,6 +191,15 @@ export interface BucketStat {
   direction: Direction;           // which side of the diagonal (5-pt band = calibrated)
 }
 
+/**
+ * A line crossed by the last recompute, worth one of the design system's few
+ * celebrations (DESIGN_SYSTEM §6.2). Upward crossings only.
+ */
+export type Milestone =
+  | { kind: 'rating_unlocked'; rating: number }
+  | { kind: 'tier_up'; category: Category; badge: BadgeLevel }
+  | { kind: 'category_unlocked'; category: Category; score: number };
+
 /** Aggregate result of running the calibration engine on a set of predictions. */
 export interface CalibrationResult {
   rating: number;        // 0–100 calibration score

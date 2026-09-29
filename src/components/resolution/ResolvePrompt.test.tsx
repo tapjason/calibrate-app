@@ -200,3 +200,46 @@ describe('bucketLine', () => {
     ).toBe('In your 60–80% range, 6 of 9 have happened.');
   });
 });
+
+describe('ResolvePrompt milestones', () => {
+  it('celebrates the resolution that unlocks the score, once', async () => {
+    // 19 already resolved: the next answer is the 20th.
+    for (let i = 0; i < 19; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 2 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await insertPrediction(samplePending());
+    const userId = useAuthStore.getState().userId!;
+    await useStatsStore.getState().recomputeForUser(userId);
+
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy();
+    });
+    // Consumed: nothing left for the next screen to replay.
+    expect(useStatsStore.getState().milestone).toBeNull();
+  });
+
+  it('shows no celebration for an ordinary answer', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded')).toBeTruthy();
+    });
+    expect(screen.queryByTestId(/^milestone-/)).toBeNull();
+  });
+});
