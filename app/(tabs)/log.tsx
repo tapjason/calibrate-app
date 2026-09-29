@@ -6,7 +6,13 @@ import { LogPredictionForm } from '@/components/prediction/LogPredictionForm';
 export default function LogScreen() {
   const router = useRouter();
   return (
-    <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+    // Keeps Save reachable with the keyboard up, and a drag down dismisses it.
+    <ScrollView
+      contentContainerStyle={styles.wrap}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
+    >
       <LogPredictionForm onSubmitted={() => router.replace('/' as never)} />
     </ScrollView>
   );

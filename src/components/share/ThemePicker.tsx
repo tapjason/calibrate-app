@@ -87,14 +87,15 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     borderRadius: 10,
     borderWidth: 2,
-    height: 40,
+    // 44pt: the minimum comfortable tap target (DESIGN_SYSTEM §0 rule 7).
+    height: 44,
     justifyContent: 'center',
-    width: 40,
+    width: 44,
   },
   selected: { borderColor: colors.brand600 },
   dot: { borderRadius: 5, height: 10, width: 10 },
   lock: {
-    fontSize: 9,
+    fontSize: 11, // never below 11pt (DESIGN_SYSTEM §0 rule 7)
     position: 'absolute',
     right: 4,
     top: 3,

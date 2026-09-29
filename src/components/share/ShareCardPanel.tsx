@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     flex: 1,
     justifyContent: 'center',
-    minHeight: 38,
+    minHeight: 44,
   },
   segmentOn: { backgroundColor: colors.surface },
   segmentText: { color: colors.textSecondary, fontSize: 15 },

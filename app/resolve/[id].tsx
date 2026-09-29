@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResolvePrompt } from '@/components/resolution/ResolvePrompt';
@@ -26,20 +26,31 @@ export default function ResolveScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ResolvePrompt
-        predictionId={id}
-        // A sheet closes back to wherever it opened from; a cold start from a
-        // notification has nowhere to go back to, so it lands on Home.
-        onResolved={() =>
-          router.canGoBack() ? router.back() : router.replace('/' as never)
-        }
-      />
+      {/* Scrolls, and moves clear of the keyboard: on a small phone the
+          reflection box, a milestone card and Done don't all fit above it. */}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
+        <ResolvePrompt
+          predictionId={id}
+          // A sheet closes back to wherever it opened from; a cold start from a
+          // notification has nowhere to go back to, so it lands on Home.
+          onResolved={() =>
+            router.canGoBack() ? router.back() : router.replace('/' as never)
+          }
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  // flexGrow so the prompt's centred loading / not-found states still centre.
+  scroll: { flexGrow: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   title: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
   body: { color: colors.textSecondary },
