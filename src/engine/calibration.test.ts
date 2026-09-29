@@ -1,6 +1,7 @@
 import type { Prediction } from '@/types';
 
 import {
+  bucketLowFor,
   computeCalibration,
   evaluateBadge,
   isRatingProvisional,
@@ -228,5 +229,14 @@ describe('bucket direction', () => {
     ]);
     const byLow = Object.fromEntries(buckets.map((b) => [b.low, b.direction]));
     expect(byLow).toEqual({ 20: 'underconfident', 60: 'calibrated', 80: 'overconfident' });
+  });
+});
+
+describe('bucketLowFor', () => {
+  // CLAUDE.md: lower bound inclusive, top bucket closed.
+  it('follows the fixed bucket convention', () => {
+    expect([0, 19, 20, 39, 40, 60, 79, 80, 100].map(bucketLowFor)).toEqual([
+      0, 0, 20, 20, 40, 60, 60, 80, 80,
+    ]);
   });
 });

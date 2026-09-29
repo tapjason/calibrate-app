@@ -218,3 +218,48 @@ describe('predictionStore.resolve (L4 gate)', () => {
     expect(usePredictionStore.getState().resolved).toHaveLength(0);
   });
 });
+
+describe('predictionStore.reflect', () => {
+  const create = () =>
+    usePredictionStore.getState().create({
+      title: 'Ship the prototype',
+      category: 'work',
+      confidence: 80,
+      due_date: '2026-06-01T00:00:00.000Z',
+    });
+
+  it('attaches a reflection to a resolved prediction, trimmed', async () => {
+    const p = await create();
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    await usePredictionStore.getState().reflect(p.id, '  slipped a week  ');
+    expect(usePredictionStore.getState().resolved[0].reflection).toBe('slipped a week');
+  });
+
+  it('clears the reflection when given blank text', async () => {
+    const p = await create();
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes', 'first');
+    await usePredictionStore.getState().reflect(p.id, '   ');
+    expect(usePredictionStore.getState().resolved[0].reflection).toBeNull();
+  });
+
+  it('never attaches to a prediction that has not been answered', async () => {
+    const p = await create();
+    await usePredictionStore.getState().reflect(p.id, 'too early');
+    const fresh = await usePredictionStore.getState().getById(p.id);
+    expect(fresh?.reflection).toBeNull();
+  });
+});
+
+describe('statsStore.bucketFor', () => {
+  it('finds the bucket a confidence falls in, after a resolve', async () => {
+    const p = await usePredictionStore.getState().create({
+      title: 'A',
+      category: 'work',
+      confidence: 60,
+      due_date: '2026-06-01T00:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    expect(useStatsStore.getState().bucketFor(75)?.low).toBe(60);
+    expect(useStatsStore.getState().bucketFor(20)).toBeNull();
+  });
+});

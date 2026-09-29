@@ -31,6 +31,14 @@ function bucketIndex(confidence: number): number {
   return Math.floor(confidence / BUCKET_WIDTH);
 }
 
+/**
+ * Lower bound of the bucket a stated confidence falls in, under the fixed
+ * convention: [0,20) [20,40) [40,60) [60,80) [80,100]. So 20 → 20, 100 → 80.
+ */
+export function bucketLowFor(confidence: number): number {
+  return bucketIndex(confidence) * BUCKET_WIDTH;
+}
+
 /** Predictions that count toward calibration: yes/no outcomes only. */
 function isCalibratable(p: Prediction): boolean {
   return p.status === 'resolved_yes' || p.status === 'resolved_no';

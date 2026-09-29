@@ -10,7 +10,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { ResolvePrompt } from './ResolvePrompt';
+import { bucketLine, ResolvePrompt } from './ResolvePrompt';
 
 const USER = 'local-user-v1';
 
@@ -57,11 +57,15 @@ describe('ResolvePrompt', () => {
       expect(screen.getByText('Ship the prototype')).toBeTruthy();
     });
 
-    fireEvent.changeText(
-      screen.getByTestId('reflection-field'),
-      'shipped on time',
-    );
     fireEvent.press(screen.getByTestId('resolve-yes'));
+
+    // The reflection comes after the answer, on the acknowledgement step.
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded')).toBeTruthy();
+    });
+    expect(onResolved).not.toHaveBeenCalled();
+    fireEvent.changeText(screen.getByTestId('reflection-field'), 'shipped on time');
+    fireEvent.press(screen.getByTestId('resolve-done'));
 
     await waitFor(() => {
       expect(onResolved).toHaveBeenCalledTimes(1);
@@ -124,5 +128,75 @@ describe('ResolvePrompt layout', () => {
     });
     expect(screen.getByTestId('resolve-stated')).toHaveTextContent(/you said 80%/);
     expect(screen.getByText('Did it happen?')).toBeTruthy();
+  });
+});
+
+describe('ResolvePrompt acknowledgement', () => {
+  it('states the bucket in counts after a Yes or No, the same for both', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('resolve-no'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-bucket-line')).toBeTruthy();
+    });
+    expect(screen.getByText("That's your first call in the 80–100% range.")).toBeTruthy();
+  });
+
+  it('finishes without a reflection, leaving it empty', async () => {
+    await insertPrediction(samplePending());
+    const onResolved = jest.fn();
+    render(<ResolvePrompt predictionId="p1" onResolved={onResolved} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-done')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-done'));
+
+    await waitFor(() => {
+      expect(onResolved).toHaveBeenCalledTimes(1);
+    });
+    expect((await getPrediction('p1'))?.reflection).toBeNull();
+  });
+
+  it('skips straight through, with no acknowledgement step', async () => {
+    await insertPrediction(samplePending());
+    const onResolved = jest.fn();
+    render(<ResolvePrompt predictionId="p1" onResolved={onResolved} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-skip')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('resolve-skip'));
+
+    await waitFor(() => {
+      expect(onResolved).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.queryByTestId('resolve-recorded')).toBeNull();
+  });
+});
+
+describe('bucketLine', () => {
+  it('counts what has happened in the range', () => {
+    expect(
+      bucketLine({
+        low: 60,
+        high: 80,
+        total_resolved: 9,
+        resolved_yes: 6,
+        stated_confidence_mean: 70,
+        actual_rate: 6 / 9,
+        bucket_error: 0.03,
+        direction: 'calibrated',
+      }),
+    ).toBe('In your 60–80% range, 6 of 9 have happened.');
   });
 });

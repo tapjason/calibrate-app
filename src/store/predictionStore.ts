@@ -16,6 +16,7 @@ import {
   listPendingPredictions,
   listResolvedPredictions,
   resolvePrediction,
+  setPredictionReflection,
 } from '@/db/predictions';
 import type { Category, Prediction, ResolvedStatus } from '@/types';
 
@@ -48,6 +49,8 @@ interface PredictionState {
     reflection?: string,
   ) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /** Attach (or clear, with an empty string) a reflection after resolving. */
+  reflect: (id: string, reflection: string) => Promise<void>;
 }
 
 function nowIso(): string {
@@ -167,6 +170,14 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
         correct: outcome === 'resolved_yes',
       });
     }
+  },
+
+  reflect: async (id, reflection) => {
+    requireUserId();
+    const text = reflection.trim();
+    // A reflection changes no statistic, so no recompute — just the row.
+    await setPredictionReflection(id, text.length > 0 ? text : null);
+    await get().loadResolved();
   },
 
   remove: async (id) => {

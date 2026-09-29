@@ -16,6 +16,7 @@ import {
   upsertUserStat,
 } from '@/db/stats';
 import {
+  bucketLowFor,
   computeCalibration,
   evaluateBadge,
   isRatingProvisional,
@@ -31,6 +32,7 @@ import {
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import type {
+  BucketStat,
   CalibrationResult,
   Category,
   CategoryStat,
@@ -72,6 +74,12 @@ interface StatsState {
    * Feeds the Log screen's range-coverage nudge via `coverageNudgeNow()`.
    */
   coverageGap: CoverageGap;
+  /**
+   * The user's bucket that a stated confidence falls in, or null if it has no
+   * resolutions yet. Lets Resolve say "6 of 9 in your 60–80% range" without
+   * the UI knowing the bucket convention.
+   */
+  bucketFor: (confidence: number) => BucketStat | null;
   /** Pull persisted stats from the DB into the store and refresh buckets. */
   loadForUser: (userId: string) => Promise<void>;
   /** Re-run the engine over all of a user's predictions and persist. */
@@ -107,13 +115,18 @@ function isYesNo(p: Prediction): boolean {
   return p.status === 'resolved_yes' || p.status === 'resolved_no';
 }
 
-export const useStatsStore = create<StatsState>((set) => ({
+export const useStatsStore = create<StatsState>((set, get) => ({
   userStat: null,
   categoryStats: [],
   nextBadges: {},
   calibration: EMPTY_CALIBRATION,
   trends: EMPTY_TRENDS,
   coverageGap: EMPTY_COVERAGE_GAP,
+
+  bucketFor: (confidence) => {
+    const low = bucketLowFor(confidence);
+    return get().calibration.buckets.find((b) => b.low === low) ?? null;
+  },
 
   loadForUser: async (userId) => {
     // Persisted scalars + an on-demand bucket recompute. The buckets aren't

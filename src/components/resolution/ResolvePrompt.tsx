@@ -5,21 +5,37 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { colors, roundedFamily, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
-import type { Prediction, ResolvedStatus } from '@/types';
+import { useStatsStore } from '@/store/statsStore';
+import type { BucketStat, Prediction, ResolvedStatus } from '@/types';
 
 interface ResolvePromptProps {
   /** Prediction id read from the URL or notification payload. */
   predictionId: string;
-  /** Called after a successful resolve. */
+  /** Called when the user is finished here (after answering, or skipping). */
   onResolved?: () => void;
 }
 
 /**
- * Renders the yes/no/skip prompt for a single prediction.
+ * "In your 60–80% range, 6 of 9 have happened." Counts, not a verdict, so it
+ * is honest below min-N — and it is the natural-frequency habit applied at the
+ * moment it means most (DESIGN_SYSTEM §7.10).
+ */
+export function bucketLine(bucket: BucketStat): string {
+  const range = `${bucket.low}–${bucket.high}%`;
+  const n = bucket.total_resolved;
+  if (n === 1) return `That's your first call in the ${range} range.`;
+  return `In your ${range} range, ${bucket.resolved_yes} of ${n} have happened.`;
+}
+
+/**
+ * Resolve one prediction: what you said, then the question, then — after the
+ * answer — one factual line about that confidence range and an optional
+ * reflection. The reflection comes after the answer because typing first
+ * would delay the only required tap.
  *
  * The id arrives untrusted (URL or notification payload). predictionStore
  * .getById applies the current-user filter, so a crafted deep-link can't
- * surface another user's prediction once Supabase auth lands in L5.
+ * surface another user's prediction.
  */
 export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) {
   const [loading, setLoading] = useState(true);
@@ -27,6 +43,8 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
   const [reflection, setReflection] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /** Set once Yes or No has been recorded: the acknowledgement step. */
+  const [answered, setAnswered] = useState<{ line: string | null } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -46,9 +64,29 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
     setError(null);
     setSubmitting(true);
     try {
-      await usePredictionStore
-        .getState()
-        .resolve(prediction.id, outcome, reflection.trim() || undefined);
+      await usePredictionStore.getState().resolve(prediction.id, outcome);
+      if (outcome === 'skipped') {
+        onResolved?.();
+        return;
+      }
+      // Stats recompute inside resolve(), so the bucket already counts this one.
+      const bucket = useStatsStore.getState().bucketFor(prediction.confidence);
+      setAnswered({ line: bucket ? bucketLine(bucket) : null });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const finish = async () => {
+    if (!prediction) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      if (reflection.trim().length > 0) {
+        await usePredictionStore.getState().reflect(prediction.id, reflection);
+      }
       onResolved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -76,6 +114,43 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
     );
   }
 
+  if (answered) {
+    // Same acknowledgement for Yes and No (rule 0.4): no outcome colour, no
+    // celebration — a precise, neutral "recorded".
+    return (
+      <View style={styles.wrap} testID="resolve-recorded">
+        <Text style={styles.recorded} accessibilityRole="header">
+          Recorded
+        </Text>
+        <Text style={styles.title}>{prediction.title}</Text>
+        {answered.line && (
+          <Text style={styles.bucketLine} testID="resolve-bucket-line">
+            {answered.line}
+          </Text>
+        )}
+
+        <TextField
+          label="Reflection (optional)"
+          value={reflection}
+          onChangeText={setReflection}
+          placeholder="What surprised you?"
+          multiline
+          maxLength={500}
+          testID="reflection-field"
+        />
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <Button
+          label={submitting ? 'Saving…' : 'Done'}
+          onPress={() => void finish()}
+          disabled={submitting}
+          testID="resolve-done"
+        />
+      </View>
+    );
+  }
+
   if (prediction.status !== 'pending') {
     return (
       <View style={styles.center}>
@@ -96,16 +171,6 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
       </Text>
       <Text style={styles.category}>{prediction.category}</Text>
       <Text style={styles.title}>{prediction.title}</Text>
-
-      <TextField
-        label="Reflection (optional)"
-        value={reflection}
-        onChangeText={setReflection}
-        placeholder="What surprised you?"
-        multiline
-        maxLength={500}
-        testID="reflection-field"
-      />
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -178,6 +243,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: space.sm },
   // Yes and No share the width equally; Skip takes only what it needs.
   answer: { flex: 1 },
+  recorded: { ...type.title3, color: colors.textSecondary, marginBottom: space.sm },
+  bucketLine: { ...type.callout, color: colors.textPrimary, marginBottom: space.xxl },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   notFoundTitle: { ...type.headline, color: colors.textPrimary, marginBottom: space.sm },
   notFoundBody: { ...type.subhead, color: colors.textSecondary, textAlign: 'center' },

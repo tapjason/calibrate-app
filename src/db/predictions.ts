@@ -14,6 +14,7 @@ import type {
   ListResolvedPredictions,
   ResolvePrediction,
   DeletePrediction,
+  SetReflection,
 } from '@/types';
 
 import { getDb } from './client';
@@ -137,6 +138,22 @@ export const resolvePrediction: ResolvePrediction = async (id, outcome, reflecti
            updated_at = ?, dirty = 1
        WHERE id = ? AND status = 'pending'`,
     [outcome, now, reflection ?? null, now, id],
+  );
+};
+
+/**
+ * The reflection is written after the answer (DESIGN_SYSTEM §7.10: typing
+ * first would delay the only required tap), so it lands on a row that is
+ * already resolved. `status != 'pending'` keeps it from attaching to an
+ * unanswered prediction; `dirty = 1` sends it through sync like any edit.
+ */
+export const setPredictionReflection: SetReflection = async (id, reflection) => {
+  const now = nowIso();
+  await getDb().run(
+    `UPDATE predictions
+       SET reflection = ?, updated_at = ?, dirty = 1
+       WHERE id = ? AND status != 'pending'`,
+    [reflection, now, id],
   );
 };
 
