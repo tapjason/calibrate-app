@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 
 interface CoverageNudgeProps {
   /** Confidence the accept button pre-sets, shown in the copy. */
@@ -40,17 +40,23 @@ export function CoverageNudge({
         {suggestedConfidence}% tells us far more.
       </Text>
       <View style={styles.actions}>
+        {/* Secondary on purpose: Save is the one primary action on Log
+            (DESIGN_SYSTEM §7.12). */}
         <Button
           label={`Start at ${suggestedConfidence}%`}
+          variant="secondary"
           onPress={onAccept}
           testID="coverage-nudge-accept"
         />
-        <Button
-          label="Not now"
-          variant="secondary"
+        <Pressable
           onPress={onDismiss}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={styles.notNow}
           testID="coverage-nudge-dismiss"
-        />
+        >
+          <Text style={styles.notNowText}>Not now</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -62,17 +68,19 @@ export function CoverageNudge({
  */
 const LOW_END_LABEL = 40;
 
+// A quiet inline card: sunken, not brand-tinted, so it never competes with
+// Save (DESIGN_SYSTEM §7.12).
 const styles = StyleSheet.create({
   wrap: {
-    borderWidth: 1,
-    borderColor: colors.brand200,
-    backgroundColor: colors.brand50,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 16,
-    gap: 8,
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    gap: space.sm,
+    marginBottom: space.lg,
+    padding: space.lg,
   },
-  title: { fontSize: 15, fontWeight: '600', color: colors.brand800 },
-  body: { fontSize: 13, lineHeight: 19, color: colors.brand700 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  title: { ...type.headline, color: colors.textPrimary },
+  body: { ...type.subhead, color: colors.textSecondary },
+  actions: { alignItems: 'center', flexDirection: 'row', gap: space.lg, marginTop: space.xs },
+  notNow: { paddingVertical: space.sm },
+  notNowText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
 });
