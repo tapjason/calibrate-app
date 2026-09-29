@@ -172,3 +172,18 @@ describe('CalibrationChart honesty', () => {
     expect(view.getByTestId('point-60-n')).toBeTruthy();
   });
 });
+
+describe('CalibrationChart reveal', () => {
+  it('still renders every dot and the line when animating in', () => {
+    const view = render(
+      <CalibrationChart
+        animateIn
+        buckets={[bucket({ low: 20 }), bucket({ low: 80, high: 100 })]}
+      />,
+    );
+    layout(view);
+    expect(view.getByTestId('calibration-curve-line')).toBeTruthy();
+    expect(view.getByTestId('point-20')).toBeTruthy();
+    expect(view.getByTestId('point-80')).toBeTruthy();
+  });
+});

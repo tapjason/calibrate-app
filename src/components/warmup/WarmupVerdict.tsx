@@ -47,7 +47,7 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         </View>
       </View>
 
-      <CalibrationChart buckets={result.buckets} />
+      <CalibrationChart buckets={result.buckets} animateIn />
 
       <Text style={styles.advice}>{verdict.advice}</Text>
 

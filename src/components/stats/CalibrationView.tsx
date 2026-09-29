@@ -7,6 +7,7 @@ import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
 import { CoverageRow } from '@/components/stats/CoverageRow';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
+import { CountUp } from '@/components/ui/CountUp';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import {
   MIN_N_OVERALL,
@@ -57,9 +58,7 @@ export function CalibrationView({
             />
           ) : (
             <>
-              <Text style={styles.rating} testID="rating-value">
-                {headline.rating}
-              </Text>
+              <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
               <Text style={styles.ratingLabel}>calibration rating</Text>
             </>
           )}

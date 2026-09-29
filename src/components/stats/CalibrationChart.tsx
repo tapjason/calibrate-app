@@ -1,5 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedProps,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, {
   Circle,
   G,
@@ -17,7 +24,20 @@ import { describeCalibrationCurve } from './chartDescription';
 interface CalibrationChartProps {
   /** Non-empty buckets. Empty renders the ghost chart: frame, regions, diagonal. */
   buckets: BucketStat[];
+  /**
+   * Play the `reveal` motion (DESIGN_SYSTEM §6.1): the line draws in over
+   * 400 ms, then the dots land 60 ms apart. Only for reveal moments — the
+   * Warmup verdict — never on an ordinary visit to Stats.
+   */
+  animateIn?: boolean;
 }
+
+const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
+const AnimatedG = Animated.createAnimatedComponent(G);
+
+const DRAW_MS = 400;
+const DOT_STAGGER_MS = 60;
+const DOT_FADE_MS = 200;
 
 // Plot geometry. The drawing area is a square (stated 0–100% on x, actual
 // 0–100% on y); padding leaves room for the axis ticks and labels.
@@ -51,7 +71,9 @@ const MARK: Record<Direction, string> = {
  *
  * react-native-svg, so it draws identically on web and native.
  */
-export function CalibrationChart({ buckets }: CalibrationChartProps) {
+export function CalibrationChart({ buckets, animateIn = false }: CalibrationChartProps) {
+  const reduceMotion = useReducedMotion();
+  const animate = animateIn && !reduceMotion;
   const [width, setWidth] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
@@ -68,9 +90,13 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
   const maxN = points.reduce((m, b) => Math.max(m, b.total_resolved), 1);
   const radiusOf = (n: number) => 4 + (n / maxN) * 6; // 4–10 px
 
-  const polyline = points
-    .map((b) => `${xOf(b.stated_confidence_mean)},${yOf(b.actual_rate)}`)
-    .join(' ');
+  const coords = points.map((b) => [xOf(b.stated_confidence_mean), yOf(b.actual_rate)]);
+  const polyline = coords.map(([x, y]) => `${x},${y}`).join(' ');
+  const lineLength = coords.reduce(
+    (sum, [x, y], i) =>
+      i === 0 ? 0 : sum + Math.hypot(x - coords[i - 1][0], y - coords[i - 1][1]),
+    0,
+  );
 
   const left = xOf(0);
   const right = xOf(100);
@@ -181,23 +207,27 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
           {/* Connecting line: neutral and thin — five buckets are not a
               function, the dots are the data. */}
           {points.length > 1 ? (
-            <Polyline
-              testID="calibration-curve-line"
-              points={polyline}
-              fill="none"
-              stroke={colors.textTertiary}
-              strokeWidth={1.5}
-            />
+            animate ? (
+              <DrawnLine points={polyline} length={lineLength} />
+            ) : (
+              <Polyline
+                testID="calibration-curve-line"
+                points={polyline}
+                fill="none"
+                stroke={colors.textTertiary}
+                strokeWidth={1.5}
+              />
+            )
           ) : null}
 
-          {points.map((b) => {
+          {points.map((b, i) => {
             const cx = xOf(b.stated_confidence_mean);
             const cy = yOf(b.actual_rate);
             const r = radiusOf(b.total_resolved);
             // Label above the dot unless that would leave the plot.
             const labelY = cy - r - 4 < top + TICK_FONT ? cy + r + TICK_FONT : cy - r - 4;
             return (
-              <G key={b.low}>
+              <DotGroup key={b.low} animate={animate} delay={DRAW_MS + i * DOT_STAGGER_MS}>
                 <Circle
                   testID={`point-${b.low}`}
                   cx={cx}
@@ -218,7 +248,7 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
                 >
                   {`n=${b.total_resolved}`}
                 </SvgText>
-              </G>
+              </DotGroup>
             );
           })}
         </Svg>
@@ -238,3 +268,41 @@ const styles = StyleSheet.create({
   wrap: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   caption: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
 });
+
+/** The connecting line, drawn in by animating its dash offset. */
+function DrawnLine({ points, length }: { points: string; length: number }) {
+  const offset = useSharedValue(length);
+  useEffect(() => {
+    offset.value = withTiming(0, { duration: DRAW_MS });
+  }, [offset]);
+  const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: offset.value }));
+  return (
+    <AnimatedPolyline
+      testID="calibration-curve-line"
+      points={points}
+      fill="none"
+      stroke={colors.textTertiary}
+      strokeWidth={1.5}
+      strokeDasharray={`${length} ${length}`}
+      animatedProps={animatedProps}
+    />
+  );
+}
+
+/** A dot and its n label, fading in after the line when animating. */
+function DotGroup({
+  animate,
+  delay,
+  children,
+}: {
+  animate: boolean;
+  delay: number;
+  children: React.ReactNode;
+}) {
+  const opacity = useSharedValue(animate ? 0 : 1);
+  useEffect(() => {
+    if (animate) opacity.value = withDelay(delay, withTiming(1, { duration: DOT_FADE_MS }));
+  }, [animate, delay, opacity]);
+  const animatedProps = useAnimatedProps(() => ({ opacity: opacity.value }));
+  return <AnimatedG animatedProps={animatedProps}>{children}</AnimatedG>;
+}

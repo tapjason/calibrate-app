@@ -1,4 +1,10 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { colors, radius, type } from '@/constants/theme';
 
@@ -12,6 +18,13 @@ interface ButtonProps {
   accessibilityLabel?: string;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// DESIGN_SYSTEM §6.1 `press`: scale 0.97 on a stiff spring, ~120 ms. Under
+// Reduce Motion it becomes a plain opacity dip — feedback without movement.
+const PRESS_SCALE = 0.97;
+const SPRING = { damping: 20, stiffness: 320 };
+
 export function Button({
   label,
   onPress,
@@ -20,23 +33,33 @@ export function Button({
   testID,
   accessibilityLabel,
 }: ButtonProps) {
+  const reduceMotion = useReducedMotion();
+  const pressed = useSharedValue(0);
+
+  const pressStyle = useAnimatedStyle(() =>
+    reduceMotion
+      ? { opacity: 1 - pressed.value * 0.2 }
+      : { transform: [{ scale: 1 - pressed.value * (1 - PRESS_SCALE) }] },
+  );
+
   return (
-    <Pressable
+    <AnimatedPressable
       testID={testID}
       onPress={onPress}
+      onPressIn={() => {
+        pressed.value = reduceMotion ? 1 : withSpring(1, SPRING);
+      }}
+      onPressOut={() => {
+        pressed.value = reduceMotion ? 0 : withSpring(0, SPRING);
+      }}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled }}
-      style={({ pressed }) => [
-        styles.base,
-        styles[variant],
-        pressed && styles.pressed,
-        disabled && styles.disabled,
-      ]}
+      style={[styles.base, styles[variant], disabled && styles.disabled, pressStyle]}
     >
       <Text style={[styles.labelBase, styles[`label_${variant}`]]}>{label}</Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -62,7 +85,6 @@ const styles = StyleSheet.create({
   },
   // Destructive actions only (sign-out, delete) — never an outcome.
   danger: { backgroundColor: colors.destructive },
-  pressed: { opacity: 0.8 },
   disabled: { opacity: 0.4 },
   labelBase: type.headline,
   label_primary: { color: colors.onBrand },
