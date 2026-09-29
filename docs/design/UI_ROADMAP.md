@@ -49,8 +49,7 @@ keeps `npm test` green. Steps 1–5 need no product sign-off.
    Wrapped story (§7.14) — a receipt line from the busiest bucket
    (`WrappedSummary.receipt`) and a provisional line that points at overall progress
    instead of asking for 20 resolutions in a week — and the "next badge" line
-   ("Tracker in health: 3 to go") with an interim `BadgeBlueprint` emblem that step 8's
-   `LensEmblem` replaces.
+   ("Tracker in health: 3 to go"), now drawn with `LensEmblem`.
 1. **Tokens.** Create `src/constants/theme.ts` (colour, type, space, radius, shadow
    from DESIGN_SYSTEM §2–§4), **shaped as light/dark pairs** even though only light
    ships (§2.4). Migrate files one PR at a time; start with the contrast
@@ -110,6 +109,7 @@ no haptics, symbols, glass or `ui-rounded`).
 | 2 Icons and haptics | **Haptics done** (`src/components/ui/haptics.ts`: detent, commit, resolve — identical for Yes/No/Skip — and unlock, reserved). SF Symbols not started. Haptics need a device to verify. |
 | 3 Confidence control | **Done.** `ConfidenceControl`: 48-pt readout + "about 7 times in 10", 5% slider with a detent haptic per step, tinted "honest uncertainty" band on Log, ±5 kept, still one `adjustable` element for VoiceOver (slider hidden from it). Used by Log and the Warmup (50–100). |
 | 7 Warmup → verdict → share | **Share half done.** The Warmup verdict is now the Day-0 share card (`WarmupCard`: "I run hot · 77% sure, 50% right", labelled a warm-up), Share is never empty, and the verdict screen has "Share my result". Not done: branded first screen and the verdict reveal motion (needs step 6). |
+| 8 Lens emblem | **Done.** `LensEmblem` (all five tiers by fill + ring count + bezel, blueprint + progress stroke for unearned tiers) replaces the emoji in Stats and on the identity card and the interim `BadgeBlueprint` on Wrapped; `BADGE_META` has no `emoji`. The category SF Symbol in the corner waits for step 2. |
 | 4 Provisional states | **Done, as a bar.** `UnlockProgress` (resolved / on their way / to go) on Home and Stats. The ring shape waits for Reanimated (step 6). Ghost chart not done. |
 | 12 Everyday surfaces | **Partly.** Resolve leads with "On 3 Sep you said 70%", equal-width neutral Yes/No; date-grouped Today list; neutral card statuses; Log chip labels + "Due Monday, 5 Oct"; Coach dismiss + caveat; weekly Wrapped receipt + badge line. Since done (2026-09-29): the "In your 60–80% range, 6 of 9 have happened" line and reflection-after-answer (`statsStore.bucketFor`, `predictionStore.reflect`). Not done: "Pick a date" (new native package), Coach evidence number (see below). |
 | 13 Notifications | **Done** (copy, placeholders via categories, passive digest). Actions and evening timing are D8 / D9. |

@@ -57,6 +57,10 @@ export interface Palette {
   // an outcome colour and never used for a miss.
   cautionText: string;
   cautionBackground: string;
+
+  // Oracle emblem only: the gold hairline and the gradient's far stop.
+  oracleGold: string;
+  oracleViolet: string;
 }
 
 const light: Palette = {
@@ -94,6 +98,9 @@ const light: Palette = {
 
   cautionText: '#92400E', // 6.37:1 on cautionBackground
   cautionBackground: '#FEF3C7',
+
+  oracleGold: '#B7791F',
+  oracleViolet: '#6D28D9',
 };
 
 /** Proposed (DESIGN_SYSTEM §2.5, roadmap D7). Not wired to anything yet. */
@@ -132,6 +139,9 @@ const dark: Palette = {
 
   cautionText: '#F5C77A', // 10.7:1 on dark cautionBackground
   cautionBackground: '#2A1A05',
+
+  oracleGold: '#E8B64C',
+  oracleViolet: '#6D28D9',
 };
 
 export const palettes = { light, dark } as const;

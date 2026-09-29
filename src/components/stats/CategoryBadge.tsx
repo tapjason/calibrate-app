@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import { colors } from '@/constants/theme';
 import type { CategoryStat, NextBadgeTarget } from '@/types';
@@ -32,7 +33,7 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
         style={[styles.chip, { backgroundColor: meta.background }]}
         testID={`badge-${stat.category}`}
       >
-        <Text style={styles.chipEmoji}>{meta.emoji}</Text>
+        <LensEmblem tier={stat.badge_level} size={22} />
         <Text style={[styles.chipLabel, { color: meta.color }]}>{meta.label}</Text>
       </View>
     </View>
@@ -90,6 +91,5 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     gap: 5,
   },
-  chipEmoji: { fontSize: 13 },
   chipLabel: { fontSize: 13, fontWeight: '700' },
 });

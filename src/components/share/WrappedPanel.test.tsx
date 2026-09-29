@@ -226,7 +226,7 @@ describe('WrappedPanel', () => {
 
     expect(screen.getByTestId('wrapped-next-badge')).toBeTruthy();
     expect(screen.getByText('Tracker in health: 3 to go')).toBeTruthy();
-    expect(screen.getByTestId('badge-blueprint-progress', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('lens-tracker-progress', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('hides the badge row when there is nothing to work toward', () => {

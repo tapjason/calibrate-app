@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
@@ -59,7 +60,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(
                 testID={`card-badge-${c.category}`}
                 style={[styles.chip, { backgroundColor: meta.background }]}
               >
-                <Text style={styles.chipEmoji}>{meta.emoji}</Text>
+                <LensEmblem tier={c.badge_level} size={18} />
                 <Text style={[styles.chipLabel, { color: meta.color }]}>
                   {c.category}
                 </Text>
@@ -104,7 +105,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  chipEmoji: { fontSize: 13 },
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
   footer: {
     borderTopWidth: 1,

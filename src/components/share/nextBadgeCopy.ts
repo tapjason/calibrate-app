@@ -11,10 +11,12 @@
 // not an inference, so it is honest at any sample size (DESIGN_SYSTEM §7.14).
 
 import { BADGE_META } from '@/constants/badges';
-import type { Category, CategoryStat, NextBadgeTarget } from '@/types';
+import type { BadgeLevel, Category, CategoryStat, NextBadgeTarget } from '@/types';
 
 export interface BadgeProgress {
   category: Category;
+  /** The tier being worked toward, drawn as a blueprint emblem. */
+  badge: BadgeLevel;
   /** Display label of the badge being worked toward, e.g. "Tracker". */
   badgeLabel: string;
   /** "Tracker in health: 3 to go". */
@@ -68,6 +70,7 @@ export function nextBadgeProgress(
     const badgeLabel = BADGE_META[next.badge].label;
     return {
       category: stat.category,
+      badge: next.badge,
       badgeLabel,
       text: `${badgeLabel} in ${stat.category}: ${remaining} to go`,
       progress: stat.predictions_resolved / (next.needResolved as number),
@@ -92,6 +95,7 @@ export function nextBadgeProgress(
     const badgeLabel = BADGE_META[next.badge].label;
     return {
       category: stat.category,
+      badge: next.badge,
       badgeLabel,
       text: `${badgeLabel} in ${stat.category}: a score above ${next.needScore} (now ${Math.floor(
         stat.calibration_score,

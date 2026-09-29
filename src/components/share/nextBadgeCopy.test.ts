@@ -37,6 +37,7 @@ describe('nextBadgeProgress', () => {
   it('counts down resolutions to the next badge', () => {
     expect(progressFor([stat('health', 17, 60)])).toEqual({
       category: 'health',
+      badge: 'tracker',
       badgeLabel: 'Tracker',
       text: 'Tracker in health: 3 to go',
       progress: 17 / 20,
@@ -68,6 +69,7 @@ describe('nextBadgeProgress', () => {
   it('names the score gate when no category is short on resolutions', () => {
     expect(progressFor([stat('work', 25, 64.8)])).toEqual({
       category: 'work',
+      badge: 'forecaster',
       badgeLabel: 'Forecaster',
       text: 'Forecaster in work: a score above 70 (now 64)',
       progress: null,

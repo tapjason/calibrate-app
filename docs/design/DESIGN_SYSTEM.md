@@ -350,9 +350,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 - The category SF Symbol sits small in a corner; the label is always written
   ("Sharp · Health").
 - **Provisional / not yet earned:** blueprint rendering (outline, 40% opacity) with a
-  progress arc and "9/15 to unlock". Until `LensEmblem` exists, the Wrapped card uses
-  `src/components/share/BadgeBlueprint.tsx` (same geometry: dashed square, dotted
-  diagonal, a solid stroke tracing the outline for progress).
+  progress arc and "9/15 to unlock". Implemented as `LensEmblem`'s `progress` prop: the
+  outline goes dashed and faint, and a solid stroke traces it as far as the user has
+  come (`src/components/ui/LensEmblem.tsx`).
 - Each tier shows its receipt in one line: "Sharp: 52 resolved, score 87". Badge
   criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
   presentation only and loses its `emoji` field.

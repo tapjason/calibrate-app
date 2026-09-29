@@ -1,13 +1,13 @@
 import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { BADGE_META } from '@/constants/badges';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { colors } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
-import { BadgeBlueprint } from './BadgeBlueprint';
 import type { BadgeProgress } from './nextBadgeCopy';
 import { wrappedStory, type OverallProgress } from './wrappedCopy';
 
@@ -76,9 +76,11 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
 
         {badge && (
           <View style={styles.badgeRow} testID="wrapped-next-badge">
-            <BadgeBlueprint
+            <LensEmblem
+              tier={badge.badge}
+              size={44}
               progress={badge.progress}
-              trackColor={theme.accent}
+              inkColor={theme.accent}
               progressColor={theme.foreground}
             />
             <Text style={[styles.badgeText, { color: theme.foreground }]}>
