@@ -3,9 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
-import { BADGE_META } from '@/constants/badges';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { colors } from '@/constants/theme';
+import { roundedFamily } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
@@ -19,6 +18,12 @@ interface WrappedCardProps {
   badge?: BadgeProgress | null;
   /** Cosmetic only (Plus); the free theme is the default. */
   theme?: CardTheme;
+  /**
+   * Put prediction titles on the card. Off by default: a card leaves the
+   * phone, and "Surest thing that didn't" names something the user may not
+   * want in a group chat (DESIGN_SYSTEM §7.5, show/hide before sharing).
+   */
+  showTitles?: boolean;
 }
 
 /**
@@ -34,7 +39,7 @@ interface WrappedCardProps {
  */
 export const WrappedCard = forwardRef<View, WrappedCardProps>(
   function WrappedCard(
-    { summary, overall, badge, theme = WRAPPED_DEFAULT_THEME },
+    { summary, overall, badge, theme = WRAPPED_DEFAULT_THEME, showTitles = false },
     ref,
   ) {
     const story = wrappedStory(summary, overall);
@@ -47,7 +52,16 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
         collapsable={false}
       >
         <Text style={[styles.eyebrow, { color: theme.accent }]}>{story.title}</Text>
-        <Text style={[styles.stat, { color: theme.foreground }]}>{story.stat}</Text>
+        <Text
+          style={[styles.stat, { color: theme.foreground }]}
+          accessibilityLabel={story.stat}
+          testID="wrapped-stat"
+        >
+          {story.statCount}
+        </Text>
+        {story.statRate && (
+          <Text style={[styles.statRate, { color: theme.foreground }]}>{story.statRate}</Text>
+        )}
 
         {story.receipt && (
           <Text
@@ -91,21 +105,18 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
 
         {summary.categories.length > 0 && (
           <View style={styles.badges}>
-            {summary.categories.map((c) => {
-              const meta = BADGE_META.tracker;
-              return (
-                <View
-                  key={c.category}
-                  testID={`wrapped-category-${c.category}`}
-                  style={[styles.chip, { backgroundColor: meta.background }]}
-                >
-                  <Text style={[styles.chipLabel, { color: meta.color }]}>
-                    {c.category}
-                  </Text>
-                  <Text style={styles.chipCount}>{c.resolved}</Text>
-                </View>
-              );
-            })}
+            {summary.categories.map((c) => (
+              <View
+                key={c.category}
+                testID={`wrapped-category-${c.category}`}
+                style={[styles.chip, { borderColor: theme.divider }]}
+              >
+                <Text style={[styles.chipLabel, { color: theme.foreground }]}>
+                  {c.category}
+                </Text>
+                <Text style={[styles.chipCount, { color: theme.muted }]}>{c.resolved}</Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -114,8 +125,8 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
             style={[styles.line, { color: theme.muted }]}
             testID="wrapped-boldest-hit"
           >
-            Boldest call that landed · {summary.boldest_hit.confidence}% ·{' '}
-            {summary.boldest_hit.title}
+            Boldest call that landed · {summary.boldest_hit.confidence}%
+            {showTitles ? ` · ${summary.boldest_hit.title}` : ''}
           </Text>
         )}
         {summary.biggest_miss && (
@@ -123,8 +134,8 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
             style={[styles.line, { color: theme.muted }]}
             testID="wrapped-biggest-miss"
           >
-            Surest thing that didn&apos;t · {summary.biggest_miss.confidence}% ·{' '}
-            {summary.biggest_miss.title}
+            Surest thing that didn&apos;t · {summary.biggest_miss.confidence}%
+            {showTitles ? ` · ${summary.biggest_miss.title}` : ''}
           </Text>
         )}
 
@@ -134,8 +145,9 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(
           <Text style={[styles.footerMark, { color: theme.foreground }]}>
             {APP_NAME}
           </Text>
+          {/* The growth hook, as a question: never the faintest line on the card. */}
           <Text style={[styles.footerHook, { color: theme.accent }]}>
-            Find out where your judgment holds up
+            What are you sharp at?
           </Text>
         </View>
       </View>
@@ -149,26 +161,23 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 24,
   },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  stat: { fontSize: 24, fontWeight: '800', lineHeight: 30 },
+  eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
+  stat: { fontFamily: roundedFamily, fontSize: 34, fontWeight: '800', lineHeight: 40 },
+  statRate: { fontSize: 20, fontWeight: '700', lineHeight: 26, marginBottom: 4 },
   verdict: { fontSize: 15, lineHeight: 21 },
   provisional: { fontSize: 14, lineHeight: 20 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   chip: {
     alignItems: 'center',
     borderRadius: 999,
+    borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
-  chipCount: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  chipCount: { fontSize: 12, fontWeight: '600' },
   line: { fontSize: 13, lineHeight: 19 },
   badgeRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 4 },
   badgeText: { flex: 1, fontSize: 15, fontWeight: '600', lineHeight: 20 },
@@ -179,7 +188,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 14,
   },
-  footerMark: { fontSize: 14, fontWeight: '700' },
-  // The growth hook: never the faintest line on the card (accent is ≥ 4.5:1).
-  footerHook: { fontSize: 13, fontWeight: '600' },
+  footerMark: { fontSize: 15, fontWeight: '700' },
+  footerHook: { fontSize: 14, fontWeight: '600' },
 });

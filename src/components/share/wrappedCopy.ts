@@ -20,6 +20,9 @@ export interface WrappedStory {
   title: string;
   /** Plain counts — always safe to show. */
   stat: string;
+  /** The same fact split for the card: a big count, then the hit rate. */
+  statCount: string;
+  statRate: string | null;
   /** The calibration read, or null while the window is too small to support one. */
   verdict: string | null;
   /**
@@ -65,6 +68,8 @@ export function wrappedStory(
     return {
       title: TITLES[span],
       stat: 'Nothing resolved yet',
+      statCount: 'Nothing resolved yet',
+      statRate: null,
       verdict: null,
       receipt: null,
       provisionalNote: null,
@@ -79,6 +84,8 @@ export function wrappedStory(
   return {
     title: TITLES[span],
     stat: `${resolved} ${plural} resolved · ${hitRate}% came in`,
+    statCount: `${resolved} resolved`,
+    statRate: `${hitRate}% came in`,
     verdict: summary.score_is_provisional
       ? null
       : `${VERDICTS[summary.direction]} — ${stated}% confident on average, right ${hitRate}% of the time.`,

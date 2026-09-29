@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
 import { buildWrapped, type WrappedSpan } from '@/engine/wrapped';
@@ -42,6 +42,8 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Off by default: titles only reach a card someone chose to put them on.
+  const [showTitles, setShowTitles] = useState(false);
 
   // `now` is frozen per render pass of this list so the window doesn't shift
   // underneath a capture that's already in flight.
@@ -49,6 +51,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     () => buildWrapped(resolved, span, new Date()),
     [resolved, span],
   );
+  const hasTitles = summary.boldest_hit !== null || summary.biggest_miss !== null;
 
   // Wrapped's own free look is indigo, so an unthemed card keeps it; a chosen
   // Plus theme applies to both cards, which is what makes it feel like a look
@@ -87,7 +90,31 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
         }
         badge={nextBadgeProgress(categoryStats, nextBadges)}
         theme={theme}
+        showTitles={showTitles}
       />
+
+      {hasTitles && (
+        <Pressable
+          style={styles.toggleRow}
+          onPress={() => setShowTitles((v) => !v)}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: showTitles }}
+          accessibilityLabel="Show prediction titles on the card"
+          testID="wrapped-titles-toggle"
+        >
+          <Text style={styles.toggleLabel}>Show prediction titles on the card</Text>
+          <Switch
+            value={showTitles}
+            onValueChange={setShowTitles}
+            trackColor={{ true: colors.brand600, false: colors.controlBorder }}
+            thumbColor={colors.surface}
+            ios_backgroundColor={colors.controlBorder}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            {...{ activeThumbColor: colors.surface }}
+          />
+        </Pressable>
+      )}
 
       <Button
         label={sharing ? 'Preparing…' : 'Share my recap'}
@@ -108,4 +135,12 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
   message: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
+  toggleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  toggleLabel: { color: colors.textPrimary, flex: 1, fontSize: 15 },
 });

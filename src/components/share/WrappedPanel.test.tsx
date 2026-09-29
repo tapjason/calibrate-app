@@ -96,7 +96,12 @@ describe('WrappedPanel', () => {
     seed(run(4, 3));
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText('4 predictions resolved · 75% came in')).toBeTruthy();
+    expect(screen.getByText('4 resolved')).toBeTruthy();
+    expect(screen.getByText('75% came in')).toBeTruthy();
+    // Read as one sentence by screen readers.
+    expect(screen.getByTestId('wrapped-stat').props.accessibilityLabel).toBe(
+      '4 predictions resolved · 75% came in',
+    );
   });
 
   // CLAUDE.md: no verdict on data too thin to support one.
@@ -159,6 +164,11 @@ describe('WrappedPanel', () => {
     render(<WrappedPanel span="week" />);
 
     expect(screen.getByTestId('wrapped-boldest-hit')).toBeTruthy();
+    // Titles stay off the card until the user asks for them.
+    expect(screen.queryByText(/Ship the beta/)).toBeNull();
+    expect(screen.queryByText(/Close the deal/)).toBeNull();
+
+    fireEvent.press(screen.getByTestId('wrapped-titles-toggle'));
     expect(screen.getByText(/Ship the beta/)).toBeTruthy();
     expect(screen.getByText(/Close the deal/)).toBeTruthy();
   });
