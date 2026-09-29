@@ -243,3 +243,19 @@ describe('ResolvePrompt milestones', () => {
     expect(screen.queryByTestId(/^milestone-/)).toBeNull();
   });
 });
+
+describe('ResolvePrompt recorded label', () => {
+  it('says which answer was recorded, in words', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
+        "Recorded: it didn't happen",
+      );
+    });
+  });
+});

@@ -3,8 +3,16 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
+import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { TextField } from '@/components/ui/TextField';
-import { colors, roundedFamily, space, tabularNums, type } from '@/constants/theme';
+import {
+  colors,
+  radius,
+  roundedFamily,
+  space,
+  tabularNums,
+  type,
+} from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { BucketStat, Milestone, Prediction, ResolvedStatus } from '@/types';
@@ -48,6 +56,7 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
   const [submitting, setSubmitting] = useState(false);
   /** Set once Yes or No has been recorded: the acknowledgement step. */
   const [answered, setAnswered] = useState<{
+    outcome: 'resolved_yes' | 'resolved_no';
     line: string | null;
     milestone: Milestone | null;
   } | null>(null);
@@ -83,7 +92,11 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
       // Stats recompute inside resolve(), so the bucket already counts this one.
       const stats = useStatsStore.getState();
       const bucket = stats.bucketFor(prediction.confidence);
-      setAnswered({ line: bucket ? bucketLine(bucket) : null, milestone: stats.milestone });
+      setAnswered({
+        outcome,
+        line: bucket ? bucketLine(bucket) : null,
+        milestone: stats.milestone,
+      });
       stats.clearMilestone();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -132,15 +145,31 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
     // celebration — a precise, neutral "recorded".
     return (
       <View style={styles.wrap} testID="resolve-recorded">
-        <Text style={styles.recorded} accessibilityRole="header">
-          Recorded
-        </Text>
+        {/* Says which answer was recorded, in neutral ink: filled vs hollow
+            glyph plus words, never green vs red (DESIGN_SYSTEM §2.4). */}
+        <View style={styles.recordedRow}>
+          <Icon
+            sf={answered.outcome === 'resolved_yes' ? 'checkmark.circle.fill' : 'xmark.circle'}
+            fallback={
+              answered.outcome === 'resolved_yes' ? 'checkmark-circle' : 'close-circle-outline'
+            }
+            size={20}
+            color={colors.textPrimary}
+          />
+          <Text style={styles.recorded} accessibilityRole="header" testID="resolve-recorded-label">
+            {answered.outcome === 'resolved_yes'
+              ? 'Recorded: it happened'
+              : "Recorded: it didn't happen"}
+          </Text>
+        </View>
         <Text style={styles.title}>{prediction.title}</Text>
         {answered.milestone && <MilestoneCard milestone={answered.milestone} />}
         {answered.line && (
-          <Text style={styles.bucketLine} testID="resolve-bucket-line">
-            {answered.line}
-          </Text>
+          <View style={styles.bucketBox}>
+            <Text style={styles.bucketLine} testID="resolve-bucket-line">
+              {answered.line}
+            </Text>
+          </View>
         )}
 
         <TextField
@@ -183,7 +212,10 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
         On {formatLogged(prediction.created_at)} you said{' '}
         <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
       </Text>
-      <Text style={styles.category}>{prediction.category}</Text>
+      <View style={styles.categoryRow}>
+        <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
+        <Text style={styles.category}>{prediction.category}</Text>
+      </View>
       <Text style={styles.title}>{prediction.title}</Text>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -250,15 +282,32 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
     textTransform: 'capitalize',
-    marginBottom: space.xs,
   },
   title: { ...type.title2, color: colors.textPrimary, marginBottom: space.xxl },
   question: { ...type.headline, color: colors.textPrimary, marginBottom: space.md },
   row: { flexDirection: 'row', gap: space.sm },
   // Yes and No share the width equally; Skip takes only what it needs.
   answer: { flex: 1 },
-  recorded: { ...type.title3, color: colors.textSecondary, marginBottom: space.sm },
-  bucketLine: { ...type.callout, color: colors.textPrimary, marginBottom: space.xxl },
+  recordedRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.sm,
+    marginBottom: space.sm,
+  },
+  recorded: { ...type.headline, color: colors.textPrimary },
+  bucketBox: {
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    marginBottom: space.xxl,
+    padding: space.lg,
+  },
+  bucketLine: { ...type.callout, color: colors.textPrimary },
+  categoryRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.xs,
+    marginBottom: space.xs,
+  },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   notFoundTitle: { ...type.headline, color: colors.textPrimary, marginBottom: space.sm },
   notFoundBody: { ...type.subhead, color: colors.textSecondary, textAlign: 'center' },
