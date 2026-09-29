@@ -3,7 +3,9 @@ import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { groupByDue } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { chartTakeaway } from '@/components/stats/chartTakeaway';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
+import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { CountUp } from '@/components/ui/CountUp';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -16,6 +18,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const pending = usePredictionStore((s) => s.pending);
   const userStat = useStatsStore((s) => s.userStat);
+  const buckets = useStatsStore((s) => s.calibration.buckets);
   const headline = ratingHeadline(userStat);
   const groups = groupByDue(pending, new Date());
 
@@ -24,6 +27,17 @@ export default function HomeScreen() {
       <View style={styles.rated}>
         <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
         <Text style={styles.ratingLabel}>calibration rating</Text>
+        <ScoreBar score={headline.rating} testID="home-score-bar" />
+        {/* The one-line read, only when a band has enough to say it
+            (chartTakeaway's own min-N); otherwise the number stands alone. */}
+        {(() => {
+          const t = chartTakeaway(buckets, false);
+          return t.title.startsWith("You're") ? (
+            <Text style={styles.takeaway} testID="home-takeaway">
+              {t.title}
+            </Text>
+          ) : null;
+        })()}
       </View>
     ) : (
       // Never a countdown in the hero slot (DESIGN_SYSTEM §0 rule 2).
@@ -74,6 +88,7 @@ const styles = StyleSheet.create({
   // The hero numeral is always ink (DESIGN_SYSTEM §2.4).
   ratingNumber: { ...type.display, ...tabularNums, color: colors.textPrimary },
   ratingLabel: { ...type.subhead, color: colors.textSecondary },
+  takeaway: { ...type.callout, color: colors.textPrimary, marginTop: space.sm },
   sectionTitle: {
     ...type.eyebrow,
     color: colors.textSecondary,

@@ -6,6 +6,7 @@ import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
 import { CoverageRow } from '@/components/stats/CoverageRow';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
+import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { CountUp } from '@/components/ui/CountUp';
 import { colors, space, tabularNums, type } from '@/constants/theme';
@@ -60,6 +61,7 @@ export function CalibrationView({
             <>
               <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
               <Text style={styles.ratingLabel}>calibration rating</Text>
+              <ScoreBar score={headline.rating} testID="stats-score-bar" />
             </>
           )}
           {/* The progress bar already counts resolutions while provisional. */}
