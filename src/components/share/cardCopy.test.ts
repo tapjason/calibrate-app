@@ -1,6 +1,6 @@
-import type { CategoryStat, UserStat } from '@/types';
+import type { BucketStat, CategoryStat, ShareCard, UserStat } from '@/types';
 
-import { buildShareCard, shareHeadline, shareSubline } from './cardCopy';
+import { buildShareCard, shareHeadline, shareSubline, shareText } from './cardCopy';
 
 function userStat(over: Partial<UserStat> = {}): UserStat {
   return {
@@ -119,5 +119,50 @@ describe('shareSubline', () => {
     expect(shareSubline(card)).toBe(
       '12 more resolutions until my calibration unlocks',
     );
+  });
+});
+
+describe('shareText', () => {
+  const bucket = (low: number, direction: BucketStat['direction']): BucketStat => ({
+    low,
+    high: low + 20,
+    total_resolved: 10,
+    resolved_yes: 5,
+    stated_confidence_mean: low + 10,
+    actual_rate: 0.5,
+    bucket_error: 0,
+    direction,
+  });
+  const card = (rating: number | null): ShareCard => ({
+    categories: [
+      { category: 'health', badge_level: 'sharp' },
+      { category: 'finance', badge_level: 'guesser' },
+    ],
+    rating,
+    total_resolved: 40,
+  });
+
+  it('is Wordle-style once the rating is unlocked: one square per band', () => {
+    const text = shareText(card(81), [
+      bucket(20, 'calibrated'),
+      bucket(40, 'calibrated'),
+      bucket(60, 'overconfident'),
+      bucket(80, 'underconfident'),
+    ]);
+    expect(text).toBe(
+      'My calibration · Calibrate\nSharp in health · Guesser in finance\n⬜🟩🟩🟧🟦 score 81',
+    );
+  });
+
+  // CLAUDE.md: never publish a verdict built on noise.
+  it('drops the squares and score while provisional', () => {
+    const text = shareText(card(null), [bucket(80, 'overconfident')]);
+    expect(text).not.toMatch(/score|🟧/);
+    expect(text).toContain('40 predictions resolved so far');
+  });
+
+  it('never carries a prediction title', () => {
+    const text = shareText(card(81), []);
+    expect(text.split('\n')).toHaveLength(3);
   });
 });

@@ -7,10 +7,13 @@
 // the CONTRAST between the user's best and worst category, not with an average.
 // An average says nothing anyone wants to post.
 
+import { APP_NAME } from '@/constants/app';
 import { BADGE_META } from '@/constants/badges';
 import {
   MIN_N_OVERALL,
   type BadgeLevel,
+  type BucketStat,
+  type Direction,
   type CategoryStat,
   type ShareCard,
   type UserStat,
@@ -91,4 +94,38 @@ export function shareSubline(card: ShareCard): string {
     return `${remaining} more resolutions until my calibration unlocks`;
   }
   return `Calibration ${card.rating}/100 · ${card.total_resolved} predictions resolved`;
+}
+
+/** One square per confidence band, Wordle-style. */
+const SQUARE: Record<Direction, string> = {
+  calibrated: '🟩',
+  overconfident: '🟧',
+  underconfident: '🟦',
+};
+const EMPTY_SQUARE = '⬜';
+const BAND_LOWS = [0, 20, 40, 60, 80] as const;
+
+/**
+ * The plain-text share (DESIGN_SYSTEM §7.5): spoiler-free, pasteable
+ * anywhere, and never containing a prediction title. The squares and the
+ * score appear only once the rating is unlocked — a row of verdicts built on
+ * a handful of predictions is exactly the noise CLAUDE.md forbids publishing.
+ *
+ *   My calibration · Calibrate
+ *   Sharp in health · Guesser in finance
+ *   ⬜🟩🟩🟧🟧 score 81
+ */
+export function shareText(card: ShareCard, buckets: readonly BucketStat[]): string {
+  const lines = [`My calibration · ${APP_NAME}`, shareHeadline(card)];
+  if (card.rating !== null) {
+    const byLow = new Map(buckets.map((b) => [b.low, b.direction]));
+    const squares = BAND_LOWS.map((low) => {
+      const d = byLow.get(low);
+      return d ? SQUARE[d] : EMPTY_SQUARE;
+    }).join('');
+    lines.push(`${squares} score ${card.rating}`);
+  } else {
+    lines.push(`${card.total_resolved} predictions resolved so far`);
+  }
+  return lines.join('\n');
 }

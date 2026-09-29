@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { track } from '@/analytics/track';
 import { resolveTheme } from '@/constants/cardThemes';
 import { colors } from '@/constants/theme';
-import { shareCard, type ShareOutcome } from '@/share/export';
+import { shareCard, shareText, type ShareOutcome } from '@/share/export';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
@@ -14,7 +14,7 @@ import { useWarmupStore } from '@/store/warmupStore';
 
 import { IdentityCard } from './IdentityCard';
 import { ThemePicker } from './ThemePicker';
-import { buildShareCard } from './cardCopy';
+import { buildShareCard, shareText as cardText } from './cardCopy';
 import { WarmupCard } from './WarmupCard';
 import { warmupCardCopy } from './warmupCardCopy';
 
@@ -36,6 +36,7 @@ export function ShareCardPanel({
 }: { onUpgrade?: () => void; onTakeWarmup?: () => void } = {}) {
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
+  const buckets = useStatsStore((s) => s.calibration.buckets);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
   const warmupResult = useWarmupStore((s) => s.result);
@@ -79,6 +80,14 @@ export function ShareCardPanel({
     }
   };
 
+  const onShareText = async () => {
+    if (!card) return;
+    setMessage(null);
+    const outcome = await shareText(cardText(card, buckets));
+    setMessage(outcome === 'shared' ? null : MESSAGES[outcome]);
+    if (outcome === 'shared') void track('share_completed', { surface: 'card' });
+  };
+
   return (
     <View style={styles.wrap} testID="share-panel">
       {card ? (
@@ -95,6 +104,15 @@ export function ShareCardPanel({
         disabled={sharing}
         onPress={onShare}
       />
+      {card && (
+        <Button
+          label="Share as text"
+          variant="secondary"
+          testID="share-text-button"
+          disabled={sharing}
+          onPress={() => void onShareText()}
+        />
+      )}
 
       {message && (
         <Text style={styles.message} testID="share-message">

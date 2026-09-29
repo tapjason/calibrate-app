@@ -10,7 +10,7 @@
 // native modules, matching the pattern in notifications/scheduler.ts.
 
 import type { RefObject } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Share } from 'react-native';
 
 /** What the caller should tell the user. */
 export type ShareOutcome =
@@ -25,6 +25,8 @@ export interface ShareDeps {
   /** Whether the OS exposes a share sheet at all. */
   isAvailable(): Promise<boolean>;
   share(uri: string): Promise<void>;
+  /** Open the share sheet on plain text. Optional so older fakes still fit. */
+  shareText?(message: string): Promise<void>;
 }
 
 let deps: ShareDeps | null = null;
@@ -93,6 +95,28 @@ export async function captureCard(
     // eslint-disable-next-line no-console
     console.warn('[share] capture failed:', e);
     return null;
+  }
+}
+
+/**
+ * Share a plain-text version of the card (DESIGN_SYSTEM §7.5): it pastes into
+ * any chat, needs no image permission, and carries no prediction titles.
+ * React Native's Share uses the Web Share API in a browser that has one.
+ */
+export async function shareText(message: string): Promise<ShareOutcome> {
+  const d = getDeps();
+  const send =
+    d.shareText ??
+    (async (m: string) => {
+      await Share.share({ message: m });
+    });
+  try {
+    await send(message);
+    return 'shared';
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[share] text share failed:', e);
+    return Platform.OS === 'web' ? 'unavailable' : 'failed';
   }
 }
 

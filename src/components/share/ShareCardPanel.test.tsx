@@ -213,3 +213,17 @@ describe('ShareCardPanel — Day 0', () => {
     expect(onTakeWarmup).toHaveBeenCalled();
   });
 });
+
+describe('ShareCardPanel — text share', () => {
+  it('shares a plain-text version of the card', async () => {
+    const shareTextFn = jest.fn(async () => undefined);
+    __setShareDepsForTests({ ...shareDeps(), shareText: shareTextFn });
+    seedStats(USER_STAT, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+
+    fireEvent.press(screen.getByTestId('share-text-button'));
+    await waitFor(() => expect(shareTextFn).toHaveBeenCalled());
+    const [message] = shareTextFn.mock.calls[0] as unknown as [string];
+    expect(message).toContain('Sharp in health · Guesser in finance');
+  });
+});
