@@ -3,8 +3,8 @@
 // and objects out. That purity is what makes this the highest-value test
 // target in the project: every behavior can be pinned with a unit test.
 //
-// Layer rule: this file may only import from @/types. Never reach into
-// src/db/, src/store/, or anywhere else.
+// Layer rule: this file may only import from @/types and ./direction. Never
+// reach into src/db/, src/store/, or anywhere else.
 
 import {
   MIN_N_CATEGORY,
@@ -18,6 +18,8 @@ import {
   type NextBadgeTarget,
   type Prediction,
 } from '@/types';
+
+import { classifyDirection } from './direction';
 
 // 5 buckets of 20% each: [0,20) [20,40) [40,60) [60,80) [80,100]
 // The last bucket is inclusive on both ends so confidence=100 has a home.
@@ -95,6 +97,7 @@ export function computeCalibrationPoints(
       stated_confidence_mean: statedMean,
       actual_rate: actualRate,
       bucket_error: error,
+      direction: classifyDirection(statedMean, actualRate),
     });
   }
 

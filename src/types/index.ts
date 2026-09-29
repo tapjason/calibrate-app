@@ -188,6 +188,7 @@ export interface BucketStat {
   stated_confidence_mean: number; // mean user-stated confidence in this bucket
   actual_rate: number;            // resolved_yes / total_resolved
   bucket_error: number;           // | stated_confidence_mean/100 − actual_rate |
+  direction: Direction;           // which side of the diagonal (5-pt band = calibrated)
 }
 
 /** Aggregate result of running the calibration engine on a set of predictions. */

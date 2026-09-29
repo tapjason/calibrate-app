@@ -6,39 +6,14 @@
 //
 // Layer rule: engine — imports only from @/types and sibling engine files.
 
-import type { Direction, Prediction } from '@/types';
+import type { Prediction } from '@/types';
 
 import { computeCalibrationPoints } from './calibration';
 import { localParts } from './localTime';
 
-// A gap this large (5 percentage points) between mean stated confidence and the
-// actual outcome rate earns an over/under verdict; anything smaller is "close
-// enough" and reads as calibrated. Shared by the Warmup scorer so the two
-// features mean the same thing by "overconfident". EPSILON guards the boundary
-// against float error (e.g. 0.75 − 0.7 = 0.05000000000000004).
-const DIRECTION_THRESHOLD = 0.05;
-const EPSILON = 1e-9;
-
-/**
- * Classify a stated-confidence-vs-reality gap.
- *
- *   gap = meanStatedConfidence/100 − actualRate
- *   gap > +threshold → overconfident   (felt surer than warranted)
- *   gap < −threshold → underconfident  (right more often than it felt)
- *   otherwise        → calibrated
- *
- * @param meanStatedConfidence mean stated confidence, 0–100
- * @param actualRate           actual outcome / hit rate, 0–1
- */
-export function classifyDirection(
-  meanStatedConfidence: number,
-  actualRate: number,
-): Direction {
-  const gap = meanStatedConfidence / 100 - actualRate;
-  if (gap > DIRECTION_THRESHOLD + EPSILON) return 'overconfident';
-  if (gap < -DIRECTION_THRESHOLD - EPSILON) return 'underconfident';
-  return 'calibrated';
-}
+// classifyDirection lives in ./direction so the calibration core can label
+// each bucket with it; re-exported here for existing callers.
+export { classifyDirection } from './direction';
 
 /** Predictions that count: yes/no outcomes only (skips/pending excluded). */
 function isYesNo(p: Prediction): boolean {

@@ -217,3 +217,16 @@ describe('nextBadge', () => {
     expect(nextBadge(5, 95)?.badge).toBe('tracker');
   });
 });
+
+describe('bucket direction', () => {
+  // Same 5-point band as classifyDirection everywhere else in the app.
+  it('labels each bucket by its side of the diagonal', () => {
+    const { buckets } = computeCalibration([
+      ...bucketPreds(90, 10, 5), // said 90, 50% → over
+      ...bucketPreds(30, 10, 7), // said 30, 70% → under
+      ...bucketPreds(70, 10, 7), // said 70, 70% → on the line
+    ]);
+    const byLow = Object.fromEntries(buckets.map((b) => [b.low, b.direction]));
+    expect(byLow).toEqual({ 20: 'underconfident', 60: 'calibrated', 80: 'overconfident' });
+  });
+});

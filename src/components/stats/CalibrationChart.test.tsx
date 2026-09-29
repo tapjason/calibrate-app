@@ -11,6 +11,7 @@ function bucket(partial: Partial<BucketStat> & Pick<BucketStat, 'low'>): BucketS
     stated_confidence_mean: partial.low + 10,
     actual_rate: 0.5,
     bucket_error: 0,
+    direction: 'calibrated',
     ...partial,
   };
 }
@@ -135,5 +136,39 @@ describe('CalibrationChart geometry', () => {
     );
     layout(multi);
     expect(multi.queryByTestId('calibration-curve-line')).toBeTruthy();
+  });
+});
+
+// DESIGN_SYSTEM §7.2: position + tint + words, never colour alone.
+describe('CalibrationChart honesty', () => {
+  it('draws the labelled regions and diagonal even with no data (ghost chart)', () => {
+    const view = render(<CalibrationChart buckets={[]} />);
+    layout(view);
+    expect(view.getByTestId('region-over')).toBeTruthy();
+    expect(view.getByTestId('region-under')).toBeTruthy();
+    expect(view.queryByTestId('calibration-curve-line')).toBeNull();
+  });
+
+  it('colours each dot by the side the engine put it on', () => {
+    const view = render(
+      <CalibrationChart
+        buckets={[
+          bucket({ low: 80, high: 100, direction: 'overconfident' }),
+          bucket({ low: 20, direction: 'underconfident' }),
+          bucket({ low: 40, direction: 'calibrated' }),
+        ]}
+      />,
+    );
+    layout(view);
+    const fills = ['point-80', 'point-20', 'point-40'].map(
+      (id) => view.getByTestId(id).props.fill,
+    );
+    expect(new Set(fills).size).toBe(3);
+  });
+
+  it('labels every dot with its sample size', () => {
+    const view = render(<CalibrationChart buckets={[bucket({ low: 60, total_resolved: 7 })]} />);
+    layout(view);
+    expect(view.getByTestId('point-60-n')).toBeTruthy();
   });
 });

@@ -142,6 +142,15 @@ export const roundedFamily: string | undefined = Platform.select({
 
 const ROUNDED = roundedFamily;
 
+/**
+ * For react-native-svg text. On web an SVG <text> with no family renders in
+ * the browser's serif default; native SVG text already uses the system face.
+ */
+export const svgFontFamily: string | undefined = Platform.select({
+  web: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  default: undefined,
+});
+
 export const type = {
   display: { fontFamily: ROUNDED, fontSize: 64, lineHeight: 68, fontWeight: '700' },
   titleXL: { fontFamily: ROUNDED, fontSize: 34, lineHeight: 41, fontWeight: '700' },

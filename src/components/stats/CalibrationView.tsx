@@ -1,7 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
+import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
+import { CoverageRow } from '@/components/stats/CoverageRow';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { colors, space, tabularNums, type } from '@/constants/theme';
@@ -23,8 +26,6 @@ interface CalibrationViewProps {
   pendingCount?: number;
 }
 
-const BUCKET_LABELS = ['0–20', '20–40', '40–60', '60–80', '80–100'];
-
 /**
  * Calibration visualization. The hero is the calibration curve (stated vs.
  * actual, with a dashed perfect-calibration diagonal); below it each
@@ -39,6 +40,8 @@ export function CalibrationView({
   pendingCount = 0,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
+  const [showTable, setShowTable] = useState(false);
+  const takeaway = chartTakeaway(calibration.buckets, headline?.provisional ?? true);
 
   return (
     <View style={styles.wrap}>
@@ -69,30 +72,45 @@ export function CalibrationView({
         </View>
       ) : null}
 
-      <Text style={styles.sectionTitle}>Calibration curve</Text>
-      {calibration.buckets.length === 0 ? (
-        <Text style={styles.empty}>
-          Resolve a few predictions to see your calibration curve here.
-        </Text>
-      ) : (
+      {/* Title = takeaway, subtitle = natural frequencies (DESIGN_SYSTEM §7.2). */}
+      <Text style={styles.chartTitle} testID="chart-takeaway">
+        {takeaway.title}
+      </Text>
+      {takeaway.subtitle && <Text style={styles.chartSubtitle}>{takeaway.subtitle}</Text>}
+
+      {/* Drawn even when empty: a ghost frame shows what's coming. */}
+      <CalibrationChart buckets={calibration.buckets} />
+      {calibration.buckets.length === 0 && (
+        <Text style={styles.empty}>Resolve a prediction and your first dot lands here.</Text>
+      )}
+
+      <CoverageRow buckets={calibration.buckets} />
+
+      {calibration.buckets.length > 0 && (
         <>
-          <CalibrationChart buckets={calibration.buckets} />
-          {calibration.buckets.map((b) => {
-            const labelIdx = Math.min(
-              Math.floor(b.low / 20),
-              BUCKET_LABELS.length - 1,
-            );
-            return (
+          <Pressable
+            onPress={() => setShowTable((v) => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showTable }}
+            hitSlop={8}
+            testID="chart-table-toggle"
+            style={styles.tableToggle}
+          >
+            <Text style={styles.tableToggleText}>
+              {showTable ? 'Hide table' : 'Show as table'}
+            </Text>
+          </Pressable>
+          {showTable &&
+            calibration.buckets.map((b) => (
               <View key={b.low} style={styles.bucketRow} testID={`bucket-${b.low}`}>
-                <Text style={styles.bucketLabel}>{BUCKET_LABELS[labelIdx]}%</Text>
+                <Text style={styles.bucketLabel}>{rangeLabel(b)}</Text>
                 <Text style={styles.bucketDetail}>
-                  stated {Math.round(b.stated_confidence_mean)}% · actual{' '}
+                  said {Math.round(b.stated_confidence_mean)}% · happened{' '}
                   {Math.round(b.actual_rate * 100)}%
                 </Text>
                 <Text style={styles.bucketCount}>n={b.total_resolved}</Text>
               </View>
-            );
-          })}
+            ))}
         </>
       )}
 
@@ -128,6 +146,10 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
   },
   empty: { ...type.subhead, color: colors.textSecondary },
+  chartTitle: { ...type.title3, color: colors.textPrimary, marginBottom: space.xs },
+  chartSubtitle: { ...type.subhead, color: colors.textSecondary, marginBottom: space.md },
+  tableToggle: { alignSelf: 'flex-start', marginTop: space.md, paddingVertical: space.xs },
+  tableToggleText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
   bucketRow: {
     flexDirection: 'row',
     alignItems: 'center',

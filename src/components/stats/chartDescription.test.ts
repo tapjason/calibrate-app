@@ -10,6 +10,7 @@ const bucket = (over: Partial<BucketStat>): BucketStat => ({
   stated_confidence_mean: 86.4,
   actual_rate: 7 / 12,
   bucket_error: 0,
+  direction: 'overconfident',
   ...over,
 });
 

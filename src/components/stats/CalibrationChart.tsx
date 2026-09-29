@@ -4,16 +4,18 @@ import Svg, {
   Circle,
   G,
   Line,
+  Polygon,
   Polyline,
   Text as SvgText,
 } from 'react-native-svg';
 
-import { colors } from '@/constants/theme';
-import type { BucketStat } from '@/types';
+import { colors, svgFontFamily, type } from '@/constants/theme';
+import type { BucketStat, Direction } from '@/types';
 
 import { describeCalibrationCurve } from './chartDescription';
 
 interface CalibrationChartProps {
+  /** Non-empty buckets. Empty renders the ghost chart: frame, regions, diagonal. */
   buckets: BucketStat[];
 }
 
@@ -23,38 +25,43 @@ const PAD_LEFT = 34;
 const PAD_RIGHT = 12;
 const PAD_TOP = 12;
 const PAD_BOTTOM = 28;
-const TICKS = [0, 25, 50, 75, 100];
+// Ticks at the bucket edges, so each dot sits between two gridlines.
+const TICKS = [0, 20, 40, 60, 80, 100];
+const TICK_FONT = 12; // DESIGN_SYSTEM §3: 12pt is the chart minimum.
 
-const IDEAL = '#cbd5e1'; // dashed diagonal — perfect calibration
-const CURVE = '#2563eb'; // the user's actual curve
-const GRID = '#f1f5f9';
-const AXIS_LABEL = colors.textTertiary;
+/** Dot fill per side of the diagonal (DESIGN_SYSTEM §2.3). */
+const MARK: Record<Direction, string> = {
+  overconfident: colors.overMark,
+  underconfident: colors.underMark,
+  calibrated: colors.calibratedMark,
+};
 
 /**
- * The calibration curve: stated confidence (x) vs. actual hit rate (y), with
- * a dashed diagonal marking perfect calibration. Points on the diagonal are
- * perfectly calibrated; above it the user was underconfident, below it
- * overconfident. Marker radius scales with how many predictions landed in the
- * bucket, so well-populated buckets read as more trustworthy.
+ * The calibration curve: stated confidence (x) vs. actual hit rate (y).
  *
- * Rendered with react-native-svg so it draws identically on web and native
- * without a Skia/dev-client dependency.
+ * Three channels for every meaning, never colour alone (DESIGN_SYSTEM §7.2):
+ * the region *below* the diagonal is tinted warm and labelled Overconfident,
+ * the region above is tinted cool and labelled Underconfident, and each dot is
+ * coloured by the side the engine says it's on (`BucketStat.direction`) —
+ * position + tint + words. Every dot carries its n, so a lone 100% built on
+ * two predictions reads as exactly that.
+ *
+ * With no buckets it still draws the frame, the regions and the diagonal: a
+ * ghost chart that shows what's coming instead of an italic placeholder.
+ *
+ * react-native-svg, so it draws identically on web and native.
  */
 export function CalibrationChart({ buckets }: CalibrationChartProps) {
-  // Measure the container so the square plot fills the available width.
   const [width, setWidth] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
-  // Square aspect: height tracks width once measured.
   const height = width;
   const innerW = Math.max(0, width - PAD_LEFT - PAD_RIGHT);
   const innerH = Math.max(0, height - PAD_TOP - PAD_BOTTOM);
 
-  // Scales: confidence 0–100 → px; rate 0–1 → px (y is flipped for SVG).
   const xOf = (conf: number) => PAD_LEFT + (conf / 100) * innerW;
   const yOf = (rate: number) => PAD_TOP + (1 - rate) * innerH;
 
-  // Order points left-to-right so the connecting line never doubles back.
   const points = [...buckets].sort(
     (a, b) => a.stated_confidence_mean - b.stated_confidence_mean,
   );
@@ -64,6 +71,11 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
   const polyline = points
     .map((b) => `${xOf(b.stated_confidence_mean)},${yOf(b.actual_rate)}`)
     .join(' ');
+
+  const left = xOf(0);
+  const right = xOf(100);
+  const top = yOf(1);
+  const bottom = yOf(0);
 
   return (
     <View
@@ -76,95 +88,151 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
     >
       {width > 0 ? (
         <Svg width={width} height={height}>
-          {/* gridlines + axis ticks */}
+          {/* Regions: below the diagonal = overconfident (warm), above =
+              underconfident (cool). Faint — they're context, not data. */}
+          <Polygon
+            testID="region-over"
+            points={`${left},${bottom} ${right},${bottom} ${right},${top}`}
+            fill={colors.overMark}
+            fillOpacity={0.07}
+          />
+          <Polygon
+            testID="region-under"
+            points={`${left},${bottom} ${left},${top} ${right},${top}`}
+            fill={colors.underMark}
+            fillOpacity={0.07}
+          />
+
           {TICKS.map((t) => (
             <G key={t}>
               <Line
                 x1={xOf(t)}
-                y1={PAD_TOP}
+                y1={top}
                 x2={xOf(t)}
-                y2={PAD_TOP + innerH}
-                stroke={GRID}
+                y2={bottom}
+                stroke={colors.hairline}
                 strokeWidth={1}
               />
               <Line
-                x1={PAD_LEFT}
+                x1={left}
                 y1={yOf(t / 100)}
-                x2={PAD_LEFT + innerW}
+                x2={right}
                 y2={yOf(t / 100)}
-                stroke={GRID}
+                stroke={colors.hairline}
                 strokeWidth={1}
               />
               <SvgText
-                x={PAD_LEFT - 6}
-                y={yOf(t / 100) + 3}
-                fontSize={9}
-                fill={AXIS_LABEL}
+                x={left - 5}
+                y={yOf(t / 100) + 4}
+                fontSize={TICK_FONT}
+                fontFamily={svgFontFamily}
+                fill={colors.textTertiary}
                 textAnchor="end"
               >
                 {t}
               </SvgText>
               <SvgText
                 x={xOf(t)}
-                y={PAD_TOP + innerH + 14}
-                fontSize={9}
-                fill={AXIS_LABEL}
+                y={bottom + 17}
+                fontSize={TICK_FONT}
+                fontFamily={svgFontFamily}
+                fill={colors.textTertiary}
                 textAnchor="middle"
               >
-                {t}
+                {`${t}%`}
               </SvgText>
             </G>
           ))}
 
-          {/* perfect-calibration diagonal */}
+          <SvgText
+            x={right - 8}
+            y={bottom - 10}
+            fontSize={TICK_FONT}
+            fontFamily={svgFontFamily}
+            fontWeight="600"
+            fill={colors.overText}
+            textAnchor="end"
+          >
+            Overconfident
+          </SvgText>
+          <SvgText
+            x={left + 8}
+            y={top + 18}
+            fontSize={TICK_FONT}
+            fontFamily={svgFontFamily}
+            fontWeight="600"
+            fill={colors.underText}
+            textAnchor="start"
+          >
+            Underconfident
+          </SvgText>
+
+          {/* Perfect calibration. */}
           <Line
-            x1={xOf(0)}
-            y1={yOf(0)}
-            x2={xOf(100)}
-            y2={yOf(1)}
-            stroke={IDEAL}
+            x1={left}
+            y1={bottom}
+            x2={right}
+            y2={top}
+            stroke={colors.textSecondary}
             strokeWidth={1.5}
             strokeDasharray="5 4"
           />
 
-          {/* the user's curve through the bucket points */}
+          {/* Connecting line: neutral and thin — five buckets are not a
+              function, the dots are the data. */}
           {points.length > 1 ? (
             <Polyline
               testID="calibration-curve-line"
               points={polyline}
               fill="none"
-              stroke={CURVE}
-              strokeWidth={2}
+              stroke={colors.textTertiary}
+              strokeWidth={1.5}
             />
           ) : null}
 
-          {points.map((b) => (
-            <Circle
-              key={b.low}
-              testID={`point-${b.low}`}
-              cx={xOf(b.stated_confidence_mean)}
-              cy={yOf(b.actual_rate)}
-              r={radiusOf(b.total_resolved)}
-              fill={CURVE}
-              fillOpacity={0.85}
-              stroke="#fff"
-              strokeWidth={1.5}
-            />
-          ))}
+          {points.map((b) => {
+            const cx = xOf(b.stated_confidence_mean);
+            const cy = yOf(b.actual_rate);
+            const r = radiusOf(b.total_resolved);
+            // Label above the dot unless that would leave the plot.
+            const labelY = cy - r - 4 < top + TICK_FONT ? cy + r + TICK_FONT : cy - r - 4;
+            return (
+              <G key={b.low}>
+                <Circle
+                  testID={`point-${b.low}`}
+                  cx={cx}
+                  cy={cy}
+                  r={r}
+                  fill={MARK[b.direction]}
+                  stroke={colors.surface}
+                  strokeWidth={1.5}
+                />
+                <SvgText
+                  testID={`point-${b.low}-n`}
+                  x={cx}
+                  y={labelY}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fill={colors.textSecondary}
+                  textAnchor="middle"
+                >
+                  {`n=${b.total_resolved}`}
+                </SvgText>
+              </G>
+            );
+          })}
         </Svg>
       ) : null}
 
-      <View style={styles.axisCaption}>
-        <Text style={styles.axisCaptionText}>
-          stated confidence → · actual rate ↑ · dashed = perfect
-        </Text>
-      </View>
+      <Text style={styles.caption}>
+        Across: how sure you said you were. Up: how often it happened. Dashed line:
+        perfectly calibrated.
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', alignSelf: 'stretch' },
-  axisCaption: { alignItems: 'center', marginTop: 4 },
-  axisCaptionText: { fontSize: 11, color: colors.textTertiary },
+  caption: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
 });

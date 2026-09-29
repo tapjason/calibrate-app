@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import { CalibrationView } from '@/components/stats/CalibrationView';
 import type { CalibrationResult, UserStat } from '@/types';
@@ -68,5 +68,60 @@ describe('CalibrationView provisional progress', () => {
       max: 20,
       now: 4,
     });
+  });
+});
+
+describe('CalibrationView chart section', () => {
+  const bucket = {
+    low: 80,
+    high: 100,
+    total_resolved: 12,
+    resolved_yes: 7,
+    stated_confidence_mean: 88,
+    actual_rate: 7 / 12,
+    bucket_error: 0.3,
+    direction: 'overconfident' as const,
+  };
+
+  it('titles the chart with its takeaway once the rating is unlocked', () => {
+    const { getByTestId, getByText } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 25, rating_is_provisional: false })}
+        calibration={{ rating: 70, buckets: [bucket] }}
+        categoryStats={[]}
+        nextBadges={{}}
+      />,
+    );
+    expect(getByTestId('chart-takeaway').props.children).toBe(
+      "You're overconfident at 80–100%",
+    );
+    expect(getByText('Of 12 things you called 80–100% likely, 7 happened.')).toBeTruthy();
+  });
+
+  it('shows coverage, and flags an unused low range', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={{ rating: 70, buckets: [bucket] }}
+        categoryStats={[]}
+        nextBadges={{}}
+      />,
+    );
+    expect(getByTestId('coverage-0')).toBeTruthy();
+    expect(getByTestId('coverage-note')).toBeTruthy();
+  });
+
+  it('keeps the numbers table behind a disclosure', () => {
+    const { getByTestId, queryByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={{ rating: 70, buckets: [bucket] }}
+        categoryStats={[]}
+        nextBadges={{}}
+      />,
+    );
+    expect(queryByTestId('bucket-80')).toBeNull();
+    fireEvent.press(getByTestId('chart-table-toggle'));
+    expect(getByTestId('bucket-80')).toBeTruthy();
   });
 });
