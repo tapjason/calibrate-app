@@ -5,6 +5,7 @@ import { groupByDue } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
+import { CountUp } from '@/components/ui/CountUp';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -21,9 +22,7 @@ export default function HomeScreen() {
   const hero =
     headline && !headline.provisional ? (
       <View style={styles.rated}>
-        <Text style={styles.ratingNumber} testID="home-rating">
-          {headline.rating}
-        </Text>
+        <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
         <Text style={styles.ratingLabel}>calibration rating</Text>
       </View>
     ) : (
