@@ -626,6 +626,12 @@ Added 2026-09-29 (polish pass):
       ten-segment progress; on the verdict, "Log my first prediction" and "Share my
       result" sit above the answer key.
 - [ ] **Settings switches** are indigo when on (not green).
+- [ ] **Share → Shape:** "Post · 3:4" and "Story · 9:16" reshape the card, with a
+      large emblem and the text centred. Export each and post the Story to an
+      Instagram/Snapchat story draft: nothing important under the top bar or the
+      reply field.
+- [ ] **Share → On the card** (with 2+ categories): tapping a category takes it off
+      the card; the last one can't be removed.
 
 ---
 

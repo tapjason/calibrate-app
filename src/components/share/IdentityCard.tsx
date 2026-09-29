@@ -24,7 +24,17 @@ interface IdentityCardProps {
    * would be publishing noise.
    */
   buckets?: readonly BucketStat[];
+  /**
+   * Export shape (DESIGN_SYSTEM §7.5): 'post' is 3:4, the tallest ratio X and
+   * iMessage show uncropped; 'story' is 9:16 for Instagram/Snapchat stories.
+   * Undefined keeps the compact in-app card.
+   */
+  format?: CardFormat;
 }
+
+export type CardFormat = 'post' | 'story';
+
+const ASPECT: Record<CardFormat, number> = { post: 3 / 4, story: 9 / 16 };
 
 const BAND_LOWS = [0, 20, 40, 60, 80] as const;
 
@@ -52,7 +62,7 @@ function marksFor(background: string): Record<Direction, string> {
  * removed — this card is free forever.
  */
 export const IdentityCard = forwardRef<View, IdentityCardProps>(function IdentityCard(
-  { card, theme = DEFAULT_THEME, buckets = [] },
+  { card, theme = DEFAULT_THEME, buckets = [], format },
   ref,
 ) {
   const { identity, contrast } = shareLines(card);
@@ -64,60 +74,90 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
   return (
     <View
       ref={ref}
-      style={[styles.card, { backgroundColor: theme.background }]}
+      style={[
+        styles.card,
+        { backgroundColor: theme.background },
+        format && { aspectRatio: ASPECT[format] },
+        // Stories keep content inside the middle band so app chrome at the top
+        // and the reply bar at the bottom don't cover it.
+        format === 'story' && styles.story,
+      ]}
       testID="identity-card"
       collapsable={false}
     >
-      <Text style={[styles.eyebrow, { color: theme.accent }]}>My calibration</Text>
-
-      <Text style={[styles.identity, { color: theme.foreground }]} testID="card-identity">
-        {identity}
-      </Text>
-      {contrast && (
-        <Text style={[styles.contrast, { color: theme.muted }]} testID="card-contrast">
-          {contrast}
-        </Text>
-      )}
-
-      <Text style={[styles.receipt, { color: theme.foreground }]}>{shareSubline(card)}</Text>
-
-      {showStrip && (
-        <View style={styles.strip} testID="card-strip">
-          {BAND_LOWS.map((low) => {
-            const b = byLow.get(low);
-            const size = b ? 10 + (b.total_resolved / maxN) * 12 : 8;
-            return (
-              <View key={low} style={styles.stripCell}>
-                <View
-                  style={[
-                    { width: size, height: size, borderRadius: size / 2 },
-                    b
-                      ? { backgroundColor: marks[b.direction] }
-                      : { borderColor: theme.divider, borderWidth: 1.5 },
-                  ]}
-                />
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      <View style={styles.badges}>
-        {card.categories.map((c) => (
-          <View
-            key={c.category}
-            testID={`card-badge-${c.category}`}
-            style={[styles.chip, { borderColor: theme.divider }]}
-          >
-            <LensEmblem tier={c.badge_level} size={18} />
-            <Text style={[styles.chipLabel, { color: theme.foreground }]}>
-              {c.category}
-            </Text>
+      {/* The shaped formats centre the story and give the best tier's emblem
+          the room a tall card has; the compact in-app card stays tight. */}
+      <View style={format ? styles.body : styles.bodyCompact}>
+        {format && card.categories[0] && (
+          <View style={styles.hero} testID="card-hero-emblem">
+            <LensEmblem
+              tier={card.categories[0].badge_level}
+              size={format === 'story' ? 112 : 88}
+            />
           </View>
-        ))}
+        )}
+        <Text style={[styles.eyebrow, { color: theme.accent }]}>My calibration</Text>
+
+        <Text
+          style={[styles.identity, { color: theme.foreground }]}
+          testID="card-identity"
+        >
+          {identity}
+        </Text>
+        {contrast && (
+          <Text style={[styles.contrast, { color: theme.muted }]} testID="card-contrast">
+            {contrast}
+          </Text>
+        )}
+
+        <Text style={[styles.receipt, { color: theme.foreground }]}>
+          {shareSubline(card)}
+        </Text>
+
+        {showStrip && (
+          <View style={styles.strip} testID="card-strip">
+            {BAND_LOWS.map((low) => {
+              const b = byLow.get(low);
+              const size = b ? 10 + (b.total_resolved / maxN) * 12 : 8;
+              return (
+                <View key={low} style={styles.stripCell}>
+                  <View
+                    style={[
+                      { width: size, height: size, borderRadius: size / 2 },
+                      b
+                        ? { backgroundColor: marks[b.direction] }
+                        : { borderColor: theme.divider, borderWidth: 1.5 },
+                    ]}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        <View style={styles.badges}>
+          {card.categories.map((c) => (
+            <View
+              key={c.category}
+              testID={`card-badge-${c.category}`}
+              style={[styles.chip, { borderColor: theme.divider }]}
+            >
+              <LensEmblem tier={c.badge_level} size={18} />
+              <Text style={[styles.chipLabel, { color: theme.foreground }]}>
+                {c.category}
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
 
-      <View style={[styles.footer, { borderTopColor: theme.divider }]}>
+      <View
+        style={[
+          styles.footer,
+          { borderTopColor: theme.divider },
+          format && styles.footerPinned,
+        ]}
+      >
         <Text style={[styles.footerMark, { color: theme.foreground }]}>{APP_NAME}</Text>
         {/* The growth hook, as a question: never the faintest line on the card. */}
         <Text style={[styles.footerHook, { color: theme.accent }]}>
@@ -129,7 +169,10 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
 });
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 24, gap: 8, padding: 24 },
+  card: { borderRadius: 24, padding: 24 },
+  body: { flex: 1, gap: 8, justifyContent: 'center' },
+  bodyCompact: { gap: 8 },
+  hero: { marginBottom: 12 },
   eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   identity: {
     fontFamily: roundedFamily,
@@ -159,6 +202,8 @@ const styles = StyleSheet.create({
   },
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
   footer: { borderTopWidth: 1, gap: 2, marginTop: 14, paddingTop: 14 },
+  footerPinned: { marginTop: 'auto' },
+  story: { paddingVertical: 56 },
   footerMark: { fontSize: 15, fontWeight: '700' },
   footerHook: { fontSize: 14, fontWeight: '600' },
 });

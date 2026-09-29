@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { __setShareDepsForTests, type ShareDeps } from '@/share/export';
@@ -226,5 +227,32 @@ describe('ShareCardPanel — text share', () => {
     await waitFor(() => expect(shareTextFn).toHaveBeenCalled());
     const [message] = shareTextFn.mock.calls[0] as unknown as [string];
     expect(message).toContain('Sharp in health · Guesser in finance');
+  });
+});
+
+describe('ShareCardPanel — shape and contents', () => {
+  it('switches between the Post and Story shapes', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+    const flat = () => StyleSheet.flatten(screen.getByTestId('identity-card').props.style);
+    expect(flat().aspectRatio).toBeCloseTo(3 / 4);
+    fireEvent.press(screen.getByTestId('share-format-story'));
+    expect(flat().aspectRatio).toBeCloseTo(9 / 16);
+  });
+
+  it('leaves a category off the card, but never all of them', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+    const categories = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0).map(
+      (c) => c.category,
+    );
+    const [first, ...rest] = categories;
+
+    fireEvent.press(screen.getByTestId(`share-toggle-${first}`));
+    expect(screen.queryByTestId(`card-badge-${first}`)).toBeNull();
+
+    for (const c of rest) fireEvent.press(screen.getByTestId(`share-toggle-${c}`));
+    // The last one standing can't be switched off.
+    expect(screen.getAllByTestId(/^card-badge-/)).toHaveLength(1);
   });
 });

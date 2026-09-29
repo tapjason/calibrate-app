@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Icon } from '@/components/ui/Icon';
 import { track } from '@/analytics/track';
 import { resolveTheme } from '@/constants/cardThemes';
 import { colors } from '@/constants/theme';
@@ -11,8 +12,9 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
+import type { Category } from '@/types';
 
-import { IdentityCard } from './IdentityCard';
+import { IdentityCard, type CardFormat } from './IdentityCard';
 import { ThemePicker } from './ThemePicker';
 import { buildShareCard, shareText as cardText } from './cardCopy';
 import { WarmupCard } from './WarmupCard';
@@ -43,8 +45,24 @@ export function ShareCardPanel({
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [format, setFormat] = useState<CardFormat>('post');
+  // Categories the user chose to leave off the card (Any Distance-style
+  // show/hide, DESIGN_SYSTEM §7.5). Never all of them: the last one stays.
+  const [hidden, setHidden] = useState<ReadonlySet<Category>>(new Set());
 
-  const card = buildShareCard(userStat, categoryStats);
+  const allOnFile = categoryStats.filter((c) => c.predictions_resolved > 0);
+  const shown = categoryStats.filter((c) => !hidden.has(c.category));
+  const card = buildShareCard(
+    userStat,
+    shown.some((c) => c.predictions_resolved > 0) ? shown : categoryStats,
+  );
+  const toggleCategory = (c: Category) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(c)) next.delete(c);
+      else if (allOnFile.length - next.size > 1) next.add(c);
+      return next;
+    });
   // resolveTheme, not a raw lookup: a Plus theme held by someone who has
   // lapsed falls back to the free one instead of erroring or rendering blank.
   const theme = resolveTheme(cardThemeId, isPlus);
@@ -91,9 +109,71 @@ export function ShareCardPanel({
   return (
     <View style={styles.wrap} testID="share-panel">
       {card ? (
-        <IdentityCard ref={cardRef} card={card} theme={theme} buckets={buckets} />
+        <IdentityCard
+          ref={cardRef}
+          card={card}
+          theme={theme}
+          buckets={buckets}
+          format={format}
+        />
       ) : (
         warmup && <WarmupCard ref={cardRef} copy={warmup} theme={theme} />
+      )}
+
+      {card && (
+        <View style={styles.controls}>
+          <Text style={styles.controlLabel}>Shape</Text>
+          <View style={styles.segmented} accessibilityRole="radiogroup">
+            {(['post', 'story'] as const).map((f) => (
+              <Pressable
+                key={f}
+                onPress={() => setFormat(f)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: format === f }}
+                testID={`share-format-${f}`}
+                style={[styles.segment, format === f && styles.segmentOn]}
+              >
+                <Text style={[styles.segmentText, format === f && styles.segmentTextOn]}>
+                  {f === 'post' ? 'Post · 3:4' : 'Story · 9:16'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {allOnFile.length > 1 && (
+            <>
+              <Text style={styles.controlLabel}>On the card</Text>
+              <View style={styles.chips}>
+                {allOnFile.map((c) => {
+                  const on = !hidden.has(c.category);
+                  return (
+                    <Pressable
+                      key={c.category}
+                      onPress={() => toggleCategory(c.category)}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      accessibilityLabel={`Show ${c.category} on the card`}
+                      testID={`share-toggle-${c.category}`}
+                      style={[styles.chip, on && styles.chipOn]}
+                    >
+                      {on && (
+                        <Icon
+                          sf="checkmark"
+                          fallback="checkmark"
+                          size={14}
+                          color={colors.brand800}
+                        />
+                      )}
+                      <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                        {c.category}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
+        </View>
       )}
 
       <ThemePicker onUpgrade={onUpgrade} />
@@ -126,4 +206,37 @@ export function ShareCardPanel({
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
   message: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
+  controls: { gap: 8 },
+  controlLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  segmented: {
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: 999,
+    flexDirection: 'row',
+    padding: 3,
+  },
+  segment: {
+    alignItems: 'center',
+    borderRadius: 999,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 38,
+  },
+  segmentOn: { backgroundColor: colors.surface },
+  segmentText: { color: colors.textSecondary, fontSize: 15 },
+  segmentTextOn: { color: colors.textPrimary, fontWeight: '700' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    alignItems: 'center',
+    borderColor: colors.controlBorder,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
+    minHeight: 36,
+    paddingHorizontal: 12,
+  },
+  chipOn: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  chipText: { color: colors.textSecondary, fontSize: 15, textTransform: 'capitalize' },
+  chipTextOn: { color: colors.brand800, fontWeight: '600' },
 });
