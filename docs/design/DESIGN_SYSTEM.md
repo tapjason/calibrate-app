@@ -14,9 +14,11 @@ done 2026-09-28 and behind §2.5 and §7.10–§7.15). The
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
 
-**Status:** the tokens are *specified here, not yet in code*. Until
-`src/constants/theme.ts` exists, the first UI change that touches colour should create
-it from §2–§4 (see `UI_ROADMAP.md` step 1).
+**Status (2026-09-28):** the tokens are in code at `src/constants/theme.ts` (light
+palette live, dark proposed), and `src/constants/theme.test.ts` pins every recorded
+contrast pair. Not every file is migrated yet — migrating a literal is always in scope
+for the file you touch (rule 0.1). On web, `roundedFamily` carries a system fallback
+list, because Chrome renders a bare `ui-rounded` as serif.
 
 ---
 

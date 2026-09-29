@@ -97,6 +97,27 @@ no haptics, symbols, glass or `ui-rounded`).
 
 ---
 
+### Progress log
+
+**2026-09-28** (commits `6f6e1b1` … `c24628a`, all tests green, checked in a
+400-px web build):
+
+| Step | State |
+|---|---|
+| 0 | Done. |
+| 1 Tokens | **Mostly done.** `theme.ts` + contrast tests; Button, TextField, tab bar, Home, History, Log chips, Resolve, PredictionCard, CoachPanel, SupportSurface, CalibrationView headers moved; every `#9ca3af` text replaced; three card-theme accents fixed to ≥ 4.5:1. Still on literals: WarmupQuiz/Verdict, CalibrationChart, PaywallView, Settings, account screens, ThemePicker, TrendsPanel, CategoryBadge, IdentityCard/WrappedCard layout colours, `BADGE_META`. |
+| 4 Provisional states | **Done, as a bar.** `UnlockProgress` (resolved / on their way / to go) on Home and Stats. The ring shape waits for Reanimated (step 6). Ghost chart not done. |
+| 12 Everyday surfaces | **Partly.** Resolve leads with "On 3 Sep you said 70%", equal-width neutral Yes/No; date-grouped Today list; neutral card statuses; Log chip labels + "Due Monday, 5 Oct"; Coach dismiss + caveat; weekly Wrapped receipt + badge line. Not done: the bucket-count line after resolving (needs a store value), reflection-after-answer (needs a store action to add a reflection later), "Pick a date" (new native package), Coach evidence number (see below). |
+| 13 Notifications | **Done** (copy, placeholders via categories, passive digest). Actions and evening timing are D8 / D9. |
+
+**Blocked on a non-UI change:** the Coach card can't show its `evidence` number
+yet. The validator accepts a number if it matches *any* context value, in either rate
+or percent form, so the UI can't say what the number counts ("12 resolved" vs "62%
+hit rate"). The fix is for `coachValidate.ts` to return which input field matched
+(COACH_AGENT.md governs that file).
+
+---
+
 ## 3. Known issues outside the code
 
 - **Paywall store config.** The test store showed Annual at **$29.90** (spec: $29.99)

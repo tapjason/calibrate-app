@@ -524,6 +524,45 @@ Tick each:
 
 **Report:** which boxes failed, with a screenshot for anything visual.
 
+### C2. UI redesign pass (added 2026-09-28)
+
+What changed is listed in `docs/design/UI_ROADMAP.md` → Progress log. Check on an
+iOS simulator or phone as well as web — web can't show SF Rounded, haptics or the
+notification placeholder.
+
+- [ ] **Buttons** are capsules. The one filled button on a screen is indigo, not
+      Tailwind blue; others are white with a grey outline. The tab bar tint is indigo.
+- [ ] **Resolve:** the screen opens with "On {date} you said **N%**", then the
+      prediction, then "Did it happen?". **Yes and No look identical** (same white
+      capsule, same width). Nothing is red.
+- [ ] **Home, fewer than 20 resolved:** no big number at the top. A "Calibrating" bar
+      with 20 segments: solid = resolved, dashed/tinted = open predictions, hollow =
+      to go. The text under it adds up.
+- [ ] **Home list** is grouped "Ready to resolve · N", "This week · N", "Later · N".
+      A prediction past its due date sits under Ready to resolve with **no amber
+      and no word "Overdue"**.
+- [ ] **History** cards say "Happened" / "Didn't happen" / "Not scored" — no ✓ or ✗.
+      With nothing resolved, the empty state is a plain sentence, not grey italics.
+- [ ] **Log:** chips read "Tomorrow", "In a week", "In a month"; the line below
+      reads "Due Monday, 5 Oct" (your locale's format). At 35–65% the integrity
+      bonus shows as an indigo pill, not green text. The Prediction box has a
+      visible border.
+- [ ] **Stats, fewer than 20 resolved:** the same Calibrating bar; section titles in
+      sentence case, not ALL CAPS.
+- [ ] **Share → This week:** a line like "You said 40–60% once. It happened.", a
+      progress line toward your first score, and a dashed rounded-square badge icon
+      with "Tracker in {category}: N to go". Tap **Share my recap** on a phone and
+      confirm the icon appears in the exported image.
+- [ ] **Coach (Plus + signed in):** each insight has an × that hides it; one line
+      under the cards says the Coach "can be wrong".
+- [ ] **Resolution reminder (device):** title "Did it happen", body "{title} · You
+      said N%". Then turn on Settings → Notifications → Show Previews → *Never* (or
+      *When Unlocked* with the phone locked): the reminder must read "A prediction
+      is ready to resolve", not the prediction text.
+- [ ] **Weekly digest (device):** title "Your week ahead"; no mention of a streak.
+- [ ] **Dynamic Type at the largest size:** Resolve, Home and Log still lay out with
+      nothing clipped.
+
 ---
 
 ## Batch D — Physical device (~45 min)
