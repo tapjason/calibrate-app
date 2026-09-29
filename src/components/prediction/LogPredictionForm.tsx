@@ -7,6 +7,7 @@ import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
+import { CategoryIcon } from '@/components/ui/Icon';
 import { TextField } from '@/components/ui/TextField';
 import { REFINE_ENABLED } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -194,8 +195,13 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
               accessibilityRole="radio"
               accessibilityLabel={`Category: ${c}`}
               accessibilityState={{ selected: category === c }}
-              style={[styles.chip, category === c && styles.chipActive]}
+              style={[styles.chip, styles.chipWithIcon, category === c && styles.chipActive]}
             >
+              <CategoryIcon
+                category={c}
+                size={15}
+                color={category === c ? colors.brand800 : colors.textSecondary}
+              />
               <Text
                 style={[
                   styles.chipText,
@@ -305,6 +311,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
   chipText: { ...type.subhead, color: colors.textPrimary },
   capitalize: { textTransform: 'capitalize' },
+  chipWithIcon: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   chipTextActive: { color: colors.brand800, fontWeight: '700' },
   bonus: {
     alignSelf: 'flex-start',

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { CategoryIcon } from '@/components/ui/Icon';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import { colors } from '@/constants/theme';
@@ -24,7 +25,10 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
   return (
     <View style={styles.row} testID={`category-${stat.category}`}>
       <View style={styles.left}>
-        <Text style={styles.category}>{stat.category}</Text>
+        <View style={styles.categoryRow}>
+          <CategoryIcon category={stat.category} size={16} color={colors.textSecondary} />
+          <Text style={styles.category}>{stat.category}</Text>
+        </View>
         <Text style={styles.hint} testID={`category-${stat.category}-hint`}>
           {hint}
         </Text>
@@ -76,6 +80,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.hairline,
   },
   left: { flex: 1, paddingRight: 12 },
+  categoryRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   category: {
     fontSize: 15,
     fontWeight: '600',

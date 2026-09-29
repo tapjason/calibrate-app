@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CategoryIcon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 
@@ -53,7 +54,10 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
       }
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <Text style={styles.category}>{prediction.category}</Text>
+      <View style={styles.categoryRow}>
+        <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
+        <Text style={styles.category}>{prediction.category}</Text>
+      </View>
       <Text style={styles.title} numberOfLines={3}>
         {prediction.title}
       </Text>
@@ -78,6 +82,7 @@ const styles = StyleSheet.create({
     padding: space.lg,
   },
   pressed: { opacity: 0.7 },
+  categoryRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   category: {
     ...type.footnote,
     color: colors.textSecondary,

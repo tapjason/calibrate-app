@@ -233,6 +233,8 @@ export function CalibrationChart({ buckets }: CalibrationChartProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', alignSelf: 'stretch' },
+  // Square, so cap it: on a tablet or wide web window a full-width chart
+  // would push everything else below the fold.
+  wrap: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   caption: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
 });
