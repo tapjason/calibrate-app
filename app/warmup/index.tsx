@@ -8,6 +8,7 @@ import { track } from '@/analytics/track';
 import { WarmupQuiz } from '@/components/warmup/WarmupQuiz';
 import { WarmupVerdictScreen } from '@/components/warmup/WarmupVerdict';
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 import { selectCurrentQuestion, useWarmupStore } from '@/store/warmupStore';
 
 /**
@@ -47,7 +48,10 @@ export default function WarmupScreen() {
           </View>
         )}
         {finished ? (
-          <WarmupVerdictScreen onContinue={() => router.replace('/log' as never)} />
+          <WarmupVerdictScreen
+            onContinue={() => router.replace('/log' as never)}
+            onShare={() => router.push('/share' as never)}
+          />
         ) : (
           <>
             <WarmupQuiz />
@@ -73,5 +77,5 @@ const styles = StyleSheet.create({
   wrap: { gap: 24, padding: 20, paddingBottom: 40 },
   intro: { gap: 8 },
   title: { fontSize: 24, fontWeight: '700' },
-  body: { color: '#6b7280', fontSize: 15, lineHeight: 21 },
+  body: { color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
 });

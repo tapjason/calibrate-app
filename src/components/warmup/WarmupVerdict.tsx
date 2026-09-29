@@ -11,6 +11,8 @@ import { warmupVerdict } from './verdictCopy';
 interface WarmupVerdictScreenProps {
   /** Continue into the app. The screen owns the navigation. */
   onContinue: () => void;
+  /** Open the share surface, where this result is the Day-0 card. */
+  onShare?: () => void;
 }
 
 /**
@@ -23,7 +25,7 @@ interface WarmupVerdictScreenProps {
  * MIN_N_OVERALL real resolutions. Saying so here keeps the "never present a
  * number built on noise" principle intact while still delivering the aha.
  */
-export function WarmupVerdictScreen({ onContinue }: WarmupVerdictScreenProps) {
+export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreenProps) {
   const result = useWarmupStore((s) => s.result);
   const answers = useWarmupStore((s) => s.answers);
   const questions = useWarmupStore((s) => s.questions);
@@ -79,6 +81,15 @@ export function WarmupVerdictScreen({ onContinue }: WarmupVerdictScreenProps) {
         testID="warmup-continue"
         onPress={onContinue}
       />
+      {/* The first shareable moment (CLAUDE.md, Warmup module). */}
+      {onShare && (
+        <Button
+          label="Share my result"
+          variant="secondary"
+          testID="warmup-share"
+          onPress={onShare}
+        />
+      )}
     </View>
   );
 }

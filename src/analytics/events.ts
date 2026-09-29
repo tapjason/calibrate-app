@@ -26,7 +26,7 @@ export const EVENT_NAMES = [
   'warmup_completed',
 
   // --- Share rate (§7, metric 2 — the number that justifies the free tier) --
-  /** A share surface was opened (card, weekly, or yearly). */
+  /** A share surface was opened (card, weekly, yearly, or the Day-0 warm-up card). */
   'share_opened',
   /** A card actually reached the OS share sheet. */
   'share_completed',
@@ -72,7 +72,7 @@ export const PAYWALL_SOURCES = [
 export type PaywallSource = (typeof PAYWALL_SOURCES)[number];
 
 /** Which share surface produced the event. */
-export const SHARE_SURFACES = ['card', 'weekly', 'yearly'] as const;
+export const SHARE_SURFACES = ['card', 'weekly', 'yearly', 'warmup'] as const;
 export type ShareSurface = (typeof SHARE_SURFACES)[number];
 
 /**

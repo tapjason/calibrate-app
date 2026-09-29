@@ -82,6 +82,16 @@ describe('WarmupVerdictScreen', () => {
     expect(onContinue).toHaveBeenCalled();
   });
 
+  // The Warmup produces the first shareable card (CLAUDE.md, Warmup module).
+  it('offers to share the result when a share route is given', () => {
+    seed(ANSWERS);
+    const onShare = jest.fn();
+    render(<WarmupVerdictScreen onContinue={jest.fn()} onShare={onShare} />);
+
+    fireEvent.press(screen.getByTestId('warmup-share'));
+    expect(onShare).toHaveBeenCalled();
+  });
+
   it('renders nothing when the quiz has not been scored', () => {
     useWarmupStore.setState({
       questions: QUESTIONS,

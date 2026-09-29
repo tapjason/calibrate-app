@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteAccountView } from '@/components/account/DeleteAccountView';
+import { colors } from '@/constants/theme';
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
@@ -23,5 +24,5 @@ export default function DeleteAccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: 'white' },
+  safe: { flex: 1, backgroundColor: colors.surface },
 });

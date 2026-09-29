@@ -7,6 +7,7 @@ import { track } from '@/analytics/track';
 import { ShareCardPanel } from '@/components/share/ShareCardPanel';
 import { WrappedPanel } from '@/components/share/WrappedPanel';
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 
 type Tab = 'card' | 'week' | 'year';
 
@@ -68,6 +69,7 @@ export default function ShareScreen() {
         {tab === 'card' ? (
           <ShareCardPanel
             onUpgrade={() => router.push('/paywall?from=share_theme' as never)}
+            onTakeWarmup={() => router.push('/warmup' as never)}
           />
         ) : (
           <WrappedPanel span={tab} />
@@ -84,16 +86,16 @@ const styles = StyleSheet.create({
   wrap: { gap: 20, padding: 20, paddingBottom: 40 },
   header: { gap: 6 },
   title: { fontSize: 24, fontWeight: '700' },
-  body: { color: '#6b7280', fontSize: 15, lineHeight: 21 },
+  body: { color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
   tabs: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colors.surfaceSunken,
     borderRadius: 10,
     flexDirection: 'row',
     gap: 4,
     padding: 4,
   },
   tab: { alignItems: 'center', borderRadius: 8, flex: 1, paddingVertical: 8 },
-  tabActive: { backgroundColor: '#ffffff' },
-  tabLabel: { color: '#6b7280', fontSize: 14, fontWeight: '600' },
-  tabLabelActive: { color: '#111827' },
+  tabActive: { backgroundColor: colors.surface },
+  tabLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  tabLabelActive: { color: colors.textPrimary },
 });

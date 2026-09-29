@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SignInView } from '@/components/account/SignInView';
+import { colors } from '@/constants/theme';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function AccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: 'white' },
+  safe: { flex: 1, backgroundColor: colors.surface },
   close: { alignSelf: 'flex-end', padding: 16 },
-  closeText: { color: '#2563eb', fontSize: 16 },
+  closeText: { color: colors.brandText, fontSize: 16 },
 });

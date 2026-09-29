@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResolvePrompt } from '@/components/resolution/ResolvePrompt';
+import { colors } from '@/constants/theme';
 
 export default function ResolveScreen() {
   const router = useRouter();
@@ -37,5 +38,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   title: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  body: { color: '#6b7280' },
+  body: { color: colors.textSecondary },
 });

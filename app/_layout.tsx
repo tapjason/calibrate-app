@@ -4,6 +4,7 @@ import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-nativ
 
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
+import { colors } from '@/constants/theme';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
 import {
@@ -154,5 +155,5 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  errorBody: { color: '#888', paddingHorizontal: 24, textAlign: 'center' },
+  errorBody: { color: colors.textSecondary, paddingHorizontal: 24, textAlign: 'center' },
 });

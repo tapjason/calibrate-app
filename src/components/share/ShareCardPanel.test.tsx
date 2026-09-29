@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 
 import { __setShareDepsForTests, type ShareDeps } from '@/share/export';
 import { useStatsStore } from '@/store/statsStore';
-import type { CategoryStat, UserStat } from '@/types';
+import { useWarmupStore } from '@/store/warmupStore';
+import type { CategoryStat, UserStat, WarmupResult } from '@/types';
 
 import { ShareCardPanel } from './ShareCardPanel';
 
@@ -59,6 +60,7 @@ function seedStats(
 let warn: jest.SpyInstance;
 
 beforeEach(() => {
+  useWarmupStore.setState({ result: null });
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   __setShareDepsForTests(shareDeps());
 });
@@ -155,5 +157,59 @@ describe('ShareCardPanel', () => {
       expect(screen.getByText(/Try again/)).toBeTruthy();
     });
     expect(screen.getByTestId('identity-card')).toBeTruthy();
+  });
+});
+
+// DESIGN_SYSTEM rule 0.10: Share is never empty — the Warmup is the Day-0 card.
+describe('ShareCardPanel — Day 0', () => {
+  const WARMUP: WarmupResult = {
+    answered: 10,
+    mean_confidence: 77,
+    accuracy: 0.5,
+    mini_score: 70,
+    direction: 'overconfident',
+    buckets: [],
+  };
+
+  it('shows the warm-up card before any real prediction resolves', () => {
+    seedStats(null);
+    useWarmupStore.setState({ result: WARMUP });
+    render(<ShareCardPanel />);
+
+    expect(screen.getByTestId('warmup-card')).toBeTruthy();
+    expect(screen.getByText('I run hot')).toBeTruthy();
+    expect(screen.getByText('77% sure, 50% right')).toBeTruthy();
+    expect(screen.queryByTestId('share-empty')).toBeNull();
+  });
+
+  it('shares the warm-up card like any other', async () => {
+    const deps = shareDeps();
+    __setShareDepsForTests(deps);
+    seedStats(null);
+    useWarmupStore.setState({ result: WARMUP });
+    render(<ShareCardPanel />);
+
+    fireEvent.press(screen.getByTestId('share-button'));
+    await waitFor(() => {
+      expect(deps.share).toHaveBeenCalled();
+    });
+  });
+
+  it('prefers the real identity card once there is one', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    useWarmupStore.setState({ result: WARMUP });
+    render(<ShareCardPanel />);
+
+    expect(screen.getByTestId('identity-card')).toBeTruthy();
+    expect(screen.queryByTestId('warmup-card')).toBeNull();
+  });
+
+  it('offers the warm-up when there is nothing at all', () => {
+    seedStats(null);
+    const onTakeWarmup = jest.fn();
+    render(<ShareCardPanel onTakeWarmup={onTakeWarmup} />);
+
+    fireEvent.press(screen.getByText('Take the warm-up'));
+    expect(onTakeWarmup).toHaveBeenCalled();
   });
 });
