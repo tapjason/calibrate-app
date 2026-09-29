@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CategoryIcon } from '@/components/ui/Icon';
+import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 
@@ -41,6 +41,17 @@ function statusLabel(prediction: Prediction, now: Date): string {
 export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
   const due = formatDue(prediction.due_date);
   const status = statusLabel(prediction, new Date());
+  // A resolved card dates itself by when it was answered, not when it was due.
+  const answered = prediction.status !== 'pending' && prediction.resolved_at;
+  const when = answered ? `resolved ${formatDue(answered)}` : `due ${due}`;
+  // Outcome glyphs in neutral ink, filled vs hollow — never green/red
+  // (DESIGN_SYSTEM §2.4). The word beside them carries the meaning.
+  const glyph =
+    prediction.status === 'resolved_yes'
+      ? ({ sf: 'checkmark.circle.fill', ion: 'checkmark-circle' } as const)
+      : prediction.status === 'resolved_no'
+        ? ({ sf: 'xmark.circle', ion: 'close-circle-outline' } as const)
+        : null;
 
   return (
     <Pressable
@@ -50,7 +61,7 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
       // One sentence instead of fragments read in layout order.
       accessibilityLabel={
         `${prediction.title}. ${prediction.category}, ${prediction.confidence}% confident, ` +
-        `due ${due}. ${status}.`
+        `${when}. ${status}.`
       }
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -63,9 +74,16 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
       </Text>
       <View style={styles.footer}>
         <Text style={styles.meta}>
-          {prediction.confidence}% · due {due}
+          {prediction.confidence}% · {when}
         </Text>
-        <Text style={styles.status}>{status}</Text>
+        <View style={styles.statusRow}>
+          {glyph && (
+            <Icon sf={glyph.sf} fallback={glyph.ion} size={16} color={colors.textPrimary} />
+          )}
+          {/* "Open" is the default state and the list's group header already
+              says when it's due, so it isn't repeated on every card. */}
+          {status !== 'Open' && <Text style={styles.status}>{status}</Text>}
+        </View>
       </View>
     </Pressable>
   );
@@ -83,6 +101,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
   categoryRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
+  statusRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   category: {
     ...type.footnote,
     color: colors.textSecondary,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -25,9 +25,27 @@ export default function HistoryScreen() {
     [resolved, filter],
   );
 
+  // Plain counts for the current filter — facts, never a verdict.
+  const yes = filtered.filter((p) => p.status === 'resolved_yes').length;
+  const no = filtered.filter((p) => p.status === 'resolved_no').length;
+  const skipped = filtered.length - yes - no;
+  const summary = [
+    `${yes + no} answered`,
+    `${yes} happened`,
+    skipped > 0 ? `${skipped} not scored` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <View style={styles.wrap}>
-      <View style={styles.row}>
+      {/* One scrolling row of filters rather than chips wrapping to two. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+        style={styles.filters}
+      >
         {FILTERS.map((f) => (
           <Pressable
             key={f}
@@ -43,7 +61,12 @@ export default function HistoryScreen() {
             </Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
+      {filtered.length > 0 && (
+        <Text style={styles.summary} testID="history-summary">
+          {summary}
+        </Text>
+      )}
       {filtered.length === 0 ? (
         <EmptyState
           testID="history-empty"
@@ -66,7 +89,9 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: space.lg, backgroundColor: colors.canvas },
-  row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', marginBottom: space.md },
+  filters: { flexGrow: 0, marginBottom: space.md },
+  row: { flexDirection: 'row', gap: space.sm, paddingVertical: 4 },
+  summary: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
   chip: {
     justifyContent: 'center',
     minHeight: 36,

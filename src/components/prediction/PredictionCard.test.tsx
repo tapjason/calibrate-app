@@ -22,13 +22,14 @@ describe('PredictionCard', () => {
   // One sentence, not five fragments in layout order, and no "check mark".
   it('reads as one sentence, without the status glyph', () => {
     render(<PredictionCard prediction={prediction} onPress={jest.fn()} />);
-    const due = new Date(prediction.due_date).toLocaleDateString(undefined, {
+    // Resolved cards date themselves by the answer, not the due date.
+    const resolved = new Date(prediction.resolved_at as string).toLocaleDateString(undefined, {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
     });
     expect(screen.getByRole('button').props.accessibilityLabel).toBe(
-      `I ship the report by Friday. work, 70% confident, due ${due}. Happened.`,
+      `I ship the report by Friday. work, 70% confident, resolved ${resolved}. Happened.`,
     );
   });
 
