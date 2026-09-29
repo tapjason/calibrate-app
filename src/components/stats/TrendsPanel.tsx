@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { track } from '@/analytics/track';
 import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { csvFileName, predictionsToCsv } from '@/export/csv';
 import { shareTextFile, type ExportOutcome } from '@/export/file';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -210,28 +210,22 @@ function formatMonth(period: string): string {
 const styles = StyleSheet.create({
   wrap: { gap: 12, padding: 16, paddingTop: 0 },
   heading: { fontSize: 17, fontWeight: '700' },
-  muted: { color: '#6b7280', fontSize: 13, lineHeight: 19 },
-  delta: { color: '#111827', fontSize: 15, lineHeight: 21 },
+  muted: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
+  delta: { color: colors.textPrimary, fontSize: 15, lineHeight: 21 },
   section: { gap: 4 },
-  sectionTitle: {
-    color: colors.textTertiary,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    marginBottom: 2,
-    textTransform: 'uppercase',
-  },
+  // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
+  sectionTitle: { ...type.eyebrow, color: colors.textSecondary, marginBottom: 2 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 6,
   },
   rowLabel: {
-    color: '#111827',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '500',
     textTransform: 'capitalize',
   },
-  rowValue: { color: '#4b5563', fontSize: 14 },
+  rowValue: { color: colors.textSecondary, fontSize: 14 },
   coverage: { gap: 4, paddingTop: 4 },
 });

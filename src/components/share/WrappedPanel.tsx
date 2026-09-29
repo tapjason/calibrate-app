@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '@/constants/theme';
 import { buildWrapped, type WrappedSpan } from '@/engine/wrapped';
 import { Button } from '@/components/ui/Button';
 import { track } from '@/analytics/track';
@@ -106,5 +107,5 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
-  message: { color: '#b45309', fontSize: 13, textAlign: 'center' },
+  message: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
 });

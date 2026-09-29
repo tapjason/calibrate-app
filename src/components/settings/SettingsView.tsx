@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { REFINE_ENABLED } from '@/constants/app';
+import { colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -232,11 +233,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.hairline,
   },
   rowText: { flex: 1, paddingRight: 16 },
-  rowLabel: { fontSize: 16, fontWeight: '500', color: '#111827' },
-  rowDescription: { fontSize: 13, color: '#6b7280', marginTop: 4 },
+  rowLabel: { fontSize: 16, fontWeight: '500', color: colors.textPrimary },
+  rowDescription: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
   deleteRow: { marginTop: 24, paddingVertical: 14 },
-  deleteLabel: { color: '#dc2626', fontSize: 16, fontWeight: '500' },
+  deleteLabel: { color: colors.destructive, fontSize: 16, fontWeight: '500' },
 });

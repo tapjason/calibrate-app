@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { track } from '@/analytics/track';
 import { resolveTheme } from '@/constants/cardThemes';
+import { colors } from '@/constants/theme';
 import { shareCard, type ShareOutcome } from '@/share/export';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -89,8 +90,8 @@ export function ShareCardPanel({ onUpgrade }: { onUpgrade?: () => void } = {}) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
-  message: { color: '#b45309', fontSize: 13, textAlign: 'center' },
+  message: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
   empty: { gap: 6, paddingVertical: 32 },
   emptyTitle: { fontSize: 17, fontWeight: '700' },
-  emptyBody: { color: '#6b7280', fontSize: 14, lineHeight: 20 },
+  emptyBody: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
 });

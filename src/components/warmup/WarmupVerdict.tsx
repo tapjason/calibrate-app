@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -85,25 +85,21 @@ export function WarmupVerdictScreen({ onContinue }: WarmupVerdictScreenProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
-  eyebrow: {
-    color: colors.textTertiary,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
+  // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
+  eyebrow: { ...type.eyebrow, color: colors.textSecondary },
   title: { fontSize: 26, fontWeight: '700' },
-  detail: { color: '#4b5563', fontSize: 16, lineHeight: 22 },
+  detail: { color: colors.textSecondary, fontSize: 16, lineHeight: 22 },
   scoreRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  score: { color: '#2563eb', fontSize: 48, fontWeight: '800' },
+  // Ink, not brand: colour goes to direction, never to the score (§2.4).
+  score: { color: colors.textPrimary, fontSize: 48, fontWeight: '800' },
   scoreMeta: { gap: 2 },
   scoreLabel: { fontSize: 15, fontWeight: '600' },
   scoreSub: { color: colors.textTertiary, fontSize: 13 },
-  advice: { color: '#374151', fontSize: 15, lineHeight: 21 },
+  advice: { color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
   disclaimer: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceSunken,
     borderRadius: 8,
-    color: '#6b7280',
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19,
     padding: 12,
@@ -114,6 +110,6 @@ const styles = StyleSheet.create({
   keyMark: { fontSize: 15, fontWeight: '700', width: 16 },
   keyBody: { flex: 1, gap: 2 },
   keyPrompt: { fontSize: 14, fontWeight: '600' },
-  keyFact: { color: '#6b7280', fontSize: 13, lineHeight: 18 },
+  keyFact: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
   keyConfidence: { color: colors.textTertiary, fontSize: 13 },
 });

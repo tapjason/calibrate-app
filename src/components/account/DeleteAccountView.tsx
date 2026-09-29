@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 
@@ -145,16 +146,16 @@ export function DeleteAccountView({
 
 const styles = StyleSheet.create({
   wrap: { gap: 14, padding: 24 },
-  title: { color: '#111827', fontSize: 22, fontWeight: '700' },
-  body: { color: '#374151', fontSize: 15, lineHeight: 22 },
-  muted: { color: '#6b7280', fontSize: 14, lineHeight: 20 },
+  title: { color: colors.textPrimary, fontSize: 22, fontWeight: '700' },
+  body: { color: colors.textSecondary, fontSize: 15, lineHeight: 22 },
+  muted: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
   warning: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.cautionBackground,
     borderRadius: 10,
     gap: 8,
     padding: 14,
   },
-  warningTitle: { color: '#92400e', fontSize: 15, fontWeight: '700' },
-  warningBody: { color: '#78350f', fontSize: 14, lineHeight: 20 },
-  error: { color: '#b91c1c', fontSize: 14, lineHeight: 20 },
+  warningTitle: { color: colors.cautionText, fontSize: 15, fontWeight: '700' },
+  warningBody: { color: colors.cautionText, fontSize: 14, lineHeight: 20 },
+  error: { color: colors.destructive, fontSize: 14, lineHeight: 20 },
 });

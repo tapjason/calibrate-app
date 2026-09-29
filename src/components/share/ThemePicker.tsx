@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CARD_THEMES, resolveTheme } from '@/constants/cardThemes';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -55,7 +55,12 @@ export function ThemePicker({ onUpgrade }: { onUpgrade?: () => void } = {}) {
                   card won't either. */}
               <View style={[styles.dot, { backgroundColor: theme.foreground }]} />
               {locked && (
-                <Text style={styles.lock} testID={`theme-lock-${theme.id}`}>
+                // The theme's own foreground, so the mark reads on light
+                // swatches (Paper) as well as dark ones.
+                <Text
+                  style={[styles.lock, { color: theme.foreground }]}
+                  testID={`theme-lock-${theme.id}`}
+                >
                   ✦
                 </Text>
               )}
@@ -74,13 +79,8 @@ export function ThemePicker({ onUpgrade }: { onUpgrade?: () => void } = {}) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  label: {
-    color: colors.textTertiary,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
+  // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
+  label: { ...type.eyebrow, color: colors.textSecondary },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   swatch: {
     alignItems: 'center',
@@ -91,14 +91,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
-  selected: { borderColor: '#2563eb' },
+  selected: { borderColor: colors.brand600 },
   dot: { borderRadius: 5, height: 10, width: 10 },
   lock: {
-    color: '#f8fafc',
     fontSize: 9,
     position: 'absolute',
     right: 4,
     top: 3,
   },
-  hint: { color: '#6b7280', fontSize: 12, lineHeight: 17 },
+  hint: { color: colors.textSecondary, fontSize: 12, lineHeight: 17 },
 });

@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { APP_NAME } from '@/constants/app';
 import { BADGE_META } from '@/constants/badges';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
+import { colors } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import { BadgeBlueprint } from './BadgeBlueprint';
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
-  chipCount: { color: '#6b7280', fontSize: 12, fontWeight: '600' },
+  chipCount: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
   line: { fontSize: 13, lineHeight: 19 },
   badgeRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 4 },
   badgeText: { flex: 1, fontSize: 15, fontWeight: '600', lineHeight: 20 },

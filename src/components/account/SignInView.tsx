@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 
 import { AppleSignInButton } from './AppleSignInButton';
@@ -139,10 +140,10 @@ export function SignInView({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 12, padding: 24 },
-  title: { color: '#111827', fontSize: 24, fontWeight: '700' },
-  lede: { color: '#6b7280', fontSize: 15, lineHeight: 21, marginBottom: 8 },
-  error: { color: '#b91c1c', fontSize: 14 },
-  notice: { color: '#1d4ed8', fontSize: 14, lineHeight: 20 },
+  title: { color: colors.textPrimary, fontSize: 24, fontWeight: '700' },
+  lede: { color: colors.textSecondary, fontSize: 15, lineHeight: 21, marginBottom: 8 },
+  error: { color: colors.destructive, fontSize: 14 },
+  notice: { color: colors.brand700, fontSize: 14, lineHeight: 20 },
   switch: { alignItems: 'center', paddingVertical: 12 },
-  switchText: { color: '#2563eb', fontSize: 15, fontWeight: '500' },
+  switchText: { color: colors.brandText, fontSize: 15, fontWeight: '500' },
 });

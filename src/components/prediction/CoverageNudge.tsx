@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { colors } from '@/constants/theme';
 
 interface CoverageNudgeProps {
   /** Confidence the accept button pre-sets, shown in the copy. */
@@ -64,14 +65,14 @@ const LOW_END_LABEL = 40;
 const styles = StyleSheet.create({
   wrap: {
     borderWidth: 1,
-    borderColor: '#C7D2FE',
-    backgroundColor: '#EEF2FF',
+    borderColor: colors.brand200,
+    backgroundColor: colors.brand50,
     borderRadius: 10,
     padding: 14,
     marginBottom: 16,
     gap: 8,
   },
-  title: { fontSize: 15, fontWeight: '600', color: '#3730A3' },
-  body: { fontSize: 13, lineHeight: 19, color: '#4338CA' },
+  title: { fontSize: 15, fontWeight: '600', color: colors.brand800 },
+  body: { fontSize: 13, lineHeight: 19, color: colors.brand700 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
 });
