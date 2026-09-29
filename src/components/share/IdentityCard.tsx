@@ -5,7 +5,7 @@ import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { contrastRatio } from '@/constants/contrast';
-import { palettes, roundedFamily } from '@/constants/theme';
+import { CARD_MAX_SCALE, palettes, roundedFamily } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
 
 import { shareLines, shareSubline } from './cardCopy';
@@ -96,21 +96,34 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
             />
           </View>
         )}
-        <Text style={[styles.eyebrow, { color: theme.accent }]}>My calibration</Text>
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.eyebrow, { color: theme.accent }]}
+        >
+          My calibration
+        </Text>
 
         <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
           style={[styles.identity, { color: theme.foreground }]}
           testID="card-identity"
         >
           {identity}
         </Text>
         {contrast && (
-          <Text style={[styles.contrast, { color: theme.muted }]} testID="card-contrast">
+          <Text
+            maxFontSizeMultiplier={CARD_MAX_SCALE}
+            style={[styles.contrast, { color: theme.muted }]}
+            testID="card-contrast"
+          >
             {contrast}
           </Text>
         )}
 
-        <Text style={[styles.receipt, { color: theme.foreground }]}>
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.receipt, { color: theme.foreground }]}
+        >
           {shareSubline(card)}
         </Text>
 
@@ -143,7 +156,10 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
               style={[styles.chip, { borderColor: theme.divider }]}
             >
               <LensEmblem tier={c.badge_level} size={18} />
-              <Text style={[styles.chipLabel, { color: theme.foreground }]}>
+              <Text
+                maxFontSizeMultiplier={CARD_MAX_SCALE}
+                style={[styles.chipLabel, { color: theme.foreground }]}
+              >
                 {c.category}
               </Text>
             </View>
@@ -158,9 +174,17 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
           format && styles.footerPinned,
         ]}
       >
-        <Text style={[styles.footerMark, { color: theme.foreground }]}>{APP_NAME}</Text>
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.footerMark, { color: theme.foreground }]}
+        >
+          {APP_NAME}
+        </Text>
         {/* The growth hook, as a question: never the faintest line on the card. */}
-        <Text style={[styles.footerHook, { color: theme.accent }]}>
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.footerHook, { color: theme.accent }]}
+        >
           What are you sharp at?
         </Text>
       </View>

@@ -13,6 +13,7 @@ import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import {
   colors,
+  DISPLAY_MAX_SCALE,
   radius,
   roundedFamily,
   space,
@@ -79,7 +80,7 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
       {milestone.kind === 'tier_up' ? (
         <LensEmblem tier={milestone.badge} size={64} />
       ) : (
-        <Text style={styles.number}>
+        <Text style={styles.number} maxFontSizeMultiplier={DISPLAY_MAX_SCALE}>
           {milestone.kind === 'rating_unlocked' ? milestone.rating : milestone.score}
         </Text>
       )}

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { roundedFamily } from '@/constants/theme';
+import { CARD_MAX_SCALE, roundedFamily } from '@/constants/theme';
 
 import type { WarmupCardCopy } from './warmupCardCopy';
 
@@ -32,15 +32,43 @@ export const WarmupCard = forwardRef<View, WarmupCardProps>(function WarmupCard(
       testID="warmup-card"
       collapsable={false}
     >
-      <Text style={[styles.eyebrow, { color: theme.accent }]}>{copy.eyebrow}</Text>
-      <Text style={[styles.headline, { color: theme.foreground }]}>{copy.headline}</Text>
-      <Text style={[styles.receipt, { color: theme.foreground }]}>{copy.receipt}</Text>
-      <Text style={[styles.context, { color: theme.muted }]}>{copy.context}</Text>
+      <Text
+        maxFontSizeMultiplier={CARD_MAX_SCALE}
+        style={[styles.eyebrow, { color: theme.accent }]}
+      >
+        {copy.eyebrow}
+      </Text>
+      <Text
+        maxFontSizeMultiplier={CARD_MAX_SCALE}
+        style={[styles.headline, { color: theme.foreground }]}
+      >
+        {copy.headline}
+      </Text>
+      <Text
+        maxFontSizeMultiplier={CARD_MAX_SCALE}
+        style={[styles.receipt, { color: theme.foreground }]}
+      >
+        {copy.receipt}
+      </Text>
+      <Text
+        maxFontSizeMultiplier={CARD_MAX_SCALE}
+        style={[styles.context, { color: theme.muted }]}
+      >
+        {copy.context}
+      </Text>
 
       <View style={[styles.footer, { borderTopColor: theme.divider }]}>
-        <Text style={[styles.footerMark, { color: theme.foreground }]}>{APP_NAME}</Text>
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.footerMark, { color: theme.foreground }]}
+        >
+          {APP_NAME}
+        </Text>
         {/* The growth hook: never the faintest line on the card. */}
-        <Text style={[styles.footerHook, { color: theme.accent }]}>
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.footerHook, { color: theme.accent }]}
+        >
           How well do you know what you know?
         </Text>
       </View>

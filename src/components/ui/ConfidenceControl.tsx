@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
-import { colors, radius, roundedFamily, space, tabularNums, type } from '@/constants/theme';
+import { colors, DISPLAY_MAX_SCALE, radius, roundedFamily, space, tabularNums, type } from '@/constants/theme';
 
 interface ConfidenceControlProps {
   value: number;
@@ -93,7 +93,11 @@ export function ConfidenceControl({
     >
       <Text style={styles.label}>{label}</Text>
       <View style={styles.readoutRow}>
-        <Text style={styles.readout} testID={`${idPrefix}-readout`}>
+        <Text
+          style={styles.readout}
+          testID={`${idPrefix}-readout`}
+          maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
+        >
           {value}%
         </Text>
         <Text style={styles.frequency}>{naturalFrequencyFor(value)}</Text>

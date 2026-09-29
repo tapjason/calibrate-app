@@ -188,6 +188,15 @@ export const type = {
   eyebrow: { fontSize: 13, lineHeight: 18, fontWeight: '600', letterSpacing: 0.4 },
 } satisfies Record<string, TextStyle>;
 
+/**
+ * Dynamic Type caps (DESIGN_SYSTEM §3, §8). Body text scales freely; the one
+ * display-size number per screen stops at 1.6x so it can't push everything
+ * else off screen, and share cards stop at 1.2x because they are fixed-layout
+ * artifacts exported as images.
+ */
+export const DISPLAY_MAX_SCALE = 1.6;
+export const CARD_MAX_SCALE = 1.2;
+
 /** Every number that animates or aligns in a column. */
 export const tabularNums: TextStyle = { fontVariant: ['tabular-nums'] };
 

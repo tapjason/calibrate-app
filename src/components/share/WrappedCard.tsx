@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { roundedFamily } from '@/constants/theme';
+import { CARD_MAX_SCALE, roundedFamily } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
@@ -37,123 +37,159 @@ interface WrappedCardProps {
  * busiest bucket, and the user's progress toward a real score — never a
  * verdict built on four resolutions.
  */
-export const WrappedCard = forwardRef<View, WrappedCardProps>(
-  function WrappedCard(
-    { summary, overall, badge, theme = WRAPPED_DEFAULT_THEME, showTitles = false },
-    ref,
-  ) {
-    const story = wrappedStory(summary, overall);
+export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCard(
+  { summary, overall, badge, theme = WRAPPED_DEFAULT_THEME, showTitles = false },
+  ref,
+) {
+  const story = wrappedStory(summary, overall);
 
-    return (
-      <View
-        ref={ref}
-        style={[styles.card, { backgroundColor: theme.background }]}
-        testID="wrapped-card"
-        collapsable={false}
+  return (
+    <View
+      ref={ref}
+      style={[styles.card, { backgroundColor: theme.background }]}
+      testID="wrapped-card"
+      collapsable={false}
+    >
+      <Text
+        maxFontSizeMultiplier={CARD_MAX_SCALE}
+        style={[styles.eyebrow, { color: theme.accent }]}
       >
-        <Text style={[styles.eyebrow, { color: theme.accent }]}>{story.title}</Text>
+        {story.title}
+      </Text>
+      <Text
+        maxFontSizeMultiplier={CARD_MAX_SCALE}
+        style={[styles.stat, { color: theme.foreground }]}
+        accessibilityLabel={story.stat}
+        testID="wrapped-stat"
+      >
+        {story.statCount}
+      </Text>
+      {story.statRate && (
         <Text
-          style={[styles.stat, { color: theme.foreground }]}
-          accessibilityLabel={story.stat}
-          testID="wrapped-stat"
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.statRate, { color: theme.foreground }]}
         >
-          {story.statCount}
+          {story.statRate}
         </Text>
-        {story.statRate && (
-          <Text style={[styles.statRate, { color: theme.foreground }]}>{story.statRate}</Text>
-        )}
+      )}
 
-        {story.receipt && (
+      {story.receipt && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.verdict, { color: theme.foreground }]}
+          testID="wrapped-receipt"
+        >
+          {story.receipt}
+        </Text>
+      )}
+      {story.verdict && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.verdict, { color: theme.muted }]}
+          testID="wrapped-verdict"
+        >
+          {story.verdict}
+        </Text>
+      )}
+      {story.provisionalNote && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.provisional, { color: theme.accent }]}
+          testID="wrapped-provisional"
+        >
+          {story.provisionalNote}
+        </Text>
+      )}
+
+      {badge && (
+        <View style={styles.badgeRow} testID="wrapped-next-badge">
+          <LensEmblem
+            tier={badge.badge}
+            size={44}
+            progress={badge.progress}
+            inkColor={theme.accent}
+            progressColor={theme.foreground}
+          />
           <Text
-            style={[styles.verdict, { color: theme.foreground }]}
-            testID="wrapped-receipt"
+            maxFontSizeMultiplier={CARD_MAX_SCALE}
+            style={[styles.badgeText, { color: theme.foreground }]}
           >
-            {story.receipt}
-          </Text>
-        )}
-        {story.verdict && (
-          <Text
-            style={[styles.verdict, { color: theme.muted }]}
-            testID="wrapped-verdict"
-          >
-            {story.verdict}
-          </Text>
-        )}
-        {story.provisionalNote && (
-          <Text
-            style={[styles.provisional, { color: theme.accent }]}
-            testID="wrapped-provisional"
-          >
-            {story.provisionalNote}
-          </Text>
-        )}
-
-        {badge && (
-          <View style={styles.badgeRow} testID="wrapped-next-badge">
-            <LensEmblem
-              tier={badge.badge}
-              size={44}
-              progress={badge.progress}
-              inkColor={theme.accent}
-              progressColor={theme.foreground}
-            />
-            <Text style={[styles.badgeText, { color: theme.foreground }]}>
-              {badge.text}
-            </Text>
-          </View>
-        )}
-
-        {summary.categories.length > 0 && (
-          <View style={styles.badges}>
-            {summary.categories.map((c) => (
-              <View
-                key={c.category}
-                testID={`wrapped-category-${c.category}`}
-                style={[styles.chip, { borderColor: theme.divider }]}
-              >
-                <Text style={[styles.chipLabel, { color: theme.foreground }]}>
-                  {c.category}
-                </Text>
-                <Text style={[styles.chipCount, { color: theme.muted }]}>{c.resolved}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {summary.boldest_hit && (
-          <Text
-            style={[styles.line, { color: theme.muted }]}
-            testID="wrapped-boldest-hit"
-          >
-            Boldest call that landed · {summary.boldest_hit.confidence}%
-            {showTitles ? ` · ${summary.boldest_hit.title}` : ''}
-          </Text>
-        )}
-        {summary.biggest_miss && (
-          <Text
-            style={[styles.line, { color: theme.muted }]}
-            testID="wrapped-biggest-miss"
-          >
-            Surest thing that didn&apos;t · {summary.biggest_miss.confidence}%
-            {showTitles ? ` · ${summary.biggest_miss.title}` : ''}
-          </Text>
-        )}
-
-        <Text style={[styles.note, { color: theme.muted }]}>{story.note}</Text>
-
-        <View style={[styles.footer, { borderTopColor: theme.divider }]}>
-          <Text style={[styles.footerMark, { color: theme.foreground }]}>
-            {APP_NAME}
-          </Text>
-          {/* The growth hook, as a question: never the faintest line on the card. */}
-          <Text style={[styles.footerHook, { color: theme.accent }]}>
-            What are you sharp at?
+            {badge.text}
           </Text>
         </View>
+      )}
+
+      {summary.categories.length > 0 && (
+        <View style={styles.badges}>
+          {summary.categories.map((c) => (
+            <View
+              key={c.category}
+              testID={`wrapped-category-${c.category}`}
+              style={[styles.chip, { borderColor: theme.divider }]}
+            >
+              <Text
+                maxFontSizeMultiplier={CARD_MAX_SCALE}
+                style={[styles.chipLabel, { color: theme.foreground }]}
+              >
+                {c.category}
+              </Text>
+              <Text
+                maxFontSizeMultiplier={CARD_MAX_SCALE}
+                style={[styles.chipCount, { color: theme.muted }]}
+              >
+                {c.resolved}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {summary.boldest_hit && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.line, { color: theme.muted }]}
+          testID="wrapped-boldest-hit"
+        >
+          Boldest call that landed · {summary.boldest_hit.confidence}%
+          {showTitles ? ` · ${summary.boldest_hit.title}` : ''}
+        </Text>
+      )}
+      {summary.biggest_miss && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.line, { color: theme.muted }]}
+          testID="wrapped-biggest-miss"
+        >
+          Surest thing that didn&apos;t · {summary.biggest_miss.confidence}%
+          {showTitles ? ` · ${summary.biggest_miss.title}` : ''}
+        </Text>
+      )}
+
+      <Text
+        maxFontSizeMultiplier={CARD_MAX_SCALE}
+        style={[styles.note, { color: theme.muted }]}
+      >
+        {story.note}
+      </Text>
+
+      <View style={[styles.footer, { borderTopColor: theme.divider }]}>
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.footerMark, { color: theme.foreground }]}
+        >
+          {APP_NAME}
+        </Text>
+        {/* The growth hook, as a question: never the faintest line on the card. */}
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.footerHook, { color: theme.accent }]}
+        >
+          What are you sharp at?
+        </Text>
       </View>
-    );
-  },
-);
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   card: {

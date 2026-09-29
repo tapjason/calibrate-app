@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Text, type StyleProp, type TextStyle } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
+import { DISPLAY_MAX_SCALE } from '@/constants/theme';
+
 interface CountUpProps {
   value: number;
   style?: StyleProp<TextStyle>;
@@ -48,7 +50,12 @@ export function CountUp({ value, style, testID, duration = 700 }: CountUpProps) 
   }, [value, duration, reduceMotion]);
 
   return (
-    <Text style={style} testID={testID} accessibilityLabel={String(value)}>
+    <Text
+      style={style}
+      testID={testID}
+      accessibilityLabel={String(value)}
+      maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
+    >
       {shown}
     </Text>
   );
