@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
@@ -105,6 +105,23 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
     }
   };
 
+  const changeAnswer = async () => {
+    if (!prediction) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await usePredictionStore.getState().reopen(prediction.id);
+      // A milestone from the withdrawn answer mustn't linger for the next one.
+      useStatsStore.getState().clearMilestone();
+      setReflection('');
+      setAnswered(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const finish = async () => {
     if (!prediction) return;
     setError(null);
@@ -190,6 +207,17 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
           disabled={submitting}
           testID="resolve-done"
         />
+        {/* A mis-tap shouldn't be permanent (HIG: let people undo). */}
+        <Pressable
+          onPress={() => void changeAnswer()}
+          disabled={submitting}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={styles.changeAnswer}
+          testID="resolve-change"
+        >
+          <Text style={styles.changeAnswerText}>Change answer</Text>
+        </Pressable>
       </View>
     );
   }
@@ -302,6 +330,8 @@ const styles = StyleSheet.create({
     padding: space.lg,
   },
   bucketLine: { ...type.callout, color: colors.textPrimary },
+  changeAnswer: { alignSelf: 'center', marginTop: space.lg, paddingVertical: space.sm },
+  changeAnswerText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
   categoryRow: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -259,3 +259,34 @@ describe('ResolvePrompt recorded label', () => {
     });
   });
 });
+
+describe('ResolvePrompt change answer', () => {
+  it('lets a mis-tap be undone and answered again', async () => {
+    await insertPrediction(samplePending());
+    const onResolved = jest.fn();
+    render(<ResolvePrompt predictionId="p1" onResolved={onResolved} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-change')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-change'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+    expect((await getPrediction('p1'))?.status).toBe('pending');
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
+        'Recorded: it happened',
+      );
+    });
+    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+    expect(onResolved).not.toHaveBeenCalled();
+  });
+});

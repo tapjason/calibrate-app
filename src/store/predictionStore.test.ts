@@ -263,3 +263,36 @@ describe('statsStore.bucketFor', () => {
     expect(useStatsStore.getState().bucketFor(20)).toBeNull();
   });
 });
+
+describe('predictionStore.reopen', () => {
+  it('undoes a resolution: back to pending, and stats forget it', async () => {
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 70,
+      due_date: '2026-06-01T00:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no', 'oops');
+    expect(useStatsStore.getState().userStat?.total_resolved).toBe(1);
+
+    await usePredictionStore.getState().reopen(p.id);
+
+    const back = await usePredictionStore.getState().getById(p.id);
+    expect(back?.status).toBe('pending');
+    expect(back?.resolved_at).toBeNull();
+    expect(back?.reflection).toBeNull();
+    expect(usePredictionStore.getState().pending).toHaveLength(1);
+    expect(useStatsStore.getState().userStat?.total_resolved).toBe(0);
+  });
+
+  it('does nothing to a prediction that was never answered', async () => {
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 70,
+      due_date: '2026-06-01T00:00:00.000Z',
+    });
+    await usePredictionStore.getState().reopen(p.id);
+    expect((await usePredictionStore.getState().getById(p.id))?.status).toBe('pending');
+  });
+});

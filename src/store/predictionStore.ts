@@ -16,6 +16,7 @@ import {
   listPendingPredictions,
   listResolvedPredictions,
   resolvePrediction,
+  reopenPrediction,
   setPredictionReflection,
 } from '@/db/predictions';
 import type { Category, Prediction, ResolvedStatus } from '@/types';
@@ -49,6 +50,11 @@ interface PredictionState {
     reflection?: string,
   ) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  /**
+   * Undo a resolution (the "Change answer" tap). Stats recompute in the same
+   * transaction, exactly as for resolve, so nothing counts a withdrawn answer.
+   */
+  reopen: (id: string) => Promise<void>;
   /** Attach (or clear, with an empty string) a reflection after resolving. */
   reflect: (id: string, reflection: string) => Promise<void>;
 }
@@ -170,6 +176,15 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
         correct: outcome === 'resolved_yes',
       });
     }
+  },
+
+  reopen: async (id) => {
+    const userId = requireUserId();
+    await withTransaction(async () => {
+      await reopenPrediction(id);
+      await useStatsStore.getState().recomputeForUser(userId);
+    });
+    await Promise.all([get().loadPending(), get().loadResolved()]);
   },
 
   reflect: async (id, reflection) => {

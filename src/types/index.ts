@@ -348,6 +348,8 @@ export type ResolvePrediction = (
   reflection?: string,
 ) => Promise<void>;
 export type DeletePrediction = (id: string) => Promise<void>;
+/** Undo a resolution: back to pending, outcome and reflection cleared. */
+export type ReopenPrediction = (id: string) => Promise<void>;
 /** Set or clear the reflection on an already-resolved prediction. */
 export type SetReflection = (id: string, reflection: string | null) => Promise<void>;
 
