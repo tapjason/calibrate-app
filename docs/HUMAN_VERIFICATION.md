@@ -601,8 +601,31 @@ Added 2026-09-29 (second pass):
 - [ ] **Stats, free user:** one "Calibrate Plus" card instead of two "See Plus"
       blocks.
 - [ ] **Native packages added this pass** (expo-haptics, slider, expo-symbols,
-      reanimated + worklets): all ship in Expo Go for SDK 55; a custom dev build
-      needs rebuilding before testing.
+      reanimated + worklets, datetimepicker): all ship in Expo Go for SDK 55; a
+      custom dev build needs rebuilding before testing (datetimepicker also adds
+      a config plugin to `app.json`).
+
+Added 2026-09-29 (polish pass):
+
+- [ ] **Log → Pick a date:** a fourth chip opens the iOS compact date picker
+      (Android: the system dialog). Past days can't be picked; the line below
+      updates to "Due {weekday}, {date}".
+- [ ] **Resolve → Change answer:** after Yes/No the screen says "Recorded: it
+      happened / it didn't happen" with a neutral glyph; "Change answer" puts the
+      prediction back to pending and shows the question again. Check History and
+      Stats don't count the withdrawn answer.
+- [ ] **History:** filters sit in one horizontally scrolling row; a line under them
+      counts "N answered · N happened"; resolved cards say "resolved {date}".
+- [ ] **Identity card:** your best category large, the contrast line smaller under
+      it (hidden when both are the same tier), a five-dot strip once your score is
+      unlocked, and "What are you sharp at?" in the footer. Export it and check the
+      emblems and dots appear in the PNG.
+- [ ] **This week card:** a big "N resolved" with "N% came in" under it; prediction
+      titles appear only after turning on "Show prediction titles on the card".
+- [ ] **Warmup (fresh install):** branded first screen, radio-style answers,
+      ten-segment progress; on the verdict, "Log my first prediction" and "Share my
+      result" sit above the answer key.
+- [ ] **Settings switches** are indigo when on (not green).
 
 ---
 
