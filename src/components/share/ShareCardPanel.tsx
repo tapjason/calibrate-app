@@ -91,7 +91,7 @@ export function ShareCardPanel({
   return (
     <View style={styles.wrap} testID="share-panel">
       {card ? (
-        <IdentityCard ref={cardRef} card={card} theme={theme} />
+        <IdentityCard ref={cardRef} card={card} theme={theme} buckets={buckets} />
       ) : (
         warmup && <WarmupCard ref={cardRef} copy={warmup} theme={theme} />
       )}

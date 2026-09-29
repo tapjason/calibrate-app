@@ -84,7 +84,8 @@ describe('ShareCardPanel', () => {
     render(<ShareCardPanel />);
 
     expect(screen.getByTestId('identity-card')).toBeTruthy();
-    expect(screen.getByText('Sharp in health · Guesser in finance')).toBeTruthy();
+    expect(screen.getByTestId('card-identity')).toHaveTextContent('Sharp in health');
+    expect(screen.getByTestId('card-contrast')).toHaveTextContent('Guesser in finance');
     expect(screen.getByTestId('card-badge-health')).toBeTruthy();
     expect(screen.getByTestId('card-badge-finance')).toBeTruthy();
   });

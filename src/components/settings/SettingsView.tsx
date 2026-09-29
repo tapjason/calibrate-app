@@ -220,7 +220,17 @@ function ToggleRow({
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowDescription}>{description}</Text>
       </View>
-      <Switch value={value} onValueChange={onValueChange} testID={testID} />
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        testID={testID}
+        // Brand tint when on; a 3:1 grey track when off, so "off" still reads
+        // as a control (DESIGN_SYSTEM §2.2 controlBorder).
+        trackColor={{ true: colors.brand600, false: colors.controlBorder }}
+        thumbColor={colors.surface}
+        ios_backgroundColor={colors.controlBorder}
+        {...{ activeThumbColor: colors.surface }}
+      />
     </View>
   );
 }

@@ -102,7 +102,9 @@ const styles = StyleSheet.create({
   detail: { color: colors.textSecondary, fontSize: 16, lineHeight: 22 },
   scoreRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   // Ink, not brand: colour goes to direction, never to the score (§2.4).
-  score: { color: colors.textPrimary, fontSize: 48, fontWeight: '800' },
+  // title1, not display: a warm-up score must not look like the real rating
+  // (DESIGN_SYSTEM §7.2 / baseline 02). The verdict sentence is the headline.
+  score: { color: colors.textPrimary, fontSize: 28, fontWeight: '800' },
   scoreMeta: { gap: 2 },
   scoreLabel: { fontSize: 15, fontWeight: '600' },
   scoreSub: { color: colors.textTertiary, fontSize: 13 },

@@ -2,12 +2,13 @@ import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { LensEmblem } from '@/components/ui/LensEmblem';
-import { BADGE_META } from '@/constants/badges';
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import type { ShareCard } from '@/types';
+import { contrastRatio } from '@/constants/contrast';
+import { palettes, roundedFamily } from '@/constants/theme';
+import type { BucketStat, Direction, ShareCard } from '@/types';
 
-import { shareHeadline, shareSubline } from './cardCopy';
+import { shareLines, shareSubline } from './cardCopy';
 
 interface IdentityCardProps {
   card: ShareCard;
@@ -17,102 +18,147 @@ interface IdentityCardProps {
    * gated, only its palette.
    */
   theme?: CardTheme;
+  /**
+   * The user's calibration buckets, for the mini dot strip. Drawn only when
+   * the card carries a rating — a strip of verdicts on a provisional record
+   * would be publishing noise.
+   */
+  buckets?: readonly BucketStat[];
+}
+
+const BAND_LOWS = [0, 20, 40, 60, 80] as const;
+
+/** Dot colours for the card's own background: light marks on light, dark on dark. */
+function marksFor(background: string): Record<Direction, string> {
+  const onDark = contrastRatio(background, '#FFFFFF') > 4.5;
+  const p = onDark ? palettes.dark : palettes.light;
+  return {
+    overconfident: p.overMark,
+    underconfident: p.underMark,
+    calibrated: p.calibratedMark,
+  };
 }
 
 /**
  * The category identity card — the app's core shareable artifact.
  *
- * Built from plain Views rather than SVG: react-native-view-shot rasterizes
- * the native view tree, so what the user sees on screen is exactly what lands
- * in the PNG, with no second rendering path to keep in sync.
+ * Hierarchy (DESIGN_SYSTEM §7.5), built to read as a thumbnail in a chat
+ * thread: the identity line large ("Sharp in health"), the contrast line
+ * beneath it ("Guesser in finance"), one receipt, a five-dot strip with no
+ * axes, then the badges and a footer hook phrased as a question.
  *
- * Fixed aspect and generous padding because this is screenshot-native: it has
- * to stay legible as a thumbnail in a chat thread. The "get your own" footer
- * is the growth hook and is never removed — this card is free forever, and it
- * is the marketing budget.
- *
- * Forwards a ref so the screen can hand the whole card to captureCard().
+ * Plain Views (and the SVG emblems) so react-native-view-shot rasterises
+ * exactly what is on screen. The footer is the growth hook and is never
+ * removed — this card is free forever.
  */
-export const IdentityCard = forwardRef<View, IdentityCardProps>(
-  function IdentityCard({ card, theme = DEFAULT_THEME }, ref) {
-    return (
-      <View
-        ref={ref}
-        style={[styles.card, { backgroundColor: theme.background }]}
-        testID="identity-card"
-        collapsable={false}
-      >
-        <Text style={[styles.eyebrow, { color: theme.accent }]}>My calibration</Text>
+export const IdentityCard = forwardRef<View, IdentityCardProps>(function IdentityCard(
+  { card, theme = DEFAULT_THEME, buckets = [] },
+  ref,
+) {
+  const { identity, contrast } = shareLines(card);
+  const showStrip = card.rating !== null && buckets.length > 0;
+  const marks = marksFor(theme.background);
+  const byLow = new Map(buckets.map((b) => [b.low, b]));
+  const maxN = buckets.reduce((m, b) => Math.max(m, b.total_resolved), 1);
 
-        <Text style={[styles.headline, { color: theme.foreground }]}>
-          {shareHeadline(card)}
-        </Text>
-        <Text style={[styles.subline, { color: theme.muted }]}>
-          {shareSubline(card)}
-        </Text>
+  return (
+    <View
+      ref={ref}
+      style={[styles.card, { backgroundColor: theme.background }]}
+      testID="identity-card"
+      collapsable={false}
+    >
+      <Text style={[styles.eyebrow, { color: theme.accent }]}>My calibration</Text>
 
-        <View style={styles.badges}>
-          {card.categories.map((c) => {
-            const meta = BADGE_META[c.badge_level];
+      <Text style={[styles.identity, { color: theme.foreground }]} testID="card-identity">
+        {identity}
+      </Text>
+      {contrast && (
+        <Text style={[styles.contrast, { color: theme.muted }]} testID="card-contrast">
+          {contrast}
+        </Text>
+      )}
+
+      <Text style={[styles.receipt, { color: theme.foreground }]}>{shareSubline(card)}</Text>
+
+      {showStrip && (
+        <View style={styles.strip} testID="card-strip">
+          {BAND_LOWS.map((low) => {
+            const b = byLow.get(low);
+            const size = b ? 10 + (b.total_resolved / maxN) * 12 : 8;
             return (
-              <View
-                key={c.category}
-                testID={`card-badge-${c.category}`}
-                style={[styles.chip, { backgroundColor: meta.background }]}
-              >
-                <LensEmblem tier={c.badge_level} size={18} />
-                <Text style={[styles.chipLabel, { color: meta.color }]}>
-                  {c.category}
-                </Text>
+              <View key={low} style={styles.stripCell}>
+                <View
+                  style={[
+                    { width: size, height: size, borderRadius: size / 2 },
+                    b
+                      ? { backgroundColor: marks[b.direction] }
+                      : { borderColor: theme.divider, borderWidth: 1.5 },
+                  ]}
+                />
               </View>
             );
           })}
         </View>
+      )}
 
-        <View style={[styles.footer, { borderTopColor: theme.divider }]}>
-          <Text style={[styles.footerMark, { color: theme.foreground }]}>
-            {APP_NAME}
-          </Text>
-          <Text style={[styles.footerHook, { color: theme.accent }]}>
-            Find out where your judgment holds up
-          </Text>
-        </View>
+      <View style={styles.badges}>
+        {card.categories.map((c) => (
+          <View
+            key={c.category}
+            testID={`card-badge-${c.category}`}
+            style={[styles.chip, { borderColor: theme.divider }]}
+          >
+            <LensEmblem tier={c.badge_level} size={18} />
+            <Text style={[styles.chipLabel, { color: theme.foreground }]}>
+              {c.category}
+            </Text>
+          </View>
+        ))}
       </View>
-    );
-  },
-);
+
+      <View style={[styles.footer, { borderTopColor: theme.divider }]}>
+        <Text style={[styles.footerMark, { color: theme.foreground }]}>{APP_NAME}</Text>
+        {/* The growth hook, as a question: never the faintest line on the card. */}
+        <Text style={[styles.footerHook, { color: theme.accent }]}>
+          What are you sharp at?
+        </Text>
+      </View>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 20,
-    gap: 10,
-    padding: 24,
+  card: { borderRadius: 24, gap: 8, padding: 24 },
+  eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
+  identity: {
+    fontFamily: roundedFamily,
+    fontSize: 34,
+    fontWeight: '800',
+    lineHeight: 40,
+    marginTop: 4,
   },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+  contrast: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
+  receipt: { fontSize: 15, lineHeight: 21, marginTop: 6 },
+  strip: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    height: 28,
+    marginTop: 4,
   },
-  headline: { fontSize: 26, fontWeight: '800', lineHeight: 32 },
-  subline: { fontSize: 14 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  stripCell: { alignItems: 'center', flex: 1 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   chip: {
     alignItems: 'center',
     borderRadius: 999,
+    borderWidth: 1,
     flexDirection: 'row',
-    gap: 5,
+    gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
-  footer: {
-    borderTopWidth: 1,
-    gap: 2,
-    marginTop: 14,
-    paddingTop: 14,
-  },
-  footerMark: { fontSize: 14, fontWeight: '700' },
-  // The growth hook: never the faintest line on the card (accent is ≥ 4.5:1).
-  footerHook: { fontSize: 13, fontWeight: '600' },
+  footer: { borderTopWidth: 1, gap: 2, marginTop: 14, paddingTop: 14 },
+  footerMark: { fontSize: 15, fontWeight: '700' },
+  footerHook: { fontSize: 14, fontWeight: '600' },
 });

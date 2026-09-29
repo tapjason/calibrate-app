@@ -1,6 +1,12 @@
 import type { BucketStat, CategoryStat, ShareCard, UserStat } from '@/types';
 
-import { buildShareCard, shareHeadline, shareSubline, shareText } from './cardCopy';
+import {
+  buildShareCard,
+  shareHeadline,
+  shareLines,
+  shareSubline,
+  shareText,
+} from './cardCopy';
 
 function userStat(over: Partial<UserStat> = {}): UserStat {
   return {
@@ -164,5 +170,42 @@ describe('shareText', () => {
   it('never carries a prediction title', () => {
     const text = shareText(card(81), []);
     expect(text.split('\n')).toHaveLength(3);
+  });
+});
+
+describe('shareLines', () => {
+  const card = (levels: Array<[string, string]>): ShareCard => ({
+    categories: levels.map(([category, badge_level]) => ({
+      category: category as ShareCard['categories'][number]['category'],
+      badge_level: badge_level as ShareCard['categories'][number]['badge_level'],
+    })),
+    rating: null,
+    total_resolved: 30,
+  });
+
+  it('splits best and worst into an identity line and a contrast line', () => {
+    expect(shareLines(card([['health', 'sharp'], ['finance', 'guesser']]))).toEqual({
+      identity: 'Sharp in health',
+      contrast: 'Guesser in finance',
+    });
+  });
+
+  it('draws no contrast when the tiers are the same', () => {
+    expect(shareLines(card([['work', 'guesser'], ['health', 'guesser']])).contrast).toBeNull();
+  });
+
+  it('draws no contrast with a single category', () => {
+    expect(shareLines(card([['work', 'tracker']]))).toEqual({
+      identity: 'Tracker in work',
+      contrast: null,
+    });
+  });
+});
+
+describe('shareSubline plural', () => {
+  it('says "1 more resolution", not "resolutions"', () => {
+    expect(
+      shareSubline({ categories: [], rating: null, total_resolved: 19 }),
+    ).toBe('1 more resolution until my calibration unlocks');
   });
 });

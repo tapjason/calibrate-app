@@ -155,7 +155,7 @@ export default function RootLayout() {
   // detents, because fitToContents still has open sizing bugs. On web these
   // fall back to ordinary modal presentation.
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
       <Stack.Screen
         name="resolve/[id]"
         options={{

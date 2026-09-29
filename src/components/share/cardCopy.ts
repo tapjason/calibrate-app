@@ -85,13 +85,30 @@ export function shareHeadline(card: ShareCard): string {
 }
 
 /**
+ * The headline as the card lays it out (DESIGN_SYSTEM §7.5): the identity
+ * line large, the contrast line smaller beneath it. `contrast` is null with
+ * a single category, or when best and worst are the same tier — "Guesser in
+ * work, Guesser in health" is no contrast at all.
+ */
+export function shareLines(card: ShareCard): { identity: string; contrast: string | null } {
+  const [best] = card.categories;
+  if (!best) return { identity: '', contrast: null };
+  const label = (c: ShareCard['categories'][number]) =>
+    `${BADGE_META[c.badge_level].label} in ${c.category}`;
+  const worst = card.categories[card.categories.length - 1];
+  const contrast =
+    card.categories.length > 1 && worst.badge_level !== best.badge_level ? label(worst) : null;
+  return { identity: label(best), contrast };
+}
+
+/**
  * The sub-line under the headline: the rating, or — while provisional — how
  * many resolutions are still needed before there is a rating worth printing.
  */
 export function shareSubline(card: ShareCard): string {
   if (card.rating === null) {
     const remaining = Math.max(0, MIN_N_OVERALL - card.total_resolved);
-    return `${remaining} more resolutions until my calibration unlocks`;
+    return `${remaining} more ${remaining === 1 ? 'resolution' : 'resolutions'} until my calibration unlocks`;
   }
   return `Calibration ${card.rating}/100 · ${card.total_resolved} predictions resolved`;
 }

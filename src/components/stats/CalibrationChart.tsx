@@ -163,7 +163,9 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
                 fontSize={TICK_FONT}
                 fontFamily={svgFontFamily}
                 fill={colors.textTertiary}
-                textAnchor="middle"
+                // The last label hangs left of its tick so "100%" isn't
+                // clipped by the right edge.
+                textAnchor={t === 100 ? 'end' : 'middle'}
               >
                 {`${t}%`}
               </SvgText>
