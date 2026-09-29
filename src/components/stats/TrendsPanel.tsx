@@ -26,7 +26,14 @@ const EXPORT_MESSAGES: Record<Exclude<ExportOutcome, 'shared'>, string> = {
  * Free users see the section with its numbers withheld, not a hidden feature.
  * A locked door you can see is an upsell; one you can't is just an absence.
  */
-export function TrendsPanel({ onUpgrade }: { onUpgrade?: () => void } = {}) {
+export function TrendsPanel({
+  onUpgrade,
+  upsell = true,
+}: {
+  onUpgrade?: () => void;
+  /** False when the screen shows one shared Plus teaser instead. */
+  upsell?: boolean;
+} = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const trends = useStatsStore((s) => s.trends);
   const pending = usePredictionStore((s) => s.pending);
@@ -35,6 +42,8 @@ export function TrendsPanel({ onUpgrade }: { onUpgrade?: () => void } = {}) {
   const [message, setMessage] = useState<string | null>(null);
 
   const hasHistory = trends.periods.length > 0;
+
+  if (!isPlus && !upsell) return null;
 
   if (!isPlus) {
     return (

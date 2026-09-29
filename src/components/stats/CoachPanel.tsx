@@ -26,7 +26,13 @@ import { SupportSurface } from './SupportSurface';
 export function CoachPanel({
   onUpgrade,
   onSignIn,
-}: { onUpgrade?: () => void; onSignIn?: () => void } = {}) {
+  upsell = true,
+}: {
+  onUpgrade?: () => void;
+  onSignIn?: () => void;
+  /** False when the screen shows one shared Plus teaser instead. */
+  upsell?: boolean;
+} = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const authStatus = useAuthStore((s) => s.status);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
@@ -45,6 +51,8 @@ export function CoachPanel({
   // whenever a new answer lands so a fresh insight is never pre-hidden.
   const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
   useEffect(() => setDismissed(new Set()), [lastAnsweredAt]);
+
+  if (!isPlus && !upsell) return null;
 
   if (!isPlus) {
     // Soft, contextual, and one line (§5.3). The upsell sits below the user's

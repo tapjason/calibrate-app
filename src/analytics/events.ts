@@ -63,6 +63,7 @@ export type EventName = (typeof EVENT_NAMES)[number];
 
 /** Where a paywall view came from. Enum, so no free-form strings leak in. */
 export const PAYWALL_SOURCES = [
+  'stats',
   'stats_coach',
   'stats_trends',
   'share_theme',

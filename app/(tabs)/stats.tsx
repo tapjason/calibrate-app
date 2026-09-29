@@ -3,8 +3,10 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
+import { PlusTeaser } from '@/components/stats/PlusTeaser';
 import { TrendsPanel } from '@/components/stats/TrendsPanel';
 import { Button } from '@/components/ui/Button';
+import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -15,6 +17,8 @@ export default function StatsScreen() {
   const calibration = useStatsStore((s) => s.calibration);
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const pendingCount = usePredictionStore((s) => s.pending.length);
+  const isPlus = useEntitlementStore((s) => s.isPlus);
+  const monthsOnFile = useStatsStore((s) => s.trends.periods.length);
 
   return (
     <ScrollView>
@@ -25,11 +29,20 @@ export default function StatsScreen() {
         nextBadges={nextBadges}
         pendingCount={pendingCount}
       />
+      {/* Free users get one Plus teaser, not a grey upsell per panel. */}
+      {!isPlus && (
+        <PlusTeaser
+          monthsOnFile={monthsOnFile}
+          onUpgrade={() => router.push('/paywall?from=stats' as never)}
+        />
+      )}
       <CoachPanel
+        upsell={false}
         onUpgrade={() => router.push('/paywall?from=stats_coach' as never)}
         onSignIn={() => router.push('/account' as never)}
       />
       <TrendsPanel
+        upsell={false}
         onUpgrade={() => router.push('/paywall?from=stats_trends' as never)}
       />
       <View style={styles.actions}>

@@ -503,13 +503,12 @@ Tick each:
       one opens the paywall, and the free theme still exports a full-quality
       card.
 - [ ] Settings toggles work; Coach is **off** by default, usage stats **on**.
-- [ ] Stats shows the Trends section locked for a free user, and tapping
-      "See Plus" opens the paywall.
+- [ ] Stats shows **one** Plus teaser card for a free user (Coach + Trends in one
+      card, "Your score, curve, badges and cards stay free"), and tapping "See Plus"
+      opens the paywall. (Changed 2026-09-29: it used to be two grey slabs.)
 - [ ] As Plus (after D2): Trends renders months and categories, and "Export CSV"
       produces a file the share sheet accepts. Open it in a spreadsheet and
       confirm a title starting with `=` shows as text, not a formula.
-- [ ] Stats shows the Coach upsell (free user), and tapping "See Plus" opens
-      the paywall.
 - [ ] Settings → "See Plus" opens the paywall.
 - [ ] The paywall lists annual first with its trial, then monthly, then
       lifetime (after Batch B; before it, it shows the unavailable state).
