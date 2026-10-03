@@ -118,8 +118,9 @@ Apple doesn't count as in-app user-generated content.
 
 **The last two lines are required, not decoration.** Apple's subscription rules
 (Guideline 3.1.2) require a functional privacy policy link and terms of use
-(Apple's standard EULA is fine) in the metadata. The paywall should link to both
-too, and today it doesn't: see `NEXT_STEPS.md` item 5.
+(Apple's standard EULA is fine) in the metadata. The paywall links to both as of
+2026-09-25; its Privacy Policy link appears once `PRIVACY_POLICY_URL` in
+`src/constants/app.ts` is set to the hosted policy.
 
 ---
 
@@ -155,8 +156,9 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 **Why the demo account matters:** a reviewer on a fresh install has no resolved
 predictions. The Coach then shows "keep logging", and the Stats screen shows
 only progress. Both are correct, and both look like broken features to someone
-with ten minutes. Seed a demo account (the agent can write the seeding SQL once
-sign-in ships) and put its credentials here, **not** in the repo.
+with ten minutes. Seed a demo account (sign-in shipped 2026-09-25, so the agent
+can write the seeding SQL now: `NEXT_STEPS.md` item c) and put its credentials in
+App Store Connect, **not** in the repo.
 
 ---
 

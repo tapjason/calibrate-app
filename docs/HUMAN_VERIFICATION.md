@@ -1,6 +1,11 @@
 # Calibrate — Human Verification Checklist
 
-**As of:** 2026-09-25 (re-evaluated) · **Branch:** `master`
+**As of:** 2026-10-03 (re-checked against `d69ba54` and the live services) · **Branch:** `master`
+
+> **Before any live test: restore the Supabase project.** It read `INACTIVE`
+> on 2026-10-03 (`npx supabase projects list`), and its hostname no longer
+> resolves. Supabase dashboard → project `calibrate` → Restore. There is no
+> CLI verb for it. `docs/NEXT_STEPS.md` item (a) is the keep-alive fix.
 
 Everything the build needs that an agent can't do from the repo. Each item says
 **what to do**, **what "pass" looks like**, and **what to report back**.
@@ -23,14 +28,40 @@ detailed procedures; this section is the order to do them in.
 | RevenueCat Test Store configured: `plus` entitlement, three `calibrate_plus_*` products, current offering; the app's `test_` key confirmed to belong to it (B1, Test Store half) | 2026-09-25 |
 | Webhook deployed, secret set, registered in RevenueCat, test event 200 (B3) | 2026-09-25 |
 | App icon, splash, Android adaptive icon: real artwork, 1024², wired in `app.json` | 2026-09-25 |
+| Test Store prices ($4.99 / $29.99 / $59.99) and the 1-month trial on annual only, read back through the API | 2026-10-01 |
+| `delete-account` deployed (JWT on), and the webhook redeployed to match `e597583` | 2026-10-02 |
 
 ### Tier 0: free, at a desk, no phone
 
-- [ ] **Test Store trial and prices.** In the RevenueCat dashboard, open the Test
-      Store app and set `calibrate_plus_annual` to a 1-month free trial, with prices
-      $4.99 / $29.99 / $59.99. The API can't set either one. Ask the agent to
-      confirm the trial afterwards, since `trial_duration` is readable.
-- [ ] **Say which phone you have.** It decides which Tier 1 path applies.
+- [x] **Test Store trial and prices.** The three products already exist
+      (`calibrate_plus_monthly`, `_annual`, `_lifetime`); only their price and
+      the annual trial are missing, and the API can't set either. Step by step:
+      1. Go to app.revenuecat.com and open the project (`projb27eccad`).
+      2. Left sidebar → **Product catalog** → **Products** tab.
+      3. Click `calibrate_plus_annual` (the **Test Store** one, not the
+         archived `yearly`). Edit it: price **$29.99**, and add a free trial of
+         **1 month** (the field may be called "Trial duration" or
+         "Introductory offer"). Save.
+      4. Click `calibrate_plus_monthly`: price **$4.99**, no trial. Save.
+      5. Click `calibrate_plus_lifetime`: price **$59.99**. Save.
+      6. Tell the agent "check the trial". It reads `trial_duration` back
+         through the API; it should say `P1M` on annual only.
+
+      If a field isn't where these steps say, RevenueCat has moved it. Look for
+      a Test Store pricing section on the product page, or ask the agent to
+      search RevenueCat's docs for "Test Store product price".
+      **DONE 2026-10-01, verified via the API.** Read it from
+      `GET /v2/projects/projb27eccad/products/{id}/store_state`, not from the
+      product object: the product's own `trial_duration` stays `null` for Test
+      Store products. Annual reads USD 29.99 with `trial.duration: P1M`, and the
+      current offering lists all three packages.
+- [x] **Decided 2026-10-01: leave "Confirm email" on; sign up with the address you use for Supabase.** It is
+      currently **on** (`mailer_autoconfirm: false`, read 2026-09-30), so an
+      email sign-up only gets its confirmation if the address belongs to your
+      Supabase team. Either sign up with your own address, or turn it off
+      (Supabase → Auth → Providers → Email).
+- [x] **Phone: iPhone** (2026-10-01). No Android device, so the free Android
+      billing path below is out. Expo Go covers everything except billing.
 
 ### Tier 1: free, with a phone you already own
 
@@ -55,7 +86,9 @@ So:
       you have. Sign in with **email** (Apple sign-in needs the paid account;
       Google isn't configured). Email sign-in, sync and the Coach 403 for a free
       user all work here.
-- [ ] **If you have (or can borrow) an Android phone:** an EAS Android dev
+- [ ] ~~**If you have (or can borrow) an Android phone:**~~ **Not applicable: iPhone only.**
+      A real Test Store purchase therefore waits on the $99 Apple account
+      (Tier 2) and an iOS dev build. Kept for reference: an EAS Android dev
       build gives the full billing test for free. It needs these first:
       1. ~~`npx expo install expo-dev-client`.~~ Done 2026-09-25
          (`~55.0.40`), so the `development` profile's
@@ -87,9 +120,9 @@ So:
 | Thing | Status | Needed for |
 |---|---|---|
 | App Store screenshots | **Not made.** The identity card and calibration curve are the two that sell it. Needs the app running with real-looking data. | E |
-| Privacy policy page + public URL | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Fill in the placeholders; hosting needs a URL (GitHub Pages works, since the repo is public). | E |
+| Privacy policy page + public URL | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Name and contact filled in; the effective date is set on publishing. Hosting needs a URL (GitHub Pages works, since the repo is public). | E |
 | App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **The name "Calibrate" is already taken twice on the App Store.** See §0 there; the choice is yours. | E |
-| Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25.** Deploying `delete-account` is yours (Batch E). | E |
+| Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25, deployed 2026-10-02.** The optional Apple-revoke and RevenueCat-delete legs wait on their keys (Batch E). | E |
 
 ---
 
@@ -100,8 +133,8 @@ So:
 | OpenAI account with credit | A1 | **Funded and verified 2026-09-24.** |
 | Supabase dashboard access | A, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is linked. Pauses after ~7 days idle. |
 | RevenueCat account | B1 | Free tier. Project `projb27eccad`. `test_` public key and `sk_` v2 secret key (project config R/W, customers read) are in `.env.local`. |
-| Expo account | Tier 1 Android build | Owner `tapjason`; the CLI is not currently logged in. The EAS free tier covers dev builds. |
-| A phone | Tier 1 | Any iPhone or Android for Expo Go; an **Android** phone for the free billing test. |
+| Expo account | EAS builds (iOS dev build, TestFlight) | Owner `tapjason`; the CLI is not logged in (re-checked 2026-09-30). The EAS free tier covers dev builds. |
+| A phone | Tier 1 | **iPhone** (2026-10-01). Expo Go covers everything but billing; a real purchase needs an iOS build, so the $99 account. |
 | Apple Developer account ($99/yr) | B0, B2, D, E | **Deferred until Tiers 0–1 pass.** Not needed for APNs; this app only sends local notifications. |
 | A Mac with Xcode | only the iOS simulator | Not required: Expo Go and EAS cloud builds cover everything from Windows. |
 
@@ -327,10 +360,11 @@ purchase. Now:
   `$rc_lifetime` pointing at those three;
 - the onboarding defaults are **archived**, not deleted, so they can be restored.
 
-**Still dashboard-only** (the API's create-product call takes neither a price
-nor a trial): set Test Store prices of $4.99 / $29.99 / $59.99, and a **1-month
-free trial** on `calibrate_plus_annual`. Without the trial the paywall
-correctly shows none. The App Store app half (steps below) waits on B0.
+**Prices and trial DONE 2026-10-01** in the dashboard (the API's
+create-product call takes neither): $4.99 / $29.99 / $59.99, and a **1-month
+free trial** on `calibrate_plus_annual` only, confirmed through
+`store_state`. This also fixes what the UI pass saw on 2026-09-28 (annual at
+$29.90, a trial on monthly). The App Store app half (steps below) waits on B0.
 
 1. Create the project (one already exists, since the `test_` key came from
    it); add the iOS App Store app with bundle id `com.calibrate.app` and upload
@@ -427,6 +461,10 @@ leaving it off is that TestFlight testers get the Coach free, bounded by its
 daily ceiling. If you ever turn it on, redeploy the webhook for it to take
 effect.
 
+~~**The deployed webhook predates that commit.**~~ Redeployed 2026-10-02
+alongside `delete-account` (version 2, `verify_jwt: false`), so the live code
+matches the repo. `REVENUECAT_IGNORE_SANDBOX` is unset.
+
 **Pass:** RevenueCat's "Send test event" returns 200 with
 `{"ok":true,"action":"ignored"}` (a TEST event writes nothing, by design), and
 after the sandbox purchase in D2 a row appears in `public.entitlements` with
@@ -444,16 +482,15 @@ no env setup is needed for this path. Start from a **fresh state** (in Expo Go,
 clear the app's data or reinstall Expo Go) so the first-run path is real.
 
 In Expo Go, skip the paywall/plan boxes: RevenueCat doesn't reach the real
-store there. Those need an Android dev build (free, see Tier 1) or an iOS
-build. Sign in with **email**.
+store there. With an iPhone only, those need an iOS dev build, which waits
+on the $99 Apple account (Tier 2). Sign in with **email**.
 
 > **Sign-in exists as of 2026-09-25:** Settings → Account → Sign in. It has
 > been checked against the live project on the web build: a wrong password
 > round-trips "Invalid login credentials". A *successful* sign-in hasn't been
-> seen yet, because the A1 test user's password no longer works. **Before
-> creating an account by email**, decide on "Confirm email" (Supabase → Auth
-> → Providers → Email). With it on, the built-in mailer delivers only to
-> members of your Supabase team, so use your own address or turn it off. See
+> seen yet, because the A1 test user's password no longer works. **"Confirm
+> email" stays on (decided 2026-10-01)**: the built-in mailer delivers only to
+> members of your Supabase team, so create the account with that address. See
 > `docs/ACCOUNT_SPEC.md` §1.
 
 Tick each:
@@ -483,7 +520,7 @@ Tick each:
 - [ ] **Erase as a guest.** Signed out: Settings → "Erase all data on this
       device" → Erase everything. Home is empty afterwards, and the next
       cold launch opens the Warmup. (Verified on the web build 2026-09-25.)
-- [ ] **Delete as a signed-in user** (after `delete-account` is deployed):
+- [ ] **Delete as a signed-in user** (`delete-account` is live as of 2026-10-02):
       Settings → Delete account → Delete my account. It reads "Your account
       has been deleted", the app is an empty guest, and signing in with the
       same email fails.
@@ -633,6 +670,22 @@ Added 2026-09-29 (polish pass):
 - [ ] **Share → On the card** (with 2+ categories): tapping a category takes it off
       the card; the last one can't be removed.
 
+Added 2026-09-30 (the last three commits, `7fd1aba`..`d69ba54`):
+
+- [ ] **Rating bar** (once unlocked, Home and Stats): a thin bar under the number
+      with ticks at 70 / 85 / 90. Home adds a one-line read ("You're overconfident
+      at 80–100%") only when a band has enough resolutions.
+- [ ] **Coverage nudge looks quiet:** a grey inline card, "Start at 25%" as an
+      outlined button and "Not now" as text. Save stays the only filled button on Log.
+- [ ] **Keyboard on a small phone:** on Resolve, type a reflection after Yes/No;
+      the reflection box, any milestone card and **Done** stay reachable (the screen
+      scrolls). On Log, dragging the form down dismisses the keyboard.
+- [ ] **Tap targets:** theme swatches and the Post/Story control are easy to hit
+      (44pt); the lock on Plus swatches is legible.
+- [ ] **Dynamic Type, largest size:** the hero rating, the big confidence "70%" and
+      the milestone number stop growing at some point while body text keeps
+      growing; exported share cards don't reflow.
+
 ---
 
 ## Batch D — Physical device (~45 min)
@@ -716,10 +769,10 @@ code on 2026-09-24:
 
 What is still yours:
 
-- [ ] **Account deletion: built, needs deploying.** `npx supabase functions
-      deploy delete-account`. That alone is compliant. Then, when you have
-      them, set the Sign in with Apple key secrets (needs the $99 account)
-      and a customers-*write* RevenueCat key. See `supabase/README.md`
+- [ ] **Account deletion: deployed 2026-10-02, optional legs not yet on.**
+      The function is live, which alone is compliant. When you have them,
+      set the Sign in with Apple key secrets (needs the $99 account) and a
+      customers-*write* RevenueCat key. See `supabase/README.md`
       § delete-account. Test it by deleting a throwaway account from
       Settings, then confirming its `auth.users` row is gone.
 - [ ] `submit.production` block filled in `eas.json` (currently `{}`). No
@@ -785,13 +838,13 @@ What is still yours:
 ## Open work that is code, not you
 
 Listed here only so the human checklist isn't mistaken for the whole list.
-**The full, current list is [`docs/NEXT_STEPS.md`](./NEXT_STEPS.md)**. As of
-2026-09-25 it includes a missing sign-in screen, an analytics bug and missing
-paywall links, found after the entries below were written.
+**The full, current list is [`docs/NEXT_STEPS.md`](./NEXT_STEPS.md)**. (The
+sign-in screen, the analytics queue bug and the paywall links it flagged on
+2026-09-25 are all fixed.)
 
 - ~~**Account deletion (Guideline 5.1.1(v)).**~~ Built 2026-09-25: Settings →
   Delete account, the `delete-account` Edge Function, and a device wipe that
-  runs only after the server confirms. Deploying it is in Batch E.
+  runs only after the server confirms. Deployed 2026-10-02.
 
 - ~~The unbuilt Plus features.~~ All three the paywall names now exist: Coach,
   Trends, and the card themes. Keep it that way — a bullet on that screen the

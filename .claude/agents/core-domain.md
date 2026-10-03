@@ -14,11 +14,15 @@ app that has no UI and no external integrations.
   `UserStat`, `CategoryStat`, and the function-type contracts L2/L3
   implement against. Never redefine these elsewhere.
 - `src/db/**` (L2) — SQLite via expo-sqlite (prod) or sql.js (tests).
-  All schema lives in `src/db/migrations/`. CRUD helpers in
-  `predictions.ts` and `stats.ts`.
-- `src/engine/**` (L3) — `calibration.ts` and `streak.ts`. Pure
-  functions only: no I/O, no storage, no component state. May import
-  from `@/types` only.
+  All schema lives in `src/db/migrations/` (append a new migration;
+  never edit a shipped one). Helpers in `predictions.ts`, `stats.ts`,
+  `entitlements.ts`, `warmup.ts`, `analytics.ts`.
+- `src/engine/**` (L3) — `calibration.ts`, `streak.ts`, `localTime.ts`,
+  `trends.ts`, `patterns.ts`, `wrapped.ts`, `warmup.ts`,
+  `coverageNudge.ts`, `milestones.ts`, `direction.ts`. Pure functions
+  only: no I/O, no storage, no component state. May import from
+  `@/types` only. Days are keyed in local time with the offset passed
+  in, never by reading the clock.
 - `src/store/**` (L4) — Zustand stores. Orchestrate L2 and L3; never
   contain business math.
 
@@ -46,7 +50,8 @@ app that has no UI and no external integrations.
 ## When you're done
 
 - Run `npx tsc --noEmit` — must be clean.
-- Run `npm test` — all 57+ tests must pass.
+- Run `npm test` — the whole suite must pass (960 tests as of
+  2026-10-03).
 - If you changed the calibration engine, also reason about the math
   in the commit message (what changed, why, what the rating becomes
   for a representative input).

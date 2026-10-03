@@ -11,9 +11,11 @@ BUILD_PLAN.md: screens, components, and Expo Router routes.
 ## What you own
 
 - `app/**` — Expo Router routes including `app/_layout.tsx`,
-  `app/(tabs)/*`, and `app/resolve/[id].tsx`.
+  `app/(tabs)/*`, `app/resolve/[id].tsx` (a sheet), `app/share/`,
+  `app/warmup/`, `app/account/` and `app/paywall.tsx`.
 - `src/components/**` — UI primitives in `ui/`, plus the feature
-  components in `prediction/`, `resolution/`, `stats/`.
+  components in `prediction/`, `resolution/`, `stats/`, `share/`,
+  `warmup/`, `paywall/`, `account/` and `settings/`.
 
 ## What you must NOT touch
 
@@ -24,8 +26,9 @@ BUILD_PLAN.md: screens, components, and Expo Router routes.
   components. If a derived value is missing, fix the store/engine.
 - `src/store/**` (Layer 4) — you READ from stores via Zustand hooks,
   but new state slices belong to the core-domain agent.
-- `src/supabase/**`, `src/notifications/**`, `src/ai/**` (Layer 5) —
-  services are the services agent's scope.
+- `src/supabase/**`, `src/notifications/**`, `src/ai/**`,
+  `src/billing/**`, `src/analytics/**` (Layer 5) — services are the
+  services agent's scope.
 
 ## Layer rules you enforce
 
@@ -43,11 +46,12 @@ Before any visual change, read `docs/design/DESIGN_SYSTEM.md` (the rules)
 and, when choosing what to build, `docs/design/UI_ROADMAP.md` (the order
 and the open decisions). The short version:
 
-- No new hex literals. Colours, type, spacing, radius and shadows come
-  from `@/constants/theme` (create it from DESIGN_SYSTEM §2–§4 if it
-  doesn't exist yet); migrate literals in any file you touch.
+- No hex literals. Colours, type, spacing, radius and shadows come
+  from `@/constants/theme`; move raw font sizes onto `type.*` in any
+  file you touch. Cap Dynamic Type with `DISPLAY_MAX_SCALE` /
+  `CARD_MAX_SCALE` where a layout is fixed.
 - One hero number per screen, never a countdown. Provisional scores show
-  a progress ring / calibrating state, never a headline figure.
+  the `UnlockProgress` calibrating state, never a headline figure.
 - Yes and No get identical feedback: same animation, same
   `impactAsync(Medium)`, neutral ink. Green means calibrated, not
   correct. `notificationAsync(Success)` is only for unlocks and tier-ups.
@@ -57,8 +61,8 @@ and the open decisions). The short version:
   Every animation has a Reduce Motion variant.
 - Glass only on navigation chrome. No emoji in UI or badges.
 - Install native packages with `npx expo install`, never `npm i` (SDK 55
-  / RN 0.83 pins). Adding Reanimated means adding its Jest setup in the
-  same change.
+  / RN 0.83 pins). Reanimated is installed; its Jest setup is
+  `jest/setupReanimated.js`.
 - Don't build anything DESIGN_SYSTEM tags **Proposed** or UI_ROADMAP §4
   lists as an open decision; hand back instead. Visuals that need new
   numbers (consistency bands, expected counts, ranges) need engine work
@@ -82,4 +86,4 @@ services) if you discover any of these mid-task:
 - A bug in calibration math or streak logic.
 - A missing field on `Prediction` / `UserStat` / `CategoryStat`.
 - A store action you'd need to add or modify in a non-trivial way.
-- An external integration (notifications, Supabase, AI refine).
+- An external integration (notifications, Supabase, Coach, billing).

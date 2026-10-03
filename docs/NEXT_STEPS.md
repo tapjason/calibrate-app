@@ -1,7 +1,7 @@
 # Calibrate — Next Steps an Agent Can Do Alone
 
-**As of:** 2026-09-25 · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-60 suites / 662 tests green.
+**As of:** 2026-10-03 · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
+85 suites / 960 tests green.
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
@@ -9,6 +9,28 @@ purchase. It came from re-reading the code against that checklist, and the
 re-read found that **the checklist assumes things the code does not do yet.**
 
 Ordered by what each item unblocks, not by how big it is.
+
+---
+
+## Open now (2026-10-03)
+
+Every P0 and P1 item below the line was built on 2026-09-25, and the UI pass in
+`docs/design/UI_ROADMAP.md` landed 2026-09-28. What an agent can still do alone:
+
+| # | Item | Why it matters |
+|---|---|---|
+| a | **Supabase keep-alive.** A weekly GitHub Actions cron that makes one cheap query. Needs the anon key as a repo secret. | The project paused again: `supabase projects list` read `INACTIVE` on 2026-10-03, a day after the 2026-10-02 deploy. Every live test silently fails until it's restored by hand. |
+| b | **Coach evidence on the card.** `coachValidate.ts` should return *which* context field an `evidence` number matched, so the card can say "12 resolved" or "62% hit rate". `COACH_AGENT.md` governs that file. | The validated number is the receipt behind each insight, and today the UI can't label it (UI_ROADMAP, "Blocked on a non-UI change"). |
+| c | **Seed data** for screenshots and the App Review demo account: ≥ 60 resolved predictions across all five categories with real miscalibration (`APP_STORE_LISTING.md` §4–5). Credentials stay out of the repo. | A reviewer on a fresh install sees only provisional states, which read as broken features. |
+| d | **Draft screenshots** from the web build with Playwright at 440 × 956 CSS px, 3× (after c). | Layout drafts now; finals need a device build. |
+| e | **Resolve sheet: confirm before discarding a typed reflection** on swipe-down. | Noted as missing in UI_ROADMAP step 11. |
+| f | **Type tokens.** Many font sizes are still raw numbers rather than `type.*` (UI_ROADMAP step 1). | Consistency; no behaviour change. |
+| g | **Dependency drift** (item 12). | Still best done the day of the first EAS build. |
+
+Waiting on you, not code: the GitHub Pages switch for the privacy policy (then
+`PRIVACY_POLICY_URL` in `src/constants/app.ts`), the app name (§P2), the
+anonymous-funnel question (item 2.3), and the design decisions D1–D10 in
+`UI_ROADMAP.md` §4.
 
 ---
 
@@ -20,8 +42,9 @@ Ordered by what each item unblocks, not by how big it is.
 > (email sign-in and sign-up, Sign in with Apple on iOS), the confirmation-
 > pending state for sign-up, and a "Sign in to use Coach" state for a Plus
 > guest. Verified on the web build against the live project as far as a
-> wrong-password error. The email-confirmation setting below is still your
-> call.
+> wrong-password error. **Email confirmation, decided 2026-10-01:** left on for
+> testing; sign up with the address on the Supabase team. A custom SMTP
+> provider (or turning it off) is still needed before strangers sign up.
 
 `src/supabase/auth.ts` exports `signInWithEmail`, `signUpWithEmail`,
 `signInWithApple`, `signInWithGoogle` and `signOut`. **No screen or component
@@ -87,14 +110,14 @@ promise, "no data is collected from users who never sign in", so the privacy
 answers and the policy would change with it. **Recommendation:** ship the fix
 now, and read the checkpoint numbers as *signed-in cohort* until you decide.
 
-### 3. Account deletion (App Store Guideline 5.1.1(v)) — **built 2026-09-25, not deployed**
+### 3. Account deletion (App Store Guideline 5.1.1(v)) — **built 2026-09-25, deployed 2026-10-02**
 
 > Settings → Delete account (or Erase all data on this device, for a guest).
 > `supabase/functions/delete-account` handles the server side; the app wipes
 > the device only after the server confirms. The guest erase was checked end to
-> end on the web build. **Deploying the function is yours**
-> (`supabase/README.md` § delete-account). The Apple and RevenueCat legs switch
-> on when their keys exist.
+> end on the web build. The function was **deployed 2026-10-02** (`supabase
+> functions list` shows it `ACTIVE`, JWT on). The Apple and RevenueCat legs
+> switch on when their keys exist; neither secret is set yet.
 
 Already known. The research adds four requirements the current one-line
 description misses:
@@ -233,16 +256,16 @@ just risks retesting twice.
 
 | Item | Status |
 |---|---|
-| Privacy policy | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Derived from `APP_PRIVACY.md` and the code. Has placeholders for your name and contact email. Don't publish it until account deletion ships, because §7 describes that flow. |
+| Privacy policy | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Derived from `APP_PRIVACY.md` and the code. Name and contact are filled in; only the effective date is left, set on the day it's published. Account deletion, which §7 describes, is live as of 2026-10-02. |
 | Hosting it | The repo is **public**, so GitHub Pages can serve `docs/` for free. Turning Pages on is a repository setting; the agent can do it with `gh` if you say so. |
 | App Store listing | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). Subtitle, keywords, promotional text, description, IAP display names, review notes and a screenshot plan, all within Apple's character limits. |
 | **Name conflict** | **Found in research.** Two US App Store apps already use the name: "Calibrate – Metabolic Health" (Calibrate Inc., a GLP-1 weight-loss company) and "Calibrate: Recovery & Fitness". The first is an established health brand, and this app has a *health* category. The listing doc proposes names; the choice, and any trademark check, is yours. |
 | Screenshots | Agent-possible as drafts: the web target plus Playwright at 1320×2868 with seeded data. Final ones should come from a device build, because web rendering differs slightly (fonts, no status bar). |
-| Supabase auto-pause | A weekly GitHub Actions cron doing one cheap query keeps the free tier from pausing mid-test. Agent-writable; it needs the anon key stored as a repo secret. |
+| Supabase auto-pause | A weekly GitHub Actions cron doing one cheap query keeps the free tier from pausing mid-test. Agent-writable; it needs the anon key stored as a repo secret. **Now item (a) above:** the project read `INACTIVE` on 2026-10-03. |
 
 ---
 
-## Suggested order
+## Suggested order (2026-09-25, all done)
 
 1. Item 2's bug fix (small, self-contained, and it protects the data you're
    about to collect).

@@ -57,6 +57,12 @@ schema is safe.
 
 ## Edge Functions
 
+**Live as of 2026-10-02** (`npx supabase functions list`): `coach` (JWT on),
+`revenuecat-webhook` (JWT off, shared secret) and `delete-account` (JWT on).
+`refine` is deliberately not deployed. The free-tier project pauses when idle;
+`projects list` shows `INACTIVE` when it has, and it is restored from the
+dashboard only.
+
 ### refine
 
 > **Not deployed — cut from the first release (2026-09-24).** The first live

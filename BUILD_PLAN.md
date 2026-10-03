@@ -29,6 +29,35 @@ directly — it goes through a store.
 
 ## Where the build is
 
+**Current state (2026-10-03).** All code in L0–L6 is built; `tsc --noEmit` is
+clean and `npm test` is 85 suites / 960 tests green. What is left is almost
+entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
+The remaining code items are in `docs/NEXT_STEPS.md`.
+
+- **Every item `NEXT_STEPS.md` raised on 2026-09-25 is built:** sign-in and the
+  Account screens, the analytics queue fix (guest events carried over on
+  sign-in), account deletion and guest erase, Terms/Privacy links on the
+  paywall, local-time day keys for streaks and patterns, tab icons, the light
+  pin, a first accessibility pass, and optional sandbox filtering in the
+  webhook.
+- **The UI pass (2026-09-26 → 09-28)** against `docs/design/DESIGN_SYSTEM.md`:
+  tokens, SF Symbols and haptics, the big confidence control, any-date due
+  picker, the chart redesign, Lens badge emblems, Resolve and Share as sheets,
+  Reanimated motion with score-unlock and tier-up moments, Post/Story share
+  cards, "Change answer" undo, and the a11y fixes (44 pt targets, keyboard-safe
+  forms, Dynamic Type caps). Progress per step is in `docs/design/UI_ROADMAP.md`.
+- **Live services:** `coach`, `revenuecat-webhook` and `delete-account` are
+  deployed (the last two on 2026-10-02; `refine` stays undeployed). The
+  RevenueCat Test Store has its prices and the one-month annual trial
+  (2026-10-01). The Supabase free-tier project **pauses when idle** and read
+  `INACTIVE` on 2026-10-03, so restore it before any live test.
+- **Decisions on 2026-10-01:** testing is on an **iPhone only** (so a real
+  purchase waits on the $99 Apple account), and "Confirm email" stays on —
+  sign up with the address on the Supabase team.
+
+The entries below are the build history, in the order it landed. Where one
+contradicts the summary above, the summary wins.
+
 Layers 0–4 are complete and green. L5 has notifications, Supabase auth + sync, and
 the JWT-verified `refine` function; L6 has the offline core loop (Home, Log, Resolve,
 Stats, History, Settings) plus the calibration curve and category badges.
@@ -229,7 +258,8 @@ so both halves already knew a trialist from a subscriber.
 
 **Next:** Batch B — the RevenueCat and App Store Connect setup, including the
 one-month introductory offer on `calibrate_plus_annual`, and deploying the
-webhook. Then the validation checkpoint — now instrumented, so
+webhook. (Status 2026-10-03: the webhook is live and the Test Store half is
+done; the App Store Connect half waits on the $99 Apple account.) Then the validation checkpoint — now instrumented, so
 it needs users rather than code. D0 aha completion is `warmup_completed / warmup_started`;
 share rate is `share_completed` per active user. That measurement is meant to
 happen *before* the checkout goes live. Then L7.
@@ -242,7 +272,8 @@ TestFlight build.
 human checklist found more code work: no sign-in screen exists, analytics
 has a queue-poisoning bug and never sees the Warmup, and the paywall lacks
 Terms/Privacy links. See `docs/NEXT_STEPS.md` (ordered) and
-`docs/ACCOUNT_SPEC.md`. The original note follows.
+`docs/ACCOUNT_SPEC.md`. **All of it was built the same day**, and
+`delete-account` was deployed 2026-10-02. The original note follows.
 
 **One piece of code work remains, and it blocks submission.** Deriving the App
 Store privacy answers from the source (`docs/APP_PRIVACY.md`, 2026-09-24) turned
@@ -258,9 +289,10 @@ placeholder, **no APNs key is needed** — every notification is a *local*
 scheduled one, with no push token requested anywhere — and the privacy
 declarations are now written down row by row with the file that proves each.
 
-Still needing a human, not code: everything in L7, the simulator and sandbox-purchase
-gates, and the App Store Connect / RevenueCat product setup — which now includes
-configuring the one-month introductory offer on `calibrate_plus_annual`.
+Still needing a human, not code: everything in L7, the device and sandbox-purchase
+gates, and the App Store Connect product setup — including the one-month
+introductory offer on `calibrate_plus_annual`. The RevenueCat Test Store side
+(prices and the trial) is done as of 2026-10-01.
 
 ---
 
@@ -364,6 +396,12 @@ queries.
 - `src/engine/patterns.ts` — **deterministic** pattern derivations (day-of-week
   accuracy, category drift, over/under direction per category). The Coach consumes
   these; it never computes its own.
+- `src/engine/streak.ts`, `src/engine/localTime.ts` — streaks and day/month keys
+  in the device's local time (the offset is passed in, so they stay pure).
+- `src/engine/wrapped.ts` — weekly and yearly Wrapped summaries, with their own
+  min-N gating.
+- `src/engine/milestones.ts` — upward crossings only (score unlock, badge tier-up,
+  category unlock) for the celebration moments.
 
 **Depends on:** Layer 1 only (plain objects in, plain objects out).
 
@@ -415,6 +453,8 @@ fails gracefully.
   refine is cut from v1 (`REFINE_ENABLED = false`), the function is not
   deployed, and no build calls this.**
 - `src/ai/coach.ts` — call `/functions/v1/coach`; fail silently; Plus-gated.
+- `src/supabase/account.ts` — call `/functions/v1/delete-account`, wiping the
+  device only after the server confirms.
 - `src/billing/revenuecat.ts` — configure SDK, purchase, restore, entitlement sync,
   all behind a deps seam and all failing to FREE.
 - `src/billing/init.ts` — startup wiring: hydrate the mirror, configure RevenueCat for
@@ -424,6 +464,9 @@ fails gracefully.
   Written and tested; **deliberately not deployed** — see the cut note above.
 - `supabase/functions/revenuecat-webhook/index.ts` — RevenueCat → Postgres
   entitlement mirror, so the server can gate Plus without trusting the client.
+- `supabase/functions/delete-account/index.ts` — App Store 5.1.1(v) deletion:
+  optional Sign in with Apple revoke and RevenueCat customer delete, then
+  `auth.admin.deleteUser`, whose rows cascade. Spec: `docs/ACCOUNT_SPEC.md` §3.
 - `supabase/functions/coach/index.ts` — Coach endpoint. JWT-verified, rate-limited,
   per-user daily cost ceiling, JSON-schema output validation, grounding validation
   (every `evidence` value must match the input), and the **crisis pre-filter that runs
@@ -467,7 +510,10 @@ touches the SQLite client or the engine directly.
   and throttled to once a week.
 - Coach insight cards on Stats (Plus), plus the support surface for the
   `safe: false` path.
-- Soft contextual upsell on Stats; AI + Coach toggles in Settings.
+- Soft contextual upsell on Stats (one Plus teaser card); Coach and usage-stats
+  toggles in Settings (the Refine row is hidden while `REFINE_ENABLED` is false).
+- Account: `app/account` sign-in / sign-up, the Settings Account row, Delete
+  account for a signed-in user and Erase all data for a guest.
 - Cosmetic theming for cards (Plus) — `src/constants/cardThemes.ts`, applied by
   `IdentityCard` / `WrappedCard` and chosen in `ThemePicker`. The free theme is
   never gated.
@@ -513,7 +559,7 @@ L0 → L1 → L2 → L3 → L4
   → L6 core UI (Home / Log / Resolve / Stats on the offline loop)
   → Warmup (Day-0 aha)                    ← build EARLY: onboarding + first share card
   → Share cards + Wrapped (free)          ← the growth loop; build BEFORE billing
-  → L5 services: notifications → sync → refine
+  → L5 services: notifications → sync     (refine: built, then cut 2026-09-24)
   → Badges + weekly digest
   → Billing + paywall + Plus gating       ← LAST of the money work
   → Coach agent (Plus)                    ← after billing; needs L3 patterns + L5 guards

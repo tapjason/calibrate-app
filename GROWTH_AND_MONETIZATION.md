@@ -203,6 +203,11 @@ analytics, cosmetics) so the subscription survives past the novelty.
 
 Same abstraction-layer discipline and Gates. New/changed items only.
 
+> **Status, 2026-10-03: all of this section is built**, including the two items the
+> note below calls unbuilt — Plus cosmetics (`src/constants/cardThemes.ts`,
+> `ThemePicker`) and the advanced-analytics tier (`src/engine/trends.ts`, CSV export,
+> `TrendsPanel`). The paywall names only features that exist.
+>
 > **Status, 2026-08-31.** Most of this section is now built — see `BUILD_PLAN.md`'s
 > "Where the build is" for the current state, which is the one to trust. Everything
 > below is done except **Plus cosmetics and the advanced-analytics tier** — as of

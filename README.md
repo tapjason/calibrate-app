@@ -41,8 +41,11 @@ Calibrate is a **local-first** Expo / React Native app. The full core loop — *
 | Local storage    | SQLite (`expo-sqlite`)                            |
 | State            | Zustand                                            |
 | Backend / sync   | Supabase (Postgres + Auth + Edge Functions)       |
-| Push             | Expo Notifications                                |
-| AI (optional)    | OpenAI `gpt-4o-mini` via a Supabase Edge Function |
+| Notifications    | Expo Notifications (local, scheduled; no push server) |
+| Charts & cards   | `react-native-svg`, `react-native-view-shot` for PNG export |
+| Motion           | `react-native-reanimated`                          |
+| Billing          | RevenueCat (`react-native-purchases`)              |
+| AI (optional)    | OpenAI `gpt-4o-mini` via a Supabase Edge Function (the Coach, Plus) |
 | Tests            | Jest (`jest-expo`) + React Native Testing Library |
 
 ### Layered design
@@ -61,56 +64,71 @@ Layer 1  Types & contracts                         src/types/
 ### Data flow (end to end)
 
 ```
-User types a prediction
-  → (optional) taps ✨ Refine → Edge Function → OpenAI → concise rewrite suggested
-  → saves prediction → written to local SQLite immediately (offline-safe)
-  → synced to Supabase Postgres in the background
-  → push notification scheduled for the due date
+First run
+  → Warmup quiz → instant mini-calibration verdict → first share card
 
-User taps the notification on the due date
-  → Resolve screen: yes / no + optional one-line reflection
+User logs a prediction
+  → written to local SQLite immediately (offline-safe)
+  → synced to Supabase Postgres in the background (signed-in users only)
+  → local reminder scheduled for the due date
+
+User taps the reminder on the due date
+  → Resolve sheet: yes / no, then an optional one-line reflection
   → outcome saved locally + synced
   → Calibration Engine recomputes bucket accuracy, the overall rating,
-    per-category scores, and badge thresholds
-  → Stats screen reflects the new data
+    per-category scores, provisional flags and badge thresholds
+  → Stats reflects the new data; a score unlock or badge tier-up is celebrated
+  → (Plus) the Coach can turn those numbers into grounded insight cards
 ```
 
 ### The calibration engine
 
-Resolved predictions are grouped into five confidence buckets (0–20, 20–40, 40–60, 60–80, 80–100). For each bucket:
+Resolved predictions are grouped into five confidence buckets, lower bound inclusive: `[0,20) [20,40) [40,60) [60,80) [80,100]`. For each non-empty bucket:
 
 ```
 actual_rate       = resolved_yes / total_resolved_in_bucket
-bucket_error      = (stated_confidence/100 − actual_rate)²
-calibration_score = 100 − (mean bucket_error × 100)
+bucket_error      = | stated_confidence_mean/100 − actual_rate |    (absolute, not squared)
+calibration_score = 100 − (mean bucket_error × 100)                 (clamped to 0–100)
 ```
 
-The engine (`src/engine/calibration.ts`) is **pure** — plain objects in, plain objects out, no I/O — which makes it the highest-value unit-test target in the project.
+Scores built on too little data are never shown as a headline number: the overall rating is provisional below 20 resolutions and a category below 15, and badges above Tracker need both a score and a resolution minimum. `CLAUDE.md` is the authoritative spec; [`docs/CALIBRATION.md`](./docs/CALIBRATION.md) adds fixtures.
+
+The engine (`src/engine/`) is **pure** — plain objects in, plain objects out, no I/O — which makes it the highest-value unit-test target in the project.
 
 ### Security model
 
-- **No API keys in the client.** The OpenAI key lives only in the `refine` Supabase Edge Function (server-side).
-- **The refine endpoint requires a real signed-in user** — it verifies the caller's JWT and rejects the public anon key, with a per-user rate limit, to prevent token-burning abuse.
-- **Row-Level Security** on Postgres scopes every prediction row to its owning user (`auth.uid() = user_id`). The shipped anon key is safe to expose by design — protection comes from RLS, not secret-keeping.
+- **No API keys in the client.** The OpenAI key lives only in Supabase Edge Function secrets.
+- **Every user-facing Edge Function verifies the caller's JWT.** The Coach also checks Plus server-side (`public.entitlements`), rate-limits per user, and keeps a daily cost ceiling. The RevenueCat webhook has no user, so it is gated by a shared secret instead.
+- **Freetext never reaches the model.** The Coach is sent aggregated numbers only, and distress-signalling text is caught by an on-device pre-filter first.
+- **Row-Level Security** on Postgres scopes every row to its owning user (`auth.uid() = user_id`). The shipped anon key is safe to expose by design — protection comes from RLS, not secret-keeping.
 
 ---
 
 ## Project Structure
 
 ```
-app/                      Expo Router screens (Home, Log, Stats, History, Settings, Resolve)
+app/                      Expo Router routes: (tabs) Home/Log/Stats/History/Settings,
+                          warmup/, resolve/[id], share/, account/, paywall
 src/
   types/                  Shared domain types — the single source of truth
-  db/                     SQLite client, migrations, prediction & stat helpers
-  engine/                 Calibration + streak math (pure functions)
-  store/                  Zustand stores (prediction, stats, auth)
-  supabase/               Client, auth flows, background sync
-  notifications/          Resolution reminders + weekly digest scheduling
-  ai/                     refine() client wrapper (fails silently)
-  components/             UI primitives + prediction/stats/resolution components
+  db/                     SQLite client, migrations, prediction / stat / warmup / analytics helpers
+  engine/                 Calibration, streak, trends, wrapped, warmup, milestones (pure)
+  store/                  Zustand stores, one per file
+  supabase/               Client, auth, background sync, account deletion
+  notifications/          Resolution reminders + weekly digest
+  ai/                     Coach client, context builder, validator, crisis pre-filter
+                          (and the dormant refine client)
+  billing/                RevenueCat wrapper and startup wiring
+  analytics/              Closed event catalogue, recorder, flush
+  share/ export/          PNG export for share cards; CSV export (Plus)
+  constants/              Theme tokens, card themes, badges, app flags
+  components/             ui/ primitives + feature folders (prediction, resolution,
+                          stats, share, warmup, paywall, account, settings)
 supabase/
   migrations/             Postgres schema + RLS policies
-  functions/refine/       OpenAI proxy Edge Function (Deno)
+  functions/              coach, revenuecat-webhook, delete-account (live);
+                          refine (written, not deployed)
+docs/                     Verification checklist, next steps, launch drafts, design system
 ```
 
 ---
@@ -123,27 +141,22 @@ npm install
 # Configure environment (optional — the app runs fully offline without it)
 cp .env.example .env.local
 #   EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY enable sync + auth
+#   EXPO_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY enable billing
 #   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID enables Google sign-in
 
-npm start          # start the Expo dev server
-npm run ios        # or run directly on the iOS simulator
+npm start          # start the Expo dev server (scan the QR with Expo Go)
 npm test           # run the Jest suite
 ```
 
-To enable the AI refine feature, deploy the Edge Function and set the OpenAI key:
-
-```bash
-supabase functions deploy refine
-supabase secrets set OPENAI_API_KEY=sk-...
-```
+Edge Function deploys, secrets and verification steps are in [`supabase/README.md`](./supabase/README.md). ✨ Refine is cut from v1 (`REFINE_ENABLED = false`); its function is kept but deliberately not deployed.
 
 ---
 
 ## Current Status
 
-The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation.
+The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, sign-in and account deletion, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation. A full UI pass against [`docs/design/DESIGN_SYSTEM.md`](./docs/design/DESIGN_SYSTEM.md) landed 2026-09-28 (tokens, icons and haptics, the confidence control, the chart redesign, Lens badges, share-card shapes, sheets, motion).
 
-**What remains is verification, not code.** Everything that needs a funded account, a dashboard login, a simulator, a device, or a judgment call about money is written up batch by batch — what to do, what "pass" looks like, and what to report — in [`docs/HUMAN_VERIFICATION.md`](./docs/HUMAN_VERIFICATION.md). Start there.
+**What remains is mostly verification.** Everything that needs a dashboard, a device, the $99 Apple account or a judgment call is written up batch by batch in [`docs/HUMAN_VERIFICATION.md`](./docs/HUMAN_VERIFICATION.md) — start there. The small amount of code work left is in [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md).
 
 ---
 
@@ -156,8 +169,9 @@ The app is feature-complete against the spec: SQLite persistence, the calibratio
 - [ ] **Resolve native integration** — verify notification deep-links land on `resolve/[id]` on a physical device (`docs/HUMAN_VERIFICATION.md`, batch D1).
 
 **Backend & platform (Layer 7)**
-- [ ] iOS notification entitlements, push credentials, and deep-link config verified on-device.
-- [ ] App icon, splash, store screenshots, and privacy declarations.
+- [ ] Notification deep-links verified on a device. (No push credentials are needed: every notification is a local, scheduled one.)
+- [x] App icon, splash, and the App Privacy answers (`docs/APP_PRIVACY.md`).
+- [ ] Store screenshots, a hosted privacy policy, and a final app name (`docs/APP_STORE_LISTING.md` §0).
 - [ ] `eas build` → TestFlight → App Store submission.
 - [ ] Clear remaining transitive dependency advisories once the Expo SDK upgrade allows it (currently only resolvable via a breaking `--force`).
 

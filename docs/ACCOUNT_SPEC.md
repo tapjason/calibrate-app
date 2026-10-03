@@ -1,6 +1,6 @@
 # Calibrate — Account Spec: sign-in, sign-out, deletion
 
-**As of:** 2026-09-25 · **Status:** built (§1–3); `delete-account` not yet deployed · Items 1 and 3 of
+**As of:** 2026-10-03 · **Status:** built (§1–3); `delete-account` deployed 2026-10-02 (Apple and RevenueCat legs wait on their keys) · Items 1 and 3 of
 [`NEXT_STEPS.md`](./NEXT_STEPS.md)
 
 The auth *functions* exist (`src/supabase/auth.ts`) and the guest→account
@@ -73,6 +73,10 @@ gets the link. Pick one:
 
 **Recommendation:** A for TestFlight, B before public launch. Make Sign in with
 Apple the default on iOS either way, since it never touches email.
+
+**Decided 2026-10-01 (for testing only):** neither yet. "Confirm email" stays on,
+and test accounts are created with the address on the Supabase team, which the
+built-in mailer does reach. A or B is still needed before anyone else signs up.
 
 The code should handle both: after `signUp`, if `data.session` is null, show
 "Check your email to confirm", otherwise proceed. (`signUpWithEmail` currently

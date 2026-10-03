@@ -412,7 +412,7 @@ First run
   → Warmup quiz → instant mini-calibration verdict → first share card
 
 User types prediction
-  → (Optional) taps ✨ Refine → Edge Function (JWT) → OpenAI → suggestion returned
+  → (Deferred, not in v1) ✨ Refine → Edge Function (JWT) → OpenAI → suggestion
   → User saves prediction
   → Stored in local SQLite immediately (offline-safe)
   → Synced to Supabase Postgres in background
@@ -443,7 +443,7 @@ User taps notification on due_date
 | Share / Wrapped | Identity card + weekly/yearly recap, export & share | Free |
 | History | Full list of past predictions, filterable | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
-| Settings | Notification prefs, Coach toggle, usage stats, subscription mgmt | Free |
+| Settings | Notification prefs, Coach toggle, usage stats, subscription mgmt, account (sign in, delete account / erase device) | Free |
 
 ---
 

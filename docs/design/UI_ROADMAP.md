@@ -1,6 +1,6 @@
 # Calibrate — UI Roadmap
 
-**As of:** 2026-09-28 (second research round: [`research/patterns.md`](research/patterns.md)).
+**As of:** 2026-10-03 (store config fixed in §3; second research round: [`research/patterns.md`](research/patterns.md)).
 The *what to build next* companion to
 [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) (which holds the rules). Evidence in
 [`research/`](research/); "before" screens in [`baseline/`](baseline/).
@@ -128,11 +128,12 @@ hit rate"). The fix is for `coachValidate.ts` to return which input field matche
 
 ## 3. Known issues outside the code
 
-- **Paywall store config.** The test store showed Annual at **$29.90** (spec: $29.99)
-  and a **1-month trial on Monthly** too (spec: annual only). Prices and trials are read
-  from the store and never assembled in code (`src/billing/revenuecat.ts`), so this is a
-  RevenueCat / App Store Connect setting. Fix it there before redesigning the paywall;
-  the redesign assumes a trial on Annual only.
+- ~~**Paywall store config.**~~ **Fixed in the Test Store 2026-10-01**: annual is
+  $29.99 with a 1-month trial, monthly $4.99 with none, lifetime $59.99 (read back
+  through the RevenueCat API; `docs/HUMAN_VERIFICATION.md` Tier 0). The 2026-09-28
+  capture had shown annual at $29.90 and a trial on monthly too. Prices and trials are
+  read from the store and never assembled in code, so the App Store Connect products
+  (B2) must be set up the same way.
 - **Baseline 01** needs re-shooting once the Warmup has a real first screen.
 
 ---

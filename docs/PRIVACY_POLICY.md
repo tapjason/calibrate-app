@@ -1,7 +1,7 @@
 <!--
 DRAFT — not yet published. Before hosting:
-  1. Fill every [BRACKETED] placeholder.
-  2. Ship account deletion (docs/ACCOUNT_SPEC.md §3); §7 below describes it.
+  1. Set the effective [DATE] (name and contact are filled in).
+  2. ~~Ship account deletion~~ Done: delete-account deployed 2026-10-02; §7 describes it.
   3. If the app's name changes (see docs/APP_STORE_LISTING.md), update it here.
   4. Re-derive against docs/APP_PRIVACY.md. If they disagree, the code is right.
   5. This is not legal advice. Have it read by someone qualified if you can.
@@ -9,9 +9,9 @@ DRAFT — not yet published. Before hosting:
 
 # Calibrate Privacy Policy
 
-**Effective:** [DATE] · **Contact:** [CONTACT EMAIL]
+**Effective:** [DATE] · **Contact:** tapjason-dev@gmail.com
 
-Calibrate ("the app") is made by [DEVELOPER NAME] ("we"). This policy says what
+Calibrate ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
 to be read, not skimmed past.
 
@@ -133,7 +133,7 @@ will point you there.
 Without an account, **Settings → Erase all data on this device** removes
 everything the app stored.
 
-You can also email [CONTACT EMAIL] to request deletion or a copy of your data.
+You can also email tapjason-dev@gmail.com to request deletion or a copy of your data.
 
 ## 8. Your rights
 
@@ -141,7 +141,7 @@ Depending on where you live (for example, under the GDPR in the EU/UK or the
 CCPA in California), you may have the right to access, correct, export, or
 delete your personal data, and to object to or restrict its processing. You can
 export your predictions yourself as CSV (Calibrate Plus) or ask us for a copy at
-[CONTACT EMAIL]. We'll respond within 30 days. We don't sell personal
+tapjason-dev@gmail.com. We'll respond within 30 days. We don't sell personal
 information as the CCPA defines it.
 
 ## 9. Children
@@ -165,4 +165,4 @@ version.
 
 ## 12. Contact
 
-[DEVELOPER NAME] · [CONTACT EMAIL]
+Jason Zou · tapjason-dev@gmail.com

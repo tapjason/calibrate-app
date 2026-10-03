@@ -14,10 +14,14 @@ done 2026-09-28 and behind §2.5 and §7.10–§7.15). The
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
 
-**Status (2026-09-28):** the tokens are in code at `src/constants/theme.ts` (light
+**Status (2026-10-03):** the tokens are in code at `src/constants/theme.ts` (light
 palette live, dark proposed), and `src/constants/theme.test.ts` pins every recorded
-contrast pair. Not every file is migrated yet — migrating a literal is always in scope
-for the file you touch (rule 0.1). On web, `roundedFamily` carries a system fallback
+contrast pair. Colour is fully migrated: no hex literal is left in `app/` or
+`src/components/` outside `BADGE_META` and `cardThemes`, which hold their own palettes
+by design. Many font sizes are still raw numbers rather than `type.*`; migrating them
+is in scope for the file you touch (rule 0.1). Dynamic Type caps live there too:
+`DISPLAY_MAX_SCALE` (1.6×) for the one display number per screen and `CARD_MAX_SCALE`
+(1.2×) for share cards, which are fixed-layout images. On web, `roundedFamily` carries a system fallback
 list, because Chrome renders a bare `ui-rounded` as serif.
 
 ---
