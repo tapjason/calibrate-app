@@ -19,6 +19,7 @@ import {
   MIN_N_OVERALL,
   type Category,
   type CoachContext,
+  type CoachEvidenceSource,
   type CoachInsight,
   type CoachInsightType,
   type CoachOutput,
@@ -104,10 +105,14 @@ const CATEGORIES: readonly Category[] = [
  */
 const empty = (): CoachOutput => ({ insights: [], safe: true });
 
-/** A number the model was allowed to see, with the tolerance for its scale. */
+/**
+ * A number the model was allowed to see, with the tolerance for its scale and
+ * the figure it came from (so the card can say what the number counts).
+ */
 interface GroundedValue {
   value: number;
   tolerance: number;
+  source: CoachEvidenceSource;
 }
 
 /**
@@ -120,29 +125,64 @@ interface GroundedValue {
  */
 function groundedValues(context: CoachContext): GroundedValue[] {
   const values: GroundedValue[] = [];
-  const absolute = (value: number) =>
-    values.push({ value, tolerance: toleranceFor(value, 'absolute') });
-  const rate = (value: number) =>
-    values.push({ value, tolerance: toleranceFor(value, 'rate') });
+  const absolute = (value: number, source: CoachEvidenceSource) =>
+    values.push({ value, tolerance: toleranceFor(value, 'absolute'), source });
+  const rate = (value: number, source: CoachEvidenceSource) =>
+    values.push({ value, tolerance: toleranceFor(value, 'rate'), source });
 
-  absolute(context.overall.calibration_rating);
-  absolute(context.overall.total_resolved);
+  const { calibration_rating, total_resolved } = context.overall;
+  absolute(calibration_rating, {
+    field: 'calibration_rating',
+    scope: 'overall',
+    value: calibration_rating,
+  });
+  absolute(total_resolved, { field: 'total_resolved', scope: 'overall', value: total_resolved });
 
   for (const c of context.by_category) {
-    absolute(c.resolved);
-    absolute(c.calibration_score);
-    absolute(c.mean_stated_confidence);
-    rate(c.actual_rate);
-    if (c.actual_rate >= 0 && c.actual_rate <= 1) absolute(c.actual_rate * 100);
+    const scope = c.category;
+    absolute(c.resolved, { field: 'resolved', scope, value: c.resolved });
+    absolute(c.calibration_score, {
+      field: 'calibration_score',
+      scope,
+      value: c.calibration_score,
+    });
+    absolute(c.mean_stated_confidence, {
+      field: 'mean_stated_confidence',
+      scope,
+      value: c.mean_stated_confidence,
+    });
+    const hitRate: CoachEvidenceSource = { field: 'actual_rate', scope, value: c.actual_rate };
+    rate(c.actual_rate, hitRate);
+    if (c.actual_rate >= 0 && c.actual_rate <= 1) absolute(c.actual_rate * 100, hitRate);
   }
 
-  for (const p of context.patterns) absolute(p.value);
+  for (const p of context.patterns) {
+    absolute(p.value, { field: 'pattern', scope: 'overall', value: p.value, kind: p.kind });
+  }
 
   return values;
 }
 
-function isGrounded(evidence: number, values: readonly GroundedValue[]): boolean {
-  return values.some((v) => Math.abs(v.value - evidence) <= v.tolerance);
+function matchesFor(evidence: number, values: readonly GroundedValue[]): GroundedValue[] {
+  return values.filter((v) => Math.abs(v.value - evidence) <= v.tolerance);
+}
+
+/**
+ * The one figure a grounded number refers to, or undefined when that can't be
+ * told. A match in the insight's own category (or overall) wins over matches
+ * elsewhere; if what's left is still more than one figure — 20 resolved and a
+ * score of 20, say — no source is claimed. This labels; it never decides
+ * whether an insight is grounded.
+ */
+function sourceFor(
+  matches: readonly GroundedValue[],
+  scope: CoachInsight['category'],
+): CoachEvidenceSource | undefined {
+  const inScope = matches.filter((m) => m.source.scope === scope);
+  const pool = inScope.length > 0 ? inScope : matches;
+  const key = (s: CoachEvidenceSource) => `${s.field}|${s.scope}|${s.kind ?? ''}`;
+  const distinct = new Map(pool.map((m) => [key(m.source), m.source]));
+  return distinct.size === 1 ? [...distinct.values()][0] : undefined;
 }
 
 function isNonEmptyString(v: unknown, max: number): v is string {
@@ -227,11 +267,13 @@ export function validateCoachOutput(
   for (const item of r.insights) {
     const insight = parseInsight(item);
     if (!insight) continue;
-    if (!isGrounded(insight.evidence, values)) continue;
+    const matches = matchesFor(insight.evidence, values);
+    if (matches.length === 0) continue;
     if (!clearsMinimumN(insight, context)) continue;
     if (looksLikeDomainAdvice(insight)) continue;
 
-    insights.push(insight);
+    const source = sourceFor(matches, insight.category);
+    insights.push(source ? { ...insight, evidence_source: source } : insight);
     if (insights.length === MAX_INSIGHTS) break;
   }
 

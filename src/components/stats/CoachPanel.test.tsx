@@ -131,6 +131,34 @@ describe('CoachPanel — rendering insights', () => {
     expect(screen.getByText('Try stating finance calls 15 points lower.')).toBeTruthy();
   });
 
+  it('leads with the receipt when the validator named the figure', () => {
+    seed();
+    useCoachStore.setState({
+      insights: [
+        {
+          ...INSIGHT,
+          evidence: 55,
+          evidence_source: { field: 'actual_rate', scope: 'finance', value: 0.55 },
+        },
+      ],
+      lastAnsweredAt: '2026-08-29T12:00:00.000Z',
+    });
+    render(<CoachPanel />);
+
+    expect(screen.getByText('55%')).toBeTruthy();
+    expect(screen.getByText('came true in finance')).toBeTruthy();
+    expect(screen.getByTestId('coach-receipt').props.accessibilityLabel).toBe(
+      '55%, came true in finance',
+    );
+  });
+
+  it('leaves the receipt off when the figure is ambiguous', () => {
+    seed();
+    useCoachStore.setState({ insights: [INSIGHT], lastAnsweredAt: '2026-08-29T12:00:00.000Z' });
+    render(<CoachPanel />);
+    expect(screen.queryByTestId('coach-receipt')).toBeNull();
+  });
+
   it('says so plainly when the Coach answered with nothing', () => {
     seed();
     useCoachStore.setState({ lastAnsweredAt: '2026-08-29T12:00:00.000Z' });

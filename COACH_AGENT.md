@@ -181,6 +181,15 @@ type CoachOutput = {
 }
 ```
 
+**Client annotation (2026-10-03).** After an insight passes, the client validator
+(`src/ai/coachValidate.ts`) adds `evidence_source`: which `CoachContext` figure the
+`evidence` number matched (field, category or `overall`, the computed value, and the
+pattern `kind`). A match in the insight's own category wins; if the number still fits
+more than one figure, no source is set. It is never read from the model's output,
+and it changes nothing about what is accepted or dropped. The card uses it to lead
+with the receipt ("55% · came true in finance", DESIGN_SYSTEM §7.13). The Edge
+Function doesn't need it, so its duplicated rules are unchanged.
+
 ---
 
 ## 7. Prompt Sketch (system)

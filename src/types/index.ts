@@ -143,6 +143,32 @@ export interface CoachInsight {
   message: string; // <= 240 chars, framed around the data
   evidence: number; // must match a value in CoachContext, or the insight is dropped
   suggestion?: string; // optional, calibration-focused only
+  /**
+   * Which CoachContext figure `evidence` matched. Set by the client validator,
+   * never read from the model's output, and left out when the number matches
+   * more than one kind of figure — the card then shows no receipt rather
+   * than a guessed one (COACH_AGENT.md §6, DESIGN_SYSTEM §7.13).
+   */
+  evidence_source?: CoachEvidenceSource;
+}
+
+export type CoachEvidenceField =
+  | 'calibration_rating'
+  | 'total_resolved'
+  | 'resolved'
+  | 'calibration_score'
+  | 'mean_stated_confidence'
+  | 'actual_rate'
+  | 'pattern';
+
+export interface CoachEvidenceSource {
+  field: CoachEvidenceField;
+  /** The category the figure belongs to, or 'overall'. */
+  scope: Category | 'overall';
+  /** The figure as the app computed it (actual_rate stays 0–1). */
+  value: number;
+  /** Pattern key, when field is 'pattern' (e.g. 'weakest_day_of_week'). */
+  kind?: string;
 }
 
 /**

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { colors, radius, space, type } from '@/constants/theme';
+import { colors, radius, roundedFamily, space, tabularNums, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { CoachInsight } from '@/types';
 
+import { coachReceipt } from './coachReceipt';
 import { SupportSurface } from './SupportSurface';
 
 /**
@@ -173,6 +174,7 @@ function InsightCard({
   insight: CoachInsight;
   onDismiss: () => void;
 }) {
+  const receipt = insight.evidence_source ? coachReceipt(insight.evidence_source) : null;
   return (
     <View style={styles.card} testID={`coach-insight-${insight.category}`}>
       <View style={styles.cardHeader}>
@@ -187,6 +189,19 @@ function InsightCard({
           <Text style={styles.dismiss}>×</Text>
         </Pressable>
       </View>
+      {/* Lead with the receipt: the validated number and what it counts, so
+          the user can check the Coach against the chart (DESIGN_SYSTEM §7.13). */}
+      {receipt && (
+        <View
+          style={styles.receipt}
+          accessible
+          accessibilityLabel={`${receipt.figure}, ${receipt.label}`}
+          testID="coach-receipt"
+        >
+          <Text style={styles.receiptFigure}>{receipt.figure}</Text>
+          <Text style={styles.receiptLabel}>{receipt.label}</Text>
+        </View>
+      )}
       <Text style={styles.message}>{insight.message}</Text>
       {insight.suggestion && (
         <Text style={styles.suggestion}>{insight.suggestion}</Text>
@@ -227,6 +242,9 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   dismiss: { ...type.title3, color: colors.textTertiary, lineHeight: 20 },
+  receipt: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  receiptFigure: { ...type.title2, ...tabularNums, color: colors.textPrimary, fontFamily: roundedFamily },
+  receiptLabel: { ...type.footnote, color: colors.textSecondary },
   message: { ...type.body, color: colors.textPrimary },
   suggestion: { ...type.callout, color: colors.textSecondary },
   caveat: { ...type.footnote, color: colors.textTertiary },

@@ -417,12 +417,34 @@ describe('validateCoachOutput — injection resistance', () => {
       CONTEXT,
     );
     expect(out.insights).toHaveLength(1);
+    // evidence_source is the validator's own annotation, not a passed-through field.
     expect(Object.keys(out.insights[0]).sort()).toEqual([
       'category',
       'evidence',
+      'evidence_source',
       'message',
       'type',
     ]);
+  });
+
+  it('never takes evidence_source from the model', () => {
+    const out = validateCoachOutput(
+      {
+        insights: [
+          {
+            ...GOOD_INSIGHT,
+            evidence_source: { field: 'calibration_rating', scope: 'overall', value: 99 },
+          },
+        ],
+        safe: true,
+      },
+      CONTEXT,
+    );
+    expect(out.insights[0].evidence_source).toEqual({
+      field: 'mean_stated_confidence',
+      scope: 'finance',
+      value: 80,
+    });
   });
 });
 
@@ -483,5 +505,59 @@ describe('validateCoachOutput — crisis path', () => {
       CONTEXT,
     );
     expect(out).toEqual({ insights: [], safe: false });
+  });
+});
+
+// DESIGN_SYSTEM §7.13: the card leads with the evidence number and says what
+// it counts. The validator names the figure it matched — or nothing, when the
+// number could be more than one thing.
+describe('validateCoachOutput — evidence source', () => {
+  const sourceOf = (over: Record<string, unknown>) =>
+    validateCoachOutput({ insights: [{ ...GOOD_INSIGHT, ...over }], safe: true }, CONTEXT)
+      .insights[0]?.evidence_source;
+
+  it('names the figure in the insight’s own category', () => {
+    expect(sourceOf({ evidence: 25 })).toEqual({
+      field: 'resolved',
+      scope: 'finance',
+      value: 25,
+    });
+  });
+
+  it('reads a percentage citation as the 0–1 rate it came from', () => {
+    expect(sourceOf({ evidence: 55 })).toEqual({
+      field: 'actual_rate',
+      scope: 'finance',
+      value: 0.55,
+    });
+    expect(sourceOf({ evidence: 0.55 })?.field).toBe('actual_rate');
+  });
+
+  it('names overall figures and patterns for an overall insight', () => {
+    expect(sourceOf({ type: 'pattern', category: 'overall', evidence: 40 })).toEqual({
+      field: 'total_resolved',
+      scope: 'overall',
+      value: 40,
+    });
+    expect(sourceOf({ type: 'pattern', category: 'overall', evidence: 58 })).toEqual({
+      field: 'pattern',
+      scope: 'overall',
+      value: 58,
+      kind: 'weakest_day_score',
+    });
+  });
+
+  it('claims no source when the number fits two figures', () => {
+    const ambiguous: CoachContext = {
+      ...CONTEXT,
+      by_category: [{ ...CONTEXT.by_category[0], resolved: 61 }],
+    };
+    const out = validateCoachOutput(
+      { insights: [{ ...GOOD_INSIGHT, evidence: 61 }], safe: true },
+      ambiguous,
+    );
+    // Still grounded and still shown — just without a receipt line.
+    expect(out.insights).toHaveLength(1);
+    expect(out.insights[0].evidence_source).toBeUndefined();
   });
 });
