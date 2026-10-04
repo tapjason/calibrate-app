@@ -34,8 +34,10 @@ const rankOf = (badge: BadgeLevel): number => BADGE_ORDER.indexOf(badge);
  * Build the card payload. Returns null when there is nothing worth showing —
  * no stats at all, or no category with a single resolution behind it.
  *
- * Categories are ordered strongest badge first, ties broken by the number of
- * resolutions so the better-evidenced category leads.
+ * Categories are ordered strongest badge first. Within a tier, two unlocked
+ * scores order by score, so the contrast line names the tier's weakest
+ * calibration (a Guesser at 62 before a Guesser at 94, which is only a Guesser
+ * for lack of resolutions); otherwise the better-evidenced category leads.
  */
 export function buildShareCard(
   userStat: UserStat | null,
@@ -49,6 +51,10 @@ export function buildShareCard(
   const ordered = [...withData].sort((a, b) => {
     const byBadge = rankOf(b.badge_level) - rankOf(a.badge_level);
     if (byBadge !== 0) return byBadge;
+    if (!a.score_is_provisional && !b.score_is_provisional) {
+      const byScore = b.calibration_score - a.calibration_score;
+      if (byScore !== 0) return byScore;
+    }
     return b.predictions_resolved - a.predictions_resolved;
   });
 

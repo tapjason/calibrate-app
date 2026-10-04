@@ -75,6 +75,25 @@ describe('buildShareCard', () => {
     expect(card?.categories[0].category).toBe('social');
   });
 
+  it('names the weakest unlocked score as the contrast within a tier', () => {
+    const card = buildShareCard(userStat(), [
+      categoryStat({ category: 'health', badge_level: 'sharp', predictions_resolved: 55 }),
+      categoryStat({
+        category: 'finance',
+        badge_level: 'guesser',
+        predictions_resolved: 17,
+        calibration_score: 62,
+      }),
+      categoryStat({
+        category: 'social',
+        badge_level: 'guesser',
+        predictions_resolved: 16,
+        calibration_score: 94,
+      }),
+    ]);
+    expect(shareLines(card!).contrast).toBe('Guesser in finance');
+  });
+
   // CLAUDE.md: never present a number built on noise — least of all on the
   // most public artifact the app produces.
   it('withholds a provisional rating from the card', () => {
