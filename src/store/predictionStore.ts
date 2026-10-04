@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { track } from '@/analytics/track';
 
 import { withTransaction } from '@/db/client';
+import { buildDemoPredictions } from '@/db/demoData';
 import {
   deletePrediction,
   getPrediction,
@@ -57,6 +58,12 @@ interface PredictionState {
   reopen: (id: string) => Promise<void>;
   /** Attach (or clear, with an empty string) a reflection after resolving. */
   reflect: (id: string, reflection: string) => Promise<void>;
+  /**
+   * Screenshots and demos only: add the demo predictions (src/db/demoData.ts)
+   * for the current user. The one caller, `app/dev/seed`, is __DEV__-gated.
+   * Returns false if they were already there.
+   */
+  loadDemoData: () => Promise<boolean>;
 }
 
 function nowIso(): string {
@@ -205,5 +212,17 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await Promise.all([get().loadPending(), get().loadResolved()]);
+  },
+
+  loadDemoData: async () => {
+    const userId = requireUserId();
+    const rows = buildDemoPredictions(userId, new Date());
+    if (await getPrediction(rows[0].id)) return false;
+    await withTransaction(async () => {
+      for (const p of rows) await insertPrediction(p);
+      await useStatsStore.getState().recomputeForUser(userId);
+    });
+    await Promise.all([get().loadPending(), get().loadResolved()]);
+    return true;
   },
 }));

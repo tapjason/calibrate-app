@@ -296,3 +296,21 @@ describe('predictionStore.reopen', () => {
     expect((await usePredictionStore.getState().getById(p.id))?.status).toBe('pending');
   });
 });
+
+describe('predictionStore.loadDemoData', () => {
+  it('adds the demo predictions once, with stats unlocked', async () => {
+    expect(await usePredictionStore.getState().loadDemoData()).toBe(true);
+    const { pending, resolved } = usePredictionStore.getState();
+    expect(resolved.length).toBeGreaterThanOrEqual(60);
+    expect(pending.length).toBeGreaterThan(0);
+
+    const userId = useAuthStore.getState().userId!;
+    expect((await getUserStat(userId))?.rating_is_provisional).toBe(false);
+    const health = (await listCategoryStats(userId)).find((c) => c.category === 'health');
+    expect(health?.badge_level).toBe('sharp');
+
+    // A second tap changes nothing.
+    expect(await usePredictionStore.getState().loadDemoData()).toBe(false);
+    expect(usePredictionStore.getState().resolved).toHaveLength(resolved.length);
+  });
+});
