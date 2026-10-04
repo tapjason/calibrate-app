@@ -28,3 +28,7 @@ android/
 
 # Supabase CLI local state (project ref, pooler URL, CLI version cache)
 supabase/.temp/
+
+# Local screenshot drafts and Playwright MCP output (not for the repo)
+screenshots/
+.playwright-mcp/
