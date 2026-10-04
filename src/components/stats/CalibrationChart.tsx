@@ -16,6 +16,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
+import { haptics } from '@/components/ui/haptics';
 import { colors, svgFontFamily, type } from '@/constants/theme';
 import type { BucketStat, Direction } from '@/types';
 
@@ -87,6 +88,17 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
   const points = [...buckets].sort(
     (a, b) => a.stated_confidence_mean - b.stated_confidence_mean,
   );
+  // The reveal ends on a Rigid tap as the last dot lands (DESIGN_SYSTEM §6.1).
+  // Reduce Motion drops the motion but keeps the haptic, so it fires at once.
+  const dotCount = points.length;
+  const drawn = width > 0;
+  useEffect(() => {
+    if (!animateIn || !drawn || dotCount === 0) return;
+    const landed = reduceMotion ? 0 : DRAW_MS + (dotCount - 1) * DOT_STAGGER_MS + DOT_FADE_MS;
+    const timer = setTimeout(haptics.reveal, landed);
+    return () => clearTimeout(timer);
+  }, [animateIn, drawn, dotCount, reduceMotion]);
+
   const maxN = points.reduce((m, b) => Math.max(m, b.total_resolved), 1);
   const radiusOf = (n: number) => 4 + (n / maxN) * 6; // 4–10 px
 

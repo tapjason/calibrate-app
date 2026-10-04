@@ -26,6 +26,8 @@ export const haptics = {
    * an error, so it never gets the Error or Warning pattern.
    */
   resolve: () => play(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
+  /** The last dot of a reveal landing (Warmup verdict chart). */
+  reveal: () => play(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)),
   /** Reserved for unlocks and badge tier-ups (§6.2). Never for a Yes. */
   unlock: () =>
     play(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),

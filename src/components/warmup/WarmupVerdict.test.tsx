@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { scoreWarmup } from '@/engine/warmup';
 import { useWarmupStore } from '@/store/warmupStore';
@@ -41,6 +41,22 @@ function seed(answers: WarmupAnswer[]): void {
 }
 
 describe('WarmupVerdictScreen', () => {
+  // The score rolls up on requestAnimationFrame; fake timers keep that inside
+  // the test instead of updating after it has finished.
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('rolls the score up from 0 and lands on it', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    const expected = Math.round(useWarmupStore.getState().result!.mini_score);
+    expect(screen.getByTestId('warmup-score').props.accessibilityLabel).toBe(String(expected));
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('warmup-score').props.children).toBe(expected);
+  });
+
   it('headlines the verdict with the mini score and chart', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);

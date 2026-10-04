@@ -26,3 +26,18 @@ describe('CountUp', () => {
     expect(screen.getByTestId('n').props.accessibilityLabel).toBe('80');
   });
 });
+
+describe('CountUp from', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('rolls up from the starting number on first render, for a reveal', () => {
+    render(<CountUp value={64} from={0} testID="n" duration={700} />);
+    expect(screen.getByTestId('n').props.children).toBe(0);
+    expect(screen.getByTestId('n').props.accessibilityLabel).toBe('64');
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('n').props.children).toBe(64);
+  });
+});

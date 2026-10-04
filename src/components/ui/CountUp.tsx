@@ -10,6 +10,11 @@ interface CountUpProps {
   testID?: string;
   /** Milliseconds for a change to play out. DESIGN_SYSTEM §6.1 `reveal`: 700. */
   duration?: number;
+  /**
+   * Roll up from this number on first render. Only for a reveal moment (the
+   * Warmup verdict), where the number is new; leave it out everywhere else.
+   */
+  from?: number;
 }
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
@@ -23,10 +28,10 @@ const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
  * Screen readers get the final value straight away; the roll is visual only.
  * Reduce Motion jumps to the value.
  */
-export function CountUp({ value, style, testID, duration = 700 }: CountUpProps) {
+export function CountUp({ value, style, testID, duration = 700, from: initial }: CountUpProps) {
   const reduceMotion = useReducedMotion();
-  const [shown, setShown] = useState(value);
-  const from = useRef(value);
+  const [shown, setShown] = useState(reduceMotion ? value : (initial ?? value));
+  const from = useRef(initial ?? value);
   const frame = useRef<number | null>(null);
 
   useEffect(() => {

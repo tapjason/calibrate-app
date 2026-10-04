@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
+import { haptics } from '@/components/ui/haptics';
 import type { BucketStat } from '@/types';
 
 function bucket(partial: Partial<BucketStat> & Pick<BucketStat, 'low'>): BucketStat {
@@ -185,5 +186,35 @@ describe('CalibrationChart reveal', () => {
     expect(view.getByTestId('calibration-curve-line')).toBeTruthy();
     expect(view.getByTestId('point-20')).toBeTruthy();
     expect(view.getByTestId('point-80')).toBeTruthy();
+  });
+});
+
+describe('CalibrationChart reveal haptic', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  const buckets = [bucket({ low: 20 }), bucket({ low: 60 }), bucket({ low: 80, high: 100 })];
+
+  it('taps once as the last dot lands, not before', () => {
+    const reveal = jest.spyOn(haptics, 'reveal').mockImplementation(() => {});
+    const view = render(<CalibrationChart buckets={buckets} animateIn />);
+    layout(view);
+
+    // Line 400 ms, then dots 60 ms apart, each fading for 200 ms: 720 ms.
+    jest.advanceTimersByTime(719);
+    expect(reveal).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent on an ordinary visit to Stats', () => {
+    const reveal = jest.spyOn(haptics, 'reveal').mockImplementation(() => {});
+    const view = render(<CalibrationChart buckets={buckets} />);
+    layout(view);
+    jest.advanceTimersByTime(2000);
+    expect(reveal).not.toHaveBeenCalled();
   });
 });

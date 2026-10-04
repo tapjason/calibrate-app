@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { Button } from '@/components/ui/Button';
-import { colors, type } from '@/constants/theme';
+import { CountUp } from '@/components/ui/CountUp';
+import { colors, tabularNums, type } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -40,7 +41,13 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       <Text style={styles.detail}>{verdict.detail}</Text>
 
       <View style={styles.scoreRow}>
-        <Text style={styles.score}>{Math.round(result.mini_score)}</Text>
+        {/* Rolls up alongside the chart's reveal (DESIGN_SYSTEM §6.1). */}
+        <CountUp
+          value={Math.round(result.mini_score)}
+          from={0}
+          style={styles.score}
+          testID="warmup-score"
+        />
         <View style={styles.scoreMeta}>
           <Text style={styles.scoreLabel}>Warm-up calibration</Text>
           <Text style={styles.scoreSub}>out of 100</Text>
@@ -109,7 +116,7 @@ const styles = StyleSheet.create({
   // Ink, not brand: colour goes to direction, never to the score (§2.4).
   // title1, not display: a warm-up score must not look like the real rating
   // (DESIGN_SYSTEM §7.2 / baseline 02). The verdict sentence is the headline.
-  score: { ...type.title1, color: colors.textPrimary, fontWeight: '800' },
+  score: { ...type.title1, ...tabularNums, color: colors.textPrimary, fontWeight: '800' },
   scoreMeta: { gap: 2 },
   scoreLabel: { ...type.subhead, fontWeight: '600' },
   scoreSub: { ...type.footnote, color: colors.textTertiary },
