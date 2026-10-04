@@ -147,7 +147,7 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > it runs on our server. It is off by default; enable it in Settings → Coach,
 > then Stats → Get feedback. Coach feedback needs predictions resolved in the
 > past. To see it with data, [DEMO ACCOUNT: email / password, pre-seeded with
-> 30 resolved predictions].
+> 145 resolved predictions].
 >
 > Account deletion: Settings → Account → Delete account.
 >
@@ -156,8 +156,9 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 **Why the demo account matters:** a reviewer on a fresh install has no resolved
 predictions. The Coach then shows "keep logging", and the Stats screen shows
 only progress. Both are correct, and both look like broken features to someone
-with ten minutes. Seed a demo account (sign-in shipped 2026-09-25, so the agent
-can write the seeding SQL now: `NEXT_STEPS.md` item c) and put its credentials in
+with ten minutes. Seed a demo account with `node scripts/seed-demo-sql.mjs <user-uuid>` (145 resolved
+predictions; paste the output into the Supabase SQL editor, and re-run it shortly
+before submitting, since dates are relative to the run) and put its credentials in
 App Store Connect, **not** in the repo.
 
 ---
@@ -184,12 +185,14 @@ The order matters. Most people see only the first three.
 **Data for them:** a seeded user with at least 60 resolved predictions spread
 across all five categories, with real miscalibration (overconfident in finance,
 well calibrated in health). Without it, screens 2, 5 and 7 show the provisional
-state. An agent can write the seed script against `src/db/`.
+state. `src/db/demoData.ts` is that user; on a development build, `/dev/seed` loads
+it on the device.
 
 **How:** final images from a device or simulator build. The web target plus
 Playwright at 440 × 956 CSS px, 3× scale, gives 1320 × 2868 drafts now. Web
 rendering differs slightly (system font, no status bar), so treat those as
-layout drafts rather than uploads.
+layout drafts rather than uploads. Drafts of screens 1–6 were made 2026-10-03
+(git-ignored, `screenshots/draft/`).
 
 ---
 

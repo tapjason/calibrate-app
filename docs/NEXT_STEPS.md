@@ -1,7 +1,7 @@
 # Calibrate — Next Steps an Agent Can Do Alone
 
 **As of:** 2026-10-03 · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-87 suites / 987 tests green.
+88 suites / 997 tests green.
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
@@ -15,10 +15,26 @@ are parked in `docs/design/FUTURE_UI.md`.
 
 | # | Item | Why it matters |
 |---|---|---|
-| a | **Supabase keep-alive.** A weekly GitHub Actions cron that makes one cheap query. Needs the anon key as a repo secret. | The free-tier project pauses when idle: `supabase projects list` read `INACTIVE` on 2026-10-03, a day after the 2026-10-02 deploy. Every live test silently fails until it's restored by hand from the dashboard (there is no CLI verb). |
-| c | **Seed data** for screenshots and the App Review demo account: ≥ 60 resolved predictions across all five categories with real miscalibration (`APP_STORE_LISTING.md` §4–5). Credentials stay out of the repo. | A reviewer on a fresh install sees only provisional states, which read as broken features. |
-| d | **Draft screenshots** from the web build with Playwright at 440 × 956 CSS px, 3× (after c). Re-shoot design baseline 01 in the same pass. | Layout drafts now; finals need a device build (web has no status bar, and fonts differ). |
 | g | **Dependency drift.** `expo-doctor` reported 14 packages behind within SDK 55. Run `npx expo install --check`, then `npm test`. | Do it the day of the first EAS build; doing it earlier just means retesting twice. |
+
+Done 2026-10-03, each needing one step from you:
+
+- **Supabase keep-alive** (was a): `.github/workflows/supabase-keepalive.yml` queries
+  the database on Mondays and Thursdays. It needs the `SUPABASE_URL` and
+  `SUPABASE_ANON_KEY` repository secrets, and it can't wake a project that has
+  already paused, so restore the project from the dashboard first (it read
+  `INACTIVE` on 2026-10-03).
+- **Demo data** (was c): `src/db/demoData.ts` builds 145 resolved and 6 open
+  predictions (Sharp in health, Guesser in finance, a live streak). For the App
+  Review account, create the user in the dashboard, then run
+  `node scripts/seed-demo-sql.mjs <user-uuid>` and paste the SQL into the SQL
+  editor; dates are relative to the run, so re-seed shortly before review. The
+  credentials go in App Store Connect, never here.
+- **Draft screenshots** (was d): eight 1320 × 2868 drafts from the web build, in
+  the git-ignored `screenshots/draft/`. To regenerate: start the web build, finish
+  or skip the Warmup, open `/dev/seed` (development builds only) and tap *Load demo
+  data*. Finals still need a device build. (Design baseline 01 can't be re-shot:
+  the screen it showed no longer exists.)
 
 ## Waiting on you, not code
 
