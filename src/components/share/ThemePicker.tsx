@@ -100,5 +100,5 @@ const styles = StyleSheet.create({
     right: 4,
     top: 3,
   },
-  hint: { color: colors.textSecondary, fontSize: 12, lineHeight: 17 },
+  hint: { ...type.caption, color: colors.textSecondary, fontWeight: '400' },
 });

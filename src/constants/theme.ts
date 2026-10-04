@@ -174,6 +174,8 @@ export const svgFontFamily: string | undefined = Platform.select({
 
 export const type = {
   display: { fontFamily: ROUNDED, fontSize: 64, lineHeight: 68, fontWeight: '700' },
+  /** The live number on a control or a celebration (confidence readout, milestone). */
+  readout: { fontFamily: ROUNDED, fontSize: 48, lineHeight: 56, fontWeight: '700' },
   titleXL: { fontFamily: ROUNDED, fontSize: 34, lineHeight: 41, fontWeight: '700' },
   title1: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
   title2: { fontSize: 22, lineHeight: 28, fontWeight: '700' },

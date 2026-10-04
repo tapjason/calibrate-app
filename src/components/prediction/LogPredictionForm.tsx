@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
   refinePressed: { opacity: 0.7 },
   refineDisabled: { opacity: 0.4 },
-  refineLabel: { color: colors.brand700, fontWeight: '600', fontSize: 13 },
+  refineLabel: { ...type.footnote, color: colors.brand700, fontWeight: '600' },
   suggestion: {
     marginBottom: 16,
     padding: 12,
@@ -374,11 +374,11 @@ const styles = StyleSheet.create({
     borderColor: colors.brand200,
   },
   suggestionLabel: {
-    fontSize: 12,
+    ...type.caption,
     fontWeight: '600',
     color: colors.brand700,
     marginBottom: 4,
   },
-  suggestionText: { fontSize: 15, color: colors.textPrimary, marginBottom: 12 },
+  suggestionText: { ...type.subhead, color: colors.textPrimary, marginBottom: 12 },
   suggestionActions: { flexDirection: 'row', gap: 8 },
 });

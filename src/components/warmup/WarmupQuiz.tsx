@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import {
   MAX_WARMUP_CONFIDENCE,
   MIN_WARMUP_CONFIDENCE,
@@ -126,12 +126,12 @@ export function WarmupQuiz() {
 
 const styles = StyleSheet.create({
   wrap: { gap: 20 },
-  progress: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  progress: { ...type.footnote, color: colors.textSecondary, fontWeight: '600' },
   segments: { flexDirection: 'row', gap: 4 },
   segment: { backgroundColor: colors.hairline, borderRadius: 999, flex: 1, height: 6 },
   segmentDone: { backgroundColor: colors.brand600 },
   segmentCurrent: { backgroundColor: colors.brand200 },
-  prompt: { fontSize: 22, fontWeight: '700', lineHeight: 28 },
+  prompt: { ...type.title2 },
   options: { gap: 10 },
   option: {
     alignItems: 'center',
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   radioOn: { borderColor: colors.brand600 },
   radioDot: { backgroundColor: colors.brand600, borderRadius: 999, height: 10, width: 10 },
   optionActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
-  optionText: { color: colors.textPrimary, flex: 1, fontSize: 17 },
+  optionText: { ...type.body, color: colors.textPrimary, flex: 1 },
   optionTextActive: { color: colors.brand700, fontWeight: '600' },
   block: { gap: 8 },
 });

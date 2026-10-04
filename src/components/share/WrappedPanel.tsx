@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { buildWrapped, type WrappedSpan } from '@/engine/wrapped';
 import { Button } from '@/components/ui/Button';
 import { track } from '@/analytics/track';
@@ -134,7 +134,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
-  message: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
+  message: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
   toggleRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -142,5 +142,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 44,
   },
-  toggleLabel: { color: colors.textPrimary, flex: 1, fontSize: 15 },
+  toggleLabel: { ...type.subhead, color: colors.textPrimary, flex: 1 },
 });

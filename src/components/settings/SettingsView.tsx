@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { REFINE_ENABLED } from '@/constants/app';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -246,8 +246,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.hairline,
   },
   rowText: { flex: 1, paddingRight: 16 },
-  rowLabel: { fontSize: 16, fontWeight: '500', color: colors.textPrimary },
-  rowDescription: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  rowLabel: { ...type.callout, fontWeight: '500', color: colors.textPrimary },
+  rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
   deleteRow: { marginTop: 24, paddingVertical: 14 },
-  deleteLabel: { color: colors.destructive, fontSize: 16, fontWeight: '500' },
+  deleteLabel: { ...type.callout, color: colors.destructive, fontWeight: '500' },
 });

@@ -168,6 +168,7 @@ runner-up because it renders identically on iOS and web.
 | Token | Face | Size/line (pt) | Weight | iOS style | Use |
 |---|---|---|---|---|---|
 | `display` | Rounded | 64/68 | Bold | custom (cap Dynamic Type at 1.6×) | the one hero number per screen |
+| `readout` | Rounded | 48/56 | Bold | custom (cap at 1.6×) | the live number on a control or celebration (confidence readout, milestone card) |
 | `titleXL` | Rounded | 34/41 | Bold | Large Title | screen titles, verdict headline |
 | `title1` | Pro | 28/34 | Bold | Title 1 | section heroes, Warmup score |
 | `title2` | Pro | 22/28 | Bold | Title 2 | quiz prompt, card headlines |
@@ -184,6 +185,9 @@ runner-up because it renders identically on iOS and web.
   in a list/table. It maps to `font-variant-numeric` on web.
 - Never Ultralight/Thin/Light. Never below 11 pt. Chart ticks move from 9 px to 12 pt.
 - Everything scales with Dynamic Type; keep hierarchy when it does.
+- **Share cards are the exception.** `IdentityCard`, `WarmupCard` and `WrappedCard` are
+  fixed-layout artifacts exported as images (capped at 1.2×), with sizes tuned to the Post
+  and Story shapes; they keep their own literal sizes. Everywhere else uses a token.
 
 ---
 

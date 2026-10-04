@@ -159,5 +159,5 @@ const styles = StyleSheet.create({
   },
   bucketLabel: { ...type.footnote, fontWeight: '500', color: colors.textPrimary, width: 64 },
   bucketDetail: { ...type.footnote, flex: 1, color: colors.textSecondary },
-  bucketCount: { fontSize: 11, color: colors.textTertiary, width: 40, textAlign: 'right' },
+  bucketCount: { ...type.caption, ...tabularNums, color: colors.textTertiary, width: 40, textAlign: 'right' },
 });

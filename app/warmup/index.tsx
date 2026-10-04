@@ -8,7 +8,7 @@ import { track } from '@/analytics/track';
 import { WarmupQuiz } from '@/components/warmup/WarmupQuiz';
 import { WarmupVerdictScreen } from '@/components/warmup/WarmupVerdict';
 import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { selectCurrentQuestion, useWarmupStore } from '@/store/warmupStore';
 
 /**
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   wrap: { gap: 24, padding: 20, paddingBottom: 40 },
   intro: { gap: 8 },
-  brand: { color: colors.brandText, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
-  title: { color: colors.textPrimary, fontSize: 28, fontWeight: '800', lineHeight: 34 },
-  body: { color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
+  brand: { ...type.eyebrow, color: colors.brandText, fontWeight: '700' },
+  title: { ...type.title1, color: colors.textPrimary, fontWeight: '800' },
+  body: { ...type.subhead, color: colors.textSecondary },
 });

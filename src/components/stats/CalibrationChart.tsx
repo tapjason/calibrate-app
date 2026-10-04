@@ -47,7 +47,7 @@ const PAD_TOP = 12;
 const PAD_BOTTOM = 28;
 // Ticks at the bucket edges, so each dot sits between two gridlines.
 const TICKS = [0, 20, 40, 60, 80, 100];
-const TICK_FONT = 12; // DESIGN_SYSTEM §3: 12pt is the chart minimum.
+const TICK_FONT = type.caption.fontSize; // DESIGN_SYSTEM §3: 12pt is the chart minimum.
 
 /** Dot fill per side of the diagonal (DESIGN_SYSTEM §2.3). */
 const MARK: Record<Direction, string> = {

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import type { CategoryStat, NextBadgeTarget } from '@/types';
 
 interface CategoryBadgeProps {
@@ -82,12 +82,12 @@ const styles = StyleSheet.create({
   left: { flex: 1, paddingRight: 12 },
   categoryRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   category: {
-    fontSize: 15,
+    ...type.subhead,
     fontWeight: '600',
     color: colors.textPrimary,
     textTransform: 'capitalize',
   },
-  hint: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+  hint: { ...type.caption, fontWeight: '400', color: colors.textTertiary, marginTop: 2 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -96,5 +96,5 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     gap: 5,
   },
-  chipLabel: { fontSize: 13, fontWeight: '700' },
+  chipLabel: { ...type.footnote, fontWeight: '700' },
 });

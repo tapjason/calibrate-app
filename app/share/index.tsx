@@ -7,7 +7,7 @@ import { track } from '@/analytics/track';
 import { ShareCardPanel } from '@/components/share/ShareCardPanel';
 import { WrappedPanel } from '@/components/share/WrappedPanel';
 import { Button } from '@/components/ui/Button';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 
 type Tab = 'card' | 'week' | 'year';
 
@@ -85,8 +85,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   wrap: { gap: 20, padding: 20, paddingBottom: 40 },
   header: { gap: 6 },
-  title: { fontSize: 24, fontWeight: '700' },
-  body: { color: colors.textSecondary, fontSize: 15, lineHeight: 21 },
+  title: { ...type.title2 },
+  body: { ...type.subhead, color: colors.textSecondary },
   tabs: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: 10,
@@ -96,6 +96,6 @@ const styles = StyleSheet.create({
   },
   tab: { alignItems: 'center', borderRadius: 8, flex: 1, paddingVertical: 8 },
   tabActive: { backgroundColor: colors.surface },
-  tabLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  tabLabel: { ...type.subhead, color: colors.textSecondary, fontWeight: '600' },
   tabLabelActive: { color: colors.textPrimary },
 });

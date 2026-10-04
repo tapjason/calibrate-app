@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
-import { colors, DISPLAY_MAX_SCALE, radius, roundedFamily, space, tabularNums, type } from '@/constants/theme';
+import { colors, DISPLAY_MAX_SCALE, radius, space, tabularNums, type } from '@/constants/theme';
 
 interface ConfidenceControlProps {
   value: number;
@@ -160,12 +160,9 @@ const styles = StyleSheet.create({
     marginBottom: space.xs,
   },
   readout: {
+    ...type.readout,
     ...tabularNums,
     color: colors.textPrimary,
-    fontFamily: roundedFamily,
-    fontSize: 48,
-    fontWeight: '700',
-    lineHeight: 56,
   },
   frequency: { ...type.subhead, color: colors.textSecondary },
   hint: { ...type.footnote, color: colors.textSecondary, marginBottom: space.xs },

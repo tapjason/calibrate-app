@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { track } from '@/analytics/track';
 import { resolveTheme } from '@/constants/cardThemes';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { shareCard, shareText, type ShareOutcome } from '@/share/export';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -205,9 +205,9 @@ export function ShareCardPanel({
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
-  message: { color: colors.textSecondary, fontSize: 13, textAlign: 'center' },
+  message: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
   controls: { gap: 8 },
-  controlLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  controlLabel: { ...type.footnote, color: colors.textSecondary, fontWeight: '600' },
   segmented: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: 999,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   segmentOn: { backgroundColor: colors.surface },
-  segmentText: { color: colors.textSecondary, fontSize: 15 },
+  segmentText: { ...type.subhead, color: colors.textSecondary },
   segmentTextOn: { color: colors.textPrimary, fontWeight: '700' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
@@ -237,6 +237,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   chipOn: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
-  chipText: { color: colors.textSecondary, fontSize: 15, textTransform: 'capitalize' },
+  chipText: { ...type.subhead, color: colors.textSecondary, textTransform: 'capitalize' },
   chipTextOn: { color: colors.brand800, fontWeight: '600' },
 });

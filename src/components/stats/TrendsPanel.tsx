@@ -218,9 +218,9 @@ function formatMonth(period: string): string {
 
 const styles = StyleSheet.create({
   wrap: { gap: 12, padding: 16, paddingTop: 0 },
-  heading: { fontSize: 17, fontWeight: '700' },
-  muted: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
-  delta: { color: colors.textPrimary, fontSize: 15, lineHeight: 21 },
+  heading: { ...type.headline },
+  muted: { ...type.footnote, color: colors.textSecondary },
+  delta: { ...type.subhead, color: colors.textPrimary },
   section: { gap: 4 },
   // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
   sectionTitle: { ...type.eyebrow, color: colors.textSecondary, marginBottom: 2 },
@@ -230,11 +230,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   rowLabel: {
+    ...type.subhead,
     color: colors.textPrimary,
-    fontSize: 14,
     fontWeight: '500',
     textTransform: 'capitalize',
   },
-  rowValue: { color: colors.textSecondary, fontSize: 14 },
+  rowValue: { ...type.subhead, color: colors.textSecondary },
   coverage: { gap: 4, paddingTop: 4 },
 });

@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
-import { colors, radius, space } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 
 interface DuePickerProps {
   /** Current due date, ISO. */
@@ -48,7 +48,7 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
       },
       style: {
         font: 'inherit',
-        fontSize: 16,
+        fontSize: type.callout.fontSize, // ≥ 16px or iOS Safari zooms on focus
         padding: '10px 12px',
         borderRadius: radius.sm,
         border: `1px solid ${colors.controlBorder}`,
