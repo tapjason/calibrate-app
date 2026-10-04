@@ -290,3 +290,27 @@ describe('ResolvePrompt change answer', () => {
     expect(onResolved).not.toHaveBeenCalled();
   });
 });
+
+describe('ResolvePrompt reflection draft', () => {
+  it('reports the unsaved reflection, and clears it when the answer is changed', async () => {
+    await insertPrediction(samplePending());
+    const onDraftChange = jest.fn();
+    render(<ResolvePrompt predictionId="p1" onDraftChange={onDraftChange} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => {
+      expect(screen.getByTestId('reflection-field')).toBeTruthy();
+    });
+    fireEvent.changeText(screen.getByTestId('reflection-field'), 'lucky timing');
+    expect(onDraftChange).toHaveBeenLastCalledWith('lucky timing');
+
+    fireEvent.press(screen.getByTestId('resolve-change'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+    expect(onDraftChange).toHaveBeenLastCalledWith('');
+  });
+});

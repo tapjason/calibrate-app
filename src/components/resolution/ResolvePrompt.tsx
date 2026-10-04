@@ -24,6 +24,11 @@ interface ResolvePromptProps {
   predictionId: string;
   /** Called when the user is finished here (after answering, or skipping). */
   onResolved?: () => void;
+  /**
+   * The reflection typed so far and not yet saved ('' when there is none), so
+   * the screen can ask before a swipe-down throws it away.
+   */
+  onDraftChange?: (draft: string) => void;
 }
 
 /**
@@ -48,7 +53,7 @@ export function bucketLine(bucket: BucketStat): string {
  * .getById applies the current-user filter, so a crafted deep-link can't
  * surface another user's prediction.
  */
-export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) {
+export function ResolvePrompt({ predictionId, onResolved, onDraftChange }: ResolvePromptProps) {
   const [loading, setLoading] = useState(true);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [reflection, setReflection] = useState('');
@@ -73,6 +78,10 @@ export function ResolvePrompt({ predictionId, onResolved }: ResolvePromptProps) 
       }
     })();
   }, [predictionId]);
+
+  useEffect(() => {
+    onDraftChange?.(answered ? reflection : '');
+  }, [answered, reflection, onDraftChange]);
 
   const submit = async (outcome: ResolvedStatus) => {
     if (!prediction) return;
