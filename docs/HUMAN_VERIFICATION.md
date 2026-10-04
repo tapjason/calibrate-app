@@ -565,7 +565,7 @@ Tick each:
 
 ### C2. UI redesign pass (added 2026-09-28)
 
-What changed is listed in `docs/design/UI_ROADMAP.md` → Progress log. Check on an
+What changed is summarised in `docs/design/UI_ROADMAP.md` §1. Check on an
 iOS simulator or phone as well as web — web can't show SF Rounded, haptics or the
 notification placeholder.
 
@@ -845,28 +845,20 @@ What is still yours:
 ## Open work that is code, not you
 
 Listed here only so the human checklist isn't mistaken for the whole list.
-**The full, current list is [`docs/NEXT_STEPS.md`](./NEXT_STEPS.md)**. (The
-sign-in screen, the analytics queue bug and the paywall links it flagged on
-2026-09-25 are all fixed.)
+**The full, current list is [`docs/NEXT_STEPS.md`](./NEXT_STEPS.md)**; UI status is in
+[`docs/design/UI_ROADMAP.md`](./design/UI_ROADMAP.md).
 
-- ~~**Account deletion (Guideline 5.1.1(v)).**~~ Built 2026-09-25: Settings →
-  Delete account, the `delete-account` Edge Function, and a device wipe that
-  runs only after the server confirms. Deployed 2026-10-02.
+Once people are using the app, the two questions that decide the business model
+(the validation checkpoint in `BUILD_PLAN.md`) are:
 
-- ~~The unbuilt Plus features.~~ All three the paywall names now exist: Coach,
-  Trends, and the card themes. Keep it that way — a bullet on that screen the
-  app doesn't do is a refund request with extra steps.
-- ~~Product instrumentation.~~ Built. Once A3 is applied and people are using
-  the app, the two questions that decide the business model are:
+```sql
+-- D0 aha completion
+select count(*) filter (where name = 'warmup_completed')::float
+     / nullif(count(*) filter (where name = 'warmup_started'), 0) as aha_rate
+  from public.analytics_events;
 
-  ```sql
-  -- D0 aha completion
-  select count(*) filter (where name = 'warmup_completed')::float
-       / nullif(count(*) filter (where name = 'warmup_started'), 0) as aha_rate
-    from public.analytics_events;
-
-  -- Share rate: shares per user who did anything at all
-  select count(*) filter (where name = 'share_completed')::float
-       / nullif(count(distinct user_id), 0) as shares_per_active_user
-    from public.analytics_events;
-  ```
+-- Share rate: shares per user who did anything at all
+select count(*) filter (where name = 'share_completed')::float
+     / nullif(count(distinct user_id), 0) as shares_per_active_user
+  from public.analytics_events;
+```

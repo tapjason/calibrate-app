@@ -1,146 +1,49 @@
 # Calibrate — UI Roadmap
 
-**As of:** 2026-10-03 (store config fixed in §3; second research round: [`research/patterns.md`](research/patterns.md)).
-The *what to build next* companion to
+**As of:** 2026-10-03. The *what to build next* companion to
 [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) (which holds the rules). Evidence in
-[`research/`](research/); "before" screens in [`baseline/`](baseline/). Feature ideas
-beyond this roadmap are parked in [`FUTURE_UI.md`](FUTURE_UI.md).
+[`research/`](research/); "before" screens from 2026-09-25 in [`baseline/`](baseline/).
+Feature ideas beyond this roadmap are parked in [`FUTURE_UI.md`](FUTURE_UI.md).
+Step-by-step history is in git (`git log -- docs/design/UI_ROADMAP.md` and the
+`feat(ui|motion|resolve|share|…)` commits).
 
 ---
 
-## 1. What the baseline shows
+## 1. Where it stands
 
-Captured from the web build on 2026-09-25.
+The redesign pass (2026-09-26 → 10-03) fixed every problem the baseline captures
+and the 2026-09-28 code read found: tokens instead of ~200 hex literals and raw font
+sizes, the big confidence control, neutral Yes/No, the chart redesign, Lens emblems,
+sheets, Reanimated motion and the three celebration moments, the Warmup share card,
+Post/Story share cards, the paywall restructure, receipt-first Coach cards, and
+notification copy. **Everything below that isn't a §2 decision is built**; what's left
+is checking it on an iPhone and the decisions.
 
-| Screen | Problem | Fix (DESIGN_SYSTEM §) |
+| Step | State | Needs an iPhone check |
 |---|---|---|
-| 01 Warmup | The capture only caught a loading spinner, and first run opens on a blank spinner with no brand. **Re-shoot this one.** | Branded first screen, no spinner (§7.3, step 7) |
-| 02 Verdict | Big blue "73" looks like a real rating, then the caveat contradicts it. Two overlapping dots, no region labels, axis text at 2.54:1. **No way to share the result**, although the spec says Warmup produces the first card. | Identity headline + reveal, "Warm-up score" at `title1`, share card (§7.2, §7.5) |
-| 03 Log | Confidence (the central input) is two small ±5 buttons. Integrity text is 2.94:1 green. | Big readout + slider + tinted integrity zone (§7.3) |
-| 04 Home | Giant blue "20" is the *countdown*, styled like a score. Every card repeats "Pending". | Progress ring, cards grouped by due date (§7.1) |
-| 05 Stats | Another "20"; italic placeholder instead of a chart; four identical 🎲 Guesser chips; two grey "See Plus" slabs that look disabled. | Ghost chart, Lens emblems, one Plus teaser card (§7.1, §7.2, §7.4) |
-| 06 History | Italic empty text at ~2.3:1, no way forward. | Proper empty state (§7.8) |
-| 07 Share | "Nothing to share yet" on Day 0 even though the Warmup produced a result. | Warmup card as the Day-0 card (§7.5) |
-| 08 Paywall | Three equal cards with three "Choose" buttons, no preselection, no timeline. | Annual-first selector + honest timeline + one CTA (§7.6) |
-| All | UI is Tailwind blue `#2563eb`; icon/splash are indigo `#4F46E5`. ~200 hard-coded hex literals across 31 files (~40 distinct values). | Tokens (§2) |
+| 0 Correctness fixes | Done | — |
+| 1 Tokens | Done — colour and type. Share cards and badges keep their own palettes and sizes by design (DESIGN_SYSTEM §3). | — |
+| 2 Icons and haptics | Done — SF Symbols with Ionicons fallback; haptics per §6.1 (detent, commit, resolve, reveal, unlock). | Yes |
+| 3 Confidence control | Done | Yes (detent haptic) |
+| 4 Provisional states | Done, as a segmented bar plus the ghost chart. A ring is optional (FUTURE_UI §B). | — |
+| 5 Chart redesign | Done | — |
+| 6 Reanimated | Done except confetti and the emblem flip (FUTURE_UI §B). Warmup score count-up and the landing haptic shipped 2026-10-03. | Yes |
+| 7 Warmup → verdict → share | Done | — |
+| 8 Lens emblem | Done | — |
+| 9 Share cards | Done | — |
+| 10 Paywall | Done (UI). Store config fixed in the Test Store 2026-10-01; App Store Connect must match. | — |
+| 11 Sheets | Done. A typed reflection is guarded on swipe-down (Save / Discard / Keep editing). Web: the browser's own Back skips the guard. | Yes |
+| 12 Everyday surfaces | Done, including receipt-first Coach cards (2026-10-03). | — |
+| 13 Notifications | Done (copy, placeholders, passive digest). Actions and timing are D8 / D9. | Yes |
+| 14 Decisions | Waiting on §2. | — |
 
-Found by reading the code on 2026-09-28 (screens not in the baseline captures;
-details in `research/patterns.md` §1):
-
-| Where | Problem | Fix (DESIGN_SYSTEM §) |
-|---|---|---|
-| Resolve | **No is a red `danger` button**, Yes is the brand fill — breaks non-negotiable 4. Skip has the same weight as Yes/No. The stated confidence is a small ALL-CAPS eyebrow. | Neutral equal Yes/No, Skip as a text button, confidence first (§7.10) |
-| Prediction card | Overdue cards turn amber and say "Overdue"; outcomes read "Yes ✓" / "No ✗". | Neutral grouping by date, ink glyphs + words (§7.11) |
-| Weekly digest | With nothing open it says "log one to keep your streak going" — **wrong**: the streak counts resolutions, not logs. | Digest copy table (§7.15) |
-| Reminders | Fire at 12:00 on the due day (presets anchor at noon), often before the outcome exists. Body is the raw title with no hidden-preview placeholder. | §7.15, D9 |
-| Log | Only three due-date chips; no way to pick another date. | "Pick a date" (§7.12) |
-| Coach | The validated `evidence` number is never shown; no dismiss. | Receipt-first cards (§7.13) |
-| Weekly Wrapped | Verdict gated on 20 resolutions *in the week*, so it will almost always read "N more resolutions…". Gating is right; the story isn't. | Counts + receipt + progress (§7.14) |
+Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
+any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
+for anything with haptics, symbols, sheets or glass (web shows none of them).
 
 ---
 
-## 2. Build order
-
-Biggest visual gain for the least risk first. Each step is shippable on its own and
-keeps `npm test` green. Steps 1–5 need no product sign-off.
-
-0. ~~**Two small correctness fixes**~~ — **done 2026-09-28:** Resolve's Yes and No
-   now share the neutral `secondary` style (a test pins them identical), and the
-   digest's zero-open line no longer mentions the streak. Also done: the weekly
-   Wrapped story (§7.14) — a receipt line from the busiest bucket
-   (`WrappedSummary.receipt`) and a provisional line that points at overall progress
-   instead of asking for 20 resolutions in a week — and the "next badge" line
-   ("Tracker in health: 3 to go"), now drawn with `LensEmblem`.
-1. **Tokens.** Create `src/constants/theme.ts` (colour, type, space, radius, shadow
-   from DESIGN_SYSTEM §2–§4), **shaped as light/dark pairs** even though only light
-   ships (§2.4). Migrate files one PR at a time; start with the contrast
-   failures (`#9ca3af`, the integrity green, the share-card footer). Swap `Button` to
-   `brand600` and a capsule shape. No new dependencies.
-2. **Icons and haptics.** `npx expo install expo-symbols expo-haptics`; symbols with
-   Ionicons fallback; haptics per the §6.1 table (no Success haptic on Resolve).
-3. **Confidence control.** `npx expo install @react-native-community/slider`; big
-   readout, natural-frequency line, tinted integrity zone; keep ±5 and the `adjustable`
-   a11y behaviour. Update the Log and Warmup component tests.
-4. **Provisional states.** Replace the "20" hero on Home and Stats with the segmented
-   progress ring (resolved / pending / to go) and the ghost chart. Uses counts the
-   stores already expose; if "pending" isn't exposed, hand the store change to
-   core-domain.
-5. **Chart redesign.** Takeaway title, labelled regions, dots coloured by side with n,
-   coverage row, 12 pt ticks, "Show as table". Keep `describeCalibrationCurve()`.
-6. **Reanimated.** `npx expo install react-native-reanimated react-native-worklets`,
-   add the Jest `setupFilesAfterEnv` file (DESIGN_SYSTEM §9) **in the same PR**, then:
-   press feedback, score count-up, chart draw-in, the three celebration moments.
-7. **Warmup → verdict → share.** Branded first screen, big confidence control with
-   detent haptics, segmented progress, verdict reveal, Warmup share card, "Start
-   tracking real calls" CTA that opens Log. Fixes the Day-0 growth gap.
-8. **Lens emblem.** `LensEmblem` SVG component; drop `emoji` from `BADGE_META`;
-   blueprint + progress arc for unearned tiers.
-9. **Share-card redesign.** New hierarchy, Story + Post formats, text share, footer hook
-   ≥ 32 px at ≥ 4.5:1, per-category show/hide.
-10. **Paywall restructure.** DESIGN_SYSTEM §7.6. Check the store config first (§3).
-11. **Sheets** for Resolve (medium detent) and Share (large). Needs a new dev build.
-12. **Everyday surfaces.** Resolve layout (§7.10; the bucket-count line needs the count
-    from the store, so hand that to core-domain if it isn't exposed), prediction card
-    and date-grouped Today list (§7.11), Log fields and "Pick a date" (§7.12,
-    `npx expo install @react-native-community/datetimepicker`), receipt-first Coach
-    cards (§7.13), weekly Wrapped story (§7.14; copy lives in `wrappedCopy.ts`, and a
-    "next badge" line needs badge progress from the store). Update the Resolve, Log and
-    Coach tests.
-13. **Notification copy and placeholders** (§7.15): titles, bodies with "You said N%",
-    `previewPlaceholder` via a notification category, `interruptionLevel`. Services
-    layer (L5); no behaviour change beyond the text.
-14. Anything in §4 once decided.
-
-Verification for every step: `npm test`, then a web-build screenshot compared against
-`baseline/`, and for steps 2, 3, 6, 11 a run on an iOS simulator or device (web shows
-no haptics, symbols, glass or `ui-rounded`).
-
----
-
-### Progress log
-
-**2026-09-28** (commits `6f6e1b1` … `c24628a`, all tests green, checked in a
-400-px web build):
-
-| Step | State |
-|---|---|
-| 0 | Done. |
-| 1 Tokens | **Done for colour** (2026-09-29). No hex literal left in `app/` or `src/components/`; a `caution` pair was added for the delete-account warning. `BADGE_META` and `cardThemes` hold their own palettes by design. **Type done** (2026-10-03): every screen and control uses `type.*` (new `readout` token, 48/56 rounded, for the confidence readout and milestone number); the three share cards keep literal sizes by design (DESIGN_SYSTEM §3). |
-| 5 Chart redesign | **Done** (2026-09-29). Takeaway title + natural-frequency subtitle (`chartTakeaway.ts`; a verdict needs the rating unlocked and ≥ 10 in the bucket), warm/cool labelled regions, dots coloured by `BucketStat.direction` (new engine field) with n, 12-pt ticks at bucket edges, coverage row, "Show as table", ghost chart when empty. Draw-in animation waits for step 6. |
-| 2 Icons and haptics | **Done.** Haptics in `src/components/ui/haptics.ts` (detent, commit, resolve — identical for Yes/No/Skip — and unlock, reserved). `Icon` / `CategoryIcon` in `src/components/ui/Icon.tsx`: SF Symbols on iOS, Ionicons on Android/web; used by the tab bar, prediction cards, Log category chips and Stats badges. Both need a device to verify. |
-| 3 Confidence control | **Done.** `ConfidenceControl`: 48-pt readout + "about 7 times in 10", 5% slider with a detent haptic per step, tinted "honest uncertainty" band on Log, ±5 kept, still one `adjustable` element for VoiceOver (slider hidden from it). Used by Log and the Warmup (50–100). |
-| 7 Warmup → verdict → share | **Done.** Branded first screen ("Calibrate · 60-second warm-up", "How well do you know what you know?"), radio answer cards, ten-segment progress, the verdict chart's reveal motion, next steps above the answer key, and the Warmup verdict as the Day-0 share card (`WarmupCard`). |
-| 8 Lens emblem | **Done.** `LensEmblem` (all five tiers by fill + ring count + bezel, blueprint + progress stroke for unearned tiers) replaces the emoji in Stats and on the identity card and the interim `BadgeBlueprint` on Wrapped; `BADGE_META` has no `emoji`. The category SF Symbol in the corner waits for step 2. |
-| 10 Paywall | **Done (UI).** Benefit rows with symbols, radio plan cards ordered annual → monthly → lifetime with annual preselected, a two-step trial timeline (no promised reminder — the app doesn't send one), and one CTA whose label follows the plan ("Start 1 month free" / "Subscribe for $4.99 a month" / "Buy once for $59.99"). Prices and trial lengths still come only from the store. The store-config issues in §3 still need fixing in RevenueCat / App Store Connect. |
-| 11 Sheets | **Done, needs a device.** Resolve opens as a `formSheet` (detents 0.75 / 1.0, grabber), Share as a full-height sheet, the paywall as a full-screen modal; Resolve closes back to where it opened, or to Home after a cold start from a notification. Web falls back to plain routes (verified: log → resolve → recorded → back to Home). Since done (2026-10-03): swipe-to-dismiss with a typed, unsaved reflection holds the sheet and offers Save reflection / Discard reflection / Keep editing (`useReflectionGuard`; action sheet on iOS, alert on Android, silent save on web). **Needs a device.** Known web limit: the browser's own Back button bypasses the guard. |
-| 6 Reanimated | **Partly.** Installed (4.2.1 / worklets 0.7.4) with the Jest setup in the same change (`jest/setupReanimated.js`). Done: `press` spring on every Button (opacity dip under Reduce Motion), `CountUp` on the hero rating (rolls only when a resolution moves it, never on a plain visit; screen readers get the final value), chart `reveal` on the Warmup verdict (line draws in, dots land 60 ms apart). Since done: `unlock` / `tierUp` — `engine/milestones.ts` detects upward crossings only (score unlock, badge tier-up, category unlock; one at a time), `statsStore.milestone` carries it, and the Resolve acknowledgement shows `MilestoneCard` with a spring scale-in and the Success haptic. Since done (2026-10-03): the Warmup score rolls up from 0 with the chart (`CountUp from`), and the reveal ends on a Rigid haptic as the last dot lands (Reduce Motion keeps the haptic). No confetti and no emblem flip yet (FUTURE_UI §B). |
-| 9 Share cards | **Done.** Identity card hierarchy (big identity line, contrast line, receipt, five-dot strip once unlocked, outlined emblem chips, question footer); Post 3:4 and Story 9:16 shapes with the content centred under a large emblem of the best tier (Story keeps a safe band top and bottom); per-category show/hide (never all); Wrapped card to match with titles off by default; plain-text share. |
-| 4 Provisional states | **Done, as a bar.** `UnlockProgress` (resolved / on their way / to go) on Home and Stats. The ghost chart shipped with step 5. A ring instead of a bar is optional. |
-| 12 Everyday surfaces | **Partly.** Resolve leads with "On 3 Sep you said 70%", equal-width neutral Yes/No; date-grouped Today list; neutral card statuses; Log chip labels + "Due Monday, 5 Oct"; Coach dismiss + caveat; weekly Wrapped receipt + badge line. Since done (2026-09-29): the "In your 60–80% range, 6 of 9 have happened" line and reflection-after-answer (`statsStore.bucketFor`, `predictionStore.reflect`). "Pick a date" (`DuePicker`: iOS compact picker, Android dialog, browser date input on web; earliest today), "Change answer" undo after resolving (`predictionStore.reopen`), resolved dates and outcome glyphs on cards, History summary line. Since done (2026-10-03): receipt-first Coach cards ("55% · came true in finance"), from the validator's `evidence_source`. |
-| 13 Notifications | **Done** (copy, placeholders via categories, passive digest). Actions and evening timing are D8 / D9. |
-
-~~**Blocked on a non-UI change:**~~ **Unblocked 2026-10-03** — `coachValidate.ts` now returns
-`evidence_source` (COACH_AGENT.md §6) and the card leads with it. Original note: the Coach card can't show its `evidence` number
-yet. The validator accepts a number if it matches *any* context value, in either rate
-or percent form, so the UI can't say what the number counts ("12 resolved" vs "62%
-hit rate"). The fix is for `coachValidate.ts` to return which input field matched
-(COACH_AGENT.md governs that file).
-
----
-
-## 3. Known issues outside the code
-
-- ~~**Paywall store config.**~~ **Fixed in the Test Store 2026-10-01**: annual is
-  $29.99 with a 1-month trial, monthly $4.99 with none, lifetime $59.99 (read back
-  through the RevenueCat API; `docs/HUMAN_VERIFICATION.md` Tier 0). The 2026-09-28
-  capture had shown annual at $29.90 and a trial on monthly too. Prices and trials are
-  read from the store and never assembled in code, so the App Store Connect products
-  (B2) must be set up the same way.
-- **Baseline 01** needs re-shooting once the Warmup has a real first screen.
-
----
-
-## 4. Open decisions (need the owner's call before building)
+## 2. Open decisions (need the owner's call before building)
 
 | # | Decision | Recommendation | Why it needs sign-off |
 |---|---|---|---|
@@ -157,7 +60,7 @@ hit rate"). The fix is for `coachValidate.ts` to return which input field matche
 
 ---
 
-## 5. Reference apps
+## 3. Reference apps
 
 Best overall references, and what to take from each:
 

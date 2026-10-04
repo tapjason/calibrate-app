@@ -30,269 +30,73 @@ directly — it goes through a store.
 ## Where the build is
 
 **Current state (2026-10-03).** All code in L0–L6 is built; `tsc --noEmit` is
-clean and `npm test` is 85 suites / 960 tests green. What is left is almost
+clean and `npm test` is 87 suites / 987 tests green. What is left is almost
 entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
-The remaining code items are in `docs/NEXT_STEPS.md`.
+The few remaining code items are in `docs/NEXT_STEPS.md`; UI status and open design
+decisions are in `docs/design/UI_ROADMAP.md`. The step-by-step build history that
+used to live here is in git (`git log -- BUILD_PLAN.md`).
 
-- **Every item `NEXT_STEPS.md` raised on 2026-09-25 is built:** sign-in and the
-  Account screens, the analytics queue fix (guest events carried over on
-  sign-in), account deletion and guest erase, Terms/Privacy links on the
-  paywall, local-time day keys for streaks and patterns, tab icons, the light
-  pin, a first accessibility pass, and optional sandbox filtering in the
-  webhook.
-- **The UI pass (2026-09-26 → 09-28)** against `docs/design/DESIGN_SYSTEM.md`:
-  tokens, SF Symbols and haptics, the big confidence control, any-date due
-  picker, the chart redesign, Lens badge emblems, Resolve and Share as sheets,
-  Reanimated motion with score-unlock and tier-up moments, Post/Story share
-  cards, "Change answer" undo, and the a11y fixes (44 pt targets, keyboard-safe
-  forms, Dynamic Type caps). Progress per step is in `docs/design/UI_ROADMAP.md`.
-- **Live services:** `coach`, `revenuecat-webhook` and `delete-account` are
-  deployed (the last two on 2026-10-02; `refine` stays undeployed). The
-  RevenueCat Test Store has its prices and the one-month annual trial
-  (2026-10-01). The Supabase free-tier project **pauses when idle** and read
-  `INACTIVE` on 2026-10-03, so restore it before any live test.
-- **Decisions on 2026-10-01:** testing is on an **iPhone only** (so a real
-  purchase waits on the $99 Apple account), and "Confirm email" stays on —
-  sign up with the address on the Supabase team.
+- **Built:** the offline core loop (Log, Resolve, Stats, History, Settings), the
+  Warmup, share cards and Wrapped, notifications, Supabase auth and sync, sign-in and
+  the Account screens, account deletion and guest erase, analytics, billing and the
+  paywall (one-month trial on annual), the Plus tier (Coach, Trends, CSV export, card
+  themes), the coverage nudge, and the UI redesign pass against
+  `docs/design/DESIGN_SYSTEM.md`.
+- **Cut:** ✨ Refine (2026-09-24), dormant behind `REFINE_ENABLED`; see `CLAUDE.md`
+  AI § A for why.
+- **Live services:** `coach`, `revenuecat-webhook` and `delete-account` are deployed
+  (`refine` is not). The Coach was verified end to end on 2026-09-25: every number
+  in a real response came from the request, and min-N held against real output. The
+  RevenueCat Test Store has its prices and the one-month annual trial (2026-10-01).
+  The Supabase free-tier project **pauses when idle** (it read `INACTIVE` on
+  2026-10-03), so restore it from the dashboard before any live test.
+- **Decisions on 2026-10-01:** testing is on an **iPhone only** (so a real purchase
+  waits on the $99 Apple account), and "Confirm email" stays on for now.
+- **Before a build with a live paywall reaches anyone:** the three products and the
+  `plus` entitlement must exist in App Store Connect and RevenueCat, the public SDK
+  key must be in the build's env, and the sandbox-purchase gate needs a person and a
+  device. Until then the paywall shows its unavailable state, which is correct.
+- **Then:** the validation checkpoint below (instrumented, so it needs users, not
+  code), then L7.
 
-The entries below are the build history, in the order it landed. Where one
-contradicts the summary above, the summary wins.
+### Decisions worth remembering
 
-Layers 0–4 are complete and green. L5 has notifications, Supabase auth + sync, and
-the JWT-verified `refine` function; L6 has the offline core loop (Home, Log, Resolve,
-Stats, History, Settings) plus the calibration curve and category badges.
+These came out of the build and are easy to undo by accident. The code comments
+next to each carry the detail.
 
-**Just landed — Warmup (the Day-0 aha):** `005_warmup` migration, `src/db/warmup.ts`,
-`src/store/warmupStore.ts`, the quiz + verdict components, `app/warmup/`, and the
-first-run redirect in `app/_layout.tsx`.
+- **Billing.** `fetchEntitlement()` returns `null`, not "free", when it can't reach
+  RevenueCat. "Free" and "couldn't ask" are different, or an offline launch strips
+  Plus from a subscriber. Nothing in the core loop routes to the paywall.
+- **Webhook.** `CANCELLATION` does not revoke (turning off auto-renew isn't the end of
+  access); an out-of-order delivery can't resurrect a lapsed plan; events for
+  anonymous RevenueCat ids are acknowledged and ignored; events for deleted users get
+  a 200.
+- **Trial copy.** The paywall shows the store's own trial unit ("1 month", not "30
+  days") and says cancelling takes 24 hours' notice, which is Apple's actual rule.
+- **Analytics.** The event catalogue is a whitelist with no free-text property, so
+  "we never send your predictions" is structural. Events never flush for a guest;
+  guest events move to the account on sign-in.
+- **Plus without paywalling artifacts.** Every share card exports in the free theme;
+  a lapsed subscriber's Plus theme falls back to it. Trends shows counts, never a
+  score, for a provisional month or category. CSV export escapes leading `= + - @`.
+- **Coverage nudge.** Measured over the last 20 logs including pending ones; a
+  single low log switches it off; at most once a week.
+- **Notifications are local only.** No push token is requested, so no APNs key is
+  needed.
+- **Days are local.** Streaks, patterns, Wrapped and trends key days by the device's
+  local time, and a streak ends once its latest day is before yesterday.
 
-**Just landed — the share loop:** `src/share/export.ts` (view-shot → PNG → OS share
-sheet, fail-soft), the category identity card, Calibration Wrapped over weekly and
-yearly windows (`src/engine/wrapped.ts`), `app/share/` with a Card / This week /
-This year selector, and a share entry point on Stats. Free, unconditionally — no
-entitlement check anywhere in that path.
+### Invariants (do not break)
 
-**Just landed — the Coach's deterministic core:** `src/ai/coachContext.ts` (aggregated,
-freetext-free payload), `src/ai/coachValidate.ts` (schema + grounding + min-N +
-out-of-domain), and `src/ai/crisisFilter.ts` (the §5.5 pre-filter and its support
-resources). The `COACH_AGENT.md` §9 fixtures are green. No key, network, or account is
-involved — this is the half that has to be right before any model call exists.
-
-**Just landed — the Coach endpoint and client:** `supabase/functions/coach/` (JWT gate,
-burst limit, durable daily cost ceiling backed by `002_coach_usage.sql`, strict payload
-parser, server-side validation) and `src/ai/coach.ts` (Plus gate → crisis pre-filter →
-call → re-validate, empty result on every failure). **Deployed 2026-09-07** — see
-the deploy note below.
-
-**Just landed — the Coach surface:** `src/store/coachStore.ts` (pull-model request
-state + last-good cache), `CoachPanel` and `SupportSurface` on Stats, and the Coach
-toggle in Settings, off by default per §5.6. Layer 5 and 6 of the Coach are now
-complete.
-
-**Just landed — Coach deployed to Supabase (2026-09-07):** project `calibrate`
-(ref `otopheizhjstoeyndcvc`, us-east-1). All three SQL migrations applied;
-`functions deploy coach` live with `verify_jwt: true`. Verified against the L5 gate:
-401 unauthenticated, 401 malformed JWT, 403 for a signed-in user with no Plus row,
-400 for an oversized body / malformed JSON / non-numeric stat, and 400 for an
-injection string in `category` — rejected by the enum parser before reaching the
-model. The durable daily ledger increments as specified. Both Edge Functions were
-also patched to stop echoing upstream error text to callers (it leaked the AI
-provider and its billing state); they now return a generic `internal`.
-
-**Verified live 2026-09-25 — the Coach works end to end.** A Plus-granted test
-user got a real model response: `HTTP 200`, `safe: true`, one insight whose
-every number (61, 80, 0.55, `evidence: 25`) came from the request. A category
-with `resolved: 3` returned `insights: []` — min-N gating holding against real
-output, not a fixture. A three-category context returned the full cap of three
-insights with **zero** numerals not present in the input.
-
-The one path still unexercised is the validator *dropping* a hallucinated
-number, because the model never produced one; that stays covered by the
-`COACH_AGENT.md` §9 fixtures. `refine` is cut, not pending.
-
-**Just landed — billing and the paywall:** `react-native-purchases` installed,
-`src/billing/revenuecat.ts` (SDK behind a deps seam, so Expo Go / web / Jest run
-without it), `src/billing/init.ts` (mirror hydrate → configure → refresh, plus the
-sign-in handoff and a foreground refresh), `src/store/paywallStore.ts`, the paywall
-screen at `app/paywall.tsx`, and the two soft entry points — the Coach upsell on
-Stats and a Plus row in Settings. `entitlementStore` now expires a stale mirror, so
-a lapsed plan can't grant Plus to a device that never comes back online.
-
-Two things this deliberately does *not* do. `fetchEntitlement()` returns **null**
-when it can't reach RevenueCat rather than collapsing to free — "free" and "couldn't
-ask" have to be different values or an offline launch strips Plus from a subscriber.
-And nothing in the core loop routes to the paywall: every path into it is a user
-tapping something optional.
-
-**Just landed — the RevenueCat webhook:** `supabase/functions/revenuecat-webhook/`
-plus migration `004_entitlement_event_cursor.sql`. This is what makes a purchase
-visible to the *server*: until it existed, billing worked on-device while the
-Coach endpoint still answered 403 to a paying subscriber, because its Plus gate
-reads `public.entitlements` and nothing wrote there. The decision logic sits in
-its own Deno-import-free module so Jest can test it (28 cases) — `CANCELLATION`
-deliberately does not revoke (auto-renew off is not end-of-access), an
-out-of-order delivery can't resurrect a lapsed subscription, and an event for an
-anonymous RevenueCat id is acknowledged and ignored. Still needs deploying with
-`--no-verify-jwt` and wiring in the RevenueCat dashboard (see
-`docs/HUMAN_VERIFICATION.md`).
-
-**Just landed — product instrumentation:** `src/analytics/` (a closed event
-catalogue, `track()`, and a flush that mirrors sync's shape), the local queue in
-migration `006_analytics`, `supabase/migrations/005_analytics_events.sql`, and an
-"Anonymous usage stats" toggle in Settings. The validation checkpoint below was
-not merely unanswered before this — it was unanswerable, because nothing counted
-a Warmup completion or a share.
-
-The design constraint is that the catalogue is a whitelist, not a convenience:
-every event and property is declared in `src/analytics/events.ts`, property
-values are numbers, booleans and declared enums, and there is no open string
-type — so "we never send your predictions" is structural rather than a promise.
-Events queue locally, flush on foreground alongside sync, never flush for a
-guest, and the queue is capped so a permanently-offline install can't grow it
-without bound.
-
-**Just landed — the Plus analytics tier:** `src/engine/trends.ts` (monthly
-calibration, per-category drill-down, confidence-range coverage, recent-vs-earlier
-delta — all pure, all carrying their own min-N flags), the CSV export
-(`src/export/`), and `TrendsPanel` on Stats. This is the sticky non-AI half of
-Plus that GROWTH §5.3 asks for: AI converts but churns faster, and a long
-calibration record is worth more the longer someone keeps logging. A free user
-sees the section with its numbers withheld rather than nothing at all.
-
-Two details that carry the project's rules into the new surface: a provisional
-month or category shows a resolution count, never a score, and the CSV escapes
-leading `=`, `+`, `-` and `@` so an exported prediction title can't execute as a
-formula in Excel or Sheets.
-
-**Just landed — the cosmetic tier:** `src/constants/cardThemes.ts` and the
-`ThemePicker` on the Share screen. Five themes; the default is free and every
-card exports at full quality in it, so the artifact is never paywalled — Plus
-sells the palette, not the card. `resolveTheme()` falls back to the free theme
-for an unknown id *and* for a Plus theme held by someone who has lapsed, so a
-former subscriber keeps every card they can make, in the free look. Tapping a
-locked swatch opens the paywall rather than doing nothing.
-
-That closes the paywall's three promises: Coach, Trends, themes.
-
-**Just landed — the range-coverage nudge:** `src/engine/coverageNudge.ts`, the
-`coverageGap` derivation in `statsStore`, a cooldown timestamp in
-`settingsStore`, and `CoverageNudge` on the Log screen. This is the last open
-item in `CLAUDE.md`'s engine section — "the Log screen should periodically
-nudge users to log a prediction they think is unlikely" — and it was the one
-piece of the spec that no layer implemented.
-
-It is not cosmetic. The calibration score is the mean of per-bucket errors over
-*non-empty* buckets, so a user who only ever logs at 80%+ gets a score computed
-from one bucket and presented as a score about them. `confidenceCoverage` in
-`trends.ts` already measured that gap, but only inside the Plus analytics
-surface — measuring it for the people who had paid, and doing nothing for
-everyone else.
-
-Three decisions worth carrying: the gap is computed over the most recent 20
-logs including **pending** ones (the habit being measured is what the user
-logs, so a 20% prediction counts the day it is made, not weeks later when it
-resolves); a single low log switches the nudge off, which means accepting it
-silences it immediately rather than nagging the one user who did what was
-asked; and it is capped at once a week, because this fires in the core loop and
-the core loop must not become a place that lectures you.
-
-**Batch A, first live run (2026-09-24):**
-
-- **The OpenAI account is funded and working.** `gpt-4o-mini` returns 200 on the
-  refine prompt. The SHA-256 of the local key matches the digest Supabase
-  reports for its stored `OPENAI_API_KEY` exactly, so the deployed functions
-  are on the same funded key — no secret needed re-setting.
-- **The Supabase project had paused** (free tier, idle since 2026-09-07 — DNS
-  stopped resolving entirely). Restored from the dashboard; there is no CLI
-  verb for it. Worth knowing it will pause again if left alone for a week.
-- **The Coach's auth gate re-verified live:** 401 with no header, 401 on a
-  malformed JWT. Live generation followed on 2026-09-25, once a test user was
-  granted Plus in the dashboard — see the paragraph above. **Batch A is
-  complete.**
-- **All five migrations are now applied remotely.** `db push` landed 004 and
-  005. Verified after: `analytics_events` exists, and an anon write to
-  `entitlements` is refused with `42501` — the RLS rule that stops a client
-  granting itself Plus, holding in production.
-
-**Cut — refine (2026-09-24).** The first live output was the reason. The prompt
-turns predictions into *questions* ("I'll finish the report" → "Will I finish
-the report?", four inputs out of four), which is no more resolvable than what
-the user typed. Asking for specificity makes the model invent it (`$100,000`,
-a 2023 deadline); forbidding invention makes it a no-op. A vague prediction
-can't be made checkable without information only the user has — a product
-question, not a prompt bug.
-
-So `REFINE_ENABLED` in `src/constants/app.ts` is false: the ✨ button and its
-Settings row are hidden, the Edge Function stays undeployed, and the client,
-function and every test for both are kept intact and dormant behind the flag.
-Reviving it is fix the prompt against fixtures → flip the flag → deploy.
-Cutting it cost nothing precisely because `CLAUDE.md` required it never be in
-the critical path.
-
-**Just landed — the one-month free trial (2026-09-25).** The length itself is
-a store setting, so most of this was making the app tell the truth about it.
-
-`PlusPlan` now carries `trialPeriod` — the offer in the store's own units —
-alongside the `trialDays` approximation, and the paywall reads the former.
-A calendar month is 28–31 days, so rendering a one-month trial as "30 days
-free" is a billing claim we would break by up to three days in February. It
-now reads "1 month free, then $29.99".
-
-Second addition: a trial terms line stating that the trial converts and that
-cancelling takes **24 hours' notice**. Apple only stops the charge if the user
-cancels at least a day before the trial ends, so "cancel any time before it
-ends" is a promise the platform does not keep. Saying so costs a little
-conversion and saves the refund and the one-star review that follow a surprise
-charge.
-
-The rest was already right: `periodType` TRIAL/INTRO already mapped to
-`source: 'trial'` on the client, and `period_type` did the same in the webhook,
-so both halves already knew a trialist from a subscriber.
-
-**Ship blockers before a build with a live paywall reaches anyone:**
-- Products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) and the `plus`
-  entitlement have to exist in App Store Connect and the RevenueCat dashboard, and
-  the public SDK key has to be in the build's env. Until then the paywall renders
-  its unavailable state, which is the correct behavior, not a bug.
-- The sandbox-purchase gate below needs a human and a device.
-
-**Next:** Batch B — the RevenueCat and App Store Connect setup, including the
-one-month introductory offer on `calibrate_plus_annual`, and deploying the
-webhook. (Status 2026-10-03: the webhook is live and the Test Store half is
-done; the App Store Connect half waits on the $99 Apple account.) Then the validation checkpoint — now instrumented, so
-it needs users rather than code. D0 aha completion is `warmup_completed / warmup_started`;
-share rate is `share_completed` per active user. That measurement is meant to
-happen *before* the checkout goes live. Then L7.
-
-With the nudge landed, **`docs/HUMAN_VERIFICATION.md` is very nearly the entire
-remaining critical path** — batches A–E, from funding the OpenAI account to a
-TestFlight build.
-
-**Update 2026-09-25: this was not the only piece.** A re-read against the
-human checklist found more code work: no sign-in screen exists, analytics
-has a queue-poisoning bug and never sees the Warmup, and the paywall lacks
-Terms/Privacy links. See `docs/NEXT_STEPS.md` (ordered) and
-`docs/ACCOUNT_SPEC.md`. **All of it was built the same day**, and
-`delete-account` was deployed 2026-10-02. The original note follows.
-
-**One piece of code work remains, and it blocks submission.** Deriving the App
-Store privacy answers from the source (`docs/APP_PRIVACY.md`, 2026-09-24) turned
-up the gap: the app supports account creation and has **no account-deletion
-path**, which Review Guideline 5.1.1(v) requires. The smallest honest version is
-a Settings row calling an authenticated Edge Function that deletes the user's
-rows and the auth user, then clears local SQLite. Nothing else in the repo
-tracked this.
-
-The same pass closed four Batch E items without a build: the splash screen is
-already configured (the checklist line was stale), the app icon is not a
-placeholder, **no APNs key is needed** — every notification is a *local*
-scheduled one, with no push token requested anywhere — and the privacy
-declarations are now written down row by row with the file that proves each.
-
-Still needing a human, not code: everything in L7, the device and sandbox-purchase
-gates, and the App Store Connect product setup — including the one-month
-introductory offer on `calibrate_plus_annual`. The RevenueCat Test Store side
-(prices and the trial) is done as of 2026-10-01.
+- **The dependency arrow only points downward.** L3 never imports a store; L6 never
+  calls the SQLite client or the engine directly — it goes through L4.
+- **Every SQLite mutation and its stats recompute run in one `withTransaction`**, so
+  stats never reflect a half-applied change.
+- **Resolution is guarded at the SQL level** (`AND status='pending'`) against a
+  notification being tapped twice.
+- **L5 services fail silently.** Every notification, sync, analytics, billing and AI
+  error is logged and swallowed; Log → Resolve → Stats works with all of them broken.
+- **Shared types live only in `src/types/index.ts`.**
 
 ---
 

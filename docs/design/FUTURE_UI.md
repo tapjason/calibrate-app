@@ -124,8 +124,7 @@ category unlocks), and an App Intent for "Log a prediction".
 | `reveal` motion on weekly Wrapped | DESIGN_SYSTEM §6.2 | The card is captured to PNG, so animating it risks capturing mid-motion. Animate the panel around it, not the card. |
 | 👍 / 👎 on Coach cards | DESIGN_SYSTEM §7.13 | Only once there's an analytics event to receive it. |
 | Guard the web build's browser Back against losing a typed reflection | Roadmap step 11 | React Navigation's prevent-remove doesn't see the browser's own Back. Native ships, so web is low priority. |
-| Re-shoot baseline 01 | UI_ROADMAP §3 | Do it alongside the draft App Store screenshots (NEXT_STEPS d). |
 
-Decisions **D1–D10** in `UI_ROADMAP.md` §4 (typeface, weekly streak, four tabs, honesty
+Decisions **D1–D10** in `UI_ROADMAP.md` §2 (typeface, weekly streak, four tabs, honesty
 bands, SDK, milestone cards, dark mode, resolving from a notification, reminder time,
 what Skip means) are not repeated here. They're ready to build once decided.

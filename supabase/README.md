@@ -186,7 +186,7 @@ value matching a number in the request.
   `src/db/migrations/001_initial.ts`. All three move together.
 - Stats tables (`user_stats`, `category_stats`) intentionally do NOT live here
   — those are derived from predictions and rebuilt locally via
-  `recomputeForUser` after every pull. See `docs/CHECKPOINT.md`.
+  `recomputeForUser` after every pull (`src/supabase/sync.ts`).
 
 ### revenuecat-webhook
 

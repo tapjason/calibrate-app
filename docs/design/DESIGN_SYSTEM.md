@@ -5,7 +5,7 @@
 governs *what the product does*; if the two conflict, `CLAUDE.md` wins and this file
 gets fixed. Items tagged **Proposed** change product behaviour and need sign-off before
 anyone builds them — they are listed with the other open questions in
-[`UI_ROADMAP.md`](UI_ROADMAP.md) §4.
+[`UI_ROADMAP.md`](UI_ROADMAP.md) §2.
 
 **Evidence:** every rule below traces to the sourced research in
 [`research/`](research/) (market, libraries, visual-language, done 2026-09-25; patterns,
@@ -157,7 +157,7 @@ alone.
 
 ## 3. Typography
 
-**Decision (default; see `UI_ROADMAP.md` §4 D1):** the **system font** — SF Pro on iOS,
+**Decision (default; see `UI_ROADMAP.md` §2 D1):** the **system font** — SF Pro on iOS,
 with **SF Rounded (`fontFamily: 'ui-rounded'`) for numerals, badge names and identity
 words only**. Zero bytes, native Dynamic Type, and what the HIG and ADA winners use.
 Trade-off: the Chromium web build falls back to the host system font and has no

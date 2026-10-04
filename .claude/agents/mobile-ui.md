@@ -63,7 +63,7 @@ and the open decisions). The short version:
 - Install native packages with `npx expo install`, never `npm i` (SDK 55
   / RN 0.83 pins). Reanimated is installed; its Jest setup is
   `jest/setupReanimated.js`.
-- Don't build anything DESIGN_SYSTEM tags **Proposed** or UI_ROADMAP §4
+- Don't build anything DESIGN_SYSTEM tags **Proposed** or UI_ROADMAP §2
   lists as an open decision; hand back instead. Visuals that need new
   numbers (consistency bands, expected counts, ranges) need engine work
   first — never compute them in a component.

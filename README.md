@@ -154,7 +154,7 @@ Edge Function deploys, secrets and verification steps are in [`supabase/README.m
 
 ## Current Status
 
-The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, sign-in and account deletion, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation. A full UI pass against [`docs/design/DESIGN_SYSTEM.md`](./docs/design/DESIGN_SYSTEM.md) landed 2026-09-28 (tokens, icons and haptics, the confidence control, the chart redesign, Lens badges, share-card shapes, sheets, motion).
+The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, sign-in and account deletion, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation. A full UI pass against [`docs/design/DESIGN_SYSTEM.md`](./docs/design/DESIGN_SYSTEM.md) landed 2026-09-26 → 10-03 (tokens, icons and haptics, the confidence control, the chart redesign, Lens badges, share-card shapes, sheets, motion, receipt-first Coach cards); status and open design decisions are in [`docs/design/UI_ROADMAP.md`](./docs/design/UI_ROADMAP.md).
 
 **What remains is mostly verification.** Everything that needs a dashboard, a device, the $99 Apple account or a judgment call is written up batch by batch in [`docs/HUMAN_VERIFICATION.md`](./docs/HUMAN_VERIFICATION.md) — start there. The small amount of code work left is in [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md).
 
@@ -162,10 +162,9 @@ The app is feature-complete against the spec: SQLite persistence, the calibratio
 
 ## Future TODO
 
+UI feature ideas beyond the roadmap are parked in [`docs/design/FUTURE_UI.md`](./docs/design/FUTURE_UI.md).
+
 **Near-term**
-- [x] **Real calibration chart** — the curve is drawn directly with `react-native-svg` (no Victory/Skia dependency), with the dashed perfect-calibration diagonal.
-- [x] **Badge system polish** — per-category badge levels surfaced in Stats with a progress hint toward the next one.
-- [x] **History filtering** — past predictions filter by category.
 - [ ] **Resolve native integration** — verify notification deep-links land on `resolve/[id]` on a physical device (`docs/HUMAN_VERIFICATION.md`, batch D1).
 
 **Backend & platform (Layer 7)**
