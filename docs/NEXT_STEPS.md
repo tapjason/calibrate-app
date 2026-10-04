@@ -1,7 +1,7 @@
 # Calibrate — Next Steps an Agent Can Do Alone
 
 **As of:** 2026-10-03 · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-85 suites / 960 tests green.
+87 suites / 987 tests green.
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
@@ -20,11 +20,11 @@ Every P0 and P1 item below the line was built on 2026-09-25, and the UI pass in
 | # | Item | Why it matters |
 |---|---|---|
 | a | **Supabase keep-alive.** A weekly GitHub Actions cron that makes one cheap query. Needs the anon key as a repo secret. | The project paused again: `supabase projects list` read `INACTIVE` on 2026-10-03, a day after the 2026-10-02 deploy. Every live test silently fails until it's restored by hand. |
-| b | **Coach evidence on the card.** `coachValidate.ts` should return *which* context field an `evidence` number matched, so the card can say "12 resolved" or "62% hit rate". `COACH_AGENT.md` governs that file. | The validated number is the receipt behind each insight, and today the UI can't label it (UI_ROADMAP, "Blocked on a non-UI change"). |
+| b | ~~**Coach evidence on the card.**~~ **Done 2026-10-03** (`evidence_source`, receipt-first cards). `coachValidate.ts` should return *which* context field an `evidence` number matched, so the card can say "12 resolved" or "62% hit rate". `COACH_AGENT.md` governs that file. | The validated number is the receipt behind each insight, and today the UI can't label it (UI_ROADMAP, "Blocked on a non-UI change"). |
 | c | **Seed data** for screenshots and the App Review demo account: ≥ 60 resolved predictions across all five categories with real miscalibration (`APP_STORE_LISTING.md` §4–5). Credentials stay out of the repo. | A reviewer on a fresh install sees only provisional states, which read as broken features. |
 | d | **Draft screenshots** from the web build with Playwright at 440 × 956 CSS px, 3× (after c). | Layout drafts now; finals need a device build. |
-| e | **Resolve sheet: confirm before discarding a typed reflection** on swipe-down. | Noted as missing in UI_ROADMAP step 11. |
-| f | **Type tokens.** Many font sizes are still raw numbers rather than `type.*` (UI_ROADMAP step 1). | Consistency; no behaviour change. |
+| e | ~~**Resolve sheet: confirm before discarding a typed reflection** on swipe-down.~~ **Done 2026-10-03**; needs an iPhone check. | Noted as missing in UI_ROADMAP step 11. |
+| f | ~~**Type tokens.**~~ **Done 2026-10-03.** Many font sizes are still raw numbers rather than `type.*` (UI_ROADMAP step 1). | Consistency; no behaviour change. |
 | g | **Dependency drift** (item 12). | Still best done the day of the first EAS build. |
 
 Waiting on you, not code: the GitHub Pages switch for the privacy policy (then

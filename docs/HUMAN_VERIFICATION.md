@@ -593,7 +593,9 @@ notification placeholder.
       with "Tracker in {category}: N to go". Tap **Share my recap** on a phone and
       confirm the icon appears in the exported image.
 - [ ] **Coach (Plus + signed in):** each insight has an × that hides it; one line
-      under the cards says the Coach "can be wrong".
+      under the cards says the Coach "can be wrong". Most cards lead with a big
+      number and what it counts ("55% · came true in finance"); check it against the
+      Stats chart above.
 - [ ] **Resolution reminder (device):** title "Did it happen", body "{title} · You
       said N%". Then turn on Settings → Notifications → Show Previews → *Never* (or
       *When Unlocked* with the phone locked): the reminder must read "A prediction
@@ -612,6 +614,10 @@ Added 2026-09-29 (second pass):
       After Yes/No you see "Recorded", a line like "In your 60–80% range, 6 of 9
       have happened", and only then the reflection box and **Done**. Skip exits
       straight away. Yes, No and Skip all give the same medium haptic.
+- [ ] **Unsaved reflection (added 2026-10-03):** answer, type a reflection, then
+      swipe the sheet down. It stays open and an action sheet offers *Save
+      reflection* / *Discard reflection* / *Keep editing*. Save closes it; Done
+      after typing closes without asking; an empty box never asks.
 - [ ] **The 20th resolution** shows a "Your calibration score is unlocked" card
       that springs in with a success haptic; reaching Tracker (20 in a category)
       shows "Tracker in {category}" with its emblem. Neither ever appears for a drop.
@@ -620,7 +626,8 @@ Added 2026-09-29 (second pass):
       tinted regions labelled Overconfident/Underconfident, coloured dots with
       "n=…", a five-box coverage row, and "Show as table".
 - [ ] **Warmup verdict:** the chart line draws in and the dot(s) appear after it.
-      With Reduce Motion on, no drawing. "Share my result" opens Share showing the
+      The score counts up from 0 alongside it, and a single firm tap lands with the
+      last dot. With Reduce Motion on, no drawing or count-up, but the tap still fires. "Share my result" opens Share showing the
       **warm-up card** ("I run hot", "77% sure, 50% right") — test on a fresh install
       or after erasing the device's data, before any prediction resolves.
 - [ ] **Badges** are drawn emblems (dashed square for Guesser, filled indigo for
