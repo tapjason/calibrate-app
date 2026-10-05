@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { colors, space, type } from '@/constants/theme';
+import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 
 /**
@@ -50,6 +51,21 @@ export default function DevSeedScreen() {
             {status}
           </Text>
         )}
+        {/* In memory only: nothing is written to the entitlement mirror, so a
+            reload (or the next billing refresh) puts the device back to free.
+            For screenshots of the Plus surfaces, never a way to unlock them. */}
+        <Button
+          label="Preview Plus until reload"
+          variant="secondary"
+          onPress={() => {
+            useEntitlementStore.setState({
+              entitlement: { is_plus: true, source: 'annual', expires_at: null },
+              isPlus: true,
+            });
+            setStatus('Plus previewed in memory. Reload to end it.');
+          }}
+          testID="dev-seed-plus"
+        />
         <Button
           label="Go to Home"
           variant="secondary"

@@ -202,7 +202,11 @@ The order matters. Most people see only the first three.
 across all five categories, with real miscalibration (overconfident in finance,
 well calibrated in health). Without it, screens 2, 5 and 7 show the provisional
 state. `src/db/demoData.ts` is that user; on a development build, `/dev/seed` loads
-it on the device.
+it on the device. The same screen's **Preview Plus until reload** turns on the Plus
+surfaces in memory only (nothing is written to the entitlement mirror), for screen
+7 and for the correction table on Stats ("What your confidence means"), which is a
+candidate for a screen of its own: *In finance, your 80–100% came true 47% of the
+time.* `/dev/celebrations` replays the unlock and tier-up cards.
 
 **How:** final images from a device or simulator build. The web target plus
 Playwright at 440 × 956 CSS px, 3× scale, gives 1320 × 2868 drafts now. Web
