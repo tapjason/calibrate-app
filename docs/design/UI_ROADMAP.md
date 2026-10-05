@@ -71,11 +71,32 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now
+### 1.1 Building now (ninth batch: accessibility, 2026-10-05)
 
-Nothing in progress. Eight batches shipped on 2026-10-04 and 10-05 (steps 16–40).
-The next useful read is on an iPhone: the device column above lists what web can't
-show, and HUMAN_VERIFICATION C2 and D1 carry the matching checks.
+From reading the accessibility tree of every screen on the web build (what a
+screen reader is handed), as the demo account.
+
+| Step | Item | Size | State |
+|---|---|---|---|
+| 41 | Settings' switches say what they switch | S | Next |
+| 42 | Decorative pieces stay silent on every platform | S | Next |
+| 43 | The rating and each badge row read as one sentence | S | Next |
+
+**41.** Each Settings switch was an unnamed "switch, on": its label and description
+were separate text beside it, which VoiceOver doesn't attach to the control. The
+whole row becomes one switch element named by its label, with the description as
+its hint and the inner Switch hidden; tapping the row toggles it.
+
+**42.** Icons, the score bar's ticks, the badge emblems and the chart's drawing are
+marked hidden with iOS-only props, which the web build ignores: there a screen
+reader heard icon-font characters, "70 85 90", and every "n=" label twice (the
+step-16 halo). `aria-hidden`, which React Native maps on every platform, replaces
+or joins them. Matters for the web Warmup (FUTURE_UI A8) and costs nothing on iOS.
+
+**43.** The hero read as "92", "calibration rating" and loose tick numbers, and a
+badge row as "finance", "3 more resolved → Tracker" (the arrow read aloud),
+"Guesser". Each becomes one element: "Calibration rating, 92 out of 100." and
+"Finance: Guesser. 3 more resolved to reach Tracker."
 
 ### What's left in the parking lot
 
