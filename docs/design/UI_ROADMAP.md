@@ -32,7 +32,7 @@ is checking it on an iPhone and the decisions.
 | 8 Lens emblem | Done | — |
 | 9 Share cards | Done | — |
 | 10 Paywall | Done (UI). Store config fixed in the Test Store 2026-10-01; App Store Connect must match. | — |
-| 11 Sheets | Done. A typed reflection is guarded on swipe-down (Save / Discard / Keep editing). Web: the browser's own Back skips the guard. | Yes |
+| 11 Sheets | Done. A typed reflection is guarded on swipe-down (Save / Discard / Keep editing). Web: the browser's Back saves it and a reload asks first (step 23). | Yes |
 | 12 Everyday surfaces | Done, including receipt-first Coach cards (2026-10-03). | — |
 | 13 Notifications | Done (copy, placeholders, passive digest). Actions and timing are D8 / D9. | Yes |
 | 14 Decisions | D10 built 2026-10-04 (its one open question turned out to be checkable); the rest wait on §2. | — |
@@ -62,7 +62,7 @@ live in DESIGN_SYSTEM §6.1, §7.10, §7.12 and §7.16, and their history in git
 | Step | Item | From | Size | State |
 |---|---|---|---|---|
 | 22 | "Log it again" after resolving | FUTURE_UI A4, the no-schema half | M | Next |
-| 23 | Web: the browser's Back keeps a typed reflection | FUTURE_UI §B | S | Next |
+| 23 | Web: the browser's Back keeps a typed reflection | FUTURE_UI §B | S | **Done** 2026-10-04 · reload prompt seen on web; the Back save is unit-tested |
 | 24 | Wrapped through the store, not the engine | Code read, 2026-10-04 | S | **Done** 2026-10-04, now guarded by a test |
 | 25 | Web: tab names without icon glyphs | Web run-through, 2026-10-04 | S | **Done** 2026-10-04, web-verified |
 

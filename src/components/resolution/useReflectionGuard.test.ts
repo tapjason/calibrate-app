@@ -148,3 +148,58 @@ describe('useReflectionGuard', () => {
     expect(reflect).toHaveBeenCalledWith('p1', 'lucky timing');
   });
 });
+
+// Roadmap step 23: the web build's own ways out.
+describe('useReflectionGuard on web', () => {
+  beforeEach(() => {
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+  });
+
+  it("saves an unsaved reflection when the browser's Back unmounts the screen", () => {
+    const { unmount } = renderHook(() => useReflectionGuard('p1', 'lucky timing'));
+    unmount();
+    expect(reflect).toHaveBeenCalledWith('p1', 'lucky timing');
+  });
+
+  it('saves nothing when the exit was on purpose, or there was nothing typed', () => {
+    const leaving = renderHook(() => useReflectionGuard('p1', 'lucky timing'));
+    leaving.result.current.markLeaving();
+    leaving.unmount();
+
+    renderHook(() => useReflectionGuard('p1', '  ')).unmount();
+    expect(reflect).not.toHaveBeenCalled();
+  });
+
+  it('saves the latest text, not the text it mounted with', () => {
+    const { rerender, unmount } = renderHook(
+      ({ draft }: { draft: string }) => useReflectionGuard('p1', draft),
+      { initialProps: { draft: 'luck' } },
+    );
+    rerender({ draft: 'lucky timing' });
+    unmount();
+    expect(reflect).toHaveBeenCalledWith('p1', 'lucky timing');
+  });
+
+  it('asks before a reload or tab close only while a draft is unsaved', () => {
+    const add = jest.fn();
+    const remove = jest.fn();
+    const original = {
+      addEventListener: globalThis.addEventListener,
+      removeEventListener: globalThis.removeEventListener,
+    };
+    Object.assign(globalThis, { addEventListener: add, removeEventListener: remove });
+
+    const { rerender } = renderHook(
+      ({ draft }: { draft: string }) => useReflectionGuard('p1', draft),
+      { initialProps: { draft: '' } },
+    );
+    expect(add).not.toHaveBeenCalled();
+
+    rerender({ draft: 'lucky timing' });
+    expect(add).toHaveBeenCalledWith('beforeunload', expect.any(Function));
+
+    rerender({ draft: '' });
+    expect(remove).toHaveBeenCalledWith('beforeunload', add.mock.calls[0][1]);
+    Object.assign(globalThis, original);
+  });
+});

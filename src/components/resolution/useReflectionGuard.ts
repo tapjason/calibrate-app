@@ -1,6 +1,6 @@
 import { usePreventRemove } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 
 import { usePredictionStore } from '@/store/predictionStore';
@@ -20,11 +20,45 @@ export const GUARD_OPTIONS = ['Save reflection', 'Discard reflection', 'Keep edi
  *
  * Call `markLeaving()` before navigating away on purpose (Done, Skip), so
  * the guard lets that exit through.
+ *
+ * Web has two more ways out that prevent-remove never sees (roadmap step 23):
+ * the browser's own Back, which just unmounts the screen, so an unsaved draft
+ * is saved on unmount; and a reload or tab close, which the page asks about
+ * while a draft is unsaved.
  */
 export function useReflectionGuard(predictionId: string, draft: string) {
   const navigation = useNavigation();
   const leaving = useRef(false);
   const unsaved = draft.trim().length > 0;
+
+  // The latest values, for the unmount cleanup below.
+  const latest = useRef({ predictionId, draft });
+  latest.current = { predictionId, draft };
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    return () => {
+      const { predictionId: id, draft: text } = latest.current;
+      if (leaving.current || text.trim().length === 0 || !id) return;
+      leaving.current = true;
+      void usePredictionStore
+        .getState()
+        .reflect(id, text)
+        .catch(() => undefined);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !unsaved) return;
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+    const ask = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Chrome still needs returnValue set to show its own prompt.
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', ask);
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [unsaved]);
 
   usePreventRemove(unsaved, ({ data }) => {
     const leave = () => navigation.dispatch(data.action);
@@ -35,6 +69,8 @@ export function useReflectionGuard(predictionId: string, draft: string) {
     const saveAndLeave = async () => {
       try {
         await usePredictionStore.getState().reflect(predictionId, draft);
+        // Saved: the web unmount save mustn't write it a second time.
+        leaving.current = true;
         leave();
       } catch {
         // Stay put: Done is still on screen and reports the error itself.
