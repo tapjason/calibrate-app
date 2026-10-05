@@ -27,7 +27,7 @@ is checking it on an iPhone and the decisions.
 | 3 Confidence control | Done | Yes (detent haptic) |
 | 4 Provisional states | Done, as a segmented bar plus the ghost chart. A ring is optional (FUTURE_UI §B). | — |
 | 5 Chart redesign | Done | — |
-| 6 Reanimated | Done except confetti and the emblem flip (FUTURE_UI §B). Warmup score count-up and the landing haptic shipped 2026-10-03. | Yes |
+| 6 Reanimated | Done except confetti and the emblem flip, now step 17 (§1.1). Warmup score count-up and the landing haptic shipped 2026-10-03. | Yes |
 | 7 Warmup → verdict → share | Done | — |
 | 8 Lens emblem | Done | — |
 | 9 Share cards | Done | — |
@@ -45,6 +45,73 @@ for anything with haptics, symbols, sheets or glass (web shows none of them).
 Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
+
+### 1.1 Building now (moved from `FUTURE_UI.md`, 2026-10-04)
+
+Items that need no owner decision, or whose decision `CLAUDE.md` already makes.
+Each moves here from the parking lot when work starts, and into the table above
+when it ships.
+
+| Step | Item | From | Size | State |
+|---|---|---|---|---|
+| 16 | Halo behind the chart's "n=" labels | FUTURE_UI §B | S | Next |
+| 17 | Tier-up: emblem flip and confetti | FUTURE_UI §B, DESIGN_SYSTEM §6.1 `tierUp` | M | Next |
+| 18 | Resolve several at once | FUTURE_UI A3 | M | Next |
+| 19 | Track record on the Log slider (free) | FUTURE_UI A1 | S–M | Next |
+| 20 | Personal correction table (Plus) | FUTURE_UI A5 | M | Next |
+| 21 | Calibration by time horizon (Plus) | FUTURE_UI A6 | S–M | Next |
+
+**16. Chart-label halo.** The connecting line can run through an "n=" label (the
+demo's n=8 at 20–40%). Draw each label twice: a 3pt stroke in the surface colour
+underneath, then the label. Two layered `Text` elements rather than `paintOrder`,
+whose support in react-native-svg is unverified.
+
+**17. Tier-up.** DESIGN_SYSTEM §6.1: the emblem flips on Y over 600 ms (the old
+tier turns away, the new one turns in) and up to 40 confetti pieces fall for at
+most 1.2 s, with the Success haptic. No new dependency: the particles are
+Reanimated views in the brand ramp. Only the tier-up gets confetti; a score
+unlock keeps its spring-in card (§6.2 budget). Reduce Motion: no flip, no
+confetti, a 200 ms fade; the haptic still fires.
+
+**18. Resolve several at once.** When three or more predictions are ready, Home
+offers **Resolve all N** above the "Ready to resolve" group. It opens a run in the
+same sheet as single Resolve, showing "2 of 5", one `ResolvePrompt` at a time:
+- Yes / No → the usual "Recorded" acknowledgement with its bucket line, then
+  **Next** (the last card says **Finish**). The reflection is collapsed behind
+  "Add a reflection"; Change answer stays.
+- Skip ("Can't tell / doesn't apply") goes straight to the next card.
+- A milestone shows on the card that earned it, so it interrupts the run where it
+  happens rather than queueing to the end.
+- **Next is a tap, not a timer.** The parking-lot note said "straight to the
+  next"; an automatic advance takes control away (WCAG 2.2.1) and makes the
+  bucket line easy to miss, so the run waits for the tap.
+- The queue is a snapshot of the ready ids when the run opens; a card that was
+  resolved elsewhere meanwhile is passed over silently. Ends on "All caught up".
+
+**19. Track record on the Log slider (free).** Under the confidence control, once
+that category's bucket for the chosen value has ≥ 10 resolved: *"Your 60–80% calls
+in finance: 7 of 12 happened."* Below that, the same line across all categories
+if the overall bucket has ≥ 10; below that, nothing. Counts, never a verdict, and
+the same threshold as the chart title (`chartTakeaway`). The data comes from
+`statsStore`; the screen does no bucket math.
+- **Free, by `CLAUDE.md`'s rule** that the paywall never touches the core loop:
+  the Log screen *is* the core loop. That settles FUTURE_UI's "free or Plus?".
+- Anchoring is worth measuring (do stated confidences drift toward hit rates?),
+  but that needs a new analytics event, and the catalogue is closed and declared
+  in `APP_PRIVACY.md`, so that part waits for the owner.
+
+**20. Personal correction table (Plus).** *"In finance, when you say 80–100%, it
+happens about 65% of the time (38 of 57)."* One row per category and confidence
+band with ≥ 10 resolved, worst first, at most five; calibrated rows say the
+number means what it says. Rows below threshold never appear, so it can't print
+0% or 100% from two predictions. Engine output in `trends.ts`, shown in the Plus
+Trends panel. Free users see it named in the Plus teaser, not a blurred copy.
+
+**21. Calibration by time horizon (Plus).** How far ahead a call was made, from
+local calendar days between logging and the due date: *next day or sooner*,
+*within a week*, *within a month*, *longer*. Each row carries its own n and is
+provisional below 15 (`MIN_N_CATEGORY`), showing counts instead of a score, like
+the category rows beside it in Trends.
 
 ---
 

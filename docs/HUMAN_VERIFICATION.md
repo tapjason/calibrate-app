@@ -46,6 +46,19 @@ detailed procedures; this section is the order to do them in.
       now reads annual **USD 29.90** (should be 29.99) and **monthly with
       `trial.duration: P1M`** (should have no trial). Redo steps 3–4 below,
       removing the trial from monthly, then step 6.
+      **Re-read 2026-10-04, 03:41 UTC: unchanged.** Full state through the API:
+
+      | Product | Type / period | Price | Trial | Should be |
+      |---|---|---|---|---|
+      | `calibrate_plus_annual` | subscription, P1Y | USD 29.90 | P1M | **USD 29.99**; trial right |
+      | `calibrate_plus_monthly` | subscription, P1M | USD 4.99 | P1M | price right; **no trial** |
+      | `calibrate_plus_lifetime` | non-consumable | USD 59.99 | none | right |
+
+      The rest is right: the `plus` entitlement holds all three products, and
+      the current offering `default` has `$rc_monthly`, `$rc_annual` and
+      `$rc_lifetime`. There's also a leftover `calibrate_pro` entitlement with
+      no products; the app only checks `plus`, so it's harmless, but you can
+      delete it while you're in the dashboard.
 - [x] ~~**Test Store trial and prices.**~~ (first pass) The three products already exist
       (`calibrate_plus_monthly`, `_annual`, `_lifetime`); only their price and
       the annual trial are missing, and the API can't set either. Step by step:

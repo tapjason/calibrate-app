@@ -1,6 +1,6 @@
 # Calibrate — Future UI Features
 
-**As of:** 2026-10-04 (weekly Wrapped `reveal` shipped; removed from §B). A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
+**As of:** 2026-10-04 (A1, A3, A5, A6 and two §B items moved to `UI_ROADMAP.md` §1.1). A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
 what's being built now. Nothing here is scheduled, and anything that changes product
 behaviour needs the owner's call first. `CLAUDE.md` still governs every item:
 shareable artifacts are never paywalled, no number built on noise (min-N), AI stays
@@ -16,31 +16,16 @@ a native build.
 
 | # | Feature | Size | Needs first |
 |---|---|---|---|
-| A1 | Track record on the Log slider | S–M | Free or Plus? |
+| A1 | Track record on the Log slider | S–M | **Moved to UI_ROADMAP §1.1 (step 19), 2026-10-04** |
 | A2 | Daily drill | M | A question bank; fits with D2 (streak unit) |
-| A3 | Resolve several at once | M | — |
+| A3 | Resolve several at once | M | **Moved to UI_ROADMAP §1.1 (step 18), 2026-10-04** |
 | A4 | Repeating predictions | L | Schema change |
-| A5 | Personal correction table | M | Engine output; Plus |
-| A6 | Calibration by time horizon | S–M | Engine output; Plus |
+| A5 | Personal correction table | M | **Moved to UI_ROADMAP §1.1 (step 20), 2026-10-04** |
+| A6 | Calibration by time horizon | S–M | **Moved to UI_ROADMAP §1.1 (step 21), 2026-10-04** |
 | A7 | Changing your confidence before the due date | L | Schema change; scoring rule |
 | A8 | Web Warmup as the share-card landing page | M | Hosting (GitHub Pages) |
 | A9 | Predict the same event with a friend | L | Backend, invites |
 | A10 | Widgets and a Siri Shortcut | L (the Shortcut drops to M on SDK 58) | EAS build; SDK 58 for `expo-app-intents` |
-
-### A1. Track record on the Log slider
-As the slider moves: *"Your 80%s in finance have come true 58% of the time."* This
-closes the feedback loop at the moment of commitment, which is the app's premise
-applied where it matters most.
-- Reuse the honesty rules from `chartTakeaway.ts`: say nothing until the bucket has
-  ≥ 10 resolved, and use counts, not a verdict.
-- Needs a per-category bucket lookup from `statsStore` (core-domain). The UI only
-  reads it.
-- **Decision:** it feels like part of the core loop (free), but it's arguably
-  "insight" (Plus). Recommendation: free. It makes the free tier better at the one
-  thing the app promises.
-- Watch for anchoring: users might copy their history instead of judging the event.
-  That's arguably the point (recalibrating), but it's worth a metric: do stated
-  confidences drift toward the hit rates?
 
 ### A2. Daily drill
 One estimation question a day with the same confidence control, stored separately
@@ -53,34 +38,12 @@ open the app every day.
 - Interacts with **D2**: if the visible streak becomes weekly, a drill could count
   toward it.
 
-### A3. Resolve several at once
-When three or more are ready, Home offers "Resolve 5", which steps through
-`ResolvePrompt` one card at a time (Yes / No / Skip, then straight to the next; the
-reflection stays optional and can be collapsed). Resolution is what feeds the data,
-and a backlog of overdue items is where people quit.
-- Same haptic and acknowledgement for Yes and No (rule 0.4). The bucket line
-  appears briefly per card.
-- A milestone (score unlock, tier-up) interrupts the run. Don't queue it to the end.
-
 ### A4. Repeating predictions
 "Gym 3× this week", weekly. Each instance is its own prediction with its own
 confidence (prefilled from last time, editable), so the engine is unchanged. Volume
 per category goes up, so categories reach `MIN_N_CATEGORY` sooner.
 - Needs a `recurrences` table plus a scheduler that creates the next instance on
   resolve (L2/L4), and notification scheduling for each instance.
-
-### A5. Personal correction table (Plus)
-*"In money, read your 80% as 60%."* One row per category and bucket that clears
-min-N: stated mean → actual rate. It's the most actionable thing the numbers say, and
-it needs no model.
-- Engine output (L3), shown on Stats under the chart. It must disappear for buckets
-  below threshold, never show "0%" or "100%" on two predictions.
-- Pairs with A1: the slider hint is the free, in-the-moment version.
-
-### A6. Calibration by time horizon (Plus)
-Same-day vs. this-week vs. month-out calls. People are often sharp on short horizons
-and loose on long ones. Sits next to `patterns.ts` and `trends.ts`. Each horizon
-carries its own n and provisional flag.
 
 ### A7. Changing your confidence before the due date
 "I said 70% on Monday; by Wednesday it's 90%." Show the revision history on Resolve.
@@ -122,11 +85,12 @@ category unlocks), and an App Intent for "Log a prediction".
 
 | Item | Where it came from | Why deferred |
 |---|---|---|
-| Confetti (≤ 40 particles, ≤ 1.2 s) and an emblem flip on badge tier-up | DESIGN_SYSTEM §6.1 `tierUp` | Needs Lottie or a particle view. The spring-in card plus Success haptic already mark the moment. |
 | Progress **ring** instead of the bar on Home/Stats | Roadmap step 4 | Optional. The bar reads fine. |
 | 👍 / 👎 on Coach cards | DESIGN_SYSTEM §7.13 | Only once there's an analytics event to receive it. |
 | Guard the web build's browser Back against losing a typed reflection | Roadmap step 11 | React Navigation's prevent-remove doesn't see the browser's own Back. Native ships, so web is low priority. |
-| A halo behind the chart's "n=" labels | Web run-through 2026-10-04 | The connecting line can pass through a label (the demo's n=8 at 20–40%). A canvas-coloured text stroke would fix it, but `paintOrder` support in react-native-svg needs checking on a device first. |
+
+Moved to `UI_ROADMAP.md` §1.1 on 2026-10-04: the tier-up confetti and emblem
+flip (step 17) and the chart-label halo (step 16).
 
 Decisions **D1–D10** in `UI_ROADMAP.md` §2 (typeface, weekly streak, four tabs, honesty
 bands, SDK, milestone cards, dark mode, resolving from a notification, reminder time,
