@@ -114,6 +114,16 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
   const right = xOf(100);
   const top = yOf(1);
   const bottom = yOf(0);
+  const labelYs = placeDotLabels(
+    points.map((p) => ({
+      cx: xOf(p.stated_confidence_mean),
+      cy: yOf(p.actual_rate),
+      r: radiusOf(p.total_resolved),
+      text: `n=${p.total_resolved}`,
+    })),
+    top,
+    bottom,
+  );
 
   return (
     <View
@@ -238,8 +248,7 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
             const cx = xOf(b.stated_confidence_mean);
             const cy = yOf(b.actual_rate);
             const r = radiusOf(b.total_resolved);
-            // Label above the dot unless that would leave the plot.
-            const labelY = cy - r - 4 < top + TICK_FONT ? cy + r + TICK_FONT : cy - r - 4;
+            const labelY = labelYs[i];
             return (
               <DotGroup key={b.low} animate={animate} delay={DRAW_MS + i * DOT_STAGGER_MS}>
                 <Circle
@@ -301,6 +310,44 @@ function DrawnLine({ points, length }: { points: string; length: number }) {
       animatedProps={animatedProps}
     />
   );
+}
+
+interface DotLabelInput {
+  cx: number;
+  cy: number;
+  r: number;
+  text: string;
+}
+
+/**
+ * Baseline y for each dot's "n=…" label. Above the dot by default; below it
+ * when above would leave the plot or would overprint a label already placed
+ * (two buckets either side of 80% can sit a few pixels apart, and "n=5n=5"
+ * reads as nothing). Widths are estimated, which is enough to keep apart
+ * labels this short. Exported for tests.
+ */
+export function placeDotLabels(dots: DotLabelInput[], top: number, bottom: number): number[] {
+  const charW = TICK_FONT * 0.6;
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const boxAt = (d: DotLabelInput, y: number) => {
+    const half = (d.text.length * charW) / 2;
+    return { x0: d.cx - half, x1: d.cx + half, y0: y - TICK_FONT, y1: y };
+  };
+  const clashes = (box: (typeof placed)[number]) =>
+    placed.some((o) => box.x0 < o.x1 && o.x0 < box.x1 && box.y0 < o.y1 && o.y0 < box.y1);
+
+  return dots.map((d) => {
+    const above = d.cy - d.r - 4;
+    const below = d.cy + d.r + TICK_FONT;
+    const aboveFits = above - TICK_FONT >= top;
+    const belowFits = below <= bottom;
+    const options = aboveFits ? [above, below] : [below, above];
+    const y =
+      options.find((o) => (o === above ? aboveFits : belowFits) && !clashes(boxAt(d, o))) ??
+      options[0];
+    placed.push(boxAt(d, y));
+    return y;
+  });
 }
 
 /** A dot and its n label, fading in after the line when animating. */

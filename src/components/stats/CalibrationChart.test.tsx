@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
-import { CalibrationChart } from '@/components/stats/CalibrationChart';
+import { CalibrationChart, placeDotLabels } from '@/components/stats/CalibrationChart';
 import { haptics } from '@/components/ui/haptics';
 import type { BucketStat } from '@/types';
 
@@ -216,5 +216,42 @@ describe('CalibrationChart reveal haptic', () => {
     layout(view);
     jest.advanceTimersByTime(2000);
     expect(reveal).not.toHaveBeenCalled();
+  });
+});
+
+describe('placeDotLabels', () => {
+  const TOP = 12;
+  const BOTTOM = 300;
+
+  it('puts labels above their dots when there is room', () => {
+    const ys = placeDotLabels(
+      [
+        { cx: 50, cy: 200, r: 6, text: 'n=5' },
+        { cx: 200, cy: 100, r: 6, text: 'n=3' },
+      ],
+      TOP,
+      BOTTOM,
+    );
+    expect(ys).toEqual([190, 90]);
+  });
+
+  // The Warmup verdict on the web build, 2026-10-04: dots at 75% and 80% at
+  // the same height printed "n=5n=5".
+  it('moves a label below its dot rather than overprint a neighbour', () => {
+    const [first, second] = placeDotLabels(
+      [
+        { cx: 300, cy: 150, r: 8, text: 'n=5' },
+        { cx: 318, cy: 150, r: 8, text: 'n=5' },
+      ],
+      TOP,
+      BOTTOM,
+    );
+    expect(first).toBeLessThan(150);
+    expect(second).toBeGreaterThan(150);
+  });
+
+  it('keeps a label inside the plot at the top edge', () => {
+    const [y] = placeDotLabels([{ cx: 100, cy: 14, r: 6, text: 'n=2' }], TOP, BOTTOM);
+    expect(y).toBeGreaterThan(14);
   });
 });
