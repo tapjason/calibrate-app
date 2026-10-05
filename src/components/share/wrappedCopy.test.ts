@@ -1,4 +1,7 @@
-import { receiptLine } from './wrappedCopy';
+import type { WrappedSummary } from '@/engine/wrapped';
+import type { BucketStat } from '@/types';
+
+import { receiptLine, wrappedStory } from './wrappedCopy';
 
 describe('receiptLine', () => {
   it('counts a mixed bucket', () => {
@@ -23,5 +26,65 @@ describe('receiptLine', () => {
     expect(receiptLine({ low: 0, high: 20, said: 3, happened: 0 })).toBe(
       'You said 0–20% 3 times. None of them happened.',
     );
+  });
+});
+
+function bucket(low: number, n: number, yes: number, stated: number): BucketStat {
+  const actual = yes / n;
+  const gap = stated / 100 - actual;
+  return {
+    low,
+    high: low === 80 ? 100 : low + 20,
+    total_resolved: n,
+    resolved_yes: yes,
+    stated_confidence_mean: stated,
+    actual_rate: actual,
+    bucket_error: Math.abs(gap),
+    direction: gap > 0.05 ? 'overconfident' : gap < -0.05 ? 'underconfident' : 'calibrated',
+  } as BucketStat;
+}
+
+function summary(buckets: BucketStat[]): WrappedSummary {
+  const resolved = buckets.reduce((s, b) => s + b.total_resolved, 0);
+  const yes = buckets.reduce((s, b) => s + b.resolved_yes, 0);
+  return {
+    span: 'year',
+    start: '2026-01-01T06:00:00.000Z',
+    end: '2027-01-01T05:59:59.999Z',
+    resolved,
+    hit_rate: yes / resolved,
+    mean_confidence: 68,
+    score: 90,
+    direction: 'calibrated',
+    score_is_provisional: false,
+    categories: [],
+    integrity_count: 0,
+    boldest_hit: null,
+    biggest_miss: null,
+    receipt: null,
+    buckets,
+  };
+}
+
+describe('wrappedStory verdict', () => {
+  // The demo account on the web build, 2026-10-04: the year card said "well
+  // calibrated" from the averages while Stats said "overconfident at 80–100%".
+  it('names the worst well-evidenced bucket instead of letting averages cancel', () => {
+    const story = wrappedStory(
+      summary([bucket(40, 24, 13, 48), bucket(60, 52, 39, 69), bucket(80, 57, 38, 88)]),
+    );
+    expect(story.verdict).toBe('You ran overconfident at 80–100%.');
+  });
+
+  it('keeps the averages line when every solid bucket is calibrated', () => {
+    const story = wrappedStory(summary([bucket(60, 20, 14, 70), bucket(80, 20, 18, 88)]));
+    expect(story.verdict).toMatch(/^You ran well calibrated — /);
+  });
+
+  it('falls back to the averages when no bucket has enough in it', () => {
+    const story = wrappedStory(
+      summary([bucket(20, 5, 1, 25), bucket(60, 8, 5, 70), bucket(80, 9, 6, 90)]),
+    );
+    expect(story.verdict).toMatch(/ — 68% confident on average/);
   });
 });

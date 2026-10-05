@@ -70,6 +70,13 @@ export interface WrappedSummary {
   biggest_miss: Prediction | null;
   /** The busiest bucket's counts, or null for an empty window. */
   receipt: WrappedReceipt | null;
+  /**
+   * The window's non-empty buckets, so a verdict can name *where* the user is
+   * off. Averages alone can cancel out: underconfident at 40–80% and
+   * overconfident at 80–100% averages to "well calibrated", which Stats would
+   * contradict.
+   */
+  buckets: BucketStat[];
 }
 
 /** Predictions that count: yes/no outcomes only (skips and pending excluded). */
@@ -214,6 +221,7 @@ const emptyBody = () => ({
   boldest_hit: null,
   biggest_miss: null,
   receipt: null,
+  buckets: [] as BucketStat[],
 });
 
 /**
@@ -252,5 +260,6 @@ export function buildWrapped(
     boldest_hit: boldest(preds, 'resolved_yes'),
     biggest_miss: boldest(preds, 'resolved_no'),
     receipt: busiestBucket(buckets),
+    buckets,
   };
 }

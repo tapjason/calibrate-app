@@ -13,6 +13,7 @@
 // provisional line points at the user's overall progress rather than asking
 // for twenty resolutions inside seven days (DESIGN_SYSTEM §7.14).
 
+import { MIN_BUCKET_N_FOR_VERDICT, rangeLabel } from '@/components/stats/chartTakeaway';
 import type { WrappedReceipt, WrappedSummary } from '@/engine/wrapped';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -86,15 +87,31 @@ export function wrappedStory(
     stat: `${resolved} ${plural} resolved · ${hitRate}% came in`,
     statCount: `${resolved} resolved`,
     statRate: `${hitRate}% came in`,
-    verdict: summary.score_is_provisional
-      ? null
-      : `${VERDICTS[summary.direction]} — ${stated}% confident on average, right ${hitRate}% of the time.`,
+    verdict: summary.score_is_provisional ? null : verdictLine(summary, stated, hitRate),
     receipt: summary.receipt ? receiptLine(summary.receipt) : null,
     provisionalNote: summary.score_is_provisional
       ? provisionalLine(summary, overall)
       : null,
     note: integrityNote(summary),
   };
+}
+
+/**
+ * The window's calibration read, by the same rule as the Stats chart title
+ * (chartTakeaway): the worst bucket with enough in it names the direction and
+ * the range. Averages alone can cancel — underconfident in the middle and
+ * overconfident at the top averages out to "well calibrated" while Stats says
+ * "overconfident at 80–100%" — so the averages only speak when every
+ * well-evidenced bucket agrees, or when no bucket is big enough to say more.
+ */
+function verdictLine(summary: WrappedSummary, stated: number, hitRate: number): string {
+  const averages = `${stated}% confident on average, right ${hitRate}% of the time.`;
+  const solid = summary.buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
+  if (solid.length === 0) return `${VERDICTS[summary.direction]} — ${averages}`;
+
+  const worst = solid.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
+  if (worst.direction === 'calibrated') return `${VERDICTS.calibrated} — ${averages}`;
+  return `${VERDICTS[worst.direction]} at ${rangeLabel(worst)}.`;
 }
 
 /**
