@@ -30,8 +30,17 @@ export default function HomeScreen() {
   const hero =
     headline && !headline.provisional ? (
       <View style={styles.rated}>
-        <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
-        <Text style={styles.ratingLabel}>calibration rating</Text>
+        {/* Number and label as one stop for a screen reader (roadmap step 43). */}
+        <View
+          style={styles.rated}
+          accessible
+          accessibilityRole="text"
+          accessibilityLabel={`Calibration rating, ${headline.rating} out of 100.`}
+          testID="home-rating-group"
+        >
+          <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
+          <Text style={styles.ratingLabel}>calibration rating</Text>
+        </View>
         <ScoreBar score={headline.rating} testID="home-score-bar" />
         {/* Identity, not statistics (CLAUDE.md): the share card's headline,
             here too, once a category has climbed past Guesser. */}

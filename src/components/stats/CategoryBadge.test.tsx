@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react-native';
 
-import { CategoryBadge } from '@/components/stats/CategoryBadge';
+import { CategoryBadge, spokenHint } from '@/components/stats/CategoryBadge';
 import type { CategoryStat, NextBadgeTarget } from '@/types';
 
 function stat(overrides: Partial<CategoryStat> = {}): CategoryStat {
@@ -59,5 +59,21 @@ describe('CategoryBadge', () => {
       />,
     );
     expect(view.getByText('120 resolved · top badge reached')).toBeTruthy();
+  });
+});
+
+// Roadmap step 43: one sentence, not three stops with an arrow read aloud.
+describe('CategoryBadge — screen readers', () => {
+  it('reads the row as one sentence', () => {
+    const next: NextBadgeTarget = { badge: 'tracker', needResolved: 20, needScore: null };
+    const view = render(<CategoryBadge stat={stat({ predictions_resolved: 17 })} next={next} />);
+    expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
+      'Health: Guesser. 3 more resolved to reach Tracker.',
+    );
+  });
+
+  it('says the arrow and the dot in words', () => {
+    expect(spokenHint('Score above 70 → Forecaster')).toBe('Score above 70 to reach Forecaster');
+    expect(spokenHint('120 resolved · top badge reached')).toBe('120 resolved, top badge reached');
   });
 });

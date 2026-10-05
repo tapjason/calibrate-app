@@ -22,8 +22,19 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
   const meta = BADGE_META[stat.badge_level];
   const hint = progressHint(stat, next);
 
+  // One sentence for a screen reader (roadmap step 43) instead of the name,
+  // the hint with its arrow read aloud, and the badge word as three stops.
+  const category = stat.category.charAt(0).toUpperCase() + stat.category.slice(1);
+  const spoken = `${category}: ${meta.label}. ${spokenHint(hint)}.`;
+
   return (
-    <View style={styles.row} testID={`category-${stat.category}`}>
+    <View
+      style={styles.row}
+      testID={`category-${stat.category}`}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={spoken}
+    >
       <View style={styles.left}>
         <View style={styles.categoryRow}>
           <CategoryIcon category={stat.category} size={16} color={colors.textSecondary} />
@@ -42,6 +53,11 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
       </View>
     </View>
   );
+}
+
+/** The hint as it should sound: "3 more resolved to reach Tracker". */
+export function spokenHint(hint: string): string {
+  return hint.replace(' → ', ' to reach ').replace(' · ', ', ');
 }
 
 /**

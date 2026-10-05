@@ -160,3 +160,19 @@ describe('CalibrationView chart section', () => {
     expect(getByTestId('bucket-80')).toBeTruthy();
   });
 });
+
+describe('CalibrationView — the rating as one stop (roadmap step 43)', () => {
+  it('reads number and label together', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 40, rating_is_provisional: false, calibration_rating: 91.6 })}
+        calibration={EMPTY_CAL}
+        categoryStats={[]}
+        nextBadges={{}}
+      />,
+    );
+    expect(getByTestId('stats-rating-group').props.accessibilityLabel).toBe(
+      'Calibration rating, 92 out of 100.',
+    );
+  });
+});

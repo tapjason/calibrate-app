@@ -66,8 +66,17 @@ export function CalibrationView({
             />
           ) : (
             <>
-              <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
-              <Text style={styles.ratingLabel}>calibration rating</Text>
+              {/* Number and label as one stop (roadmap step 43). */}
+              <View
+                style={styles.ratingGroup}
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`Calibration rating, ${headline.rating} out of 100.`}
+                testID="stats-rating-group"
+              >
+                <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
+                <Text style={styles.ratingLabel}>calibration rating</Text>
+              </View>
               <ScoreBar score={headline.rating} testID="stats-score-bar" />
             </>
           )}
@@ -157,6 +166,7 @@ const styles = StyleSheet.create({
   // good/bad (DESIGN_SYSTEM §2.4).
   rating: { ...type.display, ...tabularNums, color: colors.textPrimary },
   ratingLabel: { ...type.subhead, color: colors.textSecondary },
+  ratingGroup: { alignItems: 'center' },
   subtle: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
   // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
   sectionTitle: {

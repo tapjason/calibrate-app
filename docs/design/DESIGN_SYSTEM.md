@@ -635,6 +635,10 @@ holds it to the engine.
 - [ ] Nothing distinguished by colour alone (Differentiate Without Color).
 - [ ] Dynamic Type: layout survives the largest size; `display` capped at 1.6×.
 - [ ] VoiceOver: roles, labels, `adjustable` controls, chart description / table.
+      A number and its label are one element ("Calibration rating, 92 out of 100.");
+      a row of facts is one sentence; a toggle row is one `switch` with the label as
+      its name; decorative pieces carry `aria-hidden` (iOS-only props don't reach
+      web). Steps 41–43, 2026-10-05.
 - [ ] Reduce Motion: `reduced` variant renders; haptics still fire.
 - [ ] Reduce Transparency and both ends of the iOS 27 glass slider (ultraclear ↔
       tinted): anything floating on glass stays legible.
