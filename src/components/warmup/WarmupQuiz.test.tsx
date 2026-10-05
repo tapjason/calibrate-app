@@ -1,3 +1,4 @@
+import { AccessibilityInfo } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { setDbForTests } from '@/db/client';
@@ -44,7 +45,25 @@ describe('WarmupQuiz', () => {
   it('shows the current question and progress', () => {
     render(<WarmupQuiz />);
     expect(screen.getByText('Which is longer?')).toBeTruthy();
-    expect(screen.getByText('Question 1 of 2')).toBeTruthy();
+    // Visible progress, hidden from screen readers: the heading says it.
+    expect(screen.getByText('Question 1 of 2', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('warmup-prompt').props.accessibilityLabel).toBe(
+      'Question 1 of 2. Which is longer?',
+    );
+  });
+
+  // Roadmap step 44: Next swaps the question while focus stays on the button.
+  it('announces each new question to screen readers, but not the first', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    render(<WarmupQuiz />);
+    expect(announce).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('warmup-option-0'));
+    fireEvent.press(screen.getByTestId('warmup-next'));
+    await waitFor(() =>
+      expect(announce).toHaveBeenCalledWith('Question 2 of 2. Which is deeper?'),
+    );
+    announce.mockRestore();
   });
 
   it('requires an answer before advancing', () => {

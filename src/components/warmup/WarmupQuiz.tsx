@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
@@ -35,6 +35,21 @@ export function WarmupQuiz() {
   const [confidence, setConfidence] = useState(DEFAULT_CONFIDENCE);
   const [submitting, setSubmitting] = useState(false);
 
+  // Next swaps the question in place while focus stays on the button, so a
+  // screen reader would never hear the new one (roadmap step 44). Say it.
+  const firstQuestion = useRef(true);
+  useEffect(() => {
+    if (firstQuestion.current) {
+      firstQuestion.current = false;
+      return;
+    }
+    if (question) {
+      AccessibilityInfo.announceForAccessibility(
+        `Question ${index + 1} of ${total}. ${question.prompt}`,
+      );
+    }
+  }, [index, total, question]);
+
   if (!question) return null;
 
   const onNext = async () => {
@@ -53,7 +68,8 @@ export function WarmupQuiz() {
 
   return (
     <View style={styles.wrap} testID="warmup-quiz">
-      <Text style={styles.progress}>
+      {/* Said as part of the question heading below, so not twice. */}
+      <Text style={styles.progress} aria-hidden accessibilityElementsHidden>
         Question {index + 1} of {total}
       </Text>
       {/* Segmented, one per question: answered, current, to come. */}
@@ -75,9 +91,20 @@ export function WarmupQuiz() {
         ))}
       </View>
 
-      <Text style={styles.prompt}>{question.prompt}</Text>
+      <Text
+        style={styles.prompt}
+        accessibilityRole="header"
+        accessibilityLabel={`Question ${index + 1} of ${total}. ${question.prompt}`}
+        testID="warmup-prompt"
+      >
+        {question.prompt}
+      </Text>
 
-      <View style={styles.options}>
+      <View
+        style={styles.options}
+        accessibilityRole="radiogroup"
+        accessibilityLabel={question.prompt}
+      >
         {question.options.map((option, i) => (
           <Pressable
             key={option}

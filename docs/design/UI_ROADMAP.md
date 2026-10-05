@@ -81,6 +81,7 @@ screen reader is handed), as the demo account.
 | 41 | Settings' switches say what they switch | S | **Done** 2026-10-05 · web-verified (named, checked state toggles) |
 | 42 | Decorative pieces stay silent on every platform | S | **Done** 2026-10-05 · web-verified (no glyphs, ticks or doubled n= in the tree) |
 | 43 | The rating and each badge row read as one sentence | S | **Done** 2026-10-05 · unit-tested; iOS behaviour (react-native-web drops labels on generic groups, so the web tree still shows the parts) |
+| 44 | The Warmup's questions are headings, and each new one is announced | S | **Done** 2026-10-05 · web-verified (heading, labelled radiogroup); announcement unit-tested |
 
 **41.** Each Settings switch was an unnamed "switch, on": its label and description
 were separate text beside it, which VoiceOver doesn't attach to the control. The
@@ -97,6 +98,11 @@ or joins them. Matters for the web Warmup (FUTURE_UI A8) and costs nothing on iO
 badge row as "finance", "3 more resolved → Tracker" (the arrow read aloud),
 "Guesser". Each becomes one element: "Calibration rating, 92 out of 100." and
 "Finance: Guesser. 3 more resolved to reach Tracker."
+
+**44.** The Warmup is the first screen anyone sees. Its title and each question are
+now headings (the question's reads "Question 3 of 10. Which is longer?"), the two
+answers sit in a radio group named by the question, and because Next swaps the
+question in place while focus stays on the button, each new question is announced.
 
 ### What's left in the parking lot
 

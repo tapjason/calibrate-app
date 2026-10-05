@@ -41,7 +41,9 @@ export default function WarmupScreen() {
         {!finished && (
           <View style={styles.intro}>
             <Text style={styles.brand}>Calibrate · 60-second warm-up</Text>
-            <Text style={styles.title}>How well do you know what you know?</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              How well do you know what you know?
+            </Text>
             <Text style={styles.body}>
               Ten quick questions. Pick an answer, then say how sure you are.
               Being right matters less than knowing how right you are.
