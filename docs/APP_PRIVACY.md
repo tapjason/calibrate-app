@@ -98,7 +98,9 @@ relay address — the app treats it as any other email).
   queued events move to the account on sign-in (`migrateGuestDataToUser`),
   so they are sent then; the policy says so. Turning usage stats off clears
   the queue first.
-- Users can turn it off: Settings → "Anonymous usage stats" (default on).
+- Users can turn it off: Settings → "Usage stats" (default on). Renamed from
+  "Anonymous usage stats" on 2026-10-04: the events are linked to the account,
+  so "anonymous" contradicted this sheet.
 
 The full list of events is 13 items and fits on a screen; the privacy policy can
 reproduce it verbatim if that reads better than a summary.

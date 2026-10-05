@@ -105,8 +105,10 @@ export function SettingsView({
       />
 
       <ToggleRow
-        label="Anonymous usage stats"
-        description="Counts of which features get used — never your predictions, reflections, or any text. Turning this off deletes what's queued."
+        // Not "anonymous": once you sign in, events are tied to the account
+        // (APP_PRIVACY.md declares them linked), so the label mustn't say so.
+        label="Usage stats"
+        description="Counts of which features get used, sent only once you sign in — never your predictions, reflections, or any text. Turning this off deletes what's queued."
         value={analyticsEnabled}
         onValueChange={(v) => void setAnalyticsEnabled(v)}
         testID="toggle-analytics"

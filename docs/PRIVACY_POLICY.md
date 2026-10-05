@@ -59,7 +59,7 @@ full list:
 `coverage_nudge_accepted`, `coach_requested`, `data_exported`.
 
 These are linked to your account. **You can turn them off** in Settings →
-Anonymous usage stats.
+Usage stats.
 
 **2.4 Purchase status.** Whether you have Calibrate Plus, which plan, and when it
 renews or ends. We receive this from our subscription provider (§4). We never
