@@ -1,6 +1,6 @@
 # Calibrate — Future UI Features
 
-**As of:** 2026-10-04 (A1, A3, A5, A6 shipped as roadmap steps 16–21; A4's one-tap half and the web Back guard moved to §1.1). A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
+**As of:** 2026-10-04. A1, A3, A5, A6, A4's one-tap half ("Log it again") and most of §B shipped as roadmap steps 16–26; `UI_ROADMAP.md` §1.1 lists what each remaining item waits on. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
 what's being built now. Nothing here is scheduled, and anything that changes product
 behaviour needs the owner's call first. `CLAUDE.md` still governs every item:
 shareable artifacts are never paywalled, no number built on noise (min-N), AI stays
@@ -16,12 +16,12 @@ a native build.
 
 | # | Feature | Size | Needs first |
 |---|---|---|---|
-| A1 | Track record on the Log slider | S–M | **Moved to UI_ROADMAP §1.1 (step 19), 2026-10-04** |
+| A1 | Track record on the Log slider | S–M | **Shipped 2026-10-04** (roadmap step 19) |
 | A2 | Daily drill | M | A question bank; fits with D2 (streak unit) |
-| A3 | Resolve several at once | M | **Moved to UI_ROADMAP §1.1 (step 18), 2026-10-04** |
-| A4 | Repeating predictions | L | Schema change. Its one-tap half, "Log it again", moved to UI_ROADMAP §1.1 (step 22), 2026-10-04 |
-| A5 | Personal correction table | M | **Moved to UI_ROADMAP §1.1 (step 20), 2026-10-04** |
-| A6 | Calibration by time horizon | S–M | **Moved to UI_ROADMAP §1.1 (step 21), 2026-10-04** |
+| A3 | Resolve several at once | M | **Shipped 2026-10-04** (roadmap step 18) |
+| A4 | Repeating predictions | L | Schema change. Its one-tap half, "Log it again", **shipped 2026-10-04** (roadmap step 22) |
+| A5 | Personal correction table | M | **Shipped 2026-10-04** (roadmap step 20) |
+| A6 | Calibration by time horizon | S–M | **Shipped 2026-10-04** (roadmap step 21) |
 | A7 | Changing your confidence before the due date | L | Schema change; scoring rule |
 | A8 | Web Warmup as the share-card landing page | M | Hosting (GitHub Pages) |
 | A9 | Predict the same event with a friend | L | Backend, invites |

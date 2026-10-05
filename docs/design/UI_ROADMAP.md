@@ -43,6 +43,11 @@ is checking it on an iPhone and the decisions.
 | 19 Track record on the Log slider (free) | Done 2026-10-04, web-verified | — |
 | 20 Personal correction table (Plus) | Done 2026-10-04, web-verified with the dev Plus preview | — |
 | 21 Calibration by time horizon (Plus) | Done 2026-10-04, web-verified with the dev Plus preview | — |
+| 22 "Log it again" after resolving | Done 2026-10-04, web-verified | Yes (sheet closes, Log tab shows) |
+| 23 Web: Back keeps a typed reflection | Done 2026-10-04. Reload prompt seen on web; the Back save is unit-tested. | — |
+| 24 Wrapped through the store | Done 2026-10-04; `src/components/layering.test.ts` now guards the L6 → L4 → L3 arrow | — |
+| 25 Web: explicit tab names | Done 2026-10-04, web-verified | — |
+| 26 Demo titles without weekdays | Done 2026-10-04; a test keeps them that way | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -52,44 +57,24 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (second batch, 2026-10-04)
+### 1.1 Building now
 
-Items that need no owner decision. Each moves here from `FUTURE_UI.md` (or from
-the 2026-10-04 web run-through) when work starts, and into the table above when
-it ships. The first batch, steps 16–21, shipped on 2026-10-04; their specs now
-live in DESIGN_SYSTEM §6.1, §7.10, §7.12 and §7.16, and their history in git.
+Nothing. Two batches moved here from `FUTURE_UI.md` on 2026-10-04 and shipped the
+same day (steps 16–26 above; specs in DESIGN_SYSTEM §6.1, §7.10, §7.12, §7.16).
+Everything left in the parking lot needs something an agent can't supply:
 
-| Step | Item | From | Size | State |
-|---|---|---|---|---|
-| 22 | "Log it again" after resolving | FUTURE_UI A4, the no-schema half | M | **Done** 2026-10-04 · web-verified |
-| 23 | Web: the browser's Back keeps a typed reflection | FUTURE_UI §B | S | **Done** 2026-10-04 · reload prompt seen on web; the Back save is unit-tested |
-| 24 | Wrapped through the store, not the engine | Code read, 2026-10-04 | S | **Done** 2026-10-04, now guarded by a test |
-| 25 | Web: tab names without icon glyphs | Web run-through, 2026-10-04 | S | **Done** 2026-10-04, web-verified |
+| Item | What it waits on |
+|---|---|
+| A2 Daily drill | A bank of ~200 sourced questions (content, and fact-checking it), and D2: whether a drill counts toward the streak. |
+| A4 Repeating predictions (automatic) | A `recurrences` table needs a Supabase migration applied to the live project, which is paused. "Log it again" (step 22) covers the manual half. |
+| A7 Revising a confidence | A scoring rule written into `CLAUDE.md` first (the score stays on the first number). |
+| A8 Web Warmup landing page | Hosting (the GitHub Pages switch) and the anonymous-funnel decision. |
+| A9 Predict with a friend | Backend work, and real sync users first. |
+| A10 Widgets, Siri Shortcut | The SDK 58 upgrade and a device build. |
+| §B 👍/👎 on Coach cards | A new analytics event, and the event catalogue is declared in `APP_PRIVACY.md`. |
+| §B Progress ring | Nothing, but it's optional: the segmented bar reads fine. Left parked on purpose. |
 
-**22. "Log it again."** A4 (repeating predictions) needs a `recurrences` table, a
-Supabase migration and a scheduler. Most of its value is one tap: after Yes or No,
-Resolve offers **Log it again**, which saves any reflection, closes the sheet and
-opens Log with the same title and category, the same lead time ("In a week" if it
-was logged a week ahead), and the confidence **reset to 50%**, not the old value.
-A fresh number is the point: copying last time's would anchor the new call to the
-old one, and the track record under the slider (step 19) already shows how that
-band has gone. Not offered inside a run (step 18), where it would end the run.
-Automatic repeats stay in FUTURE_UI A4.
-
-**23. Back on the web build.** React Navigation's prevent-remove doesn't see the
-browser's own Back, so a typed reflection was lost. On web the guard now saves the
-draft when the Resolve screen unmounts with one unsaved (the same "save and leave"
-web already gets for in-app dismissal), and the page asks before a reload or tab
-close drops it.
-
-**24. Wrapped through the store.** `WrappedPanel` calls `buildWrapped` from
-`@/engine` directly, the one place L6 reaches into L3 (BUILD_PLAN invariant). The
-store gains a pass-through, like `coverageNudgeNow`, and the panel uses it.
-
-**25. Tab names on web.** The Ionicons fallback glyph leaks into each tab's
-accessible name on web: the run-through's accessibility tree read each tab as an
-icon-font character followed by its name. Give every tab an explicit
-`tabBarAccessibilityLabel`.
+And the decisions in §2 below.
 
 ---
 
