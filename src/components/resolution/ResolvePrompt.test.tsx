@@ -182,6 +182,16 @@ describe('ResolvePrompt acknowledgement', () => {
     });
     expect(screen.queryByTestId('resolve-recorded')).toBeNull();
   });
+
+  // D10: Skip says what it is and what it costs, so it isn't a free "No".
+  it('labels Skip as not counting toward the score', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByText("Can't tell / doesn't apply")).toBeTruthy();
+    });
+    expect(screen.getByText("It won't count toward your score.")).toBeTruthy();
+  });
 });
 
 describe('bucketLine', () => {

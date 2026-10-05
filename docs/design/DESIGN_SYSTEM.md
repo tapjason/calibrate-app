@@ -452,7 +452,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   reserves red for destructive actions.
 - **Skip is not a peer.** A text button below: "Can't tell / doesn't apply", with the
   line "It won't count toward your score." Equal weight would make skipping a miss as
-  cheap as recording it. (The label is **Proposed**, roadmap D10.)
+  cheap as recording it. (Built 2026-10-04, roadmap D10.)
 - **After the tap:** the `resolve` motion (§6.1), then one factual line about the bucket
   it landed in: "That's 6 of 9 in your 60–80% range." Counts, not a verdict, so safe
   below min-N. The count comes from the store; the component doesn't compute buckets.

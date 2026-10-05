@@ -281,14 +281,24 @@ export function ResolvePrompt({ predictionId, onResolved, onDraftChange }: Resol
             testID="resolve-no"
           />
         </View>
-        <Button
-          label="Skip"
-          variant="secondary"
-          onPress={() => submit('skipped')}
-          disabled={submitting}
-          testID="resolve-skip"
-        />
       </View>
+      {/* Skip is not a peer of Yes and No: equal weight would make dodging a
+          miss as cheap as recording it. Skips are excluded from the score,
+          the streak and Wrapped alike, so the line below is true everywhere
+          (DESIGN_SYSTEM §7.10, roadmap D10). */}
+      <Pressable
+        onPress={() => void submit('skipped')}
+        disabled={submitting}
+        accessibilityRole="button"
+        accessibilityLabel="Can't tell / doesn't apply"
+        accessibilityHint="It won't count toward your score."
+        hitSlop={8}
+        style={styles.skip}
+        testID="resolve-skip"
+      >
+        <Text style={styles.skipText}>Can't tell / doesn't apply</Text>
+        <Text style={styles.skipNote}>It won't count toward your score.</Text>
+      </Pressable>
     </View>
   );
 }
@@ -323,8 +333,11 @@ const styles = StyleSheet.create({
   title: { ...type.title2, color: colors.textPrimary, marginBottom: space.xxl },
   question: { ...type.headline, color: colors.textPrimary, marginBottom: space.md },
   row: { flexDirection: 'row', gap: space.sm },
-  // Yes and No share the width equally; Skip takes only what it needs.
+  // Yes and No share the width equally.
   answer: { flex: 1 },
+  skip: { alignItems: 'center', marginTop: space.lg, minHeight: 44, paddingVertical: space.sm },
+  skipText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  skipNote: { ...type.footnote, color: colors.textSecondary, marginTop: space.xxs },
   recordedRow: {
     alignItems: 'center',
     flexDirection: 'row',
