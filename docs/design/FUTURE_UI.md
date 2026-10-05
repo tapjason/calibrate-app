@@ -1,6 +1,6 @@
 # Calibrate — Future UI Features
 
-**As of:** 2026-10-04 (A1, A3, A5, A6 and two §B items moved to `UI_ROADMAP.md` §1.1). A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
+**As of:** 2026-10-04 (A1, A3, A5, A6 shipped as roadmap steps 16–21; A4's one-tap half and the web Back guard moved to §1.1). A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
 what's being built now. Nothing here is scheduled, and anything that changes product
 behaviour needs the owner's call first. `CLAUDE.md` still governs every item:
 shareable artifacts are never paywalled, no number built on noise (min-N), AI stays
@@ -19,7 +19,7 @@ a native build.
 | A1 | Track record on the Log slider | S–M | **Moved to UI_ROADMAP §1.1 (step 19), 2026-10-04** |
 | A2 | Daily drill | M | A question bank; fits with D2 (streak unit) |
 | A3 | Resolve several at once | M | **Moved to UI_ROADMAP §1.1 (step 18), 2026-10-04** |
-| A4 | Repeating predictions | L | Schema change |
+| A4 | Repeating predictions | L | Schema change. Its one-tap half, "Log it again", moved to UI_ROADMAP §1.1 (step 22), 2026-10-04 |
 | A5 | Personal correction table | M | **Moved to UI_ROADMAP §1.1 (step 20), 2026-10-04** |
 | A6 | Calibration by time horizon | S–M | **Moved to UI_ROADMAP §1.1 (step 21), 2026-10-04** |
 | A7 | Changing your confidence before the due date | L | Schema change; scoring rule |
@@ -87,10 +87,10 @@ category unlocks), and an App Intent for "Log a prediction".
 |---|---|---|
 | Progress **ring** instead of the bar on Home/Stats | Roadmap step 4 | Optional. The bar reads fine. |
 | 👍 / 👎 on Coach cards | DESIGN_SYSTEM §7.13 | Only once there's an analytics event to receive it. |
-| Guard the web build's browser Back against losing a typed reflection | Roadmap step 11 | React Navigation's prevent-remove doesn't see the browser's own Back. Native ships, so web is low priority. |
 
-Moved to `UI_ROADMAP.md` §1.1 on 2026-10-04: the tier-up confetti and emblem
-flip (step 17) and the chart-label halo (step 16).
+Moved to `UI_ROADMAP.md` on 2026-10-04 and shipped the same day: the tier-up
+confetti and emblem flip (step 17) and the chart-label halo (step 16). The web
+Back guard moved as step 23.
 
 Decisions **D1–D10** in `UI_ROADMAP.md` §2 (typeface, weekly streak, four tabs, honesty
 bands, SDK, milestone cards, dark mode, resolving from a notification, reminder time,

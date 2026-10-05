@@ -37,6 +37,12 @@ is checking it on an iPhone and the decisions.
 | 13 Notifications | Done (copy, placeholders, passive digest). Actions and timing are D8 / D9. | Yes |
 | 14 Decisions | D10 built 2026-10-04 (its one open question turned out to be checkable); the rest wait on §2. | — |
 | 15 Web run-through | Done 2026-10-04: every Batch C box web can show, plus six fixes (chart label overlap, web tab bar, Wrapped verdict vs. Stats, offline sign-in text, the "Anonymous" analytics label, demo titles). Details in `HUMAN_VERIFICATION.md` Batch C. | — |
+| 16 Chart-label halo | Done 2026-10-04 | — |
+| 17 Tier-up flip and confetti | Done 2026-10-04. Replay at `/dev/celebrations`. | Yes (haptic timing, flip, confetti at 60 fps) |
+| 18 Resolve several at once | Done 2026-10-04, web-verified | Yes (sheet, per-card haptic, swipe-down guard) |
+| 19 Track record on the Log slider (free) | Done 2026-10-04, web-verified | — |
+| 20 Personal correction table (Plus) | Done 2026-10-04, web-verified with the dev Plus preview | — |
+| 21 Calibration by time horizon (Plus) | Done 2026-10-04, web-verified with the dev Plus preview | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -46,72 +52,44 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (moved from `FUTURE_UI.md`, 2026-10-04)
+### 1.1 Building now (second batch, 2026-10-04)
 
-Items that need no owner decision, or whose decision `CLAUDE.md` already makes.
-Each moves here from the parking lot when work starts, and into the table above
-when it ships.
+Items that need no owner decision. Each moves here from `FUTURE_UI.md` (or from
+the 2026-10-04 web run-through) when work starts, and into the table above when
+it ships. The first batch, steps 16–21, shipped on 2026-10-04; their specs now
+live in DESIGN_SYSTEM §6.1, §7.10, §7.12 and §7.16, and their history in git.
 
 | Step | Item | From | Size | State |
 |---|---|---|---|---|
-| 16 | Halo behind the chart's "n=" labels | FUTURE_UI §B | S | **Done** 2026-10-04 |
-| 17 | Tier-up: emblem flip and confetti | FUTURE_UI §B, DESIGN_SYSTEM §6.1 `tierUp` | M | **Done** 2026-10-04 · replay at `/dev/celebrations` |
-| 18 | Resolve several at once | FUTURE_UI A3 | M | **Done** 2026-10-04 · web-verified |
-| 19 | Track record on the Log slider (free) | FUTURE_UI A1 | S–M | **Done** 2026-10-04 · web-verified |
-| 20 | Personal correction table (Plus) | FUTURE_UI A5 | M | **Done** 2026-10-04 · web-verified with the dev Plus preview |
-| 21 | Calibration by time horizon (Plus) | FUTURE_UI A6 | S–M | **Done** 2026-10-04 · web-verified with the dev Plus preview |
+| 22 | "Log it again" after resolving | FUTURE_UI A4, the no-schema half | M | Next |
+| 23 | Web: the browser's Back keeps a typed reflection | FUTURE_UI §B | S | Next |
+| 24 | Wrapped through the store, not the engine | Code read, 2026-10-04 | S | Next |
+| 25 | Web: tab names without icon glyphs | Web run-through, 2026-10-04 | S | Next |
 
-**16. Chart-label halo.** The connecting line can run through an "n=" label (the
-demo's n=8 at 20–40%). Draw each label twice: a 3pt stroke in the surface colour
-underneath, then the label. Two layered `Text` elements rather than `paintOrder`,
-whose support in react-native-svg is unverified.
+**22. "Log it again."** A4 (repeating predictions) needs a `recurrences` table, a
+Supabase migration and a scheduler. Most of its value is one tap: after Yes or No,
+Resolve offers **Log it again**, which saves any reflection, closes the sheet and
+opens Log with the same title and category, the same lead time ("In a week" if it
+was logged a week ahead), and the confidence **reset to 50%**, not the old value.
+A fresh number is the point: copying last time's would anchor the new call to the
+old one, and the track record under the slider (step 19) already shows how that
+band has gone. Not offered inside a run (step 18), where it would end the run.
+Automatic repeats stay in FUTURE_UI A4.
 
-**17. Tier-up.** DESIGN_SYSTEM §6.1: the emblem flips on Y over 600 ms (the old
-tier turns away, the new one turns in) and up to 40 confetti pieces fall for at
-most 1.2 s, with the Success haptic. No new dependency: the particles are
-Reanimated views in the brand ramp. Only the tier-up gets confetti; a score
-unlock keeps its spring-in card (§6.2 budget). Reduce Motion: no flip, no
-confetti, a 200 ms fade; the haptic still fires.
+**23. Back on the web build.** React Navigation's prevent-remove doesn't see the
+browser's own Back, so a typed reflection was lost. On web the guard now saves the
+draft when the Resolve screen unmounts with one unsaved (the same "save and leave"
+web already gets for in-app dismissal), and the page asks before a reload or tab
+close drops it.
 
-**18. Resolve several at once.** When three or more predictions are ready, Home
-offers **Resolve all N** above the "Ready to resolve" group. It opens a run in the
-same sheet as single Resolve, showing "2 of 5", one `ResolvePrompt` at a time:
-- Yes / No → the usual "Recorded" acknowledgement with its bucket line, then
-  **Next** (the last card says **Finish**). The reflection is collapsed behind
-  "Add a reflection"; Change answer stays.
-- Skip ("Can't tell / doesn't apply") goes straight to the next card.
-- A milestone shows on the card that earned it, so it interrupts the run where it
-  happens rather than queueing to the end.
-- **Next is a tap, not a timer.** The parking-lot note said "straight to the
-  next"; an automatic advance takes control away (WCAG 2.2.1) and makes the
-  bucket line easy to miss, so the run waits for the tap.
-- The queue is a snapshot of the ready ids when the run opens; a card that was
-  resolved elsewhere meanwhile is passed over silently. Ends on "All caught up".
+**24. Wrapped through the store.** `WrappedPanel` calls `buildWrapped` from
+`@/engine` directly, the one place L6 reaches into L3 (BUILD_PLAN invariant). The
+store gains a pass-through, like `coverageNudgeNow`, and the panel uses it.
 
-**19. Track record on the Log slider (free).** Under the confidence control, once
-that category's bucket for the chosen value has ≥ 10 resolved: *"Your 60–80% calls
-in finance: 7 of 12 happened."* Below that, the same line across all categories
-if the overall bucket has ≥ 10; below that, nothing. Counts, never a verdict, and
-the same threshold as the chart title (`chartTakeaway`). The data comes from
-`statsStore`; the screen does no bucket math.
-- **Free, by `CLAUDE.md`'s rule** that the paywall never touches the core loop:
-  the Log screen *is* the core loop. That settles FUTURE_UI's "free or Plus?".
-- Anchoring is worth measuring (do stated confidences drift toward hit rates?),
-  but that needs a new analytics event, and the catalogue is closed and declared
-  in `APP_PRIVACY.md`, so that part waits for the owner.
-
-**20. Personal correction table (Plus).** *"In finance, when you say 80–100%, it
-happens about 65% of the time (38 of 57)."* One row per category and confidence
-band with ≥ 10 resolved, worst first, at most five; calibrated rows say the
-number means what it says. Rows below threshold never appear, so it can't print
-0% or 100% from two predictions. Engine output in `trends.ts`, shown in the Plus
-Trends panel. Free users see it named in the Plus teaser, not a blurred copy.
-
-**21. Calibration by time horizon (Plus).** How far ahead a call was made, from
-local calendar days between logging and the due date: *next day or sooner*,
-*within a week*, *within a month*, *further out*. Each row carries its own n and is
-provisional below 15 (`MIN_N_CATEGORY`), showing counts instead of a score, like
-the category rows beside it in Trends.
+**25. Tab names on web.** The Ionicons fallback glyph leaks into each tab's
+accessible name on web: the run-through's accessibility tree read each tab as an
+icon-font character followed by its name. Give every tab an explicit
+`tabBarAccessibilityLabel`.
 
 ---
 
