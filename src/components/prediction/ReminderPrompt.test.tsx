@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { usePredictionStore } from '@/store/predictionStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
@@ -93,8 +93,12 @@ describe('ReminderPrompt', () => {
     await waitFor(() => expect(screen.getByTestId('reminder-prompt')).toBeTruthy());
     expect(mockAsk).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId('reminder-prompt-allow'));
-    await waitFor(() => expect(screen.queryByTestId('reminder-prompt')).toBeNull());
+    // The press starts an async chain (ask, then set state); run it to the end
+    // inside act so the assertion doesn't race it on a busy machine.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('reminder-prompt-allow'));
+    });
+    expect(screen.queryByTestId('reminder-prompt')).toBeNull();
     expect(mockAsk).toHaveBeenCalledTimes(1);
   });
 

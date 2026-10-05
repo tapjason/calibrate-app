@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { __setPersistenceForTests } from '@/store/settingsStore';
@@ -35,13 +35,11 @@ describe('SettingsView — notification permission', () => {
     const action = await screen.findByTestId('settings-notification-permission-action');
     expect(screen.getByText(/iOS hasn’t been asked yet/)).toBeTruthy();
 
-    fireEvent.press(action);
-    // Generous timeout: under a full parallel run the async state update can
-    // land after waitFor's default second.
-    await waitFor(
-      () => expect(screen.queryByTestId('settings-notification-permission')).toBeNull(),
-      { timeout: 4000 },
-    );
+    // Run the press's async chain (ask, then set state) to the end inside act.
+    await act(async () => {
+      fireEvent.press(action);
+    });
+    expect(screen.queryByTestId('settings-notification-permission')).toBeNull();
     expect(mockAsk).toHaveBeenCalledTimes(1);
   });
 
