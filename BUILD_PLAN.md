@@ -30,7 +30,7 @@ directly — it goes through a store.
 ## Where the build is
 
 **Current state (2026-10-04).** All code in L0–L6 is built; `tsc --noEmit` is
-clean and `npm test` is 94 suites / 1062 tests green. What is left is almost
+clean and `npm test` is 97 suites / 1087 tests green. What is left is almost
 entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
 The few remaining code items are in `docs/NEXT_STEPS.md`; UI status and open design
 decisions are in `docs/design/UI_ROADMAP.md`. The step-by-step build history that
@@ -44,7 +44,10 @@ used to live here is in git (`git log -- BUILD_PLAN.md`).
   `docs/design/DESIGN_SYSTEM.md`. On 2026-10-04 two more UI batches (roadmap steps
   16–26): the tier-up flip and confetti, resolving several at once, "Log it again",
   the track record on the Log slider, and, in Plus Trends, the correction table and
-  calibration by horizon.
+  calibration by horizon. On 2026-10-05, from a screen-by-screen review (steps
+  27–36): the identity line on Home, "How scoring works", reflections in History, a
+  dated wait while calibrating, the paywall's top close, and legal links in
+  Settings.
 - **Cut:** ✨ Refine (2026-09-24), dormant behind `REFINE_ENABLED`; see `CLAUDE.md`
   AI § A for why.
 - **Live services:** `coach`, `revenuecat-webhook` and `delete-account` are deployed

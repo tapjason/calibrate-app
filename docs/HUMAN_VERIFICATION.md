@@ -730,6 +730,14 @@ Added 2026-09-29 (polish pass):
       happened / it didn't happen" with a neutral glyph; "Change answer" puts the
       prediction back to pending and shows the question again. Check History and
       Stats don't count the withdrawn answer.
+- [ ] **Added 2026-10-05 (all web-verified; a glance on the phone):** Home shows
+      "Sharp in health" with its emblem under the rating once a category passes
+      Guesser, and tapping it opens Share. "How is this scored?" under the Stats
+      rating (and Settings → How scoring works) opens a full-height sheet that
+      scrolls and closes. The paywall has a × at the top right, clear of the
+      notch. History shows saved reflections on their cards and hides its
+      filters until something is resolved. While calibrating, Home and Stats say
+      when the next one comes due. Settings ends with "Terms of use".
 - [ ] **Log it again (added 2026-10-04; web-verified):** after Yes or No on a
       single Resolve, **Log it again** closes the sheet and opens Log with the same
       title, category and lead time, and the confidence at 50%. On the phone: the

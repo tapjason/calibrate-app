@@ -57,6 +57,7 @@ is checking it on an iPhone and the decisions.
 | 33 History filters wait for a first resolution | Done 2026-10-05, web-verified | — |
 | 34 An empty week says what's on the way | Done 2026-10-05, web-verified | — |
 | 35 Stats' calibrating caption dated too | Done 2026-10-05, web-verified | — |
+| 36 Privacy policy and terms in Settings | Done 2026-10-05; the privacy link appears once `PRIVACY_POLICY_URL` is set | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -66,18 +67,13 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (sixth batch, 2026-10-05)
+### 1.1 Building now
 
-| Step | Item | Size | State |
-|---|---|---|---|
-| 36 | Privacy policy and terms reachable from Settings | S | **Done** 2026-10-05 · web-verified (terms; privacy waits on the URL) |
-
-**36.** Guideline 5.1.1(i) wants the privacy policy "easily accessible" inside the
-app, not only in the listing. Today the paywall is the only place that links it,
-and only once `PRIVACY_POLICY_URL` is set. Settings gains quiet links at the
-bottom: "Privacy policy" (once the URL exists) and "Terms of use" (Apple's standard
-EULA, already linked from the paywall). Setting the one constant then lights up
-both screens.
+Nothing. Six batches shipped on 2026-10-04 and 10-05 (steps 16–36). The last three
+came from reading every screen of the web build, first as the demo account and
+then as a brand-new user; specs are in DESIGN_SYSTEM §6.1, §7.1, §7.6, §7.10–§7.12,
+§7.14, §7.16 and §7.17. The next useful read is on an iPhone: the device column
+above lists what web can't show.
 
 ### What's left in the parking lot
 
