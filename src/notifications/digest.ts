@@ -9,7 +9,9 @@
 //
 // Lifecycle:
 //   1. initDigest() runs once at app start, after auth/db init.
-//   2. We request permission. Denied → log a warning and stay no-op.
+//   2. We CHECK permission, never ask (roadmap step 38). Not granted → stay
+//      no-op until activateDigest() runs, right after the user allows
+//      reminders from the in-context prompt.
 //   3. We schedule a single WEEKLY notification using a stable identifier
 //      (DIGEST_NOTIFICATION_ID) so we can re-schedule by passing the same id.
 //   4. We subscribe to predictionStore.pending. When the count changes we
@@ -43,7 +45,8 @@ const DIGEST_MINUTE = 0;
 const DIGEST_NOTIFICATION_ID = 'calibrate-weekly-digest';
 
 export interface DigestNotificationsApi {
-  requestPermissionsAsync(): Promise<{ granted: boolean }>;
+  /** Reads the current answer without asking. */
+  getPermissionsAsync(): Promise<{ granted: boolean }>;
   scheduleNotificationAsync(req: {
     identifier: string;
     content: {
@@ -75,6 +78,8 @@ interface Deps {
 let deps: Deps | null = null;
 let initialized = false;
 let permissionGranted = false;
+// True once the post-permission setup has run (activateDigest()).
+let active = false;
 let lastScheduledCount: number | null = null;
 // Mirrors settingsStore.notificationsEnabled — the digest obeys the same
 // single toggle as resolution reminders.
@@ -91,8 +96,8 @@ function defaultNotificationsApi(): DigestNotificationsApi | null {
   const Notifications =
     require('expo-notifications') as typeof import('expo-notifications');
   return {
-    async requestPermissionsAsync() {
-      const res = await Notifications.requestPermissionsAsync();
+    async getPermissionsAsync() {
+      const res = await Notifications.getPermissionsAsync();
       return { granted: res.granted };
     },
     async scheduleNotificationAsync(req) {
@@ -124,6 +129,7 @@ export function __setDepsForTests(next: Deps | null): void {
   deps = next;
   initialized = false;
   permissionGranted = false;
+  active = false;
   lastScheduledCount = null;
   notificationsEnabled = true;
   if (storeUnsub) {
@@ -212,15 +218,30 @@ export async function initDigest(): Promise<void> {
     return;
   }
 
-  // Permission may already be granted by scheduler.ts — the OS returns the
-  // existing grant without re-prompting.
-  const { granted } = await deps.notifications.requestPermissionsAsync();
-  permissionGranted = granted;
-  if (!granted) {
+  // Check, don't ask: the scheduler's in-context prompt asks for both
+  // (roadmap step 38), then calls activateDigest().
+  let granted = false;
+  try {
+    ({ granted } = await deps.notifications.getPermissionsAsync());
+  } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[digest] permission denied; weekly digest disabled');
-    return;
+    console.warn('[digest] could not read permission:', e);
   }
+  if (!granted) return;
+  await activateDigest();
+}
+
+/**
+ * Start the weekly digest once permission is granted: at launch for someone
+ * who already allowed notifications, or straight after the in-context prompt.
+ * Idempotent.
+ */
+export async function activateDigest(): Promise<void> {
+  if (active) return;
+  if (!deps) deps = { notifications: defaultNotificationsApi() };
+  if (!deps.notifications) return;
+  active = true;
+  permissionGranted = true;
 
   // Best-effort: without it iOS falls back to its generic placeholder.
   try {

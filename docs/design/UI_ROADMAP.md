@@ -76,7 +76,7 @@ to resolve, so both of these matter more than their size suggests.
 | Step | Item | Size | State |
 |---|---|---|---|
 | 37 | Reminders survive a relaunch: reconcile with what iOS has scheduled | M | **Done** 2026-10-05 · unit-tested; device check in HUMAN_VERIFICATION D1 |
-| 38 | Ask for notification permission in context, not over the Warmup | M | Next |
+| 38 | Ask for notification permission in context, not over the Warmup | M | **Done** 2026-10-05 · unit-tested; the card previewed on web at `/dev/celebrations`; device check in HUMAN_VERIFICATION D1 |
 
 **37. Reconcile at launch.** The scheduler remembers which reminder belongs to which
 prediction only in memory, so after the app is relaunched it can't cancel anything

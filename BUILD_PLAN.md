@@ -96,7 +96,9 @@ next to each carry the detail.
 - **Notifications are local only.** No push token is requested, so no APNs key is
   needed. The reminder scheduler reconciles with the OS's scheduled requests at
   launch (2026-10-05): its id map is in memory, and without that a relaunched app
-  couldn't cancel what it had scheduled earlier.
+  couldn't cancel what it had scheduled earlier. Permission is asked in context, not
+  at launch: launch only checks, and `src/notifications/permission.ts` shows the iOS
+  alert from Home's reminder prompt or Settings, then starts both services.
 - **Days are local.** Streaks, patterns, Wrapped and trends key days by the device's
   local time, and a streak ends once its latest day is before yesterday.
 

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ReminderPromptCard } from '@/components/prediction/ReminderPromptCard';
 import { MilestoneCard } from '@/components/resolution/MilestoneCard';
 import { Button } from '@/components/ui/Button';
 import { colors, space, type } from '@/constants/theme';
@@ -57,6 +58,10 @@ export default function DevCelebrationsScreen() {
         ))}
         {/* A new key remounts the card, which is what replays its motion. */}
         <MilestoneCard key={run} milestone={SAMPLES[shown].milestone} />
+
+        {/* Native-only cards, previewed here because web never shows them. */}
+        <Text style={styles.title}>Other cards</Text>
+        <ReminderPromptCard firstDue="Tue, Oct 6" onAllow={() => {}} onDismiss={() => {}} />
       </ScrollView>
     </SafeAreaView>
   );

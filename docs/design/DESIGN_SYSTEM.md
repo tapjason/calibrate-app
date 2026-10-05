@@ -574,6 +574,13 @@ the same thing, no instructions, title-style titles without ending punctuation.
 - The confidence goes in the reminder so that resolving from the notification still
   puts the stated number first (§7.10).
 - **Never mention the streak** in a notification.
+- **Permission in context** (roadmap step 38). Launch only checks; it never shows the
+  iOS alert (HIG: "Avoid requesting permission at launch unless the data or resource
+  is required for your app to function"). Once there is an open prediction, Home shows
+  a quiet sunken card, "Want a reminder when it's due?", saying when the first one
+  would come, with a secondary **Turn on reminders** (which shows the alert) and
+  **Not now** (a week's cooldown). Settings' Notifications row adds **Allow
+  reminders** while iOS hasn't been asked and **Open Settings** after a refusal.
 - One reminder per prediction; no follow-ups.
 - **Proposed** (roadmap D8): *Happened* / *Didn't* actions on the reminder via
   `setNotificationCategoryAsync`, as foreground actions that open straight into the

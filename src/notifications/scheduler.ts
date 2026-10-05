@@ -5,9 +5,12 @@
 //
 // Lifecycle:
 //   1. initNotifications() is called once at app start (after auth init).
-//   2. We ask for permission. If denied → log a warning, install no
-//      subscriptions, return. Subsequent calls are idempotent no-ops.
-//   3. We install the tap handler that deep-links to /resolve/[id].
+//   2. We CHECK permission, never ask (roadmap step 38): the system alert
+//      belongs to the moment the user turns reminders on, not to launch,
+//      where it would land on the Warmup. Not granted → stay inactive until
+//      requestReminderPermission() is called from that moment.
+//   3. Once granted, we install the tap handler that deep-links to
+//      /resolve/[id].
 //   4. We reconcile with what the OS already has scheduled (roadmap step
 //      37): reminders from an earlier session are re-adopted for open
 //      predictions and cancelled for anything else, and an open prediction
@@ -48,8 +51,14 @@ export interface ScheduledRequest {
   content: { data?: Record<string, unknown> | null };
 }
 
+/** What the UI needs to know about notification permission. */
+export type ReminderPermission = 'granted' | 'undetermined' | 'denied' | 'unsupported';
+
 export interface NotificationsApi {
+  /** Shows the system alert (once per install on iOS). */
   requestPermissionsAsync(): Promise<{ granted: boolean }>;
+  /** Reads the current answer without asking. */
+  getPermissionsAsync(): Promise<{ granted: boolean; canAskAgain?: boolean; status?: string }>;
   scheduleNotificationAsync(req: {
     content: {
       title: string;
@@ -108,6 +117,8 @@ interface Deps {
 let deps: Deps | null = null;
 let initialized = false;
 let permissionGranted = false;
+// True once the post-permission setup has run (activate()).
+let active = false;
 // Mirrors settingsStore.notificationsEnabled. Seeded at init and kept in sync
 // by a store subscription so the user can turn reminders off at runtime.
 let notificationsEnabled = true;
@@ -156,6 +167,10 @@ function defaultNotificationsApi(): NotificationsApi | null {
     async requestPermissionsAsync() {
       const res = await Notifications.requestPermissionsAsync();
       return { granted: res.granted };
+    },
+    async getPermissionsAsync() {
+      const res = await Notifications.getPermissionsAsync();
+      return { granted: res.granted, canAskAgain: res.canAskAgain, status: res.status };
     },
     async scheduleNotificationAsync(req) {
       // The SDK's `trigger` enum is `SchedulableTriggerInputTypes.DATE`
@@ -210,6 +225,7 @@ export function __setDepsForTests(next: Deps | null): void {
   deps = next;
   initialized = false;
   permissionGranted = false;
+  active = false;
   notificationsEnabled = true;
   scheduledByPredictionId.clear();
   routedResponseIdentifiers.clear();
@@ -482,15 +498,69 @@ export async function initNotifications(): Promise<void> {
     }),
   });
 
-  const { granted } = await deps.notifications.requestPermissionsAsync();
-  permissionGranted = granted;
-  if (!granted) {
+  // Check, don't ask (roadmap step 38). Someone who already allowed
+  // notifications sees no change; everyone else is asked in context.
+  let granted = false;
+  try {
+    ({ granted } = await deps.notifications.getPermissionsAsync());
+  } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn(
-      '[notifications] permission denied; resolution reminders disabled',
-    );
-    return;
+    console.warn('[notifications] could not read permission:', e);
   }
+  if (!granted) return;
+  await activate();
+}
+
+/**
+ * Notification permission as the UI needs it, without asking. 'unsupported'
+ * on web, where there are no local notifications.
+ */
+export async function reminderPermission(): Promise<ReminderPermission> {
+  if (!deps) {
+    deps = { notifications: defaultNotificationsApi(), navigator: defaultNavigator() };
+  }
+  if (!deps.notifications) return 'unsupported';
+  try {
+    const res = await deps.notifications.getPermissionsAsync();
+    if (res.granted) return 'granted';
+    if (res.status === 'undetermined' || res.canAskAgain !== false) return 'undetermined';
+    return 'denied';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+/**
+ * Show the system alert, in context (roadmap step 38: after the user taps
+ * "Turn on reminders"). On a yes, reminders start for every open prediction.
+ */
+export async function requestReminderPermission(): Promise<ReminderPermission> {
+  if (!deps) {
+    deps = { notifications: defaultNotificationsApi(), navigator: defaultNavigator() };
+  }
+  if (!deps.notifications) return 'unsupported';
+  try {
+    const { granted } = await deps.notifications.requestPermissionsAsync();
+    if (!granted) return 'denied';
+    await activate();
+    return 'granted';
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] permission request failed:', e);
+    return await reminderPermission();
+  }
+}
+
+/**
+ * Everything that needs permission: the tap handler, the hidden-preview
+ * category, the settings and store subscriptions, and the launch-time
+ * reconcile. Runs once, whether permission was already granted at launch or
+ * granted later from the in-context prompt.
+ */
+async function activate(): Promise<void> {
+  if (active || !deps || !deps.notifications) return;
+  active = true;
+  permissionGranted = true;
 
   installTapHandler();
   await registerCategory();

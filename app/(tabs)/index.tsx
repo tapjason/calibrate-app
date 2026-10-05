@@ -3,6 +3,7 @@ import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { groupByDue, nextDueLine } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { chartTakeaway } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
@@ -68,7 +69,14 @@ export default function HomeScreen() {
       sections={groups}
       keyExtractor={(p) => p.id}
       stickySectionHeadersEnabled={false}
-      ListHeaderComponent={<View style={styles.hero}>{hero}</View>}
+      ListHeaderComponent={
+        <>
+          <View style={styles.hero}>{hero}</View>
+          {/* Asks for notification permission here, in context, not at
+              launch (roadmap step 38). Native only. */}
+          <ReminderPrompt />
+        </>
+      }
       renderSectionHeader={({ section }) => (
         <>
           <Text style={styles.sectionTitle} accessibilityRole="header">

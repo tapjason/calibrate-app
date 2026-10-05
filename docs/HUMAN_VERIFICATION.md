@@ -790,7 +790,12 @@ Requires a dev build (`eas build --profile development --platform ios`), not
 Expo Go — notifications and RevenueCat are both native modules.
 
 ### D1. Notifications
-- [ ] Permission prompt appears on first launch.
+- [ ] **No permission prompt at first launch** (changed 2026-10-05, roadmap
+      step 38): the Warmup opens with no iOS alert over it. After logging a
+      first prediction, Home shows "Want a reminder when it's due?"; **Turn on
+      reminders** brings up the iOS alert. Allow it: the prediction's reminder
+      is scheduled. On a second install, refuse it: Settings → Notifications
+      shows "Open Settings", which opens the app's page in iOS Settings.
 - [ ] A resolution reminder fires on a prediction's due date (set one a few
       minutes out).
 - [ ] Tapping the notification deep-links into the Resolve screen for the

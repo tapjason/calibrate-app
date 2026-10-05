@@ -21,6 +21,8 @@ import { useStatsStore } from '@/store/statsStore';
 import {
   __setDepsForTests,
   initNotifications,
+  reminderPermission,
+  requestReminderPermission,
   routeFromLaunchNotification,
   type NotificationsApi,
   type Navigator,
@@ -38,6 +40,10 @@ interface ScheduledRecord {
 }
 
 interface FakeNotifications extends NotificationsApi {
+  /** How often the system alert was shown. */
+  requestCalls: number;
+  /** What the user answers when asked (undetermined fakes). */
+  answer: boolean;
   scheduled: Map<string, ScheduledRecord>; // id → record
   cancelled: string[];
   scheduleCalls: number;
@@ -56,7 +62,12 @@ interface FakeNavigator extends Navigator {
 
 function makeFakeNotifications(
   granted: boolean,
-  options: { scheduleThrows?: boolean; launchPredictionId?: string } = {},
+  options: {
+    scheduleThrows?: boolean;
+    launchPredictionId?: string;
+    /** Not asked yet: the check says no, and asking returns `answer`. */
+    undetermined?: { answer: boolean };
+  } = {},
 ): FakeNotifications {
   let tapListener:
     | ((event: {
@@ -71,8 +82,19 @@ function makeFakeNotifications(
     cancelled: [],
     scheduleCalls: 0,
     cancelCalls: 0,
+    requestCalls: 0,
     async requestPermissionsAsync() {
+      fake.requestCalls++;
+      if (options.undetermined) {
+        options = { ...options, undetermined: undefined };
+        granted = fake.answer;
+      }
       return { granted };
+    },
+    answer: options.undetermined?.answer ?? granted,
+    async getPermissionsAsync() {
+      if (options.undetermined) return { granted: false, canAskAgain: true, status: 'undetermined' };
+      return { granted, canAskAgain: granted, status: granted ? 'granted' : 'denied' };
     },
     async scheduleNotificationAsync(req) {
       fake.scheduleCalls++;
@@ -661,5 +683,59 @@ describe('scheduler: launch-time reconcile', () => {
     await initNotifications();
     const scheduled = Array.from(notifications.scheduled.values());
     expect(scheduled.map((r) => r.data)).toEqual([{ predictionId: future.id }]);
+  });
+});
+
+// Roadmap step 38: never ask at launch; ask when the user turns reminders on.
+describe('scheduler: permission in context', () => {
+  it('never shows the system alert at launch', async () => {
+    const notifications = makeFakeNotifications(false, { undetermined: { answer: true } });
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    expect(notifications.requestCalls).toBe(0);
+    expect(await reminderPermission()).toBe('undetermined');
+  });
+
+  it('asks on request, then schedules for everything already open', async () => {
+    const notifications = makeFakeNotifications(false, { undetermined: { answer: true } });
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 60,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    expect(notifications.scheduleCalls).toBe(0);
+
+    expect(await requestReminderPermission()).toBe('granted');
+    expect(notifications.requestCalls).toBe(1);
+    expect(Array.from(notifications.scheduled.values()).map((r) => r.data)).toEqual([
+      { predictionId: p.id },
+    ]);
+
+    // And from then on it watches the store as usual.
+    await usePredictionStore.getState().create({
+      title: 'Another',
+      category: 'work',
+      confidence: 40,
+      due_date: '2099-06-02T12:00:00.000Z',
+    });
+    expect(notifications.scheduled.size).toBe(2);
+  });
+
+  it('reports a refusal, and schedules nothing', async () => {
+    const notifications = makeFakeNotifications(false, { undetermined: { answer: false } });
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    expect(await requestReminderPermission()).toBe('denied');
+    expect(await reminderPermission()).toBe('denied');
+    expect(notifications.scheduleCalls).toBe(0);
+  });
+
+  it('is unsupported on web', async () => {
+    __setDepsForTests({ notifications: null, navigator: makeFakeNavigator() });
+    expect(await reminderPermission()).toBe('unsupported');
+    expect(await requestReminderPermission()).toBe('unsupported');
   });
 });

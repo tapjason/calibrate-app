@@ -35,6 +35,13 @@ export interface StoredSettings {
    * a restart, and is never synced, which is exactly what this store is.
    */
   coverageNudgeLastShownAt: string | null;
+  /**
+   * When the user last answered "Not now" to Home's reminder prompt (roadmap
+   * step 38), or null. Like the nudge above, a cooldown's memory: the prompt
+   * comes back a week later, since without reminders predictions go
+   * unresolved.
+   */
+  reminderPromptDismissedAt: string | null;
 }
 
 /** Injectable persistence so tests don't touch the native AsyncStorage. */
@@ -55,6 +62,8 @@ interface SettingsState extends StoredSettings {
   setCardThemeId: (id: string) => Promise<void>;
   /** Start the coverage-nudge cooldown from now. */
   markCoverageNudgeShown: () => Promise<void>;
+  /** "Not now" on the reminder prompt: hide it for a week from now. */
+  dismissReminderPrompt: () => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -76,6 +85,7 @@ const DEFAULTS: StoredSettings = {
   analyticsEnabled: true,
   cardThemeId: DEFAULT_THEME.id,
   coverageNudgeLastShownAt: null,
+  reminderPromptDismissedAt: null,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -141,6 +151,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           coverageNudgeLastShownAt:
             stored.coverageNudgeLastShownAt ??
             DEFAULTS.coverageNudgeLastShownAt,
+          reminderPromptDismissedAt:
+            stored.reminderPromptDismissedAt ?? DEFAULTS.reminderPromptDismissedAt,
         });
       }
     } catch (e) {
@@ -184,6 +196,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ coverageNudgeLastShownAt: new Date().toISOString() });
     await persist(snapshot(get()));
   },
+
+  dismissReminderPrompt: async () => {
+    set({ reminderPromptDismissedAt: new Date().toISOString() });
+    await persist(snapshot(get()));
+  },
 }));
 
 /**
@@ -199,5 +216,6 @@ function snapshot(state: StoredSettings): StoredSettings {
     analyticsEnabled: state.analyticsEnabled,
     cardThemeId: state.cardThemeId,
     coverageNudgeLastShownAt: state.coverageNudgeLastShownAt,
+    reminderPromptDismissedAt: state.reminderPromptDismissedAt,
   };
 }

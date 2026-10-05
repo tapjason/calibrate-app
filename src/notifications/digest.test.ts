@@ -16,6 +16,7 @@ import { useStatsStore } from '@/store/statsStore';
 
 import {
   __setDepsForTests,
+  activateDigest,
   initDigest,
   type DigestNotificationsApi,
 } from './digest';
@@ -49,7 +50,7 @@ function makeFakeNotifications(
     cancelled: [],
     scheduleCalls: 0,
     cancelCalls: 0,
-    async requestPermissionsAsync() {
+    async getPermissionsAsync() {
       return { granted };
     },
     async scheduleNotificationAsync(req) {
@@ -372,5 +373,22 @@ describe('digest: presentation', () => {
     const { content } = schedule.mock.calls[0][0];
     expect(content.interruptionLevel).toBe('passive');
     expect(content.categoryIdentifier).toBe('calibrate-weekly-digest');
+  });
+});
+
+// Roadmap step 38: the digest waits for the in-context prompt too.
+describe('digest: permission in context', () => {
+  it('stays quiet at launch until reminders are allowed, then starts', async () => {
+    const notifications = makeFakeNotifications(false);
+    __setDepsForTests({ notifications });
+    await initDigest();
+    expect(notifications.scheduleCalls).toBe(0);
+
+    // The scheduler's prompt got a yes and calls this.
+    await activateDigest();
+    expect(notifications.scheduled.has('calibrate-weekly-digest')).toBe(true);
+
+    await activateDigest(); // idempotent
+    expect(notifications.scheduleCalls).toBe(1);
   });
 });

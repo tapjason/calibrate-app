@@ -1,9 +1,15 @@
 import { openBrowserAsync } from 'expo-web-browser';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, space, type } from '@/constants/theme';
+import {
+  askForReminders,
+  reminderPermission,
+  type ReminderPermission,
+} from '@/notifications/permission';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -83,6 +89,7 @@ export function SettingsView({
         onValueChange={(v) => void setNotificationsEnabled(v)}
         testID="toggle-notifications"
       />
+      <NotificationPermissionRow />
 
       {/* Hidden while refine is cut from the release — a toggle for a button
           that doesn't exist is worse than no toggle. The stored preference is
@@ -138,6 +145,57 @@ export function SettingsView({
       {onOpenDelete && <DeleteRow onOpenDelete={onOpenDelete} />}
 
       <LegalLinks />
+    </View>
+  );
+}
+
+/**
+ * What the Notifications toggle can't say on its own (roadmap step 38): iOS
+ * hasn't been asked yet, or has been told no. The app asks in context, so a
+ * user who skipped Home's prompt can still allow reminders here, and one who
+ * refused gets a way to the iOS setting. Rechecked on return to the app, so
+ * a change made in iOS Settings shows at once. Nothing on web or once allowed.
+ */
+function NotificationPermissionRow() {
+  const [permission, setPermission] = useState<ReminderPermission | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    const refresh = async () => {
+      const current = await reminderPermission();
+      if (live) setPermission(current);
+    };
+    void refresh();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refresh();
+    });
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, []);
+
+  if (permission !== 'undetermined' && permission !== 'denied') return null;
+  const asked = permission === 'denied';
+  return (
+    <View style={styles.permission} testID="settings-notification-permission">
+      <Text style={[styles.rowDescription, styles.permissionText]}>
+        {asked
+          ? 'Notifications are off for Calibrate in iOS Settings, so reminders can’t reach you.'
+          : 'iOS hasn’t been asked yet, so reminders can’t reach you.'}
+      </Text>
+      <Button
+        label={asked ? 'Open Settings' : 'Allow reminders'}
+        variant="secondary"
+        onPress={() => {
+          if (asked) {
+            void Linking.openSettings();
+            return;
+          }
+          void (async () => setPermission(await askForReminders()))();
+        }}
+        testID="settings-notification-permission-action"
+      />
     </View>
   );
 }
@@ -314,6 +372,14 @@ const styles = StyleSheet.create({
   rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
   deleteRow: { marginTop: 24, paddingVertical: 14 },
   deleteLabel: { ...type.callout, color: colors.destructive, fontWeight: '500' },
+  permission: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.md,
+    justifyContent: 'space-between',
+    paddingBottom: space.md,
+  },
+  permissionText: { flex: 1, marginTop: 0 },
   legal: { flexDirection: 'row', gap: space.xl, marginTop: space.lg, paddingVertical: space.sm },
   legalLink: { ...type.footnote, color: colors.textSecondary, textDecorationLine: 'underline' },
 });

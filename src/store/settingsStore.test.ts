@@ -106,6 +106,7 @@ describe('settingsStore: setters persist', () => {
       analyticsEnabled: true,
       cardThemeId: 'midnight',
       coverageNudgeLastShownAt: null,
+      reminderPromptDismissedAt: null,
     });
   });
 
@@ -123,6 +124,7 @@ describe('settingsStore: setters persist', () => {
       analyticsEnabled: true,
       cardThemeId: 'midnight',
       coverageNudgeLastShownAt: null,
+      reminderPromptDismissedAt: null,
     });
   });
 
@@ -177,5 +179,19 @@ describe('settingsStore: coverage-nudge cooldown', () => {
     await useSettingsStore.getState().setAiRefineEnabled(false);
 
     expect(saved.at(-1)?.coverageNudgeLastShownAt).toBe(stamp);
+  });
+});
+
+// Roadmap step 38: "Not now" on Home's reminder prompt survives a restart.
+describe('settingsStore: reminder prompt cooldown', () => {
+  it('records the dismissal and persists it', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+
+    await useSettingsStore.getState().dismissReminderPrompt();
+
+    const at = useSettingsStore.getState().reminderPromptDismissedAt;
+    expect(at).not.toBeNull();
+    expect(saved[0]?.reminderPromptDismissedAt).toBe(at);
   });
 });
