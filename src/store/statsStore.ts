@@ -32,6 +32,7 @@ import {
 import { detectMilestone } from '@/engine/milestones';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
+import { buildWrapped, type WrappedSpan, type WrappedSummary } from '@/engine/wrapped';
 import type {
   BucketStat,
   CalibrationResult,
@@ -282,7 +283,21 @@ export function coverageNudgeNow(): CoverageNudgeDecision {
 }
 
 /**
+ * Calibration Wrapped for one window. Derived on demand rather than held in
+ * state (it is a pure function of the resolved list, and caching it would be
+ * one more thing to invalidate on every resolution), but called through here
+ * so the Share screen never imports the engine (BUILD_PLAN invariant).
+ */
+export function wrappedSummary(
+  resolved: readonly Prediction[],
+  span: WrappedSpan,
+  now: Date = new Date(),
+): WrappedSummary {
+  return buildWrapped(resolved, span, now);
+}
+
+/**
  * Re-exported so Layer 6 never imports the engine directly. The decision is
  * produced here by `coverageNudgeNow()`; the type travels with it.
  */
-export type { CoverageGap, CoverageNudgeDecision };
+export type { CoverageGap, CoverageNudgeDecision, WrappedSpan, WrappedSummary };

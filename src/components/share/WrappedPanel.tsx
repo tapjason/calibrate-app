@@ -10,7 +10,6 @@ import Animated, {
 
 import { haptics } from '@/components/ui/haptics';
 import { colors, space, type } from '@/constants/theme';
-import { buildWrapped, type WrappedSpan } from '@/engine/wrapped';
 import { Button } from '@/components/ui/Button';
 import { track } from '@/analytics/track';
 import { resolveTheme, WRAPPED_DEFAULT_THEME } from '@/constants/cardThemes';
@@ -18,7 +17,7 @@ import { shareCard, type ShareOutcome } from '@/share/export';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePredictionStore } from '@/store/predictionStore';
-import { useStatsStore } from '@/store/statsStore';
+import { useStatsStore, wrappedSummary, type WrappedSpan } from '@/store/statsStore';
 
 import { nextBadgeProgress } from './nextBadgeCopy';
 import { WrappedCard } from './WrappedCard';
@@ -97,7 +96,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   // `now` is frozen per render pass of this list so the window doesn't shift
   // underneath a capture that's already in flight.
   const summary = useMemo(
-    () => buildWrapped(resolved, span, new Date()),
+    () => wrappedSummary(resolved, span, new Date()),
     [resolved, span],
   );
   const hasTitles = summary.boldest_hit !== null || summary.biggest_miss !== null;

@@ -63,7 +63,7 @@ live in DESIGN_SYSTEM §6.1, §7.10, §7.12 and §7.16, and their history in git
 |---|---|---|---|---|
 | 22 | "Log it again" after resolving | FUTURE_UI A4, the no-schema half | M | Next |
 | 23 | Web: the browser's Back keeps a typed reflection | FUTURE_UI §B | S | Next |
-| 24 | Wrapped through the store, not the engine | Code read, 2026-10-04 | S | Next |
+| 24 | Wrapped through the store, not the engine | Code read, 2026-10-04 | S | **Done** 2026-10-04, now guarded by a test |
 | 25 | Web: tab names without icon glyphs | Web run-through, 2026-10-04 | S | Next |
 
 **22. "Log it again."** A4 (repeating predictions) needs a `recurrences` table, a

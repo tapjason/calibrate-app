@@ -95,7 +95,9 @@ next to each carry the detail.
 ### Invariants (do not break)
 
 - **The dependency arrow only points downward.** L3 never imports a store; L6 never
-  calls the SQLite client or the engine directly — it goes through L4.
+  calls the SQLite client or the engine directly — it goes through L4. Enforced for
+  L6 by `src/components/layering.test.ts` since 2026-10-04 (type-only imports are
+  allowed; the root layout may open the database).
 - **Every SQLite mutation and its stats recompute run in one `withTransaction`**, so
   stats never reflect a half-applied change.
 - **Resolution is guarded at the SQL level** (`AND status='pending'`) against a
