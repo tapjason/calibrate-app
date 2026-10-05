@@ -1,6 +1,6 @@
 import type { Prediction } from '@/types';
 
-import { daysUntilDue, groupByDue, isReadyToResolve } from './dueGroups';
+import { daysUntilDue, groupByDue, isReadyToResolve, nextDueLine } from './dueGroups';
 
 // Local noon on 10 Sep 2026; every due date below is built in local time too,
 // so the tests hold in any time zone.
@@ -68,5 +68,33 @@ describe('groupByDue', () => {
     const groups = groupByDue([{ ...dueIn(2), due_date: 'not a date' }], NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0].key).toBe('later');
+  });
+});
+
+// Roadmap step 32: while calibrating, the wait gets a date.
+describe('nextDueLine', () => {
+  const day = (p: Prediction) =>
+    new Date(p.due_date).toLocaleDateString(undefined, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+
+  it('names the soonest due date when nothing is ready yet', () => {
+    const soonest = dueIn(3, 'soon');
+    expect(nextDueLine([dueIn(9, 'later'), soonest], NOW)).toBe(
+      `The next one comes due ${day(soonest)}.`,
+    );
+  });
+
+  it('says how many are ready when some already are', () => {
+    expect(nextDueLine([dueIn(0, 'a'), dueIn(5, 'b')], NOW)).toBe('One is ready to resolve now.');
+    expect(nextDueLine([dueIn(0, 'a'), dueIn(-2, 'b'), dueIn(5, 'c')], NOW)).toBe(
+      '2 are ready to resolve now.',
+    );
+  });
+
+  it('says nothing with nothing open', () => {
+    expect(nextDueLine([], NOW)).toBeNull();
   });
 });

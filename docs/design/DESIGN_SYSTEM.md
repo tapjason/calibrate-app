@@ -296,6 +296,9 @@ Weekly Wrapped gets `reveal` without confetti. Everything else is small and prec
   filled = resolved, hatched = pending "on their way", hollow = to go. Label:
   "Calibrating · 4 on their way · 16 to go". Pending predictions really will count,
   so this endowed progress is honest (Nunes & Drèze 2006: 19% → 34% completion).
+  After "N more resolutions and your score unlocks.", the caption gives the wait a
+  date (roadmap step 32): "The next one comes due Tue, Oct 6.", or "One is ready to
+  resolve now." Nothing when nothing is open.
 - **Ghost chart** before unlock: the full frame, diagonal and labelled regions with
   empty bucket slots — never an italic placeholder line.
 - **Unlock** = the `unlock` motion (§6.1).

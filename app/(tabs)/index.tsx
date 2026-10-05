@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
-import { groupByDue } from '@/components/prediction/dueGroups';
+import { groupByDue, nextDueLine } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { chartTakeaway } from '@/components/stats/chartTakeaway';
@@ -57,6 +57,7 @@ export default function HomeScreen() {
         resolved={userStat?.total_resolved ?? 0}
         pending={pending.length}
         total={MIN_N_OVERALL}
+        nextDue={nextDueLine(pending, new Date())}
       />
     );
 

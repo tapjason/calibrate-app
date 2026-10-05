@@ -65,3 +65,29 @@ export function groupByDue(pending: readonly Prediction[], now: Date): DueGroup[
     .filter((key) => buckets[key].length > 0)
     .map((key) => ({ key, title: TITLES[key], data: [...buckets[key]].sort(byDue) }));
 }
+
+/**
+ * One line for the calibrating hero (roadmap step 32): when the next answer
+ * can come. Resolutions arrive only as predictions fall due, which the user
+ * doesn't control, so the wait gets a date. Null with nothing open.
+ */
+export function nextDueLine(pending: readonly Prediction[], now: Date): string | null {
+  const open = pending.filter((p) => p.status === 'pending');
+  if (open.length === 0) return null;
+
+  const ready = open.filter((p) => isReadyToResolve(p, now)).length;
+  if (ready === 1) return 'One is ready to resolve now.';
+  if (ready > 1) return `${ready} are ready to resolve now.`;
+
+  const next = open
+    .map((p) => Date.parse(p.due_date))
+    .filter((t) => !Number.isNaN(t))
+    .sort((a, b) => a - b)[0];
+  if (next === undefined) return null;
+  const day = new Date(next).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+  return `The next one comes due ${day}.`;
+}

@@ -69,7 +69,7 @@ DESIGN_SYSTEM §7.1, §7.6, §7.17).
 | Step | Item | Size | State |
 |---|---|---|---|
 | 31 | Reflections, readable again in History | S | **Done** 2026-10-05 · web-verified (it also showed step 23's Back save working end to end) |
-| 32 | While calibrating, when the next one comes due | S | Next |
+| 32 | While calibrating, when the next one comes due | S | **Done** 2026-10-05 · web-verified |
 
 **31. Reflections in History.** Resolve asks "What surprised you?", and the answer
 is saved, but nothing ever shows it again: a note the user can't read back teaches

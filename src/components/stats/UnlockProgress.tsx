@@ -9,6 +9,8 @@ interface UnlockProgressProps {
   pending: number;
   /** Resolutions needed to unlock (MIN_N_OVERALL or MIN_N_CATEGORY). */
   total: number;
+  /** When the next resolution can come (roadmap step 32), or null. */
+  nextDue?: string | null;
   testID?: string;
 }
 
@@ -26,7 +28,7 @@ interface UnlockProgressProps {
  * A stand-in for the ring the design system describes: same three states,
  * drawn with Views so it renders identically on web for screenshots.
  */
-export function UnlockProgress({ resolved, pending, total, testID }: UnlockProgressProps) {
+export function UnlockProgress({ resolved, pending, total, nextDue, testID }: UnlockProgressProps) {
   const done = Math.min(resolved, total);
   const onTheWay = Math.min(pending, total - done);
   const toGo = total - done;
@@ -62,6 +64,7 @@ export function UnlockProgress({ resolved, pending, total, testID }: UnlockProgr
       <Text style={styles.summary}>{summary}</Text>
       <Text style={styles.caption}>
         {toGo} more {toGo === 1 ? 'resolution' : 'resolutions'} and your score unlocks.
+        {nextDue ? ` ${nextDue}` : ''}
       </Text>
     </View>
   );
