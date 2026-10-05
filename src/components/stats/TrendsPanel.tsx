@@ -12,6 +12,8 @@ import { useStatsStore } from '@/store/statsStore';
 import type {
   CategoryTrend,
   CorrectionRow,
+  Horizon,
+  HorizonStat,
   PeriodStat,
   TrendSummary,
 } from '@/engine/trends';
@@ -113,6 +115,13 @@ export function TrendsPanel({
               <CategoryRow key={category.category} trend={category} />
             ))}
           </Section>
+          {trends.horizons.length > 0 && (
+            <Section title="By how far ahead">
+              {trends.horizons.map((h) => (
+                <HorizonRow key={h.horizon} stat={h} />
+              ))}
+            </Section>
+          )}
           <Corrections trends={trends} />
           <CoverageLine trends={trends} />
         </>
@@ -177,6 +186,30 @@ function CategoryRow({ trend }: { trend: CategoryTrend }) {
         {trend.provisional
           ? `${trend.resolved} resolved · too few to score`
           : `${Math.round(trend.score)} · ${trend.direction}`}
+      </Text>
+    </View>
+  );
+}
+
+const HORIZON_LABELS: Record<Horizon, string> = {
+  next_day: 'Next day or sooner',
+  week: 'Within a week',
+  month: 'Within a month',
+  longer: 'Further out',
+};
+
+/**
+ * Calibration by how far ahead the call was made (roadmap step 21). Same row
+ * rule as a category: a thin horizon shows its count, never a score.
+ */
+function HorizonRow({ stat }: { stat: HorizonStat }) {
+  return (
+    <View style={styles.row} testID={`trend-horizon-${stat.horizon}`}>
+      <Text style={styles.rowLabelPlain}>{HORIZON_LABELS[stat.horizon]}</Text>
+      <Text style={styles.rowValue}>
+        {stat.provisional
+          ? `${stat.resolved} resolved · too few to score`
+          : `${Math.round(stat.score)} · ${stat.direction}`}
       </Text>
     </View>
   );

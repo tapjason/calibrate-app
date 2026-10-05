@@ -137,6 +137,12 @@ function mix(i: number): number {
 }
 
 /** An evening time on the day `daysAgo` before `now`, in the device's zone. */
+/**
+ * How far ahead each demo call was logged, cycled. Spread across every Trends
+ * horizon (next day, week, month, further out) so "By how far ahead" has rows.
+ */
+const LEAD_DAYS: readonly number[] = [1, 3, 5, 7, 1, 10, 14, 4, 30, 6, 45, 2];
+
 function eveningOf(now: Date, daysAgo: number): Date {
   const d = new Date(now.getTime() - daysAgo * DAY_MS);
   d.setHours(19, 0, 0, 0);
@@ -181,7 +187,7 @@ export function buildDemoPredictions(userId: string, now: Date): Prediction[] {
         ? fromEnd
         : STREAK_DAYS + 1 + Math.round(((older - 1 - i) * (SPAN_DAYS - STREAK_DAYS)) / older);
     const due = eveningOf(now, daysAgo);
-    const created = new Date(due.getTime() - (3 + (i % 12)) * DAY_MS);
+    const created = new Date(due.getTime() - LEAD_DAYS[i % LEAD_DAYS.length] * DAY_MS);
     const resolvedAt = new Date(
       Math.min(due.getTime() + (i % 3) * 60 * 60 * 1000, now.getTime()),
     );

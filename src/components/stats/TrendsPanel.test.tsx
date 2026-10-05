@@ -157,6 +157,31 @@ describe('TrendsPanel — Plus', () => {
     expect(screen.queryByTestId('trend-correction-work-80')).toBeNull();
   });
 
+  // Roadmap step 21: calibration by how far ahead the call was made.
+  it('scores each horizon with enough behind it, and counts the rest', () => {
+    const due = '2026-09-20T12:00:00.000Z';
+    const made = (daysAhead: number) =>
+      new Date(Date.parse(due) - daysAhead * 86_400_000).toISOString();
+    const nextDay = Array.from({ length: 16 }, (_, i) => ({
+      ...p(80, i < 13, due),
+      created_at: made(1),
+    }));
+    const farOut = Array.from({ length: 3 }, (_, i) => ({
+      ...p(80, i < 1, due),
+      created_at: made(60),
+    }));
+    seed({ resolved: [...nextDay, ...farOut] });
+    render(<TrendsPanel />);
+
+    expect(screen.getByTestId('trend-horizon-next_day')).toHaveTextContent(
+      /^Next day or sooner\d+ · calibrated$/,
+    );
+    expect(screen.getByTestId('trend-horizon-longer')).toHaveTextContent(
+      'Further out3 resolved · too few to score',
+    );
+    expect(screen.queryByTestId('trend-horizon-week')).toBeNull();
+  });
+
   it('says so when there is nothing to chart yet', () => {
     seed({ resolved: [] });
     render(<TrendsPanel />);

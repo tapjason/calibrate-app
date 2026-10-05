@@ -7,6 +7,8 @@ import {
   categoryTrends,
   confidenceCoverage,
   correctionTable,
+  horizonFor,
+  horizonTrends,
   monthlyTrend,
   overallDelta,
 } from './trends';
@@ -210,6 +212,7 @@ describe('buildTrendSummary', () => {
         middle_share: 0,
       },
       delta_recent: null,
+      horizons: [],
       corrections: [],
       correction_progress: null,
     });
@@ -276,5 +279,73 @@ describe('monthlyTrend — local months', () => {
     __setTimeZoneForTests('America/Los_Angeles');
     const rows = [p(90, true, '2026-02-01T04:00:00.000Z')];
     expect(monthlyTrend(rows).map((m) => m.period)).toEqual(['2026-01']);
+  });
+});
+
+describe('horizonTrends (roadmap step 21)', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  /** n calls logged `daysAhead` local days before they came due. */
+  const ahead = (n: number, hits: number, daysAhead: number, confidence = 80) =>
+    Array.from({ length: n }, (_, i) => {
+      const due = new Date(Date.UTC(2026, 5, 20, 18));
+      const created = new Date(due.getTime() - daysAhead * 86_400_000);
+      return {
+        ...p(confidence, i < hits, due.toISOString()),
+        created_at: created.toISOString(),
+        due_date: due.toISOString(),
+      };
+    });
+
+  it('draws the lines at a day, a week and a month', () => {
+    expect([0, 1, 2, 7, 8, 31, 32].map(horizonFor)).toEqual([
+      'next_day',
+      'next_day',
+      'week',
+      'week',
+      'month',
+      'month',
+      'longer',
+    ]);
+  });
+
+  it('scores each horizon on its own, nearest first, leaving out empty ones', () => {
+    const rows = horizonTrends([
+      ...ahead(20, 16, 40), // 80% said, 80% happened
+      ...ahead(16, 16, 1, 80), // 80% said, all happened: underconfident
+    ]);
+    expect(rows.map((r) => r.horizon)).toEqual(['next_day', 'longer']);
+    expect(rows[0]).toMatchObject({ resolved: 16, direction: 'underconfident', provisional: false });
+    expect(rows[1]).toMatchObject({ resolved: 20, direction: 'calibrated', provisional: false });
+  });
+
+  // Same rule as a category: under 15 is counts, not a score.
+  it('marks a thin horizon provisional', () => {
+    expect(horizonTrends(ahead(14, 7, 5))[0]).toMatchObject({
+      horizon: 'week',
+      resolved: 14,
+      provisional: true,
+    });
+  });
+
+  it('counts calendar days in local time', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    // Logged 23:30 on Monday, due 08:00 on Wednesday (Pacific): two days, so
+    // "within a week", although under 33 hours have passed.
+    const row = {
+      ...p(70, true, '2026-06-17T15:00:00.000Z'),
+      created_at: '2026-06-16T06:30:00.000Z',
+      due_date: '2026-06-17T15:00:00.000Z',
+    };
+    expect(horizonTrends([row])[0].horizon).toBe('week');
+  });
+
+  it('leaves out a due date before the log date', () => {
+    const backwards = {
+      ...p(70, true, '2026-06-10T12:00:00.000Z'),
+      created_at: '2026-06-12T12:00:00.000Z',
+      due_date: '2026-06-10T12:00:00.000Z',
+    };
+    expect(horizonTrends([backwards])).toEqual([]);
   });
 });

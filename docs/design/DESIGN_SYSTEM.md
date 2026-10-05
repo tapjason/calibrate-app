@@ -574,6 +574,10 @@ own n, and a row below its threshold shows counts, never a score.
   most five: "Finance at 80–100% · 47% · 8 of 17". When the worst band is off, it
   leads as a sentence ("In finance, your 80–100% has come true 47% of the time.").
   With no qualifying band, one line names the closest one and its count instead.
+- **By how far ahead** (roadmap step 21): rows for *Next day or sooner* (0–1 local
+  days from logging to due), *Within a week* (2–7), *Within a month* (8–31) and
+  *Further out*; empty horizons are left out. Score and direction from 15 resolved
+  (`MIN_N_CATEGORY`), "N resolved · too few to score" below it, like a category.
 - Labels that contain numbers or small words don't use `textTransform:
   'capitalize'` (it produced "Range You Use"); capitalise the string instead.
 

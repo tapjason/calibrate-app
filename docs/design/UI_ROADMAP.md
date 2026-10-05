@@ -59,7 +59,7 @@ when it ships.
 | 18 | Resolve several at once | FUTURE_UI A3 | M | **Done** 2026-10-04 · web-verified |
 | 19 | Track record on the Log slider (free) | FUTURE_UI A1 | S–M | **Done** 2026-10-04 · web-verified |
 | 20 | Personal correction table (Plus) | FUTURE_UI A5 | M | **Done** 2026-10-04 · web-verified with the dev Plus preview |
-| 21 | Calibration by time horizon (Plus) | FUTURE_UI A6 | S–M | Next |
+| 21 | Calibration by time horizon (Plus) | FUTURE_UI A6 | S–M | **Done** 2026-10-04 · web-verified with the dev Plus preview |
 
 **16. Chart-label halo.** The connecting line can run through an "n=" label (the
 demo's n=8 at 20–40%). Draw each label twice: a 3pt stroke in the surface colour
@@ -109,7 +109,7 @@ Trends panel. Free users see it named in the Plus teaser, not a blurred copy.
 
 **21. Calibration by time horizon (Plus).** How far ahead a call was made, from
 local calendar days between logging and the due date: *next day or sooner*,
-*within a week*, *within a month*, *longer*. Each row carries its own n and is
+*within a week*, *within a month*, *further out*. Each row carries its own n and is
 provisional below 15 (`MIN_N_CATEGORY`), showing counts instead of a score, like
 the category rows beside it in Trends.
 

@@ -10,7 +10,7 @@
 // shape of a trend without asserting a score that three resolutions produced.
 
 import { computeCalibrationPoints, type CalibrationPoint } from './calibration';
-import { localParts } from './localTime';
+import { localDayNumber, localParts } from './localTime';
 import { classifyDirection } from './patterns';
 import {
   MIN_N_BAND,
@@ -69,6 +69,24 @@ export interface CoverageStat {
 }
 
 /**
+ * How far ahead a call was made: local calendar days from logging to the due
+ * date. "next_day" is 0–1 days, "week" 2–7, "month" 8–31, "longer" beyond.
+ */
+export type Horizon = 'next_day' | 'week' | 'month' | 'longer';
+
+/** Calibration for calls made one horizon ahead (roadmap step 21). */
+export interface HorizonStat {
+  horizon: Horizon;
+  resolved: number;
+  score: number;
+  mean_confidence: number;
+  hit_rate: number;
+  direction: Direction;
+  /** True while `resolved` < MIN_N_CATEGORY — counts, not a score. */
+  provisional: boolean;
+}
+
+/**
  * One row of the personal correction table: what a confidence band has meant,
  * in one category. "In finance, your 80–100% came true 47% of the time."
  */
@@ -104,6 +122,8 @@ export interface TrendSummary {
   coverage: CoverageStat;
   /** Change in score between the older and newer half of all history. */
   delta_recent: number | null;
+  /** By how far ahead the call was made, nearest first; empty horizons left out. */
+  horizons: HorizonStat[];
   /** The correction table, worst band first (roadmap step 20). */
   corrections: CorrectionRow[];
   /** When `corrections` is empty: the band closest to qualifying, or null. */
@@ -262,6 +282,48 @@ export function overallDelta(
   return recent.rating - earlier.rating;
 }
 
+const HORIZON_ORDER: readonly Horizon[] = ['next_day', 'week', 'month', 'longer'];
+
+/** The horizon for a whole number of local days ahead. */
+export function horizonFor(daysAhead: number): Horizon {
+  if (daysAhead <= 1) return 'next_day';
+  if (daysAhead <= 7) return 'week';
+  if (daysAhead <= 31) return 'month';
+  return 'longer';
+}
+
+/**
+ * Calibration by how far ahead the call was made. People are often sharp on
+ * tomorrow and loose on next month. Each horizon carries its own n and is
+ * provisional below MIN_N_CATEGORY, like a category: a horizon is a slice of
+ * the same size. A prediction whose dates don't parse, or whose due date is
+ * before it was logged, is left out rather than guessed at.
+ */
+export function horizonTrends(resolved: readonly Prediction[]): HorizonStat[] {
+  const byHorizon = new Map<Horizon, CalibrationPoint[]>();
+  for (const p of resolved.filter(isYesNo)) {
+    const created = new Date(p.created_at);
+    const due = new Date(p.due_date);
+    if (Number.isNaN(created.getTime()) || Number.isNaN(due.getTime())) continue;
+    const days = localDayNumber(due) - localDayNumber(created);
+    if (days < 0) continue;
+    const key = horizonFor(days);
+    const list = byHorizon.get(key) ?? [];
+    list.push(toPoint(p));
+    byHorizon.set(key, list);
+  }
+
+  return HORIZON_ORDER.filter((h) => byHorizon.has(h)).map((horizon) => {
+    const points = byHorizon.get(horizon)!;
+    return {
+      horizon,
+      resolved: points.length,
+      ...summarize(points),
+      provisional: points.length < MIN_N_CATEGORY,
+    };
+  });
+}
+
 /**
  * The personal correction table: per category and confidence band, how often
  * the user's stated confidence actually came true. The most actionable thing
@@ -316,6 +378,7 @@ export function buildTrendSummary(resolved: readonly Prediction[]): TrendSummary
     categories: categoryTrends(resolved),
     coverage: confidenceCoverage(resolved),
     delta_recent: overallDelta(resolved),
+    horizons: horizonTrends(resolved),
     corrections: corrections.rows,
     correction_progress: corrections.progress,
   };
