@@ -36,8 +36,11 @@ describe('SettingsView — notification permission', () => {
     expect(screen.getByText(/iOS hasn’t been asked yet/)).toBeTruthy();
 
     fireEvent.press(action);
-    await waitFor(() =>
-      expect(screen.queryByTestId('settings-notification-permission')).toBeNull(),
+    // Generous timeout: under a full parallel run the async state update can
+    // land after waitFor's default second.
+    await waitFor(
+      () => expect(screen.queryByTestId('settings-notification-permission')).toBeNull(),
+      { timeout: 4000 },
     );
     expect(mockAsk).toHaveBeenCalledTimes(1);
   });
