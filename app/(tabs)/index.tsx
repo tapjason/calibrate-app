@@ -3,10 +3,12 @@ import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { groupByDue } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { chartTakeaway } from '@/components/stats/chartTakeaway';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
+import { Button } from '@/components/ui/Button';
 import { CountUp } from '@/components/ui/CountUp';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, space, tabularNums, type } from '@/constants/theme';
@@ -58,9 +60,22 @@ export default function HomeScreen() {
       stickySectionHeadersEnabled={false}
       ListHeaderComponent={<View style={styles.hero}>{hero}</View>}
       renderSectionHeader={({ section }) => (
-        <Text style={styles.sectionTitle} accessibilityRole="header">
-          {section.title} · {section.data.length}
-        </Text>
+        <>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            {section.title} · {section.data.length}
+          </Text>
+          {/* A backlog is where people quit: past a few, answer them in one
+              sitting (roadmap step 18). */}
+          {section.key === 'ready' && section.data.length >= RUN_THRESHOLD && (
+            <View style={styles.run}>
+              <Button
+                label={`Resolve all ${section.data.length}`}
+                testID="home-resolve-all"
+                onPress={() => router.push('/resolve/run' as never)}
+              />
+            </View>
+          )}
+        </>
       )}
       renderItem={({ item }) => (
         <PredictionCard
@@ -89,6 +104,7 @@ const styles = StyleSheet.create({
   ratingNumber: { ...type.display, ...tabularNums, color: colors.textPrimary },
   ratingLabel: { ...type.subhead, color: colors.textSecondary },
   takeaway: { ...type.callout, color: colors.textPrimary, marginTop: space.sm },
+  run: { marginBottom: space.md },
   sectionTitle: {
     ...type.eyebrow,
     color: colors.textSecondary,

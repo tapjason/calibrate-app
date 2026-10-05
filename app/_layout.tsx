@@ -165,6 +165,16 @@ export default function RootLayout() {
           sheetCornerRadius: 24,
         }}
       />
+      {/* A run of several (roadmap step 18) is the same task, so the same sheet. */}
+      <Stack.Screen
+        name="resolve/run"
+        options={{
+          presentation: 'formSheet',
+          sheetAllowedDetents: [0.75, 1.0],
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 24,
+        }}
+      />
       <Stack.Screen
         name="share/index"
         options={{

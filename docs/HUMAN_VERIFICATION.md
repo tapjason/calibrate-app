@@ -730,6 +730,11 @@ Added 2026-09-29 (polish pass):
       happened / it didn't happen" with a neutral glyph; "Change answer" puts the
       prediction back to pending and shows the question again. Check History and
       Stats don't count the withdrawn answer.
+- [ ] **Resolve all (added 2026-10-04; web-verified):** with three or more ready,
+      Home shows **Resolve all N**. It opens a sheet that steps through them ("1 of
+      3"), with **Next** after each answer, **Finish** on the last, and "All caught
+      up" at the end. On the phone: the sheet's grabber and detents, the resolve
+      haptic per card, and swiping down with a typed reflection still asks first.
 - [ ] **History:** filters sit in one horizontally scrolling row; a line under them
       counts "N answered · N happened"; resolved cards say "resolved {date}".
 - [ ] **Identity card:** your best category large, the contrast line smaller under

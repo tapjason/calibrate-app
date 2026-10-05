@@ -29,6 +29,13 @@ interface ResolvePromptProps {
    * the screen can ask before a swipe-down throws it away.
    */
   onDraftChange?: (draft: string) => void;
+  /** The finishing button after an answer: "Done" alone, "Next" in a run. */
+  advanceLabel?: string;
+  /**
+   * In a run the reflection waits behind "Add a reflection", so moving on is
+   * one tap; on its own it's open, since there's nothing else to do.
+   */
+  reflectionCollapsed?: boolean;
 }
 
 /**
@@ -53,8 +60,15 @@ export function bucketLine(bucket: BucketStat): string {
  * .getById applies the current-user filter, so a crafted deep-link can't
  * surface another user's prediction.
  */
-export function ResolvePrompt({ predictionId, onResolved, onDraftChange }: ResolvePromptProps) {
+export function ResolvePrompt({
+  predictionId,
+  onResolved,
+  onDraftChange,
+  advanceLabel = 'Done',
+  reflectionCollapsed = false,
+}: ResolvePromptProps) {
   const [loading, setLoading] = useState(true);
+  const [reflectionOpen, setReflectionOpen] = useState(!reflectionCollapsed);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [reflection, setReflection] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +137,7 @@ export function ResolvePrompt({ predictionId, onResolved, onDraftChange }: Resol
       // A milestone from the withdrawn answer mustn't linger for the next one.
       useStatsStore.getState().clearMilestone();
       setReflection('');
+      setReflectionOpen(!reflectionCollapsed);
       setAnswered(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -198,20 +213,32 @@ export function ResolvePrompt({ predictionId, onResolved, onDraftChange }: Resol
           </View>
         )}
 
-        <TextField
-          label="Reflection (optional)"
-          value={reflection}
-          onChangeText={setReflection}
-          placeholder="What surprised you?"
-          multiline
-          maxLength={500}
-          testID="reflection-field"
-        />
+        {reflectionOpen ? (
+          <TextField
+            label="Reflection (optional)"
+            value={reflection}
+            onChangeText={setReflection}
+            placeholder="What surprised you?"
+            multiline
+            maxLength={500}
+            testID="reflection-field"
+          />
+        ) : (
+          <Pressable
+            onPress={() => setReflectionOpen(true)}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={styles.addReflection}
+            testID="resolve-add-reflection"
+          >
+            <Text style={styles.changeAnswerText}>Add a reflection</Text>
+          </Pressable>
+        )}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Button
-          label={submitting ? 'Saving…' : 'Done'}
+          label={submitting ? 'Saving…' : advanceLabel}
           onPress={() => void finish()}
           disabled={submitting}
           testID="resolve-done"
@@ -353,6 +380,7 @@ const styles = StyleSheet.create({
   },
   bucketLine: { ...type.callout, color: colors.textPrimary },
   changeAnswer: { alignSelf: 'center', marginTop: space.lg, paddingVertical: space.sm },
+  addReflection: { alignSelf: 'flex-start', marginBottom: space.lg, paddingVertical: space.sm },
   changeAnswerText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
   categoryRow: {
     alignItems: 'center',

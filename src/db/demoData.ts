@@ -100,9 +100,13 @@ const TITLES: Record<Category, string[]> = {
   ],
 };
 
-/** Open predictions for the Today list: two ready to resolve, the rest coming up. */
+/**
+ * Open predictions for the Today list: three ready to resolve (enough for Home
+ * to offer "Resolve all", roadmap step 18), the rest coming up.
+ */
 const PENDING: Array<{ category: Category; confidence: number; title: string; dueInDays: number }> =
   [
+    { category: 'health', confidence: 40, title: 'Sleep eight hours three nights running', dueInDays: -2 },
     { category: 'work', confidence: 70, title: 'The client demo goes smoothly', dueInDays: -1 },
     { category: 'health', confidence: 55, title: 'Swim twice this week', dueInDays: 0 },
     { category: 'finance', confidence: 85, title: 'Stay under budget on the trip', dueInDays: 2 },

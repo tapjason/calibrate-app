@@ -1,0 +1,127 @@
+import { useCallback, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { isReadyToResolve } from '@/components/prediction/dueGroups';
+import { Button } from '@/components/ui/Button';
+import { colors, radius, space, type } from '@/constants/theme';
+import { usePredictionStore } from '@/store/predictionStore';
+
+import { ResolvePrompt } from './ResolvePrompt';
+
+/** Home offers a run once this many predictions are ready (roadmap step 18). */
+export const RUN_THRESHOLD = 3;
+
+interface ResolveRunProps {
+  /** Leave the run: after "All caught up", or straight away if nothing is ready. */
+  onClose: () => void;
+  /** The current card's unsaved reflection, so the screen can guard a dismissal. */
+  onDraftChange?: (predictionId: string, draft: string) => void;
+}
+
+/**
+ * Resolve every ready prediction in one sitting (roadmap step 18). A backlog
+ * of overdue predictions is where people quit, and resolution is what feeds
+ * the data.
+ *
+ * One ResolvePrompt at a time, in due order. Yes or No shows the usual
+ * acknowledgement and waits for **Next**: an automatic advance would take the
+ * pace away from the user (WCAG 2.2.1) and hide the bucket line. Skip moves on
+ * at once, as it does alone. A milestone appears on the card that earned it.
+ *
+ * The queue is a snapshot taken when the run opens, so a sync landing midway
+ * can't reshuffle it; a card resolved elsewhere in the meantime is passed over.
+ */
+export function ResolveRun({ onClose, onDraftChange }: ResolveRunProps) {
+  const [queue] = useState<string[]>(() => {
+    const now = new Date();
+    return usePredictionStore
+      .getState()
+      .pending.filter((p) => isReadyToResolve(p, now))
+      .sort((a, b) => (Date.parse(a.due_date) || 0) - (Date.parse(b.due_date) || 0))
+      .map((p) => p.id);
+  });
+  const [index, setIndex] = useState(0);
+
+  // Stable per card, so ResolvePrompt's draft effect doesn't re-fire on
+  // every render of the run.
+  const currentId = queue[index];
+  const reportDraft = useCallback(
+    (draft: string) => {
+      if (currentId) onDraftChange?.(currentId, draft);
+    },
+    [currentId, onDraftChange],
+  );
+
+  const advance = () => {
+    const stillOpen = new Set(usePredictionStore.getState().pending.map((p) => p.id));
+    let next = index + 1;
+    while (next < queue.length && !stillOpen.has(queue[next])) next += 1;
+    setIndex(next);
+  };
+
+  if (index >= queue.length) {
+    return (
+      <View style={styles.done} testID="resolve-run-done">
+        <Text style={styles.doneTitle} accessibilityRole="header">
+          All caught up
+        </Text>
+        <Text style={styles.doneBody}>
+          {queue.length === 0
+            ? 'Nothing is ready to resolve right now.'
+            : 'Every prediction that was ready has an answer.'}
+        </Text>
+        <Button label="Done" onPress={onClose} testID="resolve-run-close" />
+      </View>
+    );
+  }
+
+  const id = queue[index];
+  const last = index === queue.length - 1;
+  const progress = (index + 1) / queue.length;
+
+  return (
+    <View style={styles.wrap}>
+      <View
+        style={styles.progress}
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Prediction ${index + 1} of ${queue.length}`}
+        accessibilityValue={{ min: 0, max: queue.length, now: index + 1 }}
+        testID="resolve-run-progress"
+      >
+        <Text style={styles.count}>
+          {index + 1} of {queue.length}
+        </Text>
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${progress * 100}%` }]} />
+        </View>
+      </View>
+      {/* A new key per card: each one starts fresh, with its own answer and
+          reflection state. */}
+      <ResolvePrompt
+        key={id}
+        predictionId={id}
+        advanceLabel={last ? 'Finish' : 'Next'}
+        reflectionCollapsed
+        onResolved={advance}
+        onDraftChange={reportDraft}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { flex: 1 },
+  progress: { gap: space.xs, paddingHorizontal: space.lg, paddingTop: space.lg },
+  count: { ...type.eyebrow, color: colors.textSecondary },
+  track: {
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.pill,
+    height: 4,
+    overflow: 'hidden',
+  },
+  fill: { backgroundColor: colors.brand600, height: 4 },
+  done: { flex: 1, gap: space.md, justifyContent: 'center', padding: space.xxl },
+  doneTitle: { ...type.title2, color: colors.textPrimary },
+  doneBody: { ...type.subhead, color: colors.textSecondary },
+});
