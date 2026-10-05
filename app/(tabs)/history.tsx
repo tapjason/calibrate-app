@@ -39,29 +39,32 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.wrap}>
-      {/* One scrolling row of filters rather than chips wrapping to two. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-        style={styles.filters}
-      >
-        {FILTERS.map((f) => (
-          <Pressable
-            key={f}
-            onPress={() => setFilter(f)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: filter === f }}
-            // 36pt chip + 4pt slop each side = the 44pt minimum target.
-            hitSlop={{ top: 4, bottom: 4 }}
-            style={[styles.chip, filter === f && styles.chipActive]}
-          >
-            <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>
-              {f}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {/* One scrolling row of filters rather than chips wrapping to two, and
+          only once there is something to filter (roadmap step 33). */}
+      {resolved.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.row}
+          style={styles.filters}
+        >
+          {FILTERS.map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setFilter(f)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: filter === f }}
+              // 36pt chip + 4pt slop each side = the 44pt minimum target.
+              hitSlop={{ top: 4, bottom: 4 }}
+              style={[styles.chip, filter === f && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>
+                {f}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
       {filtered.length > 0 && (
         <Text style={styles.summary} testID="history-summary">
           {summary}

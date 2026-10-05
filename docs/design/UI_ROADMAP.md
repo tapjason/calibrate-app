@@ -70,7 +70,7 @@ after steps 31–32 shipped.
 
 | Step | Item | Size | State |
 |---|---|---|---|
-| 33 | History hides its filters until there is something to filter | S | Next |
+| 33 | History hides its filters until there is something to filter | S | **Done** 2026-10-05 · web-verified |
 | 34 | An empty week's recap says what's coming, not "nothing" | S | Next |
 | 35 | Stats' calibrating caption gets the next due date too | S | Next |
 
