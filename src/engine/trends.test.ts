@@ -6,6 +6,7 @@ import {
   buildTrendSummary,
   categoryTrends,
   confidenceCoverage,
+  correctionTable,
   monthlyTrend,
   overallDelta,
 } from './trends';
@@ -209,7 +210,61 @@ describe('buildTrendSummary', () => {
         middle_share: 0,
       },
       delta_recent: null,
+      corrections: [],
+      correction_progress: null,
     });
+  });
+});
+
+describe('correctionTable (roadmap step 20)', () => {
+  const T = '2026-03-01T12:00:00.000Z';
+  /** n calls at a confidence in one category, `hits` of them happening. */
+  const calls = (n: number, hits: number, confidence: number, category: Category) =>
+    Array.from({ length: n }, (_, i) => p(confidence, i < hits, T, category));
+
+  it('gives one row per category and band with ten or more, worst first', () => {
+    const rows = correctionTable([
+      ...calls(17, 8, 90, 'finance'), // 90 said, 47% happened: error 0.43
+      ...calls(20, 16, 90, 'health'), // 90 said, 80% happened: error 0.10
+      ...calls(12, 8, 70, 'work'), // 70 said, 67% happened: error 0.03
+    ]).rows;
+
+    expect(rows.map((r) => `${r.category} ${r.low}`)).toEqual([
+      'finance 80',
+      'health 80',
+      'work 60',
+    ]);
+    expect(rows[0]).toMatchObject({
+      high: 100,
+      stated_mean: 90,
+      resolved: 17,
+      happened: 8,
+      direction: 'overconfident',
+    });
+    expect(rows[0].actual_rate).toBeCloseTo(8 / 17, 5);
+    expect(rows[2].direction).toBe('calibrated');
+  });
+
+  // CLAUDE.md: never a number built on noise. Nine in a band is still counts.
+  it('leaves out bands below ten, and says which band is closest', () => {
+    const { rows, progress } = correctionTable([
+      ...calls(9, 2, 90, 'finance'),
+      ...calls(4, 4, 30, 'social'),
+    ]);
+    expect(rows).toEqual([]);
+    expect(progress).toEqual({ category: 'finance', low: 80, high: 100, resolved: 9 });
+  });
+
+  it('caps the table at five rows', () => {
+    const many = (['work', 'health', 'finance', 'social', 'personal'] as const).flatMap(
+      (c) => [...calls(10, 5, 90, c), ...calls(10, 5, 10, c)],
+    );
+    expect(correctionTable(many).rows).toHaveLength(5);
+  });
+
+  it('ignores skipped predictions', () => {
+    const skipped = calls(12, 0, 90, 'work').map((x) => ({ ...x, status: 'skipped' as const }));
+    expect(correctionTable(skipped)).toEqual({ rows: [], progress: null });
   });
 });
 

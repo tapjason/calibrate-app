@@ -9,7 +9,13 @@ import { shareTextFile, type ExportOutcome } from '@/export/file';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
-import type { CategoryTrend, PeriodStat, TrendSummary } from '@/engine/trends';
+import type {
+  CategoryTrend,
+  CorrectionRow,
+  PeriodStat,
+  TrendSummary,
+} from '@/engine/trends';
+import { MIN_N_BAND } from '@/types';
 
 const EXPORT_MESSAGES: Record<Exclude<ExportOutcome, 'shared'>, string> = {
   unavailable: "Exporting isn't available on this device.",
@@ -107,6 +113,7 @@ export function TrendsPanel({
               <CategoryRow key={category.category} trend={category} />
             ))}
           </Section>
+          <Corrections trends={trends} />
           <CoverageLine trends={trends} />
         </>
       )}
@@ -175,11 +182,69 @@ function CategoryRow({ trend }: { trend: CategoryTrend }) {
   );
 }
 
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const percent = (rate: number) => `${Math.round(rate * 100)}%`;
+
+/**
+ * The personal correction table (roadmap step 20): what each confidence band
+ * has actually meant, per category. The engine only returns bands with at
+ * least MIN_N_BAND resolved, so nothing here can read 0% or 100% off two
+ * predictions; while none qualify, it says which band is closest instead.
+ */
+function Corrections({ trends }: { trends: TrendSummary }) {
+  const rows = trends.corrections;
+  const progress = trends.correction_progress;
+  if (rows.length === 0 && !progress) return null;
+
+  const worst = rows[0];
+  return (
+    <Section title="What your confidence means">
+      {rows.length === 0 && progress ? (
+        <Text style={styles.muted} testID="trends-corrections-progress">
+          A band needs {MIN_N_BAND} calls in one category before it gets a row.
+          Closest: {progress.category} at {progress.low}–{progress.high}%, with{' '}
+          {progress.resolved}.
+        </Text>
+      ) : (
+        <>
+          {worst && worst.direction !== 'calibrated' && (
+            <Text style={styles.delta} testID="trends-corrections-lead">
+              In {worst.category}, your {worst.low}–{worst.high}% has come true{' '}
+              {percent(worst.actual_rate)} of the time.
+            </Text>
+          )}
+          <Text style={styles.muted}>
+            How often each band came true, where you&apos;ve used it at least {MIN_N_BAND}{' '}
+            times in one category.
+          </Text>
+          {rows.map((row) => (
+            <CorrectionLine key={`${row.category}-${row.low}`} row={row} />
+          ))}
+        </>
+      )}
+    </Section>
+  );
+}
+
+function CorrectionLine({ row }: { row: CorrectionRow }) {
+  return (
+    <View style={styles.row} testID={`trend-correction-${row.category}-${row.low}`}>
+      <Text style={styles.rowLabelPlain}>
+        {capitalize(row.category)} at {row.low}–{row.high}%
+      </Text>
+      <Text style={styles.rowValue}>
+        {percent(row.actual_rate)} · {row.happened} of {row.resolved}
+      </Text>
+    </View>
+  );
+}
+
 function CoverageLine({ trends }: { trends: TrendSummary }) {
   const { buckets_used, empty_buckets, middle_share } = trends.coverage;
   return (
     <View style={styles.coverage} testID="trends-coverage">
-      <Text style={styles.rowLabel}>Range you use</Text>
+      {/* Plain, not rowLabel: its textTransform read "Range You Use". */}
+      <Text style={styles.rowLabelPlain}>Range you use</Text>
       <Text style={styles.muted}>
         {buckets_used} of 5 confidence bands.{' '}
         {empty_buckets.length > 0
@@ -235,6 +300,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'capitalize',
   },
+  // For labels that carry a number: textTransform would capitalize "at" too.
+  rowLabelPlain: { ...type.subhead, color: colors.textPrimary, fontWeight: '500' },
   rowValue: { ...type.subhead, color: colors.textSecondary },
   coverage: { gap: 4, paddingTop: 4 },
 });

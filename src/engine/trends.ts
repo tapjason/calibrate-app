@@ -13,6 +13,7 @@ import { computeCalibrationPoints, type CalibrationPoint } from './calibration';
 import { localParts } from './localTime';
 import { classifyDirection } from './patterns';
 import {
+  MIN_N_BAND,
   MIN_N_CATEGORY,
   type Category,
   type Direction,
@@ -67,6 +68,33 @@ export interface CoverageStat {
   middle_share: number;
 }
 
+/**
+ * One row of the personal correction table: what a confidence band has meant,
+ * in one category. "In finance, your 80–100% came true 47% of the time."
+ */
+export interface CorrectionRow {
+  category: Category;
+  low: number;
+  high: number;
+  /** Mean stated confidence in the band, 0–100. */
+  stated_mean: number;
+  /** How often it happened, 0–1. */
+  actual_rate: number;
+  resolved: number;
+  happened: number;
+  /** |stated_mean/100 − actual_rate|, the engine's bucket error. */
+  error: number;
+  direction: Direction;
+}
+
+/** The band nearest to earning a row, for an honest empty state. */
+export interface CorrectionProgress {
+  category: Category;
+  low: number;
+  high: number;
+  resolved: number;
+}
+
 /** Everything the Plus analytics surface renders. */
 export interface TrendSummary {
   /** Most recent last. Only months with at least one resolution appear. */
@@ -76,6 +104,10 @@ export interface TrendSummary {
   coverage: CoverageStat;
   /** Change in score between the older and newer half of all history. */
   delta_recent: number | null;
+  /** The correction table, worst band first (roadmap step 20). */
+  corrections: CorrectionRow[];
+  /** When `corrections` is empty: the band closest to qualifying, or null. */
+  correction_progress: CorrectionProgress | null;
 }
 
 const BUCKET_WIDTH = 20;
@@ -230,12 +262,61 @@ export function overallDelta(
   return recent.rating - earlier.rating;
 }
 
+/**
+ * The personal correction table: per category and confidence band, how often
+ * the user's stated confidence actually came true. The most actionable thing
+ * the numbers say ("read your 80% in money as 50%"), and it needs no model.
+ *
+ * Only bands with at least `minN` resolved appear, so it can never print 0% or
+ * 100% off two predictions. Worst calibrated first, at most `limit` rows.
+ */
+export function correctionTable(
+  resolved: readonly Prediction[],
+  minN = MIN_N_BAND,
+  limit = 5,
+): { rows: CorrectionRow[]; progress: CorrectionProgress | null } {
+  const byCategory = new Map<Category, CalibrationPoint[]>();
+  for (const p of resolved.filter(isYesNo)) {
+    const list = byCategory.get(p.category) ?? [];
+    list.push(toPoint(p));
+    byCategory.set(p.category, list);
+  }
+
+  const rows: CorrectionRow[] = [];
+  let progress: CorrectionProgress | null = null;
+  for (const [category, points] of byCategory) {
+    for (const b of computeCalibrationPoints(points).buckets) {
+      if (b.total_resolved >= minN) {
+        rows.push({
+          category,
+          low: b.low,
+          high: b.high,
+          stated_mean: b.stated_confidence_mean,
+          actual_rate: b.actual_rate,
+          resolved: b.total_resolved,
+          happened: b.resolved_yes,
+          error: b.bucket_error,
+          direction: b.direction,
+        });
+      } else if (!progress || b.total_resolved > progress.resolved) {
+        progress = { category, low: b.low, high: b.high, resolved: b.total_resolved };
+      }
+    }
+  }
+
+  rows.sort((a, b) => b.error - a.error || b.resolved - a.resolved);
+  return { rows: rows.slice(0, limit), progress: rows.length > 0 ? null : progress };
+}
+
 /** Everything the Plus analytics surface needs, in one pass-friendly call. */
 export function buildTrendSummary(resolved: readonly Prediction[]): TrendSummary {
+  const corrections = correctionTable(resolved);
   return {
     periods: monthlyTrend(resolved),
     categories: categoryTrends(resolved),
     coverage: confidenceCoverage(resolved),
     delta_recent: overallDelta(resolved),
+    corrections: corrections.rows,
+    correction_progress: corrections.progress,
   };
 }

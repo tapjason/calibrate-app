@@ -95,6 +95,7 @@ describe('TrendsPanel — free', () => {
     expect(screen.queryByTestId('trends-delta')).toBeNull();
     expect(screen.queryByTestId('trend-period-2026-09')).toBeNull();
     expect(screen.queryByTestId('trends-export')).toBeNull();
+    expect(screen.queryByTestId('trend-correction-work-80')).toBeNull();
   });
 });
 
@@ -124,6 +125,36 @@ describe('TrendsPanel — Plus', () => {
     const row = screen.getByTestId('trend-period-2026-07');
     expect(row).toHaveTextContent(/1 resolved$/);
     expect(row).not.toHaveTextContent('·');
+  });
+
+  // Roadmap step 20: the personal correction table.
+  it('translates each well-used band into how often it came true', () => {
+    const finance = Array.from({ length: 17 }, (_, i) =>
+      p(90, i < 8, '2026-09-20T12:00:00.000Z', 'finance'),
+    );
+    seed({ resolved: [...history(), ...finance] });
+    render(<TrendsPanel />);
+
+    expect(screen.getByTestId('trend-correction-finance-80')).toHaveTextContent(
+      'Finance at 80–100%47% · 8 of 17',
+    );
+    // The worst band leads, as a sentence.
+    expect(screen.getByTestId('trends-corrections-lead')).toHaveTextContent(
+      'In finance, your 80–100% has come true 47% of the time.',
+    );
+    // Calibrated bands get rows too, but never the lead.
+    expect(screen.getByTestId('trend-correction-work-80')).toBeTruthy();
+  });
+
+  it('names the closest band while none has enough for a row', () => {
+    const thin = Array.from({ length: 4 }, (_, i) => p(90, i < 2, '2026-07-01T12:00:00.000Z'));
+    seed({ resolved: thin });
+    render(<TrendsPanel />);
+
+    expect(screen.getByTestId('trends-corrections-progress')).toHaveTextContent(
+      /Closest: work at 80–100%, with 4\./,
+    );
+    expect(screen.queryByTestId('trend-correction-work-80')).toBeNull();
   });
 
   it('says so when there is nothing to chart yet', () => {

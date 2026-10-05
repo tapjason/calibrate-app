@@ -28,6 +28,14 @@ export const MIN_N_OVERALL = 20;
  */
 export const MIN_N_CATEGORY = 15;
 
+/**
+ * Minimum resolved predictions in one confidence band before anything is said
+ * about that band: the chart's verdict, the Log screen's track record, the
+ * correction table. Ten is where a band's rate stops jumping in 10-point
+ * steps; below it, counts only.
+ */
+export const MIN_N_BAND = 10;
+
 export type Category = 'work' | 'health' | 'finance' | 'social' | 'personal';
 
 export type PredictionStatus =

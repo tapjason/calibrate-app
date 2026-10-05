@@ -9,13 +9,14 @@
 // Direction comes from the engine (`BucketStat.direction`); this file only
 // picks which bucket to talk about and words it.
 
-import type { BucketStat } from '@/types';
+import { MIN_N_BAND, type BucketStat } from '@/types';
 
 /**
  * Resolutions a single bucket needs before its direction is named. The
  * overall rating must also be unlocked (MIN_N_OVERALL) before any verdict.
+ * One number app-wide (MIN_N_BAND), shared with the engine's correction table.
  */
-export const MIN_BUCKET_N_FOR_VERDICT = 10;
+export const MIN_BUCKET_N_FOR_VERDICT = MIN_N_BAND;
 
 export interface ChartTakeaway {
   title: string;

@@ -563,6 +563,20 @@ the same thing, no instructions, title-style titles without ending punctuation.
 - **Proposed** (roadmap D9): fire the reminder in the evening of the due day, not at
   noon.
 
+### 7.16 Trends (Plus)
+
+The long view, in plain rows: label left in `textPrimary`, value right in
+`textSecondary`, section titles as `eyebrow` in sentence case. Every row carries its
+own n, and a row below its threshold shows counts, never a score.
+
+- **What your confidence means** (roadmap step 20): the personal correction table.
+  One row per category and band with ≥ 10 resolved (`MIN_N_BAND`), worst first, at
+  most five: "Finance at 80–100% · 47% · 8 of 17". When the worst band is off, it
+  leads as a sentence ("In finance, your 80–100% has come true 47% of the time.").
+  With no qualifying band, one line names the closest one and its count instead.
+- Labels that contain numbers or small words don't use `textTransform:
+  'capitalize'` (it produced "Range You Use"); capitalise the string instead.
+
 ---
 
 ## 8. Accessibility checklist (per change)
