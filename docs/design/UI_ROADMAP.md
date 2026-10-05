@@ -78,7 +78,7 @@ screen reader is handed), as the demo account.
 
 | Step | Item | Size | State |
 |---|---|---|---|
-| 41 | Settings' switches say what they switch | S | Next |
+| 41 | Settings' switches say what they switch | S | **Done** 2026-10-05 · web-verified (named, checked state toggles) |
 | 42 | Decorative pieces stay silent on every platform | S | Next |
 | 43 | The rating and each badge row read as one sentence | S | Next |
 

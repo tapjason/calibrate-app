@@ -42,15 +42,16 @@ describe('SettingsView', () => {
     });
     render(<SettingsView />);
 
-    expect(screen.getByTestId('toggle-notifications').props.value).toBe(false);
-    expect(screen.getByTestId('toggle-ai-refine').props.value).toBe(true);
+    const checked = (id: string) => screen.getByTestId(id).props.accessibilityState.checked;
+    expect(checked('toggle-notifications-row')).toBe(false);
+    expect(checked('toggle-ai-refine-row')).toBe(true);
   });
 
   it('updates the store when notifications is toggled off', async () => {
     render(<SettingsView />);
     expect(useSettingsStore.getState().notificationsEnabled).toBe(true);
 
-    fireEvent(screen.getByTestId('toggle-notifications'), 'valueChange', false);
+    fireEvent.press(screen.getByTestId('toggle-notifications-row'));
 
     await waitFor(() => {
       expect(useSettingsStore.getState().notificationsEnabled).toBe(false);
@@ -60,7 +61,7 @@ describe('SettingsView', () => {
   it('updates the store when AI refine is toggled off', async () => {
     render(<SettingsView />);
 
-    fireEvent(screen.getByTestId('toggle-ai-refine'), 'valueChange', false);
+    fireEvent.press(screen.getByTestId('toggle-ai-refine-row'));
 
     await waitFor(() => {
       expect(useSettingsStore.getState().aiRefineEnabled).toBe(false);
@@ -77,7 +78,7 @@ describe('SettingsView', () => {
     });
     render(<SettingsView />);
 
-    fireEvent(screen.getByTestId('toggle-notifications'), 'valueChange', false);
+    fireEvent.press(screen.getByTestId('toggle-notifications-row'));
 
     await waitFor(() => {
       expect(saved).toContainEqual({
@@ -96,6 +97,16 @@ describe('SettingsView', () => {
   it('names OpenAI on the Coach toggle', () => {
     render(<SettingsView />);
     expect(screen.getByText(/to OpenAI/)).toBeTruthy();
+  });
+
+  // Roadmap step 41: a bare Switch was an unnamed "switch, on" to VoiceOver.
+  it('names each switch by its row, with the description as the hint', () => {
+    render(<SettingsView />);
+    const row = screen.getByTestId('toggle-coach-row');
+    expect(row.props.accessibilityRole).toBe('switch');
+    expect(row.props.accessibilityLabel).toBe('Coach (AI)');
+    expect(row.props.accessibilityHint).toMatch(/OpenAI/);
+    expect(screen.queryByTestId('toggle-coach')).toBeNull(); // the inner Switch is hidden
   });
 
   it('links to How scoring works', () => {

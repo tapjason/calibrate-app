@@ -28,7 +28,7 @@ describe('SettingsView with refine cut from the release', () => {
   it('hides the AI Refine row even when the stored preference is on', () => {
     expect(REFINE_ENABLED).toBe(false);
     render(<SettingsView />);
-    expect(screen.queryByTestId('toggle-ai-refine')).toBeNull();
+    expect(screen.queryByTestId('toggle-ai-refine-row')).toBeNull();
   });
 
   it('leaves the stored preference untouched, so the cut is reversible', () => {
@@ -38,7 +38,7 @@ describe('SettingsView with refine cut from the release', () => {
 
   it('still renders the toggles that are part of the release', () => {
     render(<SettingsView />);
-    expect(screen.getByTestId('toggle-notifications')).toBeTruthy();
-    expect(screen.getByTestId('toggle-coach')).toBeTruthy();
+    expect(screen.getByTestId('toggle-notifications-row')).toBeTruthy();
+    expect(screen.getByTestId('toggle-coach-row')).toBeTruthy();
   });
 });

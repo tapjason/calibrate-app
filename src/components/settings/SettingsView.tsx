@@ -336,8 +336,22 @@ function ToggleRow({
   onValueChange: (value: boolean) => void;
   testID: string;
 }) {
+  // One switch element for the whole row (roadmap step 41): VoiceOver doesn't
+  // attach nearby text to a bare Switch, so on its own it was an unnamed
+  // "switch, on". The row carries the name, state and description; the
+  // inner Switch is hidden from assistive tech and still works by touch.
   return (
-    <View style={styles.row}>
+    <Pressable
+      style={styles.row}
+      onPress={() => onValueChange(!value)}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityHint={description}
+      accessibilityState={{ checked: value }}
+      // The cross-platform prop as well: react-native-web maps this one.
+      aria-checked={value}
+      testID={`${testID}-row`}
+    >
       <View style={styles.rowText}>
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowDescription}>{description}</Text>
@@ -346,6 +360,9 @@ function ToggleRow({
         value={value}
         onValueChange={onValueChange}
         testID={testID}
+        aria-hidden
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         // Brand tint when on; a 3:1 grey track when off, so "off" still reads
         // as a control (DESIGN_SYSTEM §2.2 controlBorder).
         trackColor={{ true: colors.brand600, false: colors.controlBorder }}
@@ -353,7 +370,7 @@ function ToggleRow({
         ios_backgroundColor={colors.controlBorder}
         {...{ activeThumbColor: colors.surface }}
       />
-    </View>
+    </Pressable>
   );
 }
 

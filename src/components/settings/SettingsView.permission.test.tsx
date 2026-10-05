@@ -57,7 +57,7 @@ describe('SettingsView — notification permission', () => {
     for (const state of ['granted', 'unsupported']) {
       mockPermission.current = state;
       const view = render(<SettingsView />);
-      await waitFor(() => expect(screen.getByTestId('toggle-notifications')).toBeTruthy());
+      await waitFor(() => expect(screen.getByTestId('toggle-notifications-row')).toBeTruthy());
       expect(screen.queryByTestId('settings-notification-permission')).toBeNull();
       view.unmount();
     }

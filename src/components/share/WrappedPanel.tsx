@@ -156,6 +156,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
           onPress={() => setShowTitles((v) => !v)}
           accessibilityRole="switch"
           accessibilityState={{ checked: showTitles }}
+          aria-checked={showTitles}
           accessibilityLabel="Show prediction titles on the card"
           testID="wrapped-titles-toggle"
         >
