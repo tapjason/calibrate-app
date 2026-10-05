@@ -90,6 +90,24 @@ category unlocks), and an App Intent for "Log a prediction".
 
 ---
 
+## D. Platform features (researched 2026-10-05)
+
+Details and sources in [`research/platform-2026-10.md`](research/platform-2026-10.md).
+All need a development build; none run in Expo Go or on the web build.
+
+| # | Feature | Size | Needs first |
+|---|---|---|---|
+| P1 | Home and Lock Screen widgets: "2 ready to resolve · next due Tue", and the identity line | M | SDK 56+ (`expo-widgets` stable there; NEXT_STEPS j) |
+| P2 | Private on-device Coach on Apple Foundation Models, server Coach as fallback; same grounding validator | M | Decision D11; iOS 26 + Apple Intelligence device; a community bridge (`@react-native-ai/apple`) |
+| P3 | Siri and Shortcuts: "Log a prediction" (opens Log with the title filled in), "What's my calibration?" | M | SDK 58 (`expo-app-intents`, alpha) |
+| P4 | A native SwiftUI Gauge for the rating | S | SDK 56+ `@expo/ui`; keep the current bar on web |
+
+Not recommended: Live Activities (predictions resolve on a day scale) and resolving
+from an interactive widget (Resolve must show the stated confidence first, and the
+widget extension can't write to the app's database).
+
+---
+
 ## C. From the 2026-10-05 review (need the owner)
 
 | Item | Why it waits |
