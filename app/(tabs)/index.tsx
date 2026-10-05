@@ -5,6 +5,7 @@ import { groupByDue } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { chartTakeaway } from '@/components/stats/chartTakeaway';
+import { IdentityLine } from '@/components/stats/IdentityLine';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
@@ -20,6 +21,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const pending = usePredictionStore((s) => s.pending);
   const userStat = useStatsStore((s) => s.userStat);
+  const categoryStats = useStatsStore((s) => s.categoryStats);
   const buckets = useStatsStore((s) => s.calibration.buckets);
   const headline = ratingHeadline(userStat);
   const groups = groupByDue(pending, new Date());
@@ -30,6 +32,13 @@ export default function HomeScreen() {
         <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
         <Text style={styles.ratingLabel}>calibration rating</Text>
         <ScoreBar score={headline.rating} testID="home-score-bar" />
+        {/* Identity, not statistics (CLAUDE.md): the share card's headline,
+            here too, once a category has climbed past Guesser. */}
+        <IdentityLine
+          userStat={userStat}
+          categoryStats={categoryStats}
+          onPress={() => router.push('/share' as never)}
+        />
         {/* The one-line read, only when a band has enough to say it
             (chartTakeaway's own min-N); otherwise the number stands alone. */}
         {(() => {

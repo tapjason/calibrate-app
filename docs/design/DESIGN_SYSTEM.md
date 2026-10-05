@@ -283,6 +283,10 @@ Weekly Wrapped gets `reveal` without confetti. Everything else is small and prec
 
 ### 7.1 Hero score and provisional state
 
+- **Identity on Home** (roadmap step 28): under the bar, the share card's headline,
+  from the same helper: the best category's emblem and "Sharp in health" in `title3`,
+  the contrast ("Guesser in finance") in `subhead` beneath. Tapping it opens Share.
+  Hidden while every category is a Guesser.
 - **Unlocked:** `display` numeral in `textPrimary`; beside/under it the band's identity
   word ("Forecaster"), a one-line verdict from the engine's direction of error ("You run
   a little hot above 70%"), and a thin bullet-graph bar with ticks at 70 / 85 / 90 and a
