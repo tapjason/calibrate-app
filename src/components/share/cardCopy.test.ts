@@ -2,6 +2,7 @@ import type { BucketStat, CategoryStat, ShareCard, UserStat } from '@/types';
 
 import {
   buildShareCard,
+  identityCardSummary,
   shareHeadline,
   shareLines,
   shareSubline,
@@ -226,5 +227,21 @@ describe('shareSubline plural', () => {
     expect(
       shareSubline({ categories: [], rating: null, total_resolved: 19 }),
     ).toBe('1 more resolution until my calibration unlocks');
+  });
+});
+
+// Roadmap step 45: the card is a picture; its summary says it in words,
+// including each category's tier, which the chips show by emblem alone.
+describe('identityCardSummary', () => {
+  it('reads the headline, the score and every category with its tier', () => {
+    const card = buildShareCard(userStat(), [
+      categoryStat({ category: 'health', badge_level: 'sharp' }),
+      categoryStat({ category: 'finance', badge_level: 'guesser', calibration_score: 62 }),
+    ])!;
+    expect(identityCardSummary(card)).toBe(
+      'Share card. Sharp in health, Guesser in finance. ' +
+        'Calibration 88/100 · 55 predictions resolved. ' +
+        'By category: Sharp in health, Guesser in finance.',
+    );
   });
 });

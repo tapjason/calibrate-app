@@ -152,3 +152,17 @@ export function shareText(card: ShareCard, buckets: readonly BucketStat[]): stri
   }
   return lines.join('\n');
 }
+
+/**
+ * What a screen reader hears for the identity card (roadmap step 45). The
+ * card is a picture made to be shared, so it's one element, and its chips
+ * carry each category's tier by emblem alone: the summary says them in words.
+ */
+export function identityCardSummary(card: ShareCard): string {
+  const { identity, contrast } = shareLines(card);
+  const lead = contrast ? `${identity}, ${contrast}` : identity;
+  const each = card.categories
+    .map((c) => `${BADGE_META[c.badge_level].label} in ${c.category}`)
+    .join(', ');
+  return `Share card. ${lead}. ${shareSubline(card)}. By category: ${each}.`;
+}

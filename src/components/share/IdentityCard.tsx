@@ -8,7 +8,7 @@ import { contrastRatio } from '@/constants/contrast';
 import { CARD_MAX_SCALE, palettes, roundedFamily } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
 
-import { shareLines, shareSubline } from './cardCopy';
+import { identityCardSummary, shareLines, shareSubline } from './cardCopy';
 
 interface IdentityCardProps {
   card: ShareCard;
@@ -74,6 +74,10 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
   return (
     <View
       ref={ref}
+      // One element for a screen reader, in words (roadmap step 45).
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={identityCardSummary(card)}
       style={[
         styles.card,
         { backgroundColor: theme.background },

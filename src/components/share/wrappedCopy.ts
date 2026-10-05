@@ -182,3 +182,12 @@ function integrityNote(summary: WrappedSummary): string {
   const plural = n === 1 ? 'call' : 'calls';
   return `${n} honest-uncertainty ${plural} logged — the most valuable kind.`;
 }
+
+/** What a screen reader hears for the Wrapped card: one element (step 45). */
+export function wrappedCardSummary(story: WrappedStory): string {
+  return [story.title, story.stat, story.verdict, story.receipt, story.provisionalNote, story.note]
+    .filter((part): part is string => Boolean(part))
+    .map((part) => part.replace(/[.\s]+$/, ''))
+    .join('. ')
+    .concat('.');
+}

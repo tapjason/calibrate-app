@@ -1,7 +1,7 @@
 import type { WrappedSummary } from '@/engine/wrapped';
 import type { BucketStat } from '@/types';
 
-import { receiptLine, wrappedStory } from './wrappedCopy';
+import { receiptLine, wrappedCardSummary, wrappedStory } from './wrappedCopy';
 
 describe('receiptLine', () => {
   it('counts a mixed bucket', () => {
@@ -86,5 +86,26 @@ describe('wrappedStory verdict', () => {
       summary([bucket(20, 5, 1, 25), bucket(60, 8, 5, 70), bucket(80, 9, 6, 90)]),
     );
     expect(story.verdict).toMatch(/ — 68% confident on average/);
+  });
+});
+
+describe('wrappedCardSummary (roadmap step 45)', () => {
+  it('joins what the card shows into sentences, skipping empty parts', () => {
+    expect(
+      wrappedCardSummary({
+        title: 'Your week in predictions',
+        stat: '4 predictions resolved · 75% came in',
+        statCount: '4 resolved',
+        statRate: '75% came in',
+        verdict: null,
+        receipt: 'You said 80–100% 3 times. 2 of 3 happened.',
+        provisionalNote: 'A week is too short for a verdict.',
+        note: '1 honest-uncertainty call logged — the most valuable kind.',
+      }),
+    ).toBe(
+      'Your week in predictions. 4 predictions resolved · 75% came in. ' +
+        'You said 80–100% 3 times. 2 of 3 happened. A week is too short for a verdict. ' +
+        '1 honest-uncertainty call logged — the most valuable kind.',
+    );
   });
 });

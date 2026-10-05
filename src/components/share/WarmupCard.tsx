@@ -28,6 +28,10 @@ export const WarmupCard = forwardRef<View, WarmupCardProps>(function WarmupCard(
   return (
     <View
       ref={ref}
+      // One element for a screen reader, in words (roadmap step 45).
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Share card. ${copy.eyebrow}: ${copy.headline}. ${copy.receipt}. ${copy.context}`}
       style={[styles.card, { backgroundColor: theme.background }]}
       testID="warmup-card"
       collapsable={false}

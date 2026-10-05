@@ -638,7 +638,8 @@ holds it to the engine.
       A number and its label are one element ("Calibration rating, 92 out of 100.");
       a row of facts is one sentence; a toggle row is one `switch` with the label as
       its name; decorative pieces carry `aria-hidden` (iOS-only props don't reach
-      web). Steps 41–43, 2026-10-05.
+      web); a share card is one `image` whose label says what it shows, tiers in
+      words. Steps 41–45, 2026-10-05.
 - [ ] Reduce Motion: `reduced` variant renders; haptics still fire.
 - [ ] Reduce Transparency and both ends of the iOS 27 glass slider (ultraclear ↔
       tinted): anything floating on glass stays legible.

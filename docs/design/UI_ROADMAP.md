@@ -66,6 +66,7 @@ is checking it on an iPhone and the decisions.
 | 42 Decorative pieces silent everywhere | Done 2026-10-05, web-verified | — |
 | 43 Rating and badge rows as one sentence | Done 2026-10-05, unit-tested | Yes (VoiceOver) |
 | 44 Warmup questions as announced headings | Done 2026-10-05, web-verified | Yes (VoiceOver hears each new question) |
+| 45 Share cards read as one summary each | Done 2026-10-05, web-verified (each card is one image with a spoken summary, tiers in words) | Yes (VoiceOver) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -77,8 +78,10 @@ by step.
 
 ### 1.1 Building now
 
-Nothing in progress. Nine batches shipped on 2026-10-04 and 10-05 (steps 16–44),
-the last an accessibility pass over every screen's accessibility tree. The next
+Nothing in progress. Steps 16–45 shipped on 2026-10-04 and 10-05; the last two
+batches were an accessibility pass over every screen's accessibility tree. Step 45
+made each share card one image with a spoken summary: the identity card's chips
+showed each category's tier by emblem alone, so the summary says them in words. The next
 useful read is on an iPhone, with VoiceOver on for steps 41, 43 and 44.
 
 ### What's left in the parking lot

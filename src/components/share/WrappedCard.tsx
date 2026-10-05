@@ -8,7 +8,7 @@ import { CARD_MAX_SCALE, roundedFamily } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
-import { wrappedStory, type OverallProgress } from './wrappedCopy';
+import { wrappedCardSummary, wrappedStory, type OverallProgress } from './wrappedCopy';
 
 interface WrappedCardProps {
   summary: WrappedSummary;
@@ -48,6 +48,10 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
   return (
     <View
       ref={ref}
+      // One element for a screen reader, in words (roadmap step 45).
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={wrappedCardSummary(story)}
       style={[styles.card, { backgroundColor: theme.background }]}
       testID="wrapped-card"
       collapsable={false}
