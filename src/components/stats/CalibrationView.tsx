@@ -28,6 +28,8 @@ interface CalibrationViewProps {
   pendingCount?: number;
   /** Opens "How scoring works" (roadmap step 29). */
   onExplain?: () => void;
+  /** While calibrating, when the next one comes due (roadmap step 35). */
+  nextDue?: string | null;
 }
 
 /**
@@ -43,6 +45,7 @@ export function CalibrationView({
   nextBadges,
   pendingCount = 0,
   onExplain,
+  nextDue = null,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
@@ -59,6 +62,7 @@ export function CalibrationView({
               resolved={userStat.total_resolved}
               pending={pendingCount}
               total={MIN_N_OVERALL}
+              nextDue={nextDue}
             />
           ) : (
             <>

@@ -71,6 +71,21 @@ describe('CalibrationView — How is this scored? (roadmap step 29)', () => {
   });
 });
 
+describe('CalibrationView — next due date while calibrating (roadmap step 35)', () => {
+  it('adds it to the calibrating caption', () => {
+    const { getByText } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 3, rating_is_provisional: true })}
+        calibration={EMPTY_CAL}
+        categoryStats={[]}
+        nextBadges={{}}
+        nextDue="The next one comes due Tue, Oct 6."
+      />,
+    );
+    expect(getByText(/your score unlocks\. The next one comes due Tue, Oct 6\.$/)).toBeTruthy();
+  });
+});
+
 describe('CalibrationView provisional progress', () => {
   it('counts open predictions as on their way', () => {
     const { getByText, getByTestId } = render(

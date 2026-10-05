@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { nextDueLine } from '@/components/prediction/dueGroups';
 import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
 import { PlusTeaser } from '@/components/stats/PlusTeaser';
@@ -16,7 +17,7 @@ export default function StatsScreen() {
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const calibration = useStatsStore((s) => s.calibration);
   const nextBadges = useStatsStore((s) => s.nextBadges);
-  const pendingCount = usePredictionStore((s) => s.pending.length);
+  const pending = usePredictionStore((s) => s.pending);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const monthsOnFile = useStatsStore((s) => s.trends.periods.length);
 
@@ -27,7 +28,8 @@ export default function StatsScreen() {
         calibration={calibration}
         categoryStats={categoryStats}
         nextBadges={nextBadges}
-        pendingCount={pendingCount}
+        pendingCount={pending.length}
+        nextDue={nextDueLine(pending, new Date())}
         onExplain={() => router.push('/scoring' as never)}
       />
       {/* Free users get one Plus teaser, not a grey upsell per panel. */}
