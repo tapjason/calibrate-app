@@ -16,6 +16,10 @@ jest.mock('@/constants/app', () => ({
   REFINE_ENABLED: true,
 }));
 
+jest.mock('expo-web-browser', () => ({
+  openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
+}));
+
 beforeEach(() => {
   // In-memory persistence so toggling doesn't touch native AsyncStorage.
   __setPersistenceForTests({ load: async () => null, save: async () => {} });
@@ -98,6 +102,13 @@ describe('SettingsView', () => {
     render(<SettingsView onOpenScoring={onOpenScoring} />);
     fireEvent.press(screen.getByTestId('settings-scoring'));
     expect(onOpenScoring).toHaveBeenCalledTimes(1);
+  });
+
+  // A link that 404s is worse than none: no policy URL, no privacy link.
+  it('links the terms, and the privacy policy only once it is hosted', () => {
+    render(<SettingsView />);
+    expect(screen.getByTestId('settings-terms-link')).toBeTruthy();
+    expect(screen.queryByTestId('settings-privacy-link')).toBeNull();
   });
 
   it('offers a route to Plus for a free user', () => {

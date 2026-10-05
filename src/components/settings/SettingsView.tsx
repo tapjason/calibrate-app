@@ -1,8 +1,9 @@
+import { openBrowserAsync } from 'expo-web-browser';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { REFINE_ENABLED } from '@/constants/app';
-import { colors, type } from '@/constants/theme';
+import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
+import { colors, space, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -135,6 +136,45 @@ export function SettingsView({
       )}
 
       {onOpenDelete && <DeleteRow onOpenDelete={onOpenDelete} />}
+
+      <LegalLinks />
+    </View>
+  );
+}
+
+/**
+ * Guideline 5.1.1(i): the privacy policy easily accessible in the app, not
+ * only in the listing (roadmap step 36). It appears once PRIVACY_POLICY_URL is
+ * set, the same switch that lights up the paywall's link; the terms are
+ * Apple's standard EULA, which the paywall links too.
+ */
+function LegalLinks() {
+  const open = (url: string) => {
+    openBrowserAsync(url).catch((e: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[settings] could not open link:', e);
+    });
+  };
+  return (
+    <View style={styles.legal}>
+      {PRIVACY_POLICY_URL && (
+        <Pressable
+          accessibilityRole="link"
+          hitSlop={8}
+          onPress={() => open(PRIVACY_POLICY_URL as string)}
+          testID="settings-privacy-link"
+        >
+          <Text style={styles.legalLink}>Privacy policy</Text>
+        </Pressable>
+      )}
+      <Pressable
+        accessibilityRole="link"
+        hitSlop={8}
+        onPress={() => open(TERMS_OF_USE_URL)}
+        testID="settings-terms-link"
+      >
+        <Text style={styles.legalLink}>Terms of use</Text>
+      </Pressable>
     </View>
   );
 }
@@ -274,4 +314,6 @@ const styles = StyleSheet.create({
   rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
   deleteRow: { marginTop: 24, paddingVertical: 14 },
   deleteLabel: { ...type.callout, color: colors.destructive, fontWeight: '500' },
+  legal: { flexDirection: 'row', gap: space.xl, marginTop: space.lg, paddingVertical: space.sm },
+  legalLink: { ...type.footnote, color: colors.textSecondary, textDecorationLine: 'underline' },
 });

@@ -70,7 +70,7 @@ by step.
 
 | Step | Item | Size | State |
 |---|---|---|---|
-| 36 | Privacy policy and terms reachable from Settings | S | Next |
+| 36 | Privacy policy and terms reachable from Settings | S | **Done** 2026-10-05 · web-verified (terms; privacy waits on the URL) |
 
 **36.** Guideline 5.1.1(i) wants the privacy policy "easily accessible" inside the
 app, not only in the listing. Today the paywall is the only place that links it,

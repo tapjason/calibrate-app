@@ -888,8 +888,9 @@ What is still yours:
 - [ ] Privacy policy URL — App Store Connect requires one, and
       `docs/APP_PRIVACY.md` §5 lists the five things it has to say. A draft
       is in `docs/PRIVACY_POLICY.md`. **Once it's hosted, put the URL in
-      `PRIVACY_POLICY_URL` (`src/constants/app.ts`)**. The paywall shows
-      its Privacy Policy link only when that's set, and 3.1.2 requires the
+      `PRIVACY_POLICY_URL` (`src/constants/app.ts`)**. The paywall and
+      Settings (since 2026-10-05) show their Privacy Policy links only when
+      that's set, and 3.1.2 requires the
       link in the app, not only in the listing.
 - [ ] `npx expo install --check` before the build. `expo-doctor` is 19/20
       green; the one failure is patch drift inside SDK 55 (15 packages on

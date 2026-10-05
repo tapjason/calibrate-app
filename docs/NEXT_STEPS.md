@@ -94,7 +94,7 @@ found the RevenueCat Test Store drift below.
   content frequency). Proposed answers are in `APP_STORE_LISTING.md` §1.
 - **Privacy policy hosting.** The repo is public, so GitHub Pages can serve
   `docs/` for free. Once it's on, set `PRIVACY_POLICY_URL` in
-  `src/constants/app.ts` and the paywall's Privacy link appears. The agent can
+  `src/constants/app.ts` and the Privacy links on the paywall and in Settings appear. The agent can
   turn Pages on with `gh` if you say so.
 - **The app name.** Two US App Store apps already use "Calibrate", one of them
   an established health brand (and this app has a *health* category).
