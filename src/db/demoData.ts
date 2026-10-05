@@ -49,13 +49,15 @@ const PLAN: Record<Category, Cell[]> = {
   ],
 };
 
+// No weekday or calendar date in a title: due dates are relative to the
+// seeding day, so "by Friday" would show as due on a Tuesday in screenshots.
 const TITLES: Record<Category, string[]> = {
   health: [
     'Run three times this week',
     'In bed by 11 every night this week',
     'Hit 8,000 steps today',
     'No caffeine after 2pm all week',
-    'Make it to the Saturday yoga class',
+    'Make it to yoga class twice this week',
     'Cook dinner at home four nights',
     'Finish the 5k under 30 minutes',
     'Drink water before coffee every morning',
@@ -63,19 +65,19 @@ const TITLES: Record<Category, string[]> = {
     'Skip dessert on weekdays',
   ],
   work: [
-    'Ship the onboarding redesign by Friday',
-    'Inbox to zero before the weekend',
+    'Ship the onboarding redesign on schedule',
+    'Inbox to zero by the end of the week',
     'The client signs off on round one',
     'Finish the quarterly report a day early',
     'Standup stays under 15 minutes all week',
     'Close out the bug backlog for the sprint',
     'Get the conference talk accepted',
-    'Review all open pull requests by Thursday',
+    'Review every open pull request this week',
   ],
   finance: [
     'Stay under the grocery budget this month',
     'No takeout this week',
-    'The refund arrives before the 15th',
+    'The refund arrives within ten days',
     'Move $200 into savings on payday',
     'Cancel two unused subscriptions',
     'Index fund ends the month up',
@@ -83,7 +85,7 @@ const TITLES: Record<Category, string[]> = {
   ],
   personal: [
     'Finish the novel before the library due date',
-    'Call Grandma on Sunday',
+    'Call Grandma this week',
     'Practice guitar four days this week',
     'Clear out the hall closet',
     'Fix the leaky tap myself',
@@ -94,7 +96,7 @@ const TITLES: Record<Category, string[]> = {
     'Sam says yes to the hiking trip',
     'Book club picks my suggestion',
     'Dinner with the old team happens this month',
-    'Get a reply from Alex by Friday',
+    'Get a reply from Alex within two days',
     'The barbecue gets at least ten people',
     'Make one new friend at the meetup',
   ],

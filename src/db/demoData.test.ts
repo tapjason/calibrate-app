@@ -81,3 +81,12 @@ describe('buildDemoPredictions', () => {
     }
   });
 });
+
+// Dates are relative to the seeding day, so a weekday in a title ("by
+// Friday") ends up contradicting the due date shown under it.
+describe('demo titles', () => {
+  it('never name a weekday', () => {
+    const weekday = /\b(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day\b/;
+    expect(rows.filter((p) => weekday.test(p.title)).map((p) => p.title)).toEqual([]);
+  });
+});
