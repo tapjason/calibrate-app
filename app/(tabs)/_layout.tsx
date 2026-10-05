@@ -25,6 +25,12 @@ function tabIcon(sf: [SFSymbol, SFSymbol], ion: [IoniconName, IoniconName]) {
   );
 }
 
+/*
+ * Every tab names itself (tabBarAccessibilityLabel). Without it the name is
+ * built from the tab's text content, and on web the Ionicons fallback is an
+ * icon-font character, so screen readers heard it before "Home" (roadmap
+ * step 25).
+ */
 export default function TabsLayout() {
   return (
     <Tabs
@@ -48,16 +54,17 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: tabIcon(['house.fill', 'house'], ['home', 'home-outline']) }}
+        options={{ title: 'Home', tabBarAccessibilityLabel: 'Home', tabBarIcon: tabIcon(['house.fill', 'house'], ['home', 'home-outline']) }}
       />
       <Tabs.Screen
         name="log"
-        options={{ title: 'Log', tabBarIcon: tabIcon(['plus.circle.fill', 'plus.circle'], ['add-circle', 'add-circle-outline']) }}
+        options={{ title: 'Log', tabBarAccessibilityLabel: 'Log', tabBarIcon: tabIcon(['plus.circle.fill', 'plus.circle'], ['add-circle', 'add-circle-outline']) }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: 'Stats',
+          tabBarAccessibilityLabel: 'Stats',
           tabBarIcon: tabIcon(
             ['chart.line.uptrend.xyaxis.circle.fill', 'chart.line.uptrend.xyaxis'],
             ['stats-chart', 'stats-chart-outline'],
@@ -66,12 +73,13 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'History', tabBarIcon: tabIcon(['clock.fill', 'clock'], ['time', 'time-outline']) }}
+        options={{ title: 'History', tabBarAccessibilityLabel: 'History', tabBarIcon: tabIcon(['clock.fill', 'clock'], ['time', 'time-outline']) }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
+          tabBarAccessibilityLabel: 'Settings',
           tabBarIcon: tabIcon(['gearshape.fill', 'gearshape'], ['settings', 'settings-outline']),
         }}
       />
