@@ -27,7 +27,7 @@ is checking it on an iPhone and the decisions.
 | 3 Confidence control | Done | Yes (detent haptic) |
 | 4 Provisional states | Done, as a segmented bar plus the ghost chart. A ring is optional (FUTURE_UI §B). | — |
 | 5 Chart redesign | Done | — |
-| 6 Reanimated | Done except confetti and the emblem flip, now step 17 (§1.1). Warmup score count-up and the landing haptic shipped 2026-10-03. | Yes |
+| 6 Reanimated | Done, including the tier-up flip and confetti (step 17, 2026-10-04). Warmup score count-up and the landing haptic shipped 2026-10-03. | Yes |
 | 7 Warmup → verdict → share | Done | — |
 | 8 Lens emblem | Done | — |
 | 9 Share cards | Done | — |
@@ -55,7 +55,7 @@ when it ships.
 | Step | Item | From | Size | State |
 |---|---|---|---|---|
 | 16 | Halo behind the chart's "n=" labels | FUTURE_UI §B | S | **Done** 2026-10-04 |
-| 17 | Tier-up: emblem flip and confetti | FUTURE_UI §B, DESIGN_SYSTEM §6.1 `tierUp` | M | Next |
+| 17 | Tier-up: emblem flip and confetti | FUTURE_UI §B, DESIGN_SYSTEM §6.1 `tierUp` | M | **Done** 2026-10-04 · replay at `/dev/celebrations` |
 | 18 | Resolve several at once | FUTURE_UI A3 | M | Next |
 | 19 | Track record on the Log slider (free) | FUTURE_UI A1 | S–M | Next |
 | 20 | Personal correction table (Plus) | FUTURE_UI A5 | M | Next |

@@ -46,7 +46,12 @@ describe('detectMilestone', () => {
         cat({ category: 'work', badge_level: 'forecaster' }),
       ],
     );
-    expect(m).toEqual({ kind: 'tier_up', category: 'work', badge: 'forecaster' });
+    expect(m).toEqual({
+      kind: 'tier_up',
+      category: 'work',
+      badge: 'forecaster',
+      from: 'tracker',
+    });
   });
 
   it('puts the rating unlock ahead of a tier-up in the same resolution', () => {
@@ -84,6 +89,23 @@ describe('detectMilestone', () => {
       user({ rating_is_provisional: false }),
       [cat({ category: 'social', badge_level: 'tracker', score_is_provisional: false })],
     );
-    expect(m).toEqual({ kind: 'tier_up', category: 'social', badge: 'tracker' });
+    expect(m).toEqual({
+      kind: 'tier_up',
+      category: 'social',
+      badge: 'tracker',
+      from: 'guesser',
+    });
+  });
+
+  // Reaching 20 resolved with a score above 70 skips Tracker; the flip has to
+  // start from the tier the user actually had.
+  it('reports the tier it came from when a jump skips a rung', () => {
+    const m = detectMilestone(
+      user({ rating_is_provisional: false }),
+      [cat({ category: 'health', badge_level: 'guesser' })],
+      user({ rating_is_provisional: false }),
+      [cat({ category: 'health', badge_level: 'forecaster' })],
+    );
+    expect(m).toMatchObject({ kind: 'tier_up', badge: 'forecaster', from: 'guesser' });
   });
 });

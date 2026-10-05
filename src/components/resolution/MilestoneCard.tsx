@@ -8,8 +8,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { BRAND_CONFETTI, Confetti } from '@/components/ui/Confetti';
 import { haptics } from '@/components/ui/haptics';
-import { LensEmblem } from '@/components/ui/LensEmblem';
+import { FLIP_MS, TierFlip } from '@/components/ui/TierFlip';
 import { BADGE_META } from '@/constants/badges';
 import {
   colors,
@@ -42,23 +43,36 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
   }
 }
 
+const EMBLEM_SIZE = 64;
+
+/** Oracle is the one tier whose emblem carries gold, so its confetti may too. */
+const ORACLE_CONFETTI: readonly string[] = [...BRAND_CONFETTI, colors.oracleGold];
+
 /**
  * One of the design system's few full celebrations (DESIGN_SYSTEM §6.2):
  * score unlock or badge tier-up. It scales in on a spring and plays the
  * Success haptic — the only place outside the Warmup that pattern is used,
  * and never for a Yes. Reduce Motion gets a plain fade; the haptic still
  * fires, and the words say everything the motion does.
+ *
+ * A tier-up adds the `tierUp` treatment (§6.1): the emblem flips from the old
+ * tier to the new one, the haptic lands as the new face turns in, and a
+ * confetti burst leaves the emblem. Under Reduce Motion both are skipped.
  */
 export function MilestoneCard({ milestone }: { milestone: Milestone }) {
   const reduceMotion = useReducedMotion();
   const shown = useSharedValue(0);
+  const tierUp = milestone.kind === 'tier_up';
 
   useEffect(() => {
-    haptics.unlock();
+    // In sync with the moment (§6.2): on a tier-up, when the new face appears.
+    const landing = tierUp && !reduceMotion ? FLIP_MS / 2 : 0;
+    const timer = setTimeout(() => haptics.unlock(), landing);
     shown.value = reduceMotion
       ? withTiming(1, { duration: 200 })
       : withSpring(1, { damping: 14, stiffness: 180 });
-  }, [reduceMotion, shown]);
+    return () => clearTimeout(timer);
+  }, [reduceMotion, shown, tierUp]);
 
   const style = useAnimatedStyle(() => ({
     opacity: shown.value,
@@ -77,7 +91,14 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
       accessibilityLiveRegion="polite"
     >
       {milestone.kind === 'tier_up' ? (
-        <LensEmblem tier={milestone.badge} size={64} />
+        <View style={styles.emblem}>
+          <TierFlip from={milestone.from} to={milestone.badge} size={EMBLEM_SIZE} />
+          <Confetti
+            originX={EMBLEM_SIZE / 2}
+            originY={EMBLEM_SIZE / 2}
+            palette={milestone.badge === 'oracle' ? ORACLE_CONFETTI : BRAND_CONFETTI}
+          />
+        </View>
       ) : (
         <Text style={styles.number} maxFontSizeMultiplier={DISPLAY_MAX_SCALE}>
           {milestone.kind === 'rating_unlocked' ? milestone.rating : milestone.score}
@@ -103,6 +124,8 @@ const styles = StyleSheet.create({
     marginBottom: space.xxl,
     padding: space.lg,
   },
+  // Above the text column, so confetti leaving the emblem isn't drawn under it.
+  emblem: { height: EMBLEM_SIZE, width: EMBLEM_SIZE, zIndex: 1 },
   number: {
     ...type.readout,
     ...tabularNums,

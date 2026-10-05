@@ -50,8 +50,13 @@ export function detectMilestone(
     )
     .sort((a, b) => rank(b.next.badge_level) - rank(a.next.badge_level));
   if (tierUps.length > 0) {
-    const { next } = tierUps[0];
-    return { kind: 'tier_up', category: next.category, badge: next.badge_level };
+    const { next, prev } = tierUps[0];
+    return {
+      kind: 'tier_up',
+      category: next.category,
+      badge: next.badge_level,
+      from: prev?.badge_level ?? 'guesser',
+    };
   }
 
   const unlocked = nextCategories.find((next) => {

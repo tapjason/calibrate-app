@@ -689,6 +689,10 @@ Added 2026-09-29 (second pass):
 - [ ] **The 20th resolution** shows a "Your calibration score is unlocked" card
       that springs in with a success haptic; reaching Tracker (20 in a category)
       shows "Tracker in {category}" with its emblem. Neither ever appears for a drop.
+      **Tier-up (added 2026-10-04):** the emblem flips from the old tier to the
+      new one, the success tap lands as the new face turns in, and a short
+      confetti burst leaves the emblem (none with Reduce Motion). To replay any
+      celebration without earning it, open `/dev/celebrations` on the dev build.
 - [ ] **Stats chart:** a sentence title above it ("Your curve so far", or once
       unlocked with ≥ 10 in a band "You're overconfident at 80–100%"), warm/cool
       tinted regions labelled Overconfident/Underconfident, coloured dots with

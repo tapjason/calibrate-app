@@ -223,7 +223,8 @@ export interface BucketStat {
  */
 export type Milestone =
   | { kind: 'rating_unlocked'; rating: number }
-  | { kind: 'tier_up'; category: Category; badge: BadgeLevel }
+  /** `from` is the tier before, so the tier-up can flip from it (a jump can skip a rung). */
+  | { kind: 'tier_up'; category: Category; badge: BadgeLevel; from: BadgeLevel }
   | { kind: 'category_unlocked'; category: Category; score: number };
 
 /** Aggregate result of running the calibration engine on a set of predictions. */

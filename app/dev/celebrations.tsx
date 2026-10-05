@@ -1,0 +1,70 @@
+import { Redirect } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { MilestoneCard } from '@/components/resolution/MilestoneCard';
+import { Button } from '@/components/ui/Button';
+import { colors, space, type } from '@/constants/theme';
+import type { Milestone } from '@/types';
+
+const SAMPLES: { label: string; milestone: Milestone }[] = [
+  {
+    label: 'Tier-up: Guesser → Forecaster',
+    milestone: { kind: 'tier_up', category: 'health', badge: 'forecaster', from: 'guesser' },
+  },
+  {
+    label: 'Tier-up: Sharp → Oracle',
+    milestone: { kind: 'tier_up', category: 'work', badge: 'oracle', from: 'sharp' },
+  },
+  { label: 'Score unlock', milestone: { kind: 'rating_unlocked', rating: 78 } },
+  {
+    label: 'Category unlock',
+    milestone: { kind: 'category_unlocked', category: 'finance', score: 64 },
+  },
+];
+
+/**
+ * Development only: replays the celebration cards (DESIGN_SYSTEM §6.2) so the
+ * motion and haptics can be checked without earning a badge first. Open
+ * /dev/celebrations on the web build or a dev client. Release builds redirect
+ * home.
+ */
+export default function DevCelebrationsScreen() {
+  const [shown, setShown] = useState(0);
+  const [run, setRun] = useState(0);
+
+  if (!__DEV__) return <Redirect href="/" />;
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.wrap}>
+        <Text style={styles.title}>Celebrations</Text>
+        <Text style={styles.body}>
+          Tap one to play it again. Development builds only.
+        </Text>
+        {SAMPLES.map((sample, i) => (
+          <Button
+            key={sample.label}
+            label={sample.label}
+            variant={i === shown ? 'primary' : 'secondary'}
+            onPress={() => {
+              setShown(i);
+              setRun((r) => r + 1);
+            }}
+            testID={`dev-celebration-${i}`}
+          />
+        ))}
+        {/* A new key remounts the card, which is what replays its motion. */}
+        <MilestoneCard key={run} milestone={SAMPLES[shown].milestone} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.canvas },
+  wrap: { gap: space.md, padding: space.lg, paddingTop: space.xxl },
+  title: { ...type.title2, color: colors.textPrimary },
+  body: { ...type.subhead, color: colors.textSecondary },
+});
