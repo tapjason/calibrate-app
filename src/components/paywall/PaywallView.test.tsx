@@ -196,6 +196,26 @@ describe('PaywallView', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  // Roadmap step 30: "Not now" sits below the fold on a phone, so the way out
+  // is also at the top, where people look for it.
+  it('offers a labelled close control at the top too', () => {
+    seed();
+    const onClose = jest.fn();
+    render(<PaywallView onClose={onClose} />);
+    const close = screen.getByTestId('paywall-dismiss');
+    expect(close.props.accessibilityLabel).toBe('Close');
+    fireEvent.press(close);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('names what Trends now includes', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.getByText(/what your 80% really means/)).toBeTruthy();
+    // Without a way to close, there is nothing to draw at the top either.
+    expect(screen.queryByTestId('paywall-dismiss')).toBeNull();
+  });
+
   // Guideline 3.1.2: the terms of use must be reachable from the purchase
   // screen itself, not only from the store listing.
   it('links to the terms of use', () => {

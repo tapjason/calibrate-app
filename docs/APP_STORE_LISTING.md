@@ -82,8 +82,9 @@ leaves that judgement to the developer), so getting it right first time matters.
 >
 > **HOW IT WORKS**
 > Write a prediction ("I'll finish the report by Friday"), set how confident you
-> are, from 0 to 100%, and pick a due date. When it comes due, Calibrate reminds
-> you. Tap yes or no. That's it.
+> are, from 0 to 100%, and pick a due date. As you set it, you see how your past
+> calls at that confidence turned out. When it comes due, Calibrate reminds you.
+> Tap yes or no. That's it.
 >
 > Over time, Calibrate compares what you said against what happened. If you're
 > 80% sure of things, about 80% of them should come true. Your calibration curve
@@ -120,7 +121,9 @@ leaves that judgement to the developer), so getting it right first time matters.
 > Optional, for going deeper:
 > • Coach: short AI feedback grounded in your own numbers. It sees your
 > statistics, never your predictions' text.
-> • Trends: month-by-month calibration, per-category drill-down, and CSV export.
+> • Trends: month-by-month calibration, per-category drill-down, what your 80%
+> really means in each area, how you do by how far ahead you call it, and CSV
+> export.
 > • Extra card themes.
 >
 > Plus is available monthly, annually (with a one-month free trial), or as a

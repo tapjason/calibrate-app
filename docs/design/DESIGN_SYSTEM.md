@@ -413,6 +413,9 @@ no trial; Lifetime as a smaller third row) → **honest timeline** → **one** C
 - Prices and trial length are **always what the store reports**; never hard-code them.
 - Keep: "Restore purchases" as a text button, the "stay free forever" reassurance,
   trial-terms line, Terms/Privacy links.
+- **Close** (roadmap step 30): a 44pt "×" on `surfaceSunken` at the top right,
+  labelled "Close", as well as "Not now" at the bottom, which is below the fold on a
+  phone. The screen insets its own top edge (a full-screen modal has no header).
 
 ### 7.7 Navigation and sheets
 

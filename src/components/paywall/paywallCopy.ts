@@ -33,7 +33,7 @@ export const PLAN_TAGLINES: Record<PlanId, string> = {
  */
 export const PLUS_FEATURES: readonly string[] = [
   'Coach: an AI read of what your calibration numbers mean',
-  'Trends: month by month, by category, with a CSV export',
+  'Trends: month by month, by category, what your 80% really means, and a CSV export',
   'Extra themes for your cards; the cards themselves stay free',
 ];
 

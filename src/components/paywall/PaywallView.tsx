@@ -88,6 +88,20 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
 
   return (
     <View style={styles.wrap} testID="paywall">
+      {/* The way out people look for, at the top (roadmap step 30). "Not now"
+          below the plans stays, but on a phone it's below the fold. */}
+      {onClose && (
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          hitSlop={8}
+          style={styles.dismiss}
+          testID="paywall-dismiss"
+        >
+          <Icon sf="xmark" fallback="close" size={18} color={colors.textSecondary} />
+        </Pressable>
+      )}
       <Text style={styles.title}>Calibrate Plus</Text>
       <Text style={styles.body}>
         You already know how calibrated you are. Plus tells you what to do about it.
@@ -271,6 +285,18 @@ function PlanOption({
 
 const styles = StyleSheet.create({
   wrap: { gap: space.lg, padding: space.xxl },
+  dismiss: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.pill,
+    height: 44,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: space.lg,
+    top: space.lg,
+    width: 44,
+    zIndex: 1,
+  },
   title: { ...type.titleXL, color: colors.textPrimary },
   body: { ...type.callout, color: colors.textSecondary },
   features: { gap: space.md },

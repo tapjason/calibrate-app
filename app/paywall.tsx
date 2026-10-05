@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { track } from '@/analytics/track';
 import { PAYWALL_SOURCES, type PaywallSource } from '@/analytics/events';
@@ -27,9 +28,17 @@ export default function PaywallScreen() {
   const close = () =>
     router.canGoBack() ? router.back() : router.replace('/(tabs)/stats' as never);
 
+  // A full-screen modal has no header, so it insets its own top edge: without
+  // this the title and the close control sit under the status bar and notch.
   return (
-    <ScrollView>
-      <PaywallView onClose={close} />
-    </ScrollView>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView>
+        <PaywallView onClose={close} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+});
