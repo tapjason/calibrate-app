@@ -78,6 +78,7 @@ export default function HistoryScreen() {
         />
       ) : (
         <FlatList
+          style={styles.list}
           data={filtered}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => <PredictionCard prediction={item} />}
@@ -89,7 +90,10 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: space.lg, backgroundColor: colors.canvas },
-  filters: { flexGrow: 0, marginBottom: space.md },
+  // flexShrink 0: in a column, a horizontal ScrollView is allowed to shrink,
+  // and on web it shrank to its chips' borders under the list.
+  filters: { flexGrow: 0, flexShrink: 0, marginBottom: space.md },
+  list: { flex: 1 },
   row: { flexDirection: 'row', gap: space.sm, paddingVertical: 4 },
   summary: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
   chip: {
