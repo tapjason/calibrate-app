@@ -1,7 +1,15 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
-import { colors, type } from '@/constants/theme';
+import { haptics } from '@/components/ui/haptics';
+import { colors, space, type } from '@/constants/theme';
 import { buildWrapped, type WrappedSpan } from '@/engine/wrapped';
 import { Button } from '@/components/ui/Button';
 import { track } from '@/analytics/track';
@@ -23,6 +31,47 @@ const MESSAGES: Record<Exclude<ShareOutcome, 'shared'>, string> = {
   unavailable: "Sharing isn't available on this device — screenshot it instead.",
   failed: "Couldn't build the image. Try again?",
 };
+
+/**
+ * Days whose weekly recap was already revealed this session. The week is a
+ * rolling seven days, so it is a new recap each day, not each calendar week.
+ */
+const revealedWeeks = new Set<string>();
+
+/** Test hook: forget which weeks have been revealed. */
+export function __resetRevealedWeeksForTests(): void {
+  revealedWeeks.clear();
+}
+
+const REVEAL_MS = 400;
+
+/**
+ * The weekly `reveal` (DESIGN_SYSTEM §6.1–6.2: no confetti). The *panel*
+ * around the card moves, never the card: the card is what gets captured to
+ * PNG, and an animation inside it could be caught mid-frame. It plays once
+ * a day per session — a recap you've already seen shouldn't re-perform every
+ * time you open Share — and only when the week has something in it.
+ * Reduce Motion gets the 200 ms cross-fade; the haptic still fires.
+ */
+function useWeeklyReveal(dayKey: string, enabled: boolean) {
+  const reduceMotion = useReducedMotion();
+  const [play] = useState(() => enabled && !revealedWeeks.has(dayKey));
+  const shown = useSharedValue(play ? 0 : 1);
+
+  useEffect(() => {
+    if (!play) return;
+    revealedWeeks.add(dayKey);
+    const duration = reduceMotion ? 200 : REVEAL_MS;
+    shown.value = withTiming(1, { duration, easing: Easing.out(Easing.cubic) });
+    const landed = setTimeout(() => haptics.reveal(), duration);
+    return () => clearTimeout(landed);
+  }, [play, reduceMotion, shown, dayKey]);
+
+  return useAnimatedStyle(() => ({
+    opacity: shown.value,
+    transform: reduceMotion ? [] : [{ translateY: 16 * (1 - shown.value) }],
+  }));
+}
 
 /**
  * Calibration Wrapped for one window, with its share button.
@@ -52,6 +101,10 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     [resolved, span],
   );
   const hasTitles = summary.boldest_hit !== null || summary.biggest_miss !== null;
+  const revealStyle = useWeeklyReveal(
+    new Date(summary.end).toDateString(),
+    span === 'week' && summary.resolved > 0,
+  );
 
   // Wrapped's own free look is indigo, so an unthemed card keeps it; a chosen
   // Plus theme applies to both cards, which is what makes it feel like a look
@@ -77,21 +130,23 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
 
   return (
     <View style={styles.wrap} testID={`wrapped-panel-${span}`}>
-      <WrappedCard
-        ref={cardRef}
-        summary={summary}
-        overall={
-          userStat
-            ? {
-                resolved: userStat.total_resolved,
-                provisional: userStat.rating_is_provisional,
-              }
-            : null
-        }
-        badge={nextBadgeProgress(categoryStats, nextBadges)}
-        theme={theme}
-        showTitles={showTitles}
-      />
+      <Animated.View style={revealStyle} testID="wrapped-reveal">
+        <WrappedCard
+          ref={cardRef}
+          summary={summary}
+          overall={
+            userStat
+              ? {
+                  resolved: userStat.total_resolved,
+                  provisional: userStat.rating_is_provisional,
+                }
+              : null
+          }
+          badge={nextBadgeProgress(categoryStats, nextBadges)}
+          theme={theme}
+          showTitles={showTitles}
+        />
+      </Animated.View>
 
       {hasTitles && (
         <Pressable
@@ -133,12 +188,12 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 16 },
+  wrap: { gap: space.lg },
   message: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
   toggleRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
+    gap: space.md,
     justifyContent: 'space-between',
     minHeight: 44,
   },

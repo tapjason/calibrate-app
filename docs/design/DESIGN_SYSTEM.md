@@ -519,7 +519,14 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   Never a card whose main message is "not enough data".
 - **Yearly** follows §7.5 and the Spotify structure: archetype line, one receipt,
   selective colour.
-- Motion: `reveal` without confetti (§6.2). The share button is disabled only when
+- **Verdict** (when the window clears min-N) follows the chart title's rule
+  (§7.2, `chartTakeaway`): the worst bucket with ≥ 10 resolved names direction and
+  range ("You ran overconfident at 80–100%."). Averages only speak when every such
+  bucket is calibrated, because over- and underconfidence in different ranges
+  cancel in the mean, and the card must never contradict Stats.
+- Motion: `reveal` without confetti (§6.2), on the panel around the weekly card
+  (never inside the card, which is captured to PNG), once a day per session, and
+  only when the week has resolutions. The share button is disabled only when
   nothing resolved in the window, and then the card says what *will* be there.
 
 ### 7.15 Notifications

@@ -5,7 +5,19 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL, type Prediction } from '@/types';
 
-import { WrappedPanel } from './WrappedPanel';
+import { haptics } from '@/components/ui/haptics';
+
+import { __resetRevealedWeeksForTests, WrappedPanel } from './WrappedPanel';
+
+jest.mock('@/components/ui/haptics', () => ({
+  haptics: {
+    commit: jest.fn(),
+    detent: jest.fn(),
+    resolve: jest.fn(),
+    reveal: jest.fn(),
+    unlock: jest.fn(),
+  },
+}));
 
 let seq = 0;
 
@@ -65,6 +77,8 @@ let warn: jest.SpyInstance;
 
 beforeEach(() => {
   seq = 0;
+  __resetRevealedWeeksForTests();
+  jest.mocked(haptics.reveal).mockClear();
   useStatsStore.setState({ userStat: null, categoryStats: [], nextBadges: {} });
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   __setShareDepsForTests(shareDeps());
@@ -252,5 +266,35 @@ describe('WrappedPanel', () => {
 
     expect(screen.getByTestId('wrapped-panel-year')).toBeTruthy();
     expect(screen.getByText('Your year in predictions')).toBeTruthy();
+  });
+});
+
+// DESIGN_SYSTEM §6.2: weekly Wrapped gets `reveal`, once, on the panel.
+describe('WrappedPanel — weekly reveal', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('lands with the reveal haptic once a day, not on every visit', () => {
+    seed(run(4, 3));
+    const first = render(<WrappedPanel span="week" />);
+    jest.advanceTimersByTime(500);
+    expect(haptics.reveal).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    render(<WrappedPanel span="week" />);
+    jest.advanceTimersByTime(500);
+    expect(haptics.reveal).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not perform for an empty week or for the year', () => {
+    seed([]);
+    const empty = render(<WrappedPanel span="week" />);
+    jest.advanceTimersByTime(500);
+    empty.unmount();
+
+    seed(run(4, 3));
+    render(<WrappedPanel span="year" />);
+    jest.advanceTimersByTime(500);
+    expect(haptics.reveal).not.toHaveBeenCalled();
   });
 });
