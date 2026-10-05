@@ -54,6 +54,9 @@ is checking it on an iPhone and the decisions.
 | 30 Paywall close control | Done 2026-10-05, web-verified; the screen now insets its top edge | Yes (clear of the notch) |
 | 31 Reflections in History | Done 2026-10-05, web-verified | — |
 | 32 Next due date while calibrating | Done 2026-10-05, web-verified | — |
+| 33 History filters wait for a first resolution | Done 2026-10-05, web-verified | — |
+| 34 An empty week says what's on the way | Done 2026-10-05, web-verified | — |
+| 35 Stats' calibrating caption dated too | Done 2026-10-05, web-verified | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -63,28 +66,18 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (fifth batch: a new user's first week, 2026-10-05)
-
-A read of the app as a brand-new user (Warmup skipped, two predictions logged)
-after steps 31–32 shipped.
+### 1.1 Building now (sixth batch, 2026-10-05)
 
 | Step | Item | Size | State |
 |---|---|---|---|
-| 33 | History hides its filters until there is something to filter | S | **Done** 2026-10-05 · web-verified |
-| 34 | An empty week's recap says what's coming, not "nothing" | S | **Done** 2026-10-05 · web-verified |
-| 35 | Stats' calibrating caption gets the next due date too | S | **Done** 2026-10-05 · web-verified |
+| 36 | Privacy policy and terms reachable from Settings | S | Next |
 
-**33.** Six category chips above "Resolved predictions collect here" filter nothing.
-They appear with the first resolution.
-
-**34.** DESIGN_SYSTEM §7.14: never a card whose main message is "not enough data",
-and an empty window "says what *will* be there". The new user's weekly card led
-with "Nothing resolved yet" while two predictions were due within days. With open
-predictions due within the week, the card leads with "2 on the way" and says the
-recap fills in as they resolve; with none, it keeps today's copy.
-
-**35.** Home's calibrating caption has said when the next one comes due since step
-32; Stats shows the same bar and should say the same thing.
+**36.** Guideline 5.1.1(i) wants the privacy policy "easily accessible" inside the
+app, not only in the listing. Today the paywall is the only place that links it,
+and only once `PRIVACY_POLICY_URL` is set. Settings gains quiet links at the
+bottom: "Privacy policy" (once the URL exists) and "Terms of use" (Apple's standard
+EULA, already linked from the paywall). Setting the one constant then lights up
+both screens.
 
 ### What's left in the parking lot
 
