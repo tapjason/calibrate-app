@@ -172,6 +172,20 @@ describe('CalibrationChart honesty', () => {
     layout(view);
     expect(view.getByTestId('point-60-n')).toBeTruthy();
   });
+
+  // The line used to run through the demo's "n=8" (roadmap step 16).
+  it('draws a halo under each label, at the same spot', () => {
+    const view = render(<CalibrationChart buckets={[bucket({ low: 60, total_resolved: 7 })]} />);
+    layout(view);
+    const halo = view.getByTestId('point-60-n-halo').props;
+    const label = view.getByTestId('point-60-n').props;
+    // Colours arrive processed by react-native-svg, so compare them to each
+    // other: the halo is one flat colour, and not the label's ink.
+    expect(halo.stroke).toEqual(halo.fill);
+    expect(halo.fill).not.toEqual(label.fill);
+    expect(halo.strokeWidth).toBeGreaterThan(0);
+    expect([halo.x, halo.y]).toEqual([label.x, label.y]);
+  });
 });
 
 describe('CalibrationChart reveal', () => {

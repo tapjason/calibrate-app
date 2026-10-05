@@ -260,6 +260,24 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
                   stroke={colors.surface}
                   strokeWidth={1.5}
                 />
+                {/* A canvas-coloured halo under the label, so the
+                    connecting line or the diagonal never runs through the
+                    text. Two layered texts rather than `paintOrder`, which
+                    react-native-svg doesn't reliably honour. */}
+                <SvgText
+                  testID={`point-${b.low}-n-halo`}
+                  x={cx}
+                  y={labelY}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fill={colors.canvas}
+                  stroke={colors.canvas}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  textAnchor="middle"
+                >
+                  {`n=${b.total_resolved}`}
+                </SvgText>
                 <SvgText
                   testID={`point-${b.low}-n`}
                   x={cx}

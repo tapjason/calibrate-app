@@ -54,7 +54,7 @@ when it ships.
 
 | Step | Item | From | Size | State |
 |---|---|---|---|---|
-| 16 | Halo behind the chart's "n=" labels | FUTURE_UI §B | S | Next |
+| 16 | Halo behind the chart's "n=" labels | FUTURE_UI §B | S | **Done** 2026-10-04 |
 | 17 | Tier-up: emblem flip and confetti | FUTURE_UI §B, DESIGN_SYSTEM §6.1 `tierUp` | M | Next |
 | 18 | Resolve several at once | FUTURE_UI A3 | M | Next |
 | 19 | Track record on the Log slider (free) | FUTURE_UI A1 | S–M | Next |
