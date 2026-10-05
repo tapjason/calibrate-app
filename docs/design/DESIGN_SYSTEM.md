@@ -460,6 +460,10 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   answer.
 - Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states
   follow §7.8.
+- **Log it again** (roadmap step 22): after an answer, a secondary capsule under
+  Done. It saves any reflection, closes the sheet and opens Log with the title,
+  category and lead time carried over, and the confidence back at 50%: a fresh call,
+  never the old number. Not offered inside a run.
 - **A run** (three or more ready; roadmap step 18): Home's primary **Resolve all N**
   opens the same sheet with "2 of 5" and a thin brand progress bar above one prompt
   at a time. After an answer the finishing button reads **Next** (**Finish** on the

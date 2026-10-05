@@ -194,6 +194,35 @@ describe('ResolvePrompt acknowledgement', () => {
   });
 });
 
+describe('ResolvePrompt — Log it again (roadmap step 22)', () => {
+  it('is offered after an answer when the screen supports it, and saves the reflection first', async () => {
+    await insertPrediction(samplePending());
+    const onPredictAgain = jest.fn();
+    render(<ResolvePrompt predictionId="p1" onPredictAgain={onPredictAgain} />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    // Not before the answer: the question comes first.
+    expect(screen.queryByTestId('resolve-again')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => expect(screen.getByTestId('resolve-again')).toBeTruthy());
+    fireEvent.changeText(screen.getByTestId('reflection-field'), 'easier than it looked');
+    fireEvent.press(screen.getByTestId('resolve-again'));
+
+    await waitFor(() => expect(onPredictAgain).toHaveBeenCalledTimes(1));
+    expect(onPredictAgain.mock.calls[0][0]).toMatchObject({ id: 'p1', title: 'Ship the prototype' });
+    expect((await getPrediction('p1'))?.reflection).toBe('easier than it looked');
+  });
+
+  it('is not offered without a handler (as inside a run)', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-no')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => expect(screen.getByTestId('resolve-recorded')).toBeTruthy());
+    expect(screen.queryByTestId('resolve-again')).toBeNull();
+  });
+});
+
 describe('bucketLine', () => {
   it('counts what has happened in the range', () => {
     expect(

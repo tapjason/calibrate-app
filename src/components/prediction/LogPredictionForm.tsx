@@ -5,6 +5,7 @@ import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
+import { noonInDays, type LogAgainDraft } from '@/components/prediction/logAgain';
 import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
@@ -35,16 +36,23 @@ const TITLE_MAX_LENGTH = 200;
 interface LogPredictionFormProps {
   /** Called after a successful create. Used by the screen to navigate away. */
   onSubmitted?: () => void;
+  /**
+   * "Log it again" (roadmap step 22): start from a resolved prediction's
+   * title, category and lead time. The confidence still starts at the
+   * default, never the old number. Read at mount; give the form a new key to
+   * apply a different one.
+   */
+  again?: LogAgainDraft | null;
 }
 
-export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
+export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps) {
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<Category>('work');
+  const [title, setTitle] = useState(again?.title ?? '');
+  const [category, setCategory] = useState<Category>(again?.category ?? 'work');
   const [confidence, setConfidence] = useState(50);
-  const [dueDate, setDueDate] = useState(presets[1].iso);
+  const [dueDate, setDueDate] = useState(again?.dueIso ?? presets[1].iso);
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   const isCustomDate = !presets.some((p) => p.iso === dueDate);
@@ -325,14 +333,8 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
 
 function datePresets(): { id: string; label: string; iso: string }[] {
   // Add days in LOCAL time so "tomorrow" means the user's tomorrow, not
-  // UTC's. Anchor at noon local so the resulting UTC timestamp falls on
-  // the same calendar date for every timezone between UTC-12 and UTC+12.
-  const make = (daysAhead: number): string => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysAhead);
-    d.setHours(12, 0, 0, 0);
-    return d.toISOString();
-  };
+  // UTC's, anchored at noon (see noonInDays, shared with "Log it again").
+  const make = (daysAhead: number): string => noonInDays(daysAhead);
   return [
     // Words, not "+1 week" — that reads as arithmetic (DESIGN_SYSTEM §7.12).
     { id: 'tomorrow', label: 'Tomorrow', iso: make(1) },

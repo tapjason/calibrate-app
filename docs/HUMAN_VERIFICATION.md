@@ -730,6 +730,10 @@ Added 2026-09-29 (polish pass):
       happened / it didn't happen" with a neutral glyph; "Change answer" puts the
       prediction back to pending and shows the question again. Check History and
       Stats don't count the withdrawn answer.
+- [ ] **Log it again (added 2026-10-04; web-verified):** after Yes or No on a
+      single Resolve, **Log it again** closes the sheet and opens Log with the same
+      title, category and lead time, and the confidence at 50%. On the phone: the
+      sheet closes cleanly and the Log tab is the one showing.
 - [ ] **Resolve all (added 2026-10-04; web-verified):** with three or more ready,
       Home shows **Resolve all N**. It opens a sheet that steps through them ("1 of
       3"), with **Next** after each answer, **Finish** on the last, and "All caught

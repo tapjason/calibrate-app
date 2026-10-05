@@ -36,6 +36,12 @@ interface ResolvePromptProps {
    * one tap; on its own it's open, since there's nothing else to do.
    */
   reflectionCollapsed?: boolean;
+  /**
+   * "Log it again" (roadmap step 22): offered after Yes or No when set. The
+   * reflection is saved first, as with Done. Left unset inside a run, where
+   * leaving for the Log screen would end the run.
+   */
+  onPredictAgain?: (prediction: Prediction) => void;
 }
 
 /**
@@ -66,6 +72,7 @@ export function ResolvePrompt({
   onDraftChange,
   advanceLabel = 'Done',
   reflectionCollapsed = false,
+  onPredictAgain,
 }: ResolvePromptProps) {
   const [loading, setLoading] = useState(true);
   const [reflectionOpen, setReflectionOpen] = useState(!reflectionCollapsed);
@@ -146,7 +153,8 @@ export function ResolvePrompt({
     }
   };
 
-  const finish = async () => {
+  /** Save any reflection, then leave: by default to wherever the screen goes. */
+  const finish = async (then: () => void = () => onResolved?.()) => {
     if (!prediction) return;
     setError(null);
     setSubmitting(true);
@@ -154,7 +162,7 @@ export function ResolvePrompt({
       if (reflection.trim().length > 0) {
         await usePredictionStore.getState().reflect(prediction.id, reflection);
       }
-      onResolved?.();
+      then();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -243,6 +251,17 @@ export function ResolvePrompt({
           disabled={submitting}
           testID="resolve-done"
         />
+        {onPredictAgain && (
+          <View style={styles.again}>
+            <Button
+              label="Log it again"
+              variant="secondary"
+              onPress={() => void finish(() => onPredictAgain(prediction))}
+              disabled={submitting}
+              testID="resolve-again"
+            />
+          </View>
+        )}
         {/* A mis-tap shouldn't be permanent (HIG: let people undo). */}
         <Pressable
           onPress={() => void changeAnswer()}
@@ -380,6 +399,7 @@ const styles = StyleSheet.create({
   },
   bucketLine: { ...type.callout, color: colors.textPrimary },
   changeAnswer: { alignSelf: 'center', marginTop: space.lg, paddingVertical: space.sm },
+  again: { marginTop: space.sm },
   addReflection: { alignSelf: 'flex-start', marginBottom: space.lg, paddingVertical: space.sm },
   changeAnswerText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
   categoryRow: {

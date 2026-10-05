@@ -388,3 +388,23 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
     expect(screen.queryByTestId('track-record')).toBeNull();
   });
 });
+
+describe('LogPredictionForm — Log it again (roadmap step 22)', () => {
+  it('starts from the repeated title, category and date, with a fresh confidence', () => {
+    render(
+      <LogPredictionForm
+        again={{
+          sourceId: 'p1',
+          title: 'Swim twice this week',
+          category: 'health',
+          dueIso: '2026-10-11T17:00:00.000Z',
+        }}
+      />,
+    );
+    expect(screen.getByTestId('title-field').props.value).toBe('Swim twice this week');
+    expect(screen.getByTestId('category-health').props.accessibilityState).toEqual({
+      selected: true,
+    });
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(50);
+  });
+});
