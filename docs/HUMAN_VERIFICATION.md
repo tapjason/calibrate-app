@@ -799,6 +799,10 @@ Expo Go — notifications and RevenueCat are both native modules.
       `getAllScheduledNotificationsAsync` in the dev console, or wait).
 - [ ] Turning notifications off in Settings cancels everything; turning it
       back on reschedules.
+- [ ] **Across a relaunch (added 2026-10-05, roadmap step 37):** log a
+      prediction due in a few minutes, force-quit, reopen, resolve it before it
+      fires: no reminder arrives. Repeat with Settings → Notifications off
+      after the relaunch instead of resolving: still nothing.
 
 ### D2. Sandbox purchase — the Layer 5 billing gate
 - [ ] Sign in with the sandbox tester account (Settings → App Store on device).

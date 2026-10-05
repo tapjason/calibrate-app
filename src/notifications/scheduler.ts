@@ -8,7 +8,11 @@
 //   2. We ask for permission. If denied → log a warning, install no
 //      subscriptions, return. Subsequent calls are idempotent no-ops.
 //   3. We install the tap handler that deep-links to /resolve/[id].
-//   4. We subscribe to predictionStore. On every change we diff the new
+//   4. We reconcile with what the OS already has scheduled (roadmap step
+//      37): reminders from an earlier session are re-adopted for open
+//      predictions and cancelled for anything else, and an open prediction
+//      with no reminder gets one.
+//   5. We subscribe to predictionStore. On every change we diff the new
 //      pending set against the previous pending set and:
 //        - newly-pending ids → schedule a notification at due_date
 //        - ids that disappeared, or transitioned out of pending → cancel
@@ -16,10 +20,11 @@
 // Platform: expo-notifications is iOS/Android only. On web every operation is
 // a no-op (single debug log at startup, no warnings on later calls).
 //
-// NOT IMPLEMENTED on purpose: we do not backfill notifications for
-// predictions that were already pending before initNotifications() ran. The
-// initial snapshot is taken as the baseline, and only future transitions are
-// acted upon. Acceptable for MVP; revisit if first-launch retention suffers.
+// The OS keeps scheduled reminders across launches, but this module's map of
+// prediction id → OS identifier lives in memory. Without step 4, a relaunched
+// app could not cancel a reminder it scheduled earlier (resolve early, or turn
+// reminders off, and the old one still fired), and predictions that arrived
+// while it wasn't watching never got one.
 
 import { Platform } from 'react-native';
 
@@ -37,6 +42,12 @@ import {
 // Injected dependencies (the platform Notifications module and the navigator).
 // Pulled to the top so tests can swap them in via __setDepsForTests without
 // jest.mock voodoo against a native module that wouldn't load in Node anyway.
+/** A request the OS has scheduled for this app, as the reconcile reads it. */
+export interface ScheduledRequest {
+  identifier: string;
+  content: { data?: Record<string, unknown> | null };
+}
+
 export interface NotificationsApi {
   requestPermissionsAsync(): Promise<{ granted: boolean }>;
   scheduleNotificationAsync(req: {
@@ -49,6 +60,11 @@ export interface NotificationsApi {
     trigger: { type: 'date'; date: Date };
   }): Promise<string>;
   cancelScheduledNotificationAsync(identifier: string): Promise<void>;
+  /**
+   * Everything this app has scheduled with the OS, for the launch-time
+   * reconcile. Optional: without it, reconciling just backfills.
+   */
+  getAllScheduledNotificationsAsync?(): Promise<ScheduledRequest[]>;
   /**
    * Registers a notification category. Optional: on iOS it carries the
    * hidden-preview placeholder; elsewhere (and in tests) it may be absent.
@@ -157,6 +173,13 @@ function defaultNotificationsApi(): NotificationsApi | null {
     async cancelScheduledNotificationAsync(id) {
       await Notifications.cancelScheduledNotificationAsync(id);
     },
+    async getAllScheduledNotificationsAsync() {
+      const requests = await Notifications.getAllScheduledNotificationsAsync();
+      return requests.map((r) => ({
+        identifier: r.identifier,
+        content: { data: r.content.data as Record<string, unknown> | null },
+      }));
+    },
     async setNotificationCategoryAsync(identifier, actions, options) {
       return await Notifications.setNotificationCategoryAsync(identifier, actions, options);
     },
@@ -217,6 +240,10 @@ async function schedule(p: Prediction): Promise<void> {
     );
     return;
   }
+  // A due time already past would fire the moment it's scheduled, which is
+  // what a launch-time backfill of overdue predictions would otherwise do.
+  // They're on Home's "Ready to resolve" list already.
+  if (fireDate.getTime() <= Date.now()) return;
   try {
     const id = await deps.notifications.scheduleNotificationAsync({
       content: {
@@ -246,6 +273,52 @@ async function cancel(predictionId: string): Promise<void> {
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[notifications] cancel failed:', e);
+  }
+}
+
+/**
+ * Launch-time reconcile with the OS (roadmap step 37). Reminders scheduled in
+ * an earlier session are adopted when their prediction is still open and
+ * reminders are on; every other reminder of ours is cancelled (resolved or
+ * deleted elsewhere, a duplicate, or reminders turned off). Then any open
+ * prediction without a reminder gets one. Requests without a predictionId
+ * (the weekly digest) are left alone.
+ */
+async function reconcile(): Promise<void> {
+  if (!deps || !deps.notifications) return;
+  const api = deps.notifications;
+  const open = new Set(usePredictionStore.getState().pending.map((p) => p.id));
+
+  let existing: ScheduledRequest[] = [];
+  try {
+    existing = (await api.getAllScheduledNotificationsAsync?.()) ?? [];
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] could not read scheduled reminders:', e);
+  }
+
+  for (const request of existing) {
+    const predictionId = request.content.data?.predictionId;
+    if (typeof predictionId !== 'string') continue;
+    const keep =
+      notificationsEnabled &&
+      open.has(predictionId) &&
+      !scheduledByPredictionId.has(predictionId);
+    if (keep) {
+      scheduledByPredictionId.set(predictionId, request.identifier);
+      continue;
+    }
+    try {
+      await api.cancelScheduledNotificationAsync(request.identifier);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[notifications] cancel failed:', e);
+    }
+  }
+
+  if (!notificationsEnabled) return;
+  for (const p of usePredictionStore.getState().pending) {
+    if (!scheduledByPredictionId.has(p.id)) await schedule(p);
   }
 }
 
@@ -430,10 +503,9 @@ export async function initNotifications(): Promise<void> {
     void applyEnabled(state.notificationsEnabled);
   });
 
-  // Seed the baseline from whatever's already in the store. Per the
-  // "out of scope" note in the task: we do NOT schedule for these existing
-  // pending predictions. Treating the current snapshot as the baseline
-  // means only future transitions trigger work.
+  // Match the OS to the store before watching for changes, then take the
+  // reconciled snapshot as the baseline for the diff.
+  await reconcile();
   lastPendingById = new Map(
     usePredictionStore.getState().pending.map((p) => [p.id, p] as const),
   );

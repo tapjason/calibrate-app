@@ -75,7 +75,7 @@ to resolve, so both of these matter more than their size suggests.
 
 | Step | Item | Size | State |
 |---|---|---|---|
-| 37 | Reminders survive a relaunch: reconcile with what iOS has scheduled | M | Next |
+| 37 | Reminders survive a relaunch: reconcile with what iOS has scheduled | M | **Done** 2026-10-05 · unit-tested; device check in HUMAN_VERIFICATION D1 |
 | 38 | Ask for notification permission in context, not over the Warmup | M | Next |
 
 **37. Reconcile at launch.** The scheduler remembers which reminder belongs to which

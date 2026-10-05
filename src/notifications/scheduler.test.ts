@@ -94,6 +94,12 @@ function makeFakeNotifications(
       fake.cancelled.push(id);
       fake.scheduled.delete(id);
     },
+    async getAllScheduledNotificationsAsync() {
+      return Array.from(fake.scheduled.values()).map((r) => ({
+        identifier: r.id,
+        content: { data: r.data },
+      }));
+    },
     setNotificationHandler() {
       /* no-op */
     },
@@ -178,7 +184,7 @@ describe('scheduler: schedule on create', () => {
       title: 'Ship the prototype',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
 
     expect(notifications.scheduleCalls).toBe(1);
@@ -187,7 +193,7 @@ describe('scheduler: schedule on create', () => {
     expect(rec.title).toBe('Did it happen');
     expect(rec.body).toBe('Ship the prototype · You said 50%');
     expect(rec.data).toEqual({ predictionId: p.id });
-    expect(rec.date.toISOString()).toBe('2026-06-01T12:00:00.000Z');
+    expect(rec.date.toISOString()).toBe('2099-06-01T12:00:00.000Z');
   });
 
   it('trims very long titles to ~80 chars in the body', async () => {
@@ -201,7 +207,7 @@ describe('scheduler: schedule on create', () => {
       title: longTitle,
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
 
     const [rec] = Array.from(notifications.scheduled.values());
@@ -220,7 +226,7 @@ describe('scheduler: cancel on transition out of pending', () => {
       title: 'Ship it',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     expect(notifications.scheduled.size).toBe(1);
     const scheduledId = Array.from(notifications.scheduled.keys())[0];
@@ -244,7 +250,7 @@ describe('scheduler: cancel on transition out of pending', () => {
       title: 'Ship it',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     const scheduledId = Array.from(notifications.scheduled.keys())[0];
 
@@ -360,7 +366,7 @@ describe('scheduler: permission denied', () => {
       title: 'Ship it',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     expect(notifications.scheduleCalls).toBe(0);
 
@@ -396,7 +402,7 @@ describe('scheduler: web platform', () => {
         title: 'Ship it',
         category: 'work',
         confidence: 50,
-        due_date: '2026-06-01T12:00:00.000Z',
+        due_date: '2099-06-01T12:00:00.000Z',
       });
       await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
 
@@ -421,13 +427,13 @@ describe('scheduler: notifications toggle (kill-switch)', () => {
       title: 'A',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     await usePredictionStore.getState().create({
       title: 'B',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-02T12:00:00.000Z',
+      due_date: '2099-06-02T12:00:00.000Z',
     });
     await flush();
     expect(notifications.scheduled.size).toBe(2);
@@ -452,7 +458,7 @@ describe('scheduler: notifications toggle (kill-switch)', () => {
       title: 'While off',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     await flush();
 
@@ -472,7 +478,7 @@ describe('scheduler: notifications toggle (kill-switch)', () => {
       title: 'Pending through the toggle',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     await flush();
     expect(notifications.scheduled.size).toBe(0);
@@ -497,7 +503,7 @@ describe('scheduler: notifications toggle (kill-switch)', () => {
       title: 'Off from the start',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     await flush();
 
@@ -517,7 +523,7 @@ describe('scheduler: schedule failure is non-fatal', () => {
       title: 'Ship it',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
 
     // Let the fire-and-forget schedule attempt settle.
@@ -551,7 +557,7 @@ describe('scheduler: hidden-preview placeholder', () => {
       title: 'See the doctor',
       category: 'health',
       confidence: 60,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     expect(schedule.mock.calls[0][0].content.categoryIdentifier).toBe(
       'calibrate-resolution-reminder',
@@ -571,9 +577,89 @@ describe('scheduler: hidden-preview placeholder', () => {
       title: 'Ship it',
       category: 'work',
       confidence: 50,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
     expect(notifications.scheduleCalls).toBe(1);
     warn.mockRestore();
+  });
+});
+
+// Roadmap step 37: the OS keeps reminders across launches; the id map doesn't.
+describe('scheduler: launch-time reconcile', () => {
+  /** A reminder left by an earlier session, as the OS would report it. */
+  function leftOver(
+    notifications: FakeNotifications,
+    identifier: string,
+    data: Record<string, unknown>,
+  ): void {
+    notifications.scheduled.set(identifier, {
+      id: identifier,
+      title: 'Did it happen',
+      body: 'from an earlier session',
+      data,
+      date: new Date('2099-06-01T12:00:00.000Z'),
+    });
+  }
+
+  async function openPrediction(due = '2099-06-01T12:00:00.000Z') {
+    // Created before init, as on a relaunch: the scheduler isn't watching yet.
+    return await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 60,
+      due_date: due,
+    });
+  }
+
+  it("adopts an earlier session's reminder, so resolving still cancels it", async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    const p = await openPrediction();
+    leftOver(notifications, 'os-old', { predictionId: p.id });
+
+    await initNotifications();
+    expect(notifications.scheduleCalls).toBe(0);
+
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    await flush();
+    expect(notifications.cancelled).toEqual(['os-old']);
+  });
+
+  it('cancels reminders for predictions that are no longer open, and duplicates', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    const p = await openPrediction();
+    leftOver(notifications, 'os-keep', { predictionId: p.id });
+    leftOver(notifications, 'os-dupe', { predictionId: p.id });
+    leftOver(notifications, 'os-gone', { predictionId: 'resolved-on-another-phone' });
+
+    await initNotifications();
+    expect(notifications.cancelled.sort()).toEqual(['os-dupe', 'os-gone']);
+    expect([...notifications.scheduled.keys()]).toEqual(['os-keep']);
+  });
+
+  it('cancels every reminder of ours when reminders are off, but not the digest', async () => {
+    useSettingsStore.setState({ notificationsEnabled: false });
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    const p = await openPrediction();
+    leftOver(notifications, 'os-reminder', { predictionId: p.id });
+    leftOver(notifications, 'calibrate-weekly-digest', { kind: 'digest' });
+
+    await initNotifications();
+    expect(notifications.cancelled).toEqual(['os-reminder']);
+    expect(notifications.scheduled.has('calibrate-weekly-digest')).toBe(true);
+    expect(notifications.scheduleCalls).toBe(0);
+  });
+
+  it('backfills an open prediction with no reminder, but never one already due', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    const future = await openPrediction('2099-06-01T12:00:00.000Z');
+    await openPrediction('2020-01-01T12:00:00.000Z'); // overdue: on Home already
+
+    await initNotifications();
+    const scheduled = Array.from(notifications.scheduled.values());
+    expect(scheduled.map((r) => r.data)).toEqual([{ predictionId: future.id }]);
   });
 });

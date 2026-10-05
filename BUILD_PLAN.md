@@ -94,7 +94,9 @@ next to each carry the detail.
 - **Coverage nudge.** Measured over the last 20 logs including pending ones; a
   single low log switches it off; at most once a week.
 - **Notifications are local only.** No push token is requested, so no APNs key is
-  needed.
+  needed. The reminder scheduler reconciles with the OS's scheduled requests at
+  launch (2026-10-05): its id map is in memory, and without that a relaunched app
+  couldn't cancel what it had scheduled earlier.
 - **Days are local.** Streaks, patterns, Wrapped and trends key days by the device's
   local time, and a streak ends once its latest day is before yesterday.
 
