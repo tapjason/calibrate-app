@@ -67,13 +67,43 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now
+### 1.1 Building now (seventh batch: reminders, 2026-10-05)
 
-Nothing. Six batches shipped on 2026-10-04 and 10-05 (steps 16–36). The last three
-came from reading every screen of the web build, first as the demo account and
-then as a brand-new user; specs are in DESIGN_SYSTEM §6.1, §7.1, §7.6, §7.10–§7.12,
-§7.14, §7.16 and §7.17. The next useful read is on an iPhone: the device column
-above lists what web can't show.
+From a read of the notification service (`src/notifications/`) after steps 16–36.
+Resolution is the data hook (`CLAUDE.md`), and reminders are what bring people back
+to resolve, so both of these matter more than their size suggests.
+
+| Step | Item | Size | State |
+|---|---|---|---|
+| 37 | Reminders survive a relaunch: reconcile with what iOS has scheduled | M | Next |
+| 38 | Ask for notification permission in context, not over the Warmup | M | Next |
+
+**37. Reconcile at launch.** The scheduler remembers which reminder belongs to which
+prediction only in memory, so after the app is relaunched it can't cancel anything
+it scheduled earlier. Resolve a prediction early, or turn reminders off in Settings,
+and an old "Did it happen" still fires. It also never schedules for predictions that
+arrived while it wasn't watching (its own header calls this out). At launch it now
+reads the OS's scheduled reminders, keeps the ones for open predictions, cancels the
+rest (and all of them if reminders are off), and schedules any open prediction that
+lacks one. A due time already past is never scheduled, so nothing fires the moment
+the app opens. This is also the "launch-time reschedule" D9 would need.
+
+**38. Permission in context.** Both the reminder scheduler and the weekly digest ask
+for notification permission at launch, so on a first run the iOS alert lands on top
+of the Warmup, before the app has shown what it's for. HIG: "Avoid requesting
+permission at launch unless the data or resource is required for your app to
+function," and "wait to request permission until people actually use an app feature
+that requires access." A refusal is hard to undo, and without reminders predictions
+go unresolved. Instead:
+- Launch only *checks* permission. Someone who already allowed it sees no change.
+- Once there is an open prediction, Home shows a quiet card: when its reminder would
+  come, and **Turn on reminders** / **Not now**. The system alert appears only after
+  that tap; on a yes, reminders are scheduled for everything already open. "Not now"
+  hides the card for a week.
+- Settings' Notifications row says when iOS permission is missing, with **Allow
+  reminders** (not asked yet) or **Open Settings** (refused).
+- Web has no notifications, so none of this shows there; the card can be previewed at
+  `/dev/celebrations`.
 
 ### What's left in the parking lot
 
