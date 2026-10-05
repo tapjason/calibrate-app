@@ -58,6 +58,8 @@ is checking it on an iPhone and the decisions.
 | 34 An empty week says what's on the way | Done 2026-10-05, web-verified | — |
 | 35 Stats' calibrating caption dated too | Done 2026-10-05, web-verified | — |
 | 36 Privacy policy and terms in Settings | Done 2026-10-05; the privacy link appears once `PRIVACY_POLICY_URL` is set | — |
+| 37 Reminders survive a relaunch | Done 2026-10-05, unit-tested | Yes (HUMAN_VERIFICATION D1) |
+| 38 Notification permission in context | Done 2026-10-05, unit-tested; card previewed at `/dev/celebrations` | Yes (no alert over the Warmup; D1) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -67,43 +69,11 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (seventh batch: reminders, 2026-10-05)
+### 1.1 Building now
 
-From a read of the notification service (`src/notifications/`) after steps 16–36.
-Resolution is the data hook (`CLAUDE.md`), and reminders are what bring people back
-to resolve, so both of these matter more than their size suggests.
-
-| Step | Item | Size | State |
-|---|---|---|---|
-| 37 | Reminders survive a relaunch: reconcile with what iOS has scheduled | M | **Done** 2026-10-05 · unit-tested; device check in HUMAN_VERIFICATION D1 |
-| 38 | Ask for notification permission in context, not over the Warmup | M | **Done** 2026-10-05 · unit-tested; the card previewed on web at `/dev/celebrations`; device check in HUMAN_VERIFICATION D1 |
-
-**37. Reconcile at launch.** The scheduler remembers which reminder belongs to which
-prediction only in memory, so after the app is relaunched it can't cancel anything
-it scheduled earlier. Resolve a prediction early, or turn reminders off in Settings,
-and an old "Did it happen" still fires. It also never schedules for predictions that
-arrived while it wasn't watching (its own header calls this out). At launch it now
-reads the OS's scheduled reminders, keeps the ones for open predictions, cancels the
-rest (and all of them if reminders are off), and schedules any open prediction that
-lacks one. A due time already past is never scheduled, so nothing fires the moment
-the app opens. This is also the "launch-time reschedule" D9 would need.
-
-**38. Permission in context.** Both the reminder scheduler and the weekly digest ask
-for notification permission at launch, so on a first run the iOS alert lands on top
-of the Warmup, before the app has shown what it's for. HIG: "Avoid requesting
-permission at launch unless the data or resource is required for your app to
-function," and "wait to request permission until people actually use an app feature
-that requires access." A refusal is hard to undo, and without reminders predictions
-go unresolved. Instead:
-- Launch only *checks* permission. Someone who already allowed it sees no change.
-- Once there is an open prediction, Home shows a quiet card: when its reminder would
-  come, and **Turn on reminders** / **Not now**. The system alert appears only after
-  that tap; on a yes, reminders are scheduled for everything already open. "Not now"
-  hides the card for a week.
-- Settings' Notifications row says when iOS permission is missing, with **Allow
-  reminders** (not asked yet) or **Open Settings** (refused).
-- Web has no notifications, so none of this shows there; the card can be previewed at
-  `/dev/celebrations`.
+Nothing in progress. Seven batches shipped on 2026-10-04 and 10-05 (steps 16–38),
+the last from a read of the notification service. The next useful read is on an
+iPhone: the device column above lists what web can't show.
 
 ### What's left in the parking lot
 
