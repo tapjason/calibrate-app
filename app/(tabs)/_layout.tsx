@@ -1,10 +1,11 @@
 import type Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
+import { Platform } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { Icon } from '@/components/ui/Icon';
-import { colors } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -33,6 +34,16 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.brand600,
         tabBarInactiveTintColor: colors.textTertiary,
         sceneStyle: { backgroundColor: colors.canvas },
+        // Web only: React Navigation's default bar is 49px with a 10px label,
+        // and the 25px web icon pushes the label's descenders out of it
+        // (clipped in every web screenshot until 2026-10-04). It also puts
+        // text under the 11pt floor. iOS keeps the native bar and its insets.
+        ...(Platform.OS === 'web'
+          ? {
+              tabBarStyle: { height: 58 },
+              tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: type.caption.fontWeight },
+            }
+          : null),
       }}
     >
       <Tabs.Screen
