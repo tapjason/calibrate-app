@@ -104,7 +104,7 @@ export function ConfidenceControl({
       </View>
       {hint && <Text style={styles.hint}>{hint}</Text>}
 
-      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Slider
           testID={`${idPrefix}-slider`}
           value={value}

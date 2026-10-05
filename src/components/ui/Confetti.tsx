@@ -114,6 +114,7 @@ export function Confetti({
     <View
       pointerEvents="none"
       style={[styles.origin, { left: originX, top: originY }]}
+      aria-hidden
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}

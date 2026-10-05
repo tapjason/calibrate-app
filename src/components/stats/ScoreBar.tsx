@@ -23,6 +23,7 @@ export function ScoreBar({ score, testID }: ScoreBarProps) {
     <View
       style={styles.wrap}
       testID={testID}
+      aria-hidden
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >

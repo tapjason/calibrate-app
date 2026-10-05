@@ -139,6 +139,7 @@ export function LensEmblem({
   return (
     <View
       testID={testID}
+      aria-hidden
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={{ width: size, height: size }}

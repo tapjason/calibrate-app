@@ -59,6 +59,7 @@ export function WarmupQuiz() {
       {/* Segmented, one per question: answered, current, to come. */}
       <View
         style={styles.segments}
+        aria-hidden
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >

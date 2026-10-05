@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
+import { View } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import type { Category } from '@/types';
@@ -20,18 +21,22 @@ interface IconProps {
 /**
  * One icon, native on each platform (DESIGN_SYSTEM §5): an SF Symbol on iOS,
  * the matching Ionicon elsewhere. Icons are decorative here — every one sits
- * beside a written label — so they carry no accessibility label of their own.
+ * beside a written label — so they carry no accessibility label of their own,
+ * and they're hidden from assistive tech outright: on web the Ionicons glyph
+ * is a private-use character that screen readers read out (roadmap step 42).
  */
 export function Icon({ sf, fallback, size = 20, color, testID }: IconProps) {
   const ion = <Ionicons name={fallback} size={size} color={color} testID={testID} />;
   return (
-    <SymbolView
-      name={{ ios: sf }}
-      size={size}
-      tintColor={color}
-      fallback={ion}
-      testID={testID}
-    />
+    <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <SymbolView
+        name={{ ios: sf }}
+        size={size}
+        tintColor={color}
+        fallback={ion}
+        testID={testID}
+      />
+    </View>
   );
 }
 

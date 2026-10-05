@@ -167,6 +167,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
             trackColor={{ true: colors.brand600, false: colors.controlBorder }}
             thumbColor={colors.surface}
             ios_backgroundColor={colors.controlBorder}
+            aria-hidden
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
             {...{ activeThumbColor: colors.surface }}

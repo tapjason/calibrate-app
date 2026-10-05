@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedProps,
   useReducedMotion,
@@ -135,164 +135,169 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
       accessibilityLabel={describeCalibrationCurve(buckets)}
     >
       {width > 0 ? (
-        <Svg width={width} height={height}>
-          {/* Regions: below the diagonal = overconfident (warm), above =
-              underconfident (cool). Faint — they're context, not data. */}
-          <Polygon
-            testID="region-over"
-            points={`${left},${bottom} ${right},${bottom} ${right},${top}`}
-            fill={colors.overMark}
-            fillOpacity={0.07}
-          />
-          <Polygon
-            testID="region-under"
-            points={`${left},${bottom} ${left},${top} ${right},${top}`}
-            fill={colors.underMark}
-            fillOpacity={0.07}
-          />
+        // The wrapper's label describes the whole curve. iOS already treats
+        // an accessible View's children as one element; web doesn't, and read
+        // every tick and (with the halo) every "n=" twice (roadmap step 42).
+        <View aria-hidden={Platform.OS === 'web'}>
+          <Svg width={width} height={height}>
+            {/* Regions: below the diagonal = overconfident (warm), above =
+                underconfident (cool). Faint — they're context, not data. */}
+            <Polygon
+              testID="region-over"
+              points={`${left},${bottom} ${right},${bottom} ${right},${top}`}
+              fill={colors.overMark}
+              fillOpacity={0.07}
+            />
+            <Polygon
+              testID="region-under"
+              points={`${left},${bottom} ${left},${top} ${right},${top}`}
+              fill={colors.underMark}
+              fillOpacity={0.07}
+            />
 
-          {TICKS.map((t) => (
-            <G key={t}>
-              <Line
-                x1={xOf(t)}
-                y1={top}
-                x2={xOf(t)}
-                y2={bottom}
-                stroke={colors.hairline}
-                strokeWidth={1}
-              />
-              <Line
-                x1={left}
-                y1={yOf(t / 100)}
-                x2={right}
-                y2={yOf(t / 100)}
-                stroke={colors.hairline}
-                strokeWidth={1}
-              />
-              <SvgText
-                x={left - 5}
-                y={yOf(t / 100) + 4}
-                fontSize={TICK_FONT}
-                fontFamily={svgFontFamily}
-                fill={colors.textTertiary}
-                textAnchor="end"
-              >
-                {t}
-              </SvgText>
-              <SvgText
-                x={xOf(t)}
-                y={bottom + 17}
-                fontSize={TICK_FONT}
-                fontFamily={svgFontFamily}
-                fill={colors.textTertiary}
-                // The last label hangs left of its tick so "100%" isn't
-                // clipped by the right edge.
-                textAnchor={t === 100 ? 'end' : 'middle'}
-              >
-                {`${t}%`}
-              </SvgText>
-            </G>
-          ))}
+            {TICKS.map((t) => (
+              <G key={t}>
+                <Line
+                  x1={xOf(t)}
+                  y1={top}
+                  x2={xOf(t)}
+                  y2={bottom}
+                  stroke={colors.hairline}
+                  strokeWidth={1}
+                />
+                <Line
+                  x1={left}
+                  y1={yOf(t / 100)}
+                  x2={right}
+                  y2={yOf(t / 100)}
+                  stroke={colors.hairline}
+                  strokeWidth={1}
+                />
+                <SvgText
+                  x={left - 5}
+                  y={yOf(t / 100) + 4}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fill={colors.textTertiary}
+                  textAnchor="end"
+                >
+                  {t}
+                </SvgText>
+                <SvgText
+                  x={xOf(t)}
+                  y={bottom + 17}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fill={colors.textTertiary}
+                  // The last label hangs left of its tick so "100%" isn't
+                  // clipped by the right edge.
+                  textAnchor={t === 100 ? 'end' : 'middle'}
+                >
+                  {`${t}%`}
+                </SvgText>
+              </G>
+            ))}
 
-          <SvgText
-            x={right - 8}
-            y={bottom - 10}
-            fontSize={TICK_FONT}
-            fontFamily={svgFontFamily}
-            fontWeight="600"
-            fill={colors.overText}
-            textAnchor="end"
-          >
-            Overconfident
-          </SvgText>
-          <SvgText
-            x={left + 8}
-            y={top + 18}
-            fontSize={TICK_FONT}
-            fontFamily={svgFontFamily}
-            fontWeight="600"
-            fill={colors.underText}
-            textAnchor="start"
-          >
-            Underconfident
-          </SvgText>
+            <SvgText
+              x={right - 8}
+              y={bottom - 10}
+              fontSize={TICK_FONT}
+              fontFamily={svgFontFamily}
+              fontWeight="600"
+              fill={colors.overText}
+              textAnchor="end"
+            >
+              Overconfident
+            </SvgText>
+            <SvgText
+              x={left + 8}
+              y={top + 18}
+              fontSize={TICK_FONT}
+              fontFamily={svgFontFamily}
+              fontWeight="600"
+              fill={colors.underText}
+              textAnchor="start"
+            >
+              Underconfident
+            </SvgText>
 
-          {/* Perfect calibration. */}
-          <Line
-            x1={left}
-            y1={bottom}
-            x2={right}
-            y2={top}
-            stroke={colors.textSecondary}
-            strokeWidth={1.5}
-            strokeDasharray="5 4"
-          />
+            {/* Perfect calibration. */}
+            <Line
+              x1={left}
+              y1={bottom}
+              x2={right}
+              y2={top}
+              stroke={colors.textSecondary}
+              strokeWidth={1.5}
+              strokeDasharray="5 4"
+            />
 
-          {/* Connecting line: neutral and thin — five buckets are not a
-              function, the dots are the data. */}
-          {points.length > 1 ? (
-            animate ? (
-              <DrawnLine points={polyline} length={lineLength} />
-            ) : (
-              <Polyline
-                testID="calibration-curve-line"
-                points={polyline}
-                fill="none"
-                stroke={colors.textTertiary}
-                strokeWidth={1.5}
-              />
-            )
-          ) : null}
-
-          {points.map((b, i) => {
-            const cx = xOf(b.stated_confidence_mean);
-            const cy = yOf(b.actual_rate);
-            const r = radiusOf(b.total_resolved);
-            const labelY = labelYs[i];
-            return (
-              <DotGroup key={b.low} animate={animate} delay={DRAW_MS + i * DOT_STAGGER_MS}>
-                <Circle
-                  testID={`point-${b.low}`}
-                  cx={cx}
-                  cy={cy}
-                  r={r}
-                  fill={MARK[b.direction]}
-                  stroke={colors.surface}
+            {/* Connecting line: neutral and thin — five buckets are not a
+                function, the dots are the data. */}
+            {points.length > 1 ? (
+              animate ? (
+                <DrawnLine points={polyline} length={lineLength} />
+              ) : (
+                <Polyline
+                  testID="calibration-curve-line"
+                  points={polyline}
+                  fill="none"
+                  stroke={colors.textTertiary}
                   strokeWidth={1.5}
                 />
-                {/* A canvas-coloured halo under the label, so the
-                    connecting line or the diagonal never runs through the
-                    text. Two layered texts rather than `paintOrder`, which
-                    react-native-svg doesn't reliably honour. */}
-                <SvgText
-                  testID={`point-${b.low}-n-halo`}
-                  x={cx}
-                  y={labelY}
-                  fontSize={TICK_FONT}
-                  fontFamily={svgFontFamily}
-                  fill={colors.canvas}
-                  stroke={colors.canvas}
-                  strokeWidth={3}
-                  strokeLinejoin="round"
-                  textAnchor="middle"
-                >
-                  {`n=${b.total_resolved}`}
-                </SvgText>
-                <SvgText
-                  testID={`point-${b.low}-n`}
-                  x={cx}
-                  y={labelY}
-                  fontSize={TICK_FONT}
-                  fontFamily={svgFontFamily}
-                  fill={colors.textSecondary}
-                  textAnchor="middle"
-                >
-                  {`n=${b.total_resolved}`}
-                </SvgText>
-              </DotGroup>
-            );
-          })}
-        </Svg>
+              )
+            ) : null}
+
+            {points.map((b, i) => {
+              const cx = xOf(b.stated_confidence_mean);
+              const cy = yOf(b.actual_rate);
+              const r = radiusOf(b.total_resolved);
+              const labelY = labelYs[i];
+              return (
+                <DotGroup key={b.low} animate={animate} delay={DRAW_MS + i * DOT_STAGGER_MS}>
+                  <Circle
+                    testID={`point-${b.low}`}
+                    cx={cx}
+                    cy={cy}
+                    r={r}
+                    fill={MARK[b.direction]}
+                    stroke={colors.surface}
+                    strokeWidth={1.5}
+                  />
+                  {/* A canvas-coloured halo under the label, so the
+                      connecting line or the diagonal never runs through the
+                      text. Two layered texts rather than `paintOrder`, which
+                      react-native-svg doesn't reliably honour. */}
+                  <SvgText
+                    testID={`point-${b.low}-n-halo`}
+                    x={cx}
+                    y={labelY}
+                    fontSize={TICK_FONT}
+                    fontFamily={svgFontFamily}
+                    fill={colors.canvas}
+                    stroke={colors.canvas}
+                    strokeWidth={3}
+                    strokeLinejoin="round"
+                    textAnchor="middle"
+                  >
+                    {`n=${b.total_resolved}`}
+                  </SvgText>
+                  <SvgText
+                    testID={`point-${b.low}-n`}
+                    x={cx}
+                    y={labelY}
+                    fontSize={TICK_FONT}
+                    fontFamily={svgFontFamily}
+                    fill={colors.textSecondary}
+                    textAnchor="middle"
+                  >
+                    {`n=${b.total_resolved}`}
+                  </SvgText>
+                </DotGroup>
+              );
+            })}
+          </Svg>
+        </View>
       ) : null}
 
       <Text style={styles.caption}>
