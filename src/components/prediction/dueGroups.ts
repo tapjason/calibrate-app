@@ -91,3 +91,16 @@ export function nextDueLine(pending: readonly Prediction[], now: Date): string |
   });
   return `The next one comes due ${day}.`;
 }
+
+/**
+ * Open predictions that can be answered within `days` from today, the ones
+ * already ready included. The empty weekly recap counts these as "on the way"
+ * (roadmap step 34).
+ */
+export function dueWithin(pending: readonly Prediction[], now: Date, days: number): number {
+  return pending.filter((p) => {
+    if (p.status !== 'pending') return false;
+    const d = daysUntilDue(p, now);
+    return !Number.isNaN(d) && d <= days;
+  }).length;
+}

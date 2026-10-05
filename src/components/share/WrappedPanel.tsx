@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { dueWithin } from '@/components/prediction/dueGroups';
 import { haptics } from '@/components/ui/haptics';
 import { colors, space, type } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -82,6 +83,7 @@ function useWeeklyReveal(dayKey: string, enabled: boolean) {
  */
 export function WrappedPanel({ span }: WrappedPanelProps) {
   const resolved = usePredictionStore((s) => s.resolved);
+  const pending = usePredictionStore((s) => s.pending);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
   const userStat = useStatsStore((s) => s.userStat);
@@ -141,7 +143,8 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                 }
               : null
           }
-          badge={nextBadgeProgress(categoryStats, nextBadges)}
+          upcoming={span === 'week' ? dueWithin(pending, new Date(), 7) : 0}
+        badge={nextBadgeProgress(categoryStats, nextBadges)}
           theme={theme}
           showTitles={showTitles}
         />

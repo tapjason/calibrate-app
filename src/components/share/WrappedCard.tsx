@@ -14,6 +14,8 @@ interface WrappedCardProps {
   summary: WrappedSummary;
   /** All-time progress, so a provisional week can point at the real unlock. */
   overall?: OverallProgress | null;
+  /** Open predictions due within the week, for an empty week (roadmap step 34). */
+  upcoming?: number;
   /** The badge closest to hand, from nextBadgeProgress(); null hides the row. */
   badge?: BadgeProgress | null;
   /** Cosmetic only (Plus); the free theme is the default. */
@@ -38,10 +40,10 @@ interface WrappedCardProps {
  * verdict built on four resolutions.
  */
 export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCard(
-  { summary, overall, badge, theme = WRAPPED_DEFAULT_THEME, showTitles = false },
+  { summary, overall, upcoming = 0, badge, theme = WRAPPED_DEFAULT_THEME, showTitles = false },
   ref,
 ) {
-  const story = wrappedStory(summary, overall);
+  const story = wrappedStory(summary, overall, upcoming);
 
   return (
     <View

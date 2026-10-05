@@ -1,6 +1,6 @@
 import type { Prediction } from '@/types';
 
-import { daysUntilDue, groupByDue, isReadyToResolve, nextDueLine } from './dueGroups';
+import { daysUntilDue, dueWithin, groupByDue, isReadyToResolve, nextDueLine } from './dueGroups';
 
 // Local noon on 10 Sep 2026; every due date below is built in local time too,
 // so the tests hold in any time zone.
@@ -96,5 +96,12 @@ describe('nextDueLine', () => {
 
   it('says nothing with nothing open', () => {
     expect(nextDueLine([], NOW)).toBeNull();
+  });
+});
+
+describe('dueWithin', () => {
+  it('counts what can be answered within the window, overdue included', () => {
+    expect(dueWithin([dueIn(-3), dueIn(0), dueIn(7), dueIn(8)], NOW, 7)).toBe(3);
+    expect(dueWithin([], NOW, 7)).toBe(0);
   });
 });

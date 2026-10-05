@@ -62,8 +62,27 @@ export interface OverallProgress {
 export function wrappedStory(
   summary: WrappedSummary,
   overall?: OverallProgress | null,
+  /**
+   * Open predictions due within the coming week. An empty week with some on
+   * the way says what will be there (DESIGN_SYSTEM §7.14), not "nothing".
+   */
+  upcoming = 0,
 ): WrappedStory {
   const { span, resolved } = summary;
+
+  if (resolved === 0 && span === 'week' && upcoming > 0) {
+    const plural = upcoming === 1 ? 'prediction' : 'predictions';
+    return {
+      title: TITLES[span],
+      stat: `${upcoming} ${plural} on the way`,
+      statCount: `${upcoming} on the way`,
+      statRate: null,
+      verdict: null,
+      receipt: null,
+      provisionalNote: null,
+      note: `${upcoming === 1 ? 'It comes' : 'They come'} due within the week. This recap fills in as you resolve ${upcoming === 1 ? 'it' : 'them'}.`,
+    };
+  }
 
   if (resolved === 0) {
     return {

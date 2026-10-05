@@ -89,6 +89,37 @@ afterEach(() => {
   warn.mockRestore();
 });
 
+describe('WrappedPanel — an empty week (roadmap step 34)', () => {
+  const due = (days: number, id: string): Prediction => {
+    const at = new Date();
+    at.setDate(at.getDate() + days);
+    at.setHours(12, 0, 0, 0);
+    return { ...prediction({ id }), status: 'pending', resolved_at: null, due_date: at.toISOString() };
+  };
+
+  it('says what is on the way instead of "nothing"', () => {
+    usePredictionStore.setState({
+      pending: [due(2, 'soon'), due(5, 'later'), due(30, 'next-month')],
+      resolved: [],
+    });
+    render(<WrappedPanel span="week" />);
+    expect(screen.getByText('2 on the way')).toBeTruthy();
+    expect(screen.getByText(/They come due within the week/)).toBeTruthy();
+    expect(screen.queryByText('Nothing resolved yet')).toBeNull();
+  });
+
+  it('keeps the plain empty copy with nothing due this week, and for the year', () => {
+    usePredictionStore.setState({ pending: [due(30, 'next-month')], resolved: [] });
+    const week = render(<WrappedPanel span="week" />);
+    expect(screen.getByText('Nothing resolved yet')).toBeTruthy();
+    week.unmount();
+
+    usePredictionStore.setState({ pending: [due(2, 'soon')], resolved: [] });
+    render(<WrappedPanel span="year" />);
+    expect(screen.getByText('Nothing resolved yet')).toBeTruthy();
+  });
+});
+
 describe('WrappedPanel', () => {
   it('tells an empty-week story instead of rendering blank', () => {
     seed([]);
