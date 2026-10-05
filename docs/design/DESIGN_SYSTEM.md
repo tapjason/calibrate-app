@@ -589,6 +589,17 @@ own n, and a row below its threshold shows counts, never a score.
 - Labels that contain numbers or small words don't use `textTransform:
   'capitalize'` (it produced "Range You Use"); capitalise the string instead.
 
+### 7.17 How scoring works
+
+A full-height reading sheet (roadmap step 29), opened by "How is this scored?" under
+the Stats rating and by a Settings row; never shown unasked, since the pitch is
+identity, not statistics. Sections in `headline` with `body` text in
+`textSecondary`: what the score measures, how it's worked out (the five bands and
+their edges, one worked example from `CLAUDE.md`), why it waits, badges (a legend of
+the five emblems with their criteria), honest uncertainty, what doesn't count.
+Every number in the copy comes from the shared constants or `BADGE_META`, and a test
+holds it to the engine.
+
 ---
 
 ## 8. Accessibility checklist (per change)

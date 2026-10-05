@@ -26,6 +26,8 @@ interface CalibrationViewProps {
   nextBadges: Partial<Record<Category, NextBadgeTarget | null>>;
   /** Open predictions, shown as "on their way" while the rating is provisional. */
   pendingCount?: number;
+  /** Opens "How scoring works" (roadmap step 29). */
+  onExplain?: () => void;
 }
 
 /**
@@ -40,6 +42,7 @@ export function CalibrationView({
   categoryStats,
   nextBadges,
   pendingCount = 0,
+  onExplain,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
@@ -69,6 +72,18 @@ export function CalibrationView({
             <Text style={styles.subtle}>
               {userStat.total_resolved} resolved · streak {userStat.current_streak}
             </Text>
+          )}
+          {/* The math on demand, one tap from the number it explains. */}
+          {onExplain && (
+            <Pressable
+              onPress={onExplain}
+              accessibilityRole="button"
+              hitSlop={8}
+              style={styles.explain}
+              testID="stats-explain"
+            >
+              <Text style={styles.tableToggleText}>How is this scored?</Text>
+            </Pressable>
           )}
         </View>
       ) : null}
@@ -150,6 +165,7 @@ const styles = StyleSheet.create({
   chartTitle: { ...type.title3, color: colors.textPrimary, marginBottom: space.xs },
   chartSubtitle: { ...type.subhead, color: colors.textSecondary, marginBottom: space.md },
   tableToggle: { alignSelf: 'flex-start', marginTop: space.md, paddingVertical: space.xs },
+  explain: { marginTop: space.sm, paddingVertical: space.xs },
   tableToggleText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
   bucketRow: {
     flexDirection: 'row',

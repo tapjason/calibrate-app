@@ -51,6 +51,26 @@ describe('CalibrationView headline', () => {
   });
 });
 
+describe('CalibrationView — How is this scored? (roadmap step 29)', () => {
+  it('offers the explainer whether or not the rating has unlocked', () => {
+    for (const total_resolved of [8, 40]) {
+      const onExplain = jest.fn();
+      const { getByTestId, unmount } = render(
+        <CalibrationView
+          userStat={userStat({ total_resolved, rating_is_provisional: total_resolved < 20 })}
+          calibration={EMPTY_CAL}
+          categoryStats={[]}
+          nextBadges={{}}
+          onExplain={onExplain}
+        />,
+      );
+      fireEvent.press(getByTestId('stats-explain'));
+      expect(onExplain).toHaveBeenCalledTimes(1);
+      unmount();
+    }
+  });
+});
+
 describe('CalibrationView provisional progress', () => {
   it('counts open predictions as on their way', () => {
     const { getByText, getByTestId } = render(

@@ -184,6 +184,16 @@ export default function RootLayout() {
           sheetCornerRadius: 24,
         }}
       />
+      {/* Reading, not a task: a full-height sheet, dismissed by the grabber or Done. */}
+      <Stack.Screen
+        name="scoring"
+        options={{
+          presentation: 'formSheet',
+          sheetAllowedDetents: [1.0],
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 24,
+        }}
+      />
       <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
     </Stack>
   );

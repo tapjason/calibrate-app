@@ -93,6 +93,13 @@ describe('SettingsView', () => {
     expect(screen.getByText(/to OpenAI/)).toBeTruthy();
   });
 
+  it('links to How scoring works', () => {
+    const onOpenScoring = jest.fn();
+    render(<SettingsView onOpenScoring={onOpenScoring} />);
+    fireEvent.press(screen.getByTestId('settings-scoring'));
+    expect(onOpenScoring).toHaveBeenCalledTimes(1);
+  });
+
   it('offers a route to Plus for a free user', () => {
     const onOpenPaywall = jest.fn();
     render(<SettingsView onOpenPaywall={onOpenPaywall} />);

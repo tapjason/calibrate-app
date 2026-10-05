@@ -1,0 +1,62 @@
+import { fireEvent, render, screen } from '@testing-library/react-native';
+
+import { MIN_N_BAND, MIN_N_CATEGORY, MIN_N_OVERALL } from '@/types';
+
+import { badgeRows, scoringSections } from './scoringCopy';
+import { ScoringExplainer } from './ScoringExplainer';
+
+const allText = () =>
+  scoringSections()
+    .flatMap((s) => [s.title, ...s.paragraphs])
+    .join('\n');
+
+describe('scoringCopy (roadmap step 29)', () => {
+  // The page explains the engine, so it must quote the engine's own numbers.
+  it('states the minimums from the shared constants', () => {
+    const text = allText();
+    expect(text).toContain(`Why it waits for ${MIN_N_OVERALL}`);
+    expect(text).toContain(`until ${MIN_N_OVERALL} predictions have resolved`);
+    expect(text).toContain(`until ${MIN_N_CATEGORY} have in that category`);
+    expect(text).toContain(`until it holds ${MIN_N_BAND}`);
+  });
+
+  // CLAUDE.md's bucket convention: lower bound inclusive, top band closed.
+  it('describes the five bands and their edges as the engine draws them', () => {
+    const text = allText();
+    expect(text).toContain('0–20%, 20–40%, 40–60%, 60–80% and 80–100%');
+    expect(text).toContain('exactly 20% goes in 20–40%, and 100% goes in 80–100%');
+  });
+
+  // CLAUDE.md's worked examples: 0.90 vs 0.50 → 60; misses 5, 20, 35 → 80.
+  it("uses CLAUDE.md's worked examples", () => {
+    const text = allText();
+    expect(text).toContain('a 40-point miss, and a score of 60');
+    expect(text).toContain('misses of 5, 20 and 35 points in three bands, the average miss is 20, so the score is 80');
+  });
+
+  it('lists the five badges in ladder order with their criteria', () => {
+    expect(badgeRows().map((r) => r.label)).toEqual([
+      'Guesser',
+      'Tracker',
+      'Forecaster',
+      'Sharp',
+      'Oracle',
+    ]);
+    expect(badgeRows()[2].criteria).toBe('Above 70 over 20+ predictions');
+  });
+});
+
+describe('ScoringExplainer', () => {
+  it('renders every section, the badge legend, and a way out', () => {
+    const onClose = jest.fn();
+    render(<ScoringExplainer onClose={onClose} />);
+    for (const section of scoringSections()) {
+      expect(screen.getByText(section.title)).toBeTruthy();
+    }
+    expect(screen.getByTestId('scoring-badge-oracle').props.accessibilityLabel).toBe(
+      'Oracle: Above 90 over 100+ predictions',
+    );
+    fireEvent.press(screen.getByTestId('scoring-close'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

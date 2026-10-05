@@ -28,6 +28,7 @@ export default function StatsScreen() {
         categoryStats={categoryStats}
         nextBadges={nextBadges}
         pendingCount={pendingCount}
+        onExplain={() => router.push('/scoring' as never)}
       />
       {/* Free users get one Plus teaser, not a grey upsell per panel. */}
       {!isPlus && (

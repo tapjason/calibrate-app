@@ -26,10 +26,13 @@ export function SettingsView({
   onOpenPaywall,
   onOpenAccount,
   onOpenDelete,
+  onOpenScoring,
 }: {
   onOpenPaywall?: () => void;
   onOpenAccount?: () => void;
   onOpenDelete?: () => void;
+  /** "How scoring works" (roadmap step 29). */
+  onOpenScoring?: () => void;
 } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
@@ -113,6 +116,23 @@ export function SettingsView({
         onValueChange={(v) => void setAnalyticsEnabled(v)}
         testID="toggle-analytics"
       />
+
+      {onOpenScoring && (
+        <View style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowLabel}>How scoring works</Text>
+            <Text style={styles.rowDescription}>
+              The bands, the minimums and the badges, in plain words.
+            </Text>
+          </View>
+          <Button
+            label="Read"
+            variant="secondary"
+            onPress={onOpenScoring}
+            testID="settings-scoring"
+          />
+        </View>
+      )}
 
       {onOpenDelete && <DeleteRow onOpenDelete={onOpenDelete} />}
     </View>

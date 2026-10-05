@@ -67,7 +67,7 @@ ideas from the same read that need the owner went to `FUTURE_UI.md` §C.
 |---|---|---|---|
 | 27 | History's filter row collapses to a few pixels on web | S | **Done** 2026-10-05 · web-verified (chips 36px again) |
 | 28 | The identity line on Home | S–M | **Done** 2026-10-05 · web-verified |
-| 29 | "How scoring works", from Stats and Settings | M | Next |
+| 29 | "How scoring works", from Stats and Settings | M | **Done** 2026-10-05 · web-verified |
 | 30 | Paywall: a close control at the top, and Trends' new parts named | S | Next |
 
 **27. History filters.** The horizontal chip row shrinks to its borders on web,
