@@ -154,6 +154,15 @@ export function CoachPanel({
               Coach is unavailable right now.
             </Text>
           )}
+
+          {!lastAnsweredAt && (
+            // Said again at the point of sending, not only in Settings
+            // (Guideline 5.1.2(i); APP_PRIVACY.md).
+            <Text style={styles.caveat} testID="coach-disclosure">
+              Get feedback sends your calibration numbers, never your predictions,
+              to OpenAI to write it.
+            </Text>
+          )}
         </>
       )}
 

@@ -139,8 +139,18 @@ The privacy policy URL App Store Connect requires must at minimum say:
 is configured), deletes the RevenueCat customer (once a write key is), and
 deletes the auth user, whose rows cascade from every public table. The device
 is wiped only after the server confirms. Guests get "Erase all data on this
-device". The function still has to be deployed; see
-`docs/HUMAN_VERIFICATION.md` Batch E.
+device". Deployed 2026-10-02; the Apple and RevenueCat legs wait on their keys
+(`docs/HUMAN_VERIFICATION.md` Batch E).
+
+**In-app disclosure for the Coach (Guideline 5.1.2(i), added 2025-11-13).**
+Apple now requires apps to "clearly disclose where personal data will be shared
+with third parties, including with third-party AI, and obtain explicit
+permission before doing so". The Coach toggle is the explicit permission (off
+by default, an affirmative switch, nothing sent before it). Since 2026-10-04
+the disclosure names the provider in both places a user meets it: the
+Settings switch ("…go through our server to OpenAI, which writes it") and the
+Coach panel above *Get feedback* until the first answer. Both match the
+policy's §3.
 
 ---
 

@@ -96,7 +96,9 @@ export function SettingsView({
 
       <ToggleRow
         label="Coach (AI)"
-        description="Plus only. Sends your calibration numbers — never your prediction text — to get written feedback."
+        // Guideline 5.1.2(i): name the third-party AI before anything is sent.
+        // The switch itself is the explicit permission; it starts off.
+        description="Plus only. When you ask for feedback, your calibration numbers — never your prediction text — go through our server to OpenAI, which writes it."
         value={coachEnabled}
         onValueChange={(v) => void setCoachEnabled(v)}
         testID="toggle-coach"

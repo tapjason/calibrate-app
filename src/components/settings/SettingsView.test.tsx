@@ -87,6 +87,12 @@ describe('SettingsView', () => {
     });
   });
 
+  // Guideline 5.1.2(i): the toggle that sends data to an AI names who gets it.
+  it('names OpenAI on the Coach toggle', () => {
+    render(<SettingsView />);
+    expect(screen.getByText(/to OpenAI/)).toBeTruthy();
+  });
+
   it('offers a route to Plus for a free user', () => {
     const onOpenPaywall = jest.fn();
     render(<SettingsView onOpenPaywall={onOpenPaywall} />);
