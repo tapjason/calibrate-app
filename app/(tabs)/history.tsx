@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -17,6 +18,7 @@ const FILTERS: readonly (Category | 'all')[] = [
 ];
 
 export default function HistoryScreen() {
+  const router = useRouter();
   const resolved = usePredictionStore((s) => s.resolved);
   const [filter, setFilter] = useState<Category | 'all'>('all');
 
@@ -84,7 +86,17 @@ export default function HistoryScreen() {
           style={styles.list}
           data={filtered}
           keyExtractor={(p) => p.id}
-          renderItem={({ item }) => <PredictionCard prediction={item} />}
+          renderItem={({ item }) => (
+            <PredictionCard
+              prediction={item}
+              // Only a skip can be revisited: it never counted (roadmap step 39).
+              onPress={
+                item.status === 'skipped'
+                  ? (id) => router.push(`/resolve/${id}` as never)
+                  : undefined
+              }
+            />
+          )}
         />
       )}
     </View>

@@ -277,6 +277,41 @@ export function ResolvePrompt({
     );
   }
 
+  // A skip can be taken back (roadmap step 39). It never counted, so
+  // answering it later can't move a score after the fact, and a mis-tap on
+  // "Can't tell" otherwise had no undo (HIG: let people undo).
+  if (prediction.status === 'skipped') {
+    const answerNow = async () => {
+      setError(null);
+      setSubmitting(true);
+      try {
+        await usePredictionStore.getState().reopen(prediction.id);
+        setPrediction({ ...prediction, status: 'pending', resolved_at: null, reflection: null });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setSubmitting(false);
+      }
+    };
+    return (
+      <View style={styles.center} testID="resolve-skipped">
+        <Text style={styles.notFoundTitle}>Not scored</Text>
+        <Text style={[styles.notFoundBody, styles.skippedBody]}>
+          You marked “{prediction.title}” as can’t tell. If you can tell now, answer it
+          and it counts like any other.
+        </Text>
+        {error && <Text style={styles.error}>{error}</Text>}
+        <Button
+          label={submitting ? '…' : 'Answer it now'}
+          variant="secondary"
+          onPress={() => void answerNow()}
+          disabled={submitting}
+          testID="resolve-unskip"
+        />
+      </View>
+    );
+  }
+
   if (prediction.status !== 'pending') {
     return (
       <View style={styles.center}>
@@ -411,4 +446,5 @@ const styles = StyleSheet.create({
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   notFoundTitle: { ...type.headline, color: colors.textPrimary, marginBottom: space.sm },
   notFoundBody: { ...type.subhead, color: colors.textSecondary, textAlign: 'center' },
+  skippedBody: { marginBottom: space.lg },
 });

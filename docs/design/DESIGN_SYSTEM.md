@@ -470,6 +470,10 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   answer.
 - Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states
   follow §7.8.
+- **A skip can be taken back** (roadmap step 39): a "Not scored" card in History opens
+  Resolve with "You marked this as can't tell" and a secondary **Answer it now**,
+  which reopens it. Only skips: they never counted, so answering later can't rewrite a
+  score.
 - **Log it again** (roadmap step 22): after an answer, a secondary capsule under
   Done. It saves any reflection, closes the sheet and opens Log with the title,
   category and lead time carried over, and the confidence back at 50%: a fresh call,

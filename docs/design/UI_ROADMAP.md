@@ -69,11 +69,17 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now
+### 1.1 Building now (eighth batch, 2026-10-05)
 
-Nothing in progress. Seven batches shipped on 2026-10-04 and 10-05 (steps 16–38),
-the last from a read of the notification service. The next useful read is on an
-iPhone: the device column above lists what web can't show.
+| Step | Item | Size | State |
+|---|---|---|---|
+| 39 | A skip can be answered later, from History | S | **Done** 2026-10-05 · web-verified |
+
+**39.** Skip ("Can't tell / doesn't apply") had no undo: a mis-tap left the
+prediction "Not scored" for good, and Change answer only exists after Yes or No.
+A skipped card in History now opens Resolve, which offers **Answer it now**. A skip
+never counted, so answering it later can't rewrite a score; a Yes or No still can't
+be reopened from here.
 
 ### What's left in the parking lot
 

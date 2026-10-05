@@ -223,6 +223,34 @@ describe('ResolvePrompt — Log it again (roadmap step 22)', () => {
   });
 });
 
+// Roadmap step 39: a skip never counted, so it can be taken back.
+describe('ResolvePrompt — answering a skipped prediction later', () => {
+  it('offers to answer it, and then it counts like any other', async () => {
+    await insertPrediction(
+      samplePending({ status: 'skipped', resolved_at: '2026-05-20T00:00:00.000Z' }),
+    );
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-skipped')).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId('resolve-unskip'));
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    expect((await getPrediction('p1'))?.status).toBe('pending');
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => expect(screen.getByTestId('resolve-recorded')).toBeTruthy());
+    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+  });
+
+  it('still refuses to reopen a Yes or No from here', async () => {
+    await insertPrediction(
+      samplePending({ status: 'resolved_no', resolved_at: '2026-05-20T00:00:00.000Z' }),
+    );
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByText('Already resolved')).toBeTruthy());
+    expect(screen.queryByTestId('resolve-unskip')).toBeNull();
+  });
+});
+
 describe('bucketLine', () => {
   it('counts what has happened in the range', () => {
     expect(
