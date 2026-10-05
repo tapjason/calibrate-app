@@ -83,6 +83,14 @@ interface StatsState {
    */
   bucketFor: (confidence: number) => BucketStat | null;
   /**
+   * Calibration per category, held in memory like `calibration`. Feeds the
+   * Log screen's track record ("Your 60–80% calls in finance: 7 of 12
+   * happened"), roadmap step 19.
+   */
+  categoryCalibration: Partial<Record<Category, CalibrationResult>>;
+  /** The category's bucket a stated confidence falls in, or null. */
+  categoryBucketFor: (category: Category, confidence: number) => BucketStat | null;
+  /**
    * The line the last recompute crossed (score unlocked, badge tier-up), or
    * null. Set only by recomputeForUser, never by a load — reopening the app
    * is not an achievement. Whoever celebrates it clears it.
@@ -124,11 +132,24 @@ function isYesNo(p: Prediction): boolean {
   return p.status === 'resolved_yes' || p.status === 'resolved_no';
 }
 
+/** Per-category calibration for the categories that have any resolutions. */
+function deriveCategoryCalibration(
+  resolved: readonly Prediction[],
+): Partial<Record<Category, CalibrationResult>> {
+  const out: Partial<Record<Category, CalibrationResult>> = {};
+  for (const category of CATEGORIES) {
+    const subset = resolved.filter((p) => p.category === category);
+    if (subset.length > 0) out[category] = computeCalibration(subset);
+  }
+  return out;
+}
+
 export const useStatsStore = create<StatsState>((set, get) => ({
   userStat: null,
   categoryStats: [],
   nextBadges: {},
   calibration: EMPTY_CALIBRATION,
+  categoryCalibration: {},
   trends: EMPTY_TRENDS,
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
@@ -138,6 +159,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   bucketFor: (confidence) => {
     const low = bucketLowFor(confidence);
     return get().calibration.buckets.find((b) => b.low === low) ?? null;
+  },
+
+  categoryBucketFor: (category, confidence) => {
+    const low = bucketLowFor(confidence);
+    return get().categoryCalibration[category]?.buckets.find((b) => b.low === low) ?? null;
   },
 
   loadForUser: async (userId) => {
@@ -162,6 +188,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       categoryStats,
       nextBadges: deriveNextBadges(categoryStats),
       calibration: computeCalibration(resolved),
+      categoryCalibration: deriveCategoryCalibration(resolved),
       trends: buildTrendSummary(resolved),
       coverageGap: computeCoverageGap([...pending, ...resolved]),
     });
@@ -192,6 +219,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     // Iterate ALL categories: empty ones get their stale row deleted so the
     // next loadForUser doesn't resurrect a ghost category from disk.
     const categoryStats: CategoryStat[] = [];
+    const categoryCalibration: Partial<Record<Category, CalibrationResult>> = {};
     for (const category of CATEGORIES) {
       const subsetAll = all.filter((p) => p.category === category);
       if (subsetAll.length === 0) {
@@ -200,6 +228,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       }
       const subsetResolved = resolved.filter((p) => p.category === category);
       const calc = computeCalibration(subsetResolved);
+      if (subsetResolved.length > 0) categoryCalibration[category] = calc;
       const resolvedCount = subsetResolved.filter(isYesNo).length;
       const stat: CategoryStat = {
         user_id: userId,
@@ -227,6 +256,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       categoryStats,
       nextBadges: deriveNextBadges(categoryStats),
       calibration: userCalc,
+      categoryCalibration,
       trends: buildTrendSummary(resolved),
       coverageGap: computeCoverageGap(all),
       // Keep an uncelebrated milestone rather than overwrite it with null.

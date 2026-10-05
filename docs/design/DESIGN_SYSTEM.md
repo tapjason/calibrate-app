@@ -482,14 +482,20 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
 
 ### 7.12 Log form
 
-Completable in under 15 s (`CLAUDE.md`). Order: title → confidence (§7.3) → category →
-due date → Save.
+Completable in under 15 s (`CLAUDE.md`). Order: title → category → confidence (§7.3) →
+due date → Save. (Category comes before confidence, as built: the track record under
+the control reads the chosen category.)
 
 - **Category:** chips with SF Symbol + word; selected = `brand50` fill, `brand800`
   text, plus a check symbol (not colour alone).
 - **Due date:** chips "Tomorrow", "In a week", "In a month" and **"Pick a date"**,
   which opens the native picker (`@react-native-community/datetimepicker`, §9). Under
   the chips, the resolved date as a sentence: "Due Friday, 3 Oct."
+- **Track record** (roadmap step 19): one `footnote` line in `textSecondary` under
+  the confidence control, "Your 60–80% calls in finance: 7 of 12 happened." The
+  category's band first, then all categories, and nothing below 10 resolved (the
+  chart title's threshold). Counts, never advice: it must not say what to pick.
+  Free, because this is the core loop.
 - **Coverage nudge:** a quiet inline card on `surfaceSunken` above the title field. Its
   accept button is secondary; Save is the only primary action on the screen. Keep the
   current copy and the "Not now" cooldown.

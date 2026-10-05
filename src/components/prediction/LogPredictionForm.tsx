@@ -5,6 +5,7 @@ import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
+import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
@@ -62,6 +63,18 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
   // re-hide the panel on the very next render.
   const coverageGap = useStatsStore((s) => s.coverageGap);
   const [nudge, setNudge] = useState<CoverageNudgeDecision | null>(null);
+
+  // Track record for the chosen category and confidence (roadmap step 19).
+  // Subscribing to both calibrations re-renders when a resolution moves them;
+  // the bucket lookup itself stays in the store.
+  useStatsStore((s) => s.calibration);
+  useStatsStore((s) => s.categoryCalibration);
+  const { bucketFor, categoryBucketFor } = useStatsStore.getState();
+  const record = trackRecordLine(
+    category,
+    categoryBucketFor(category, confidence),
+    bucketFor(confidence),
+  );
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   useEffect(() => {
@@ -230,6 +243,11 @@ export function LogPredictionForm({ onSubmitted }: LogPredictionFormProps) {
             <Text style={styles.bonusText}>Integrity bonus · honest uncertainty</Text>
           </View>
         )}
+        {record && (
+          <Text style={styles.record} testID="track-record">
+            {record.text}
+          </Text>
+        )}
       </View>
 
       <View style={styles.block}>
@@ -351,6 +369,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   bonusText: { ...type.footnote, color: colors.integrityText, fontWeight: '600' },
+  // Counts in plain ink: information, not a verdict or a nudge.
+  record: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
   dateValue: { ...type.subhead, marginTop: space.sm, color: colors.textSecondary },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },

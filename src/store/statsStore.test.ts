@@ -34,6 +34,7 @@ beforeEach(async () => {
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+    categoryCalibration: {},
   });
   __setPersistenceForTests({ load: async () => null, save: async () => {} });
   await useAuthStore.getState().initialize();
@@ -177,5 +178,43 @@ describe('statsStore: coverage gap and the Log-screen nudge', () => {
     await useSettingsStore.getState().markCoverageNudgeShown();
 
     expect(coverageNudgeNow().show).toBe(false);
+  });
+});
+
+describe('statsStore: per-category buckets (roadmap step 19)', () => {
+  async function seedWorkAndHealth(): Promise<void> {
+    await insertPrediction(p({ id: 'w1', category: 'work', confidence: 70 }));
+    await insertPrediction(p({ id: 'w2', category: 'work', confidence: 75 }));
+    await insertPrediction(p({ id: 'h1', category: 'health', confidence: 90 }));
+    await resolvePrediction('w1', 'resolved_yes');
+    await resolvePrediction('w2', 'resolved_no');
+    await resolvePrediction('h1', 'resolved_yes');
+  }
+
+  it("finds a category's own bucket after a recompute", async () => {
+    await seedWorkAndHealth();
+    await useStatsStore.getState().recomputeForUser(USER);
+
+    const { categoryBucketFor } = useStatsStore.getState();
+    expect(categoryBucketFor('work', 65)).toMatchObject({
+      low: 60,
+      total_resolved: 2,
+      resolved_yes: 1,
+    });
+    // Health has nothing in 60–80, and finance has nothing at all.
+    expect(categoryBucketFor('health', 65)).toBeNull();
+    expect(categoryBucketFor('finance', 65)).toBeNull();
+  });
+
+  it('rebuilds them on a fresh load, without a resolution', async () => {
+    await seedWorkAndHealth();
+    await useStatsStore.getState().recomputeForUser(USER);
+    useStatsStore.setState({ categoryCalibration: {} });
+
+    await useStatsStore.getState().loadForUser(USER);
+    expect(useStatsStore.getState().categoryBucketFor('health', 95)).toMatchObject({
+      low: 80,
+      total_resolved: 1,
+    });
   });
 });

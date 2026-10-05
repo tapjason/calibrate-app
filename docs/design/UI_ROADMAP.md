@@ -57,7 +57,7 @@ when it ships.
 | 16 | Halo behind the chart's "n=" labels | FUTURE_UI §B | S | **Done** 2026-10-04 |
 | 17 | Tier-up: emblem flip and confetti | FUTURE_UI §B, DESIGN_SYSTEM §6.1 `tierUp` | M | **Done** 2026-10-04 · replay at `/dev/celebrations` |
 | 18 | Resolve several at once | FUTURE_UI A3 | M | **Done** 2026-10-04 · web-verified |
-| 19 | Track record on the Log slider (free) | FUTURE_UI A1 | S–M | Next |
+| 19 | Track record on the Log slider (free) | FUTURE_UI A1 | S–M | **Done** 2026-10-04 · web-verified |
 | 20 | Personal correction table (Plus) | FUTURE_UI A5 | M | Next |
 | 21 | Calibration by time horizon (Plus) | FUTURE_UI A6 | S–M | Next |
 

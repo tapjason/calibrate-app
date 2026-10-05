@@ -56,6 +56,7 @@ beforeEach(async () => {
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+    categoryCalibration: {},
     coverageGap: NO_GAP,
   });
   useSettingsStore.setState({
@@ -338,5 +339,52 @@ describe('LogPredictionForm due date', () => {
     fireEvent.press(screen.getByTestId('due-pick'));
     fireEvent.press(screen.getByTestId('due-tomorrow'));
     expect(screen.queryByTestId('due-picker')).toBeNull();
+  });
+});
+
+describe('LogPredictionForm track record (roadmap step 19)', () => {
+  const band = (n: number, yes: number) => ({
+    low: 60,
+    high: 80,
+    total_resolved: n,
+    resolved_yes: yes,
+    stated_confidence_mean: 70,
+    actual_rate: yes / n,
+    bucket_error: 0,
+    direction: 'calibrated' as const,
+  });
+
+  const raise = (steps: number) => {
+    for (let i = 0; i < steps; i++) {
+      fireEvent(screen.getByTestId('confidence-adjustable'), 'accessibilityAction', {
+        nativeEvent: { actionName: 'increment' },
+      });
+    }
+  };
+
+  it("shows the chosen category's record for the chosen band, and follows both", () => {
+    useStatsStore.setState({
+      calibration: { rating: 80, buckets: [band(52, 30)] },
+      categoryCalibration: { finance: { rating: 70, buckets: [band(12, 7)] } },
+    });
+    render(<LogPredictionForm />);
+    // 50% sits in the 40–60% band, which has no history: nothing to say.
+    expect(screen.queryByTestId('track-record')).toBeNull();
+
+    raise(4); // 70%
+    expect(screen.getByTestId('track-record').props.children).toBe(
+      'Your 60–80% calls: 30 of 52 happened.',
+    );
+
+    fireEvent.press(screen.getByTestId('category-finance'));
+    expect(screen.getByTestId('track-record').props.children).toBe(
+      'Your 60–80% calls in finance: 7 of 12 happened.',
+    );
+  });
+
+  it('stays quiet for a new user', () => {
+    render(<LogPredictionForm />);
+    raise(4);
+    expect(screen.queryByTestId('track-record')).toBeNull();
   });
 });
