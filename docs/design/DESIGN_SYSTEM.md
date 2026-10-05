@@ -512,6 +512,10 @@ the control reads the chosen category.)
 - **Due date:** chips "Tomorrow", "In a week", "In a month" and **"Pick a date"**,
   which opens the native picker (`@react-native-community/datetimepicker`, §9). Under
   the chips, the resolved date as a sentence: "Due Friday, 3 Oct."
+- **Starter ideas** (roadmap step 40): only before the first prediction ever, five
+  quiet rows under the empty title field ("Not sure where to start? Try one, then
+  make it yours:"), one per category with its icon. A tap fills title and category,
+  never confidence.
 - **Track record** (roadmap step 19): one `footnote` line in `textSecondary` under
   the confidence control, "Your 60–80% calls in finance: 7 of 12 happened." The
   category's band first, then all categories, and nothing below 10 resolved (the

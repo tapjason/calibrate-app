@@ -6,6 +6,7 @@ import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
 import { noonInDays, type LogAgainDraft } from '@/components/prediction/logAgain';
+import { StarterIdeas } from '@/components/prediction/StarterIdeas';
 import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
@@ -65,6 +66,8 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
   // off, the button + suggestion UI are
   // hidden entirely; the rest of the save flow is untouched.
   const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
+  // A first prediction ever gets starter ideas under the title (step 40).
+  const firstEver = usePredictionStore((s) => s.pending.length + s.resolved.length === 0);
 
   // The range-coverage nudge (CLAUDE.md, "Range coverage caveat"). Latched
   // once shown: marking it shown starts the cooldown, which would otherwise
@@ -168,6 +171,15 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
         maxLength={TITLE_MAX_LENGTH}
         testID="title-field"
       />
+
+      {firstEver && title.trim().length === 0 && (
+        <StarterIdeas
+          onPick={(idea) => {
+            setTitle(idea.title);
+            setCategory(idea.category);
+          }}
+        />
+      )}
 
       {REFINE_ENABLED && aiRefineEnabled && title.trim().length > 0 && (
         <>

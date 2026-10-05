@@ -408,3 +408,42 @@ describe('LogPredictionForm — Log it again (roadmap step 22)', () => {
     expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(50);
   });
 });
+
+describe('LogPredictionForm — starter ideas (roadmap step 40)', () => {
+  it('offers them for a first prediction, and fills title and category, not confidence', () => {
+    render(<LogPredictionForm />);
+    fireEvent.press(screen.getByTestId('starter-health'));
+    expect(screen.getByTestId('title-field').props.value).toBe(
+      "I'll get to the gym twice this week",
+    );
+    expect(screen.getByTestId('category-health').props.accessibilityState).toEqual({
+      selected: true,
+    });
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(50);
+    // Once there's a title, they step aside.
+    expect(screen.queryByTestId('starter-ideas')).toBeNull();
+  });
+
+  it('never shows them to someone who has logged before', () => {
+    usePredictionStore.setState({
+      pending: [
+        {
+          id: 'p0',
+          user_id: 'u1',
+          title: 'Earlier call',
+          category: 'work',
+          confidence: 70,
+          created_at: '2026-10-01T10:00:00.000Z',
+          due_date: '2099-01-01T12:00:00.000Z',
+          status: 'pending',
+          resolved_at: null,
+          reflection: null,
+          integrity_bonus: false,
+        },
+      ],
+      resolved: [],
+    });
+    render(<LogPredictionForm />);
+    expect(screen.queryByTestId('starter-ideas')).toBeNull();
+  });
+});
