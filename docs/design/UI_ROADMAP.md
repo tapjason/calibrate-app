@@ -62,6 +62,10 @@ is checking it on an iPhone and the decisions.
 | 38 Notification permission in context | Done 2026-10-05, unit-tested; card previewed at `/dev/celebrations` | Yes (no alert over the Warmup; D1) |
 | 39 A skip can be answered later | Done 2026-10-05, web-verified | — |
 | 40 Starter ideas for a first prediction | Done 2026-10-05, web-verified | — |
+| 41 Settings' switches named | Done 2026-10-05, web-verified | Yes (VoiceOver reads "Notifications, switch, on") |
+| 42 Decorative pieces silent everywhere | Done 2026-10-05, web-verified | — |
+| 43 Rating and badge rows as one sentence | Done 2026-10-05, unit-tested | Yes (VoiceOver) |
+| 44 Warmup questions as announced headings | Done 2026-10-05, web-verified | Yes (VoiceOver hears each new question) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -71,38 +75,11 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (ninth batch: accessibility, 2026-10-05)
+### 1.1 Building now
 
-From reading the accessibility tree of every screen on the web build (what a
-screen reader is handed), as the demo account.
-
-| Step | Item | Size | State |
-|---|---|---|---|
-| 41 | Settings' switches say what they switch | S | **Done** 2026-10-05 · web-verified (named, checked state toggles) |
-| 42 | Decorative pieces stay silent on every platform | S | **Done** 2026-10-05 · web-verified (no glyphs, ticks or doubled n= in the tree) |
-| 43 | The rating and each badge row read as one sentence | S | **Done** 2026-10-05 · unit-tested; iOS behaviour (react-native-web drops labels on generic groups, so the web tree still shows the parts) |
-| 44 | The Warmup's questions are headings, and each new one is announced | S | **Done** 2026-10-05 · web-verified (heading, labelled radiogroup); announcement unit-tested |
-
-**41.** Each Settings switch was an unnamed "switch, on": its label and description
-were separate text beside it, which VoiceOver doesn't attach to the control. The
-whole row becomes one switch element named by its label, with the description as
-its hint and the inner Switch hidden; tapping the row toggles it.
-
-**42.** Icons, the score bar's ticks, the badge emblems and the chart's drawing are
-marked hidden with iOS-only props, which the web build ignores: there a screen
-reader heard icon-font characters, "70 85 90", and every "n=" label twice (the
-step-16 halo). `aria-hidden`, which React Native maps on every platform, replaces
-or joins them. Matters for the web Warmup (FUTURE_UI A8) and costs nothing on iOS.
-
-**43.** The hero read as "92", "calibration rating" and loose tick numbers, and a
-badge row as "finance", "3 more resolved → Tracker" (the arrow read aloud),
-"Guesser". Each becomes one element: "Calibration rating, 92 out of 100." and
-"Finance: Guesser. 3 more resolved to reach Tracker."
-
-**44.** The Warmup is the first screen anyone sees. Its title and each question are
-now headings (the question's reads "Question 3 of 10. Which is longer?"), the two
-answers sit in a radio group named by the question, and because Next swaps the
-question in place while focus stays on the button, each new question is announced.
+Nothing in progress. Nine batches shipped on 2026-10-04 and 10-05 (steps 16–44),
+the last an accessibility pass over every screen's accessibility tree. The next
+useful read is on an iPhone, with VoiceOver on for steps 41, 43 and 44.
 
 ### What's left in the parking lot
 

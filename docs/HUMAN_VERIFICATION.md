@@ -738,6 +738,11 @@ Added 2026-09-29 (polish pass):
       notch. History shows saved reflections on their cards and hides its
       filters until something is resolved. While calibrating, Home and Stats say
       when the next one comes due. Settings ends with "Terms of use".
+- [ ] **VoiceOver pass (added 2026-10-05, steps 41–44):** Settings reads
+      "Notifications, switch, on" (and a double-tap toggles it); the Stats
+      rating reads "Calibration rating, 92 out of 100"; a badge row reads
+      "Health: Sharp. 45 more resolved to reach Oracle"; in the Warmup, each
+      new question is spoken after Next.
 - [ ] **Log it again (added 2026-10-04; web-verified):** after Yes or No on a
       single Resolve, **Log it again** closes the sheet and opens Log with the same
       title, category and lead time, and the confidence at 50%. On the phone: the
