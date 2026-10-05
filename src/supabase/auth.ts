@@ -26,9 +26,23 @@ export type SignUpOutcome =
   | { ok: true; needsConfirmation: boolean }
   | { ok: false; error: string };
 
+const OFFLINE = "Couldn't reach the server. Check your connection and try again.";
+
+/**
+ * The words a person sees for an auth failure. Supabase reports an
+ * unreachable server as the browser's or fetch's own text ("Failed to fetch",
+ * "Network request failed"), which reads as a bug, not as "you're offline".
+ * Everything else is Supabase's own message, which is written for people.
+ * Exported for tests.
+ */
+export function authErrorText(message: string): string {
+  const unreachable =
+    /failed to fetch|network request failed|fetch failed|networkerror|load failed/i;
+  return unreachable.test(message) ? OFFLINE : message;
+}
+
 function errMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  return String(e);
+  return authErrorText(e instanceof Error ? e.message : String(e));
 }
 
 /**
@@ -58,7 +72,7 @@ export async function signInWithApple(): Promise<AuthOutcome> {
       provider: 'apple',
       token: credential.identityToken,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: authErrorText(error.message) };
     return { ok: true };
   } catch (e) {
     // ERR_REQUEST_CANCELED is thrown when the user dismisses the sheet —
@@ -89,7 +103,7 @@ export async function signInWithGoogle(): Promise<AuthOutcome> {
         skipBrowserRedirect: true,
       },
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: authErrorText(error.message) };
     if (!data?.url) return { ok: false, error: 'Supabase did not return an auth URL.' };
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
@@ -105,7 +119,7 @@ export async function signInWithGoogle(): Promise<AuthOutcome> {
     if (!code) return { ok: false, error: 'Google redirect missing auth code.' };
 
     const { error: exchangeError } = await getSupabaseClient().auth.exchangeCodeForSession(code);
-    if (exchangeError) return { ok: false, error: exchangeError.message };
+    if (exchangeError) return { ok: false, error: authErrorText(exchangeError.message) };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: errMessage(e) };
@@ -126,7 +140,7 @@ export async function signInWithEmail(
       email: trimmed,
       password,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: authErrorText(error.message) };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: errMessage(e) };
@@ -154,7 +168,7 @@ export async function signUpWithEmail(
       email: trimmed,
       password,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: authErrorText(error.message) };
     return { ok: true, needsConfirmation: !data?.session };
   } catch (e) {
     return { ok: false, error: errMessage(e) };
@@ -164,7 +178,7 @@ export async function signUpWithEmail(
 export async function signOut(): Promise<AuthOutcome> {
   try {
     const { error } = await getSupabaseClient().auth.signOut();
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: authErrorText(error.message) };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: errMessage(e) };
@@ -180,7 +194,7 @@ export async function signOut(): Promise<AuthOutcome> {
 export async function signOutLocal(): Promise<AuthOutcome> {
   try {
     const { error } = await getSupabaseClient().auth.signOut({ scope: 'local' });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: authErrorText(error.message) };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: errMessage(e) };

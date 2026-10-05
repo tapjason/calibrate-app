@@ -1,4 +1,4 @@
-import { signUpWithEmail } from './auth';
+import { authErrorText, signUpWithEmail } from './auth';
 import { setSupabaseClientForTests } from './client';
 
 function clientWithSignUp(result: { data: unknown; error: unknown }) {
@@ -61,5 +61,25 @@ describe('signUpWithEmail', () => {
 
     await signUpWithEmail('  a@b.co ', 'longenough');
     expect(signUp).toHaveBeenCalledWith({ email: 'a@b.co', password: 'longenough' });
+  });
+});
+
+describe('authErrorText', () => {
+  // Seen on the web build, 2026-10-04, with the Supabase project paused.
+  it('turns an unreachable server into words a person can act on', () => {
+    for (const raw of [
+      'Failed to fetch',
+      'Network request failed',
+      'TypeError: fetch failed',
+      'Load failed',
+    ]) {
+      expect(authErrorText(raw)).toBe(
+        "Couldn't reach the server. Check your connection and try again.",
+      );
+    }
+  });
+
+  it("passes Supabase's own messages through", () => {
+    expect(authErrorText('Invalid login credentials')).toBe('Invalid login credentials');
   });
 });
