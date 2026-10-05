@@ -57,11 +57,49 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now
+### 1.1 Building now (third batch, from the 2026-10-05 review)
 
-Nothing. Two batches moved here from `FUTURE_UI.md` on 2026-10-04 and shipped the
-same day (steps 16–26 above; specs in DESIGN_SYSTEM §6.1, §7.10, §7.12, §7.16).
-Everything left in the parking lot needs something an agent can't supply:
+A screen-by-screen read of the web build with the demo account on 2026-10-05.
+Each finding moves here when work starts and into the table above when it ships;
+ideas from the same read that need the owner went to `FUTURE_UI.md` §C.
+
+| Step | Item | Size | State |
+|---|---|---|---|
+| 27 | History's filter row collapses to a few pixels on web | S | Next |
+| 28 | The identity line on Home | S–M | Next |
+| 29 | "How scoring works", from Stats and Settings | M | Next |
+| 30 | Paywall: a close control at the top, and Trends' new parts named | S | Next |
+
+**27. History filters.** The horizontal chip row shrinks to its borders on web,
+because a horizontal ScrollView may shrink in a column. `flexShrink: 0` on the row,
+`flex: 1` on the list.
+
+**28. Identity on Home.** The product is "identity, not statistics" (`CLAUDE.md`),
+but Home leads with a number and the identity line only lives on the Share card.
+Under the rating, once a category has reached Tracker: *Sharp in health*, with the
+contrast (*Guesser in finance*) smaller beneath, as on the card, the same copy
+helper (`shareLines`). Tapping it opens Share. Nothing while every category is a
+Guesser, where it would only repeat "Guesser" daily.
+
+**29. How scoring works.** One plain-language sheet: what the score measures, how
+it's worked out (five bands; the gap between what you said and what happened; one
+worked example from `CLAUDE.md`), why it waits for 20 (15 per category, 10 per
+band), the five badges with their real thresholds, honest uncertainty, and what
+doesn't count (skips, the Warmup). Numbers come from the shared constants and
+`BADGE_META`, so the page can't drift from the engine. Linked under the Stats
+rating ("How is this scored?") and from Settings. Free: it explains free numbers.
+
+**30. Paywall.** It's a full-screen modal whose only way out, "Not now", sits below
+the fold; a close control at the top right (44pt, "Close") is what people look for
+and what App Review expects. The Trends benefit line also gains the correction
+table: "what your 80% really means".
+
+Earlier batches (steps 16–26) shipped on 2026-10-04; their specs live in
+DESIGN_SYSTEM §6.1, §7.10, §7.12 and §7.16.
+
+### What's left in the parking lot
+
+Every item still in `FUTURE_UI.md` needs something an agent can't supply:
 
 | Item | What it waits on |
 |---|---|

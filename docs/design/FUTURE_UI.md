@@ -88,6 +88,17 @@ category unlocks), and an App Intent for "Log a prediction".
 | Progress **ring** instead of the bar on Home/Stats | Roadmap step 4 | Optional. The bar reads fine. |
 | 👍 / 👎 on Coach cards | DESIGN_SYSTEM §7.13 | Only once there's an analytics event to receive it. |
 
+---
+
+## C. From the 2026-10-05 review (need the owner)
+
+| Item | Why it waits |
+|---|---|
+| A category's own page (its curve, its predictions, its badge path) from the Stats badge list | Trends' upsell already sells "drills into each category" as Plus. A free category page would give that away; a Plus one is a scope call. |
+| Retake the Warmup from Settings | It overwrites the stored result and the first share card, and changes what the Warmup is for (Day 0 only, or a repeatable check). A product call. |
+
+---
+
 Moved to `UI_ROADMAP.md` on 2026-10-04 and shipped the same day: the tier-up
 confetti and emblem flip (step 17) and the chart-label halo (step 16). The web
 Back guard moved as step 23.
