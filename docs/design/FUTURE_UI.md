@@ -1,6 +1,6 @@
 # Calibrate — Future UI Features
 
-**As of:** 2026-10-03. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
+**As of:** 2026-10-04 (weekly Wrapped `reveal` shipped; removed from §B). A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
 what's being built now. Nothing here is scheduled, and anything that changes product
 behaviour needs the owner's call first. `CLAUDE.md` still governs every item:
 shareable artifacts are never paywalled, no number built on noise (min-N), AI stays
@@ -25,7 +25,7 @@ a native build.
 | A7 | Changing your confidence before the due date | L | Schema change; scoring rule |
 | A8 | Web Warmup as the share-card landing page | M | Hosting (GitHub Pages) |
 | A9 | Predict the same event with a friend | L | Backend, invites |
-| A10 | Widgets and a Siri Shortcut | L | EAS build (no Expo Go) |
+| A10 | Widgets and a Siri Shortcut | L (the Shortcut drops to M on SDK 58) | EAS build; SDK 58 for `expo-app-intents` |
 
 ### A1. Track record on the Log slider
 As the slider moves: *"Your 80%s in finance have come true 58% of the time."* This
@@ -111,7 +111,10 @@ A Home or Lock Screen widget ("3 ready to resolve", or the identity line once a
 category unlocks), and an App Intent for "Log a prediction".
 - Needs a native target and an EAS build. Not testable in Expo Go (iPhone-only
   setup).
-- Revisit after **D5** (SDK upgrade).
+- Revisit after **D5** (SDK upgrade). SDK 58 (beta 2026-09-15) adds
+  `expo-app-intents`, which exposes Siri, Shortcuts, Spotlight and Apple
+  Intelligence intents from JavaScript, so "Log a prediction" no longer needs
+  hand-written Swift. Widgets still need a native target.
 
 ---
 
@@ -121,9 +124,9 @@ category unlocks), and an App Intent for "Log a prediction".
 |---|---|---|
 | Confetti (≤ 40 particles, ≤ 1.2 s) and an emblem flip on badge tier-up | DESIGN_SYSTEM §6.1 `tierUp` | Needs Lottie or a particle view. The spring-in card plus Success haptic already mark the moment. |
 | Progress **ring** instead of the bar on Home/Stats | Roadmap step 4 | Optional. The bar reads fine. |
-| `reveal` motion on weekly Wrapped | DESIGN_SYSTEM §6.2 | The card is captured to PNG, so animating it risks capturing mid-motion. Animate the panel around it, not the card. |
 | 👍 / 👎 on Coach cards | DESIGN_SYSTEM §7.13 | Only once there's an analytics event to receive it. |
 | Guard the web build's browser Back against losing a typed reflection | Roadmap step 11 | React Navigation's prevent-remove doesn't see the browser's own Back. Native ships, so web is low priority. |
+| A halo behind the chart's "n=" labels | Web run-through 2026-10-04 | The connecting line can pass through a label (the demo's n=8 at 20–40%). A canvas-coloured text stroke would fix it, but `paintOrder` support in react-native-svg needs checking on a device first. |
 
 Decisions **D1–D10** in `UI_ROADMAP.md` §2 (typeface, weekly streak, four tabs, honesty
 bands, SDK, milestone cards, dark mode, resolving from a notification, reminder time,
