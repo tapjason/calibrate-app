@@ -44,7 +44,7 @@ is checking it on an iPhone and the decisions.
 | 20 Personal correction table (Plus) | Done 2026-10-04, web-verified with the dev Plus preview | — |
 | 21 Calibration by time horizon (Plus) | Done 2026-10-04, web-verified with the dev Plus preview | — |
 | 22 "Log it again" after resolving | Done 2026-10-04, web-verified | Yes (sheet closes, Log tab shows) |
-| 23 Web: Back keeps a typed reflection | Done 2026-10-04. Reload prompt seen on web; the Back save is unit-tested. | — |
+| 23 Web: Back keeps a typed reflection | Done 2026-10-04. Reload prompt seen on web; the Back save confirmed end to end on 2026-10-05, once History could show reflections. | — |
 | 24 Wrapped through the store | Done 2026-10-04; `src/components/layering.test.ts` now guards the L6 → L4 → L3 arrow | — |
 | 25 Web: explicit tab names | Done 2026-10-04, web-verified | — |
 | 26 Demo titles without weekdays | Done 2026-10-04; a test keeps them that way | — |
@@ -68,7 +68,7 @@ DESIGN_SYSTEM §7.1, §7.6, §7.17).
 
 | Step | Item | Size | State |
 |---|---|---|---|
-| 31 | Reflections, readable again in History | S | Next |
+| 31 | Reflections, readable again in History | S | **Done** 2026-10-05 · web-verified (it also showed step 23's Back save working end to end) |
 | 32 | While calibrating, when the next one comes due | S | Next |
 
 **31. Reflections in History.** Resolve asks "What surprised you?", and the answer

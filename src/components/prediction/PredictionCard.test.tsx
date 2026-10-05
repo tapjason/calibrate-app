@@ -65,3 +65,34 @@ describe('PredictionCard', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 });
+
+// Roadmap step 31: Resolve asks for a reflection; History reads it back.
+describe('PredictionCard — reflections', () => {
+  it('shows a saved reflection on a resolved card, and says it to screen readers', () => {
+    render(
+      <PredictionCard
+        prediction={{ ...prediction, reflection: '  Shipped a day late, but it shipped. ' }}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(screen.getByTestId('prediction-card-reflection').props.children).toEqual([
+      '“',
+      'Shipped a day late, but it shipped.',
+      '”',
+    ]);
+    expect(screen.getByRole('button').props.accessibilityLabel).toMatch(
+      / Your note: Shipped a day late, but it shipped\.$/,
+    );
+  });
+
+  it('shows nothing for a blank reflection, or on an open prediction', () => {
+    const { rerender } = render(<PredictionCard prediction={{ ...prediction, reflection: '   ' }} />);
+    expect(screen.queryByTestId('prediction-card-reflection')).toBeNull();
+    rerender(
+      <PredictionCard
+        prediction={{ ...prediction, status: 'pending', resolved_at: null, reflection: 'draft' }}
+      />,
+    );
+    expect(screen.queryByTestId('prediction-card-reflection')).toBeNull();
+  });
+});

@@ -490,6 +490,9 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   ✓/✗ characters or green/red. Skipped reads "Not scored".
 - Tapping a ready card opens Resolve (§7.10). Keep the single-sentence
   `accessibilityLabel`.
+- **Reflection** (roadmap step 31): on a resolved card, a saved reflection shows under
+  the title, quoted, in `footnote` italic `textSecondary`, at most four lines, and
+  joins the card's accessible sentence ("Your note: …").
 
 ### 7.12 Log form
 

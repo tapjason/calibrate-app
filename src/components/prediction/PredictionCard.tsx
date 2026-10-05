@@ -52,6 +52,10 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
       : prediction.status === 'resolved_no'
         ? ({ sf: 'xmark.circle', ion: 'close-circle-outline' } as const)
         : null;
+  // Resolve asks "What surprised you?"; History is where the answer is read
+  // back (roadmap step 31). Only on a resolved card, and only if written.
+  const reflection =
+    prediction.status !== 'pending' ? prediction.reflection?.trim() || null : null;
 
   return (
     <Pressable
@@ -61,7 +65,8 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
       // One sentence instead of fragments read in layout order.
       accessibilityLabel={
         `${prediction.title}. ${prediction.category}, ${prediction.confidence}% confident, ` +
-        `${when}. ${status}.`
+        `${when}. ${status}.` +
+        (reflection ? ` Your note: ${reflection}` : '')
       }
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -72,6 +77,11 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
       <Text style={styles.title} numberOfLines={3}>
         {prediction.title}
       </Text>
+      {reflection && (
+        <Text style={styles.reflection} numberOfLines={4} testID="prediction-card-reflection">
+          “{reflection}”
+        </Text>
+      )}
       <View style={styles.footer}>
         <Text style={styles.meta}>
           {prediction.confidence}% · {when}
@@ -109,6 +119,8 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   title: { ...type.body, color: colors.textPrimary },
+  // The user's own words, quoted and quieter than the prediction they're about.
+  reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
   footer: {
     alignItems: 'center',
     flexDirection: 'row',
