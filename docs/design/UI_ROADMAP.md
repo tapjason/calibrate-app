@@ -60,6 +60,8 @@ is checking it on an iPhone and the decisions.
 | 36 Privacy policy and terms in Settings | Done 2026-10-05; the privacy link appears once `PRIVACY_POLICY_URL` is set | — |
 | 37 Reminders survive a relaunch | Done 2026-10-05, unit-tested | Yes (HUMAN_VERIFICATION D1) |
 | 38 Notification permission in context | Done 2026-10-05, unit-tested; card previewed at `/dev/celebrations` | Yes (no alert over the Warmup; D1) |
+| 39 A skip can be answered later | Done 2026-10-05, web-verified | — |
+| 40 Starter ideas for a first prediction | Done 2026-10-05, web-verified | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -69,24 +71,11 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (eighth batch, 2026-10-05)
+### 1.1 Building now
 
-| Step | Item | Size | State |
-|---|---|---|---|
-| 39 | A skip can be answered later, from History | S | **Done** 2026-10-05 · web-verified |
-| 40 | Starter ideas for a first prediction | S | **Done** 2026-10-05 · web-verified |
-
-**39.** Skip ("Can't tell / doesn't apply") had no undo: a mis-tap left the
-prediction "Not scored" for good, and Change answer only exists after Yes or No.
-A skipped card in History now opens Resolve, which offers **Answer it now**. A skip
-never counted, so answering it later can't rewrite a score; a Yes or No still can't
-be reopened from here.
-
-**40.** The Warmup's "Log my first prediction" lands on an empty title field, the
-hardest part of a first log. For someone who has never logged, five ordinary ideas
-sit under it, one per category, none naming a day; a tap fills the title and
-category, never the confidence. They step aside once there's a title, and never
-appear again after the first prediction.
+Nothing in progress. Eight batches shipped on 2026-10-04 and 10-05 (steps 16–40).
+The next useful read is on an iPhone: the device column above lists what web can't
+show, and HUMAN_VERIFICATION C2 and D1 carry the matching checks.
 
 ### What's left in the parking lot
 
