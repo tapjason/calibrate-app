@@ -52,6 +52,8 @@ is checking it on an iPhone and the decisions.
 | 28 Identity line on Home | Done 2026-10-05, web-verified | — |
 | 29 How scoring works | Done 2026-10-05, web-verified; a test holds the copy to the engine | Yes (full-height sheet) |
 | 30 Paywall close control | Done 2026-10-05, web-verified; the screen now insets its top edge | Yes (clear of the notch) |
+| 31 Reflections in History | Done 2026-10-05, web-verified | — |
+| 32 Next due date while calibrating | Done 2026-10-05, web-verified | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -61,27 +63,28 @@ Go stops at SDK 54), which waits on the $99 Apple account, so "Needs an iPhone
 check" above is one batch for the first device session, not something to do step
 by step.
 
-### 1.1 Building now (fourth batch, 2026-10-05)
+### 1.1 Building now (fifth batch: a new user's first week, 2026-10-05)
 
-From the same review as the third batch (steps 27–30, shipped 2026-10-05; specs in
-DESIGN_SYSTEM §7.1, §7.6, §7.17).
+A read of the app as a brand-new user (Warmup skipped, two predictions logged)
+after steps 31–32 shipped.
 
 | Step | Item | Size | State |
 |---|---|---|---|
-| 31 | Reflections, readable again in History | S | **Done** 2026-10-05 · web-verified (it also showed step 23's Back save working end to end) |
-| 32 | While calibrating, when the next one comes due | S | **Done** 2026-10-05 · web-verified |
+| 33 | History hides its filters until there is something to filter | S | Next |
+| 34 | An empty week's recap says what's coming, not "nothing" | S | Next |
+| 35 | Stats' calibrating caption gets the next due date too | S | Next |
 
-**31. Reflections in History.** Resolve asks "What surprised you?", and the answer
-is saved, but nothing ever shows it again: a note the user can't read back teaches
-nothing. On a resolved card in History, the reflection appears under the title in
-`footnote`, quoted, and in the card's accessible sentence. Their own words, on their
-own device: no new data leaves anywhere.
+**33.** Six category chips above "Resolved predictions collect here" filter nothing.
+They appear with the first resolution.
 
-**32. The next due date while calibrating.** For the first weeks the hero is the
-"Calibrating" bar, and resolutions come only when predictions fall due, which the
-user doesn't control. Under the bar: "The next one comes due Tue, Oct 6." (or
-"…is ready to resolve" when one already is), so the wait has a date. Nothing when
-nothing is open; the empty state already asks for a first prediction.
+**34.** DESIGN_SYSTEM §7.14: never a card whose main message is "not enough data",
+and an empty window "says what *will* be there". The new user's weekly card led
+with "Nothing resolved yet" while two predictions were due within days. With open
+predictions due within the week, the card leads with "2 on the way" and says the
+recap fills in as they resolve; with none, it keeps today's copy.
+
+**35.** Home's calibrating caption has said when the next one comes due since step
+32; Stats shows the same bar and should say the same thing.
 
 ### What's left in the parking lot
 
