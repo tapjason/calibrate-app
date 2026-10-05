@@ -29,8 +29,8 @@ directly — it goes through a store.
 
 ## Where the build is
 
-**Current state (2026-10-03).** All code in L0–L6 is built; `tsc --noEmit` is
-clean and `npm test` is 88 suites / 997 tests green. What is left is almost
+**Current state (2026-10-04).** All code in L0–L6 is built; `tsc --noEmit` is
+clean and `npm test` is 88 suites / 1010 tests green. What is left is almost
 entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
 The few remaining code items are in `docs/NEXT_STEPS.md`; UI status and open design
 decisions are in `docs/design/UI_ROADMAP.md`. The step-by-step build history that
@@ -52,6 +52,12 @@ used to live here is in git (`git log -- BUILD_PLAN.md`).
   2026-10-03), so restore it from the dashboard before any live test.
 - **Decisions on 2026-10-01:** testing is on an **iPhone only** (so a real purchase
   waits on the $99 Apple account), and "Confirm email" stays on for now.
+- **Found 2026-10-04:** the App Store's Expo Go stops at SDK 54 and this app is
+  SDK 55, so *every* iPhone run needs a development build, and with it the $99
+  account. The web build is the only free way to look at the app until then.
+  Also new since the code was written: Guideline 5.1.2(i) (name the third-party
+  AI before sending it data), Texas age assurance (in force 2026-06-04) and the
+  2026 age-rating questionnaire. All three are tracked in `docs/NEXT_STEPS.md`.
 - **Before a build with a live paywall reaches anyone:** the three products and the
   `plus` entitlement must exist in App Store Connect and RevenueCat, the public SDK
   key must be in the build's env, and the sandbox-purchase gate needs a person and a
@@ -346,6 +352,15 @@ sandbox subscribe → Coach cards and cosmetics unlock.
   dashboard setting; what *is* code is that it renders in the store's own unit
   ("1 month", not "30 days") and states the 24-hour cancellation rule.
 - Subscription + AI privacy declarations; app icon, splash, screenshots.
+- The 2026 age-rating questionnaire (answers drafted in
+  `docs/APP_STORE_LISTING.md` §1), and the in-app OpenAI disclosure that
+  Guideline 5.1.2(i) requires before the Coach sends anything.
+- Age assurance where the law requires it (Texas since 2026-06-04): the
+  Declared Age Range API through `expo-age-range`, failing open. Owner decision
+  first (`docs/NEXT_STEPS.md` item i).
+- Build toolchain: App Store uploads need Xcode 26 / the iOS 26 SDK since
+  2026-04-28. EAS's SDK 55 image meets that; the SDK upgrade (55 → 58) is a
+  separate iteration after the first device build.
 - `eas build --platform ios` → TestFlight → App Store submission.
 
 **Depends on:** all layers.

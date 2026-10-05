@@ -1,6 +1,6 @@
 # Calibrate — App Store Listing (draft)
 
-**As of:** 2026-09-25 · Drafted from `CLAUDE.md` and the shipped code. Every
+**As of:** 2026-10-04 (age rating re-done for Apple's 2026 questionnaire) · Drafted from `CLAUDE.md` and the shipped code. Every
 feature claimed below exists in `master`; ✨ Refine is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
@@ -52,10 +52,26 @@ The rest of this document says "Calibrate". Substitute as needed.
 Not Health & Fitness. The app reads no health data, and that category invites
 the name collision above.
 
-**Age rating:** answer "None" to every content question, which yields **4+**.
-There's no user-to-user interaction, no unrestricted web access, and nothing
-shared inside the app. Shared cards go out through the OS share sheet, which
-Apple doesn't count as in-app user-generated content.
+**Age rating:** target **4+**. Apple replaced the questionnaire in 2025 (new
+13+, 16+ and 18+ tiers), and since 2026-01-31 App Store Connect blocks
+submission until the new questions are answered. Proposed answers, each with
+the reason:
+
+| Question group | Answer | Why |
+|---|---|---|
+| Content (violence, mature themes, profanity, gambling, …) | None | Nothing of the kind ships. Predictions are the user's own text and stay on their device and account. |
+| Medical or wellness topics | None | "Health" is only a label the user puts on their own predictions. The app gives no medical or wellness information, and the Coach is forbidden from medical advice and numeric diet or exercise targets (`COACH_AGENT.md`). |
+| AI assistant / chatbot | Count the Coach in. Its output carries no sensitive content: insights are schema-validated, cite numbers from the input or are dropped, and distress-signalling text never reaches the model. | Apple asks for AI features to be included when judging how often sensitive content appears. |
+| User-generated content, messaging, chat | No | No user-to-user interaction. Shared cards go out through the OS share sheet, which Apple doesn't count as in-app user-generated content. |
+| Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms). |
+| Advertising | No | There are no ads. |
+| In-app controls (parental controls, age assurance) | No, or **Yes** for age assurance once `NEXT_STEPS.md` item i ships | Answer to match the build that's submitted. |
+
+Read the questions as App Store Connect words them on the day; if one doesn't
+map onto this table, ask rather than guess. A rating that's later found to be
+wrong is a reason for rejection, and under Texas SB 2420 a later rating change
+can be a "significant change" that minors' parents must re-approve (Apple
+leaves that judgement to the developer), so getting it right first time matters.
 
 ---
 
@@ -200,4 +216,5 @@ layout drafts rather than uploads. Drafts of screens 1–6 were made 2026-10-03
 
 - App Store: [Calibrate – Metabolic Health](https://apps.apple.com/us/app/calibrate-metabolic-health/id1514232557) · [Calibrate: Recovery & Fitness](https://apps.apple.com/us/app/calibrate-health-recovery/id6757204030)
 - Screenshot sizes: [AppLaunchFlow, 2026 specifications](https://www.applaunchflow.com/blog/app-store-screenshot-specifications-2026) · [Screenhance, 2026 dimensions](https://screenhance.com/blog/app-store-screenshot-dimensions-2026)
-- Apple, [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) (3.1.2 subscriptions, 5.1.1 privacy)
+- Apple, [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) (3.1.2 subscriptions, 5.1.1 privacy, 5.1.2(i) third-party AI)
+- Apple, [Updated age ratings in App Store Connect](https://developer.apple.com/news/?id=ks775ehf) · [Update for apps distributed in Texas](https://developer.apple.com/news/?id=sg176nne)

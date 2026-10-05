@@ -144,7 +144,8 @@ cp .env.example .env.local
 #   EXPO_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY enable billing
 #   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID enables Google sign-in
 
-npm start          # start the Expo dev server (scan the QR with Expo Go)
+npm start          # start the Expo dev server (open it from a development build;
+                   # App Store Expo Go stops at SDK 54 and this app is SDK 55)
 npm test           # run the Jest suite
 ```
 

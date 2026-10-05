@@ -1,11 +1,20 @@
 # Calibrate — Human Verification Checklist
 
-**As of:** 2026-10-03 (re-checked against `d69ba54` and the live services) · **Branch:** `master`
+**As of:** 2026-10-04 (device path re-derived; see the second note) · **Branch:** `master`
 
 > **Before any live test: restore the Supabase project.** It read `INACTIVE`
 > on 2026-10-03 (`npx supabase projects list`), and its hostname no longer
 > resolves. Supabase dashboard → project `calibrate` → Restore. There is no
-> CLI verb for it. `docs/NEXT_STEPS.md` item (a) is the keep-alive fix.
+> CLI verb for it. The keep-alive workflow (2026-10-03) stops it pausing again
+> once its two repository secrets are set (`docs/NEXT_STEPS.md`).
+
+> **Expo Go can't open this app on an iPhone (found 2026-10-04).** The App
+> Store's Expo Go only runs SDK 54; Apple has not approved Expo Go for SDK 55
+> or later, and this project is SDK 55. Expo's other routes need a Mac
+> (simulator) or the $99 account (`eas go`, or a development build). So
+> **every iPhone check below waits on the $99 Apple account**, and Tier 1 has
+> merged into Tier 2. Until then, the web build is the only free way to see the
+> app; `NEXT_STEPS.md` item k has the agent tick every box web can show first.
 
 Everything the build needs that an agent can't do from the repo. Each item says
 **what to do**, **what "pass" looks like**, and **what to report back**.
@@ -28,12 +37,16 @@ detailed procedures; this section is the order to do them in.
 | RevenueCat Test Store configured: `plus` entitlement, three `calibrate_plus_*` products, current offering; the app's `test_` key confirmed to belong to it (B1, Test Store half) | 2026-09-25 |
 | Webhook deployed, secret set, registered in RevenueCat, test event 200 (B3) | 2026-09-25 |
 | App icon, splash, Android adaptive icon: real artwork, 1024², wired in `app.json` | 2026-09-25 |
-| Test Store prices ($4.99 / $29.99 / $59.99) and the 1-month trial on annual only, read back through the API | 2026-10-01 |
+| ~~Test Store prices ($4.99 / $29.99 / $59.99) and the 1-month trial on annual only~~ **Reopened 2026-10-04:** the API now reads annual $29.90 and a P1M trial on monthly too. See Tier 0. | 2026-10-01 |
 | `delete-account` deployed (JWT on), and the webhook redeployed to match `e597583` | 2026-10-02 |
 
 ### Tier 0: free, at a desk, no phone
 
-- [x] **Test Store trial and prices.** The three products already exist
+- [ ] **Test Store trial and prices — reopened 2026-10-04.** `store_state`
+      now reads annual **USD 29.90** (should be 29.99) and **monthly with
+      `trial.duration: P1M`** (should have no trial). Redo steps 3–4 below,
+      removing the trial from monthly, then step 6.
+- [x] ~~**Test Store trial and prices.**~~ (first pass) The three products already exist
       (`calibrate_plus_monthly`, `_annual`, `_lifetime`); only their price and
       the annual trial are missing, and the API can't set either. Step by step:
       1. Go to app.revenuecat.com and open the project (`projb27eccad`).
@@ -61,7 +74,8 @@ detailed procedures; this section is the order to do them in.
       Supabase team. Either sign up with your own address, or turn it off
       (Supabase → Auth → Providers → Email).
 - [x] **Phone: iPhone** (2026-10-01). No Android device, so the free Android
-      billing path below is out. Expo Go covers everything except billing.
+      billing path below is out. ~~Expo Go covers everything except billing.~~
+      Not on SDK 55: see the note at the top (2026-10-04).
 
 ### Tier 1: free, with a phone you already own
 
@@ -74,18 +88,23 @@ What runs where, from a Windows machine:
 
 | Path | Cost | Core loop, Warmup, share, notifications | Real Test Store purchase + webhook |
 |---|---|---|---|
-| **Expo Go** on iPhone or Android (`npx expo start`, scan the QR) | free | ✅ | ❌ In Expo Go, RevenueCat does not reach the real store, so a paywall result there proves nothing about the configuration. |
-| **Android dev build** via EAS (free tier), installed as an APK | free | ✅ | ✅ The `test_` key is not tied to a platform. |
+| **Web build** (`npm run web`, any browser) | free | Core loop, Warmup, share preview ✅; haptics, SF Symbols, sheets, glass, notifications ❌ | ❌ |
+| ~~**Expo Go** on iPhone (`npx expo start`, scan the QR)~~ | free | ❌ **App Store Expo Go is SDK 54; this app is SDK 55** (2026-10-04) | ❌ |
+| `eas go` (your own Expo Go build on TestFlight) | $99/yr Apple account | ✅ | ❌ RevenueCat runs in preview mode in Expo Go |
+| **Android dev build** via EAS (free tier), installed as an APK | free, needs an Android phone | ✅ | ✅ The `test_` key is not tied to a platform. |
 | **iOS dev build** | $99/yr Apple account | ✅ | ✅ |
 | iOS simulator | needs a Mac | ✅ | ✅ |
 
-So:
+So, with an iPhone and Windows, the only free row is the web build, and once
+the $99 is spent the **iOS dev build** is the one to make: `eas go` would add a
+second build that can't test billing.
 
-- [ ] **Expo Go run-through: Batch C, minus billing.** Every Batch C box except
-      the paywall/plan-listing ones can be ticked in Expo Go, on whatever phone
-      you have. Sign in with **email** (Apple sign-in needs the paid account;
-      Google isn't configured). Email sign-in, sync and the Coach 403 for a free
-      user all work here.
+- [ ] **Web run-through: Batch C, minus what web can't show.** An agent can
+      drive this one (`NEXT_STEPS.md` item k) and mark boxes *web-verified*.
+- [ ] ~~**Expo Go run-through: Batch C, minus billing.**~~ **Not possible on
+      SDK 55 (2026-10-04).** Do Batch C on the iOS dev build instead (Tier 2),
+      signing in with **email** (Apple sign-in needs the paid account too;
+      Google isn't configured).
 - [ ] ~~**If you have (or can borrow) an Android phone:**~~ **Not applicable: iPhone only.**
       A real Test Store purchase therefore waits on the $99 Apple account
       (Tier 2) and an iOS dev build. Kept for reference: an EAS Android dev
@@ -107,11 +126,16 @@ So:
       confirms a `public.entitlements` row with `is_plus = true, source = 'trial'`.
       That proves D2/D3's logic end to end, on the Test Store.
 
-### Tier 2: costs money, so only after Tiers 0–1 pass
+### Tier 2: costs money, so only after Tier 0 and the web run-through pass
 
-- **Apple Developer Program, $99/yr.** Unlocks B0, B2, the `appl_` key, D
-  (StoreKit sandbox) and E (TestFlight, submission). Sandbox purchases are free;
-  the $99 is the only spend.
+- **Apple Developer Program, $99/yr.** Unlocks **any run on your iPhone**
+  (since 2026-10-04: Expo Go can't open SDK 55), plus B0, B2, the `appl_` key,
+  C and D on a development build, and E (TestFlight, submission). Sandbox
+  purchases are free; the $99 is the only spend. First build after buying:
+  `npx expo install --fix` (NEXT_STEPS g), set the EAS env vars (Tier 1 step 2
+  above, iOS keys instead of Android), then
+  `eas build --profile development --platform ios`. EAS registers your iPhone
+  for the internal-distribution build when it asks.
 - **Supabase free tier pauses after ~7 days idle.** Not a cost, but it breaks
   testing silently. Restore it from the dashboard if DNS stops resolving.
 
@@ -119,7 +143,7 @@ So:
 
 | Thing | Status | Needed for |
 |---|---|---|
-| App Store screenshots | **Not made.** The identity card and calibration curve are the two that sell it. Needs the app running with real-looking data. | E |
+| App Store screenshots | **Drafts made 2026-10-03** from the web build with the demo data (git-ignored `screenshots/draft/`). Finals need a device build. | E |
 | Privacy policy page + public URL | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Name and contact filled in; the effective date is set on publishing. Hosting needs a URL (GitHub Pages works, since the repo is public). | E |
 | App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **The name "Calibrate" is already taken twice on the App Store.** See §0 there; the choice is yours. | E |
 | Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25, deployed 2026-10-02.** The optional Apple-revoke and RevenueCat-delete legs wait on their keys (Batch E). | E |
@@ -134,9 +158,9 @@ So:
 | Supabase dashboard access | A, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is linked. Pauses after ~7 days idle. |
 | RevenueCat account | B1 | Free tier. Project `projb27eccad`. `test_` public key and `sk_` v2 secret key (project config R/W, customers read) are in `.env.local`. |
 | Expo account | EAS builds (iOS dev build, TestFlight) | Owner `tapjason`; the CLI is not logged in (re-checked 2026-09-30). The EAS free tier covers dev builds. |
-| A phone | Tier 1 | **iPhone** (2026-10-01). Expo Go covers everything but billing; a real purchase needs an iOS build, so the $99 account. |
-| Apple Developer account ($99/yr) | B0, B2, D, E | **Deferred until Tiers 0–1 pass.** Not needed for APNs; this app only sends local notifications. |
-| A Mac with Xcode | only the iOS simulator | Not required: Expo Go and EAS cloud builds cover everything from Windows. |
+| A phone | Tier 2 | **iPhone** (2026-10-01). Any run on it needs an iOS development build, so the $99 account: App Store Expo Go stops at SDK 54 (2026-10-04). |
+| Apple Developer account ($99/yr) | Any iPhone run, B0, B2, C, D, E | **Deferred until Tier 0 and the web run-through pass.** Not needed for APNs; this app only sends local notifications. |
+| A Mac with Xcode | only the iOS simulator | Not required: EAS cloud builds cover everything from Windows. |
 
 ---
 
@@ -474,16 +498,16 @@ after the sandbox purchase in D2 a row appears in `public.entitlements` with
 
 ---
 
-## Batch C — App run-through (~30 min; Expo Go on a phone, or a simulator)
+## Batch C — App run-through (~30 min; an iOS development build)
 
-This is the Layer 6 gate. From Windows: run `npx expo start` and scan the QR
-code with **Expo Go** on your phone. `.env.local` is read by the dev server, so
-no env setup is needed for this path. Start from a **fresh state** (in Expo Go,
-clear the app's data or reinstall Expo Go) so the first-run path is real.
-
-In Expo Go, skip the paywall/plan boxes: RevenueCat doesn't reach the real
-store there. With an iPhone only, those need an iOS dev build, which waits
-on the $99 Apple account (Tier 2). Sign in with **email**.
+This is the Layer 6 gate. **Changed 2026-10-04:** App Store Expo Go can't open
+an SDK 55 project, so on an iPhone this runs on the iOS development build
+(Tier 2, the $99 account). Install the build, run `npx expo start --dev-client`
+on Windows, and open the project from the build's launcher; `.env.local` is
+read by the dev server. Start from a **fresh state** (delete and reinstall the
+build) so the first-run path is real. Boxes already marked *web-verified*
+(`NEXT_STEPS.md` item k) only need a glance on the phone. Sign in with
+**email**. The paywall/plan boxes work here too, against the Test Store.
 
 > **Sign-in exists as of 2026-09-25:** Settings → Account → Sign in. It has
 > been checked against the live project on the web build: a wrong password
@@ -492,6 +516,37 @@ on the $99 Apple account (Tier 2). Sign in with **email**.
 > email" stays on (decided 2026-10-01)**: the built-in mailer delivers only to
 > members of your Supabase team, so create the account with that address. See
 > `docs/ACCOUNT_SPEC.md` §1.
+
+> **Web run-through, 2026-10-04** (`NEXT_STEPS.md` item k, Playwright at
+> 440 × 956 on a fresh browser profile). These passed on web, so on the phone
+> they only need a glance: first launch lands in the Warmup; the quiz renders a
+> verdict and chart; *Share my result* opens the warm-up card; Warmup results
+> stay out of Stats; Log saves in a few seconds with all four fields and no ✨
+> Refine; the coverage nudge appears after 8 logs above 40% and *Start at 25%*
+> pre-sets the slider and hides it; Resolve (Yes → Recorded → Change answer →
+> No → reflection → Done); Stats provisional (Calibrating bar, ghost-free
+> curve with counts) and unlocked (rating, bullet bar, takeaway title); History
+> filters by category; Share → Card / This week / This year render; a Plus
+> theme opens the paywall; Settings defaults (Coach off, usage stats on);
+> Erase as a guest returns to the Warmup on the next cold launch.
+>
+> **Fixed during the run:** overlapping "n=" labels on close chart dots; the
+> web tab bar clipping its labels; the yearly Wrapped calling a user "well
+> calibrated" from averages while Stats said "overconfident at 80–100%";
+> sign-in showing the raw "Failed to fetch" when the server is unreachable;
+> the analytics switch saying "Anonymous" for events that are linked to the
+> account; weekday names in demo titles that contradicted their due dates.
+>
+> **Found, needs you:** the RevenueCat **Test Store prices drifted** (read
+> back through the API 2026-10-04): annual is **$29.90**, not $29.99, and
+> **monthly carries a 1-month trial too**; it should have none. The paywall
+> shows exactly that, correctly. Fix both in RevenueCat → Product catalog
+> (steps in Tier 0 above), then ask the agent to re-read `store_state`.
+>
+> **Still device-only:** haptics, SF Symbols / SF Rounded, sheets and the
+> swipe-down guard, glass, notifications, share-sheet export, Apple sign-in,
+> real purchases, Dynamic Type, VoiceOver. A successful email sign-in also
+> waits on the Supabase project being restored.
 
 Tick each:
 
@@ -645,9 +700,9 @@ Added 2026-09-29 (second pass):
 - [ ] **Stats, free user:** one "Calibrate Plus" card instead of two "See Plus"
       blocks.
 - [ ] **Native packages added this pass** (expo-haptics, slider, expo-symbols,
-      reanimated + worklets, datetimepicker): all ship in Expo Go for SDK 55; a
-      custom dev build needs rebuilding before testing (datetimepicker also adds
-      a config plugin to `app.json`).
+      reanimated + worklets, datetimepicker): all are in the SDK 55 module set;
+      they're native, so they need a development build made after they were
+      added (datetimepicker also adds a config plugin to `app.json`).
 
 Added 2026-09-29 (polish pass):
 
@@ -811,12 +866,23 @@ What is still yours:
       its Privacy Policy link only when that's set, and 3.1.2 requires the
       link in the app, not only in the listing.
 - [ ] `npx expo install --check` before the build. `expo-doctor` is 19/20
-      green; the one failure is patch drift inside SDK 55 (14 packages, e.g.
+      green; the one failure is patch drift inside SDK 55 (15 packages on
+      2026-10-04, e.g.
       `expo` 55.0.26 → 55.0.31). Not urgent, but a build is the moment to take
       it — and re-run `npm test` after, since it moves `react-native` and
       `jest-expo`.
 - [ ] Screenshots (the identity card and the calibration curve are the two
-      that sell it).
+      that sell it). Drafts exist; finals come from the device build.
+- [ ] **Age-rating questionnaire** in App Store Connect: the updated question
+      set (in-app controls, capabilities, medical or wellness topics, AI
+      features) has been mandatory since 2026-01-31. Proposed answers:
+      `APP_STORE_LISTING.md` §1.
+- [ ] **Age assurance decision** (Texas SB 2420, in force since 2026-06-04):
+      build the Declared Age Range check before submission or not. See
+      `NEXT_STEPS.md`, "Waiting on you", and item i.
+- [ ] **Coach discloses OpenAI by name** before it is switched on (Guideline
+      5.1.2(i)). Code item h in `NEXT_STEPS.md`; confirm the wording on the
+      device build.
 - [ ] `eas build --platform ios` → TestFlight → accepted.
 - [ ] Install from TestFlight and re-run Batch C on the real build.
 
@@ -832,9 +898,12 @@ What is still yours:
    checkpoints already list.
 2. **Apple link-out commission.** Since the April 2025 Epic injunction Apple
    cannot charge commission on US link-out purchases; in August 2026 it
-   proposed 15%/5% and Epic is contesting it. Unsettled, and worth 12–18% of
-   every renewal. It doesn't block shipping in-app IAP — it decides whether a
-   link-out flow is worth building later.
+   proposed 15%/5% and Epic is contesting it. Re-checked 2026-10-04: the
+   Supreme Court took Apple's appeal in June 2026 (a decision is unlikely
+   before June 2027), the district-court fee proceeding has stalled, and the
+   rate stays at 0% meanwhile. Worth 12–18% of every renewal. It doesn't block
+   shipping in-app IAP — it decides whether a link-out flow is worth building
+   later, and that question can wait until mid-2027.
 3. **Whether to ship billing at all yet.** `BUILD_PLAN.md`'s validation
    checkpoint says measure D0 aha completion and share rate *before* the
    checkout goes live. If nobody shares, the freemium premise is wrong and the

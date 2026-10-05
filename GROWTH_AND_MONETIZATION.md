@@ -84,6 +84,12 @@ unsettled, watch it)*
 - In **August 2026** Apple proposed link-out commissions of **15% standard / 5% for
   Small Business Program** developers. Epic opposes it, arguing the correct figure is
   0%. **Not settled** — do not plan on a specific number.
+- **Re-checked 2026-10-04:** the Supreme Court granted Apple's petition in June 2026
+  (the question is whether contempt can rest on an injunction's "spirit"); Apple's
+  merits brief was filed 2026-09-14, argument is unlikely before January 2027 and a
+  decision before June 2027. The district-court proceeding on Apple's 15%/5% proposal
+  has stalled over document production. Until either court rules, the US link-out
+  rate stays at **0%**. Practical reading: nothing here changes before mid-2027.
 - Why this matters here more than it would for most apps: our whole model concedes a
   low revenue-per-install, so take rate is proportionally larger. On a $29.99 annual
   plan, App Store IAP at the Small Business 15% nets **$25.49**; a web link-out nets
@@ -321,6 +327,8 @@ everything else remains directional and paraphrased.
   [TechCrunch](https://techcrunch.com/2026/03/10/ai-powered-apps-struggle-with-long-term-retention-new-report-shows)
 - Trial length —
   [RevenueCat on choosing trial duration](https://www.revenuecat.com/blog/growth/7-day-trial-subscription-app)
+- Apple link-out commissions, status at 2026-09-15 —
+  [Tech Times](https://www.techtimes.com/articles/327527/20260915/app-store-commission-limbo-enters-new-phase-apples-epic-merits-brief-opens-scotus-fight.htm)
 - Apple link-out commissions, Aug 2026 proposal —
   [TechCrunch](https://techcrunch.com/2026/08/14/apple-proposes-to-take-a-15-cut-of-purchases-made-outside-the-app-store/) ·
   [9to5Mac](https://9to5mac.com/2026/08/13/apple-proposes-commissions-of-up-to-15-for-off-app-store-purchases-in-the-us/) ·
