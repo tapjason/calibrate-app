@@ -552,7 +552,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
 - **Streak checkpoint** (step 64): when the answer is the one that made today count
   and that reached a checkpoint, a still card in the milestone tint sits where the
   milestone card would: the flame and the day count in `readout`, the name ("A full
-  week") and "7 days in a row. Next milestone: 30 days." One card at a time: a score
+  week") and "Next milestone: 30 days." (one short line, so a three-digit figure
+  still fits at 320pt; VoiceOver hears "7-day streak" first). One card at a time: a score
   or badge milestone outranks it, and Home's row still names the checkpoint all day.
 - **Log it again** (roadmap step 22): after an answer, a secondary capsule under
   Done. It saves any reflection, closes the sheet and opens Log with the title,

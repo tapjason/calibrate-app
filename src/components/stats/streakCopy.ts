@@ -44,10 +44,17 @@ function nextLine(next: number): string {
 
 /**
  * The card Resolve shows when an answer reached a checkpoint. The number is
- * the card's figure, so the title is the name.
+ * the card's figure, so the title is the name and the body stays one short
+ * line (a three-digit figure leaves little room at 320pt); the spoken label
+ * says the number, which a screen reader would otherwise never hear.
  */
-export function checkpointCopy(days: number, next: number): { title: string; body: string } {
-  return { title: checkpointName(days), body: `${days} days in a row. ${nextLine(next)}.` };
+export function checkpointCopy(
+  days: number,
+  next: number,
+): { title: string; body: string; spoken: string } {
+  const title = checkpointName(days);
+  const body = `${nextLine(next)}.`;
+  return { title, body, spoken: `${days}-day streak. ${title}. ${body}` };
 }
 
 /** Null when there is nothing yet: no streak and nothing done today. */

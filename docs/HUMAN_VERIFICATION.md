@@ -759,8 +759,8 @@ Added 2026-09-29 (polish pass):
 - [ ] **Streak checkpoint (added 2026-10-06, step 64; web-verified on Home):**
       on day 7 (or 30, 100…) the third log or answer turns Home's streak row
       indigo-tinted with "A full week. Next milestone: 30 days". If it was an
-      answer, the Resolve sheet shows the still flame card ("A full week · 7
-      days in a row") above the range line, with no confetti and no extra
+      answer, the Resolve sheet shows the still flame card ("7", "A full
+      week", "Next milestone: 30 days") above the range line, with no confetti and no extra
       haptic; Done and the reflection box stay reachable in the medium sheet.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The indigo splash should fade straight into Home, with no white

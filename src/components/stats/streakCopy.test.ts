@@ -97,7 +97,8 @@ describe('streak checkpoints', () => {
   it('words the Resolve card', () => {
     expect(checkpointCopy(100, 365)).toEqual({
       title: 'Triple digits',
-      body: '100 days in a row. Next milestone: 365 days.',
+      body: 'Next milestone: 365 days.',
+      spoken: '100-day streak. Triple digits. Next milestone: 365 days.',
     });
   });
 });

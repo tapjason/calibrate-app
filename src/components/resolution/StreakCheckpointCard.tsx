@@ -26,7 +26,7 @@ export function StreakCheckpointCard({ days, next }: StreakCheckpointCardProps) 
       testID="streak-checkpoint"
       accessible
       accessibilityRole="summary"
-      accessibilityLabel={`${copy.title}. ${copy.body}`}
+      accessibilityLabel={copy.spoken}
       accessibilityLiveRegion="polite"
     >
       <View style={styles.figure}>
