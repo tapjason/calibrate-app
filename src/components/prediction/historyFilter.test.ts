@@ -3,6 +3,7 @@ import type { Prediction } from '@/types';
 import {
   emptyHistoryMessage,
   filterHistory,
+  firstHistoryCopy,
   parseRangeParam,
   rangeText,
 } from './historyFilter';
@@ -92,5 +93,39 @@ describe('emptyHistoryMessage', () => {
 
   it('writes a range the way the chart does', () => {
     expect(rangeText(40)).toBe('40–60%');
+  });
+});
+
+// Roadmap step 69: before anything resolves, History says when it will and
+// offers a way forward.
+describe('firstHistoryCopy', () => {
+  const now = new Date('2026-09-10T15:00:00.000Z');
+  const open = (due: string, id: string) =>
+    prediction({ id, status: 'pending', resolved_at: null, due_date: `${due}T12:00:00.000Z` });
+
+  it('offers a first prediction when nothing is open', () => {
+    expect(firstHistoryCopy([], now)).toEqual({
+      message: 'Resolved predictions collect here, with how each one turned out.',
+      action: { kind: 'log', label: 'Log a prediction' },
+    });
+  });
+
+  it('dates the first answer, and offers another prediction meanwhile', () => {
+    const copy = firstHistoryCopy([open('2026-09-15', 'a')], now);
+    expect(copy.message).toMatch(
+      /^Resolved predictions collect here, with how each one turned out\. The first one comes due /,
+    );
+    expect(copy.action).toEqual({ kind: 'log', label: 'Log a prediction' });
+  });
+
+  it('opens the one that is ready, or all of them', () => {
+    expect(firstHistoryCopy([open('2026-09-09', 'a'), open('2026-09-20', 'b')], now)).toEqual({
+      message:
+        'Resolved predictions collect here, with how each one turned out. One is ready to resolve now.',
+      action: { kind: 'resolve', label: 'Resolve it now', id: 'a' },
+    });
+    expect(
+      firstHistoryCopy([open('2026-09-09', 'a'), open('2026-09-08', 'b')], now).action,
+    ).toEqual({ kind: 'run', label: 'Resolve all 2' });
   });
 });

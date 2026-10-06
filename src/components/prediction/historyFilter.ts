@@ -5,6 +5,8 @@
 
 import type { Category, Prediction } from '@/types';
 
+import { isReadyToResolve, nextDueLine } from './dueGroups';
+
 /** The lower edges of the five confidence ranges, as they arrive in a link. */
 const RANGE_LOWS: readonly number[] = [0, 20, 40, 60, 80];
 
@@ -54,4 +56,35 @@ export function emptyHistoryMessage({ category, range }: HistoryFilter): string 
     .filter(Boolean)
     .join(' ');
   return `Nothing resolved ${where} yet.`;
+}
+
+/** Where an empty History's button goes (roadmap step 69). */
+export type FirstHistoryAction =
+  | { kind: 'log'; label: string }
+  | { kind: 'resolve'; label: string; id: string }
+  | { kind: 'run'; label: string };
+
+/**
+ * An empty History before anything has resolved: the sentence, when the
+ * first answer can come, and a way forward (DESIGN_SYSTEM §7.8), which it
+ * lacked. Answer what's ready if anything is, otherwise log: more predictions
+ * open means the first answers come sooner.
+ */
+export function firstHistoryCopy(
+  pending: readonly Prediction[],
+  now: Date,
+): { message: string; action: FirstHistoryAction } {
+  const base = emptyHistoryMessage({ category: 'all', range: null });
+  const when = nextDueLine(pending, now, { first: true });
+  const message = when ? `${base} ${when}` : base;
+  const ready = pending
+    .filter((p) => isReadyToResolve(p, now))
+    .sort((a, b) => (Date.parse(a.due_date) || 0) - (Date.parse(b.due_date) || 0));
+  if (ready.length === 1) {
+    return { message, action: { kind: 'resolve', label: 'Resolve it now', id: ready[0].id } };
+  }
+  if (ready.length > 1) {
+    return { message, action: { kind: 'run', label: `Resolve all ${ready.length}` } };
+  }
+  return { message, action: { kind: 'log', label: 'Log a prediction' } };
 }

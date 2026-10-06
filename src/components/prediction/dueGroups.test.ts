@@ -73,17 +73,27 @@ describe('groupByDue', () => {
 
 // Roadmap step 32: while calibrating, the wait gets a date.
 describe('nextDueLine', () => {
+  // The date's spaces are no-break ones, so it never splits across lines.
   const day = (p: Prediction) =>
-    new Date(p.due_date).toLocaleDateString(undefined, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
+    new Date(p.due_date)
+      .toLocaleDateString(undefined, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      })
+      .replace(/ /g, ' ');
 
   it('names the soonest due date when nothing is ready yet', () => {
     const soonest = dueIn(3, 'soon');
     expect(nextDueLine([dueIn(9, 'later'), soonest], NOW)).toBe(
       `The next one comes due ${day(soonest)}.`,
+    );
+  });
+
+  it('calls it the first while nothing has resolved', () => {
+    const soonest = dueIn(3, 'soon');
+    expect(nextDueLine([soonest], NOW, { first: true })).toBe(
+      `The first one comes due ${day(soonest)}.`,
     );
   });
 

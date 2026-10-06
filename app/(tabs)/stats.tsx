@@ -30,7 +30,9 @@ export default function StatsScreen() {
         categoryStats={categoryStats}
         nextBadges={nextBadges}
         pendingCount={pending.length}
-        nextDue={nextDueLine(pending, new Date())}
+        nextDue={nextDueLine(pending, new Date(), {
+          first: (userStat?.total_resolved ?? 0) === 0,
+        })}
         onExplain={() => router.push('/scoring' as never)}
         // The predictions behind a range, in History (roadmap step 51).
         onSelectRange={(low) => router.push(`/history?range=${low}` as never)}

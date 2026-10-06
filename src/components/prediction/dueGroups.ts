@@ -74,7 +74,12 @@ export function groupByDue(pending: readonly Prediction[], now: Date): DueGroup[
  * can come. Resolutions arrive only as predictions fall due, which the user
  * doesn't control, so the wait gets a date. Null with nothing open.
  */
-export function nextDueLine(pending: readonly Prediction[], now: Date): string | null {
+export function nextDueLine(
+  pending: readonly Prediction[],
+  now: Date,
+  /** Nothing has resolved yet, so the soonest is the first, not the next (step 69). */
+  { first = false }: { first?: boolean } = {},
+): string | null {
   const open = pending.filter((p) => p.status === 'pending');
   if (open.length === 0) return null;
 
@@ -92,7 +97,9 @@ export function nextDueLine(pending: readonly Prediction[], now: Date): string |
     day: 'numeric',
     month: 'short',
   });
-  return `The next one comes due ${day}.`;
+  // No-break spaces hold the date together: "Oct" ended one line and "13."
+  // began the next.
+  return `The ${first ? 'first' : 'next'} one comes due ${day.replace(/ /g, ' ')}.`;
 }
 
 /**

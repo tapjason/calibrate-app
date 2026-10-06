@@ -5,8 +5,10 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import {
   emptyHistoryMessage,
   filterHistory,
+  firstHistoryCopy,
   parseRangeParam,
   rangeText,
+  type FirstHistoryAction,
 } from '@/components/prediction/historyFilter';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -29,6 +31,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const resolved = usePredictionStore((s) => s.resolved);
+  const pending = usePredictionStore((s) => s.pending);
   const [filter, setFilter] = useState<Category | 'all'>('all');
   // A confidence range arrives from a tap on Stats' coverage row (roadmap
   // step 51): the predictions behind one dot on the chart.
@@ -106,11 +109,34 @@ export default function HistoryScreen() {
         </Text>
       )}
       {filtered.length === 0 ? (
-        <EmptyState
-          testID="history-empty"
-          symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
-          message={emptyHistoryMessage({ category: filter, range })}
-        />
+        resolved.length === 0 ? (
+          // Nothing resolved at all: when the first answer can come, and a
+          // way forward (roadmap step 69). A filtered-empty list has the
+          // filters for that.
+          (() => {
+            const first = firstHistoryCopy(pending, new Date());
+            const go = (action: FirstHistoryAction) => {
+              if (action.kind === 'resolve') router.push(`/resolve/${action.id}` as never);
+              else if (action.kind === 'run') router.push('/resolve/run' as never);
+              else router.push('/log' as never);
+            };
+            return (
+              <EmptyState
+                testID="history-empty"
+                symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
+                message={first.message}
+                actionLabel={first.action.label}
+                onAction={() => go(first.action)}
+              />
+            );
+          })()
+        ) : (
+          <EmptyState
+            testID="history-empty"
+            symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
+            message={emptyHistoryMessage({ category: filter, range })}
+          />
+        )
       ) : (
         <FlatList
           style={styles.list}

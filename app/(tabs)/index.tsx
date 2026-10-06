@@ -71,7 +71,9 @@ export default function HomeScreen() {
         resolved={userStat?.total_resolved ?? 0}
         pending={pending.length}
         total={MIN_N_OVERALL}
-        nextDue={nextDueLine(pending, new Date())}
+        nextDue={nextDueLine(pending, new Date(), {
+          first: (userStat?.total_resolved ?? 0) === 0,
+        })}
       />
     );
 
