@@ -30,7 +30,7 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
   const result = useWarmupStore((s) => s.result);
   const answers = useWarmupStore((s) => s.answers);
   const questions = useWarmupStore((s) => s.questions);
-  const verdict = warmupVerdict(result);
+  const verdict = warmupVerdict(result, answers);
 
   if (!result || !verdict) return null;
 
@@ -57,6 +57,11 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       <CalibrationChart buckets={result.buckets} animateIn />
 
       <Text style={styles.advice}>{verdict.advice}</Text>
+      {verdict.sameNumber && (
+        <Text style={styles.advice} testID="warmup-same-number">
+          {verdict.sameNumber}
+        </Text>
+      )}
 
       <Text style={styles.disclaimer}>
         This is a warm-up score, not your calibration rating. That one unlocks
