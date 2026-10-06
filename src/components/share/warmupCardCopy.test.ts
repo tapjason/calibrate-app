@@ -23,7 +23,7 @@ describe('warmupCardCopy', () => {
       eyebrow: 'My calibration warm-up',
       headline: 'I run hot',
       receipt: '77% sure, 50% right',
-      context: '10 quick questions. Real predictions next.',
+      context: '10 tricky questions. Real predictions next.',
     });
   });
 

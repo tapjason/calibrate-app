@@ -31,6 +31,8 @@ export function warmupCardCopy(result: WarmupResult | null): WarmupCardCopy | nu
     eyebrow: 'My calibration warm-up',
     headline: HEADLINES[result.direction],
     receipt: `${stated}% sure, ${right}% right`,
-    context: `${n} quick ${n === 1 ? 'question' : 'questions'}. Real predictions next.`,
+    // "Tricky", not "quick": the bank is picked to be hard, and the verdict
+    // says so too (roadmap D14), so the card doesn't pass for a general test.
+    context: `${n} tricky ${n === 1 ? 'question' : 'questions'}. Real predictions next.`,
   };
 }
