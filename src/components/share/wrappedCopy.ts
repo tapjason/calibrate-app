@@ -21,7 +21,11 @@ export interface WrappedStory {
   title: string;
   /** Plain counts — always safe to show. */
   stat: string;
-  /** The same fact split for the card: a big count, then the hit rate. */
+  /**
+   * The same fact split for the card: a big count, then what the user's own
+   * numbers expected against what happened (roadmap step 48). Named for the
+   * hit rate it replaced.
+   */
   statCount: string;
   statRate: string | null;
   /** The calibration read, or null while the window is too small to support one. */
@@ -100,12 +104,15 @@ export function wrappedStory(
   const hitRate = Math.round(summary.hit_rate * 100);
   const stated = Math.round(summary.mean_confidence);
   const plural = resolved === 1 ? 'prediction' : 'predictions';
+  const expected = expectedLine(summary);
 
   return {
     title: TITLES[span],
-    stat: `${resolved} ${plural} resolved · ${hitRate}% came in`,
+    stat: expected
+      ? `${resolved} ${plural} resolved. ${expected}`
+      : `${resolved} ${plural} resolved`,
     statCount: `${resolved} resolved`,
-    statRate: `${hitRate}% came in`,
+    statRate: expected,
     verdict: summary.score_is_provisional ? null : verdictLine(summary, stated, hitRate),
     receipt: summary.receipt ? receiptLine(summary.receipt) : null,
     provisionalNote: summary.score_is_provisional
@@ -149,6 +156,27 @@ function provisionalLine(
     return `${overall.resolved} of ${MIN_N_OVERALL} resolutions toward your first calibration score.`;
   }
   return 'A week is too short for a verdict. Your all-time score has the full story.';
+}
+
+/**
+ * "6 happened. You expected about 5." The card's second line (roadmap step
+ * 48), in place of "86% came in": a hit rate rewards safe calls, which is
+ * correctness, and the app rewards calibration (CLAUDE.md). Expected against
+ * happened is the calibration comparison told in counts, so it is honest at
+ * any sample size and makes no verdict. The sum itself comes from the engine;
+ * this only rounds it for reading.
+ *
+ * Outcome first: the other order put two numbers side by side ("about 4. 6
+ * happened"), which read as 4.6 on the card.
+ *
+ * Null for a single resolution, where the receipt line already says it.
+ */
+export function expectedLine(summary: Pick<WrappedSummary, 'resolved' | 'happened' | 'expected'>): string | null {
+  if (summary.resolved < 2) return null;
+  const rounded = Math.round(summary.expected);
+  const expected = rounded === 0 ? 'less than 1' : `about ${rounded}`;
+  const happened = summary.happened === 0 ? 'None' : String(summary.happened);
+  return `${happened} happened. You expected ${expected}.`;
 }
 
 /** "You said 80–100% 3 times. 2 happened." Bucket labels match TrendsPanel. */

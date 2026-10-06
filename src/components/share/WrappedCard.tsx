@@ -74,6 +74,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
         <Text
           maxFontSizeMultiplier={CARD_MAX_SCALE}
           style={[styles.statRate, { color: theme.foreground }]}
+          testID="wrapped-expected"
         >
           {story.statRate}
         </Text>

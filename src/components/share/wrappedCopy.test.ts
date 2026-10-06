@@ -1,7 +1,32 @@
 import type { WrappedSummary } from '@/engine/wrapped';
 import type { BucketStat } from '@/types';
 
-import { receiptLine, wrappedCardSummary, wrappedStory } from './wrappedCopy';
+import { expectedLine, receiptLine, wrappedCardSummary, wrappedStory } from './wrappedCopy';
+
+// Roadmap step 48: counts against counts, in place of "86% came in".
+describe('expectedLine', () => {
+  it('sets what the stated numbers expected beside what happened', () => {
+    expect(expectedLine({ resolved: 7, happened: 6, expected: 5.1 })).toBe(
+      '6 happened. You expected about 5.',
+    );
+    expect(expectedLine({ resolved: 146, happened: 93, expected: 96.6 })).toBe(
+      '93 happened. You expected about 97.',
+    );
+  });
+
+  it('reads naturally at the edges', () => {
+    expect(expectedLine({ resolved: 2, happened: 0, expected: 0.3 })).toBe(
+      'None happened. You expected less than 1.',
+    );
+    expect(expectedLine({ resolved: 3, happened: 0, expected: 2.4 })).toBe(
+      'None happened. You expected about 2.',
+    );
+  });
+
+  it('stays quiet for a single resolution, which the receipt already says', () => {
+    expect(expectedLine({ resolved: 1, happened: 1, expected: 0.7 })).toBeNull();
+  });
+});
 
 describe('receiptLine', () => {
   it('counts a mixed bucket', () => {
@@ -54,6 +79,8 @@ function summary(buckets: BucketStat[]): WrappedSummary {
     resolved,
     hit_rate: yes / resolved,
     mean_confidence: 68,
+    happened: yes,
+    expected: (68 * resolved) / 100,
     score: 90,
     direction: 'calibrated',
     score_is_provisional: false,
@@ -94,16 +121,16 @@ describe('wrappedCardSummary (roadmap step 45)', () => {
     expect(
       wrappedCardSummary({
         title: 'Your week in predictions',
-        stat: '4 predictions resolved · 75% came in',
+        stat: '4 predictions resolved. 3 happened. You expected about 3.',
         statCount: '4 resolved',
-        statRate: '75% came in',
+        statRate: '3 happened. You expected about 3.',
         verdict: null,
         receipt: 'You said 80–100% 3 times. 2 of 3 happened.',
         provisionalNote: 'A week is too short for a verdict.',
         note: '1 honest-uncertainty call logged — the most valuable kind.',
       }),
     ).toBe(
-      'Your week in predictions. 4 predictions resolved · 75% came in. ' +
+      'Your week in predictions. 4 predictions resolved. 3 happened. You expected about 3. ' +
         'You said 80–100% 3 times. 2 of 3 happened. A week is too short for a verdict. ' +
         '1 honest-uncertainty call logged — the most valuable kind.',
     );

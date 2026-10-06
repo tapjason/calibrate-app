@@ -142,10 +142,14 @@ describe('WrappedPanel', () => {
     render(<WrappedPanel span="week" />);
 
     expect(screen.getByText('4 resolved')).toBeTruthy();
-    expect(screen.getByText('75% came in')).toBeTruthy();
+    // Four at 80% expect 3.2; three happened (roadmap step 48).
+    expect(screen.getByTestId('wrapped-expected')).toHaveTextContent(
+      '3 happened. You expected about 3.',
+    );
+    expect(screen.queryByText(/came in/)).toBeNull();
     // Read as one sentence by screen readers.
     expect(screen.getByTestId('wrapped-stat').props.accessibilityLabel).toBe(
-      '4 predictions resolved · 75% came in',
+      '4 predictions resolved. 3 happened. You expected about 3.',
     );
   });
 

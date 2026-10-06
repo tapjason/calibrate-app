@@ -144,6 +144,31 @@ describe('buildWrapped', () => {
     expect(w.direction).toBe('overconfident');
   });
 
+  // Roadmap step 48: the card compares counts, not a hit rate.
+  it('counts what happened against what the stated numbers expected', () => {
+    const w = buildWrapped(
+      [...run(3, 2, { confidence: 70 }), ...run(2, 2, { confidence: 90 })],
+      'week',
+      NOW,
+    );
+    expect(w.happened).toBe(4);
+    expect(w.expected).toBeCloseTo(3.9); // 0.7 × 3 + 0.9 × 2
+
+    const empty = buildWrapped([], 'week', NOW);
+    expect(empty.happened).toBe(0);
+    expect(empty.expected).toBe(0);
+  });
+
+  it('leaves skips out of both counts', () => {
+    const w = buildWrapped(
+      [...run(2, 1, { confidence: 60 }), prediction({ status: 'skipped', confidence: 90 })],
+      'week',
+      NOW,
+    );
+    expect(w.happened).toBe(1);
+    expect(w.expected).toBeCloseTo(1.2);
+  });
+
   // CLAUDE.md: never headline a number built on noise.
   it('flags the score provisional below the overall minimum', () => {
     expect(buildWrapped(run(5, 3), 'week', NOW).score_is_provisional).toBe(true);

@@ -50,6 +50,15 @@ export interface WrappedSummary {
   resolved: number;
   hit_rate: number; // resolved_yes / resolved, 0–1
   mean_confidence: number; // 0–100
+  /** How many came in: resolved_yes in the window. */
+  happened: number;
+  /**
+   * How many the user's own numbers said would come in: the sum of stated
+   * confidences, as a count (three calls at 70% expect 2.1). Set beside
+   * `happened`, it compares confidence with reality using counts alone, so a
+   * small window can show it without a verdict (DESIGN_SYSTEM §7.14).
+   */
+  expected: number;
   score: number; // calibration score over the window
   direction: Direction;
 
@@ -213,6 +222,8 @@ const emptyBody = () => ({
   resolved: 0,
   hit_rate: 0,
   mean_confidence: 0,
+  happened: 0,
+  expected: 0,
   score: 0,
   direction: 'calibrated' as Direction,
   score_is_provisional: true,
@@ -240,10 +251,10 @@ export function buildWrapped(
   if (preds.length === 0) return { span, start, end, ...emptyBody() };
 
   const { rating, buckets } = computeCalibrationPoints(toPoints(preds));
-  const meanConfidence =
-    preds.reduce((s, p) => s + p.confidence, 0) / preds.length;
-  const hitRate =
-    preds.filter((p) => p.status === 'resolved_yes').length / preds.length;
+  const confidenceSum = preds.reduce((s, p) => s + p.confidence, 0);
+  const meanConfidence = confidenceSum / preds.length;
+  const happened = preds.filter((p) => p.status === 'resolved_yes').length;
+  const hitRate = happened / preds.length;
 
   return {
     span,
@@ -252,6 +263,8 @@ export function buildWrapped(
     resolved: preds.length,
     hit_rate: hitRate,
     mean_confidence: meanConfidence,
+    happened,
+    expected: confidenceSum / 100,
     score: rating,
     direction: classifyDirection(meanConfidence, hitRate),
     score_is_provisional: preds.length < MIN_N_OVERALL,
