@@ -80,6 +80,7 @@ is checking it on an iPhone and the decisions.
 | 56 Empty states get their symbol and a primary way forward | Done 2026-10-05, web-verified (Home, History, Share) | Yes (the SF Symbols) |
 | 57 Every share card on the 360pt canvas | Done 2026-10-05, web-verified at 320 and 402pt (Warmup and Wrapped join the identity card) | Yes (exports 1080px wide) |
 | 58 Resolve: said against happened | Done 2026-10-05, web-verified ("In your 60–80% range, 40 of 52 have happened. That's 77%, against the 69% you said.") | — |
+| 59 Launch: the splash holds until the first screen | Done 2026-10-05, unit-tested (web has no native splash) | Yes (cold start goes indigo splash → Home, or → Warmup on a first run, with no white spinner screen or Home flash between) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -106,7 +107,8 @@ two smaller wraps (52). The two findings that change product behaviour are
 decisions **D13** and **D14** below; both were approved the same day and built as
 steps 54 and 55. A third pass added symbols to the empty states (56), put the
 Warmup and Wrapped cards on the same canvas (57), and, from the feedback research
-in the same file (§6), the range's said-against-happened to the Resolve line (58).
+in the same file (§6), the range's said-against-happened to the Resolve line (58),
+and held the native splash until the first real screen is decided (59).
 The next useful read is still on an iPhone, with VoiceOver on for
 steps 41, 43 and 44.
 

@@ -709,6 +709,18 @@ calibration rating" note, then the two actions before the answer key.
 
 ---
 
+### 7.19 Launch
+
+The native splash (indigo, `app.json`) stays up until the first real screen is
+decided, then fades out over 250 ms (roadmap step 59): the database is open, the
+stores are loaded, and a first run has been sent to the Warmup. It used to hide on
+the first React frame, so a cold start cut from indigo to a white screen with a grey
+spinner, and a first run showed Home for a moment before the Warmup replaced it. It
+never holds longer than 4 s. The loading view behind it is `canvas` with a `brand600`
+spinner, which is what the web build shows.
+
+---
+
 ## 8. Accessibility checklist (per change)
 
 - [ ] Contrast: text ≥ 4.5:1, graphics/controls ≥ 3:1 (use the token table; don't

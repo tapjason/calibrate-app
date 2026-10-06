@@ -748,6 +748,10 @@ Added 2026-09-29 (polish pass):
       a month." in smaller type (check it against the real App Store price).
       On Stats, tapping a filled range under the chart opens History with
       "You said 80–100% ×", and the count matches the chart's subtitle.
+- [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
+      app. The indigo splash should fade straight into Home, with no white
+      screen and spinner between. On a fresh install it should fade into the
+      Warmup without Home showing first.
 - [ ] **Empty confidence (added 2026-10-05, step 54; web-verified):** on the
       Warmup and on Log the readout says "—% not set yet" and the thumb rests
       grey in the middle. On the phone: tapping the track jumps the thumb
