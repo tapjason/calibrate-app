@@ -189,6 +189,10 @@ runner-up because it renders identically on iOS and web.
 - **Share cards are the exception.** `IdentityCard`, `WarmupCard` and `WrappedCard` are
   fixed-layout artifacts exported as images (capped at 1.2×), with sizes tuned to the Post
   and Story shapes; they keep their own literal sizes. Everywhere else uses a token.
+  The identity card lays out on one fixed canvas, 360 × 480 (Post) or 360 × 640
+  (Story), on every phone; the preview scales the canvas to the screen, and content
+  taller than the canvas (larger text, a long identity line) shrinks as one piece to
+  fit (roadmap step 53, §7.5).
 
 ---
 
@@ -292,6 +296,8 @@ Weekly Wrapped gets `reveal` without confetti. Everything else is small and prec
   word ("Forecaster"), a one-line verdict from the engine's direction of error ("You run
   a little hot above 70%"), and a thin bullet-graph bar with ticks at 70 / 85 / 90 and a
   marker. A month-over-month delta only when both months are non-provisional. No gauges.
+  The 70 label is centred on its tick; 85 sits left of its tick and 90 right of its own,
+  because centred they ran together as "8590" at 320pt (roadmap step 52).
 - **Provisional:** never put the countdown in the hero slot (baseline 04/05 do —
   "20" reads as a score of 20). Show a **20-segment ring or bar** (15 per category):
   filled = resolved, hatched = pending "on their way", hollow = to go. Label:
@@ -397,7 +403,11 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   current footer, `#64748b` on `#0f172a`, is 3.75:1 — the growth hook is the faintest
   text on the card.)
 - **Formats:** Story 1080×1920 (keep content inside y ≈ 250–1580); Post 1080×1440 (3:4,
-  the tallest ratio X and iMessage show uncropped); plus a **plain-text share**
+  the tallest ratio X and iMessage show uncropped). The identity card's canvas is
+  360 pt wide on every phone and is captured at 3×, which is exactly these sizes
+  (roadmap step 53); it used to take the screen's width, and on a 375pt phone its
+  content overflowed the 3:4 box in the preview and the PNG alike. The scale for the
+  preview sits on a wrapper, never on the captured card. Plus a **plain-text share**
   (Wordle-style, spoiler-free, never includes prediction titles):
   ```
   Calibrate · Week 38
@@ -509,7 +519,9 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
 
 - Layout: category symbol + word, then title (`body`, up to 3 lines), then one metadata
   line (`subhead`, `textSecondary`): "70% · due Fri 3 Oct". No ALL-CAPS, no brand
-  colour on the confidence.
+  colour on the confidence. The status ("Ready to resolve", "Happened") sits at the
+  right of that line and wraps under it when the line is too narrow; the date holds
+  together with no-break spaces (roadmap step 52).
 - **Due and past-due are neutral.** A prediction coming due is not a lapse. Group the
   Today list by date ("Ready to resolve", "This week", "Later") and let the group
   header carry the state. No amber, no "Overdue" label, no warning colour.

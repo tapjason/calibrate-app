@@ -73,6 +73,8 @@ is checking it on an iPhone and the decisions.
 | 49 Warmup verdict names a single number | Done 2026-10-05, web-verified ("You said 75% on all 10") | — |
 | 50 Paywall prices say their period | Done 2026-10-05, web-verified ("then $29.90 a year", "Works out to $2.49 a month." from the Test Store) | Yes (with real App Store prices) |
 | 51 A range opens its predictions | Done 2026-10-05, web-verified (Stats' 80–100% cell → History "You said 80–100%", 57 answered, matching the chart) | — |
+| 52 Narrow screens: tick labels and card dates | Done 2026-10-05, web-verified at 320pt ("8590" → "85 \| 90"; "Ready to resolve" wraps instead of folding the date) | Yes (iPhone mini or SE with Display Zoom) |
+| 53 Identity card on one fixed canvas | Done 2026-10-05, web-verified at 320, 375 and 402pt (same composition at each; it overflowed at 375) | Yes (the exported PNG is 1080 × 1440 / 1920 and matches the preview) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -92,8 +94,11 @@ what the design system already decided (Save waiting for a title, the paywall's
 monthly figure), made two lines honest (badge hints that skipped the score; a
 Warmup verdict built on the slider's default), swapped Wrapped's hit rate for
 expected-vs-happened counts, and let a chart range open the predictions behind
-it. The two findings that change product behaviour are decisions **D13** and
-**D14** below. The next useful read is still on an iPhone, with VoiceOver on for
+it. A second pass at 320 and 375pt widths (an iPhone mini or SE, with or without
+Display Zoom) found the identity card overflowing its 3:4 box on 375pt phones, in
+the preview and the exported PNG, so it now lays out on one fixed canvas (53), plus
+two smaller wraps (52). The two findings that change product behaviour are
+decisions **D13** and **D14** below. The next useful read is still on an iPhone, with VoiceOver on for
 steps 41, 43 and 44.
 
 ### What's left in the parking lot

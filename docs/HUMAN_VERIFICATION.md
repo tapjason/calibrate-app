@@ -748,6 +748,13 @@ Added 2026-09-29 (polish pass):
       a month." in smaller type (check it against the real App Store price).
       On Stats, tapping a filled range under the chart opens History with
       "You said 80–100% ×", and the count matches the chart's subtitle.
+- [ ] **Share card export (added 2026-10-05, step 53):** export a Post and a
+      Story card and open the PNGs: 1080 × 1440 and 1080 × 1920, the same
+      composition as the preview, nothing cut off. The preview is scaled from
+      a wrapper, and the capture should ignore that scale; if the PNG comes
+      out at the preview's size instead, that assumption failed. Worth one
+      try with Larger Text on: the content should shrink to fit, not spill
+      into the footer.
 - [ ] **VoiceOver pass (added 2026-10-05, steps 41–44):** Settings reads
       "Notifications, switch, on" (and a double-tap toggles it); the Stats
       rating reads "Calibration rating, 92 out of 100"; a badge row reads
