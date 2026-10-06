@@ -89,6 +89,7 @@ is checking it on an iPhone and the decisions.
 | 65 A run ends on what it came to | Done 2026-10-06, web-verified ("2 answered, 1 can't tell. 1 happened. You expected about 1.", then the streak row: a skip doesn't fill a pip) | — |
 | 66 Account matches the other headerless screens | Done 2026-10-06, web-verified (Sign in and Erase on `canvas`, not white; Sign in closes with the paywall's round ×, now one `CloseButton`) | Yes (the × clear of the notch) |
 | 67 Home's middle group is "Next 7 days" | Done 2026-10-06, web-verified (a prediction logged Tuesday "In a week" is due next Tuesday, and was listed under "This week") | — |
+| 68 The ghost chart's key names only what's drawn | Done 2026-10-06, web-verified (no "Grey bars" sentence before the first dot; "Resolve a prediction and your first dot lands here." no longer reads as a line of the key) | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run

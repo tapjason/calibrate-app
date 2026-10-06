@@ -315,7 +315,8 @@ one.
   date (roadmap step 32): "The next one comes due Tue, Oct 6.", or "One is ready to
   resolve now." Nothing when nothing is open.
 - **Ghost chart** before unlock: the full frame, diagonal and labelled regions with
-  empty bucket slots — never an italic placeholder line.
+  empty bucket slots — never an italic placeholder line. Its key names only what's
+  drawn, so the grey-bars sentence waits for the first dot (roadmap step 68).
 - **Unlock** = the `unlock` motion (§6.1).
 - **Give or take** (roadmap D4, step 62): on Stats, a soft band on the bar and the line
   "Give or take 5 points with this many predictions." The engine bootstraps the
