@@ -4,6 +4,7 @@ import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-nativ
 
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
+import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
 import { colors, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
@@ -18,12 +19,20 @@ import { useStatsStore } from '@/store/statsStore';
 import { selectHasCompletedWarmup, useWarmupStore } from '@/store/warmupStore';
 import { syncNow } from '@/supabase/sync';
 
+// The native splash stays up until the first real screen is decided
+// (roadmap step 59), rather than cutting to the loading view below.
+holdSplash();
+
 // Root layout = the auth + DB gate. Until both finish initializing, no screen
 // renders. Without this, any screen that calls getDb() or requireUserId()
 // would throw on first mount.
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // True once the gate is open and any first-run redirect is made, so the
+  // first frame after the splash is the screen the person will use.
+  const [launched, setLaunched] = useState(false);
+  useLaunchSplash(launched || error !== null);
   // Becomes defined once the root navigator has mounted; until then any
   // router.push throws ("navigate before mounting the Root Layout").
   const navState = useRootNavigationState();
@@ -109,6 +118,7 @@ export default function RootLayout() {
       if (isFirstRun && !selectHasCompletedWarmup(useWarmupStore.getState())) {
         router.replace('/warmup' as never);
       }
+      setLaunched(true);
     })();
   }, [ready, navState?.key, router]);
 
@@ -144,7 +154,7 @@ export default function RootLayout() {
   if (!ready) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brand600} />
       </View>
     );
   }
@@ -200,7 +210,13 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // Behind the splash on a phone; what web shows while the database opens.
+  center: {
+    alignItems: 'center',
+    backgroundColor: colors.canvas,
+    flex: 1,
+    justifyContent: 'center',
+  },
   errorTitle: { ...type.headline, marginBottom: 8 },
   errorBody: { color: colors.textSecondary, paddingHorizontal: 24, textAlign: 'center' },
 });
