@@ -86,9 +86,15 @@ const PERIOD: Record<PlanId, string> = {
   lifetime: 'once',
 };
 
-/** "$29.99 a year"; lifetime stays the bare price under "Pay once, keep it". */
+/**
+ * "$29.99 a year"; lifetime stays the bare price under "Pay once, keep it".
+ * Held together with no-break spaces: at 320pt the line ended "$29.90 a" and
+ * put "year" alone under it (roadmap step 70), and a price should never be
+ * read apart from what it pays for.
+ */
 function pricePerPeriod(plan: PlusPlan): string {
-  return plan.plan === 'lifetime' ? plan.priceString : `${plan.priceString} ${PERIOD[plan.plan]}`;
+  if (plan.plan === 'lifetime') return plan.priceString;
+  return `${plan.priceString} ${PERIOD[plan.plan]}`.replace(/ /g, '\u00A0');
 }
 
 /** Trial line for a plan, or null when it has no free trial. */

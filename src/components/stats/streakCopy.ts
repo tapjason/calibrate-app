@@ -37,9 +37,13 @@ export function checkpointName(days: number): string {
   return `${word.charAt(0).toUpperCase()}${word.slice(1)} full years`;
 }
 
-/** "Next milestone: 30 days", the line under a reached checkpoint. */
+/**
+ * "Next milestone: 30 days". No-break spaces inside "Next milestone:" and
+ * "30 days", so at 320pt it wraps between them rather than leaving "Next" at
+ * the end of one line (roadmap step 70).
+ */
 function nextLine(next: number): string {
-  return `Next milestone: ${next} days`;
+  return `Next\u00A0milestone: ${next}\u00A0days`;
 }
 
 /**

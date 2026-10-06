@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { TextField } from '@/components/ui/TextField';
 import {
@@ -247,7 +248,7 @@ export function ResolvePrompt({
         {answered.line && (
           <View style={styles.bucketBox}>
             <Text style={styles.bucketLine} testID="resolve-bucket-line">
-              {answered.line}
+              {holdRanges(answered.line)}
             </Text>
           </View>
         )}

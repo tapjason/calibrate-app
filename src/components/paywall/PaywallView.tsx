@@ -293,7 +293,9 @@ function PlanOption({
 const styles = StyleSheet.create({
   wrap: { gap: space.lg, padding: space.xxl },
   dismiss: { position: 'absolute', right: space.lg, top: space.lg, zIndex: 1 },
-  title: { ...type.titleXL, color: colors.textPrimary },
+  // Clear of the close control floating at the top right (44pt + a gap), so a
+  // narrow screen wraps the title instead of running it under the × (step 70).
+  title: { ...type.titleXL, color: colors.textPrimary, marginRight: 44 + space.sm },
   body: { ...type.callout, color: colors.textSecondary },
   features: { gap: space.md },
   featureRow: { alignItems: 'flex-start', flexDirection: 'row', gap: space.md },

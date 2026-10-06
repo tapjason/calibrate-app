@@ -84,15 +84,15 @@ describe('trialTermsLine', () => {
 
 describe('trialLine', () => {
   it('leads a month-long trial with the month', () => {
-    expect(trialLine(annualMonthTrial)).toBe('1 month free, then $29.99 a year');
+    expect(trialLine(annualMonthTrial)).toBe('1 month free, then $29.99\u00A0a\u00A0year');
   });
 
   it('states the trial length and what happens after it', () => {
-    expect(trialLine(annual)).toBe('21 days free, then $29.99 a year');
+    expect(trialLine(annual)).toBe('21 days free, then $29.99\u00A0a\u00A0year');
   });
 
   it('singularizes a one-day trial', () => {
-    expect(trialLine({ ...annual, trialDays: 1 })).toBe('1 day free, then $29.99 a year');
+    expect(trialLine({ ...annual, trialDays: 1 })).toBe('1 day free, then $29.99\u00A0a\u00A0year');
   });
 
   it('is null for a plan with no trial', () => {
@@ -103,11 +103,11 @@ describe('trialLine', () => {
 
 describe('priceLine', () => {
   it('leads with the trial when there is one', () => {
-    expect(priceLine(annual)).toBe('21 days free, then $29.99 a year');
+    expect(priceLine(annual)).toBe('21 days free, then $29.99\u00A0a\u00A0year');
   });
 
   it('falls back to the store price', () => {
-    expect(priceLine(monthly)).toBe('$4.99 a month');
+    expect(priceLine(monthly)).toBe('$4.99\u00A0a\u00A0month');
     expect(priceLine(lifetime)).toBe('$59.99');
   });
 });

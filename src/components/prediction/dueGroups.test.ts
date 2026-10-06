@@ -81,7 +81,7 @@ describe('nextDueLine', () => {
         day: 'numeric',
         month: 'short',
       })
-      .replace(/ /g, ' ');
+      .replace(/ /g, '\u00A0');
 
   it('names the soonest due date when nothing is ready yet', () => {
     const soonest = dueIn(3, 'soon');

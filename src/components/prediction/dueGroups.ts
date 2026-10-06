@@ -99,7 +99,7 @@ export function nextDueLine(
   });
   // No-break spaces hold the date together: "Oct" ended one line and "13."
   // began the next.
-  return `The ${first ? 'first' : 'next'} one comes due ${day.replace(/ /g, ' ')}.`;
+  return `The ${first ? 'first' : 'next'} one comes due ${day.replace(/ /g, '\u00A0')}.`;
 }
 
 /**

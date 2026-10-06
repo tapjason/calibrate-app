@@ -31,7 +31,7 @@ describe('StreakLine (roadmap D2)', () => {
     const row = () => StyleSheet.flatten(screen.getByTestId('streak-line').props.style);
     expect(row().backgroundColor).toBe(colors.brand50);
     expect(screen.getByTestId('streak-line-detail')).toHaveTextContent(
-      'A full month. Next milestone: 100 days',
+      'A full month. Next\u00A0milestone: 100\u00A0days',
     );
 
     rerender(

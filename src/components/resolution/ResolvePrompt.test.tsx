@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { setDbForTests } from '@/db/client';
 import { getPrediction, insertPrediction } from '@/db/predictions';
 import { getUserStat } from '@/db/stats';
@@ -144,7 +145,7 @@ describe('ResolvePrompt acknowledgement', () => {
     await waitFor(() => {
       expect(screen.getByTestId('resolve-bucket-line')).toBeTruthy();
     });
-    expect(screen.getByText("That's your first call in the 80–100% range.")).toBeTruthy();
+    expect(screen.getByText(holdRanges("That's your first call in the 80–100% range."))).toBeTruthy();
   });
 
   it('finishes without a reflection, leaving it empty', async () => {
@@ -366,7 +367,7 @@ describe('ResolvePrompt streak checkpoints', () => {
       expect(screen.getByTestId('streak-checkpoint')).toBeTruthy();
     });
     expect(screen.getByTestId('streak-checkpoint').props.accessibilityLabel).toBe(
-      '7-day streak. A full week. Next milestone: 30 days.',
+      '7-day streak. A full week. Next\u00A0milestone: 30\u00A0days.',
     );
     expect(screen.queryByTestId(/^milestone-/)).toBeNull();
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();

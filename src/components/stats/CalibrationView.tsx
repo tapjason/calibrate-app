@@ -10,6 +10,7 @@ import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { CountUp } from '@/components/ui/CountUp';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import {
   MIN_N_OVERALL,
@@ -118,9 +119,11 @@ export function CalibrationView({
 
       {/* Title = takeaway, subtitle = natural frequencies (DESIGN_SYSTEM §7.2). */}
       <Text style={styles.chartTitle} testID="chart-takeaway">
-        {takeaway.title}
+        {holdRanges(takeaway.title)}
       </Text>
-      {takeaway.subtitle && <Text style={styles.chartSubtitle}>{takeaway.subtitle}</Text>}
+      {takeaway.subtitle && (
+        <Text style={styles.chartSubtitle}>{holdRanges(takeaway.subtitle)}</Text>
+      )}
 
       {/* Drawn even when empty: a ghost frame shows what's coming. */}
       <CalibrationChart buckets={calibration.buckets} />

@@ -85,10 +85,10 @@ describe('ResolveRun (roadmap step 18)', () => {
     await waitFor(() => expect(screen.getByTestId('resolve-run-done')).toBeTruthy());
     // Roadmap step 65: what the run came to, and the day it made count.
     expect(screen.getByTestId('resolve-run-summary')).toHaveTextContent(
-      '3 answered. 2 happened. You expected about 2.',
+      '3 answered. 2 happened. You expected about\u00A02.',
     );
     expect(screen.getByTestId('resolve-run-streak').props.accessibilityLabel).toBe(
-      '1-day streak. Today counts. Next milestone: 7 days.',
+      '1-day streak. Today counts. Next\u00A0milestone: 7\u00A0days.',
     );
     fireEvent.press(screen.getByTestId('resolve-run-close'));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -144,13 +144,13 @@ describe('runSummary (roadmap step 65)', () => {
   });
 
   it('sets what happened against what the numbers expected', () => {
-    expect(runSummary(tally(5, 4, 2.6))).toBe('5 answered. 4 happened. You expected about 3.');
-    expect(runSummary(tally(3, 0, 0.9))).toBe('3 answered. None happened. You expected about 1.');
+    expect(runSummary(tally(5, 4, 2.6))).toBe('5 answered. 4 happened. You expected about\u00A03.');
+    expect(runSummary(tally(3, 0, 0.9))).toBe('3 answered. None happened. You expected about\u00A01.');
   });
 
   it("counts a can't-tell apart", () => {
     expect(runSummary(tally(2, 1, 1.2, 1))).toBe(
-      "2 answered, 1 can't tell. 1 happened. You expected about 1.",
+      "2 answered, 1 can't tell. 1 happened. You expected about\u00A01.",
     );
     expect(runSummary(tally(0, 0, 0, 3))).toBe("3 marked can't tell.");
   });

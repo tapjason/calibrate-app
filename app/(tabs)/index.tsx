@@ -14,6 +14,7 @@ import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { Button } from '@/components/ui/Button';
 import { CountUp } from '@/components/ui/CountUp';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
@@ -59,7 +60,7 @@ export default function HomeScreen() {
           const t = chartTakeaway(buckets, false);
           return t.title.startsWith("You're") ? (
             <Text style={styles.takeaway} testID="home-takeaway">
-              {t.title}
+              {holdRanges(t.title)}
             </Text>
           ) : null;
         })()}

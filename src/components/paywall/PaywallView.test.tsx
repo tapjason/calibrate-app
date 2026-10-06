@@ -91,8 +91,8 @@ describe('PaywallView', () => {
     seed();
     render(<PaywallView />);
     expect(screen.getByTestId('plan-annual')).toBeTruthy();
-    expect(screen.getByText('1 month free, then $29.99 a year')).toBeTruthy();
-    expect(screen.getByText('$4.99 a month')).toBeTruthy();
+    expect(screen.getByText('1 month free, then $29.99\u00A0a\u00A0year')).toBeTruthy();
+    expect(screen.getByText('$4.99\u00A0a\u00A0month')).toBeTruthy();
   });
 
   // Roadmap step 50: the monthly figure sits under annual's price, smaller,
@@ -108,7 +108,7 @@ describe('PaywallView', () => {
       'Works out to $2.50 a month.',
     );
     expect(screen.getByTestId('plan-annual').props.accessibilityLabel).toBe(
-      'Annual, 1 month free, then $29.99 a year. Works out to $2.50 a month. Best value',
+      'Annual, 1 month free, then $29.99\u00A0a\u00A0year. Works out to $2.50 a month. Best value',
     );
     expect(screen.queryByTestId('plan-monthly-equivalent')).toBeNull();
   });
