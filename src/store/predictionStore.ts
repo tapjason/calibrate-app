@@ -11,6 +11,7 @@ import { track } from '@/analytics/track';
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
 import { checkpointReached, streakStatus } from '@/engine/streak';
+import { tallyAnswers } from '@/engine/wrapped';
 import {
   deletePrediction,
   getPrediction,
@@ -21,7 +22,13 @@ import {
   reopenPrediction,
   setPredictionReflection,
 } from '@/db/predictions';
-import type { Category, Prediction, ResolvedStatus, StreakStatus } from '@/types';
+import type {
+  AnswerTally,
+  Category,
+  Prediction,
+  ResolvedStatus,
+  StreakStatus,
+} from '@/types';
 
 import { useAuthStore } from './authStore';
 import { useStatsStore } from './statsStore';
@@ -76,6 +83,11 @@ interface PredictionState {
    */
   streakCheckpoint: number | null;
   clearStreakCheckpoint: () => void;
+  /**
+   * What these predictions' answers came to (the end of a run, roadmap step
+   * 65): the engine's counts over the resolved list held here.
+   */
+  tallyFor: (ids: readonly string[]) => AnswerTally;
 }
 
 function nowIso(): string {
@@ -236,6 +248,11 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   },
 
   streakNow: (now = new Date()) => streakStatus([...get().pending, ...get().resolved], now),
+
+  tallyFor: (ids) => {
+    const wanted = new Set(ids);
+    return tallyAnswers(get().resolved.filter((p) => wanted.has(p.id)));
+  },
 
   loadDemoData: async () => {
     const userId = requireUserId();

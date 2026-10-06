@@ -1,7 +1,7 @@
 import { MIN_N_OVERALL, type Category, type Prediction } from '@/types';
 
 import { __setTimeZoneForTests } from './localTime';
-import { buildWrapped, inWindow, weekWindow, yearWindow } from './wrapped';
+import { buildWrapped, inWindow, tallyAnswers, weekWindow, yearWindow } from './wrapped';
 
 const NOW = new Date('2026-08-29T12:00:00.000Z');
 
@@ -309,5 +309,40 @@ describe('yearWindow — local year', () => {
     __setTimeZoneForTests('America/Los_Angeles');
     const { start } = yearWindow(new Date('2027-01-01T05:00:00.000Z'));
     expect(start).toBe('2026-01-01T08:00:00.000Z');
+  });
+});
+
+// Roadmap step 65: the end of a run counts its answers the way a recap does.
+describe('tallyAnswers', () => {
+  const at = (status: Prediction['status'], confidence: number): Prediction => ({
+    id: `${status}-${confidence}`,
+    user_id: 'u1',
+    title: 't',
+    category: 'work',
+    confidence,
+    created_at: '2026-05-01T00:00:00.000Z',
+    due_date: '2026-05-02T00:00:00.000Z',
+    status,
+    resolved_at: status === 'pending' ? null : '2026-05-02T00:00:00.000Z',
+    reflection: null,
+    integrity_bonus: false,
+  });
+
+  it('counts what happened against the stated numbers, and skips apart', () => {
+    const tally = tallyAnswers([
+      at('resolved_yes', 70),
+      at('resolved_no', 70),
+      at('resolved_yes', 70),
+      at('skipped', 90),
+      at('pending', 50),
+    ]);
+    expect(tally.resolved).toBe(3);
+    expect(tally.happened).toBe(2);
+    expect(tally.expected).toBeCloseTo(2.1);
+    expect(tally.skipped).toBe(1);
+  });
+
+  it('is all zeros for nothing', () => {
+    expect(tallyAnswers([])).toEqual({ resolved: 0, happened: 0, expected: 0, skipped: 0 });
   });
 });

@@ -8,7 +8,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { ResolveRun } from './ResolveRun';
+import { ResolveRun, runSummary } from './ResolveRun';
 
 const USER = 'local-user-v1';
 
@@ -83,6 +83,13 @@ describe('ResolveRun (roadmap step 18)', () => {
     fireEvent.press(screen.getByText('Finish'));
 
     await waitFor(() => expect(screen.getByTestId('resolve-run-done')).toBeTruthy());
+    // Roadmap step 65: what the run came to, and the day it made count.
+    expect(screen.getByTestId('resolve-run-summary')).toHaveTextContent(
+      '3 answered. 2 happened. You expected about 2.',
+    );
+    expect(screen.getByTestId('resolve-run-streak').props.accessibilityLabel).toBe(
+      '1-day streak. Today counts. Next milestone: 7 days.',
+    );
     fireEvent.press(screen.getByTestId('resolve-run-close'));
     expect(onClose).toHaveBeenCalledTimes(1);
 
@@ -120,8 +127,36 @@ describe('ResolveRun (roadmap step 18)', () => {
     await waitFor(() => expect(screen.getByText('Third due')).toBeTruthy());
   });
 
-  it('says so when nothing is ready', async () => {
+  it('says so when nothing is ready, with no tally or streak to show', async () => {
     render(<ResolveRun onClose={jest.fn()} />);
     expect(screen.getByText('Nothing is ready to resolve right now.')).toBeTruthy();
+    expect(screen.queryByTestId('resolve-run-summary')).toBeNull();
+    expect(screen.queryByTestId('resolve-run-streak')).toBeNull();
+  });
+});
+
+describe('runSummary (roadmap step 65)', () => {
+  const tally = (resolved: number, happened: number, expected: number, skipped = 0) => ({
+    resolved,
+    happened,
+    expected,
+    skipped,
+  });
+
+  it('sets what happened against what the numbers expected', () => {
+    expect(runSummary(tally(5, 4, 2.6))).toBe('5 answered. 4 happened. You expected about 3.');
+    expect(runSummary(tally(3, 0, 0.9))).toBe('3 answered. None happened. You expected about 1.');
+  });
+
+  it("counts a can't-tell apart", () => {
+    expect(runSummary(tally(2, 1, 1.2, 1))).toBe(
+      "2 answered, 1 can't tell. 1 happened. You expected about 1.",
+    );
+    expect(runSummary(tally(0, 0, 0, 3))).toBe("3 marked can't tell.");
+  });
+
+  it('leaves one answer to the line its card already showed, and nothing to nothing', () => {
+    expect(runSummary(tally(1, 1, 0.7))).toBe('1 answered.');
+    expect(runSummary(tally(0, 0, 0))).toBeNull();
   });
 });

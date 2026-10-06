@@ -10,6 +10,7 @@
 
 import {
   MIN_N_OVERALL,
+  type AnswerTally,
   type BucketStat,
   type Category,
   type Direction,
@@ -234,6 +235,23 @@ const emptyBody = () => ({
   receipt: null,
   buckets: [] as BucketStat[],
 });
+
+/**
+ * Counts for a handful of answers, the same way a recap counts its window:
+ * what happened against what the stated numbers expected. Pending ones are
+ * ignored; skips are counted apart and add nothing else (roadmap step 65).
+ */
+export function tallyAnswers(predictions: readonly Prediction[]): AnswerTally {
+  const tally: AnswerTally = { resolved: 0, happened: 0, expected: 0, skipped: 0 };
+  for (const p of predictions) {
+    if (p.status === 'skipped') tally.skipped += 1;
+    if (p.status !== 'resolved_yes' && p.status !== 'resolved_no') continue;
+    tally.resolved += 1;
+    tally.expected += p.confidence / 100;
+    if (p.status === 'resolved_yes') tally.happened += 1;
+  }
+  return tally;
+}
 
 /**
  * Build the recap for one window. An empty window returns a zeroed summary

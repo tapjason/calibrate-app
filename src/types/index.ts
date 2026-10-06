@@ -49,6 +49,21 @@ export const STREAK_DAY_MIN = 3;
  */
 export const STREAK_CHECKPOINTS = [7, 30, 100, 365] as const;
 
+/**
+ * What a set of answers came to, in counts (roadmap step 65): the end of a
+ * run says it. `expected` is the sum of stated confidences as a count, like
+ * Wrapped's: three answers at 70% expect 2.1.
+ */
+export interface AnswerTally {
+  /** Answered yes or no. */
+  resolved: number;
+  /** Of those, how many happened. */
+  happened: number;
+  expected: number;
+  /** Marked "can't tell", which count for nothing. */
+  skipped: number;
+}
+
 /** Where today stands for the streak, as the engine reports it. */
 export interface StreakStatus {
   /** Consecutive counted days, through today if it counts, else yesterday. */
