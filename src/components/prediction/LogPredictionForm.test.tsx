@@ -390,6 +390,9 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
     actual_rate: yes / n,
     bucket_error: 0,
     direction: 'calibrated' as const,
+    chance_low: 0,
+    chance_high: 1,
+    expected_yes: 0,
   });
 
   const raise = (steps: number) => {

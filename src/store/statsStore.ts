@@ -18,6 +18,7 @@ import {
 import {
   bucketLowFor,
   computeCalibration,
+  computeRatingRange,
   evaluateBadge,
   isRatingProvisional,
   isScoreProvisional,
@@ -41,6 +42,7 @@ import type {
   Milestone,
   NextBadgeTarget,
   Prediction,
+  RatingRange,
   UserStat,
 } from '@/types';
 
@@ -71,6 +73,12 @@ interface StatsState {
    * subscribes.
    */
   trends: TrendSummary;
+  /**
+   * How much the overall rating could move with different luck (roadmap D4):
+   * "92, give or take 3". Computed whenever the calibration is; the UI shows
+   * it only once the rating has unlocked.
+   */
+  ratingRange: RatingRange | null;
   /**
    * The confidence range this user's recent logs occupy — pending included,
    * because what it measures is the logging habit, not resolved outcomes.
@@ -152,6 +160,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   calibration: EMPTY_CALIBRATION,
   categoryCalibration: {},
   trends: EMPTY_TRENDS,
+  ratingRange: null,
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
 
@@ -194,6 +203,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       calibration: computeCalibration(resolved),
       categoryCalibration: deriveCategoryCalibration(resolved),
       trends: buildTrendSummary(resolved),
+      ratingRange: computeRatingRange(resolved),
       coverageGap: computeCoverageGap([...pending, ...resolved]),
     });
   },
@@ -263,6 +273,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       calibration: userCalc,
       categoryCalibration,
       trends: buildTrendSummary(resolved),
+      ratingRange: computeRatingRange(resolved),
       coverageGap: computeCoverageGap(all),
       // Keep an uncelebrated milestone rather than overwrite it with null.
       milestone: milestone ?? prev.milestone,

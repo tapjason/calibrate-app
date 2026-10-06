@@ -66,6 +66,9 @@ function bucket(low: number, n: number, yes: number, stated: number): BucketStat
     actual_rate: actual,
     bucket_error: Math.abs(gap),
     direction: gap > 0.05 ? 'overconfident' : gap < -0.05 ? 'underconfident' : 'calibrated',
+    chance_low: 0,
+    chance_high: 1,
+    expected_yes: 0,
   } as BucketStat;
 }
 

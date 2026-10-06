@@ -78,6 +78,22 @@ describe('statsStore.recomputeForUser', () => {
     expect(health?.predictions_resolved).toBe(0); // still pending
   });
 
+  // Roadmap D4: the give-or-take is computed alongside the rating.
+  it('computes the rating range with the rating, and none with nothing resolved', async () => {
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().ratingRange).toBeNull();
+
+    await insertPrediction(p({ id: 'a', confidence: 90 }));
+    await insertPrediction(p({ id: 'b', confidence: 90 }));
+    await resolvePrediction('a', 'resolved_yes');
+    await resolvePrediction('b', 'resolved_no');
+    await useStatsStore.getState().recomputeForUser(USER);
+    const range = useStatsStore.getState().ratingRange;
+    expect(range).not.toBeNull();
+    expect(range!.low).toBeLessThanOrEqual(60);
+    expect(range!.high).toBeGreaterThanOrEqual(60);
+  });
+
   it('assigns badge levels according to the calibration table', async () => {
     // 25 resolved predictions in work, all confidence 100 + resolved_yes
     // → perfect calibration → score = 100. Sharp requires ≥50 resolved and

@@ -239,6 +239,15 @@ export interface BucketStat {
   actual_rate: number;            // resolved_yes / total_resolved
   bucket_error: number;           // | stated_confidence_mean/100 − actual_rate |
   direction: Direction;           // which side of the diagonal (5-pt band = calibrated)
+  /**
+   * Where actual_rate would land half the time for a perfectly calibrated
+   * forecaster at this bucket's stated mean and n: the central 50% of the
+   * binomial outcomes, as shares 0–1 (roadmap D4). Small buckets get wide ranges.
+   */
+  chance_low: number;
+  chance_high: number;
+  /** How many the stated confidences expected to happen: n × stated mean / 100. */
+  expected_yes: number;
 }
 
 /**
@@ -255,6 +264,18 @@ export type Milestone =
 export interface CalibrationResult {
   rating: number;        // 0–100 calibration score
   buckets: BucketStat[]; // one entry per non-empty bucket
+}
+
+/**
+ * How much the rating could move on the same habits with different luck
+ * (roadmap D4): half the spread of the middle 80% of bootstrap scores, set
+ * either side of the rating itself. Whole points, clamped to 0–100.
+ */
+export interface RatingRange {
+  /** "give or take" this many points. */
+  giveOrTake: number;
+  low: number;
+  high: number;
 }
 
 /**

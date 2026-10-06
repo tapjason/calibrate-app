@@ -158,6 +158,9 @@ describe('shareText', () => {
     actual_rate: 0.5,
     bucket_error: 0,
     direction,
+    chance_low: 0,
+    chance_high: 1,
+    expected_yes: 0,
   });
   const card = (rating: number | null): ShareCard => ({
     categories: [

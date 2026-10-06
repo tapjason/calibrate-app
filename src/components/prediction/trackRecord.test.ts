@@ -12,6 +12,9 @@ function bucket(low: number, n: number, yes: number): BucketStat {
     actual_rate: n === 0 ? 0 : yes / n,
     bucket_error: 0,
     direction: 'calibrated',
+    chance_low: 0,
+    chance_high: 1,
+    expected_yes: 0,
   };
 }
 

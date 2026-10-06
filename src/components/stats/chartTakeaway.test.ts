@@ -18,6 +18,9 @@ function bucket(
     actual_rate: yes / n,
     bucket_error: error,
     direction,
+    chance_low: 0,
+    chance_high: 1,
+    expected_yes: 0,
   };
 }
 

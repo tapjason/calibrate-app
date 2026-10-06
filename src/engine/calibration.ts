@@ -3,8 +3,8 @@
 // and objects out. That purity is what makes this the highest-value test
 // target in the project: every behavior can be pinned with a unit test.
 //
-// Layer rule: this file may only import from @/types and ./direction. Never
-// reach into src/db/, src/store/, or anywhere else.
+// Layer rule: this file may only import from @/types, ./direction and
+// ./chance. Never reach into src/db/, src/store/, or anywhere else.
 
 import {
   MIN_N_CATEGORY,
@@ -17,8 +17,10 @@ import {
   type NextBadge,
   type NextBadgeTarget,
   type Prediction,
+  type RatingRange,
 } from '@/types';
 
+import { bootstrapRange, chanceRange } from './chance';
 import { classifyDirection } from './direction';
 
 // 5 buckets of 20% each: [0,20) [20,40) [40,60) [60,80) [80,100]
@@ -97,6 +99,7 @@ export function computeCalibrationPoints(
     const actualRate = a.yes / a.total;
     const error = Math.abs(statedMean / 100 - actualRate);
     errorTotal += error;
+    const chance = chanceRange(a.total, statedMean / 100);
     buckets.push({
       low: i * BUCKET_WIDTH,
       high: (i + 1) * BUCKET_WIDTH, // semantic: top bucket is [80,100], others [low, high)
@@ -106,6 +109,9 @@ export function computeCalibrationPoints(
       actual_rate: actualRate,
       bucket_error: error,
       direction: classifyDirection(statedMean, actualRate),
+      chance_low: chance.low,
+      chance_high: chance.high,
+      expected_yes: (a.total * statedMean) / 100,
     });
   }
 
@@ -117,6 +123,58 @@ export function computeCalibrationPoints(
   const rating = Math.max(0, Math.min(100, rawRating));
 
   return { rating, buckets };
+}
+
+/**
+ * The rating alone, without the per-bucket detail: the same MAE as
+ * computeCalibrationPoints, for the bootstrap, which scores hundreds of
+ * resamples and needs nothing else.
+ */
+function ratingOf(points: readonly CalibrationPoint[]): number {
+  const sums = new Map<number, { total: number; yes: number; confidenceSum: number }>();
+  for (const pt of points) {
+    const i = bucketIndex(pt.confidence);
+    const a = sums.get(i) ?? { total: 0, yes: 0, confidenceSum: 0 };
+    a.total += 1;
+    a.confidenceSum += pt.confidence;
+    if (pt.yes) a.yes += 1;
+    sums.set(i, a);
+  }
+  if (sums.size === 0) return 0;
+  let errorTotal = 0;
+  for (const a of sums.values()) {
+    errorTotal += Math.abs(a.confidenceSum / a.total / 100 - a.yes / a.total);
+  }
+  return Math.max(0, Math.min(100, 100 - (errorTotal / sums.size) * 100));
+}
+
+/**
+ * How far the rating could move on the same habits with different luck
+ * (roadmap D4). Bootstrap the resolved yes/no predictions, take the spread of
+ * the middle 80% of the resampled scores, and set half of it either side of
+ * the rating: "92, give or take 3".
+ *
+ * Centred on the rating rather than on the bootstrap percentiles, because the
+ * score is an absolute error and resampling noise only ever adds error: the
+ * resampled scores sit below the observed one, and a near-perfect record's
+ * percentile range (say 93–97) would exclude its own 100. The spread is the
+ * honest part; the centre is the number the user already sees.
+ *
+ * Whole points, clamped to 0–100, deterministic. Null with nothing resolved.
+ */
+export function computeRatingRange(resolved: readonly Prediction[]): RatingRange | null {
+  const points = resolved
+    .filter(isCalibratable)
+    .map((p) => ({ confidence: p.confidence, yes: p.status === 'resolved_yes' }));
+  const spread = bootstrapRange(points, ratingOf);
+  if (!spread) return null;
+  const rating = Math.round(ratingOf(points));
+  const giveOrTake = Math.round((spread.high - spread.low) / 2);
+  return {
+    giveOrTake,
+    low: Math.max(0, rating - giveOrTake),
+    high: Math.min(100, rating + giveOrTake),
+  };
 }
 
 /**

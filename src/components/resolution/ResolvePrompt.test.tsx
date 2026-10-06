@@ -263,6 +263,9 @@ describe('bucketLine', () => {
         actual_rate: 6 / 9,
         bucket_error: 0.03,
         direction: 'calibrated',
+        chance_low: 0,
+        chance_high: 1,
+        expected_yes: 0,
       }),
     ).toBe('In your 60–80% range, 6 of 9 have happened.');
   });
@@ -279,6 +282,9 @@ describe('bucketLine', () => {
         actual_rate: 13 / 25,
         bucket_error: 0.044,
         direction: 'calibrated',
+        chance_low: 0,
+        chance_high: 1,
+        expected_yes: 0,
       }),
     ).toBe(
       "In your 40–60% range, 13 of 25 have happened. That's 52%, against the 48% you said.",
