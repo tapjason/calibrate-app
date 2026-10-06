@@ -525,6 +525,12 @@ filters are its way forward.
   what it would cost; when it ends it disappears quietly until the next one starts.
 - Sentence case everywhere; no ALL-CAPS labels.
 - Badge gating is a trust feature — say it: "Badges need receipts."
+- **Things that read as one never split across lines** (roadmap step 70, checked at
+  320pt): a range keeps its dash (`holdRanges`, a word joiner either side, on the
+  chart title and subtitle, Home's takeaway and Resolve's range line), a price keeps
+  its period ("$29.90 a year"), a date keeps its day ("Tue, Oct 13"), and the streak
+  row breaks before "Next milestone: 30 days", never inside it. Done where the text is
+  drawn or with no-break spaces, so screen readers hear the same words.
 
 ### 7.10 Resolve
 

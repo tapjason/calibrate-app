@@ -91,6 +91,7 @@ is checking it on an iPhone and the decisions.
 | 67 Home's middle group is "Next 7 days" | Done 2026-10-06, web-verified (a prediction logged Tuesday "In a week" is due next Tuesday, and was listed under "This week") | — |
 | 68 The ghost chart's key names only what's drawn | Done 2026-10-06, web-verified (no "Grey bars" sentence before the first dot; "Resolve a prediction and your first dot lands here." no longer reads as a line of the key) | — |
 | 69 An empty History has a way forward | Done 2026-10-06, web-verified ("…The first one comes due Tue, Oct 13." and **Log a prediction**; "Oct" and "13" no longer split at 402pt). Home's and Stats' calibrating caption say "first" too until something resolves | — |
+| 70 A 320pt pass: nothing that reads as one splits | Done 2026-10-06, web-verified at 320pt (chart title "80–100%" whole; paywall title wraps clear of the ×; "then $29.90 a year" together; the streak row breaks before "Next milestone") | Yes (iPhone SE / mini, and word joiners on iOS) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
