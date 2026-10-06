@@ -84,6 +84,7 @@ is checking it on an iPhone and the decisions.
 | 60 D9: reminders in the evening | Done 2026-10-05, unit-tested (19:00 local; a reminder set for another time is replaced at launch) | Yes (the notification arrives at 19:00 on the due day) |
 | 61 D2: a day counts with three | Done 2026-10-05, web-verified (Home: "14-day streak · 3 more today makes it 15", then "15-day streak · Today counts" after three answers) | — |
 | 62 D4: chance bars, give-or-take, counts as dots | Done 2026-10-05, web-verified ("Give or take 5 points"; the n=5 and n=8 dots in long bars) | — |
+| 63 The streak on the Wrapped cards | Done 2026-10-05, web-verified ("15-day streak" under the counts, from two days up) | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run

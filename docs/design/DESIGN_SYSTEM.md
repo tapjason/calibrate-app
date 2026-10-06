@@ -628,7 +628,8 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   as 4.6. The yearly card uses the same line; (2) one factual receipt in natural frequencies: "You said 90%
   three times. All three happened."; (3) progress: the unlock ring or the next badge
   ("Tracker in health: 3 to go"); (4) the verdict only when the window earns it.
-  Never a card whose main message is "not enough data". An empty week with open
+  Never a card whose main message is "not enough data". From a two-day streak, the
+  card carries "15-day streak" under the counts in its accent (roadmap step 63). An empty week with open
   predictions due within it leads with "2 on the way" and says the recap fills in as
   they resolve (roadmap step 34).
 - **Yearly** follows §7.5 and the Spotify structure: archetype line, one receipt,

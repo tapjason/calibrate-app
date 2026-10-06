@@ -30,7 +30,7 @@ directly — it goes through a store.
 ## Where the build is
 
 **Current state (2026-10-05).** All code in L0–L6 is built; `tsc --noEmit` is
-clean and `npm test` is 108 suites / 1210 tests green. What is left is almost
+clean and `npm test` is 108 suites / 1214 tests green. What is left is almost
 entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
 The few remaining code items are in `docs/NEXT_STEPS.md`; UI status and open design
 decisions are in `docs/design/UI_ROADMAP.md`. The step-by-step build history that
