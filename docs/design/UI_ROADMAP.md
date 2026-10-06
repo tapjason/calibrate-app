@@ -1,6 +1,6 @@
 # Calibrate — UI Roadmap
 
-**As of:** 2026-10-04. The *what to build next* companion to
+**As of:** 2026-10-05. The *what to build next* companion to
 [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) (which holds the rules). Evidence in
 [`research/`](research/); "before" screens from 2026-09-25 in [`baseline/`](baseline/).
 Feature ideas beyond this roadmap are parked in [`FUTURE_UI.md`](FUTURE_UI.md).
@@ -67,6 +67,12 @@ is checking it on an iPhone and the decisions.
 | 43 Rating and badge rows as one sentence | Done 2026-10-05, unit-tested | Yes (VoiceOver) |
 | 44 Warmup questions as announced headings | Done 2026-10-05, web-verified | Yes (VoiceOver hears each new question) |
 | 45 Share cards read as one summary each | Done 2026-10-05, web-verified (each card is one image with a spoken summary, tiers in words) | Yes (VoiceOver) |
+| 46 Log: Save waits for a title | Done 2026-10-05, web-verified (an empty Save used to print "title is required") | — |
+| 47 Badge hints name the score too | Done 2026-10-05, unit-tested ("20 more resolved and a score above 85 → Sharp") | — |
+| 48 Wrapped: expected vs happened | Done 2026-10-05, web-verified ("6 happened. You expected about 4." replaces "86% came in") | — |
+| 49 Warmup verdict names a single number | Done 2026-10-05, web-verified ("You said 75% on all 10") | — |
+| 50 Paywall prices say their period | Done 2026-10-05, web-verified ("then $29.90 a year", "Works out to $2.49 a month." from the Test Store) | Yes (with real App Store prices) |
+| 51 A range opens its predictions | Done 2026-10-05, web-verified (Stats' 80–100% cell → History "You said 80–100%", 57 answered, matching the chart) | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -78,11 +84,17 @@ by step.
 
 ### 1.1 Building now
 
-Nothing in progress. Steps 16–45 shipped on 2026-10-04 and 10-05; the last two
-batches were an accessibility pass over every screen's accessibility tree. Step 45
-made each share card one image with a spoken summary: the identity card's chips
-showed each category's tier by emblem alone, so the summary says them in words. The next
-useful read is on an iPhone, with VoiceOver on for steps 41, 43 and 44.
+Nothing in progress. Steps 16–51 shipped on 2026-10-04 and 10-05. The tenth batch
+(46–51) came from playing the web build as a new user on a cleared profile, and
+from the research in [`research/confidence-2026-10.md`](research/confidence-2026-10.md):
+how the app asks for a number, and what a ten-question Warmup can claim. It fixed
+what the design system already decided (Save waiting for a title, the paywall's
+monthly figure), made two lines honest (badge hints that skipped the score; a
+Warmup verdict built on the slider's default), swapped Wrapped's hit rate for
+expected-vs-happened counts, and let a chart range open the predictions behind
+it. The two findings that change product behaviour are decisions **D13** and
+**D14** below. The next useful read is still on an iPhone, with VoiceOver on for
+steps 41, 43 and 44.
 
 ### What's left in the parking lot
 
@@ -118,6 +130,8 @@ And the decisions in §2 below.
 | D9 | Reminder time | Fire in the **evening of the due day** (e.g. 19:00 local), or at a user-set check-in time defaulting to that. | Behaviour change in L5. **Checked 2026-10-04:** every due date is stored at 12:00 local (`DuePicker`, `LogPredictionForm`), so reminders fire at noon today. The scheduler only acts on *changes* to the pending set and never reconciles at launch (`scheduler.ts` header), so moving the time also needs a launch-time reschedule of reminders already queued — that's the real size of this (M, not S). |
 | D11 | An on-device Coach (FUTURE_UI P2) | Prototype it after the SDK upgrade: Apple Foundation Models first where available, the OpenAI Coach as fallback, both through the same grounding validator. Keep it Plus at first. | Changes the Coach's provider and privacy story (nothing leaves the phone on supported devices), and whether it stays Plus. |
 | D12 | Widgets (FUTURE_UI P1) | Build the "ready to resolve" widget first, right after the SDK 56+ upgrade; the identity widget second. | A new native target and app group; scope and order are a product call. |
+| D13 | The number before you touch it | **Start both confidence controls empty**: the readout says "Set how sure you are", the thumb appears where it's first touched (the ±5 buttons start from the middle of the range), and Next / Save wait for a number. Watch `warmup_completed / warmup_started` either side of the change. Runner-up for the Warmup only: Hedge-style buttons (50 · 60 · 70 · 80 · 90 · 100), one tap each. | Today the Warmup starts at 75% and Log at 50%. Tapping through the Warmup yields "I run hot · 75% sure, 50% right" on the first share card, about a number the user never chose (step 49 now says so, but still shares it). On Log, 50% sits inside the 35–65% band, so an untouched save earns the integrity bonus and counts as an "honest coin-flip" on Wrapped. Step-5 presets probably anchor little (Liu & Conrad 2019 found no consistent effect on 21-point sliders); the cost is that "didn't touch it" can't be told from "chose it". It adds one required interaction to the Day-0 funnel and the 15-second Log target, so it's your call. |
+| D14 | What the Warmup's verdict can claim | **(a) now, (c) later.** (a) Keep the ten questions and add one true line under an overconfident verdict: "These were picked to be tricky, so most people run hot here. Your own predictions are the real test." (c) Once A2's question bank exists, draw ten at random from it, so the verdict reflects the person rather than the selection. Option (b), swapping the three "obvious answer is wrong" items for plain ones now, is the cheap version of (c). | The bank's own header says it's chosen to make users "visibly overconfident", with items "where the obvious answer is wrong". That is how overconfidence is manufactured in the literature: selected items average .73 confidence for .64 correct, representative ones .73 for .72 (Juslin, Winman & Olsson 2000; Juslin 1994). So "You run overconfident" on Day 0, and the card that shares it, describes our questions as much as the user. But GROWTH §5.1 wants that moment as the hook. |
 | D10 | What Skip means | ~~Relabel to "Can't tell / doesn't apply" with "It won't count toward your score", shown as a text button.~~ **Built 2026-10-04.** The open question was factual and the code answers it: skips are excluded from the score (`calibration.ts`), the streak (`streak.ts`), Wrapped (`wrapped.ts`), patterns and trends, and History already says "Not scored". So the line is true everywhere. One commit to revert if you'd rather keep a Skip button. | — |
 
 ---

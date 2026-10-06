@@ -9,7 +9,8 @@ anyone builds them — they are listed with the other open questions in
 
 **Evidence:** every rule below traces to the sourced research in
 [`research/`](research/) (market, libraries, visual-language, done 2026-09-25; patterns,
-done 2026-09-28 and behind §2.5 and §7.10–§7.15). The
+done 2026-09-28 and behind §2.5 and §7.10–§7.15; confidence, done 2026-10-05 and
+behind §7.3, §7.14 and §7.18). The
 "before" screens are in [`baseline/`](baseline/) (web-build captures, so fonts and the
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
@@ -318,7 +319,10 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    with n. Connecting line 1.5 px neutral, or none — five buckets are not a function.
 4. **Coverage row** under the chart: five bucket chips with counts, empty ones hatched
    ("You've never logged anything under 40%"). This is the spec's range-coverage caveat
-   made visible; it links to the `CoverageNudge`.
+   made visible; it links to the `CoverageNudge`. On Stats each filled chip is a
+   button with the control outline ("80–100%: 57 resolved. Show them.") that opens
+   History filtered to that range, under the line "Tap a range to see the predictions
+   behind it." (roadmap step 51). Empty chips stay inert, and so does the Warmup's.
 5. Ticks "0%…100%" in `caption`, `textTertiary`.
 6. Keep `describeCalibrationCurve()` for screen readers and add a "Show as table"
    disclosure.
@@ -346,6 +350,9 @@ small ±5 buttons).
   `adjustable` role from `src/components/ui/adjustable.ts` — the slider must not
   regress VoiceOver.
 - Warmup range stays 50–100 (spec).
+- **Proposed** (roadmap D13): start with no value, so "didn't touch it" can't pass
+  for "chose it". Today the Warmup starts at 75% and Log at 50%, inside the
+  integrity band (research: `confidence-2026-10.md` §2).
 
 ### 7.4 Badges — the "Lens" emblem
 
@@ -368,6 +375,11 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   progress arc and "9/15 to unlock". Implemented as `LensEmblem`'s `progress` prop: the
   outline goes dashed and faint, and a solid stroke traces it as far as the user has
   come (`src/components/ui/LensEmblem.tsx`).
+- The progress hint names every requirement still unmet: "3 more resolved →
+  Tracker", "Score above 70 → Forecaster", or both, "20 more resolved and a score
+  above 85 → Sharp" (roadmap step 47). Naming only the count promised a badge that
+  resolving alone couldn't earn. Only the threshold is printed, never a provisional
+  score.
 - Each tier shows its receipt in one line: "Sharp: 52 resolved, score 87". Badge
   criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
   presentation only and loses its `emoji` field.
@@ -404,8 +416,16 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 
 Structure beats polish (design-only paywall tests win least often). Order: value header
 → 3 benefit rows (symbol + one line) → plan selector (radio cards, **Annual first and
-preselected**, "$2.50/mo, billed yearly" equivalent, "1 month free" badge; Monthly with
-no trial; Lifetime as a smaller third row) → **honest timeline** → **one** CTA.
+preselected**, "1 month free" badge; Monthly with no trial; Lifetime as a smaller
+third row) → **honest timeline** → **one** CTA.
+
+- **Every recurring price names its period** ("1 month free, then $29.99 a year",
+  "$4.99 a month"), in the plan row and the timeline. Lifetime stays the bare price
+  under "Pay once, keep it". (Roadmap step 50.)
+- **Annual's monthly figure** sits under its price in `footnote` `textSecondary`:
+  "Works out to $2.50 a month." It is RevenueCat's `pricePerMonthString`, never our
+  division, and absent when the store gives none. App Review 3.1.2: the billed
+  amount stays the most prominent price.
 
 - Timeline, in the store's own units: *Today* — full Plus access · *In 1 month* — your
   year starts; cancel at least 24 hours before. (A "we remind you" step belongs here
@@ -497,6 +517,11 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   ✓/✗ characters or green/red. Skipped reads "Not scored".
 - Tapping a ready card opens Resolve (§7.10). Keep the single-sentence
   `accessibilityLabel`.
+- **History by range** (roadmap step 51): opened from a Stats coverage chip, History
+  shows a selected-style chip "You said 80–100% ×" above the category filters; the
+  two combine, × clears the range, and leaving the tab drops it. The summary line's
+  "57 answered · 38 happened" then matches the chart's subtitle. The range edges come
+  from the engine through `statsStore.confidenceRangeLow`.
 - **Reflection** (roadmap step 31): on a resolved card, a saved reflection shows under
   the title, quoted, in `footnote` italic `textSecondary`, at most four lines, and
   joins the card's accessible sentence ("Your note: …").
@@ -525,6 +550,9 @@ the control reads the chosen category.)
   accept button is secondary; Save is the only primary action on the screen. Keep the
   current copy and the "Not now" cooldown.
 - **Save:** one primary capsule, disabled until the title is non-empty, `commit` motion.
+  (Built as step 46; it used to answer an empty tap with the store's "title is
+  required".) A failed save says "Couldn't save that. Try again.", never the store's
+  developer message.
 
 ### 7.13 Coach cards and the support surface
 
@@ -550,7 +578,11 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 
 - **Weekly** is built from what is true at small n, because a week almost never reaches
   20 resolutions and the verdict stays gated: (1) counts: "4 resolved · 3 logged · 1
-  honest coin-flip"; (2) one factual receipt in natural frequencies: "You said 90%
+  honest coin-flip", and under the big count, **what happened against what the
+  user's own numbers expected**: "6 happened. You expected about 4." (roadmap step
+  48; the sum of stated confidences comes from the engine). It replaced "86% came
+  in": a hit rate rewards safe calls. Outcome first, since "about 4. 6 happened" read
+  as 4.6. The yearly card uses the same line; (2) one factual receipt in natural frequencies: "You said 90%
   three times. All three happened."; (3) progress: the unlock ring or the next badge
   ("Tracker in health: 3 to go"); (4) the verdict only when the window earns it.
   Never a card whose main message is "not enough data". An empty week with open
@@ -625,6 +657,23 @@ their edges, one worked example from `CLAUDE.md`), why it waits, badges (a legen
 the five emblems with their criteria), honest uncertainty, what doesn't count.
 Every number in the copy comes from the shared constants or `BADGE_META`, and a test
 holds it to the engine.
+
+### 7.18 Warmup verdict
+
+The Day-0 payoff (`WarmupVerdictScreen`): eyebrow "Your warm-up", the verdict in
+`title1` ("You run overconfident"), the receipt ("You were 77% confident on average,
+and right 50% of the time."), the warm-up score in `title1` (never `display`: it must
+not look like the real rating), the mini chart, one line of advice, the "not your
+calibration rating" note, then the two actions before the answer key.
+
+- **One number everywhere** (roadmap step 49): when all answers share a confidence,
+  the receipt says it ("You said 75% on all 10, and were right 50% of the time.") and
+  a second line notes that one number for the known and the guessed leaves part of
+  the skill unused. Not shown when every answer was right, or under three answers.
+- **Proposed** (roadmap D14): under an overconfident verdict, "These were picked to be
+  tricky, so most people run hot here. Your own predictions are the real test." The
+  bank is a selected, hard-leaning set, and selected items are where overconfidence
+  comes from in the research (`research/confidence-2026-10.md` §3).
 
 ---
 

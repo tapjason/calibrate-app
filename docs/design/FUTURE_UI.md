@@ -37,6 +37,10 @@ open the app every day.
 - A rolling "drill calibration" mini-chart could sit on Stats, labelled as practice.
 - Interacts with **D2**: if the visible streak becomes weekly, a drill could count
   toward it.
+- The same bank, if sampled representatively rather than picked to be tricky, would
+  let the Warmup draw its ten at random: option (c) of **D14**, so the Day-0 verdict
+  describes the person, not the question selection (`research/confidence-2026-10.md`
+  §3).
 
 ### A4. Repeating predictions
 "Gym 3× this week", weekly. Each instance is its own prediction with its own
@@ -121,6 +125,7 @@ Moved to `UI_ROADMAP.md` on 2026-10-04 and shipped the same day: the tier-up
 confetti and emblem flip (step 17) and the chart-label halo (step 16). The web
 Back guard moved as step 23.
 
-Decisions **D1–D10** in `UI_ROADMAP.md` §2 (typeface, weekly streak, four tabs, honesty
+Decisions **D1–D14** in `UI_ROADMAP.md` §2 (typeface, weekly streak, four tabs, honesty
 bands, SDK, milestone cards, dark mode, resolving from a notification, reminder time,
-what Skip means) are not repeated here. They're ready to build once decided.
+what Skip means, an on-device Coach, widgets, an empty confidence control, what the
+Warmup's verdict can claim) are not repeated here. They're ready to build once decided.

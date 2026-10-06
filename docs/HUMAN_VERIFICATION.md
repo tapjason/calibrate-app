@@ -738,6 +738,16 @@ Added 2026-09-29 (polish pass):
       notch. History shows saved reflections on their cards and hides its
       filters until something is resolved. While calibrating, Home and Stats say
       when the next one comes due. Settings ends with "Terms of use".
+- [ ] **Added 2026-10-05, steps 46–51 (all web-verified; a glance on the
+      phone):** Log's Save is dimmed until the prediction has a title. A badge
+      row short on both counts names both ("20 more resolved and a score above
+      85 → Sharp"). The weekly and yearly cards say "6 happened. You expected
+      about 4." where they used to say "86% came in". Tapping through the
+      Warmup without moving the slider gives "You said 75% on all 10". On the
+      paywall, each price names its period and Annual shows "Works out to …
+      a month." in smaller type (check it against the real App Store price).
+      On Stats, tapping a filled range under the chart opens History with
+      "You said 80–100% ×", and the count matches the chart's subtitle.
 - [ ] **VoiceOver pass (added 2026-10-05, steps 41–44):** Settings reads
       "Notifications, switch, on" (and a double-tap toggles it); the Stats
       rating reads "Calibration rating, 92 out of 100"; a badge row reads
