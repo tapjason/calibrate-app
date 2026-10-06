@@ -412,8 +412,11 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   the tallest ratio X and iMessage show uncropped). The identity card's canvas is
   360 pt wide on every phone and is captured at 3×, which is exactly these sizes
   (roadmap step 53); it used to take the screen's width, and on a 375pt phone its
-  content overflowed the 3:4 box in the preview and the PNG alike. The scale for the
-  preview sits on a wrapper, never on the captured card. Plus a **plain-text share**
+  content overflowed the 3:4 box in the preview and the PNG alike. The Warmup and
+  Wrapped cards use the same 360pt canvas with their own height (step 57), so every
+  export is 1080px wide with the same line breaks on every phone. `ScaledCanvas`
+  shows each one scaled to the screen; the scale sits on its wrapper, never on the
+  captured card. Plus a **plain-text share**
   (Wordle-style, spoiler-free, never includes prediction titles):
   ```
   Calibrate · Week 38
@@ -472,6 +475,10 @@ third row) → **honest timeline** → **one** CTA.
 
 Every empty state has an SF Symbol, one sentence in `textSecondary`, and a way forward
 (button). No italic grey text. "Nothing to share yet" is never shown — see §7.5.
+Built as step 56: `EmptyState` takes a `symbol` (36pt, `textSecondary`, hidden from
+screen readers): `calendar.badge.plus` on Home, `clock.arrow.circlepath` on History,
+`square.and.arrow.up` on Share. Its button is the primary capsule, since where an empty
+state shows it is the screen's only action.
 
 ### 7.9 Copy and tone
 
@@ -502,6 +509,10 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
 - **After the tap:** the `resolve` motion (§6.1), then one factual line about the bucket
   it landed in: "That's 6 of 9 in your 60–80% range." Counts, not a verdict, so safe
   below min-N. The count comes from the store; the component doesn't compute buckets.
+  From 10 resolved in the range (the chart title's threshold), the range's own
+  comparison follows: "That's 77%, against the 69% you said." (roadmap step 58).
+  Said-against-happened is the feedback that moved calibration in the studies; bare
+  outcomes barely did (`research/confidence-2026-10.md` §6).
   Then the optional one-line reflection ("What surprised you?"), never before the
   answer.
 - Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states

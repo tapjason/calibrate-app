@@ -114,9 +114,49 @@ localized figure ("$2.50" for $29.99 a year), so the app prints that and never
 divides. Step 50: each price names its period ("then $29.99 a year"), and Annual
 gets "Works out to $2.50 a month." beneath it in footnote size.
 
+## 6. Feedback that teaches (added the same day, second pass)
+
+What a person sees after a resolution decides whether the app teaches calibration or
+just records it.
+
+- Benson & Önkal (1992): forecasters given **calibration feedback** (what they said
+  against what happened, by range) improved calibration and cut overforecasting, in
+  one step after a session; **simple outcome feedback had very little effect**.
+- Lichtenstein & Fischhoff (1980): overconfident people became well calibrated after
+  intensive performance feedback with calibration graphs, and nearly all of the
+  improvement came from the first session.
+- Martin & Mandel (2025, two experiments, n = 610 and 871): per-trial feedback with
+  a score (the "Practical" scoring rule) and trial-by-trial correctness both failed
+  to improve calibration. The line between what works and what doesn't looks like
+  *summarised said-against-happened by range* versus *a score or a right/wrong per
+  item*.
+
+Calibrate already gives the second kind at the moment of resolving ("In your 60–80%
+range, 40 of 52 have happened": counts) and the first kind only on Stats. Step 58
+adds the range's own comparison to the resolve line once it holds 10 (the chart
+title's threshold): "That's 77%, against the 69% you said." Both numbers are the
+engine's bucket, the same ones the free Stats table shows, so nothing moves out of
+Plus (the Plus correction table is per category and band).
+
+Not acted on: the same comparison under Log's track record line would be
+feed*forward*, arguably the better moment, but DESIGN_SYSTEM §7.12 keeps that line
+to counts so it can't read as advice on what to pick, and the per-category rate is
+what Plus's correction table sells. Worth a decision if Plus's shape changes.
+
+## 7. Other notes from the second pass
+
+- **Sign-in has no "Forgot password?"** Password reset can't send until custom SMTP
+  is set up (`ACCOUNT_SPEC.md`, option B, still yours), so a link would lead nowhere.
+  Add it with SMTP.
+- **D9 got smaller.** Step 37 made the reminder scheduler reconcile with the OS at
+  launch, which D9 listed as its hidden cost. Moving reminders to the evening now
+  needs that reconcile to also reschedule a reminder whose time doesn't match, and
+  the new time itself: S–M rather than M.
+
 ## Sources
 
 - Slider defaults: [Liu & Conrad 2019, *Where should I start? On default values for slider questions in web surveys*, Social Science Computer Review 37(2)](https://journals.sagepub.com/doi/abs/10.1177/0894439318755336) · [Maineri, Bison & Luijkx 2021, *Slider bars in multi-device web surveys*, SSCR](https://dx.doi.org/10.1177/0894439319879132) · [Funke 2016, *A web experiment showing negative effects of slider scales compared to visual analogue scales and radio button scales*, SSCR](https://www.researchgate.net/publication/276844531_A_Web_Experiment_Showing_Negative_Effects_of_Slider_Scales_Compared_to_Visual_Analogue_Scales_and_Radio_Button_Scales)
 - Calibration tools: [List of probability calibration exercises (LessWrong), Hedge's 50–99 buttons](https://www.lesswrong.com/posts/LdFbx9oqtKAAwtKF3/list-of-probability-calibration-exercises) · [Fatebook](https://fatebook.io/)
 - Item selection: Gigerenzer, Hoffrage & Kleinbölting 1991, *Probabilistic mental models*, Psychological Review 98(4) · Juslin 1994, *The overconfidence phenomenon as a consequence of informal experimenter-guided selection of almanac items*, OBHDP 57(2) · Juslin, Winman & Olsson 2000, *Naive empiricism and dogmatism in confidence research*, Psychological Review 107(2); its .73/.64 and .73/.72 figures as summarised in [Hard–easy effect](https://en.wikipedia.org/wiki/Hard%E2%80%93easy_effect) · [PMM theory, overconfidence, and representative sampling of items: a review of data](https://psycharchives.org/en/item/26c5b2d8-a933-474e-a21b-d9c5ce4ac27c) · [Klayman et al. 1999, *Overconfidence: it depends on how, what, and whom you ask*](https://www.sciencedirect.com/science/article/abs/pii/S0749597899928479) · [Moore & Healy, *The trouble with overconfidence*](https://healy.econ.ohio-state.edu/papers/Moore_Healy-TroubleWithOverconfidence.pdf)
+- Feedback: [Benson & Önkal 1992, *The effects of feedback and training on the performance of probability forecasters*, International Journal of Forecasting](https://www.sciencedirect.com/science/article/abs/pii/016920709290066I) · Lichtenstein & Fischhoff 1980, *Training for calibration*, OBHP 26 (as summarised in [Training to improve calibration and discrimination](https://www.researchgate.net/publication/12270784_Training_to_Improve_Calibration_and_Discrimination_The_Effects_of_Performance_and_Environmental_Feedback)) · [Martin & Mandel 2025, *Calibration feedback with the Practical scoring rule does not improve calibration of confidence*, Futures & Foresight Science](https://www.researchgate.net/publication/385657124_Calibration_Feedback_With_the_Practical_Scoring_Rule_Does_Not_Improve_Calibration_of_Confidence)
 - Paywall pricing: [Apple, Auto-renewable subscriptions](https://developer.apple.com/app-store/subscriptions/) · [RevenueCat, App Store rejections guide](https://www.revenuecat.com/blog/growth/the-ultimate-guide-to-app-store-rejections) · [Guideline 3.1.2(c) explained](https://getresubmit.com/guides/app-store-guideline-3-1-2-c-subscription-information)
