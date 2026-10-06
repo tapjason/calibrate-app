@@ -5,6 +5,11 @@ import { colors, radius, space, type } from '@/constants/theme';
 interface ScoreBarProps {
   /** The unlocked calibration rating, 0–100. */
   score: number;
+  /**
+   * How far the score could move with different luck (roadmap D4), drawn as a
+   * soft band across the end of the fill. The engine computes it.
+   */
+  range?: { low: number; high: number } | null;
   testID?: string;
 }
 
@@ -26,8 +31,11 @@ const TICKS = [
  * score sits on 0–100, with ticks at 70 / 85 / 90. No gauge, no colour for
  * good or bad — the fill is ink and the marker is the number's position.
  */
-export function ScoreBar({ score, testID }: ScoreBarProps) {
+export function ScoreBar({ score, range, testID }: ScoreBarProps) {
   const clamped = Math.max(0, Math.min(100, score));
+  const low = range ? Math.max(0, range.low) : 0;
+  const high = range ? Math.min(100, range.high) : 0;
+  const band = range && high > low ? { left: low, width: high - low } : null;
   return (
     <View
       style={styles.wrap}
@@ -38,6 +46,12 @@ export function ScoreBar({ score, testID }: ScoreBarProps) {
     >
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${clamped}%` }]} />
+        {band && (
+          <View
+            testID={testID ? `${testID}-range` : undefined}
+            style={[styles.range, { left: `${band.left}%`, width: `${band.width}%` }]}
+          />
+        )}
         {TICKS.map((t) => (
           <View key={t.at} style={[styles.tick, { left: `${t.at}%` }]} />
         ))}
@@ -70,6 +84,16 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   fill: { backgroundColor: colors.textPrimary, borderRadius: radius.pill, height: 8 },
+  // The give-or-take: a taller, see-through capsule over the end of the fill,
+  // so where the score could be reads as a zone, not a point.
+  range: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: radius.pill,
+    height: 14,
+    opacity: 0.18,
+    position: 'absolute',
+    top: -3,
+  },
   tick: {
     backgroundColor: colors.surface,
     height: 12,

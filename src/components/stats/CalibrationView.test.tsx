@@ -116,6 +116,9 @@ describe('CalibrationView chart section', () => {
     actual_rate: 7 / 12,
     bucket_error: 0.3,
     direction: 'overconfident' as const,
+    chance_low: 0,
+    chance_high: 1,
+    expected_yes: 0,
   };
 
   it('titles the chart with its takeaway once the rating is unlocked', () => {
@@ -210,5 +213,69 @@ describe('CalibrationView — the rating as one stop (roadmap step 43)', () => {
     expect(getByTestId('stats-rating-group').props.accessibilityLabel).toBe(
       'Calibration rating, 92 out of 100.',
     );
+  });
+});
+
+// Roadmap D4: the rating's give-or-take, once the rating has unlocked.
+describe('CalibrationView rating range', () => {
+  it('says how far the rating could move', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 145, rating_is_provisional: false })}
+        calibration={{ rating: 92, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={{ giveOrTake: 3, low: 89, high: 95 }}
+      />,
+    );
+    expect(getByTestId('stats-rating-range')).toHaveTextContent(
+      'Give or take 3 points with this many predictions.',
+    );
+  });
+
+  it('stays quiet while calibrating', () => {
+    const { queryByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={{ rating: 70, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={{ giveOrTake: 9, low: 61, high: 79 }}
+      />,
+    );
+    expect(queryByTestId('stats-rating-range')).toBeNull();
+  });
+});
+
+// Roadmap D4: each range as dots, with the expected count marked.
+describe('CalibrationView counts', () => {
+  it('shows each range as dots with the expected count beside the outcome', () => {
+    const range = {
+      low: 60,
+      high: 80,
+      total_resolved: 12,
+      resolved_yes: 10,
+      stated_confidence_mean: 70,
+      actual_rate: 10 / 12,
+      bucket_error: 0.13,
+      direction: 'underconfident' as const,
+      chance_low: 0.58,
+      chance_high: 0.75,
+      expected_yes: 8.4,
+    };
+    const { getByTestId, getByText } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={{ rating: 87, buckets: [range] }}
+        categoryStats={[]}
+        nextBadges={{}}
+      />,
+    );
+    fireEvent.press(getByTestId('chart-table-toggle'));
+    expect(getByText('Hide the counts')).toBeTruthy();
+    expect(getByTestId('bucket-60-expected')).toHaveTextContent(
+      '10 of 12 happened; your numbers expected about 8.',
+    );
+    expect(getByTestId('bucket-60-dots', { includeHiddenElements: true })).toBeTruthy();
   });
 });

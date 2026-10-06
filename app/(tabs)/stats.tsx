@@ -16,6 +16,7 @@ export default function StatsScreen() {
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const calibration = useStatsStore((s) => s.calibration);
+  const ratingRange = useStatsStore((s) => s.ratingRange);
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const pending = usePredictionStore((s) => s.pending);
   const isPlus = useEntitlementStore((s) => s.isPlus);
@@ -33,6 +34,7 @@ export default function StatsScreen() {
         onExplain={() => router.push('/scoring' as never)}
         // The predictions behind a range, in History (roadmap step 51).
         onSelectRange={(low) => router.push(`/history?range=${low}` as never)}
+        ratingRange={ratingRange}
       />
       {/* Free users get one Plus teaser, not a grey upsell per panel. */}
       {!isPlus && (

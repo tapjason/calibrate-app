@@ -57,6 +57,7 @@ export function scoringSections(): ScoringSection[] {
       paragraphs: [
         'With two predictions in a band, it can only read 0%, 50% or 100%. That is noise, not a score.',
         `So your rating stays "calibrating" until ${MIN_N_OVERALL} predictions have resolved, a category's score until ${MIN_N_CATEGORY} have in that category, and the app doesn't say which way a band leans until it holds ${MIN_N_BAND}.`,
+        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands half the time with that many predictions: a dot inside it is as close as chance allows. And your rating comes with a "give or take": how far it could move on the same habits with different luck. Both narrow as you resolve more.',
       ],
     },
     {

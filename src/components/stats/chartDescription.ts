@@ -18,9 +18,17 @@ export function describeCalibrationCurve(buckets: readonly BucketStat[]): string
       const said = Math.round(b.stated_confidence_mean);
       const right = Math.round(b.actual_rate * 100);
       const n = b.total_resolved;
+      // The grey capsule, in words (roadmap D4).
+      const lo = Math.round(b.chance_low * 100);
+      const hi = Math.round(b.chance_high * 100);
+      const chance =
+        lo === hi
+          ? `Perfectly calibrated, that would be ${lo}%.`
+          : `Perfectly calibrated, half the time that would land between ${lo} and ${hi}%.`;
       return (
         `When you said ${b.low} to ${b.high}%, averaging ${said}%, ` +
-        `you were right ${right}% of the time, over ${n} ${n === 1 ? 'prediction' : 'predictions'}.`
+        `you were right ${right}% of the time, over ${n} ${n === 1 ? 'prediction' : 'predictions'}. ` +
+        chance
       );
     });
   return ['Calibration curve.', ...ranges].join(' ');

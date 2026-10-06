@@ -13,6 +13,7 @@ import Svg, {
   Line,
   Polygon,
   Polyline,
+  Rect,
   Text as SvgText,
 } from 'react-native-svg';
 
@@ -49,6 +50,8 @@ const PAD_BOTTOM = 28;
 // Ticks at the bucket edges, so each dot sits between two gridlines.
 const TICKS = [0, 20, 40, 60, 80, 100];
 const TICK_FONT = type.caption.fontSize; // DESIGN_SYSTEM §3: 12pt is the chart minimum.
+// The chance capsule (roadmap D4): a soft bar, no end caps (DESIGN_SYSTEM §7.2).
+const CHANCE_WIDTH = 10;
 
 /** Dot fill per side of the diagonal (DESIGN_SYSTEM §2.3). */
 const MARK: Record<Direction, string> = {
@@ -66,6 +69,12 @@ const MARK: Record<Direction, string> = {
  * coloured by the side the engine says it's on (`BucketStat.direction`) —
  * position + tint + words. Every dot carries its n, so a lone 100% built on
  * two predictions reads as exactly that.
+ *
+ * Behind each dot, a soft grey capsule (roadmap D4): where a perfectly
+ * calibrated forecaster's dot lands half the time at that confidence and that
+ * n. A dot inside it is as close to the diagonal as chance allows; a dot of 5
+ * gets a long capsule, which is the point. The engine computes the range
+ * (`BucketStat.chance_low/high`); this only draws it.
  *
  * With no buckets it still draws the frame, the regions and the diagonal: a
  * ghost chart that shows what's coming instead of an italic placeholder.
@@ -232,6 +241,27 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
               strokeDasharray="5 4"
             />
 
+            {/* Chance capsules, under the line and the dots: context, not data. */}
+            {points.map((b) => {
+              const y0 = yOf(b.chance_high);
+              const y1 = yOf(b.chance_low);
+              const h = Math.max(CHANCE_WIDTH, y1 - y0);
+              const mid = (y0 + y1) / 2;
+              return (
+                <Rect
+                  key={`chance-${b.low}`}
+                  testID={`chance-${b.low}`}
+                  x={xOf(b.stated_confidence_mean) - CHANCE_WIDTH / 2}
+                  y={mid - h / 2}
+                  width={CHANCE_WIDTH}
+                  height={h}
+                  rx={CHANCE_WIDTH / 2}
+                  fill={colors.textSecondary}
+                  fillOpacity={0.16}
+                />
+              );
+            })}
+
             {/* Connecting line: neutral and thin — five buckets are not a
                 function, the dots are the data. */}
             {points.length > 1 ? (
@@ -302,7 +332,8 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
 
       <Text style={styles.caption}>
         Across: how sure you said you were. Up: how often it happened. Dashed line:
-        perfectly calibrated.
+        perfectly calibrated. Grey bars: where a perfectly calibrated dot lands half
+        the time with that many predictions.
       </Text>
     </View>
   );

@@ -13,6 +13,9 @@ function bucket(partial: Partial<BucketStat> & Pick<BucketStat, 'low'>): BucketS
     actual_rate: 0.5,
     bucket_error: 0,
     direction: 'calibrated',
+    chance_low: 0,
+    chance_high: 1,
+    expected_yes: 0,
     ...partial,
   };
 }
@@ -267,5 +270,24 @@ describe('placeDotLabels', () => {
   it('keeps a label inside the plot at the top edge', () => {
     const [y] = placeDotLabels([{ cx: 100, cy: 14, r: 6, text: 'n=2' }], TOP, BOTTOM);
     expect(y).toBeGreaterThan(14);
+  });
+});
+
+// Roadmap D4: the grey capsule behind each dot, from the engine's range.
+describe('CalibrationChart chance capsules', () => {
+  it('draws one per bucket, spanning the chance range, centred on the stated mean', () => {
+    const b = bucket({ low: 60, stated_confidence_mean: 70, chance_low: 0.6, chance_high: 0.8 });
+    const view = render(<CalibrationChart buckets={[b]} />);
+    fireEvent(view.getByTestId('calibration-chart'), 'layout', {
+      nativeEvent: { layout: { width: 346, height: 346 } },
+    });
+    const capsule = view.getByTestId('chance-60', { includeHiddenElements: true });
+    const dot = view.getByTestId('point-60', { includeHiddenElements: true });
+    const { x, y, width, height } = capsule.props;
+    // Centred on the dot's x.
+    expect(Number(x) + Number(width) / 2).toBeCloseTo(Number(dot.props.cx));
+    // 20 points of rate on a 306px-tall plot (346 − 12 − 28).
+    expect(Number(height)).toBeCloseTo(0.2 * 306);
+    expect(Number(y)).toBeLessThan(Number(dot.props.cy));
   });
 });

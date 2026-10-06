@@ -40,3 +40,20 @@ describe('ScoreBar', () => {
     expect(StyleSheet.flatten(fill.props.style).width).toBe('100%');
   });
 });
+
+// Roadmap D4: the give-or-take as a soft band over the end of the fill.
+describe('ScoreBar range', () => {
+  it('draws the range as a band from low to high', () => {
+    render(<ScoreBar score={92} range={{ low: 89, high: 95 }} testID="bar" />);
+    const band = StyleSheet.flatten(
+      screen.getByTestId('bar-range', { includeHiddenElements: true }).props.style,
+    );
+    expect(band.left).toBe('89%');
+    expect(band.width).toBe('6%');
+  });
+
+  it('draws nothing for an empty or missing range', () => {
+    render(<ScoreBar score={92} range={{ low: 92, high: 92 }} testID="bar" />);
+    expect(screen.queryByTestId('bar-range', { includeHiddenElements: true })).toBeNull();
+  });
+});

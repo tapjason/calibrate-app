@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { BucketDots } from '@/components/stats/BucketDots';
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
@@ -16,6 +17,7 @@ import {
   type Category,
   type CategoryStat,
   type NextBadgeTarget,
+  type RatingRange,
   type UserStat,
 } from '@/types';
 
@@ -32,6 +34,8 @@ interface CalibrationViewProps {
   nextDue?: string | null;
   /** Opens a confidence range's predictions in History (roadmap step 51). */
   onSelectRange?: (low: number) => void;
+  /** "Give or take 3" on the rating (roadmap D4). */
+  ratingRange?: RatingRange | null;
 }
 
 /**
@@ -49,6 +53,7 @@ export function CalibrationView({
   onExplain,
   nextDue = null,
   onSelectRange,
+  ratingRange = null,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
@@ -80,7 +85,13 @@ export function CalibrationView({
                 <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
                 <Text style={styles.ratingLabel}>calibration rating</Text>
               </View>
-              <ScoreBar score={headline.rating} testID="stats-score-bar" />
+              <ScoreBar score={headline.rating} range={ratingRange} testID="stats-score-bar" />
+              {ratingRange && ratingRange.giveOrTake > 0 && (
+                <Text style={styles.subtle} testID="stats-rating-range">
+                  Give or take {ratingRange.giveOrTake}{' '}
+                  {ratingRange.giveOrTake === 1 ? 'point' : 'points'} with this many predictions.
+                </Text>
+              )}
             </>
           )}
           {/* The progress bar already counts resolutions while provisional. */}
@@ -130,18 +141,34 @@ export function CalibrationView({
             style={styles.tableToggle}
           >
             <Text style={styles.tableToggleText}>
-              {showTable ? 'Hide table' : 'Show as table'}
+              {showTable ? 'Hide the counts' : 'Show the counts'}
             </Text>
           </Pressable>
           {showTable &&
             calibration.buckets.map((b) => (
-              <View key={b.low} style={styles.bucketRow} testID={`bucket-${b.low}`}>
-                <Text style={styles.bucketLabel}>{rangeLabel(b)}</Text>
-                <Text style={styles.bucketDetail}>
-                  said {Math.round(b.stated_confidence_mean)}% · happened{' '}
-                  {Math.round(b.actual_rate * 100)}%
+              <View key={b.low} style={styles.bucket} testID={`bucket-${b.low}`}>
+                <View style={styles.bucketRow}>
+                  <Text style={styles.bucketLabel}>{rangeLabel(b)}</Text>
+                  <Text style={styles.bucketDetail}>
+                    said {Math.round(b.stated_confidence_mean)}% · happened{' '}
+                    {Math.round(b.actual_rate * 100)}%
+                    {/* The grey capsule's range, in numbers (roadmap D4). */}
+                    {` · chance ${Math.round(b.chance_low * 100)}–${Math.round(b.chance_high * 100)}%`}
+                  </Text>
+                  <Text style={styles.bucketCount}>n={b.total_resolved}</Text>
+                </View>
+                {/* The same range as dots (roadmap D4): filled happened,
+                    the bar is where your numbers said they'd stop. */}
+                <BucketDots
+                  total={b.total_resolved}
+                  happened={b.resolved_yes}
+                  expected={b.expected_yes}
+                  testID={`bucket-${b.low}-dots`}
+                />
+                <Text style={styles.bucketExpected} testID={`bucket-${b.low}-expected`}>
+                  {b.resolved_yes} of {b.total_resolved} happened; your numbers expected about{' '}
+                  {Math.round(b.expected_yes)}.
                 </Text>
-                <Text style={styles.bucketCount}>n={b.total_resolved}</Text>
               </View>
             ))}
         </>
@@ -185,12 +212,18 @@ const styles = StyleSheet.create({
   tableToggle: { alignSelf: 'flex-start', marginTop: space.md, paddingVertical: space.xs },
   explain: { marginTop: space.sm, paddingVertical: space.xs },
   tableToggleText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  bucket: {
+    borderBottomColor: colors.hairline,
+    borderBottomWidth: 1,
+    gap: space.xs,
+    paddingVertical: space.sm,
+  },
   bucketRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
   },
+  bucketExpected: { ...type.caption, fontWeight: '400', color: colors.textSecondary },
   bucketLabel: { ...type.footnote, fontWeight: '500', color: colors.textPrimary, width: 64 },
   bucketDetail: { ...type.footnote, flex: 1, color: colors.textSecondary },
   bucketCount: { ...type.caption, ...tabularNums, color: colors.textTertiary, width: 40, textAlign: 'right' },

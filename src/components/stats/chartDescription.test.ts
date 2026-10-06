@@ -11,6 +11,9 @@ const bucket = (over: Partial<BucketStat>): BucketStat => ({
   actual_rate: 7 / 12,
   bucket_error: 0,
   direction: 'overconfident',
+  chance_low: 0.75,
+  chance_high: 0.92,
+  expected_yes: 10.4,
   ...over,
 });
 
@@ -31,12 +34,17 @@ describe('describeCalibrationCurve', () => {
         resolved_yes: 1,
         stated_confidence_mean: 50,
         actual_rate: 1,
+        chance_low: 0,
+        chance_high: 1,
       }),
     ]);
+    // Roadmap D4: each range also says where chance alone would put it.
     expect(text).toBe(
       'Calibration curve. ' +
         'When you said 40 to 60%, averaging 50%, you were right 100% of the time, over 1 prediction. ' +
-        'When you said 80 to 100%, averaging 86%, you were right 58% of the time, over 12 predictions.',
+        'Perfectly calibrated, half the time that would land between 0 and 100%. ' +
+        'When you said 80 to 100%, averaging 86%, you were right 58% of the time, over 12 predictions. ' +
+        'Perfectly calibrated, half the time that would land between 75 and 92%.',
     );
   });
 });
