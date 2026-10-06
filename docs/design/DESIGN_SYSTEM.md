@@ -564,7 +564,10 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   at a time. After an answer the finishing button reads **Next** (**Finish** on the
   last) and the reflection waits behind "Add a reflection"; Skip moves on at once.
   Advancing is always a tap, never a timer (WCAG 2.2.1), and a milestone shows on
-  the card that earned it. Ends on "All caught up".
+  the card that earned it. Ends on "All caught up" with what the run came to, in
+  counts against the user's own numbers ("3 answered. 2 happened. You expected about
+  2."; skips counted apart as "can't tell"), and the Home streak row beneath it, since
+  a run of three is usually the one that makes the day count (roadmap step 65).
 
 ### 7.11 Prediction card and the Today list
 
