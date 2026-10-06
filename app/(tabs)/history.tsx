@@ -108,6 +108,7 @@ export default function HistoryScreen() {
       {filtered.length === 0 ? (
         <EmptyState
           testID="history-empty"
+          symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
           message={emptyHistoryMessage({ category: filter, range })}
         />
       ) : (

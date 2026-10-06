@@ -113,6 +113,7 @@ export default function HomeScreen() {
       ListEmptyComponent={
         <EmptyState
           testID="home-empty"
+          symbol={{ sf: 'calendar.badge.plus', fallback: 'calendar-outline' }}
           message="Nothing open. What do you think will happen this week?"
           actionLabel="Log a prediction"
           onAction={() => router.push('/log' as never)}
