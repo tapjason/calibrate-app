@@ -25,7 +25,7 @@ describe('PredictionCard', () => {
     // Resolved cards date themselves by the answer, not the due date.
     const resolved = new Date(prediction.resolved_at as string)
       .toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
-      .replace(/ /g, ' ');
+      .replace(/ /g, '\u00A0');
     expect(screen.getByRole('button').props.accessibilityLabel).toBe(
       `I ship the report by Friday. work, 70% confident, resolved ${resolved}. Happened.`,
     );
@@ -64,7 +64,7 @@ describe('PredictionCard', () => {
     const meta = screen.getByText(/^70% · resolved /);
     const date = String(meta.props.children.join('')).replace(/^70% · resolved /, '');
     expect(date).not.toMatch(/ /);
-    expect(date).toMatch(/ /);
+    expect(date).toMatch(/\u00A0/);
   });
 
   it('is not announced as a button when it does nothing', () => {

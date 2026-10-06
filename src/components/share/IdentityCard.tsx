@@ -9,6 +9,7 @@ import { CARD_MAX_SCALE, palettes, roundedFamily } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
 
 import { identityCardSummary, shareLines, shareSubline } from './cardCopy';
+import { CARD_CANVAS_WIDTH } from './ScaledCanvas';
 
 interface IdentityCardProps {
   card: ShareCard;
@@ -42,9 +43,8 @@ export type CardFormat = 'post' | 'story';
  * phone the same content overflowed its 3:4 box: the emblem rose over the
  * Shape control and the badges ran into the footer, in the preview and the
  * exported PNG alike. The preview scales the canvas to fit instead
- * (ShareCardPanel), so what you see is what is sent.
+ * (ScaledCanvas), so what you see is what is sent.
  */
-export const CARD_CANVAS_WIDTH = 360;
 export const CARD_CANVAS_HEIGHT: Record<CardFormat, number> = { post: 480, story: 640 };
 
 /** How far to shrink content that is taller than the room it has, or 1. */

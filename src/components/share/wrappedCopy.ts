@@ -174,7 +174,9 @@ function provisionalLine(
 export function expectedLine(summary: Pick<WrappedSummary, 'resolved' | 'happened' | 'expected'>): string | null {
   if (summary.resolved < 2) return null;
   const rounded = Math.round(summary.expected);
-  const expected = rounded === 0 ? 'less than 1' : `about ${rounded}`;
+  // No-break spaces keep the number with its words: on the card, "about"
+  // ended one line and "4." stood alone on the next.
+  const expected = rounded === 0 ? 'less than\u00A01' : `about\u00A0${rounded}`;
   const happened = summary.happened === 0 ? 'None' : String(summary.happened);
   return `${happened} happened. You expected ${expected}.`;
 }

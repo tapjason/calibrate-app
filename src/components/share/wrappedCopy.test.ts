@@ -7,19 +7,19 @@ import { expectedLine, receiptLine, wrappedCardSummary, wrappedStory } from './w
 describe('expectedLine', () => {
   it('sets what the stated numbers expected beside what happened', () => {
     expect(expectedLine({ resolved: 7, happened: 6, expected: 5.1 })).toBe(
-      '6 happened. You expected about 5.',
+      '6 happened. You expected about\u00A05.',
     );
     expect(expectedLine({ resolved: 146, happened: 93, expected: 96.6 })).toBe(
-      '93 happened. You expected about 97.',
+      '93 happened. You expected about\u00A097.',
     );
   });
 
   it('reads naturally at the edges', () => {
     expect(expectedLine({ resolved: 2, happened: 0, expected: 0.3 })).toBe(
-      'None happened. You expected less than 1.',
+      'None happened. You expected less than\u00A01.',
     );
     expect(expectedLine({ resolved: 3, happened: 0, expected: 2.4 })).toBe(
-      'None happened. You expected about 2.',
+      'None happened. You expected about\u00A02.',
     );
   });
 
@@ -121,16 +121,16 @@ describe('wrappedCardSummary (roadmap step 45)', () => {
     expect(
       wrappedCardSummary({
         title: 'Your week in predictions',
-        stat: '4 predictions resolved. 3 happened. You expected about 3.',
+        stat: '4 predictions resolved. 3 happened. You expected about\u00A03.',
         statCount: '4 resolved',
-        statRate: '3 happened. You expected about 3.',
+        statRate: '3 happened. You expected about\u00A03.',
         verdict: null,
         receipt: 'You said 80–100% 3 times. 2 of 3 happened.',
         provisionalNote: 'A week is too short for a verdict.',
         note: '1 honest-uncertainty call logged — the most valuable kind.',
       }),
     ).toBe(
-      'Your week in predictions. 4 predictions resolved. 3 happened. You expected about 3. ' +
+      'Your week in predictions. 4 predictions resolved. 3 happened. You expected about\u00A03. ' +
         'You said 80–100% 3 times. 2 of 3 happened. A week is too short for a verdict. ' +
         '1 honest-uncertainty call logged — the most valuable kind.',
     );

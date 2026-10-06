@@ -14,12 +14,8 @@ import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { Category } from '@/types';
 
-import {
-  CARD_CANVAS_HEIGHT,
-  CARD_CANVAS_WIDTH,
-  IdentityCard,
-  type CardFormat,
-} from './IdentityCard';
+import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
+import { ScaledCanvas } from './ScaledCanvas';
 import { ThemePicker } from './ThemePicker';
 import { buildShareCard, shareText as cardText } from './cardCopy';
 import { WarmupCard } from './WarmupCard';
@@ -51,11 +47,6 @@ export function ShareCardPanel({
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [format, setFormat] = useState<CardFormat>('post');
-  // The card's canvas is fixed (roadmap step 53); the preview scales it to the
-  // width it has. Until that width is known the card waits unseen, so a
-  // narrow phone never flashes the canvas at full size.
-  const [previewWidth, setPreviewWidth] = useState(0);
-  const previewScale = previewWidth > 0 ? previewWidth / CARD_CANVAS_WIDTH : 1;
   // Categories the user chose to leave off the card (Any Distance-style
   // show/hide, DESIGN_SYSTEM §7.5). Never all of them: the last one stays.
   const [hidden, setHidden] = useState<ReadonlySet<Category>>(new Set());
@@ -84,6 +75,7 @@ export function ShareCardPanel({
     return (
       <EmptyState
         testID="share-empty"
+        symbol={{ sf: 'square.and.arrow.up', fallback: 'share-outline' }}
         message="Take the 60-second warm-up for your first card, or resolve a prediction and your category card appears here."
         actionLabel={onTakeWarmup ? 'Take the warm-up' : undefined}
         onAction={onTakeWarmup}
@@ -118,29 +110,23 @@ export function ShareCardPanel({
 
   return (
     <View style={styles.wrap} testID="share-panel">
+      {/* Every card on the 360pt canvas, scaled to the screen (steps 53, 57). */}
       {card ? (
-        <View
-          onLayout={(e) => setPreviewWidth(e.nativeEvent.layout.width)}
-          style={[
-            { height: CARD_CANVAS_HEIGHT[format] * previewScale },
-            previewWidth === 0 && styles.unmeasured,
-          ]}
-          testID="card-preview"
-        >
-          {/* The scale sits on this wrapper, not on the card, so the export
-              captures the card at its own canvas size. */}
-          <View style={[styles.canvas, { transform: [{ scale: previewScale }] }]}>
-            <IdentityCard
-              ref={cardRef}
-              card={card}
-              theme={theme}
-              buckets={buckets}
-              format={format}
-            />
-          </View>
-        </View>
+        <ScaledCanvas height={CARD_CANVAS_HEIGHT[format]} testID="card-preview">
+          <IdentityCard
+            ref={cardRef}
+            card={card}
+            theme={theme}
+            buckets={buckets}
+            format={format}
+          />
+        </ScaledCanvas>
       ) : (
-        warmup && <WarmupCard ref={cardRef} copy={warmup} theme={theme} />
+        warmup && (
+          <ScaledCanvas testID="card-preview">
+            <WarmupCard ref={cardRef} copy={warmup} theme={theme} />
+          </ScaledCanvas>
+        )
       )}
 
       {card && (
@@ -228,8 +214,6 @@ export function ShareCardPanel({
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
-  unmeasured: { opacity: 0 },
-  canvas: { transformOrigin: 'top left', width: CARD_CANVAS_WIDTH },
   message: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
   controls: { gap: 8 },
   controlLabel: { ...type.footnote, color: colors.textSecondary, fontWeight: '600' },

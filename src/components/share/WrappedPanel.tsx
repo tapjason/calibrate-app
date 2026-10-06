@@ -21,6 +21,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore, wrappedSummary, type WrappedSpan } from '@/store/statsStore';
 
 import { nextBadgeProgress } from './nextBadgeCopy';
+import { ScaledCanvas } from './ScaledCanvas';
 import { WrappedCard } from './WrappedCard';
 
 interface WrappedPanelProps {
@@ -132,22 +133,25 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   return (
     <View style={styles.wrap} testID={`wrapped-panel-${span}`}>
       <Animated.View style={revealStyle} testID="wrapped-reveal">
-        <WrappedCard
-          ref={cardRef}
-          summary={summary}
-          overall={
-            userStat
-              ? {
-                  resolved: userStat.total_resolved,
-                  provisional: userStat.rating_is_provisional,
-                }
-              : null
-          }
-          upcoming={span === 'week' ? dueWithin(pending, new Date(), 7) : 0}
-        badge={nextBadgeProgress(categoryStats, nextBadges)}
-          theme={theme}
-          showTitles={showTitles}
-        />
+        {/* The 360pt card canvas, scaled to the screen (roadmap step 57). */}
+        <ScaledCanvas testID="wrapped-preview">
+          <WrappedCard
+            ref={cardRef}
+            summary={summary}
+            overall={
+              userStat
+                ? {
+                    resolved: userStat.total_resolved,
+                    provisional: userStat.rating_is_provisional,
+                  }
+                : null
+            }
+            upcoming={span === 'week' ? dueWithin(pending, new Date(), 7) : 0}
+            badge={nextBadgeProgress(categoryStats, nextBadges)}
+            theme={theme}
+            showTitles={showTitles}
+          />
+        </ScaledCanvas>
       </Animated.View>
 
       {hasTitles && (
