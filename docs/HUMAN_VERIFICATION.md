@@ -762,6 +762,13 @@ Added 2026-09-29 (polish pass):
       answer, the Resolve sheet shows the still flame card ("7", "A full
       week", "Next milestone: 30 days") above the range line, with no confetti and no extra
       haptic; Done and the reflection box stay reachable in the medium sheet.
+- [ ] **The 2026-10-06 batch (steps 65–71; web-verified):** a run of three
+      ends on "3 answered. 2 happened. You expected about 2." with the streak
+      row; Sign in's round × sits clear of the notch; on an SE or mini (320pt)
+      "80–100%" never splits in the Stats title (word joiners on iOS) and
+      "then $29.90 a year" stays whole; the Warmup answer key reads one stop
+      per question in VoiceOver ("Which is deeper? Pacific. You picked
+      “Atlantic”, 90% sure…").
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The indigo splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the

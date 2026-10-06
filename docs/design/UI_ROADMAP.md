@@ -104,7 +104,7 @@ by step.
 
 ### 1.1 Building now
 
-Nothing in progress. Steps 16–51 shipped on 2026-10-04 and 10-05. The tenth batch
+Nothing in progress. Steps 16–63 shipped on 2026-10-04 and 10-05, and 64–71 on 10-06. The tenth batch
 (46–51) came from playing the web build as a new user on a cleared profile, and
 from the research in [`research/confidence-2026-10.md`](research/confidence-2026-10.md):
 how the app asks for a number, and what a ten-question Warmup can claim. It fixed
@@ -123,8 +123,20 @@ in the same file (§6), the range's said-against-happened to the Resolve line (5
 and held the native splash until the first real screen is decided (59). Then three
 decisions came back the same day: D9 (evening reminders, step 60), D2 (days, with a
 three-a-day threshold, step 61) and D4 (honesty visuals, step 62).
+
+The 2026-10-06 batch (64–71) started from the owner's call on the streak:
+**checkpoints at 7, 30, 100 and 365 days, then yearly**, with the celebration
+animation deliberately left out (parked as FUTURE_UI B1, with a proposed spec and
+the open haptic question). Step 64 marks them still: the tinted Home row, the card on
+the answer that earned it, and How scoring works. Step 65 gave a run's "All caught
+up" what it came to and the streak row. The rest came from playing a cleared profile
+and the demo data at 402 and 320pt: Account on the canvas with the paywall's close
+(66), "Next 7 days" instead of a "This week" that held next Tuesday (67), a ghost
+chart whose key explained bars it didn't draw (68), an empty History with no way
+forward (69), ranges, prices and the milestone phrase splitting at 320pt (70), and a
+Warmup answer key whose ✗ sat beside the right answer (71).
 The next useful read is still on an iPhone, with VoiceOver on for
-steps 41, 43 and 44.
+steps 41, 43, 44 and 71.
 
 ### What's left in the parking lot
 
