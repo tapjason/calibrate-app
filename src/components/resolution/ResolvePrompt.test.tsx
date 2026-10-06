@@ -32,7 +32,7 @@ const samplePending = (overrides: Partial<Prediction> = {}): Prediction => ({
 beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.getState().reset();
-  usePredictionStore.setState({ pending: [], resolved: [] });
+  usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
@@ -332,6 +332,57 @@ describe('ResolvePrompt milestones', () => {
       expect(screen.getByTestId('resolve-recorded')).toBeTruthy();
     });
     expect(screen.queryByTestId(/^milestone-/)).toBeNull();
+  });
+});
+
+// Decided 2026-10-06: streak checkpoints at 7, 30, 100 and 365 days.
+describe('ResolvePrompt streak checkpoints', () => {
+  const day = 86_400_000;
+  /** Six counted days before today and two logged today: the next answer makes seven. */
+  const sixDaysAndTwo = async () => {
+    for (let back = 6; back >= 0; back -= 1) {
+      for (let i = 0; i < (back === 0 ? 2 : 3); i += 1) {
+        await insertPrediction(
+          samplePending({
+            id: `d${back}-${i}`,
+            created_at: new Date(Date.now() - back * day).toISOString(),
+          }),
+        );
+      }
+    }
+    await insertPrediction(samplePending());
+    await usePredictionStore.getState().loadPending();
+  };
+
+  it('names the checkpoint the answer reached, without a celebration', async () => {
+    await sixDaysAndTwo();
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-no'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('streak-checkpoint')).toBeTruthy();
+    });
+    expect(screen.getByTestId('streak-checkpoint').props.accessibilityLabel).toBe(
+      'A full week. 7 days in a row. Next milestone: 30 days.',
+    );
+    expect(screen.queryByTestId(/^milestone-/)).toBeNull();
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+  });
+
+  it('shows nothing for an answer that reached no checkpoint', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('streak-checkpoint')).toBeNull();
   });
 });
 

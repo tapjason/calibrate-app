@@ -20,8 +20,13 @@
 // the user has had a chance to extend it. A streak whose last counted day is
 // before yesterday has ended and reads 0. Without `now` the streak is anchored
 // at the latest counted day (kept for callers with no clock to offer).
+//
+// Checkpoints (decided 2026-10-06): 7, 30, 100 and 365 days, then every
+// further year. The streak is a milestone on the day it reaches one, once
+// that day counts; the day after, it's climbing toward the next.
 
 import {
+  STREAK_CHECKPOINTS,
   STREAK_DAY_MIN,
   type ComputeStreak,
   type Prediction,
@@ -30,7 +35,32 @@ import {
 
 import { localDayNumber } from './localTime';
 
-export { STREAK_DAY_MIN };
+export { STREAK_CHECKPOINTS, STREAK_DAY_MIN };
+
+const YEAR = 365;
+const LAST_LISTED = STREAK_CHECKPOINTS[STREAK_CHECKPOINTS.length - 1];
+
+/** Whether a streak of `days` is a checkpoint: 7, 30, 100, 365, then each further year. */
+export function isStreakCheckpoint(days: number): boolean {
+  if (!Number.isInteger(days) || days <= 0) return false;
+  if ((STREAK_CHECKPOINTS as readonly number[]).includes(days)) return true;
+  return days > LAST_LISTED && days % YEAR === 0;
+}
+
+/** The smallest checkpoint above a streak of `days`. */
+export function nextStreakCheckpoint(days: number): number {
+  const listed = STREAK_CHECKPOINTS.find((c) => c > days);
+  if (listed !== undefined) return listed;
+  return (Math.floor(days / YEAR) + 1) * YEAR;
+}
+
+/**
+ * The checkpoint `after` reached that `before` hadn't, or null: the log or
+ * answer between them is the one that earned it.
+ */
+export function checkpointReached(before: StreakStatus, after: StreakStatus): number | null {
+  return before.checkpoint === null ? after.checkpoint : null;
+}
 
 /** How many predictions were done (logged, or answered yes/no) on each local day. */
 function doneByDay(predictions: readonly Prediction[]): Map<number, number> {
@@ -65,10 +95,13 @@ export function streakStatus(predictions: readonly Prediction[], now: Date): Str
   const today = localDayNumber(now);
   const todayDone = byDay.get(today) ?? 0;
   const todayCounts = counted.has(today);
+  const streak = runEndingAt(counted, todayCounts ? today : today - 1);
   return {
-    streak: runEndingAt(counted, todayCounts ? today : today - 1),
+    streak,
     today: todayDone,
     todayCounts,
+    checkpoint: todayCounts && isStreakCheckpoint(streak) ? streak : null,
+    nextCheckpoint: nextStreakCheckpoint(streak),
   };
 }
 

@@ -10,7 +10,7 @@ import { track } from '@/analytics/track';
 
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
-import { streakStatus } from '@/engine/streak';
+import { checkpointReached, streakStatus } from '@/engine/streak';
 import {
   deletePrediction,
   getPrediction,
@@ -70,6 +70,12 @@ interface PredictionState {
    * the lists held here, read at render so it follows each log and answer.
    */
   streakNow: (now?: Date) => StreakStatus;
+  /**
+   * The streak checkpoint (7, 30, 100, 365…) the last answer reached, not yet
+   * shown; Resolve shows it and clears it, as with statsStore.milestone.
+   */
+  streakCheckpoint: number | null;
+  clearStreakCheckpoint: () => void;
 }
 
 function nowIso(): string {
@@ -105,6 +111,9 @@ function requireUserId(): string {
 export const usePredictionStore = create<PredictionState>((set, get) => ({
   pending: [],
   resolved: [],
+  streakCheckpoint: null,
+
+  clearStreakCheckpoint: () => set({ streakCheckpoint: null }),
 
   loadPending: async () => {
     const userId = requireUserId();
@@ -175,6 +184,7 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   resolve: async (id, outcome, reflection) => {
     const userId = requireUserId();
+    const before = get().streakNow();
     // Atomic: if stats recompute throws, the resolution rolls back too.
     await withTransaction(async () => {
       await resolvePrediction(id, outcome, reflection);
@@ -182,6 +192,9 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     });
     // Refresh local lists from the source of truth.
     await Promise.all([get().loadPending(), get().loadResolved()]);
+    // Kept until shown, like an uncelebrated milestone.
+    const reached = checkpointReached(before, get().streakNow());
+    if (reached !== null) set({ streakCheckpoint: reached });
     const resolvedPrediction = get().resolved.find((p) => p.id === id);
     if (resolvedPrediction) {
       void track('prediction_resolved', {
@@ -198,6 +211,8 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await Promise.all([get().loadPending(), get().loadResolved()]);
+    // A withdrawn answer takes back the checkpoint it reached.
+    set({ streakCheckpoint: null });
   },
 
   reflect: async (id, reflection) => {

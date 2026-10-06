@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReminderPromptCard } from '@/components/prediction/ReminderPromptCard';
 import { MilestoneCard } from '@/components/resolution/MilestoneCard';
+import { StreakCheckpointCard } from '@/components/resolution/StreakCheckpointCard';
 import { Button } from '@/components/ui/Button';
 import { colors, space, type } from '@/constants/theme';
 import type { Milestone } from '@/types';
@@ -62,6 +63,13 @@ export default function DevCelebrationsScreen() {
         {/* Native-only cards, previewed here because web never shows them. */}
         <Text style={styles.title}>Other cards</Text>
         <ReminderPromptCard firstDue="Tue, Oct 6" onAllow={() => {}} onDismiss={() => {}} />
+
+        {/* Static on purpose: the checkpoint celebration isn't built yet
+            (FUTURE_UI §B). */}
+        <Text style={styles.title}>Streak checkpoints</Text>
+        <StreakCheckpointCard days={7} next={30} />
+        <StreakCheckpointCard days={100} next={365} />
+        <StreakCheckpointCard days={365} next={730} />
       </ScrollView>
     </SafeAreaView>
   );

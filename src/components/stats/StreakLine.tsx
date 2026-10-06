@@ -17,6 +17,10 @@ interface StreakLineProps {
  * day count in ink with a flame, today's progress as three pips and a line
  * saying what today adds. Never red, never animated when it ends (DESIGN_SYSTEM
  * §6.2): an ended streak simply isn't shown until the next one starts.
+ *
+ * On a checkpoint day (7, 30, 100, 365…) the row takes the milestone tint and
+ * names it for the rest of the day. Static for now: the celebration motion for
+ * checkpoints is planned, not built (FUTURE_UI §B).
  */
 export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) {
   const copy = streakCopy(status);
@@ -24,7 +28,7 @@ export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) 
 
   return (
     <View
-      style={styles.row}
+      style={[styles.row, copy.checkpoint && styles.rowCheckpoint]}
       accessible
       accessibilityRole="text"
       accessibilityLabel={copy.spoken}
@@ -76,6 +80,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
   },
+  // The milestone card's tint (MilestoneCard), without its motion.
+  rowCheckpoint: { backgroundColor: colors.brand50, borderColor: colors.brand200 },
   text: { flex: 1 },
   headline: { ...type.headline, ...tabularNums, color: colors.textPrimary },
   detail: { ...type.footnote, color: colors.textSecondary },

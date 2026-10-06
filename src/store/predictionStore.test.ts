@@ -11,7 +11,7 @@ beforeEach(async () => {
   setDbForTests(await createTestDb());
   // Reset every Zustand singleton to a clean state.
   useAuthStore.getState().reset();
-  usePredictionStore.setState({ pending: [], resolved: [] });
+  usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
@@ -329,7 +329,7 @@ describe('predictionStore.streakNow', () => {
   it('counts today once three are logged, and the stored streak follows', async () => {
     await log('one');
     await log('two');
-    expect(usePredictionStore.getState().streakNow()).toEqual({
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({
       streak: 0,
       today: 2,
       todayCounts: false,
@@ -337,7 +337,7 @@ describe('predictionStore.streakNow', () => {
     expect(useStatsStore.getState().userStat?.current_streak).toBe(0);
 
     await log('three');
-    expect(usePredictionStore.getState().streakNow()).toEqual({
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({
       streak: 1,
       today: 3,
       todayCounts: true,
@@ -350,5 +350,50 @@ describe('predictionStore.streakNow', () => {
     await log('two');
     await usePredictionStore.getState().resolve(a.id, 'resolved_no');
     expect(usePredictionStore.getState().streakNow().today).toBe(3);
+  });
+
+  // Decided 2026-10-06: checkpoints at 7, 30, 100 and 365 days.
+  it('holds the checkpoint an answer reached until Resolve shows it, and a withdrawn answer takes it back', async () => {
+    const userId = useAuthStore.getState().userId!;
+    const day = 86_400_000;
+    // Six counted days before today, three logged on each.
+    for (let back = 6; back >= 1; back -= 1) {
+      for (let i = 0; i < 3; i += 1) {
+        await insertPrediction({
+          id: `d${back}-${i}`,
+          user_id: userId,
+          title: `day ${back} #${i}`,
+          category: 'work',
+          confidence: 60,
+          created_at: new Date(Date.now() - back * day).toISOString(),
+          due_date: '2099-06-01T12:00:00.000Z',
+          status: 'pending',
+          resolved_at: null,
+          reflection: null,
+          integrity_bonus: true,
+        });
+      }
+    }
+    await usePredictionStore.getState().loadPending();
+    await log('one');
+    await log('two');
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({
+      streak: 6,
+      checkpoint: null,
+      nextCheckpoint: 7,
+    });
+
+    await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
+    expect(usePredictionStore.getState().streakCheckpoint).toBe(7);
+
+    await usePredictionStore.getState().reopen('d6-0');
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+
+    // Answered again, then a fourth: only the third earned it.
+    await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
+    usePredictionStore.getState().clearStreakCheckpoint();
+    await usePredictionStore.getState().resolve('d6-1', 'resolved_no');
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
   });
 });

@@ -19,6 +19,7 @@ import { useStatsStore } from '@/store/statsStore';
 import type { BucketStat, Milestone, Prediction, ResolvedStatus } from '@/types';
 
 import { MilestoneCard } from './MilestoneCard';
+import { StreakCheckpointCard } from './StreakCheckpointCard';
 
 interface ResolvePromptProps {
   /** Prediction id read from the URL or notification payload. */
@@ -96,6 +97,8 @@ export function ResolvePrompt({
     outcome: 'resolved_yes' | 'resolved_no';
     line: string | null;
     milestone: Milestone | null;
+    /** A streak checkpoint this answer reached (7, 30, 100…), and the next one. */
+    checkpoint: { days: number; next: number } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -123,6 +126,7 @@ export function ResolvePrompt({
       // Anything left over belongs to an earlier change (a sync, say), not to
       // this answer — clear it so the card below celebrates only this one.
       useStatsStore.getState().clearMilestone();
+      usePredictionStore.getState().clearStreakCheckpoint();
       await usePredictionStore.getState().resolve(prediction.id, outcome);
       // One haptic for Yes, No and Skip alike — a No is not an error.
       haptics.resolve();
@@ -133,12 +137,17 @@ export function ResolvePrompt({
       // Stats recompute inside resolve(), so the bucket already counts this one.
       const stats = useStatsStore.getState();
       const bucket = stats.bucketFor(prediction.confidence);
+      const predictions = usePredictionStore.getState();
+      const days = predictions.streakCheckpoint;
       setAnswered({
         outcome,
         line: bucket ? bucketLine(bucket) : null,
         milestone: stats.milestone,
+        checkpoint:
+          days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
       });
       stats.clearMilestone();
+      predictions.clearStreakCheckpoint();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -223,7 +232,18 @@ export function ResolvePrompt({
           </Text>
         </View>
         <Text style={styles.title}>{prediction.title}</Text>
-        {answered.milestone && <MilestoneCard milestone={answered.milestone} />}
+        {/* One card at a time: a score or badge milestone outranks a streak
+            checkpoint, which Home's streak row still names all day. */}
+        {answered.milestone ? (
+          <MilestoneCard milestone={answered.milestone} />
+        ) : (
+          answered.checkpoint && (
+            <StreakCheckpointCard
+              days={answered.checkpoint.days}
+              next={answered.checkpoint.next}
+            />
+          )
+        )}
         {answered.line && (
           <View style={styles.bucketBox}>
             <Text style={styles.bucketLine} testID="resolve-bucket-line">

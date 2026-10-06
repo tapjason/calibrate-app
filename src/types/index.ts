@@ -42,6 +42,13 @@ export const MIN_N_BAND = 10;
  */
 export const STREAK_DAY_MIN = 3;
 
+/**
+ * Streak lengths that are milestones (decided 2026-10-06): a week, a month, a
+ * hundred days, a year. Past the last one, every further year (730, 1095…).
+ * The streak climbs every day; only these days are marked.
+ */
+export const STREAK_CHECKPOINTS = [7, 30, 100, 365] as const;
+
 /** Where today stands for the streak, as the engine reports it. */
 export interface StreakStatus {
   /** Consecutive counted days, through today if it counts, else yesterday. */
@@ -50,6 +57,13 @@ export interface StreakStatus {
   today: number;
   /** Whether today has reached STREAK_DAY_MIN. */
   todayCounts: boolean;
+  /**
+   * The checkpoint today reached, or null. Set only on the day itself, once
+   * it counts: a 7-day streak is a milestone on day 7, not on day 8.
+   */
+  checkpoint: number | null;
+  /** The smallest checkpoint above the streak: what it's climbing toward. */
+  nextCheckpoint: number;
 }
 
 export type Category = 'work' | 'health' | 'finance' | 'social' | 'personal';
