@@ -3,11 +3,12 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { Button } from '@/components/ui/Button';
 import { CountUp } from '@/components/ui/CountUp';
+import { Icon } from '@/components/ui/Icon';
 import { colors, tabularNums, type } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_OVERALL } from '@/types';
 
-import { warmupVerdict } from './verdictCopy';
+import { answerKeyRow, warmupVerdict } from './verdictCopy';
 
 interface WarmupVerdictScreenProps {
   /** Continue into the app. The screen owns the navigation. */
@@ -97,12 +98,28 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         {questions.map((q, i) => {
           const answered = answers[i];
           if (!answered) return null;
+          const row = answerKeyRow(q, answered);
+          // One stop per question for a screen reader, in words; the glyph is
+          // shape, not colour: filled for right, hollow for a miss (§2.4).
           return (
-            <View key={q.id} style={styles.keyRow} testID={`warmup-key-${q.id}`}>
-              <Text style={styles.keyMark}>{answered.correct ? '✓' : '✗'}</Text>
+            <View
+              key={q.id}
+              style={styles.keyRow}
+              testID={`warmup-key-${q.id}`}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={row.spoken}
+            >
+              <Icon
+                sf={answered.correct ? 'checkmark.circle.fill' : 'xmark.circle'}
+                fallback={answered.correct ? 'checkmark-circle' : 'close-circle-outline'}
+                size={18}
+                color={colors.textPrimary}
+              />
               <View style={styles.keyBody}>
-                <Text style={styles.keyPrompt}>
-                  {q.prompt} {q.options[q.correctIndex]}
+                <Text style={styles.keyPrompt}>{q.prompt}</Text>
+                <Text style={styles.keyAnswer} testID={`warmup-key-${q.id}-answer`}>
+                  {row.answer} · <Text style={styles.keyPick}>{row.pick}</Text>
                 </Text>
                 <Text style={styles.keyFact}>{q.fact}</Text>
               </View>
@@ -142,9 +159,10 @@ const styles = StyleSheet.create({
   key: { gap: 12, marginTop: 4 },
   keyTitle: { ...type.headline },
   keyRow: { flexDirection: 'row', gap: 10 },
-  keyMark: { ...type.subhead, fontWeight: '700', width: 16 },
   keyBody: { flex: 1, gap: 2 },
-  keyPrompt: { ...type.subhead, fontWeight: '600' },
+  keyPrompt: { ...type.subhead, color: colors.textSecondary },
+  keyAnswer: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },
+  keyPick: { fontWeight: '400' },
   keyFact: { ...type.footnote, color: colors.textSecondary },
   keyConfidence: { ...type.footnote, color: colors.textTertiary },
 });

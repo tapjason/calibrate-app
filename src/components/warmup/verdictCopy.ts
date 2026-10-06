@@ -5,7 +5,7 @@
 // The headline is the Day-0 aha, and CLAUDE.md gives its exact shape:
 // "You were 85% confident but right 55% of the time — you run overconfident."
 
-import type { WarmupAnswer, WarmupResult } from '@/types';
+import type { WarmupAnswer, WarmupQuestion, WarmupResult } from '@/types';
 
 export interface WarmupVerdict {
   /** Short identity line, e.g. "You run overconfident". */
@@ -87,5 +87,26 @@ export function warmupVerdict(
     // Nothing to tell apart when every answer was right.
     sameNumber: same !== null && result.accuracy < 1 ? SAME_NUMBER_NOTE : null,
     trickyNote: result.direction === 'overconfident' ? TRICKY_NOTE : null,
+  };
+}
+
+/**
+ * One row of the answer key (roadmap step 71). It used to print the prompt
+ * and the right option beside a ✓ or ✗, so a miss read "✗ Which is longer? A
+ * Boeing 737", as if the 737 were the wrong pick. Now the right answer and
+ * the user's own pick are each said in words. A question has two options, so
+ * a miss's pick is the other one.
+ */
+export function answerKeyRow(
+  question: WarmupQuestion,
+  answer: WarmupAnswer,
+): { answer: string; pick: string; spoken: string } {
+  const right = question.options[question.correctIndex];
+  const picked = answer.correct ? right : question.options[question.correctIndex === 0 ? 1 : 0];
+  const pick = answer.correct ? 'You got it' : `You picked \u201C${picked}\u201D`;
+  return {
+    answer: right,
+    pick,
+    spoken: `${question.prompt} ${right}. ${pick}, ${answer.confidence}% sure. ${question.fact}`,
   };
 }

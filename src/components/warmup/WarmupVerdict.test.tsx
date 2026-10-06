@@ -89,6 +89,22 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.getByText('The Mariana Trench is in the Pacific.')).toBeTruthy();
   });
 
+  // Roadmap step 71: "✗ Which is longer? A Boeing 737" read as though the
+  // 737 had been the wrong pick. The right answer and the pick are words now.
+  it('says the right answer and, for a miss, what was picked', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+
+    expect(screen.getByTestId('warmup-key-q1-answer')).toHaveTextContent('A Boeing 737 · You got it');
+    expect(screen.getByTestId('warmup-key-q2-answer')).toHaveTextContent(
+      'Pacific · You picked \u201CAtlantic\u201D',
+    );
+    expect(screen.getByTestId('warmup-key-q2').props.accessibilityLabel).toBe(
+      'Which is deeper? Pacific. You picked \u201CAtlantic\u201D, 90% sure. The Mariana Trench is in the Pacific.',
+    );
+    expect(screen.queryByText('✗')).toBeNull();
+  });
+
   it('hands control back on continue', () => {
     seed(ANSWERS);
     const onContinue = jest.fn();
