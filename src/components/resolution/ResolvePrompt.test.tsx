@@ -266,6 +266,24 @@ describe('bucketLine', () => {
       }),
     ).toBe('In your 60–80% range, 6 of 9 have happened.');
   });
+
+  // Roadmap step 58: from 10 resolved, the range's said-against-happened.
+  it('sets what happened against what was said once the range holds 10', () => {
+    expect(
+      bucketLine({
+        low: 40,
+        high: 60,
+        total_resolved: 25,
+        resolved_yes: 13,
+        stated_confidence_mean: 47.6,
+        actual_rate: 13 / 25,
+        bucket_error: 0.044,
+        direction: 'calibrated',
+      }),
+    ).toBe(
+      "In your 40–60% range, 13 of 25 have happened. That's 52%, against the 48% you said.",
+    );
+  });
 });
 
 describe('ResolvePrompt milestones', () => {

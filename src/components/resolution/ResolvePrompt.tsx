@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
@@ -48,12 +49,22 @@ interface ResolvePromptProps {
  * "In your 60–80% range, 6 of 9 have happened." Counts, not a verdict, so it
  * is honest below min-N — and it is the natural-frequency habit applied at the
  * moment it means most (DESIGN_SYSTEM §7.10).
+ *
+ * From MIN_BUCKET_N_FOR_VERDICT resolved, the range's own comparison follows
+ * (roadmap step 58): "That's 52%, against the 48% you said." Calibration
+ * feedback, said against what happened, is what moved forecasters' calibration
+ * in the studies; bare outcomes barely did (research/confidence-2026-10.md
+ * §6). Both numbers come from the engine's bucket, as on the Stats table.
  */
 export function bucketLine(bucket: BucketStat): string {
   const range = `${bucket.low}–${bucket.high}%`;
   const n = bucket.total_resolved;
   if (n === 1) return `That's your first call in the ${range} range.`;
-  return `In your ${range} range, ${bucket.resolved_yes} of ${n} have happened.`;
+  const counts = `In your ${range} range, ${bucket.resolved_yes} of ${n} have happened.`;
+  if (n < MIN_BUCKET_N_FOR_VERDICT) return counts;
+  const happened = Math.round(bucket.actual_rate * 100);
+  const said = Math.round(bucket.stated_confidence_mean);
+  return `${counts} That's ${happened}%, against the ${said}% you said.`;
 }
 
 /**
