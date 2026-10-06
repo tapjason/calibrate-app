@@ -11,13 +11,18 @@ interface PredictionCardProps {
   onPress?: (id: string) => void;
 }
 
-/** "Fri, 3 Oct" in the user's locale. */
+/**
+ * "Fri, 3 Oct" in the user's locale, held together with no-break spaces so a
+ * narrow card never strands the day on a line of its own ("Oct / 4").
+ */
 function formatDue(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+  return new Date(iso)
+    .toLocaleDateString(undefined, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    })
+    .replace(/ /g, '\u00A0');
 }
 
 /**
@@ -121,11 +126,16 @@ const styles = StyleSheet.create({
   title: { ...type.body, color: colors.textPrimary },
   // The user's own words, quoted and quieter than the prediction they're about.
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
+  // Wraps rather than squeezes: at 320pt "Ready to resolve" takes its own
+  // line instead of folding the date beside it in two (roadmap step 52).
   footer: {
     alignItems: 'center',
+    columnGap: space.md,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginTop: space.xs,
+    rowGap: space.xs,
   },
   meta: { ...type.subhead, color: colors.textSecondary },
   status: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },

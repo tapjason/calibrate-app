@@ -23,11 +23,9 @@ describe('PredictionCard', () => {
   it('reads as one sentence, without the status glyph', () => {
     render(<PredictionCard prediction={prediction} onPress={jest.fn()} />);
     // Resolved cards date themselves by the answer, not the due date.
-    const resolved = new Date(prediction.resolved_at as string).toLocaleDateString(undefined, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
+    const resolved = new Date(prediction.resolved_at as string)
+      .toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+      .replace(/ /g, ' ');
     expect(screen.getByRole('button').props.accessibilityLabel).toBe(
       `I ship the report by Friday. work, 70% confident, resolved ${resolved}. Happened.`,
     );
@@ -58,6 +56,15 @@ describe('PredictionCard', () => {
     );
     expect(screen.getByText('Ready to resolve')).toBeTruthy();
     expect(screen.queryByText(/overdue/i)).toBeNull();
+  });
+
+  // Roadmap step 52: at 320pt the date folded as "Oct / 4" beside the status.
+  it('keeps the date in one piece', () => {
+    render(<PredictionCard prediction={prediction} />);
+    const meta = screen.getByText(/^70% · resolved /);
+    const date = String(meta.props.children.join('')).replace(/^70% · resolved /, '');
+    expect(date).not.toMatch(/ /);
+    expect(date).toMatch(/ /);
   });
 
   it('is not announced as a button when it does nothing', () => {
