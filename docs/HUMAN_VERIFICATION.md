@@ -645,7 +645,7 @@ notification placeholder.
 - [ ] **Home, fewer than 20 resolved:** no big number at the top. A "Calibrating" bar
       with 20 segments: solid = resolved, dashed/tinted = open predictions, hollow =
       to go. The text under it adds up.
-- [ ] **Home list** is grouped "Ready to resolve · N", "This week · N", "Later · N".
+- [ ] **Home list** is grouped "Ready to resolve · N", "Next 7 days · N", "Later · N".
       A prediction past its due date sits under Ready to resolve with **no amber
       and no word "Overdue"**.
 - [ ] **History** cards say "Happened" / "Didn't happen" / "Not scored" — no ✓ or ✗.

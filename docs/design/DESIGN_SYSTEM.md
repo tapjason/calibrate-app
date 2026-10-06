@@ -579,7 +579,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   right of that line and wraps under it when the line is too narrow; the date holds
   together with no-break spaces (roadmap step 52).
 - **Due and past-due are neutral.** A prediction coming due is not a lapse. Group the
-  Today list by date ("Ready to resolve", "This week", "Later") and let the group
+  Today list by date ("Ready to resolve", "Next 7 days", "Later"; it said "This week"
+  until roadmap step 67, which put next Tuesday in this week) and let the group
   header carry the state. No amber, no "Overdue" label, no warning colour.
 - Resolved (History): outcome as neutral ink glyph + word ("Happened" / "Didn't"), never
   ✓/✗ characters or green/red. Skipped reads "Not scored".
