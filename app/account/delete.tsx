@@ -24,5 +24,5 @@ export default function DeleteAccountScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
+  safe: { flex: 1, backgroundColor: colors.canvas },
 });

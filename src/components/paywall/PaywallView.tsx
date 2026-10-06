@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { Button } from '@/components/ui/Button';
+import { CloseButton } from '@/components/ui/CloseButton';
 import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -92,16 +93,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
       {/* The way out people look for, at the top (roadmap step 30). "Not now"
           below the plans stays, but on a phone it's below the fold. */}
       {onClose && (
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          hitSlop={8}
-          style={styles.dismiss}
-          testID="paywall-dismiss"
-        >
-          <Icon sf="xmark" fallback="close" size={18} color={colors.textSecondary} />
-        </Pressable>
+        <CloseButton onPress={onClose} style={styles.dismiss} testID="paywall-dismiss" />
       )}
       <Text style={styles.title}>Calibrate Plus</Text>
       <Text style={styles.body}>
@@ -300,18 +292,7 @@ function PlanOption({
 
 const styles = StyleSheet.create({
   wrap: { gap: space.lg, padding: space.xxl },
-  dismiss: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: radius.pill,
-    height: 44,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: space.lg,
-    top: space.lg,
-    width: 44,
-    zIndex: 1,
-  },
+  dismiss: { position: 'absolute', right: space.lg, top: space.lg, zIndex: 1 },
   title: { ...type.titleXL, color: colors.textPrimary },
   body: { ...type.callout, color: colors.textSecondary },
   features: { gap: space.md },
