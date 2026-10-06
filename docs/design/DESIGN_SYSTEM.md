@@ -312,8 +312,9 @@ one.
   "Calibrating · 4 on their way · 16 to go". Pending predictions really will count,
   so this endowed progress is honest (Nunes & Drèze 2006: 19% → 34% completion).
   After "N more resolutions and your score unlocks.", the caption gives the wait a
-  date (roadmap step 32): "The next one comes due Tue, Oct 6.", or "One is ready to
-  resolve now." Nothing when nothing is open.
+  date (roadmap step 32): "The next one comes due Tue, Oct 6." ("The first one" before
+  any has resolved; the date never splits across lines), or "One is ready to resolve
+  now." Nothing when nothing is open.
 - **Ghost chart** before unlock: the full frame, diagonal and labelled regions with
   empty bucket slots — never an italic placeholder line. Its key names only what's
   drawn, so the grey-bars sentence waits for the first dot (roadmap step 68).
@@ -508,7 +509,11 @@ Every empty state has an SF Symbol, one sentence in `textSecondary`, and a way f
 Built as step 56: `EmptyState` takes a `symbol` (36pt, `textSecondary`, hidden from
 screen readers): `calendar.badge.plus` on Home, `clock.arrow.circlepath` on History,
 `square.and.arrow.up` on Share. Its button is the primary capsule, since where an empty
-state shows it is the screen's only action.
+state shows it is the screen's only action. History had none until step 69: before
+anything resolves it says when the first answer comes ("The first one comes due Tue,
+Oct 13.") and offers **Resolve it now** (one ready), **Resolve all N** (several), or
+**Log a prediction**. A list emptied by its filters keeps just the sentence; the
+filters are its way forward.
 
 ### 7.9 Copy and tone
 

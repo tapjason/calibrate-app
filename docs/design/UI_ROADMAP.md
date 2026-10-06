@@ -90,6 +90,7 @@ is checking it on an iPhone and the decisions.
 | 66 Account matches the other headerless screens | Done 2026-10-06, web-verified (Sign in and Erase on `canvas`, not white; Sign in closes with the paywall's round ×, now one `CloseButton`) | Yes (the × clear of the notch) |
 | 67 Home's middle group is "Next 7 days" | Done 2026-10-06, web-verified (a prediction logged Tuesday "In a week" is due next Tuesday, and was listed under "This week") | — |
 | 68 The ghost chart's key names only what's drawn | Done 2026-10-06, web-verified (no "Grey bars" sentence before the first dot; "Resolve a prediction and your first dot lands here." no longer reads as a line of the key) | — |
+| 69 An empty History has a way forward | Done 2026-10-06, web-verified ("…The first one comes due Tue, Oct 13." and **Log a prediction**; "Oct" and "13" no longer split at 402pt). Home's and Stats' calibrating caption say "first" too until something resolves | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
