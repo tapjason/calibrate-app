@@ -88,6 +88,13 @@ export interface PlusPlan {
    * `trialDays`.
    */
   trialPeriod: TrialPeriod | null;
+  /**
+   * The store's own per-month figure for a subscription ("$2.50" for $29.99 a
+   * year), localized by RevenueCat. Shown under the annual price, smaller,
+   * because App Review wants the billed amount to stay the most prominent
+   * price (DESIGN_SYSTEM §7.6). Absent or null: say nothing.
+   */
+  pricePerMonthString?: string | null;
 }
 
 export type PurchaseResult =
@@ -139,6 +146,8 @@ export interface RcPackage {
   product: {
     identifier: string;
     priceString: string;
+    /** Null for one-time purchases; an approximation for longer periods. */
+    pricePerMonthString?: string | null;
     introPrice?: {
       periodNumberOfUnits: number;
       /** 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' */
@@ -347,6 +356,10 @@ export function plansFromOfferings(offerings: unknown): PlusPlan[] {
       priceString: pkg.product.priceString,
       trialDays: trialDaysFor(trialPeriodFor(pkg)),
       trialPeriod: trialPeriodFor(pkg),
+      pricePerMonthString:
+        typeof pkg.product.pricePerMonthString === 'string'
+          ? pkg.product.pricePerMonthString
+          : null,
     });
   }
 

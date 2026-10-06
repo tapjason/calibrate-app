@@ -74,16 +74,43 @@ export function trialLabel(plan: PlusPlan): string | null {
   return `${plan.trialDays} ${plan.trialDays === 1 ? 'day' : 'days'}`;
 }
 
+/**
+ * How often a plan bills, as the price row says it. Every recurring price
+ * names its period (roadmap step 50): "then $29.99" left the reader to work
+ * out from the plan name what the $29.99 was for, and App Review asks for the
+ * billing length beside the price (Guideline 3.1.2(c)).
+ */
+const PERIOD: Record<PlanId, string> = {
+  annual: 'a year',
+  monthly: 'a month',
+  lifetime: 'once',
+};
+
+/** "$29.99 a year"; lifetime stays the bare price under "Pay once, keep it". */
+function pricePerPeriod(plan: PlusPlan): string {
+  return plan.plan === 'lifetime' ? plan.priceString : `${plan.priceString} ${PERIOD[plan.plan]}`;
+}
+
 /** Trial line for a plan, or null when it has no free trial. */
 export function trialLine(plan: PlusPlan): string | null {
   const label = trialLabel(plan);
   if (!label) return null;
-  return `${label} free, then ${plan.priceString}`;
+  return `${label} free, then ${pricePerPeriod(plan)}`;
 }
 
-/** The price row for a plan: trial if there is one, otherwise the raw price. */
+/** The price row for a plan: trial if there is one, otherwise the price and its period. */
 export function priceLine(plan: PlusPlan): string {
-  return trialLine(plan) ?? plan.priceString;
+  return trialLine(plan) ?? pricePerPeriod(plan);
+}
+
+/**
+ * Annual's monthly equivalent, under its price and smaller (DESIGN_SYSTEM
+ * §7.6): "Works out to $2.50 a month." The figure is the store's, never our
+ * division. Null for other plans, or when the store gives none.
+ */
+export function monthlyEquivalentLine(plan: PlusPlan): string | null {
+  if (plan.plan !== 'annual' || !plan.pricePerMonthString) return null;
+  return `Works out to ${plan.pricePerMonthString} a month.`;
 }
 
 /**
@@ -154,12 +181,6 @@ export function defaultPlan(plans: readonly PlusPlan[]): PlusPlan | null {
   return sortPlans(plans)[0] ?? null;
 }
 
-const PERIOD: Record<PlanId, string> = {
-  annual: 'a year',
-  monthly: 'a month',
-  lifetime: 'once',
-};
-
 /**
  * The single purchase button's label, for whichever plan is selected
  * (DESIGN_SYSTEM §7.6). It says exactly what the tap does: a trial starts a
@@ -189,7 +210,7 @@ export function trialTimeline(plan: PlusPlan): TimelineStep[] | null {
     { when: 'Today', what: 'Full Plus: Coach, Trends and every card theme.' },
     {
       when: `In ${trial}`,
-      what: `Your ${PLAN_LABELS[plan.plan].toLowerCase()} plan starts at ${plan.priceString}. Cancel at least 24 hours before to pay nothing.`,
+      what: `Your ${PLAN_LABELS[plan.plan].toLowerCase()} plan starts at ${pricePerPeriod(plan)}. Cancel at least 24 hours before to pay nothing.`,
     },
   ];
 }

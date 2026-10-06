@@ -167,6 +167,17 @@ describe('plansFromOfferings', () => {
     expect(annual?.priceString).toBe('$29.99');
   });
 
+  // Roadmap step 50: the paywall prints the store's figure, never our division.
+  it("carries the store's per-month figure, and null when there is none", () => {
+    const withFigure = pkg(PRODUCT_IDS.annual, '$29.99');
+    withFigure.product.pricePerMonthString = '$2.50';
+    const plans = plansFromOfferings({
+      current: { availablePackages: [withFigure, pkg(PRODUCT_IDS.lifetime, '$59.99')] },
+    });
+    expect(plans.find((p) => p.plan === 'annual')?.pricePerMonthString).toBe('$2.50');
+    expect(plans.find((p) => p.plan === 'lifetime')?.pricePerMonthString).toBeNull();
+  });
+
   it('reads a free intro offer as a trial length in days', () => {
     const plans = plansFromOfferings(OFFERINGS);
     expect(plans.find((p) => p.plan === 'annual')?.trialDays).toBe(21);

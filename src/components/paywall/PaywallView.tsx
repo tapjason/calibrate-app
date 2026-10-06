@@ -18,6 +18,7 @@ import {
   ctaLabel,
   defaultPlan,
   noticeText,
+  monthlyEquivalentLine,
   priceLine,
   sortPlans,
   termsLine,
@@ -254,12 +255,19 @@ function PlanOption({
   disabled: boolean;
   onPress: () => void;
 }) {
+  const equivalent = monthlyEquivalentLine(plan);
   return (
     <Pressable
       testID={`plan-${plan.plan}`}
       accessibilityRole="radio"
       accessibilityState={{ selected, disabled }}
-      accessibilityLabel={`${PLAN_LABELS[plan.plan]}, ${priceLine(plan)}. ${PLAN_TAGLINES[plan.plan]}`}
+      accessibilityLabel={[
+        `${PLAN_LABELS[plan.plan]}, ${priceLine(plan)}.`,
+        equivalent,
+        PLAN_TAGLINES[plan.plan],
+      ]
+        .filter(Boolean)
+        .join(' ')}
       disabled={disabled}
       onPress={onPress}
       style={[
@@ -278,6 +286,13 @@ function PlanOption({
           <Text style={styles.planTagline}>{PLAN_TAGLINES[plan.plan]}</Text>
         </View>
         <Text style={styles.planPrice}>{priceLine(plan)}</Text>
+        {/* Smaller than the billed price, never instead of it (App Review
+            3.1.2: the billed amount stays the most prominent price). */}
+        {equivalent && (
+          <Text style={styles.planEquivalent} testID={`plan-${plan.plan}-equivalent`}>
+            {equivalent}
+          </Text>
+        )}
       </View>
     </Pressable>
   );
@@ -336,6 +351,7 @@ const styles = StyleSheet.create({
   planLabel: { ...type.headline, color: colors.textPrimary },
   planTagline: { ...type.footnote, color: colors.textSecondary },
   planPrice: { ...type.subhead, color: colors.textPrimary },
+  planEquivalent: { ...type.footnote, color: colors.textSecondary },
   timeline: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: radius.md,

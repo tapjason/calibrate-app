@@ -91,8 +91,32 @@ describe('PaywallView', () => {
     seed();
     render(<PaywallView />);
     expect(screen.getByTestId('plan-annual')).toBeTruthy();
-    expect(screen.getByText('1 month free, then $29.99')).toBeTruthy();
-    expect(screen.getByText('$4.99')).toBeTruthy();
+    expect(screen.getByText('1 month free, then $29.99 a year')).toBeTruthy();
+    expect(screen.getByText('$4.99 a month')).toBeTruthy();
+  });
+
+  // Roadmap step 50: the monthly figure sits under annual's price, smaller,
+  // and only when the store reports one.
+  it("shows annual's monthly equivalent under its price", () => {
+    seed({
+      plans: PLANS.map((p) =>
+        p.plan === 'annual' ? { ...p, pricePerMonthString: '$2.50' } : p,
+      ),
+    });
+    render(<PaywallView />);
+    expect(screen.getByTestId('plan-annual-equivalent')).toHaveTextContent(
+      'Works out to $2.50 a month.',
+    );
+    expect(screen.getByTestId('plan-annual').props.accessibilityLabel).toBe(
+      'Annual, 1 month free, then $29.99 a year. Works out to $2.50 a month. Best value',
+    );
+    expect(screen.queryByTestId('plan-monthly-equivalent')).toBeNull();
+  });
+
+  it('leaves the equivalent out when the store gives none', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.queryByTestId('plan-annual-equivalent')).toBeNull();
   });
 
   it('states that the trial converts, and the 24-hour cancel deadline', () => {

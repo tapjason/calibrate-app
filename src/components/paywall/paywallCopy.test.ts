@@ -3,6 +3,7 @@ import type { PlusPlan } from '@/billing/revenuecat';
 import {
   ctaLabel,
   defaultPlan,
+  monthlyEquivalentLine,
   noticeText,
   priceLine,
   sortPlans,
@@ -83,15 +84,15 @@ describe('trialTermsLine', () => {
 
 describe('trialLine', () => {
   it('leads a month-long trial with the month', () => {
-    expect(trialLine(annualMonthTrial)).toBe('1 month free, then $29.99');
+    expect(trialLine(annualMonthTrial)).toBe('1 month free, then $29.99 a year');
   });
 
   it('states the trial length and what happens after it', () => {
-    expect(trialLine(annual)).toBe('21 days free, then $29.99');
+    expect(trialLine(annual)).toBe('21 days free, then $29.99 a year');
   });
 
   it('singularizes a one-day trial', () => {
-    expect(trialLine({ ...annual, trialDays: 1 })).toBe('1 day free, then $29.99');
+    expect(trialLine({ ...annual, trialDays: 1 })).toBe('1 day free, then $29.99 a year');
   });
 
   it('is null for a plan with no trial', () => {
@@ -102,11 +103,12 @@ describe('trialLine', () => {
 
 describe('priceLine', () => {
   it('leads with the trial when there is one', () => {
-    expect(priceLine(annual)).toBe('21 days free, then $29.99');
+    expect(priceLine(annual)).toBe('21 days free, then $29.99 a year');
   });
 
   it('falls back to the store price', () => {
-    expect(priceLine(monthly)).toBe('$4.99');
+    expect(priceLine(monthly)).toBe('$4.99 a month');
+    expect(priceLine(lifetime)).toBe('$59.99');
   });
 });
 
@@ -188,5 +190,21 @@ describe('plan selector copy', () => {
     expect(steps?.[1].what).toContain('24 hours');
     expect(JSON.stringify(steps)).not.toMatch(/remind/i);
     expect(trialTimeline(monthly)).toBeNull();
+  });
+});
+
+// Roadmap step 50: the store's per-month figure, under annual only.
+describe('monthlyEquivalentLine', () => {
+  it("says annual's monthly figure in the store's own format", () => {
+    expect(monthlyEquivalentLine({ ...annualMonthTrial, pricePerMonthString: '$2.50' })).toBe(
+      'Works out to $2.50 a month.',
+    );
+  });
+
+  it('says nothing for other plans, or when the store gives no figure', () => {
+    expect(monthlyEquivalentLine({ ...monthly, pricePerMonthString: '$4.99' })).toBeNull();
+    expect(monthlyEquivalentLine(lifetime)).toBeNull();
+    expect(monthlyEquivalentLine(annualMonthTrial)).toBeNull();
+    expect(monthlyEquivalentLine({ ...annualMonthTrial, pricePerMonthString: null })).toBeNull();
   });
 });
