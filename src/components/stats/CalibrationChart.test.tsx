@@ -290,4 +290,13 @@ describe('CalibrationChart chance capsules', () => {
     expect(Number(height)).toBeCloseTo(0.2 * 306);
     expect(Number(y)).toBeLessThan(Number(dot.props.cy));
   });
+
+  // Roadmap step 68: the key names only what's drawn.
+  it('are explained in the key only when there are some', () => {
+    const empty = render(<CalibrationChart buckets={[]} />);
+    expect(empty.getByTestId('chart-caption')).not.toHaveTextContent(/Grey bars/);
+    empty.unmount();
+    const drawn = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
+    expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/Grey bars: where a perfectly calibrated dot lands/);
+  });
 });

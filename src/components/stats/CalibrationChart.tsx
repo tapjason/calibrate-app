@@ -330,10 +330,13 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
         </View>
       ) : null}
 
-      <Text style={styles.caption}>
+      {/* The key names only what's drawn: the ghost chart has no bars yet
+          (roadmap step 68). */}
+      <Text style={styles.caption} testID="chart-caption">
         Across: how sure you said you were. Up: how often it happened. Dashed line:
-        perfectly calibrated. Grey bars: where a perfectly calibrated dot lands half
-        the time with that many predictions.
+        perfectly calibrated.
+        {buckets.length > 0 &&
+          ' Grey bars: where a perfectly calibrated dot lands half the time with that many predictions.'}
       </Text>
     </View>
   );

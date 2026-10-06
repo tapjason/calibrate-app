@@ -206,7 +206,8 @@ const styles = StyleSheet.create({
     marginTop: space.xxl,
     marginBottom: space.sm,
   },
-  empty: { ...type.subhead, color: colors.textSecondary },
+  // Apart from the chart's key above it, which it otherwise read as a line of.
+  empty: { ...type.subhead, color: colors.textSecondary, marginTop: space.md },
   chartTitle: { ...type.title3, color: colors.textPrimary, marginBottom: space.xs },
   chartSubtitle: { ...type.subhead, color: colors.textSecondary, marginBottom: space.md },
   tableToggle: { alignSelf: 'flex-start', marginTop: space.md, paddingVertical: space.xs },
