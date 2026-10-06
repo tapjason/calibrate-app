@@ -180,9 +180,21 @@ where users decide whether the app is worth keeping. The Warmup delivers the cor
 on Day 0, teaches the mechanic, and produces the first shareable card. Warmup results are
 stored separately and **never** mixed into real `UserStat` / `CategoryStat` data.
 
+Decided 2026-10-05 (`docs/design/UI_ROADMAP.md` D13, D14): the confidence slider
+starts **empty** and Next waits for a number, so tapping through can't produce a
+verdict about a preset. The question bank is chosen to be tricky, and selected
+questions are where overconfidence comes from in the research, so an overconfident
+verdict says so: "These were picked to be tricky, so most people run hot here. Your
+own predictions are the real test." Compare `warmup_completed / warmup_started`
+before and after 2026-10-05.
+
 ### 2. Log Module
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,
 category. Minimal friction — completable in under 15 seconds.
+
+The confidence starts **empty** and Save waits for a title and a number (decided
+2026-10-05, UI_ROADMAP D13). A preset 50% sat inside the 35–65% band, so a save that
+never touched the slider earned the integrity bonus.
 
 An optional AI refine button is specced but **deferred** (see AI § A). Nothing
 about the save flow depends on it — which is why cutting it cost nothing.

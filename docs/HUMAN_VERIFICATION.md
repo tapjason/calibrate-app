@@ -748,6 +748,12 @@ Added 2026-09-29 (polish pass):
       a month." in smaller type (check it against the real App Store price).
       On Stats, tapping a filled range under the chart opens History with
       "You said 80–100% ×", and the count matches the chart's subtitle.
+- [ ] **Empty confidence (added 2026-10-05, step 54; web-verified):** on the
+      Warmup and on Log the readout says "—% not set yet" and the thumb rests
+      grey in the middle. On the phone: tapping the track jumps the thumb
+      there (tap-to-seek), touching the resting thumb without moving it sets
+      the middle value, a drag gives one detent per 5% (not two at the end),
+      and VoiceOver reads the control as "not set" until a swipe sets it.
 - [ ] **Share card export (added 2026-10-05, step 53):** export a Post and a
       Story card and open the PNGs: 1080 × 1440 and 1080 × 1920, the same
       composition as the preview, nothing cut off. The preview is scaled from
@@ -762,7 +768,7 @@ Added 2026-09-29 (polish pass):
       new question is spoken after Next.
 - [ ] **Log it again (added 2026-10-04; web-verified):** after Yes or No on a
       single Resolve, **Log it again** closes the sheet and opens Log with the same
-      title, category and lead time, and the confidence at 50%. On the phone: the
+      title, category and lead time, and the confidence empty. On the phone: the
       sheet closes cleanly and the Log tab is the one showing.
 - [ ] **Resolve all (added 2026-10-04; web-verified):** with three or more ready,
       Home shows **Resolve all N**. It opens a sheet that steps through them ("1 of

@@ -356,9 +356,15 @@ small ±5 buttons).
   `adjustable` role from `src/components/ui/adjustable.ts` — the slider must not
   regress VoiceOver.
 - Warmup range stays 50–100 (spec).
-- **Proposed** (roadmap D13): start with no value, so "didn't touch it" can't pass
-  for "chose it". Today the Warmup starts at 75% and Log at 50%, inside the
-  integrity band (research: `confidence-2026-10.md` §2).
+- **Starts empty** (roadmap D13, built as step 54): the readout shows "—%" in
+  `textTertiary` at full size (so setting a number doesn't shift the layout) with "not
+  set yet" beside it, the slider's thumb rests mid-range in `controlBorder` grey with
+  no fill, and the first drag, tap on the track (`tapToSeek`), touch of the thumb or
+  ±5 sets a real number; ±5 steps from the middle of the range. VoiceOver hears "not
+  set", and the first swipe steps from the middle too. Next (Warmup) and Save (Log)
+  wait for a number, and the integrity chip appears only once one is set. It used to
+  start at 75% (Warmup) and 50% (Log, inside the integrity band), and "didn't touch
+  it" couldn't be told from "chose it" (research: `confidence-2026-10.md` §2).
 
 ### 7.4 Badges — the "Lens" emblem
 
@@ -506,8 +512,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   score.
 - **Log it again** (roadmap step 22): after an answer, a secondary capsule under
   Done. It saves any reflection, closes the sheet and opens Log with the title,
-  category and lead time carried over, and the confidence back at 50%: a fresh call,
-  never the old number. Not offered inside a run.
+  category and lead time carried over, and the confidence empty: a fresh call, never
+  the old number. Not offered inside a run.
 - **A run** (three or more ready; roadmap step 18): Home's primary **Resolve all N**
   opens the same sheet with "2 of 5" and a thin brand progress bar above one prompt
   at a time. After an answer the finishing button reads **Next** (**Finish** on the
@@ -561,7 +567,8 @@ the control reads the chosen category.)
 - **Coverage nudge:** a quiet inline card on `surfaceSunken` above the title field. Its
   accept button is secondary; Save is the only primary action on the screen. Keep the
   current copy and the "Not now" cooldown.
-- **Save:** one primary capsule, disabled until the title is non-empty, `commit` motion.
+- **Save:** one primary capsule, disabled until the title is non-empty and a
+  confidence is set (§7.3), `commit` motion.
   (Built as step 46; it used to answer an empty tap with the store's "title is
   required".) A failed save says "Couldn't save that. Try again.", never the store's
   developer message.
@@ -682,10 +689,12 @@ calibration rating" note, then the two actions before the answer key.
   the receipt says it ("You said 75% on all 10, and were right 50% of the time.") and
   a second line notes that one number for the known and the guessed leaves part of
   the skill unused. Not shown when every answer was right, or under three answers.
-- **Proposed** (roadmap D14): under an overconfident verdict, "These were picked to be
-  tricky, so most people run hot here. Your own predictions are the real test." The
-  bank is a selected, hard-leaning set, and selected items are where overconfidence
-  comes from in the research (`research/confidence-2026-10.md` §3).
+- **Tricky questions** (roadmap D14, built as step 55): under an overconfident verdict
+  only, after the advice, "These were picked to be tricky, so most people run hot
+  here. Your own predictions are the real test." The bank is a selected,
+  hard-leaning set, and selected items are where overconfidence comes from in the
+  research (`research/confidence-2026-10.md` §3). Drawing the ten at random from a
+  larger bank (D14 option c) waits on FUTURE_UI A2.
 
 ---
 

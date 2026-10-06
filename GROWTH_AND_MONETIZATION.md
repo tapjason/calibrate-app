@@ -288,6 +288,9 @@ This preserves the existing principle: the app is fully usable — and now fully
 ## 7. Metrics to Instrument (from day one)
 
 - **D0 aha completion:** % of new users who finish the Warmup and see their first chart.
+  Since 2026-10-05 the Warmup's slider starts empty and each question needs a number
+  (UI_ROADMAP D13), one more interaction per question: read this rate on either side
+  of that date before blaming anything else for a change.
 - **Share rate:** shares per active user; installs attributed to shared cards (the
   viral coefficient — this number justifies the whole free tier).
 - **Free → Plus conversion** and **trial-to-paid**; run a trial-length experiment
