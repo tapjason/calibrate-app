@@ -61,6 +61,17 @@ const EMPTY_NOTE = {
 export interface OverallProgress {
   resolved: number;
   provisional: boolean;
+  /** The current daily streak (roadmap D2), for the card's streak line. */
+  streak?: number;
+}
+
+/** A streak this long or more goes on the card: one day isn't a run yet. */
+export const MIN_STREAK_ON_CARD = 2;
+
+/** "15-day streak" for the card (roadmap step 63), or null below the minimum. */
+export function streakLine(overall?: OverallProgress | null): string | null {
+  const streak = overall?.streak ?? 0;
+  return streak >= MIN_STREAK_ON_CARD ? `${streak}-day streak` : null;
 }
 
 export function wrappedStory(
@@ -214,8 +225,16 @@ function integrityNote(summary: WrappedSummary): string {
 }
 
 /** What a screen reader hears for the Wrapped card: one element (step 45). */
-export function wrappedCardSummary(story: WrappedStory): string {
-  return [story.title, story.stat, story.verdict, story.receipt, story.provisionalNote, story.note]
+export function wrappedCardSummary(story: WrappedStory, streak: string | null = null): string {
+  return [
+    story.title,
+    story.stat,
+    streak,
+    story.verdict,
+    story.receipt,
+    story.provisionalNote,
+    story.note,
+  ]
     .filter((part): part is string => Boolean(part))
     .map((part) => part.replace(/[.\s]+$/, ''))
     .join('. ')

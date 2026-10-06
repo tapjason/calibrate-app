@@ -143,6 +143,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                 ? {
                     resolved: userStat.total_resolved,
                     provisional: userStat.rating_is_provisional,
+                    streak: userStat.current_streak,
                   }
                 : null
             }

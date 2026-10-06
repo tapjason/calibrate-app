@@ -1,7 +1,13 @@
 import type { WrappedSummary } from '@/engine/wrapped';
 import type { BucketStat } from '@/types';
 
-import { expectedLine, receiptLine, wrappedCardSummary, wrappedStory } from './wrappedCopy';
+import {
+  expectedLine,
+  receiptLine,
+  streakLine,
+  wrappedCardSummary,
+  wrappedStory,
+} from './wrappedCopy';
 
 // Roadmap step 48: counts against counts, in place of "86% came in".
 describe('expectedLine', () => {
@@ -137,5 +143,19 @@ describe('wrappedCardSummary (roadmap step 45)', () => {
         'You said 80–100% 3 times. 2 of 3 happened. A week is too short for a verdict. ' +
         '1 honest-uncertainty call logged — the most valuable kind.',
     );
+  });
+});
+
+// Roadmap step 63: the daily streak travels with the recap.
+describe('streakLine', () => {
+  it('names a run of two days or more', () => {
+    expect(streakLine({ resolved: 40, provisional: false, streak: 15 })).toBe('15-day streak');
+    expect(streakLine({ resolved: 40, provisional: false, streak: 2 })).toBe('2-day streak');
+  });
+
+  it('stays off the card for one day or none', () => {
+    expect(streakLine({ resolved: 40, provisional: false, streak: 1 })).toBeNull();
+    expect(streakLine({ resolved: 40, provisional: false })).toBeNull();
+    expect(streakLine(null)).toBeNull();
   });
 });

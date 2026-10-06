@@ -60,14 +60,14 @@ function seed(resolved: Prediction[]): void {
   usePredictionStore.setState({ pending: [], resolved });
 }
 
-function seedOverall(totalResolved: number): void {
+function seedOverall(totalResolved: number, streak = 0): void {
   useStatsStore.setState({
     userStat: {
       user_id: 'u1',
       calibration_rating: 70,
       total_predictions: totalResolved,
       total_resolved: totalResolved,
-      current_streak: 0,
+      current_streak: streak,
       rating_is_provisional: totalResolved < MIN_N_OVERALL,
     },
   });
@@ -331,5 +331,25 @@ describe('WrappedPanel — weekly reveal', () => {
     render(<WrappedPanel span="year" />);
     jest.advanceTimersByTime(500);
     expect(haptics.reveal).not.toHaveBeenCalled();
+  });
+});
+
+// Roadmap step 63: the daily streak travels with the recap.
+describe('WrappedPanel streak', () => {
+  it('puts a running streak on the card, and says it to a screen reader', () => {
+    seed(run(4, 3));
+    seedOverall(30, 15);
+    render(<WrappedPanel span="week" />);
+    expect(screen.getByTestId('wrapped-streak')).toHaveTextContent('15-day streak');
+    expect(screen.getByTestId('wrapped-card').props.accessibilityLabel).toContain(
+      '15-day streak.',
+    );
+  });
+
+  it('leaves it off with no streak to speak of', () => {
+    seed(run(4, 3));
+    seedOverall(30, 1);
+    render(<WrappedPanel span="week" />);
+    expect(screen.queryByTestId('wrapped-streak')).toBeNull();
   });
 });

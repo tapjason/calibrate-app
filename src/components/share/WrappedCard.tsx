@@ -8,7 +8,7 @@ import { CARD_MAX_SCALE, roundedFamily } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
-import { wrappedCardSummary, wrappedStory, type OverallProgress } from './wrappedCopy';
+import { streakLine, wrappedCardSummary, wrappedStory, type OverallProgress } from './wrappedCopy';
 
 interface WrappedCardProps {
   summary: WrappedSummary;
@@ -44,6 +44,8 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
   ref,
 ) {
   const story = wrappedStory(summary, overall, upcoming);
+  // The number that climbs every day (roadmap D2) travels with the recap.
+  const streak = streakLine(overall);
 
   return (
     <View
@@ -51,7 +53,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
       // One element for a screen reader, in words (roadmap step 45).
       accessible
       accessibilityRole="image"
-      accessibilityLabel={wrappedCardSummary(story)}
+      accessibilityLabel={wrappedCardSummary(story, streak)}
       style={[styles.card, { backgroundColor: theme.background }]}
       testID="wrapped-card"
       collapsable={false}
@@ -77,6 +79,15 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           testID="wrapped-expected"
         >
           {story.statRate}
+        </Text>
+      )}
+      {streak && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.streak, { color: theme.accent }]}
+          testID="wrapped-streak"
+        >
+          {streak}
         </Text>
       )}
 
@@ -207,6 +218,7 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   stat: { fontFamily: roundedFamily, fontSize: 34, fontWeight: '800', lineHeight: 40 },
   statRate: { fontSize: 20, fontWeight: '700', lineHeight: 26, marginBottom: 4 },
+  streak: { fontSize: 15, fontWeight: '700', lineHeight: 20, marginBottom: 4 },
   verdict: { fontSize: 15, lineHeight: 21 },
   provisional: { fontSize: 14, lineHeight: 20 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
