@@ -244,10 +244,25 @@ export function __setDepsForTests(next: Deps | null): void {
   }
 }
 
+/**
+ * The local hour a reminder fires on its due day (roadmap D9, decided
+ * 2026-10-05). Due dates are stored at 12:00 local, and a reminder at noon
+ * asked "Did it happen?" about "I'll finish the report by Friday" before
+ * Friday was over. The evening is when most of a day's outcomes are known.
+ */
+export const REMINDER_HOUR = 19;
+
+/** When a prediction's reminder fires: its due day, at REMINDER_HOUR local. */
+export function reminderTimeFor(dueIso: string): Date {
+  const at = new Date(dueIso);
+  at.setHours(REMINDER_HOUR, 0, 0, 0);
+  return at;
+}
+
 async function schedule(p: Prediction): Promise<void> {
   if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled)
     return;
-  const fireDate = new Date(p.due_date);
+  const fireDate = reminderTimeFor(p.due_date);
   if (Number.isNaN(fireDate.getTime())) {
     // Bad date string would throw at the OS layer — bail rather than crash.
     // eslint-disable-next-line no-console
@@ -265,7 +280,9 @@ async function schedule(p: Prediction): Promise<void> {
       content: {
         title: REMINDER_TITLE,
         body: reminderBody(p.title, p.confidence),
-        data: { predictionId: p.id },
+        // fireAt lets the launch reconcile spot a reminder set for another
+        // time (one from before D9 fired at noon) and set it again.
+        data: { predictionId: p.id, fireAt: fireDate.toISOString() },
         categoryIdentifier: REMINDER_CATEGORY,
       },
       trigger: { type: 'date', date: fireDate },
@@ -294,16 +311,19 @@ async function cancel(predictionId: string): Promise<void> {
 
 /**
  * Launch-time reconcile with the OS (roadmap step 37). Reminders scheduled in
- * an earlier session are adopted when their prediction is still open and
- * reminders are on; every other reminder of ours is cancelled (resolved or
- * deleted elsewhere, a duplicate, or reminders turned off). Then any open
- * prediction without a reminder gets one. Requests without a predictionId
- * (the weekly digest) are left alone.
+ * an earlier session are adopted when their prediction is still open,
+ * reminders are on, and they fire when they should now (D9 moved reminders to
+ * the evening, so a noon one from before is replaced); every other reminder of
+ * ours is cancelled (resolved or deleted elsewhere, a duplicate, the wrong
+ * time, or reminders turned off). Then any open prediction without a reminder
+ * gets one. Requests without a predictionId (the weekly digest) are left alone.
  */
 async function reconcile(): Promise<void> {
   if (!deps || !deps.notifications) return;
   const api = deps.notifications;
-  const open = new Set(usePredictionStore.getState().pending.map((p) => p.id));
+  const open = new Map(
+    usePredictionStore.getState().pending.map((p) => [p.id, p] as const),
+  );
 
   let existing: ScheduledRequest[] = [];
   try {
@@ -316,10 +336,12 @@ async function reconcile(): Promise<void> {
   for (const request of existing) {
     const predictionId = request.content.data?.predictionId;
     if (typeof predictionId !== 'string') continue;
+    const prediction = open.get(predictionId);
     const keep =
       notificationsEnabled &&
-      open.has(predictionId) &&
-      !scheduledByPredictionId.has(predictionId);
+      prediction !== undefined &&
+      !scheduledByPredictionId.has(predictionId) &&
+      request.content.data?.fireAt === reminderTimeFor(prediction.due_date).toISOString();
     if (keep) {
       scheduledByPredictionId.set(predictionId, request.identifier);
       continue;

@@ -16,6 +16,8 @@ const mockAsk = jest.fn(async () => mockPermission.answer);
 jest.mock('@/notifications/permission', () => ({
   reminderPermission: jest.fn(async () => mockPermission.current),
   askForReminders: () => mockAsk(),
+  // Pure date arithmetic, so the real one.
+  reminderTimeFor: jest.requireActual('@/notifications/scheduler').reminderTimeFor,
 }));
 
 const NOW = new Date('2026-10-05T10:00:00.000Z');
@@ -74,6 +76,15 @@ describe('firstReminderDay', () => {
     });
     expect(firstReminderDay([open('a', '2026-10-01T12:00:00.000Z'), ahead], NOW)).toBe(day);
     expect(firstReminderDay([open('a', '2026-10-01T12:00:00.000Z')], NOW)).toBeNull();
+  });
+
+  // Roadmap D9: the reminder is that evening, so noon having passed doesn't
+  // mean it has.
+  it('counts a prediction due earlier today until its evening reminder', () => {
+    const now = new Date('2026-10-05T15:00:00.000Z');
+    const dueToday = open('t', '2026-10-05T12:00:00.000Z');
+    expect(firstReminderDay([dueToday], now)).not.toBeNull();
+    expect(firstReminderDay([dueToday], new Date('2026-10-05T19:30:00.000Z'))).toBeNull();
   });
 });
 

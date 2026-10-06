@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   askForReminders,
   reminderPermission,
+  reminderTimeFor,
   type ReminderPermission,
 } from '@/notifications/permission';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -33,10 +34,14 @@ export function shouldShowReminderPrompt(input: {
   return !(since < REMINDER_PROMPT_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
 }
 
-/** The soonest due date still ahead, as "Tue, Oct 6", or null. */
+/**
+ * The day of the soonest reminder still ahead, as "Tue, Oct 6", or null.
+ * Reminders fire in the evening of the due day (roadmap D9), so one due at
+ * noon today still counts until the evening.
+ */
 export function firstReminderDay(pending: readonly Prediction[], now: Date): string | null {
   const next = pending
-    .map((p) => Date.parse(p.due_date))
+    .map((p) => reminderTimeFor(p.due_date).getTime())
     .filter((t) => !Number.isNaN(t) && t > now.getTime())
     .sort((a, b) => a - b)[0];
   if (next === undefined) return null;

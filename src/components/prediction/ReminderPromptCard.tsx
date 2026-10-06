@@ -23,7 +23,7 @@ export function ReminderPromptCard({ firstDue, onAllow, onDismiss, busy }: Remin
     <View style={styles.wrap} testID="reminder-prompt">
       <Text style={styles.title}>Want a reminder when it's due?</Text>
       <Text style={styles.body}>
-        On the day each prediction comes due, one nudge to say how it went
+        On the evening each prediction comes due, one nudge to say how it went
         {firstDue ? `, starting ${firstDue}` : ''}. And a quiet summary on Sunday
         evenings. Nothing else.
       </Text>

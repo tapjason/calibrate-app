@@ -21,6 +21,8 @@ import { useStatsStore } from '@/store/statsStore';
 import {
   __setDepsForTests,
   initNotifications,
+  REMINDER_HOUR,
+  reminderTimeFor,
   reminderPermission,
   requestReminderPermission,
   routeFromLaunchNotification,
@@ -214,8 +216,9 @@ describe('scheduler: schedule on create', () => {
     const [rec] = Array.from(notifications.scheduled.values());
     expect(rec.title).toBe('Did it happen');
     expect(rec.body).toBe('Ship the prototype · You said 50%');
-    expect(rec.data).toEqual({ predictionId: p.id });
-    expect(rec.date.toISOString()).toBe('2099-06-01T12:00:00.000Z');
+    // Roadmap D9: the evening of the due day, not the stored noon (Jest runs in UTC).
+    expect(rec.data).toEqual({ predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
+    expect(rec.date.toISOString()).toBe('2099-06-01T19:00:00.000Z');
   });
 
   it('trims very long titles to ~80 chars in the body', async () => {
@@ -637,7 +640,7 @@ describe('scheduler: launch-time reconcile', () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     const p = await openPrediction();
-    leftOver(notifications, 'os-old', { predictionId: p.id });
+    leftOver(notifications, 'os-old', { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
 
     await initNotifications();
     expect(notifications.scheduleCalls).toBe(0);
@@ -651,8 +654,8 @@ describe('scheduler: launch-time reconcile', () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     const p = await openPrediction();
-    leftOver(notifications, 'os-keep', { predictionId: p.id });
-    leftOver(notifications, 'os-dupe', { predictionId: p.id });
+    leftOver(notifications, 'os-keep', { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
+    leftOver(notifications, 'os-dupe', { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
     leftOver(notifications, 'os-gone', { predictionId: 'resolved-on-another-phone' });
 
     await initNotifications();
@@ -682,7 +685,35 @@ describe('scheduler: launch-time reconcile', () => {
 
     await initNotifications();
     const scheduled = Array.from(notifications.scheduled.values());
-    expect(scheduled.map((r) => r.data)).toEqual([{ predictionId: future.id }]);
+    expect(scheduled.map((r) => r.data)).toEqual([
+      { predictionId: future.id, fireAt: '2099-06-01T19:00:00.000Z' },
+    ]);
+  });
+
+  // Roadmap D9: reminders from before the move fired at noon. A relaunch sets
+  // them again for the evening instead of letting the noon one fire.
+  it('replaces a reminder set for another time with an evening one', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    const p = await openPrediction();
+    leftOver(notifications, 'os-noon', { predictionId: p.id });
+    leftOver(notifications, 'os-stale', { predictionId: p.id, fireAt: '2099-06-01T12:00:00.000Z' });
+
+    await initNotifications();
+    expect(notifications.cancelled.sort()).toEqual(['os-noon', 'os-stale']);
+    const scheduled = Array.from(notifications.scheduled.values());
+    expect(scheduled.map((r) => r.date.toISOString())).toEqual(['2099-06-01T19:00:00.000Z']);
+  });
+});
+
+describe('reminderTimeFor (roadmap D9)', () => {
+  it('fires at 19:00 local on the due day', () => {
+    expect(reminderTimeFor('2099-06-01T12:00:00.000Z').toISOString()).toBe('2099-06-01T19:00:00.000Z');
+    expect(REMINDER_HOUR).toBe(19);
+  });
+
+  it('keeps the due day even when the stored time is early in it', () => {
+    expect(reminderTimeFor('2099-06-01T00:30:00.000Z').toISOString()).toBe('2099-06-01T19:00:00.000Z');
   });
 });
 
@@ -711,7 +742,7 @@ describe('scheduler: permission in context', () => {
     expect(await requestReminderPermission()).toBe('granted');
     expect(notifications.requestCalls).toBe(1);
     expect(Array.from(notifications.scheduled.values()).map((r) => r.data)).toEqual([
-      { predictionId: p.id },
+      { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' },
     ]);
 
     // And from then on it watches the store as usual.

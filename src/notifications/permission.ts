@@ -13,11 +13,12 @@
 import { activateDigest } from './digest';
 import {
   reminderPermission,
+  reminderTimeFor,
   requestReminderPermission,
   type ReminderPermission,
 } from './scheduler';
 
-export { reminderPermission, type ReminderPermission };
+export { reminderPermission, reminderTimeFor, type ReminderPermission };
 
 /** Show the system alert; on a yes, start reminders and the weekly digest. */
 export async function askForReminders(): Promise<ReminderPermission> {

@@ -84,7 +84,7 @@ export function SettingsView({
 
       <ToggleRow
         label="Notifications"
-        description="Resolution reminders on due dates and the Sunday weekly digest."
+        description="A reminder on the evening each prediction comes due, and the Sunday weekly digest."
         value={notificationsEnabled}
         onValueChange={(v) => void setNotificationsEnabled(v)}
         testID="toggle-notifications"
