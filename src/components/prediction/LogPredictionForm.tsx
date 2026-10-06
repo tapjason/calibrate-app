@@ -144,11 +144,19 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
       setPicking(false);
       onSubmitted?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // The store's messages are for developers ("confidence must be an
+      // integer…"). Say what happened in words, keep the detail in the log.
+      // eslint-disable-next-line no-console
+      console.warn('[log] save failed:', e);
+      setError("Couldn't save that. Try again.");
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Save waits for a title (DESIGN_SYSTEM §7.12), as iOS's own Add buttons
+  // do, instead of answering a tap with an error far below the field.
+  const canSave = title.trim().length > 0 && !submitting;
 
   return (
     <View>
@@ -336,7 +344,7 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
       <Button
         label={submitting ? 'Saving…' : 'Save prediction'}
         onPress={onSubmit}
-        disabled={submitting}
+        disabled={!canSave}
         testID="submit-button"
       />
     </View>

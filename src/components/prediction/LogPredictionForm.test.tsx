@@ -97,14 +97,37 @@ describe('LogPredictionForm', () => {
     expect(onSubmitted).toHaveBeenCalledTimes(1);
   });
 
-  it('surfaces a validation error when title is empty and does not persist', async () => {
+  // Roadmap step 46: the web build answered an empty Save with "title is
+  // required" in red, far below the field. Save now waits for a title.
+  it('keeps Save disabled until there is a title, and saves nothing before', async () => {
     render(<LogPredictionForm />);
+    const save = () => screen.getByTestId('submit-button');
+    expect(save().props.accessibilityState).toMatchObject({ disabled: true });
+
+    fireEvent.changeText(screen.getByTestId('title-field'), '   ');
+    expect(save().props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(save());
+    expect(screen.queryByTestId('log-error')).toBeNull();
+    expect(usePredictionStore.getState().pending).toHaveLength(0);
+
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
+    expect(save().props.accessibilityState).toMatchObject({ disabled: false });
+  });
+
+  it('says a failed save in words, not the store message', async () => {
+    const create = jest
+      .spyOn(usePredictionStore.getState(), 'create')
+      .mockRejectedValueOnce(new Error('confidence must be an integer between 0 and 100'));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<LogPredictionForm />);
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('log-error')).toBeTruthy();
+      expect(screen.getByTestId('log-error')).toHaveTextContent("Couldn't save that. Try again.");
     });
-    expect(usePredictionStore.getState().pending).toHaveLength(0);
+    create.mockRestore();
+    warn.mockRestore();
   });
 
   it('hides the refine button when AI refine is disabled in settings', () => {
