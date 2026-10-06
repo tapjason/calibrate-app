@@ -1,5 +1,5 @@
-import { forwardRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { forwardRef, useState } from 'react';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
@@ -34,7 +34,24 @@ interface IdentityCardProps {
 
 export type CardFormat = 'post' | 'story';
 
-const ASPECT: Record<CardFormat, number> = { post: 3 / 4, story: 9 / 16 };
+/**
+ * The shaped card is laid out on one fixed canvas on every phone (roadmap
+ * step 53): 360 × 480 for a Post (3:4) and 360 × 640 for a Story (9:16),
+ * exported at 3× as 1080 × 1440 and 1080 × 1920, the sizes DESIGN_SYSTEM
+ * §7.5 is written for. It used to take the screen's width, so on a 375pt
+ * phone the same content overflowed its 3:4 box: the emblem rose over the
+ * Shape control and the badges ran into the footer, in the preview and the
+ * exported PNG alike. The preview scales the canvas to fit instead
+ * (ShareCardPanel), so what you see is what is sent.
+ */
+export const CARD_CANVAS_WIDTH = 360;
+export const CARD_CANVAS_HEIGHT: Record<CardFormat, number> = { post: 480, story: 640 };
+
+/** How far to shrink content that is taller than the room it has, or 1. */
+export function fitScale(room: number, content: number): number {
+  if (room <= 0 || content <= room) return 1;
+  return room / content;
+}
 
 const BAND_LOWS = [0, 20, 40, 60, 80] as const;
 
@@ -67,6 +84,14 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
 ) {
   const { identity, contrast } = shareLines(card);
   const showStrip = card.rating !== null && buckets.length > 0;
+  // A long identity line, five badges and a larger text size can still be
+  // taller than the canvas. Then the content shrinks as one piece to fit,
+  // rather than spilling into the footer.
+  const [room, setRoom] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const fit = format ? fitScale(room, contentHeight) : 1;
+  const onRoom = (e: LayoutChangeEvent) => setRoom(e.nativeEvent.layout.height);
+  const onContent = (e: LayoutChangeEvent) => setContentHeight(e.nativeEvent.layout.height);
   const marks = marksFor(theme.background);
   const byLow = new Map(buckets.map((b) => [b.low, b]));
   const maxN = buckets.reduce((m, b) => Math.max(m, b.total_resolved), 1);
@@ -81,7 +106,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
       style={[
         styles.card,
         { backgroundColor: theme.background },
-        format && { aspectRatio: ASPECT[format] },
+        format && { width: CARD_CANVAS_WIDTH, height: CARD_CANVAS_HEIGHT[format] },
         // Stories keep content inside the middle band so app chrome at the top
         // and the reply bar at the bottom don't cover it.
         format === 'story' && styles.story,
@@ -91,83 +116,93 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
     >
       {/* The shaped formats centre the story and give the best tier's emblem
           the room a tall card has; the compact in-app card stays tight. */}
-      <View style={format ? styles.body : styles.bodyCompact}>
-        {format && card.categories[0] && (
-          <View style={styles.hero} testID="card-hero-emblem">
-            <LensEmblem
-              tier={card.categories[0].badge_level}
-              size={format === 'story' ? 112 : 88}
-            />
-          </View>
-        )}
-        <Text
-          maxFontSizeMultiplier={CARD_MAX_SCALE}
-          style={[styles.eyebrow, { color: theme.accent }]}
+      <View
+        style={format ? styles.body : styles.bodyCompact}
+        onLayout={format ? onRoom : undefined}
+        testID="card-body"
+      >
+        <View
+          style={[styles.content, fit < 1 && { transform: [{ scale: fit }] }]}
+          onLayout={format ? onContent : undefined}
+          testID="card-content"
         >
-          My calibration
-        </Text>
-
-        <Text
-          maxFontSizeMultiplier={CARD_MAX_SCALE}
-          style={[styles.identity, { color: theme.foreground }]}
-          testID="card-identity"
-        >
-          {identity}
-        </Text>
-        {contrast && (
+          {format && card.categories[0] && (
+            <View style={styles.hero} testID="card-hero-emblem">
+              <LensEmblem
+                tier={card.categories[0].badge_level}
+                size={format === 'story' ? 112 : 88}
+              />
+            </View>
+          )}
           <Text
             maxFontSizeMultiplier={CARD_MAX_SCALE}
-            style={[styles.contrast, { color: theme.muted }]}
-            testID="card-contrast"
+            style={[styles.eyebrow, { color: theme.accent }]}
           >
-            {contrast}
+            My calibration
           </Text>
-        )}
 
-        <Text
-          maxFontSizeMultiplier={CARD_MAX_SCALE}
-          style={[styles.receipt, { color: theme.foreground }]}
-        >
-          {shareSubline(card)}
-        </Text>
-
-        {showStrip && (
-          <View style={styles.strip} testID="card-strip">
-            {BAND_LOWS.map((low) => {
-              const b = byLow.get(low);
-              const size = b ? 10 + (b.total_resolved / maxN) * 12 : 8;
-              return (
-                <View key={low} style={styles.stripCell}>
-                  <View
-                    style={[
-                      { width: size, height: size, borderRadius: size / 2 },
-                      b
-                        ? { backgroundColor: marks[b.direction] }
-                        : { borderColor: theme.divider, borderWidth: 1.5 },
-                    ]}
-                  />
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        <View style={styles.badges}>
-          {card.categories.map((c) => (
-            <View
-              key={c.category}
-              testID={`card-badge-${c.category}`}
-              style={[styles.chip, { borderColor: theme.divider }]}
+          <Text
+            maxFontSizeMultiplier={CARD_MAX_SCALE}
+            style={[styles.identity, { color: theme.foreground }]}
+            testID="card-identity"
+          >
+            {identity}
+          </Text>
+          {contrast && (
+            <Text
+              maxFontSizeMultiplier={CARD_MAX_SCALE}
+              style={[styles.contrast, { color: theme.muted }]}
+              testID="card-contrast"
             >
-              <LensEmblem tier={c.badge_level} size={18} />
-              <Text
-                maxFontSizeMultiplier={CARD_MAX_SCALE}
-                style={[styles.chipLabel, { color: theme.foreground }]}
-              >
-                {c.category}
-              </Text>
+              {contrast}
+            </Text>
+          )}
+
+          <Text
+            maxFontSizeMultiplier={CARD_MAX_SCALE}
+            style={[styles.receipt, { color: theme.foreground }]}
+          >
+            {shareSubline(card)}
+          </Text>
+
+          {showStrip && (
+            <View style={styles.strip} testID="card-strip">
+              {BAND_LOWS.map((low) => {
+                const b = byLow.get(low);
+                const size = b ? 10 + (b.total_resolved / maxN) * 12 : 8;
+                return (
+                  <View key={low} style={styles.stripCell}>
+                    <View
+                      style={[
+                        { width: size, height: size, borderRadius: size / 2 },
+                        b
+                          ? { backgroundColor: marks[b.direction] }
+                          : { borderColor: theme.divider, borderWidth: 1.5 },
+                      ]}
+                    />
+                  </View>
+                );
+              })}
             </View>
-          ))}
+          )}
+
+          <View style={styles.badges}>
+            {card.categories.map((c) => (
+              <View
+                key={c.category}
+                testID={`card-badge-${c.category}`}
+                style={[styles.chip, { borderColor: theme.divider }]}
+              >
+                <LensEmblem tier={c.badge_level} size={18} />
+                <Text
+                  maxFontSizeMultiplier={CARD_MAX_SCALE}
+                  style={[styles.chipLabel, { color: theme.foreground }]}
+                >
+                  {c.category}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -198,8 +233,11 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
 
 const styles = StyleSheet.create({
   card: { borderRadius: 24, padding: 24 },
-  body: { flex: 1, gap: 8, justifyContent: 'center' },
-  bodyCompact: { gap: 8 },
+  // The content is centred in the room between the top and the footer, and
+  // when it is shrunk to fit, it shrinks about its centre.
+  body: { flex: 1, justifyContent: 'center', overflow: 'hidden' },
+  bodyCompact: {},
+  content: { gap: 8 },
   hero: { marginBottom: 12 },
   eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   identity: {

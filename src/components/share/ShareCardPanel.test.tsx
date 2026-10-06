@@ -231,13 +231,30 @@ describe('ShareCardPanel — text share', () => {
 });
 
 describe('ShareCardPanel — shape and contents', () => {
-  it('switches between the Post and Story shapes', () => {
+  // Roadmap step 53: one canvas on every phone, 3:4 and 9:16.
+  it('switches between the Post and Story canvases', () => {
     seedStats(USER_STAT, CATEGORY_STATS);
     render(<ShareCardPanel />);
     const flat = () => StyleSheet.flatten(screen.getByTestId('identity-card').props.style);
-    expect(flat().aspectRatio).toBeCloseTo(3 / 4);
+    expect(flat()).toMatchObject({ width: 360, height: 480 });
     fireEvent.press(screen.getByTestId('share-format-story'));
-    expect(flat().aspectRatio).toBeCloseTo(9 / 16);
+    expect(flat()).toMatchObject({ width: 360, height: 640 });
+  });
+
+  it('scales the canvas to the width it has, and waits unseen until it knows it', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+    const preview = () => screen.getByTestId('card-preview');
+    expect(StyleSheet.flatten(preview().props.style).opacity).toBe(0);
+
+    // A 375pt phone: 343pt for the card after the screen's padding.
+    fireEvent(preview(), 'layout', { nativeEvent: { layout: { width: 343, height: 0 } } });
+    const style = StyleSheet.flatten(preview().props.style);
+    expect(style.opacity).toBeUndefined();
+    expect(style.height).toBeCloseTo(480 * (343 / 360));
+    const canvas = StyleSheet.flatten(preview().props.children.props.style);
+    expect(canvas.transform).toEqual([{ scale: 343 / 360 }]);
+    expect(canvas.transformOrigin).toBe('top left');
   });
 
   it('leaves a category off the card, but never all of them', () => {

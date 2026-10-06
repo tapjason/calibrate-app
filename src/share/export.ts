@@ -31,11 +31,11 @@ export interface ShareDeps {
 
 let deps: ShareDeps | null = null;
 
-// A card is a screenshot-native artifact: 2x keeps it crisp when it lands in
-// a story or a chat thread, without pushing the file size somewhere the share
-// sheet starts to struggle.
+// A card is a screenshot-native artifact. 3x turns the identity card's fixed
+// 360pt canvas into the 1080px-wide Post and Story images DESIGN_SYSTEM §7.5
+// specifies (roadmap step 53); flat colour keeps the PNG small at that size.
 const CAPTURE_OPTIONS = { format: 'png', quality: 1, result: 'tmpfile' } as const;
-const CAPTURE_PIXEL_RATIO = 2;
+const CAPTURE_PIXEL_RATIO = 3;
 
 function defaultDeps(): ShareDeps {
   return {
