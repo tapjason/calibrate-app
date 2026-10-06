@@ -92,6 +92,7 @@ is checking it on an iPhone and the decisions.
 | 68 The ghost chart's key names only what's drawn | Done 2026-10-06, web-verified (no "Grey bars" sentence before the first dot; "Resolve a prediction and your first dot lands here." no longer reads as a line of the key) | — |
 | 69 An empty History has a way forward | Done 2026-10-06, web-verified ("…The first one comes due Tue, Oct 13." and **Log a prediction**; "Oct" and "13" no longer split at 402pt). Home's and Stats' calibrating caption say "first" too until something resolves | — |
 | 70 A 320pt pass: nothing that reads as one splits | Done 2026-10-06, web-verified at 320pt (chart title "80–100%" whole; paywall title wraps clear of the ×; "then $29.90 a year" together; the streak row breaks before "Next milestone") | Yes (iPhone SE / mini, and word joiners on iOS) |
+| 71 The Warmup's answer key says the answer and the pick | Done 2026-10-06, web-verified at 320pt ("The Pacific · You picked “The Atlantic”" under a hollow mark; it read "✗ Which ocean…? The Pacific", as if the Pacific were the miss) | Yes (VoiceOver: one stop per question) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run

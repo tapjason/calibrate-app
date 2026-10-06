@@ -751,6 +751,14 @@ and right 50% of the time."), the warm-up score in `title1` (never `display`: it
 not look like the real rating), the mini chart, one line of advice, the "not your
 calibration rating" note, then the two actions before the answer key.
 
+- **The answer key says it in words** (roadmap step 71): per question, the prompt in
+  `subhead` secondary, then the right answer in semibold ink and the user's side of it
+  ("· You got it", or "· You picked “The Atlantic”"), the fact, and the stated
+  confidence at the right. The mark is the Resolve glyph pair in ink
+  (`checkmark.circle.fill` / `xmark.circle`), not ✓/✗ text, and each row is one stop
+  for VoiceOver. It used to print "✗ Which is longer? A Boeing 737", which read as if
+  the 737 had been the wrong pick.
+
 - **One number everywhere** (roadmap step 49): when all answers share a confidence,
   the receipt says it ("You said 75% on all 10, and were right 50% of the time.") and
   a second line notes that one number for the known and the guessed leaves part of
