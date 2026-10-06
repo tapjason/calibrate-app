@@ -18,7 +18,10 @@ export interface DueGroup {
 
 const TITLES: Record<DueGroup['key'], string> = {
   ready: 'Ready to resolve',
-  week: 'This week',
+  // The next seven days, not the calendar week (roadmap step 67): on a
+  // Tuesday, "In a week" lands next Tuesday, which "This week" called this
+  // week. Share's "This week" is the calendar week; this one isn't.
+  week: 'Next 7 days',
   later: 'Later',
 };
 

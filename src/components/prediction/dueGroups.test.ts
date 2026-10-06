@@ -47,12 +47,12 @@ describe('groupByDue', () => {
     expect(groupByDue([], NOW)).toEqual([]);
   });
 
-  it('groups into ready, this week and later, soonest first', () => {
+  it('groups into ready, the next 7 days and later, soonest first', () => {
     const groups = groupByDue(
       [dueIn(30), dueIn(3), dueIn(-1), dueIn(0), dueIn(7), dueIn(8)],
       NOW,
     );
-    expect(groups.map((g) => g.title)).toEqual(['Ready to resolve', 'This week', 'Later']);
+    expect(groups.map((g) => g.title)).toEqual(['Ready to resolve', 'Next 7 days', 'Later']);
     expect(groups.map((g) => g.data.map((p) => p.id))).toEqual([
       ['d-1', 'd0'],
       ['d3', 'd7'],
