@@ -485,6 +485,8 @@ third row) → **honest timeline** → **one** CTA.
 - **Close** (roadmap step 30): a 44pt "×" on `surfaceSunken` at the top right,
   labelled "Close", as well as "Not now" at the bottom, which is below the fold on a
   phone. The screen insets its own top edge (a full-screen modal has no header).
+  It's `CloseButton`, shared with Account (roadmap step 66), which had a bare "Close"
+  text link on a white page; both Account screens now sit on `canvas` like the rest.
 
 ### 7.7 Navigation and sheets
 
