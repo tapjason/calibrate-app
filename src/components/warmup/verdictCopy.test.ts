@@ -96,4 +96,23 @@ describe('warmupVerdict', () => {
       "When you feel sure, you're right less often than you think. Try shading your confidence down.",
     );
   });
+
+  // Roadmap D14: the bank is picked to be tricky, which is where
+  // overconfidence comes from in the research. The verdict says so.
+  it('says the questions were tricky under an overconfident verdict only', () => {
+    expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.trickyNote).toBe(
+      'These were picked to be tricky, so most people run hot here. ' +
+        'Your own predictions are the real test.',
+    );
+    const calibrated = scoreWarmup([
+      { confidence: 100, correct: true },
+      { confidence: 100, correct: true },
+    ]);
+    expect(warmupVerdict(calibrated)?.trickyNote).toBeNull();
+    const under = scoreWarmup([
+      { confidence: 55, correct: true },
+      { confidence: 55, correct: true },
+    ]);
+    expect(warmupVerdict(under)?.trickyNote).toBeNull();
+  });
 });

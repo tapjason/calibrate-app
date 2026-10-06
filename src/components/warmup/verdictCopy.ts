@@ -20,6 +20,13 @@ export interface WarmupVerdict {
    * everything", and the verdict should say that plainly. Null otherwise.
    */
   sameNumber: string | null;
+  /**
+   * Under an overconfident verdict only (roadmap D14): the questions are
+   * picked to be tricky, and selected questions are how overconfidence is
+   * produced in the research (.73 confidence for .64 correct, against .73 for
+   * .72 when questions are sampled at random). So the verdict says so.
+   */
+  trickyNote: string | null;
 }
 
 const TITLES = {
@@ -36,6 +43,10 @@ const ADVICE = {
   calibrated:
     'Your confidence tracks reality closely. The real test is whether it holds on your own predictions.',
 } as const;
+
+const TRICKY_NOTE =
+  'These were picked to be tricky, so most people run hot here. ' +
+  'Your own predictions are the real test.';
 
 const SAME_NUMBER_NOTE =
   'One number for every question, the ones you knew and the ones you guessed. ' +
@@ -75,5 +86,6 @@ export function warmupVerdict(
     advice: ADVICE[result.direction],
     // Nothing to tell apart when every answer was right.
     sameNumber: same !== null && result.accuracy < 1 ? SAME_NUMBER_NOTE : null,
+    trickyNote: result.direction === 'overconfident' ? TRICKY_NOTE : null,
   };
 }
