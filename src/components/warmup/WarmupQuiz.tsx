@@ -11,11 +11,6 @@ import {
   useWarmupStore,
 } from '@/store/warmupStore';
 
-// Mid-scale, not the floor. Starting at 50 would anchor everyone to "coin
-// flip" and flatten the very spread the Warmup exists to reveal; starting at
-// the midpoint of the 50–100 range lets people move in either direction.
-const DEFAULT_CONFIDENCE = 75;
-
 /**
  * The Warmup quiz: one binary question at a time with a stated confidence.
  *
@@ -32,7 +27,10 @@ export function WarmupQuiz() {
   const answer = useWarmupStore((s) => s.answer);
 
   const [selected, setSelected] = useState<0 | 1 | null>(null);
-  const [confidence, setConfidence] = useState(DEFAULT_CONFIDENCE);
+  // Nothing preset (roadmap D13). It used to start at 75%, so tapping straight
+  // through produced "75% sure, 50% right" on the first share card: a verdict
+  // on our number, not the person's.
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Next swaps the question in place while focus stays on the button, so a
@@ -53,14 +51,14 @@ export function WarmupQuiz() {
   if (!question) return null;
 
   const onNext = async () => {
-    if (selected === null || submitting) return;
+    if (selected === null || confidence === null || submitting) return;
     setSubmitting(true);
     try {
       await answer(selected, confidence);
       // Reset for the next question. Confidence resets too: carrying it over
       // would quietly anchor every later answer to the first one.
       setSelected(null);
-      setConfidence(DEFAULT_CONFIDENCE);
+      setConfidence(null);
     } finally {
       setSubmitting(false);
     }
@@ -145,7 +143,7 @@ export function WarmupQuiz() {
       <Button
         label={index + 1 === total ? 'See my result' : 'Next'}
         testID="warmup-next"
-        disabled={selected === null || submitting}
+        disabled={selected === null || confidence === null || submitting}
         onPress={onNext}
       />
     </View>

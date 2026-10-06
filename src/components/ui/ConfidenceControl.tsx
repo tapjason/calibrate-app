@@ -1,4 +1,5 @@
 import Slider from '@react-native-community/slider';
+import { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { adjustableProps } from '@/components/ui/adjustable';
@@ -7,7 +8,12 @@ import { haptics } from '@/components/ui/haptics';
 import { colors, DISPLAY_MAX_SCALE, radius, space, tabularNums, type } from '@/constants/theme';
 
 interface ConfidenceControlProps {
-  value: number;
+  /**
+   * Null until the person sets it (roadmap D13). Nothing is preset: a preset
+   * can't be told apart from a choice, so an untouched Warmup answer read as
+   * "75% sure" and an untouched Log save earned the integrity bonus.
+   */
+  value: number | null;
   onChange: (next: number) => void;
   min?: number;
   max?: number;
@@ -52,6 +58,9 @@ export function naturalFrequencyFor(percent: number): string {
  * §7.3): a large readout with its natural-frequency twin, a stepped slider
  * with a haptic detent per 5%, and the ±5 buttons kept for precision.
  *
+ * It starts empty ("—%, not set yet") with a grey thumb resting mid-range;
+ * the first drag, tap, touch of the thumb or ±5 sets a number (roadmap D13).
+ *
  * For VoiceOver the whole control is one `adjustable` element (swipe up/down,
  * hear the value), exactly as before the slider existed; the slider itself is
  * hidden from the accessibility tree so it isn't announced twice.
@@ -66,18 +75,28 @@ export function ConfidenceControl({
   hint,
   idPrefix = 'confidence',
 }: ConfidenceControlProps) {
+  // The latest value, so a slide's change and its completion arriving in the
+  // same tick don't both count as a step (two detents for one move).
+  const latest = useRef(value);
+  latest.current = value;
   const set = (next: number) => {
     const clamped = Math.min(max, Math.max(min, Math.round(next / STEP) * STEP));
-    if (clamped !== value) {
+    if (clamped !== latest.current) {
+      latest.current = clamped;
       haptics.detent();
       onChange(clamped);
     }
   };
+  const unset = value === null;
+  // Unset, the thumb rests mid-range in grey and the ±5 buttons step from
+  // there; the first touch, tap or swipe sets a real number.
+  const middle = Math.round((min + max) / 2 / STEP) * STEP;
+  const from = value ?? middle;
 
   const span = max - min;
   const zoneLeft = ((INTEGRITY_LOW - min) / span) * 100;
   const zoneWidth = ((INTEGRITY_HIGH - INTEGRITY_LOW) / span) * 100;
-  const inZone = value >= INTEGRITY_LOW && value <= INTEGRITY_HIGH;
+  const inZone = value !== null && value >= INTEGRITY_LOW && value <= INTEGRITY_HIGH;
 
   return (
     <View
@@ -89,32 +108,38 @@ export function ConfidenceControl({
         max,
         step: STEP,
         onChange: set,
+        start: middle,
       })}
     >
       <Text style={styles.label}>{label}</Text>
       <View style={styles.readoutRow}>
         <Text
-          style={styles.readout}
+          style={[styles.readout, unset && styles.readoutUnset]}
           testID={`${idPrefix}-readout`}
           maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
         >
-          {value}%
+          {unset ? '—%' : `${value}%`}
         </Text>
-        <Text style={styles.frequency}>{naturalFrequencyFor(value)}</Text>
+        <Text style={styles.frequency}>{unset ? 'not set yet' : naturalFrequencyFor(value)}</Text>
       </View>
       {hint && <Text style={styles.hint}>{hint}</Text>}
 
       <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Slider
           testID={`${idPrefix}-slider`}
-          value={value}
+          value={from}
           minimumValue={min}
           maximumValue={max}
           step={STEP}
           onValueChange={set}
-          minimumTrackTintColor={colors.brand600}
+          // Touching the resting thumb without moving it is still a choice.
+          onSlidingComplete={(v) => {
+            if (latest.current === null) set(v);
+          }}
+          tapToSeek
+          minimumTrackTintColor={unset ? colors.hairline : colors.brand600}
           maximumTrackTintColor={colors.hairline}
-          thumbTintColor={colors.brand600}
+          thumbTintColor={unset ? colors.controlBorder : colors.brand600}
           style={styles.slider}
         />
         {showIntegrityZone && (
@@ -136,14 +161,14 @@ export function ConfidenceControl({
           label="−5"
           accessibilityLabel="Lower confidence by 5"
           variant="secondary"
-          onPress={() => set(value - STEP)}
+          onPress={() => set(from - STEP)}
           testID={`${idPrefix}-decrement`}
         />
         <Button
           label="+5"
           accessibilityLabel="Raise confidence by 5"
           variant="secondary"
-          onPress={() => set(value + STEP)}
+          onPress={() => set(from + STEP)}
           testID={`${idPrefix}-increment`}
         />
       </View>
@@ -164,6 +189,9 @@ const styles = StyleSheet.create({
     ...tabularNums,
     color: colors.textPrimary,
   },
+  // Same size, so setting a number doesn't shift the layout; tertiary ink
+  // (4.91:1) says nothing is there yet.
+  readoutUnset: { color: colors.textTertiary },
   frequency: { ...type.subhead, color: colors.textSecondary },
   hint: { ...type.footnote, color: colors.textSecondary, marginBottom: space.xs },
   slider: { height: 40, width: '100%' },

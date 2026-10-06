@@ -61,6 +61,7 @@ describe('LogPredictionForm with refine cut from the release', () => {
   it('never calls the refine service', async () => {
     render(<LogPredictionForm onSubmitted={jest.fn()} />);
     fireEvent.changeText(screen.getByTestId('title-field'), 'I will ship it');
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
@@ -72,6 +73,7 @@ describe('LogPredictionForm with refine cut from the release', () => {
   it('still saves the title exactly as typed', async () => {
     render(<LogPredictionForm onSubmitted={jest.fn()} />);
     fireEvent.changeText(screen.getByTestId('title-field'), 'I will ship it');
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {

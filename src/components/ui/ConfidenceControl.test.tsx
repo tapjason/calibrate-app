@@ -77,4 +77,52 @@ describe('ConfidenceControl', () => {
     expect(control.props.accessibilityRole).toBe('adjustable');
     expect(control.props.accessibilityValue.text).toBe('40%');
   });
+
+  // Roadmap D13: nothing preset, so "didn't touch it" can't pass for a choice.
+  describe('before anything is set', () => {
+    const slider = () => screen.getByTestId('confidence-slider', { includeHiddenElements: true });
+
+    it('reads as empty, with the thumb resting grey mid-range', () => {
+      render(<ConfidenceControl value={null} onChange={jest.fn()} min={50} />);
+      expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
+      expect(screen.getByText('not set yet')).toBeTruthy();
+      expect(slider().props.value).toBe(75);
+      expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
+        'not set',
+      );
+    });
+
+    it('steps ±5 from the middle of the range', () => {
+      const onChange = jest.fn();
+      render(<ConfidenceControl value={null} onChange={onChange} />);
+      fireEvent.press(screen.getByTestId('confidence-increment'));
+      expect(onChange).toHaveBeenLastCalledWith(55);
+      fireEvent.press(screen.getByTestId('confidence-decrement'));
+      expect(onChange).toHaveBeenLastCalledWith(45);
+    });
+
+    it('takes a touch of the resting thumb as a choice, once', () => {
+      const onChange = jest.fn();
+      render(<ConfidenceControl value={null} onChange={onChange} />);
+      fireEvent(slider(), 'slidingComplete', 50);
+      expect(onChange).toHaveBeenCalledWith(50);
+      expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it('counts a slide and its completion as one step', () => {
+      const onChange = jest.fn();
+      render(<ConfidenceControl value={null} onChange={onChange} />);
+      fireEvent(slider(), 'valueChange', 70);
+      fireEvent(slider(), 'slidingComplete', 70);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores completion once a value is set', () => {
+      const onChange = jest.fn();
+      render(<ConfidenceControl value={60} onChange={onChange} />);
+      fireEvent(slider(), 'slidingComplete', 60);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -39,9 +39,9 @@ interface LogPredictionFormProps {
   onSubmitted?: () => void;
   /**
    * "Log it again" (roadmap step 22): start from a resolved prediction's
-   * title, category and lead time. The confidence still starts at the
-   * default, never the old number. Read at mount; give the form a new key to
-   * apply a different one.
+   * title, category and lead time. The confidence still starts empty, never
+   * the old number. Read at mount; give the form a new key to apply a
+   * different one.
    */
   again?: LogAgainDraft | null;
 }
@@ -52,7 +52,9 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
   const [presets, setPresets] = useState(datePresets);
   const [title, setTitle] = useState(again?.title ?? '');
   const [category, setCategory] = useState<Category>(again?.category ?? 'work');
-  const [confidence, setConfidence] = useState(50);
+  // Empty until set (roadmap D13). A preset 50% sat inside the 35–65% band,
+  // so a save that never touched the control earned the integrity bonus.
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [dueDate, setDueDate] = useState(again?.dueIso ?? presets[1].iso);
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
@@ -81,11 +83,10 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
   useStatsStore((s) => s.calibration);
   useStatsStore((s) => s.categoryCalibration);
   const { bucketFor, categoryBucketFor } = useStatsStore.getState();
-  const record = trackRecordLine(
-    category,
-    categoryBucketFor(category, confidence),
-    bucketFor(confidence),
-  );
+  const record =
+    confidence === null
+      ? null
+      : trackRecordLine(category, categoryBucketFor(category, confidence), bucketFor(confidence));
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   useEffect(() => {
@@ -126,6 +127,7 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
   };
 
   const onSubmit = async () => {
+    if (confidence === null) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -137,7 +139,7 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
       });
       haptics.commit();
       setTitle('');
-      setConfidence(50);
+      setConfidence(null);
       const next = datePresets();
       setPresets(next);
       setDueDate(next[1].iso);
@@ -154,9 +156,10 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
     }
   };
 
-  // Save waits for a title (DESIGN_SYSTEM §7.12), as iOS's own Add buttons
-  // do, instead of answering a tap with an error far below the field.
-  const canSave = title.trim().length > 0 && !submitting;
+  // Save waits for a title and a confidence (DESIGN_SYSTEM §7.12, roadmap
+  // D13), as iOS's own Add buttons do, instead of answering a tap with an
+  // error far below the field.
+  const canSave = title.trim().length > 0 && confidence !== null && !submitting;
 
   return (
     <View>
@@ -264,7 +267,7 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
 
       <View style={styles.block}>
         <ConfidenceControl value={confidence} onChange={setConfidence} showIntegrityZone />
-        {confidence >= 35 && confidence <= 65 && (
+        {confidence !== null && confidence >= 35 && confidence <= 65 && (
           // A brand chip, not green text: honesty is rewarded, but green means
           // "calibrated" and never "good job" (DESIGN_SYSTEM §2.3).
           <View style={styles.bonus} testID="integrity-bonus">

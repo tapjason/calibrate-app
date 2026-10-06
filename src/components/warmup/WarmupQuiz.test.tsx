@@ -59,6 +59,7 @@ describe('WarmupQuiz', () => {
     expect(announce).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId('warmup-option-0'));
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment'));
     fireEvent.press(screen.getByTestId('warmup-next'));
     await waitFor(() =>
       expect(announce).toHaveBeenCalledWith('Question 2 of 2. Which is deeper?'),
@@ -70,6 +71,27 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
     fireEvent.press(screen.getByTestId('warmup-next'));
     expect(useWarmupStore.getState().answers).toEqual([]);
+  });
+
+  // Roadmap D13: nothing preset. Tapping through used to answer "75%".
+  it('starts with no confidence and waits for one before Next', () => {
+    render(<WarmupQuiz />);
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('—%');
+    expect(screen.getByText('not set yet')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('warmup-option-1'));
+    expect(screen.getByTestId('warmup-next').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    fireEvent.press(screen.getByTestId('warmup-next'));
+    expect(useWarmupStore.getState().answers).toEqual([]);
+
+    // The first ±5 steps from the middle of 50–100.
+    fireEvent.press(screen.getByTestId('warmup-confidence-decrement'));
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('70%');
+    expect(screen.getByTestId('warmup-next').props.accessibilityState).toMatchObject({
+      disabled: false,
+    });
   });
 
   it('records the picked option and stated confidence', async () => {
@@ -90,13 +112,14 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-0')); // wrong
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {
       expect(screen.getByText('Which is deeper?')).toBeTruthy();
     });
     expect(useWarmupStore.getState().answers).toEqual([
-      { confidence: 75, correct: false },
+      { confidence: 80, correct: false },
     ]);
   });
 
@@ -108,8 +131,9 @@ describe('WarmupQuiz', () => {
     fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 85
     fireEvent.press(screen.getByTestId('warmup-next'));
 
+    // Empty again, not carried over and not preset.
     await waitFor(() => {
-      expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('75%');
+      expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('—%');
     });
   });
 
@@ -130,14 +154,15 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-1'));
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment'));
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('warmup-next')).toBeTruthy();
+      expect(screen.getByText('See my result')).toBeTruthy();
     });
-    expect(screen.getByText('See my result')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('warmup-option-1'));
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment'));
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {

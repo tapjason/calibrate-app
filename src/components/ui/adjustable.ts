@@ -15,9 +15,13 @@ export function adjustableProps({
   max,
   step,
   onChange,
+  start,
 }: {
   label: string;
-  value: number;
+  /** Null while nothing is set: VoiceOver hears "not set", and a swipe starts from `start`. */
+  value: number | null;
+  /** Where the first swipe steps from while `value` is null. */
+  start?: number;
   min: number;
   max: number;
   step: number;
@@ -31,15 +35,17 @@ export function adjustableProps({
   | 'accessibilityActions'
   | 'onAccessibilityAction'
 > {
+  const from = value ?? start ?? Math.round((min + max) / 2);
   return {
     accessible: true,
     accessibilityRole: 'adjustable',
     accessibilityLabel: label,
-    accessibilityValue: { min, max, now: value, text: `${value}%` },
+    accessibilityValue:
+      value === null ? { min, max, text: 'not set' } : { min, max, now: value, text: `${value}%` },
     accessibilityActions: [{ name: 'increment' }, { name: 'decrement' }],
     onAccessibilityAction: (e: AccessibilityActionEvent) => {
-      if (e.nativeEvent.actionName === 'increment') onChange(Math.min(max, value + step));
-      if (e.nativeEvent.actionName === 'decrement') onChange(Math.max(min, value - step));
+      if (e.nativeEvent.actionName === 'increment') onChange(Math.min(max, from + step));
+      if (e.nativeEvent.actionName === 'decrement') onChange(Math.max(min, from - step));
     },
   };
 }

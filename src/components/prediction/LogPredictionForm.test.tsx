@@ -82,7 +82,7 @@ describe('LogPredictionForm', () => {
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship the prototype');
     fireEvent.press(screen.getByTestId('category-health'));
-    fireEvent.press(screen.getByTestId('confidence-increment')); // 50 → 55
+    fireEvent.press(screen.getByTestId('confidence-increment')); // unset → 55, from the middle
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
@@ -98,8 +98,9 @@ describe('LogPredictionForm', () => {
   });
 
   // Roadmap step 46: the web build answered an empty Save with "title is
-  // required" in red, far below the field. Save now waits for a title.
-  it('keeps Save disabled until there is a title, and saves nothing before', async () => {
+  // required" in red, far below the field. Save now waits for a title, and
+  // (D13) for a confidence, which starts empty.
+  it('keeps Save disabled until there is a title and a confidence', async () => {
     render(<LogPredictionForm />);
     const save = () => screen.getByTestId('submit-button');
     expect(save().props.accessibilityState).toMatchObject({ disabled: true });
@@ -111,7 +112,21 @@ describe('LogPredictionForm', () => {
     expect(usePredictionStore.getState().pending).toHaveLength(0);
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
+    expect(save().props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
+
+    fireEvent.press(screen.getByTestId('confidence-decrement'));
+    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('45%');
     expect(save().props.accessibilityState).toMatchObject({ disabled: false });
+  });
+
+  // Roadmap D13: the preset 50% sat in the 35–65% band, so an untouched save
+  // earned the integrity bonus. Nothing is shown, or earned, until it's set.
+  it('shows no integrity bonus before a confidence is set', () => {
+    render(<LogPredictionForm />);
+    expect(screen.queryByTestId('integrity-bonus')).toBeNull();
+    fireEvent.press(screen.getByTestId('confidence-increment')); // 55
+    expect(screen.getByTestId('integrity-bonus')).toBeTruthy();
   });
 
   it('says a failed save in words, not the store message', async () => {
@@ -121,6 +136,7 @@ describe('LogPredictionForm', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     render(<LogPredictionForm />);
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
@@ -141,6 +157,7 @@ describe('LogPredictionForm', () => {
     render(<LogPredictionForm />);
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'no refine here');
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
@@ -173,6 +190,7 @@ describe('LogPredictionForm', () => {
     fireEvent.press(screen.getByTestId('refine-accept'));
 
     // Submit and verify the saved title is the accepted suggestion
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
     await waitFor(() => {
       expect(usePredictionStore.getState().pending).toHaveLength(1);
@@ -196,6 +214,7 @@ describe('LogPredictionForm', () => {
 
     expect(screen.queryByTestId('refine-suggestion')).toBeNull();
 
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
     await waitFor(() => {
       expect(usePredictionStore.getState().pending).toHaveLength(1);
@@ -216,6 +235,7 @@ describe('LogPredictionForm', () => {
     });
     expect(screen.queryByTestId('refine-suggestion')).toBeNull();
 
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
     await waitFor(() => {
       expect(usePredictionStore.getState().pending).toHaveLength(1);
@@ -225,7 +245,7 @@ describe('LogPredictionForm', () => {
 
   it('clamps confidence steppers at 0 and 100', async () => {
     render(<LogPredictionForm />);
-    // Decrement 11 times from 50 → should clamp at 0, not go negative
+    // Decrement 11 times from the middle → should clamp at 0, not go negative
     for (let i = 0; i < 11; i++) {
       fireEvent.press(screen.getByTestId('confidence-decrement'));
     }
@@ -297,7 +317,7 @@ describe('LogPredictionForm', () => {
       expect(usePredictionStore.getState().pending[0].confidence).toBe(25);
     });
 
-    it('dismisses without touching the confidence value', async () => {
+    it('dismisses without setting a confidence', async () => {
       useStatsStore.setState({ coverageGap: CLUSTERED_HIGH });
       render(<LogPredictionForm />);
 
@@ -307,13 +327,7 @@ describe('LogPredictionForm', () => {
       fireEvent.press(screen.getByTestId('coverage-nudge-dismiss'));
 
       expect(screen.queryByTestId('coverage-nudge')).toBeNull();
-      fireEvent.changeText(screen.getByTestId('title-field'), 'unchanged');
-      fireEvent.press(screen.getByTestId('submit-button'));
-
-      await waitFor(() => {
-        expect(usePredictionStore.getState().pending).toHaveLength(1);
-      });
-      expect(usePredictionStore.getState().pending[0].confidence).toBe(50);
+      expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
     });
   });
 });
@@ -325,7 +339,8 @@ describe('LogPredictionForm - accessibility', () => {
     render(<LogPredictionForm />);
     const control = screen.getByTestId('confidence-adjustable');
     expect(control.props.accessibilityRole).toBe('adjustable');
-    expect(control.props.accessibilityValue).toMatchObject({ now: 50, text: '50%' });
+    // Nothing preset (roadmap D13); the first swipe steps from the middle.
+    expect(control.props.accessibilityValue).toEqual({ min: 0, max: 100, text: 'not set' });
 
     fireEvent(control, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(55);
@@ -391,10 +406,12 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
       categoryCalibration: { finance: { rating: 70, buckets: [band(12, 7)] } },
     });
     render(<LogPredictionForm />);
-    // 50% sits in the 40–60% band, which has no history: nothing to say.
+    // Nothing to say before a confidence is set.
+    expect(screen.queryByTestId('track-record')).toBeNull();
+    raise(1); // 55%: the 40–60% band, which has no history
     expect(screen.queryByTestId('track-record')).toBeNull();
 
-    raise(4); // 70%
+    raise(3); // 70%
     expect(screen.getByTestId('track-record').props.children).toBe(
       'Your 60–80% calls: 30 of 52 happened.',
     );
@@ -413,7 +430,7 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
 });
 
 describe('LogPredictionForm — Log it again (roadmap step 22)', () => {
-  it('starts from the repeated title, category and date, with a fresh confidence', () => {
+  it('starts from the repeated title, category and date, with no confidence', () => {
     render(
       <LogPredictionForm
         again={{
@@ -428,7 +445,9 @@ describe('LogPredictionForm — Log it again (roadmap step 22)', () => {
     expect(screen.getByTestId('category-health').props.accessibilityState).toEqual({
       selected: true,
     });
-    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(50);
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
+      'not set',
+    );
   });
 });
 
@@ -442,7 +461,9 @@ describe('LogPredictionForm — starter ideas (roadmap step 40)', () => {
     expect(screen.getByTestId('category-health').props.accessibilityState).toEqual({
       selected: true,
     });
-    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(50);
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
+      'not set',
+    );
     // Once there's a title, they step aside.
     expect(screen.queryByTestId('starter-ideas')).toBeNull();
   });
