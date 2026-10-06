@@ -51,6 +51,38 @@ describe('CategoryBadge', () => {
     expect(view.getByText('Score above 70 → Forecaster')).toBeTruthy();
   });
 
+  // Roadmap step 47: a Forecaster at 30 resolved with a score of 80 needs
+  // both for Sharp; the count alone promised a badge resolving can't earn.
+  it('names the score as well when both requirements are short', () => {
+    const next: NextBadgeTarget = { badge: 'sharp', needResolved: 50, needScore: 85 };
+    const view = render(
+      <CategoryBadge
+        stat={stat({
+          badge_level: 'forecaster',
+          predictions_resolved: 30,
+          calibration_score: 80,
+          score_is_provisional: false,
+        })}
+        next={next}
+      />,
+    );
+    expect(view.getByText('20 more resolved and a score above 85 → Sharp')).toBeTruthy();
+    expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
+      'Health: Forecaster. 20 more resolved and a score above 85 to reach Sharp.',
+    );
+  });
+
+  it('names only the count once the score already qualifies', () => {
+    const next: NextBadgeTarget = { badge: 'sharp', needResolved: 50, needScore: 85 };
+    const view = render(
+      <CategoryBadge
+        stat={stat({ badge_level: 'forecaster', predictions_resolved: 30, calibration_score: 92 })}
+        next={next}
+      />,
+    );
+    expect(view.getByText('20 more resolved → Sharp')).toBeTruthy();
+  });
+
   it('celebrates when there is no next badge (top of the ladder)', () => {
     const view = render(
       <CategoryBadge

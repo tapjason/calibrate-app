@@ -68,11 +68,17 @@ export function nextBadgeProgress(
   if (bestCount) {
     const { stat, next, remaining } = bestCount;
     const badgeLabel = BADGE_META[next.badge].label;
+    // When the score is short as well, "20 to go" alone would promise a badge
+    // that resolving can't earn (roadmap step 47). Only the threshold is
+    // printed, never the score itself.
+    const scoreShort = next.needScore !== null && stat.calibration_score <= next.needScore;
     return {
       category: stat.category,
       badge: next.badge,
       badgeLabel,
-      text: `${badgeLabel} in ${stat.category}: ${remaining} to go`,
+      text: scoreShort
+        ? `${badgeLabel} in ${stat.category}: ${remaining} more resolved and a score above ${next.needScore}`
+        : `${badgeLabel} in ${stat.category}: ${remaining} to go`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
   }

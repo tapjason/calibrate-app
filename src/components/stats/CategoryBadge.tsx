@@ -61,9 +61,11 @@ export function spokenHint(hint: string): string {
 }
 
 /**
- * Build the progress line. When there's a next badge, describe the single
- * unmet requirement closest to hand (more resolutions, or a higher score).
- * At the top of the ladder, celebrate instead.
+ * Build the progress line. When there's a next badge, name every requirement
+ * still unmet: more resolutions, a higher score, or both. Naming only the
+ * count when the score is short too ("20 more resolved → Sharp" for a work
+ * score of 80) promised a badge that resolving alone can't earn (roadmap
+ * step 47). At the top of the ladder, celebrate instead.
  */
 function progressHint(stat: CategoryStat, next: NextBadgeTarget | null): string {
   if (!next) {
@@ -71,13 +73,15 @@ function progressHint(stat: CategoryStat, next: NextBadgeTarget | null): string 
   }
 
   const nextLabel = BADGE_META[next.badge].label;
+  const scoreShort = next.needScore !== null && stat.calibration_score <= next.needScore;
 
   if (next.needResolved !== null && stat.predictions_resolved < next.needResolved) {
     const remaining = next.needResolved - stat.predictions_resolved;
-    return `${remaining} more resolved → ${nextLabel}`;
+    const andScore = scoreShort ? ` and a score above ${next.needScore}` : '';
+    return `${remaining} more resolved${andScore} → ${nextLabel}`;
   }
 
-  if (next.needScore !== null && stat.calibration_score <= next.needScore) {
+  if (scoreShort) {
     return `Score above ${next.needScore} → ${nextLabel}`;
   }
 
