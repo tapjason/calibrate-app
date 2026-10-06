@@ -1,8 +1,8 @@
 // Prediction store. Orchestrates Layer 2 (db) for I/O and Layer 4 (statsStore)
 // for downstream recomputation. Holds no business math — see src/engine.
 //
-// Layer rule: this file imports from @/db and @/types and from sibling
-// stores. It does NOT call expo-sqlite or sql.js directly.
+// Layer rule: this file imports from @/db, @/engine and @/types and from
+// sibling stores. It does NOT call expo-sqlite or sql.js directly.
 
 import { create } from 'zustand';
 
@@ -10,6 +10,7 @@ import { track } from '@/analytics/track';
 
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
+import { streakStatus } from '@/engine/streak';
 import {
   deletePrediction,
   getPrediction,
@@ -20,7 +21,7 @@ import {
   reopenPrediction,
   setPredictionReflection,
 } from '@/db/predictions';
-import type { Category, Prediction, ResolvedStatus } from '@/types';
+import type { Category, Prediction, ResolvedStatus, StreakStatus } from '@/types';
 
 import { useAuthStore } from './authStore';
 import { useStatsStore } from './statsStore';
@@ -64,6 +65,11 @@ interface PredictionState {
    * Returns false if they were already there.
    */
   loadDemoData: () => Promise<boolean>;
+  /**
+   * Where today stands for the streak (roadmap D2): the engine's count over
+   * the lists held here, read at render so it follows each log and answer.
+   */
+  streakNow: (now?: Date) => StreakStatus;
 }
 
 function nowIso(): string {
@@ -213,6 +219,8 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     });
     await Promise.all([get().loadPending(), get().loadResolved()]);
   },
+
+  streakNow: (now = new Date()) => streakStatus([...get().pending, ...get().resolved], now),
 
   loadDemoData: async () => {
     const userId = requireUserId();

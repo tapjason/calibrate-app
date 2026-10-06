@@ -64,7 +64,7 @@ is a personality-test result with receipts. The math is the engine, never the pi
   calibration_rating: number     // Rolling 0–100 score
   total_predictions: number
   total_resolved: number
-  current_streak: number         // Consecutive days with at least one resolution
+  current_streak: number         // Consecutive days with at least 3 predictions logged or answered (decided 2026-10-05)
   rating_is_provisional: boolean // true while total_resolved < MIN_N_OVERALL
 }
 ```

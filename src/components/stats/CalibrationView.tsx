@@ -86,7 +86,8 @@ export function CalibrationView({
           {/* The progress bar already counts resolutions while provisional. */}
           {!headline.provisional && (
             <Text style={styles.subtle}>
-              {userStat.total_resolved} resolved · streak {userStat.current_streak}
+              {userStat.total_resolved} resolved
+              {userStat.current_streak > 0 ? ` · ${userStat.current_streak}-day streak` : ''}
             </Text>
           )}
           {/* The math on demand, one tap from the number it explains. */}

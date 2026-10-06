@@ -4,7 +4,13 @@
 // and the worked examples are CLAUDE.md's own.
 
 import { BADGE_META } from '@/constants/badges';
-import { MIN_N_BAND, MIN_N_CATEGORY, MIN_N_OVERALL, type BadgeLevel } from '@/types';
+import {
+  MIN_N_BAND,
+  MIN_N_CATEGORY,
+  MIN_N_OVERALL,
+  STREAK_DAY_MIN,
+  type BadgeLevel,
+} from '@/types';
 
 export interface ScoringSection {
   title: string;
@@ -64,6 +70,13 @@ export function scoringSections(): ScoringSection[] {
       paragraphs: [
         'Calls between 35% and 65% get the integrity bonus. They are the hardest to make, and they tell you the most.',
         'Log some things you think won\'t happen, too. A score built only from the confident end of the range only measures that end.',
+      ],
+    },
+    {
+      title: 'Your streak',
+      paragraphs: [
+        `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it, and your streak is how many days in a row have counted. Today joins it once it reaches ${STREAK_DAY_MIN}; until midnight, yesterday's streak still stands.`,
+        "The streak is about the habit, not the score: it doesn't change your calibration, and nothing is lost when it ends.",
       ],
     },
     {

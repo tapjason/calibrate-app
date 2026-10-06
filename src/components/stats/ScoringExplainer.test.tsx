@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { MIN_N_BAND, MIN_N_CATEGORY, MIN_N_OVERALL } from '@/types';
+import { MIN_N_BAND, MIN_N_CATEGORY, MIN_N_OVERALL, STREAK_DAY_MIN } from '@/types';
 
 import { badgeRows, scoringSections } from './scoringCopy';
 import { ScoringExplainer } from './ScoringExplainer';
@@ -18,6 +18,13 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(text).toContain(`until ${MIN_N_OVERALL} predictions have resolved`);
     expect(text).toContain(`until ${MIN_N_CATEGORY} have in that category`);
     expect(text).toContain(`until it holds ${MIN_N_BAND}`);
+  });
+
+  // Roadmap D2: what makes a day count, from the engine's own constant.
+  it('says what a streak day takes', () => {
+    expect(allText()).toContain(
+      `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it`,
+    );
   });
 
   // CLAUDE.md's bucket convention: lower bound inclusive, top band closed.

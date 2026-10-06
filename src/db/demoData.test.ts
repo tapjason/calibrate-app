@@ -65,8 +65,9 @@ describe('buildDemoPredictions', () => {
     }
   });
 
+  // A day counts with three logged or answered (UI_ROADMAP D2).
   it('has a live streak ending yesterday', () => {
-    expect(computeStreak(resolved, { now: NOW })).toBeGreaterThanOrEqual(6);
+    expect(computeStreak([...resolved, ...pending], { now: NOW })).toBeGreaterThanOrEqual(12);
   });
 
   it('leaves some open predictions, including ones ready to resolve', () => {

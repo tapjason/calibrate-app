@@ -120,8 +120,13 @@ const PENDING: Array<{ category: Category; confidence: number; title: string; du
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Resolved predictions spread over this many days, ending yesterday. */
 const SPAN_DAYS = 150;
-/** The most recent ones land a day apart, so the demo has a live streak. */
-const STREAK_DAYS = 6;
+/**
+ * The most recent ones land STREAK_PER_DAY to a day, ending yesterday, so the
+ * demo has a live streak: a day counts with 3 logged or answered (UI_ROADMAP
+ * D2, decided 2026-10-05).
+ */
+const STREAK_DAYS = 12;
+const STREAK_PER_DAY = 3;
 
 const isIntegrityBonus = (confidence: number) => confidence >= 35 && confidence <= 65;
 
@@ -181,12 +186,13 @@ export function buildDemoPredictions(userId: string, now: Date): Prediction[] {
     .map(({ p }) => p);
 
   const rows: Prediction[] = ordered.map((p, i) => {
-    // Oldest first: the bulk spread across SPAN_DAYS, then one a day up to yesterday.
+    // Oldest first: the bulk spread across SPAN_DAYS, then three a day up to yesterday.
     const fromEnd = ordered.length - i; // 1 for the newest
-    const older = ordered.length - STREAK_DAYS;
+    const recent = STREAK_DAYS * STREAK_PER_DAY;
+    const older = ordered.length - recent;
     const daysAgo =
-      fromEnd <= STREAK_DAYS
-        ? fromEnd
+      fromEnd <= recent
+        ? Math.ceil(fromEnd / STREAK_PER_DAY)
         : STREAK_DAYS + 1 + Math.round(((older - 1 - i) * (SPAN_DAYS - STREAK_DAYS)) / older);
     const due = eveningOf(now, daysAgo);
     const created = new Date(due.getTime() - LEAD_DAYS[i % LEAD_DAYS.length] * DAY_MS);

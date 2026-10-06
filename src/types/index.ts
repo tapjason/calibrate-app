@@ -36,6 +36,22 @@ export const MIN_N_CATEGORY = 15;
  */
 export const MIN_N_BAND = 10;
 
+/**
+ * Predictions logged or answered yes/no in one local day for it to count
+ * toward the streak (decided 2026-10-05, UI_ROADMAP D2).
+ */
+export const STREAK_DAY_MIN = 3;
+
+/** Where today stands for the streak, as the engine reports it. */
+export interface StreakStatus {
+  /** Consecutive counted days, through today if it counts, else yesterday. */
+  streak: number;
+  /** Predictions logged or answered so far today. */
+  today: number;
+  /** Whether today has reached STREAK_DAY_MIN. */
+  todayCounts: boolean;
+}
+
 export type Category = 'work' | 'health' | 'finance' | 'social' | 'personal';
 
 export type PredictionStatus =
@@ -73,7 +89,7 @@ export interface UserStat {
   calibration_rating: number; // rolling 0–100
   total_predictions: number;
   total_resolved: number;
-  current_streak: number;
+  current_streak: number; // consecutive days with ≥ 3 predictions logged or answered
   rating_is_provisional: boolean; // true while total_resolved < MIN_N_OVERALL
 }
 
@@ -365,11 +381,13 @@ export type NextBadge = (
 ) => NextBadgeTarget | null;
 
 /**
- * Consecutive local calendar days with ≥1 resolution, counting back from the
- * latest. With `now`, a streak whose latest day is before yesterday has ended
- * and reads 0.
+ * Consecutive local calendar days with at least STREAK_DAY_MIN (3) predictions
+ * logged or answered yes/no that day (decided 2026-10-05, UI_ROADMAP D2). Pass
+ * every prediction, open ones included: logging counts. With `now`, today
+ * counts once it reaches the minimum, the streak otherwise runs through
+ * yesterday, and one whose last counted day is before yesterday reads 0.
  */
-export type ComputeStreak = (resolved: Prediction[], opts?: { now?: Date }) => number;
+export type ComputeStreak = (predictions: Prediction[], opts?: { now?: Date }) => number;
 
 // ---- DB: predictions (L2) ----
 

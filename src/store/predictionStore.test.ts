@@ -314,3 +314,41 @@ describe('predictionStore.loadDemoData', () => {
     expect(usePredictionStore.getState().resolved).toHaveLength(resolved.length);
   });
 });
+
+// Roadmap D2: a day counts with three logged or answered, and the stored
+// streak and Home's line agree.
+describe('predictionStore.streakNow', () => {
+  const log = (title: string) =>
+    usePredictionStore.getState().create({
+      title,
+      category: 'work',
+      confidence: 60,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+
+  it('counts today once three are logged, and the stored streak follows', async () => {
+    await log('one');
+    await log('two');
+    expect(usePredictionStore.getState().streakNow()).toEqual({
+      streak: 0,
+      today: 2,
+      todayCounts: false,
+    });
+    expect(useStatsStore.getState().userStat?.current_streak).toBe(0);
+
+    await log('three');
+    expect(usePredictionStore.getState().streakNow()).toEqual({
+      streak: 1,
+      today: 3,
+      todayCounts: true,
+    });
+    expect(useStatsStore.getState().userStat?.current_streak).toBe(1);
+  });
+
+  it('counts an answer as well as a log', async () => {
+    const a = await log('one');
+    await log('two');
+    await usePredictionStore.getState().resolve(a.id, 'resolved_no');
+    expect(usePredictionStore.getState().streakNow().today).toBe(3);
+  });
+});

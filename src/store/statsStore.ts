@@ -171,8 +171,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     // Persisted scalars + an on-demand bucket recompute. The buckets aren't
     // stored (cheap to rebuild, no schema cost), so a fresh load fetches
     // the resolved list too.
-    // Pending comes along for the coverage gap only: the nudge counts what the
-    // user LOGS, so a prediction made at 20% has to count the day it is made.
+    // Pending comes along for the coverage gap and the streak: both count what
+    // the user LOGS, so a prediction has to count the day it is made.
     const [userStat, categoryStats, resolved, pending] = await Promise.all([
       getUserStat(userId),
       listCategoryStats(userId),
@@ -184,7 +184,10 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       // against today, so one that ended days ago reads 0 on the next launch
       // rather than waiting for a resolution to notice.
       userStat: userStat
-        ? { ...userStat, current_streak: computeStreak(resolved, { now: new Date() }) }
+        ? {
+            ...userStat,
+            current_streak: computeStreak([...pending, ...resolved], { now: new Date() }),
+          }
         : null,
       categoryStats,
       nextBadges: deriveNextBadges(categoryStats),
@@ -211,7 +214,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       calibration_rating: userCalc.rating,
       total_predictions: all.length,
       total_resolved: totalResolved,
-      current_streak: computeStreak(resolved, { now: new Date() }),
+      // Every prediction, open ones too: logging counts toward a day (D2).
+      current_streak: computeStreak(all, { now: new Date() }),
       rating_is_provisional: isRatingProvisional(totalResolved),
     };
     await upsertUserStat(userStat);

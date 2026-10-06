@@ -9,6 +9,7 @@ import { chartTakeaway } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
+import { StreakLine } from '@/components/stats/StreakLine';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { Button } from '@/components/ui/Button';
 import { CountUp } from '@/components/ui/CountUp';
@@ -21,6 +22,9 @@ import { MIN_N_OVERALL } from '@/types';
 export default function HomeScreen() {
   const router = useRouter();
   const pending = usePredictionStore((s) => s.pending);
+  // Subscribed so the streak line follows each answer as well as each log.
+  usePredictionStore((s) => s.resolved);
+  const streak = usePredictionStore.getState().streakNow();
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const buckets = useStatsStore((s) => s.calibration.buckets);
@@ -81,6 +85,8 @@ export default function HomeScreen() {
       ListHeaderComponent={
         <>
           <View style={styles.hero}>{hero}</View>
+          {/* The daily streak (roadmap D2): three logged or answered a day. */}
+          <StreakLine status={streak} />
           {/* Asks for notification permission here, in context, not at
               launch (roadmap step 38). Native only. */}
           <ReminderPrompt />
