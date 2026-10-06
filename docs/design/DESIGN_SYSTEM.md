@@ -275,6 +275,14 @@ Full treatment (animation + success haptic + optional sound) for exactly three
 moments: **Warmup verdict**, **score unlock** (overall or category), **badge tier-up**.
 Weekly Wrapped gets `reveal` without confetti. Everything else is small and precise.
 
+**Streak checkpoints** (7, 30, 100 and 365 days, then each further year; decided
+2026-10-06) are the only streak days that get marked, and they're the planned fourth
+moment. For now the acknowledgement is **static**: the milestone tint on Home's streak
+row for the rest of that day, and `StreakCheckpointCard` on the answer that earned it.
+No motion, and no Success haptic, which stays reserved below. Their celebration is
+specced but not built (FUTURE_UI §B). A streak day that isn't a checkpoint never gets
+one.
+
 - `notificationAsync(Success)` is reserved for unlocks and tier-ups. Never for a Yes.
 - **Never animate:** demotions, broken streaks, "No" outcomes. A score that slips below
   a threshold keeps its emblem and shows a text "holding" state.
@@ -318,6 +326,13 @@ Weekly Wrapped gets `reveal` without confetti. Everything else is small and prec
   streak", what today adds ("1 more today makes it 13", or "Today counts") and three
   pips for today. A day counts with 3 predictions logged or answered. Gain framing
   only; an ended streak simply isn't shown until the next one starts.
+- **Streak checkpoints** (step 64; 7, 30, 100, 365, then yearly): once today counts,
+  the row names the next one ("Today counts. Next milestone: 30 days"). The day before
+  one says so as a gain ("1 more today makes it 7: a full week"; "Today counts.
+  Tomorrow can make it 7: a full week"). On the day itself the row takes the milestone
+  tint (`brand50` fill, `brand200` hairline) and reads "7-day streak · A full week.
+  Next milestone: 30 days" until midnight. Names: A full week, A full month, Triple
+  digits, A full year, Two full years… Static until the celebration is built (§6.2).
 
 ### 7.2 Calibration chart (`CalibrationChart`)
 
@@ -534,6 +549,11 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   Resolve with "You marked this as can't tell" and a secondary **Answer it now**,
   which reopens it. Only skips: they never counted, so answering later can't rewrite a
   score.
+- **Streak checkpoint** (step 64): when the answer is the one that made today count
+  and that reached a checkpoint, a still card in the milestone tint sits where the
+  milestone card would: the flame and the day count in `readout`, the name ("A full
+  week") and "7 days in a row. Next milestone: 30 days." One card at a time: a score
+  or badge milestone outranks it, and Home's row still names the checkpoint all day.
 - **Log it again** (roadmap step 22): after an answer, a secondary capsule under
   Done. It saves any reflection, closes the sheet and opens Log with the title,
   category and lead time carried over, and the confidence empty: a fresh call, never

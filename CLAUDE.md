@@ -213,7 +213,11 @@ See the authoritative section above.
 - Overall calibration rating (0–100), or provisional-progress state
 - Calibration curve chart (stated vs. actual per bucket)
 - Per-category breakdown with badge levels
-- Streak tracker
+- Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**
+  (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Home
+  and on the answer that earned it. Every other day only the number climbs. The
+  checkpoint *celebration* (motion, haptic) is planned but not built — see
+  `docs/design/FUTURE_UI.md` §B.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)

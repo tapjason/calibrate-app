@@ -1,6 +1,6 @@
 # Calibrate — Future UI Features
 
-**As of:** 2026-10-04. A1, A3, A5, A6, A4's one-tap half ("Log it again") and most of §B shipped as roadmap steps 16–26; `UI_ROADMAP.md` §1.1 lists what each remaining item waits on. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
+**As of:** 2026-10-06. A1, A3, A5, A6, A4's one-tap half ("Log it again") and most of §B shipped as roadmap steps 16–26; `UI_ROADMAP.md` §1.1 lists what each remaining item waits on. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
 what's being built now. Nothing here is scheduled, and anything that changes product
 behaviour needs the owner's call first. `CLAUDE.md` still governs every item:
 shareable artifacts are never paywalled, no number built on noise (min-N), AI stays
@@ -91,6 +91,35 @@ category unlocks), and an App Intent for "Log a prediction".
 |---|---|---|
 | Progress **ring** instead of the bar on Home/Stats | Roadmap step 4 | Optional. The bar reads fine. |
 | 👍 / 👎 on Coach cards | DESIGN_SYSTEM §7.13 | Only once there's an analytics event to receive it. |
+| **Streak checkpoint celebration** (B1 below) | Owner, 2026-10-06, with step 64 | Kept out of scope on purpose: the checkpoints ship with a static acknowledgement first. |
+
+### B1. Streak checkpoint celebration (planned, not built)
+Checkpoints are 7, 30, 100 and 365 days, then each further year (`STREAK_CHECKPOINTS`
+in `src/types`). Step 64 marks them without motion: the tinted streak row on Home and
+the still `StreakCheckpointCard` on the answer that earned it. The celebration that
+goes on top, as proposed:
+- **Motion:** the card or row scales in on the milestone spring (MilestoneCard's
+  damping 14 / stiffness 180), the day count counts up from yesterday's (6 → 7,
+  `CountUp`), and the flame bounces once (`flame.fill` with the SF Symbols bounce
+  effect on iOS; a 1.0 → 1.15 → 1.0 scale elsewhere). Reduce Motion: a 200 ms
+  cross-fade, no count-up, haptic still fires (§6.1 `reduced`).
+- **Escalation:** confetti from the emblem only at 100 and 365 and the yearly ones; 7
+  and 30 stay without it, so the burst keeps meaning something.
+- **Haptic, needs a call:** DESIGN_SYSTEM §6.2 keeps `notificationAsync(Success)` for
+  unlocks and tier-ups. Either checkpoints join them as a fourth full moment, or they
+  take `impactAsync(Rigid)`, the `reveal` haptic. Recommendation: Rigid for 7 and 30,
+  Success from 100.
+- **Both paths:** a log can reach a checkpoint as well as an answer, and the Log
+  screen goes straight back to Home. So the trigger is `predictionStore
+  .streakCheckpoint`, which `resolve` sets today; `create` has to set it too, and Home
+  plays it once when it arrives from Log.
+- **Once each:** a relaunch the same day must not replay it. Keep the last celebrated
+  checkpoint in the settings table and compare.
+- **Never:** nothing animates when a streak ends, and notifications still never
+  mention the streak (§7.15).
+- **Share:** 100 and 365 are candidates for D6's milestone share cards.
+- Size S–M. Needs the haptic call and a device build (60 fps, haptic timing), like
+  step 17's tier-up flip.
 
 ---
 

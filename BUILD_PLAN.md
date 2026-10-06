@@ -29,8 +29,8 @@ directly — it goes through a store.
 
 ## Where the build is
 
-**Current state (2026-10-05).** All code in L0–L6 is built; `tsc --noEmit` is
-clean and `npm test` is 108 suites / 1214 tests green. What is left is almost
+**Current state (2026-10-06).** All code in L0–L6 is built; `tsc --noEmit` is
+clean and `npm test` is 108 suites / 1228 tests green. What is left is almost
 entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
 The few remaining code items are in `docs/NEXT_STEPS.md`; UI status and open design
 decisions are in `docs/design/UI_ROADMAP.md`. The step-by-step build history that
@@ -219,7 +219,9 @@ queries.
   accuracy, category drift, over/under direction per category). The Coach consumes
   these; it never computes its own.
 - `src/engine/streak.ts`, `src/engine/localTime.ts` — streaks and day/month keys
-  in the device's local time (the offset is passed in, so they stay pure).
+  in the device's local time (the offset is passed in, so they stay pure). The
+  streak also reports its checkpoints (7, 30, 100, 365, then yearly; decided
+  2026-10-06): the one today reached and the next one up.
 - `src/engine/wrapped.ts` — weekly and yearly Wrapped summaries, with their own
   min-N gating.
 - `src/engine/milestones.ts` — upward crossings only (score unlock, badge tier-up,

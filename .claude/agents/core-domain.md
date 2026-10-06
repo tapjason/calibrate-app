@@ -50,8 +50,8 @@ app that has no UI and no external integrations.
 ## When you're done
 
 - Run `npx tsc --noEmit` — must be clean.
-- Run `npm test` — the whole suite must pass (1214 tests as of
-  2026-10-05).
+- Run `npm test` — the whole suite must pass (1228 tests as of
+  2026-10-06).
 - If you changed the calibration engine, also reason about the math
   in the commit message (what changed, why, what the rating becomes
   for a representative input).
