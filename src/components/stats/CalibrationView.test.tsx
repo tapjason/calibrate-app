@@ -133,7 +133,7 @@ describe('CalibrationView chart section', () => {
     );
     // The range's dash is held to its numbers so it never splits (step 70).
     expect(getByTestId('chart-takeaway').props.children).toBe(
-      "You're overconfident at 80⁠–⁠100%",
+      "You're overconfident at 80\u2060–\u2060100%",
     );
     expect(getByText(holdRanges('Of 12 things you called 80–100% likely, 7 happened.'))).toBeTruthy();
   });

@@ -5,7 +5,7 @@
 // doesn't read it. Applied where text is drawn, so the copy helpers and their
 // tests keep the plain string.
 
-const JOIN = '⁠';
+const JOIN = '\u2060';
 
 /** "80–100%" with the dash held to both numbers. */
 export function holdRanges(text: string): string {
