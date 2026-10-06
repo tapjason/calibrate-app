@@ -748,6 +748,14 @@ Added 2026-09-29 (polish pass):
       a month." in smaller type (check it against the real App Store price).
       On Stats, tapping a filled range under the chart opens History with
       "You said 80–100% ×", and the count matches the chart's subtitle.
+- [ ] **Evening reminder (added 2026-10-05, step 60):** log a prediction due
+      tomorrow; the reminder should arrive at 19:00 tomorrow, not at noon. If
+      the phone had reminders queued before this build, relaunch once and
+      check they now say 19:00 (Settings → Notifications shows nothing, so
+      wait for one).
+- [ ] **Streak (added 2026-10-05, step 61; web-verified):** after three logs or
+      answers today, Home's streak row says "Today counts" with three filled
+      pips; VoiceOver reads it as one sentence.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The indigo splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the

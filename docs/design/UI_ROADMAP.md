@@ -81,6 +81,9 @@ is checking it on an iPhone and the decisions.
 | 57 Every share card on the 360pt canvas | Done 2026-10-05, web-verified at 320 and 402pt (Warmup and Wrapped join the identity card) | Yes (exports 1080px wide) |
 | 58 Resolve: said against happened | Done 2026-10-05, web-verified ("In your 60–80% range, 40 of 52 have happened. That's 77%, against the 69% you said.") | — |
 | 59 Launch: the splash holds until the first screen | Done 2026-10-05, unit-tested (web has no native splash) | Yes (cold start goes indigo splash → Home, or → Warmup on a first run, with no white spinner screen or Home flash between) |
+| 60 D9: reminders in the evening | Done 2026-10-05, unit-tested (19:00 local; a reminder set for another time is replaced at launch) | Yes (the notification arrives at 19:00 on the due day) |
+| 61 D2: a day counts with three | Done 2026-10-05, web-verified (Home: "14-day streak · 3 more today makes it 15", then "15-day streak · Today counts" after three answers) | — |
+| 62 D4: chance bars, give-or-take, counts as dots | Done 2026-10-05, web-verified ("Give or take 5 points"; the n=5 and n=8 dots in long bars) | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -108,7 +111,9 @@ decisions **D13** and **D14** below; both were approved the same day and built a
 steps 54 and 55. A third pass added symbols to the empty states (56), put the
 Warmup and Wrapped cards on the same canvas (57), and, from the feedback research
 in the same file (§6), the range's said-against-happened to the Resolve line (58),
-and held the native splash until the first real screen is decided (59).
+and held the native splash until the first real screen is decided (59). Then three
+decisions came back the same day: D9 (evening reminders, step 60), D2 (days, with a
+three-a-day threshold, step 61) and D4 (honesty visuals, step 62).
 The next useful read is still on an iPhone, with VoiceOver on for
 steps 41, 43 and 44.
 
@@ -136,14 +141,14 @@ And the decisions in §2 below.
 | # | Decision | Recommendation | Why it needs sign-off |
 |---|---|---|---|
 | D1 | Typeface | **System font** (SF Pro + SF Rounded for numerals). Runner-up: Inter via `@expo-google-fonts/inter` for identical iOS/web rendering and more brand character. | Brand choice; affects every screen and the web screenshots. DESIGN_SYSTEM §3 assumes the system font until decided. |
-| D2 | Streak unit | Make the visible streak **weekly** ("a week with ≥ 1 log or resolution"), shown as week dots, with a silent grace week per month and back-fill when an overdue prediction is resolved. Keep the daily number internal. | Changes `UserStat.current_streak` semantics in `CLAUDE.md`. Resolutions happen when predictions come *due*, which the user doesn't control, so a daily streak breaks for reasons that aren't their fault — the worst case in Silverman & Barasch (JCR 2023). |
+| D2 | Streak unit | ~~Make the visible streak **weekly** ("a week with ≥ 1 log or resolution"), shown as week dots, with a silent grace week per month and back-fill when an overdue prediction is resolved. Keep the daily number internal.~~ **Decided 2026-10-05: days, with a threshold.** A day counts when at least 3 predictions are logged or answered in it, because a number that climbs every day is the appeal. Built as step 61: logging counts as well as answering (which fixes the "due dates aren't yours" problem), and Home shows the streak with what today adds. | Changes `UserStat.current_streak` semantics in `CLAUDE.md`. Resolutions happen when predictions come *due*, which the user doesn't control, so a daily streak breaks for reasons that aren't their fault — the worst case in Silverman & Barasch (JCR 2023). |
 | D3 | Navigation | Four tabs **Today · Insights · History · You**; Log becomes a "+" opening a sheet; native tabs (Liquid Glass) on iOS with JS tabs kept on web. **Build it after the SDK 58 upgrade**, where `expo-router/native-tabs` is stable (SDK 54–57 only have `unstable-native-tabs`, and 57 had an `initialRouteName` bug, expo#49897). | Restructures navigation and routes. |
-| D4 | Engine additions for honesty visuals | Per-bucket **consistency band** (binomial 50% range at n), **expected count** per bucket for the "Dots" view, optional **bootstrap range** on the score. | New engine outputs (core-domain / Layer 3). The UI must not compute them. |
+| D4 | Engine additions for honesty visuals | ~~Per-bucket **consistency band** (binomial 50% range at n), **expected count** per bucket for the "Dots" view, optional **bootstrap range** on the score.~~ **Approved and built 2026-10-05** (step 62): grey chance bars on the chart, "give or take" on the rating, and the counts as dots. | New engine outputs (core-domain / Layer 3). The UI must not compute them. |
 | D5 | Expo SDK upgrade | **Refined 2026-10-04:** ship the first device build on 55, then go **straight to 58** once it's stable (beta since 2026-09-15: RN 0.88, stable native tabs, `expo-app-intents`, the iOS 27 scene lifecycle). Skip stopping at 56/57. Sequenced as `NEXT_STEPS.md` item j. | Cross-cutting and L-sized: 58 has breaking changes in `expo-router`, `expo-sqlite` and `expo-file-system` and makes RN's strict TypeScript API the default. Doing it after the first device run keeps device bugs attributable. |
 | D6 | Milestone share cards and a "Year in Predictions" grid | Add share cards at Tracker unlock, first non-provisional score, and 50/100 resolutions; later, a Daylio-style one-cell-per-prediction grid. | New share surfaces; scope call. |
 | D7 | Dark mode | **Support the system setting, no in-app toggle**, after the token migration (step 1) is done. Neutrals proposed in DESIGN_SYSTEM §2.5, all text ≥ 5.2:1. | HIG: people "generally expect all apps … to respect their preference". It doubles the visual QA surface (every screen, share-card preview, both glass extremes), and `app.json` is currently pinned to light. |
 | D8 | Resolve from the notification | *Happened* / *Didn't* actions on the reminder, **foreground** first (opens straight into the resolved state). | Changes the resolve path and the notification service. Read the action from `getLastNotificationResponse()` at startup as well as the listener, or a cold-start tap is lost. `opensAppToForeground: false` is documented as waking the app headless on iOS, but reports of buttons missing when the app is killed (expo#36282) keep the background version behind a device test. |
-| D9 | Reminder time | Fire in the **evening of the due day** (e.g. 19:00 local), or at a user-set check-in time defaulting to that. | Behaviour change in L5. **Checked 2026-10-04:** every due date is stored at 12:00 local (`DuePicker`, `LogPredictionForm`), so reminders fire at noon today. The scheduler only acts on *changes* to the pending set and never reconciles at launch (`scheduler.ts` header), so moving the time also needs a launch-time reschedule of reminders already queued — that's the real size of this (M, not S). **Update 2026-10-05:** step 37 added the launch-time reconcile, so what's left is the new time and a reschedule of reminders whose time doesn't match: S–M. |
+| D9 | Reminder time | ~~Fire in the **evening of the due day** (e.g. 19:00 local), or at a user-set check-in time defaulting to that.~~ **Approved and built 2026-10-05** (step 60): 19:00 local on the due day; queued noon reminders move on the next launch. A user-set time is not built. | Behaviour change in L5. **Checked 2026-10-04:** every due date is stored at 12:00 local (`DuePicker`, `LogPredictionForm`), so reminders fire at noon today. The scheduler only acts on *changes* to the pending set and never reconciles at launch (`scheduler.ts` header), so moving the time also needs a launch-time reschedule of reminders already queued — that's the real size of this (M, not S). **Update 2026-10-05:** step 37 added the launch-time reconcile, so what's left is the new time and a reschedule of reminders whose time doesn't match: S–M. |
 | D11 | An on-device Coach (FUTURE_UI P2) | Prototype it after the SDK upgrade: Apple Foundation Models first where available, the OpenAI Coach as fallback, both through the same grounding validator. Keep it Plus at first. | Changes the Coach's provider and privacy story (nothing leaves the phone on supported devices), and whether it stays Plus. |
 | D12 | Widgets (FUTURE_UI P1) | Build the "ready to resolve" widget first, right after the SDK 56+ upgrade; the identity widget second. | A new native target and app group; scope and order are a product call. |
 | D13 | The number before you touch it | ~~**Start both confidence controls empty**: the readout says "Set how sure you are", the thumb appears where it's first touched (the ±5 buttons start from the middle of the range), and Next / Save wait for a number. Watch `warmup_completed / warmup_started` either side of the change. Runner-up for the Warmup only: Hedge-style buttons (50 · 60 · 70 · 80 · 90 · 100), one tap each.~~ **Approved and built 2026-10-05** (step 54). The readout shows "—%, not set yet" and the thumb rests grey mid-range until the first drag, tap, touch or ±5. | Until then the Warmup started at 75% and Log at 50%. Tapping through the Warmup yields "I run hot · 75% sure, 50% right" on the first share card, about a number the user never chose (step 49 now says so, but still shares it). On Log, 50% sits inside the 35–65% band, so an untouched save earns the integrity bonus and counts as an "honest coin-flip" on Wrapped. Step-5 presets probably anchor little (Liu & Conrad 2019 found no consistent effect on 21-point sliders); the cost is that "didn't touch it" can't be told from "chose it". It adds one required interaction to the Day-0 funnel and the 15-second Log target, so it's your call. |
@@ -154,15 +159,14 @@ And the decisions in §2 below.
 
 ### Notes from the 2026-10-04 pass, for when you decide
 
-- **D2 (weekly streak):** the demo account shows "streak 21" on Stats. A daily
-  number that high is only reachable with resolutions every single day, which
-  real use won't produce, since resolutions come when predictions fall due.
-  That's the D2 argument in one screenshot.
+- **D2 (decided: days, three a day):** the old daily streak needed a resolution
+  every day, which real use couldn't produce since resolutions come when
+  predictions fall due. Counting logs too fixes that without giving up days.
 - **D3 / D5:** sequenced after the SDK 58 upgrade (`NEXT_STEPS.md` item j);
   nothing to decide until then except whether you want the four tabs at all.
-- **D4 (honesty bands):** the demo chart makes the case. The 0–20% and
-  20–40% dots (n=5, n=8) sit on the diagonal with the same visual weight as the
-  n=57 dot; a band would show that the small ones could easily be 20 points off.
+- **D4 (built):** on the demo chart the n=5 and n=8 dots now sit in long grey
+  bars and the n=57 dot sits far below its short one: the overconfidence at
+  80–100% is real, the small ones are within luck.
 - **D7 (dark mode):** `app.json` still pins `userInterfaceStyle` to light and
   the tokens have one palette; the proposed neutrals in DESIGN_SYSTEM §2.5 are
   the starting point.

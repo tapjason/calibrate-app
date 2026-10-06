@@ -309,8 +309,15 @@ Weekly Wrapped gets `reveal` without confetti. Everything else is small and prec
 - **Ghost chart** before unlock: the full frame, diagonal and labelled regions with
   empty bucket slots — never an italic placeholder line.
 - **Unlock** = the `unlock` motion (§6.1).
-- **Proposed:** a soft "likely 71–78" range on the bar from a bootstrap of the MAE.
-  Engine work — the component must receive the range, never compute it.
+- **Give or take** (roadmap D4, step 62): on Stats, a soft band on the bar and the line
+  "Give or take 5 points with this many predictions." The engine bootstraps the
+  rating and sets half the spread of the middle 80% either side of it
+  (`statsStore.ratingRange`); centred on the rating because resampling only adds
+  error, so percentiles would sit below a calibrated user's own score.
+- **Streak** (roadmap D2, step 61): a row on Home under the rating: a flame, "12-day
+  streak", what today adds ("1 more today makes it 13", or "Today counts") and three
+  pips for today. A day counts with 3 predictions logged or answered. Gain framing
+  only; an ended streak simply isn't shown until the next one starts.
 
 ### 7.2 Calibration chart (`CalibrationChart`)
 
@@ -333,11 +340,16 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
 6. Keep `describeCalibrationCurve()` for screen readers and add a "Show as table"
    disclosure.
 7. Animate draw-in by animating `strokeDashoffset` on the existing polyline.
-8. **Proposed:** a *consistency band* (the binomial 50% range a perfectly calibrated
-   forecaster would hit at each bucket's n, drawn as a soft capsule, no end caps) and a
-   **"Dots" view** (one icon-array row per bucket: n dots, filled = happened, plus a
-   marker at the expected count). Both need per-bucket numbers from the engine/store;
-   components must not do the binomial or expected-count math (layer rule).
+8. **Chance bars and dots** (roadmap D4, built as step 62): behind each dot a grey
+   capsule (`textSecondary` at 16%, 10pt wide, no end caps) spans the binomial 50%
+   range a perfectly calibrated forecaster would hit at that bucket's n
+   (`BucketStat.chance_low/high`). The caption and spoken description say what it
+   is. "Show the counts" opens each range's said / happened / chance numbers and an
+   icon array: a dot per prediction (ink when it happened, hollow when not), an
+   upright `textSecondary` bar at the expected count (`expected_yes`), and "40 of 52
+   happened; your numbers expected about 36." Above 60 predictions each dot stands
+   for several. The engine does the binomial and expected-count math; components
+   only draw it.
 
 Error bars with caps are banned — lay readers treat the caps as hard limits.
 
@@ -486,7 +498,8 @@ state shows it is the screen's only action.
   the sentence; the chart comes second.
 - Numbers primary, words secondary — probability words mean different things to
   different people. Pair percentages with natural frequencies ("7 in 10").
-- "Guesser" is a starting point, not a grade. Streak breaks read "New week, new calls."
+- "Guesser" is a starting point, not a grade. The streak says what today adds, never
+  what it would cost; when it ends it disappears quietly until the next one starts.
 - Sentence case everywhere; no ALL-CAPS labels.
 - Badge gating is a trust feature — say it: "Badges need receipts."
 
@@ -656,8 +669,10 @@ the same thing, no instructions, title-style titles without ending punctuation.
   `setNotificationCategoryAsync`, as foreground actions that open straight into the
   resolved state. Background (no-open) action handling is only documented to reach JS on
   Android; verify on an iOS device before relying on it.
-- **Proposed** (roadmap D9): fire the reminder in the evening of the due day, not at
-  noon.
+- **Evening** (roadmap D9, built as step 60): the reminder fires at 19:00 local on the
+  due day (`REMINDER_HOUR`); due dates are stored at noon, which asked about Friday's
+  outcome before Friday was over. Each reminder records its time, and the launch
+  reconcile replaces one set for another time.
 
 ### 7.16 Trends (Plus)
 

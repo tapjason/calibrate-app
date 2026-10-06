@@ -225,7 +225,8 @@ See the authoritative section above.
 Nothing that produces a shareable artifact is ever paywalled.
 
 ### 7. Notification Service
-- **Resolution reminder** — fires on due_date
+- **Resolution reminder** — fires at 19:00 local on the due day (decided 2026-10-05;
+  due dates are stored at noon, which was before most outcomes were known)
 - **Weekly digest** — fires Sunday evening, summarizes open and upcoming predictions
 
 ---
