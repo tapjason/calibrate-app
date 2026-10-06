@@ -8,9 +8,17 @@ import {
   MIN_N_BAND,
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
+  STREAK_CHECKPOINTS,
   STREAK_DAY_MIN,
   type BadgeLevel,
 } from '@/types';
+
+/** "7, 30, 100 and 365", from the engine's list. */
+function checkpointList(): string {
+  const days = [...STREAK_CHECKPOINTS];
+  const last = days.pop();
+  return `${days.join(', ')} and ${last}`;
+}
 
 export interface ScoringSection {
   title: string;
@@ -77,6 +85,7 @@ export function scoringSections(): ScoringSection[] {
       title: 'Your streak',
       paragraphs: [
         `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it, and your streak is how many days in a row have counted. Today joins it once it reaches ${STREAK_DAY_MIN}; until midnight, yesterday's streak still stands.`,
+        `The milestones are ${checkpointList()} days, then every year after that. Home names the day you reach one.`,
         "The streak is about the habit, not the score: it doesn't change your calibration, and nothing is lost when it ends.",
       ],
     },

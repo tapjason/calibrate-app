@@ -85,7 +85,7 @@ is checking it on an iPhone and the decisions.
 | 61 D2: a day counts with three | Done 2026-10-05, web-verified (Home: "14-day streak · 3 more today makes it 15", then "15-day streak · Today counts" after three answers) | — |
 | 62 D4: chance bars, give-or-take, counts as dots | Done 2026-10-05, web-verified ("Give or take 5 points"; the n=5 and n=8 dots in long bars) | — |
 | 63 The streak on the Wrapped cards | Done 2026-10-05, web-verified ("15-day streak" under the counts, from two days up) | — |
-| 64 Streak checkpoints at 7, 30, 100, 365, then yearly | Done 2026-10-06, web-verified with the clock moved (Home on day 7: tinted row, "A full week. Next milestone: 30 days"; day 6: "Tomorrow can make it 7: a full week"); the Resolve card unit-tested and previewed at `/dev/celebrations`. **Static on purpose**: the celebration is FUTURE_UI B1 | Yes (VoiceOver reads the row and card as one sentence) |
+| 64 Streak checkpoints at 7, 30, 100, 365, then yearly | Done 2026-10-06, web-verified with the clock moved (Home on day 7: tinted row, "A full week. Next milestone: 30 days"; day 6: "Tomorrow can make it 7: a full week"); the Resolve card unit-tested and previewed at `/dev/celebrations`; How scoring works lists them from the engine's constant. **Static on purpose**: the celebration is FUTURE_UI B1 | Yes (VoiceOver reads the row and card as one sentence) |
 | 65 A run ends on what it came to | Done 2026-10-06, web-verified ("2 answered, 1 can't tell. 1 happened. You expected about 1.", then the streak row: a skip doesn't fill a pip) | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for

@@ -1,6 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { MIN_N_BAND, MIN_N_CATEGORY, MIN_N_OVERALL, STREAK_DAY_MIN } from '@/types';
+import {
+  MIN_N_BAND,
+  MIN_N_CATEGORY,
+  MIN_N_OVERALL,
+  STREAK_CHECKPOINTS,
+  STREAK_DAY_MIN,
+} from '@/types';
 
 import { badgeRows, scoringSections } from './scoringCopy';
 import { ScoringExplainer } from './ScoringExplainer';
@@ -25,6 +31,14 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(allText()).toContain(
       `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it`,
     );
+  });
+
+  // Decided 2026-10-06: the checkpoints, from the engine's own list.
+  it('names the streak milestones', () => {
+    expect(allText()).toContain(
+      `The milestones are ${STREAK_CHECKPOINTS.slice(0, -1).join(', ')} and ${STREAK_CHECKPOINTS[STREAK_CHECKPOINTS.length - 1]} days, then every year after that.`,
+    );
+    expect(allText()).toContain('The milestones are 7, 30, 100 and 365 days');
   });
 
   // CLAUDE.md's bucket convention: lower bound inclusive, top band closed.
