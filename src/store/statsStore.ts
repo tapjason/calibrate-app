@@ -267,6 +267,15 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 }));
 
 /**
+ * The lower edge of the confidence range a stated number falls in, by the
+ * engine's fixed convention ([0,20) … [80,100]). History filters by range with
+ * it (roadmap step 51), so the screen never learns where the edges are.
+ */
+export function confidenceRangeLow(confidence: number): number {
+  return bucketLowFor(confidence);
+}
+
+/**
  * Whether the Log screen should nudge for an unlikely prediction right now.
  *
  * The engine call lives here, in L4, so the Log screen never imports L3. Reads

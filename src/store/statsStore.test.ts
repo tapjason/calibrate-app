@@ -8,7 +8,7 @@ import {
   __setPersistenceForTests,
   useSettingsStore,
 } from './settingsStore';
-import { coverageNudgeNow, useStatsStore } from './statsStore';
+import { confidenceRangeLow, coverageNudgeNow, useStatsStore } from './statsStore';
 
 const USER = 'local-user-v1';
 
@@ -216,5 +216,17 @@ describe('statsStore: per-category buckets (roadmap step 19)', () => {
       low: 80,
       total_resolved: 1,
     });
+  });
+});
+
+// Roadmap step 51: History filters by range without knowing the edges.
+describe('confidenceRangeLow', () => {
+  it('follows the fixed bucket convention, lower edge inclusive, top closed', () => {
+    expect(confidenceRangeLow(0)).toBe(0);
+    expect(confidenceRangeLow(19)).toBe(0);
+    expect(confidenceRangeLow(20)).toBe(20);
+    expect(confidenceRangeLow(65)).toBe(60);
+    expect(confidenceRangeLow(80)).toBe(80);
+    expect(confidenceRangeLow(100)).toBe(80);
   });
 });

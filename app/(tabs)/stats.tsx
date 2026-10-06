@@ -31,6 +31,8 @@ export default function StatsScreen() {
         pendingCount={pending.length}
         nextDue={nextDueLine(pending, new Date())}
         onExplain={() => router.push('/scoring' as never)}
+        // The predictions behind a range, in History (roadmap step 51).
+        onSelectRange={(low) => router.push(`/history?range=${low}` as never)}
       />
       {/* Free users get one Plus teaser, not a grey upsell per panel. */}
       {!isPlus && (

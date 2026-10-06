@@ -146,6 +146,42 @@ describe('CalibrationView chart section', () => {
     expect(getByTestId('coverage-note')).toBeTruthy();
   });
 
+  // Roadmap step 51: a range with predictions in it opens them in History.
+  it('opens a filled range, and leaves empty ones and the Warmup inert', () => {
+    const onSelectRange = jest.fn();
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={{ rating: 70, buckets: [bucket] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        onSelectRange={onSelectRange}
+      />,
+    );
+    const filled = getByTestId('coverage-80');
+    expect(filled.props.accessibilityRole).toBe('button');
+    expect(filled.props.accessibilityLabel).toBe('80–100%: 12 resolved. Show them.');
+    fireEvent.press(filled);
+    expect(onSelectRange).toHaveBeenCalledWith(80);
+
+    fireEvent.press(getByTestId('coverage-0'));
+    expect(onSelectRange).toHaveBeenCalledTimes(1);
+    expect(getByTestId('coverage-tap-hint')).toBeTruthy();
+  });
+
+  it('keeps the cells as plain counts without a handler', () => {
+    const { getByTestId, queryByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={{ rating: 70, buckets: [bucket] }}
+        categoryStats={[]}
+        nextBadges={{}}
+      />,
+    );
+    expect(getByTestId('coverage-80').props.accessibilityRole).toBeUndefined();
+    expect(queryByTestId('coverage-tap-hint')).toBeNull();
+  });
+
   it('keeps the numbers table behind a disclosure', () => {
     const { getByTestId, queryByTestId } = render(
       <CalibrationView

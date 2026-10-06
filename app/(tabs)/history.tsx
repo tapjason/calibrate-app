@@ -1,11 +1,19 @@
-import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import {
+  emptyHistoryMessage,
+  filterHistory,
+  parseRangeParam,
+  rangeText,
+} from '@/components/prediction/historyFilter';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
+import { confidenceRangeLow } from '@/store/statsStore';
 import type { Category } from '@/types';
 
 const FILTERS: readonly (Category | 'all')[] = [
@@ -19,12 +27,24 @@ const FILTERS: readonly (Category | 'all')[] = [
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const resolved = usePredictionStore((s) => s.resolved);
   const [filter, setFilter] = useState<Category | 'all'>('all');
+  // A confidence range arrives from a tap on Stats' coverage row (roadmap
+  // step 51): the predictions behind one dot on the chart.
+  const range = parseRangeParam(useLocalSearchParams<{ range?: string }>().range);
+
+  const clearRange = useCallback(() => {
+    // This screen's own params, even while another tab is taking focus.
+    navigation.setParams({ range: undefined } as never);
+  }, [navigation]);
+  // Leaving History drops the range, so the tab opens on everything next time
+  // instead of a filter set from another screen days ago.
+  useFocusEffect(useCallback(() => clearRange, [clearRange]));
 
   const filtered = useMemo(
-    () => (filter === 'all' ? resolved : resolved.filter((p) => p.category === filter)),
-    [resolved, filter],
+    () => filterHistory(resolved, { category: filter, range }, confidenceRangeLow),
+    [resolved, filter, range],
   );
 
   // Plain counts for the current filter — facts, never a verdict.
@@ -41,6 +61,19 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.wrap}>
+      {range !== null && (
+        <Pressable
+          onPress={clearRange}
+          accessibilityRole="button"
+          accessibilityLabel={`Showing what you said ${range} to ${range + 20} percent. Show every range.`}
+          hitSlop={{ top: 4, bottom: 4 }}
+          style={styles.rangeChip}
+          testID="history-range"
+        >
+          <Text style={styles.rangeChipText}>You said {rangeText(range)}</Text>
+          <Icon sf="xmark" fallback="close" size={14} color={colors.brand800} />
+        </Pressable>
+      )}
       {/* One scrolling row of filters rather than chips wrapping to two, and
           only once there is something to filter (roadmap step 33). */}
       {resolved.length > 0 && (
@@ -75,11 +108,7 @@ export default function HistoryScreen() {
       {filtered.length === 0 ? (
         <EmptyState
           testID="history-empty"
-          message={
-            filter === 'all'
-              ? 'Resolved predictions collect here, with how each one turned out.'
-              : `Nothing resolved in ${filter} yet.`
-          }
+          message={emptyHistoryMessage({ category: filter, range })}
         />
       ) : (
         <FlatList
@@ -124,4 +153,19 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
   chipText: { ...type.subhead, color: colors.textPrimary, textTransform: 'capitalize' },
   chipTextActive: { color: colors.brand800, fontWeight: '600' },
+  // Selected styling, like a chosen category, plus an × that clears it.
+  rangeChip: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.brand50,
+    borderColor: colors.brand600,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: space.xs,
+    marginBottom: space.sm,
+    minHeight: 36,
+    paddingHorizontal: space.md,
+  },
+  rangeChipText: { ...type.subhead, color: colors.brand800, fontWeight: '600' },
 });

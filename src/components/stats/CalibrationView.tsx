@@ -30,6 +30,8 @@ interface CalibrationViewProps {
   onExplain?: () => void;
   /** While calibrating, when the next one comes due (roadmap step 35). */
   nextDue?: string | null;
+  /** Opens a confidence range's predictions in History (roadmap step 51). */
+  onSelectRange?: (low: number) => void;
 }
 
 /**
@@ -46,6 +48,7 @@ export function CalibrationView({
   pendingCount = 0,
   onExplain,
   nextDue = null,
+  onSelectRange,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
@@ -113,7 +116,7 @@ export function CalibrationView({
         <Text style={styles.empty}>Resolve a prediction and your first dot lands here.</Text>
       )}
 
-      <CoverageRow buckets={calibration.buckets} />
+      <CoverageRow buckets={calibration.buckets} onSelectRange={onSelectRange} />
 
       {calibration.buckets.length > 0 && (
         <>

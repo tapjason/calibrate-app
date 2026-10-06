@@ -1,10 +1,15 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, space, type } from '@/constants/theme';
 import type { BucketStat } from '@/types';
 
 interface CoverageRowProps {
   buckets: readonly BucketStat[];
+  /**
+   * Opens the predictions behind a range (roadmap step 51), by its lower
+   * edge. Without it the cells are plain counts, as on the Warmup.
+   */
+  onSelectRange?: (low: number) => void;
 }
 
 const EDGES = [0, 20, 40, 60, 80] as const;
@@ -18,7 +23,7 @@ const EDGES = [0, 20, 40, 60, 80] as const;
  * Empty ranges get a dashed outline and the word "none", so the gap reads
  * without colour.
  */
-export function CoverageRow({ buckets }: CoverageRowProps) {
+export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
   const byLow = new Map(buckets.map((b) => [b.low, b.total_resolved]));
   const lowUsed = (byLow.get(0) ?? 0) + (byLow.get(20) ?? 0) > 0;
 
@@ -28,6 +33,33 @@ export function CoverageRow({ buckets }: CoverageRowProps) {
         {EDGES.map((low) => {
           const n = byLow.get(low) ?? 0;
           const label = `${low}–${low + 20}%`;
+          const content = (
+            <>
+              <Text style={styles.range}>{label}</Text>
+              <Text style={[styles.count, n === 0 && styles.countEmpty]}>
+                {n === 0 ? 'none' : n}
+              </Text>
+            </>
+          );
+          // An empty range has nothing behind it to open.
+          if (onSelectRange && n > 0) {
+            return (
+              <Pressable
+                key={low}
+                testID={`coverage-${low}`}
+                onPress={() => onSelectRange(low)}
+                accessibilityRole="button"
+                accessibilityLabel={`${label}: ${n} resolved. Show them.`}
+                style={({ pressed }) => [
+                  styles.cell,
+                  styles.cellTappable,
+                  pressed && styles.cellPressed,
+                ]}
+              >
+                {content}
+              </Pressable>
+            );
+          }
           return (
             <View
               key={low}
@@ -36,14 +68,16 @@ export function CoverageRow({ buckets }: CoverageRowProps) {
               accessible
               accessibilityLabel={`${label}: ${n === 0 ? 'none yet' : `${n} resolved`}`}
             >
-              <Text style={styles.range}>{label}</Text>
-              <Text style={[styles.count, n === 0 && styles.countEmpty]}>
-                {n === 0 ? 'none' : n}
-              </Text>
+              {content}
             </View>
           );
         })}
       </View>
+      {onSelectRange && buckets.length > 0 && (
+        <Text style={styles.note} testID="coverage-tap-hint">
+          Tap a range to see the predictions behind it.
+        </Text>
+      )}
       {buckets.length > 0 && !lowUsed && (
         <Text style={styles.note} testID="coverage-note">
           You haven&apos;t logged anything under 40% yet, so your score only covers the
@@ -66,6 +100,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: space.sm,
   },
+  // A tappable range takes the control outline, the 3:1 border the app's
+  // other controls use, so it reads as one; empty ranges keep their dashes.
+  cellTappable: { borderColor: colors.controlBorder },
+  cellPressed: { backgroundColor: colors.surfaceSunken },
   empty: {
     backgroundColor: colors.surfaceSunken,
     borderColor: colors.controlBorder,
