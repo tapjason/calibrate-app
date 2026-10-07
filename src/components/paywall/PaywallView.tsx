@@ -167,13 +167,21 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
         {FREE_FOREVER_NOTE}
       </Text>
 
-      <Button
-        label={restoring ? 'Restoring…' : 'Restore purchases'}
-        variant="secondary"
-        disabled={busy}
+      {/* A text button (DESIGN_SYSTEM §7.6): as an outlined capsule it read
+          as a second call to action between the one CTA and "Not now". */}
+      <Pressable
         onPress={() => void restore()}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: busy }}
+        hitSlop={8}
+        style={styles.restore}
         testID="paywall-restore"
-      />
+      >
+        <Text style={[styles.restoreText, busy && styles.restoreBusy]}>
+          {restoring ? 'Restoring…' : 'Restore purchases'}
+        </Text>
+      </Pressable>
 
       {trialTerms !== '' && (
         <Text style={styles.terms} testID="paywall-trial-terms">
@@ -354,6 +362,9 @@ const styles = StyleSheet.create({
   timelineWhat: { ...type.subhead, color: colors.textSecondary },
   notice: { ...type.subhead, color: colors.textPrimary },
   freeNote: { ...type.footnote, color: colors.textSecondary },
+  restore: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
+  restoreText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  restoreBusy: { color: colors.textTertiary },
   muted: { ...type.subhead, color: colors.textSecondary },
   terms: { ...type.caption, fontWeight: '400', color: colors.textSecondary },
   legal: { flexDirection: 'row', gap: 20, justifyContent: 'center' },
