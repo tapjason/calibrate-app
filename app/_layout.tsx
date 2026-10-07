@@ -13,11 +13,10 @@ import {
   routeFromLaunchNotification,
 } from '@/notifications/scheduler';
 import { usePredictionStore } from '@/store/predictionStore';
-import { useAuthStore } from '@/store/authStore';
+import { syncForUser, useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { selectHasCompletedWarmup, useWarmupStore } from '@/store/warmupStore';
-import { syncNow } from '@/supabase/sync';
 
 // The native splash stays up until the first real screen is decided
 // (roadmap step 59), rather than cutting to the loading view below.
@@ -124,14 +123,14 @@ export default function RootLayout() {
 
   // Foreground sync. Sign-in already triggers one sweep via authStore; this
   // catches every subsequent return to the app so other devices' writes
-  // land without a manual refresh. syncNow is no-op for guests, idempotent
+  // land without a manual refresh. The sync is a no-op for guests, idempotent
   // for concurrent calls, and swallows its own errors.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
       const userId = useAuthStore.getState().userId;
       if (!userId) return;
-      void syncNow(userId);
+      void syncForUser(userId);
       // Renewals, lapses, refunds, and purchases made on another device all
       // happen outside this process. Foreground is the only moment we get to
       // notice them.

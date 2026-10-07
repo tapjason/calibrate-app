@@ -118,6 +118,24 @@ async function reloadForUser(userId: string): Promise<void> {
 }
 
 /**
+ * A sync, then the stores refreshed from what it wrote. syncNow's own
+ * recompute rebuilds the stats; the lists Home, History and the streak read
+ * need a reload too, or pulled rows stay out of sight until the next log, and
+ * an answer's "before" streak misses them. Every app-level sync goes through
+ * here; the reload lives in the store layer so the sync module needn't
+ * import predictionStore.
+ */
+export function syncForUser(userId: string | null): ReturnType<typeof syncNow> {
+  return syncNow(userId, { recompute: refreshAfterSync });
+}
+
+async function refreshAfterSync(userId: string): Promise<void> {
+  await useStatsStore.getState().recomputeForUser(userId);
+  const predictions = usePredictionStore.getState();
+  await Promise.all([predictions.loadPending(), predictions.loadResolved()]);
+}
+
+/**
  * Compute the new auth state from a session. Pure — testable without touching
  * the store.
  */
@@ -183,7 +201,7 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
   // for guests, no-ops when Supabase isn't configured, and swallows its own
   // errors — auth init must not block on network.
   if (next.status === 'authenticated') {
-    void syncNow(next.userId);
+    void syncForUser(next.userId);
   }
 }
 

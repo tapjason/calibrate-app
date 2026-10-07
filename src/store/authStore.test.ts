@@ -12,8 +12,10 @@ import type { Session } from '@supabase/supabase-js';
 
 import { setDbForTests } from '@/db/client';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
+import { insertPrediction } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
 import { setSupabaseClientForTests } from '@/supabase/client';
+import { syncNow } from '@/supabase/sync';
 
 // Stub the L5 sync module so authStore's fire-and-forget syncNow on signin
 // doesn't try to hit a real Supabase client or AsyncStorage during tests.
@@ -23,7 +25,7 @@ jest.mock('@/supabase/sync', () => ({
   __resetSyncStateForTests: jest.fn(),
 }));
 
-import { useAuthStore } from './authStore';
+import { syncForUser, useAuthStore } from './authStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
 
@@ -232,5 +234,38 @@ describe('authStore — with Supabase client', () => {
     await new Promise((r) => setImmediate(r));
 
     expect(usePredictionStore.getState().pending).toEqual(before);
+  });
+});
+
+// Home, History and the streak read the store's lists, not the table.
+describe('syncForUser', () => {
+  it('reloads the prediction lists as well as the stats after a sync', async () => {
+    await useAuthStore.getState().initialize();
+    const userId = useAuthStore.getState().userId!;
+    (syncNow as jest.Mock).mockClear();
+
+    await syncForUser(userId);
+    const deps = (syncNow as jest.Mock).mock.calls[0][1] as {
+      recompute: (id: string) => Promise<void>;
+    };
+
+    // A row the sync wrote, then the recompute the sync would run.
+    await insertPrediction({
+      id: 'from-elsewhere',
+      user_id: userId,
+      title: 'Pulled from another device',
+      category: 'work',
+      confidence: 70,
+      created_at: '2026-05-01T00:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
+      status: 'pending',
+      resolved_at: null,
+      reflection: null,
+      integrity_bonus: false,
+    });
+    await deps.recompute(userId);
+
+    expect(usePredictionStore.getState().pending.map((p) => p.id)).toContain('from-elsewhere');
+    expect(useStatsStore.getState().userStat?.total_predictions).toBe(1);
   });
 });
