@@ -50,6 +50,16 @@ export const STREAK_DAY_MIN = 3;
 export const STREAK_CHECKPOINTS = [7, 30, 100, 365] as const;
 
 /**
+ * Rest days (decided 2026-10-07, UI_ROADMAP step 87): every REST_DAY_EVERY
+ * counted days in a streak save one, up to REST_DAYS_MAX. A past day that
+ * didn't count spends one and the streak carries on without adding that day;
+ * with none saved, it ends. An emergency reserve in Sharif & Shu's sense:
+ * finite, earned, and spent automatically (research/retention-2026-10.md §2.2).
+ */
+export const REST_DAY_EVERY = 7;
+export const REST_DAYS_MAX = 2;
+
+/**
  * What a set of answers came to, in counts (roadmap step 65): the end of a
  * run says it. `expected` is the sum of stated confidences as a count, like
  * Wrapped's: three answers at 70% expect 2.1.
@@ -79,6 +89,17 @@ export interface StreakStatus {
   checkpoint: number | null;
   /** The smallest checkpoint above the streak: what it's climbing toward. */
   nextCheckpoint: number;
+  /** Rest days saved now, 0..REST_DAYS_MAX. */
+  restDays: number;
+  /**
+   * How many days just before today were covered by a rest day (0 when
+   * yesterday counted or the streak has ended): "Yesterday was a rest day".
+   */
+  restUsed: number;
+  /** Today counted and brought a rest day (day 7, 14, 21… with room to save it). */
+  restEarnedToday: boolean;
+  /** The streak length that saves the next rest day, or null while the reserve is full. */
+  nextRestAt: number | null;
 }
 
 export type Category = 'work' | 'health' | 'finance' | 'social' | 'personal';
@@ -126,7 +147,7 @@ export interface UserStat {
   calibration_rating: number; // rolling 0–100
   total_predictions: number;
   total_resolved: number;
-  current_streak: number; // consecutive days with ≥ 3 predictions logged or answered
+  current_streak: number; // days with ≥ 3 logged or answered, in a row but for saved rest days
   rating_is_provisional: boolean; // true while total_resolved < MIN_N_OVERALL
 }
 
@@ -439,11 +460,12 @@ export type NextBadge = (
 ) => NextBadgeTarget | null;
 
 /**
- * Consecutive local calendar days with at least STREAK_DAY_MIN (3) predictions
- * logged or answered yes/no that day (decided 2026-10-05, UI_ROADMAP D2). Pass
- * every prediction, open ones included: logging counts. With `now`, today
- * counts once it reaches the minimum, the streak otherwise runs through
- * yesterday, and one whose last counted day is before yesterday reads 0.
+ * Local calendar days with at least STREAK_DAY_MIN (3) predictions logged or
+ * answered yes/no that day (decided 2026-10-05, UI_ROADMAP D2), in a row except
+ * where a saved rest day covers a day that didn't count (step 87). Pass every
+ * prediction, open ones included: logging counts. With `now`, today counts
+ * once it reaches the minimum, the streak otherwise runs through yesterday,
+ * and one with an uncovered day since its last counted day reads 0.
  */
 export type ComputeStreak = (predictions: Prediction[], opts?: { now?: Date }) => number;
 

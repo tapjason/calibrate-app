@@ -5,6 +5,8 @@ import {
   MIN_N_BAND,
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
+  REST_DAY_EVERY,
+  REST_DAYS_MAX,
   STREAK_CHECKPOINTS,
   STREAK_DAY_MIN,
 } from '@/types';
@@ -32,6 +34,14 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(allText()).toContain(
       `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it`,
     );
+  });
+
+  // Decided 2026-10-07 (roadmap step 87): rest days, from the engine's constants.
+  it('says how rest days are saved and spent', () => {
+    expect(allText()).toContain(
+      `Every ${REST_DAY_EVERY} days that count save a rest day, up to ${REST_DAYS_MAX}.`,
+    );
+    expect(allText()).toContain('Every 7 days that count save a rest day, up to 2.');
   });
 
   // Decided 2026-10-06: the checkpoints, from the engine's own list.

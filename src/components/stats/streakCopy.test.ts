@@ -6,6 +6,11 @@ import { checkpointCopy, checkpointName, streakCopy } from './streakCopy';
 const status = (s: Partial<StreakStatus> & Pick<StreakStatus, 'streak' | 'today' | 'todayCounts'>): StreakStatus => ({
   checkpoint: null,
   nextCheckpoint: 7,
+  // Nothing to say about rest days unless a test asks (step 87).
+  restDays: 0,
+  restUsed: 0,
+  restEarnedToday: false,
+  nextRestAt: null,
   ...s,
 });
 
@@ -69,6 +74,7 @@ describe('streak checkpoints', () => {
       filled: 3,
       spoken: '7-day streak. A full week. Next\u00A0milestone: 30\u00A0days.',
       checkpoint: true,
+      rest: null,
     });
   });
 
@@ -100,5 +106,54 @@ describe('streak checkpoints', () => {
       body: 'Next\u00A0milestone: 365\u00A0days.',
       spoken: '100-day streak. Triple digits. Next\u00A0milestone: 365\u00A0days.',
     });
+  });
+});
+
+// Decided 2026-10-07 (roadmap step 87): the reserve gets one quiet line.
+describe('streakCopy — rest days', () => {
+  const running = (s: Partial<StreakStatus>) =>
+    streakCopy(status({ streak: 9, today: 1, todayCounts: false, nextCheckpoint: 30, ...s }));
+
+  it('says when the next one comes while none is saved', () => {
+    expect(running({ nextRestAt: 14 })).toMatchObject({
+      rest: 'A rest day comes with day\u00A014',
+      spoken: '9-day streak. 2 more today makes it 10. A rest day comes with day\u00A014.',
+    });
+  });
+
+  it('says how many are saved', () => {
+    expect(running({ restDays: 1, nextRestAt: 14 })?.rest).toBe('1 rest day saved');
+    expect(running({ restDays: 2 })?.rest).toBe('2 rest days saved');
+  });
+
+  it('says the day one is saved', () => {
+    expect(
+      streakCopy(status({ streak: 7, today: 3, todayCounts: true, checkpoint: 7, nextCheckpoint: 30, restDays: 1, restEarnedToday: true })),
+    ).toMatchObject({
+      detail: 'A full week. Next\u00A0milestone: 30\u00A0days',
+      rest: 'Today saved a rest day',
+    });
+    expect(running({ restDays: 2, restEarnedToday: true })?.rest).toBe(
+      'Today saved a rest day. 2 rest days saved',
+    );
+  });
+
+  it('says a spent one first, as a relief', () => {
+    expect(running({ restUsed: 1, nextRestAt: 14 })?.rest).toBe('Yesterday was a rest day');
+    expect(running({ restUsed: 1, restDays: 1 })?.rest).toBe('Yesterday was a rest day. 1 more saved');
+    expect(running({ restUsed: 2, nextRestAt: 14 })?.rest).toBe('The last 2 days were rest days');
+  });
+
+  it('says nothing before a streak starts', () => {
+    expect(streakCopy(status({ streak: 0, today: 1, todayCounts: false, nextRestAt: 7 }))?.rest).toBeNull();
+  });
+
+  it('never talks about losing it', () => {
+    const lines = [
+      running({ restUsed: 1 }),
+      running({ restUsed: 2 }),
+      running({ nextRestAt: 14 }),
+    ].map((c) => c?.rest ?? '');
+    for (const line of lines) expect(line).not.toMatch(/lose|lost|break|miss/i);
   });
 });

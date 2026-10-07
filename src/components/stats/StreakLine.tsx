@@ -21,6 +21,9 @@ interface StreakLineProps {
  * On a checkpoint day (7, 30, 100, 365…) the row takes the milestone tint and
  * names it for the rest of the day. Static for now: the celebration motion for
  * checkpoints is planned, not built (FUTURE_UI §B).
+ *
+ * A third, quieter line carries the rest days (roadmap step 87): what's saved,
+ * the day one covered, or when the next one comes.
  */
 export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) {
   const copy = streakCopy(status);
@@ -42,6 +45,11 @@ export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) 
         {copy.detail && (
           <Text style={styles.detail} testID={`${testID}-detail`}>
             {copy.detail}
+          </Text>
+        )}
+        {copy.rest && (
+          <Text style={styles.rest} testID={`${testID}-rest`}>
+            {copy.rest}
           </Text>
         )}
       </View>
@@ -87,6 +95,8 @@ const styles = StyleSheet.create({
   // count doesn't animate in place.
   headline: { ...type.headline, color: colors.textPrimary },
   detail: { ...type.footnote, color: colors.textSecondary },
+  // Quieter than the detail, still 4.6:1 or better on surface (§2.2).
+  rest: { ...type.caption, color: colors.textTertiary, marginTop: space.xxs },
   pips: { flexDirection: 'row', gap: space.xs },
   pip: { borderRadius: PIP / 2, height: PIP, width: PIP },
   pipOn: { backgroundColor: colors.brand600 },

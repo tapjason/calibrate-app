@@ -6,6 +6,8 @@ import {
   computeStreak,
   isStreakCheckpoint,
   nextStreakCheckpoint,
+  REST_DAY_EVERY,
+  REST_DAYS_MAX,
   STREAK_DAY_MIN,
   streakStatus,
 } from './streak';
@@ -182,6 +184,10 @@ describe('streakStatus — where today stands', () => {
       todayCounts: false,
       checkpoint: null,
       nextCheckpoint: 7,
+      restDays: 0,
+      restUsed: 0,
+      restEarnedToday: false,
+      nextRestAt: 7,
     });
   });
 
@@ -193,6 +199,10 @@ describe('streakStatus — where today stands', () => {
       todayCounts: true,
       checkpoint: null,
       nextCheckpoint: 7,
+      restDays: 0,
+      restUsed: 0,
+      restEarnedToday: false,
+      nextRestAt: 7,
     });
   });
 
@@ -203,6 +213,10 @@ describe('streakStatus — where today stands', () => {
       todayCounts: false,
       checkpoint: null,
       nextCheckpoint: 7,
+      restDays: 0,
+      restUsed: 0,
+      restEarnedToday: false,
+      nextRestAt: 7,
     });
     expect(streakStatus([], now)).toMatchObject({ streak: 0, today: 0, todayCounts: false });
   });
@@ -267,5 +281,87 @@ describe('streak checkpoints', () => {
     expect(checkpointReached(after, streakStatus(week(4), now))).toBeNull();
     // Nor did one that leaves the day short.
     expect(checkpointReached(streakStatus(week(1), now), before)).toBeNull();
+  });
+});
+
+// Decided 2026-10-07 (roadmap step 87): every 7 counted days save a rest day,
+// up to 2, and a day that doesn't count spends one instead of ending the run.
+describe('rest days', () => {
+  /** Three logged on each of `days` consecutive local days from `start` (May). */
+  const days = (start: number, count: number, n = STREAK_DAY_MIN) =>
+    Array.from({ length: count }, (_, i) =>
+      logged(`2026-05-${String(start + i).padStart(2, '0')}T08:00:00.000Z`, n),
+    ).flat();
+  const at = (day: number) => new Date(`2026-05-${String(day).padStart(2, '0')}T15:00:00.000Z`);
+
+  it('saves one every 7 counted days, and no more than 2', () => {
+    expect(REST_DAY_EVERY).toBe(7);
+    expect(REST_DAYS_MAX).toBe(2);
+    expect(streakStatus(days(1, 6), at(6))).toMatchObject({ streak: 6, restDays: 0, nextRestAt: 7 });
+    expect(streakStatus(days(1, 7), at(7))).toMatchObject({ streak: 7, restDays: 1, nextRestAt: 14 });
+    expect(streakStatus(days(1, 14), at(14))).toMatchObject({ streak: 14, restDays: 2, nextRestAt: null });
+    expect(streakStatus(days(1, 21), at(21))).toMatchObject({ streak: 21, restDays: 2, nextRestAt: null });
+  });
+
+  it('says the day that saved one, once it counts', () => {
+    const before = streakStatus([...days(1, 6), ...days(7, 1, 2)], at(7));
+    expect(before).toMatchObject({ streak: 6, restEarnedToday: false });
+    const after = streakStatus(days(1, 7), at(7));
+    expect(after).toMatchObject({ streak: 7, restEarnedToday: true, checkpoint: 7 });
+    // The next day it's saved, not new.
+    expect(streakStatus(days(1, 8), at(8))).toMatchObject({ restDays: 1, restEarnedToday: false });
+  });
+
+  it('covers a day that did not count, without adding it', () => {
+    // 1–7 counted, 8 missed; on the 9th, before three, the streak stands.
+    const status = streakStatus(days(1, 7), at(9));
+    expect(status).toMatchObject({ streak: 7, restDays: 0, restUsed: 1, todayCounts: false });
+    // And today adds to it once it counts.
+    expect(streakStatus([...days(1, 7), ...days(9, 1)], at(9))).toMatchObject({
+      streak: 8,
+      restUsed: 1,
+    });
+  });
+
+  it('covers a short day the same as an empty one', () => {
+    const preds = [...days(1, 7), ...days(8, 1, 2), ...days(9, 1)];
+    expect(streakStatus(preds, at(9))).toMatchObject({ streak: 8, restUsed: 1, restDays: 0 });
+  });
+
+  it('covers two days in a row with two saved, and ends on the third', () => {
+    expect(streakStatus([...days(1, 14), ...days(17, 1)], at(17))).toMatchObject({
+      streak: 15,
+      restDays: 0,
+      restUsed: 2,
+    });
+    expect(streakStatus(days(1, 14), at(18))).toMatchObject({ streak: 0, restDays: 0, restUsed: 0 });
+  });
+
+  it('ends a streak with none saved, as before', () => {
+    expect(streakStatus(days(1, 6), at(8))).toMatchObject({ streak: 0, restDays: 0, restUsed: 0 });
+  });
+
+  it('starts a new streak with an empty reserve', () => {
+    // 1–6, a miss on 7 with nothing saved, then 8–12.
+    const status = streakStatus([...days(1, 6), ...days(8, 5)], at(12));
+    expect(status).toMatchObject({ streak: 5, restDays: 0, nextRestAt: 7 });
+  });
+
+  it('stops reporting a used rest day once a later day counts', () => {
+    // 1–7, 8 covered, 9 and 10 counted: on the 10th, yesterday counted.
+    const status = streakStatus([...days(1, 7), ...days(9, 2)], at(10));
+    expect(status).toMatchObject({ streak: 9, restUsed: 0, restDays: 0, nextRestAt: 14 });
+  });
+
+  it('earns again after spending one', () => {
+    // 1–7 saves one, 8 spends it, 9–15 counts 7 more (streak 14) and saves another.
+    const status = streakStatus([...days(1, 7), ...days(9, 7)], at(15));
+    expect(status).toMatchObject({ streak: 14, restDays: 1, restEarnedToday: true });
+  });
+
+  it('applies to computeStreak too', () => {
+    expect(computeStreak([...days(1, 7), ...days(9, 1)])).toBe(8);
+    expect(computeStreak(days(1, 7), { now: at(9) })).toBe(7);
+    expect(computeStreak(days(1, 7), { now: at(10) })).toBe(0);
   });
 });

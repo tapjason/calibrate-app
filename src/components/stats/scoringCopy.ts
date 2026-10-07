@@ -8,6 +8,8 @@ import {
   MIN_N_BAND,
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
+  REST_DAY_EVERY,
+  REST_DAYS_MAX,
   STREAK_CHECKPOINTS,
   STREAK_DAY_MIN,
   type BadgeLevel,
@@ -85,6 +87,7 @@ export function scoringSections(): ScoringSection[] {
       title: 'Your streak',
       paragraphs: [
         `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it, and your streak is how many days in a row have counted. Today joins it once it reaches ${STREAK_DAY_MIN}; until midnight, yesterday's streak still stands.`,
+        `Every ${REST_DAY_EVERY} days that count save a rest day, up to ${REST_DAYS_MAX}. A day that doesn't count uses one, and the streak carries on without adding that day; with none saved, it ends.`,
         `The milestones are ${checkpointList()} days, then every year after that. Today names the day you reach one.`,
         "The streak is about the habit, not the score: it doesn't change your calibration, and nothing is lost when it ends.",
       ],

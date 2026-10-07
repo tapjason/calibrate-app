@@ -8,6 +8,11 @@
 // Checkpoints (decided 2026-10-06): 7, 30, 100 and 365 days, then each further
 // year, are named on the day they're reached; the engine says which day that
 // is and what comes next.
+//
+// Rest days (decided 2026-10-07, roadmap step 87) get their own quiet line:
+// what's saved, the day one was spent, or when the next one comes. A spent
+// rest day is said plainly and as a relief ("Yesterday was a rest day"),
+// never as something missed.
 
 import { STREAK_DAY_MIN, type StreakStatus } from '@/types';
 
@@ -22,6 +27,8 @@ export interface StreakCopy {
   spoken: string;
   /** Today reached a checkpoint, so the row is marked. */
   checkpoint: boolean;
+  /** The rest-day line, or null with no streak running. */
+  rest: string | null;
 }
 
 const YEAR_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -61,6 +68,27 @@ export function checkpointCopy(
   return { title, body, spoken: `${days}-day streak. ${title}. ${body}` };
 }
 
+/**
+ * What the reserve says today: a rest day just spent comes first (that's the
+ * one the person needs to hear), then one just saved, then what's saved, then
+ * when the next one comes. "day\u00A07" keeps the number with its word.
+ */
+function restLine(status: StreakStatus): string | null {
+  const { streak, restDays, restUsed, restEarnedToday, nextRestAt } = status;
+  if (streak === 0) return null;
+  const saved = (n: number) => `${n} rest ${n === 1 ? 'day' : 'days'} saved`;
+  if (restUsed > 0) {
+    const spent =
+      restUsed === 1 ? 'Yesterday was a rest day' : `The last ${restUsed} days were rest days`;
+    return restDays > 0 ? `${spent}. ${restDays} more saved` : spent;
+  }
+  if (restEarnedToday) {
+    return restDays > 1 ? `Today saved a rest day. ${saved(restDays)}` : 'Today saved a rest day';
+  }
+  if (restDays > 0) return saved(restDays);
+  return nextRestAt === null ? null : `A rest day comes with day\u00A0${nextRestAt}`;
+}
+
 /** Null when there is nothing yet: no streak and nothing done today. */
 export function streakCopy(status: StreakStatus): StreakCopy | null {
   const { streak, today, todayCounts, checkpoint, nextCheckpoint } = status;
@@ -78,6 +106,7 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
       filled,
       spoken: `${headline}. ${today} of ${STREAK_DAY_MIN} ${plural(STREAK_DAY_MIN)} logged or answered today.`,
       checkpoint: false,
+      rest: null,
     };
   }
 
@@ -94,11 +123,13 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
   } else {
     detail = `${more} more today makes it ${eve ? reaches : streak + 1}`;
   }
+  const rest = restLine(status);
   return {
     headline,
     detail,
     filled,
-    spoken: `${headline}. ${detail}.`,
+    spoken: rest ? `${headline}. ${detail}. ${rest}.` : `${headline}. ${detail}.`,
     checkpoint: checkpoint !== null,
+    rest,
   };
 }

@@ -64,7 +64,7 @@ is a personality-test result with receipts. The math is the engine, never the pi
   calibration_rating: number     // Rolling 0–100 score
   total_predictions: number
   total_resolved: number
-  current_streak: number         // Consecutive days with at least 3 predictions logged or answered (decided 2026-10-05)
+  current_streak: number         // Days with at least 3 predictions logged or answered (decided 2026-10-05), in a row except where a saved rest day covers one (2026-10-07)
   rating_is_provisional: boolean // true while total_resolved < MIN_N_OVERALL
 }
 ```
@@ -218,6 +218,13 @@ See the authoritative section above.
   and on the answer that earned it. Every other day only the number climbs. The
   checkpoint *celebration* (motion, haptic) is planned but not built — see
   `docs/design/FUTURE_UI.md` §B.
+- **Rest days** (decided 2026-10-07, at the owner's request for retention
+  features): every 7 counted days save a rest day, up to 2. A past day that
+  didn't count spends one automatically, and the streak carries on *without*
+  adding that day; with none saved, the streak ends and the reserve goes with
+  it. Derived from the predictions on every read, never stored, so every device
+  agrees. Today says what's saved, the day one covered ("Yesterday was a rest
+  day"), or when the next one comes. Evidence: `docs/design/research/retention-2026-10.md` §2.2.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)
