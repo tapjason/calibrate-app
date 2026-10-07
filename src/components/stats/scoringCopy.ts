@@ -5,6 +5,7 @@
 
 import { BADGE_META } from '@/constants/badges';
 import {
+  DAILY_GOAL,
   MIN_N_BAND,
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
@@ -20,6 +21,11 @@ function checkpointList(): string {
   const days = [...STREAK_CHECKPOINTS];
   const last = days.pop();
   return `${days.join(', ')} and ${last}`;
+}
+
+/** "one prediction" (D17), or "3 predictions" if the minimum ever goes back up. */
+function dayMinimum(): string {
+  return STREAK_DAY_MIN === 1 ? 'one prediction' : `${STREAK_DAY_MIN} predictions`;
 }
 
 export interface ScoringSection {
@@ -86,7 +92,8 @@ export function scoringSections(): ScoringSection[] {
     {
       title: 'Your streak',
       paragraphs: [
-        `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it, and your streak is how many days in a row have counted. Today joins it once it reaches ${STREAK_DAY_MIN}; until midnight, yesterday's streak still stands.`,
+        `A day counts when you log or answer at least ${dayMinimum()} in it, and your streak is how many days in a row have counted. Today joins it with that; until then, yesterday's streak still stands.`,
+        `${DAILY_GOAL} a day is the daily goal. It fills today's dots, and it's there for the habit: the streak doesn't need it.`,
         `Every ${REST_DAY_EVERY} days that count save a rest day, up to ${REST_DAYS_MAX}. A day that doesn't count uses one, and the streak carries on without adding that day; with none saved, it ends.`,
         `The milestones are ${checkpointList()} days, then every year after that. Today names the day you reach one.`,
         "The streak is about the habit, not the score: it doesn't change your calibration, and nothing is lost when it ends.",

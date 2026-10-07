@@ -315,8 +315,8 @@ describe('predictionStore.loadDemoData', () => {
   });
 });
 
-// Roadmap D2: a day counts with three logged or answered, and the stored
-// streak and Home's line agree.
+// Roadmap D2 and D17: a day counts with one logged or answered, and the
+// stored streak and Home's line agree.
 describe('predictionStore.streakNow', () => {
   const log = (title: string) =>
     usePredictionStore.getState().create({
@@ -326,23 +326,25 @@ describe('predictionStore.streakNow', () => {
       due_date: '2099-06-01T12:00:00.000Z',
     });
 
-  it('counts today once three are logged, and the stored streak follows', async () => {
-    await log('one');
-    await log('two');
+  it('counts today with its first log, and the stored streak follows', async () => {
     expect(usePredictionStore.getState().streakNow()).toMatchObject({
       streak: 0,
-      today: 2,
+      today: 0,
       todayCounts: false,
     });
-    expect(useStatsStore.getState().userStat?.current_streak).toBe(0);
 
-    await log('three');
+    await log('one');
     expect(usePredictionStore.getState().streakNow()).toMatchObject({
       streak: 1,
-      today: 3,
+      today: 1,
       todayCounts: true,
     });
     expect(useStatsStore.getState().userStat?.current_streak).toBe(1);
+
+    // The day's goal is three; the streak doesn't wait for it.
+    await log('two');
+    await log('three');
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 1, today: 3 });
   });
 
   it('counts an answer as well as a log', async () => {
@@ -363,7 +365,7 @@ describe('predictionStore.streakNow', () => {
     return d.toISOString();
   };
 
-  /** Three logged on each of the six days before today. */
+  /** Three logged on each of the six days before today (the goal, not just the minimum). */
   const sixCountedDays = async (userId: string) => {
     for (let back = 6; back >= 1; back -= 1) {
       for (let i = 0; i < 3; i += 1) {
@@ -389,14 +391,13 @@ describe('predictionStore.streakNow', () => {
     const userId = useAuthStore.getState().userId!;
     await sixCountedDays(userId);
     await usePredictionStore.getState().loadPending();
-    await log('one');
-    await log('two');
     expect(usePredictionStore.getState().streakNow()).toMatchObject({
       streak: 6,
       checkpoint: null,
       nextCheckpoint: 7,
     });
 
+    // Today's first answer is day seven (one a day since D17).
     await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
     expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
     expect(usePredictionStore.getState().streakCheckpoint).toBe(7);
@@ -404,7 +405,7 @@ describe('predictionStore.streakNow', () => {
     await usePredictionStore.getState().reopen('d6-0');
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
 
-    // Answered again, then a fourth: only the third earned it.
+    // Answered again, then a second: only the first earned it.
     await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
     usePredictionStore.getState().clearStreakCheckpoint();
     await usePredictionStore.getState().resolve('d6-1', 'resolved_no');

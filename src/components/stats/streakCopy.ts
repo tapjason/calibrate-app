@@ -3,7 +3,9 @@
 // (src/engine/streak.ts, through predictionStore.streakNow); this only words it.
 //
 // Tone (DESIGN_SYSTEM §7.9, "No guilt"): the line says what today adds, never
-// what it would cost. "1 more today makes it 13", not "don't lose your streak".
+// what it would cost. "One prediction today makes it 13", not "don't lose your
+// streak". Since D17 one prediction keeps the streak and three is the day's
+// goal: the dots fill toward it, and the line says when it's met.
 //
 // Checkpoints (decided 2026-10-06): 7, 30, 100 and 365 days, then each further
 // year, are named on the day they're reached; the engine says which day that
@@ -14,14 +16,14 @@
 // rest day is said plainly and as a relief ("Yesterday was a rest day"),
 // never as something missed.
 
-import { STREAK_DAY_MIN, type StreakStatus } from '@/types';
+import { DAILY_GOAL, type StreakStatus } from '@/types';
 
 export interface StreakCopy {
-  /** "12-day streak", or how to start one. */
+  /** "12-day streak". */
   headline: string;
   /** What today adds, or that it already counts. */
   detail: string | null;
-  /** Today's progress toward a counted day, 0..STREAK_DAY_MIN, for the pips. */
+  /** Today's progress toward the day's goal, 0..DAILY_GOAL, for the pips. */
   filled: number;
   /** One sentence for a screen reader. */
   spoken: string;
@@ -89,26 +91,18 @@ function restLine(status: StreakStatus): string | null {
   return nextRestAt === null ? null : `A rest day comes with day\u00A0${nextRestAt}`;
 }
 
-/** Null when there is nothing yet: no streak and nothing done today. */
+/**
+ * Null when there is nothing yet: no streak and nothing done today. Since D17
+ * one prediction starts or extends a streak, so anything done today means a
+ * streak of at least one; the old "2 more today starts a streak" is gone.
+ */
 export function streakCopy(status: StreakStatus): StreakCopy | null {
   const { streak, today, todayCounts, checkpoint, nextCheckpoint } = status;
-  if (streak === 0 && today === 0) return null;
+  if (streak === 0) return null;
 
-  const filled = Math.min(today, STREAK_DAY_MIN);
-  const more = STREAK_DAY_MIN - filled;
-  const plural = (n: number) => (n === 1 ? 'prediction' : 'predictions');
-
-  if (streak === 0) {
-    const headline = `${more} more today starts a streak`;
-    return {
-      headline,
-      detail: null,
-      filled,
-      spoken: `${headline}. ${today} of ${STREAK_DAY_MIN} ${plural(STREAK_DAY_MIN)} logged or answered today.`,
-      checkpoint: false,
-      rest: null,
-    };
-  }
+  // The dots are the day's goal (D17), not the streak's price.
+  const filled = Math.min(today, DAILY_GOAL);
+  const toGoal = DAILY_GOAL - filled;
 
   const headline = `${streak}-day streak`;
   // The day before one says so, as a gain: "makes it 7: a full week".
@@ -118,10 +112,15 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
   let detail: string;
   if (checkpoint !== null) {
     detail = `${checkpointName(checkpoint)}. ${nextLine(nextCheckpoint)}`;
-  } else if (todayCounts) {
-    detail = eve ? `Today counts. Tomorrow can make it ${reaches}` : `Today counts. ${nextLine(nextCheckpoint)}`;
+  } else if (!todayCounts) {
+    detail = `One prediction today makes it ${eve ? reaches : streak + 1}`;
+  } else if (eve) {
+    detail = `Today counts. Tomorrow can make it ${reaches}`;
+  } else if (toGoal > 0) {
+    // Short enough for one line at 375pt; the pips show the same count.
+    detail = `Today counts. Goal: ${filled} of ${DAILY_GOAL}`;
   } else {
-    detail = `${more} more today makes it ${eve ? reaches : streak + 1}`;
+    detail = `Today's goal met. ${nextLine(nextCheckpoint)}`;
   }
   const rest = restLine(status);
   return {

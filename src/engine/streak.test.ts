@@ -1,4 +1,4 @@
-import type { Prediction } from '@/types';
+import { DAILY_GOAL, type Prediction } from '@/types';
 
 import { __setTimeZoneForTests } from './localTime';
 import {
@@ -49,16 +49,17 @@ beforeEach(() => {
   seq = 0;
 });
 
-// Decided 2026-10-05 (UI_ROADMAP D2): a day counts with at least three
-// predictions logged or answered.
+// Decided 2026-10-05 (UI_ROADMAP D2) with three a day; one since D17
+// (2026-10-07), with three as the day's goal.
 describe('computeStreak — what a day needs', () => {
   it('returns 0 for empty input', () => {
     expect(computeStreak([])).toBe(0);
   });
 
-  it('needs three on a day; two is not enough', () => {
-    expect(STREAK_DAY_MIN).toBe(3);
-    expect(computeStreak(logged('2026-05-19T10:00:00.000Z', 2))).toBe(0);
+  it('needs one on a day', () => {
+    expect(STREAK_DAY_MIN).toBe(1);
+    expect(DAILY_GOAL).toBe(3);
+    expect(computeStreak(logged('2026-05-19T10:00:00.000Z', 1))).toBe(1);
     expect(computeStreak(logged('2026-05-19T10:00:00.000Z', 3))).toBe(1);
   });
 
@@ -84,13 +85,20 @@ describe('computeStreak — what a day needs', () => {
       ...answered('2026-05-19T11:00:00.000Z', 1, 'skipped'),
     ];
     const status = streakStatus(preds, new Date('2026-05-19T20:00:00.000Z'));
-    expect(status).toMatchObject({ streak: 0, today: 2, todayCounts: false });
+    expect(status).toMatchObject({ streak: 1, today: 2, todayCounts: true });
+    // A skip alone is nothing done.
+    const skipOnly = answered('2026-05-19T11:00:00.000Z', 1, 'skipped');
+    expect(streakStatus(skipOnly, new Date('2026-05-19T20:00:00.000Z'))).toMatchObject({
+      streak: 0,
+      today: 0,
+      todayCounts: false,
+    });
   });
 
-  it('counts consecutive days and breaks on a short one', () => {
+  it('counts consecutive days and breaks on an empty one', () => {
     const preds = [
       ...logged('2026-05-15T08:00:00.000Z'),
-      ...logged('2026-05-16T08:00:00.000Z', 2), // short: breaks the run
+      // the 16th: nothing, which breaks the run
       ...logged('2026-05-17T08:00:00.000Z'),
       ...answered('2026-05-18T08:00:00.000Z'),
       ...logged('2026-05-19T08:00:00.000Z'),
@@ -108,8 +116,7 @@ describe('computeStreak — what a day needs', () => {
   });
 
   it('ignores an unparseable timestamp', () => {
-    const preds = [...logged('2026-05-19T08:00:00.000Z', 2), p({ created_at: 'not a date' })];
-    expect(computeStreak(preds)).toBe(0);
+    expect(computeStreak([p({ created_at: 'not a date' })])).toBe(0);
   });
 });
 
@@ -176,11 +183,11 @@ describe('streakStatus — where today stands', () => {
     ...logged('2026-05-19T08:00:00.000Z'),
   ];
 
-  it('runs through yesterday while today is short, and says how far today has got', () => {
-    const status = streakStatus([...yesterdayRun(), ...logged('2026-05-20T09:00:00.000Z', 2)], now);
+  it('runs through yesterday while nothing is done today', () => {
+    const status = streakStatus(yesterdayRun(), now);
     expect(status).toEqual({
       streak: 2,
-      today: 2,
+      today: 0,
       todayCounts: false,
       checkpoint: null,
       nextCheckpoint: 7,
@@ -191,11 +198,11 @@ describe('streakStatus — where today stands', () => {
     });
   });
 
-  it('adds today once it reaches three', () => {
-    const status = streakStatus([...yesterdayRun(), ...logged('2026-05-20T09:00:00.000Z', 3)], now);
+  it('adds today with its first, and says how far toward the goal it has got', () => {
+    const status = streakStatus([...yesterdayRun(), ...logged('2026-05-20T09:00:00.000Z', 2)], now);
     expect(status).toEqual({
       streak: 3,
-      today: 3,
+      today: 2,
       todayCounts: true,
       checkpoint: null,
       nextCheckpoint: 7,
@@ -206,11 +213,11 @@ describe('streakStatus — where today stands', () => {
     });
   });
 
-  it('starts from nothing', () => {
+  it('starts from one', () => {
     expect(streakStatus(logged('2026-05-20T09:00:00.000Z', 1), now)).toEqual({
-      streak: 0,
+      streak: 1,
       today: 1,
-      todayCounts: false,
+      todayCounts: true,
       checkpoint: null,
       nextCheckpoint: 7,
       restDays: 0,
@@ -252,7 +259,7 @@ describe('streak checkpoints', () => {
   ];
 
   it('mark the day itself once it counts', () => {
-    expect(streakStatus(week(3), now)).toMatchObject({
+    expect(streakStatus(week(1), now)).toMatchObject({
       streak: 7,
       checkpoint: 7,
       nextCheckpoint: 30,
@@ -260,7 +267,7 @@ describe('streak checkpoints', () => {
   });
 
   it('wait for today to count, and point at the one today can reach', () => {
-    expect(streakStatus(week(2), now)).toMatchObject({
+    expect(streakStatus(week(0), now)).toMatchObject({
       streak: 6,
       checkpoint: null,
       nextCheckpoint: 7,
@@ -269,25 +276,24 @@ describe('streak checkpoints', () => {
 
   it('are behind it the next day', () => {
     const tomorrow = new Date('2026-05-21T15:00:00.000Z');
-    const status = streakStatus([...week(3), ...logged('2026-05-21T09:00:00.000Z')], tomorrow);
+    const status = streakStatus([...week(1), ...logged('2026-05-21T09:00:00.000Z')], tomorrow);
     expect(status).toMatchObject({ streak: 8, checkpoint: null, nextCheckpoint: 30 });
   });
 
   it('are reached by the log or answer that makes the day count', () => {
-    const before = streakStatus(week(2), now);
-    const after = streakStatus(week(3), now);
+    const before = streakStatus(week(0), now);
+    const after = streakStatus(week(1), now);
     expect(checkpointReached(before, after)).toBe(7);
-    // A fourth on the same day reached nothing new.
-    expect(checkpointReached(after, streakStatus(week(4), now))).toBeNull();
-    // Nor did one that leaves the day short.
-    expect(checkpointReached(streakStatus(week(1), now), before)).toBeNull();
+    // A second on the same day reached nothing new, nor did meeting the goal.
+    expect(checkpointReached(after, streakStatus(week(2), now))).toBeNull();
+    expect(checkpointReached(streakStatus(week(2), now), streakStatus(week(3), now))).toBeNull();
   });
 });
 
 // Decided 2026-10-07 (roadmap step 87): every 7 counted days save a rest day,
 // up to 2, and a day that doesn't count spends one instead of ending the run.
 describe('rest days', () => {
-  /** Three logged on each of `days` consecutive local days from `start` (May). */
+  /** `n` logged on each of `count` consecutive local days from `start` (May). */
   const days = (start: number, count: number, n = STREAK_DAY_MIN) =>
     Array.from({ length: count }, (_, i) =>
       logged(`2026-05-${String(start + i).padStart(2, '0')}T08:00:00.000Z`, n),
@@ -304,7 +310,7 @@ describe('rest days', () => {
   });
 
   it('says the day that saved one, once it counts', () => {
-    const before = streakStatus([...days(1, 6), ...days(7, 1, 2)], at(7));
+    const before = streakStatus(days(1, 6), at(7));
     expect(before).toMatchObject({ streak: 6, restEarnedToday: false });
     const after = streakStatus(days(1, 7), at(7));
     expect(after).toMatchObject({ streak: 7, restEarnedToday: true, checkpoint: 7 });
@@ -313,7 +319,7 @@ describe('rest days', () => {
   });
 
   it('covers a day that did not count, without adding it', () => {
-    // 1–7 counted, 8 missed; on the 9th, before three, the streak stands.
+    // 1–7 counted, 8 missed; on the 9th, before anything, the streak stands.
     const status = streakStatus(days(1, 7), at(9));
     expect(status).toMatchObject({ streak: 7, restDays: 0, restUsed: 1, todayCounts: false });
     // And today adds to it once it counts.
@@ -323,9 +329,9 @@ describe('rest days', () => {
     });
   });
 
-  it('covers a short day the same as an empty one', () => {
-    const preds = [...days(1, 7), ...days(8, 1, 2), ...days(9, 1)];
-    expect(streakStatus(preds, at(9))).toMatchObject({ streak: 8, restUsed: 1, restDays: 0 });
+  it('never spends one on a day with anything done', () => {
+    const preds = [...days(1, 7), ...days(8, 1, 1), ...days(9, 1)];
+    expect(streakStatus(preds, at(9))).toMatchObject({ streak: 9, restUsed: 0, restDays: 1 });
   });
 
   it('covers two days in a row with two saved, and ends on the third', () => {

@@ -15,10 +15,11 @@ const NO_REST: Pick<StreakStatus, 'restDays' | 'restUsed' | 'restEarnedToday' | 
 };
 
 describe('StreakLine (roadmap D2)', () => {
-  it('reads as one sentence, with today shown as filled and hollow pips', () => {
-    render(<StreakLine status={{ streak: 4, today: 1, todayCounts: false, checkpoint: null, nextCheckpoint: 7, ...NO_REST }} />);
+  // D17: the pips are the day's goal of three; one already counts.
+  it('reads as one sentence, with the day’s goal shown as filled and hollow pips', () => {
+    render(<StreakLine status={{ streak: 5, today: 1, todayCounts: true, checkpoint: null, nextCheckpoint: 7, ...NO_REST }} />);
     expect(screen.getByTestId('streak-line').props.accessibilityLabel).toBe(
-      '4-day streak. 2 more today makes it 5.',
+      '5-day streak. Today counts. Goal: 1 of 3.',
     );
     const pip = (i: number) =>
       StyleSheet.flatten(screen.getByTestId(`streak-line-pip-${i}`, { includeHiddenElements: true }).props.style);
@@ -58,7 +59,7 @@ describe('StreakLine (roadmap D2)', () => {
     );
     expect(screen.getByTestId('streak-line-rest')).toHaveTextContent('Yesterday was a rest day. 1 more saved');
     expect(screen.getByTestId('streak-line').props.accessibilityLabel).toBe(
-      '9-day streak. 3 more today makes it 10. Yesterday was a rest day. 1 more saved.',
+      '9-day streak. One prediction today makes it 10. Yesterday was a rest day. 1 more saved.',
     );
   });
 

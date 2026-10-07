@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
-import { STREAK_DAY_MIN, type StreakStatus } from '@/types';
+import { DAILY_GOAL, type StreakStatus } from '@/types';
 
 import { streakCopy } from './streakCopy';
 
@@ -12,10 +12,10 @@ interface StreakLineProps {
 }
 
 /**
- * The streak on Home (roadmap D2): a day counts with three predictions logged
- * or answered, and the number climbs every day it does. One quiet row, the
- * day count in ink with a flame, today's progress as three pips and a line
- * saying what today adds. Never red, never animated when it ends (DESIGN_SYSTEM
+ * The streak on Home (roadmap D2): a day counts with one prediction logged
+ * or answered (D17; it was three), and the number climbs every day it does.
+ * One quiet row, the day count in ink with a flame, the day's goal of three
+ * as pips, and a line saying what today adds. Never red, never animated when it ends (DESIGN_SYSTEM
  * §6.2): an ended streak simply isn't shown until the next one starts.
  *
  * On a checkpoint day (7, 30, 100, 365…) the row takes the milestone tint and
@@ -53,7 +53,7 @@ export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) 
           </Text>
         )}
       </View>
-      {/* Today's three, filled as they're done. Shape, not colour alone:
+      {/* The day's goal of three, filled as they're done. Shape, not colour alone:
           filled vs hollow. */}
       <View
         style={styles.pips}
@@ -61,7 +61,7 @@ export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) 
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        {Array.from({ length: STREAK_DAY_MIN }, (_, i) => (
+        {Array.from({ length: DAILY_GOAL }, (_, i) => (
           <View
             key={i}
             testID={`${testID}-pip-${i}`}

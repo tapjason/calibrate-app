@@ -90,8 +90,9 @@ describe('ResolveRun (roadmap step 18)', () => {
       '3 answered. 2 happened. You expected about\u00A02.',
     );
     expect(screen.getByTestId('resolve-run-streak').props.accessibilityLabel).toBe(
-      // And the rest-day line (roadmap step 87): day 7 saves the first.
-      '1-day streak. Today counts. Next\u00A0milestone: 7\u00A0days. A rest day comes with day\u00A07.',
+      // Three answers meet the day's goal (D17), and the rest-day line (roadmap
+      // step 87): day 7 saves the first.
+      "1-day streak. Today's goal met. Next\u00A0milestone: 7\u00A0days. A rest day comes with day\u00A07.",
     );
     // A natural stopping point: Today may ask for a rating once this closes (D15).
     expect(useRatingStore.getState().moment).toBe(true);

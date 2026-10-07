@@ -371,10 +371,13 @@ describe('ResolvePrompt streak checkpoints', () => {
     d.setHours(12, 0, 0, 0);
     return d.toISOString();
   };
-  /** Six counted days before today and two logged today: the next answer makes seven. */
-  const sixDaysAndTwo = async () => {
-    for (let back = 6; back >= 0; back -= 1) {
-      for (let i = 0; i < (back === 0 ? 2 : 3); i += 1) {
+  /**
+   * Six counted days before today and nothing yet today: the next answer
+   * makes seven (one a day since D17; it was two logged today and a third).
+   */
+  const sixDaysThenToday = async () => {
+    for (let back = 6; back >= 1; back -= 1) {
+      for (let i = 0; i < 1; i += 1) {
         await insertPrediction(
           samplePending({
             id: `d${back}-${i}`,
@@ -388,7 +391,7 @@ describe('ResolvePrompt streak checkpoints', () => {
   };
 
   it('names the checkpoint the answer reached, without a celebration', async () => {
-    await sixDaysAndTwo();
+    await sixDaysThenToday();
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => {
       expect(screen.getByTestId('resolve-no')).toBeTruthy();
@@ -408,7 +411,7 @@ describe('ResolvePrompt streak checkpoints', () => {
   // CLAUDE.md: the day a streak reaches a checkpoint is named on the answer
   // that earned it. It used to give way to a score or badge milestone.
   it('names the checkpoint beside a milestone the same answer reached', async () => {
-    await sixDaysAndTwo();
+    await sixDaysThenToday();
     // 19 resolved long ago: this answer is also the 20th, which unlocks the score.
     for (let i = 0; i < 19; i++) {
       await insertPrediction(

@@ -863,7 +863,7 @@ Added 2026-09-30 (the last three commits, `7fd1aba`..`d69ba54`):
 Added 2026-10-07 (retention batch, roadmap steps 87–89; all web-verified):
 
 - [ ] **Rest days:** the streak row's third line reads as one sentence with the
-      rest under VoiceOver ("15-day streak. 3 more today makes it 16. 2 rest days
+      rest under VoiceOver ("15-day streak. One prediction today makes it 16. 2 rest days
       saved."), and stays legible in dark mode.
 - [ ] **Practice row on Today:** sits under the streak row, reads "Today's
       practice, 3 questions, about 30 seconds" with the hint "Start", and opens

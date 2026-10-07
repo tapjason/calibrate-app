@@ -21,44 +21,45 @@ describe('streakCopy', () => {
     expect(streakCopy(status({ streak: 0, today: 0, todayCounts: false }))).toBeNull();
   });
 
-  it('says how many more start a streak', () => {
-    expect(streakCopy(status({ streak: 0, today: 1, todayCounts: false }))).toMatchObject({
-      headline: '2 more today starts a streak',
-      detail: null,
+  // D17: one prediction keeps the streak, three is the day's goal.
+  it('says what one prediction today adds to a running streak', () => {
+    expect(
+      streakCopy(status({ streak: 12, today: 0, todayCounts: false, nextCheckpoint: 30 })),
+    ).toMatchObject({
+      headline: '12-day streak',
+      detail: 'One prediction today makes it 13',
+      filled: 0,
+      spoken: '12-day streak. One prediction today makes it 13.',
+    });
+  });
+
+  it("says when today counts, and how far it is from the day's goal", () => {
+    expect(
+      streakCopy(status({ streak: 13, today: 1, todayCounts: true, nextCheckpoint: 30 })),
+    ).toMatchObject({
+      headline: '13-day streak',
+      detail: 'Today counts. Goal: 1 of 3',
       filled: 1,
       checkpoint: false,
     });
   });
 
-  it('says what today adds to a running streak', () => {
-    expect(
-      streakCopy(status({ streak: 12, today: 2, todayCounts: false, nextCheckpoint: 30 })),
-    ).toMatchObject({
-      headline: '12-day streak',
-      detail: '1 more today makes it 13',
-      filled: 2,
-      spoken: '12-day streak. 1 more today makes it 13.',
-    });
-  });
-
-  it('says when today already counts, what the next milestone is, and never overfills the pips', () => {
+  it('says when the goal is met, what the next milestone is, and never overfills the pips', () => {
     expect(
       streakCopy(status({ streak: 13, today: 5, todayCounts: true, nextCheckpoint: 30 })),
     ).toMatchObject({
-      headline: '13-day streak',
-      detail: 'Today counts. Next\u00A0milestone: 30\u00A0days',
+      detail: "Today's goal met. Next\u00A0milestone: 30\u00A0days",
       filled: 3,
-      checkpoint: false,
     });
   });
 
-  it('never talks about losing it', () => {
+  it('never talks about losing it, or asks for more than the streak needs', () => {
     const lines = [
       streakCopy(status({ streak: 1, today: 0, todayCounts: false })),
-      streakCopy(status({ streak: 0, today: 2, todayCounts: false })),
+      streakCopy(status({ streak: 4, today: 2, todayCounts: true })),
       streakCopy(status({ streak: 6, today: 0, todayCounts: false })),
     ].map((c) => `${c?.headline} ${c?.detail ?? ''}`);
-    for (const line of lines) expect(line).not.toMatch(/lose|lost|break|miss/i);
+    for (const line of lines) expect(line).not.toMatch(/lose|lost|break|miss|keep/i);
   });
 });
 
@@ -80,8 +81,8 @@ describe('streak checkpoints', () => {
 
   it('says so the day before, as a gain', () => {
     expect(
-      streakCopy(status({ streak: 29, today: 1, todayCounts: false, nextCheckpoint: 30 }))?.detail,
-    ).toBe('2 more today makes it 30: a full month');
+      streakCopy(status({ streak: 29, today: 0, todayCounts: false, nextCheckpoint: 30 }))?.detail,
+    ).toBe('One prediction today makes it 30: a full month');
     // Once today has counted, the day before is tomorrow's.
     expect(
       streakCopy(status({ streak: 6, today: 3, todayCounts: true, nextCheckpoint: 7 }))?.detail,
@@ -112,12 +113,12 @@ describe('streak checkpoints', () => {
 // Decided 2026-10-07 (roadmap step 87): the reserve gets one quiet line.
 describe('streakCopy — rest days', () => {
   const running = (s: Partial<StreakStatus>) =>
-    streakCopy(status({ streak: 9, today: 1, todayCounts: false, nextCheckpoint: 30, ...s }));
+    streakCopy(status({ streak: 9, today: 0, todayCounts: false, nextCheckpoint: 30, ...s }));
 
   it('says when the next one comes while none is saved', () => {
     expect(running({ nextRestAt: 14 })).toMatchObject({
       rest: 'A rest day comes with day\u00A014',
-      spoken: '9-day streak. 2 more today makes it 10. A rest day comes with day\u00A014.',
+      spoken: '9-day streak. One prediction today makes it 10. A rest day comes with day\u00A014.',
     });
   });
 
@@ -143,7 +144,7 @@ describe('streakCopy — rest days', () => {
   });
 
   it('says nothing before a streak starts', () => {
-    expect(streakCopy(status({ streak: 0, today: 1, todayCounts: false, nextRestAt: 7 }))?.rest).toBeNull();
+    expect(streakCopy(status({ streak: 0, today: 0, todayCounts: false, nextRestAt: 7 }))).toBeNull();
   });
 
   it('never talks about losing it', () => {

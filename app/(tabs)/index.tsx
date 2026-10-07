@@ -103,7 +103,8 @@ export default function TodayScreen() {
       ListHeaderComponent={
         <>
           <View style={styles.hero}>{hero}</View>
-          {/* The daily streak (roadmap D2): three logged or answered a day. */}
+          {/* The daily streak (roadmap D2): one logged or answered a day keeps
+              it, three is the day's goal (D17). */}
           <StreakLine status={streak} />
           {/* Asks for notification permission here, in context, not at
               launch (roadmap step 38). Native only. */}

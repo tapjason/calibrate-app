@@ -64,7 +64,7 @@ is a personality-test result with receipts. The math is the engine, never the pi
   calibration_rating: number     // Rolling 0–100 score
   total_predictions: number
   total_resolved: number
-  current_streak: number         // Days with at least 3 predictions logged or answered (decided 2026-10-05), in a row except where a saved rest day covers one (2026-10-07)
+  current_streak: number         // Days with at least 1 prediction logged or answered (D17, 2026-10-07; was 3), in a row except where a saved rest day covers one (2026-10-07)
   rating_is_provisional: boolean // true while total_resolved < MIN_N_OVERALL
 }
 ```
@@ -218,6 +218,13 @@ See the authoritative section above.
   and on the answer that earned it. Every other day only the number climbs. The
   checkpoint *celebration* (motion, haptic) is planned but not built — see
   `docs/design/FUTURE_UI.md` §B.
+- **What a day takes** (decided 2026-10-07, roadmap D17): one prediction logged
+  or answered keeps the streak. Three a day is the **daily goal**, shown as the
+  streak row's dots and named when met ("Today's goal met"), and asked of nobody.
+  It was three to count (D2, 2026-10-05); Duolingo's A/B test of exactly this
+  change raised day-14 retention 3.3% and new users on a streak 19%
+  (`docs/design/research/retention-2026-10.md` §2.1). Practice doesn't count
+  toward either.
 - **Rest days** (decided 2026-10-07, at the owner's request for retention
   features): every 7 counted days save a rest day, up to 2. A past day that
   didn't count spends one automatically, and the streak carries on *without*

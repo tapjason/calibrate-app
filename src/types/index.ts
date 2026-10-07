@@ -38,9 +38,18 @@ export const MIN_N_BAND = 10;
 
 /**
  * Predictions logged or answered yes/no in one local day for it to count
- * toward the streak (decided 2026-10-05, UI_ROADMAP D2).
+ * toward the streak. Three when the streak was decided (2026-10-05, UI_ROADMAP
+ * D2); one since D17 (2026-10-07): Duolingo's A/B test of letting a single
+ * lesson extend a streak, instead of the daily goal, raised day-14 retention
+ * 3.3% (research/retention-2026-10.md §2.1).
  */
-export const STREAK_DAY_MIN = 3;
+export const STREAK_DAY_MIN = 1;
+
+/**
+ * The day's goal (D17): three logged or answered fill today's dots on the
+ * streak row. A goal, not a gate: the streak doesn't need it.
+ */
+export const DAILY_GOAL = 3;
 
 /**
  * Streak lengths that are milestones (decided 2026-10-06): a week, a month, a
@@ -147,7 +156,7 @@ export interface UserStat {
   calibration_rating: number; // rolling 0–100
   total_predictions: number;
   total_resolved: number;
-  current_streak: number; // days with ≥ 3 logged or answered, in a row but for saved rest days
+  current_streak: number; // days with ≥ 1 logged or answered, in a row but for saved rest days
   rating_is_provisional: boolean; // true while total_resolved < MIN_N_OVERALL
 }
 
@@ -592,8 +601,8 @@ export type NextBadge = (
 ) => NextBadgeTarget | null;
 
 /**
- * Local calendar days with at least STREAK_DAY_MIN (3) predictions logged or
- * answered yes/no that day (decided 2026-10-05, UI_ROADMAP D2), in a row except
+ * Local calendar days with at least STREAK_DAY_MIN (1) prediction logged or
+ * answered yes/no that day (UI_ROADMAP D2, lowered by D17), in a row except
  * where a saved rest day covers a day that didn't count (step 87). Pass every
  * prediction, open ones included: logging counts. With `now`, today counts
  * once it reaches the minimum, the streak otherwise runs through yesterday,

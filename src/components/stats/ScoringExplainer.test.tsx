@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { holdRanges } from '@/components/ui/holdRanges';
 import {
+  DAILY_GOAL,
   MIN_N_BAND,
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
@@ -29,11 +30,13 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(text).toContain(`until it holds ${MIN_N_BAND}`);
   });
 
-  // Roadmap D2: what makes a day count, from the engine's own constant.
-  it('says what a streak day takes', () => {
-    expect(allText()).toContain(
-      `A day counts when you log or answer at least ${STREAK_DAY_MIN} predictions in it`,
-    );
+  // Roadmap D2 and D17: what makes a day count, and the day's goal, from the
+  // engine's own constants.
+  it('says what a streak day takes, and the goal beside it', () => {
+    expect(STREAK_DAY_MIN).toBe(1);
+    expect(allText()).toContain('A day counts when you log or answer at least one prediction in it');
+    expect(allText()).toContain(`${DAILY_GOAL} a day is the daily goal.`);
+    expect(allText()).toContain("the streak doesn't need it");
   });
 
   // Decided 2026-10-07 (roadmap step 87): rest days, from the engine's constants.

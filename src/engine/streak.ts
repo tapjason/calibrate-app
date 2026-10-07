@@ -1,11 +1,14 @@
 // Streak calculation. Pure function — like calibration.ts, this module may
 // only import from @/types and sibling engine files.
 //
-// What a day needs (decided 2026-10-05, UI_ROADMAP D2): at least
-// STREAK_DAY_MIN predictions *done* that day, counting each prediction once
-// for the day it was logged (created_at) and once for the day it was answered
-// yes or no (resolved_at). Days, not weeks, because a number that climbs
-// every day is the appeal. Logging counts as well as answering because
+// What a day needs (UI_ROADMAP D2, 2026-10-05; lowered by D17, 2026-10-07):
+// at least STREAK_DAY_MIN (one) prediction *done* that day, counting each
+// prediction once for the day it was logged (created_at) and once for the day
+// it was answered yes or no (resolved_at). It was three; Duolingo found a
+// streak that one lesson extends keeps more people than one that waits for
+// the daily goal, so three is now the day's goal (DAILY_GOAL), shown on the
+// streak row and asked of nobody. Days, not weeks, because a number that
+// climbs every day is the appeal. Logging counts as well as answering because
 // answers arrive when predictions come due, which the user doesn't choose: a
 // streak of answers alone broke on days with nothing due. A skip ("can't
 // tell") is an explicit "don't score this" and earns nothing, as before.
