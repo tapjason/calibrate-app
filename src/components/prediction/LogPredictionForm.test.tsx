@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
@@ -416,12 +417,12 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
 
     raise(3); // 70%
     expect(screen.getByTestId('track-record').props.children).toBe(
-      'Your 60–80% calls: 30 of 52 happened.',
+      holdRanges('Your 60–80% calls: 30 of 52 happened.'),
     );
 
     fireEvent.press(screen.getByTestId('category-finance'));
     expect(screen.getByTestId('track-record').props.children).toBe(
-      'Your 60–80% calls in finance: 7 of 12 happened.',
+      holdRanges('Your 60–80% calls in finance: 7 of 12 happened.'),
     );
   });
 

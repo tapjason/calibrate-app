@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { __setShareDepsForTests, type ShareDeps } from '@/share/export';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
@@ -193,7 +194,7 @@ describe('WrappedPanel', () => {
     render(<WrappedPanel span="week" />);
 
     expect(screen.getByTestId('wrapped-receipt')).toBeTruthy();
-    expect(screen.getByText('You said 80–100% 3 times. 2 of 3 happened.')).toBeTruthy();
+    expect(screen.getByText(holdRanges('You said 80–100% 3 times. 2 of 3 happened.'))).toBeTruthy();
   });
 
   it('gives the verdict once the window clears the minimum', () => {

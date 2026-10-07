@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { colors, radius, space, type } from '@/constants/theme';
 
@@ -26,7 +27,7 @@ export function ScoringExplainer({ onClose }: { onClose?: () => void }) {
           </Text>
           {section.paragraphs.map((p) => (
             <Text key={p} style={styles.body}>
-              {p}
+              {holdRanges(p)}
             </Text>
           ))}
           {section.title === 'Badges' && (

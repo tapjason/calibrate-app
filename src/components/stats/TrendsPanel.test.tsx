@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { __setFileExportDepsForTests, type FileExportDeps } from '@/export/file';
 import { buildTrendSummary } from '@/engine/trends';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -136,11 +137,11 @@ describe('TrendsPanel — Plus', () => {
     render(<TrendsPanel />);
 
     expect(screen.getByTestId('trend-correction-finance-80')).toHaveTextContent(
-      'Finance at 80–100%47% · 8 of 17',
+      holdRanges('Finance at 80–100%47% · 8 of 17'),
     );
     // The worst band leads, as a sentence.
     expect(screen.getByTestId('trends-corrections-lead')).toHaveTextContent(
-      'In finance, your 80–100% has come true 47% of the time.',
+      holdRanges('In finance, your 80–100% has come true 47% of the time.'),
     );
     // Calibrated bands get rows too, but never the lead.
     expect(screen.getByTestId('trend-correction-work-80')).toBeTruthy();
@@ -152,7 +153,8 @@ describe('TrendsPanel — Plus', () => {
     render(<TrendsPanel />);
 
     expect(screen.getByTestId('trends-corrections-progress')).toHaveTextContent(
-      /Closest: work at 80–100%, with 4\./,
+      holdRanges('Closest: work at 80–100%, with 4.'),
+      { exact: false },
     );
     expect(screen.queryByTestId('trend-correction-work-80')).toBeNull();
   });

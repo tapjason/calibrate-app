@@ -11,6 +11,7 @@ import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { TextField } from '@/components/ui/TextField';
 import { REFINE_ENABLED } from '@/constants/app';
@@ -268,7 +269,7 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
         )}
         {record && (
           <Text style={styles.record} testID="track-record">
-            {record.text}
+            {holdRanges(record.text)}
           </Text>
         )}
       </View>

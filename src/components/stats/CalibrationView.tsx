@@ -156,7 +156,7 @@ export function CalibrationView({
                     said {Math.round(b.stated_confidence_mean)}% · happened{' '}
                     {Math.round(b.actual_rate * 100)}%
                     {/* The grey capsule's range, in numbers (roadmap D4). */}
-                    {` · chance ${Math.round(b.chance_low * 100)}–${Math.round(b.chance_high * 100)}%`}
+                    {holdRanges(` · chance ${Math.round(b.chance_low * 100)}–${Math.round(b.chance_high * 100)}%`)}
                   </Text>
                   <Text style={styles.bucketCount}>n={b.total_resolved}</Text>
                 </View>

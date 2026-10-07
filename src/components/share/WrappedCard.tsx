@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
@@ -97,7 +98,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           style={[styles.verdict, { color: theme.foreground }]}
           testID="wrapped-receipt"
         >
-          {story.receipt}
+          {holdRanges(story.receipt)}
         </Text>
       )}
       {story.verdict && (
@@ -106,7 +107,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           style={[styles.verdict, { color: theme.muted }]}
           testID="wrapped-verdict"
         >
-          {story.verdict}
+          {holdRanges(story.verdict)}
         </Text>
       )}
       {story.provisionalNote && (
@@ -115,7 +116,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           style={[styles.provisional, { color: theme.accent }]}
           testID="wrapped-provisional"
         >
-          {story.provisionalNote}
+          {holdRanges(story.provisionalNote)}
         </Text>
       )}
 
@@ -187,7 +188,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
         maxFontSizeMultiplier={CARD_MAX_SCALE}
         style={[styles.note, { color: theme.muted }]}
       >
-        {story.note}
+        {holdRanges(story.note)}
       </Text>
 
       <View style={[styles.footer, { borderTopColor: theme.divider }]}>

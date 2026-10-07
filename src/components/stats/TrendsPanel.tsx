@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { track } from '@/analytics/track';
 import { Button } from '@/components/ui/Button';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, type } from '@/constants/theme';
 import { csvFileName, predictionsToCsv } from '@/export/csv';
 import { shareTextFile, type ExportOutcome } from '@/export/file';
@@ -235,14 +236,14 @@ function Corrections({ trends }: { trends: TrendSummary }) {
       {rows.length === 0 && progress ? (
         <Text style={styles.muted} testID="trends-corrections-progress">
           A band needs {MIN_N_BAND} calls in one category before it gets a row.
-          Closest: {progress.category} at {progress.low}–{progress.high}%, with{' '}
+          Closest: {progress.category} at {band(progress.low, progress.high)}, with{' '}
           {progress.resolved}.
         </Text>
       ) : (
         <>
           {worst && worst.direction !== 'calibrated' && (
             <Text style={styles.delta} testID="trends-corrections-lead">
-              In {worst.category}, your {worst.low}–{worst.high}% has come true{' '}
+              In {worst.category}, your {band(worst.low, worst.high)} has come true{' '}
               {percent(worst.actual_rate)} of the time.
             </Text>
           )}
@@ -259,11 +260,16 @@ function Corrections({ trends }: { trends: TrendSummary }) {
   );
 }
 
+/** "60–80%", its dash held to both numbers (DESIGN_SYSTEM §7.9). */
+function band(low: number, high: number): string {
+  return holdRanges(`${low}–${high}%`);
+}
+
 function CorrectionLine({ row }: { row: CorrectionRow }) {
   return (
     <View style={styles.row} testID={`trend-correction-${row.category}-${row.low}`}>
       <Text style={styles.rowLabelPlain}>
-        {capitalize(row.category)} at {row.low}–{row.high}%
+        {capitalize(row.category)} at {band(row.low, row.high)}
       </Text>
       <Text style={styles.rowValue}>
         {percent(row.actual_rate)} · {row.happened} of {row.resolved}
@@ -281,12 +287,14 @@ function CoverageLine({ trends }: { trends: TrendSummary }) {
       <Text style={styles.muted}>
         {buckets_used} of 5 confidence bands.{' '}
         {empty_buckets.length > 0
-          ? `Nothing yet in ${empty_buckets.map((b) => `${b}–${b + 20}%`).join(', ')} — a score only covers the range you actually use.`
+          ? holdRanges(
+              `Nothing yet in ${empty_buckets.map((b) => `${b}–${b + 20}%`).join(', ')} — a score only covers the range you actually use.`,
+            )
           : 'You use the whole range, which is what makes the score trustworthy.'}
       </Text>
       <Text style={styles.muted}>
         {Math.round(middle_share * 100)}% of your calls sit in the honest-uncertainty
-        band (35–65%).
+        band ({holdRanges('35–65%')}).
       </Text>
     </View>
   );

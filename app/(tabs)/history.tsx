@@ -12,6 +12,7 @@ import {
 } from '@/components/prediction/historyFilter';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { holdRanges } from '@/components/ui/holdRanges';
 import { Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -73,7 +74,7 @@ export default function HistoryScreen() {
           style={styles.rangeChip}
           testID="history-range"
         >
-          <Text style={styles.rangeChipText}>You said {rangeText(range)}</Text>
+          <Text style={styles.rangeChipText}>You said {holdRanges(rangeText(range))}</Text>
           <Icon sf="xmark" fallback="close" size={14} color={colors.brand800} />
         </Pressable>
       )}
@@ -134,7 +135,7 @@ export default function HistoryScreen() {
           <EmptyState
             testID="history-empty"
             symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
-            message={emptyHistoryMessage({ category: filter, range })}
+            message={holdRanges(emptyHistoryMessage({ category: filter, range }))}
           />
         )
       ) : (

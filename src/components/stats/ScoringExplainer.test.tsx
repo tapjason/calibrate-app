@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import {
   MIN_N_BAND,
   MIN_N_CATEGORY,
@@ -79,5 +80,13 @@ describe('ScoringExplainer', () => {
     );
     fireEvent.press(screen.getByTestId('scoring-close'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // At 320 and 375pt the list of bands broke "0–" / "20%" (DESIGN_SYSTEM §7.9).
+  it('holds every range in the bands paragraph together', () => {
+    render(<ScoringExplainer />);
+    expect(
+      screen.getByText(holdRanges('0–20%, 20–40%, 40–60%, 60–80% and 80–100%'), { exact: false }),
+    ).toBeTruthy();
   });
 });
