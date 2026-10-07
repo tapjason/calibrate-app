@@ -1,7 +1,8 @@
 # Calibrate — Next Steps an Agent Can Do Alone
 
 **As of:** 2026-10-04 (second pass) · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-109 suites / 1245 tests green (after the UI batches, steps 16–78).
+110 suites / 1252 tests green (after the UI batches, steps 16–78, and the
+2026-10-06 code-review fixes).
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
