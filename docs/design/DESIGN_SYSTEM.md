@@ -10,7 +10,8 @@ anyone builds them — they are listed with the other open questions in
 **Evidence:** every rule below traces to the sourced research in
 [`research/`](research/) (market, libraries, visual-language, done 2026-09-25; patterns,
 done 2026-09-28 and behind §2.5 and §7.10–§7.15; confidence, done 2026-10-05 and
-behind §7.3, §7.14 and §7.18). The
+behind §7.3, §7.14 and §7.18; elements, done 2026-10-06 from 18 apps rated 4.7+ and
+8,057 of their reviews, behind §7.20 and §7.21). The
 "before" screens are in [`baseline/`](baseline/) (web-build captures, so fonts and the
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
@@ -64,6 +65,8 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 | **No guilt** | "Guesser" reads as a starting point; misses and broken streaks are never red, never animated. | Gentler Streak (ADA 2024), Finch |
 | **Craft in the frequent path, celebration only at milestones** | Log and Resolve get a precise small acknowledgement; only three moments get the full treatment (§6.2). | (Not Boring) Habits (ADA 2022), HIG Motion |
 | **Native first** | Real tab bar, sheets, SF Symbols, system haptics. | ADA 2025–2026 winners |
+| **Easy before minimal** | Every control carries a word and stays visible; no gesture-only action; a familiar platform pattern beats a clever one. "Easy to use" is the praise in 204 of 4,899 five-star reviews; the most pared-down app in the set draws the most "unintuitive" ones. | `research/elements-2026-10.md` §1, NN/g icon usability |
+| **Don't move the furniture after launch** | Structural changes (navigation, type, dark mode) land before the first public release. After it, a changed UI is the most punished thing in reviews. | `research/elements-2026-10.md` §1.3, Chen et al. 2021 ("comparative" reviews 90% 1–2★) |
 
 ---
 
@@ -485,6 +488,11 @@ third row) → **honest timeline** → **one** CTA.
 - The CTA label follows the selected plan ("Start free month" / "Subscribe for
   $4.99/mo").
 - **No trial toggle** — Apple rejects them under 3.1.2 since January 2026.
+- **Plus never interrupts.** No pop-up, nothing on launch or mid-task, at most one
+  teaser per screen, and the × is always visible. Interrupting upsells, and an ×
+  hidden in a corner, are what fill a 4.76-rated app's low reviews
+  (`research/elements-2026-10.md` §1.4). Billing is the largest single complaint in
+  the sample; a reminder before the trial converts is decision **D16**.
 - Prices and trial length are **always what the store reports**; never hard-code them.
 - Keep: "Restore purchases" as a text button (built as step 78; it was an outlined
   capsule that read as a second CTA), the "stay free forever" reassurance,
@@ -500,9 +508,16 @@ third row) → **honest timeline** → **one** CTA.
 - Tab labels are single words with filled symbols. Never disable or hide a tab; explain
   empty sections in place.
 - Sheets for scoped tasks, with a grabber: **Resolve** at the medium detent, **Share**
-  large, **Paywall** full-screen modal with Close top-leading. Use expo-router
+  large, **Paywall** full-screen modal with the × at the top trailing edge
+  (`CloseButton`, as built in step 30). Use expo-router
   `presentation: 'formSheet'` with fixed detents (`fitToContents` has open sizing bugs).
   Swipe-to-dismiss with unsaved text asks for confirmation.
+- **Every sheet shows a way out before anything is done in it** (roadmap step 79): the
+  round × (`CloseButton`) at the top, as well as the grabber and the swipe. HIG wants
+  the standard Close symbol, not the word; NN/g advises a visible close rather than
+  the grab handle alone; every sheet in the 4.7+ set has one. A sheet's one finishing action (Done,
+  Next) stays the single filled capsule; a sheet that only reads (How scoring works)
+  or only shares (Share) closes from the × and loses its bottom Done.
 - **Proposed** (roadmap D3): four tabs *Today · Insights · History · You*; "Log" stops
   being a tab (HIG: tabs navigate, they don't perform actions) and becomes a tinted "+"
   that opens a large-detent sheet; native tabs with Liquid Glass on iOS.
@@ -795,6 +810,48 @@ the first React frame, so a cold start cut from indigo to a white screen with a 
 spinner, and a first run showed Home for a moment before the Warmup replaced it. It
 never holds longer than 4 s. The loading view behind it is `canvas` with a `brand600`
 spinner, which is what the web build shows.
+
+### 7.20 Choosing an element
+
+What to reach for, from 18 apps rated 4.7+ and the HIG (`research/elements-2026-10.md`
+§3). Pick the first row that fits; a custom control needs a reason the platform's
+doesn't serve.
+
+| You need | Use | Not | Why |
+|---|---|---|---|
+| Move between the app's sections | A tab bar of 3–5 single-word, labelled tabs | An action as a tab, a hidden menu | HIG Tab bars: "navigation, not… actions". Visible navigation was used by 89% vs 44% hidden (NN/g). Log as a tab is D3. |
+| Start a new entry | A tinted "+" (in or beside the tab bar, or in the header), opening a sheet | An ordinary tab | None of the nine top apps that show it uses a tab. Built when D3 is. |
+| One of 2–5 closely related views | A segmented control, text only | Mixing icons and words; a segmented control for whole sections | HIG Segmented controls. Share's Card · This week · This year. |
+| Filter a list | Horizontally scrolling pills, "All" first | A dropdown | Day One, Flighty, Bevel; History. |
+| One of a few named options in a form | Chips with symbol + word, selected state not colour alone | A picker wheel | Log's category and due-date chips. |
+| A number on a long scale | Slider + ±5 stepper, the value large | A slider alone; buttons for 21 values | HIG Sliders: "supplement… with a stepper". §7.3. |
+| A number on a short scale (≤ 6) | One-tap buttons | A slider | Daylio and stoic.'s five faces; Hedge's 50 · 60 · 70 · 80 · 90 · 99. |
+| An on/off setting with immediate effect | A switch on a list row | A capsule button | §7.21. |
+| Go deeper from a row | The whole row, with a chevron and the current value | A button inside the row | HIG Lists: "use a disclosure indicator". §7.21. |
+| Close a sheet or modal | The round × (`CloseButton`) at the top | The word "Close"; a grabber alone | HIG Toolbars; NN/g bottom sheets. §7.7. |
+| The one thing to do on a screen | One filled capsule | Two filled capsules | HIG Buttons: "one or two prominent buttons per view". |
+| A minor alternative to the main action (Change answer, Can't tell, Restore purchases) | A text button, brand subhead, 44pt target | An outlined capsule beside the primary | Step 78. |
+| Confirm something irreversible | A screen that says what goes, an outlined capsule with a `destructive` label, Cancel beneath | A filled red primary | HIG Buttons: never give a destructive action the primary role. Step 81. |
+| Explain a number | A text link beside it ("How is this scored?") opening a reading sheet | A tooltip, a long-press | WHOOP, Oura and Bevel put an ⓘ in the header of each score's screen; Calibrate's link does the same job with a word. |
+| Ask for a rating | The system prompt after a finished run, never in the Warmup | A custom "Enjoying Calibrate?" pre-prompt; a button | HIG Ratings and reviews. Decision D15. |
+
+### 7.21 Settings (planned, roadmap step 80)
+
+Settings is a grouped inset list, as iOS Settings, Streaks and Todoist are:
+
+- **Groups:** *Account* (sign-in state as the row's value: "Not signed in ›", or the
+  email) · *Calibrate Plus* ("See plans ›", or the plan) · *Reminders and Coach*
+  (switches) · *Usage stats* (switch) · *About* (How scoring works ›, Terms of use ›,
+  Privacy policy › once hosted) · *Erase all data* alone at the bottom, its label in
+  `destructive`.
+- **Rows:** the whole row is the target; a row that opens something ends in a chevron
+  and, where there is one, its current value in `textSecondary`; an on/off row ends in
+  a switch and is one `switch` element for VoiceOver (step 41, unchanged). The
+  explanatory sentences stay as each group's footer, in `footnote` `textSecondary`.
+- **No capsule buttons inside rows.** Today's rows end in "Sign in", "See Plus" and
+  "Read" capsules beside three switches, and only the capsule responds.
+- HIG: "Minimize the number of settings you offer." Nothing moves to Settings that
+  belongs to a task (the share card's theme stays on Share).
 
 ---
 

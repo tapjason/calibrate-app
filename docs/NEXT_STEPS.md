@@ -130,7 +130,11 @@ found the RevenueCat Test Store drift below.
   with Apple `.p8` key, and deleting the RevenueCat customer needs a
   write-scoped server key. The function already handles both once the secrets
   exist (`ACCOUNT_SPEC.md` §3).
-- **Design decisions D1–D10** in `docs/design/UI_ROADMAP.md` §2.
+- **Design decisions D1–D16** in `docs/design/UI_ROADMAP.md` §2. Two are new
+  from the 2026-10-06 element research: **D15** (ask for a rating with the
+  system prompt) and **D16** (a reminder before the trial converts). The same
+  research recommends settling D1, D3 and D7 before App Store submission, since
+  reviews punish a changed UI more than anything else.
 
 ---
 

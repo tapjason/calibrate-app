@@ -118,6 +118,11 @@ goes on top, as proposed:
 - **Never:** nothing animates when a streak ends, and notifications still never
   mention the streak (§7.15).
 - **Share:** 100 and 365 are candidates for D6's milestone share cards.
+- **Evidence (2026-10-06):** fun, satisfying, delight and haptics are the most
+  lopsided praise in 8,057 reviews of 4.7+ apps (5.9% of five-star reviews, 0.9% of
+  one- and two-star), and two thirds of it goes to apps with a character or a
+  completion that feels physical (`research/elements-2026-10.md` §1.2). A reason to
+  build this once a device is available, not a reason to build it blind.
 - Size S–M. Needs the haptic call and a device build (60 fps, haptic timing), like
   step 17's tier-up flip.
 
