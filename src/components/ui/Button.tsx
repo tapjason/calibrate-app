@@ -83,11 +83,18 @@ const styles = StyleSheet.create({
     borderColor: colors.controlBorder,
     borderWidth: 1,
   },
-  // Destructive actions only (sign-out, delete) — never an outcome.
-  danger: { backgroundColor: colors.destructive },
+  // Destructive actions only (erase, delete) — never an outcome. Outlined,
+  // not filled: HIG Buttons, "Don't assign the primary role to a button that
+  // performs a destructive action" (roadmap step 81). The red label and
+  // outline still mark it; nothing on its screen is a filled primary.
+  danger: {
+    backgroundColor: colors.surface,
+    borderColor: colors.destructive,
+    borderWidth: 1,
+  },
   disabled: { opacity: 0.4 },
   labelBase: type.headline,
   label_primary: { color: colors.onBrand },
   label_secondary: { color: colors.textPrimary },
-  label_danger: { color: colors.onBrand },
+  label_danger: { color: colors.destructive },
 });

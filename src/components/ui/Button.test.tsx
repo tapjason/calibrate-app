@@ -1,4 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+
+import { colors } from '@/constants/theme';
 
 import { Button } from './Button';
 
@@ -20,5 +23,17 @@ describe('Button', () => {
     render(<Button label="+5" accessibilityLabel="Raise confidence by 5" onPress={onPress} />);
     fireEvent.press(screen.getByRole('button', { name: 'Raise confidence by 5' }));
     expect(onPress).toHaveBeenCalled();
+  });
+
+  // Roadmap step 81 (HIG Buttons): a destructive action never takes the
+  // filled primary look. Outlined, with a red label and edge.
+  it('draws a destructive action outlined, not filled', () => {
+    render(<Button label="Erase everything" variant="danger" onPress={jest.fn()} testID="d" />);
+    const style = StyleSheet.flatten(screen.getByTestId('d').props.style);
+    expect(style.backgroundColor).toBe(colors.surface);
+    expect(style.borderColor).toBe(colors.destructive);
+    expect(StyleSheet.flatten(screen.getByText('Erase everything').props.style).color).toBe(
+      colors.destructive,
+    );
   });
 });
