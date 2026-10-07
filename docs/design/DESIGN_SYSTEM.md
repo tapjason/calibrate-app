@@ -11,7 +11,8 @@ anyone builds them — they are listed with the other open questions in
 [`research/`](research/) (market, libraries, visual-language, done 2026-09-25; patterns,
 done 2026-09-28 and behind §2.5 and §7.10–§7.15; confidence, done 2026-10-05 and
 behind §7.3, §7.14 and §7.18; elements, done 2026-10-06 from 18 apps rated 4.7+ and
-8,057 of their reviews, behind §7.20 and §7.21). The
+8,057 of their reviews, behind §7.20 and §7.21; retention, done 2026-10-07, behind
+the rest days in §7.9 and §7.22's daily practice and reminder). The
 "before" screens are in [`baseline/`](baseline/) (web-build captures, so fonts and the
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
@@ -575,6 +576,10 @@ filters are its way forward.
   different people. Pair percentages with natural frequencies ("7 in 10").
 - "Guesser" is a starting point, not a grade. The streak says what today adds, never
   what it would cost; when it ends it disappears quietly until the next one starts.
+- **Rest days** (roadmap step 87) are said as a relief, never as a miss: "Yesterday
+  was a rest day", "1 rest day saved", "A rest day comes with day 7", "Today saved a
+  rest day". A third line on the streak row, `caption` in `textTertiary`, and part of
+  the row's one spoken sentence. The words *missed*, *lost* and *broke* never appear.
 - Sentence case everywhere; no ALL-CAPS labels.
 - Badge gating is a trust feature — say it: "Badges need receipts."
 - **Things that read as one never split across lines** (roadmap step 70, checked at
@@ -755,6 +760,7 @@ the same thing, no instructions, title-style titles without ending punctuation.
 | Digest, open > 0 | Your week ahead | 3 predictions are coming due. | Weekly check-in | `passive` |
 | Digest, open = 0 | Your week ahead | Nothing open. What do you think will happen this week? | Weekly check-in | `passive` |
 | Trial ending (D16) | Your free trial ends Thursday | Plus then renews for a year at $29.99. | About your Plus trial | default |
+| Practice (step 89) | One of five, changing daily: Today’s three · Three new questions · A quick three · Practice is ready · Today’s practice | That day's first question: "Which is farther north: Dublin or Moscow?" | Daily practice | default |
 
 - The confidence goes in the reminder so that resolving from the notification still
   puts the stated number first (§7.10).
@@ -767,6 +773,11 @@ the same thing, no instructions, title-style titles without ending punctuation.
   **Not now** (a week's cooldown). Settings' Notifications row adds **Allow
   reminders** while iOS hasn't been asked and **Open Settings** after a refusal.
 - One reminder per prediction; no follow-ups.
+- **The practice reminder is asked for, never assumed** (step 89): off until a moment
+  is picked under a finished practice or in You, one a day only while that day's
+  practice isn't done, and scheduled no more than three days past the last visit, so
+  it falls silent for someone who has stopped opening the app. Its wording changes
+  every day, because a repeated reminder wears out (Yancey & Settles 2020).
 - **Proposed** (roadmap D8): *Happened* / *Didn't* actions on the reminder via
   `setNotificationCategoryAsync`, as foreground actions that open straight into the
   resolved state. Background (no-open) action handling is only documented to reach JS on
@@ -892,6 +903,34 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   "Read" capsules beside three switches, and only the capsule responded.
 - HIG: "Minimize the number of settings you offer." Nothing moves to Settings that
   belongs to a task (the share card's theme stays on Share).
+- **Practice reminder** (step 89): a stacked row in the Notifications group, its
+  label and one line over four chips (Off, With coffee, At lunch, After dinner, each
+  with its time), two to a row. With Notifications off the choice is kept and the line
+  says nothing is sent.
+
+### 7.22 Daily practice (built as roadmap steps 88–89)
+
+Three two-choice questions a day, the same for everyone on the same day, kept apart
+from everything real (`CLAUDE.md`, Daily practice).
+
+- **On Today:** one row under the streak, the streak row's shape: a target symbol,
+  "Today’s practice" over "3 questions, about 30 seconds", and **Start** in brand with
+  a chevron; "1 of 3 answered" and **Continue** partway; done, a check, "Practice
+  done" over "2 of 3 right. New ones tomorrow", and the chevron alone. The whole row
+  opens the sheet. Not shown before the first prediction: on Day 0 the Warmup has
+  just asked ten questions, and the next thing is the first real one.
+- **The sheet:** full height like Log, title and the round ×. The Warmup's question
+  form (segments, `title2` prompt, `ChoiceList`, the confidence control from 50%,
+  nothing preset), one question at a time, answers held to the end like the Warmup.
+- **The answers:** "2 of 3 right" in `title1`, never display size (a practice number
+  must not look like the rating), "You expected about 2." under it, then the Warmup's
+  answer key in a surface card, "Three new questions tomorrow.", the reminder offer
+  (native only), and *Your practice so far*: counts and how many more until 20, then
+  which way it leans, the two percentages and the chart. It ends on "Practice stays
+  apart from your calibration rating, your badges and your streak."
+- **Never:** a practice streak (one counter is enough, and it stays about real
+  predictions), a claim that practice improves the score, red or green for a wrong or
+  right answer, or a share card (a scope call, not made).
 
 ---
 

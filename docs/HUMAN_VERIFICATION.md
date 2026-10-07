@@ -860,6 +860,18 @@ Added 2026-09-30 (the last three commits, `7fd1aba`..`d69ba54`):
       the milestone number stop growing at some point while body text keeps
       growing; exported share cards don't reflow.
 
+Added 2026-10-07 (retention batch, roadmap steps 87–89; all web-verified):
+
+- [ ] **Rest days:** the streak row's third line reads as one sentence with the
+      rest under VoiceOver ("15-day streak. 3 more today makes it 16. 2 rest days
+      saved."), and stays legible in dark mode.
+- [ ] **Practice row on Today:** sits under the streak row, reads "Today's
+      practice, 3 questions, about 30 seconds" with the hint "Start", and opens
+      the practice sheet at full height with the grabber and the ×.
+- [ ] **Practice sheet:** the answer radios and the confidence control feel like
+      the Warmup's (detent haptic on the slider); after the third, the answers
+      open at their top; VoiceOver hears each new question.
+
 ---
 
 ## Batch D — Physical device (~45 min)
@@ -886,6 +898,15 @@ Expo Go — notifications and RevenueCat are both native modules.
       prediction due in a few minutes, force-quit, reopen, resolve it before it
       fires: no reminder arrives. Repeat with Settings → Notifications off
       after the relaunch instead of resolving: still nothing.
+- [ ] **Practice reminder (added 2026-10-07, roadmap step 89):** finish
+      today's practice; under the answers, "Want tomorrow's three at a set
+      time?" offers three moments. On a fresh install, picking one brings up the
+      iOS alert (and only then). `getAllScheduledNotificationsAsync` lists three
+      `calibrate-practice-<day>` requests at that time, none for today, each with
+      a different title and its day's first question as the body. Tapping one
+      (also from a cold start) opens today's practice. In You, pick Off: all
+      three go. Turn Notifications off: all three go, and the row says nothing is
+      sent.
 
 ### D2. Sandbox purchase — the Layer 5 billing gate
 - [ ] Sign in with the sandbox tester account (Settings → App Store on device).

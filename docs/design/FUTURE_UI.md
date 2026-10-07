@@ -1,6 +1,6 @@
 # Calibrate — Future UI Features
 
-**As of:** 2026-10-06. A1, A3, A5, A6, A4's one-tap half ("Log it again") and most of §B shipped as roadmap steps 16–26; `UI_ROADMAP.md` §1.1 lists what each remaining item waits on. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
+**As of:** 2026-10-07. A1, A3, A5, A6, A4's one-tap half ("Log it again") and most of §B shipped as roadmap steps 16–26, and A2 as step 88 (with its reminder, step 89); `UI_ROADMAP.md` §1.1 lists what each remaining item waits on. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
 what's being built now. Nothing here is scheduled, and anything that changes product
 behaviour needs the owner's call first. `CLAUDE.md` still governs every item:
 shareable artifacts are never paywalled, no number built on noise (min-N), AI stays
@@ -17,7 +17,7 @@ a native build.
 | # | Feature | Size | Needs first |
 |---|---|---|---|
 | A1 | Track record on the Log slider | S–M | **Shipped 2026-10-04** (roadmap step 19) |
-| A2 | Daily drill | M | A question bank; fits with D2 (streak unit) |
+| A2 | Daily drill | M | **Shipped 2026-10-07** as daily practice (roadmap steps 88–89) |
 | A3 | Resolve several at once | M | **Shipped 2026-10-04** (roadmap step 18) |
 | A4 | Repeating predictions | L | Schema change. Its one-tap half, "Log it again", **shipped 2026-10-04** (roadmap step 22) |
 | A5 | Personal correction table | M | **Shipped 2026-10-04** (roadmap step 20) |
@@ -26,8 +26,14 @@ a native build.
 | A8 | Web Warmup as the share-card landing page | M | Hosting (GitHub Pages) |
 | A9 | Predict the same event with a friend | L | Backend, invites |
 | A10 | Widgets and a Siri Shortcut | L (the Shortcut drops to M on SDK 58) | EAS build; SDK 58 for `expo-app-intents` |
+| A11 | Today's three as a share card | S–M | A scope call, like D6 |
 
-### A2. Daily drill
+### A2. Daily drill (shipped 2026-10-07 as daily practice, roadmap steps 88–89)
+What shipped differs from the sketch below: three questions a day rather than one,
+generated from reference tables rather than a written bank (so there was no ~200-item
+fact-check), the same for everyone on the same day, and no streak credit (the streak
+stays about real predictions). The sketch, as parked:
+
 One estimation question a day with the same confidence control, stored separately
 like the Warmup and **never** mixed into `UserStat`/`CategoryStat`. Real predictions
 resolve when they come due, which the user doesn't control, so this gives a reason to
@@ -82,6 +88,16 @@ category unlocks), and an App Intent for "Log a prediction".
   `expo-app-intents`, which exposes Siri, Shortcuts, Spotlight and Apple
   Intelligence intents from JavaScript, so "Log a prediction" no longer needs
   hand-written Swift. Widgets still need a native target.
+
+### A11. Today's three as a share card
+Everyone answers the same three on the same day, which is what made Wordle's grid
+travel ("it's one puzzle, and everybody is solving it"). A small card: the date, three
+marks (filled for right, hollow for a miss, as the answer key draws them) and the
+confidence beside each, with no answers on it, so it spoils nothing for someone who
+hasn't played yet.
+- A new share surface, so a scope call like D6. Free, like every shareable.
+- Reward calibration, not correctness: lead with "said 80% · got 2 of 3" rather than
+  a score, and never a streak of right answers.
 
 ---
 

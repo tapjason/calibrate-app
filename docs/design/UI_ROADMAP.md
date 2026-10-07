@@ -108,6 +108,9 @@ is checking it on an iPhone and the decisions.
 | 84 D16: the trial-ending reminder | Done 2026-10-07, unit-tested (10:00 two days before a trial renews, the store's price, cancelled with the trial or the toggle; the paywall timeline's reminder step while notifications are on) | Yes (sandbox trials last minutes, so the 2-days-before time is already past: check the schedule in a log, or with a StoreKit config file's longer trial) |
 | 85 D1: Inter everywhere | Done 2026-10-07, unit-tested and web-verified at 375 and 320pt (five weights embedded on iOS, registered on web; tokens, chrome, cards and chart labels; the streak headline drops `tnum`, the coverage cells' labels sit at 11pt, the Log placeholder is shorter) | Yes (needs a new build: the fonts are embedded at build time; check weights render, not a faux bold) |
 | 86 D7: dark mode follows the phone | Done 2026-10-07, web-verified in both appearances with a contrast scan (DynamicColorIOS / CSS variables; navigation themes; badge chips; six colourless text styles, three brand700 texts and the switch thumbs fixed; share cards keep fixed colours) | Yes (Settings → Display → Dark: every tab, sheet and the chart; a card exported in dark matches one exported in light) |
+| 87 Rest days | Done 2026-10-07, unit-tested and web-verified with the clock moved (the demo's 15-day streak shows "2 rest days saved"; a day later with nothing done, "Yesterday was a rest day. 1 more saved." and still 15). Every 7 counted days save one, up to 2; a day that doesn't count spends one and adds nothing; derived, never stored | Yes (VoiceOver reads the three lines as one sentence) |
+| 88 Daily practice | Done 2026-10-07, unit-tested and web-verified at 375 and 320pt in both appearances (Today's row, the quiz, "2 of 3 right. You expected about 3.", the answer key, the record's "17 more"; the next day's three with the clock moved). Three questions a day from reference tables, the same for everyone, kept apart from the score | Yes (the sheet, the slider's detent haptic, VoiceOver per question) |
+| 89 Practice reminder at a chosen moment | Done 2026-10-07, unit-tested (scheduling, titles, three-day window, permission in context, the tap route); the offer previewed at `/dev/celebrations` and You's row web-verified | Yes (HUMAN_VERIFICATION D1: the alert only on choosing, three requests, a tap opens practice) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -119,7 +122,7 @@ by step.
 
 ### 1.1 Building now
 
-Nothing in progress. Steps 16–63 shipped on 2026-10-04 and 10-05, 64–78 on 10-06, and 79–86 on 10-07 (§1.2). The tenth batch
+Nothing in progress. Steps 16–63 shipped on 2026-10-04 and 10-05, 64–78 on 10-06, and 79–89 on 10-07 (§1.2, and the retention batch in §1.3). The tenth batch
 (46–51) came from playing the web build as a new user on a cleared profile, and
 from the research in [`research/confidence-2026-10.md`](research/confidence-2026-10.md):
 how the app asks for a number, and what a ten-question Warmup can claim. It fixed
@@ -183,13 +186,41 @@ the typeface (D1, step 85) and **dark mode** following the phone (D7, step 86).
 Every structural decision the element research flagged is now made and built before
 launch; what's left for 1.0 is the device run.
 
+### 1.3 From the retention research (2026-10-07; built the same day)
+
+You asked for features with high user retention.
+[`research/retention-2026-10.md`](research/retention-2026-10.md) looked at what the
+primary sources measured (Duolingo's own A/B tests and its KDD paper on practice
+reminders, Sharif & Shu on emergency reserves, Silverman & Barasch on broken
+streaks, Lally on habit formation, the calibration-training studies) and at
+Calibrate's own return loop. It found three gaps: no daily reason to open the app
+that doesn't wait on a due date, no cue at a time the person chose, and a streak that
+one ordinary bad day ends. Three steps closed them, each additive and each recorded
+in `CLAUDE.md`:
+
+| Step | What | Evidence |
+|---|---|---|
+| 87 Rest days | Every 7 counted days save a rest day, up to 2, spent automatically on a day that doesn't count; the streak carries on without adding it. A third line on the streak row. | Duolingo: a second Streak Freeze slot, +0.38% daily actives. Finite, earned slack raises persistence (Sharif & Shu 2017, 2021); a repairable streak demotivates less when broken (Silverman & Barasch 2023); one miss doesn't undo a habit (Lally 2010). |
+| 88 Daily practice | Three two-choice questions a day, the same for everyone, drawn from reference tables (not picked to be tricky), with the Warmup's form and answer key. Practice is kept apart from the score, the streak and Wrapped. | Wordle's one-a-day, same-for-everyone design. Calibration training's effect on real forecasts is mixed (Lichtenstein & Fischhoff 1980; Chang et al. 2016; Gruetzemacher 2024; Martin 2025), so the app never claims it. Random draws from a reference class don't manufacture overconfidence (Gigerenzer et al. 1991). |
+| 89 Practice reminder | Off until a moment is picked ("With coffee · 8:00 AM"); one a day, only while the day's practice isn't done; a new title daily and the day's first question as the body; nothing past three days without a visit. | Duolingo's optimised daily reminders: +2.2% new-user D1, +2.0% D7 retention, and repetition wears them out (Yancey & Settles 2020). Implementation intentions, d = 0.65 (Gollwitzer & Sheeran 2006). |
+
+The one change the evidence argues for that reverses an earlier call is decision
+**D17** below: Duolingo's strongest retention result came from making a streak day
+*easier* to earn. Not built: the checkpoint celebration (B1, +1.7% day-7 retention at
+Duolingo) still waits on a device, and widgets and friend streaks on a native build
+and a backend.
+
+Step 88's tables also unblock **D14 (c)**, approved on 2026-10-05: the Warmup can
+now draw its ten from a representative bank. Not done in this batch, because it
+changes the Day-0 verdict and its card ("10 tricky questions"); it's the next thing
+to build if you still want it.
+
 ### What's left in the parking lot
 
 Every item still in `FUTURE_UI.md` needs something an agent can't supply:
 
 | Item | What it waits on |
 |---|---|
-| A2 Daily drill | A bank of ~200 sourced questions (content, and fact-checking it), and D2: whether a drill counts toward the streak. |
 | A4 Repeating predictions (automatic) | A `recurrences` table needs a Supabase migration applied to the live project, which is paused. "Log it again" (step 22) covers the manual half. |
 | A7 Revising a confidence | A scoring rule written into `CLAUDE.md` first (the score stays on the first number). |
 | A8 Web Warmup landing page | Hosting (the GitHub Pages switch) and the anonymous-funnel decision. |
@@ -219,9 +250,10 @@ And the decisions in §2 below.
 | D11 | An on-device Coach (FUTURE_UI P2) | Prototype it after the SDK upgrade: Apple Foundation Models first where available, the OpenAI Coach as fallback, both through the same grounding validator. Keep it Plus at first. | Changes the Coach's provider and privacy story (nothing leaves the phone on supported devices), and whether it stays Plus. |
 | D12 | Widgets (FUTURE_UI P1) | Build the "ready to resolve" widget first, right after the SDK 56+ upgrade; the identity widget second. | A new native target and app group; scope and order are a product call. |
 | D13 | The number before you touch it | ~~**Start both confidence controls empty**: the readout says "Set how sure you are", the thumb appears where it's first touched (the ±5 buttons start from the middle of the range), and Next / Save wait for a number. Watch `warmup_completed / warmup_started` either side of the change. Runner-up for the Warmup only: Hedge-style buttons (50 · 60 · 70 · 80 · 90 · 100), one tap each.~~ **Approved and built 2026-10-05** (step 54). The readout shows "—%, not set yet" and the thumb rests grey mid-range until the first drag, tap, touch or ±5. | Until then the Warmup started at 75% and Log at 50%. Tapping through the Warmup yields "I run hot · 75% sure, 50% right" on the first share card, about a number the user never chose (step 49 now says so, but still shares it). On Log, 50% sits inside the 35–65% band, so an untouched save earns the integrity bonus and counts as an "honest coin-flip" on Wrapped. Step-5 presets probably anchor little (Liu & Conrad 2019 found no consistent effect on 21-point sliders); the cost is that "didn't touch it" can't be told from "chose it". It adds one required interaction to the Day-0 funnel and the 15-second Log target, so it's your call. |
-| D14 | What the Warmup's verdict can claim | ~~**(a) now, (c) later.** (a) Keep the ten questions and add one true line under an overconfident verdict: "These were picked to be tricky, so most people run hot here. Your own predictions are the real test." (c) Once A2's question bank exists, draw ten at random from it, so the verdict reflects the person rather than the selection. Option (b), swapping the three "obvious answer is wrong" items for plain ones now, is the cheap version of (c).~~ **Approved 2026-10-05.** (a) is built (step 55); (c) waits on A2's question bank (FUTURE_UI). | The bank's own header says it's chosen to make users "visibly overconfident", with items "where the obvious answer is wrong". That is how overconfidence is manufactured in the literature: selected items average .73 confidence for .64 correct, representative ones .73 for .72 (Juslin, Winman & Olsson 2000; Juslin 1994). So "You run overconfident" on Day 0, and the card that shares it, describes our questions as much as the user. But GROWTH §5.1 wants that moment as the hook. |
+| D14 | What the Warmup's verdict can claim | ~~**(a) now, (c) later.** (a) Keep the ten questions and add one true line under an overconfident verdict: "These were picked to be tricky, so most people run hot here. Your own predictions are the real test." (c) Once A2's question bank exists, draw ten at random from it, so the verdict reflects the person rather than the selection. Option (b), swapping the three "obvious answer is wrong" items for plain ones now, is the cheap version of (c).~~ **Approved 2026-10-05.** (a) is built (step 55); (c) waited on A2's question bank (FUTURE_UI); step 88's tables are that bank, so (c) is ready to build. | The bank's own header says it's chosen to make users "visibly overconfident", with items "where the obvious answer is wrong". That is how overconfidence is manufactured in the literature: selected items average .73 confidence for .64 correct, representative ones .73 for .72 (Juslin, Winman & Olsson 2000; Juslin 1994). So "You run overconfident" on Day 0, and the card that shares it, describes our questions as much as the user. But GROWTH §5.1 wants that moment as the hook. |
 | D15 | Asking for a rating | ~~**Yes, with the system prompt** (`expo-store-review`'s `requestReview()`, after `npx expo install`): once, on Home after the sheet closes on a finished run ("All caught up") or on the answer that unlocked the score, whichever comes first, and only after 7 days and 10 answers. Never inside the sheet: HIG says not to interrupt a task. Never in the Warmup, never after a single answer (so a Yes is never what triggers it), never from a button. App-side at most once per 90 days; the system caps it at three a year.~~ **Decided 2026-10-07 as proposed; built as step 83.** | Every app in the 4.7+ set rates far above its written reviews (61% of recent written reviews are five-star against ratings of 4.7–4.95): most of the stars come from people who rate without writing, most likely through the system prompt. Calibrate never asks, so its rating would come only from those who seek out the store. A new native module and a new moment in the core loop (HIG: "Avoid asking… during onboarding"; Appbot: >400% more ratings per month, average unchanged). |
 | D16 | A reminder before the trial converts | ~~**Yes:** a local notification 2 days before the month's trial renews, saying when it renews and at what price, both from the store ("Your free month ends Thursday" · "Plus then renews for a year at $29.99."), scheduled on purchase from the store's own expiry and cancelled if the trial is. Then the paywall's timeline gains the "we remind you" step DESIGN_SYSTEM §7.6 holds back until it's true.~~ **Decided 2026-10-07 as proposed; built as step 84** (10:00 local two days before, so it never lands at night). | Billing is the largest complaint in the sample: a third of all low reviews are about money, and the largest part of those mention a charge, a trial or cancelling (`research/elements-2026-10.md` §1.4). A new notification type in L5, and a promise on the paywall that has to hold. Like the others in DESIGN_SYSTEM §7.15 it carries no offer, only when the charge comes and how much. |
+| D17 | How much a streak day takes | **One** prediction logged or answered extends the streak, and the three pips stay as the day's goal ("1 of 3 today", a day that reaches three marked as such), with rest days as built. Practice still doesn't count toward it. Before deciding, the analytics can say how often active days stop at one or two (research §4). | Reverses D2's threshold (decided 2026-10-05: "a number that climbs every day is the appeal", which this keeps). Duolingo's A/B test of exactly this, a single lesson extending the streak instead of the daily goal, raised day-14 retention 3.3%, daily actives 1%, and new users on a streak 19%, while fewer people met the daily goal (research/retention-2026-10.md §2.1). Changes `current_streak` in `CLAUDE.md`, the streak copy and How scoring works, and checkpoints arrive sooner for most people. |
 | D10 | What Skip means | ~~Relabel to "Can't tell / doesn't apply" with "It won't count toward your score", shown as a text button.~~ **Built 2026-10-04.** The open question was factual and the code answers it: skips are excluded from the score (`calibration.ts`), the streak (`streak.ts`), Wrapped (`wrapped.ts`), patterns and trends, and History already says "Not scored". So the line is true everywhere. One commit to revert if you'd rather keep a Skip button. | — |
 
 ---
