@@ -132,6 +132,20 @@ describe('ResolveRun (roadmap step 18)', () => {
     expect(screen.getByTestId('resolve-run-summary')).toHaveTextContent(/^2 answered\. 2 happened\./);
   });
 
+  // Roadmap step 79: a visible way out mid-run, beside the progress.
+  it('can be left mid-run from the × beside the progress', async () => {
+    await seed();
+    const onDismiss = jest.fn();
+    render(<ResolveRun onClose={jest.fn()} onDismiss={onDismiss} />);
+    await waitFor(() => expect(screen.getByText('First due')).toBeTruthy());
+    const close = screen.getByTestId('resolve-run-dismiss');
+    expect(close.props.accessibilityLabel).toBe('Close');
+    fireEvent.press(close);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    // Leaving answers nothing.
+    expect((await getPrediction('a'))?.status).toBe('pending');
+  });
+
   it('says so when nothing is ready, with no tally or streak to show', async () => {
     render(<ResolveRun onClose={jest.fn()} />);
     expect(screen.getByText('Nothing is ready to resolve right now.')).toBeTruthy();

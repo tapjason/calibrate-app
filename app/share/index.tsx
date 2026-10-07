@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { track } from '@/analytics/track';
 import { ShareCardPanel } from '@/components/share/ShareCardPanel';
 import { WrappedPanel } from '@/components/share/WrappedPanel';
-import { Button } from '@/components/ui/Button';
+import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, type } from '@/constants/theme';
 
 type Tab = 'card' | 'week' | 'year';
@@ -19,8 +19,9 @@ const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
 
 /**
  * Share screen — the identity card and Calibration Wrapped, per the screen
- * list in CLAUDE.md. Reached from Stats; pushed rather than tabbed, since it
- * is a thing you go do, not a place you live.
+ * list in CLAUDE.md. Reached from Insights, Today's identity line and You;
+ * a sheet rather than a tab, since it is a thing you go do, not a place you
+ * live.
  *
  * Everything here is free. There is no entitlement check on this screen and
  * there should never be one: the free tier is the marketing budget.
@@ -40,11 +41,24 @@ export default function ShareScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.wrap}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Your card</Text>
-          <Text style={styles.body}>
-            Where your judgment holds up, and where it doesn&apos;t.
-          </Text>
+        <View style={styles.headerRow}>
+          <View style={styles.header}>
+            <Text style={styles.title} accessibilityRole="header">
+              Your card
+            </Text>
+            <Text style={styles.body}>
+              Where your judgment holds up, and where it doesn&apos;t.
+            </Text>
+          </View>
+          {/* The way out at the top (roadmap step 79). A bottom Done sat
+              under two share buttons, a third capsule in a row of them. */}
+          <CloseButton
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace('/' as never);
+            }}
+            testID="share-close"
+          />
         </View>
 
         <View style={styles.tabs}>
@@ -75,7 +89,6 @@ export default function ShareScreen() {
           <WrappedPanel span={tab} />
         )}
 
-        <Button label="Done" variant="secondary" onPress={() => router.back()} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -84,7 +97,8 @@ export default function ShareScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   wrap: { gap: 20, padding: 20, paddingBottom: 40 },
-  header: { gap: 6 },
+  headerRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
+  header: { flex: 1, gap: 6 },
   title: { ...type.title2 },
   body: { ...type.subhead, color: colors.textSecondary },
   tabs: {

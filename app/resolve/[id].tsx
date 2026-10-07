@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResolvePrompt } from '@/components/resolution/ResolvePrompt';
 import { useReflectionGuard } from '@/components/resolution/useReflectionGuard';
-import { colors, type } from '@/constants/theme';
+import { CloseButton } from '@/components/ui/CloseButton';
+import { colors, space, type } from '@/constants/theme';
 
 export default function ResolveScreen() {
   const router = useRouter();
@@ -31,6 +32,19 @@ export default function ResolveScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* A way out before answering (roadmap step 79): the grabber and a swipe
+          were the only ones, and on web there was none but the browser's
+          Back. Not an answer: the prediction stays open. After an answer it
+          closes like Done, through the reflection guard. */}
+      <View style={styles.top}>
+        <CloseButton
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/' as never);
+          }}
+          testID="resolve-close"
+        />
+      </View>
       {/* Scrolls, and moves clear of the keyboard: on a small phone the
           reflection box, a milestone card and Done don't all fit above it. */}
       <ScrollView
@@ -64,6 +78,7 @@ export default function ResolveScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  top: { alignItems: 'flex-end', paddingHorizontal: space.lg, paddingTop: space.md },
   // flexGrow so the prompt's centred loading / not-found states still centre.
   scroll: { flexGrow: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

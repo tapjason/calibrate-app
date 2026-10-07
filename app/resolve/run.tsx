@@ -32,6 +32,12 @@ export default function ResolveRunScreen() {
       >
         <ResolveRun
           onDraftChange={onDraftChange}
+          // The × mid-run (roadmap step 79): answered cards are saved, the rest
+          // stay open, and a typed reflection goes through the guard.
+          onDismiss={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/' as never);
+          }}
           onClose={() => {
             guard.markLeaving();
             if (router.canGoBack()) router.back();

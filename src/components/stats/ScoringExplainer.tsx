@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Button } from '@/components/ui/Button';
+import { CloseButton } from '@/components/ui/CloseButton';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -17,9 +17,14 @@ export function ScoringExplainer({ onClose }: { onClose?: () => void }) {
   const sections = scoringSections();
   return (
     <View style={styles.wrap} testID="scoring-explainer">
-      <Text style={styles.title} accessibilityRole="header">
-        How scoring works
-      </Text>
+      {/* The way out sits at the top, where a sheet's is looked for (roadmap
+          step 79); a reader at the end swipes down, as with any sheet. */}
+      <View style={styles.header}>
+        <Text style={styles.title} accessibilityRole="header">
+          How scoring works
+        </Text>
+        {onClose && <CloseButton onPress={onClose} testID="scoring-close" />}
+      </View>
       {sections.map((section) => (
         <View key={section.title} style={styles.section}>
           <Text style={styles.heading} accessibilityRole="header">
@@ -51,14 +56,14 @@ export function ScoringExplainer({ onClose }: { onClose?: () => void }) {
           )}
         </View>
       ))}
-      {onClose && <Button label="Done" onPress={onClose} testID="scoring-close" />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: space.xl, padding: space.lg, paddingBottom: space.xxxl },
-  title: { ...type.title1, color: colors.textPrimary },
+  header: { alignItems: 'flex-start', flexDirection: 'row', gap: space.md },
+  title: { ...type.title1, color: colors.textPrimary, flex: 1 },
   section: { gap: space.sm },
   heading: { ...type.headline, color: colors.textPrimary },
   body: { ...type.body, color: colors.textSecondary },

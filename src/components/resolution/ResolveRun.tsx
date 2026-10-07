@@ -5,6 +5,7 @@ import { isReadyToResolve, RUN_THRESHOLD } from '@/components/prediction/dueGrou
 import { expectedLine } from '@/components/share/wrappedCopy';
 import { StreakLine } from '@/components/stats/StreakLine';
 import { Button } from '@/components/ui/Button';
+import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import type { AnswerTally } from '@/types';
@@ -35,6 +36,8 @@ interface ResolveRunProps {
   onClose: () => void;
   /** The current card's unsaved reflection, so the screen can guard a dismissal. */
   onDraftChange?: (predictionId: string, draft: string) => void;
+  /** The × beside the progress (roadmap step 79): leave mid-run. */
+  onDismiss?: () => void;
 }
 
 /**
@@ -50,7 +53,7 @@ interface ResolveRunProps {
  * The queue is a snapshot taken when the run opens, so a sync landing midway
  * can't reshuffle it; a card resolved elsewhere in the meantime is passed over.
  */
-export function ResolveRun({ onClose, onDraftChange }: ResolveRunProps) {
+export function ResolveRun({ onClose, onDraftChange, onDismiss }: ResolveRunProps) {
   const [queue] = useState<string[]>(() => {
     const now = new Date();
     return usePredictionStore
@@ -119,20 +122,23 @@ export function ResolveRun({ onClose, onDraftChange }: ResolveRunProps) {
 
   return (
     <View style={styles.wrap}>
-      <View
-        style={styles.progress}
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel={`Prediction ${index + 1} of ${queue.length}`}
-        accessibilityValue={{ min: 0, max: queue.length, now: index + 1 }}
-        testID="resolve-run-progress"
-      >
-        <Text style={styles.count}>
-          {index + 1} of {queue.length}
-        </Text>
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${progress * 100}%` }]} />
+      <View style={styles.head}>
+        <View
+          style={styles.progress}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Prediction ${index + 1} of ${queue.length}`}
+          accessibilityValue={{ min: 0, max: queue.length, now: index + 1 }}
+          testID="resolve-run-progress"
+        >
+          <Text style={styles.count}>
+            {index + 1} of {queue.length}
+          </Text>
+          <View style={styles.track}>
+            <View style={[styles.fill, { width: `${progress * 100}%` }]} />
+          </View>
         </View>
+        {onDismiss && <CloseButton onPress={onDismiss} testID="resolve-run-dismiss" />}
       </View>
       {/* A new key per card: each one starts fresh, with its own answer and
           reflection state. */}
@@ -150,7 +156,14 @@ export function ResolveRun({ onClose, onDraftChange }: ResolveRunProps) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  progress: { gap: space.xs, paddingHorizontal: space.lg, paddingTop: space.lg },
+  head: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+  },
+  progress: { flex: 1, gap: space.xs },
   count: { ...type.eyebrow, color: colors.textSecondary },
   track: {
     backgroundColor: colors.surfaceSunken,
