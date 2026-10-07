@@ -140,6 +140,10 @@ export default function HistoryScreen() {
         )
       ) : (
         <FlatList
+          // A new filter is a new list, read from its newest. Without the key
+          // it kept the old scroll offset: a range opened from Stats after
+          // scrolling History showed the last three of its eight.
+          key={`${filter}-${range ?? 'any'}`}
           style={styles.list}
           data={filtered}
           keyExtractor={(p) => p.id}
