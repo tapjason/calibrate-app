@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, radius, space, type } from '@/constants/theme';
 import type { BucketStat } from '@/types';
 
@@ -35,7 +36,18 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
           const label = `${low}–${low + 20}%`;
           const content = (
             <>
-              <Text style={styles.range}>{label}</Text>
+              {/* The narrowest range label in the app: held whole (DESIGN_SYSTEM
+                  §7.9), and shrunk to fit its cell at large text sizes rather
+                  than broken. Spoken plain, from the cell's label. */}
+              <Text
+                style={styles.range}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                testID={`coverage-${low}-label`}
+              >
+                {holdRanges(label)}
+              </Text>
               <Text style={[styles.count, n === 0 && styles.countEmpty]}>
                 {n === 0 ? 'none' : n}
               </Text>
