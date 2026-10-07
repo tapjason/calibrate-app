@@ -45,7 +45,8 @@ it only to sign you in.
 **2.2 Your predictions.** The text of each prediction, its category, the
 confidence you gave it, its due date, how it resolved, and any reflection you
 wrote. We store these so you can restore them on another device. We don't read,
-analyze, or share them.
+analyze, or share them. Your warm-up and daily practice answers are not
+predictions: they stay on your device and are never sent, signed in or not.
 
 **2.3 Usage events.** A small, fixed list of in-app events, such as "warmup
 started", "prediction logged", "share completed" and "paywall viewed". Each
@@ -56,7 +57,8 @@ full list:
 `warmup_started`, `warmup_completed`, `share_opened`, `share_completed`,
 `prediction_logged`, `prediction_resolved`, `paywall_viewed`,
 `purchase_completed`, `purchase_abandoned`, `coverage_nudge_shown`,
-`coverage_nudge_accepted`, `coach_requested`, `data_exported`.
+`coverage_nudge_accepted`, `practice_started`, `practice_completed`,
+`practice_reminder_set`, `coach_requested`, `data_exported`.
 
 These are linked to your account. **You can turn them off** in Settings →
 Usage stats.

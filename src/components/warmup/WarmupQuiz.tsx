@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { ChoiceList } from '@/components/ui/ChoiceList';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { colors, type } from '@/constants/theme';
 import {
@@ -98,35 +99,13 @@ export function WarmupQuiz() {
         {question.prompt}
       </Text>
 
-      <View
-        style={styles.options}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={question.prompt}
-      >
-        {question.options.map((option, i) => (
-          <Pressable
-            key={option}
-            testID={`warmup-option-${i}`}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: selected === i }}
-            onPress={() => setSelected(i as 0 | 1)}
-            style={[styles.option, selected === i && styles.optionActive]}
-          >
-            {/* A radio mark carries the selection without colour. */}
-            <View style={[styles.radio, selected === i && styles.radioOn]}>
-              {selected === i && <View style={styles.radioDot} />}
-            </View>
-            <Text
-              style={[
-                styles.optionText,
-                selected === i && styles.optionTextActive,
-              ]}
-            >
-              {option}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ChoiceList
+        label={question.prompt}
+        options={question.options}
+        selected={selected}
+        onSelect={setSelected}
+        idPrefix="warmup-option"
+      />
 
       <View style={styles.block}>
         <ConfidenceControl
@@ -158,33 +137,5 @@ const styles = StyleSheet.create({
   segmentDone: { backgroundColor: colors.brand600 },
   segmentCurrent: { backgroundColor: colors.brand200 },
   prompt: { ...type.title2, color: colors.textPrimary },
-  options: { gap: 10 },
-  option: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.controlBorder,
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 56,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  radio: {
-    alignItems: 'center',
-    borderColor: colors.controlBorder,
-    borderRadius: 999,
-    borderWidth: 2,
-    height: 22,
-    justifyContent: 'center',
-    width: 22,
-  },
-  radioOn: { borderColor: colors.brand600 },
-  radioDot: { backgroundColor: colors.brand600, borderRadius: 999, height: 10, width: 10 },
-  optionActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
-  optionText: { ...type.body, color: colors.textPrimary, flex: 1 },
-  // brand800, the ink meant for brand50: brand700 sank to 2:1 on it in dark (D7).
-  optionTextActive: { color: colors.brand800, fontWeight: '600' },
   block: { gap: 8 },
 });

@@ -23,6 +23,7 @@ import { MIGRATION_003 } from './003_provisional_flags';
 import { MIGRATION_004 } from './004_entitlements';
 import { MIGRATION_005 } from './005_warmup';
 import { MIGRATION_006 } from './006_analytics';
+import { MIGRATION_007 } from './007_practice';
 
 export interface Migration {
   id: string;
@@ -36,6 +37,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: '004_entitlements', sql: MIGRATION_004 },
   { id: '005_warmup', sql: MIGRATION_005 },
   { id: '006_analytics', sql: MIGRATION_006 },
+  { id: '007_practice', sql: MIGRATION_007 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();

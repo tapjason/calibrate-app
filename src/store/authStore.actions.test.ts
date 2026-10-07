@@ -21,6 +21,7 @@ import * as serverAccount from '@/supabase/account';
 import * as auth from '@/supabase/auth';
 
 import { useAuthStore } from './authStore';
+import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
 import { useWarmupStore } from './warmupStore';
@@ -173,11 +174,13 @@ describe('authStore.deleteAccount', () => {
 });
 
 describe('authStore.eraseDeviceData', () => {
-  it("wipes the guest's rows and the Warmup, then reloads the empty stores", async () => {
+  it("wipes the guest's rows, the Warmup and practice, then reloads the empty stores", async () => {
     useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', provider: null });
     wipe.mockResolvedValue(undefined);
     const retake = jest.fn(async () => {});
     useWarmupStore.setState({ retake });
+    const clearPractice = jest.fn(async () => {});
+    usePracticeStore.setState({ clear: clearPractice });
     const loadPending = jest.fn(async () => {});
     const loadResolved = jest.fn(async () => {});
     usePredictionStore.setState({ loadPending, loadResolved });
@@ -187,6 +190,8 @@ describe('authStore.eraseDeviceData', () => {
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
     expect(wipe).toHaveBeenCalledWith(LOCAL_GUEST_USER_ID);
     expect(retake).toHaveBeenCalled();
+    // Practice belongs to the device, like the Warmup (roadmap step 88).
+    expect(clearPractice).toHaveBeenCalled();
     expect(loadPending).toHaveBeenCalled();
     expect(loadForUser).toHaveBeenCalledWith(LOCAL_GUEST_USER_ID);
   });

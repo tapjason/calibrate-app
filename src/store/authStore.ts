@@ -38,6 +38,7 @@ import {
 } from '@/supabase/client';
 import { syncNow } from '@/supabase/sync';
 
+import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
 import { useWarmupStore } from './warmupStore';
@@ -331,6 +332,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         await wipeLocalUserData(LOCAL_GUEST_USER_ID);
         await useWarmupStore.getState().retake();
+        // Practice, like the Warmup, belongs to the device (roadmap step 88).
+        await usePracticeStore.getState().clear();
         await reloadForUser(LOCAL_GUEST_USER_ID);
         return { ok: true };
       } catch (e) {

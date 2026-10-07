@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
+import { PracticeCard } from '@/components/practice/PracticeCard';
 import { groupByDue, nextDueLine } from '@/components/prediction/dueGroups';
 import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
@@ -38,7 +39,7 @@ export default function TodayScreen() {
   );
   const pending = usePredictionStore((s) => s.pending);
   // Subscribed so the streak line follows each answer as well as each log.
-  usePredictionStore((s) => s.resolved);
+  const resolvedCount = usePredictionStore((s) => s.resolved.length);
   const streak = usePredictionStore.getState().streakNow();
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
@@ -107,6 +108,13 @@ export default function TodayScreen() {
           {/* Asks for notification permission here, in context, not at
               launch (roadmap step 38). Native only. */}
           <ReminderPrompt />
+          {/* A reason to open the app on a day nothing comes due (roadmap
+              step 88). Not before the first prediction: on Day 0 the Warmup
+              has just asked ten questions, and the next thing is the first
+              real one. */}
+          {pending.length + resolvedCount > 0 && (
+            <PracticeCard onOpen={() => router.push('/practice' as never)} />
+          )}
         </>
       }
       renderSectionHeader={({ section }) => (

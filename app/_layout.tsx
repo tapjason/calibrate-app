@@ -15,6 +15,7 @@ import {
   initNotifications,
   routeFromLaunchNotification,
 } from '@/notifications/scheduler';
+import { usePracticeStore } from '@/store/practiceStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { syncForUser, useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -94,7 +95,12 @@ export default function RootLayout() {
         });
         // Onboarding state, needed before the first-run redirect below can
         // decide anything. Like settings, hydrate() swallows its own errors.
-        await useWarmupStore.getState().hydrate();
+        // Practice answers load beside it, so Today's row is right on the
+        // first paint.
+        await Promise.all([
+          useWarmupStore.getState().hydrate(),
+          usePracticeStore.getState().hydrate(),
+        ]);
         // Fire-and-forget: notifications are a retention enhancer, not a
         // critical-path dependency. A failure here (denied permission,
         // missing module, web) must not block the ready gate.
@@ -238,6 +244,16 @@ export default function RootLayout() {
             full-height sheet over whichever tab you're on. */}
         <Stack.Screen
           name="log"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        {/* Today's practice (roadmap step 88): a task, so a sheet like Log. */}
+        <Stack.Screen
+          name="practice"
           options={{
             presentation: 'formSheet',
             sheetAllowedDetents: [1.0],

@@ -53,6 +53,16 @@ export const EVENT_NAMES = [
   /** The user took it, and the slider was pre-set low. */
   'coverage_nudge_accepted',
 
+  // --- Daily practice (roadmap steps 88–89) --------------------------------
+  // Whether the daily reason to open the app gets used, and whether people
+  // want the reminder (research/retention-2026-10.md §4).
+  /** The practice sheet opened on a day with nothing answered yet. */
+  'practice_started',
+  /** The day's last question was answered. */
+  'practice_completed',
+  /** A daily practice reminder time was chosen. `hour` is the local hour. */
+  'practice_reminder_set',
+
   // --- Plus usage mix (§7, metric 4: AI-heavy vs analytics/cosmetic) --------
   'coach_requested',
   /** The Plus analytics tier being used — the non-AI half of the split. */
@@ -97,6 +107,9 @@ export const EVENT_PROPS = {
   purchase_abandoned: [],
   coverage_nudge_shown: ['buckets_used'],
   coverage_nudge_accepted: [],
+  practice_started: [],
+  practice_completed: ['correct', 'question_count'],
+  practice_reminder_set: ['hour'],
   coach_requested: ['insight_count'],
   data_exported: ['row_count'],
 } as const satisfies Record<EventName, readonly string[]>;

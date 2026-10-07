@@ -252,6 +252,27 @@ only after 7 days and 10 yes/no answers, never in the Warmup, at most once per 9
 days (decided 2026-10-07, roadmap D15). Never tied to a Yes: reward calibration,
 not correctness.
 
+### 9. Daily practice (decided 2026-10-07, at the owner's request for retention features)
+Three two-choice questions a day, with the Warmup's 50–100% confidence control,
+the **same three for everyone on the same local day**. Real predictions resolve
+when they come due, which the user doesn't choose, so this is the reason to open
+the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2.5).
+
+- Questions are drawn at random from reference tables (`src/constants/practiceFacts.ts`:
+  city coordinates, country areas, heights, diameters, years, atomic numbers), never
+  picked to be tricky. Each kind deals from a shuffled deck of every fair pair: close
+  enough not to be a giveaway, far enough apart that no answer rests on which source
+  a number came from. This is the representative bank D14 (c) waits on.
+- **Practice is practice.** Stored on the device only (`practice_answers`), never
+  synced, and never mixed into `UserStat`, `CategoryStat`, the streak, badges or
+  Wrapped, exactly like the Warmup. The app never claims practice improves the real
+  score (the evidence for transfer is mixed).
+- The day's answers land together, with the Warmup's answer key, and "2 of 3 right.
+  You expected about 2." The practice record says which way it leans only from 20
+  answers (the same floor as the rating), and draws its chart from there.
+- On Today as one row under the streak, from the first logged prediction on (not on
+  Day 0, where the next thing is the first real prediction). Erase clears it.
+
 ---
 
 ## Monetization (summary — full rationale in `GROWTH_AND_MONETIZATION.md`)
@@ -476,7 +497,8 @@ logging is an action.
 | Screen | Purpose | Tier |
 |---|---|---|
 | Warmup (onboarding) | Estimation quiz → instant calibration verdict → first share card | Free |
-| Today (tab) | Pending predictions + calibration rating summary | Free |
+| Today (tab) | Pending predictions + calibration rating summary + today's practice row | Free |
+| Practice (sheet, from Today) | Three daily questions, the answer key, the practice record | Free |
 | Log Prediction (sheet, from "+") | Title, confidence slider, due date, category (refine deferred) | Free |
 | Resolve (sheet) | Yes / No prompt + optional reflection | Free |
 | Insights (tab) | Calibration curve + category breakdown + badges + Coach cards | Free (Coach = Plus) |

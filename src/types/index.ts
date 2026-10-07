@@ -422,6 +422,138 @@ export interface WarmupResult {
   buckets: BucketStat[];    // non-empty confidence buckets, for the chart
 }
 
+// ---- Daily practice (roadmap step 88) ----
+//
+// Three two-choice questions a day, the same three for everyone on the same
+// local day, drawn at random from reference tables rather than picked to be
+// tricky (research/retention-2026-10.md §2.5). Practice is practice: like the
+// Warmup it is stored on its own and never mixed into UserStat/CategoryStat,
+// the streak, or anything else that describes the user's real predictions.
+
+/** Questions a day. */
+export const PRACTICE_PER_DAY = 3;
+
+/**
+ * Answers before the practice record says which way someone leans, or draws
+ * its chart: the same floor as the real rating (MIN_N_OVERALL), for the same
+ * reason. Below it, counts only.
+ */
+export const PRACTICE_MIN_N = 20;
+
+/** What a practice question compares. */
+export type PracticeKind =
+  | 'north' // city latitudes
+  | 'east' // city longitudes (pairs less than 90° apart, so "east" is unambiguous)
+  | 'area' // country areas
+  | 'height' // mountain heights
+  | 'size' // diameters of solar-system bodies
+  | 'first' // years of events
+  | 'born' // birth years
+  | 'element'; // atomic numbers
+
+export const PRACTICE_KINDS: readonly PracticeKind[] = [
+  'north',
+  'east',
+  'area',
+  'height',
+  'size',
+  'first',
+  'born',
+  'element',
+];
+
+export interface PracticePlace {
+  name: string;
+  /** Degrees, north positive. */
+  lat: number;
+  /** Degrees, east positive. */
+  lon: number;
+}
+
+/** A named quantity: a country's area in km², a mountain's height in m, a diameter in km. */
+export interface PracticeMeasure {
+  name: string;
+  value: number;
+  /** The option's label when the name alone may not say what it is ("Titan (Saturn's moon)"). */
+  label?: string;
+}
+
+export interface PracticeEvent {
+  /** The option: "The Eiffel Tower opens". */
+  name: string;
+  /** The answer key's sentence: "The Eiffel Tower opened in 1889". */
+  said: string;
+  year: number;
+}
+
+export interface PracticePerson {
+  name: string;
+  born: number;
+}
+
+export interface PracticeElement {
+  name: string;
+  /** Atomic number. */
+  z: number;
+}
+
+/** The reference tables questions are drawn from (constants/practiceFacts.ts). */
+export interface PracticeFacts {
+  places: readonly PracticePlace[];
+  countries: readonly PracticeMeasure[];
+  mountains: readonly PracticeMeasure[];
+  bodies: readonly PracticeMeasure[];
+  events: readonly PracticeEvent[];
+  people: readonly PracticePerson[];
+  elements: readonly PracticeElement[];
+}
+
+/** One day's question: the Warmup's shape, plus what it compares. */
+export interface PracticeQuestion extends WarmupQuestion {
+  kind: PracticeKind;
+}
+
+/**
+ * One answered practice question, as stored. The question itself is kept with
+ * the answer, so a later change to the tables never rewrites what was asked.
+ */
+export interface PracticeAnswer {
+  /** The local day it was asked for (engine/localTime localDayNumber). */
+  day: number;
+  /** 0..PRACTICE_PER_DAY-1 within the day. */
+  slot: number;
+  question: PracticeQuestion;
+  picked: 0 | 1;
+  correct: boolean;
+  /** 50–100, as in the Warmup: two options make 50% the floor. */
+  confidence: number;
+  answered_at: string;
+}
+
+/** One day's practice in counts: "2 of 3 right. You expected about 2.4." */
+export interface PracticeDayTally {
+  answered: number;
+  correct: number;
+  /** The sum of stated confidences as a count, like Wrapped's expected. */
+  expected: number;
+}
+
+/** Everything practised so far, as the practice sheet shows it. */
+export interface PracticeRecord {
+  answered: number;
+  correct: number;
+  /** Distinct days with at least one answer. */
+  days: number;
+  /** Mean stated confidence, 0–100 (0 with no answers). */
+  mean_confidence: number;
+  /** Fraction correct, 0–1. */
+  accuracy: number;
+  /** Which way the answers lean, or null below PRACTICE_MIN_N. */
+  direction: Direction | null;
+  /** Non-empty confidence bands, for the chart (drawn only from PRACTICE_MIN_N). */
+  buckets: BucketStat[];
+}
+
 // ----------------------------------------------------------------------------
 // 2. Contracts — function-type aliases
 //
@@ -521,3 +653,11 @@ export type UpsertEntitlement = (e: Entitlement) => Promise<void>;
 export type GetWarmupRecord = () => Promise<WarmupRecord | null>;
 export type SaveWarmupRecord = (record: WarmupRecord) => Promise<void>;
 export type ClearWarmupRecord = () => Promise<void>;
+
+// ---- DB: daily practice (L2) ----
+
+/** Every stored practice answer, oldest day first. */
+export type ListPracticeAnswers = () => Promise<PracticeAnswer[]>;
+/** Store one answer; answering the same day and slot again replaces it. */
+export type SavePracticeAnswer = (answer: PracticeAnswer) => Promise<void>;
+export type ClearPracticeAnswers = () => Promise<void>;

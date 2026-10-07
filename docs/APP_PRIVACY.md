@@ -102,7 +102,7 @@ relay address — the app treats it as any other email).
   "Anonymous usage stats" on 2026-10-04: the events are linked to the account,
   so "anonymous" contradicted this sheet.
 
-The full list of events is 13 items and fits on a screen; the privacy policy can
+The full list of events is 16 items and fits on a screen; the privacy policy can
 reproduce it verbatim if that reads better than a summary.
 
 ---
