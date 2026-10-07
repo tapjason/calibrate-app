@@ -576,6 +576,10 @@ filters are its way forward.
   different people. Pair percentages with natural frequencies ("7 in 10").
 - "Guesser" is a starting point, not a grade. The streak says what today adds, never
   what it would cost; when it ends it disappears quietly until the next one starts.
+- **One a day keeps it, three is the goal** (D17, step 90): the streak row says what
+  one prediction adds ("One prediction today makes it 16"), then the goal's progress
+  ("Today counts. Goal: 1 of 3") with the pips, then "Today's goal met". The goal is
+  never a condition: no line suggests the streak needs three.
 - **Rest days** (roadmap step 87) are said as a relief, never as a miss: "Yesterday
   was a rest day", "1 rest day saved", "A rest day comes with day 7", "Today saved a
   rest day". A third line on the streak row, `caption` in `textTertiary`, and part of

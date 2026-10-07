@@ -181,7 +181,7 @@ is one more reason the practice record is labelled as practice.
 | # | Mechanic | Evidence | Fits the principles? | Status |
 |---|---|---|---|---|
 | 1 | Rest days: a missed day doesn't end the streak, up to two saved | 2.2 (strong, converging) | Yes: no guilt, honest count (a rest day adds nothing) | **Built, step 87** |
-| 2 | An easier streak day, with three kept as the day's goal | 2.1 (A/B, +3.3% D14) | Yes, but it reverses D2 | **Decision D17** |
+| 2 | An easier streak day, with three kept as the day's goal | 2.1 (A/B, +3.3% D14) | Yes, but it reverses D2 | **D17, approved and built as step 90** |
 | 3 | Daily practice: three questions, same for everyone each day | 2.5 (design rationale; training effect mixed) | Yes, if kept apart from the score | **Built, step 88** |
 | 4 | Practice reminder at a chosen moment, a new wording daily | 2.4 (A/B +2% new-user D7; d = 0.65) | Yes: opt-in, no streak, stops after three days away | **Built, step 89** |
 | 5 | Checkpoint celebration | 2.3 (+1.7% D7) | Yes | Parked (FUTURE_UI B1): needs a device |
