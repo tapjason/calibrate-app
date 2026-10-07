@@ -67,7 +67,10 @@ export function reminderTimeLabel(time: PracticeReminderTime): string {
 export function practiceReminderBody(question: PracticeQuestion | undefined): string {
   const fallback = 'Three questions, about 30 seconds.';
   if (!question) return fallback;
-  const body = `${question.prompt.replace(/\?$/, '')}: ${question.options[0]} or ${question.options[1]}?`;
+  // Mid-sentence, a leading "The" reads lower-case: "…first: the Eiffel
+  // Tower opens or Krakatoa erupts?"
+  const mid = (o: string) => (o.startsWith('The ') ? `the ${o.slice(4)}` : o);
+  const body = `${question.prompt.replace(/\?$/, '')}: ${mid(question.options[0])} or ${mid(question.options[1])}?`;
   return body.length <= MAX_BODY ? body : fallback;
 }
 

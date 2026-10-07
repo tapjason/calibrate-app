@@ -62,6 +62,12 @@ describe('practice reminder copy (roadmap step 89)', () => {
   it("asks the day's first question in the body", () => {
     expect(practiceReminderBody(question(1))).toBe('Which is farther north: City 1 or Moscow?');
     expect(practiceReminderBody(undefined)).toBe('Three questions, about 30 seconds.');
+    const event = {
+      ...question(1),
+      prompt: 'Which happened first?',
+      options: ['The Eiffel Tower opens', 'Krakatoa erupts'] as [string, string],
+    };
+    expect(practiceReminderBody(event)).toBe('Which happened first: the Eiffel Tower opens or Krakatoa erupts?');
     const long = { ...question(1), options: ['A'.repeat(60), 'B'.repeat(30)] as [string, string] };
     expect(practiceReminderBody(long)).toBe('Three questions, about 30 seconds.');
   });
