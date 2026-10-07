@@ -15,6 +15,7 @@
 // the user's screen, and it is the half we can be sure ships together.
 
 import {
+  CATEGORIES,
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
   type Category,
@@ -88,14 +89,6 @@ const INSIGHT_TYPES: readonly CoachInsightType[] = [
   'strength',
   'pattern',
   'encouragement',
-];
-
-const CATEGORIES: readonly Category[] = [
-  'work',
-  'health',
-  'finance',
-  'social',
-  'personal',
 ];
 
 /**

@@ -18,16 +18,9 @@ import { Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { confidenceRangeLow } from '@/store/statsStore';
-import type { Category } from '@/types';
+import { CATEGORIES, type Category } from '@/types';
 
-const FILTERS: readonly (Category | 'all')[] = [
-  'all',
-  'work',
-  'health',
-  'finance',
-  'social',
-  'personal',
-];
+const FILTERS: readonly (Category | 'all')[] = ['all', ...CATEGORIES];
 
 export default function HistoryScreen() {
   const router = useRouter();
