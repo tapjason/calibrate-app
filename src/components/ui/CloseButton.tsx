@@ -31,7 +31,9 @@ export function CloseButton({ onPress, testID, style }: CloseButtonProps) {
   );
 }
 
-const SIZE = 44;
+/** Its side, for a screen that keeps text clear of it. */
+export const CLOSE_BUTTON_SIZE = 44;
+const SIZE = CLOSE_BUTTON_SIZE;
 
 const styles = StyleSheet.create({
   button: {

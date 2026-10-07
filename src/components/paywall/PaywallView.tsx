@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { Button } from '@/components/ui/Button';
-import { CloseButton } from '@/components/ui/CloseButton';
+import { CLOSE_BUTTON_SIZE, CloseButton } from '@/components/ui/CloseButton';
 import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -95,7 +95,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
       {onClose && (
         <CloseButton onPress={onClose} style={styles.dismiss} testID="paywall-dismiss" />
       )}
-      <Text style={styles.title}>Calibrate Plus</Text>
+      <Text style={[styles.title, onClose && styles.titleBesideClose]}>Calibrate Plus</Text>
       <Text style={styles.body}>
         You already know how calibrated you are. Plus tells you what to do about it.
       </Text>
@@ -301,9 +301,11 @@ function PlanOption({
 const styles = StyleSheet.create({
   wrap: { gap: space.lg, padding: space.xxl },
   dismiss: { position: 'absolute', right: space.lg, top: space.lg, zIndex: 1 },
-  // Clear of the close control floating at the top right (44pt + a gap), so a
-  // narrow screen wraps the title instead of running it under the × (step 70).
-  title: { ...type.titleXL, color: colors.textPrimary, marginRight: 44 + space.sm },
+  title: { ...type.titleXL, color: colors.textPrimary },
+  // Clear of the close control floating at the top right, so a narrow screen
+  // wraps the title instead of running it under the × (step 70). Only when
+  // the × is there.
+  titleBesideClose: { marginRight: CLOSE_BUTTON_SIZE + space.sm },
   body: { ...type.callout, color: colors.textSecondary },
   features: { gap: space.md },
   featureRow: { alignItems: 'flex-start', flexDirection: 'row', gap: space.md },

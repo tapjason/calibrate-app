@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -238,6 +239,17 @@ describe('PaywallView', () => {
     expect(screen.getByText(/what your 80% really means/)).toBeTruthy();
     // Without a way to close, there is nothing to draw at the top either.
     expect(screen.queryByTestId('paywall-dismiss')).toBeNull();
+  });
+
+  // The title keeps clear of the × (step 70), and only when the × is there.
+  it('narrows the title for the close control only when it shows', () => {
+    seed();
+    const marginOf = () =>
+      StyleSheet.flatten(screen.getByText('Calibrate Plus').props.style).marginRight;
+    const { rerender } = render(<PaywallView />);
+    expect(marginOf()).toBeUndefined();
+    rerender(<PaywallView onClose={jest.fn()} />);
+    expect(marginOf()).toBeGreaterThan(0);
   });
 
   // Guideline 3.1.2: the terms of use must be reachable from the purchase
