@@ -83,7 +83,7 @@ function restLine(status: StreakStatus): string | null {
     return restDays > 0 ? `${spent}. ${restDays} more saved` : spent;
   }
   if (restEarnedToday) {
-    return restDays > 1 ? `Today saved a rest day. ${saved(restDays)}` : 'Today saved a rest day';
+    return restDays > 1 ? 'Today saved a second rest day' : 'Today saved a rest day';
   }
   if (restDays > 0) return saved(restDays);
   return nextRestAt === null ? null : `A rest day comes with day\u00A0${nextRestAt}`;

@@ -133,9 +133,7 @@ describe('streakCopy — rest days', () => {
       detail: 'A full week. Next\u00A0milestone: 30\u00A0days',
       rest: 'Today saved a rest day',
     });
-    expect(running({ restDays: 2, restEarnedToday: true })?.rest).toBe(
-      'Today saved a rest day. 2 rest days saved',
-    );
+    expect(running({ restDays: 2, restEarnedToday: true })?.rest).toBe('Today saved a second rest day');
   });
 
   it('says a spent one first, as a relief', () => {
