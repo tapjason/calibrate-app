@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { holdRanges } from '@/components/ui/holdRanges';
 import { setDbForTests } from '@/db/client';
@@ -378,6 +378,24 @@ describe('LogPredictionForm due date', () => {
     fireEvent.press(screen.getByTestId('due-pick'));
     fireEvent.press(screen.getByTestId('due-tomorrow'));
     expect(screen.queryByTestId('due-picker')).toBeNull();
+  });
+
+  // The tab stays mounted overnight: "Tomorrow" has to follow the calendar.
+  it('moves the presets on at midnight, keeping the chosen one chosen', () => {
+    jest.useFakeTimers({ now: new Date(2026, 9, 6, 23, 59, 0) });
+    try {
+      render(<LogPredictionForm />);
+      fireEvent.press(screen.getByTestId('due-tomorrow'));
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 7|7 Oct/);
+
+      act(() => {
+        jest.advanceTimersByTime(61_000);
+      });
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 8|8 Oct/);
+      expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

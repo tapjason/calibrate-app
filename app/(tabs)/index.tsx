@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { CountUp } from '@/components/ui/CountUp';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { holdRanges } from '@/components/ui/holdRanges';
+import { useLocalDay } from '@/components/ui/useLocalDay';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
@@ -22,6 +23,9 @@ import { MIN_N_OVERALL } from '@/types';
 
 export default function HomeScreen() {
   const router = useRouter();
+  // The groups, the streak row and the dates below read the clock: re-render
+  // when the day turns, not only when a store changes.
+  useLocalDay();
   const pending = usePredictionStore((s) => s.pending);
   // Subscribed so the streak line follows each answer as well as each log.
   usePredictionStore((s) => s.resolved);

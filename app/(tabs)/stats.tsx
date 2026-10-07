@@ -7,12 +7,15 @@ import { CoachPanel } from '@/components/stats/CoachPanel';
 import { PlusTeaser } from '@/components/stats/PlusTeaser';
 import { TrendsPanel } from '@/components/stats/TrendsPanel';
 import { Button } from '@/components/ui/Button';
+import { useLocalDay } from '@/components/ui/useLocalDay';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 
 export default function StatsScreen() {
   const router = useRouter();
+  // The calibrating caption names the next due date: keep it to the calendar.
+  useLocalDay();
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const calibration = useStatsStore((s) => s.calibration);

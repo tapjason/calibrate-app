@@ -14,6 +14,7 @@ import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { TextField } from '@/components/ui/TextField';
+import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -52,6 +53,19 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   const isCustomDate = !presets.some((p) => p.iso === dueDate);
+  // The Log tab stays mounted, so the presets were still yesterday's after
+  // midnight, and "Tomorrow" meant today. When the day turns, rebuild them and
+  // keep the chosen chip chosen; a picked date stays as picked.
+  const day = useLocalDay();
+  const [presetsDay, setPresetsDay] = useState(day);
+  useEffect(() => {
+    if (day === presetsDay) return;
+    const next = datePresets();
+    const chosen = presets.findIndex((p) => p.iso === dueDate);
+    setPresets(next);
+    if (chosen >= 0) setDueDate(next[chosen].iso);
+    setPresetsDay(day);
+  }, [day, presetsDay, presets, dueDate]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [refining, setRefining] = useState(false);

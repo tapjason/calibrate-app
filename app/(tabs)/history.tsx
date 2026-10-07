@@ -13,6 +13,7 @@ import {
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { holdRanges } from '@/components/ui/holdRanges';
+import { useLocalDay } from '@/components/ui/useLocalDay';
 import { Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -31,6 +32,8 @@ const FILTERS: readonly (Category | 'all')[] = [
 export default function HistoryScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  // The empty state says when the first answer can come: keep it to the calendar.
+  useLocalDay();
   const resolved = usePredictionStore((s) => s.resolved);
   const pending = usePredictionStore((s) => s.pending);
   const [filter, setFilter] = useState<Category | 'all'>('all');
