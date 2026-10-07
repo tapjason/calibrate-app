@@ -352,11 +352,19 @@ describe('predictionStore.streakNow', () => {
     expect(usePredictionStore.getState().streakNow().today).toBe(3);
   });
 
-  // Decided 2026-10-06: checkpoints at 7, 30, 100 and 365 days.
-  it('holds the checkpoint an answer reached until Resolve shows it, and a withdrawn answer takes it back', async () => {
-    const userId = useAuthStore.getState().userId!;
-    const day = 86_400_000;
-    // Six counted days before today, three logged on each.
+  /**
+   * Local noon `back` calendar days ago. Subtracting 24h steps from now could
+   * skip or merge a local day near midnight or across a DST change.
+   */
+  const daysAgo = (back: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() - back);
+    d.setHours(12, 0, 0, 0);
+    return d.toISOString();
+  };
+
+  /** Three logged on each of the six days before today. */
+  const sixCountedDays = async (userId: string) => {
     for (let back = 6; back >= 1; back -= 1) {
       for (let i = 0; i < 3; i += 1) {
         await insertPrediction({
@@ -365,7 +373,7 @@ describe('predictionStore.streakNow', () => {
           title: `day ${back} #${i}`,
           category: 'work',
           confidence: 60,
-          created_at: new Date(Date.now() - back * day).toISOString(),
+          created_at: daysAgo(back),
           due_date: '2099-06-01T12:00:00.000Z',
           status: 'pending',
           resolved_at: null,
@@ -374,6 +382,12 @@ describe('predictionStore.streakNow', () => {
         });
       }
     }
+  };
+
+  // Decided 2026-10-06: checkpoints at 7, 30, 100 and 365 days.
+  it('holds the checkpoint an answer reached until Resolve shows it, and a withdrawn answer takes it back', async () => {
+    const userId = useAuthStore.getState().userId!;
+    await sixCountedDays(userId);
     await usePredictionStore.getState().loadPending();
     await log('one');
     await log('two');
@@ -394,6 +408,34 @@ describe('predictionStore.streakNow', () => {
     await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
     usePredictionStore.getState().clearStreakCheckpoint();
     await usePredictionStore.getState().resolve('d6-1', 'resolved_no');
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+  });
+
+  // A sync writes rows to the database without the lists here seeing them.
+  it("doesn't credit an answer with a checkpoint that rows written behind its back reached", async () => {
+    const userId = useAuthStore.getState().userId!;
+    await sixCountedDays(userId);
+    await usePredictionStore.getState().loadPending();
+    // Today's three arrive from another device: day seven, checkpoint and all.
+    for (let i = 0; i < 3; i += 1) {
+      await insertPrediction({
+        id: `synced-${i}`,
+        user_id: userId,
+        title: `synced #${i}`,
+        category: 'work',
+        confidence: 60,
+        created_at: new Date().toISOString(),
+        due_date: '2099-06-01T12:00:00.000Z',
+        status: 'pending',
+        resolved_at: null,
+        reflection: null,
+        integrity_bonus: true,
+      });
+    }
+    expect(usePredictionStore.getState().streakNow().checkpoint).toBeNull();
+
+    await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
   });
 });

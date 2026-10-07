@@ -14,6 +14,8 @@ import {
   upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
+import { useAuthStore } from '@/store/authStore';
+import { usePredictionStore } from '@/store/predictionStore';
 import type { Prediction, PredictionWireRow } from '@/types';
 
 import {
@@ -447,5 +449,21 @@ describe('sync integration with the predictions table', () => {
 
     const pending = await listPendingPredictions('user-aaa');
     expect(pending.map((p) => p.id)).toContain('pulled');
+  });
+
+  // Home, History and the streak read the store's lists, not the table.
+  it('reloads the prediction lists after a pull, as well as the stats', async () => {
+    useAuthStore.setState({ userId: 'user-aaa' });
+    usePredictionStore.setState({ pending: [], resolved: [] });
+    const { client } = makeFakeClient({
+      selectResult: {
+        data: [wire({ id: 'from-elsewhere', updated_at: '2026-05-20T00:00:00.000Z' })],
+        error: null,
+      },
+    });
+
+    await syncNow('user-aaa', { client, cursorStore: makeInMemoryCursorStore() });
+
+    expect(usePredictionStore.getState().pending.map((p) => p.id)).toContain('from-elsewhere');
   });
 });

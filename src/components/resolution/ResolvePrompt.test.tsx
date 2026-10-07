@@ -356,7 +356,17 @@ describe('ResolvePrompt milestones', () => {
 
 // Decided 2026-10-06: streak checkpoints at 7, 30, 100 and 365 days.
 describe('ResolvePrompt streak checkpoints', () => {
-  const day = 86_400_000;
+  /**
+   * Local noon `back` calendar days ago, or now for today. Subtracting 24h
+   * steps could skip or merge a local day near midnight or across DST.
+   */
+  const daysAgo = (back: number): string => {
+    if (back === 0) return new Date().toISOString();
+    const d = new Date();
+    d.setDate(d.getDate() - back);
+    d.setHours(12, 0, 0, 0);
+    return d.toISOString();
+  };
   /** Six counted days before today and two logged today: the next answer makes seven. */
   const sixDaysAndTwo = async () => {
     for (let back = 6; back >= 0; back -= 1) {
@@ -364,7 +374,7 @@ describe('ResolvePrompt streak checkpoints', () => {
         await insertPrediction(
           samplePending({
             id: `d${back}-${i}`,
-            created_at: new Date(Date.now() - back * day).toISOString(),
+            created_at: daysAgo(back),
           }),
         );
       }

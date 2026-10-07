@@ -9,13 +9,13 @@
 //                 mark dirty=0 only if updated_at hasn't moved during the
 //                 push. Per-row fallback on batch error.
 //
-// `syncNow` orchestrates pull → push, then asks statsStore to recompute iff
-// anything actually changed. Every failure is logged with console.warn and
+// `syncNow` orchestrates pull → push, then asks statsStore to recompute and
+// predictionStore to reload its lists iff anything actually changed. Every failure is logged with console.warn and
 // swallowed — sync is non-critical and must never break the offline loop.
 //
 // Layer rule: L5. Imports @/db, @/supabase, @/types, and @/store. The
-// store-imports cross L4 only in `defaultRecompute` (which uses the
-// statsStore to rebuild derived stats after pulling). All lower-level
+// store-imports cross L4 only in `defaultRecompute` (which rebuilds derived
+// stats and reloads the prediction lists after pulling). All lower-level
 // helpers accept their deps by parameter for testability.
 //
 // Clock-skew assumption: every local write stamps `updated_at` with the
@@ -33,6 +33,7 @@ import {
   upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
+import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { PredictionWireRow } from '@/types';
 
@@ -57,7 +58,7 @@ export interface SyncDeps {
   client?: SupabaseClient | null;
   /** Cursor store for pull progress; defaults to AsyncStorage-backed. */
   cursorStore?: CursorStore;
-  /** Recompute derived stats after sync — defaults to statsStore.recomputeForUser. */
+  /** Recompute derived stats and reload the lists after sync (defaults to the stores). */
   recompute?: (userId: string) => Promise<void>;
 }
 
@@ -95,6 +96,10 @@ function defaultCursorStore(): CursorStore {
 
 async function defaultRecompute(userId: string): Promise<void> {
   await useStatsStore.getState().recomputeForUser(userId);
+  // Pulled rows change the lists Home, History and the streak read, not only
+  // the stats; without a reload they stayed as they were until the next log.
+  const predictions = usePredictionStore.getState();
+  await Promise.all([predictions.loadPending(), predictions.loadResolved()]);
 }
 
 interface ResolvedDeps {

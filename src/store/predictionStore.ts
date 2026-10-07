@@ -196,6 +196,11 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   resolve: async (id, outcome, reflection) => {
     const userId = requireUserId();
+    // The streak before this answer, from the database rather than the lists
+    // held here: a sync can write rows those lists haven't seen, and the
+    // reload after the answer would then credit this answer with a
+    // checkpoint those rows reached.
+    await Promise.all([get().loadPending(), get().loadResolved()]);
     const before = get().streakNow();
     // Atomic: if stats recompute throws, the resolution rolls back too.
     await withTransaction(async () => {
