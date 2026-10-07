@@ -1,14 +1,15 @@
 // User + category stats CRUD. Same contract-typed pattern as predictions.ts.
 
-import type {
-  UserStat,
-  CategoryStat,
-  GetUserStat,
-  UpsertUserStat,
-  GetCategoryStat,
-  UpsertCategoryStat,
-  DeleteCategoryStat,
-  ListCategoryStats,
+import {
+  CATEGORIES,
+  type UserStat,
+  type CategoryStat,
+  type GetUserStat,
+  type UpsertUserStat,
+  type GetCategoryStat,
+  type UpsertCategoryStat,
+  type DeleteCategoryStat,
+  type ListCategoryStats,
 } from '@/types';
 
 import { getDb } from './client';
@@ -137,9 +138,12 @@ export const listCategoryStats: ListCategoryStats = async (userId) => {
     `SELECT user_id, category, predictions_made, predictions_resolved,
             calibration_score, score_is_provisional, badge_level
        FROM category_stats
-       WHERE user_id = ?
-       ORDER BY category`,
+       WHERE user_id = ?`,
     [userId],
   );
-  return rows.map(toCategoryStat);
+  // In the app's category order, as the store's recompute builds them, not
+  // the alphabet: Stats' badge rows changed places after the first log.
+  return rows
+    .map(toCategoryStat)
+    .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
 };

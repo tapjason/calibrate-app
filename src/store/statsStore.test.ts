@@ -130,6 +130,23 @@ describe('statsStore.recomputeForUser', () => {
     expect(useStatsStore.getState().categoryStats).toHaveLength(1);
   });
 
+  // Stats lists the badges in this order. A launch read them alphabetically
+  // and a recompute in the app's order, so the rows moved after the first log.
+  it('lists categories in the same order after a launch as after a recompute', async () => {
+    for (const category of ['personal', 'finance', 'work', 'health'] as const) {
+      await insertPrediction(p({ id: category, category }));
+    }
+    await useStatsStore.getState().recomputeForUser(USER);
+    const recomputed = useStatsStore.getState().categoryStats.map((s) => s.category);
+
+    useStatsStore.setState({ categoryStats: [] });
+    await useStatsStore.getState().loadForUser(USER);
+    const loaded = useStatsStore.getState().categoryStats.map((s) => s.category);
+
+    expect(recomputed).toEqual(['work', 'health', 'finance', 'personal']);
+    expect(loaded).toEqual(recomputed);
+  });
+
   it('exposes calibration buckets in store state (no L3 import needed from screens)', async () => {
     // 4 confidence-90 predictions, 2 yes / 2 no → overconfident bucket [80,100).
     for (let i = 0; i < 4; i++) {

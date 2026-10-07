@@ -83,6 +83,14 @@ export interface StreakStatus {
 
 export type Category = 'work' | 'health' | 'finance' | 'social' | 'personal';
 
+/**
+ * Every category, in the one order the app lists them: Log's chips, History's
+ * filters, Stats' badges. Stats loaded its badges alphabetically at launch and
+ * in this order after a recompute, so the rows changed places after the
+ * session's first log or answer.
+ */
+export const CATEGORIES: readonly Category[] = ['work', 'health', 'finance', 'social', 'personal'];
+
 export type PredictionStatus =
   | 'pending'
   | 'resolved_yes'

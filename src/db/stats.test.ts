@@ -78,12 +78,19 @@ describe('category_stats db', () => {
     expect(await getCategoryStat('u1', 'work')).toEqual(s);
   });
 
-  it('lists all of a user\'s category stats, ordered by category', async () => {
-    await upsertCategoryStat(categoryStat({ category: 'work' }));
+  // The app's category order, as the store's recompute builds them: sorted by
+  // the alphabet, Stats' badge rows changed places after the first log.
+  it("lists all of a user's category stats, in the app's category order", async () => {
+    await upsertCategoryStat(categoryStat({ category: 'personal' }));
     await upsertCategoryStat(categoryStat({ category: 'health' }));
-    await upsertCategoryStat(categoryStat({ user_id: 'u2', category: 'work' }));
+    await upsertCategoryStat(categoryStat({ category: 'work' }));
+    await upsertCategoryStat(categoryStat({ user_id: 'u2', category: 'finance' }));
 
     const list = await listCategoryStats('u1');
-    expect(list.map((s) => `${s.user_id}/${s.category}`)).toEqual(['u1/health', 'u1/work']);
+    expect(list.map((s) => `${s.user_id}/${s.category}`)).toEqual([
+      'u1/work',
+      'u1/health',
+      'u1/personal',
+    ]);
   });
 });

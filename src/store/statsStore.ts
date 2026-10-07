@@ -34,16 +34,17 @@ import { detectMilestone } from '@/engine/milestones';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import { buildWrapped, type WrappedSpan, type WrappedSummary } from '@/engine/wrapped';
-import type {
-  BucketStat,
-  CalibrationResult,
-  Category,
-  CategoryStat,
-  Milestone,
-  NextBadgeTarget,
-  Prediction,
-  RatingRange,
-  UserStat,
+import {
+  CATEGORIES,
+  type BucketStat,
+  type CalibrationResult,
+  type Category,
+  type CategoryStat,
+  type Milestone,
+  type NextBadgeTarget,
+  type Prediction,
+  type RatingRange,
+  type UserStat,
 } from '@/types';
 
 import { useSettingsStore } from './settingsStore';
@@ -128,14 +129,6 @@ function deriveNextBadges(
   }
   return out;
 }
-
-const CATEGORIES: readonly Category[] = [
-  'work',
-  'health',
-  'finance',
-  'social',
-  'personal',
-];
 
 function isYesNo(p: Prediction): boolean {
   return p.status === 'resolved_yes' || p.status === 'resolved_no';

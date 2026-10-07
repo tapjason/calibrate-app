@@ -22,15 +22,7 @@ import {
   useStatsStore,
   type CoverageNudgeDecision,
 } from '@/store/statsStore';
-import type { Category } from '@/types';
-
-const CATEGORIES: readonly Category[] = [
-  'work',
-  'health',
-  'finance',
-  'social',
-  'personal',
-];
+import { CATEGORIES, type Category } from '@/types';
 
 const TITLE_MAX_LENGTH = 200;
 
