@@ -60,6 +60,9 @@ export function ResolveRun({ onClose, onDraftChange }: ResolveRunProps) {
       .map((p) => p.id);
   });
   const [index, setIndex] = useState(0);
+  // The cards answered here, as against the queue: one answered elsewhere and
+  // passed over isn't part of what this run came to.
+  const [answeredHere, setAnsweredHere] = useState<string[]>([]);
 
   // Stable per card, so ResolvePrompt's draft effect doesn't re-fire on
   // every render of the run.
@@ -72,6 +75,7 @@ export function ResolveRun({ onClose, onDraftChange }: ResolveRunProps) {
   );
 
   const advance = () => {
+    setAnsweredHere((ids) => [...ids, queue[index]]);
     const stillOpen = new Set(usePredictionStore.getState().pending.map((p) => p.id));
     let next = index + 1;
     while (next < queue.length && !stillOpen.has(queue[next])) next += 1;
@@ -80,7 +84,7 @@ export function ResolveRun({ onClose, onDraftChange }: ResolveRunProps) {
 
   if (index >= queue.length) {
     const predictions = usePredictionStore.getState();
-    const summary = queue.length > 0 ? runSummary(predictions.tallyFor(queue)) : null;
+    const summary = answeredHere.length > 0 ? runSummary(predictions.tallyFor(answeredHere)) : null;
     return (
       <View style={styles.done} testID="resolve-run-done">
         <Text style={styles.doneTitle} accessibilityRole="header">

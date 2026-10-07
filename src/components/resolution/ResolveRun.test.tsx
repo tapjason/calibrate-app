@@ -50,7 +50,7 @@ async function answer(testID: 'resolve-yes' | 'resolve-no'): Promise<void> {
 beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.getState().reset();
-  usePredictionStore.setState({ pending: [], resolved: [] });
+  usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
@@ -125,6 +125,11 @@ describe('ResolveRun (roadmap step 18)', () => {
     await usePredictionStore.getState().resolve('b', 'resolved_no');
     fireEvent.press(screen.getByText('Next'));
     await waitFor(() => expect(screen.getByText('Third due')).toBeTruthy());
+    await answer('resolve-yes');
+    fireEvent.press(screen.getByText('Finish'));
+    await waitFor(() => expect(screen.getByTestId('resolve-run-done')).toBeTruthy());
+    // The summary is the two answered here; b's No belongs to wherever it was given.
+    expect(screen.getByTestId('resolve-run-summary')).toHaveTextContent(/^2 answered\. 2 happened\./);
   });
 
   it('says so when nothing is ready, with no tally or streak to show', async () => {
