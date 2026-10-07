@@ -401,6 +401,34 @@ describe('ResolvePrompt streak checkpoints', () => {
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
   });
 
+  // CLAUDE.md: the day a streak reaches a checkpoint is named on the answer
+  // that earned it. It used to give way to a score or badge milestone.
+  it('names the checkpoint beside a milestone the same answer reached', async () => {
+    await sixDaysAndTwo();
+    // 19 resolved long ago: this answer is also the 20th, which unlocks the score.
+    for (let i = 0; i < 19; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 2 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await useStatsStore.getState().recomputeForUser(useAuthStore.getState().userId!);
+
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy();
+    });
+    expect(screen.getByTestId('streak-checkpoint')).toBeTruthy();
+  });
+
   it('shows nothing for an answer that reached no checkpoint', async () => {
     await insertPrediction(samplePending());
     render(<ResolvePrompt predictionId="p1" />);

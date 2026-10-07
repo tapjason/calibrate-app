@@ -235,17 +235,14 @@ export function ResolvePrompt({
           </Text>
         </View>
         <Text style={styles.title}>{prediction.title}</Text>
-        {/* One card at a time: a score or badge milestone outranks a streak
-            checkpoint, which Home's streak row still names all day. */}
-        {answered.milestone ? (
-          <MilestoneCard milestone={answered.milestone} />
-        ) : (
-          answered.checkpoint && (
-            <StreakCheckpointCard
-              days={answered.checkpoint.days}
-              next={answered.checkpoint.next}
-            />
-          )
+        {answered.milestone && <MilestoneCard milestone={answered.milestone} />}
+        {/* CLAUDE.md names a checkpoint on the answer that earned it, so it
+            shows even beside a score or badge milestone, after it. */}
+        {answered.checkpoint && (
+          <StreakCheckpointCard
+            days={answered.checkpoint.days}
+            next={answered.checkpoint.next}
+          />
         )}
         {answered.line && (
           <View style={styles.bucketBox}>
