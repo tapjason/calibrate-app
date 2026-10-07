@@ -1,10 +1,10 @@
 import { openBrowserAsync } from 'expo-web-browser';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AppState, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
-import { colors, space, type } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 import {
   askForReminders,
   reminderPermission,
@@ -15,31 +15,37 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 /**
- * Settings surface. At the top, the account row (sign in, or who you are and
- * sign out) — hidden on a build with no Supabase config, where accounts can't
- * exist. Then the device-local toggles backed by settingsStore:
- *   - Notifications — the single kill-switch for resolution reminders + the
- *     weekly digest. The L5 services react to this via store subscription.
- *   - AI Refine — shows/hides the ✨ Refine button on the Log screen. The
- *     row is hidden entirely while REFINE_ENABLED is false (the feature is
- *     cut from the first release); the stored preference survives.
- *   - Coach — the Plus-only AI insight surface on Stats. Off until the user
- *     turns it on, per COACH_AGENT.md §5.6.
+ * The You tab (roadmap D3): settings as a grouped inset list (DESIGN_SYSTEM
+ * §7.21, roadmap step 80), as iOS Settings, Streaks and Todoist lay theirs
+ * out. A row that opens something is the whole row, with a chevron and its
+ * current value; an on/off row ends in a switch; nothing hides its target in
+ * a capsule button inside the row.
+ *
+ *   - Account: sign in, or who you are and sign out. Hidden on a build with no
+ *     Supabase config, where accounts can't exist.
+ *   - Your card, then Calibrate Plus (also the permanent route to Restore).
+ *   - Notifications: the single kill-switch for reminders and the digest.
+ *   - AI Refine (hidden while REFINE_ENABLED is false), Coach, usage stats.
+ *   - About: how scoring works, terms, privacy.
+ *   - Erase all data / Delete account, alone at the bottom.
  *
  * Pure presentation: reads + writes the store, no other logic. The setters
- * persist to AsyncStorage and swallow their own errors.
+ * persist and swallow their own errors.
  */
 export function SettingsView({
   onOpenPaywall,
   onOpenAccount,
   onOpenDelete,
   onOpenScoring,
+  onOpenCard,
 }: {
   onOpenPaywall?: () => void;
   onOpenAccount?: () => void;
   onOpenDelete?: () => void;
   /** "How scoring works" (roadmap step 29). */
   onOpenScoring?: () => void;
+  /** The share card (Share), one tap from the tab named after you. */
+  onOpenCard?: () => void;
 } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
@@ -55,97 +61,183 @@ export function SettingsView({
 
   return (
     <View style={styles.wrap}>
-      <AccountRow onOpenAccount={onOpenAccount} />
+      <AccountGroup onOpenAccount={onOpenAccount} />
 
       {/*
-        Subscription status lives at the top because it is also where a
-        subscriber goes to restore a purchase after a reinstall — the paywall
-        carries the Restore button, and this is the only permanent route to it
-        for someone who has already paid.
+        Plus sits high because it is also where a subscriber goes to restore a
+        purchase after a reinstall: the paywall carries Restore, and this is
+        the only permanent route to it for someone who has already paid.
       */}
-      <View style={styles.row}>
-        <View style={styles.rowText}>
-          <Text style={styles.rowLabel}>Calibrate Plus</Text>
-          <Text style={styles.rowDescription}>
-            {isPlus
+      {(onOpenCard || onOpenPaywall) && (
+        <Group
+          footer={
+            isPlus
               ? 'Active. Coach and advanced analytics are unlocked.'
-              : 'Coach, advanced analytics, and extra card themes.'}
-          </Text>
-        </View>
-        {onOpenPaywall && (
-          <Button
-            label={isPlus ? 'Manage' : 'See Plus'}
-            variant="secondary"
-            onPress={onOpenPaywall}
-            testID="settings-plus"
+              : 'Plus adds Coach, advanced analytics, and extra card themes. Your score, curve, badges and cards stay free.'
+          }
+        >
+          {onOpenCard && <NavRow label="Your card" onPress={onOpenCard} testID="settings-card" />}
+          {onOpenPaywall && (
+            <NavRow
+              label="Calibrate Plus"
+              value={isPlus ? 'Active' : undefined}
+              onPress={onOpenPaywall}
+              testID="settings-plus"
+            />
+          )}
+        </Group>
+      )}
+
+      <Group>
+        <ToggleRow
+          label="Notifications"
+          description="A reminder on the evening each prediction comes due, and the Sunday weekly digest."
+          value={notificationsEnabled}
+          onValueChange={(v) => void setNotificationsEnabled(v)}
+          testID="toggle-notifications"
+        />
+        <NotificationPermissionRow />
+      </Group>
+
+      <Group>
+        {/* Hidden while refine is cut from the release — a toggle for a button
+            that doesn't exist is worse than no toggle. The stored preference is
+            left untouched, so flipping REFINE_ENABLED back on restores whatever
+            the user had chosen. */}
+        {REFINE_ENABLED && (
+          <ToggleRow
+            label="AI Refine"
+            description="Show the ✨ Refine button to rewrite predictions for a clear yes/no."
+            value={aiRefineEnabled}
+            onValueChange={(v) => void setAiRefineEnabled(v)}
+            testID="toggle-ai-refine"
           />
         )}
-      </View>
-
-      <ToggleRow
-        label="Notifications"
-        description="A reminder on the evening each prediction comes due, and the Sunday weekly digest."
-        value={notificationsEnabled}
-        onValueChange={(v) => void setNotificationsEnabled(v)}
-        testID="toggle-notifications"
-      />
-      <NotificationPermissionRow />
-
-      {/* Hidden while refine is cut from the release — a toggle for a button
-          that doesn't exist is worse than no toggle. The stored preference is
-          left untouched, so flipping REFINE_ENABLED back on restores whatever
-          the user had chosen. */}
-      {REFINE_ENABLED && (
         <ToggleRow
-          label="AI Refine"
-          description="Show the ✨ Refine button to rewrite predictions for a clear yes/no."
-          value={aiRefineEnabled}
-          onValueChange={(v) => void setAiRefineEnabled(v)}
-          testID="toggle-ai-refine"
+          label="Coach (AI)"
+          // Guideline 5.1.2(i): name the third-party AI before anything is sent.
+          // The switch itself is the explicit permission; it starts off.
+          description="Plus only. When you ask for feedback, your calibration numbers — never your prediction text — go through our server to OpenAI, which writes it."
+          value={coachEnabled}
+          onValueChange={(v) => void setCoachEnabled(v)}
+          testID="toggle-coach"
         />
-      )}
+        <ToggleRow
+          // Not "anonymous": once you sign in, events are tied to the account
+          // (APP_PRIVACY.md declares them linked), so the label mustn't say so.
+          label="Usage stats"
+          description="Counts of which features get used, sent only once you sign in — never your predictions, reflections, or any text. Turning this off deletes what's queued."
+          value={analyticsEnabled}
+          onValueChange={(v) => void setAnalyticsEnabled(v)}
+          testID="toggle-analytics"
+        />
+      </Group>
 
-      <ToggleRow
-        label="Coach (AI)"
-        // Guideline 5.1.2(i): name the third-party AI before anything is sent.
-        // The switch itself is the explicit permission; it starts off.
-        description="Plus only. When you ask for feedback, your calibration numbers — never your prediction text — go through our server to OpenAI, which writes it."
-        value={coachEnabled}
-        onValueChange={(v) => void setCoachEnabled(v)}
-        testID="toggle-coach"
-      />
+      <AboutGroup onOpenScoring={onOpenScoring} />
 
-      <ToggleRow
-        // Not "anonymous": once you sign in, events are tied to the account
-        // (APP_PRIVACY.md declares them linked), so the label mustn't say so.
-        label="Usage stats"
-        description="Counts of which features get used, sent only once you sign in — never your predictions, reflections, or any text. Turning this off deletes what's queued."
-        value={analyticsEnabled}
-        onValueChange={(v) => void setAnalyticsEnabled(v)}
-        testID="toggle-analytics"
-      />
+      {onOpenDelete && <DeleteGroup onOpenDelete={onOpenDelete} />}
+    </View>
+  );
+}
 
-      {onOpenScoring && (
-        <View style={styles.row}>
-          <View style={styles.rowText}>
-            <Text style={styles.rowLabel}>How scoring works</Text>
-            <Text style={styles.rowDescription}>
-              The bands, the minimums and the badges, in plain words.
-            </Text>
-          </View>
-          <Button
-            label="Read"
-            variant="secondary"
-            onPress={onOpenScoring}
-            testID="settings-scoring"
-          />
+/** One inset card of rows, with an optional footer explaining them. */
+function Group({ children, footer }: { children: ReactNode; footer?: string }) {
+  return (
+    <View style={styles.group}>
+      <View style={styles.card}>{children}</View>
+      {footer && <Text style={styles.footer}>{footer}</Text>}
+    </View>
+  );
+}
+
+/**
+ * A row that opens something: the whole row is the target, ending in its
+ * current value (if any) and a chevron (HIG Lists: "use a disclosure
+ * indicator"). A row that acts in place (Sign out, Erase) leaves the chevron
+ * off and says what it does in its label's colour.
+ */
+function NavRow({
+  label,
+  value,
+  onPress,
+  chevron = true,
+  tone = 'default',
+  disabled,
+  testID,
+}: {
+  label: string;
+  value?: string;
+  onPress: () => void;
+  chevron?: boolean;
+  tone?: 'default' | 'action' | 'destructive';
+  disabled?: boolean;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${label}, ${value}` : label}
+      accessibilityState={{ disabled: !!disabled }}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      testID={testID}
+    >
+      <Text
+        style={[
+          styles.rowLabel,
+          styles.rowLabelFill,
+          tone === 'action' && styles.rowLabelAction,
+          tone === 'destructive' && styles.rowLabelDestructive,
+        ]}
+      >
+        {label}
+      </Text>
+      {value && <Text style={styles.rowValue}>{value}</Text>}
+      {chevron && (
+        <View
+          aria-hidden
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Icon sf="chevron.right" fallback="chevron-forward" size={16} color={colors.textTertiary} />
         </View>
       )}
+    </Pressable>
+  );
+}
 
-      {onOpenDelete && <DeleteRow onOpenDelete={onOpenDelete} />}
-
-      <LegalLinks />
-    </View>
+/** How scoring works, the terms, and the privacy policy once it's hosted. */
+function AboutGroup({ onOpenScoring }: { onOpenScoring?: () => void }) {
+  const open = (url: string) => {
+    openBrowserAsync(url).catch((e: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[settings] could not open link:', e);
+    });
+  };
+  return (
+    <Group>
+      {onOpenScoring && (
+        <NavRow label="How scoring works" onPress={onOpenScoring} testID="settings-scoring" />
+      )}
+      {/* Guideline 5.1.1(i): the privacy policy easily reached in the app, not
+          only in the listing (roadmap step 36). It appears once
+          PRIVACY_POLICY_URL is set, the switch that lights up the paywall's
+          link; the terms are Apple's standard EULA, which the paywall links
+          too. */}
+      {PRIVACY_POLICY_URL && (
+        <NavRow
+          label="Privacy policy"
+          onPress={() => open(PRIVACY_POLICY_URL as string)}
+          testID="settings-privacy-link"
+        />
+      )}
+      <NavRow
+        label="Terms of use"
+        onPress={() => open(TERMS_OF_USE_URL)}
+        testID="settings-terms-link"
+      />
+    </Group>
   );
 }
 
@@ -179,14 +271,15 @@ function NotificationPermissionRow() {
   const asked = permission === 'denied';
   return (
     <View style={styles.permission} testID="settings-notification-permission">
-      <Text style={[styles.rowDescription, styles.permissionText]}>
+      <Text style={styles.rowDescription}>
         {asked
           ? 'Notifications are off for Calibrate in iOS Settings, so reminders can’t reach you.'
           : 'iOS hasn’t been asked yet, so reminders can’t reach you.'}
       </Text>
-      <Button
-        label={asked ? 'Open Settings' : 'Allow reminders'}
-        variant="secondary"
+      <Pressable
+        accessibilityRole="button"
+        hitSlop={8}
+        style={styles.permissionAction}
         onPress={() => {
           if (asked) {
             void Linking.openSettings();
@@ -195,76 +288,42 @@ function NotificationPermissionRow() {
           void (async () => setPermission(await askForReminders()))();
         }}
         testID="settings-notification-permission-action"
-      />
-    </View>
-  );
-}
-
-/**
- * Guideline 5.1.1(i): the privacy policy easily accessible in the app, not
- * only in the listing (roadmap step 36). It appears once PRIVACY_POLICY_URL is
- * set, the same switch that lights up the paywall's link; the terms are
- * Apple's standard EULA, which the paywall links too.
- */
-function LegalLinks() {
-  const open = (url: string) => {
-    openBrowserAsync(url).catch((e: unknown) => {
-      // eslint-disable-next-line no-console
-      console.warn('[settings] could not open link:', e);
-    });
-  };
-  return (
-    <View style={styles.legal}>
-      {PRIVACY_POLICY_URL && (
-        <Pressable
-          accessibilityRole="link"
-          hitSlop={8}
-          onPress={() => open(PRIVACY_POLICY_URL as string)}
-          testID="settings-privacy-link"
-        >
-          <Text style={styles.legalLink}>Privacy policy</Text>
-        </Pressable>
-      )}
-      <Pressable
-        accessibilityRole="link"
-        hitSlop={8}
-        onPress={() => open(TERMS_OF_USE_URL)}
-        testID="settings-terms-link"
       >
-        <Text style={styles.legalLink}>Terms of use</Text>
+        <Text style={styles.rowLabelAction}>{asked ? 'Open Settings' : 'Allow reminders'}</Text>
       </Pressable>
     </View>
   );
 }
 
 /**
- * The way out, at the bottom where destructive settings live. Apple requires
- * account deletion be easy to find in the app (Guideline 5.1.1(v)); a guest
- * gets the equivalent for data that only ever lived on this phone.
+ * The way out, alone at the bottom where destructive settings live. Apple
+ * requires account deletion be easy to find in the app (Guideline
+ * 5.1.1(v)); a guest gets the equivalent for data that only ever lived on
+ * this phone. It opens a confirmation, so the row itself is just red words.
  */
-function DeleteRow({ onOpenDelete }: { onOpenDelete: () => void }) {
+function DeleteGroup({ onOpenDelete }: { onOpenDelete: () => void }) {
   const status = useAuthStore((s) => s.status);
   if (status === 'loading') return null;
   return (
-    <Pressable
-      onPress={onOpenDelete}
-      accessibilityRole="button"
-      style={styles.deleteRow}
-      testID="settings-delete"
-    >
-      <Text style={styles.deleteLabel}>
-        {status === 'authenticated' ? 'Delete account' : 'Erase all data on this device'}
-      </Text>
-    </Pressable>
+    <Group>
+      <NavRow
+        label={status === 'authenticated' ? 'Delete account' : 'Erase all data on this device'}
+        onPress={onOpenDelete}
+        chevron={false}
+        tone="destructive"
+        testID="settings-delete"
+      />
+    </Group>
   );
 }
 
 /**
- * Signed out: what that means for your data, and a way in. Signed in: who you
- * are, and a way out. Sign-out keeps local data under the account's id, so it
- * needs no confirmation — signing back in shows everything again.
+ * Signed out: a way in, and what being signed out means for your data.
+ * Signed in: who you are, and a way out. Sign-out keeps local data under the
+ * account's id, so it needs no confirmation: signing back in shows
+ * everything again.
  */
-function AccountRow({ onOpenAccount }: { onOpenAccount?: () => void }) {
+function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
   const accountsAvailable = useAuthStore((s) => s.accountsAvailable);
   const status = useAuthStore((s) => s.status);
   const email = useAuthStore((s) => s.email);
@@ -275,40 +334,32 @@ function AccountRow({ onOpenAccount }: { onOpenAccount?: () => void }) {
 
   if (status === 'authenticated') {
     return (
-      <View style={styles.row} testID="settings-account">
-        <View style={styles.rowText}>
-          <Text style={styles.rowLabel}>Account</Text>
-          <Text style={styles.rowDescription}>
-            {describeAccount(email)} Your predictions are backed up.
-          </Text>
-        </View>
-        <Button
-          label="Sign out"
-          variant="secondary"
-          disabled={pending}
-          onPress={() => void signOut()}
-          testID="settings-sign-out"
-        />
+      <View testID="settings-account">
+        <Group footer={`${describeAccount(email)} Your predictions are backed up.`}>
+          <NavRow
+            label="Sign out"
+            onPress={() => void signOut()}
+            chevron={false}
+            tone="action"
+            disabled={pending}
+            testID="settings-sign-out"
+          />
+        </Group>
       </View>
     );
   }
 
   return (
-    <View style={styles.row} testID="settings-account">
-      <View style={styles.rowText}>
-        <Text style={styles.rowLabel}>Account</Text>
-        <Text style={styles.rowDescription}>
-          Not signed in. Your predictions live only on this phone.
-        </Text>
-      </View>
-      {onOpenAccount && (
-        <Button
-          label="Sign in"
-          variant="secondary"
-          onPress={onOpenAccount}
-          testID="settings-sign-in"
-        />
-      )}
+    <View testID="settings-account">
+      <Group footer="Not signed in. Your predictions live only on this phone.">
+        {onOpenAccount ? (
+          <NavRow label="Sign in" onPress={onOpenAccount} testID="settings-sign-in" />
+        ) : (
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Account</Text>
+          </View>
+        )}
+      </Group>
     </View>
   );
 }
@@ -375,28 +426,42 @@ function ToggleRow({
 }
 
 const styles = StyleSheet.create({
-  wrap: { padding: 24 },
+  wrap: { gap: space.xxl, padding: space.lg, paddingBottom: space.huge },
+  group: { gap: space.sm },
+  // Inset grouped: one surface card per group on the canvas, rows divided by
+  // hairlines (DESIGN_SYSTEM §7.21).
+  card: {
+    backgroundColor: colors.surface,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  footer: { ...type.footnote, color: colors.textSecondary, paddingHorizontal: space.lg },
   row: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
     borderBottomColor: colors.hairline,
-  },
-  rowText: { flex: 1, paddingRight: 16 },
-  rowLabel: { ...type.callout, fontWeight: '500', color: colors.textPrimary },
-  rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: 4 },
-  deleteRow: { marginTop: 24, paddingVertical: 14 },
-  deleteLabel: { ...type.callout, color: colors.destructive, fontWeight: '500' },
-  permission: {
-    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: space.md,
-    justifyContent: 'space-between',
-    paddingBottom: space.md,
+    gap: space.sm,
+    minHeight: 48,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
   },
-  permissionText: { flex: 1, marginTop: 0 },
-  legal: { flexDirection: 'row', gap: space.xl, marginTop: space.lg, paddingVertical: space.sm },
-  legalLink: { ...type.footnote, color: colors.textSecondary, textDecorationLine: 'underline' },
+  rowPressed: { backgroundColor: colors.surfaceSunken },
+  rowText: { flex: 1, paddingRight: space.sm },
+  rowLabel: { ...type.callout, fontWeight: '500', color: colors.textPrimary },
+  rowLabelFill: { flex: 1 },
+  rowLabelAction: { ...type.callout, fontWeight: '600', color: colors.brandText },
+  rowLabelDestructive: { color: colors.destructive },
+  rowValue: { ...type.callout, color: colors.textSecondary },
+  rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
+  permission: {
+    borderBottomColor: colors.hairline,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: space.xs,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
+  permissionAction: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
 });

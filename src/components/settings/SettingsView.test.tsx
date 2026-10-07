@@ -109,6 +109,25 @@ describe('SettingsView', () => {
     expect(screen.queryByTestId('toggle-coach')).toBeNull(); // the inner Switch is hidden
   });
 
+  // Roadmap step 80: rows that open something are whole-row buttons named
+  // by their label, not capsules inside a row.
+  it('opens things from whole rows, named by their labels', () => {
+    const onOpenCard = jest.fn();
+    const onOpenScoring = jest.fn();
+    render(<SettingsView onOpenCard={onOpenCard} onOpenScoring={onOpenScoring} />);
+    const card = screen.getByTestId('settings-card');
+    expect(card.props.accessibilityRole).toBe('button');
+    expect(card.props.accessibilityLabel).toBe('Your card');
+    fireEvent.press(card);
+    expect(onOpenCard).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('settings-scoring').props.accessibilityLabel).toBe(
+      'How scoring works',
+    );
+    // No capsule buttons left: every button on the screen is a row or a switch.
+    expect(screen.queryByText('Read')).toBeNull();
+    expect(screen.queryByText('See Plus')).toBeNull();
+  });
+
   it('links to How scoring works', () => {
     const onOpenScoring = jest.fn();
     render(<SettingsView onOpenScoring={onOpenScoring} />);
