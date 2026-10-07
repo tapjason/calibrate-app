@@ -271,6 +271,24 @@ describe('bucketLine', () => {
     ).toBe('In your 60–80% range, 6 of 9 have happened.');
   });
 
+  it('agrees with a single one that happened', () => {
+    expect(
+      bucketLine({
+        low: 60,
+        high: 80,
+        total_resolved: 2,
+        resolved_yes: 1,
+        stated_confidence_mean: 65,
+        actual_rate: 0.5,
+        bucket_error: 0.15,
+        direction: 'overconfident',
+        chance_low: 0,
+        chance_high: 1,
+        expected_yes: 0,
+      }),
+    ).toBe('In your 60–80% range, 1 of 2 has happened.');
+  });
+
   // Roadmap step 58: from 10 resolved, the range's said-against-happened.
   it('sets what happened against what was said once the range holds 10', () => {
     expect(

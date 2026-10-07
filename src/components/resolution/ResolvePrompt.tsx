@@ -62,7 +62,9 @@ export function bucketLine(bucket: BucketStat): string {
   const range = `${bucket.low}–${bucket.high}%`;
   const n = bucket.total_resolved;
   if (n === 1) return `That's your first call in the ${range} range.`;
-  const counts = `In your ${range} range, ${bucket.resolved_yes} of ${n} have happened.`;
+  // "1 of 2 has", not "have": the verb follows the one that happened.
+  const verb = bucket.resolved_yes === 1 ? 'has' : 'have';
+  const counts = `In your ${range} range, ${bucket.resolved_yes} of ${n} ${verb} happened.`;
   if (n < MIN_BUCKET_N_FOR_VERDICT) return counts;
   const happened = Math.round(bucket.actual_rate * 100);
   const said = Math.round(bucket.stated_confidence_mean);
