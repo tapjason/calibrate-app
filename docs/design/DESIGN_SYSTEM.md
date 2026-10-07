@@ -135,7 +135,7 @@ from `under` for tritan viewers — the reason for rule 0.6.
   and warns against an in-app appearance toggle; retro-fitting a flat token object means
   touching every file twice. Whether to ship dark is roadmap D7.
 
-### 2.5 Dark neutrals (**Proposed**, D7)
+### 2.5 Dark neutrals (D7: **decided 2026-10-07**, follow the system setting; building next)
 
 Indigo-tinted, not an inversion. Ratios computed 2026-09-28 (WCAG 2.x).
 
@@ -296,6 +296,10 @@ one.
 ---
 
 ## 7. Patterns
+
+**Names (since D3, 2026-10-07):** Home is now *Today*, Stats is *Insights*, Settings is
+*You*, and Log is a sheet. Sections written before then use the old names; read them
+as the new ones.
 
 ### 7.1 Hero score and provisional state
 
@@ -482,9 +486,11 @@ third row) → **honest timeline** → **one** CTA.
   division, and absent when the store gives none. App Review 3.1.2: the billed
   amount stays the most prominent price.
 
-- Timeline, in the store's own units: *Today* — full Plus access · *In 1 month* — your
-  year starts; cancel at least 24 hours before. (A "we remind you" step belongs here
-  only once the app actually schedules that reminder; it doesn't yet.)
+- Timeline, in the store's own units: *Today* — full Plus access · *Two days before* — a
+  notification with the date it renews and the price · *In 1 month* — your year
+  starts; cancel at least 24 hours before. The middle step shows only while
+  notifications are on, since only then does the app send it (roadmap D16, built
+  2026-10-07; §7.15).
 - The CTA label follows the selected plan ("Start free month" / "Subscribe for
   $4.99/mo").
 - **No trial toggle** — Apple rejects them under 3.1.2 since January 2026.
@@ -512,15 +518,21 @@ third row) → **honest timeline** → **one** CTA.
   (`CloseButton`, as built in step 30). Use expo-router
   `presentation: 'formSheet'` with fixed detents (`fitToContents` has open sizing bugs).
   Swipe-to-dismiss with unsaved text asks for confirmation.
-- **Every sheet shows a way out before anything is done in it** (roadmap step 79): the
+- **Every sheet shows a way out before anything is done in it** (roadmap step 79, built
+  2026-10-07): the
   round × (`CloseButton`) at the top, as well as the grabber and the swipe. HIG wants
   the standard Close symbol, not the word; NN/g advises a visible close rather than
   the grab handle alone; every sheet in the 4.7+ set has one. A sheet's one finishing action (Done,
   Next) stays the single filled capsule; a sheet that only reads (How scoring works)
   or only shares (Share) closes from the × and loses its bottom Done.
-- **Proposed** (roadmap D3): four tabs *Today · Insights · History · You*; "Log" stops
-  being a tab (HIG: tabs navigate, they don't perform actions) and becomes a tinted "+"
-  that opens a large-detent sheet; native tabs with Liquid Glass on iOS.
+- **Four tabs** (roadmap D3, decided and built 2026-10-07): *Today · Insights · History
+  · You*. Log stopped being a tab (HIG: tabs navigate, they don't perform actions): a
+  56pt tinted "+" (`LogButton`, `brand600`, `e2`) floats above the tab bar's trailing
+  end on every tab but You, and opens Log as a full-height sheet with its title ("New
+  prediction") and the round ×. A typed, unsaved prediction asks before a swipe or the
+  × discards it (Discard prediction / Keep editing). Lists end with room for the "+".
+  You holds what Settings did, with "Your card" one row from the top. JS tabs for now;
+  native tabs with Liquid Glass follow the SDK 58 upgrade with the same layout.
 
 ### 7.8 Empty states
 
@@ -722,6 +734,7 @@ the same thing, no instructions, title-style titles without ending punctuation.
 | Resolution reminder | Did it happen | `{title}` · You said 70% | A prediction is ready to resolve | `active` |
 | Digest, open > 0 | Your week ahead | 3 predictions are coming due. | Weekly check-in | `passive` |
 | Digest, open = 0 | Your week ahead | Nothing open. What do you think will happen this week? | Weekly check-in | `passive` |
+| Trial ending (D16) | Your free trial ends Thursday | Plus then renews for a year at $29.99. | About your Plus trial | default |
 
 - The confidence goes in the reminder so that resolving from the notification still
   puts the stated number first (§7.10).
@@ -822,7 +835,7 @@ doesn't serve.
 | You need | Use | Not | Why |
 |---|---|---|---|
 | Move between the app's sections | A tab bar of 3–5 single-word, labelled tabs | An action as a tab, a hidden menu | HIG Tab bars: "navigation, not… actions". Visible navigation was used by 89% vs 44% hidden (NN/g). Log as a tab is D3. |
-| Start a new entry | A tinted "+" (in or beside the tab bar, or in the header), opening a sheet | An ordinary tab | None of the nine top apps that show it uses a tab. Built when D3 is. |
+| Start a new entry | A tinted "+" (in or beside the tab bar, or in the header), opening a sheet | An ordinary tab | None of the nine top apps that show it uses a tab. Built with D3: `LogButton`. |
 | One of 2–5 closely related views | A segmented control, text only | Mixing icons and words; a segmented control for whole sections | HIG Segmented controls. Share's Card · This week · This year. |
 | Filter a list | Horizontally scrolling pills, "All" first | A dropdown | Day One, Flighty, Bevel; History. |
 | One of a few named options in a form | Chips with symbol + word, selected state not colour alone | A picker wheel | Log's category and due-date chips. |
@@ -835,23 +848,28 @@ doesn't serve.
 | A minor alternative to the main action (Change answer, Can't tell, Restore purchases) | A text button, brand subhead, 44pt target | An outlined capsule beside the primary | Step 78. |
 | Confirm something irreversible | A screen that says what goes, an outlined capsule with a `destructive` label, Cancel beneath | A filled red primary | HIG Buttons: never give a destructive action the primary role. Step 81. |
 | Explain a number | A text link beside it ("How is this scored?") opening a reading sheet | A tooltip, a long-press | WHOOP, Oura and Bevel put an ⓘ in the header of each score's screen; Calibrate's link does the same job with a word. |
-| Ask for a rating | The system prompt after a finished run, never in the Warmup | A custom "Enjoying Calibrate?" pre-prompt; a button | HIG Ratings and reviews. Decision D15. |
+| Ask for a rating | The system prompt after a finished run, never in the Warmup | A custom "Enjoying Calibrate?" pre-prompt; a button | HIG Ratings and reviews. D15, built: `src/review/ratingPrompt.ts`. |
 
-### 7.21 Settings (planned, roadmap step 80)
+### 7.21 You: settings as a grouped list (built as roadmap step 80)
 
-Settings is a grouped inset list, as iOS Settings, Streaks and Todoist are:
+The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: one
+`surface` card per group on the canvas, `radius.md`, rows divided by hairlines.
 
-- **Groups:** *Account* (sign-in state as the row's value: "Not signed in ›", or the
-  email) · *Calibrate Plus* ("See plans ›", or the plan) · *Reminders and Coach*
-  (switches) · *Usage stats* (switch) · *About* (How scoring works ›, Terms of use ›,
-  Privacy policy › once hosted) · *Erase all data* alone at the bottom, its label in
-  `destructive`.
+- **Groups:** *Account* ("Sign in ›" with "Not signed in. Your predictions live only
+  on this phone." as the footer; signed in, a brand "Sign out" row under "Signed in as
+  …") · *Your card ›* and *Calibrate Plus ›* ("Active" as its value when it is), with
+  Plus's one line as the footer · *Notifications* (switch, and the "Allow reminders" /
+  "Open Settings" row while iOS says no) · *Coach (AI)* and *Usage stats* (switches)
+  · *About* (How scoring works ›, Privacy policy › once hosted, Terms of use ›) ·
+  *Erase all data on this device* / *Delete account* alone at the bottom, in
+  `destructive`, no chevron.
 - **Rows:** the whole row is the target; a row that opens something ends in a chevron
-  and, where there is one, its current value in `textSecondary`; an on/off row ends in
-  a switch and is one `switch` element for VoiceOver (step 41, unchanged). The
-  explanatory sentences stay as each group's footer, in `footnote` `textSecondary`.
-- **No capsule buttons inside rows.** Today's rows end in "Sign in", "See Plus" and
-  "Read" capsules beside three switches, and only the capsule responds.
+  and, where there is one, its current value in `textSecondary`; a row that acts in
+  place (Sign out, Erase) has no chevron and says so in its label's colour. An on/off
+  row ends in a switch and is one `switch` element for VoiceOver (step 41, unchanged),
+  its explanation under the label.
+- **No capsule buttons inside rows.** They used to end in "Sign in", "See Plus" and
+  "Read" capsules beside three switches, and only the capsule responded.
 - HIG: "Minimize the number of settings you offer." Nothing moves to Settings that
   belongs to a task (the share card's theme stays on Share).
 
