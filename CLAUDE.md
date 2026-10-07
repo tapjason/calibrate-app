@@ -214,7 +214,7 @@ See the authoritative section above.
 - Calibration curve chart (stated vs. actual per bucket)
 - Per-category breakdown with badge levels
 - Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**
-  (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Home
+  (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Today
   and on the answer that earned it. Every other day only the number climbs. The
   checkpoint *celebration* (motion, haptic) is planned but not built — see
   `docs/design/FUTURE_UI.md` §B.
@@ -232,6 +232,18 @@ Nothing that produces a shareable artifact is ever paywalled.
 - **Resolution reminder** — fires at 19:00 local on the due day (decided 2026-10-05;
   due dates are stored at noon, which was before most outcomes were known)
 - **Weekly digest** — fires Sunday evening, summarizes open and upcoming predictions
+- **Trial ending** — 10:00 local two days before a free trial renews, with the
+  renewal date and the store's price, and no offer (decided 2026-10-07, roadmap
+  D16). Cancelled when the trial is cancelled or over, or notifications are off.
+
+All three follow the single Notifications toggle.
+
+### 8. Rating prompt
+Apple's system rating prompt (`expo-store-review`), requested on Today after a
+Resolve sheet closes on a finished run or on the answer that unlocked the score,
+only after 7 days and 10 yes/no answers, never in the Warmup, at most once per 90
+days (decided 2026-10-07, roadmap D15). Never tied to a Yes: reward calibration,
+not correctness.
 
 ---
 
@@ -442,7 +454,7 @@ User taps notification on due_date
       → Recalculate bucket accuracy (MAE)
       → Update UserStat.calibration_rating + provisional flags
       → Update CategoryStat + check badge thresholds (score AND min-N)
-  → Stats screen reflects new data
+  → Insights (and Today's summary) reflect the new data
   → (Plus) Coach may surface grounded insight cards
 ```
 
@@ -450,17 +462,21 @@ User taps notification on due_date
 
 ## Screen List
 
+Four tabs, **Today · Insights · History · You** (decided 2026-10-07, roadmap D3);
+Log is a sheet opened by a floating "+", not a tab, because tabs navigate and
+logging is an action.
+
 | Screen | Purpose | Tier |
 |---|---|---|
 | Warmup (onboarding) | Estimation quiz → instant calibration verdict → first share card | Free |
-| Home / Dashboard | Pending predictions + calibration rating summary | Free |
-| Log Prediction | Title, confidence slider, due date, category (refine deferred) | Free |
-| Resolve | Yes / No prompt + optional reflection | Free |
-| Stats | Calibration curve + category breakdown + badges + Coach cards | Free (Coach = Plus) |
-| Share / Wrapped | Identity card + weekly/yearly recap, export & share | Free |
-| History | Full list of past predictions, filterable | Free |
+| Today (tab) | Pending predictions + calibration rating summary | Free |
+| Log Prediction (sheet, from "+") | Title, confidence slider, due date, category (refine deferred) | Free |
+| Resolve (sheet) | Yes / No prompt + optional reflection | Free |
+| Insights (tab) | Calibration curve + category breakdown + badges + Coach cards | Free (Coach = Plus) |
+| Share / Wrapped (sheet) | Identity card + weekly/yearly recap, export & share | Free |
+| History (tab) | Full list of past predictions, filterable | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
-| Settings | Notification prefs, Coach toggle, usage stats, subscription mgmt, account (sign in, delete account / erase device) | Free |
+| You (tab) | Your card, Plus, notification prefs, Coach toggle, usage stats, how scoring works, account (sign in, delete account / erase device) | Free |
 
 ---
 
