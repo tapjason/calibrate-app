@@ -10,6 +10,7 @@ import { loadFonts } from '@/constants/fonts';
 import { colors, palettes, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
+import { initPracticeReminder } from '@/notifications/practiceReminder';
 import { initTrialReminder } from '@/notifications/trialReminder';
 import {
   initNotifications,
@@ -114,6 +115,8 @@ export default function RootLayout() {
         });
         // The reminder before a trial renews follows the same toggle (D16).
         initTrialReminder();
+        // So does the daily practice reminder, once a time is chosen (step 89).
+        initPracticeReminder();
         // One sweep at startup so a queue built up offline doesn't wait for
         // the next foreground. Fire-and-forget; it returns 0 and logs on any
         // failure, including for guests, who never flush at all.

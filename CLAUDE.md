@@ -242,8 +242,15 @@ Nothing that produces a shareable artifact is ever paywalled.
 - **Trial ending** — 10:00 local two days before a free trial renews, with the
   renewal date and the store's price, and no offer (decided 2026-10-07, roadmap
   D16). Cancelled when the trial is cancelled or over, or notifications are off.
+- **Practice reminder** — off until the user picks a moment ("With coffee ·
+  8:00 AM", "At lunch · 12:30 PM", "After dinner · 8:30 PM"), offered under a
+  finished practice and in You (decided 2026-10-07, roadmap step 89). One a day,
+  only on days the practice isn't done, with a different title daily and that
+  day's first question as the body. Scheduled at most three days ahead of the
+  last time the app was open, so someone who stops opening it gets three, then
+  silence. Never the streak, never a loss.
 
-All three follow the single Notifications toggle.
+All four follow the single Notifications toggle.
 
 ### 8. Rating prompt
 Apple's system rating prompt (`expo-store-review`), requested on Today after a

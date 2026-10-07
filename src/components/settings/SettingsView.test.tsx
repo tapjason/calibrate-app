@@ -90,6 +90,8 @@ describe('SettingsView', () => {
         coverageNudgeLastShownAt: null,
         reminderPromptDismissedAt: null,
         ratingAskedAt: null,
+        practiceReminder: null,
+        practiceReminderOfferDismissedAt: null,
       });
     });
   });

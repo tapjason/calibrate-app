@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { track } from '@/analytics/track';
 
 import { PracticeQuiz } from '@/components/practice/PracticeQuiz';
+import { PracticeReminderOffer } from '@/components/practice/PracticeReminderOffer';
 import { PracticeResult } from '@/components/practice/PracticeResult';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, space, type } from '@/constants/theme';
@@ -44,7 +45,10 @@ export default function PracticeScreen() {
           quiz that was scrolled to reach its button (roadmap step 72). */}
       <ScrollView key={slot === null ? 'result' : 'quiz'} contentContainerStyle={styles.wrap}>
         {slot === null ? (
-          <PracticeResult day={day} />
+          <PracticeResult day={day}>
+            {/* "Same time tomorrow?" (roadmap step 89). Native only. */}
+            <PracticeReminderOffer />
+          </PracticeResult>
         ) : (
           <PracticeQuiz key={slot} day={day} slot={slot} />
         )}

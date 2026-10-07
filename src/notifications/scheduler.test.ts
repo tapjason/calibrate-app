@@ -56,6 +56,8 @@ interface FakeNotifications extends NotificationsApi {
    * response (e.g. the launching tap) to the runtime listener.
    */
   triggerTap(predictionId: string, identifier?: string): void;
+  /** A tap on a notification carrying `data` (the digest's, the practice reminder's). */
+  triggerTapData(data: Record<string, unknown>): void;
 }
 
 interface FakeNavigator extends Navigator {
@@ -144,6 +146,12 @@ function makeFakeNotifications(
             content: { data: { predictionId } },
           },
         },
+      });
+    },
+    triggerTapData(data: Record<string, unknown>) {
+      if (!tapListener) throw new Error('no tap listener installed');
+      tapListener({
+        notification: { request: { identifier: `tap-data-${nextId++}`, content: { data } } },
       });
     },
     async getLastNotificationResponseAsync() {
@@ -308,6 +316,19 @@ describe('scheduler: tap handler', () => {
     // We use triggerTap with an empty string and expect no push.
     expect(() => notifications.triggerTap('')).not.toThrow();
     expect(navigator.pushed).toHaveLength(0);
+  });
+
+  // Roadmap step 89: the practice reminder opens today's practice; the
+  // digest still opens the app and nothing more.
+  it('opens the practice sheet from the practice reminder, and nothing from the digest', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    notifications.triggerTapData({ kind: 'digest' });
+    notifications.triggerTapData({ kind: 'practice' });
+    expect(navigator.pushed).toEqual(['/practice']);
   });
 });
 

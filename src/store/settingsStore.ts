@@ -47,6 +47,21 @@ export interface StoredSettings {
    * null. The cooldown's memory, like the two above.
    */
   ratingAskedAt: string | null;
+  /**
+   * The local time of the daily practice reminder (roadmap step 89), or null
+   * for none. Off until the person picks a moment: a daily notification is
+   * something to be asked for, not assumed. Still follows the single
+   * Notifications switch above.
+   */
+  practiceReminder: PracticeReminderTime | null;
+  /** When the practice sheet's reminder offer was last waved off, or null. */
+  practiceReminderOfferDismissedAt: string | null;
+}
+
+/** A local time of day for the practice reminder. */
+export interface PracticeReminderTime {
+  hour: number;
+  minute: number;
 }
 
 /** Injectable persistence so tests don't touch the native AsyncStorage. */
@@ -71,6 +86,10 @@ interface SettingsState extends StoredSettings {
   dismissReminderPrompt: () => Promise<void>;
   /** The rating prompt was requested now: start its cooldown. */
   markRatingAsked: () => Promise<void>;
+  /** Set the practice reminder's time, or null to turn it off. */
+  setPracticeReminder: (time: PracticeReminderTime | null) => Promise<void>;
+  /** "Not now" on the practice reminder offer: a week before it asks again. */
+  dismissPracticeReminderOffer: () => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -94,6 +113,8 @@ const DEFAULTS: StoredSettings = {
   coverageNudgeLastShownAt: null,
   reminderPromptDismissedAt: null,
   ratingAskedAt: null,
+  practiceReminder: null,
+  practiceReminderOfferDismissedAt: null,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -162,6 +183,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           reminderPromptDismissedAt:
             stored.reminderPromptDismissedAt ?? DEFAULTS.reminderPromptDismissedAt,
           ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
+          practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
+          practiceReminderOfferDismissedAt:
+            stored.practiceReminderOfferDismissedAt ?? DEFAULTS.practiceReminderOfferDismissedAt,
         });
       }
     } catch (e) {
@@ -215,7 +239,26 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ ratingAskedAt: new Date().toISOString() });
     await persist(snapshot(get()));
   },
+
+  setPracticeReminder: async (time) => {
+    set({ practiceReminder: time === null ? null : validTime(time) });
+    await persist(snapshot(get()));
+  },
+
+  dismissPracticeReminderOffer: async () => {
+    set({ practiceReminderOfferDismissedAt: new Date().toISOString() });
+    await persist(snapshot(get()));
+  },
 }));
+
+/** A stored time, if it is one: whole hours 0–23 and minutes 0–59. */
+function validTime(value: unknown): PracticeReminderTime | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const { hour, minute } = value as Partial<PracticeReminderTime>;
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+  if (hour! < 0 || hour! > 23 || minute! < 0 || minute! > 59) return null;
+  return { hour: hour!, minute: minute! };
+}
 
 /**
  * The persistable slice of the store. Each setter writes the whole snapshot
@@ -232,5 +275,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     coverageNudgeLastShownAt: state.coverageNudgeLastShownAt,
     reminderPromptDismissedAt: state.reminderPromptDismissedAt,
     ratingAskedAt: state.ratingAskedAt,
+    practiceReminder: state.practiceReminder,
+    practiceReminderOfferDismissedAt: state.practiceReminderOfferDismissedAt,
   };
 }

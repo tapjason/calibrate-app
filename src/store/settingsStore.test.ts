@@ -108,6 +108,8 @@ describe('settingsStore: setters persist', () => {
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
       ratingAskedAt: null,
+      practiceReminder: null,
+      practiceReminderOfferDismissedAt: null,
     });
   });
 
@@ -127,6 +129,8 @@ describe('settingsStore: setters persist', () => {
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
       ratingAskedAt: null,
+      practiceReminder: null,
+      practiceReminderOfferDismissedAt: null,
     });
   });
 
@@ -195,5 +199,42 @@ describe('settingsStore: reminder prompt cooldown', () => {
     const at = useSettingsStore.getState().reminderPromptDismissedAt;
     expect(at).not.toBeNull();
     expect(saved[0]?.reminderPromptDismissedAt).toBe(at);
+  });
+
+  // Roadmap step 89: the practice reminder's time, off until it's chosen.
+  it('stores the practice reminder time, and turns it off', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    expect(useSettingsStore.getState().practiceReminder).toBeNull();
+
+    await useSettingsStore.getState().setPracticeReminder({ hour: 8, minute: 0 });
+    expect(useSettingsStore.getState().practiceReminder).toEqual({ hour: 8, minute: 0 });
+    expect(saved.at(-1)?.practiceReminder).toEqual({ hour: 8, minute: 0 });
+
+    await useSettingsStore.getState().setPracticeReminder(null);
+    expect(saved.at(-1)?.practiceReminder).toBeNull();
+  });
+
+  it('drops a stored practice reminder time that is not a time', async () => {
+    __setPersistenceForTests(
+      makeFakePersistence({ practiceReminder: { hour: 25, minute: 0 } } as never).persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().practiceReminder).toBeNull();
+
+    __setPersistenceForTests(
+      makeFakePersistence({ practiceReminder: { hour: 20, minute: 30 } }).persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().practiceReminder).toEqual({ hour: 20, minute: 30 });
+  });
+
+  it('remembers when the practice reminder offer was waved off', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().dismissPracticeReminderOffer();
+    const at = useSettingsStore.getState().practiceReminderOfferDismissedAt;
+    expect(typeof at).toBe('string');
+    expect(saved.at(-1)?.practiceReminderOfferDismissedAt).toBe(at);
   });
 });

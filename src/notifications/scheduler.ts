@@ -413,26 +413,36 @@ function handleStoreUpdate(pending: Prediction[]): void {
 }
 
 /**
- * Deep-link to a prediction's Resolve screen from a notification response.
- * Shared by the runtime tap listener and the cold-start launch path. A
- * missing/invalid id is ignored; navigating to an already-resolved or deleted
- * prediction degrades gracefully (ResolvePrompt shows a fallback). Responses
- * are deduped on identifier so the launching tap routes exactly once even if
- * it reaches us through both paths. The identifier is only recorded after a
- * successful push, so a push that fails (e.g. navigator not yet mounted) can
- * still be retried by the other path.
+ * Where a tapped notification leads: a reminder to its prediction's Resolve
+ * screen, the practice reminder (roadmap step 89) to today's practice, and
+ * anything else (the digest, the trial reminder) nowhere past opening the app.
+ */
+function pathFor(data: Record<string, unknown> | undefined): string | null {
+  const predictionId = data?.predictionId;
+  if (typeof predictionId === 'string' && predictionId.length > 0) return `/resolve/${predictionId}`;
+  if (data?.kind === 'practice') return '/practice';
+  return null;
+}
+
+/**
+ * Deep-link from a notification response (pathFor). Shared by the runtime
+ * tap listener and the cold-start launch path. A missing/invalid id is
+ * ignored; navigating to an already-resolved or deleted prediction degrades
+ * gracefully (ResolvePrompt shows a fallback). Responses are deduped on
+ * identifier so the launching tap routes exactly once even if it reaches us
+ * through both paths. The identifier is only recorded after a successful
+ * push, so a push that fails (e.g. navigator not yet mounted) can still be
+ * retried by the other path.
  */
 function routeToResolve(request: {
   identifier: string;
   content: { data?: Record<string, unknown> };
 }): void {
   if (routedResponseIdentifiers.has(request.identifier)) return;
-  const predictionId = request.content.data?.predictionId;
-  if (typeof predictionId !== 'string' || predictionId.length === 0) {
-    return;
-  }
+  const path = pathFor(request.content.data);
+  if (!path) return;
   try {
-    deps?.navigator.push(`/resolve/${predictionId}`);
+    deps?.navigator.push(path);
     routedResponseIdentifiers.add(request.identifier);
   } catch (e) {
     // eslint-disable-next-line no-console

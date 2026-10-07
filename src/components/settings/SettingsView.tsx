@@ -5,14 +5,16 @@ import { AppState, Linking, Pressable, StyleSheet, Switch, Text, View } from 're
 import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
+import { MomentChips } from '@/components/practice/MomentChips';
 import {
   askForReminders,
   reminderPermission,
   type ReminderPermission,
 } from '@/notifications/permission';
+import { choosePracticeReminder } from '@/notifications/practiceReminder';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
 
 /**
  * The You tab (roadmap D3): settings as a grouped inset list (DESIGN_SYSTEM
@@ -91,12 +93,13 @@ export function SettingsView({
       <Group>
         <ToggleRow
           label="Notifications"
-          description="A reminder on the evening each prediction comes due, and the Sunday weekly digest."
+          description="A reminder on the evening each prediction comes due, the Sunday weekly digest, and practice at the moment you pick below."
           value={notificationsEnabled}
           onValueChange={(v) => void setNotificationsEnabled(v)}
           testID="toggle-notifications"
         />
         <NotificationPermissionRow />
+        <PracticeReminderRow />
       </Group>
 
       <Group>
@@ -238,6 +241,45 @@ function AboutGroup({ onOpenScoring }: { onOpenScoring?: () => void }) {
         testID="settings-terms-link"
       />
     </Group>
+  );
+}
+
+/**
+ * The daily practice reminder (roadmap step 89): Off, or a moment in the day.
+ * Choosing one asks iOS for permission if it never has, as the reminder
+ * prompt does. It follows the Notifications switch above, so with that off
+ * the choice is kept but nothing is sent, and the row says so.
+ */
+function PracticeReminderRow() {
+  const chosen = useSettingsStore((s) => s.practiceReminder);
+  const enabled = useSettingsStore((s) => s.notificationsEnabled);
+  const [busy, setBusy] = useState(false);
+  const choose = async (time: PracticeReminderTime | null) => {
+    setBusy(true);
+    try {
+      await choosePracticeReminder(time);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <View style={styles.stacked} testID="settings-practice-reminder">
+      <Text style={styles.rowLabel}>Practice reminder</Text>
+      <Text style={styles.rowDescription}>
+        {enabled
+          ? 'One a day at the moment you pick, only on days practice isn’t done.'
+          : 'Kept, but nothing is sent while Notifications is off.'}
+      </Text>
+      <View style={styles.chips}>
+        <MomentChips
+          selected={chosen}
+          onChoose={(t) => void choose(t)}
+          withOff
+          disabled={busy}
+          testID="settings-practice-moments"
+        />
+      </View>
+    </View>
   );
 }
 
@@ -458,6 +500,14 @@ const styles = StyleSheet.create({
   rowLabelDestructive: { color: colors.destructive },
   rowValue: { ...type.callout, color: colors.textSecondary },
   rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
+  // A row whose control sits under its label: the practice reminder's moments.
+  stacked: {
+    borderBottomColor: colors.hairline,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
+  chips: { marginTop: space.md },
   permission: {
     borderBottomColor: colors.hairline,
     borderBottomWidth: StyleSheet.hairlineWidth,
