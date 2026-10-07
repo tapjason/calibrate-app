@@ -8,6 +8,7 @@ import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash
 import { colors, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
+import { initTrialReminder } from '@/notifications/trialReminder';
 import {
   initNotifications,
   routeFromLaunchNotification,
@@ -78,6 +79,8 @@ export default function RootLayout() {
           // eslint-disable-next-line no-console
           console.warn('[digest] init failed:', e);
         });
+        // The reminder before a trial renews follows the same toggle (D16).
+        initTrialReminder();
         // One sweep at startup so a queue built up offline doesn't wait for
         // the next foreground. Fire-and-forget; it returns 0 and logs on any
         // failure, including for guests, who never flush at all.

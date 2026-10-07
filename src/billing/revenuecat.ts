@@ -135,6 +135,8 @@ export interface RcEntitlementInfo {
   expirationDate: string | null;
   /** 'NORMAL' | 'INTRO' | 'TRIAL' in the SDK. */
   periodType?: string;
+  /** False once the user has cancelled: it ends at expirationDate and won't renew. */
+  willRenew?: boolean;
 }
 
 export interface RcCustomerInfo {
@@ -300,6 +302,31 @@ export function entitlementFromCustomerInfo(info: unknown): Entitlement {
   };
 }
 
+/** A free trial in progress (roadmap D16): when it ends, and what follows. */
+export interface TrialStatus {
+  /** When the trial ends and, unless cancelled, the paid plan starts. ISO. */
+  endsAt: string;
+  /** False once cancelled: nothing will be charged, so nothing to remind. */
+  willRenew: boolean;
+  /** The plan it turns into, or null for a product we don't know. */
+  plan: PlanId | null;
+}
+
+/**
+ * The free trial the customer is in, or null when they aren't in one. Pure
+ * and total, like entitlementFromCustomerInfo: anything missing reads as no
+ * trial, so the worst case is a reminder not sent, never a wrong one.
+ */
+export function trialStatusFromCustomerInfo(info: unknown): TrialStatus | null {
+  const plus = (info as RcCustomerInfo | null)?.entitlements?.active?.[PLUS_ENTITLEMENT_ID];
+  if (!plus || plus.isActive !== true) return null;
+  if (plus.periodType?.toUpperCase() !== 'TRIAL' || !plus.expirationDate) return null;
+  const plan =
+    (Object.keys(PRODUCT_IDS) as PlanId[]).find((id) => PRODUCT_IDS[id] === plus.productIdentifier) ??
+    null;
+  return { endsAt: plus.expirationDate, willRenew: plus.willRenew !== false, plan };
+}
+
 const DAYS_PER_UNIT: Record<string, number> = {
   DAY: 1,
   WEEK: 7,
@@ -444,6 +471,23 @@ export async function fetchEntitlement(): Promise<Entitlement | null> {
     // eslint-disable-next-line no-console
     console.warn('[billing] entitlement refresh failed:', e);
     return null;
+  }
+}
+
+/**
+ * The trial in progress (roadmap D16): null when there is none, undefined
+ * when RevenueCat couldn't be asked, so a caller can leave a scheduled
+ * reminder alone rather than cancel it on a bad connection.
+ */
+export async function fetchTrialStatus(): Promise<TrialStatus | null | undefined> {
+  const d = getDeps();
+  if (!d || !apiKeyForPlatform()) return undefined;
+  try {
+    return trialStatusFromCustomerInfo(await d.getCustomerInfo());
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[billing] trial status failed:', e);
+    return undefined;
   }
 }
 

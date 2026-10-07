@@ -206,14 +206,26 @@ export interface TimelineStep {
 
 /**
  * The honest trial timeline (DESIGN_SYSTEM §7.6), or null when the selected
- * plan has no trial. Two steps, not three: there is no reminder notification
- * before the trial ends, so the screen doesn't promise one.
+ * plan has no trial. The middle step, the reminder two days before it renews
+ * (roadmap D16), shows only while notifications are on: with them off the
+ * app sends nothing, so the screen doesn't promise it.
  */
-export function trialTimeline(plan: PlusPlan): TimelineStep[] | null {
+export function trialTimeline(
+  plan: PlusPlan,
+  { reminder = false }: { reminder?: boolean } = {},
+): TimelineStep[] | null {
   const trial = trialLabel(plan);
   if (!trial) return null;
   return [
     { when: 'Today', what: 'Full Plus: Coach, Trends and every card theme.' },
+    ...(reminder
+      ? [
+          {
+            when: 'Two days before',
+            what: 'A notification with the date it renews and the price.',
+          },
+        ]
+      : []),
     {
       when: `In ${trial}`,
       what: `Your ${PLAN_LABELS[plan.plan].toLowerCase()} plan starts at ${pricePerPeriod(plan)}. Cancel at least 24 hours before to pay nothing.`,

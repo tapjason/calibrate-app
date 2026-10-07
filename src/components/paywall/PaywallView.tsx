@@ -10,6 +10,7 @@ import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 import {
   FREE_FOREVER_NOTE,
@@ -64,7 +65,9 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   const ordered = sortPlans(plans);
   const selected =
     ordered.find((p) => p.packageId === selectedId) ?? defaultPlan(ordered);
-  const timeline = selected ? trialTimeline(selected) : null;
+  // The reminder step only while the app would send it (roadmap D16).
+  const remindersOn = useSettingsStore((s) => s.notificationsEnabled);
+  const timeline = selected ? trialTimeline(selected, { reminder: remindersOn }) : null;
 
   const busy = purchasing !== null || restoring;
   const message = noticeText(notice);

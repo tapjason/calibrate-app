@@ -24,6 +24,7 @@ import {
   restorePurchases,
   type PlusPlan,
 } from '@/billing/revenuecat';
+import { refreshTrialReminder } from '@/notifications/trialReminder';
 
 import { useEntitlementStore } from './entitlementStore';
 
@@ -107,6 +108,8 @@ export const usePaywallStore = create<PaywallState>((set) => ({
       // never repaints as "free, idle" for a frame between the two.
       await useEntitlementStore.getState().setEntitlement(result.entitlement);
       set({ purchasing: null, notice: 'purchased' });
+      // A trial just started: schedule its reminder (roadmap D16).
+      void refreshTrialReminder();
       // Booleans rather than a plan string: the event catalogue has no open
       // string type, by design (src/analytics/events.ts).
       void track('purchase_completed', {
@@ -155,6 +158,9 @@ export const usePaywallStore = create<PaywallState>((set) => ({
     const entitlement = await fetchEntitlement();
     if (!entitlement) return;
     await useEntitlementStore.getState().setEntitlement(entitlement);
+    // A trial cancelled in iOS Settings, or one that ended, shows up here:
+    // keep the reminder before it renews in step (roadmap D16).
+    void refreshTrialReminder();
   },
 
   clearNotice: () => set({ notice: null }),

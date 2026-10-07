@@ -188,8 +188,15 @@ describe('plan selector copy', () => {
     expect(steps?.map((s) => s.when)).toEqual(['Today', 'In 1 month']);
     expect(steps?.[1].what).toContain('$29.99');
     expect(steps?.[1].what).toContain('24 hours');
-    expect(JSON.stringify(steps)).not.toMatch(/remind/i);
+    expect(JSON.stringify(steps)).not.toMatch(/notification/i);
     expect(trialTimeline(monthly)).toBeNull();
+  });
+
+  // Roadmap D16: the reminder is promised only while the app would send it.
+  it('adds the reminder two days before, when notifications are on', () => {
+    const steps = trialTimeline(annual, { reminder: true });
+    expect(steps?.map((s) => s.when)).toEqual(['Today', 'Two days before', 'In 1 month']);
+    expect(steps?.[1].what).toBe('A notification with the date it renews and the price.');
   });
 });
 

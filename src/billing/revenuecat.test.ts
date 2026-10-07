@@ -11,6 +11,7 @@ import {
   plansFromOfferings,
   purchasePlan,
   restorePurchases,
+  trialStatusFromCustomerInfo,
   type BillingDeps,
   type RcCustomerInfo,
   type RcOfferings,
@@ -27,6 +28,7 @@ function customerInfo(
     productIdentifier: string;
     expirationDate: string | null;
     periodType: string;
+    willRenew: boolean;
   }> | null,
 ): RcCustomerInfo {
   if (!entitlement) return { entitlements: { active: {} } };
@@ -42,6 +44,7 @@ function customerInfo(
               ? '2027-01-01T00:00:00.000Z'
               : entitlement.expirationDate,
           periodType: entitlement.periodType ?? 'NORMAL',
+          ...(entitlement.willRenew === undefined ? {} : { willRenew: entitlement.willRenew }),
         },
       },
     },
@@ -103,6 +106,34 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+
+// Roadmap D16: what the reminder before a trial renews reads.
+describe('trialStatusFromCustomerInfo', () => {
+  it('reads a running trial, its end and the plan it turns into', () => {
+    expect(
+      trialStatusFromCustomerInfo(
+        customerInfo({ periodType: 'TRIAL', expirationDate: '2026-11-07T15:00:00.000Z' }),
+      ),
+    ).toEqual({ endsAt: '2026-11-07T15:00:00.000Z', willRenew: true, plan: 'annual' });
+  });
+
+  it('knows a cancelled trial will not renew', () => {
+    expect(
+      trialStatusFromCustomerInfo(customerInfo({ periodType: 'TRIAL', willRenew: false }))
+        ?.willRenew,
+    ).toBe(false);
+  });
+
+  it('is null outside a trial, or for anything missing', () => {
+    expect(trialStatusFromCustomerInfo(customerInfo({}))).toBeNull();
+    expect(trialStatusFromCustomerInfo(customerInfo({ periodType: 'INTRO' }))).toBeNull();
+    expect(
+      trialStatusFromCustomerInfo(customerInfo({ periodType: 'TRIAL', expirationDate: null })),
+    ).toBeNull();
+    expect(trialStatusFromCustomerInfo(customerInfo(null))).toBeNull();
+    expect(trialStatusFromCustomerInfo(undefined)).toBeNull();
+  });
+});
 
 describe('entitlementFromCustomerInfo', () => {
   it('maps an active annual entitlement', () => {
