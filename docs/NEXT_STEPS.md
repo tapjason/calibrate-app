@@ -1,7 +1,7 @@
 # Calibrate — Next Steps an Agent Can Do Alone
 
 **As of:** 2026-10-04 (second pass) · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-113 suites / 1278 tests green (after the UI batches, steps 16–84).
+114 suites / 1290 tests green (after the UI batches, steps 16–86).
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
@@ -130,10 +130,10 @@ found the RevenueCat Test Store drift below.
   with Apple `.p8` key, and deleting the RevenueCat customer needs a
   write-scoped server key. The function already handles both once the secrets
   exist (`ACCOUNT_SPEC.md` §3).
-- **Design decisions** in `docs/design/UI_ROADMAP.md` §2. D3 (four tabs), D7
-  (dark mode follows the system), D15 (rating prompt) and D16 (trial reminder)
-  were decided on 2026-10-07; D3, D15 and D16 are built and D7 is next. The
-  typeface (D1) is the one structural call left before submission.
+- **Design decisions** in `docs/design/UI_ROADMAP.md` §2. D1 (Inter), D3 (four
+  tabs), D7 (dark mode follows the system), D15 (rating prompt) and D16 (trial
+  reminder) were decided and built on 2026-10-07, so every structural call is
+  made before submission.
 
 ---
 

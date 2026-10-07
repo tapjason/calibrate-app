@@ -550,7 +550,10 @@ for, and validate that people actually share before betting on the free tier.
   type, motion, haptics, chart, badge, share-card and paywall patterns, approved
   libraries). `docs/design/UI_ROADMAP.md` holds the build order and the open design
   decisions. Read both before UI work. This file wins on product behaviour.
-- No hex literals in components — use the tokens in `src/constants/theme.ts`.
+- No hex literals in components — use the tokens in `src/constants/theme.ts`. The
+  tokens follow the phone's light or dark appearance (decided 2026-10-07), so every
+  text style sets a colour token; share cards keep their own fixed palettes.
+- Type is Inter (decided 2026-10-07): use the `type` tokens, which carry the family.
 - Yes and No resolutions get identical feedback; colour never carries meaning alone.
 - Install native packages with `npx expo install`, never `npm i`.
 

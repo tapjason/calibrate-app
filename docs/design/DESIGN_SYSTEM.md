@@ -16,8 +16,8 @@ behind §7.3, §7.14 and §7.18; elements, done 2026-10-06 from 18 apps rated 4.
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
 
-**Status (2026-10-03):** the tokens are in code at `src/constants/theme.ts` (light
-palette live, dark proposed), and `src/constants/theme.test.ts` pins every recorded
+**Status (2026-10-07):** the tokens are in code at `src/constants/theme.ts` (light
+and dark both live, following the phone; Inter as the face), and `src/constants/theme.test.ts` pins every recorded
 contrast pair. Colour is fully migrated: no hex literal is left in `app/` or
 `src/components/` outside `BADGE_META` and `cardThemes`, which hold their own palettes
 by design. Many font sizes are still raw numbers rather than `type.*`; migrating them
@@ -135,9 +135,22 @@ from `under` for tritan viewers — the reason for rule 0.6.
   and warns against an in-app appearance toggle; retro-fitting a flat token object means
   touching every file twice. Whether to ship dark is roadmap D7.
 
-### 2.5 Dark neutrals (D7: **decided 2026-10-07**, follow the system setting; building next)
+### 2.5 Dark neutrals (D7: decided and built 2026-10-07, following the system setting)
 
-Indigo-tinted, not an inversion. Ratios computed 2026-09-28 (WCAG 2.x).
+Indigo-tinted, not an inversion. Ratios computed 2026-09-28 (WCAG 2.x). How it works:
+each token in `colors` resolves where it's drawn (DynamicColorIOS on iOS, a CSS custom
+property on web), so styles made once at load still switch; `themed()` does the same
+for a colour outside the palette (the badge chips). Share cards never use `colors`:
+an exported PNG keeps its own palette whatever the phone's appearance (`LensEmblem`
+takes `palettes.light` there).
+
+Rules dark mode taught (2026-10-07):
+- **Every text style sets a colour token.** Unset, RN draws black, invisible on the
+  dark canvas.
+- **Brand text uses `brandText` on canvas or surface, `brand800` on `brand50`.**
+  `brand600` and `brand700` are fills: as text on dark `brand50` they fall to 2:1.
+- **White stays white:** switch thumbs and text on a brand fill use `onBrand`, never
+  `surface`, which turns dark.
 
 | Token | Dark hex | on `canvas` | on `surface` |
 |---|---|---|---|
@@ -161,29 +174,36 @@ alone.
 
 ## 3. Typography
 
-**Decision (default; see `UI_ROADMAP.md` §2 D1):** the **system font** — SF Pro on iOS,
-with **SF Rounded (`fontFamily: 'ui-rounded'`) for numerals, badge names and identity
-words only**. Zero bytes, native Dynamic Type, and what the HIG and ADA winners use.
-Trade-off: the Chromium web build falls back to the host system font and has no
-`ui-rounded`, so web screenshots are not a faithful preview of type. If a distinctive
-brand face is wanted later, Inter (`@expo-google-fonts/inter`, has `tnum`) is the
-runner-up because it renders identically on iOS and web.
+**Decision (roadmap D1, decided and built 2026-10-07): Inter everywhere**, numerals
+included (`FONT_FAMILY`). One face on iOS and web, so web screenshots are a faithful
+preview of type, with more brand character than the system font. Five weights ship,
+400 · 500 · 600 · 700 · 800, the only ones used (a test holds the tokens to them).
+iOS embeds them at build time (the expo-font plugin in `app.json`) under the family
+"Inter", so `fontFamily` plus `fontWeight` picks the face; web registers the same files
+under the same family (`src/constants/fonts.web.ts`) with a system fallback stack.
+Header titles, tab labels, share cards and the chart's SVG labels use it too. It was
+the system font (SF Pro, SF Rounded for numerals) until then.
+
+- **Inter's `tnum` widens punctuation too**: use `tabularNums` only on numbers that
+  animate or align in a column, never on a phrase ("15-day streak" read "15 - day").
+- Inter runs wider than SF: check text in fixed-width spots at 320pt (the coverage
+  cells' range labels sit at the 11pt floor for this reason).
 
 | Token | Face | Size/line (pt) | Weight | iOS style | Use |
 |---|---|---|---|---|---|
-| `display` | Rounded | 64/68 | Bold | custom (cap Dynamic Type at 1.6×) | the one hero number per screen |
-| `readout` | Rounded | 48/56 | Bold | custom (cap at 1.6×) | the live number on a control or celebration (confidence readout, milestone card) |
-| `titleXL` | Rounded | 34/41 | Bold | Large Title | screen titles, verdict headline |
-| `title1` | Pro | 28/34 | Bold | Title 1 | section heroes, Warmup score |
-| `title2` | Pro | 22/28 | Bold | Title 2 | quiz prompt, card headlines |
-| `title3` | Pro | 20/25 | Semibold | Title 3 | group headers |
-| `headline` | Pro | 17/22 | Semibold | Headline | row titles, buttons |
-| `body` | Pro | 17/22 | Regular | Body | prediction text, copy |
-| `callout` | Pro | 16/21 | Regular | Callout | explanations |
-| `subhead` | Pro | 15/20 | Regular | Subhead | metadata |
-| `footnote` | Pro | 13/18 | Regular | Footnote | captions, chart labels |
-| `caption` | Pro | 12/16 | Medium | Caption 1 | chart ticks (minimum for charts) |
-| `eyebrow` | Pro | 13/18, +0.4 tracking | Semibold, sentence case | Footnote | section labels (replaces ALL-CAPS grey) |
+| `display` | Inter | 64/68 | Bold | custom (cap Dynamic Type at 1.6×) | the one hero number per screen |
+| `readout` | Inter | 48/56 | Bold | custom (cap at 1.6×) | the live number on a control or celebration (confidence readout, milestone card) |
+| `titleXL` | Inter | 34/41 | Bold | Large Title | screen titles, verdict headline |
+| `title1` | Inter | 28/34 | Bold | Title 1 | section heroes, Warmup score |
+| `title2` | Inter | 22/28 | Bold | Title 2 | quiz prompt, card headlines |
+| `title3` | Inter | 20/25 | Semibold | Title 3 | group headers |
+| `headline` | Inter | 17/22 | Semibold | Headline | row titles, buttons |
+| `body` | Inter | 17/22 | Regular | Body | prediction text, copy |
+| `callout` | Inter | 16/21 | Regular | Callout | explanations |
+| `subhead` | Inter | 15/20 | Regular | Subhead | metadata |
+| `footnote` | Inter | 13/18 | Regular | Footnote | captions, chart labels |
+| `caption` | Inter | 12/16 | Medium | Caption 1 | chart ticks (minimum for charts) |
+| `eyebrow` | Inter | 13/18, +0.4 tracking | Semibold, sentence case | Footnote | section labels (replaces ALL-CAPS grey) |
 
 - `fontVariant: ['tabular-nums']` on every number that animates (count-ups) or aligns
   in a list/table. It maps to `font-variant-numeric` on web.
@@ -877,6 +897,8 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
 
 ## 8. Accessibility checklist (per change)
 
+- [ ] Both appearances (D7): the web build with dark emulated, at phone width; every
+      text style sets a colour token.
 - [ ] Contrast: text ≥ 4.5:1, graphics/controls ≥ 3:1 (use the token table; don't
       eyeball new pairs).
 - [ ] Nothing distinguished by colour alone (Differentiate Without Color).

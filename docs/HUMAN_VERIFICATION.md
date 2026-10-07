@@ -788,6 +788,12 @@ Added 2026-09-29 (polish pass):
       annual trial with a StoreKit configuration whose trial is long enough
       that "two days before" is still ahead, and the reminder is scheduled for
       10:00 that day.
+- [ ] **Inter and dark mode (steps 85–86; web-verified):** in a new build, every
+      screen is set in Inter at the right weights (Semibold buttons and headers,
+      Bold titles, no faux-bold). Switch the phone to Dark: every tab, sheet, the
+      chart, the badge chips and the switches read clearly, the status bar text
+      turns light, and the tab bar and headers go dark with the rest. Export a
+      card in Dark and in Light: the PNGs match.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The indigo splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the
