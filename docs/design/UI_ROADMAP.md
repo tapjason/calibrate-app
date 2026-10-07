@@ -93,6 +93,13 @@ is checking it on an iPhone and the decisions.
 | 69 An empty History has a way forward | Done 2026-10-06, web-verified ("…The first one comes due Tue, Oct 13." and **Log a prediction**; "Oct" and "13" no longer split at 402pt). Home's and Stats' calibrating caption say "first" too until something resolves | — |
 | 70 A 320pt pass: nothing that reads as one splits | Done 2026-10-06, web-verified at 320pt (chart title "80–100%" whole; paywall title wraps clear of the ×; "then $29.90 a year" together; the streak row breaks before "Next milestone") | Yes (iPhone SE / mini, and word joiners on iOS) |
 | 71 The Warmup's answer key says the answer and the pick | Done 2026-10-06, web-verified at 320pt ("The Pacific · You picked “The Atlantic”" under a hollow mark; it read "✗ Which ocean…? The Pacific", as if the Pacific were the miss) | Yes (VoiceOver: one stop per question) |
+| 72 The Warmup verdict opens at its top | Done 2026-10-06, web-verified at 375 × 667 (it opened on the chart, "You run overconfident" and the score's count-up above the fold, because the quiz had been scrolled to reach Next) | Yes (iPhone SE: the count-up is seen) |
+| 73 Stats' badge rows keep one order | Done 2026-10-06, unit-tested and web-verified (a launch listed them alphabetically, a recompute in the app's order, so the rows moved after the first log) | — |
+| 74 Every range on screen keeps its dash | Done 2026-10-06, web-verified with a page scan at 320–390pt (How scoring works broke "0–" / "20%" at 320 and 375; Log's track record, Wrapped, the counts table, History and Trends hold theirs too) | Yes (word joiners on iOS, with step 70) |
+| 75 A new Log form starts at the top | Done 2026-10-06, web-verified at 375 × 667 (after a save, the next visit opened on "—% not set yet" with the title field scrolled away) | — |
+| 76 A new History filter starts from the newest | Done 2026-10-06, web-verified (a range opened from Stats after scrolling History showed the last three of its eight) | — |
+| 77 "1 of 2 has happened" | Done 2026-10-06, unit-tested | — |
+| 78 Restore purchases as a text button | Done 2026-10-06, web-verified (an outlined capsule between the CTA and "Not now" read as a second call to action; DESIGN_SYSTEM §7.6 already said text button) | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -104,7 +111,7 @@ by step.
 
 ### 1.1 Building now
 
-Nothing in progress. Steps 16–63 shipped on 2026-10-04 and 10-05, and 64–71 on 10-06. The tenth batch
+Nothing in progress. Steps 16–63 shipped on 2026-10-04 and 10-05, and 64–78 on 10-06. The tenth batch
 (46–51) came from playing the web build as a new user on a cleared profile, and
 from the research in [`research/confidence-2026-10.md`](research/confidence-2026-10.md):
 how the app asks for a number, and what a ten-question Warmup can claim. It fixed
@@ -135,6 +142,17 @@ and the demo data at 402 and 320pt: Account on the canvas with the paywall's clo
 chart whose key explained bars it didn't draw (68), an empty History with no way
 forward (69), ranges, prices and the milestone phrase splitting at 320pt (70), and a
 Warmup answer key whose ✗ sat beside the right answer (71).
+
+A second pass the same day (72–78) played a fresh profile and the demo data at
+375 × 667, an iPhone SE's screen, where the short height showed what the wider
+passes couldn't. Three
+screens kept a scroll offset into content that had changed under it: the Warmup
+verdict opened on its chart (72), Log reopened at an empty bottom after a save (75),
+and History's filtered list opened mid-way (76). Stats' badge rows changed order
+after the first log, because a launch and a recompute sorted them differently (73).
+How scoring works split its ranges at 320 and 375pt, so `holdRanges` now runs
+wherever a range is drawn (74). Two smaller ones: "1 of 2 have happened" (77) and a
+Restore capsule competing with the paywall's one CTA (78).
 The next useful read is still on an iPhone, with VoiceOver on for
 steps 41, 43, 44 and 71.
 

@@ -769,6 +769,12 @@ Added 2026-09-29 (polish pass):
       "then $29.90 a year" stays whole; the Warmup answer key reads one stop
       per question in VoiceOver ("Which is deeper? Pacific. You picked
       “Atlantic”, 90% sure…").
+- [ ] **The second 2026-10-06 pass (steps 72–78; web-verified at 375 × 667):**
+      on an iPhone SE, the Warmup's last answer opens the verdict at its top,
+      with the score counting up in view; after a save, Log opens on an empty
+      title field, not at Save; How scoring works keeps "0–20%" and the other
+      bands whole; the paywall's "Restore purchases" is a text link between the
+      CTA and "Not now", and still restores.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The indigo splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the
