@@ -16,7 +16,8 @@ import { selectCurrentQuestion, useWarmupStore } from '@/store/warmupStore';
  * — the Day-0 aha, before the user has a single real prediction on file.
  *
  * Thin by convention: which half to show is a store read, and "continue"
- * hands off to the Log screen so the very next thing they do is the core loop.
+ * hands off to Today with the Log sheet open, so the very next thing they do
+ * is the core loop.
  */
 export default function WarmupScreen() {
   const router = useRouter();
@@ -56,7 +57,12 @@ export default function WarmupScreen() {
         )}
         {finished ? (
           <WarmupVerdictScreen
-            onContinue={() => router.replace('/log' as never)}
+            // Log is a sheet now (roadmap D3): put Today underneath first, so
+            // the sheet has somewhere to close back to.
+            onContinue={() => {
+              router.replace('/' as never);
+              router.push('/log' as never);
+            }}
             onShare={() => router.push('/share' as never)}
           />
         ) : (

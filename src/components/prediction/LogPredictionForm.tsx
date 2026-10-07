@@ -32,6 +32,11 @@ interface LogPredictionFormProps {
   /** Called after a successful create. Used by the screen to navigate away. */
   onSubmitted?: () => void;
   /**
+   * Whether there's a typed title not yet saved, so the Log sheet can ask
+   * before a swipe or the × throws it away (DESIGN_SYSTEM §7.7).
+   */
+  onDirtyChange?: (dirty: boolean) => void;
+  /**
    * "Log it again" (roadmap step 22): start from a resolved prediction's
    * title, category and lead time. The confidence still starts empty, never
    * the old number. Read at mount; give the form a new key to apply a
@@ -40,11 +45,15 @@ interface LogPredictionFormProps {
   again?: LogAgainDraft | null;
 }
 
-export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps) {
+export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPredictionFormProps) {
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
   const [title, setTitle] = useState(again?.title ?? '');
+  const dirty = title.trim().length > 0;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
   const [category, setCategory] = useState<Category>(again?.category ?? 'work');
   // Empty until set (roadmap D13). A preset 50% sat inside the 35–65% band,
   // so a save that never touched the control earned the integrity bonus.
@@ -53,8 +62,8 @@ export function LogPredictionForm({ onSubmitted, again }: LogPredictionFormProps
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   const isCustomDate = !presets.some((p) => p.iso === dueDate);
-  // The Log tab stays mounted, so the presets were still yesterday's after
-  // midnight, and "Tomorrow" meant today. When the day turns, rebuild them and
+  // A form left open (the Log tab, before D3; a sheet now) kept yesterday's
+  // presets after midnight, and "Tomorrow" meant today. When the day turns, rebuild them and
   // keep the chosen chip chosen; a picked date stays as picked.
   const day = useLocalDay();
   const [presetsDay, setPresetsDay] = useState(day);

@@ -161,7 +161,7 @@ export function noticeText(
 ): string | null {
   switch (notice) {
     case 'purchased':
-      return "You're on Plus. Coach is in Settings when you want it.";
+      return "You're on Plus. Coach is under You when you want it.";
     case 'restored':
       return 'Your purchase is restored.';
     case 'nothing_to_restore':

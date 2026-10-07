@@ -11,7 +11,7 @@ export default function AccountScreen() {
   // Reachable from Settings and the Coach panel, both of which leave a back
   // stack; the fallback covers a cold deep link.
   const close = () =>
-    router.canGoBack() ? router.back() : router.replace('/(tabs)/settings' as never);
+    router.canGoBack() ? router.back() : router.replace('/(tabs)/you' as never);
 
   // The canvas and the round close control, like the paywall: this screen has
   // no header either (roadmap step 66).

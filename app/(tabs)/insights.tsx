@@ -2,17 +2,19 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { nextDueLine } from '@/components/prediction/dueGroups';
+import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
 import { PlusTeaser } from '@/components/stats/PlusTeaser';
 import { TrendsPanel } from '@/components/stats/TrendsPanel';
 import { Button } from '@/components/ui/Button';
 import { useLocalDay } from '@/components/ui/useLocalDay';
+import { space } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 
-export default function StatsScreen() {
+export default function InsightsScreen() {
   const router = useRouter();
   // The calibrating caption names the next due date: keep it to the calendar.
   useLocalDay();
@@ -69,5 +71,6 @@ export default function StatsScreen() {
 }
 
 const styles = StyleSheet.create({
-  actions: { padding: 16, paddingTop: 0 },
+  // Clears the floating "+" (roadmap D3).
+  actions: { padding: 16, paddingTop: 0, paddingBottom: LOG_BUTTON_SIZE + space.xxxl },
 });

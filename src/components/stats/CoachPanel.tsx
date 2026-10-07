@@ -106,7 +106,7 @@ export function CoachPanel({
       <View style={styles.wrap} testID="coach-disabled">
         <Text style={styles.heading}>Coach</Text>
         <Text style={styles.muted}>
-          Turn Coach on in Settings to get AI feedback on your calibration.
+          Turn Coach on under You to get AI feedback on your calibration.
         </Text>
       </View>
     );

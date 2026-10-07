@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { groupByDue, nextDueLine } from '@/components/prediction/dueGroups';
+import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
@@ -21,7 +22,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL } from '@/types';
 
-export default function HomeScreen() {
+export default function TodayScreen() {
   const router = useRouter();
   // The groups, the streak row and the dates below read the clock: re-render
   // when the day turns, not only when a store changes.
@@ -138,7 +139,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.canvas },
-  content: { padding: space.lg },
+  // The last card clears the floating "+" (roadmap D3).
+  content: { padding: space.lg, paddingBottom: LOG_BUTTON_SIZE + space.xxxl },
   hero: { marginBottom: space.xxl },
   rated: { alignItems: 'center' },
   // The hero numeral is always ink (DESIGN_SYSTEM §2.4).

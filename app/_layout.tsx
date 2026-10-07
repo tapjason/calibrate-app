@@ -203,6 +203,17 @@ export default function RootLayout() {
           sheetCornerRadius: 24,
         }}
       />
+      {/* Logging is an action, not a place (roadmap D3): the "+" opens it as a
+          full-height sheet over whichever tab you're on. */}
+      <Stack.Screen
+        name="log"
+        options={{
+          presentation: 'formSheet',
+          sheetAllowedDetents: [1.0],
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 24,
+        }}
+      />
       <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
     </Stack>
   );

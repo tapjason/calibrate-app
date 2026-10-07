@@ -10,6 +10,7 @@ import {
   rangeText,
   type FirstHistoryAction,
 } from '@/components/prediction/historyFilter';
+import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { holdRanges } from '@/components/ui/holdRanges';
@@ -141,6 +142,7 @@ export default function HistoryScreen() {
           // scrolling History showed the last three of its eight.
           key={`${filter}-${range ?? 'any'}`}
           style={styles.list}
+          contentContainerStyle={styles.listContent}
           data={filtered}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => (
@@ -166,6 +168,8 @@ const styles = StyleSheet.create({
   // and on web it shrank to its chips' borders under the list.
   filters: { flexGrow: 0, flexShrink: 0, marginBottom: space.md },
   list: { flex: 1 },
+  // The last card clears the floating "+" (roadmap D3).
+  listContent: { paddingBottom: LOG_BUTTON_SIZE + space.xxxl },
   row: { flexDirection: 'row', gap: space.sm, paddingVertical: 4 },
   summary: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
   chip: {

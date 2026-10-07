@@ -8,7 +8,7 @@ import { colors } from '@/constants/theme';
 export default function DeleteAccountScreen() {
   const router = useRouter();
   const cancel = () =>
-    router.canGoBack() ? router.back() : router.replace('/(tabs)/settings' as never);
+    router.canGoBack() ? router.back() : router.replace('/(tabs)/you' as never);
 
   return (
     <SafeAreaView style={styles.safe}>

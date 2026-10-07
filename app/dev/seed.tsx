@@ -67,7 +67,7 @@ export default function DevSeedScreen() {
           testID="dev-seed-plus"
         />
         <Button
-          label="Go to Home"
+          label="Go to Today"
           variant="secondary"
           onPress={() => router.replace('/' as never)}
           testID="dev-seed-home"

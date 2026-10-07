@@ -26,7 +26,7 @@ export default function PaywallScreen() {
   // Dismiss to wherever the user came from. `canGoBack` matters because the
   // paywall is also reachable from a deep link, where there is no back stack.
   const close = () =>
-    router.canGoBack() ? router.back() : router.replace('/(tabs)/stats' as never);
+    router.canGoBack() ? router.back() : router.replace('/(tabs)/insights' as never);
 
   // A full-screen modal has no header, so it insets its own top edge: without
   // this the title and the close control sit under the status bar and notch.

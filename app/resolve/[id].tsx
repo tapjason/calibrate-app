@@ -49,12 +49,12 @@ export default function ResolveScreen() {
             else router.replace('/' as never);
           }}
           onDraftChange={setDraft}
-          // Roadmap step 22: close this sheet and start a fresh call on Log.
+          // Roadmap step 22: a fresh call on Log. Log is a sheet too (D3), so
+          // it takes this sheet's place rather than stacking on it (HIG: one
+          // sheet at a time), and closes back to the tab underneath.
           onPredictAgain={(prediction) => {
             guard.markLeaving();
-            const href = `/log?again=${encodeURIComponent(prediction.id)}`;
-            if (router.canGoBack()) router.dismissTo(href as never);
-            else router.replace(href as never);
+            router.replace(`/log?again=${encodeURIComponent(prediction.id)}` as never);
           }}
         />
       </ScrollView>

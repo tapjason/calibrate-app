@@ -13,7 +13,7 @@ export default function ScoringScreen() {
         <ScoringExplainer
           onClose={() => {
             if (router.canGoBack()) router.back();
-            else router.replace('/stats' as never);
+            else router.replace('/insights' as never);
           }}
         />
       </ScrollView>

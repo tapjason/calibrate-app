@@ -1,11 +1,13 @@
 import type Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter, useSegments } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import { LogButton } from '@/components/prediction/LogButton';
 import { Icon } from '@/components/ui/Icon';
-import { colors, type } from '@/constants/theme';
+import { colors, space, type } from '@/constants/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -25,64 +27,88 @@ function tabIcon(sf: [SFSymbol, SFSymbol], ion: [IoniconName, IoniconName]) {
   );
 }
 
+/** The JS tab bar's height above the home indicator: 58 on web (set below), 49 on iOS. */
+const TAB_BAR_HEIGHT = Platform.OS === 'web' ? 58 : 49;
+
 /*
+ * Four tabs, Today · Insights · History · You (roadmap D3, decided
+ * 2026-10-07): tabs navigate, so Log is no longer one; the "+" floating above
+ * the bar's trailing end opens it as a sheet. JS tabs for now; the native
+ * Liquid Glass tabs follow the SDK 58 upgrade with this same layout.
+ *
  * Every tab names itself (tabBarAccessibilityLabel). Without it the name is
  * built from the tab's text content, and on web the Ionicons fallback is an
- * icon-font character, so screen readers heard it before "Home" (roadmap
+ * icon-font character, so screen readers heard it before the name (roadmap
  * step 25).
  */
 export default function TabsLayout() {
+  const router = useRouter();
+  const segments = useSegments();
+  const insets = useSafeAreaInsets();
+  // Not on You: nothing there is a prediction, and the "+" would sit over
+  // the settings list.
+  const onYou = segments[segments.length - 1] === 'you';
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: true,
-        // Indigo is chrome: selection tint matches the icon and the CTAs.
-        tabBarActiveTintColor: colors.brand600,
-        tabBarInactiveTintColor: colors.textTertiary,
-        sceneStyle: { backgroundColor: colors.canvas },
-        // Web only: React Navigation's default bar is 49px with a 10px label,
-        // and the 25px web icon pushes the label's descenders out of it
-        // (clipped in every web screenshot until 2026-10-04). It also puts
-        // text under the 11pt floor. iOS keeps the native bar and its insets.
-        ...(Platform.OS === 'web'
-          ? {
-              tabBarStyle: { height: 58 },
-              tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: type.caption.fontWeight },
-            }
-          : null),
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{ title: 'Home', tabBarAccessibilityLabel: 'Home', tabBarIcon: tabIcon(['house.fill', 'house'], ['home', 'home-outline']) }}
-      />
-      <Tabs.Screen
-        name="log"
-        options={{ title: 'Log', tabBarAccessibilityLabel: 'Log', tabBarIcon: tabIcon(['plus.circle.fill', 'plus.circle'], ['add-circle', 'add-circle-outline']) }}
-      />
-      <Tabs.Screen
-        name="stats"
-        options={{
-          title: 'Stats',
-          tabBarAccessibilityLabel: 'Stats',
-          tabBarIcon: tabIcon(
-            ['chart.line.uptrend.xyaxis.circle.fill', 'chart.line.uptrend.xyaxis'],
-            ['stats-chart', 'stats-chart-outline'],
-          ),
+    <View style={styles.fill}>
+      <Tabs
+        screenOptions={{
+          headerShown: true,
+          // Indigo is chrome: selection tint matches the icon and the CTAs.
+          tabBarActiveTintColor: colors.brand600,
+          tabBarInactiveTintColor: colors.textTertiary,
+          sceneStyle: { backgroundColor: colors.canvas },
+          // Web only: React Navigation's default bar is 49px with a 10px label,
+          // and the 25px web icon pushes the label's descenders out of it
+          // (clipped in every web screenshot until 2026-10-04). It also puts
+          // text under the 11pt floor. iOS keeps the native bar and its insets.
+          ...(Platform.OS === 'web'
+            ? {
+                tabBarStyle: { height: 58 },
+                tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: type.caption.fontWeight },
+              }
+            : null),
         }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{ title: 'History', tabBarAccessibilityLabel: 'History', tabBarIcon: tabIcon(['clock.fill', 'clock'], ['time', 'time-outline']) }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarAccessibilityLabel: 'Settings',
-          tabBarIcon: tabIcon(['gearshape.fill', 'gearshape'], ['settings', 'settings-outline']),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{ title: 'Today', tabBarAccessibilityLabel: 'Today', tabBarIcon: tabIcon(['sun.max.fill', 'sun.max'], ['sunny', 'sunny-outline']) }}
+        />
+        <Tabs.Screen
+          name="insights"
+          options={{
+            title: 'Insights',
+            tabBarAccessibilityLabel: 'Insights',
+            tabBarIcon: tabIcon(
+              ['chart.line.uptrend.xyaxis.circle.fill', 'chart.line.uptrend.xyaxis'],
+              ['stats-chart', 'stats-chart-outline'],
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="history"
+          options={{ title: 'History', tabBarAccessibilityLabel: 'History', tabBarIcon: tabIcon(['clock.fill', 'clock'], ['time', 'time-outline']) }}
+        />
+        <Tabs.Screen
+          name="you"
+          options={{
+            title: 'You',
+            tabBarAccessibilityLabel: 'You',
+            tabBarIcon: tabIcon(['person.crop.circle.fill', 'person.crop.circle'], ['person-circle', 'person-circle-outline']),
+          }}
+        />
+      </Tabs>
+      {!onYou && (
+        <LogButton
+          onPress={() => router.push('/log' as never)}
+          style={[styles.log, { bottom: TAB_BAR_HEIGHT + insets.bottom + space.lg }]}
+        />
+      )}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  log: { position: 'absolute', right: space.lg },
+});
