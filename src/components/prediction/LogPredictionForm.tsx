@@ -194,7 +194,8 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
           setTitle(v);
           if (suggestion) setSuggestion(null);
         }}
-        placeholder="e.g. I'll ship 3 priority tasks before Friday"
+        // Short enough to fit at 320pt in Inter, which runs wider than SF.
+        placeholder="e.g. I'll ship 3 tasks by Friday"
         maxLength={TITLE_MAX_LENGTH}
         testID="title-field"
       />

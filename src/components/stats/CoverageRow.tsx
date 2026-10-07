@@ -121,7 +121,9 @@ const styles = StyleSheet.create({
     borderColor: colors.controlBorder,
     borderStyle: 'dashed',
   },
-  range: { ...type.caption, color: colors.textSecondary },
+  // 11pt, the floor (DESIGN_SYSTEM §0 rule 7): in Inter, "80–100%" at 12pt
+  // didn't fit a 320pt screen's ~51pt cell, and web can't shrink it to fit.
+  range: { ...type.caption, color: colors.textSecondary, fontSize: 11, lineHeight: 14 },
   count: { ...type.headline, color: colors.textPrimary },
   countEmpty: { ...type.footnote, color: colors.textTertiary },
   note: { ...type.footnote, color: colors.textSecondary },

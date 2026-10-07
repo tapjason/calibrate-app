@@ -150,44 +150,45 @@ export const palettes = { light, dark } as const;
 export const colors: Palette = palettes.light;
 
 // ---- Type (DESIGN_SYSTEM §3) ----
-// System font; SF Rounded ('ui-rounded') for numerals and identity words only.
-// Web needs an explicit fallback list: Chrome doesn't know 'ui-rounded' and a
-// bare unknown family falls through to the browser's serif default. Android
-// has no rounded system face, so it keeps the default.
+// Inter everywhere (roadmap D1, decided 2026-10-07): one face on iOS and web,
+// so screenshots match the phone, numbers included (Inter's tabular figures
+// via `tabularNums`). Five weights ship: 400, 500, 600, 700, 800.
+//
+// iOS embeds them at build time (the expo-font plugin in app.json) under the
+// family "Inter", so fontFamily plus fontWeight picks the face. Web registers
+// the same files under the same family with weight descriptors
+// (src/constants/fonts.web.ts), and needs a fallback list: a bare unknown
+// family falls through to the browser's serif default.
 
-export const roundedFamily: string | undefined = Platform.select({
-  ios: 'ui-rounded',
-  web: 'ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  default: undefined,
+export const FONT_FAMILY: string = Platform.select({
+  web: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  default: 'Inter',
 });
 
-const ROUNDED = roundedFamily;
+const FONT = FONT_FAMILY;
 
 /**
- * For react-native-svg text. On web an SVG <text> with no family renders in
- * the browser's serif default; native SVG text already uses the system face.
+ * For react-native-svg text, which takes the family as a prop rather than a
+ * style. The same face as everything else.
  */
-export const svgFontFamily: string | undefined = Platform.select({
-  web: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  default: undefined,
-});
+export const svgFontFamily: string = FONT_FAMILY;
 
 export const type = {
-  display: { fontFamily: ROUNDED, fontSize: 64, lineHeight: 68, fontWeight: '700' },
+  display: { fontFamily: FONT, fontSize: 64, lineHeight: 68, fontWeight: '700' },
   /** The live number on a control or a celebration (confidence readout, milestone). */
-  readout: { fontFamily: ROUNDED, fontSize: 48, lineHeight: 56, fontWeight: '700' },
-  titleXL: { fontFamily: ROUNDED, fontSize: 34, lineHeight: 41, fontWeight: '700' },
-  title1: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
-  title2: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
-  title3: { fontSize: 20, lineHeight: 25, fontWeight: '600' },
-  headline: { fontSize: 17, lineHeight: 22, fontWeight: '600' },
-  body: { fontSize: 17, lineHeight: 22, fontWeight: '400' },
-  callout: { fontSize: 16, lineHeight: 21, fontWeight: '400' },
-  subhead: { fontSize: 15, lineHeight: 20, fontWeight: '400' },
-  footnote: { fontSize: 13, lineHeight: 18, fontWeight: '400' },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+  readout: { fontFamily: FONT, fontSize: 48, lineHeight: 56, fontWeight: '700' },
+  titleXL: { fontFamily: FONT, fontSize: 34, lineHeight: 41, fontWeight: '700' },
+  title1: { fontFamily: FONT, fontSize: 28, lineHeight: 34, fontWeight: '700' },
+  title2: { fontFamily: FONT, fontSize: 22, lineHeight: 28, fontWeight: '700' },
+  title3: { fontFamily: FONT, fontSize: 20, lineHeight: 25, fontWeight: '600' },
+  headline: { fontFamily: FONT, fontSize: 17, lineHeight: 22, fontWeight: '600' },
+  body: { fontFamily: FONT, fontSize: 17, lineHeight: 22, fontWeight: '400' },
+  callout: { fontFamily: FONT, fontSize: 16, lineHeight: 21, fontWeight: '400' },
+  subhead: { fontFamily: FONT, fontSize: 15, lineHeight: 20, fontWeight: '400' },
+  footnote: { fontFamily: FONT, fontSize: 13, lineHeight: 18, fontWeight: '400' },
+  caption: { fontFamily: FONT, fontSize: 12, lineHeight: 16, fontWeight: '500' },
   /** Section labels. Sentence case — replaces ALL-CAPS grey. */
-  eyebrow: { fontSize: 13, lineHeight: 18, fontWeight: '600', letterSpacing: 0.4 },
+  eyebrow: { fontFamily: FONT, fontSize: 13, lineHeight: 18, fontWeight: '600', letterSpacing: 0.4 },
 } satisfies Record<string, TextStyle>;
 
 /**

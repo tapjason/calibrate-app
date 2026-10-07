@@ -5,7 +5,7 @@ import { holdRanges } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { CARD_MAX_SCALE, roundedFamily } from '@/constants/theme';
+import { CARD_MAX_SCALE, FONT_FAMILY } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
@@ -216,12 +216,12 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 24,
   },
-  eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
-  stat: { fontFamily: roundedFamily, fontSize: 34, fontWeight: '800', lineHeight: 40 },
-  statRate: { fontSize: 20, fontWeight: '700', lineHeight: 26, marginBottom: 4 },
-  streak: { fontSize: 15, fontWeight: '700', lineHeight: 20, marginBottom: 4 },
-  verdict: { fontSize: 15, lineHeight: 21 },
-  provisional: { fontSize: 14, lineHeight: 20 },
+  eyebrow: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
+  stat: { fontFamily: FONT_FAMILY, fontSize: 34, fontWeight: '800', lineHeight: 40 },
+  statRate: { fontFamily: FONT_FAMILY, fontSize: 20, fontWeight: '700', lineHeight: 26, marginBottom: 4 },
+  streak: { fontFamily: FONT_FAMILY, fontSize: 15, fontWeight: '700', lineHeight: 20, marginBottom: 4 },
+  verdict: { fontFamily: FONT_FAMILY, fontSize: 15, lineHeight: 21 },
+  provisional: { fontFamily: FONT_FAMILY, fontSize: 14, lineHeight: 20 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   chip: {
     alignItems: 'center',
@@ -232,18 +232,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
-  chipCount: { fontSize: 12, fontWeight: '600' },
-  line: { fontSize: 13, lineHeight: 19 },
+  chipLabel: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
+  chipCount: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '600' },
+  line: { fontFamily: FONT_FAMILY, fontSize: 13, lineHeight: 19 },
   badgeRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 4 },
-  badgeText: { flex: 1, fontSize: 15, fontWeight: '600', lineHeight: 20 },
-  note: { fontSize: 13, lineHeight: 19, marginTop: 4 },
+  badgeText: { fontFamily: FONT_FAMILY, flex: 1, fontSize: 15, fontWeight: '600', lineHeight: 20 },
+  note: { fontFamily: FONT_FAMILY, fontSize: 13, lineHeight: 19, marginTop: 4 },
   footer: {
     borderTopWidth: 1,
     gap: 2,
     marginTop: 12,
     paddingTop: 14,
   },
-  footerMark: { fontSize: 15, fontWeight: '700' },
-  footerHook: { fontSize: 14, fontWeight: '600' },
+  footerMark: { fontFamily: FONT_FAMILY, fontSize: 15, fontWeight: '700' },
+  footerHook: { fontFamily: FONT_FAMILY, fontSize: 14, fontWeight: '600' },
 });

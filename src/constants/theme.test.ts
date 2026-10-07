@@ -1,5 +1,5 @@
 import { contrastRatio as contrast } from './contrast';
-import { palettes, type Palette } from './theme';
+import { FONT_FAMILY, palettes, type, type Palette } from './theme';
 
 type Pair = [fg: keyof Palette, bg: keyof Palette, min: number];
 
@@ -41,5 +41,21 @@ describe('theme contrast (proposed dark)', () => {
 describe('palette shape', () => {
   it('defines every light token in dark too', () => {
     expect(Object.keys(palettes.dark).sort()).toEqual(Object.keys(palettes.light).sort());
+  });
+});
+
+// Roadmap D1 (decided 2026-10-07): Inter everywhere, so every token names it.
+describe('type', () => {
+  it('sets Inter on every text style', () => {
+    for (const [name, style] of Object.entries(type)) {
+      expect([name, style.fontFamily]).toEqual([name, FONT_FAMILY]);
+    }
+    expect(FONT_FAMILY.startsWith('Inter')).toBe(true);
+  });
+
+  it('only uses the weights the build embeds', () => {
+    for (const style of Object.values(type)) {
+      expect(['400', '500', '600', '700', '800']).toContain(style.fontWeight);
+    }
   });
 });

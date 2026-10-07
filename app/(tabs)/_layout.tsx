@@ -7,7 +7,7 @@ import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { LogButton } from '@/components/prediction/LogButton';
 import { Icon } from '@/components/ui/Icon';
-import { colors, space, type } from '@/constants/theme';
+import { colors, FONT_FAMILY, space, type } from '@/constants/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -58,6 +58,10 @@ export default function TabsLayout() {
           tabBarActiveTintColor: colors.brand600,
           tabBarInactiveTintColor: colors.textTertiary,
           sceneStyle: { backgroundColor: colors.canvas },
+          // Inter in the chrome too (roadmap D1): the header titles and the tab
+          // labels aren't Text the type tokens reach.
+          headerTitleStyle: { fontFamily: FONT_FAMILY, fontWeight: type.headline.fontWeight },
+          tabBarLabelStyle: { fontFamily: FONT_FAMILY },
           // Web only: React Navigation's default bar is 49px with a 10px label,
           // and the 25px web icon pushes the label's descenders out of it
           // (clipped in every web screenshot until 2026-10-04). It also puts
@@ -65,7 +69,12 @@ export default function TabsLayout() {
           ...(Platform.OS === 'web'
             ? {
                 tabBarStyle: { height: 58 },
-                tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: type.caption.fontWeight },
+                tabBarLabelStyle: {
+                  fontFamily: FONT_FAMILY,
+                  fontSize: 11,
+                  lineHeight: 14,
+                  fontWeight: type.caption.fontWeight,
+                },
               }
             : null),
         }}

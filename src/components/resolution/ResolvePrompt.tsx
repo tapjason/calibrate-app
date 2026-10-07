@@ -9,8 +9,8 @@ import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { TextField } from '@/components/ui/TextField';
 import {
   colors,
+  FONT_FAMILY,
   radius,
-  roundedFamily,
   space,
   tabularNums,
   type,
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
   statedNumber: {
     ...type.title1,
     ...tabularNums,
-    fontFamily: roundedFamily,
+    fontFamily: FONT_FAMILY,
     color: colors.textPrimary,
   },
   category: {

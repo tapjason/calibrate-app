@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { CARD_MAX_SCALE, roundedFamily } from '@/constants/theme';
+import { CARD_MAX_SCALE, FONT_FAMILY } from '@/constants/theme';
 
 import type { WarmupCardCopy } from './warmupCardCopy';
 
@@ -82,17 +82,17 @@ export const WarmupCard = forwardRef<View, WarmupCardProps>(function WarmupCard(
 
 const styles = StyleSheet.create({
   card: { borderRadius: 20, gap: 8, padding: 24 },
-  eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
+  eyebrow: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   headline: {
-    fontFamily: roundedFamily,
+    fontFamily: FONT_FAMILY,
     fontSize: 40,
     fontWeight: '800',
     lineHeight: 46,
     marginTop: 4,
   },
-  receipt: { fontSize: 22, fontWeight: '700', lineHeight: 28 },
-  context: { fontSize: 14, lineHeight: 20 },
+  receipt: { fontFamily: FONT_FAMILY, fontSize: 22, fontWeight: '700', lineHeight: 28 },
+  context: { fontFamily: FONT_FAMILY, fontSize: 14, lineHeight: 20 },
   footer: { borderTopWidth: 1, gap: 2, marginTop: 16, paddingTop: 14 },
-  footerMark: { fontSize: 14, fontWeight: '700' },
-  footerHook: { fontSize: 13, fontWeight: '600' },
+  footerMark: { fontFamily: FONT_FAMILY, fontSize: 14, fontWeight: '700' },
+  footerHook: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '600' },
 });

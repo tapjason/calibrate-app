@@ -5,6 +5,7 @@ import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-nativ
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
 import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
+import { loadFonts } from '@/constants/fonts';
 import { colors, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
@@ -42,7 +43,9 @@ export default function RootLayout() {
   useEffect(() => {
     (async () => {
       try {
-        await initDb();
+        // Inter on web (roadmap D1), alongside the database, so the first
+        // screen paints in it; native builds embed the font. Never rejects.
+        await Promise.all([initDb(), loadFonts()]);
         await useAuthStore.getState().initialize();
         const userId = useAuthStore.getState().userId;
         if (userId) {

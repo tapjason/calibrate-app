@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { colors, radius, roundedFamily, space, tabularNums, type } from '@/constants/theme';
+import { colors, FONT_FAMILY, radius, space, tabularNums, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   dismiss: { ...type.title3, color: colors.textTertiary, lineHeight: 20 },
   receipt: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  receiptFigure: { ...type.title2, ...tabularNums, color: colors.textPrimary, fontFamily: roundedFamily },
+  receiptFigure: { ...type.title2, ...tabularNums, color: colors.textPrimary, fontFamily: FONT_FAMILY },
   receiptLabel: { ...type.footnote, color: colors.textSecondary },
   message: { ...type.body, color: colors.textPrimary },
   suggestion: { ...type.callout, color: colors.textSecondary },

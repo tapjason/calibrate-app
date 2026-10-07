@@ -5,7 +5,7 @@ import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { contrastRatio } from '@/constants/contrast';
-import { CARD_MAX_SCALE, palettes, roundedFamily } from '@/constants/theme';
+import { CARD_MAX_SCALE, FONT_FAMILY, palettes } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
 
 import { identityCardSummary, shareLines, shareSubline } from './cardCopy';
@@ -239,16 +239,16 @@ const styles = StyleSheet.create({
   bodyCompact: {},
   content: { gap: 8 },
   hero: { marginBottom: 12 },
-  eyebrow: { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
+  eyebrow: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   identity: {
-    fontFamily: roundedFamily,
+    fontFamily: FONT_FAMILY,
     fontSize: 34,
     fontWeight: '800',
     lineHeight: 40,
     marginTop: 4,
   },
-  contrast: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
-  receipt: { fontSize: 15, lineHeight: 21, marginTop: 6 },
+  contrast: { fontFamily: FONT_FAMILY, fontSize: 20, fontWeight: '700', lineHeight: 26 },
+  receipt: { fontFamily: FONT_FAMILY, fontSize: 15, lineHeight: 21, marginTop: 6 },
   strip: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -266,10 +266,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  chipLabel: { fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
+  chipLabel: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
   footer: { borderTopWidth: 1, gap: 2, marginTop: 14, paddingTop: 14 },
   footerPinned: { marginTop: 'auto' },
   story: { paddingVertical: 56 },
-  footerMark: { fontSize: 15, fontWeight: '700' },
-  footerHook: { fontSize: 14, fontWeight: '600' },
+  footerMark: { fontFamily: FONT_FAMILY, fontSize: 15, fontWeight: '700' },
+  footerHook: { fontFamily: FONT_FAMILY, fontSize: 14, fontWeight: '600' },
 });

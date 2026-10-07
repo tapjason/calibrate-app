@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
-import { colors, radius, space, tabularNums, type } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 import { STREAK_DAY_MIN, type StreakStatus } from '@/types';
 
 import { streakCopy } from './streakCopy';
@@ -83,7 +83,9 @@ const styles = StyleSheet.create({
   // The milestone card's tint (MilestoneCard), without its motion.
   rowCheckpoint: { backgroundColor: colors.brand50, borderColor: colors.brand200 },
   text: { flex: 1 },
-  headline: { ...type.headline, ...tabularNums, color: colors.textPrimary },
+  // Not tabular: in Inter, tnum widens the hyphen too ("15 - day"), and the
+  // count doesn't animate in place.
+  headline: { ...type.headline, color: colors.textPrimary },
   detail: { ...type.footnote, color: colors.textSecondary },
   pips: { flexDirection: 'row', gap: space.xs },
   pip: { borderRadius: PIP / 2, height: PIP, width: PIP },
