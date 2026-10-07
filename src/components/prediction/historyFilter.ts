@@ -5,7 +5,7 @@
 
 import type { Category, Prediction } from '@/types';
 
-import { isReadyToResolve, nextDueLine } from './dueGroups';
+import { isReadyToResolve, nextDueLine, RUN_THRESHOLD } from './dueGroups';
 
 /** The lower edges of the five confidence ranges, as they arrive in a link. */
 const RANGE_LOWS: readonly number[] = [0, 20, 40, 60, 80];
@@ -80,11 +80,14 @@ export function firstHistoryCopy(
   const ready = pending
     .filter((p) => isReadyToResolve(p, now))
     .sort((a, b) => (Date.parse(a.due_date) || 0) - (Date.parse(b.due_date) || 0));
-  if (ready.length === 1) {
-    return { message, action: { kind: 'resolve', label: 'Resolve it now', id: ready[0].id } };
-  }
-  if (ready.length > 1) {
+  // A run from the same count as Home's, so one state never offers two
+  // flows; below it, the soonest opens on its own, as a tap on Home would.
+  if (ready.length >= RUN_THRESHOLD) {
     return { message, action: { kind: 'run', label: `Resolve all ${ready.length}` } };
+  }
+  if (ready.length > 0) {
+    const label = ready.length === 1 ? 'Resolve it now' : 'Resolve the first one';
+    return { message, action: { kind: 'resolve', label, id: ready[0].id } };
   }
   return { message, action: { kind: 'log', label: 'Log a prediction' } };
 }

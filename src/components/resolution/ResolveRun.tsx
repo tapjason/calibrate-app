@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { isReadyToResolve } from '@/components/prediction/dueGroups';
+import { isReadyToResolve, RUN_THRESHOLD } from '@/components/prediction/dueGroups';
 import { expectedLine } from '@/components/share/wrappedCopy';
 import { StreakLine } from '@/components/stats/StreakLine';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +12,7 @@ import type { AnswerTally } from '@/types';
 import { ResolvePrompt } from './ResolvePrompt';
 
 /** Home offers a run once this many predictions are ready (roadmap step 18). */
-export const RUN_THRESHOLD = 3;
+export { RUN_THRESHOLD };
 
 /**
  * What the run came to (roadmap step 65): "3 answered. 2 happened. You

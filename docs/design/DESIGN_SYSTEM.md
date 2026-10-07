@@ -531,8 +531,8 @@ screen readers): `calendar.badge.plus` on Home, `clock.arrow.circlepath` on Hist
 `square.and.arrow.up` on Share. Its button is the primary capsule, since where an empty
 state shows it is the screen's only action. History had none until step 69: before
 anything resolves it says when the first answer comes ("The first one comes due Tue,
-Oct 13.") and offers **Resolve it now** (one ready), **Resolve all N** (several), or
-**Log a prediction**. A list emptied by its filters keeps just the sentence; the
+Oct 13.") and offers **Resolve it now** (one ready), **Resolve the first one** (two),
+**Resolve all N** (three or more, Home's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
 filters are its way forward.
 
 ### 7.9 Copy and tone

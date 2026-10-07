@@ -118,14 +118,21 @@ describe('firstHistoryCopy', () => {
     expect(copy.action).toEqual({ kind: 'log', label: 'Log a prediction' });
   });
 
-  it('opens the one that is ready, or all of them', () => {
+  it('opens the one that is ready, or all of them from as many as Home runs', () => {
     expect(firstHistoryCopy([open('2026-09-09', 'a'), open('2026-09-20', 'b')], now)).toEqual({
       message:
         'Resolved predictions collect here, with how each one turned out. One is ready to resolve now.',
       action: { kind: 'resolve', label: 'Resolve it now', id: 'a' },
     });
+    // Two ready: Home shows two cards and no run, so History opens the soonest.
     expect(
       firstHistoryCopy([open('2026-09-09', 'a'), open('2026-09-08', 'b')], now).action,
-    ).toEqual({ kind: 'run', label: 'Resolve all 2' });
+    ).toEqual({ kind: 'resolve', label: 'Resolve the first one', id: 'b' });
+    expect(
+      firstHistoryCopy(
+        [open('2026-09-09', 'a'), open('2026-09-08', 'b'), open('2026-09-07', 'c')],
+        now,
+      ).action,
+    ).toEqual({ kind: 'run', label: 'Resolve all 3' });
   });
 });

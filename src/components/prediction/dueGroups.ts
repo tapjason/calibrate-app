@@ -27,6 +27,12 @@ const TITLES: Record<DueGroup['key'], string> = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * A run of answers (roadmap step 18) is offered once this many predictions
+ * are ready: Home's **Resolve all N** and History's empty state alike.
+ */
+export const RUN_THRESHOLD = 3;
+
 function startOfLocalDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
