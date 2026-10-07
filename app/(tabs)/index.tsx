@@ -1,4 +1,5 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { groupByDue, nextDueLine } from '@/components/prediction/dueGroups';
@@ -19,6 +20,7 @@ import { holdRanges } from '@/components/ui/holdRanges';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -27,6 +29,13 @@ export default function TodayScreen() {
   // The groups, the streak row and the dates below read the clock: re-render
   // when the day turns, not only when a store changes.
   useLocalDay();
+  // Back on Today after a Resolve sheet: the one place a rating ask may come,
+  // if a finished run or the score's unlock earned one (roadmap D15).
+  useFocusEffect(
+    useCallback(() => {
+      void useRatingStore.getState().askIfDue();
+    }, []),
+  );
   const pending = usePredictionStore((s) => s.pending);
   // Subscribed so the streak line follows each answer as well as each log.
   usePredictionStore((s) => s.resolved);

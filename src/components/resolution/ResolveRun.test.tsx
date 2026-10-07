@@ -5,6 +5,7 @@ import { getPrediction, insertPrediction } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
@@ -51,6 +52,7 @@ beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.getState().reset();
   usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
+  useRatingStore.setState({ moment: false });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
@@ -90,6 +92,8 @@ describe('ResolveRun (roadmap step 18)', () => {
     expect(screen.getByTestId('resolve-run-streak').props.accessibilityLabel).toBe(
       '1-day streak. Today counts. Next\u00A0milestone: 7\u00A0days.',
     );
+    // A natural stopping point: Today may ask for a rating once this closes (D15).
+    expect(useRatingStore.getState().moment).toBe(true);
     fireEvent.press(screen.getByTestId('resolve-run-close'));
     expect(onClose).toHaveBeenCalledTimes(1);
 
@@ -148,6 +152,8 @@ describe('ResolveRun (roadmap step 18)', () => {
 
   it('says so when nothing is ready, with no tally or streak to show', async () => {
     render(<ResolveRun onClose={jest.fn()} />);
+    // Nothing answered here: no moment for a rating ask.
+    expect(useRatingStore.getState().moment).toBe(false);
     expect(screen.getByText('Nothing is ready to resolve right now.')).toBeTruthy();
     expect(screen.queryByTestId('resolve-run-summary')).toBeNull();
     expect(screen.queryByTestId('resolve-run-streak')).toBeNull();

@@ -107,6 +107,7 @@ describe('settingsStore: setters persist', () => {
       cardThemeId: 'midnight',
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
+      ratingAskedAt: null,
     });
   });
 
@@ -125,6 +126,7 @@ describe('settingsStore: setters persist', () => {
       cardThemeId: 'midnight',
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
+      ratingAskedAt: null,
     });
   });
 

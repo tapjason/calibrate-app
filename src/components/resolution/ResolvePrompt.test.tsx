@@ -8,6 +8,7 @@ import { getUserStat } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
@@ -34,6 +35,7 @@ beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.getState().reset();
   usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
+  useRatingStore.setState({ moment: false });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
@@ -338,6 +340,8 @@ describe('ResolvePrompt milestones', () => {
     });
     // Consumed: nothing left for the next screen to replay.
     expect(useStatsStore.getState().milestone).toBeNull();
+    // The unlock may earn a rating ask, on Today after the sheet closes (D15).
+    expect(useRatingStore.getState().moment).toBe(true);
   });
 
   it('shows no celebration for an ordinary answer', async () => {

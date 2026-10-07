@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { isReadyToResolve, RUN_THRESHOLD } from '@/components/prediction/dueGroups';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useRatingStore } from '@/store/ratingStore';
 import type { AnswerTally } from '@/types';
 
 import { ResolvePrompt } from './ResolvePrompt';
@@ -76,6 +77,13 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss }: ResolveRunProp
     },
     [currentId, onDraftChange],
   );
+
+  // A run that ends on "All caught up" with answers in it is a natural
+  // stopping point: Today may ask for a rating once the sheet closes (D15).
+  const finishedWithAnswers = index >= queue.length && answeredHere.length > 0;
+  useEffect(() => {
+    if (finishedWithAnswers) useRatingStore.getState().noteMoment();
+  }, [finishedWithAnswers]);
 
   const advance = () => {
     setAnsweredHere((ids) => [...ids, queue[index]]);

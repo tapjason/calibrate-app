@@ -42,6 +42,11 @@ export interface StoredSettings {
    * unresolved.
    */
   reminderPromptDismissedAt: string | null;
+  /**
+   * When the App Store rating prompt was last requested (roadmap D15), or
+   * null. The cooldown's memory, like the two above.
+   */
+  ratingAskedAt: string | null;
 }
 
 /** Injectable persistence so tests don't touch the native AsyncStorage. */
@@ -64,6 +69,8 @@ interface SettingsState extends StoredSettings {
   markCoverageNudgeShown: () => Promise<void>;
   /** "Not now" on the reminder prompt: hide it for a week from now. */
   dismissReminderPrompt: () => Promise<void>;
+  /** The rating prompt was requested now: start its cooldown. */
+  markRatingAsked: () => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -86,6 +93,7 @@ const DEFAULTS: StoredSettings = {
   cardThemeId: DEFAULT_THEME.id,
   coverageNudgeLastShownAt: null,
   reminderPromptDismissedAt: null,
+  ratingAskedAt: null,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -153,6 +161,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             DEFAULTS.coverageNudgeLastShownAt,
           reminderPromptDismissedAt:
             stored.reminderPromptDismissedAt ?? DEFAULTS.reminderPromptDismissedAt,
+          ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
         });
       }
     } catch (e) {
@@ -201,6 +210,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ reminderPromptDismissedAt: new Date().toISOString() });
     await persist(snapshot(get()));
   },
+
+  markRatingAsked: async () => {
+    set({ ratingAskedAt: new Date().toISOString() });
+    await persist(snapshot(get()));
+  },
 }));
 
 /**
@@ -217,5 +231,6 @@ function snapshot(state: StoredSettings): StoredSettings {
     cardThemeId: state.cardThemeId,
     coverageNudgeLastShownAt: state.coverageNudgeLastShownAt,
     reminderPromptDismissedAt: state.reminderPromptDismissedAt,
+    ratingAskedAt: state.ratingAskedAt,
   };
 }

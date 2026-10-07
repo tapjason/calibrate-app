@@ -16,6 +16,7 @@ import {
   type,
 } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { BucketStat, Milestone, Prediction, ResolvedStatus } from '@/types';
 
@@ -149,6 +150,9 @@ export function ResolvePrompt({
         checkpoint:
           days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
       });
+      // The score's unlock is one of the two moments that may earn a rating
+      // ask, on Today after the sheet closes (roadmap D15).
+      if (stats.milestone?.kind === 'rating_unlocked') useRatingStore.getState().noteMoment();
       stats.clearMilestone();
       predictions.clearStreakCheckpoint();
     } catch (e) {
