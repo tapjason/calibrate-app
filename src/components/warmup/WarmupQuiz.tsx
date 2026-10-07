@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   segment: { backgroundColor: colors.hairline, borderRadius: 999, flex: 1, height: 6 },
   segmentDone: { backgroundColor: colors.brand600 },
   segmentCurrent: { backgroundColor: colors.brand200 },
-  prompt: { ...type.title2 },
+  prompt: { ...type.title2, color: colors.textPrimary },
   options: { gap: 10 },
   option: {
     alignItems: 'center',
@@ -184,6 +184,7 @@ const styles = StyleSheet.create({
   radioDot: { backgroundColor: colors.brand600, borderRadius: 999, height: 10, width: 10 },
   optionActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
   optionText: { ...type.body, color: colors.textPrimary, flex: 1 },
-  optionTextActive: { color: colors.brand700, fontWeight: '600' },
+  // brand800, the ink meant for brand50: brand700 sank to 2:1 on it in dark (D7).
+  optionTextActive: { color: colors.brand800, fontWeight: '600' },
   block: { gap: 8 },
 });

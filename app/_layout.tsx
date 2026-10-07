@@ -1,12 +1,13 @@
+import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
 import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
 import { loadFonts } from '@/constants/fonts';
-import { colors, type } from '@/constants/theme';
+import { colors, palettes, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
 import { initDigest } from '@/notifications/digest';
 import { initTrialReminder } from '@/notifications/trialReminder';
@@ -27,7 +28,30 @@ holdSplash();
 // Root layout = the auth + DB gate. Until both finish initializing, no screen
 // renders. Without this, any screen that calls getDb() or requireUserId()
 // would throw on first mount.
+/**
+ * React Navigation's chrome (headers, the tab bar, card backgrounds) in the
+ * app's own neutrals, light or dark with the phone (roadmap D7). Plain hex,
+ * not the dynamic tokens: the navigation library reads these as strings.
+ */
+function navigationTheme(scheme: 'light' | 'dark'): Theme {
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const p = palettes[scheme];
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: p.brand600,
+      background: p.canvas,
+      card: p.surface,
+      text: p.textPrimary,
+      border: p.hairline,
+      notification: p.destructive,
+    },
+  };
+}
+
 export default function RootLayout() {
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // True once the gate is open and any first-run redirect is made, so the
@@ -170,58 +194,60 @@ export default function RootLayout() {
   // detents, because fitToContents still has open sizing bugs. On web these
   // fall back to ordinary modal presentation.
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
-      <Stack.Screen
-        name="resolve/[id]"
-        options={{
-          presentation: 'formSheet',
-          sheetAllowedDetents: [0.75, 1.0],
-          sheetGrabberVisible: true,
-          sheetCornerRadius: 24,
-        }}
-      />
-      {/* A run of several (roadmap step 18) is the same task, so the same sheet. */}
-      <Stack.Screen
-        name="resolve/run"
-        options={{
-          presentation: 'formSheet',
-          sheetAllowedDetents: [0.75, 1.0],
-          sheetGrabberVisible: true,
-          sheetCornerRadius: 24,
-        }}
-      />
-      <Stack.Screen
-        name="share/index"
-        options={{
-          presentation: 'formSheet',
-          sheetAllowedDetents: [1.0],
-          sheetGrabberVisible: true,
-          sheetCornerRadius: 24,
-        }}
-      />
-      {/* Reading, not a task: a full-height sheet, dismissed by the grabber or Done. */}
-      <Stack.Screen
-        name="scoring"
-        options={{
-          presentation: 'formSheet',
-          sheetAllowedDetents: [1.0],
-          sheetGrabberVisible: true,
-          sheetCornerRadius: 24,
-        }}
-      />
-      {/* Logging is an action, not a place (roadmap D3): the "+" opens it as a
-          full-height sheet over whichever tab you're on. */}
-      <Stack.Screen
-        name="log"
-        options={{
-          presentation: 'formSheet',
-          sheetAllowedDetents: [1.0],
-          sheetGrabberVisible: true,
-          sheetCornerRadius: 24,
-        }}
-      />
-      <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
-    </Stack>
+    <ThemeProvider value={navigationTheme(scheme)}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }}>
+        <Stack.Screen
+          name="resolve/[id]"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.75, 1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        {/* A run of several (roadmap step 18) is the same task, so the same sheet. */}
+        <Stack.Screen
+          name="resolve/run"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.75, 1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        <Stack.Screen
+          name="share/index"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        {/* Reading, not a task: a full-height sheet, dismissed by the grabber or Done. */}
+        <Stack.Screen
+          name="scoring"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        {/* Logging is an action, not a place (roadmap D3): the "+" opens it as a
+            full-height sheet over whichever tab you're on. */}
+        <Stack.Screen
+          name="log"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
+      </Stack>
+    </ThemeProvider>
   );
 }
 

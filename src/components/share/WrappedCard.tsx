@@ -5,7 +5,7 @@ import { holdRanges } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { CARD_MAX_SCALE, FONT_FAMILY } from '@/constants/theme';
+import { CARD_MAX_SCALE, FONT_FAMILY, palettes } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
@@ -128,6 +128,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
             progress={badge.progress}
             inkColor={theme.accent}
             progressColor={theme.foreground}
+            palette={palettes.light}
           />
           <Text
             maxFontSizeMultiplier={CARD_MAX_SCALE}

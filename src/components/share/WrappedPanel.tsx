@@ -170,12 +170,12 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
             value={showTitles}
             onValueChange={setShowTitles}
             trackColor={{ true: colors.brand600, false: colors.controlBorder }}
-            thumbColor={colors.surface}
+            thumbColor={colors.onBrand}
             ios_backgroundColor={colors.controlBorder}
             aria-hidden
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
-            {...{ activeThumbColor: colors.surface }}
+            {...{ activeThumbColor: colors.onBrand }}
           />
         </Pressable>
       )}

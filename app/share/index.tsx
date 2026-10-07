@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   wrap: { gap: 20, padding: 20, paddingBottom: 40 },
   headerRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
   header: { flex: 1, gap: 6 },
-  title: { ...type.title2 },
+  title: { ...type.title2, color: colors.textPrimary },
   body: { ...type.subhead, color: colors.textSecondary },
   tabs: {
     backgroundColor: colors.surfaceSunken,

@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   wrap: { gap: 14 },
   // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
   eyebrow: { ...type.eyebrow, color: colors.textSecondary },
-  title: { ...type.title1 },
+  title: { ...type.title1, color: colors.textPrimary },
   detail: { ...type.callout, color: colors.textSecondary },
   scoreRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   // Ink, not brand: colour goes to direction, never to the score (§2.4).
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   // (DESIGN_SYSTEM §7.2 / baseline 02). The verdict sentence is the headline.
   score: { ...type.title1, ...tabularNums, color: colors.textPrimary, fontWeight: '800' },
   scoreMeta: { gap: 2 },
-  scoreLabel: { ...type.subhead, fontWeight: '600' },
+  scoreLabel: { ...type.subhead, fontWeight: '600', color: colors.textPrimary },
   scoreSub: { ...type.footnote, color: colors.textTertiary },
   advice: { ...type.subhead, color: colors.textSecondary },
   disclaimer: {
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   },
   actions: { gap: 10 },
   key: { gap: 12, marginTop: 4 },
-  keyTitle: { ...type.headline },
+  keyTitle: { ...type.headline, color: colors.textPrimary },
   keyRow: { flexDirection: 'row', gap: 10 },
   keyBody: { flex: 1, gap: 2 },
   keyPrompt: { ...type.subhead, color: colors.textSecondary },

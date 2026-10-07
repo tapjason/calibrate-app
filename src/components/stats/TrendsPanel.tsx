@@ -324,7 +324,7 @@ function formatMonth(period: string): string {
 
 const styles = StyleSheet.create({
   wrap: { gap: 12, padding: 16, paddingTop: 0 },
-  heading: { ...type.headline },
+  heading: { ...type.headline, color: colors.textPrimary },
   muted: { ...type.footnote, color: colors.textSecondary },
   delta: { ...type.subhead, color: colors.textPrimary },
   section: { gap: 4 },

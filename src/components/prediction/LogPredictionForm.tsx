@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   },
   refinePressed: { opacity: 0.7 },
   refineDisabled: { opacity: 0.4 },
-  refineLabel: { ...type.footnote, color: colors.brand700, fontWeight: '600' },
+  refineLabel: { ...type.footnote, color: colors.brandText, fontWeight: '600' },
   suggestion: {
     marginBottom: 16,
     padding: 12,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   suggestionLabel: {
     ...type.caption,
     fontWeight: '600',
-    color: colors.brand700,
+    color: colors.brand800,
     marginBottom: 4,
   },
   suggestionText: { ...type.subhead, color: colors.textPrimary, marginBottom: 12 },

@@ -6,12 +6,17 @@
 // text pair's contrast ratio is recorded. Don't eyeball a new pair: add it
 // there with its ratio first.
 //
-// Colours are shaped as light/dark palettes from day one even though only
-// light ships (`app.json` pins `userInterfaceStyle: "light"`; dark is roadmap
-// decision D7). Retro-fitting a flat object into a themed one would mean
-// touching every migrated file twice.
+// Colours follow the phone's appearance (roadmap D7, decided 2026-10-07: the
+// system setting, no in-app toggle). Each token in `colors` is one value that
+// resolves to its light or dark hex where it's drawn, so a StyleSheet created
+// once at load still switches with the appearance:
+//   - iOS: DynamicColorIOS, which UIKit resolves per trait collection.
+//   - Web: a CSS custom property, with a prefers-color-scheme rule.
+//   - Android: light only for now (no device to check it on).
+// Share cards don't use `colors`: an exported image keeps its own palette
+// (`palettes`, cardThemes) whatever the phone's appearance.
 
-import { Platform, type TextStyle } from 'react-native';
+import { DynamicColorIOS, Platform, type TextStyle } from 'react-native';
 
 export interface Palette {
   // Brand (indigo — matches the icon and splash). Chrome, never data.
@@ -103,7 +108,7 @@ const light: Palette = {
   oracleViolet: '#6D28D9',
 };
 
-/** Proposed (DESIGN_SYSTEM §2.5, roadmap D7). Not wired to anything yet. */
+/** DESIGN_SYSTEM §2.5 (roadmap D7, decided 2026-10-07). */
 const dark: Palette = {
   brand50: '#1E1B4B',
   brand100: '#312E81',
@@ -146,8 +151,52 @@ const dark: Palette = {
 
 export const palettes = { light, dark } as const;
 
-/** The palette the app renders with today. Light only until D7 is decided. */
-export const colors: Palette = palettes.light;
+// Web: one stylesheet of custom properties, light at :root and dark under the
+// media query, filled in as themed() is called (module load, in practice).
+const webVars: string[] = [];
+let webStyle: { textContent: string | null } | null = null;
+
+function writeWebVars(): void {
+  if (typeof document === 'undefined') return;
+  if (!webStyle) {
+    const el = document.createElement('style');
+    el.setAttribute('data-calibrate-colors', '');
+    document.head.appendChild(el);
+    webStyle = el;
+  }
+  const light = webVars.map((v) => v.split('|')[0]).join('');
+  const dark = webVars.map((v) => v.split('|')[1]).join('');
+  webStyle.textContent =
+    `:root{${light}}` + `@media (prefers-color-scheme: dark){:root{${dark}}}`;
+}
+
+/**
+ * One colour that follows the appearance: `lightHex` in light mode,
+ * `darkHex` in dark. For tokens outside the palette that still need both
+ * (BADGE_META's chips). `name` must be unique; it names the web variable.
+ */
+export function themed(name: string, lightHex: string, darkHex: string): string {
+  if (Platform.OS === 'ios') {
+    // An opaque colour object, typed as the string RN styles accept: every
+    // consumer passes it to a style or a native colour prop, none reads it.
+    return DynamicColorIOS({ light: lightHex, dark: darkHex }) as unknown as string;
+  }
+  if (Platform.OS === 'web') {
+    const variable = `--cal-${name}`;
+    webVars.push(`${variable}:${lightHex};|${variable}:${darkHex};`);
+    writeWebVars();
+    return `var(${variable}, ${lightHex})`;
+  }
+  return lightHex;
+}
+
+/** The palette every screen draws with, light or dark by the phone's setting. */
+export const colors: Palette = Object.fromEntries(
+  (Object.keys(light) as (keyof Palette)[]).map((key) => [
+    key,
+    themed(key, light[key], dark[key]),
+  ]),
+) as unknown as Palette;
 
 // ---- Type (DESIGN_SYSTEM §3) ----
 // Inter everywhere (roadmap D1, decided 2026-10-07): one face on iOS and web,

@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   title: { ...type.title2, color: colors.textPrimary },
   lede: { ...type.subhead, color: colors.textSecondary, marginBottom: 8 },
   error: { ...type.subhead, color: colors.destructive },
-  notice: { ...type.subhead, color: colors.brand700 },
+  notice: { ...type.subhead, color: colors.brandText },
   switch: { alignItems: 'center', paddingVertical: 12 },
   switchText: { ...type.subhead, color: colors.brandText, fontWeight: '500' },
 });

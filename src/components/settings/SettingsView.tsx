@@ -417,9 +417,11 @@ function ToggleRow({
         // Brand tint when on; a 3:1 grey track when off, so "off" still reads
         // as a control (DESIGN_SYSTEM §2.2 controlBorder).
         trackColor={{ true: colors.brand600, false: colors.controlBorder }}
-        thumbColor={colors.surface}
+        // White in both appearances, as iOS draws its own (D7): the surface
+        // token turns dark at night and the thumb sank into the track.
+        thumbColor={colors.onBrand}
         ios_backgroundColor={colors.controlBorder}
-        {...{ activeThumbColor: colors.surface }}
+        {...{ activeThumbColor: colors.onBrand }}
       />
     </Pressable>
   );

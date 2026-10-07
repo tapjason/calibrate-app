@@ -128,9 +128,11 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
         >
           {format && card.categories[0] && (
             <View style={styles.hero} testID="card-hero-emblem">
+              {/* Fixed colours: the PNG looks the same from a dark-mode phone (D7). */}
               <LensEmblem
                 tier={card.categories[0].badge_level}
                 size={format === 'story' ? 112 : 88}
+                palette={palettes.light}
               />
             </View>
           )}
@@ -193,7 +195,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
                 testID={`card-badge-${c.category}`}
                 style={[styles.chip, { borderColor: theme.divider }]}
               >
-                <LensEmblem tier={c.badge_level} size={18} />
+                <LensEmblem tier={c.badge_level} size={18} palette={palettes.light} />
                 <Text
                   maxFontSizeMultiplier={CARD_MAX_SCALE}
                   style={[styles.chipLabel, { color: theme.foreground }]}
