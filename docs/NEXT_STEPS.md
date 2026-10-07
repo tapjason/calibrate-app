@@ -1,8 +1,7 @@
 # Calibrate — Next Steps an Agent Can Do Alone
 
 **As of:** 2026-10-04 (second pass) · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-110 suites / 1252 tests green (after the UI batches, steps 16–78, and the
-2026-10-06 code-review fixes).
+113 suites / 1278 tests green (after the UI batches, steps 16–84).
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
@@ -131,11 +130,10 @@ found the RevenueCat Test Store drift below.
   with Apple `.p8` key, and deleting the RevenueCat customer needs a
   write-scoped server key. The function already handles both once the secrets
   exist (`ACCOUNT_SPEC.md` §3).
-- **Design decisions D1–D16** in `docs/design/UI_ROADMAP.md` §2. Two are new
-  from the 2026-10-06 element research: **D15** (ask for a rating with the
-  system prompt) and **D16** (a reminder before the trial converts). The same
-  research recommends settling D1, D3 and D7 before App Store submission, since
-  reviews punish a changed UI more than anything else.
+- **Design decisions** in `docs/design/UI_ROADMAP.md` §2. D3 (four tabs), D7
+  (dark mode follows the system), D15 (rating prompt) and D16 (trial reminder)
+  were decided on 2026-10-07; D3, D15 and D16 are built and D7 is next. The
+  typeface (D1) is the one structural call left before submission.
 
 ---
 

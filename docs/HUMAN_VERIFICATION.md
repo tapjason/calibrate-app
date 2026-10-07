@@ -775,6 +775,19 @@ Added 2026-09-29 (polish pass):
       title field, not at Save; How scoring works keeps "0–20%" and the other
       bands whole; the paywall's "Restore purchases" is a text link between the
       CTA and "Not now", and still restores.
+- [ ] **The 2026-10-07 batch (steps 79–84; unit-tested, not yet seen on web):**
+      the tab bar reads Today · Insights · History · You; the indigo "+" sits
+      above the bar's right end, clear of the home indicator, on every tab but
+      You, and opens "New prediction" as a full-height sheet; with a title
+      typed, swiping down asks Discard prediction / Keep editing. Every sheet
+      (Resolve, a run, Share, How scoring works, Log) has the round × at the
+      top. You is a grouped list: whole rows highlight on press, VoiceOver reads
+      each row's name. Erase everything is an outlined red capsule. In a
+      development build, finishing a run of answers after a week of use shows
+      Apple's rating prompt on Today (TestFlight never shows it). Start the
+      annual trial with a StoreKit configuration whose trial is long enough
+      that "two days before" is still ahead, and the reminder is scheduled for
+      10:00 that day.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The indigo splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the
