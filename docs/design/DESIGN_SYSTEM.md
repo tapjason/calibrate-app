@@ -424,6 +424,10 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 - Each tier shows its receipt in one line: "Sharp: 52 resolved, score 87". Badge
   criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
   presentation only and loses its `emoji` field.
+- Stats lists the badge rows in the app's one category order (`CATEGORIES` in
+  `src/types`: work, health, finance, social, personal), as Log's chips and History's
+  filters do (roadmap step 73). A launch used to read them alphabetically, so the rows
+  changed places after the session's first log.
 - Why not one hue per tier (16Personalities-style)? Five extra hues would collide with
   the over/under/calibrated semantics. The indigo ramp + gold gives each tier a distinct
   look without that cost.
@@ -482,7 +486,8 @@ third row) → **honest timeline** → **one** CTA.
   $4.99/mo").
 - **No trial toggle** — Apple rejects them under 3.1.2 since January 2026.
 - Prices and trial length are **always what the store reports**; never hard-code them.
-- Keep: "Restore purchases" as a text button, the "stay free forever" reassurance,
+- Keep: "Restore purchases" as a text button (built as step 78; it was an outlined
+  capsule that read as a second CTA), the "stay free forever" reassurance,
   trial-terms line, Terms/Privacy links.
 - **Close** (roadmap step 30): a 44pt "×" on `surfaceSunken` at the top right,
   labelled "Close", as well as "Not now" at the bottom, which is below the fold on a
@@ -526,10 +531,13 @@ filters are its way forward.
 - Sentence case everywhere; no ALL-CAPS labels.
 - Badge gating is a trust feature — say it: "Badges need receipts."
 - **Things that read as one never split across lines** (roadmap step 70, checked at
-  320pt): a range keeps its dash (`holdRanges`, a word joiner either side, on the
-  chart title and subtitle, Home's takeaway and Resolve's range line), a price keeps
-  its period ("$29.90 a year"), a date keeps its day ("Tue, Oct 13"), and the streak
-  row breaks before "Next milestone: 30 days", never inside it. Done where the text is
+  320pt): a range keeps its dash (`holdRanges`, a word joiner either side, applied
+  wherever a range is drawn: the chart title and subtitle, Home's takeaway, Resolve's
+  range line, and since step 74 How scoring works, Log's track record, the Wrapped
+  card, the counts table, History's range chip and Trends), a price keeps its period
+  ("$29.90 a year"), a date keeps its day ("Tue, Oct 13"), and the streak row keeps
+  "Next milestone:" and "30 days" each whole (it may break between them, as it does in
+  a run's "All caught up" card at 375pt, never after "Next"). Done where the text is
   drawn or with no-break spaces, so screen readers hear the same words.
 
 ### 7.10 Resolve
@@ -549,8 +557,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   line "It won't count toward your score." Equal weight would make skipping a miss as
   cheap as recording it. (Built 2026-10-04, roadmap D10.)
 - **After the tap:** the `resolve` motion (§6.1), then one factual line about the bucket
-  it landed in: "That's 6 of 9 in your 60–80% range." Counts, not a verdict, so safe
-  below min-N. The count comes from the store; the component doesn't compute buckets.
+  it landed in: "In your 60–80% range, 6 of 9 have happened." ("1 of 2 has" when
+  one has: roadmap step 77). Counts, not a verdict, so safe below min-N. The count comes from the store; the component doesn't compute buckets.
   From 10 resolved in the range (the chart title's threshold), the range's own
   comparison follows: "That's 77%, against the 69% you said." (roadmap step 58).
   Said-against-happened is the feedback that moved calibration in the studies; bare
@@ -602,7 +610,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   shows a selected-style chip "You said 80–100% ×" above the category filters; the
   two combine, × clears the range, and leaving the tab drops it. The summary line's
   "57 answered · 38 happened" then matches the chart's subtitle. The range edges come
-  from the engine through `statsStore.confidenceRangeLow`.
+  from the engine through `statsStore.confidenceRangeLow`. A new range or category
+  opens the list at its newest (roadmap step 76); it used to keep the old offset.
 - **Reflection** (roadmap step 31): on a resolved card, a saved reflection shows under
   the title, quoted, in `footnote` italic `textSecondary`, at most four lines, and
   joins the card's accessible sentence ("Your note: …").
@@ -635,6 +644,9 @@ the control reads the chosen category.)
   (Built as step 46; it used to answer an empty tap with the store's "title is
   required".) A failed save says "Couldn't save that. Try again.", never the store's
   developer message.
+- **A new form starts at the top** (roadmap step 75): after a save, and when "Log it
+  again" fills it. The tab keeps its scroll offset otherwise, and on a short phone the
+  next visit opened on an empty "—%" with the title field out of sight.
 
 ### 7.13 Coach cards and the support surface
 
@@ -749,7 +761,9 @@ The Day-0 payoff (`WarmupVerdictScreen`): eyebrow "Your warm-up", the verdict in
 `title1` ("You run overconfident"), the receipt ("You were 77% confident on average,
 and right 50% of the time."), the warm-up score in `title1` (never `display`: it must
 not look like the real rating), the mini chart, one line of advice, the "not your
-calibration rating" note, then the two actions before the answer key.
+calibration rating" note, then the two actions before the answer key. It opens at
+its top (roadmap step 72): the quiz shares its scroll view, and on a 667pt-tall phone
+the verdict used to inherit the quiz's offset and open on the chart.
 
 - **The answer key says it in words** (roadmap step 71): per question, the prompt in
   `subhead` secondary, then the right answer in semibold ink and the user's side of it
