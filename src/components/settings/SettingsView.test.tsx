@@ -89,6 +89,7 @@ describe('SettingsView', () => {
         cardThemeId: 'midnight',
         coverageNudgeLastShownAt: null,
         reminderPromptDismissedAt: null,
+        ratingAskedAt: null,
       });
     });
   });
