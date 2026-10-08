@@ -311,6 +311,31 @@ export function practiceQuestions(
   return questions;
 }
 
+/**
+ * Day numbers the Warmup draws from. Negative, so they sit before every real
+ * local day (day 0 is 1970-01-01) and never repeat a day's practice.
+ */
+const WARMUP_DAYS = [-1, -2] as const;
+
+/**
+ * The Warmup's ten (roadmap D18 (1)): drawn from the practice tables like a
+ * day's practice, not picked to be tricky. Two draws of five, so a kind may
+ * appear twice, each time with a different pair. The same ten for everyone,
+ * which lets the answer key be re-derived without storing the questions.
+ */
+export function warmupQuestions(facts: PracticeFacts): PracticeQuestion[] {
+  const seen = new Set<string>();
+  const questions: PracticeQuestion[] = [];
+  for (const day of WARMUP_DAYS) {
+    for (const q of practiceQuestions(facts, day, 5)) {
+      if (seen.has(q.id)) continue;
+      seen.add(q.id);
+      questions.push(q);
+    }
+  }
+  return questions;
+}
+
 /** One day's answers in counts. */
 export function practiceDayTally(answers: readonly PracticeAnswer[]): PracticeDayTally {
   return {

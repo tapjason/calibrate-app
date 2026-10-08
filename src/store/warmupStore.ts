@@ -16,12 +16,13 @@ import { create } from 'zustand';
 
 import { track } from '@/analytics/track';
 
-import { WARMUP_QUESTIONS } from '@/constants/warmupQuestions';
+import { PRACTICE_FACTS } from '@/constants/practiceFacts';
 import {
   clearWarmupRecord,
   getWarmupRecord,
   saveWarmupRecord,
 } from '@/db/warmup';
+import { warmupQuestions } from '@/engine/practice';
 import { scoreWarmup } from '@/engine/warmup';
 import type { WarmupAnswer, WarmupQuestion, WarmupResult } from '@/types';
 
@@ -53,7 +54,7 @@ interface WarmupState {
 }
 
 const initialProgress = {
-  questions: WARMUP_QUESTIONS,
+  questions: warmupQuestions(PRACTICE_FACTS),
   index: 0,
   answers: [] as WarmupAnswer[],
 };

@@ -58,9 +58,9 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       <CalibrationChart buckets={result.buckets} animateIn />
 
       <Text style={styles.advice}>{verdict.advice}</Text>
-      {verdict.trickyNote && (
-        <Text style={styles.advice} testID="warmup-tricky-note">
-          {verdict.trickyNote}
+      {verdict.sampleNote && (
+        <Text style={styles.advice} testID="warmup-sample-note">
+          {verdict.sampleNote}
         </Text>
       )}
       {verdict.sameNumber && (

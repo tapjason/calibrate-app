@@ -21,12 +21,12 @@ export interface WarmupVerdict {
    */
   sameNumber: string | null;
   /**
-   * Under an overconfident verdict only (roadmap D14): the questions are
-   * picked to be tricky, and selected questions are how overconfidence is
-   * produced in the research (.73 confidence for .64 correct, against .73 for
-   * .72 when questions are sampled at random). So the verdict says so.
+   * Under an overconfident verdict only: the ten are drawn at random from
+   * reference tables (roadmap D18 (1)), so the verdict can't blame the
+   * questions, but ten is a small sample and trivia says little about
+   * plans. It says both.
    */
-  trickyNote: string | null;
+  sampleNote: string | null;
 }
 
 const TITLES = {
@@ -44,8 +44,8 @@ const ADVICE = {
     'Your confidence tracks reality closely. The real test is whether it holds on your own predictions.',
 } as const;
 
-const TRICKY_NOTE =
-  'These were picked to be tricky, so most people run hot here. ' +
+const SAMPLE_NOTE =
+  'Ten questions is a small sample, and trivia says little about your plans. ' +
   'Your own predictions are the real test.';
 
 const SAME_NUMBER_NOTE =
@@ -86,7 +86,7 @@ export function warmupVerdict(
     advice: ADVICE[result.direction],
     // Nothing to tell apart when every answer was right.
     sameNumber: same !== null && result.accuracy < 1 ? SAME_NUMBER_NOTE : null,
-    trickyNote: result.direction === 'overconfident' ? TRICKY_NOTE : null,
+    sampleNote: result.direction === 'overconfident' ? SAMPLE_NOTE : null,
   };
 }
 

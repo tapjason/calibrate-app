@@ -97,22 +97,21 @@ describe('warmupVerdict', () => {
     );
   });
 
-  // Roadmap D14: the bank is picked to be tricky, which is where
-  // overconfidence comes from in the research. The verdict says so.
-  it('says the questions were tricky under an overconfident verdict only', () => {
-    expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.trickyNote).toBe(
-      'These were picked to be tricky, so most people run hot here. ' +
+  // Roadmap D18 (1): the ten are random draws, so the note is about sample size.
+  it('says ten is a small sample under an overconfident verdict only', () => {
+    expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.sampleNote).toBe(
+      'Ten questions is a small sample, and trivia says little about your plans. ' +
         'Your own predictions are the real test.',
     );
     const calibrated = scoreWarmup([
       { confidence: 100, correct: true },
       { confidence: 100, correct: true },
     ]);
-    expect(warmupVerdict(calibrated)?.trickyNote).toBeNull();
+    expect(warmupVerdict(calibrated)?.sampleNote).toBeNull();
     const under = scoreWarmup([
       { confidence: 55, correct: true },
       { confidence: 55, correct: true },
     ]);
-    expect(warmupVerdict(under)?.trickyNote).toBeNull();
+    expect(warmupVerdict(under)?.sampleNote).toBeNull();
   });
 });

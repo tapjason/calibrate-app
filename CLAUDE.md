@@ -180,21 +180,18 @@ where users decide whether the app is worth keeping. The Warmup delivers the cor
 on Day 0, teaches the mechanic, and produces the first shareable card. Warmup results are
 stored separately and **never** mixed into real `UserStat` / `CategoryStat` data.
 
-Decided 2026-10-05 (`docs/design/UI_ROADMAP.md` D13, D14): the confidence slider
+Decided 2026-10-05 (`docs/design/UI_ROADMAP.md` D13): the confidence slider
 starts **empty** and Next waits for a number, so tapping through can't produce a
-verdict about a preset. The question bank is chosen to be tricky, and selected
-questions are where overconfidence comes from in the research, so an overconfident
-verdict says so: "These were picked to be tricky, so most people run hot here. Your
-own predictions are the real test." Compare `warmup_completed / warmup_started`
-before and after 2026-10-05.
+verdict about a preset.
 
 Decided 2026-10-07, for now (UI_ROADMAP D18): **Day 0 is for calibration**, not for
-an identity verdict. The plan, **not built yet**: the ten drawn from the practice
-tables instead of picked to be tricky; a result that leads with counts and reads
-"these ten", not "you run overconfident"; a bridge to the person's own plans; a
-first prediction due tomorrow, so the first real result lands on Day 1; and a Day-0
-card that shares the counts as an invitation. Until it's built, the Warmup works as
-described above.
+an identity verdict. Built 2026-10-08 (step 97): the ten are drawn from the practice
+tables (`warmupQuestions`, the same ten for everyone), not picked to be tricky, so
+the "picked to be tricky" note and the card's "tricky questions" are gone; an
+overconfident verdict says ten is a small sample and trivia says little about plans.
+**Not built yet:** a result that leads with counts and reads "these ten", not "you
+run overconfident"; a bridge to the person's own plans; a first prediction due
+tomorrow; and a Day-0 card that shares the counts as an invitation.
 
 ### 2. Log Module
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,

@@ -14,6 +14,7 @@ import {
   practiceDayTally,
   practiceQuestions,
   scorePractice,
+  warmupQuestions,
 } from './practice';
 
 // A few hundred days either side of launch, enough to meet every kind often.
@@ -270,5 +271,26 @@ describe('scorePractice', () => {
     });
     expect(record.buckets).toHaveLength(1);
     expect(record.buckets[0]).toMatchObject({ low: 80, total_resolved: 20, resolved_yes: 12 });
+  });
+});
+
+describe('warmupQuestions', () => {
+  it('is ten distinct two-way questions, the same every time', () => {
+    const qs = warmupQuestions(PRACTICE_FACTS);
+    expect(qs).toHaveLength(10);
+    expect(new Set(qs.map((q) => q.id)).size).toBe(10);
+    expect(warmupQuestions(PRACTICE_FACTS)).toEqual(qs);
+    for (const q of qs) {
+      expect(q.options).toHaveLength(2);
+      expect([0, 1]).toContain(q.correctIndex);
+    }
+  });
+
+  it('draws the same fair pairs a day of practice does', () => {
+    const values = lookup(PRACTICE_FACTS);
+    for (const q of warmupQuestions(PRACTICE_FACTS)) {
+      const [a, b] = q.options.map((o) => values[q.kind]!.get(o)!);
+      expect(a).not.toBe(b);
+    }
   });
 });

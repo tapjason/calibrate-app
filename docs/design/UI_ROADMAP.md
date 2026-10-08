@@ -118,6 +118,7 @@ is checking it on an iPhone and the decisions.
 | 94 A starter idea brings its due date | Done 2026-10-07, unit-tested and web-verified ("A friend I message today replies the same day" was due in a week; now Tomorrow, the "this week" ones a week) | — |
 | 95 Streak and scoring copy | Done 2026-10-07, unit-tested and web-verified at 320pt ("Goal: 2 of / 3" now wraps after "Today counts."; How scoring works says "Three a day is the daily goal" and names the daily practice among what doesn't count; the dev preview's rest-day rows no longer show a pip on a day with nothing done) | — |
 | 96 Web: the chosen chip says so | Done 2026-10-07, unit-tested and web-verified (every radio, tab and toggle had no state in the accessibility tree on web, because react-native-web drops `accessibilityState`; `chosenProps` adds `aria-checked`, `aria-selected` or `aria-pressed` on web and leaves iOS as it was) | Yes (VoiceOver still reads the chosen chip as selected) |
+| 97 D18 (1): the Warmup's ten come from the practice tables | Done 2026-10-08, unit-tested (ten distinct fair pairs, the same every time; the verdict's note is about sample size, the card drops "tricky"). The question bank file is deleted. Points (2)–(5) remain | Yes (the Warmup on a device: ten new questions read naturally) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
