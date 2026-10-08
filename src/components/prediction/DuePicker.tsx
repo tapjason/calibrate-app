@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
-import { colors, radius, space, type } from '@/constants/theme';
+import { colors, FONT_FAMILY, radius, space, type } from '@/constants/theme';
 
 interface DuePickerProps {
   /** Current due date, ISO. */
@@ -47,13 +47,18 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
         if (y && m && d) onChange(localNoonIso(y, m - 1, d));
       },
       style: {
-        font: 'inherit',
+        // Inter by name: 'inherit' found no family above it and drew the
+        // date in the browser's serif (roadmap step 92).
+        fontFamily: FONT_FAMILY,
         fontSize: type.callout.fontSize, // ≥ 16px or iOS Safari zooms on focus
         padding: '10px 12px',
         borderRadius: radius.sm,
         border: `1px solid ${colors.controlBorder}`,
         background: colors.surface,
         color: colors.textPrimary,
+        // The browser's own parts (the calendar icon, the popup) follow the
+        // appearance too; without it the icon stayed black on the dark surface.
+        colorScheme: 'light dark',
         alignSelf: 'flex-start',
       },
     });
@@ -80,7 +85,8 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
         display="compact"
         minimumDate={today}
         accentColor={colors.brand600}
-        themeVariant="light"
+        // No themeVariant: it was pinned to light while the app was, and the
+        // picker now follows the phone like the rest of the sheet (step 92).
         onChange={(_e, date) => pick(date)}
         accessibilityLabel="Due date"
       />
