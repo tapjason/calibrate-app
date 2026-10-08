@@ -112,6 +112,12 @@ is checking it on an iPhone and the decisions.
 | 88 Daily practice | Done 2026-10-07, unit-tested and web-verified at 375 and 320pt in both appearances (Today's row, the quiz, "2 of 3 right. You expected about 3.", the answer key, the record's "17 more"; the next day's three with the clock moved). Three questions a day from reference tables, the same for everyone, kept apart from the score | Yes (the sheet, the slider's detent haptic, VoiceOver per question) |
 | 89 Practice reminder at a chosen moment | Done 2026-10-07, unit-tested (scheduling, titles, three-day window, permission in context, the tap route); the offer previewed at `/dev/celebrations` and You's row web-verified | Yes (HUMAN_VERIFICATION D1: the alert only on choosing, three requests, a tap opens practice) |
 | 90 D17: one a day keeps the streak, three is the goal | Done 2026-10-07, unit-tested and web-verified at 375 and 320pt ("138-day streak. One prediction today makes it 139", then "Today counts. Goal: 1 of 3" after one log; the demo's streak grew from 15 because days with one or two now count, and nobody's goes down) | Yes (VoiceOver reads the row as one sentence) |
+| 91 The chrome follows an appearance switch | Done 2026-10-07, unit-tested and web-verified (dark → light → dark → light with the app open: the header and tab bar change every time; the first switch after a load used to leave them in the old appearance under content that had changed). `useAppearance` in place of `useColorScheme` | Yes (switch Dark Mode from Control Centre with the app open) |
+| 92 The date picker follows the appearance | Done 2026-10-07, web-verified in both appearances (the web input drew its date in Times New Roman and a black calendar icon on the dark surface; now Inter and `color-scheme`). iOS: `themeVariant="light"` removed | Yes (the compact picker and its popover in dark) |
+| 93 One due chip chosen at a time | Done 2026-10-07, unit-tested and web-verified ("Pick a date" opened with "In a week" still chosen beside it) | — |
+| 94 A starter idea brings its due date | Done 2026-10-07, unit-tested and web-verified ("A friend I message today replies the same day" was due in a week; now Tomorrow, the "this week" ones a week) | — |
+| 95 Streak and scoring copy | Done 2026-10-07, unit-tested and web-verified at 320pt ("Goal: 2 of / 3" now wraps after "Today counts."; How scoring works says "Three a day is the daily goal" and names the daily practice among what doesn't count; the dev preview's rest-day rows no longer show a pip on a day with nothing done) | — |
+| 96 Web: the chosen chip says so | Done 2026-10-07, unit-tested and web-verified (every radio, tab and toggle had no state in the accessibility tree on web, because react-native-web drops `accessibilityState`; `chosenProps` adds `aria-checked`, `aria-selected` or `aria-pressed` on web and leaves iOS as it was) | Yes (VoiceOver still reads the chosen chip as selected) |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -123,7 +129,7 @@ by step.
 
 ### 1.1 Building now
 
-Nothing in progress. Steps 16–63 shipped on 2026-10-04 and 10-05, 64–78 on 10-06, and 79–90 on 10-07 (§1.2, and the retention batch in §1.3). The tenth batch
+Nothing in progress. Steps 16–63 shipped on 2026-10-04 and 10-05, 64–78 on 10-06, and 79–96 on 10-07 (§1.2, the retention batch in §1.3, and the evening pass in §1.4). The tenth batch
 (46–51) came from playing the web build as a new user on a cleared profile, and
 from the research in [`research/confidence-2026-10.md`](research/confidence-2026-10.md):
 how the app asks for a number, and what a ten-question Warmup can claim. It fixed
@@ -214,7 +220,41 @@ and a backend.
 Step 88's tables also unblock **D14 (c)**, approved on 2026-10-05: the Warmup can
 now draw its ten from a representative bank. Not done in this batch, because it
 changes the Day-0 verdict and its card ("10 tricky questions"). A revised proposal
-for the whole of Day 0 is **D18** below.
+for the whole of Day 0 is **D18** below, decided the same evening: Day 0 is for
+calibration. It's the next thing to build.
+
+### 1.4 A pass over the day's batch (2026-10-07, evening)
+
+Steps 79–90 all landed on one day, so the evening went back over them as a new user
+would meet them: a cleared profile through the Warmup, the first log, practice and
+the empty tabs, then the demo data, at 375 × 667 and 320pt, in both appearances and
+with the appearance switched while the app was open. Six fixes, none of them a
+product change:
+
+- **Dark mode's loose ends** (91, 92). The first appearance switch after a load left
+  the header and the tab bar in the old appearance under content that had changed:
+  react-native-web's `useColorScheme` subscribes again on every render and drops the
+  event when a re-render lands inside it. The date picker was still pinned to light
+  on iOS, and on web drew its date in the browser's serif with a black calendar icon
+  on the dark surface.
+- **The Log form's due date** (93, 94). Opening "Pick a date" left "In a week"
+  chosen beside it, two radios chosen in one group; and the one starter idea that
+  resolves the same day ("A friend I message today replies the same day") was due in
+  a week, so its reminder came six days after the answer was known. Each starter now
+  sets the due chip its words imply. That isn't D18's point (4): a typed
+  prediction still defaults to "In a week" until D18 is built.
+- **Copy at 320pt and in How scoring works** (95). "Goal: 2 of / 3" split across lines;
+  a sentence began with a numeral; the daily practice, kept apart from the score like
+  the Warmup, wasn't listed under what doesn't count.
+- **Selection on the web build** (96). react-native-web ignores `accessibilityState`,
+  so on web no chip, answer, plan or tab ever read as chosen. That matters most for
+  the Warmup, which A8 would put on the web as the share card's landing page.
+
+The pass also checked what didn't need a fix: Today's Day-0 list, the practice row
+and answer key, Insights' ghost chart, the empty Today and History (their "Log a
+prediction" capsule beside the "+" is deliberate, and DESIGN_SYSTEM §7.8 now says
+why), You's grouped list, the paywall and How scoring works at 320pt, and every
+sheet's ×.
 
 ### What's left in the parking lot
 
@@ -255,7 +295,7 @@ And the decisions in §2 below.
 | D15 | Asking for a rating | ~~**Yes, with the system prompt** (`expo-store-review`'s `requestReview()`, after `npx expo install`): once, on Home after the sheet closes on a finished run ("All caught up") or on the answer that unlocked the score, whichever comes first, and only after 7 days and 10 answers. Never inside the sheet: HIG says not to interrupt a task. Never in the Warmup, never after a single answer (so a Yes is never what triggers it), never from a button. App-side at most once per 90 days; the system caps it at three a year.~~ **Decided 2026-10-07 as proposed; built as step 83.** | Every app in the 4.7+ set rates far above its written reviews (61% of recent written reviews are five-star against ratings of 4.7–4.95): most of the stars come from people who rate without writing, most likely through the system prompt. Calibrate never asks, so its rating would come only from those who seek out the store. A new native module and a new moment in the core loop (HIG: "Avoid asking… during onboarding"; Appbot: >400% more ratings per month, average unchanged). |
 | D16 | A reminder before the trial converts | ~~**Yes:** a local notification 2 days before the month's trial renews, saying when it renews and at what price, both from the store ("Your free month ends Thursday" · "Plus then renews for a year at $29.99."), scheduled on purchase from the store's own expiry and cancelled if the trial is. Then the paywall's timeline gains the "we remind you" step DESIGN_SYSTEM §7.6 holds back until it's true.~~ **Decided 2026-10-07 as proposed; built as step 84** (10:00 local two days before, so it never lands at night). | Billing is the largest complaint in the sample: a third of all low reviews are about money, and the largest part of those mention a charge, a trial or cancelling (`research/elements-2026-10.md` §1.4). A new notification type in L5, and a promise on the paywall that has to hold. Like the others in DESIGN_SYSTEM §7.15 it carries no offer, only when the charge comes and how much. |
 | D17 | How much a streak day takes | ~~**One** prediction logged or answered extends the streak, and the three pips stay as the day's goal ("1 of 3 today", a day that reaches three marked as such), with rest days as built. Practice still doesn't count toward it. Before deciding, the analytics can say how often active days stop at one or two (research §4).~~ **Decided 2026-10-07 as proposed; built as step 90.** | Reverses D2's threshold (decided 2026-10-05: "a number that climbs every day is the appeal", which this keeps). Duolingo's A/B test of exactly this, a single lesson extending the streak instead of the daily goal, raised day-14 retention 3.3%, daily actives 1%, and new users on a streak 19%, while fewer people met the daily goal (research/retention-2026-10.md §2.1). Changes `current_streak` in `CLAUDE.md`, the streak copy and How scoring works, and checkpoints arrive sooner for most people. |
-| D18 | What Day 0 is for | **A warm-up that teaches the mechanic, then a first real result the next day.** (1) The Warmup's ten come from the practice tables, not picked to be tricky (D14 c). (2) The result leads with counts ("You said 78% on average. 6 of 10 were right.") and a read of *these ten* ("On these ten, you ran hot"), not an identity ("You run overconfident"). (3) It bridges to the person's own plans, where overconfidence really lives: "Trivia is the warm-up. People are most overconfident about their own plans: students who expected to finish their thesis in 34 days took 56." **Predict something about tomorrow.** (4) The first prediction defaults to *Tomorrow* with starter ideas that resolve by then, so the first real "you said 70%, it happened" arrives on Day 1 at 19:00, not a week later. (5) The Day-0 card shares the counts as an invitation ("78% sure, 6 of 10 right. How sure are you?"), not a personality. Measure `warmup_completed`, the first log and D1 retention before and after. | The goal is calibration about your own goals. Trivia transfers weakly to other tasks (Lichtenstein & Fischhoff 1980); picked items manufacture overconfidence (D14); and the planning fallacy is the overconfidence a goal app should catch: Buehler, Griffin & Ross 1994, predicted 33.9 days, took 55.5, about 30% on time. It gives up the dramatic "You run overconfident" hook GROWTH §5.1 wanted, and changes onboarding, the Day-0 card and the Log default. |
+| D18 | What Day 0 is for | ~~**A warm-up that teaches the mechanic, then a first real result the next day.** (1) The Warmup's ten come from the practice tables, not picked to be tricky (D14 c). (2) The result leads with counts ("You said 78% on average. 6 of 10 were right.") and a read of *these ten* ("On these ten, you ran hot"), not an identity ("You run overconfident"). (3) It bridges to the person's own plans, where overconfidence really lives: "Trivia is the warm-up. People are most overconfident about their own plans: students who expected to finish their thesis in 34 days took 56." **Predict something about tomorrow.** (4) The first prediction defaults to *Tomorrow* with starter ideas that resolve by then, so the first real "you said 70%, it happened" arrives on Day 1 at 19:00, not a week later. (5) The Day-0 card shares the counts as an invitation ("78% sure, 6 of 10 right. How sure are you?"), not a personality. Measure `warmup_completed`, the first log and D1 retention before and after.~~ **Decided 2026-10-07, for now: Day 0 is for calibration**, not for the identity hook. Points (1)–(5) are the plan; **not built yet**, and the Warmup works as before until they are. Step 94 (the same evening) is narrower and came first: a starter idea sets the due date its own words imply; a typed prediction still defaults to "In a week" until (4) is built. | The goal is calibration about your own goals. Trivia transfers weakly to other tasks (Lichtenstein & Fischhoff 1980); picked items manufacture overconfidence (D14); and the planning fallacy is the overconfidence a goal app should catch: Buehler, Griffin & Ross 1994, predicted 33.9 days, took 55.5, about 30% on time. It gives up the dramatic "You run overconfident" hook GROWTH §5.1 wanted, and changes onboarding, the Day-0 card and the Log default. |
 | D10 | What Skip means | ~~Relabel to "Can't tell / doesn't apply" with "It won't count toward your score", shown as a text button.~~ **Built 2026-10-04.** The open question was factual and the code answers it: skips are excluded from the score (`calibration.ts`), the streak (`streak.ts`), Wrapped (`wrapped.ts`), patterns and trends, and History already says "Not scored". So the line is true everywhere. One commit to revert if you'd rather keep a Skip button. | — |
 
 ---

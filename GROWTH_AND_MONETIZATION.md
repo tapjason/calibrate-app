@@ -188,6 +188,12 @@ calibration chart — "You were 85% confident but right 55% of the time. You're
 mechanic, and is itself the first shareable card. This is the single highest-leverage
 addition in this document.
 
+> **2026-10-07 (UI_ROADMAP D18, decided for now):** Day 0 is for calibration. The
+> verdict above is built, but the ten questions were picked to be tricky, which
+> manufactures the overconfidence it reports. The plan is counts about *these ten*
+> ("78% sure, 6 of 10 right") and a first real prediction due tomorrow, in place of
+> "You're **overconfident**". Not built yet; `CLAUDE.md` governs.
+
 ### 5.2 Acquisition Loop — Identity Cards + Calibration Wrapped (free)
 - **Category identity card:** "Sharp in health · Guesser in money" — a personality-test
   result *with receipts*. Screenshot-native, visually distinct, one-tap share.

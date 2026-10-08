@@ -188,6 +188,14 @@ verdict says so: "These were picked to be tricky, so most people run hot here. Y
 own predictions are the real test." Compare `warmup_completed / warmup_started`
 before and after 2026-10-05.
 
+Decided 2026-10-07, for now (UI_ROADMAP D18): **Day 0 is for calibration**, not for
+an identity verdict. The plan, **not built yet**: the ten drawn from the practice
+tables instead of picked to be tricky; a result that leads with counts and reads
+"these ten", not "you run overconfident"; a bridge to the person's own plans; a
+first prediction due tomorrow, so the first real result lands on Day 1; and a Day-0
+card that shares the counts as an invitation. Until it's built, the Warmup works as
+described above.
+
 ### 2. Log Module
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,
 category. Minimal friction — completable in under 15 seconds.

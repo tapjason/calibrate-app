@@ -152,6 +152,15 @@ Rules dark mode taught (2026-10-07):
   `brand600` and `brand700` are fills: as text on dark `brand50` they fall to 2:1.
 - **White stays white:** switch thumbs and text on a brand fill use `onBrand`, never
   `surface`, which turns dark.
+- **Plain values read the appearance through `useAppearance`** (roadmap step 91),
+  never react-native's `useColorScheme`. React Navigation's theme takes hex strings,
+  so it's the one place a plain value is chosen per appearance, and on web
+  `useColorScheme` lost the first switch after a load: the header and the tab bar
+  kept the old appearance under content that had changed.
+- **Native and browser controls follow the phone too:** no `themeVariant` on the
+  date picker (it was pinned to light while the app was), and `color-scheme:
+  light dark` on the web date input, whose calendar icon was black on the dark
+  surface (step 92).
 
 | Token | Dark hex | on `canvas` | on `surface` |
 |---|---|---|---|
@@ -562,7 +571,9 @@ Every empty state has an SF Symbol, one sentence in `textSecondary`, and a way f
 Built as step 56: `EmptyState` takes a `symbol` (36pt, `textSecondary`, hidden from
 screen readers): `calendar.badge.plus` on Home, `clock.arrow.circlepath` on History,
 `square.and.arrow.up` on Share. Its button is the primary capsule, since where an empty
-state shows it is the screen's only action. History had none until step 69: before
+state shows it is the screen's main action. On Today and History, **Log a prediction**
+repeats the floating "+" (D3, step 82) on purpose: in words, for someone who hasn't
+learned the symbol yet, and only until there's something to list. History had none until step 69: before
 anything resolves it says when the first answer comes ("The first one comes due Tue,
 Oct 13.") and offers **Resolve it now** (one ready), **Resolve the first one** (two),
 **Resolve all N** (three or more, Home's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
@@ -684,11 +695,15 @@ the control reads the chosen category.)
   text, plus a check symbol (not colour alone).
 - **Due date:** chips "Tomorrow", "In a week", "In a month" and **"Pick a date"**,
   which opens the native picker (`@react-native-community/datetimepicker`, §9). Under
-  the chips, the resolved date as a sentence: "Due Friday, 3 Oct."
+  the chips, the resolved date as a sentence: "Due Friday, 3 Oct." One chip is chosen
+  at a time (roadmap step 93): while the picker is open "Pick a date" is the choice,
+  even before the date moves off a preset's. It used to open with "In a week" still
+  chosen beside it.
 - **Starter ideas** (roadmap step 40): only before the first prediction ever, five
   quiet rows under the empty title field ("Not sure where to start? Try one, then
-  make it yours:"), one per category with its icon. A tap fills title and category,
-  never confidence.
+  make it yours:"), one per category with its icon. A tap fills title, category and
+  the due date its words imply (step 94: "replies the same day" is due tomorrow, the
+  "this week" ones in a week), never confidence.
 - **Track record** (roadmap step 19): one `footnote` line in `textSecondary` under
   the confidence control, "Your 60–80% calls in finance: 7 of 12 happened." The
   category's band first, then all categories, and nothing below 10 resolved (the
@@ -816,9 +831,11 @@ the Stats rating and by a Settings row; never shown unasked, since the pitch is
 identity, not statistics. Sections in `headline` with `body` text in
 `textSecondary`: what the score measures, how it's worked out (the five bands and
 their edges, one worked example from `CLAUDE.md`), why it waits, badges (a legend of
-the five emblems with their criteria), honest uncertainty, what doesn't count.
+the five emblems with their criteria), honest uncertainty, your streak, what doesn't
+count (skips, the Warmup and, since step 95, the daily practice).
 Every number in the copy comes from the shared constants or `BADGE_META`, and a test
-holds it to the engine.
+holds it to the engine. A number that starts a sentence is spelled out ("Three a day
+is the daily goal").
 
 ### 7.18 Warmup verdict
 
@@ -952,6 +969,14 @@ from everything real (`CLAUDE.md`, Daily practice).
       its name; decorative pieces carry `aria-hidden` (iOS-only props don't reach
       web); a share card is one `image` whose label says what it shows, tiers in
       words. Steps 41–45, 2026-10-05.
+- [ ] A chosen chip, option, tab or toggle says so on web as well as iOS: spread
+      `chosenProps(kind, chosen)` instead of writing `accessibilityState`, which
+      react-native-web drops (radio and checkbox → `aria-checked`, tab →
+      `aria-selected`, toggle button → `aria-pressed`). Before step 96 every chip in a
+      group read as unchosen on web, the picked one included.
+- [ ] Phrases that read as one hold together at 320pt: ranges through `holdRanges`,
+      counts and labels with no-break spaces ("Goal: 2 of 3", "Next milestone:
+      30 days"). Steps 70, 74 and 95.
 - [ ] Reduce Motion: `reduced` variant renders; haptics still fire.
 - [ ] Reduce Transparency and both ends of the iOS 27 glass slider (ultraclear ↔
       tinted): anything floating on glass stays legible.

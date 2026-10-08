@@ -1,7 +1,7 @@
 # Calibrate — Next Steps an Agent Can Do Alone
 
 **As of:** 2026-10-04 (second pass) · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-122 suites / 1375 tests green (after the UI batches, steps 16–89).
+124 suites / 1386 tests green (after the UI batches, steps 16–96, 2026-10-07).
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
@@ -133,7 +133,8 @@ found the RevenueCat Test Store drift below.
 - **Design decisions** in `docs/design/UI_ROADMAP.md` §2. D1 (Inter), D3 (four
   tabs), D7 (dark mode follows the system), D15 (rating prompt) and D16 (trial
   reminder) were decided and built on 2026-10-07, so every structural call is
-  made before submission.
+  made before submission. D17 (one a day keeps the streak) was built the same
+  day, and D18 decided for now: Day 0 is for calibration, not built yet.
 
 ---
 

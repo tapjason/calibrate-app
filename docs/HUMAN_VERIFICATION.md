@@ -872,6 +872,17 @@ Added 2026-10-07 (retention batch, roadmap steps 87–89; all web-verified):
       the Warmup's (detent haptic on the slider); after the third, the answers
       open at their top; VoiceOver hears each new question.
 
+Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
+
+- [ ] **Appearance switched with the app open** (Control Centre's Dark Mode, or
+      Automatic at sunset): the header and the tab bar change with the content,
+      the first time as well as after.
+- [ ] **Log → Pick a date in dark mode:** the compact date picker and its calendar
+      popover are dark too (it was pinned to light). Only "Pick a date" reads as
+      chosen while it's open.
+- [ ] **VoiceOver on Log, the Warmup and the paywall:** the chosen category, due
+      date, answer and plan are read as selected, and only those.
+
 ---
 
 ## Batch D — Physical device (~45 min)
