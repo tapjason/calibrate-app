@@ -28,6 +28,13 @@ function dayMinimum(): string {
   return STREAK_DAY_MIN === 1 ? 'one prediction' : `${STREAK_DAY_MIN} predictions`;
 }
 
+const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+
+/** "Three" (D17): it starts a sentence, so it's spelled out (roadmap step 95). */
+function dailyGoal(): string {
+  return NUMBER_WORDS[DAILY_GOAL] ?? String(DAILY_GOAL);
+}
+
 export interface ScoringSection {
   title: string;
   paragraphs: string[];
@@ -93,7 +100,7 @@ export function scoringSections(): ScoringSection[] {
       title: 'Your streak',
       paragraphs: [
         `A day counts when you log or answer at least ${dayMinimum()} in it, and your streak is how many days in a row have counted. Today joins it with that; until then, yesterday's streak still stands.`,
-        `${DAILY_GOAL} a day is the daily goal. It fills today's dots, and it's there for the habit: the streak doesn't need it.`,
+        `${dailyGoal()} a day is the daily goal. It fills today's dots, and it's there for the habit: the streak doesn't need it.`,
         `Every ${REST_DAY_EVERY} days that count save a rest day, up to ${REST_DAYS_MAX}. A day that doesn't count uses one, and the streak carries on without adding that day; with none saved, it ends.`,
         `The milestones are ${checkpointList()} days, then every year after that. Today names the day you reach one.`,
         "The streak is about the habit, not the score: it doesn't change your calibration, and nothing is lost when it ends.",
@@ -102,7 +109,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: "What doesn't count",
       paragraphs: [
-        '"Can\'t tell / doesn\'t apply" answers, which stay out of the score, the streak and your recaps. And the Warmup, which is practice and kept apart from your real record.',
+        '"Can\'t tell / doesn\'t apply" answers, which stay out of the score, the streak and your recaps. And the Warmup and the daily practice, which are practice and kept apart from your real record.',
       ],
     },
   ];

@@ -38,7 +38,8 @@ describe('streakCopy', () => {
       streakCopy(status({ streak: 13, today: 1, todayCounts: true, nextCheckpoint: 30 })),
     ).toMatchObject({
       headline: '13-day streak',
-      detail: 'Today counts. Goal: 1 of 3',
+      // No-break spaces inside the goal, so 320pt can't split "2 of / 3" (step 95).
+      detail: 'Today counts. Goal: 1 of 3',
       filled: 1,
       checkpoint: false,
     });

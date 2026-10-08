@@ -35,7 +35,9 @@ describe('scoringCopy (roadmap step 29)', () => {
   it('says what a streak day takes, and the goal beside it', () => {
     expect(STREAK_DAY_MIN).toBe(1);
     expect(allText()).toContain('A day counts when you log or answer at least one prediction in it');
-    expect(allText()).toContain(`${DAILY_GOAL} a day is the daily goal.`);
+    expect(DAILY_GOAL).toBe(3);
+    // Spelled out: it starts the sentence (roadmap step 95).
+    expect(allText()).toContain('Three a day is the daily goal.');
     expect(allText()).toContain("the streak doesn't need it");
   });
 
@@ -53,6 +55,13 @@ describe('scoringCopy (roadmap step 29)', () => {
       `The milestones are ${STREAK_CHECKPOINTS.slice(0, -1).join(', ')} and ${STREAK_CHECKPOINTS[STREAK_CHECKPOINTS.length - 1]} days, then every year after that.`,
     );
     expect(allText()).toContain('The milestones are 7, 30, 100 and 365 days');
+  });
+
+  // CLAUDE.md §9: practice stays out of the score like the Warmup (step 95).
+  it('names the daily practice among what does not count', () => {
+    expect(allText()).toContain(
+      'And the Warmup and the daily practice, which are practice and kept apart from your real record.',
+    );
   });
 
   // CLAUDE.md's bucket convention: lower bound inclusive, top band closed.

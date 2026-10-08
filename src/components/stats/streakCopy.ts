@@ -55,6 +55,11 @@ function nextLine(next: number): string {
   return `Next\u00A0milestone: ${next}\u00A0days`;
 }
 
+/** "Goal: 2 of 3", held together with no-break spaces like nextLine. */
+function goalLine(filled: number): string {
+  return `Goal:\u00A0${filled}\u00A0of\u00A0${DAILY_GOAL}`;
+}
+
 /**
  * The card Resolve shows when an answer reached a checkpoint. The number is
  * the card's figure, so the title is the name and the body stays one short
@@ -117,8 +122,10 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
   } else if (eve) {
     detail = `Today counts. Tomorrow can make it ${reaches}`;
   } else if (toGoal > 0) {
-    // Short enough for one line at 375pt; the pips show the same count.
-    detail = `Today counts. Goal: ${filled} of ${DAILY_GOAL}`;
+    // Short enough for one line at 375pt; the pips show the same count. At
+    // 320pt it wraps after "Today counts.", never inside "Goal: 2 of 3"
+    // (roadmap step 95).
+    detail = `Today counts. ${goalLine(filled)}`;
   } else {
     detail = `Today's goal met. ${nextLine(nextCheckpoint)}`;
   }

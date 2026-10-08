@@ -28,9 +28,11 @@ const SAMPLES: { label: string; milestone: Milestone }[] = [
   },
 ];
 
+// Nothing done yet today: since D17 one prediction counts, so a day with one
+// done can't read "One prediction today makes it 10" (step 95).
 const STREAK: StreakStatus = {
   streak: 9,
-  today: 1,
+  today: 0,
   todayCounts: false,
   checkpoint: null,
   nextCheckpoint: 30,
