@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { track } from '@/analytics/track';
 import { ShareCardPanel } from '@/components/share/ShareCardPanel';
 import { WrappedPanel } from '@/components/share/WrappedPanel';
+import { chosenProps } from '@/components/ui/chosen';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, type } from '@/constants/theme';
 
@@ -67,7 +68,7 @@ export default function ShareScreen() {
               key={t.key}
               testID={`share-tab-${t.key}`}
               accessibilityRole="tab"
-              accessibilityState={{ selected: tab === t.key }}
+              {...chosenProps('tab', tab === t.key)}
               onPress={() => setTab(t.key)}
               style={[styles.tab, tab === t.key && styles.tabActive]}
             >

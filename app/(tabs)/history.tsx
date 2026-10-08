@@ -12,6 +12,7 @@ import {
 } from '@/components/prediction/historyFilter';
 import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { chosenProps } from '@/components/ui/chosen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { useLocalDay } from '@/components/ui/useLocalDay';
@@ -89,7 +90,7 @@ export default function HistoryScreen() {
               key={f}
               onPress={() => setFilter(f)}
               accessibilityRole="button"
-              accessibilityState={{ selected: filter === f }}
+              {...chosenProps('toggle', filter === f)}
               // 36pt chip + 4pt slop each side = the 44pt minimum target.
               hitSlop={{ top: 4, bottom: 4 }}
               style={[styles.chip, filter === f && styles.chipActive]}

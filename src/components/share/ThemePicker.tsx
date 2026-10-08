@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { chosenProps } from '@/components/ui/chosen';
 import { CARD_THEMES, resolveTheme } from '@/constants/cardThemes';
 import { colors, type } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -39,7 +40,7 @@ export function ThemePicker({ onUpgrade }: { onUpgrade?: () => void } = {}) {
               accessibilityLabel={
                 locked ? `${theme.name} theme (Plus)` : `${theme.name} theme`
               }
-              accessibilityState={{ selected }}
+              {...chosenProps('toggle', selected)}
               onPress={() => {
                 if (locked) onUpgrade?.();
                 else void setCardThemeId(theme.id);

@@ -9,6 +9,7 @@ import { noonInDays, type LogAgainDraft } from '@/components/prediction/logAgain
 import { StarterIdeas } from '@/components/prediction/StarterIdeas';
 import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
+import { chosenProps } from '@/components/ui/chosen';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
@@ -260,7 +261,7 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
               testID={`category-${c}`}
               accessibilityRole="radio"
               accessibilityLabel={`Category: ${c}`}
-              accessibilityState={{ selected: category === c }}
+              {...chosenProps('radio', category === c)}
               style={[styles.chip, styles.chipWithIcon, category === c && styles.chipActive]}
             >
               <CategoryIcon
@@ -311,7 +312,7 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
               testID={`due-${preset.id}`}
               accessibilityRole="radio"
               accessibilityLabel={`Due ${preset.label.toLowerCase()}`}
-              accessibilityState={{ selected: dueDate === preset.iso }}
+              {...chosenProps('radio', dueDate === preset.iso)}
               style={[
                 styles.chip,
                 dueDate === preset.iso && styles.chipActive,
@@ -335,7 +336,7 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
             testID="due-pick"
             accessibilityRole="radio"
             accessibilityLabel="Pick a date"
-            accessibilityState={{ selected: isCustomDate || picking }}
+            {...chosenProps('radio', isCustomDate || picking)}
             style={[styles.chip, (isCustomDate || picking) && styles.chipActive]}
           >
             <Text

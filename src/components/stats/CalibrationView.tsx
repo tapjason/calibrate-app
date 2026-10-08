@@ -139,6 +139,8 @@ export function CalibrationView({
             onPress={() => setShowTable((v) => !v)}
             accessibilityRole="button"
             accessibilityState={{ expanded: showTable }}
+            // The cross-platform prop as well: react-native-web maps this one (step 96).
+            aria-expanded={showTable}
             hitSlop={8}
             testID="chart-table-toggle"
             style={styles.tableToggle}

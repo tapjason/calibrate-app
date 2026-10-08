@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { chosenProps } from '@/components/ui/chosen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { track } from '@/analytics/track';
@@ -138,7 +139,7 @@ export function ShareCardPanel({
                 key={f}
                 onPress={() => setFormat(f)}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: format === f }}
+                {...chosenProps('radio', format === f)}
                 testID={`share-format-${f}`}
                 style={[styles.segment, format === f && styles.segmentOn]}
               >
@@ -160,7 +161,7 @@ export function ShareCardPanel({
                       key={c.category}
                       onPress={() => toggleCategory(c.category)}
                       accessibilityRole="checkbox"
-                      accessibilityState={{ checked: on }}
+                      {...chosenProps('checkbox', on)}
                       accessibilityLabel={`Show ${c.category} on the card`}
                       testID={`share-toggle-${c.category}`}
                       style={[styles.chip, on && styles.chipOn]}

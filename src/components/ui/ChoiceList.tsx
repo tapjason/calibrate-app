@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { chosenProps } from '@/components/ui/chosen';
 import { colors, type } from '@/constants/theme';
 
 interface ChoiceListProps {
@@ -25,7 +26,7 @@ export function ChoiceList({ label, options, selected, onSelect, idPrefix }: Cho
           key={option}
           testID={`${idPrefix}-${i}`}
           accessibilityRole="radio"
-          accessibilityState={{ selected: selected === i }}
+          {...chosenProps('radio', selected === i)}
           onPress={() => onSelect(i as 0 | 1)}
           style={[styles.option, selected === i && styles.optionActive]}
         >

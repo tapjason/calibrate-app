@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { chosenProps } from '@/components/ui/chosen';
 import { colors, radius, space, type } from '@/constants/theme';
 import { PRACTICE_REMINDER_MOMENTS, reminderTimeLabel } from '@/notifications/practiceReminder';
 import type { PracticeReminderTime } from '@/store/settingsStore';
@@ -76,7 +77,7 @@ function Chip({
       disabled={disabled}
       accessibilityRole="radio"
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
-      accessibilityState={{ selected: active, disabled: !!disabled }}
+      {...chosenProps('radio', active, !!disabled)}
       style={({ pressed }) => [
         styles.chip,
         half && styles.half,

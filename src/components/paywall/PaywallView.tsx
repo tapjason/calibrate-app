@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { Button } from '@/components/ui/Button';
+import { chosenProps } from '@/components/ui/chosen';
 import { CLOSE_BUTTON_SIZE, CloseButton } from '@/components/ui/CloseButton';
 import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/constants/app';
@@ -263,7 +264,7 @@ function PlanOption({
     <Pressable
       testID={`plan-${plan.plan}`}
       accessibilityRole="radio"
-      accessibilityState={{ selected, disabled }}
+      {...chosenProps('radio', selected, disabled)}
       accessibilityLabel={[
         `${PLAN_LABELS[plan.plan]}, ${priceLine(plan)}.`,
         equivalent,
