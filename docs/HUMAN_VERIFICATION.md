@@ -846,6 +846,11 @@ Added 2026-09-29 (polish pass):
 - [ ] **Warmup (fresh install):** branded first screen, radio-style answers,
       ten-segment progress; on the verdict, "Predict something about tomorrow" and "Share my
       result" sit above the answer key.
+- [ ] **Warmup, Day 0 (D18):** the ten read as ordinary comparisons (no trick
+      questions); the verdict title reads "On these ten, you were …" with
+      "You said N% on average. K of 10 were right." under it; the thesis line sits
+      above the button at 320pt without splitting; a first Log opens on Tomorrow;
+      the Day-0 card reads "K of 10 right" and "How sure are you?".
 - [ ] **Settings switches** are indigo when on (not green).
 - [ ] **Share → Shape:** "Post · 3:4" and "Story · 9:16" reshape the card, with a
       large emblem and the text centred. Export each and post the Story to an
