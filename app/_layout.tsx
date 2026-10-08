@@ -1,11 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
 import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
+import { useAppearance } from '@/components/ui/useAppearance';
 import { loadFonts } from '@/constants/fonts';
 import { colors, palettes, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
@@ -53,7 +54,8 @@ function navigationTheme(scheme: 'light' | 'dark'): Theme {
 }
 
 export default function RootLayout() {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  // Not useColorScheme: on web it missed the first switch (step 91).
+  const scheme = useAppearance();
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // True once the gate is open and any first-run redirect is made, so the
