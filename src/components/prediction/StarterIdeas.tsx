@@ -7,19 +7,25 @@ import type { Category } from '@/types';
 export interface StarterIdea {
   title: string;
   category: Category;
+  /**
+   * The Log form's due chip the title implies (roadmap step 94): the reply
+   * comes the same day, so it's due tomorrow evening, not in a week.
+   */
+  due: 'tomorrow' | 'week';
 }
 
 /**
  * One per category, each checkable within a week and none naming a weekday or
- * a date (the due date carries that). Ordinary on purpose: the point is to
- * show what a prediction looks like, not to suggest what to want.
+ * a date (the due date carries that, and picking one sets it). Ordinary on
+ * purpose: the point is to show what a prediction looks like, not to suggest
+ * what to want.
  */
 export const STARTER_IDEAS: readonly StarterIdea[] = [
-  { title: "I'll finish my top task by the end of the week", category: 'work' },
-  { title: "I'll get to the gym twice this week", category: 'health' },
-  { title: "I'll stay under budget this week", category: 'finance' },
-  { title: 'A friend I message today replies the same day', category: 'social' },
-  { title: "I'll read before bed three nights this week", category: 'personal' },
+  { title: "I'll finish my top task by the end of the week", category: 'work', due: 'week' },
+  { title: "I'll get to the gym twice this week", category: 'health', due: 'week' },
+  { title: "I'll stay under budget this week", category: 'finance', due: 'week' },
+  { title: 'A friend I message today replies the same day', category: 'social', due: 'tomorrow' },
+  { title: "I'll read before bed three nights this week", category: 'personal', due: 'week' },
 ];
 
 interface StarterIdeasProps {
@@ -29,7 +35,7 @@ interface StarterIdeasProps {
 /**
  * For a first prediction only (roadmap step 40): a blank title field is the
  * hardest part of the first log, and the Warmup's "Log my first prediction"
- * lands right on it. Tapping one fills the title and category; the
+ * lands right on it. Tapping one fills the title, category and due date; the
  * confidence is still the user's to set, which is the part that matters.
  */
 export function StarterIdeas({ onPick }: StarterIdeasProps) {

@@ -209,6 +209,9 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
           onPick={(idea) => {
             setTitle(idea.title);
             setCategory(idea.category);
+            const preset = presets.find((p) => p.id === idea.due);
+            if (preset) setDueDate(preset.iso);
+            setPicking(false);
           }}
         />
       )}

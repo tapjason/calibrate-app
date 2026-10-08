@@ -505,6 +505,21 @@ describe('LogPredictionForm — starter ideas (roadmap step 40)', () => {
     expect(screen.queryByTestId('starter-ideas')).toBeNull();
   });
 
+  // Roadmap step 94: a reply "the same day" was due in a week.
+  it('sets the due date its title implies', () => {
+    render(<LogPredictionForm />);
+    fireEvent.press(screen.getByTestId('due-month'));
+    fireEvent.press(screen.getByTestId('starter-social'));
+    expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('sets a week for the ones that say "this week"', () => {
+    render(<LogPredictionForm />);
+    fireEvent.press(screen.getByTestId('due-tomorrow'));
+    fireEvent.press(screen.getByTestId('starter-health'));
+    expect(screen.getByTestId('due-week').props.accessibilityState.selected).toBe(true);
+  });
+
   it('never shows them to someone who has logged before', () => {
     usePredictionStore.setState({
       pending: [
