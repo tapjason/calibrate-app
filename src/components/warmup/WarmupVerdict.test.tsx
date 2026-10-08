@@ -68,6 +68,14 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.getByTestId('calibration-chart')).toBeTruthy();
   });
 
+  // Roadmap D18 (3).
+  it('bridges to the person\'s own plans', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/thesis in 34 days took 56/);
+    expect(screen.getByText('Predict something about tomorrow')).toBeTruthy();
+  });
+
   // CLAUDE.md: the Warmup delivers the aha, but it is not the user's real
   // calibration rating — the screen has to say so.
   it('marks the score as a warm-up, not a calibration rating', () => {

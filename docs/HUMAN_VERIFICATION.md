@@ -844,7 +844,7 @@ Added 2026-09-29 (polish pass):
 - [ ] **This week card:** a big "N resolved" with "N% came in" under it; prediction
       titles appear only after turning on "Show prediction titles on the card".
 - [ ] **Warmup (fresh install):** branded first screen, radio-style answers,
-      ten-segment progress; on the verdict, "Log my first prediction" and "Share my
+      ten-segment progress; on the verdict, "Predict something about tomorrow" and "Share my
       result" sit above the answer key.
 - [ ] **Settings switches** are indigo when on (not green).
 - [ ] **Share → Shape:** "Post · 3:4" and "Story · 9:16" reshape the card, with a

@@ -69,6 +69,14 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         </Text>
       )}
 
+      {/* The bridge (roadmap D18 (3)): trivia is the warm-up, plans are where
+          overconfidence lives (Buehler, Griffin & Ross 1994: 33.9 days
+          predicted, 55.5 taken). */}
+      <Text style={styles.advice} testID="warmup-bridge">
+        Trivia is the warm-up. People are most overconfident about their own plans:
+        students who expected to finish their thesis in 34 days took 56.
+      </Text>
+
       <Text style={styles.disclaimer}>
         This is a warm-up score, not your calibration rating. That one unlocks
         after {MIN_N_OVERALL} resolved predictions of your own.
@@ -78,7 +86,7 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
           things to do next shouldn't sit below it. */}
       <View style={styles.actions}>
         <Button
-          label="Log my first prediction"
+          label="Predict something about tomorrow"
           testID="warmup-continue"
           onPress={onContinue}
         />

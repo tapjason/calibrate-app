@@ -192,8 +192,8 @@ overconfident verdict says ten is a small sample and trivia says little about pl
 The result (step 98) leads with counts and reads these questions, not the person:
 "You said 78% on average. 6 of 10 were right." under "On these ten, you were
 overconfident". The first prediction defaults to Tomorrow, with starter ideas that
-resolve by then (step 99). **Not built yet:** a bridge to the person's own plans and
-a Day-0 card that shares the counts as an invitation.
+resolve by then (step 99). A bridge to the person's own plans sits above the button, now
+"Predict something about tomorrow" (step 100). **Not built yet:** a Day-0 card that shares the counts as an invitation.
 
 ### 2. Log Module
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,
