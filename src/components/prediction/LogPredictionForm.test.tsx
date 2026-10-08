@@ -388,7 +388,7 @@ describe('LogPredictionForm due date', () => {
       ['due-tomorrow', 'due-week', 'due-month', 'due-pick'].filter(
         (id) => screen.getByTestId(id).props.accessibilityState.selected,
       );
-    expect(chosen()).toEqual(['due-week']);
+    expect(chosen()).toEqual(['due-tomorrow']);
     fireEvent.press(screen.getByTestId('due-pick'));
     expect(chosen()).toEqual(['due-pick']);
     fireEvent.press(screen.getByTestId('due-month'));
@@ -493,7 +493,7 @@ describe('LogPredictionForm — starter ideas (roadmap step 40)', () => {
     render(<LogPredictionForm />);
     fireEvent.press(screen.getByTestId('starter-health'));
     expect(screen.getByTestId('title-field').props.value).toBe(
-      "I'll get to the gym twice this week",
+      "I'll get outside for a walk tomorrow",
     );
     expect(screen.getByTestId('category-health').props.accessibilityState).toEqual({
       selected: true,
@@ -513,11 +513,10 @@ describe('LogPredictionForm — starter ideas (roadmap step 40)', () => {
     expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
   });
 
-  it('sets a week for the ones that say "this week"', () => {
+  // D18 (4): the first prediction's result lands on Day 1.
+  it('defaults a first prediction to tomorrow', () => {
     render(<LogPredictionForm />);
-    fireEvent.press(screen.getByTestId('due-tomorrow'));
-    fireEvent.press(screen.getByTestId('starter-health'));
-    expect(screen.getByTestId('due-week').props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
   });
 
   it('never shows them to someone who has logged before', () => {
