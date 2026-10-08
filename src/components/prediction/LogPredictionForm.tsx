@@ -63,6 +63,9 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   const isCustomDate = !presets.some((p) => p.iso === dueDate);
+  // One chip chosen at a time (roadmap step 93): while the picker is open,
+  // "Pick a date" is the choice, even before the date moves off a preset's.
+  const presetChosen = (iso: string) => !picking && dueDate === iso;
   // A form left open (the Log tab, before D3; a sheet now) kept yesterday's
   // presets after midnight, and "Tomorrow" meant today. When the day turns, rebuild them and
   // keep the chosen chip chosen; a picked date stays as picked.
@@ -312,16 +315,16 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
               testID={`due-${preset.id}`}
               accessibilityRole="radio"
               accessibilityLabel={`Due ${preset.label.toLowerCase()}`}
-              {...chosenProps('radio', dueDate === preset.iso)}
+              {...chosenProps('radio', presetChosen(preset.iso))}
               style={[
                 styles.chip,
-                dueDate === preset.iso && styles.chipActive,
+                presetChosen(preset.iso) && styles.chipActive,
               ]}
             >
               <Text
                 style={[
                   styles.chipText,
-                  dueDate === preset.iso && styles.chipTextActive,
+                  presetChosen(preset.iso) && styles.chipTextActive,
                 ]}
               >
                 {preset.label}

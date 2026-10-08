@@ -380,6 +380,21 @@ describe('LogPredictionForm due date', () => {
     expect(screen.queryByTestId('due-picker')).toBeNull();
   });
 
+  // Roadmap step 93: "Pick a date" opened with the week's date still in it,
+  // and both chips read as chosen.
+  it('chooses one chip at a time', () => {
+    render(<LogPredictionForm />);
+    const chosen = () =>
+      ['due-tomorrow', 'due-week', 'due-month', 'due-pick'].filter(
+        (id) => screen.getByTestId(id).props.accessibilityState.selected,
+      );
+    expect(chosen()).toEqual(['due-week']);
+    fireEvent.press(screen.getByTestId('due-pick'));
+    expect(chosen()).toEqual(['due-pick']);
+    fireEvent.press(screen.getByTestId('due-month'));
+    expect(chosen()).toEqual(['due-month']);
+  });
+
   // The tab stays mounted overnight: "Tomorrow" has to follow the calendar.
   it('moves the presets on at midnight, keeping the chosen one chosen', () => {
     jest.useFakeTimers({ now: new Date(2026, 9, 6, 23, 59, 0) });
