@@ -39,3 +39,19 @@ export const TERMS_OF_USE_URL =
  * this set before submission; `docs/HUMAN_VERIFICATION.md` Batch E tracks it.
  */
 export const PRIVACY_POLICY_URL: string | null = null;
+
+/**
+ * The app's numeric App Store id ("6740000000"), once App Store Connect has a
+ * record for it, which needs the developer account. **Null until then**: a
+ * share carries no link rather than one that goes nowhere.
+ * `GROWTH_AND_MONETIZATION.md` §0, step 1.
+ */
+export const APP_STORE_ID: string | null = null;
+
+/**
+ * The provider token (`pt=`) App Store Connect issues with the first campaign
+ * link (Analytics → Acquisition → Campaigns). It's the same for every
+ * campaign. Null until then: shares link to the product page without a
+ * campaign, so App Store Connect can't say which share brought an install.
+ */
+export const APP_STORE_PROVIDER_TOKEN: string | null = null;

@@ -137,8 +137,16 @@ const BAND_LOWS = [0, 20, 40, 60, 80] as const;
  *   My calibration · Calibrate
  *   Sharp in health · Guesser in finance
  *   ⬜🟩🟩🟧🟧 score 81
+ *   https://apps.apple.com/app/apple-store/id…?pt=…&ct=share-card-text&mt=8
+ *
+ * The last line is the App Store link, once the app has one (`@/share/link`,
+ * GROWTH §0 step 1): the name alone doesn't find the app in the store.
  */
-export function shareText(card: ShareCard, buckets: readonly BucketStat[]): string {
+export function shareText(
+  card: ShareCard,
+  buckets: readonly BucketStat[],
+  link: string | null = null,
+): string {
   const lines = [`My calibration · ${APP_NAME}`, shareHeadline(card)];
   if (card.rating !== null) {
     const byLow = new Map(buckets.map((b) => [b.low, b.direction]));
@@ -150,6 +158,7 @@ export function shareText(card: ShareCard, buckets: readonly BucketStat[]): stri
   } else {
     lines.push(`${card.total_resolved} predictions resolved so far`);
   }
+  if (link) lines.push(link);
   return lines.join('\n');
 }
 

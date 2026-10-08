@@ -9,6 +9,7 @@ import { track } from '@/analytics/track';
 import { resolveTheme } from '@/constants/cardThemes';
 import { colors, type } from '@/constants/theme';
 import { shareCard, shareText, type ShareOutcome } from '@/share/export';
+import { appStoreLink, shareCampaign } from '@/share/link';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
@@ -104,7 +105,9 @@ export function ShareCardPanel({
   const onShareText = async () => {
     if (!card) return;
     setMessage(null);
-    const outcome = await shareText(cardText(card, buckets));
+    // The text share can carry the App Store link; the image can't (GROWTH §0).
+    const link = appStoreLink(shareCampaign('card', 'text'));
+    const outcome = await shareText(cardText(card, buckets, link));
     setMessage(outcome === 'shared' ? null : MESSAGES[outcome]);
     if (outcome === 'shared') void track('share_completed', { surface: 'card' });
   };

@@ -194,6 +194,15 @@ describe('shareText', () => {
     const text = shareText(card(81), []);
     expect(text.split('\n')).toHaveLength(3);
   });
+
+  // GROWTH §0 step 1: the name alone doesn't find the app in the store.
+  it('ends on the App Store link when there is one', () => {
+    const link = 'https://apps.apple.com/app/apple-store/id1?pt=2&ct=share-card-text&mt=8';
+    const text = shareText(card(81), [], link);
+    expect(text.split('\n')).toHaveLength(4);
+    expect(text.endsWith(`\n${link}`)).toBe(true);
+    expect(shareText(card(81), [], null).split('\n')).toHaveLength(3);
+  });
 });
 
 describe('shareLines', () => {
