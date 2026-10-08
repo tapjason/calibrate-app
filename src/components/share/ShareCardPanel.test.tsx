@@ -179,8 +179,8 @@ describe('ShareCardPanel — Day 0', () => {
     render(<ShareCardPanel />);
 
     expect(screen.getByTestId('warmup-card')).toBeTruthy();
-    expect(screen.getByText('I run hot')).toBeTruthy();
-    expect(screen.getByText('77% sure, 50% right')).toBeTruthy();
+    expect(screen.getByText('5 of 10 right')).toBeTruthy();
+    expect(screen.getByText('I was 77% sure. How sure are you?')).toBeTruthy();
     expect(screen.queryByTestId('share-empty')).toBeNull();
   });
 
