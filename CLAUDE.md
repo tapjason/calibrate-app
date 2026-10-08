@@ -189,9 +189,10 @@ an identity verdict. Built 2026-10-08 (step 97): the ten are drawn from the prac
 tables (`warmupQuestions`, the same ten for everyone), not picked to be tricky, so
 the "picked to be tricky" note and the card's "tricky questions" are gone; an
 overconfident verdict says ten is a small sample and trivia says little about plans.
-**Not built yet:** a result that leads with counts and reads "these ten", not "you
-run overconfident"; a bridge to the person's own plans; a first prediction due
-tomorrow; and a Day-0 card that shares the counts as an invitation.
+The result (step 98) leads with counts and reads these questions, not the person:
+"You said 78% on average. 6 of 10 were right." under "On these ten, you were
+overconfident". **Not built yet:** a bridge to the person's own plans; a first
+prediction due tomorrow; and a Day-0 card that shares the counts as an invitation.
 
 ### 2. Log Module
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,

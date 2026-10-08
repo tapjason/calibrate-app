@@ -61,9 +61,9 @@ describe('WarmupVerdictScreen', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
 
-    expect(screen.getByText('You run overconfident')).toBeTruthy();
+    expect(screen.getByText(/you were overconfident/)).toBeTruthy();
     expect(
-      screen.getByText('You were 90% confident on average, and right 50% of the time.'),
+      screen.getByText('You said 90% on average. 1 of 2 were right.'),
     ).toBeTruthy();
     expect(screen.getByTestId('calibration-chart')).toBeTruthy();
   });
