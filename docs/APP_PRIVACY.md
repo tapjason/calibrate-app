@@ -101,6 +101,12 @@ relay address — the app treats it as any other email).
 - Users can turn it off: Settings → "Usage stats" (default on). Renamed from
   "Anonymous usage stats" on 2026-10-04: the events are linked to the account,
   so "anonymous" contradicted this sheet.
+- **Share links change nothing here** (2026-10-08, `src/share/link.ts`). A text
+  share can end on an App Store campaign link, whose only parameters are the
+  developer's provider token and a campaign name such as `share-card-text`:
+  the same for everyone, with no user or install identifier. Apple counts the
+  resulting downloads in App Store Connect, in aggregate, from five up. The app
+  sends nothing and receives nothing.
 
 The full list of events is 16 items and fits on a screen; the privacy policy can
 reproduce it verbatim if that reads better than a summary.

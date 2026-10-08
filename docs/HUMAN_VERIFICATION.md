@@ -435,7 +435,9 @@ $29.90, a trial on monthly). The App Store app half (steps below) waits on B0.
 
 ### B2. App Store Connect
 
-1. Create the same three IAP products with the same identifiers and prices.
+1. Create the same three IAP products with the same identifiers and prices
+   (decide P1 first, `GROWTH_AND_MONETIZATION.md` §4: the recommendation is
+   $34.99/yr and $79.99 lifetime; the store and RevenueCat must match).
 2. **Free trial on annual: one month.** Decided 2026-09-25 — no longer a
    judgment call. Set it as an *introductory offer* of type "free trial",
    duration **1 month**, on `calibrate_plus_annual` only.
@@ -453,9 +455,17 @@ $29.90, a trial on monthly). The App Store app half (steps below) waits on B0.
    will read "1 month free, then $29.99" with no code change.
 3. Create a sandbox tester account (Users and Access → Sandbox Testers) for
    Batch D.
+4. **Share links** (`GROWTH_AND_MONETIZATION.md` §0, step 1). Copy the app's
+   numeric Apple ID from App Information into `APP_STORE_ID` in
+   `src/constants/app.ts`. Then, once the app has analytics data, create one
+   campaign link (Analytics → Acquisition → Campaigns → +, any name): the
+   `pt=` number in it is the provider token, the same for every campaign.
+   Put it in `APP_STORE_PROVIDER_TOKEN`. The app builds the `share-*`
+   campaigns itself; nothing else to create.
 
 **Report:** confirmation that the annual product shows a 1-month free trial
-introductory offer, and that all three products are "Ready to Submit".
+introductory offer, and that all three products are "Ready to Submit"; the
+App Store id and provider token, once each exists.
 
 ### B3. Deploy and wire the RevenueCat webhook
 

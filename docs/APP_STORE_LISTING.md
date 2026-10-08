@@ -1,6 +1,6 @@
 # Calibrate — App Store Listing (draft)
 
-**As of:** 2026-10-04 (age rating re-done for Apple's 2026 questionnaire) · Drafted from `CLAUDE.md` and the shipped code. Every
+**As of:** 2026-10-08 (daily practice and "no betting" added to the description; age rating re-done for Apple's 2026 questionnaire on 2026-10-04) · Drafted from `CLAUDE.md` and the shipped code. Every
 feature claimed below exists in `master`; ✨ Refine is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
@@ -46,6 +46,12 @@ The rest of this document says "Calibrate". Substitute as needed.
 **Keywords** [100 bytes, comma-separated, no spaces, no words already in the name]
 
 > forecast,prediction,confidence,journal,decision,habit,goal,self,insight,bias,overconfidence,tracker
+
+Since prediction markets went mainstream in 2026, "prediction" brings betting
+traffic too (`GROWTH_AND_MONETIZATION.md` §2.6). Keep it, since it's what people
+call the thing they log, but the description now says "No money, no odds, no
+betting" so the wrong visitor leaves before installing, not after. Revisit with
+App Store Connect's search-term data once there is some.
 
 **Primary category:** Productivity · **Secondary:** Lifestyle
 
@@ -96,6 +102,11 @@ leaves that judgement to the developer), so getting it right first time matters.
 > ten quick estimation questions, and a verdict on how well your confidence
 > matches your accuracy.
 >
+> **THREE QUESTIONS A DAY**
+> On days when nothing comes due, there's daily practice: three quick
+> either-or questions, the same for everyone that day, each with how sure you
+> are. Practice stays apart from your real score.
+>
 > **SHARP IN HEALTH, GUESSER IN MONEY**
 > Calibration isn't one number. Calibrate scores you separately for work, health,
 > finance, social life, and personal goals, and gives each a badge from Guesser
@@ -108,6 +119,7 @@ leaves that judgement to the developer), so getting it right first time matters.
 > mean something.
 > • An integrity bonus rewards the honest middle (35–65%), where the most useful
 > data lives.
+> • No money, no odds, no betting. Just your own track record.
 >
 > **SHARE YOUR RESULTS**
 > Turn your per-category results into a card, or get a weekly and yearly recap

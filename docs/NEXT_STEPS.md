@@ -62,7 +62,8 @@ found the RevenueCat Test Store drift below.
 ## Suggested order for the next iterations
 
 1. Fix the Test Store prices (below), then your calls.
-2. Your calls below: age assurance, the name, Pages for the privacy policy.
+2. Your calls below: age assurance, the name, pricing (P1), Pages for the
+   privacy policy.
    Then **i** if you pick (a).
 3. The $99 account → **g** → first EAS development build → Batch C/D on the
    iPhone → TestFlight.
@@ -100,12 +101,22 @@ found the RevenueCat Test Store drift below.
   an established health brand (and this app has a *health* category).
   `APP_STORE_LISTING.md` proposes alternatives; the choice and any trademark
   check are yours.
+  Since 2026-10-08 it also blocks the share loop: a share's App Store link
+  needs the app's App Store id, which needs the record, which needs the name
+  (`GROWTH_AND_MONETIZATION.md` §0, step 1).
+- **Pricing (P1).** The 2026 re-check puts $29.99/yr under the median annual
+  price ($34.80 across apps, $39.94 in Health & Fitness) and $59.99 lifetime at
+  only 2× annual. Recommendation: $34.99/yr and $79.99 lifetime, monthly
+  unchanged (`GROWTH_AND_MONETIZATION.md` §4). Decide before the App Store
+  Connect products are created; afterwards a change is a price change.
 - **Anonymous funnel numbers.** Analytics only flushes for signed-in users, so
   the validation checkpoint's aha rate (`warmup_completed / warmup_started`)
   measures the signed-in cohort, which reads high. Counting guests would need an
   anonymous per-install id for a small allowlist of events, and that
   contradicts `APP_PRIVACY.md`'s "no data is collected from users who never
-  sign in". Until you decide, read the numbers as signed-in only.
+  sign in". Until you decide, read the numbers as signed-in only. The share
+  gate doesn't wait on this: App Store campaign links count every install from
+  a share, signed in or not (GROWTH §7).
 - **Email sign-up for strangers.** Supabase's built-in sender only delivers to
   members of your Supabase organization, at 2 messages an hour (re-checked
   2026-10-04). "Confirm email" is on for testing (decided 2026-10-01); before

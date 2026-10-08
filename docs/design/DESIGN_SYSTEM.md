@@ -494,6 +494,10 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   ⬜🟩🟩🟧🟧  score 81
   calibrate.app
   ```
+  The last line is the App Store campaign link (`@/share/link`, built 2026-10-08) once
+  `APP_STORE_ID` is set; there's no domain yet, so until then the share ends on the
+  score. An image share can't carry a link (the share sheet gets a bare PNG), so the
+  name in the card's footer is its only way back to the store.
 - **Day-0 card:** the Warmup verdict ("I run hot: 77% sure, 50% right") so Share is
   never empty.
 - Gradients in cards are **SVG gradients** (they rasterise with `react-native-view-shot`);

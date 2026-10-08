@@ -247,6 +247,10 @@ See the authoritative section above.
   one-tap share, with a subtle "get your own" hook.
 - **Calibration Wrapped** — weekly and yearly recap of the user's forecasting story.
 - Exports a PNG the OS share sheet accepts.
+- A text share ends on the App Store link with a campaign token (`ct=share-card-text`)
+  once `APP_STORE_ID` is set (decided 2026-10-08, `GROWTH_AND_MONETIZATION.md` §0
+  step 1), so App Store Connect counts installs per share surface with no SDK and no
+  identifier. That count is the share-loop gate (GROWTH §7).
 
 Nothing that produces a shareable artifact is ever paywalled.
 
@@ -312,6 +316,11 @@ Plus sells insight, depth, and cosmetics only.
 | Card/badge cosmetics | — | ✅ |
 
 Pricing intent: ~$4.99/mo, ~$29.99/yr (annual anchored, shown first), optional lifetime.
+Re-checked against the 2026 market on 2026-10-08: $29.99 sits below the median annual
+price ($34.80 across apps, $39.94 in Health & Fitness), and GROWTH §4 recommends
+**$34.99/yr and $79.99 lifetime, monthly unchanged** (P1, the owner's call, not
+applied). No paid installs while revenue per install is far below what one costs
+(GROWTH §2.4).
 
 **Trial: one free month on the annual plan** (decided 2026-09-25), auto-renewing
 into the paid year unless cancelled. A calendar month sits inside the measured
@@ -323,9 +332,11 @@ days" — a calendar month is 28–31 days and this is a billing screen). The pa
 must also state that the trial converts and that cancelling takes **24 hours'**
 notice, which is Apple's actual rule.
 
-One open point remains in `GROWTH_AND_MONETIZATION.md` §4: **net revenue depends
-on the unsettled Apple link-out commission question** — $29.99/yr is not $29.99 in
-hand. Re-verify before relying on a revenue number.
+Two open points remain in `GROWTH_AND_MONETIZATION.md`: the price itself (P1, §4),
+and **net revenue, which depends on the unsettled Apple link-out commission
+question** (§2.3) — $29.99/yr is $25.49 in hand at the Small Business rate. The
+stance until a court rules: IAP only, no web checkout. Re-verify before relying on a
+revenue number. The go-to-market sequence and its gates are GROWTH §0 and §7.
 
 Rule: the paywall never touches the core loop or anything shareable.
 
