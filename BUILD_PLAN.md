@@ -29,25 +29,21 @@ directly — it goes through a store.
 
 ## Where the build is
 
-**Current state (2026-10-06).** All code in L0–L6 is built; `tsc --noEmit` is
-clean and `npm test` is 109 suites / 1242 tests green. What is left is almost
+**Current state (2026-10-09).** All code in L0–L6 is built; `tsc --noEmit` is
+clean and `npm test` is 125 suites / 1398 tests green. What is left is almost
 entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
-The few remaining code items are in `docs/NEXT_STEPS.md`; UI status and open design
-decisions are in `docs/design/UI_ROADMAP.md`. The step-by-step build history that
-used to live here is in git (`git log -- BUILD_PLAN.md`).
+The few remaining code items are in `docs/NEXT_STEPS.md`; open design decisions are in
+`docs/design/UI_ROADMAP.md`, and what the UI steps built is in
+`docs/design/BUILT_LOG.md`. Older build history is in git (`git log -- BUILD_PLAN.md`).
 
 - **Built:** the offline core loop (Log, Resolve, Stats, History, Settings), the
   Warmup, share cards and Wrapped, notifications, Supabase auth and sync, sign-in and
   the Account screens, account deletion and guest erase, analytics, billing and the
   paywall (one-month trial on annual), the Plus tier (Coach, Trends, CSV export, card
-  themes), the coverage nudge, and the UI redesign pass against
-  `docs/design/DESIGN_SYSTEM.md`. On 2026-10-04 two more UI batches (roadmap steps
-  16–26): the tier-up flip and confetti, resolving several at once, "Log it again",
-  the track record on the Log slider, and, in Plus Trends, the correction table and
-  calibration by horizon. On 2026-10-05, from a screen-by-screen review (steps
-  27–36): the identity line on Home, "How scoring works", reflections in History, a
-  dated wait while calibrating, the paywall's top close, and legal links in
-  Settings.
+  themes), the coverage nudge, the UI redesign pass against
+  `docs/design/DESIGN_SYSTEM.md`, and the retention features (daily practice, rest
+  days, a one-a-day streak, the practice reminder) and the Day-0 Warmup rework. Step
+  by step: `docs/design/BUILT_LOG.md`.
 - **Cut:** ✨ Refine (2026-09-24), dormant behind `REFINE_ENABLED`; see `CLAUDE.md`
   AI § A for why.
 - **Live services:** `coach`, `revenuecat-webhook` and `delete-account` are deployed

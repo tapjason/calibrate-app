@@ -1,6 +1,6 @@
 # Calibrate — Future UI Features
 
-**As of:** 2026-10-07. A1, A3, A5, A6, A4's one-tap half ("Log it again") and most of §B shipped as roadmap steps 16–26, and A2 as step 88 (with its reminder, step 89); `UI_ROADMAP.md` §1.1 lists what each remaining item waits on. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
+**As of:** 2026-10-07. A1, A3, A5, A6, A4's one-tap half ("Log it again") and most of §B shipped as build-log steps 16–26, and A2 as step 88 (with its reminder, step 89); `UI_ROADMAP.md` §1.1 lists what each remaining item waits on. A parking lot, not a plan. [`UI_ROADMAP.md`](UI_ROADMAP.md) is
 what's being built now. Nothing here is scheduled, and anything that changes product
 behaviour needs the owner's call first. `CLAUDE.md` still governs every item:
 shareable artifacts are never paywalled, no number built on noise (min-N), AI stays

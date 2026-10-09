@@ -179,155 +179,16 @@ second build that can't test billing.
 
 ## Batch A — Backend (desk, ~30 min, no device)
 
-### A1. ~~Verify live Coach generation~~ — PASSED 2026-09-25
+### A1–A3: done (kept in git history)
 
-**All three checks green.** The Coach produced its first real model output,
-and every guard held.
-
-Setup used: a throwaway user `test-plus-user-1377@gmail.com`
-(`acde4a5f-…`), granted Plus with the SQL in step 3 below, token minted via
-`/auth/v1/token?grant_type=password` with the anon key.
-
-**1. Live generation.** `HTTP 200`, `safe: true`, one insight:
-
-```json
-{"insights":[{"type":"overconfidence","category":"finance",
- "message":"The calibration score of 61 indicates overconfidence in finance
- predictions, with a mean stated confidence of 80 and an actual rate of 0.55.",
- "evidence":25,"suggestion":"Consider adjusting confidence levels based on past
- outcomes."}],"safe":true}
-```
-
-Every number it cites — 61, 80, 0.55, and `evidence: 25` — was in the request.
-
-**2. Min-N gating.** A context whose only category had `resolved: 3` returned
-`{"insights":[],"safe":true}`. No verdict on three data points, which is the
-rule in `COACH_AGENT.md` §5 holding against real model output rather than
-against a fixture.
-
-**3. Grounding.** A three-category context came back with the full cap of
-three insights, and an audit of every numeral in every message found **zero**
-not present in the request. Each `evidence` value matched too (37, 88, 0.42).
-
-What this does *not* prove: that the validator drops a hallucinated number —
-the model never produced one to drop. That path stays covered by the Jest
-fixtures in `COACH_AGENT.md` §9.
-
-**Clean-up, when you want the free-user path back** (A4's pass condition, and
-Batch C's free-tier checks):
-
-```sql
-delete from public.entitlements
- where user_id = 'acde4a5f-cac2-4da5-83e5-34df8d30040e';
-```
-
-Done 2026-09-25 — and the 403 that followed is what verified A4.
-
-Note this removes the **Plus grant**, not the account: the grant lives in
-`public.entitlements`, the account in `auth.users`. To remove the account
-itself, use Authentication → Users → Delete user, or:
-
-```sql
-delete from auth.users where email = 'test-plus-user-1377@gmail.com';
-```
-
-That cascades — `entitlements`, `analytics_events` and `predictions` all
-declare `on delete cascade` — so deleting the account takes its data with it.
-Do that before real users exist. Its password was printed here until
-2026-09-25, and this repository is public, so treat the account as compromised
-and delete it rather than reusing it.
-
-<details>
-<summary>The original procedure, kept for re-running it</summary>
-
-**Step 3 is the one that needs a human** — `public.entitlements` is
-service-role-write-only by design, so an agent with the anon key cannot grant
-Plus to a test user. Do that in the dashboard and the rest can be run for you.
-
-1. ~~Add credit to the OpenAI account whose key is in Supabase secrets.~~ Done
-   2026-09-24.
-2. Get a real user access token (sign in on the app, or via the Supabase
-   dashboard's user impersonation) — the anon key returns 401 by design.
-3. **Grant yourself Plus server-side.** The endpoint's Plus gate reads
-   `public.entitlements`, nothing writes to it yet, and absence means free — so
-   the call returns 403 until a row exists. In the dashboard SQL editor:
-
-   ```sql
-   insert into public.entitlements (user_id, is_plus, source, expires_at)
-   values ('<your auth.users id>', true, 'annual', now() + interval '1 year')
-   on conflict (user_id) do update
-     set is_plus = true, source = 'annual',
-         expires_at = now() + interval '1 year', updated_at = now();
-   ```
-
-   Do this rather than setting `COACH_ALLOW_UNENTITLED` (see A4) — it exercises
-   the real gate instead of switching it off, and it leaves nothing open
-   afterwards. Delete the row when you're done if you want the free-user path
-   back.
-4. Run the `coach` verify curl in `supabase/README.md` (§Edge Functions →
-   coach → Verify).
-
-**Pass:** `{"insights":[...],"safe":true}` with 0–3 items, and every `evidence`
-number in the response appearing in the request you sent. An empty
-`insights: []` is also a pass — it means the validator dropped everything,
-which is the safe direction.
-
-**Report:** the raw response body, plus whether any insight was dropped
-(function logs show validator rejections).
-
-**Then run the two adversarial live checks** — the fixtures pass against the
-validator in Jest, but not against real model output:
-
-- Send a context whose `by_category` has `resolved: 3`. Expect no verdict about
-  that category (min-N gating, `COACH_AGENT.md` §5).
-- Send a category with an obviously wrong stat and confirm no insight cites a
-  number you didn't send.
-
-</details>
-
-### A2. ~~Deploy and verify `refine`~~ — CUT (2026-09-24)
-
-**Nothing to do here.** Refine is deferred out of v1, not pending. Testing the
-prompt against the now-funded account is what cut it: it turns predictions into
-*questions* — "I'll finish the report" → "Will I finish the report?", four
-inputs out of four — which is no more resolvable than what the user typed.
-
-Two rewrites showed it isn't a wording problem. Ask for specificity and the
-model invents it ("at least $100,000 in sales"; a deadline in 2023, in a field
-where the app already stores the due date). Forbid invention and it hands back
-the input with the hedging stripped. **A vague prediction can't be made
-checkable without information only the user has.**
-
-`REFINE_ENABLED` in `src/constants/app.ts` is `false`, so the ✨ button and its
-Settings row are hidden and the function stays undeployed (`/functions/v1/refine`
-answers 404 — verified). The client, the function and all their tests are kept
-intact behind the flag. Reviving it: fix the prompt against fixtures, flip the
-flag, deploy. Full reasoning on the constant and in `CLAUDE.md` § AI A.
-
-### A3. ~~Apply the new migrations and confirm state~~ — DONE 2026-09-24
-
-**Passed.** `db push` applied 004 and 005; `migration list` now shows all five
-local migrations matching remote. Verified live afterwards: `analytics_events`
-and `entitlements` both exist, an anon read of each returns `[]` (RLS scoping
-to the owning user), and an anon *write* to `entitlements` is refused with
-`42501 new row violates row-level security policy`.
-
-That last one is the design property from `003_entitlements.sql` holding in
-production — a client cannot grant itself Plus — and it is also precisely why
-the A1 Plus grant below needs a human with dashboard access.
-
-```sh
-npx supabase db push          # 004_entitlement_event_cursor, 005_analytics_events
-npx supabase migration list
-```
-
-**Pass:** `001_predictions`, `002_coach_usage`, `003_entitlements`,
-`004_entitlement_event_cursor` and `005_analytics_events` all show as applied
-remotely.
-
-With 005 applied, `analytics_events` is live, so the validation checkpoint's
-two queries at the bottom of this file now have a table to read. They will
-return nothing until real users arrive — that is the point of the checkpoint.
+- **A1, live Coach generation:** passed 2026-09-25. Real model output, every
+  guard held (grounding, validator, crisis pre-filter).
+- **A2, deploy `refine`:** cut 2026-09-24. Refine is deferred out of v1; the
+  reasoning is in `CLAUDE.md` § AI A.
+- **A3, apply the migrations:** done 2026-09-24. All five match remote, RLS holds
+  (an anon read returns `[]`, an anon write to `entitlements` is refused).
+  `analytics_events` is live; the validation checkpoint's two queries at the
+  bottom of this file return nothing until real users arrive.
 
 ### A4. Keep `COACH_ALLOW_UNENTITLED` unset
 
@@ -643,7 +504,7 @@ Tick each:
 
 ### C2. UI redesign pass (added 2026-09-28)
 
-What changed is summarised in `docs/design/UI_ROADMAP.md` §1. Check on an
+What changed is summarised in `docs/design/BUILT_LOG.md`. Check on an
 iOS simulator or phone as well as web — web can't show SF Rounded, haptics or the
 notification placeholder.
 

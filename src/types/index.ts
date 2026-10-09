@@ -59,7 +59,7 @@ export const DAILY_GOAL = 3;
 export const STREAK_CHECKPOINTS = [7, 30, 100, 365] as const;
 
 /**
- * Rest days (decided 2026-10-07, UI_ROADMAP step 87): every REST_DAY_EVERY
+ * Rest days (decided 2026-10-07, BUILT_LOG step 87): every REST_DAY_EVERY
  * counted days in a streak save one, up to REST_DAYS_MAX. A past day that
  * didn't count spends one and the streak carries on without adding that day;
  * with none saved, it ends. An emergency reserve in Sharif & Shu's sense:

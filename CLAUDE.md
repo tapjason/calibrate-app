@@ -184,17 +184,20 @@ Decided 2026-10-05 (`docs/design/UI_ROADMAP.md` D13): the confidence slider
 starts **empty** and Next waits for a number, so tapping through can't produce a
 verdict about a preset.
 
-Decided 2026-10-07, for now (UI_ROADMAP D18): **Day 0 is for calibration**, not for
-an identity verdict. Built 2026-10-08 (step 97): the ten are drawn from the practice
-tables (`warmupQuestions`, the same ten for everyone), not picked to be tricky, so
-the "picked to be tricky" note and the card's "tricky questions" are gone; an
-overconfident verdict says ten is a small sample and trivia says little about plans.
-The result (step 98) leads with counts and reads these questions, not the person:
-"You said 78% on average. 6 of 10 were right." under "On these ten, you were
-overconfident". The first prediction defaults to Tomorrow, with starter ideas that
-resolve by then (step 99). A bridge to the person's own plans sits above the button, now
-"Predict something about tomorrow" (step 100). The Day-0 card shares the counts as an
-invitation, "5 of 10 right. I was 77% sure. How sure are you?" (step 101). D18 is built.
+**Day 0 is for calibration, not an identity verdict** (decided 2026-10-07, UI_ROADMAP
+D18; built 2026-10-08):
+- The ten are drawn from the practice tables (`warmupQuestions`, the same ten for
+  everyone, right answers five first and five second), not picked to be tricky.
+- The result leads with counts and reads these questions, not the person: "You said
+  78% on average. 6 of 10 were right." under "On these ten, you were overconfident".
+  An overconfident verdict adds that ten is a small sample and trivia says little
+  about plans.
+- A bridge to the person's own plans (the planning-fallacy line) sits above the
+  button, "Predict something about tomorrow".
+- The first prediction defaults to Tomorrow, with starter ideas that resolve by then,
+  so the first real result lands on Day 1.
+- The Day-0 card shares the counts as an invitation: "5 of 10 right. I was 77% sure.
+  How sure are you?"
 
 ### 2. Log Module
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,
@@ -415,59 +418,12 @@ Mobile App
   → Mobile App renders, or silently no-ops on any failure
 ```
 
-**Edge Function (`refine`), with auth, limits, and error handling:**
-```ts
-import OpenAI from 'openai'
-import { createClient } from '@supabase/supabase-js'
-
-const openai = new OpenAI({ apiKey: Deno.env.get('OPENAI_API_KEY') })
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-)
-
-Deno.serve(async (req) => {
-  try {
-    // 1. Auth — reject anonymous callers.
-    const token = req.headers.get('Authorization')?.replace('Bearer ', '')
-    if (!token) return json({ error: 'unauthorized' }, 401)
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
-    if (authErr || !user) return json({ error: 'unauthorized' }, 401)
-
-    // 2. Rate limit per user (see rate_limits table); cheap guard before spending tokens.
-    if (await isRateLimited(user.id)) return json({ error: 'rate_limited' }, 429)
-
-    // 3. Validate input.
-    const body = await req.json().catch(() => null)
-    const prediction = body?.prediction
-    if (typeof prediction !== 'string' || prediction.length === 0 || prediction.length > 300) {
-      return json({ error: 'bad_request' }, 400)
-    }
-
-    // 4. Call model.
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      max_tokens: 60,
-      messages: [{
-        role: 'user',
-        content: `Rewrite this prediction to be concise and resolvable with a clear yes/no. Keep it under 15 words. Return only the rewritten prediction, nothing else.\n\nPrediction: ${prediction}`
-      }]
-    })
-
-    const refined = response.choices[0]?.message?.content?.trim()
-    if (!refined) return json({ error: 'no_output' }, 502)
-
-    return json({ refined }, 200)
-  } catch (_e) {
-    return json({ error: 'internal' }, 500)   // client fails silently on any non-200
-  }
-})
-
-const json = (body: unknown, status: number) =>
-  new Response(JSON.stringify(body), {
-    status, headers: { 'Content-Type': 'application/json' }
-  })
-```
+**Edge Function pattern (every function follows it):** read the bearer token and
+verify it with `supabase.auth.getUser` (401 otherwise), rate-limit per user (429),
+validate and cap the input (400), call the model with `max_tokens` capped, return 502
+on empty output, and let the client treat any non-200 as a silent no-op. The
+reference implementation is `supabase/functions/refine/`; `coach` extends it with the
+grounding validator (`COACH_AGENT.md`).
 
 ---
 
