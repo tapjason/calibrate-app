@@ -82,7 +82,8 @@ export function warmupVerdict(
   const same = sharedConfidence(answers);
   const n = result.answered;
   const right = Math.round(result.accuracy * n);
-  const count = `${right} of ${n} were right.`;
+  // Non-breaking spaces: "right." never wraps alone at 320pt.
+  const count = `${right}\u00A0of\u00A0${n}\u00A0were\u00A0right.`;
 
   return {
     title: `On these ${NUMBER_WORDS[n] ?? n}, ${READS[result.direction]}`,

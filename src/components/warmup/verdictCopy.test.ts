@@ -19,7 +19,7 @@ describe('warmupVerdict', () => {
     const v = warmupVerdict(scoreWarmup(OVERCONFIDENT));
     expect(v?.title).toBe('On these 2, you were overconfident');
     expect(v?.detail).toBe(
-      'You said 90% on average. 1 of 2 were right.',
+      'You said 90% on average. 1\u00A0of\u00A02\u00A0were\u00A0right.',
     );
   });
 
@@ -53,7 +53,7 @@ describe('warmupVerdict', () => {
     );
     // mean 85%, 2 of 3 right = 66.67% → rounded for the headline.
     expect(v?.detail).toBe(
-      'You said 85% on average. 2 of 3 were right.',
+      'You said 85% on average. 2\u00A0of\u00A03\u00A0were\u00A0right.',
     );
   });
 
@@ -66,7 +66,7 @@ describe('warmupVerdict', () => {
     it('says the shared number instead of an average', () => {
       const answers = tapThrough(5);
       const v = warmupVerdict(scoreWarmup(answers), answers);
-      expect(v?.detail).toBe('You said 75% on all 10. 5 of 10 were right.');
+      expect(v?.detail).toBe('You said 75% on all 10. 5\u00A0of\u00A010\u00A0were\u00A0right.');
       expect(v?.sameNumber).toMatch(/^One number for every question/);
     });
 
@@ -80,13 +80,13 @@ describe('warmupVerdict', () => {
 
       const allRight = tapThrough(10).map((a) => ({ ...a, confidence: 100 }));
       const v = warmupVerdict(scoreWarmup(allRight), allRight);
-      expect(v?.detail).toBe('You said 100% on all 10. 10 of 10 were right.');
+      expect(v?.detail).toBe('You said 100% on all 10. 10\u00A0of\u00A010\u00A0were\u00A0right.');
       expect(v?.sameNumber).toBeNull();
     });
 
     it('needs at least three answers to call it a pattern', () => {
       expect(warmupVerdict(scoreWarmup(OVERCONFIDENT), OVERCONFIDENT)?.detail).toBe(
-        'You said 90% on average. 1 of 2 were right.',
+        'You said 90% on average. 1\u00A0of\u00A02\u00A0were\u00A0right.',
       );
     });
   });

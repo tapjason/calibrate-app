@@ -63,7 +63,7 @@ describe('WarmupVerdictScreen', () => {
 
     expect(screen.getByText(/you were overconfident/)).toBeTruthy();
     expect(
-      screen.getByText('You said 90% on average. 1 of 2 were right.'),
+      screen.getByText('You said 90% on average. 1\u00A0of\u00A02\u00A0were\u00A0right.'),
     ).toBeTruthy();
     expect(screen.getByTestId('calibration-chart')).toBeTruthy();
   });
