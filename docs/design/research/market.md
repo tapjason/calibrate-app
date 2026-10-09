@@ -13,24 +13,9 @@ marked *Recommendation* is my inference, not a sourced fact.
 
 ---
 
-## 0. Baseline: what the current UI is doing
+## 0. Baseline (resolved)
 
-Viewed `design-baseline/01..08`:
-
-- `01-warmup.png` shows **only a loading spinner**, so the Warmup quiz screen was not captured. Re-shoot it.
-- **Verdict** (`02`): the copy is strong ("You run overconfident", "77% confident … right 50%"). The chart is a
-  generic scatter with light grids, and two overlapping blue dots sit on a dashed diagonal. The "73" in blue-600
-  is the only visual hierarchy. There is no motion or reveal.
-- **Home / Stats** (`04`, `05`): the hero number on both screens is **"20"**, a countdown, in the same blue and
-  size a score would use. A first-time user sees a big number that is not their score. All four category rows show
-  the same gray "Guesser" pill with a dice emoji. The empty calibration curve is one line of italic gray text.
-- **Log** (`03`): the confidence value is small label text ("Confidence: 50%") above two gray ±5 buttons. The
-  single most important input has no visual weight.
-- **Share** (`07`): the empty state is "Nothing to share yet." It shows no preview of what the card will look like.
-- **Paywall** (`08`): three identical cards with identical blue "Choose" buttons. The **annual plan reads
-  "$29.90"**, although the spec says $29.99, and the **monthly plan also shows "1 month free"**, although the spec
-  puts the trial on annual only. Both may be sandbox artefacts. Worth checking.
-- The brand is split: UI accents are Tailwind blue-600, but the icon and splash are indigo #4F46E5 (per the brief).
+The 2026-09-25 captures ([`../baseline/`](../baseline/)) showed a countdown "20" as the Home hero, identical grey "Guesser" pills with a dice emoji, a small label for the confidence input, an empty Share tab, a paywall of three identical cards ($29.90 vs $29.99, a trial on monthly), and a split brand (Tailwind blue vs the icon's indigo). All fixed; see `BUILT_LOG.md`.
 
 ---
 
@@ -317,37 +302,22 @@ Viewed `design-baseline/01..08`:
 
 ---
 
-## 8. Highest-leverage design moves for Calibrate
+## 8. Highest-leverage design moves for Calibrate (all built except 11)
 
-Each move ties to an app and a source above.
+Each move and the reference it came from:
 
-1. **Give every badge tier an owned color and an illustrated emblem; drop the emoji.** Five tiers, five colors, one geometric
-   illustration style. *Ref: 16Personalities role colors + Zeda Labs characters (§2).*
-2. **Replace the "20" countdown hero with a grayed-out score silhouette labelled "Calibrating · 3 of 20".** Keep the
-   countdown as the sub-line. *Ref: WHOOP grayed-out Recovery while calibrating (§4); Oura baseline period.*
-3. **Put named bands and a top-band icon on the 0–100 score** (e.g. <70 / 70–85 / 85–90 / 90+). The band carries the color;
-   the number stays neutral. *Ref: Oura bands + crown at ≥85 (§4); WHOOP three-color semantics.*
-4. **Warmup verdict as a story reveal:** one statement per screen, then the chart, then the share card. Use blunt copy on a
-   near-monochrome canvas with one accent color at the reveal. *Ref: Spotify Wrapped 2025 "selective pops of color" + Clubs
-   (§2); Co–Star voice (§2).*
-5. **Make Resolve a press-and-hold with a success haptic + particle burst**, and animate the score and badge progress
-   counting up in sync. *Ref: (Not Boring) Habits ADA 2022 (§3); Brilliant's Rive streak synced to the counter (§5); Apple
-   HIG haptics (§7).*
-6. **Make confidence the Log hero:** a large percentage (≥48pt) on a draggable colored band, with the integrity-bonus zone
-   (35–65) visibly tinted, and a selection haptic at each 5% step. *Ref: Polymarket "prices = probability" big-number
-   convention (§1); How We Feel color-field input (§3).*
-7. **Share card at 9:16, 1080×1920, with safe zones, per-category show/hide toggles and titles hidden by default.** *Ref: Any
-   Distance eye-toggles + ADA 2023 (§2); Instagram Stories spec (§2).*
-8. **Build the paywall as an honest timeline:** Today → Day 28 reminder → Day 30 charge; annual pre-selected and shown first;
-   one CTA; an "aftercare" screen after purchase. *Ref: Blinkist +23%/−55% (§6); RevenueCat top-app patterns; Apple's 2026
-   toggle rejections.*
-9. **No-guilt copy and art for the low tiers and missed predictions.** "Guesser" should read as "starting point," following
-   Gentler Streak's "supportive but not cheesy." *Ref: Gentler Streak ADA 2024 (§3); Finch "no penalties."*
-10. **Celebrate milestones with a share card** at the Tracker unlock, first non-provisional score, and 50 and 100
-    resolutions. *Ref: Duolingo milestones, measured +1.7% D7 (§5).*
-11. **A second, accumulating share artifact:** a "Year in Predictions" pixel grid. *Ref: Daylio Year in Pixels (§3).*
-12. **Pick one brand hue (the indigo #4F46E5), and use a rounded or display face for numbers only.** *Ref: Duolingo Feather +
-    DIN Rounded split (§5).* (The exact font choice is a *Recommendation*.)
+1. Owned colour and an illustrated emblem per badge tier, no emoji (16Personalities, Zeda Labs).
+2. A grey score silhouette, "Calibrating · 3 of 20", instead of a countdown hero (WHOOP, Oura).
+3. Named bands and a top-band icon on the 0–100 score; the band carries colour, the number stays neutral (Oura, WHOOP).
+4. The Warmup verdict as a story reveal on a near-monochrome canvas with one accent (Spotify Wrapped 2025, Co–Star voice).
+5. Resolve with a success haptic and the score and badge progress counting up in sync ((Not Boring) Habits, Brilliant, HIG haptics).
+6. Confidence as the Log hero: ≥48pt readout, the 35–65 zone tinted, a haptic every 5% (Polymarket, How We Feel).
+7. Share cards at 9:16 with safe zones, per-category toggles, titles hidden by default (Any Distance, Instagram spec).
+8. An honest paywall timeline, annual first and preselected, one CTA (Blinkist +23% / −55%, Apple's 2026 toggle rejections).
+9. No-guilt copy for low tiers and misses: "Guesser" as a starting point (Gentler Streak, Finch).
+10. Milestone share cards at Tracker, the first real score, and 50 and 100 resolutions (Duolingo, +1.7% D7).
+11. **Not built:** a second accumulating share artifact, a "Year in Predictions" pixel grid (Daylio Year in Pixels).
+12. One brand hue (indigo #4F46E5) and a rounded face for numbers only (Duolingo Feather + DIN Rounded).
 
 ## 9. Best overall visual references
 
