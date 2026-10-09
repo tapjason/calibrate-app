@@ -13,22 +13,9 @@ last push are from api.github.com on the same day. "SDK 55 pin" means the versio
 
 ---
 
-## 0. Ground truth about this project (read before the recommendations)
+## 0. Ground truth (as of 2026-09-28; the migration it fed is done)
 
-Verified from `package.json`, `app.json`, `eas.json` and `node_modules`:
-
-| Fact | Consequence |
-|---|---|
-| expo 55.0.26, RN 0.83.6, React 19.2.0, expo-router 55.0.14 | Every pick below is pinned to its SDK 55 version, not npm `latest`. |
-| SDK 55 **removed the Legacy Architecture**; `newArchEnabled` no longer exists ([SDK 55 changelog](https://expo.dev/changelog/sdk-55), 2026-02-25) | New Architecture is on and can't be turned off. Fabric-only libraries are fine. |
-| `expo-dev-client` is already a dependency; `eas.json` has a `development` profile; `react-native-purchases` is native | **The team already runs a development build.** Also, Expo Go supports only the latest SDK: the store Expo Go never shipped SDK 55 on iOS during the transition, and the stores have since moved past it ([SDK 55 changelog](https://expo.dev/changelog/sdk-55), [Expo Go mismatch doc](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/), [expo/expo#44130](https://github.com/expo/expo/issues/44130)). So "works in Expo Go" is noted below, but it is **not a real constraint** for this app. |
-| The SDK is behind: SDK 56 (2026-05-21, RN 0.85), SDK 57 (2026-06-30, RN 0.86) are stable; SDK 58 beta is out (2026-09-15, RN 0.88 RC) ([56](https://expo.dev/changelog/sdk-56), [57](https://expo.dev/changelog/sdk-57), [58 beta](https://expo.dev/changelog/sdk-58-beta)) | Several `latest` versions on npm no longer support RN 0.83 (see risks). Some features the team may want (stable NativeTabs, distinct selected tab icons, variable fonts) arrive only in 56 to 58. |
-| `expo-router` 55 already pulls in `expo-glass-effect` 55.0.11 and `expo-symbols` 55.0.8 as transitive deps | NativeTabs, glass and SF Symbols add almost nothing to the install. |
-| Styling: ~200 hard-coded hex literals across 31 non-test files, **about 40 distinct values, almost all from the Tailwind gray/slate/blue palette** (`#6b7280` x31, `#9ca3af` x18, `#111827` x17, `#2563eb` x16, ...) | A token file collapses this to about 12 semantic tokens. The palette is already Tailwind-shaped, but that does not argue for NativeWind (see §1). |
-| Components already import `@/constants` (17 imports) as well as `@/store` / `@/types` | Put tokens in `src/constants/theme.ts` so no new import layer is needed. |
-| `src/share/export.ts` lazily `require`s `react-native-view-shot`, and exporting is off on web | Capture only has to work on iOS/Android. The **card must still render on web** for screenshots. |
-| 20 `*.test.tsx` files; Jest config has no `setupFiles` yet | Adding Reanimated means adding a setup file (see §2). |
-| The confidence control is ±5 buttons with an `adjustable` a11y role (commit 04b3d9f) | A slider has to keep that accessibility behavior. |
+Expo SDK 55 (RN 0.83, React 19.2, expo-router 55), New Architecture only (SDK 55 removed the legacy one). A development build is already the way this app runs (`expo-dev-client`, native `react-native-purchases`), and Expo Go supports only the SDK 54 builds. `expo-router` 55 already ships `expo-glass-effect` and `expo-symbols`, so NativeTabs, glass and SF Symbols cost almost nothing to install. SDK 56 and 57 were stable and 58 in beta by 2026-09-15 (upgrade sequencing: `docs/NEXT_STEPS.md` item j). The card must still render on web for screenshots even though export is native-only (`src/share/export.ts` lazily requires `react-native-view-shot`). The confidence control keeps its `adjustable` accessibility role whatever it draws.
 
 ---
 
@@ -186,14 +173,9 @@ only, via `Platform.select`, and accept that web screenshots won't show it.
 - **@gorhom/bottom-sheet**: formSheet does it natively.
 - **@expo/ui on SDK 55**: beta, and no web.
 
-## Migration order (biggest visual gain, least risk first)
-1. **Tokens + Inter + tabular numerals.** No new native code; web and Jest untouched; the whole app changes character. File-by-file PRs.
-2. **expo-symbols + expo-haptics.** Tiny, safe, already partly installed.
-3. **Slider for confidence** (keep ±5 and a11y actions). Visible UX upgrade on the Log screen, with web support.
-4. **Reanimated 4.2.x** (with the Jest setup file) → score count-up, chart draw-in, card/badge entrances, press feedback.
-5. **Share-card redesign** with SVG gradients and the new type (still view-shot 4.0.3).
-6. **NativeTabs on iOS** with JS Tabs kept on web, then **formSheet** for Resolve. Needs a new dev build, and on SDK 55 it is still `unstable-`.
-7. After an SDK upgrade to 57 or 58: stable NativeTabs, @expo/ui SwiftUI controls, variable fonts, view-shot 6.
+## Migration order (done; step 7 waits on the SDK upgrade)
+
+Tokens, Inter and tabular numerals first; then expo-symbols and expo-haptics; the confidence slider (keeping ±5 and the accessibility actions); Reanimated 4.2.x with its Jest setup; the share-card redesign on SVG; NativeTabs on iOS with JS tabs kept on web, and formSheet for Resolve. **Still open:** after SDK 57 or 58, stable NativeTabs, `@expo/ui` SwiftUI controls, variable fonts and view-shot 6.
 
 ## Compatibility risks
 - **npm `latest` no longer targets RN 0.83.** Reanimated 4.7+ supports RN 0.86+ only ([compat table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/)); lottie-react-native 7.4+ needs RN >= 0.84; victory-native 42 needs Skia >= 2.6. **Always `npx expo install`**, never `npm i`.
