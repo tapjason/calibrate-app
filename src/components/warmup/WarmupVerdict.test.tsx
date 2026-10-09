@@ -61,11 +61,19 @@ describe('WarmupVerdictScreen', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
 
-    expect(screen.getByText('You run overconfident')).toBeTruthy();
+    expect(screen.getByText(/you were overconfident/)).toBeTruthy();
     expect(
-      screen.getByText('You were 90% confident on average, and right 50% of the time.'),
+      screen.getByText('You said 90% on average. 1 of 2 were right.'),
     ).toBeTruthy();
     expect(screen.getByTestId('calibration-chart')).toBeTruthy();
+  });
+
+  // Roadmap D18 (3).
+  it('bridges to the person\'s own plans', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/thesis in 34 days took 56/);
+    expect(screen.getByText('Predict something about tomorrow')).toBeTruthy();
   });
 
   // CLAUDE.md: the Warmup delivers the aha, but it is not the user's real

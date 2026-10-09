@@ -40,7 +40,7 @@ export default function WarmupScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Keyed on the half showing, so the verdict opens at its top. On a
           short phone the quiz is scrolled to reach Next, and the verdict kept
-          that offset: it opened on the chart, with "You run overconfident"
+          that offset: it opened on the chart, with the verdict's title
           and the score's count-up above the fold. */}
       <ScrollView key={finished ? 'verdict' : 'quiz'} contentContainerStyle={styles.wrap}>
         {!finished && (

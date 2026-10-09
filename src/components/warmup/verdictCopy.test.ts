@@ -17,9 +17,9 @@ describe('warmupVerdict', () => {
 
   it('states confidence against reality, per the CLAUDE.md headline shape', () => {
     const v = warmupVerdict(scoreWarmup(OVERCONFIDENT));
-    expect(v?.title).toBe('You run overconfident');
+    expect(v?.title).toBe('On these 2, you were overconfident');
     expect(v?.detail).toBe(
-      'You were 90% confident on average, and right 50% of the time.',
+      'You said 90% on average. 1 of 2 were right.',
     );
   });
 
@@ -30,7 +30,7 @@ describe('warmupVerdict', () => {
         { confidence: 55, correct: true },
       ]),
     );
-    expect(v?.title).toBe('You run underconfident');
+    expect(v?.title).toBe('On these 2, you were underconfident');
   });
 
   it('calls a matched run calibrated', () => {
@@ -40,7 +40,7 @@ describe('warmupVerdict', () => {
         { confidence: 100, correct: true },
       ]),
     );
-    expect(v?.title).toBe('You run well calibrated');
+    expect(v?.title).toBe('On these 2, you were well calibrated');
   });
 
   it('rounds the reported figures for display', () => {
@@ -53,7 +53,7 @@ describe('warmupVerdict', () => {
     );
     // mean 85%, 2 of 3 right = 66.67% → rounded for the headline.
     expect(v?.detail).toBe(
-      'You were 85% confident on average, and right 67% of the time.',
+      'You said 85% on average. 2 of 3 were right.',
     );
   });
 
@@ -66,7 +66,7 @@ describe('warmupVerdict', () => {
     it('says the shared number instead of an average', () => {
       const answers = tapThrough(5);
       const v = warmupVerdict(scoreWarmup(answers), answers);
-      expect(v?.detail).toBe('You said 75% on all 10, and were right 50% of the time.');
+      expect(v?.detail).toBe('You said 75% on all 10. 5 of 10 were right.');
       expect(v?.sameNumber).toMatch(/^One number for every question/);
     });
 
@@ -80,39 +80,38 @@ describe('warmupVerdict', () => {
 
       const allRight = tapThrough(10).map((a) => ({ ...a, confidence: 100 }));
       const v = warmupVerdict(scoreWarmup(allRight), allRight);
-      expect(v?.detail).toBe('You said 100% on all 10, and were right 100% of the time.');
+      expect(v?.detail).toBe('You said 100% on all 10. 10 of 10 were right.');
       expect(v?.sameNumber).toBeNull();
     });
 
     it('needs at least three answers to call it a pattern', () => {
       expect(warmupVerdict(scoreWarmup(OVERCONFIDENT), OVERCONFIDENT)?.detail).toBe(
-        'You were 90% confident on average, and right 50% of the time.',
+        'You said 90% on average. 1 of 2 were right.',
       );
     });
   });
 
   it("says the overconfident advice the way it's meant", () => {
     expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.advice).toBe(
-      "When you feel sure, you're right less often than you think. Try shading your confidence down.",
+      "When you felt sure, you were right less often than you thought. Try shading your confidence down.",
     );
   });
 
-  // Roadmap D14: the bank is picked to be tricky, which is where
-  // overconfidence comes from in the research. The verdict says so.
-  it('says the questions were tricky under an overconfident verdict only', () => {
-    expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.trickyNote).toBe(
-      'These were picked to be tricky, so most people run hot here. ' +
+  // Roadmap D18 (1): the ten are random draws, so the note is about sample size.
+  it('says ten is a small sample under an overconfident verdict only', () => {
+    expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.sampleNote).toBe(
+      'Ten questions is a small sample, and trivia says little about your plans. ' +
         'Your own predictions are the real test.',
     );
     const calibrated = scoreWarmup([
       { confidence: 100, correct: true },
       { confidence: 100, correct: true },
     ]);
-    expect(warmupVerdict(calibrated)?.trickyNote).toBeNull();
+    expect(warmupVerdict(calibrated)?.sampleNote).toBeNull();
     const under = scoreWarmup([
       { confidence: 55, correct: true },
       { confidence: 55, correct: true },
     ]);
-    expect(warmupVerdict(under)?.trickyNote).toBeNull();
+    expect(warmupVerdict(under)?.sampleNote).toBeNull();
   });
 });

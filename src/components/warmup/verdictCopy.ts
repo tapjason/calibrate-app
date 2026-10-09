@@ -2,13 +2,14 @@
 // screen. Pure and testable, in the same spirit as stats/ratingHeadline.ts —
 // the copy rules live in one place rather than inline in JSX.
 //
-// The headline is the Day-0 aha, and CLAUDE.md gives its exact shape:
-// "You were 85% confident but right 55% of the time — you run overconfident."
+// The result leads with counts and reads these questions, not the person
+// (roadmap D18 (2)): "You said 85% on average. 5 of 10 were right." under
+// "On these ten, you were overconfident".
 
 import type { WarmupAnswer, WarmupQuestion, WarmupResult } from '@/types';
 
 export interface WarmupVerdict {
-  /** Short identity line, e.g. "You run overconfident". */
+  /** Short identity line, e.g. "On these ten, you were overconfident". */
   title: string;
   /** The receipts: stated confidence vs. what actually happened. */
   detail: string;
@@ -21,31 +22,35 @@ export interface WarmupVerdict {
    */
   sameNumber: string | null;
   /**
-   * Under an overconfident verdict only (roadmap D14): the questions are
-   * picked to be tricky, and selected questions are how overconfidence is
-   * produced in the research (.73 confidence for .64 correct, against .73 for
-   * .72 when questions are sampled at random). So the verdict says so.
+   * Under an overconfident verdict only: the ten are drawn at random from
+   * reference tables (roadmap D18 (1)), so the verdict can't blame the
+   * questions, but ten is a small sample and trivia says little about
+   * plans. It says both.
    */
-  trickyNote: string | null;
+  sampleNote: string | null;
 }
 
-const TITLES = {
-  overconfident: 'You run overconfident',
-  underconfident: 'You run underconfident',
-  calibrated: 'You run well calibrated',
+// Says "these ten", not "you run": ten random questions describe those ten,
+// not a person (roadmap D18 (2)).
+const READS = {
+  overconfident: 'you were overconfident',
+  underconfident: 'you were underconfident',
+  calibrated: 'you were well calibrated',
 } as const;
+
+const NUMBER_WORDS: Record<number, string> = { 10: 'ten' };
 
 const ADVICE = {
   overconfident:
-    "When you feel sure, you're right less often than you think. Try shading your confidence down.",
+    "When you felt sure, you were right less often than you thought. Try shading your confidence down.",
   underconfident:
-    'You know more than you give yourself credit for. Try trusting your gut a little further.',
+    'You knew more than you gave yourself credit for. Try trusting your gut a little further.',
   calibrated:
     'Your confidence tracks reality closely. The real test is whether it holds on your own predictions.',
 } as const;
 
-const TRICKY_NOTE =
-  'These were picked to be tricky, so most people run hot here. ' +
+const SAMPLE_NOTE =
+  'Ten questions is a small sample, and trivia says little about your plans. ' +
   'Your own predictions are the real test.';
 
 const SAME_NUMBER_NOTE =
@@ -74,19 +79,21 @@ export function warmupVerdict(
   if (!result || result.answered === 0) return null;
 
   const stated = Math.round(result.mean_confidence);
-  const actual = Math.round(result.accuracy * 100);
   const same = sharedConfidence(answers);
+  const n = result.answered;
+  const right = Math.round(result.accuracy * n);
+  const count = `${right} of ${n} were right.`;
 
   return {
-    title: TITLES[result.direction],
+    title: `On these ${NUMBER_WORDS[n] ?? n}, ${READS[result.direction]}`,
     detail:
       same === null
-        ? `You were ${stated}% confident on average, and right ${actual}% of the time.`
-        : `You said ${same}% on all ${answers.length}, and were right ${actual}% of the time.`,
+        ? `You said ${stated}% on average. ${count}`
+        : `You said ${same}% on all ${n}. ${count}`,
     advice: ADVICE[result.direction],
     // Nothing to tell apart when every answer was right.
     sameNumber: same !== null && result.accuracy < 1 ? SAME_NUMBER_NOTE : null,
-    trickyNote: result.direction === 'overconfident' ? TRICKY_NOTE : null,
+    sampleNote: result.direction === 'overconfident' ? SAMPLE_NOTE : null,
   };
 }
 

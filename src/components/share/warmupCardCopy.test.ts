@@ -21,18 +21,15 @@ describe('warmupCardCopy', () => {
   it('turns the verdict into a first-person receipt', () => {
     expect(warmupCardCopy(result())).toEqual({
       eyebrow: 'My calibration warm-up',
-      headline: 'I run hot',
-      receipt: '77% sure, 50% right',
-      context: '10 tricky questions. Real predictions next.',
+      headline: '5 of 10 right',
+      receipt: 'I was 77% sure. How sure are you?',
+      context: '10 questions. Real predictions next.',
     });
   });
 
-  it('names each direction', () => {
-    expect(warmupCardCopy(result({ direction: 'underconfident' }))?.headline).toBe(
-      'I run cool',
-    );
-    expect(warmupCardCopy(result({ direction: 'calibrated' }))?.headline).toBe(
-      'I run true',
+  it('says the counts whichever way the verdict leans', () => {
+    expect(warmupCardCopy(result({ accuracy: 0.9, direction: 'underconfident' }))?.headline).toBe(
+      '9 of 10 right',
     );
   });
 

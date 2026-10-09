@@ -59,7 +59,12 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   // Empty until set (roadmap D13). A preset 50% sat inside the 35–65% band,
   // so a save that never touched the control earned the integrity bonus.
   const [confidence, setConfidence] = useState<number | null>(null);
-  const [dueDate, setDueDate] = useState(again?.dueIso ?? presets[1].iso);
+  // A first prediction is due tomorrow, so its result lands on Day 1 (D18 (4));
+  // after that, in a week.
+  const firstEver = usePredictionStore((s) => s.pending.length + s.resolved.length === 0);
+  const [dueDate, setDueDate] = useState(
+    again?.dueIso ?? presets[firstEver ? 0 : 1].iso,
+  );
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   const isCustomDate = !presets.some((p) => p.iso === dueDate);
@@ -89,7 +94,6 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   // hidden entirely; the rest of the save flow is untouched.
   const aiRefineEnabled = useSettingsStore((s) => s.aiRefineEnabled);
   // A first prediction ever gets starter ideas under the title (step 40).
-  const firstEver = usePredictionStore((s) => s.pending.length + s.resolved.length === 0);
 
   // The range-coverage nudge (CLAUDE.md, "Range coverage caveat"). Latched
   // once shown: marking it shown starts the cooldown, which would otherwise
