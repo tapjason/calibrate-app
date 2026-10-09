@@ -123,6 +123,7 @@ is checking it on an iPhone and the decisions.
 | 99 D18 (4): a first prediction is due tomorrow | Done 2026-10-08, unit-tested (the Log form's first-ever default is Tomorrow, later ones stay "In a week"; the five starter ideas all resolve by tomorrow). Points (3), (5) remain | — |
 | 100 D18 (3): a bridge from trivia to your own plans | Done 2026-10-08, unit-tested (the thesis line under the verdict; the button reads "Predict something about tomorrow"). Only (5), the Day-0 card, remains | Yes (read it at 320pt) |
 | 101 D18 (5): the Day-0 card shares counts as an invitation | Done 2026-10-08, unit-tested ("5 of 10 right" / "I was 77% sure. How sure are you?"; no "I run hot"). D18 is fully built; compare `warmup_completed`, the first log and D1 retention before and after | Yes (the card on a device) |
+| 102 The Warmup's right answers are balanced by position | Done 2026-10-09, unit-tested and found in the web build (the fixed draw put 8 of 10 second, so "always B" scored 80% for everyone). Five first, five second; the Day-0 verdict, bridge and title web-verified at 375 × 667 | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run

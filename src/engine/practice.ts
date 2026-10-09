@@ -318,6 +318,13 @@ export function practiceQuestions(
 const WARMUP_DAYS = [-1, -2] as const;
 
 /**
+ * Where the right answer sits, question by question: five first, five second,
+ * in no pattern a person would guess. The draw alone put eight of ten second,
+ * and with one fixed set, "always pick the second" would score 80% for all.
+ */
+const WARMUP_CORRECT_AT = [0, 1, 1, 0, 0, 1, 0, 1, 1, 0] as const;
+
+/**
  * The Warmup's ten (roadmap D18 (1)): drawn from the practice tables like a
  * day's practice, not picked to be tricky. Two draws of five, so a kind may
  * appear twice, each time with a different pair. The same ten for everyone,
@@ -333,7 +340,12 @@ export function warmupQuestions(facts: PracticeFacts): PracticeQuestion[] {
       questions.push(q);
     }
   }
-  return questions;
+  return questions.map((q, i) => {
+    const want = WARMUP_CORRECT_AT[i % WARMUP_CORRECT_AT.length]!;
+    if (q.correctIndex === want) return q;
+    const options: [string, string] = [q.options[1], q.options[0]];
+    return { ...q, id: `${q.kind}:${options[0]}|${options[1]}`, options, correctIndex: want };
+  });
 }
 
 /** One day's answers in counts. */

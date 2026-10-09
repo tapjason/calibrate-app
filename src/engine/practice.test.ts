@@ -286,11 +286,17 @@ describe('warmupQuestions', () => {
     }
   });
 
-  it('draws the same fair pairs a day of practice does', () => {
+  it('puts the right answer first five times and second five times', () => {
+    const at = warmupQuestions(PRACTICE_FACTS).map((q) => q.correctIndex);
+    expect(at.filter((i) => i === 0)).toHaveLength(5);
+    expect(at.filter((i) => i === 1)).toHaveLength(5);
+  });
+
+  it('keeps the marked answer the true one after balancing positions', () => {
     const values = lookup(PRACTICE_FACTS);
     for (const q of warmupQuestions(PRACTICE_FACTS)) {
       const [a, b] = q.options.map((o) => values[q.kind]!.get(o)!);
-      expect(a).not.toBe(b);
+      expect(q.correctIndex === 0 ? a! > b! : b! > a!).toBe(true);
     }
   });
 });
