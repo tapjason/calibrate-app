@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
-import { CalibrationChart, placeDotLabels } from '@/components/stats/CalibrationChart';
+import { CalibrationChart, labelAt, placeDotLabels } from '@/components/stats/CalibrationChart';
 import { haptics } from '@/components/ui/haptics';
 import type { BucketStat } from '@/types';
 
@@ -298,5 +298,17 @@ describe('CalibrationChart chance capsules', () => {
     empty.unmount();
     const drawn = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
     expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/Grey bars: where a perfectly calibrated dot lands/);
+  });
+});
+
+describe('labelAt', () => {
+  it('centres a label on its dot', () => {
+    expect(labelAt(150, 'n=10', 320)).toEqual({ x: 150, anchor: 'middle' });
+  });
+
+  // A 100%-stated dot sits at the right padding; a centred "n=10" ran off the
+  // chart ("n=1C" at 320pt).
+  it('ends a label at the edge when centring would clip it', () => {
+    expect(labelAt(308, 'n=10', 320)).toEqual({ x: 318, anchor: 'end' });
   });
 });

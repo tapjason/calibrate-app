@@ -283,6 +283,7 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
               const cy = yOf(b.actual_rate);
               const r = radiusOf(b.total_resolved);
               const labelY = labelYs[i];
+              const label = labelAt(cx, `n=${b.total_resolved}`, width);
               return (
                 <DotGroup key={b.low} animate={animate} delay={DRAW_MS + i * DOT_STAGGER_MS}>
                   <Circle
@@ -300,7 +301,7 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
                       react-native-svg doesn't reliably honour. */}
                   <SvgText
                     testID={`point-${b.low}-n-halo`}
-                    x={cx}
+                    x={label.x}
                     y={labelY}
                     fontSize={TICK_FONT}
                     fontFamily={svgFontFamily}
@@ -308,18 +309,18 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
                     stroke={colors.canvas}
                     strokeWidth={3}
                     strokeLinejoin="round"
-                    textAnchor="middle"
+                    textAnchor={label.anchor}
                   >
                     {`n=${b.total_resolved}`}
                   </SvgText>
                   <SvgText
                     testID={`point-${b.low}-n`}
-                    x={cx}
+                    x={label.x}
                     y={labelY}
                     fontSize={TICK_FONT}
                     fontFamily={svgFontFamily}
                     fill={colors.textSecondary}
-                    textAnchor="middle"
+                    textAnchor={label.anchor}
                   >
                     {`n=${b.total_resolved}`}
                   </SvgText>
@@ -374,6 +375,21 @@ interface DotLabelInput {
   cy: number;
   r: number;
   text: string;
+}
+
+/**
+ * Where a dot's "n=…" label sits across. Centred on the dot, except that a
+ * dot at the far right (100% stated) would clip its label at the chart's
+ * edge, so that one ends at the edge instead.
+ */
+export function labelAt(
+  cx: number,
+  text: string,
+  width: number,
+): { x: number; anchor: 'middle' | 'end' } {
+  const half = (text.length * TICK_FONT * 0.6) / 2;
+  const edge = width - 2;
+  return cx + half > edge ? { x: edge, anchor: 'end' } : { x: cx, anchor: 'middle' };
 }
 
 /**
