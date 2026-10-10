@@ -83,7 +83,8 @@ describe('LogPredictionForm', () => {
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship the prototype');
     fireEvent.press(screen.getByTestId('category-health'));
-    fireEvent.press(screen.getByTestId('confidence-increment')); // unset → 55, from the middle
+    fireEvent.press(screen.getByTestId('confidence-increment')); // unset → 50, the middle
+    fireEvent.press(screen.getByTestId('confidence-increment')); // 55
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
@@ -117,7 +118,7 @@ describe('LogPredictionForm', () => {
     expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
 
     fireEvent.press(screen.getByTestId('confidence-decrement'));
-    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('45%');
+    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('50%');
     expect(save().props.accessibilityState).toMatchObject({ disabled: false });
   });
 

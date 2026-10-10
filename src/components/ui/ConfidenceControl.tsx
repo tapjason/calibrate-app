@@ -99,8 +99,10 @@ export function ConfidenceControl({
   const { width, fontScale } = useWindowDimensions();
   const inlineSteppers =
     width >= INLINE_STEPPERS_MIN_WIDTH && fontScale <= INLINE_STEPPERS_MAX_FONT_SCALE;
-  // Unset, the thumb rests mid-range in grey and the ±5 buttons step from
-  // there; the first touch, tap or swipe sets a real number.
+  // Unset, the thumb rests mid-range in grey. The first ±5 sets the number
+  // the thumb is resting on (2026-10-09: stepping from it, +5 jumped a blank
+  // control to 80% in the Warmup and −5 to 45% on Log, and three blind
+  // testers were surprised); after that each tap steps 5.
   const middle = Math.round((min + max) / 2 / STEP) * STEP;
   const from = value ?? middle;
 
@@ -110,14 +112,14 @@ export function ConfidenceControl({
         label="−5"
         accessibilityLabel="Lower confidence by 5"
         variant="secondary"
-        onPress={() => set(from - STEP)}
+        onPress={() => set(unset ? middle : from - STEP)}
         testID={`${idPrefix}-decrement`}
       />
       <Button
         label="+5"
         accessibilityLabel="Raise confidence by 5"
         variant="secondary"
-        onPress={() => set(from + STEP)}
+        onPress={() => set(unset ? middle : from + STEP)}
         testID={`${idPrefix}-increment`}
       />
     </View>

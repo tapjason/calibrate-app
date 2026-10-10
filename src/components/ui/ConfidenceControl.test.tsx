@@ -92,13 +92,16 @@ describe('ConfidenceControl', () => {
       );
     });
 
-    it('steps ±5 from the middle of the range', () => {
+    // 2026-10-09 dry run: the first ±5 sets the number the thumb rests on,
+    // instead of jumping past it; after that, each tap steps 5.
+    it('sets the resting middle on the first ±5, then steps', () => {
       const onChange = jest.fn();
-      render(<ConfidenceControl value={null} onChange={onChange} />);
+      const { rerender } = render(<ConfidenceControl value={null} onChange={onChange} />);
+      fireEvent.press(screen.getByTestId('confidence-decrement'));
+      expect(onChange).toHaveBeenLastCalledWith(50);
+      rerender(<ConfidenceControl value={50} onChange={onChange} />);
       fireEvent.press(screen.getByTestId('confidence-increment'));
       expect(onChange).toHaveBeenLastCalledWith(55);
-      fireEvent.press(screen.getByTestId('confidence-decrement'));
-      expect(onChange).toHaveBeenLastCalledWith(45);
     });
 
     it('takes a touch of the resting thumb as a choice, once', () => {

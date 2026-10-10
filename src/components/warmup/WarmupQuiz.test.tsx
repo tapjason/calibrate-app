@@ -86,9 +86,9 @@ describe('WarmupQuiz', () => {
     fireEvent.press(screen.getByTestId('warmup-next'));
     expect(useWarmupStore.getState().answers).toEqual([]);
 
-    // The first ±5 steps from the middle of 50–100.
+    // The first ±5 sets the middle of 50–100, where the thumb rests.
     fireEvent.press(screen.getByTestId('warmup-confidence-decrement'));
-    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('70%');
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('75%');
     expect(screen.getByTestId('warmup-next').props.accessibilityState).toMatchObject({
       disabled: false,
     });
@@ -98,6 +98,7 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-1')); // correct
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 75, the middle
     fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80
     fireEvent.press(screen.getByTestId('warmup-next'));
 
@@ -112,6 +113,7 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-0')); // wrong
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 75, the middle
     fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80
     fireEvent.press(screen.getByTestId('warmup-next'));
 
