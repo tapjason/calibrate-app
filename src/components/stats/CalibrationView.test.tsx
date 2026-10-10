@@ -264,7 +264,7 @@ describe('CalibrationView Brier score', () => {
       />,
     );
     expect(getByTestId('stats-brier')).toHaveTextContent(
-      'Brier score 0.14 · lower is better; always saying 50% scores 0.25',
+      'Brier score\u00A00.14 · lower is better; always saying 50%\u00A0scores\u00A00.25',
     );
   });
 

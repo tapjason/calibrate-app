@@ -100,7 +100,7 @@ export function CalibrationView({
               {/* Secondary and quiet (roadmap D24): it keeps the rating honest
                   for those who look, and stays out of everyone else's way. */}
               {brier !== null && (
-                <Text style={styles.subtle} testID="stats-brier">
+                <Text style={[styles.subtle, styles.centered]} testID="stats-brier">
                   {brierLine(brier)}
                 </Text>
               )}
@@ -215,6 +215,8 @@ const styles = StyleSheet.create({
   ratingLabel: { ...type.subhead, color: colors.textSecondary },
   ratingGroup: { alignItems: 'center' },
   subtle: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
+  // Two lines at 375pt: centred like the single lines around it.
+  centered: { textAlign: 'center' },
   // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
   sectionTitle: {
     ...type.eyebrow,

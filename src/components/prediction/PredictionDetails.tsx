@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
@@ -142,8 +142,9 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
         {prediction.title}
       </Text>
       <Text style={styles.due} testID="details-due">
-        Due {shortDate(prediction.due_date)} ·{' '}
-        {remindersOn ? 'reminder that evening' : 'reminders off'}
+        Due {shortDate(prediction.due_date)}
+        {/* The web build sends no notifications, so it promises none. */}
+        {Platform.OS === 'web' ? '' : remindersOn ? ' · reminder that evening' : ' · reminders off'}
       </Text>
     </>
   );

@@ -19,7 +19,7 @@ describe('StreakLine (roadmap D2)', () => {
   it('reads as one sentence, with the day’s goal shown as filled and hollow pips', () => {
     render(<StreakLine status={{ streak: 5, today: 1, todayCounts: true, checkpoint: null, nextCheckpoint: 7, ...NO_REST }} />);
     expect(screen.getByTestId('streak-line').props.accessibilityLabel).toBe(
-      '5-day streak. Today counts. Goal: 1 of 3.',
+      '5-day streak. Today counts. Goal:\u00A01\u00A0of\u00A03.',
     );
     const pip = (i: number) =>
       StyleSheet.flatten(screen.getByTestId(`streak-line-pip-${i}`, { includeHiddenElements: true }).props.style);

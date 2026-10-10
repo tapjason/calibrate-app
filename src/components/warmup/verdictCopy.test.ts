@@ -21,7 +21,7 @@ describe('warmupVerdict', () => {
     const v = warmupVerdict(scoreWarmup(OVERCONFIDENT));
     expect(v?.title).toBe('On these ten, you were overconfident');
     expect(v?.detail).toBe(
-      'You said 90% on average. 5 of 10 were right.',
+      'You said 90% on average. 5\u00A0of\u00A010\u00A0were\u00A0right.',
     );
   });
 

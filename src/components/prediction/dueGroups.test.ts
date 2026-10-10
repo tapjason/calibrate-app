@@ -135,7 +135,7 @@ describe('firstAnswerLead', () => {
   });
 
   it('gives the date beyond the week', () => {
-    expect(firstAnswerLead([dueIn(9)], NOW)).toMatch(/^Your first answer: Sat,? Sep 19$|^Your first answer: Sat, 19 Sep$/);
+    expect(firstAnswerLead([dueIn(9)], NOW)).toMatch(/^Your first answer: Sat,?\u00A0Sep\u00A019$|^Your first answer: Sat,\u00A019\u00A0Sep$/);
   });
 
   it('says it is ready once one is due', () => {

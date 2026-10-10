@@ -29,7 +29,8 @@ export default function ScoringScreen() {
                   // Once: a later layout pass mustn't pull the reader back.
                   if (jumped.current) return;
                   jumped.current = true;
-                  scroll.current?.scrollTo({ y, animated: false });
+                  // A little above, so the heading isn't flush with the edge.
+                  scroll.current?.scrollTo({ y: Math.max(0, y - 16), animated: false });
                 }
               : undefined
           }
