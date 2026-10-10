@@ -146,7 +146,8 @@ found the RevenueCat Test Store drift below.
   reminder) were decided and built on 2026-10-07, so every structural call is
   made before submission. D17 (one a day keeps the streak) was built the same
   day; D18 (Day 0 is for calibration) was built 2026-10-08 and refined 2026-10-09
-  with D20 (no warm-up score). D19 (the Day-1 reminder and "Not now") is open.
+  with D20 (no warm-up score), and D19 (a first "Not now" lasts until morning) was
+  built the same day.
 
 ---
 

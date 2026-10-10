@@ -177,4 +177,4 @@ Back guard moved as step 23.
 
 Decisions in `UI_ROADMAP.md` §2 are not repeated here. Still open as of 2026-10-09:
 D5 (SDK 58), D6 (milestone cards), D8 (resolve from the notification), D11 (on-device
-Coach), D12 (widgets) and D19 (the Day-1 reminder and "Not now").
+Coach) and D12 (widgets).

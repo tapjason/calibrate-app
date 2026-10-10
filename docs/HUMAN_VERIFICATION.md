@@ -780,6 +780,9 @@ Expo Go — notifications and RevenueCat are both native modules.
       reminders** brings up the iOS alert. Allow it: the prediction's reminder
       is scheduled. On a second install, refuse it: Settings → Notifications
       shows "Open Settings", which opens the app's page in iOS Settings.
+- [ ] **"Not now" (D19, step 108):** tap it on the reminder card in the evening;
+      it's gone for the rest of the day and back on Today from 06:00 the next
+      morning. Tap it again: gone for a week.
 - [ ] A resolution reminder fires on a prediction's due date (set one a few
       minutes out).
 - [ ] Tapping the notification deep-links into the Resolve screen for the

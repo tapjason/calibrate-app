@@ -806,7 +806,9 @@ the same thing, no instructions, title-style titles without ending punctuation.
   is required for your app to function"). Once there is an open prediction, Home shows
   a quiet sunken card, "Want a reminder when it's due?", saying when the first one
   would come, with a secondary **Turn on reminders** (which shows the alert) and
-  **Not now** (a week's cooldown). Settings' Notifications row adds **Allow
+  **Not now**. The first "Not now" holds the card until 06:00 the next morning, so a
+  Day-0 refusal doesn't cost the first prediction's Day-1 reminder; from the second,
+  a week (D19, step 108). Settings' Notifications row adds **Allow
   reminders** while iOS hasn't been asked and **Open Settings** after a refusal.
 - One reminder per prediction; no follow-ups.
 - **The practice reminder is asked for, never assumed** (step 89): off until a moment
