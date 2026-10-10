@@ -286,6 +286,11 @@ describe('warmupQuestions', () => {
     }
   });
 
+  it('never names the same place, mountain or person twice', () => {
+    const labels = warmupQuestions(PRACTICE_FACTS).flatMap((q) => q.options);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
   it('puts the right answer first five times and second five times', () => {
     const at = warmupQuestions(PRACTICE_FACTS).map((q) => q.correctIndex);
     expect(at.filter((i) => i === 0)).toHaveLength(5);

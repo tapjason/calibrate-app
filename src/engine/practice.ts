@@ -345,6 +345,9 @@ const WARMUP_DAYS = [-1, -2] as const;
  */
 const WARMUP_BANDED = [true, false] as const;
 
+/** How many days a half may draw before settling for fewer than five (tables in tests can be tiny). */
+const WARMUP_DRAW_LIMIT = 20;
+
 /**
  * Where the right answer sits, question by question: five first, five second,
  * in no pattern a person would guess. The draw alone put eight of ten second,
@@ -360,13 +363,21 @@ const WARMUP_CORRECT_AT = [0, 1, 1, 0, 0, 1, 0, 1, 1, 0] as const;
  * which lets the answer key be re-derived without storing the questions.
  */
 export function warmupQuestions(facts: PracticeFacts): PracticeQuestion[] {
+  // No place, mountain or person twice: two blind testers met Aconcagua in
+  // two questions, and the second gave the first away (2026-10-09). Each half
+  // draws further days until it has five that share no option with the rest.
   const seen = new Set<string>();
   const questions: PracticeQuestion[] = [];
   WARMUP_DAYS.forEach((day, d) => {
-    for (const q of practiceQuestions(facts, day, 5, WARMUP_BANDED[d])) {
-      if (seen.has(q.id)) continue;
-      seen.add(q.id);
-      questions.push(q);
+    let taken = 0;
+    for (let k = 0; taken < 5 && k < WARMUP_DRAW_LIMIT; k += 1) {
+      for (const q of practiceQuestions(facts, day - k * WARMUP_DAYS.length, 5, WARMUP_BANDED[d])) {
+        if (taken === 5) break;
+        if (q.options.some((o) => seen.has(o))) continue;
+        for (const o of q.options) seen.add(o);
+        questions.push(q);
+        taken += 1;
+      }
     }
   });
   return questions.map((q, i) => {
