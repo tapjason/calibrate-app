@@ -422,7 +422,9 @@ small ±5 buttons).
   `circle.lefthalf.filled` (replaces the failing 2.94:1 green text).
 - **Keep** the ±5 buttons (or equivalent `accessibilityActions`) and the existing
   `adjustable` role from `src/components/ui/adjustable.ts` — the slider must not
-  regress VoiceOver.
+  regress VoiceOver. They sit on the readout's row, right-aligned, from 360pt wide
+  and up to 1.15× text; narrower or larger, under the slider (step 110). On their
+  own row they cost ~60pt and pushed Next and Save below the fold on a 667pt phone.
 - Warmup range stays 50–100 (spec).
 - **Starts empty** (roadmap D13, built as step 54): the readout shows "—%" in
   `textTertiary` at full size (so setting a number doesn't shift the layout) with "not
@@ -480,6 +482,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   at ≥ 4.5:1**, phrased as a question: "What are you sharp at? · calibrate.app". (The
   current footer, `#64748b` on `#0f172a`, is 3.75:1 — the growth hook is the faintest
   text on the card.)
+- **On the Share sheet** (step 112): the preview, then **Share my card** and
+  **Share as text** straight under it, then Shape, On the card and the themes.
+  The options adjust; the action shouldn't wait below them.
 - **Formats:** Story 1080×1920 (keep content inside y ≈ 250–1580); Post 1080×1440 (3:4,
   the tallest ratio X and iMessage show uncropped). The identity card's canvas is
   360 pt wide on every phone and is captured at 3×, which is exactly these sizes
@@ -730,7 +735,9 @@ the control reads the chosen category.)
   accept button is secondary; Save is the only primary action on the screen. Keep the
   current copy and the "Not now" cooldown.
 - **Save:** one primary capsule, disabled until the title is non-empty and a
-  confidence is set (§7.3), `commit` motion.
+  confidence is set (§7.3), `commit` motion. **Pinned** under the scrolling fields
+  over a hairline (step 111), so it is always on screen; the keyboard may cover it,
+  since Save also waits for a confidence and setting one means the keyboard is down.
   (Built as step 46; it used to answer an empty tap with the store's "title is
   required".) A failed save says "Couldn't save that. Try again.", never the store's
   developer message.
@@ -866,8 +873,9 @@ lean"); the counts ("You said 78% on average. 6 of 10 were right."); the mini ch
 one line of advice; the bridge ("Trivia is the warm-up. People are most
 overconfident about their own plans: students who expected to finish their thesis in
 34 days took 56."); one note ("This is a warm-up, not your calibration rating. That
-one needs 20 of your own predictions."); **Predict something about tomorrow** and
-**Share my result**; then the answer key. It opens at its top (step 72).
+one needs 20 of your own predictions."); **Make a real prediction** (step 113:
+the bridge ends "Make your first one about tomorrow.", so the button fits one line)
+and **Share my result**; then the answer key. It opens at its top (step 72).
 
 - **A lean only beyond luck** (step 104). Ten answers move accuracy in steps of 10
   points, and the ±5 rule used elsewhere called a lean on 47–73% of perfectly

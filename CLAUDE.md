@@ -198,7 +198,8 @@ D18; built 2026-10-08):
   elsewhere called a lean on 47–73% of perfectly calibrated people
   (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20, 2026-10-09).
 - A bridge to the person's own plans (the planning-fallacy line) sits above the
-  button, "Predict something about tomorrow".
+  button, "Make a real prediction" (the bridge ends "Make your first one about
+  tomorrow.").
 - The first prediction defaults to Tomorrow, with starter ideas that resolve by then,
   so the first real result lands on Day 1. That first yes/no answer says what the
   number means, the same for Yes and No ("A 70% call should come true about 7 times

@@ -4,7 +4,7 @@
 [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) (which holds the rules). Evidence in
 [`research/`](research/); "before" screens from 2026-09-25 in [`baseline/`](baseline/).
 Feature ideas beyond this roadmap are parked in [`FUTURE_UI.md`](FUTURE_UI.md).
-What has been built, step by step (steps 0–108), is in
+What has been built, step by step (steps 0–113), is in
 [`BUILT_LOG.md`](BUILT_LOG.md); this file holds only what is still open.
 
 ---
@@ -12,7 +12,7 @@ What has been built, step by step (steps 0–108), is in
 
 ## 1. Where it stands
 
-Every step through 108 is built (see [`BUILT_LOG.md`](BUILT_LOG.md)). The redesign
+Every step through 113 is built (see [`BUILT_LOG.md`](BUILT_LOG.md)). The redesign
 pass, the element and retention research batches, the Day-0 rework (D18) and the
 daily-practice, rest-day and reminder features all shipped. **Everything not listed
 in the parking lot or §2 is done**; what's left is a first session on an iPhone
