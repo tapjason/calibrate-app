@@ -31,11 +31,16 @@ function happened(b: BucketStat): string {
  * this kind of call.
  */
 export function trackRecordLine(
-  category: Category,
+  /** Null while none is chosen (roadmap D29): then it reads every category. */
+  category: Category | null,
   categoryBucket: BucketStat | null,
   overallBucket: BucketStat | null,
 ): TrackRecord | null {
-  if (categoryBucket && categoryBucket.total_resolved >= MIN_BUCKET_N_FOR_VERDICT) {
+  if (
+    category !== null &&
+    categoryBucket &&
+    categoryBucket.total_resolved >= MIN_BUCKET_N_FOR_VERDICT
+  ) {
     return {
       scope: 'category',
       text: `Your ${rangeLabel(categoryBucket)} calls in ${category}: ${happened(categoryBucket)}.`,

@@ -102,8 +102,25 @@ describe('LogPredictionForm', () => {
   // Roadmap step 46: the web build answered an empty Save with "title is
   // required" in red, far below the field. Save now waits for a title, and
   // (D13) for a confidence, which starts empty.
+  // Roadmap D29: no category is preset, and Save waits for one.
+  it('starts with no category and keeps Save disabled until one is chosen', () => {
+    render(<LogPredictionForm />);
+    const save = () => screen.getByTestId('submit-button');
+    for (const c of ['work', 'health', 'finance', 'social', 'personal']) {
+      expect(screen.getByTestId(`category-${c}`).props.accessibilityState).toEqual({
+        selected: false,
+      });
+    }
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    expect(save().props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(screen.getByTestId('category-work'));
+    expect(save().props.accessibilityState).toMatchObject({ disabled: false });
+  });
+
   it('keeps Save disabled until there is a title and a confidence', async () => {
     render(<LogPredictionForm />);
+    fireEvent.press(screen.getByTestId('category-work'));
     const save = () => screen.getByTestId('submit-button');
     expect(save().props.accessibilityState).toMatchObject({ disabled: true });
 
@@ -138,6 +155,7 @@ describe('LogPredictionForm', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     render(<LogPredictionForm />);
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
+    fireEvent.press(screen.getByTestId('category-work'));
     fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 
@@ -159,6 +177,7 @@ describe('LogPredictionForm', () => {
     render(<LogPredictionForm />);
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'no refine here');
+    fireEvent.press(screen.getByTestId('category-work'));
     fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 
@@ -182,6 +201,7 @@ describe('LogPredictionForm', () => {
     render(<LogPredictionForm />);
 
     fireEvent.changeText(screen.getByTestId('title-field'), "do better at work");
+    fireEvent.press(screen.getByTestId('category-work'));
     fireEvent.press(screen.getByTestId('refine-button'));
 
     await waitFor(() => {
@@ -207,6 +227,7 @@ describe('LogPredictionForm', () => {
     render(<LogPredictionForm />);
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'original');
+    fireEvent.press(screen.getByTestId('category-work'));
     fireEvent.press(screen.getByTestId('refine-button'));
 
     await waitFor(() => {
@@ -229,6 +250,7 @@ describe('LogPredictionForm', () => {
     render(<LogPredictionForm />);
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'plain prediction');
+    fireEvent.press(screen.getByTestId('category-work'));
     fireEvent.press(screen.getByTestId('refine-button'));
 
     // wait for refine to settle, then save normally
@@ -253,6 +275,7 @@ describe('LogPredictionForm', () => {
     }
     // Just verify the slider didn't crash; details checked via store after submit
     fireEvent.changeText(screen.getByTestId('title-field'), 't');
+    fireEvent.press(screen.getByTestId('category-work'));
     fireEvent.press(screen.getByTestId('submit-button'));
     await waitFor(() => {
       expect(usePredictionStore.getState().pending).toHaveLength(1);
@@ -311,6 +334,7 @@ describe('LogPredictionForm', () => {
         screen.getByTestId('title-field'),
         'It will rain on Saturday',
       );
+      fireEvent.press(screen.getByTestId('category-personal'));
       fireEvent.press(screen.getByTestId('submit-button'));
 
       await waitFor(() => {

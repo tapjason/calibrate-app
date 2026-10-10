@@ -26,6 +26,14 @@ describe('trackRecordLine (roadmap step 19)', () => {
     });
   });
 
+  // Roadmap D29: no category is chosen at first, so the line reads every one.
+  it('reads every category while none is chosen', () => {
+    expect(trackRecordLine(null, bucket(60, 12, 7), bucket(60, 52, 30))).toEqual({
+      scope: 'overall',
+      text: 'Your 60–80% calls: 30 of 52 happened.',
+    });
+  });
+
   it('falls back to every category while this one is thin', () => {
     expect(trackRecordLine('finance', bucket(60, 4, 1), bucket(60, 52, 30))).toEqual({
       scope: 'overall',

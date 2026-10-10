@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
-import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
-import { noonInDays, type LogAgainDraft } from '@/components/prediction/logAgain';
+import { CategoryChips } from '@/components/prediction/CategoryChips';
+import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
+import { type LogAgainDraft } from '@/components/prediction/logAgain';
 import { StarterIdeas } from '@/components/prediction/StarterIdeas';
 import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
-import { chosenProps } from '@/components/ui/chosen';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
-import { CategoryIcon } from '@/components/ui/Icon';
 import { TextField } from '@/components/ui/TextField';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED } from '@/constants/app';
@@ -25,7 +24,7 @@ import {
   useStatsStore,
   type CoverageNudgeDecision,
 } from '@/store/statsStore';
-import { CATEGORIES, type Category } from '@/types';
+import { type Category } from '@/types';
 
 const TITLE_MAX_LENGTH = 200;
 
@@ -55,7 +54,7 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
-  const [category, setCategory] = useState<Category>(again?.category ?? 'work');
+  const [category, setCategory] = useState<Category | null>(again?.category ?? null);
   // Empty until set (roadmap D13): a preset can't be told apart from a choice,
   // so a save that never touched the control sat at a number nobody chose.
   const [confidence, setConfidence] = useState<number | null>(null);
@@ -67,10 +66,6 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   );
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
-  const isCustomDate = !presets.some((p) => p.iso === dueDate);
-  // One chip chosen at a time (roadmap step 93): while the picker is open,
-  // "Pick a date" is the choice, even before the date moves off a preset's.
-  const presetChosen = (iso: string) => !picking && dueDate === iso;
   // A form left open (the Log tab, before D3; a sheet now) kept yesterday's
   // presets after midnight, and "Tomorrow" meant today. When the day turns, rebuild them and
   // keep the chosen chip chosen; a picked date stays as picked.
@@ -110,7 +105,11 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   const record =
     confidence === null
       ? null
-      : trackRecordLine(category, categoryBucketFor(category, confidence), bucketFor(confidence));
+      : trackRecordLine(
+          category,
+          category === null ? null : categoryBucketFor(category, confidence),
+          bucketFor(confidence),
+        );
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   useEffect(() => {
@@ -151,7 +150,7 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   };
 
   const onSubmit = async () => {
-    if (confidence === null) return;
+    if (confidence === null || category === null) return;
     setError(null);
     setSubmitting(true);
     try {
@@ -163,6 +162,7 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
       });
       haptics.commit();
       setTitle('');
+      setCategory(null);
       setConfidence(null);
       const next = datePresets();
       setPresets(next);
@@ -180,10 +180,11 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
     }
   };
 
-  // Save waits for a title and a confidence (DESIGN_SYSTEM §7.12, roadmap
-  // D13), as iOS's own Add buttons do, instead of answering a tap with an
-  // error far below the field.
-  const canSave = title.trim().length > 0 && confidence !== null && !submitting;
+  // Save waits for a title, a category and a confidence (DESIGN_SYSTEM §7.12,
+  // roadmap D13 and D29), as iOS's own Add buttons do, instead of answering a
+  // tap with an error far below the field.
+  const canSave =
+    title.trim().length > 0 && category !== null && confidence !== null && !submitting;
 
   // Save is pinned under the fields (2026-10-09): at the end of the form it sat
   // below the fold on a 667pt phone even after the starter ideas had gone. The
@@ -275,34 +276,9 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
 
         <View style={styles.block}>
           <Text style={styles.label}>Category</Text>
-          <View style={styles.row}>
-            {CATEGORIES.map((c) => (
-              <Pressable
-                key={c}
-                onPress={() => setCategory(c)}
-                testID={`category-${c}`}
-                accessibilityRole="radio"
-                accessibilityLabel={`Category: ${c}`}
-                {...chosenProps('radio', category === c)}
-                style={[styles.chip, styles.chipWithIcon, category === c && styles.chipActive]}
-              >
-                <CategoryIcon
-                  category={c}
-                  size={15}
-                  color={category === c ? colors.brand800 : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.chipText,
-                    styles.capitalize,
-                    category === c && styles.chipTextActive,
-                  ]}
-                >
-                  {c}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {/* Nothing chosen to start (roadmap D29): a preset Work filed
+              untouched predictions under Work. */}
+          <CategoryChips value={category} onChange={setCategory} />
         </View>
 
         <View style={styles.block}>
@@ -318,63 +294,13 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
 
         <View style={styles.block}>
           <Text style={styles.label}>Due date</Text>
-          <View style={styles.row}>
-            {presets.map((preset) => (
-              <Pressable
-                key={preset.id}
-                onPress={() => {
-                  setDueDate(preset.iso);
-                  setPicking(false);
-                }}
-                testID={`due-${preset.id}`}
-                accessibilityRole="radio"
-                accessibilityLabel={`Due ${preset.label.toLowerCase()}`}
-                {...chosenProps('radio', presetChosen(preset.iso))}
-                style={[
-                  styles.chip,
-                  presetChosen(preset.iso) && styles.chipActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    presetChosen(preset.iso) && styles.chipTextActive,
-                  ]}
-                >
-                  {preset.label}
-                </Text>
-              </Pressable>
-            ))}
-            <Pressable
-              onPress={() => {
-                if (Platform.OS === 'android') openDueDialog(dueDate, setDueDate);
-                else setPicking(true);
-              }}
-              testID="due-pick"
-              accessibilityRole="radio"
-              accessibilityLabel="Pick a date"
-              {...chosenProps('radio', isCustomDate || picking)}
-              style={[styles.chip, (isCustomDate || picking) && styles.chipActive]}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  (isCustomDate || picking) && styles.chipTextActive,
-                ]}
-              >
-                Pick a date
-              </Text>
-            </Pressable>
-          </View>
-          {picking && <DuePicker value={dueDate} onChange={setDueDate} />}
-          <Text style={styles.dateValue} testID="due-sentence">
-            Due{' '}
-            {new Date(dueDate).toLocaleDateString(undefined, {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'short',
-            })}
-          </Text>
+          <DueDateChips
+            presets={presets}
+            value={dueDate}
+            picking={picking}
+            onChange={setDueDate}
+            onPickingChange={setPicking}
+          />
         </View>
 
       </ScrollView>
@@ -392,18 +318,6 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   );
 }
 
-function datePresets(): { id: string; label: string; iso: string }[] {
-  // Add days in LOCAL time so "tomorrow" means the user's tomorrow, not
-  // UTC's, anchored at noon (see noonInDays, shared with "Log it again").
-  const make = (daysAhead: number): string => noonInDays(daysAhead);
-  return [
-    // Words, not "+1 week" — that reads as arithmetic (DESIGN_SYSTEM §7.12).
-    { id: 'tomorrow', label: 'Tomorrow', iso: make(1) },
-    { id: 'week', label: 'In a week', iso: make(7) },
-    { id: 'month', label: 'In a month', iso: make(30) },
-  ];
-}
-
 const styles = StyleSheet.create({
   form: { flex: 1 },
   fields: { padding: space.lg, paddingBottom: space.md },
@@ -418,25 +332,8 @@ const styles = StyleSheet.create({
   },
   block: { marginBottom: space.xl },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginBottom: space.sm },
-  row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
-  chip: {
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 14,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-    backgroundColor: colors.surface,
-  },
-  // Selected = tint + bolder label, not colour alone (DESIGN_SYSTEM §7.12).
-  chipActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
-  chipText: { ...type.subhead, color: colors.textPrimary },
-  capitalize: { textTransform: 'capitalize' },
-  chipWithIcon: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  chipTextActive: { color: colors.brand800, fontWeight: '700' },
   // Counts in plain ink: information, not a verdict or a nudge.
   record: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
-  dateValue: { ...type.subhead, marginTop: space.sm, color: colors.textSecondary },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
   refineButton: {
