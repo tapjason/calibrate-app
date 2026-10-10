@@ -21,11 +21,13 @@ import {
   resolvePrediction,
   reopenPrediction,
   setPredictionReflection,
+  updatePrediction,
 } from '@/db/predictions';
 import type {
   AnswerTally,
   Category,
   Prediction,
+  PredictionEdit,
   ResolvedStatus,
   StreakStatus,
 } from '@/types';
@@ -58,7 +60,17 @@ interface PredictionState {
     outcome: ResolvedStatus,
     reflection?: string,
   ) => Promise<void>;
+  /**
+   * Delete a prediction (roadmap D25). Leaves a tombstone so sync deletes it
+   * on the server too; stats recompute in the same transaction.
+   */
   remove: (id: string) => Promise<void>;
+  /**
+   * Edit an open prediction's title, category or due date (roadmap D25).
+   * Never the confidence. A no-op on an answered one. Stats recompute with it,
+   * since a category change moves a prediction between categories' counts.
+   */
+  update: (id: string, edit: PredictionEdit) => Promise<void>;
   /**
    * Undo a resolution (the "Change answer" tap). Stats recompute in the same
    * transaction, exactly as for resolve, so nothing counts a withdrawn answer.
@@ -241,6 +253,19 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // A reflection changes no statistic, so no recompute — just the row.
     await setPredictionReflection(id, text.length > 0 ? text : null);
     await get().loadResolved();
+  },
+
+  update: async (id, edit) => {
+    const userId = requireUserId();
+    const title = edit.title.trim();
+    if (title.length === 0) throw new Error('title is required');
+    // Only this user's own prediction (getById applies the owner filter).
+    if (!(await get().getById(id))) return;
+    await withTransaction(async () => {
+      await updatePrediction(id, { ...edit, title });
+      await useStatsStore.getState().recomputeForUser(userId);
+    });
+    await get().loadPending();
   },
 
   remove: async (id) => {

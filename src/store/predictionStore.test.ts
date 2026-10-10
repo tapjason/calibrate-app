@@ -440,3 +440,67 @@ describe('predictionStore.streakNow', () => {
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
   });
 });
+
+// Roadmap D25: an open prediction can be edited (never its confidence) and
+// deleted, with stats following in the same transaction.
+describe('predictionStore.update and remove', () => {
+  const create = (category: 'work' | 'health' = 'work') =>
+    usePredictionStore.getState().create({
+      title: 'Ship it',
+      category,
+      confidence: 70,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+
+  it('changes title, category and due date, and moves the category counts', async () => {
+    const p = await create('work');
+    await usePredictionStore.getState().update(p.id, {
+      title: '  Ship the beta  ',
+      category: 'health',
+      due_date: '2026-06-08T12:00:00.000Z',
+    });
+    const [after] = usePredictionStore.getState().pending;
+    expect(after).toMatchObject({
+      id: p.id,
+      title: 'Ship the beta',
+      category: 'health',
+      due_date: '2026-06-08T12:00:00.000Z',
+      confidence: 70,
+    });
+    const stats = await listCategoryStats(after.user_id);
+    expect(stats.find((c) => c.category === 'health')?.predictions_made).toBe(1);
+    expect(stats.find((c) => c.category === 'work')?.predictions_made ?? 0).toBe(0);
+  });
+
+  it('refuses an empty title', async () => {
+    const p = await create();
+    await expect(
+      usePredictionStore.getState().update(p.id, {
+        title: '   ',
+        category: 'work',
+        due_date: p.due_date,
+      }),
+    ).rejects.toThrow('title is required');
+  });
+
+  it('leaves an answered prediction as it was', async () => {
+    const p = await create();
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Changed',
+      category: 'health',
+      due_date: p.due_date,
+    });
+    const [resolved] = usePredictionStore.getState().resolved;
+    expect(resolved.title).toBe('Ship it');
+    expect(resolved.category).toBe('work');
+  });
+
+  it('deletes one, from the lists and the counts', async () => {
+    const p = await create();
+    await usePredictionStore.getState().remove(p.id);
+    expect(usePredictionStore.getState().pending).toHaveLength(0);
+    const stat = await getUserStat(p.user_id);
+    expect(stat?.total_predictions).toBe(0);
+  });
+});

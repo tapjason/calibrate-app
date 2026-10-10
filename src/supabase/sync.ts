@@ -8,6 +8,11 @@
 //   pushDirty   — read local rows where dirty=1, batch-upsert to Postgres,
 //                 mark dirty=0 only if updated_at hasn't moved during the
 //                 push. Per-row fallback on batch error.
+//   pushDeletions — delete on the server every prediction deleted here
+//                 (roadmap D25), from the local tombstones, then clear each
+//                 tombstone. Runs first, and pull skips any id still
+//                 tombstoned, so a delete never comes back from the server.
+//                 Another device keeps its copy until it is deleted there.
 //
 // `syncNow` orchestrates pull → push, then asks statsStore to recompute iff
 // anything actually changed. The app's callers go through authStore's
@@ -28,8 +33,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
+  clearDeletion,
   getPredictionUpdatedAt,
+  isDeletionPending,
   listDirtyPredictions,
+  listPendingDeletions,
   markPredictionSynced,
   upsertPredictionFromRemote,
 } from '@/db/predictions';
@@ -157,6 +165,13 @@ export async function pullRemote(
     // return foreign rows. Skip them rather than writing them locally.
     if (remote.user_id !== userId) continue;
 
+    // Deleted here and not yet deleted there (roadmap D25): don't resurrect it.
+    // The cursor still moves past it; pushDeletions removes the server copy.
+    if (await isDeletionPending(remote.id)) {
+      if (remote.updated_at > lastSeen) lastSeen = remote.updated_at;
+      continue;
+    }
+
     const localUpdatedAt = await getPredictionUpdatedAt(remote.id);
     if (!localUpdatedAt || localUpdatedAt < remote.updated_at) {
       await upsertPredictionFromRemote(remote);
@@ -222,6 +237,35 @@ export async function pushDirty(
   }
 }
 
+/**
+ * Delete on the server every prediction this device deleted (roadmap D25),
+ * then forget each tombstone. Per row, so one failure leaves only that
+ * tombstone for the next sweep. Returns how many reached the server.
+ */
+export async function pushDeletions(
+  userId: string,
+  client: SupabaseClient,
+): Promise<number> {
+  const ids = await listPendingDeletions(userId);
+  let done = 0;
+  for (const id of ids) {
+    try {
+      const { error } = await client
+        .from('predictions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error) throw error;
+      await clearDeletion(id);
+      done += 1;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn(`[sync] delete failed for ${id}:`, e);
+    }
+  }
+  return done;
+}
+
 // ----------------------------------------------------------------------------
 // Orchestrator
 // ----------------------------------------------------------------------------
@@ -256,6 +300,16 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
 
   let pulled = 0;
   let pushed = 0;
+
+  // Deletions first (roadmap D25), so the server stops holding them before
+  // anything is pulled. Already reflected in local stats, so they don't count
+  // toward a recompute.
+  try {
+    await pushDeletions(userId, resolved.client);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[sync] delete push failed:', e);
+  }
 
   try {
     pulled = await pullRemote(userId, resolved.client, resolved.cursorStore);

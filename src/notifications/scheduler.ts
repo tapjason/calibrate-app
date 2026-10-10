@@ -400,6 +400,18 @@ function handleStoreUpdate(pending: Prediction[]): void {
     }
   }
 
+  // Reschedule: an open prediction whose due date or title was edited
+  // (roadmap D25). The reminder fires on the due day and its body quotes the
+  // title, so either change replaces it. cancel() drops the map entry at
+  // once, so schedule() below doesn't see a stale one.
+  for (const [id, p] of nextById) {
+    const prev = lastPendingById.get(id);
+    if (prev && (prev.due_date !== p.due_date || prev.title !== p.title)) {
+      void cancel(id);
+      void schedule(p);
+    }
+  }
+
   // Schedule: any new id we haven't already scheduled. The
   // scheduledByPredictionId check protects against duplicate scheduling
   // when, e.g., loadPending() runs again on a no-op refresh.

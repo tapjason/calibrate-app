@@ -28,5 +28,8 @@ export async function wipeLocalUserData(userId: string): Promise<void> {
     await db.run(`DELETE FROM user_stats WHERE user_id = ?`, [userId]);
     await db.run(`DELETE FROM category_stats WHERE user_id = ?`, [userId]);
     await db.run(`DELETE FROM analytics_events WHERE user_id = ?`, [userId]);
+    // Tombstones too (roadmap D25): with the rows gone there's nothing left to
+    // keep from coming back.
+    await db.run(`DELETE FROM prediction_deletions WHERE user_id = ?`, [userId]);
   });
 }

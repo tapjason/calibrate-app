@@ -16,6 +16,7 @@ import type {
   DeletePrediction,
   SetReflection,
   ReopenPrediction,
+  UpdatePrediction,
 } from '@/types';
 
 import { getDb } from './client';
@@ -174,10 +175,39 @@ export const reopenPrediction: ReopenPrediction = async (id) => {
   );
 };
 
+/**
+ * Edit an open prediction's title, category or due date (roadmap D25).
+ * `status = 'pending'` keeps an answered one as it was; `dirty = 1` carries
+ * the edit through sync like any other write.
+ */
+export const updatePrediction: UpdatePrediction = async (id, edit) => {
+  const now = nowIso();
+  await getDb().run(
+    `UPDATE predictions
+       SET title = ?, category = ?, due_date = ?, updated_at = ?, dirty = 1
+       WHERE id = ? AND status = 'pending'`,
+    [edit.title, edit.category, edit.due_date, now, id],
+  );
+};
+
+/**
+ * Delete a prediction and leave a tombstone (roadmap D25), so sync can delete
+ * it on the server and pull won't bring it back. Two statements and no
+ * transaction of its own: the caller (predictionStore.remove) wraps it with
+ * the stats recompute, and SQLite doesn't nest transactions.
+ */
 export const deletePrediction: DeletePrediction = async (id) => {
-  // Hard delete — no tombstone is written, so a delete won't propagate to
-  // Supabase. There is no delete UI in the MVP; revisit if/when one ships.
-  await getDb().run(`DELETE FROM predictions WHERE id = ?`, [id]);
+  const db = getDb();
+  const row = await db.get<{ user_id: string }>(
+    `SELECT user_id FROM predictions WHERE id = ?`,
+    [id],
+  );
+  if (!row) return;
+  await db.run(`DELETE FROM predictions WHERE id = ?`, [id]);
+  await db.run(
+    `INSERT OR REPLACE INTO prediction_deletions (id, user_id, deleted_at) VALUES (?, ?, ?)`,
+    [id, row.user_id, nowIso()],
+  );
 };
 
 // ----------------------------------------------------------------------------
@@ -199,6 +229,29 @@ export async function listDirtyPredictions(
     [userId],
   );
   return rows.map(rowToWire);
+}
+
+/** Deletions not yet pushed for `userId`, oldest first (roadmap D25). */
+export async function listPendingDeletions(userId: string): Promise<string[]> {
+  const rows = await getDb().all<{ id: string }>(
+    `SELECT id FROM prediction_deletions WHERE user_id = ? ORDER BY deleted_at ASC`,
+    [userId],
+  );
+  return rows.map((r) => r.id);
+}
+
+/** Whether `id` was deleted here and the deletion hasn't been pushed yet. */
+export async function isDeletionPending(id: string): Promise<boolean> {
+  const row = await getDb().get<{ id: string }>(
+    `SELECT id FROM prediction_deletions WHERE id = ?`,
+    [id],
+  );
+  return row !== null && row !== undefined;
+}
+
+/** Forget a tombstone once the server has the deletion. */
+export async function clearDeletion(id: string): Promise<void> {
+  await getDb().run(`DELETE FROM prediction_deletions WHERE id = ?`, [id]);
 }
 
 /** `updated_at` of a row, used by pull to decide if remote is newer. */

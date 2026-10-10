@@ -295,6 +295,79 @@ describe('scheduler: cancel on transition out of pending', () => {
   });
 });
 
+// Roadmap D25: an edited due date or title replaces the reminder.
+describe('scheduler: reschedule on edit', () => {
+  it('moves the reminder to the new due day', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 50,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    const oldId = Array.from(notifications.scheduled.keys())[0];
+
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Ship it',
+      category: 'work',
+      due_date: '2099-06-08T12:00:00.000Z',
+    });
+    await new Promise((r) => setImmediate(r));
+
+    expect(notifications.cancelled).toContain(oldId);
+    expect(notifications.scheduled.size).toBe(1);
+    const [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.date.toISOString()).toBe('2099-06-08T19:00:00.000Z');
+  });
+
+  it('rewrites the reminder when the title changes', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 50,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Ship the beta',
+      category: 'work',
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await new Promise((r) => setImmediate(r));
+
+    expect(notifications.scheduled.size).toBe(1);
+    expect(Array.from(notifications.scheduled.values())[0].body).toBe('Ship the beta · You said 50%');
+  });
+
+  it('leaves the reminder alone for a category change', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 50,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Ship it',
+      category: 'health',
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await new Promise((r) => setImmediate(r));
+
+    expect(notifications.scheduleCalls).toBe(1);
+    expect(notifications.cancelled).toHaveLength(0);
+  });
+});
+
 describe('scheduler: tap handler', () => {
   it('navigates to /resolve/[id] when a notification is tapped', async () => {
     const notifications = makeFakeNotifications(true);

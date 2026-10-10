@@ -623,6 +623,17 @@ export type ResolvePrediction = (
   reflection?: string,
 ) => Promise<void>;
 export type DeletePrediction = (id: string) => Promise<void>;
+/**
+ * What an open prediction's details let you change (roadmap D25): never the
+ * confidence, which is the record (FUTURE_UI A7), and never an outcome.
+ */
+export interface PredictionEdit {
+  title: string;
+  category: Category;
+  due_date: string;
+}
+/** Edit an open prediction; a no-op on one that has been answered. */
+export type UpdatePrediction = (id: string, edit: PredictionEdit) => Promise<void>;
 /** Undo a resolution: back to pending, outcome and reflection cleared. */
 export type ReopenPrediction = (id: string) => Promise<void>;
 /** Set or clear the reflection on an already-resolved prediction. */
