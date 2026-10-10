@@ -9,6 +9,23 @@ import { StyleSheet, View } from 'react-native';
  */
 export const CARD_CANVAS_WIDTH = 360;
 
+/**
+ * A width change this small, upward, is ignored once measured. On web the
+ * card's height follows its width, so a page near the fold grew a scrollbar,
+ * which narrowed the card, which shortened the page, which dropped the
+ * scrollbar: the sheet jittered sideways for as long as it was open and taps
+ * missed (2026-10-09 dry run). Taking the narrower of two near widths ends the
+ * loop; a real resize or rotation is far larger than a scrollbar.
+ */
+const SCROLLBAR_SLACK = 24;
+
+/** The next width to lay out at: narrowing always wins, a scrollbar's widening doesn't. */
+export function nextCanvasWidth(current: number, measured: number): number {
+  if (current === 0) return measured;
+  if (measured > current && measured - current <= SCROLLBAR_SLACK) return current;
+  return measured;
+}
+
 interface ScaledCanvasProps {
   /** A fixed canvas height (the identity card's Post and Story), or omit to take the card's own. */
   height?: number;
@@ -30,7 +47,10 @@ export function ScaledCanvas({ height, children, testID }: ScaledCanvasProps) {
 
   return (
     <View
-      onLayout={(e) => setAvailable(e.nativeEvent.layout.width)}
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        setAvailable((current) => nextCanvasWidth(current, w));
+      }}
       style={[{ height: canvasHeight * scale }, available === 0 && styles.unmeasured]}
       testID={testID}
     >

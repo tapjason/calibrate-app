@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet, Text } from 'react-native';
 
-import { CARD_CANVAS_WIDTH, ScaledCanvas } from './ScaledCanvas';
+import { CARD_CANVAS_WIDTH, nextCanvasWidth, ScaledCanvas } from './ScaledCanvas';
 
 const layout = (width: number, height: number) => ({
   nativeEvent: { layout: { width, height, x: 0, y: 0 } },
@@ -50,5 +50,22 @@ describe('ScaledCanvas', () => {
       </ScaledCanvas>,
     );
     expect(StyleSheet.flatten(screen.getByTestId('p').props.style).opacity).toBe(0);
+  });
+});
+
+// The 2026-10-09 dry run: on web a scrollbar toggling on and off kept the
+// Share sheet jittering. Narrowing wins; a scrollbar's widening doesn't.
+describe('nextCanvasWidth', () => {
+  it('takes the first width, and any narrower one', () => {
+    expect(nextCanvasWidth(0, 335)).toBe(335);
+    expect(nextCanvasWidth(335, 320)).toBe(320);
+  });
+
+  it('ignores a scrollbar-sized widening, so the loop ends', () => {
+    expect(nextCanvasWidth(320, 335)).toBe(320);
+  });
+
+  it('follows a real resize', () => {
+    expect(nextCanvasWidth(320, 400)).toBe(400);
   });
 });
