@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { logAgainDraft, type LogAgainDraft } from '@/components/prediction/logAgain';
 import { LogPredictionForm } from '@/components/prediction/LogPredictionForm';
@@ -52,24 +52,17 @@ export default function LogScreen() {
         </Text>
         <CloseButton onPress={close} testID="log-close" />
       </View>
-      {/* Keeps Save reachable with the keyboard up, and a drag down dismisses it. */}
-      <ScrollView
-        contentContainerStyle={styles.wrap}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
-      >
-        {/* A new key per repeated prediction, so the form starts from it. */}
-        <LogPredictionForm
-          key={draft?.sourceId ?? 'blank'}
-          again={draft}
-          onDirtyChange={setDirty}
-          onSubmitted={() => {
-            guard.markLeaving();
-            close();
-          }}
-        />
-      </ScrollView>
+      {/* The form scrolls its own fields and pins Save beneath them. A new key
+          per repeated prediction, so the form starts from it. */}
+      <LogPredictionForm
+        key={draft?.sourceId ?? 'blank'}
+        again={draft}
+        onDirtyChange={setDirty}
+        onSubmitted={() => {
+          guard.markLeaving();
+          close();
+        }}
+      />
     </View>
   );
 }
@@ -84,5 +77,4 @@ const styles = StyleSheet.create({
     paddingTop: space.lg,
   },
   title: { ...type.title2, color: colors.textPrimary },
-  wrap: { padding: space.lg },
 });

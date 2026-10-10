@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
@@ -185,199 +185,214 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   // error far below the field.
   const canSave = title.trim().length > 0 && confidence !== null && !submitting;
 
+  // Save is pinned under the fields (2026-10-09): at the end of the form it sat
+  // below the fold on a 667pt phone even after the starter ideas had gone. The
+  // fields scroll; the one action stays put. With the keyboard up it sits
+  // behind it, which costs nothing: Save also waits for a confidence, and
+  // setting one means the keyboard is down.
   return (
-    <View>
-      {nudge && !nudgeDismissed && (
-        <CoverageNudge
-          suggestedConfidence={nudge.suggested_confidence}
-          onAccept={acceptNudge}
-          onDismiss={() => setNudgeDismissed(true)}
-        />
-      )}
+    <View style={styles.form}>
+      <ScrollView
+        contentContainerStyle={styles.fields}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
+        {nudge && !nudgeDismissed && (
+          <CoverageNudge
+            suggestedConfidence={nudge.suggested_confidence}
+            onAccept={acceptNudge}
+            onDismiss={() => setNudgeDismissed(true)}
+          />
+        )}
 
-      <TextField
-        label="Prediction"
-        value={title}
-        onChangeText={(v) => {
-          setTitle(v);
-          if (suggestion) setSuggestion(null);
-        }}
-        // Short enough to fit at 320pt in Inter, which runs wider than SF.
-        placeholder="e.g. I'll ship 3 tasks by Friday"
-        maxLength={TITLE_MAX_LENGTH}
-        testID="title-field"
-      />
-
-      {firstEver && title.trim().length === 0 && (
-        <StarterIdeas
-          onPick={(idea) => {
-            setTitle(idea.title);
-            setCategory(idea.category);
-            const preset = presets.find((p) => p.id === idea.due);
-            if (preset) setDueDate(preset.iso);
-            setPicking(false);
+        <TextField
+          label="Prediction"
+          value={title}
+          onChangeText={(v) => {
+            setTitle(v);
+            if (suggestion) setSuggestion(null);
           }}
+          // Short enough to fit at 320pt in Inter, which runs wider than SF, and
+          // dateless: a first prediction starts on Tomorrow, later ones a week.
+          placeholder="e.g. I'll finish the draft"
+          maxLength={TITLE_MAX_LENGTH}
+          testID="title-field"
         />
-      )}
 
-      {REFINE_ENABLED && aiRefineEnabled && title.trim().length > 0 && (
-        <>
-          <View style={styles.refineRow}>
-            <Pressable
-              onPress={onRefine}
-              disabled={refining}
-              testID="refine-button"
-              style={({ pressed }) => [
-                styles.refineButton,
-                refining && styles.refineDisabled,
-                pressed && styles.refinePressed,
-              ]}
-            >
-              <Text style={styles.refineLabel}>
-                {refining ? 'Refining…' : '✨ Refine'}
-              </Text>
-            </Pressable>
-          </View>
+        {firstEver && title.trim().length === 0 && (
+          <StarterIdeas
+            onPick={(idea) => {
+              setTitle(idea.title);
+              setCategory(idea.category);
+              const preset = presets.find((p) => p.id === idea.due);
+              if (preset) setDueDate(preset.iso);
+              setPicking(false);
+            }}
+          />
+        )}
 
-          {suggestion && (
-            <View style={styles.suggestion} testID="refine-suggestion">
-              <Text style={styles.suggestionLabel}>Suggested rewrite</Text>
-              <Text style={styles.suggestionText}>{suggestion}</Text>
-              <View style={styles.suggestionActions}>
-                <Button
-                  label="Use this"
-                  onPress={acceptSuggestion}
-                  testID="refine-accept"
-                />
-                <Button
-                  label="Dismiss"
-                  variant="secondary"
-                  onPress={() => setSuggestion(null)}
-                  testID="refine-dismiss"
-                />
+        {REFINE_ENABLED && aiRefineEnabled && title.trim().length > 0 && (
+          <>
+            <View style={styles.refineRow}>
+              <Pressable
+                onPress={onRefine}
+                disabled={refining}
+                testID="refine-button"
+                style={({ pressed }) => [
+                  styles.refineButton,
+                  refining && styles.refineDisabled,
+                  pressed && styles.refinePressed,
+                ]}
+              >
+                <Text style={styles.refineLabel}>
+                  {refining ? 'Refining…' : '✨ Refine'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {suggestion && (
+              <View style={styles.suggestion} testID="refine-suggestion">
+                <Text style={styles.suggestionLabel}>Suggested rewrite</Text>
+                <Text style={styles.suggestionText}>{suggestion}</Text>
+                <View style={styles.suggestionActions}>
+                  <Button
+                    label="Use this"
+                    onPress={acceptSuggestion}
+                    testID="refine-accept"
+                  />
+                  <Button
+                    label="Dismiss"
+                    variant="secondary"
+                    onPress={() => setSuggestion(null)}
+                    testID="refine-dismiss"
+                  />
+                </View>
               </View>
+            )}
+          </>
+        )}
+
+        <View style={styles.block}>
+          <Text style={styles.label}>Category</Text>
+          <View style={styles.row}>
+            {CATEGORIES.map((c) => (
+              <Pressable
+                key={c}
+                onPress={() => setCategory(c)}
+                testID={`category-${c}`}
+                accessibilityRole="radio"
+                accessibilityLabel={`Category: ${c}`}
+                {...chosenProps('radio', category === c)}
+                style={[styles.chip, styles.chipWithIcon, category === c && styles.chipActive]}
+              >
+                <CategoryIcon
+                  category={c}
+                  size={15}
+                  color={category === c ? colors.brand800 : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.chipText,
+                    styles.capitalize,
+                    category === c && styles.chipTextActive,
+                  ]}
+                >
+                  {c}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.block}>
+          <ConfidenceControl value={confidence} onChange={setConfidence} showIntegrityZone />
+          {confidence !== null && confidence >= 35 && confidence <= 65 && (
+            // A brand chip, not green text: honesty is rewarded, but green means
+            // "calibrated" and never "good job" (DESIGN_SYSTEM §2.3).
+            <View style={styles.bonus} testID="integrity-bonus">
+              <Text style={styles.bonusText}>Integrity bonus · honest uncertainty</Text>
             </View>
           )}
-        </>
-      )}
-
-      <View style={styles.block}>
-        <Text style={styles.label}>Category</Text>
-        <View style={styles.row}>
-          {CATEGORIES.map((c) => (
-            <Pressable
-              key={c}
-              onPress={() => setCategory(c)}
-              testID={`category-${c}`}
-              accessibilityRole="radio"
-              accessibilityLabel={`Category: ${c}`}
-              {...chosenProps('radio', category === c)}
-              style={[styles.chip, styles.chipWithIcon, category === c && styles.chipActive]}
-            >
-              <CategoryIcon
-                category={c}
-                size={15}
-                color={category === c ? colors.brand800 : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.chipText,
-                  styles.capitalize,
-                  category === c && styles.chipTextActive,
-                ]}
-              >
-                {c}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.block}>
-        <ConfidenceControl value={confidence} onChange={setConfidence} showIntegrityZone />
-        {confidence !== null && confidence >= 35 && confidence <= 65 && (
-          // A brand chip, not green text: honesty is rewarded, but green means
-          // "calibrated" and never "good job" (DESIGN_SYSTEM §2.3).
-          <View style={styles.bonus} testID="integrity-bonus">
-            <Text style={styles.bonusText}>Integrity bonus · honest uncertainty</Text>
-          </View>
-        )}
-        {record && (
-          <Text style={styles.record} testID="track-record">
-            {holdRanges(record.text)}
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.block}>
-        <Text style={styles.label}>Due date</Text>
-        <View style={styles.row}>
-          {presets.map((preset) => (
-            <Pressable
-              key={preset.id}
-              onPress={() => {
-                setDueDate(preset.iso);
-                setPicking(false);
-              }}
-              testID={`due-${preset.id}`}
-              accessibilityRole="radio"
-              accessibilityLabel={`Due ${preset.label.toLowerCase()}`}
-              {...chosenProps('radio', presetChosen(preset.iso))}
-              style={[
-                styles.chip,
-                presetChosen(preset.iso) && styles.chipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  presetChosen(preset.iso) && styles.chipTextActive,
-                ]}
-              >
-                {preset.label}
-              </Text>
-            </Pressable>
-          ))}
-          <Pressable
-            onPress={() => {
-              if (Platform.OS === 'android') openDueDialog(dueDate, setDueDate);
-              else setPicking(true);
-            }}
-            testID="due-pick"
-            accessibilityRole="radio"
-            accessibilityLabel="Pick a date"
-            {...chosenProps('radio', isCustomDate || picking)}
-            style={[styles.chip, (isCustomDate || picking) && styles.chipActive]}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                (isCustomDate || picking) && styles.chipTextActive,
-              ]}
-            >
-              Pick a date
+          {record && (
+            <Text style={styles.record} testID="track-record">
+              {holdRanges(record.text)}
             </Text>
-          </Pressable>
+          )}
         </View>
-        {picking && <DuePicker value={dueDate} onChange={setDueDate} />}
-        <Text style={styles.dateValue} testID="due-sentence">
-          Due{' '}
-          {new Date(dueDate).toLocaleDateString(undefined, {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'short',
-          })}
-        </Text>
+
+        <View style={styles.block}>
+          <Text style={styles.label}>Due date</Text>
+          <View style={styles.row}>
+            {presets.map((preset) => (
+              <Pressable
+                key={preset.id}
+                onPress={() => {
+                  setDueDate(preset.iso);
+                  setPicking(false);
+                }}
+                testID={`due-${preset.id}`}
+                accessibilityRole="radio"
+                accessibilityLabel={`Due ${preset.label.toLowerCase()}`}
+                {...chosenProps('radio', presetChosen(preset.iso))}
+                style={[
+                  styles.chip,
+                  presetChosen(preset.iso) && styles.chipActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    presetChosen(preset.iso) && styles.chipTextActive,
+                  ]}
+                >
+                  {preset.label}
+                </Text>
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={() => {
+                if (Platform.OS === 'android') openDueDialog(dueDate, setDueDate);
+                else setPicking(true);
+              }}
+              testID="due-pick"
+              accessibilityRole="radio"
+              accessibilityLabel="Pick a date"
+              {...chosenProps('radio', isCustomDate || picking)}
+              style={[styles.chip, (isCustomDate || picking) && styles.chipActive]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  (isCustomDate || picking) && styles.chipTextActive,
+                ]}
+              >
+                Pick a date
+              </Text>
+            </Pressable>
+          </View>
+          {picking && <DuePicker value={dueDate} onChange={setDueDate} />}
+          <Text style={styles.dateValue} testID="due-sentence">
+            Due{' '}
+            {new Date(dueDate).toLocaleDateString(undefined, {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'short',
+            })}
+          </Text>
+        </View>
+
+      </ScrollView>
+
+      <View style={styles.footer}>
+        {error && <Text style={styles.error} testID="log-error">{error}</Text>}
+        <Button
+          label={submitting ? 'Saving…' : 'Save prediction'}
+          onPress={onSubmit}
+          disabled={!canSave}
+          testID="submit-button"
+        />
       </View>
-
-      {error && <Text style={styles.error} testID="log-error">{error}</Text>}
-
-      <Button
-        label={submitting ? 'Saving…' : 'Save prediction'}
-        onPress={onSubmit}
-        disabled={!canSave}
-        testID="submit-button"
-      />
     </View>
   );
 }
@@ -395,6 +410,17 @@ function datePresets(): { id: string; label: string; iso: string }[] {
 }
 
 const styles = StyleSheet.create({
+  form: { flex: 1 },
+  fields: { padding: space.lg, paddingBottom: space.md },
+  footer: {
+    backgroundColor: colors.canvas,
+    borderTopColor: colors.hairline,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: space.sm,
+    paddingBottom: space.lg,
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+  },
   block: { marginBottom: space.xl },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginBottom: space.sm },
   row: { flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' },
