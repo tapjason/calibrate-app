@@ -133,6 +133,31 @@ export function ShareCardPanel({
         )
       )}
 
+      {/* The action right under what it shares. Below Shape, On the card and
+          the themes it sat about 950pt down, a scroll and a half on a 667pt
+          phone; the options are adjustments, not steps. */}
+      <Button
+        label={sharing ? 'Preparing…' : 'Share my card'}
+        testID="share-button"
+        disabled={sharing}
+        onPress={onShare}
+      />
+      {card && (
+        <Button
+          label="Share as text"
+          variant="secondary"
+          testID="share-text-button"
+          disabled={sharing}
+          onPress={() => void onShareText()}
+        />
+      )}
+
+      {message && (
+        <Text style={styles.message} testID="share-message">
+          {message}
+        </Text>
+      )}
+
       {card && (
         <View style={styles.controls}>
           <Text style={styles.controlLabel}>Shape</Text>
@@ -191,27 +216,6 @@ export function ShareCardPanel({
 
       <ThemePicker onUpgrade={onUpgrade} />
 
-      <Button
-        label={sharing ? 'Preparing…' : 'Share my card'}
-        testID="share-button"
-        disabled={sharing}
-        onPress={onShare}
-      />
-      {card && (
-        <Button
-          label="Share as text"
-          variant="secondary"
-          testID="share-text-button"
-          disabled={sharing}
-          onPress={() => void onShareText()}
-        />
-      )}
-
-      {message && (
-        <Text style={styles.message} testID="share-message">
-          {message}
-        </Text>
-      )}
     </View>
   );
 }
