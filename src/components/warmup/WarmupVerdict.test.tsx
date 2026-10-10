@@ -71,7 +71,8 @@ describe('WarmupVerdictScreen', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
     expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/thesis in 34 days took 56/);
-    expect(screen.getByText('Predict something about tomorrow')).toBeTruthy();
+    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/first one about tomorrow/);
+    expect(screen.getByText('Make a real prediction')).toBeTruthy();
   });
 
   // CLAUDE.md: the Warmup delivers the aha, but it is not the user's real

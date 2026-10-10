@@ -35,7 +35,7 @@ interface StarterIdeasProps {
 
 /**
  * For a first prediction only (roadmap step 40): a blank title field is the
- * hardest part of the first log, and the Warmup's "Predict something about tomorrow"
+ * hardest part of the first log, and the Warmup's "Make a real prediction"
  * lands right on it. Tapping one fills the title, category and due date; the
  * confidence is still the user's to set, which is the part that matters.
  */

@@ -54,7 +54,8 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
           predicted, 55.5 taken). */}
       <Text style={styles.advice} testID="warmup-bridge">
         Trivia is the warm-up. People are most overconfident about their own plans:
-        students who expected to finish their thesis in 34 days took 56.
+        students who expected to finish their thesis in 34 days took 56. Make your
+        first one about tomorrow.
       </Text>
 
       <Text style={styles.disclaimer}>
@@ -66,7 +67,9 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
           things to do next shouldn't sit below it. */}
       <View style={styles.actions}>
         <Button
-          label="Predict something about tomorrow"
+          // One line at 320pt; "Predict something about tomorrow" wrapped to
+          // two, ragged inside the capsule. The bridge above says "tomorrow".
+          label="Make a real prediction"
           testID="warmup-continue"
           onPress={onContinue}
         />
