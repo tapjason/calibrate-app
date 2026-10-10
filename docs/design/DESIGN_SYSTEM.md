@@ -430,8 +430,9 @@ small ±5 buttons).
   `textTertiary` at full size (so setting a number doesn't shift the layout) with "not
   set yet" beside it, the slider's thumb rests mid-range in `controlBorder` grey with
   no fill, and the first drag, tap on the track (`tapToSeek`), touch of the thumb or
-  ±5 sets a real number; ±5 steps from the middle of the range. VoiceOver hears "not
-  set", and the first swipe steps from the middle too. Next (Warmup) and Save (Log)
+  ±5 sets a real number; the first ±5 sets the middle itself, where the grey thumb
+  rests (step 120; it used to step past it, to 80 or 45). VoiceOver hears "not
+  set", and the first swipe steps from the middle. Next (Warmup) and Save (Log)
   wait for a number, and the integrity chip appears only once one is set. It used to
   start at 75% (Warmup) and 50% (Log, inside the integrity band), and "didn't touch
   it" couldn't be told from "chose it" (research: `confidence-2026-10.md` §2).
@@ -644,7 +645,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   it landed in: "In your 60–80% range, 6 of 9 have happened." ("1 of 2 has" when
   one has: roadmap step 77). Counts, not a verdict, so safe below min-N. The count comes from the store; the component doesn't compute buckets.
   From 10 resolved in the range (the chart title's threshold), the range's own
-  comparison follows: "That's 77%, against the 69% you said." (roadmap step 58).
+  comparison follows: "That's 77%, against the 69% you said on average." (roadmap
+  step 58; "on average" since step 121, as the figure is the range's mean).
   Said-against-happened is the feedback that moved calibration in the studies; bare
   outcomes barely did (`research/confidence-2026-10.md` §6).
   Then the optional one-line reflection ("What surprised you?"), never before the
@@ -877,13 +879,14 @@ The Day-0 result (`WarmupVerdictScreen`), rebuilt by D18 (steps 97–101) and re
 on 2026-10-09 (104–107). Day 0 is for calibration, so the result describes *these
 ten*, never the person. In order: eyebrow "Your warm-up"; the read in `title1` ("On
 these ten, you were overconfident" / "…underconfident" / "On these ten, no clear
-lean"); the counts ("You said 78% on average. 6 of 10 were right."); the mini chart;
-one line of advice; the bridge ("Trivia is the warm-up. People are most
-overconfident about their own plans: students who expected to finish their thesis in
-34 days took 56."); one note ("This is a warm-up, not your calibration rating. That
-one needs 20 of your own predictions."); **Make a real prediction** (step 113:
-the bridge ends "Make your first one about tomorrow.", so the button fits one line)
-and **Share my result**; then the answer key. It opens at its top (step 72).
+lean"); the counts ("You said 78% on average. 6 of 10 were right."); the bridge
+("Trivia is the warm-up. People are most overconfident about their own plans:
+students who expected to finish their thesis in 34 days took 56. Make your first one
+about tomorrow."); **Make a real prediction** and **Share my result**, on the first
+screen even at 320 × 568 (step 118); then the mini chart, one line of advice, one
+note ("This is a warm-up, not your calibration rating. That one needs 20 of your own
+predictions.") and the answer key. The quiz before it pins **Next** under the
+scrolling question, with **Skip for now** as a text button (step 117). It opens at its top (step 72).
 
 - **A lean only beyond luck** (step 104). Ten answers move accuracy in steps of 10
   points, and the ±5 rule used elsewhere called a lean on 47–73% of perfectly
