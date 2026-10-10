@@ -28,8 +28,12 @@ function cat(category: Category, badge: BadgeLevel, resolved = 30, score = 80): 
 describe('homeIdentity (roadmap step 28)', () => {
   it('leads with the best category and keeps the weakest as the contrast', () => {
     expect(
+      homeIdentity(USER, [cat('finance', 'tracker', 24, 62), cat('health', 'sharp', 60, 96)]),
+    ).toEqual({ identity: 'Sharp in health', contrast: 'Tracker in finance', badge: 'sharp' });
+    // Roadmap D27: a Guesser (fewer than 20 resolved) is never the contrast.
+    expect(
       homeIdentity(USER, [cat('finance', 'guesser', 17, 62), cat('health', 'sharp', 60, 96)]),
-    ).toEqual({ identity: 'Sharp in health', contrast: 'Guesser in finance', badge: 'sharp' });
+    ).toEqual({ identity: 'Sharp in health', contrast: null, badge: 'sharp' });
   });
 
   it('has no contrast with a single category', () => {
@@ -47,17 +51,18 @@ describe('homeIdentity (roadmap step 28)', () => {
 });
 
 describe('IdentityLine', () => {
-  it('opens the share card, and reads as one sentence', () => {
+  it('explains the badges when tapped, and reads as one sentence', () => {
     const onPress = jest.fn();
     render(
       <IdentityLine
         userStat={USER}
-        categoryStats={[cat('finance', 'guesser', 17, 62), cat('health', 'sharp', 60, 96)]}
+        categoryStats={[cat('finance', 'tracker', 24, 62), cat('health', 'sharp', 60, 96)]}
         onPress={onPress}
       />,
     );
     const line = screen.getByTestId('home-identity');
-    expect(line.props.accessibilityLabel).toBe('Sharp in health. Guesser in finance.');
+    expect(line.props.accessibilityLabel).toBe('Sharp in health. Tracker in finance.');
+    expect(line.props.accessibilityHint).toBe('Explains the badges');
     fireEvent.press(line);
     expect(onPress).toHaveBeenCalledTimes(1);
   });

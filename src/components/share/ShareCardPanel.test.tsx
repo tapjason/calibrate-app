@@ -34,7 +34,7 @@ const CATEGORY_STATS: CategoryStat[] = [
     predictions_resolved: 25,
     calibration_score: 52,
     score_is_provisional: false,
-    badge_level: 'guesser',
+    badge_level: 'tracker',
   },
 ];
 
@@ -86,7 +86,7 @@ describe('ShareCardPanel', () => {
 
     expect(screen.getByTestId('identity-card')).toBeTruthy();
     expect(screen.getByTestId('card-identity')).toHaveTextContent('Sharp in health');
-    expect(screen.getByTestId('card-contrast')).toHaveTextContent('Guesser in finance');
+    expect(screen.getByTestId('card-contrast')).toHaveTextContent('Tracker in finance');
     expect(screen.getByTestId('card-badge-health')).toBeTruthy();
     expect(screen.getByTestId('card-badge-finance')).toBeTruthy();
   });
@@ -226,7 +226,7 @@ describe('ShareCardPanel — text share', () => {
     fireEvent.press(screen.getByTestId('share-text-button'));
     await waitFor(() => expect(shareTextFn).toHaveBeenCalled());
     const [message] = shareTextFn.mock.calls[0] as unknown as [string];
-    expect(message).toContain('Sharp in health · Guesser in finance');
+    expect(message).toContain('Sharp in health · Tracker in finance');
   });
 });
 

@@ -29,7 +29,10 @@ export function homeIdentity(
 interface IdentityLineProps {
   userStat: UserStat | null;
   categoryStats: CategoryStat[];
-  /** Opens the share card, where this line is the headline. */
+  /**
+   * Explains the tiers (How scoring works, at Badges: roadmap D27). It opened
+   * the share card until 2026-10-10; two testers expected an explanation.
+   */
   onPress: () => void;
 }
 
@@ -46,7 +49,7 @@ export function IdentityLine({ userStat, categoryStats, onPress }: IdentityLineP
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={line.contrast ? `${line.identity}. ${line.contrast}.` : `${line.identity}.`}
-      accessibilityHint="Opens your share card"
+      accessibilityHint="Explains the badges"
       hitSlop={8}
       style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}
       testID="home-identity"

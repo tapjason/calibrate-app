@@ -73,38 +73,37 @@ export function buildShareCard(
   };
 }
 
-/**
- * The headline line: best and worst category, joined by a middle dot. With
- * only one category on file there is no contrast to draw, so it stands alone.
- */
-export function shareHeadline(card: ShareCard): string {
-  const [best] = card.categories;
-  if (!best) return '';
-
-  const label = (c: ShareCard['categories'][number]) =>
-    `${BADGE_META[c.badge_level].label} in ${c.category}`;
-
-  if (card.categories.length === 1) return label(best);
-
-  const worst = card.categories[card.categories.length - 1];
-  return `${label(best)} · ${label(worst)}`;
-}
+/** The identity line before any category is past the count gate (D27). */
+export const UNGATED_IDENTITY = 'Calibrating';
 
 /**
  * The headline as the card lays it out (DESIGN_SYSTEM §7.5): the identity
- * line large, the contrast line smaller beneath it. `contrast` is null with
- * a single category, or when best and worst are the same tier — "Guesser in
- * work, Guesser in health" is no contrast at all.
+ * line large, the contrast line smaller beneath it.
+ *
+ * Only categories past the count gate are named (roadmap D27, 2026-10-10):
+ * Guesser means "fewer than 20 resolved here", and "Guesser in finance" after
+ * five months read as a verdict. So the identity is the best gated category,
+ * the contrast the weakest gated one when its tier differs, and with none
+ * gated yet the identity is "Calibrating" and there's no contrast. Categories
+ * arrive strongest first (buildShareCard).
  */
 export function shareLines(card: ShareCard): { identity: string; contrast: string | null } {
-  const [best] = card.categories;
-  if (!best) return { identity: '', contrast: null };
+  if (card.categories.length === 0) return { identity: '', contrast: null };
+  const gated = card.categories.filter((c) => c.badge_level !== 'guesser');
+  const [best] = gated;
+  if (!best) return { identity: UNGATED_IDENTITY, contrast: null };
   const label = (c: ShareCard['categories'][number]) =>
     `${BADGE_META[c.badge_level].label} in ${c.category}`;
-  const worst = card.categories[card.categories.length - 1];
+  const worst = gated[gated.length - 1];
   const contrast =
-    card.categories.length > 1 && worst.badge_level !== best.badge_level ? label(worst) : null;
+    gated.length > 1 && worst.badge_level !== best.badge_level ? label(worst) : null;
   return { identity: label(best), contrast };
+}
+
+/** The headline on one line, for the text share: "Sharp in health · Tracker in finance". */
+export function shareHeadline(card: ShareCard): string {
+  const { identity, contrast } = shareLines(card);
+  return contrast ? `${identity} · ${contrast}` : identity;
 }
 
 /**

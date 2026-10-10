@@ -81,18 +81,18 @@ describe('buildShareCard', () => {
       categoryStat({ category: 'health', badge_level: 'sharp', predictions_resolved: 55 }),
       categoryStat({
         category: 'finance',
-        badge_level: 'guesser',
-        predictions_resolved: 17,
+        badge_level: 'tracker',
+        predictions_resolved: 24,
         calibration_score: 62,
       }),
       categoryStat({
         category: 'social',
-        badge_level: 'guesser',
-        predictions_resolved: 16,
-        calibration_score: 94,
+        badge_level: 'tracker',
+        predictions_resolved: 25,
+        calibration_score: 68,
       }),
     ]);
-    expect(shareLines(card!).contrast).toBe('Guesser in finance');
+    expect(shareLines(card!).contrast).toBe('Tracker in finance');
   });
 
   // CLAUDE.md: never present a number built on noise — least of all on the
@@ -112,13 +112,14 @@ describe('buildShareCard', () => {
 });
 
 describe('shareHeadline', () => {
-  it('contrasts the best and worst category', () => {
+  it('contrasts the best and the weakest category past the count gate', () => {
     const card = buildShareCard(userStat(), [
       categoryStat({ category: 'health', badge_level: 'sharp' }),
       categoryStat({ category: 'work', badge_level: 'tracker' }),
       categoryStat({ category: 'finance', badge_level: 'guesser' }),
     ])!;
-    expect(shareHeadline(card)).toBe('Sharp in health · Guesser in finance');
+    // Roadmap D27: finance, a Guesser (fewer than 20 resolved), isn't named.
+    expect(shareHeadline(card)).toBe('Sharp in health · Tracker in work');
   });
 
   it('stands alone when there is only one category to show', () => {
@@ -165,7 +166,7 @@ describe('shareText', () => {
   const card = (rating: number | null): ShareCard => ({
     categories: [
       { category: 'health', badge_level: 'sharp' },
-      { category: 'finance', badge_level: 'guesser' },
+      { category: 'finance', badge_level: 'tracker' },
     ],
     rating,
     total_resolved: 40,
@@ -179,7 +180,7 @@ describe('shareText', () => {
       bucket(80, 'underconfident'),
     ]);
     expect(text).toBe(
-      'My calibration · Calibrate\nSharp in health · Guesser in finance\n⬜🟩🟩🟧🟦 score 81',
+      'My calibration · Calibrate\nSharp in health · Tracker in finance\n⬜🟩🟩🟧🟦 score 81',
     );
   });
 
@@ -216,14 +217,29 @@ describe('shareLines', () => {
   });
 
   it('splits best and worst into an identity line and a contrast line', () => {
+    expect(shareLines(card([['health', 'sharp'], ['finance', 'tracker']]))).toEqual({
+      identity: 'Sharp in health',
+      contrast: 'Tracker in finance',
+    });
+  });
+
+  // Roadmap D27: Guesser means fewer than 20 resolved, so it's never named.
+  it('never names a Guesser as the contrast', () => {
     expect(shareLines(card([['health', 'sharp'], ['finance', 'guesser']]))).toEqual({
       identity: 'Sharp in health',
-      contrast: 'Guesser in finance',
+      contrast: null,
+    });
+  });
+
+  it('reads "Calibrating" until a category is past the count gate', () => {
+    expect(shareLines(card([['work', 'guesser'], ['health', 'guesser']]))).toEqual({
+      identity: 'Calibrating',
+      contrast: null,
     });
   });
 
   it('draws no contrast when the tiers are the same', () => {
-    expect(shareLines(card([['work', 'guesser'], ['health', 'guesser']])).contrast).toBeNull();
+    expect(shareLines(card([['work', 'tracker'], ['health', 'tracker']])).contrast).toBeNull();
   });
 
   it('draws no contrast with a single category', () => {
@@ -250,8 +266,9 @@ describe('identityCardSummary', () => {
       categoryStat({ category: 'health', badge_level: 'sharp' }),
       categoryStat({ category: 'finance', badge_level: 'guesser', calibration_score: 62 }),
     ])!;
+    // The lines name gated tiers only (D27); the chips, read in full, show all.
     expect(identityCardSummary(card)).toBe(
-      'Share card. Sharp in health, Guesser in finance. ' +
+      'Share card. Sharp in health. ' +
         'Calibration 88/100 · 55 predictions resolved. ' +
         'By category: Sharp in health, Guesser in finance.',
     );

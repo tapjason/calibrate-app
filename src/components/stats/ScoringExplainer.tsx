@@ -13,7 +13,17 @@ import { badgeRows, scoringSections } from './scoringCopy';
  * appears unasked; it is one tap away from the number it explains, for anyone
  * who wants to check it. Calibrated trust, not maximum trust.
  */
-export function ScoringExplainer({ onClose }: { onClose?: () => void }) {
+export function ScoringExplainer({
+  onClose,
+  onBadgesLayout,
+}: {
+  onClose?: () => void;
+  /**
+   * Where the Badges section starts, so the sheet can open there when it's
+   * reached from Today's identity line (roadmap D27).
+   */
+  onBadgesLayout?: (y: number) => void;
+}) {
   const sections = scoringSections();
   return (
     <View style={styles.wrap} testID="scoring-explainer">
@@ -26,7 +36,16 @@ export function ScoringExplainer({ onClose }: { onClose?: () => void }) {
         {onClose && <CloseButton onPress={onClose} testID="scoring-close" />}
       </View>
       {sections.map((section) => (
-        <View key={section.title} style={styles.section}>
+        <View
+          key={section.title}
+          style={styles.section}
+          onLayout={
+            section.title === 'Badges' && onBadgesLayout
+              ? (e) => onBadgesLayout(e.nativeEvent.layout.y)
+              : undefined
+          }
+          testID={section.title === 'Badges' ? 'scoring-section-badges' : undefined}
+        >
           <Text style={styles.heading} accessibilityRole="header">
             {section.title}
           </Text>

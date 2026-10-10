@@ -87,7 +87,8 @@ export default function TodayScreen() {
         <IdentityLine
           userStat={userStat}
           categoryStats={categoryStats}
-          onPress={() => router.push('/share' as never)}
+          // What the tiers mean, not the share card (roadmap D27).
+          onPress={() => router.push('/scoring?section=badges' as never)}
         />
         {/* The one-line read, only when a band has enough to say it
             (chartTakeaway's own min-N); otherwise the number stands alone. */}
