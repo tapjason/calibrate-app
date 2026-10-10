@@ -3,7 +3,12 @@ import { useCallback } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { PracticeCard } from '@/components/practice/PracticeCard';
-import { groupByDue, isReadyToResolve, nextDueLine } from '@/components/prediction/dueGroups';
+import {
+  firstAnswerLead,
+  groupByDue,
+  isReadyToResolve,
+  nextDueLine,
+} from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
@@ -108,9 +113,12 @@ export default function TodayScreen() {
         resolved={userStat?.total_resolved ?? 0}
         pending={pending.length}
         total={MIN_N_OVERALL}
-        nextDue={nextDueLine(pending, new Date(), {
-          first: (userStat?.total_resolved ?? 0) === 0,
-        })}
+        // Before the first answer, the lead names its evening (roadmap D30), and
+        // the caption doesn't repeat the date.
+        lead={(userStat?.total_resolved ?? 0) === 0 ? firstAnswerLead(pending, new Date()) : null}
+        nextDue={
+          (userStat?.total_resolved ?? 0) === 0 ? null : nextDueLine(pending, new Date())
+        }
       />
     );
 

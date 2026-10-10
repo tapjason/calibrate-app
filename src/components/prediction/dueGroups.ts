@@ -109,6 +109,28 @@ export function nextDueLine(
 }
 
 /**
+ * Until anything has resolved, the nearest thing (roadmap D30): when the first
+ * answer comes. "Your first answer: tomorrow evening", "…: Friday evening"
+ * within the week, "…: Fri, Oct 16" beyond it, or "Your first answer is ready"
+ * once one is due. The reminder fires that evening (D9), which is why it says
+ * evening. Null with nothing open.
+ */
+export function firstAnswerLead(pending: readonly Prediction[], now: Date): string | null {
+  const open = pending.filter((p) => p.status === 'pending' && !Number.isNaN(Date.parse(p.due_date)));
+  if (open.length === 0) return null;
+  if (open.some((p) => isReadyToResolve(p, now))) return 'Your first answer is ready';
+  const soonest = open.reduce((a, b) => (daysUntilDue(b, now) < daysUntilDue(a, now) ? b : a));
+  const days = daysUntilDue(soonest, now);
+  const due = new Date(soonest.due_date);
+  if (days === 1) return 'Your first answer: tomorrow evening';
+  if (days < 7) {
+    return `Your first answer: ${due.toLocaleDateString(undefined, { weekday: 'long' })} evening`;
+  }
+  const day = due.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return `Your first answer: ${day.replace(/ /g, '\u00A0')}`;
+}
+
+/**
  * Open predictions that can be answered within `days` from today, the ones
  * already ready included. The empty weekly recap counts these as "on the way"
  * (roadmap step 34).

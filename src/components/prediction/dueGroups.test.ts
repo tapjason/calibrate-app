@@ -1,6 +1,13 @@
 import type { Prediction } from '@/types';
 
-import { daysUntilDue, dueWithin, groupByDue, isReadyToResolve, nextDueLine } from './dueGroups';
+import {
+  daysUntilDue,
+  dueWithin,
+  firstAnswerLead,
+  groupByDue,
+  isReadyToResolve,
+  nextDueLine,
+} from './dueGroups';
 
 // Local noon on 10 Sep 2026; every due date below is built in local time too,
 // so the tests hold in any time zone.
@@ -113,5 +120,29 @@ describe('dueWithin', () => {
   it('counts what can be answered within the window, overdue included', () => {
     expect(dueWithin([dueIn(-3), dueIn(0), dueIn(7), dueIn(8)], NOW, 7)).toBe(3);
     expect(dueWithin([], NOW, 7)).toBe(0);
+  });
+});
+
+// Roadmap D30: before the first answer, Today leads with when it comes.
+describe('firstAnswerLead', () => {
+  it('says tomorrow evening for a prediction due tomorrow', () => {
+    expect(firstAnswerLead([dueIn(7), dueIn(1)], NOW)).toBe('Your first answer: tomorrow evening');
+  });
+
+  it("names the day's evening within the week", () => {
+    // 10 Sep 2026 is a Thursday, so three days on is Sunday.
+    expect(firstAnswerLead([dueIn(3)], NOW)).toBe('Your first answer: Sunday evening');
+  });
+
+  it('gives the date beyond the week', () => {
+    expect(firstAnswerLead([dueIn(9)], NOW)).toMatch(/^Your first answer: Sat,? Sep 19$|^Your first answer: Sat, 19 Sep$/);
+  });
+
+  it('says it is ready once one is due', () => {
+    expect(firstAnswerLead([dueIn(0), dueIn(2)], NOW)).toBe('Your first answer is ready');
+  });
+
+  it('says nothing with nothing open', () => {
+    expect(firstAnswerLead([], NOW)).toBeNull();
   });
 });

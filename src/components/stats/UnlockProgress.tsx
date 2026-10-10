@@ -11,6 +11,11 @@ interface UnlockProgressProps {
   total: number;
   /** When the next resolution can come (roadmap step 32), or null. */
   nextDue?: string | null;
+  /**
+   * Before anything has resolved, the first answer's evening (roadmap D30),
+   * shown above the bar so the nearest thing comes first. Null otherwise.
+   */
+  lead?: string | null;
   testID?: string;
 }
 
@@ -28,7 +33,14 @@ interface UnlockProgressProps {
  * A stand-in for the ring the design system describes: same three states,
  * drawn with Views so it renders identically on web for screenshots.
  */
-export function UnlockProgress({ resolved, pending, total, nextDue, testID }: UnlockProgressProps) {
+export function UnlockProgress({
+  resolved,
+  pending,
+  total,
+  nextDue,
+  lead = null,
+  testID,
+}: UnlockProgressProps) {
   const done = Math.min(resolved, total);
   const onTheWay = Math.min(pending, total - done);
   const toGo = total - done;
@@ -46,10 +58,15 @@ export function UnlockProgress({ resolved, pending, total, nextDue, testID }: Un
       testID={testID}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Calibrating. ${summary}.`}
+      accessibilityLabel={`Calibrating. ${lead ? `${lead}. ` : ''}${summary}.`}
       accessibilityValue={{ min: 0, max: total, now: done }}
     >
       <Text style={styles.title}>Calibrating</Text>
+      {lead && (
+        <Text style={styles.lead} testID={testID ? `${testID}-lead` : undefined}>
+          {lead}
+        </Text>
+      )}
       <View style={styles.bar}>
         {Array.from({ length: total }, (_, i) => (
           <View
@@ -75,6 +92,7 @@ const SEGMENT_HEIGHT = 10;
 const styles = StyleSheet.create({
   wrap: { alignSelf: 'stretch', gap: space.sm },
   title: { ...type.title3, color: colors.textPrimary },
+  lead: { ...type.headline, color: colors.textPrimary },
   bar: { flexDirection: 'row', gap: 3 },
   segment: {
     borderRadius: radius.xs / 2,
