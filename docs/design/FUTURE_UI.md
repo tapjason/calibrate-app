@@ -177,4 +177,6 @@ Back guard moved as step 23.
 
 Decisions in `UI_ROADMAP.md` §2 are not repeated here. Still open as of 2026-10-09:
 D5 (SDK 58), D6 (milestone cards), D8 (resolve from the notification), D11 (on-device
-Coach) and D12 (widgets).
+Coach) and D12 (widgets). From the 2026-10-09 layout pass, two optional ones without a
+number yet: Insights repeats Today's 92 as its own hero, and History's cards fit three
+to a screen (a denser row would show six).

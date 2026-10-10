@@ -649,8 +649,9 @@ Added 2026-09-29 (polish pass):
       CTA and "Not now", and still restores.
 - [ ] **The 2026-10-07 batch (steps 79–84; unit-tested, not yet seen on web):**
       the tab bar reads Today · Insights · History · You; the indigo "+" sits
-      above the bar's right end, clear of the home indicator, on every tab but
-      You, and opens "New prediction" as a full-height sheet; with a title
+      at the right of the title bar on Today, Insights and History (D21; it
+      floated above the tab bar before 2026-10-09), and opens "New prediction"
+      as a full-height sheet; with a title
       typed, swiping down asks Discard prediction / Keep editing. Every sheet
       (Resolve, a run, Share, How scoring works, Log) has the round × at the
       top. You is a grouped list: whole rows highlight on press, VoiceOver reads

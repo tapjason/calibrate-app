@@ -4,7 +4,7 @@
 [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) (which holds the rules). Evidence in
 [`research/`](research/); "before" screens from 2026-09-25 in [`baseline/`](baseline/).
 Feature ideas beyond this roadmap are parked in [`FUTURE_UI.md`](FUTURE_UI.md).
-What has been built, step by step (steps 0–113), is in
+What has been built, step by step (steps 0–115), is in
 [`BUILT_LOG.md`](BUILT_LOG.md); this file holds only what is still open.
 
 ---
@@ -12,7 +12,7 @@ What has been built, step by step (steps 0–113), is in
 
 ## 1. Where it stands
 
-Every step through 113 is built (see [`BUILT_LOG.md`](BUILT_LOG.md)). The redesign
+Every step through 115 is built (see [`BUILT_LOG.md`](BUILT_LOG.md)). The redesign
 pass, the element and retention research batches, the Day-0 rework (D18) and the
 daily-practice, rest-day and reminder features all shipped. **Everything not listed
 in the parking lot or §2 is done**; what's left is a first session on an iPhone
@@ -66,6 +66,8 @@ And the decisions in §2 below.
 | D18 | What Day 0 is for | ~~**A warm-up that teaches the mechanic, then a first real result the next day.** (1) The Warmup's ten come from the practice tables, not picked to be tricky (D14 c). (2) The result leads with counts ("You said 78% on average. 6 of 10 were right.") and a read of *these ten* ("On these ten, you ran hot"), not an identity ("You run overconfident"). (3) It bridges to the person's own plans, where overconfidence really lives: "Trivia is the warm-up. People are most overconfident about their own plans: students who expected to finish their thesis in 34 days took 56." **Predict something about tomorrow.** (4) The first prediction defaults to *Tomorrow* with starter ideas that resolve by then, so the first real "you said 70%, it happened" arrives on Day 1 at 19:00, not a week later. (5) The Day-0 card shares the counts as an invitation ("78% sure, 6 of 10 right. How sure are you?"), not a personality. Measure `warmup_completed`, the first log and D1 retention before and after.~~ **Decided 2026-10-07, for now: Day 0 is for calibration**, not for the identity hook. Points (1)–(5) **built 2026-10-08** as steps 97–101; **refined 2026-10-09** as steps 104–107 (`research/day0-2026-10.md`): a lean only beyond luck, no warm-up score (D20), half the ten from the whole class, and a first-answer line on Resolve. Step 94 (the same evening) is narrower and came first: a starter idea sets the due date its own words imply; a typed prediction still defaults to "In a week" until (4) is built. | The goal is calibration about your own goals. Trivia transfers weakly to other tasks (Lichtenstein & Fischhoff 1980); picked items manufacture overconfidence (D14); and the planning fallacy is the overconfidence a goal app should catch: Buehler, Griffin & Ross 1994, predicted 33.9 days, took 55.5, about 30% on time. It gives up the dramatic "You run overconfident" hook GROWTH §5.1 wanted, and changes onboarding, the Day-0 card and the Log default. |
 | D19 | Don't lose the Day-1 reminder to "Not now" | ~~**Proposal:** when the earliest open prediction is due within two days, the first "Not now" on the reminder card holds it until that day's morning, not 7 days; a second "Not now" uses the 7-day cooldown.~~ **Decided 2026-10-09, simpler: the first "Not now" holds the card until 06:00 the next morning, whatever is due; from the second, a week.** Built as step 108. | D18 makes the first prediction due tomorrow, so its 19:00 reminder is the whole Day-1 hook, and a Day-0 "Not now" currently silences it for a week. Evidence: [`research/day1-2026-10.md`](research/day1-2026-10.md) §2–3 (vendor-grade, direction only). Changes a decided cooldown (step 38). |
 | D20 | The warm-up score | ~~**Drop the 0–100 warm-up score** from the Day-0 result (the card never carried it); lead with the counts.~~ **Decided 2026-10-09: drop it; built as step 105.** | Ten answers can't separate a calibrated person from one 15 points off (`research/day0-2026-10.md` §2), so the score was a headline number built on noise, which rule 0.3 and `CLAUDE.md` forbid for the real one until 20 resolutions. |
+| D21 | Where the "+" lives | ~~A "+" in the title bar of Today, Insights and History instead of floating above the tab bar; beside the tab bar once native tabs land (SDK 58).~~ **Decided 2026-10-09; built as step 114.** Revises D3's floating "+". | Floating, it sat over "Resolve all 3", card text and the chart's top-right corner, where the overconfident end the chart exists to show is drawn (the 2026-10-09 layout pass). |
+| D22 | Today's order | ~~"Ready to resolve" before the streak and practice rows whenever anything is ready.~~ **Decided 2026-10-09; built as step 115.** | Below the hero, streak and practice it sat about a screen down at 375 × 667, and it's the one thing on Today that asks for a tap. |
 | D10 | What Skip means | ~~Relabel to "Can't tell / doesn't apply" with "It won't count toward your score", shown as a text button.~~ **Built 2026-10-04.** The open question was factual and the code answers it: skips are excluded from the score (`calibration.ts`), the streak (`streak.ts`), Wrapped (`wrapped.ts`), patterns and trends, and History already says "Not scored". So the line is true everywhere. One commit to revert if you'd rather keep a Skip button. | — |
 
 ---

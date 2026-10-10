@@ -254,7 +254,7 @@ sections 32.
 |---|---|---|
 | `e0` | no shadow; surface colour + 1 px `hairline` | default |
 | `e1` | `shadowColor textPrimary`, opacity 0.06, radius 8, y 2 | cards on canvas |
-| `e2` | opacity 0.12, radius 24, y 8 | floating "+", toasts, dragged items |
+| `e2` | opacity 0.12, radius 24, y 8 | toasts, dragged items |
 | glass | native tab bar, toolbar "+", sheet chrome (`GlassView` regular) | never on content |
 
 RN 0.83 (New Architecture) supports `boxShadow` natively — no shadow library.
@@ -570,10 +570,13 @@ third row) → **honest timeline** → **one** CTA.
   or only shares (Share) closes from the × and loses its bottom Done.
 - **Four tabs** (roadmap D3, decided and built 2026-10-07): *Today · Insights · History
   · You*. Log stopped being a tab (HIG: tabs navigate, they don't perform actions): a
-  56pt tinted "+" (`LogButton`, `brand600`, `e2`) floats above the tab bar's trailing
-  end on every tab but You, and opens Log as a full-height sheet with its title ("New
-  prediction") and the round ×. A typed, unsaved prediction asks before a swipe or the
-  × discards it (Discard prediction / Keep editing). Lists end with room for the "+".
+  tinted "+" (`LogButton`, a 32pt `brand600` disc in a 44pt target) sits at the
+  trailing end of the title bar on Today, Insights and History (D21, step 114), and
+  opens Log as a full-height sheet with its title ("New prediction") and the round ×.
+  It floated above the tab bar until 2026-10-09 and sat over "Resolve all", card text
+  and the chart's top-right corner; in the header nothing is ever under it. A typed,
+  unsaved prediction asks before a swipe or the × discards it (Discard prediction /
+  Keep editing).
   You holds what Settings did, with "Your card" one row from the top. JS tabs for now;
   native tabs with Liquid Glass follow the SDK 58 upgrade with the same layout.
 
@@ -585,7 +588,7 @@ Built as step 56: `EmptyState` takes a `symbol` (36pt, `textSecondary`, hidden f
 screen readers): `calendar.badge.plus` on Home, `clock.arrow.circlepath` on History,
 `square.and.arrow.up` on Share. Its button is the primary capsule, since where an empty
 state shows it is the screen's main action. On Today and History, **Log a prediction**
-repeats the floating "+" (D3, step 82) on purpose: in words, for someone who hasn't
+repeats the title bar's "+" (D3, D21) on purpose: in words, for someone who hasn't
 learned the symbol yet, and only until there's something to list. History had none until step 69: before
 anything resolves it says when the first answer comes ("The first one comes due Tue,
 Oct 13.") and offers **Resolve it now** (one ready), **Resolve the first one** (two),
@@ -691,6 +694,11 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   Today list by date ("Ready to resolve", "Next 7 days", "Later"; it said "This week"
   until roadmap step 67, which put next Tuesday in this week) and let the group
   header carry the state. No amber, no "Overdue" label, no warning colour.
+- **Order** (D22, step 115): the score or its progress; then, when anything is
+  ready, "Ready to resolve" with **Resolve all N**; then the streak row, the
+  reminder card and today's practice; then "Next 7 days" and "Later". With nothing
+  ready the daily rows follow the score directly. They used to come first and push
+  the one thing on Today that asks for a tap about a screen down.
 - Resolved (History): outcome as neutral ink glyph + word ("Happened" / "Didn't"), never
   ✓/✗ characters or green/red. Skipped reads "Not scored".
 - Tapping a ready card opens Resolve (§7.10). Keep the single-sentence
@@ -924,7 +932,7 @@ doesn't serve.
 | You need | Use | Not | Why |
 |---|---|---|---|
 | Move between the app's sections | A tab bar of 3–5 single-word, labelled tabs | An action as a tab, a hidden menu | HIG Tab bars: "navigation, not… actions". Visible navigation was used by 89% vs 44% hidden (NN/g). Log as a tab is D3. |
-| Start a new entry | A tinted "+" (in or beside the tab bar, or in the header), opening a sheet | An ordinary tab | None of the nine top apps that show it uses a tab. Built with D3: `LogButton`. |
+| Start a new entry | A tinted "+" (in or beside the tab bar, or in the header), opening a sheet | An ordinary tab; a floating button over scrolling content | None of the nine top apps that show it uses a tab. `LogButton`, in the header since D21: floating, it covered buttons, cards and the chart. |
 | One of 2–5 closely related views | A segmented control, text only | Mixing icons and words; a segmented control for whole sections | HIG Segmented controls. Share's Card · This week · This year. |
 | Filter a list | Horizontally scrolling pills, "All" first | A dropdown | Day One, Flighty, Bevel; History. |
 | One of a few named options in a form | Chips with symbol + word, selected state not colour alone | A picker wheel | Log's category and due-date chips. |

@@ -488,8 +488,10 @@ User taps notification on due_date
 ## Screen List
 
 Four tabs, **Today · Insights · History · You** (decided 2026-10-07, roadmap D3);
-Log is a sheet opened by a floating "+", not a tab, because tabs navigate and
-logging is an action.
+Log is a sheet opened by a "+" in the title bar of Today, Insights and History
+(D21, 2026-10-09; it floated over the tab bar until then), not a tab, because tabs
+navigate and logging is an action. On Today, what's ready to resolve comes before
+the streak and practice rows (D22).
 
 | Screen | Purpose | Tier |
 |---|---|---|
