@@ -40,15 +40,6 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       <Text style={styles.title}>{verdict.title}</Text>
       <Text style={styles.detail}>{verdict.detail}</Text>
 
-      <CalibrationChart buckets={result.buckets} animateIn />
-
-      <Text style={styles.advice}>{verdict.advice}</Text>
-      {verdict.sameNumber && (
-        <Text style={styles.advice} testID="warmup-same-number">
-          {verdict.sameNumber}
-        </Text>
-      )}
-
       {/* The bridge (roadmap D18 (3)): trivia is the warm-up, plans are where
           overconfidence lives (Buehler, Griffin & Ross 1994: 33.9 days
           predicted, 55.5 taken). */}
@@ -58,13 +49,10 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         first one about tomorrow.
       </Text>
 
-      <Text style={styles.disclaimer}>
-        This is a warm-up, not your calibration rating. That one needs{' '}
-        {MIN_N_OVERALL} of your own predictions.
-      </Text>
-
-      {/* Actions before the answer key: the key is a long read, and the two
-          things to do next shouldn't sit below it. */}
+      {/* The bridge and the two things to do next right under the counts
+          (2026-10-09): below the chart and its notes they sat about 1.4
+          screens down, and three blind testers scrolled to find them. The
+          chart, the notes and the answer key are for whoever wants more. */}
       <View style={styles.actions}>
         <Button
           // One line at 320pt; "Predict something about tomorrow" wrapped to
@@ -83,6 +71,20 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
           />
         )}
       </View>
+
+      <CalibrationChart buckets={result.buckets} animateIn />
+
+      <Text style={styles.advice}>{verdict.advice}</Text>
+      {verdict.sameNumber && (
+        <Text style={styles.advice} testID="warmup-same-number">
+          {verdict.sameNumber}
+        </Text>
+      )}
+
+      <Text style={styles.disclaimer}>
+        This is a warm-up, not your calibration rating. That one needs{' '}
+        {MIN_N_OVERALL} of your own predictions.
+      </Text>
 
       <View style={styles.key}>
         <Text style={styles.keyTitle}>The answers</Text>
