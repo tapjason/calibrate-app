@@ -21,21 +21,16 @@ export interface WarmupVerdict {
    * everything", and the verdict should say that plainly. Null otherwise.
    */
   sameNumber: string | null;
-  /**
-   * Under an overconfident verdict only: the ten are drawn at random from
-   * reference tables (roadmap D18 (1)), so the verdict can't blame the
-   * questions, but ten is a small sample and trivia says little about
-   * plans. It says both.
-   */
-  sampleNote: string | null;
 }
 
 // Says "these ten", not "you run": ten random questions describe those ten,
-// not a person (roadmap D18 (2)).
+// not a person (roadmap D18 (2)). The engine names a lean only outside what
+// luck commonly does on ten (WARMUP_LEAN_MASS), so `calibrated` here means
+// no clear lean, not proof of calibration.
 const READS = {
   overconfident: 'you were overconfident',
   underconfident: 'you were underconfident',
-  calibrated: 'you were well calibrated',
+  calibrated: 'no clear lean',
 } as const;
 
 const NUMBER_WORDS: Record<number, string> = { 10: 'ten' };
@@ -46,12 +41,8 @@ const ADVICE = {
   underconfident:
     'You knew more than you gave yourself credit for. Try trusting your gut a little further.',
   calibrated:
-    'Your confidence tracks reality closely. The real test is whether it holds on your own predictions.',
+    "Ten answers can't tell a small lean from luck. Your own predictions are the real test.",
 } as const;
-
-const SAMPLE_NOTE =
-  'Ten questions is a small sample, and trivia says little about your plans. ' +
-  'Your own predictions are the real test.';
 
 const SAME_NUMBER_NOTE =
   'One number for every question, the ones you knew and the ones you guessed. ' +
@@ -94,7 +85,6 @@ export function warmupVerdict(
     advice: ADVICE[result.direction],
     // Nothing to tell apart when every answer was right.
     sameNumber: same !== null && result.accuracy < 1 ? SAME_NUMBER_NOTE : null,
-    sampleNote: result.direction === 'overconfident' ? SAMPLE_NOTE : null,
   };
 }
 

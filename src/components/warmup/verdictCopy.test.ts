@@ -3,11 +3,13 @@ import type { WarmupAnswer } from '@/types';
 
 import { warmupVerdict } from './verdictCopy';
 
-/** Confident and wrong half the time — the overconfident case. */
-const OVERCONFIDENT: WarmupAnswer[] = [
-  { confidence: 90, correct: true },
-  { confidence: 90, correct: false },
-];
+const run = (confidence: number, n: number, correct: number): WarmupAnswer[] =>
+  Array.from({ length: n }, (_, i) => ({ confidence, correct: i < correct }));
+
+/** 90% sure on ten and right on five: outside what luck does at 90%. */
+const OVERCONFIDENT = run(90, 10, 5);
+/** Two answers: too few for any lean. */
+const TWO = run(90, 2, 1);
 
 describe('warmupVerdict', () => {
   it('returns null with nothing answered rather than a verdict on no data', () => {
@@ -15,32 +17,27 @@ describe('warmupVerdict', () => {
     expect(warmupVerdict(scoreWarmup([]))).toBeNull();
   });
 
-  it('states confidence against reality, per the CLAUDE.md headline shape', () => {
+  it('leads with the counts and reads these ten, not the person', () => {
     const v = warmupVerdict(scoreWarmup(OVERCONFIDENT));
-    expect(v?.title).toBe('On these 2, you were overconfident');
+    expect(v?.title).toBe('On these ten, you were overconfident');
     expect(v?.detail).toBe(
-      'You said 90% on average. 1\u00A0of\u00A02\u00A0were\u00A0right.',
+      'You said 90% on average. 5 of 10 were right.',
     );
   });
 
   it('reads the other direction when confidence trails accuracy', () => {
-    const v = warmupVerdict(
-      scoreWarmup([
-        { confidence: 55, correct: true },
-        { confidence: 55, correct: true },
-      ]),
-    );
-    expect(v?.title).toBe('On these 2, you were underconfident');
+    const v = warmupVerdict(scoreWarmup(run(55, 10, 10)));
+    expect(v?.title).toBe('On these ten, you were underconfident');
   });
 
-  it('calls a matched run calibrated', () => {
-    const v = warmupVerdict(
-      scoreWarmup([
-        { confidence: 100, correct: true },
-        { confidence: 100, correct: true },
-      ]),
+  it('names no lean inside what luck does, and says why', () => {
+    // 70% on ten, 6 right: the old ±5 rule called this overconfident.
+    const v = warmupVerdict(scoreWarmup(run(70, 10, 6)));
+    expect(v?.title).toBe('On these ten, no clear lean');
+    expect(v?.advice).toBe(
+      "Ten answers can't tell a small lean from luck. Your own predictions are the real test.",
     );
-    expect(v?.title).toBe('On these 2, you were well calibrated');
+    expect(warmupVerdict(scoreWarmup(TWO))?.title).toBe('On these 2, no clear lean');
   });
 
   it('rounds the reported figures for display', () => {
@@ -85,7 +82,7 @@ describe('warmupVerdict', () => {
     });
 
     it('needs at least three answers to call it a pattern', () => {
-      expect(warmupVerdict(scoreWarmup(OVERCONFIDENT), OVERCONFIDENT)?.detail).toBe(
+      expect(warmupVerdict(scoreWarmup(TWO), TWO)?.detail).toBe(
         'You said 90% on average. 1\u00A0of\u00A02\u00A0were\u00A0right.',
       );
     });
@@ -95,23 +92,5 @@ describe('warmupVerdict', () => {
     expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.advice).toBe(
       "When you felt sure, you were right less often than you thought. Try shading your confidence down.",
     );
-  });
-
-  // Roadmap D18 (1): the ten are random draws, so the note is about sample size.
-  it('says ten is a small sample under an overconfident verdict only', () => {
-    expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.sampleNote).toBe(
-      'Ten questions is a small sample, and trivia says little about your plans. ' +
-        'Your own predictions are the real test.',
-    );
-    const calibrated = scoreWarmup([
-      { confidence: 100, correct: true },
-      { confidence: 100, correct: true },
-    ]);
-    expect(warmupVerdict(calibrated)?.sampleNote).toBeNull();
-    const under = scoreWarmup([
-      { confidence: 55, correct: true },
-      { confidence: 55, correct: true },
-    ]);
-    expect(warmupVerdict(under)?.sampleNote).toBeNull();
   });
 });

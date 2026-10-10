@@ -9,7 +9,16 @@
 import type { WarmupAnswer, WarmupResult } from '@/types';
 
 import { computeCalibrationPoints } from './calibration';
-import { classifyDirection } from './patterns';
+import { chanceRange } from './chance';
+
+/**
+ * The share of chance outcomes a Warmup result may land in and still be called
+ * luck: the central 80%. Ten answers move accuracy in steps of 10 points, so
+ * the ±5 rule used elsewhere called a lean on 47–73% of perfectly calibrated
+ * people (research/day0-2026-10.md §2). A sentence reads as a conclusion, so
+ * its bar sits higher than the chart's grey bars (the central half).
+ */
+export const WARMUP_LEAN_MASS = 0.8;
 
 const EMPTY: WarmupResult = {
   answered: 0,
@@ -22,9 +31,12 @@ const EMPTY: WarmupResult = {
 
 /**
  * Score a completed Warmup quiz. Reuses the bucketed MAE engine for the
- * mini-score and chart, and derives the headline verdict with the shared
- * classifyDirection (overall stated confidence vs. actual accuracy), so
- * "overconfident" means exactly what it does everywhere else.
+ * mini-score and chart. The direction names a lean only when accuracy falls
+ * outside the central WARMUP_LEAN_MASS of what a perfectly calibrated person
+ * at the mean stated confidence would get from this many answers; inside it,
+ * `calibrated` means "no clear lean" (roadmap D18 (2)). The binomial at the
+ * mean is wider than the exact spread of mixed confidences, so it errs toward
+ * calling luck.
  *
  * Empty input returns a zeroed, `calibrated` result rather than throwing.
  */
@@ -45,7 +57,18 @@ export function scoreWarmup(answers: readonly WarmupAnswer[]): WarmupResult {
     mean_confidence: meanConfidence,
     accuracy,
     mini_score: rating,
-    direction: classifyDirection(meanConfidence, accuracy),
+    direction: leanFor(answers.length, meanConfidence, accuracy),
     buckets,
   };
+}
+
+function leanFor(
+  n: number,
+  meanConfidence: number,
+  accuracy: number,
+): WarmupResult['direction'] {
+  const { low, high } = chanceRange(n, meanConfidence / 100, WARMUP_LEAN_MASS);
+  if (accuracy < low - 1e-9) return 'overconfident';
+  if (accuracy > high + 1e-9) return 'underconfident';
+  return 'calibrated';
 }

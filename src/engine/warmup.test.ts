@@ -48,21 +48,31 @@ describe('scoreWarmup', () => {
     expect(r.mini_score).toBeCloseTo(100, 4);
   });
 
-  it('treats an exactly-threshold gap (0.05) as calibrated, not overconfident', () => {
-    // mean 0.75, accuracy 0.70 → gap 0.05, which is not strictly greater.
-    const r = scoreWarmup(answers(75, 20, 14));
-    expect(r.mean_confidence).toBe(75);
-    expect(r.accuracy).toBeCloseTo(0.7, 4);
-    expect(r.direction).toBe('calibrated');
+  it('calls no lean when ten answers sit inside what luck commonly does', () => {
+    // Said 70% on ten, right 6 or 8: the ±5 rule called both a lean, but a
+    // perfectly calibrated person lands there about half the time.
+    expect(scoreWarmup(answers(70, 10, 6)).direction).toBe('calibrated');
+    expect(scoreWarmup(answers(70, 10, 8)).direction).toBe('calibrated');
+    expect(scoreWarmup(answers(80, 10, 6)).direction).toBe('calibrated');
   });
 
-  it('scores the mini-chart from bucketed MAE, independent of the overall gap', () => {
-    // Two buckets that cancel in the overall gap (→ calibrated verdict) but
-    // are each badly miscalibrated, so the bucketed score is low.
+  it('names a lean just outside the central 80%', () => {
+    // At 70% on ten the central 80% runs 5–9 right.
+    expect(scoreWarmup(answers(70, 10, 4)).direction).toBe('overconfident');
+    expect(scoreWarmup(answers(70, 10, 10)).direction).toBe('underconfident');
+  });
+
+  it('calls any miss at 100% overconfident: luck cannot explain it', () => {
+    expect(scoreWarmup(answers(100, 10, 9)).direction).toBe('overconfident');
+  });
+
+  it('scores the mini-chart from bucketed MAE, independent of the overall lean', () => {
+    // Two buckets that cancel overall (→ no lean) but are each badly
+    // miscalibrated, so the bucketed score is low.
     const r = scoreWarmup([...answers(90, 10, 5), ...answers(60, 10, 9)]);
     expect(r.mean_confidence).toBe(75); // (900 + 600) / 20
     expect(r.accuracy).toBeCloseTo(0.7, 4); // (5 + 9) / 20
-    expect(r.direction).toBe('calibrated'); // gap 0.05
+    expect(r.direction).toBe('calibrated');
     expect(r.buckets).toHaveLength(2);
     expect(r.mini_score).toBeCloseTo(65, 4); // mean(0.40, 0.30) = 0.35 → 65
   });
