@@ -59,10 +59,24 @@ describe('shouldShowReminderPrompt (roadmap step 38)', () => {
     expect(shouldShowReminderPrompt({ ...base, notificationsEnabled: false })).toBe(false);
   });
 
-  it('waits a week after "Not now"', () => {
+  // Roadmap D19: a first "Not now" on Day 0 mustn't cost the Day-1 reminder.
+  it('comes back the next morning after a first "Not now"', () => {
+    const evening = new Date(2026, 9, 5, 21, 30).toISOString();
+    const at = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m);
+    const show = (now: Date) =>
+      shouldShowReminderPrompt({ ...base, dismissedAt: evening, dismissals: 1, now });
+    expect(show(at(5, 23))).toBe(false);
+    expect(show(at(6, 5, 59))).toBe(false);
+    expect(show(at(6, 6))).toBe(true);
+  });
+
+  it('waits a week after a second "Not now"', () => {
     const daysAgo = (d: number) => new Date(NOW.getTime() - d * 86_400_000).toISOString();
-    expect(shouldShowReminderPrompt({ ...base, dismissedAt: daysAgo(6) })).toBe(false);
-    expect(shouldShowReminderPrompt({ ...base, dismissedAt: daysAgo(7) })).toBe(true);
+    const show = (d: number) =>
+      shouldShowReminderPrompt({ ...base, dismissedAt: daysAgo(d), dismissals: 2 });
+    expect(show(1)).toBe(false);
+    expect(show(6)).toBe(false);
+    expect(show(7)).toBe(true);
   });
 });
 

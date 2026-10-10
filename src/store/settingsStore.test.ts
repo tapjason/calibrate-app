@@ -107,6 +107,7 @@ describe('settingsStore: setters persist', () => {
       cardThemeId: 'midnight',
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
+      reminderPromptDismissals: 0,
       ratingAskedAt: null,
       practiceReminder: null,
       practiceReminderOfferDismissedAt: null,
@@ -128,6 +129,7 @@ describe('settingsStore: setters persist', () => {
       cardThemeId: 'midnight',
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
+      reminderPromptDismissals: 0,
       ratingAskedAt: null,
       practiceReminder: null,
       practiceReminderOfferDismissedAt: null,
@@ -199,6 +201,11 @@ describe('settingsStore: reminder prompt cooldown', () => {
     const at = useSettingsStore.getState().reminderPromptDismissedAt;
     expect(at).not.toBeNull();
     expect(saved[0]?.reminderPromptDismissedAt).toBe(at);
+    expect(saved[0]?.reminderPromptDismissals).toBe(1);
+
+    // Roadmap D19: the count drives next-morning, then a week.
+    await useSettingsStore.getState().dismissReminderPrompt();
+    expect(useSettingsStore.getState().reminderPromptDismissals).toBe(2);
   });
 
   // Roadmap step 89: the practice reminder's time, off until it's chosen.

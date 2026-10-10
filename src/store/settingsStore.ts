@@ -43,6 +43,12 @@ export interface StoredSettings {
    */
   reminderPromptDismissedAt: string | null;
   /**
+   * How many times "Not now" has been answered (roadmap D19). The first holds
+   * the prompt only until the next morning, since a first prediction is due
+   * the next evening; from the second, a week.
+   */
+  reminderPromptDismissals: number;
+  /**
    * When the App Store rating prompt was last requested (roadmap D15), or
    * null. The cooldown's memory, like the two above.
    */
@@ -82,7 +88,7 @@ interface SettingsState extends StoredSettings {
   setCardThemeId: (id: string) => Promise<void>;
   /** Start the coverage-nudge cooldown from now. */
   markCoverageNudgeShown: () => Promise<void>;
-  /** "Not now" on the reminder prompt: hide it for a week from now. */
+  /** "Not now" on the reminder prompt: hide it until tomorrow morning, then a week. */
   dismissReminderPrompt: () => Promise<void>;
   /** The rating prompt was requested now: start its cooldown. */
   markRatingAsked: () => Promise<void>;
@@ -112,6 +118,7 @@ const DEFAULTS: StoredSettings = {
   cardThemeId: DEFAULT_THEME.id,
   coverageNudgeLastShownAt: null,
   reminderPromptDismissedAt: null,
+  reminderPromptDismissals: 0,
   ratingAskedAt: null,
   practiceReminder: null,
   practiceReminderOfferDismissedAt: null,
@@ -182,6 +189,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             DEFAULTS.coverageNudgeLastShownAt,
           reminderPromptDismissedAt:
             stored.reminderPromptDismissedAt ?? DEFAULTS.reminderPromptDismissedAt,
+          // A dismissal stored before D19 counts as one.
+          reminderPromptDismissals:
+            stored.reminderPromptDismissals ??
+            (stored.reminderPromptDismissedAt ? 1 : DEFAULTS.reminderPromptDismissals),
           ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
           practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
           practiceReminderOfferDismissedAt:
@@ -231,7 +242,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   dismissReminderPrompt: async () => {
-    set({ reminderPromptDismissedAt: new Date().toISOString() });
+    set((s) => ({
+      reminderPromptDismissedAt: new Date().toISOString(),
+      reminderPromptDismissals: s.reminderPromptDismissals + 1,
+    }));
     await persist(snapshot(get()));
   },
 
@@ -274,6 +288,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     cardThemeId: state.cardThemeId,
     coverageNudgeLastShownAt: state.coverageNudgeLastShownAt,
     reminderPromptDismissedAt: state.reminderPromptDismissedAt,
+    reminderPromptDismissals: state.reminderPromptDismissals,
     ratingAskedAt: state.ratingAskedAt,
     practiceReminder: state.practiceReminder,
     practiceReminderOfferDismissedAt: state.practiceReminderOfferDismissedAt,

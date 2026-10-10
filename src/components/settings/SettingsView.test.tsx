@@ -89,6 +89,7 @@ describe('SettingsView', () => {
         cardThemeId: 'midnight',
         coverageNudgeLastShownAt: null,
         reminderPromptDismissedAt: null,
+        reminderPromptDismissals: 0,
         ratingAskedAt: null,
         practiceReminder: null,
         practiceReminderOfferDismissedAt: null,
