@@ -12,7 +12,7 @@ import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { bucketLine, ResolvePrompt } from './ResolvePrompt';
+import { bucketLine, firstAnswerLine, ResolvePrompt } from './ResolvePrompt';
 
 const USER = 'local-user-v1';
 
@@ -135,7 +135,29 @@ describe('ResolvePrompt layout', () => {
 });
 
 describe('ResolvePrompt acknowledgement', () => {
-  it('states the bucket in counts after a Yes or No, the same for both', async () => {
+  it('teaches what the number means on the first answer ever, Yes or No alike', async () => {
+    for (const choice of ['resolve-no', 'resolve-yes']) {
+      setDbForTests(await createTestDb());
+      usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
+      useStatsStore.setState({ userStat: null, categoryStats: [], calibration: { rating: 0, buckets: [] } });
+      await insertPrediction(samplePending());
+      const view = render(<ResolvePrompt predictionId="p1" />);
+      await waitFor(() => {
+        expect(screen.getByTestId(choice)).toBeTruthy();
+      });
+
+      fireEvent.press(screen.getByTestId(choice));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('resolve-bucket-line')).toBeTruthy();
+      });
+      expect(screen.getByText(holdRanges(firstAnswerLine(80)))).toBeTruthy();
+      view.unmount();
+    }
+  });
+
+  it('states the bucket in counts from the second answer on', async () => {
+    await insertPrediction(samplePending({ id: 'p0', status: 'resolved_yes', resolved_at: '2026-06-01T00:00:00.000Z', confidence: 40 }));
     await insertPrediction(samplePending());
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => {
@@ -518,5 +540,23 @@ describe('ResolvePrompt reflection draft', () => {
       expect(screen.getByTestId('resolve-yes')).toBeTruthy();
     });
     expect(onDraftChange).toHaveBeenLastCalledWith('');
+  });
+});
+
+// Roadmap D18, refined 2026-10-09: the first answer ever teaches what the
+// number means, the same for Yes and No.
+describe('firstAnswerLine', () => {
+  it('says what the stated number means in tens', () => {
+    expect(firstAnswerLine(70)).toBe(
+      "That's your first. A 70% call should come true about 7 times in 10, so one answer can't say much; 20 can.",
+    );
+    expect(firstAnswerLine(10)).toMatch(/about 1 time in 10/);
+  });
+
+  it('handles the ends of the scale', () => {
+    expect(firstAnswerLine(100)).toMatch(/A 100% call should always come true/);
+    expect(firstAnswerLine(0)).toMatch(/A 0% call should never come true/);
+    expect(firstAnswerLine(97)).toMatch(/nearly every time/);
+    expect(firstAnswerLine(3)).toMatch(/almost never/);
   });
 });

@@ -18,7 +18,13 @@ import {
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
-import type { BucketStat, Milestone, Prediction, ResolvedStatus } from '@/types';
+import {
+  MIN_N_OVERALL,
+  type BucketStat,
+  type Milestone,
+  type Prediction,
+  type ResolvedStatus,
+} from '@/types';
 
 import { MilestoneCard } from './MilestoneCard';
 import { StreakCheckpointCard } from './StreakCheckpointCard';
@@ -70,6 +76,30 @@ export function bucketLine(bucket: BucketStat): string {
   const happened = Math.round(bucket.actual_rate * 100);
   const said = Math.round(bucket.stated_confidence_mean);
   return `${counts} That's ${happened}%, against the ${said}% you said.`;
+}
+
+/**
+ * The first yes/no answer ever gets this in place of the bucket line (roadmap
+ * D18, refined 2026-10-09): one sentence on what the stated number means,
+ * identical for Yes and No. A first "it happened" otherwise reads as "I was
+ * right" (outcome bias, Baron & Hershey 1988), which isn't what 70% means.
+ */
+export function firstAnswerLine(confidence: number): string {
+  const tenths = Math.round(confidence / 10);
+  const often =
+    confidence >= 100
+      ? 'should always come true'
+      : confidence <= 0
+        ? 'should never come true'
+        : tenths >= 10
+          ? 'should come true nearly every time'
+          : tenths <= 0
+            ? 'should almost never come true'
+            : `should come true about ${tenths} ${tenths === 1 ? 'time' : 'times'} in 10`;
+  return (
+    `That's your first. A ${confidence}% call ${often}, so one answer ` +
+    `can't say much; ${MIN_N_OVERALL} can.`
+  );
 }
 
 /**
@@ -145,7 +175,12 @@ export function ResolvePrompt({
       const days = predictions.streakCheckpoint;
       setAnswered({
         outcome,
-        line: bucket ? bucketLine(bucket) : null,
+        line:
+          stats.userStat?.total_resolved === 1
+            ? firstAnswerLine(prediction.confidence)
+            : bucket
+              ? bucketLine(bucket)
+              : null,
         milestone: stats.milestone,
         checkpoint:
           days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
