@@ -71,8 +71,14 @@ export function scoringSections(): ScoringSection[] {
       title: "How it's worked out",
       paragraphs: [
         'Your resolved calls are grouped into five bands by how sure you said you were: 0–20%, 20–40%, 40–60%, 60–80% and 80–100%. A call at exactly 20% goes in 20–40%, and 100% goes in 80–100%.',
-        'In each band, the app compares what you said, on average, with how often it happened. The gap is the miss. The score is 100 minus your average miss across the bands you have used.',
-        'Say you called ten things 90% likely and five happened. You said 90%, 50% happened: a 40-point miss, and a score of 60. With misses of 5, 20 and 35 points in three bands, the average miss is 20, so the score is 80.',
+        'In each band, the app compares what you said, on average, with how often it happened. The gap is the miss. The score is 100 minus your average miss, with each band counting in proportion to the calls in it: a band of fifty counts for more than a band of one.',
+        'Say you called ten things 90% likely and five happened. You said 90%, 50% happened: a 40-point miss, and a score of 60. With misses of 5, 20 and 35 points in bands of 20, 10 and 20 calls, the average miss is 20, so the score is 80.',
+      ],
+    },
+    {
+      title: 'The Brier score',
+      paragraphs: [
+        "Once your score unlocks, Insights also shows a Brier score: the average of the squared gap between how sure you said you were and what happened. It rewards being decisive as well as calibrated, so calling everything 50% can't flatter it. Lower is better; always saying 50% scores 0.25.",
       ],
     },
     {
@@ -80,7 +86,7 @@ export function scoringSections(): ScoringSection[] {
       paragraphs: [
         'With two predictions in a band, it can only read 0%, 50% or 100%. That is noise, not a score.',
         `So your rating stays "calibrating" until ${MIN_N_OVERALL} predictions have resolved, a category's score until ${MIN_N_CATEGORY} have in that category, and the app doesn't say which way a band leans until it holds ${MIN_N_BAND}.`,
-        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands half the time with that many predictions: a dot inside it is as close as chance allows. And your rating comes with a "give or take": how far it could move on the same habits with different luck. Both narrow as you resolve more.',
+        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands half the time with that many predictions, so a dot outside it isn\'t proof of a lean. And your rating comes with a "give or take": how far it could move on the same habits with different luck. Both narrow as you resolve more.',
       ],
     },
     {
@@ -90,9 +96,10 @@ export function scoringSections(): ScoringSection[] {
       ],
     },
     {
-      title: 'Honest uncertainty',
+      // The integrity bonus section went with D23 (2026-10-10): it paid for a
+      // stated number, which pushes reports toward it.
+      title: 'Use the whole range',
       paragraphs: [
-        'Calls between 35% and 65% get the integrity bonus. They are the hardest to make, and they tell you the most.',
         'Log some things you think won\'t happen, too. A score built only from the confident end of the range only measures that end.',
       ],
     },

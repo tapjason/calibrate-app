@@ -71,11 +71,27 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(text).toContain('exactly 20% goes in 20–40%, and 100% goes in 80–100%');
   });
 
-  // CLAUDE.md's worked examples: 0.90 vs 0.50 → 60; misses 5, 20, 35 → 80.
+  // CLAUDE.md's worked examples: 0.90 vs 0.50 → 60; misses 5, 20, 35 in
+  // bands of 20, 10, 20 → a count-weighted 20 → 80 (roadmap D24).
   it("uses CLAUDE.md's worked examples", () => {
     const text = allText();
     expect(text).toContain('a 40-point miss, and a score of 60');
-    expect(text).toContain('misses of 5, 20 and 35 points in three bands, the average miss is 20, so the score is 80');
+    expect(text).toContain(
+      'misses of 5, 20 and 35 points in bands of 20, 10 and 20 calls, the average miss is 20, so the score is 80',
+    );
+    expect(text).toContain('with each band counting in proportion to the calls in it');
+  });
+
+  // Roadmap D24: one paragraph on the Brier score, with what good looks like.
+  it('explains the Brier score in one paragraph', () => {
+    const brier = scoringSections().find((s) => s.title === 'The Brier score');
+    expect(brier?.paragraphs).toHaveLength(1);
+    expect(brier?.paragraphs[0]).toContain('Lower is better; always saying 50% scores 0.25.');
+  });
+
+  // Roadmap D23: no bonus for a number, anywhere in the explanation.
+  it('no longer mentions the integrity bonus', () => {
+    expect(allText()).not.toMatch(/integrity|bonus|35%/i);
   });
 
   it('lists the five badges in ladder order with their criteria', () => {
@@ -87,6 +103,7 @@ describe('scoringCopy (roadmap step 29)', () => {
       'Oracle',
     ]);
     expect(badgeRows()[2].criteria).toBe('Above 70 over 20+ predictions');
+    expect(badgeRows()[0].criteria).toBe('Fewer than 20 resolved here');
   });
 });
 

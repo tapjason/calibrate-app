@@ -60,7 +60,9 @@ export const BADGE_META: Record<BadgeLevel, BadgeMeta> = {
     label: 'Guesser',
     color: chipColor('guesser', 'color'),
     background: chipColor('guesser', 'background'),
-    tagline: 'Just getting started',
+    // What it is: fewer than the Tracker's 20 resolved. "Just getting started"
+    // read as a judgement to a five-month user (2026-10-09 dry run, D27).
+    tagline: 'Fewer than 20 resolved here',
   },
   tracker: {
     label: 'Tracker',
