@@ -1068,7 +1068,8 @@ Tapping a prediction that isn't due yet, on Today or in History, opens a medium-
 sheet with the round ×:
 
 - **What you said, first:** "On Oct 4 you said **70%**", the category, the title in
-  `title2`, then "Due Fri, Oct 16 · reminder that evening" (or "· reminders off").
+  `title2`, then "Due Fri, Oct 16 · reminder that evening" (or "· reminders off"; on
+  the web build, which sends nothing, the date alone).
 - **Edit** (secondary capsule): the title, category and due date in place, with the
   Log form's fields and chips; **Save changes** as the one primary while editing,
   waiting for a non-empty title. The confidence is shown, never editable: it is the
@@ -1078,8 +1079,8 @@ sheet with the round ×:
   prediction? It won't count anywhere, and it can't be undone." with **Delete** as an
   outlined destructive capsule and **Cancel** beneath (§7.20). Synced as a deletion.
 - **Answer it now** (text button, brand): opens Resolve after one line, "It's due
-  Fri. Answering early is fine; just answer what you know now." with **Answer now**
-  and **Not yet**. Early answers count like any other.
+  Fri, Oct 16. Answering early is fine; just answer what you know now." with
+  **Answer now** and **Not yet**. Early answers count like any other.
 - A prediction that's due skips this sheet and opens Resolve, as before: the evening
   run stays two taps.
 

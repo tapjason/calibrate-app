@@ -322,9 +322,9 @@ Nothing that produces a shareable artifact is ever paywalled.
   renewal date and the store's price, and no offer (decided 2026-10-07, roadmap
   D16). Cancelled when the trial is cancelled or over, or notifications are off.
 - **Practice reminder** — off until the user picks a moment ("With coffee ·
-  8:00 AM", "At lunch · 12:30 PM", "After dinner · 8:30 PM", or **Pick a time**,
-  any time of day, added 2026-10-10, D31), offered under a finished practice and in
-  You (decided 2026-10-07, roadmap step 89). One a day,
+  8:00 AM", "At lunch · 12:30 PM", "After dinner · 8:30 PM"; in You also **Pick a
+  time**, any time of day, added 2026-10-10, D31), offered under a finished practice
+  and in You (decided 2026-10-07, roadmap step 89). One a day,
   only on days the practice isn't done, with a different title daily and that
   day's first question as the body. Scheduled at most three days ahead of the
   last time the app was open, so someone who stops opening it gets three, then

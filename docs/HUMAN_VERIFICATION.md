@@ -781,6 +781,15 @@ Expo Go — notifications and RevenueCat are both native modules.
       reminders** brings up the iOS alert. Allow it: the prediction's reminder
       is scheduled. On a second install, refuse it: Settings → Notifications
       shows "Open Settings", which opens the app's page in iOS Settings.
+- [ ] **The two new switches (D31, step 131):** under Notifications, turn off
+      Due-day reminders: an open prediction's reminder is cancelled (check the
+      schedule in a log) and the Sunday digest stays; turn it back on and it
+      returns. The same the other way for Sunday digest.
+- [ ] **An edited due date (D25, step 125):** open a prediction not yet due,
+      Edit, choose In a week: its reminder moves to that evening.
+- [ ] **A delete while signed in (D25):** delete an open prediction, then pull to
+      sync (or relaunch): it doesn't come back; in the Supabase dashboard the
+      row is gone.
 - [ ] **"Not now" (D19, step 108):** tap it on the reminder card in the evening;
       it's gone for the rest of the day and back on Today from 06:00 the next
       morning. Tap it again: gone for a week.
