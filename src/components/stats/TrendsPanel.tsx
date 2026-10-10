@@ -293,8 +293,8 @@ function CoverageLine({ trends }: { trends: TrendSummary }) {
           : 'You use the whole range, which is what makes the score trustworthy.'}
       </Text>
       <Text style={styles.muted}>
-        {Math.round(middle_share * 100)}% of your calls sit in the honest-uncertainty
-        band ({holdRanges('35–65%')}).
+        {Math.round(middle_share * 100)}% of your calls sit in the middle of the range
+        ({holdRanges('35–65%')}).
       </Text>
     </View>
   );

@@ -54,10 +54,6 @@ export interface Palette {
   calibratedMark: string;
   calibratedText: string;
 
-  // Integrity bonus (35–65%): a brand chip, not a green "good job".
-  integrityText: string;
-  integrityBackground: string;
-
   // Caution: a warning before an irreversible step (account deletion). Not
   // an outcome colour and never used for a miss.
   cautionText: string;
@@ -98,9 +94,6 @@ const light: Palette = {
   calibratedMark: '#009E73',
   calibratedText: '#00785A',
 
-  integrityText: '#3730A3', // brand800 on brand50: 8.88:1
-  integrityBackground: '#EEF2FF',
-
   cautionText: '#92400E', // 6.37:1 on cautionBackground
   cautionBackground: '#FEF3C7',
 
@@ -138,9 +131,6 @@ const dark: Palette = {
   underText: '#5CB4EC',
   calibratedMark: '#14A87B',
   calibratedText: '#3CC79A',
-
-  integrityText: '#A5B4FC',
-  integrityBackground: '#1E1B4B',
 
   cautionText: '#F5C77A', // 10.7:1 on dark cautionBackground
   cautionBackground: '#2A1A05',

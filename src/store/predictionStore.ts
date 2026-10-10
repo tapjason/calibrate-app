@@ -105,7 +105,10 @@ function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Per CLAUDE.md: confidence in [35, 65] earns the integrity bonus. */
+/**
+ * The legacy 35-65% flag (CLAUDE.md, D23): still stored and synced so the
+ * schema doesn't change, never shown or rewarded.
+ */
 function isIntegrityBonus(confidence: number): boolean {
   return confidence >= 35 && confidence <= 65;
 }
@@ -185,8 +188,8 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     await get().loadPending();
     // After the transaction, never inside it: analytics must not be able to
     // roll back a saved prediction. The confidence value goes, the title does
-    // not — it is the number that says whether the integrity-bonus nudge is
-    // working (CLAUDE.md's range-coverage caveat).
+    // not — it is the number that says whether people use the whole range
+    // (CLAUDE.md's range-coverage caveat).
     void track('prediction_logged', {
       confidence: prediction.confidence,
       integrity_bonus: prediction.integrity_bonus,

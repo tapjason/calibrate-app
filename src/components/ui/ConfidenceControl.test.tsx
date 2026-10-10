@@ -64,11 +64,10 @@ describe('ConfidenceControl', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('marks the honest-uncertainty band only when asked', () => {
-    const { rerender } = render(<ConfidenceControl value={50} onChange={jest.fn()} />);
+  // Roadmap D23: no confidence is marked or rewarded for being a number.
+  it('draws no honest-uncertainty band', () => {
+    render(<ConfidenceControl value={50} onChange={jest.fn()} />);
     expect(screen.queryByTestId('integrity-zone', { includeHiddenElements: true })).toBeNull();
-    rerender(<ConfidenceControl value={50} onChange={jest.fn()} showIntegrityZone />);
-    expect(screen.getByTestId('integrity-zone', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('stays one adjustable element for VoiceOver', () => {

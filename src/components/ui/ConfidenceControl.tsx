@@ -5,20 +5,18 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
-import { colors, DISPLAY_MAX_SCALE, radius, space, tabularNums, type } from '@/constants/theme';
+import { colors, DISPLAY_MAX_SCALE, space, tabularNums, type } from '@/constants/theme';
 
 interface ConfidenceControlProps {
   /**
    * Null until the person sets it (roadmap D13). Nothing is preset: a preset
    * can't be told apart from a choice, so an untouched Warmup answer read as
-   * "75% sure" and an untouched Log save earned the integrity bonus.
+   * "75% sure" and an untouched Log save sat at a confidence nobody chose.
    */
   value: number | null;
   onChange: (next: number) => void;
   min?: number;
   max?: number;
-  /** Tint the 35–65% honest-uncertainty band (Log only; the Warmup starts at 50). */
-  showIntegrityZone?: boolean;
   /** Visible and spoken label. */
   label?: string;
   /** Optional line under the readout, e.g. the Warmup's coin-flip note. */
@@ -28,11 +26,6 @@ interface ConfidenceControlProps {
 }
 
 const STEP = 5;
-const INTEGRITY_LOW = 35;
-const INTEGRITY_HIGH = 65;
-// Approximate half-width of the slider thumb, so the zone strip lines up with
-// where the thumb's centre can actually travel.
-const THUMB_INSET = 14;
 
 /**
  * Below this width, or above this text scale, the ±5 buttons drop to their own
@@ -78,7 +71,6 @@ export function ConfidenceControl({
   onChange,
   min = 0,
   max = 100,
-  showIntegrityZone = false,
   label = 'Confidence',
   hint,
   idPrefix = 'confidence',
@@ -124,11 +116,6 @@ export function ConfidenceControl({
       />
     </View>
   );
-
-  const span = max - min;
-  const zoneLeft = ((INTEGRITY_LOW - min) / span) * 100;
-  const zoneWidth = ((INTEGRITY_HIGH - INTEGRITY_LOW) / span) * 100;
-  const inZone = value !== null && value >= INTEGRITY_LOW && value <= INTEGRITY_HIGH;
 
   return (
     <View
@@ -180,18 +167,6 @@ export function ConfidenceControl({
           thumbTintColor={unset ? colors.controlBorder : colors.brand600}
           style={styles.slider}
         />
-        {showIntegrityZone && (
-          <View style={styles.zoneTrack}>
-            <View
-              testID="integrity-zone"
-              style={[
-                styles.zone,
-                inZone && styles.zoneActive,
-                { left: `${zoneLeft}%`, width: `${zoneWidth}%` },
-              ]}
-            />
-          </View>
-        )}
       </View>
       {!inlineSteppers && steppers}
     </View>
@@ -224,16 +199,6 @@ const styles = StyleSheet.create({
   frequency: { ...type.subhead, color: colors.textSecondary },
   hint: { ...type.footnote, color: colors.textSecondary, marginBottom: space.xs },
   slider: { height: 40, width: '100%' },
-  // The band's meaning is spelled out by the integrity chip beneath the
-  // control, so the band itself stays wordless.
-  zoneTrack: { height: 6, marginBottom: 4, marginHorizontal: THUMB_INSET },
-  zone: {
-    backgroundColor: colors.brand100,
-    borderRadius: radius.pill,
-    height: 6,
-    position: 'absolute',
-  },
-  zoneActive: { backgroundColor: colors.brand400 },
   steppers: { flexDirection: 'row', gap: space.sm },
   steppersBelow: { marginTop: space.sm },
 });

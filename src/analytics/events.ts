@@ -98,8 +98,9 @@ export const EVENT_PROPS = {
   warmup_completed: ['score', 'question_count'],
   share_opened: ['surface'],
   share_completed: ['surface'],
-  // `confidence` is the slider value, not the prediction. It is the one number
-  // that tells us whether the integrity-bonus nudge is working.
+  // `confidence` is the slider value, not the prediction: the one number that
+  // says whether people use the whole range. `integrity_bonus` stays as a
+  // mid-range (35-65%) flag for that read, though nothing rewards it since D23.
   prediction_logged: ['confidence', 'integrity_bonus'],
   prediction_resolved: ['confidence', 'correct'],
   paywall_viewed: ['source'],

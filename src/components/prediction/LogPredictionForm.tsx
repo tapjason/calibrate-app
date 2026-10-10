@@ -56,8 +56,8 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
   const [category, setCategory] = useState<Category>(again?.category ?? 'work');
-  // Empty until set (roadmap D13). A preset 50% sat inside the 35–65% band,
-  // so a save that never touched the control earned the integrity bonus.
+  // Empty until set (roadmap D13): a preset can't be told apart from a choice,
+  // so a save that never touched the control sat at a number nobody chose.
   const [confidence, setConfidence] = useState<number | null>(null);
   // A first prediction is due tomorrow, so its result lands on Day 1 (D18 (4));
   // after that, in a week.
@@ -306,14 +306,9 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
         </View>
 
         <View style={styles.block}>
-          <ConfidenceControl value={confidence} onChange={setConfidence} showIntegrityZone />
-          {confidence !== null && confidence >= 35 && confidence <= 65 && (
-            // A brand chip, not green text: honesty is rewarded, but green means
-            // "calibrated" and never "good job" (DESIGN_SYSTEM §2.3).
-            <View style={styles.bonus} testID="integrity-bonus">
-              <Text style={styles.bonusText}>Integrity bonus · honest uncertainty</Text>
-            </View>
-          )}
+          {/* No band and no chip for any number (roadmap D23, 2026-10-10): the
+              integrity bonus paid for 35–65%, which pushes reports toward it. */}
+          <ConfidenceControl value={confidence} onChange={setConfidence} />
           {record && (
             <Text style={styles.record} testID="track-record">
               {holdRanges(record.text)}
@@ -439,15 +434,6 @@ const styles = StyleSheet.create({
   capitalize: { textTransform: 'capitalize' },
   chipWithIcon: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   chipTextActive: { color: colors.brand800, fontWeight: '700' },
-  bonus: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.integrityBackground,
-    borderRadius: radius.pill,
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  bonusText: { ...type.footnote, color: colors.integrityText, fontWeight: '600' },
   // Counts in plain ink: information, not a verdict or a nudge.
   record: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
   dateValue: { ...type.subhead, marginTop: space.sm, color: colors.textSecondary },

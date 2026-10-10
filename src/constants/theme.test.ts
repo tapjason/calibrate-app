@@ -15,7 +15,6 @@ const PAIRS: Pair[] = [
   ['onBrand', 'brand600', 4.5],
   ['destructive', 'surface', 4.5],
   ['onBrand', 'destructive', 4.5],
-  ['integrityText', 'integrityBackground', 4.5],
   ['cautionText', 'cautionBackground', 4.5],
   ['overText', 'surface', 4.5],
   ['underText', 'surface', 4.5],

@@ -122,13 +122,13 @@ describe('LogPredictionForm', () => {
     expect(save().props.accessibilityState).toMatchObject({ disabled: false });
   });
 
-  // Roadmap D13: the preset 50% sat in the 35–65% band, so an untouched save
-  // earned the integrity bonus. Nothing is shown, or earned, until it's set.
-  it('shows no integrity bonus before a confidence is set', () => {
+  // Roadmap D23: no chip for any number, before or after one is set.
+  it('shows no integrity bonus at any confidence', () => {
     render(<LogPredictionForm />);
     expect(screen.queryByTestId('integrity-bonus')).toBeNull();
-    fireEvent.press(screen.getByTestId('confidence-increment')); // 55
-    expect(screen.getByTestId('integrity-bonus')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('confidence-increment')); // 50
+    expect(screen.queryByTestId('integrity-bonus')).toBeNull();
+    expect(screen.queryByText(/integrity/i)).toBeNull();
   });
 
   it('says a failed save in words, not the store message', async () => {

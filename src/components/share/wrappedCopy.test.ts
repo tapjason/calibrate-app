@@ -94,7 +94,6 @@ function summary(buckets: BucketStat[]): WrappedSummary {
     direction: 'calibrated',
     score_is_provisional: false,
     categories: [],
-    integrity_count: 0,
     boldest_hit: null,
     biggest_miss: null,
     receipt: null,
@@ -136,13 +135,34 @@ describe('wrappedCardSummary (roadmap step 45)', () => {
         verdict: null,
         receipt: 'You said 80–100% 3 times. 2 of 3 happened.',
         provisionalNote: 'A week is too short for a verdict.',
-        note: '1 honest-uncertainty call logged — the most valuable kind.',
+        note: '1 call under 40% this time. The unlikely end keeps your score honest.',
       }),
     ).toBe(
       'Your week in predictions. 4 predictions resolved. 3 happened. You expected about\u00A03. ' +
         'You said 80–100% 3 times. 2 of 3 happened. A week is too short for a verdict. ' +
-        '1 honest-uncertainty call logged — the most valuable kind.',
+        '1 call under 40% this time. The unlikely end keeps your score honest.',
     );
+  });
+});
+
+// Roadmap D23: the closing note counts calls at the unlikely end, not 35–65%.
+describe('wrappedStory note', () => {
+  it('counts the calls under 40% in the window', () => {
+    const story = wrappedStory(
+      summary([bucket(0, 1, 0, 10), bucket(20, 2, 1, 30), bucket(60, 20, 14, 70)]),
+    );
+    expect(story.note).toBe('3 calls under 40% this time. The unlikely end keeps your score honest.');
+  });
+
+  it('says one call in the singular', () => {
+    const story = wrappedStory(summary([bucket(20, 1, 0, 25), bucket(80, 20, 18, 88)]));
+    expect(story.note).toBe('1 call under 40% this time. The unlikely end keeps your score honest.');
+  });
+
+  it('asks for one when there were none, and never mentions a bonus', () => {
+    const story = wrappedStory(summary([bucket(40, 3, 2, 50), bucket(80, 20, 18, 88)]));
+    expect(story.note).toBe("Nothing under 40% this time. Log something you think won't happen.");
+    expect(story.note).not.toMatch(/coin-flip|honest-uncertainty|35/);
   });
 });
 

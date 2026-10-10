@@ -62,8 +62,8 @@ export interface CoverageStat {
   /** Bucket lower bounds with no resolutions at all, ascending. */
   empty_buckets: number[];
   /**
-   * Share of resolutions in the 35–65 "honest uncertainty" band, 0–1. The
-   * integrity bonus exists to pull people here; this is whether it works.
+   * Share of resolutions in the 35–65 band, 0–1: how much of the middle of
+   * the range gets used (nothing rewards it since D23; it's a coverage read).
    */
   middle_share: number;
 }

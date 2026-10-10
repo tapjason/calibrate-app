@@ -223,21 +223,19 @@ describe('WrappedPanel', () => {
     expect(screen.getByText(/Close the deal/)).toBeTruthy();
   });
 
-  it('credits honest-uncertainty calls', () => {
-    seed([
-      prediction({ confidence: 50, integrity_bonus: true }),
-      prediction({ confidence: 60, integrity_bonus: true }),
-    ]);
+  // Roadmap D23: the note counts calls under 40%, not a 35–65% bonus.
+  it('credits calls at the unlikely end', () => {
+    seed([prediction({ confidence: 20 }), prediction({ confidence: 30 })]);
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText(/2 honest-uncertainty calls logged/)).toBeTruthy();
+    expect(screen.getByText(/2 calls under 40% this time/)).toBeTruthy();
   });
 
-  it('nudges toward coin-flip calls when there were none', () => {
+  it('asks for an unlikely call when there were none', () => {
     seed(run(3, 2));
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText(/No coin-flip calls this time/)).toBeTruthy();
+    expect(screen.getByText(/Nothing under 40% this time/)).toBeTruthy();
   });
 
   it('captures the recap and opens the share sheet', async () => {

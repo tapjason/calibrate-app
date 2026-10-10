@@ -1,5 +1,5 @@
-// CSV serialization (L3-ish: pure). Data export is a Plus feature, but the
-// data is the user's — this produces the whole record, not a summary, so
+// CSV serialization (L3-ish: pure). Free since 2026-10-10 (roadmap D31): the
+// data is the user's, so this produces the whole record, not a summary, and
 // someone who exports can take their history somewhere else.
 //
 // Pure and dependency-free so it can be unit-tested without a filesystem; the
@@ -18,7 +18,8 @@ export const CSV_COLUMNS = [
   'status',
   'resolved_at',
   'reflection',
-  'integrity_bonus',
+  // No integrity_bonus: it was dropped as a reward (roadmap D23) and means
+  // nothing to a reader.
 ] as const;
 
 /**
@@ -68,7 +69,6 @@ export function predictionsToCsv(predictions: readonly Prediction[]): string {
         cell(p.status),
         cell(p.resolved_at),
         cell(p.reflection),
-        cell(p.integrity_bonus),
       ].join(','),
     );
   }

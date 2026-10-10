@@ -47,11 +47,12 @@ describe('predictionsToCsv', () => {
   it('writes an empty field for null, not the word null', () => {
     const csv = predictionsToCsv([p({ resolved_at: null, reflection: null })]);
     expect(csv).not.toContain('null');
-    expect(rows(csv)[1].endsWith(',,false')).toBe(true);
+    expect(rows(csv)[1].endsWith(',')).toBe(true);
   });
 
-  it('writes booleans as true/false', () => {
-    expect(predictionsToCsv([p({ integrity_bonus: true })])).toContain(',true');
+  // Roadmap D23: the dropped bonus isn't exported.
+  it('has no integrity_bonus column', () => {
+    expect(predictionsToCsv([p({ integrity_bonus: true })])).not.toMatch(/integrity|,true/);
   });
 
   // A title starting with = is executed as a formula by Excel and Sheets. The

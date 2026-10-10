@@ -228,19 +228,6 @@ describe('buildWrapped', () => {
     expect(w.categories[1].direction).toBe('overconfident');
   });
 
-  it('counts the honest-uncertainty resolutions', () => {
-    const w = buildWrapped(
-      [
-        prediction({ confidence: 50, integrity_bonus: true }),
-        prediction({ confidence: 60, integrity_bonus: true }),
-        prediction({ confidence: 95, integrity_bonus: false }),
-      ],
-      'week',
-      NOW,
-    );
-    expect(w.integrity_count).toBe(2);
-  });
-
   it('picks the boldest call that landed and the one that did not', () => {
     const w = buildWrapped(
       [

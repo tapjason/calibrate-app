@@ -37,7 +37,7 @@ export interface WrappedStory {
   receipt: string | null;
   /** Why there is no verdict yet. Null once there is one. */
   provisionalNote: string | null;
-  /** A closing line: honest-uncertainty count, or a nudge toward one. */
+  /** A closing line: calls at the unlikely end, or a nudge toward one. */
   note: string;
 }
 
@@ -134,7 +134,7 @@ export function wrappedStory(
     provisionalNote: summary.score_is_provisional
       ? provisionalLine(summary, overall)
       : null,
-    note: integrityNote(summary),
+    note: rangeNote(summary),
   };
 }
 
@@ -237,18 +237,24 @@ export function receiptLine(receipt: WrappedReceipt): string {
   return `You said ${range} ${said} times. ${outcome}`;
 }
 
+/** Below this stated confidence, a call is at the unlikely end (the 0–20 and 20–40 bands). */
+const UNLIKELY_BELOW = 40;
+
 /**
- * The closing line. Honest-uncertainty logging is the behavior the app most
- * wants to reinforce (CLAUDE.md: integrity bonus), so it gets the last word —
- * praised when present, nudged when absent.
+ * The closing line is about range, not a band (roadmap D23, 2026-10-10): a
+ * score built only from confident calls measures only that end, so the calls
+ * under 40% get the last word, counted when present and asked for when absent.
+ * It used to praise 35–65% "honest-uncertainty" calls, which paid for a number.
  */
-function integrityNote(summary: WrappedSummary): string {
-  const { integrity_count: n } = summary;
+function rangeNote(summary: WrappedSummary): string {
+  const n = summary.buckets
+    .filter((b) => b.low < UNLIKELY_BELOW)
+    .reduce((sum, b) => sum + b.total_resolved, 0);
   if (n === 0) {
-    return 'No coin-flip calls this time. The 35–65% ones teach you the most.';
+    return "Nothing under 40% this time. Log something you think won't happen.";
   }
   const plural = n === 1 ? 'call' : 'calls';
-  return `${n} honest-uncertainty ${plural} logged — the most valuable kind.`;
+  return `${n} ${plural} under 40% this time. The unlikely end keeps your score honest.`;
 }
 
 /** What a screen reader hears for the Wrapped card: one element (step 45). */

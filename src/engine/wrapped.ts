@@ -73,8 +73,6 @@ export interface WrappedSummary {
 
   /** Categories active in the window, strongest calibration first. */
   categories: WrappedCategory[];
-  /** Resolutions logged at 35–65% confidence — the honest-uncertainty ones. */
-  integrity_count: number;
   /** Highest-confidence call that came in, and the one that didn't. */
   boldest_hit: Prediction | null;
   biggest_miss: Prediction | null;
@@ -229,7 +227,6 @@ const emptyBody = () => ({
   direction: 'calibrated' as Direction,
   score_is_provisional: true,
   categories: [] as WrappedCategory[],
-  integrity_count: 0,
   boldest_hit: null,
   biggest_miss: null,
   receipt: null,
@@ -287,7 +284,6 @@ export function buildWrapped(
     direction: classifyDirection(meanConfidence, hitRate),
     score_is_provisional: preds.length < MIN_N_OVERALL,
     categories: rollUpCategories(preds),
-    integrity_count: preds.filter((p) => p.integrity_bonus).length,
     boldest_hit: boldest(preds, 'resolved_yes'),
     biggest_miss: boldest(preds, 'resolved_no'),
     receipt: busiestBucket(buckets),
