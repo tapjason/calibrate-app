@@ -8,6 +8,7 @@
 // fewer than PRACTICE_MIN_N answers, and compares a day in counts, as Wrapped
 // and a resolve run do, rather than with a hit rate.
 
+import { expectedPhrase } from '@/components/share/wrappedCopy';
 import { PRACTICE_MIN_N, type PracticeDayTally, type PracticeRecord } from '@/types';
 
 export interface PracticeCardCopy {
@@ -42,8 +43,7 @@ export function practiceCardCopy(tally: PracticeDayTally, total: number): Practi
  * Wrapped's expectedLine.
  */
 export function practiceDayCopy(tally: PracticeDayTally): { title: string; detail: string } {
-  const rounded = Math.round(tally.expected);
-  const expected = rounded === 0 ? 'less than\u00A01' : `about\u00A0${rounded}`;
+  const expected = expectedPhrase(tally.expected);
   return {
     title: `${tally.correct} of ${tally.answered} right`,
     detail: `You expected ${expected}.`,

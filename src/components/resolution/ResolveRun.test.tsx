@@ -87,7 +87,7 @@ describe('ResolveRun (roadmap step 18)', () => {
     await waitFor(() => expect(screen.getByTestId('resolve-run-done')).toBeTruthy());
     // Roadmap step 65: what the run came to, and the day it made count.
     expect(screen.getByTestId('resolve-run-summary')).toHaveTextContent(
-      '3 answered. 2 happened. You expected about\u00A02.',
+      '3 answered. 2 happened. You expected about\u00A02.5.',
     );
     expect(screen.getByTestId('resolve-run-streak').props.accessibilityLabel).toBe(
       // Three answers meet the day's goal (D17), and the rest-day line (roadmap
@@ -171,7 +171,7 @@ describe('runSummary (roadmap step 65)', () => {
   });
 
   it('sets what happened against what the numbers expected', () => {
-    expect(runSummary(tally(5, 4, 2.6))).toBe('5 answered. 4 happened. You expected about\u00A03.');
+    expect(runSummary(tally(5, 4, 2.6))).toBe('5 answered. 4 happened. You expected about\u00A02.5.');
     expect(runSummary(tally(3, 0, 0.9))).toBe('3 answered. None happened. You expected about\u00A01.');
   });
 

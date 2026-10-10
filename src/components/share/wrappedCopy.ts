@@ -170,6 +170,19 @@ function provisionalLine(
 }
 
 /**
+ * An expected count for reading: "about 2.5", "about 14", "less than 1".
+ * Below 10 it keeps halves, since a practice day or a run is a handful and
+ * 2.45 read as "about 2" (2026-10-09 dry run); from 10, whole numbers.
+ * No-break spaces keep the number with its words.
+ */
+export function expectedPhrase(expected: number): string {
+  const half = Math.round(expected * 2) / 2;
+  if (half < 1) return 'less than\u00A01';
+  const shown = expected < 10 ? String(half) : String(Math.round(expected));
+  return `about\u00A0${shown}`;
+}
+
+/**
  * "6 happened. You expected about 5." The card's second line (roadmap step
  * 48), in place of "86% came in": a hit rate rewards safe calls, which is
  * correctness, and the app rewards calibration (CLAUDE.md). Expected against
@@ -184,10 +197,9 @@ function provisionalLine(
  */
 export function expectedLine(summary: Pick<WrappedSummary, 'resolved' | 'happened' | 'expected'>): string | null {
   if (summary.resolved < 2) return null;
-  const rounded = Math.round(summary.expected);
   // No-break spaces keep the number with its words: on the card, "about"
   // ended one line and "4." stood alone on the next.
-  const expected = rounded === 0 ? 'less than\u00A01' : `about\u00A0${rounded}`;
+  const expected = expectedPhrase(summary.expected);
   const happened = summary.happened === 0 ? 'None' : String(summary.happened);
   return `${happened} happened. You expected ${expected}.`;
 }

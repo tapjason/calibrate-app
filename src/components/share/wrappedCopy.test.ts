@@ -25,7 +25,7 @@ describe('expectedLine', () => {
       'None happened. You expected less than\u00A01.',
     );
     expect(expectedLine({ resolved: 3, happened: 0, expected: 2.4 })).toBe(
-      'None happened. You expected about\u00A02.',
+      'None happened. You expected about\u00A02.5.',
     );
   });
 

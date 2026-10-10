@@ -46,7 +46,7 @@ describe('practiceDayCopy', () => {
   it('counts the day against what was expected', () => {
     expect(practiceDayCopy({ answered: 3, correct: 2, expected: 2.4 })).toEqual({
       title: '2 of 3 right',
-      detail: 'You expected about\u00A02.',
+      detail: 'You expected about\u00A02.5.',
     });
     expect(practiceDayCopy({ answered: 3, correct: 0, expected: 0.4 }).detail).toBe(
       'You expected less than\u00A01.',
