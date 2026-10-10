@@ -84,7 +84,11 @@ export function firstReminderDay(pending: readonly Prediction[], now: Date): str
  */
 export function ReminderPrompt() {
   const pending = usePredictionStore((s) => s.pending);
-  const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
+  // Due-day reminders need both switches (roadmap D31): with that one off,
+  // asking iOS for them would be asking for something that won't be sent.
+  const notificationsEnabled = useSettingsStore(
+    (s) => s.notificationsEnabled && s.remindersEnabled,
+  );
   const dismissedAt = useSettingsStore((s) => s.reminderPromptDismissedAt);
   const dismissals = useSettingsStore((s) => s.reminderPromptDismissals);
   const [permission, setPermission] = useState<ReminderPermission | null>(null);

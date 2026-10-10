@@ -14,6 +14,13 @@ import { DEFAULT_THEME } from '@/constants/cardThemes';
 
 export interface StoredSettings {
   notificationsEnabled: boolean;
+  /**
+   * Due-day reminders, under the Notifications switch (roadmap D31). Both must
+   * be on for a reminder to be scheduled.
+   */
+  remindersEnabled: boolean;
+  /** The Sunday digest, under the Notifications switch (roadmap D31). */
+  digestEnabled: boolean;
   aiRefineEnabled: boolean;
   /** Plus-only Coach insights on the Stats screen. Opt-in — see DEFAULTS. */
   coachEnabled: boolean;
@@ -82,6 +89,8 @@ interface SettingsState extends StoredSettings {
   /** Load persisted settings into the store. Safe to call once at startup. */
   hydrate: () => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
+  setRemindersEnabled: (enabled: boolean) => Promise<void>;
+  setDigestEnabled: (enabled: boolean) => Promise<void>;
   setAiRefineEnabled: (enabled: boolean) => Promise<void>;
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
@@ -112,6 +121,8 @@ interface SettingsState extends StoredSettings {
 // business model on.
 const DEFAULTS: StoredSettings = {
   notificationsEnabled: true,
+  remindersEnabled: true,
+  digestEnabled: true,
   aiRefineEnabled: true,
   coachEnabled: false,
   analyticsEnabled: true,
@@ -179,6 +190,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         set({
           notificationsEnabled:
             stored.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
+          remindersEnabled: stored.remindersEnabled ?? DEFAULTS.remindersEnabled,
+          digestEnabled: stored.digestEnabled ?? DEFAULTS.digestEnabled,
           aiRefineEnabled: stored.aiRefineEnabled ?? DEFAULTS.aiRefineEnabled,
           coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
           analyticsEnabled:
@@ -210,6 +223,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setNotificationsEnabled: async (enabled) => {
     set({ notificationsEnabled: enabled });
+    await persist(snapshot(get()));
+  },
+
+  setRemindersEnabled: async (enabled) => {
+    set({ remindersEnabled: enabled });
+    await persist(snapshot(get()));
+  },
+
+  setDigestEnabled: async (enabled) => {
+    set({ digestEnabled: enabled });
     await persist(snapshot(get()));
   },
 
@@ -282,6 +305,8 @@ function validTime(value: unknown): PracticeReminderTime | null {
 function snapshot(state: StoredSettings): StoredSettings {
   return {
     notificationsEnabled: state.notificationsEnabled,
+    remindersEnabled: state.remindersEnabled,
+    digestEnabled: state.digestEnabled,
     aiRefineEnabled: state.aiRefineEnabled,
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,

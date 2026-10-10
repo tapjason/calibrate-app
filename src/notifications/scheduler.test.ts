@@ -193,6 +193,8 @@ beforeEach(async () => {
   });
   useSettingsStore.setState({
     notificationsEnabled: true,
+    remindersEnabled: true,
+    digestEnabled: true,
     aiRefineEnabled: true,
     hydrated: false,
   });
@@ -532,6 +534,36 @@ describe('scheduler: web platform', () => {
     } finally {
       Object.defineProperty(Platform, 'OS', { get: () => original, configurable: true });
     }
+  });
+});
+
+// Roadmap D31: due-day reminders have their own switch under the main one.
+describe('scheduler: the due-day reminders switch', () => {
+  it('cancels reminders when it goes off, and the digest switch leaves them alone', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+
+    await usePredictionStore.getState().create({
+      title: 'A',
+      category: 'work',
+      confidence: 50,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
+
+    useSettingsStore.setState({ digestEnabled: false });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
+
+    useSettingsStore.setState({ remindersEnabled: false });
+    await flush();
+    expect(notifications.scheduled.size).toBe(0);
+
+    useSettingsStore.setState({ remindersEnabled: true });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
   });
 });
 

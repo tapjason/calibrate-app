@@ -13,6 +13,13 @@ interface MomentChipsProps {
   withOff?: boolean;
   disabled?: boolean;
   testID?: string;
+  /**
+   * Offer "Pick a time" as well (roadmap D31): any time of day. Called on its
+   * tap; the caller shows the picker. Chosen while `picking`, or while the
+   * chosen time isn't one of the moments, and then it shows that time.
+   */
+  onPickTime?: () => void;
+  picking?: boolean;
 }
 
 const same = (a: PracticeReminderTime | null, b: PracticeReminderTime) =>
@@ -24,13 +31,23 @@ const same = (a: PracticeReminderTime | null, b: PracticeReminderTime) =>
  * clock reading (roadmap step 89). A radio group; the selection is the
  * outline and a weight change as well as the tint (§0.5).
  */
-export function MomentChips({ selected, onChoose, withOff, disabled, testID = 'moment-chips' }: MomentChipsProps) {
+export function MomentChips({
+  selected,
+  onChoose,
+  withOff,
+  disabled,
+  testID = 'moment-chips',
+  onPickTime,
+  picking = false,
+}: MomentChipsProps) {
+  const custom =
+    selected !== null && !PRACTICE_REMINDER_MOMENTS.some((m) => same(selected, m));
   return (
     <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="Practice reminder" testID={testID}>
       {withOff && (
         <Chip
           title="Off"
-          active={selected === null}
+          active={!picking && selected === null}
           disabled={disabled}
           half
           onPress={() => onChoose(null)}
@@ -42,13 +59,24 @@ export function MomentChips({ selected, onChoose, withOff, disabled, testID = 'm
           key={m.id}
           title={m.label}
           subtitle={reminderTimeLabel(m)}
-          active={same(selected, m)}
+          active={!picking && same(selected, m)}
           disabled={disabled}
           half={withOff}
           onPress={() => onChoose({ hour: m.hour, minute: m.minute })}
           testID={`${testID}-${m.id}`}
         />
       ))}
+      {onPickTime && (
+        <Chip
+          title="Pick a time"
+          subtitle={custom && selected ? reminderTimeLabel(selected) : undefined}
+          active={picking || custom}
+          disabled={disabled}
+          half={withOff}
+          onPress={onPickTime}
+          testID={`${testID}-custom`}
+        />
+      )}
     </View>
   );
 }

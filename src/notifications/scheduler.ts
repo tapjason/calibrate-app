@@ -611,10 +611,14 @@ async function activate(): Promise<void> {
 
   // Seed the toggle state and react to future flips. Off cancels everything;
   // on reschedules from pending.
-  notificationsEnabled = useSettingsStore.getState().notificationsEnabled;
+  // Due-day reminders need both switches (roadmap D31).
+  const remindersOn = (s: { notificationsEnabled: boolean; remindersEnabled: boolean }) =>
+    s.notificationsEnabled && s.remindersEnabled;
+  notificationsEnabled = remindersOn(useSettingsStore.getState());
   settingsUnsub = useSettingsStore.subscribe((state, prev) => {
-    if (state.notificationsEnabled === prev.notificationsEnabled) return;
-    void applyEnabled(state.notificationsEnabled);
+    const next = remindersOn(state);
+    if (next === remindersOn(prev)) return;
+    void applyEnabled(next);
   });
 
   // Match the OS to the store before watching for changes, then take the

@@ -253,7 +253,10 @@ export async function activateDigest(): Promise<void> {
     console.warn('[digest] category registration failed:', e);
   }
 
-  notificationsEnabled = useSettingsStore.getState().notificationsEnabled;
+  // The digest needs both switches (roadmap D31).
+  const digestOn = (s: { notificationsEnabled: boolean; digestEnabled: boolean }) =>
+    s.notificationsEnabled && s.digestEnabled;
+  notificationsEnabled = digestOn(useSettingsStore.getState());
   await scheduleDigest(usePredictionStore.getState().pending.length);
 
   storeUnsub = usePredictionStore.subscribe((state, prev) => {
@@ -263,7 +266,8 @@ export async function activateDigest(): Promise<void> {
   });
 
   settingsUnsub = useSettingsStore.subscribe((state, prev) => {
-    if (state.notificationsEnabled === prev.notificationsEnabled) return;
-    void applyEnabled(state.notificationsEnabled);
+    const next = digestOn(state);
+    if (next === digestOn(prev)) return;
+    void applyEnabled(next);
   });
 }

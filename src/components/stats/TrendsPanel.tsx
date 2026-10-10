@@ -1,14 +1,10 @@
-import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { track } from '@/analytics/track';
+import { useCsvExport } from '@/components/settings/useCsvExport';
 import { Button } from '@/components/ui/Button';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, type } from '@/constants/theme';
-import { csvFileName, predictionsToCsv } from '@/export/csv';
-import { shareTextFile, type ExportOutcome } from '@/export/file';
 import { useEntitlementStore } from '@/store/entitlementStore';
-import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
 import type {
   CategoryTrend,
@@ -19,11 +15,6 @@ import type {
   TrendSummary,
 } from '@/engine/trends';
 import { MIN_N_BAND } from '@/types';
-
-const EXPORT_MESSAGES: Record<Exclude<ExportOutcome, 'shared'>, string> = {
-  unavailable: "Exporting isn't available on this device.",
-  failed: "Couldn't build the file. Try again?",
-};
 
 /**
  * Advanced analytics (Plus) — the sticky, non-AI half of the subscription.
@@ -45,10 +36,8 @@ export function TrendsPanel({
 } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const trends = useStatsStore((s) => s.trends);
-  const pending = usePredictionStore((s) => s.pending);
-  const resolved = usePredictionStore((s) => s.resolved);
-  const [exporting, setExporting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  // Free since D31: the same export as You's row, offered here too.
+  const { exporting, message, run: onExport } = useCsvExport();
 
   const hasHistory = trends.periods.length > 0;
 
@@ -62,8 +51,8 @@ export function TrendsPanel({
           {hasHistory
             ? `Plus charts your calibration month by month — ${trends.periods.length} ${
                 trends.periods.length === 1 ? 'month' : 'months'
-              } on file — drills into each category, and exports the lot as CSV.`
-            : 'Plus charts your calibration month by month, drills into each category, and exports the lot as CSV.'}
+              } on file — and drills into each category.`
+            : 'Plus charts your calibration month by month and drills into each category.'}
         </Text>
         {onUpgrade && (
           <Button
@@ -76,24 +65,6 @@ export function TrendsPanel({
       </View>
     );
   }
-
-  const onExport = async () => {
-    setExporting(true);
-    setMessage(null);
-    try {
-      const all = [...pending, ...resolved];
-      const outcome = await shareTextFile(
-        csvFileName(),
-        predictionsToCsv(all),
-        'text/csv',
-        'Export your predictions',
-      );
-      setMessage(outcome === 'shared' ? null : EXPORT_MESSAGES[outcome]);
-      if (outcome === 'shared') void track('data_exported', { row_count: all.length });
-    } finally {
-      setExporting(false);
-    }
-  };
 
   return (
     <View style={styles.wrap} testID="trends-panel">

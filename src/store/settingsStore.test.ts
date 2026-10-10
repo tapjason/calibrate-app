@@ -101,6 +101,8 @@ describe('settingsStore: setters persist', () => {
     expect(saved).toHaveLength(1);
     expect(saved[0]).toEqual({
       notificationsEnabled: false,
+      remindersEnabled: true,
+      digestEnabled: true,
       aiRefineEnabled: true,
       coachEnabled: false,
       analyticsEnabled: true,
@@ -123,6 +125,8 @@ describe('settingsStore: setters persist', () => {
     expect(useSettingsStore.getState().aiRefineEnabled).toBe(false);
     expect(saved[0]).toEqual({
       notificationsEnabled: true,
+      remindersEnabled: true,
+      digestEnabled: true,
       aiRefineEnabled: false,
       coachEnabled: false,
       analyticsEnabled: true,

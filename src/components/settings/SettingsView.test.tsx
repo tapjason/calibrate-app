@@ -83,6 +83,8 @@ describe('SettingsView', () => {
     await waitFor(() => {
       expect(saved).toContainEqual({
         notificationsEnabled: false,
+        remindersEnabled: true,
+        digestEnabled: true,
         aiRefineEnabled: true,
         coachEnabled: false,
         analyticsEnabled: true,
@@ -242,5 +244,48 @@ describe('SettingsView — delete', () => {
     render(<SettingsView onOpenDelete={jest.fn()} />);
 
     expect(screen.getByText('Erase all data on this device')).toBeTruthy();
+  });
+});
+
+// Roadmap D31: due-day reminders and the Sunday digest each have a switch.
+describe('SettingsView — notification switches', () => {
+  it('shows the two switches under Notifications while it is on, and saves each', async () => {
+    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: true, digestEnabled: true });
+    render(<SettingsView />);
+    fireEvent.press(screen.getByTestId('toggle-digest-row'));
+    await waitFor(() => expect(useSettingsStore.getState().digestEnabled).toBe(false));
+    expect(useSettingsStore.getState().remindersEnabled).toBe(true);
+    fireEvent.press(screen.getByTestId('toggle-reminders-row'));
+    await waitFor(() => expect(useSettingsStore.getState().remindersEnabled).toBe(false));
+  });
+
+  it('hides them while Notifications is off', () => {
+    useSettingsStore.setState({ notificationsEnabled: false });
+    render(<SettingsView />);
+    expect(screen.queryByTestId('toggle-reminders-row')).toBeNull();
+    expect(screen.queryByTestId('toggle-digest-row')).toBeNull();
+  });
+});
+
+// Roadmap D31: a practice reminder at any time of day.
+describe('SettingsView — practice reminder time', () => {
+  it('offers Pick a time, which shows the chosen custom time', () => {
+    useSettingsStore.setState({ notificationsEnabled: true, practiceReminder: { hour: 6, minute: 45 } });
+    render(<SettingsView />);
+    const custom = screen.getByTestId('settings-practice-moments-custom');
+    expect(custom.props.accessibilityLabel).toMatch(/^Pick a time, 6:45/);
+    expect(custom.props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByTestId('settings-practice-moments-coffee').props.accessibilityState).toMatchObject({
+      selected: false,
+    });
+  });
+});
+
+// Roadmap D31: exporting your own predictions is free.
+describe('SettingsView — export', () => {
+  it('offers a CSV export to a free user', () => {
+    useEntitlementStore.setState({ isPlus: false });
+    render(<SettingsView />);
+    expect(screen.getByTestId('settings-export')).toHaveTextContent('Export predictions (CSV)');
   });
 });

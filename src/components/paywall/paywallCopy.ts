@@ -27,13 +27,13 @@ export const PLAN_TAGLINES: Record<PlanId, string> = {
  * Coach — §5.3 makes the insight tier the conversion hook.
  *
  * All three exist as of 2026-09-07 — Coach (`src/ai/coach.ts`), Trends
- * (`src/engine/trends.ts` + the CSV export), and the card themes
+ * (`src/engine/trends.ts`; the CSV export is free since D31), and the card themes
  * (`src/constants/cardThemes.ts`). Keep it that way: a bullet here that the
  * app doesn't do is a refund request with extra steps.
  */
 export const PLUS_FEATURES: readonly string[] = [
   'Coach: an AI read of what your calibration numbers mean',
-  'Trends: month by month, by category, what your 80% really means, and a CSV export',
+  'Trends: month by month, by category, and what your 80% really means',
   'Extra themes for your cards; the cards themselves stay free',
 ];
 

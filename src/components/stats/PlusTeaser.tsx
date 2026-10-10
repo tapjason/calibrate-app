@@ -21,8 +21,8 @@ interface PlusTeaserProps {
 export function PlusTeaser({ onUpgrade, monthsOnFile = 0 }: PlusTeaserProps) {
   const trendsLine =
     monthsOnFile > 0
-      ? `Trends: your ${monthsOnFile} ${monthsOnFile === 1 ? 'month' : 'months'} on file, what your 80% really means, and CSV export.`
-      : 'Trends: your calibration month by month, what your 80% really means, and CSV export.';
+      ? `Trends: your ${monthsOnFile} ${monthsOnFile === 1 ? 'month' : 'months'} on file, and what your 80% really means.`
+      : 'Trends: your calibration month by month, and what your 80% really means.';
 
   return (
     <View style={styles.card} testID="plus-teaser">

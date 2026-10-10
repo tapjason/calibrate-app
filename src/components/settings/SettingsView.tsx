@@ -1,11 +1,13 @@
 import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useState, type ReactNode } from 'react';
-import { AppState, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { AppState, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { MomentChips } from '@/components/practice/MomentChips';
+import { useCsvExport } from '@/components/settings/useCsvExport';
+import { openPracticeTimeDialog, PracticeTimePicker } from '@/components/practice/PracticeTimePicker';
 import {
   askForReminders,
   reminderPermission,
@@ -55,6 +57,10 @@ export function SettingsView({
   const setNotificationsEnabled = useSettingsStore(
     (s) => s.setNotificationsEnabled,
   );
+  const remindersEnabled = useSettingsStore((s) => s.remindersEnabled);
+  const setRemindersEnabled = useSettingsStore((s) => s.setRemindersEnabled);
+  const digestEnabled = useSettingsStore((s) => s.digestEnabled);
+  const setDigestEnabled = useSettingsStore((s) => s.setDigestEnabled);
   const setAiRefineEnabled = useSettingsStore((s) => s.setAiRefineEnabled);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
   const setCoachEnabled = useSettingsStore((s) => s.setCoachEnabled);
@@ -93,11 +99,31 @@ export function SettingsView({
       <Group>
         <ToggleRow
           label="Notifications"
-          description="A reminder on the evening each prediction comes due, the Sunday weekly digest, and practice at the moment you pick below."
+          description="Everything Calibrate sends. Each kind has its own choice below."
           value={notificationsEnabled}
           onValueChange={(v) => void setNotificationsEnabled(v)}
           testID="toggle-notifications"
         />
+        {/* One switch each under the main one (roadmap D31): a tester wanted
+            the reminders without the digest. Shown while the main one is on. */}
+        {notificationsEnabled && (
+          <>
+            <ToggleRow
+              label="Due-day reminders"
+              description="On the evening each prediction comes due."
+              value={remindersEnabled}
+              onValueChange={(v) => void setRemindersEnabled(v)}
+              testID="toggle-reminders"
+            />
+            <ToggleRow
+              label="Sunday digest"
+              description="What's open and coming up, on Sunday evening."
+              value={digestEnabled}
+              onValueChange={(v) => void setDigestEnabled(v)}
+              testID="toggle-digest"
+            />
+          </>
+        )}
         <NotificationPermissionRow />
         <PracticeReminderRow />
       </Group>
@@ -135,6 +161,8 @@ export function SettingsView({
           testID="toggle-analytics"
         />
       </Group>
+
+      <DataGroup />
 
       <AboutGroup onOpenScoring={onOpenScoring} />
 
@@ -210,6 +238,27 @@ function NavRow({
   );
 }
 
+/**
+ * Your data (roadmap D31): every prediction as a CSV, free. It was a Plus
+ * feature, and your own record shouldn't be paid for. A row that acts in
+ * place: no chevron, the label in brand (§7.21).
+ */
+function DataGroup() {
+  const { exporting, message, run } = useCsvExport();
+  return (
+    <Group footer={message ?? 'Every prediction, open and answered, as a spreadsheet file.'}>
+      <NavRow
+        label={exporting ? 'Preparing…' : 'Export predictions (CSV)'}
+        onPress={() => void run()}
+        chevron={false}
+        tone="action"
+        disabled={exporting}
+        testID="settings-export"
+      />
+    </Group>
+  );
+}
+
 /** How scoring works, the terms, and the privacy policy once it's hosted. */
 function AboutGroup({ onOpenScoring }: { onOpenScoring?: () => void }) {
   const open = (url: string) => {
@@ -254,6 +303,9 @@ function PracticeReminderRow() {
   const chosen = useSettingsStore((s) => s.practiceReminder);
   const enabled = useSettingsStore((s) => s.notificationsEnabled);
   const [busy, setBusy] = useState(false);
+  // "Pick a time" (roadmap D31): the picker stays open while it's the choice.
+  const [picking, setPicking] = useState(false);
+  const startTime: PracticeReminderTime = chosen ?? { hour: 9, minute: 0 };
   const choose = async (time: PracticeReminderTime | null) => {
     setBusy(true);
     try {
@@ -273,12 +325,25 @@ function PracticeReminderRow() {
       <View style={styles.chips}>
         <MomentChips
           selected={chosen}
-          onChoose={(t) => void choose(t)}
+          onChoose={(t) => {
+            setPicking(false);
+            void choose(t);
+          }}
           withOff
           disabled={busy}
           testID="settings-practice-moments"
+          picking={picking}
+          onPickTime={() => {
+            if (Platform.OS === 'android') {
+              openPracticeTimeDialog(startTime, (t) => void choose(t));
+              return;
+            }
+            // The picker opens on the current time; turning it chooses.
+            setPicking(true);
+          }}
         />
       </View>
+      {picking && <PracticeTimePicker value={startTime} onChange={(t) => void choose(t)} />}
     </View>
   );
 }

@@ -90,6 +90,8 @@ beforeEach(async () => {
   });
   useSettingsStore.setState({
     notificationsEnabled: true,
+    remindersEnabled: true,
+    digestEnabled: true,
     aiRefineEnabled: true,
     hydrated: false,
   });
@@ -341,6 +343,37 @@ describe('digest: notifications toggle (kill-switch)', () => {
     __setDepsForTests({ notifications });
     await initDigest();
 
+    expect(notifications.scheduleCalls).toBe(0);
+  });
+});
+
+// Roadmap D31: the Sunday digest has its own switch under the main one.
+describe('digest: its own switch', () => {
+  it('cancels the digest when it goes off, and brings it back', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications });
+    await initDigest();
+    expect(notifications.scheduled.size).toBe(1);
+
+    useSettingsStore.setState({ remindersEnabled: false });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
+
+    useSettingsStore.setState({ digestEnabled: false });
+    await flush();
+    expect(notifications.cancelled).toContain('calibrate-weekly-digest');
+    expect(notifications.scheduled.size).toBe(0);
+
+    useSettingsStore.setState({ digestEnabled: true });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
+  });
+
+  it('schedules nothing on init with the digest off', async () => {
+    useSettingsStore.setState({ digestEnabled: false });
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications });
+    await initDigest();
     expect(notifications.scheduleCalls).toBe(0);
   });
 });

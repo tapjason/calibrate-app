@@ -46,7 +46,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const remindersOn = useSettingsStore((s) => s.notificationsEnabled);
+  const remindersOn = useSettingsStore((s) => s.notificationsEnabled && s.remindersEnabled);
 
   // The edit draft, and the presets frozen when editing starts (as on Log).
   const [title, setTitle] = useState('');
