@@ -22,6 +22,7 @@ import { selectCurrentQuestion, useWarmupStore } from '@/store/warmupStore';
 export default function WarmupScreen() {
   const router = useRouter();
   const question = useWarmupStore(selectCurrentQuestion);
+  const index = useWarmupStore((s) => s.index);
   const finished = question === null;
 
   // Denominator of D0 aha completion (GROWTH §7): everyone who reached the
@@ -43,15 +44,17 @@ export default function WarmupScreen() {
           that offset: it opened on the chart, with the verdict's title
           and the score's count-up above the fold. */}
       <ScrollView key={finished ? 'verdict' : 'quiz'} contentContainerStyle={styles.wrap}>
-        {!finished && (
+        {/* The intro once, on the first question. Repeated on all ten it
+            kept Next below the fold on a 667pt phone, a scroll per question. */}
+        {!finished && index === 0 && (
           <View style={styles.intro}>
             <Text style={styles.brand}>Calibrate · 60-second warm-up</Text>
             <Text style={styles.title} accessibilityRole="header">
               How well do you know what you know?
             </Text>
             <Text style={styles.body}>
-              Ten quick questions. Pick an answer, then say how sure you are.
-              Being right matters less than knowing how right you are.
+              Pick an answer, then say how sure you are. Knowing how sure to be
+              is the skill.
             </Text>
           </View>
         )}
@@ -87,7 +90,7 @@ export default function WarmupScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  wrap: { gap: 24, padding: 20, paddingBottom: 40 },
+  wrap: { gap: 16, padding: 20, paddingBottom: 40 },
   intro: { gap: 8 },
   brand: { ...type.eyebrow, color: colors.brandText, fontWeight: '700' },
   title: { ...type.title1, color: colors.textPrimary, fontWeight: '800' },
