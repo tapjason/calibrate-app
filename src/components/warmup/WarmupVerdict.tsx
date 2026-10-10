@@ -2,9 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { Button } from '@/components/ui/Button';
-import { CountUp } from '@/components/ui/CountUp';
 import { Icon } from '@/components/ui/Icon';
-import { colors, tabularNums, type } from '@/constants/theme';
+import { colors, type } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -22,10 +21,10 @@ interface WarmupVerdictScreenProps {
  * key. This is the first thing that makes the app's premise concrete, and the
  * first shareable moment.
  *
- * Note the disclaimer below the score. The Warmup number is real, but it is
- * not the user's calibration rating — that one stays provisional until
- * MIN_N_OVERALL real resolutions. Saying so here keeps the "never present a
- * number built on noise" principle intact while still delivering the aha.
+ * No 0–100 number (roadmap D19, decided 2026-10-09): ten answers can't
+ * separate a calibrated person from one 15 points off, so a score here would
+ * be the "number built on noise" CLAUDE.md rules out. The counts lead, and the
+ * chart shows them.
  */
 export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreenProps) {
   const result = useWarmupStore((s) => s.result);
@@ -41,28 +40,9 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       <Text style={styles.title}>{verdict.title}</Text>
       <Text style={styles.detail}>{verdict.detail}</Text>
 
-      <View style={styles.scoreRow}>
-        {/* Rolls up alongside the chart's reveal (DESIGN_SYSTEM §6.1). */}
-        <CountUp
-          value={Math.round(result.mini_score)}
-          from={0}
-          style={styles.score}
-          testID="warmup-score"
-        />
-        <View style={styles.scoreMeta}>
-          <Text style={styles.scoreLabel}>Warm-up calibration</Text>
-          <Text style={styles.scoreSub}>out of 100</Text>
-        </View>
-      </View>
-
       <CalibrationChart buckets={result.buckets} animateIn />
 
       <Text style={styles.advice}>{verdict.advice}</Text>
-      {verdict.sampleNote && (
-        <Text style={styles.advice} testID="warmup-sample-note">
-          {verdict.sampleNote}
-        </Text>
-      )}
       {verdict.sameNumber && (
         <Text style={styles.advice} testID="warmup-same-number">
           {verdict.sameNumber}
@@ -78,8 +58,8 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       </Text>
 
       <Text style={styles.disclaimer}>
-        This is a warm-up score, not your calibration rating. That one unlocks
-        after {MIN_N_OVERALL} resolved predictions of your own.
+        This is a warm-up, not your calibration rating. That one needs{' '}
+        {MIN_N_OVERALL} of your own predictions.
       </Text>
 
       {/* Actions before the answer key: the key is a long read, and the two
@@ -147,14 +127,6 @@ const styles = StyleSheet.create({
   eyebrow: { ...type.eyebrow, color: colors.textSecondary },
   title: { ...type.title1, color: colors.textPrimary },
   detail: { ...type.callout, color: colors.textSecondary },
-  scoreRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  // Ink, not brand: colour goes to direction, never to the score (§2.4).
-  // title1, not display: a warm-up score must not look like the real rating
-  // (DESIGN_SYSTEM §7.2 / baseline 02). The verdict sentence is the headline.
-  score: { ...type.title1, ...tabularNums, color: colors.textPrimary, fontWeight: '800' },
-  scoreMeta: { gap: 2 },
-  scoreLabel: { ...type.subhead, fontWeight: '600', color: colors.textPrimary },
-  scoreSub: { ...type.footnote, color: colors.textTertiary },
   advice: { ...type.subhead, color: colors.textSecondary },
   disclaimer: {
     backgroundColor: colors.surfaceSunken,

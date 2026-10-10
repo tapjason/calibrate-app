@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { scoreWarmup } from '@/engine/warmup';
 import { useWarmupStore } from '@/store/warmupStore';
@@ -46,22 +46,20 @@ describe('WarmupVerdictScreen', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('rolls the score up from 0 and lands on it', () => {
+  // Roadmap D19 (2026-10-09): ten answers can't carry a 0–100 number.
+  it('shows no warm-up score', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
-    const expected = Math.round(useWarmupStore.getState().result!.mini_score);
-    expect(screen.getByTestId('warmup-score').props.accessibilityLabel).toBe(String(expected));
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-    expect(screen.getByTestId('warmup-score').props.children).toBe(expected);
+    expect(screen.queryByTestId('warmup-score')).toBeNull();
+    expect(screen.queryByText(/out of 100/)).toBeNull();
   });
 
-  it('headlines the verdict with the mini score and chart', () => {
+  it('headlines the counts, the read of these answers and the chart', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
 
-    expect(screen.getByText(/you were overconfident/)).toBeTruthy();
+    // Two answers are far too few for a lean.
+    expect(screen.getByText('On these 2, no clear lean')).toBeTruthy();
     expect(
       screen.getByText('You said 90% on average. 1\u00A0of\u00A02\u00A0were\u00A0right.'),
     ).toBeTruthy();
@@ -78,14 +76,12 @@ describe('WarmupVerdictScreen', () => {
 
   // CLAUDE.md: the Warmup delivers the aha, but it is not the user's real
   // calibration rating — the screen has to say so.
-  it('marks the score as a warm-up, not a calibration rating', () => {
+  it('marks the result as a warm-up, not a calibration rating', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
 
-    expect(
-      screen.getByText(/warm-up score, not your calibration rating/),
-    ).toBeTruthy();
-    expect(screen.getByText(/20 resolved predictions/)).toBeTruthy();
+    expect(screen.getByText(/warm-up, not your calibration rating/)).toBeTruthy();
+    expect(screen.getByText(/20 of your own predictions/)).toBeTruthy();
   });
 
   it('shows the answer key with the fact behind each question', () => {
