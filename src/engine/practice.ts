@@ -80,6 +80,15 @@ export const MAX_GAP = {
 } as const;
 
 /**
+ * Caps for a draw from the whole class (roadmap D18 (1), refined 2026-10-09):
+ * none, except that "east" still needs one answer, so longitude stays under
+ * 90° apart. The closeness band makes questions harder, and harder sets tilt
+ * toward overconfidence (the hard–easy effect); the whole class is mostly
+ * easy pairs, where 100% is the right answer (research/day0-2026-10.md §3).
+ */
+const UNBANDED_MAX: Partial<Record<PracticeKind, number>> = { east: 90 };
+
+/**
  * The entries one kind compares, reduced to the option's label, the name used
  * mid-sentence, and a value where larger wins (latitude, longitude, area,
  * height, diameter, atomic number, or a year negated so earlier wins).
@@ -118,21 +127,25 @@ function measure(m: { name: string; value: number; label?: string }): Entry {
   return { label: m.label ?? capitalise(m.name), name: m.name, value: m.value };
 }
 
-/** Whether two entries differ enough to ask about. Values are compared as "larger wins". */
-function fair(kind: PracticeKind, a: Entry, b: Entry): boolean {
+/**
+ * Whether two entries differ enough to ask about, and (banded) not by too
+ * much. Values are compared as "larger wins".
+ */
+function fair(kind: PracticeKind, a: Entry, b: Entry, banded: boolean): boolean {
   const hi = Math.max(a.value, b.value);
   const lo = Math.min(a.value, b.value);
+  const max = banded ? MAX_GAP[kind] : (UNBANDED_MAX[kind] ?? Infinity);
   switch (kind) {
     case 'north':
     case 'east':
     case 'first':
     case 'born':
     case 'element':
-      return hi - lo >= MIN_GAP[kind] && hi - lo <= MAX_GAP[kind];
+      return hi - lo >= MIN_GAP[kind] && hi - lo <= max;
     case 'area':
     case 'height':
     case 'size':
-      return lo > 0 && hi / lo >= MIN_GAP[kind] && hi / lo <= MAX_GAP[kind];
+      return lo > 0 && hi / lo >= MIN_GAP[kind] && hi / lo <= max;
   }
 }
 
@@ -234,7 +247,7 @@ function seedForKind(kind: PracticeKind): number {
   return h >>> 0;
 }
 
-const decks = new WeakMap<PracticeFacts, Map<PracticeKind, readonly [Entry, Entry][]>>();
+const decks = new WeakMap<PracticeFacts, Map<string, readonly [Entry, Entry][]>>();
 
 /**
  * Every fair pair a kind's table holds, in one shuffled order: the kind's
@@ -243,19 +256,24 @@ const decks = new WeakMap<PracticeFacts, Map<PracticeKind, readonly [Entry, Entr
  * uniform random draw from the whole class (Gigerenzer et al.'s
  * representative sampling).
  */
-function deckFor(facts: PracticeFacts, kind: PracticeKind): readonly [Entry, Entry][] {
+function deckFor(
+  facts: PracticeFacts,
+  kind: PracticeKind,
+  banded: boolean,
+): readonly [Entry, Entry][] {
   let byKind = decks.get(facts);
   if (!byKind) {
     byKind = new Map();
     decks.set(facts, byKind);
   }
-  const cached = byKind.get(kind);
+  const key = banded ? kind : `${kind}:unbanded`;
+  const cached = byKind.get(key);
   if (cached) return cached;
   const entries = entriesFor(facts, kind);
   const pairs: [Entry, Entry][] = [];
   for (let i = 0; i < entries.length; i += 1) {
     for (let j = i + 1; j < entries.length; j += 1) {
-      if (fair(kind, entries[i]!, entries[j]!)) pairs.push([entries[i]!, entries[j]!]);
+      if (fair(kind, entries[i]!, entries[j]!, banded)) pairs.push([entries[i]!, entries[j]!]);
     }
   }
   const next = prng(seedForKind(kind));
@@ -263,7 +281,7 @@ function deckFor(facts: PracticeFacts, kind: PracticeKind): readonly [Entry, Ent
     const j = Math.floor(next() * (i + 1));
     [pairs[i], pairs[j]] = [pairs[j]!, pairs[i]!];
   }
-  byKind.set(kind, pairs);
+  byKind.set(key, pairs);
   return pairs;
 }
 
@@ -280,6 +298,7 @@ export function practiceQuestions(
   facts: PracticeFacts,
   day: number,
   count: number = PRACTICE_PER_DAY,
+  banded = true,
 ): PracticeQuestion[] {
   const order = prng(seedFor(day));
   const questions: PracticeQuestion[] = [];
@@ -289,7 +308,7 @@ export function practiceQuestions(
     for (let step = 0; step < ROTATION.length; step += 1) {
       const kind = ROTATION[mod(turn + step, ROTATION.length)]!;
       if (used.has(kind)) continue;
-      const deck = deckFor(facts, kind);
+      const deck = deckFor(facts, kind, banded);
       if (deck.length === 0) continue;
       used.add(kind);
       const [a, b] = deck[mod(Math.floor(turn / ROTATION.length), deck.length)]!;
@@ -318,6 +337,15 @@ export function practiceQuestions(
 const WARMUP_DAYS = [-1, -2] as const;
 
 /**
+ * Which of the two draws keeps the practice's closeness band. One banded, one
+ * from the whole class: the whole class alone was eight giveaways in ten
+ * (Jupiter or Neptune, Ben Nevis or Aconcagua), which teaches nothing in a
+ * minute; the band alone tilts toward overconfidence. Half and half spans the
+ * scale, from close calls to sure things, and each half is still a random draw.
+ */
+const WARMUP_BANDED = [true, false] as const;
+
+/**
  * Where the right answer sits, question by question: five first, five second,
  * in no pattern a person would guess. The draw alone put eight of ten second,
  * and with one fixed set, "always pick the second" would score 80% for all.
@@ -326,20 +354,21 @@ const WARMUP_CORRECT_AT = [0, 1, 1, 0, 0, 1, 0, 1, 1, 0] as const;
 
 /**
  * The Warmup's ten (roadmap D18 (1)): drawn from the practice tables like a
- * day's practice, not picked to be tricky. Two draws of five, so a kind may
- * appear twice, each time with a different pair. The same ten for everyone,
+ * day's practice, not picked to be tricky. Two draws of five, one inside the
+ * practice's closeness band and one from the whole class (WARMUP_BANDED), so
+ * a kind may appear twice, each time with a different pair. The same ten for everyone,
  * which lets the answer key be re-derived without storing the questions.
  */
 export function warmupQuestions(facts: PracticeFacts): PracticeQuestion[] {
   const seen = new Set<string>();
   const questions: PracticeQuestion[] = [];
-  for (const day of WARMUP_DAYS) {
-    for (const q of practiceQuestions(facts, day, 5)) {
+  WARMUP_DAYS.forEach((day, d) => {
+    for (const q of practiceQuestions(facts, day, 5, WARMUP_BANDED[d])) {
       if (seen.has(q.id)) continue;
       seen.add(q.id);
       questions.push(q);
     }
-  }
+  });
   return questions.map((q, i) => {
     const want = WARMUP_CORRECT_AT[i % WARMUP_CORRECT_AT.length]!;
     if (q.correctIndex === want) return q;

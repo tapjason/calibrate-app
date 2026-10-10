@@ -292,6 +292,29 @@ describe('warmupQuestions', () => {
     expect(at.filter((i) => i === 1)).toHaveLength(5);
   });
 
+  it('draws past the practice band, so easy pairs stay in (hard–easy effect)', () => {
+    // Over many unbanded draws some pair must fall outside MAX_GAP; with the
+    // band, none can. The Warmup itself is one fixed draw, so test the deal.
+    const values = lookup(PRACTICE_FACTS);
+    const outside = (q: { kind: keyof typeof MAX_GAP; options: readonly string[] }) => {
+      const [a, b] = q.options.map((o) => values[q.kind]!.get(o)!);
+      const hi = Math.max(a!, b!);
+      const lo = Math.min(a!, b!);
+      return ['area', 'height', 'size'].includes(q.kind)
+        ? hi / lo > MAX_GAP[q.kind]
+        : hi - lo > MAX_GAP[q.kind];
+    };
+    const unbanded = DAYS.slice(0, 60).flatMap((d) => practiceQuestions(PRACTICE_FACTS, -d - 1, 5, false));
+    const banded = DAYS.slice(0, 60).flatMap((d) => practiceQuestions(PRACTICE_FACTS, -d - 1, 5));
+    expect(unbanded.some(outside)).toBe(true);
+    expect(banded.some(outside)).toBe(false);
+    // "East" still has one answer: never 90° or more apart.
+    for (const q of unbanded.filter((x) => x.kind === 'east')) {
+      const [a, b] = q.options.map((o) => values.east.get(o)!);
+      expect(Math.abs(a! - b!)).toBeLessThan(90);
+    }
+  });
+
   it('keeps the marked answer the true one after balancing positions', () => {
     const values = lookup(PRACTICE_FACTS);
     for (const q of warmupQuestions(PRACTICE_FACTS)) {
