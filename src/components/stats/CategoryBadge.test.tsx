@@ -68,8 +68,30 @@ describe('CategoryBadge', () => {
     );
     expect(view.getByText('20 more resolved and a score above 85 → Sharp')).toBeTruthy();
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
-      'Health: Forecaster. 20 more resolved and a score above 85 to reach Sharp.',
+      'Health: Forecaster, score 80 from 30 resolved. 20 more resolved and a score above 85 to reach Sharp.',
     );
+  });
+
+  // Roadmap D28: a category's own score, once it's past MIN_N_CATEGORY.
+  it("shows the category's score once it's unlocked", () => {
+    const view = render(
+      <CategoryBadge
+        stat={stat({ predictions_resolved: 52, calibration_score: 87.4, score_is_provisional: false, badge_level: 'sharp' })}
+        next={{ badge: 'oracle', needResolved: 100, needScore: 90 }}
+      />,
+    );
+    expect(view.getByTestId('category-health-score')).toHaveTextContent('Score 87 · 52 resolved');
+  });
+
+  it('shows no score while it is provisional', () => {
+    const view = render(
+      <CategoryBadge
+        stat={stat({ predictions_resolved: 12, calibration_score: 91 })}
+        next={{ badge: 'tracker', needResolved: 20, needScore: null }}
+      />,
+    );
+    expect(view.queryByTestId('category-health-score')).toBeNull();
+    expect(view.queryByText(/91/)).toBeNull();
   });
 
   it('names only the count once the score already qualifies', () => {

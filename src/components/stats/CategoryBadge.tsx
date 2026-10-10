@@ -25,7 +25,13 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
   // One sentence for a screen reader (roadmap step 43) instead of the name,
   // the hint with its arrow read aloud, and the badge word as three stops.
   const category = stat.category.charAt(0).toUpperCase() + stat.category.slice(1);
-  const spoken = `${category}: ${meta.label}. ${spokenHint(hint)}.`;
+  // The category's own score once it's past MIN_N_CATEGORY (roadmap D28):
+  // "how am I doing in money" had no number. Never while provisional, which
+  // is the engine's flag, not a count kept here.
+  const score = stat.score_is_provisional ? null : Math.round(stat.calibration_score);
+  const receipt = score === null ? null : scoreReceipt(score, stat.predictions_resolved);
+  const spokenScore = score === null ? '' : `, score ${score} from ${stat.predictions_resolved} resolved`;
+  const spoken = `${category}: ${meta.label}${spokenScore}. ${spokenHint(hint)}.`;
 
   return (
     <View
@@ -40,6 +46,11 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
           <CategoryIcon category={stat.category} size={16} color={colors.textSecondary} />
           <Text style={styles.category}>{stat.category}</Text>
         </View>
+        {receipt && (
+          <Text style={styles.score} testID={`category-${stat.category}-score`}>
+            {receipt}
+          </Text>
+        )}
         <Text style={styles.hint} testID={`category-${stat.category}-hint`}>
           {hint}
         </Text>
@@ -53,6 +64,11 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
       </View>
     </View>
   );
+}
+
+/** "Score 84 · 52 resolved": a category's receipt once its score is unlocked. */
+export function scoreReceipt(score: number, resolved: number): string {
+  return `Score ${score} · ${resolved} resolved`;
 }
 
 /** The hint as it should sound: "3 more resolved to reach Tracker". */
@@ -107,6 +123,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textTransform: 'capitalize',
   },
+  // The number in secondary ink, never display size: the overall rating is
+  // the one hero (DESIGN_SYSTEM §7.4).
+  score: { ...type.footnote, color: colors.textSecondary, marginTop: 2 },
   hint: { ...type.caption, fontWeight: '400', color: colors.textTertiary, marginTop: 2 },
   chip: {
     flexDirection: 'row',
