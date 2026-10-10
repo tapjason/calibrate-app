@@ -7,7 +7,6 @@ import { track } from '@/analytics/track';
 
 import { WarmupQuiz } from '@/components/warmup/WarmupQuiz';
 import { WarmupVerdictScreen } from '@/components/warmup/WarmupVerdict';
-import { Button } from '@/components/ui/Button';
 import { colors, type } from '@/constants/theme';
 import { selectCurrentQuestion, useWarmupStore } from '@/store/warmupStore';
 
@@ -22,7 +21,6 @@ import { selectCurrentQuestion, useWarmupStore } from '@/store/warmupStore';
 export default function WarmupScreen() {
   const router = useRouter();
   const question = useWarmupStore(selectCurrentQuestion);
-  const index = useWarmupStore((s) => s.index);
   const finished = question === null;
 
   // Denominator of D0 aha completion (GROWTH §7): everyone who reached the
@@ -36,29 +34,13 @@ export default function WarmupScreen() {
   }, []);
 
   // Reached via first-run redirect, and the root Stack draws no header, so
-  // this route insets its own top edge.
+  // this route insets its own edges: the top, and the bottom for Next.
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Keyed on the half showing, so the verdict opens at its top. On a
-          short phone the quiz is scrolled to reach Next, and the verdict kept
-          that offset: it opened on the chart, with the verdict's title
-          and the score's count-up above the fold. */}
-      <ScrollView key={finished ? 'verdict' : 'quiz'} contentContainerStyle={styles.wrap}>
-        {/* The intro once, on the first question. Repeated on all ten it
-            kept Next below the fold on a 667pt phone, a scroll per question. */}
-        {!finished && index === 0 && (
-          <View style={styles.intro}>
-            <Text style={styles.brand}>Calibrate · 60-second warm-up</Text>
-            <Text style={styles.title} accessibilityRole="header">
-              How well do you know what you know?
-            </Text>
-            <Text style={styles.body}>
-              Pick an answer, then say how sure you are. Knowing how sure to be
-              is the skill.
-            </Text>
-          </View>
-        )}
-        {finished ? (
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      {finished ? (
+        // Its own scroll view, so the verdict opens at its top: sharing the
+        // quiz's, it once kept the quiz's offset and opened on the chart.
+        <ScrollView key="verdict" contentContainerStyle={styles.wrap}>
           <WarmupVerdictScreen
             // Log is a sheet now (roadmap D3): put Today underneath first, so
             // the sheet has somewhere to close back to.
@@ -68,22 +50,30 @@ export default function WarmupScreen() {
             }}
             onShare={() => router.push('/share' as never)}
           />
-        ) : (
-          <>
-            <WarmupQuiz />
-            {/* An escape hatch, because this route replaces the stack. Without
-                it the only way out is answering all ten questions, which turns
-                any mis-fire of the first-run redirect into a user locked away
-                from their own data. */}
-            <Button
-              label="Skip for now"
-              variant="secondary"
-              testID="warmup-skip"
-              onPress={() => router.replace('/' as never)}
-            />
-          </>
-        )}
-      </ScrollView>
+        </ScrollView>
+      ) : (
+        <WarmupQuiz
+          // Shown on the first question only: repeated on all ten it kept
+          // Next below the fold on a 667pt phone.
+          intro={
+            <View style={styles.intro}>
+              <Text style={styles.brand}>Calibrate · 60-second warm-up</Text>
+              <Text style={styles.title} accessibilityRole="header">
+                How well do you know what you know?
+              </Text>
+              <Text style={styles.body}>
+                Pick an answer, then say how sure you are. Knowing how sure to be
+                is the skill.
+              </Text>
+            </View>
+          }
+          // An escape hatch, because this route replaces the stack. Without it
+          // the only way out is answering all ten questions, which turns any
+          // mis-fire of the first-run redirect into a user locked away from
+          // their own data.
+          onSkip={() => router.replace('/' as never)}
+        />
+      )}
     </SafeAreaView>
   );
 }

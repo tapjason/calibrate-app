@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { ChoiceList } from '@/components/ui/ChoiceList';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
-import { colors, type } from '@/constants/theme';
+import { colors, space, type } from '@/constants/theme';
 import {
   MAX_WARMUP_CONFIDENCE,
   MIN_WARMUP_CONFIDENCE,
@@ -21,7 +21,20 @@ import {
  * mid-run — which would blunt the verdict. The answer key lands all at once
  * on the result screen instead.
  */
-export function WarmupQuiz() {
+interface WarmupQuizProps {
+  /** Shown above the first question only (the route's intro). */
+  intro?: ReactNode;
+  /** The way out, under Next. Omitted, there's none. */
+  onSkip?: () => void;
+}
+
+/*
+ * Next is pinned under the scrolling question (2026-10-09): two blind testers
+ * had to scroll to find it on the first question, at 375 × 667 and 320 × 568,
+ * and on the later ones the scroll they'd kept hid the progress bar. Each
+ * question opens at its top.
+ */
+export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const question = useWarmupStore(selectCurrentQuestion);
   const index = useWarmupStore((s) => s.index);
   const total = useWarmupStore((s) => s.questions.length);
@@ -66,70 +79,104 @@ export function WarmupQuiz() {
   };
 
   return (
-    <View style={styles.wrap} testID="warmup-quiz">
-      {/* Said as part of the question heading below, so not twice. */}
-      <Text style={styles.progress} aria-hidden accessibilityElementsHidden>
-        Question {index + 1} of {total}
-      </Text>
-      {/* Segmented, one per question: answered, current, to come. */}
-      <View
-        style={styles.segments}
-        aria-hidden
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {Array.from({ length: total }, (_, i) => (
+    <View style={styles.screen}>
+      <ScrollView key={index} contentContainerStyle={styles.scroll}>
+        {index === 0 && intro}
+        <View style={styles.wrap} testID="warmup-quiz">
+          {/* Said as part of the question heading below, so not twice. */}
+          <Text style={styles.progress} aria-hidden accessibilityElementsHidden>
+            Question {index + 1} of {total}
+          </Text>
+          {/* Segmented, one per question: answered, current, to come. */}
           <View
-            key={i}
-            style={[
-              styles.segment,
-              i < index && styles.segmentDone,
-              i === index && styles.segmentCurrent,
-            ]}
+            style={styles.segments}
+            aria-hidden
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {Array.from({ length: total }, (_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.segment,
+                  i < index && styles.segmentDone,
+                  i === index && styles.segmentCurrent,
+                ]}
+              />
+            ))}
+          </View>
+
+          <Text
+            style={styles.prompt}
+            accessibilityRole="header"
+            accessibilityLabel={`Question ${index + 1} of ${total}. ${question.prompt}`}
+            testID="warmup-prompt"
+          >
+            {question.prompt}
+          </Text>
+
+          <ChoiceList
+            label={question.prompt}
+            options={question.options}
+            selected={selected}
+            onSelect={setSelected}
+            idPrefix="warmup-option"
           />
-        ))}
-      </View>
 
-      <Text
-        style={styles.prompt}
-        accessibilityRole="header"
-        accessibilityLabel={`Question ${index + 1} of ${total}. ${question.prompt}`}
-        testID="warmup-prompt"
-      >
-        {question.prompt}
-      </Text>
+          <View style={styles.block}>
+            <ConfidenceControl
+              value={confidence}
+              onChange={setConfidence}
+              min={MIN_WARMUP_CONFIDENCE}
+              max={MAX_WARMUP_CONFIDENCE}
+              label="How sure are you?"
+              hint="50% is a coin flip — there are only two options."
+              idPrefix="warmup-confidence"
+            />
+          </View>
 
-      <ChoiceList
-        label={question.prompt}
-        options={question.options}
-        selected={selected}
-        onSelect={setSelected}
-        idPrefix="warmup-option"
-      />
+        </View>
+      </ScrollView>
 
-      <View style={styles.block}>
-        <ConfidenceControl
-          value={confidence}
-          onChange={setConfidence}
-          min={MIN_WARMUP_CONFIDENCE}
-          max={MAX_WARMUP_CONFIDENCE}
-          label="How sure are you?"
-          hint="50% is a coin flip — there are only two options."
-          idPrefix="warmup-confidence"
+      <View style={styles.footer}>
+        <Button
+          label={index + 1 === total ? 'See my result' : 'Next'}
+          testID="warmup-next"
+          disabled={selected === null || confidence === null || submitting}
+          onPress={onNext}
         />
+        {/* An escape hatch, because this route replaces the stack: without it
+            the only way out is answering all ten. A text button, so it doesn't
+            compete with Next (DESIGN_SYSTEM §7.20). */}
+        {onSkip && (
+          <Pressable
+            onPress={onSkip}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={styles.skip}
+            testID="warmup-skip"
+          >
+            <Text style={styles.skipText}>Skip for now</Text>
+          </Pressable>
+        )}
       </View>
-
-      <Button
-        label={index + 1 === total ? 'See my result' : 'Next'}
-        testID="warmup-next"
-        disabled={selected === null || confidence === null || submitting}
-        onPress={onNext}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  scroll: { gap: 16, padding: 20, paddingBottom: space.lg },
+  footer: {
+    backgroundColor: colors.canvas,
+    borderTopColor: colors.hairline,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingBottom: space.sm,
+    paddingHorizontal: 20,
+    paddingTop: space.md,
+  },
+  skip: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
+  skipText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
   wrap: { gap: 16 },
   progress: { ...type.footnote, color: colors.textSecondary, fontWeight: '600' },
   segments: { flexDirection: 'row', gap: 4 },
