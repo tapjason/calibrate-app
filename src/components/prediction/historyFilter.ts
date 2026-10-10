@@ -44,6 +44,22 @@ export function filterHistory(
   );
 }
 
+/**
+ * The open predictions History lists above the answered ones (roadmap D26):
+ * the category filter applies, soonest due first. A confidence range is
+ * about outcomes, so with one chosen there are none: open ones have no
+ * outcome to sit in a range by.
+ */
+export function openForHistory(
+  pending: readonly Prediction[],
+  { category, range }: HistoryFilter,
+): Prediction[] {
+  if (range !== null) return [];
+  return pending
+    .filter((p) => category === 'all' || p.category === category)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date));
+}
+
 /** One sentence for an empty filtered list: what's missing, in plain words. */
 export function emptyHistoryMessage({ category, range }: HistoryFilter): string {
   if (category === 'all' && range === null) {

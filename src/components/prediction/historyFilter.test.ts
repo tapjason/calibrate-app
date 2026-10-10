@@ -4,6 +4,7 @@ import {
   emptyHistoryMessage,
   filterHistory,
   firstHistoryCopy,
+  openForHistory,
   parseRangeParam,
   rangeText,
 } from './historyFilter';
@@ -134,5 +135,46 @@ describe('firstHistoryCopy', () => {
         now,
       ).action,
     ).toEqual({ kind: 'run', label: 'Resolve all 3' });
+  });
+});
+
+// Roadmap D26: open predictions are listed in History too.
+describe('openForHistory', () => {
+  const open = (id: string, category: Prediction['category'], due: string): Prediction => ({
+    id,
+    user_id: 'u1',
+    title: id,
+    category,
+    confidence: 60,
+    created_at: '2026-10-01T12:00:00.000Z',
+    due_date: due,
+    status: 'pending',
+    resolved_at: null,
+    reflection: null,
+    integrity_bonus: false,
+  });
+  const pending = [
+    open('late', 'work', '2026-10-20T12:00:00.000Z'),
+    open('soon', 'work', '2026-10-11T12:00:00.000Z'),
+    open('gym', 'health', '2026-10-12T12:00:00.000Z'),
+  ];
+
+  it('lists them soonest due first', () => {
+    expect(openForHistory(pending, { category: 'all', range: null }).map((p) => p.id)).toEqual([
+      'soon',
+      'gym',
+      'late',
+    ]);
+  });
+
+  it('follows the category filter', () => {
+    expect(openForHistory(pending, { category: 'work', range: null }).map((p) => p.id)).toEqual([
+      'soon',
+      'late',
+    ]);
+  });
+
+  it('lists none under a confidence range, which is about outcomes', () => {
+    expect(openForHistory(pending, { category: 'all', range: 60 })).toEqual([]);
   });
 });

@@ -217,6 +217,16 @@ export default function RootLayout() {
           }}
         />
         {/* A run of several (roadmap step 18) is the same task, so the same sheet. */}
+        {/* An open prediction's details (roadmap D25). */}
+        <Stack.Screen
+          name="prediction/[id]"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.75, 1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
         <Stack.Screen
           name="resolve/run"
           options={{

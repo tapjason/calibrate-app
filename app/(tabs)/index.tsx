@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { PracticeCard } from '@/components/practice/PracticeCard';
-import { groupByDue, nextDueLine } from '@/components/prediction/dueGroups';
+import { groupByDue, isReadyToResolve, nextDueLine } from '@/components/prediction/dueGroups';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
@@ -154,7 +154,13 @@ export default function TodayScreen() {
       renderItem={({ item }) => (
         <PredictionCard
           prediction={item}
-          onPress={(id) => router.push(`/resolve/${id}` as never)}
+          // A due one opens Resolve; one that isn't due yet opens its details,
+          // where it can be edited, deleted or answered early (roadmap D25).
+          onPress={(id) =>
+            router.push(
+              (isReadyToResolve(item, new Date()) ? `/resolve/${id}` : `/prediction/${id}`) as never,
+            )
+          }
         />
       )}
       ListEmptyComponent={
