@@ -56,6 +56,11 @@ export interface StoredSettings {
    */
   reminderPromptDismissals: number;
   /**
+   * When "Not now" was last answered on Today's back-it-up card (roadmap
+   * D31), or null. It comes back 30 days later.
+   */
+  backupNudgeDismissedAt: string | null;
+  /**
    * When the App Store rating prompt was last requested (roadmap D15), or
    * null. The cooldown's memory, like the two above.
    */
@@ -99,6 +104,8 @@ interface SettingsState extends StoredSettings {
   markCoverageNudgeShown: () => Promise<void>;
   /** "Not now" on the reminder prompt: hide it until tomorrow morning, then a week. */
   dismissReminderPrompt: () => Promise<void>;
+  /** "Not now" on the back-it-up card: 30 days' quiet. */
+  dismissBackupNudge: () => Promise<void>;
   /** The rating prompt was requested now: start its cooldown. */
   markRatingAsked: () => Promise<void>;
   /** Set the practice reminder's time, or null to turn it off. */
@@ -130,6 +137,7 @@ const DEFAULTS: StoredSettings = {
   coverageNudgeLastShownAt: null,
   reminderPromptDismissedAt: null,
   reminderPromptDismissals: 0,
+  backupNudgeDismissedAt: null,
   ratingAskedAt: null,
   practiceReminder: null,
   practiceReminderOfferDismissedAt: null,
@@ -206,6 +214,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           reminderPromptDismissals:
             stored.reminderPromptDismissals ??
             (stored.reminderPromptDismissedAt ? 1 : DEFAULTS.reminderPromptDismissals),
+          backupNudgeDismissedAt:
+            stored.backupNudgeDismissedAt ?? DEFAULTS.backupNudgeDismissedAt,
           ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
           practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
           practiceReminderOfferDismissedAt:
@@ -272,6 +282,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await persist(snapshot(get()));
   },
 
+  dismissBackupNudge: async () => {
+    set({ backupNudgeDismissedAt: new Date().toISOString() });
+    await persist(snapshot(get()));
+  },
+
   markRatingAsked: async () => {
     set({ ratingAskedAt: new Date().toISOString() });
     await persist(snapshot(get()));
@@ -314,6 +329,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     coverageNudgeLastShownAt: state.coverageNudgeLastShownAt,
     reminderPromptDismissedAt: state.reminderPromptDismissedAt,
     reminderPromptDismissals: state.reminderPromptDismissals,
+    backupNudgeDismissedAt: state.backupNudgeDismissedAt,
     ratingAskedAt: state.ratingAskedAt,
     practiceReminder: state.practiceReminder,
     practiceReminderOfferDismissedAt: state.practiceReminderOfferDismissedAt,

@@ -92,6 +92,7 @@ describe('SettingsView', () => {
         coverageNudgeLastShownAt: null,
         reminderPromptDismissedAt: null,
         reminderPromptDismissals: 0,
+        backupNudgeDismissedAt: null,
         ratingAskedAt: null,
         practiceReminder: null,
         practiceReminderOfferDismissedAt: null,

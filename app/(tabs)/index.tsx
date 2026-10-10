@@ -12,6 +12,7 @@ import {
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
+import { BackupNudge } from '@/components/settings/BackupNudge';
 import { chartTakeaway } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
@@ -62,6 +63,8 @@ export default function TodayScreen() {
       {/* Asks for notification permission here, in context, not at
           launch (roadmap step 38). Native only. */}
       <ReminderPrompt />
+      {/* After 30 days on one phone without an account (roadmap D31). */}
+      <BackupNudge onSignIn={() => router.push('/account' as never)} />
       {/* A reason to open the app on a day nothing comes due (roadmap
           step 88). Not before the first prediction: on Day 0 the Warmup
           has just asked ten questions, and the next thing is the first
