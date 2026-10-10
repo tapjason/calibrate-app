@@ -18,6 +18,7 @@ import {
 import {
   bucketLowFor,
   computeCalibration,
+  computeBrier,
   computeRatingRange,
   evaluateBadge,
   isRatingProvisional,
@@ -80,6 +81,12 @@ interface StatsState {
    * it only once the rating has unlocked.
    */
   ratingRange: RatingRange | null;
+  /**
+   * The Brier score of every yes/no answer (roadmap D24): secondary and
+   * quiet, so derived here on every recompute and never stored in UserStat.
+   * The UI shows it only once the rating has unlocked. Null with none.
+   */
+  brier: number | null;
   /**
    * The confidence range this user's recent logs occupy — pending included,
    * because what it measures is the logging habit, not resolved outcomes.
@@ -154,6 +161,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   categoryCalibration: {},
   trends: EMPTY_TRENDS,
   ratingRange: null,
+  brier: null,
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
 
@@ -197,6 +205,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       categoryCalibration: deriveCategoryCalibration(resolved),
       trends: buildTrendSummary(resolved),
       ratingRange: computeRatingRange(resolved),
+      brier: computeBrier(resolved),
       coverageGap: computeCoverageGap([...pending, ...resolved]),
     });
   },
@@ -267,6 +276,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       categoryCalibration,
       trends: buildTrendSummary(resolved),
       ratingRange: computeRatingRange(resolved),
+      brier: computeBrier(resolved),
       coverageGap: computeCoverageGap(all),
       // Keep an uncelebrated milestone rather than overwrite it with null.
       milestone: milestone ?? prev.milestone,

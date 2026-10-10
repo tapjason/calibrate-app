@@ -251,6 +251,37 @@ describe('CalibrationView rating range', () => {
   });
 });
 
+// Roadmap D24: the Brier score, one quiet line, only once the rating unlocks.
+describe('CalibrationView Brier score', () => {
+  it('shows one line under the rating', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 145, rating_is_provisional: false })}
+        calibration={{ rating: 92, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        brier={0.1423}
+      />,
+    );
+    expect(getByTestId('stats-brier')).toHaveTextContent(
+      'Brier score 0.14 · lower is better; always saying 50% scores 0.25',
+    );
+  });
+
+  it('stays out of sight while calibrating', () => {
+    const { queryByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={{ rating: 70, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        brier={0.2}
+      />,
+    );
+    expect(queryByTestId('stats-brier')).toBeNull();
+  });
+});
+
 // Roadmap D4: each range as dots, with the expected count marked.
 describe('CalibrationView counts', () => {
   it('shows each range as dots with the expected count beside the outcome', () => {

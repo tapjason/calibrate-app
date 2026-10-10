@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BucketDots } from '@/components/stats/BucketDots';
+import { brierLine } from '@/components/stats/brierLine';
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
@@ -37,6 +38,8 @@ interface CalibrationViewProps {
   onSelectRange?: (low: number) => void;
   /** "Give or take 3" on the rating (roadmap D4). */
   ratingRange?: RatingRange | null;
+  /** The Brier score, one quiet line once the rating is unlocked (roadmap D24). */
+  brier?: number | null;
 }
 
 /**
@@ -55,6 +58,7 @@ export function CalibrationView({
   nextDue = null,
   onSelectRange,
   ratingRange = null,
+  brier = null,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
@@ -91,6 +95,13 @@ export function CalibrationView({
                 <Text style={styles.subtle} testID="stats-rating-range">
                   Give or take {ratingRange.giveOrTake}{' '}
                   {ratingRange.giveOrTake === 1 ? 'point' : 'points'} with this many predictions.
+                </Text>
+              )}
+              {/* Secondary and quiet (roadmap D24): it keeps the rating honest
+                  for those who look, and stays out of everyone else's way. */}
+              {brier !== null && (
+                <Text style={styles.subtle} testID="stats-brier">
+                  {brierLine(brier)}
                 </Text>
               )}
             </>

@@ -58,11 +58,16 @@ export interface CalibrationPoint {
 
 /**
  * The shared bucketing core. Bucket outcomes by stated confidence, compute
- * per-bucket accuracy, and average the mean-absolute error into a 0–100 score.
+ * per-bucket accuracy, and average the absolute errors, weighted by each
+ * bucket's count, into a 0–100 score.
  *
  *   actual_rate  = yes / total_in_bucket
  *   bucket_error = | stated_confidence_mean/100 − actual_rate |
- *   rating       = 100 − (mean bucket_error) × 100
+ *   rating       = 100 − ( Σ(n_bucket × bucket_error) / N ) × 100
+ *
+ * Weighted by count since 2026-10-10 (roadmap D24, CLAUDE.md): the standard
+ * expected calibration error. The unweighted mean let one answer in a rarely
+ * used range move the score as much as fifty in a busy one.
  *
  * Absolute (not squared) error per CLAUDE.md: it drops the score ~1 point per
  * average percentage point of miscalibration, which is discriminating and
@@ -90,7 +95,8 @@ export function computeCalibrationPoints(
   }
 
   const buckets: BucketStat[] = [];
-  let errorTotal = 0;
+  let weightedError = 0;
+  let counted = 0;
 
   // Sort by bucket index so output is ascending in `low`.
   const ordered = [...sums.entries()].sort(([a], [b]) => a - b);
@@ -98,7 +104,8 @@ export function computeCalibrationPoints(
     const statedMean = a.confidenceSum / a.total;
     const actualRate = a.yes / a.total;
     const error = Math.abs(statedMean / 100 - actualRate);
-    errorTotal += error;
+    weightedError += error * a.total;
+    counted += a.total;
     const chance = chanceRange(a.total, statedMean / 100);
     buckets.push({
       low: i * BUCKET_WIDTH,
@@ -115,19 +122,19 @@ export function computeCalibrationPoints(
     });
   }
 
-  const rawRating =
-    buckets.length === 0 ? 0 : 100 - (errorTotal / buckets.length) * 100;
-  // Clamp to [0,100]. With absolute error each bucket_error ∈ [0,1] so the mean
-  // is ≤ 1 and rating ≥ 0 already — the clamp is a cheap guard against float
-  // drift, matching the "Score is clamped to [0, 100]" line in CLAUDE.md.
+  const rawRating = counted === 0 ? 0 : 100 - (weightedError / counted) * 100;
+  // Clamp to [0,100]. With absolute error each bucket_error ∈ [0,1] so the
+  // weighted mean is ≤ 1 and rating ≥ 0 already — the clamp is a cheap guard
+  // against float drift, matching the "Score is clamped to [0, 100]" line in
+  // CLAUDE.md.
   const rating = Math.max(0, Math.min(100, rawRating));
 
   return { rating, buckets };
 }
 
 /**
- * The rating alone, without the per-bucket detail: the same MAE as
- * computeCalibrationPoints, for the bootstrap, which scores hundreds of
+ * The rating alone, without the per-bucket detail: the same count-weighted
+ * MAE as computeCalibrationPoints, for the bootstrap, which scores hundreds of
  * resamples and needs nothing else.
  */
 function ratingOf(points: readonly CalibrationPoint[]): number {
@@ -141,11 +148,13 @@ function ratingOf(points: readonly CalibrationPoint[]): number {
     sums.set(i, a);
   }
   if (sums.size === 0) return 0;
-  let errorTotal = 0;
+  let weightedError = 0;
+  let counted = 0;
   for (const a of sums.values()) {
-    errorTotal += Math.abs(a.confidenceSum / a.total / 100 - a.yes / a.total);
+    weightedError += Math.abs(a.confidenceSum / a.total / 100 - a.yes / a.total) * a.total;
+    counted += a.total;
   }
-  return Math.max(0, Math.min(100, 100 - (errorTotal / sums.size) * 100));
+  return Math.max(0, Math.min(100, 100 - (weightedError / counted) * 100));
 }
 
 /**
@@ -188,6 +197,27 @@ export const computeCalibration: ComputeCalibration = (resolved) =>
       .filter(isCalibratable)
       .map((p) => ({ confidence: p.confidence, yes: p.status === 'resolved_yes' })),
   );
+
+/**
+ * The Brier score of the resolved yes/no predictions (roadmap D24, CLAUDE.md):
+ * the mean of (confidence/100 − outcome)², outcome 1 for yes and 0 for no.
+ * 0 is perfect, always saying 50% scores 0.25, lower is better. Unlike the
+ * rating it rewards being decisive as well as calibrated, so logging only
+ * coin-flips can't flatter it. Secondary and quiet: derived, never stored.
+ * Null with nothing resolved.
+ */
+export function computeBrier(resolved: readonly Prediction[]): number | null {
+  let sum = 0;
+  let n = 0;
+  for (const p of resolved) {
+    if (!isCalibratable(p)) continue;
+    const outcome = p.status === 'resolved_yes' ? 1 : 0;
+    const gap = p.confidence / 100 - outcome;
+    sum += gap * gap;
+    n += 1;
+  }
+  return n === 0 ? null : sum / n;
+}
 
 /**
  * Overall rating is provisional (must not be shown as a headline number) until

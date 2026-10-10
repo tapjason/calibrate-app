@@ -21,6 +21,7 @@ export default function InsightsScreen() {
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const calibration = useStatsStore((s) => s.calibration);
   const ratingRange = useStatsStore((s) => s.ratingRange);
+  const brier = useStatsStore((s) => s.brier);
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const pending = usePredictionStore((s) => s.pending);
   const isPlus = useEntitlementStore((s) => s.isPlus);
@@ -41,6 +42,7 @@ export default function InsightsScreen() {
         // The predictions behind a range, in History (roadmap step 51).
         onSelectRange={(low) => router.push(`/history?range=${low}` as never)}
         ratingRange={ratingRange}
+        brier={brier}
       />
       {/* Free users get one Plus teaser, not a grey upsell per panel. */}
       {!isPlus && (

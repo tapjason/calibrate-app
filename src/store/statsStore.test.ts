@@ -94,6 +94,20 @@ describe('statsStore.recomputeForUser', () => {
     expect(range!.high).toBeGreaterThanOrEqual(60);
   });
 
+  // Roadmap D24: the Brier score is derived with the rating, never stored.
+  it('derives the Brier score with the rating, and none with nothing resolved', async () => {
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().brier).toBeNull();
+
+    await insertPrediction(p({ id: 'a', confidence: 90 }));
+    await insertPrediction(p({ id: 'b', confidence: 90 }));
+    await resolvePrediction('a', 'resolved_yes');
+    await resolvePrediction('b', 'resolved_no');
+    await useStatsStore.getState().recomputeForUser(USER);
+    // (0.01 + 0.81) / 2
+    expect(useStatsStore.getState().brier).toBeCloseTo(0.41, 10);
+  });
+
   it('assigns badge levels according to the calibration table', async () => {
     // 25 resolved predictions in work, all confidence 100 + resolved_yes
     // → perfect calibration → score = 100. Sharp requires ≥50 resolved and

@@ -2,6 +2,7 @@ import type { Prediction } from '@/types';
 
 import {
   bucketLowFor,
+  computeBrier,
   computeCalibration,
   evaluateBadge,
   isRatingProvisional,
@@ -70,6 +71,22 @@ describe('computeCalibration', () => {
       },
     );
 
+    // CLAUDE.md "Weighting matters" (roadmap D24): the mean is weighted by each
+    // bucket's count, so one stray answer can't move the score like fifty.
+    it('weights bucket errors by count: 0.05 (n=50) and 0.45 (n=1) → 94.2, not 75', () => {
+      const r = computeCalibration([
+        ...bucketPreds(95, 50, 45), // [80,100]  stated 0.95 actual 0.90 err 0.05
+        p({ id: 'stray', confidence: 45, status: 'resolved_no' }), // [40,60) err 0.45
+      ]);
+      expect(r.buckets).toHaveLength(2);
+      expect(r.buckets[0].bucket_error).toBeCloseTo(0.45, 10);
+      expect(r.buckets[1].bucket_error).toBeCloseTo(0.05, 10);
+      expect(r.rating).toBeCloseTo(100 - ((50 * 0.05 + 0.45) / 51) * 100, 10);
+      expect(r.rating).toBeCloseTo(94.2, 1);
+    });
+
+    // Equal-sized here (20, 10, 20 → weights 0.4, 0.2, 0.4), so the weighted
+    // mean is 0.2 like the old unweighted one: the CLAUDE.md fixture holds.
     it('averages bucket errors 0.05, 0.20, 0.35 → mean 0.20 → rating 80', () => {
       const r = computeCalibration([
         ...bucketPreds(90, 20, 17), // [80,100]  stated 0.9 actual 0.85 err 0.05
@@ -238,5 +255,28 @@ describe('bucketLowFor', () => {
     expect([0, 19, 20, 39, 40, 60, 79, 80, 100].map(bucketLowFor)).toEqual([
       0, 0, 20, 20, 40, 60, 60, 80, 80,
     ]);
+  });
+});
+
+// Roadmap D24, docs/CALIBRATION.md §4: the Brier score, secondary and quiet.
+describe('computeBrier', () => {
+  it('is null with nothing resolved, and ignores open and skipped ones', () => {
+    expect(computeBrier([])).toBeNull();
+    expect(
+      computeBrier([p({ status: 'pending' }), p({ id: 's', status: 'skipped' })]),
+    ).toBeNull();
+  });
+
+  it('scores 10 at 90% with 9 yes as 0.09', () => {
+    expect(computeBrier(bucketPreds(90, 10, 9))).toBeCloseTo(0.09, 10);
+  });
+
+  it('scores 50% as 0.25 whatever happens', () => {
+    expect(computeBrier(bucketPreds(50, 10, 3))).toBeCloseTo(0.25, 10);
+    expect(computeBrier(bucketPreds(50, 4, 4))).toBeCloseTo(0.25, 10);
+  });
+
+  it('scores 100% on something that did not happen as 1', () => {
+    expect(computeBrier([p({ confidence: 100, status: 'resolved_no' })])).toBe(1);
   });
 });
