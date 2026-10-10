@@ -10,7 +10,6 @@ import {
   rangeText,
   type FirstHistoryAction,
 } from '@/components/prediction/historyFilter';
-import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { chosenProps } from '@/components/ui/chosen';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -169,8 +168,7 @@ const styles = StyleSheet.create({
   // and on web it shrank to its chips' borders under the list.
   filters: { flexGrow: 0, flexShrink: 0, marginBottom: space.md },
   list: { flex: 1 },
-  // The last card clears the floating "+" (roadmap D3).
-  listContent: { paddingBottom: LOG_BUTTON_SIZE + space.xxxl },
+  listContent: { paddingBottom: space.xxl },
   row: { flexDirection: 'row', gap: space.sm, paddingVertical: 4 },
   summary: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
   chip: {

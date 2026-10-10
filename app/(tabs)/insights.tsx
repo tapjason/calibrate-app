@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { nextDueLine } from '@/components/prediction/dueGroups';
-import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
 import { PlusTeaser } from '@/components/stats/PlusTeaser';
@@ -71,6 +70,5 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Clears the floating "+" (roadmap D3).
-  actions: { padding: 16, paddingTop: 0, paddingBottom: LOG_BUTTON_SIZE + space.xxxl },
+  actions: { padding: 16, paddingTop: 0, paddingBottom: space.xxl },
 });

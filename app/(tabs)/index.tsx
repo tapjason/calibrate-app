@@ -4,7 +4,6 @@ import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { PracticeCard } from '@/components/practice/PracticeCard';
 import { groupByDue, nextDueLine } from '@/components/prediction/dueGroups';
-import { LOG_BUTTON_SIZE } from '@/components/prediction/LogButton';
 import { PredictionCard } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
@@ -46,6 +45,27 @@ export default function TodayScreen() {
   const buckets = useStatsStore((s) => s.calibration.buckets);
   const headline = ratingHeadline(userStat);
   const groups = groupByDue(pending, new Date());
+  // What's ready to answer comes before the streak and practice rows (D22,
+  // 2026-10-09): it's the one thing on Today that asks for a tap, and below
+  // them it sat about a screen down.
+  const hasReady = groups.some((g) => g.key === 'ready');
+  const daily = (
+    <>
+      {/* The daily streak (roadmap D2): one logged or answered a day keeps
+          it, three is the day's goal (D17). */}
+      <StreakLine status={streak} />
+      {/* Asks for notification permission here, in context, not at
+          launch (roadmap step 38). Native only. */}
+      <ReminderPrompt />
+      {/* A reason to open the app on a day nothing comes due (roadmap
+          step 88). Not before the first prediction: on Day 0 the Warmup
+          has just asked ten questions, and the next thing is the first
+          real one. */}
+      {pending.length + resolvedCount > 0 && (
+        <PracticeCard onOpen={() => router.push('/practice' as never)} />
+      )}
+    </>
+  );
 
   const hero =
     headline && !headline.provisional ? (
@@ -103,20 +123,15 @@ export default function TodayScreen() {
       ListHeaderComponent={
         <>
           <View style={styles.hero}>{hero}</View>
-          {/* The daily streak (roadmap D2): one logged or answered a day keeps
-              it, three is the day's goal (D17). */}
-          <StreakLine status={streak} />
-          {/* Asks for notification permission here, in context, not at
-              launch (roadmap step 38). Native only. */}
-          <ReminderPrompt />
-          {/* A reason to open the app on a day nothing comes due (roadmap
-              step 88). Not before the first prediction: on Day 0 the Warmup
-              has just asked ten questions, and the next thing is the first
-              real one. */}
-          {pending.length + resolvedCount > 0 && (
-            <PracticeCard onOpen={() => router.push('/practice' as never)} />
-          )}
+          {!hasReady && daily}
         </>
+      }
+      renderSectionFooter={({ section }) =>
+        section.key === 'ready' ? (
+          <View style={styles.dailyAfterReady} testID="home-daily-after-ready">
+            {daily}
+          </View>
+        ) : null
       }
       renderSectionHeader={({ section }) => (
         <>
@@ -157,8 +172,9 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.canvas },
-  // The last card clears the floating "+" (roadmap D3).
-  content: { padding: space.lg, paddingBottom: LOG_BUTTON_SIZE + space.xxxl },
+  content: { padding: space.lg, paddingBottom: space.xxl },
+  // The daily rows after the ready ones (D22): spaced like a section.
+  dailyAfterReady: { marginTop: space.lg },
   hero: { marginBottom: space.xxl },
   rated: { alignItems: 'center' },
   // The hero numeral is always ink (DESIGN_SYSTEM §2.4).
