@@ -1,6 +1,6 @@
 import Slider from '@react-native-community/slider';
 import { useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
@@ -33,6 +33,14 @@ const INTEGRITY_HIGH = 65;
 // Approximate half-width of the slider thumb, so the zone strip lines up with
 // where the thumb's centre can actually travel.
 const THUMB_INSET = 14;
+
+/**
+ * Below this width, or above this text scale, the ±5 buttons drop to their own
+ * row: at 320pt "100%" and the buttons need 4pt more than the row has, and a
+ * larger Dynamic Type readout needs more still.
+ */
+const INLINE_STEPPERS_MIN_WIDTH = 360;
+const INLINE_STEPPERS_MAX_FONT_SCALE = 1.15;
 
 /** "about 7 times in 10" — the natural-frequency twin of a percentage. */
 export function naturalFrequencyFor(percent: number): string {
@@ -88,10 +96,32 @@ export function ConfidenceControl({
     }
   };
   const unset = value === null;
+  const { width, fontScale } = useWindowDimensions();
+  const inlineSteppers =
+    width >= INLINE_STEPPERS_MIN_WIDTH && fontScale <= INLINE_STEPPERS_MAX_FONT_SCALE;
   // Unset, the thumb rests mid-range in grey and the ±5 buttons step from
   // there; the first touch, tap or swipe sets a real number.
   const middle = Math.round((min + max) / 2 / STEP) * STEP;
   const from = value ?? middle;
+
+  const steppers = (
+    <View style={[styles.steppers, !inlineSteppers && styles.steppersBelow]}>
+      <Button
+        label="−5"
+        accessibilityLabel="Lower confidence by 5"
+        variant="secondary"
+        onPress={() => set(from - STEP)}
+        testID={`${idPrefix}-decrement`}
+      />
+      <Button
+        label="+5"
+        accessibilityLabel="Raise confidence by 5"
+        variant="secondary"
+        onPress={() => set(from + STEP)}
+        testID={`${idPrefix}-increment`}
+      />
+    </View>
+  );
 
   const span = max - min;
   const zoneLeft = ((INTEGRITY_LOW - min) / span) * 100;
@@ -112,15 +142,21 @@ export function ConfidenceControl({
       })}
     >
       <Text style={styles.label}>{label}</Text>
+      {/* The steppers share the readout's row where it fits (2026-10-09): on
+          their own row beneath the slider they pushed Next and Save below the
+          fold on a 667pt phone. Narrower, or with larger text, they stay below. */}
       <View style={styles.readoutRow}>
-        <Text
-          style={[styles.readout, unset && styles.readoutUnset]}
-          testID={`${idPrefix}-readout`}
-          maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
-        >
-          {unset ? '—%' : `${value}%`}
-        </Text>
-        <Text style={styles.frequency}>{unset ? 'not set yet' : naturalFrequencyFor(value)}</Text>
+        <View style={styles.readoutText}>
+          <Text
+            style={[styles.readout, unset && styles.readoutUnset]}
+            testID={`${idPrefix}-readout`}
+            maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
+          >
+            {unset ? '—%' : `${value}%`}
+          </Text>
+          <Text style={styles.frequency}>{unset ? 'not set yet' : naturalFrequencyFor(value)}</Text>
+        </View>
+        {inlineSteppers && steppers}
       </View>
       {hint && <Text style={styles.hint}>{hint}</Text>}
 
@@ -155,23 +191,7 @@ export function ConfidenceControl({
           </View>
         )}
       </View>
-
-      <View style={styles.steppers}>
-        <Button
-          label="−5"
-          accessibilityLabel="Lower confidence by 5"
-          variant="secondary"
-          onPress={() => set(from - STEP)}
-          testID={`${idPrefix}-decrement`}
-        />
-        <Button
-          label="+5"
-          accessibilityLabel="Raise confidence by 5"
-          variant="secondary"
-          onPress={() => set(from + STEP)}
-          testID={`${idPrefix}-increment`}
-        />
-      </View>
+      {!inlineSteppers && steppers}
     </View>
   );
 }
@@ -179,10 +199,17 @@ export function ConfidenceControl({
 const styles = StyleSheet.create({
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary },
   readoutRow: {
-    alignItems: 'baseline',
+    alignItems: 'center',
     flexDirection: 'row',
-    gap: space.md,
+    gap: space.sm,
     marginBottom: space.xs,
+  },
+  readoutText: {
+    alignItems: 'baseline',
+    columnGap: space.md,
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   readout: {
     ...type.readout,
@@ -205,5 +232,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   zoneActive: { backgroundColor: colors.brand400 },
-  steppers: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
+  steppers: { flexDirection: 'row', gap: space.sm },
+  steppersBelow: { marginTop: space.sm },
 });
