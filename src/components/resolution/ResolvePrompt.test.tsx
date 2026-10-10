@@ -330,7 +330,7 @@ describe('bucketLine', () => {
         expected_yes: 0,
       }),
     ).toBe(
-      "In your 40–60% range, 13 of 25 have happened. That's 52%, against the 48% you said.",
+      "In your 40–60% range, 13 of 25 have happened. That's 52%, against the 48% you said on average.",
     );
   });
 });

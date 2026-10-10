@@ -75,7 +75,9 @@ export function bucketLine(bucket: BucketStat): string {
   if (n < MIN_BUCKET_N_FOR_VERDICT) return counts;
   const happened = Math.round(bucket.actual_rate * 100);
   const said = Math.round(bucket.stated_confidence_mean);
-  return `${counts} That's ${happened}%, against the ${said}% you said.`;
+  // "on average": the said figure is the range's mean, and a blind tester
+  // who'd said 40% read "the 47% you said" as a misquote (2026-10-09).
+  return `${counts} That's ${happened}%, against the ${said}% you said on average.`;
 }
 
 /**

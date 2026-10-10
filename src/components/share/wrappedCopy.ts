@@ -47,10 +47,15 @@ const TITLES = {
 } as const;
 
 const VERDICTS = {
-  overconfident: 'You ran overconfident',
-  underconfident: 'You ran underconfident',
-  calibrated: 'You ran well calibrated',
+  overconfident: 'you ran overconfident',
+  underconfident: 'you ran underconfident',
+  calibrated: 'you ran well calibrated',
 } as const;
+
+// The window, said first (2026-10-09): Today's all-time "You're overconfident
+// at 80–100%" beside a week card's "You ran underconfident" read to a blind
+// tester as a contradiction. Both are true, over different spans.
+const WINDOW = { week: 'This week', year: 'This year' } as const;
 
 const EMPTY_NOTE = {
   week: 'Nothing came due this week. Log a prediction and the story starts.',
@@ -124,7 +129,7 @@ export function wrappedStory(
       : `${resolved} ${plural} resolved`,
     statCount: `${resolved} resolved`,
     statRate: expected,
-    verdict: summary.score_is_provisional ? null : verdictLine(summary, stated, hitRate),
+    verdict: summary.score_is_provisional ? null : verdictLine(summary, stated, hitRate, span),
     receipt: summary.receipt ? receiptLine(summary.receipt) : null,
     provisionalNote: summary.score_is_provisional
       ? provisionalLine(summary, overall)
@@ -141,14 +146,20 @@ export function wrappedStory(
  * "overconfident at 80–100%" — so the averages only speak when every
  * well-evidenced bucket agrees, or when no bucket is big enough to say more.
  */
-function verdictLine(summary: WrappedSummary, stated: number, hitRate: number): string {
+function verdictLine(
+  summary: WrappedSummary,
+  stated: number,
+  hitRate: number,
+  span: keyof typeof WINDOW,
+): string {
+  const w = WINDOW[span];
   const averages = `${stated}% confident on average, right ${hitRate}% of the time.`;
   const solid = summary.buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
-  if (solid.length === 0) return `${VERDICTS[summary.direction]} — ${averages}`;
+  if (solid.length === 0) return `${w}, ${VERDICTS[summary.direction]} — ${averages}`;
 
   const worst = solid.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
-  if (worst.direction === 'calibrated') return `${VERDICTS.calibrated} — ${averages}`;
-  return `${VERDICTS[worst.direction]} at ${rangeLabel(worst)}.`;
+  if (worst.direction === 'calibrated') return `${w}, ${VERDICTS.calibrated} — ${averages}`;
+  return `${w}, ${VERDICTS[worst.direction]} at ${rangeLabel(worst)}.`;
 }
 
 /**
@@ -170,16 +181,20 @@ function provisionalLine(
 }
 
 /**
- * An expected count for reading: "about 2.5", "about 14", "less than 1".
- * Below 10 it keeps halves, since a practice day or a run is a handful and
- * 2.45 read as "about 2" (2026-10-09 dry run); from 10, whole numbers.
+ * An expected count for reading: "about 2", "2 or 3", "about 14", "less than
+ * 1". Below 10 a count near a half says both neighbours, as the confidence
+ * readout does ("8 or 9 times in 10"): 2.45 read as "about 2" to one blind
+ * tester, and "about 1.5" puzzled another (2026-10-09). From 10, whole numbers.
  * No-break spaces keep the number with its words.
  */
 export function expectedPhrase(expected: number): string {
   const half = Math.round(expected * 2) / 2;
   if (half < 1) return 'less than\u00A01';
-  const shown = expected < 10 ? String(half) : String(Math.round(expected));
-  return `about\u00A0${shown}`;
+  if (expected < 10 && half % 1 !== 0) {
+    const lo = Math.floor(half);
+    return `${lo}\u00A0or\u00A0${lo + 1}`;
+  }
+  return `about\u00A0${Math.round(expected)}`;
 }
 
 /**

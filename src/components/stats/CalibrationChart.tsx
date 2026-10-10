@@ -53,6 +53,16 @@ const TICK_FONT = type.caption.fontSize; // DESIGN_SYSTEM §3: 12pt is the chart
 // The chance capsule (roadmap D4): a soft bar, no end caps (DESIGN_SYSTEM §7.2).
 const CHANCE_WIDTH = 10;
 
+/**
+ * The stated-confidence tick label: "80%" where there's room, "80" where the
+ * ticks are close. At 320pt "80%" and the end-anchored "100%" ran together as
+ * "80%100%" (2026-10-09 dry run); the y axis already reads as plain numbers.
+ */
+const X_TICK_PERCENT_MIN_GAP = 52;
+export function xTickLabel(t: number, tickGap: number): string {
+  return tickGap >= X_TICK_PERCENT_MIN_GAP ? `${t}%` : String(t);
+}
+
 /** Dot fill per side of the diagonal (DESIGN_SYSTEM §2.3). */
 const MARK: Record<Direction, string> = {
   overconfident: colors.overMark,
@@ -202,7 +212,7 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
                   // clipped by the right edge.
                   textAnchor={t === 100 ? 'end' : 'middle'}
                 >
-                  {`${t}%`}
+                  {xTickLabel(t, (right - left) / (TICKS.length - 1))}
                 </SvgText>
               </G>
             ))}

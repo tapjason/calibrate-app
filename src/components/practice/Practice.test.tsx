@@ -110,7 +110,7 @@ describe('PracticeResult', () => {
     await answerToday(80);
     render(<PracticeResult day={today()} />);
     expect(screen.getByTestId('practice-result-title')).toHaveTextContent('2 of 3 right');
-    expect(screen.getByTestId('practice-result-detail')).toHaveTextContent('You expected about\u00A02.5.');
+    expect(screen.getByTestId('practice-result-detail')).toHaveTextContent('You expected 2\u00A0or\u00A03.');
     expect(screen.getByTestId('practice-key-0')).toBeTruthy();
     expect(screen.getByTestId('practice-key-2').props.accessibilityLabel).toMatch(/^.+\? .+\. You picked/);
     expect(screen.getByTestId('practice-record-headline')).toHaveTextContent('3 answered over 1 day.');

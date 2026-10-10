@@ -203,7 +203,7 @@ describe('WrappedPanel', () => {
 
     expect(screen.getByTestId('wrapped-verdict')).toBeTruthy();
     expect(screen.queryByTestId('wrapped-provisional')).toBeNull();
-    expect(screen.getByText(/You ran overconfident/)).toBeTruthy();
+    expect(screen.getByText(/you ran overconfident/)).toBeTruthy();
   });
 
   it('features the boldest call and the surest miss', () => {

@@ -1,6 +1,11 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
-import { CalibrationChart, labelAt, placeDotLabels } from '@/components/stats/CalibrationChart';
+import {
+  CalibrationChart,
+  labelAt,
+  placeDotLabels,
+  xTickLabel,
+} from '@/components/stats/CalibrationChart';
 import { haptics } from '@/components/ui/haptics';
 import type { BucketStat } from '@/types';
 
@@ -310,5 +315,13 @@ describe('labelAt', () => {
   // chart ("n=1C" at 320pt).
   it('ends a label at the edge when centring would clip it', () => {
     expect(labelAt(308, 'n=10', 320)).toEqual({ x: 318, anchor: 'end' });
+  });
+});
+
+// 2026-10-09 dry run: "80%100%" ran together at 320pt.
+describe('xTickLabel', () => {
+  it('keeps the percent sign where the ticks have room, and drops it where they do not', () => {
+    expect(xTickLabel(80, 58)).toBe('80%');
+    expect(xTickLabel(80, 47)).toBe('80');
   });
 });

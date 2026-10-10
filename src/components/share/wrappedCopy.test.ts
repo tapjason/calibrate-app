@@ -25,7 +25,7 @@ describe('expectedLine', () => {
       'None happened. You expected less than\u00A01.',
     );
     expect(expectedLine({ resolved: 3, happened: 0, expected: 2.4 })).toBe(
-      'None happened. You expected about\u00A02.5.',
+      'None happened. You expected 2\u00A0or\u00A03.',
     );
   });
 
@@ -109,12 +109,12 @@ describe('wrappedStory verdict', () => {
     const story = wrappedStory(
       summary([bucket(40, 24, 13, 48), bucket(60, 52, 39, 69), bucket(80, 57, 38, 88)]),
     );
-    expect(story.verdict).toBe('You ran overconfident at 80–100%.');
+    expect(story.verdict).toBe('This year, you ran overconfident at 80–100%.');
   });
 
   it('keeps the averages line when every solid bucket is calibrated', () => {
     const story = wrappedStory(summary([bucket(60, 20, 14, 70), bucket(80, 20, 18, 88)]));
-    expect(story.verdict).toMatch(/^You ran well calibrated — /);
+    expect(story.verdict).toMatch(/^This year, you ran well calibrated — /);
   });
 
   it('falls back to the averages when no bucket has enough in it', () => {

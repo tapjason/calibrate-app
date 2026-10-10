@@ -100,8 +100,10 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
         <CloseButton onPress={onClose} style={styles.dismiss} testID="paywall-dismiss" />
       )}
       <Text style={[styles.title, onClose && styles.titleBesideClose]}>Calibrate Plus</Text>
+      {/* True on Day 0 too. It said "You already know how calibrated you
+          are", which two blind testers with nothing resolved called false. */}
       <Text style={styles.body}>
-        You already know how calibrated you are. Plus tells you what to do about it.
+        Your score, curve and cards are free. Plus reads them for you and goes deeper.
       </Text>
 
       <View style={styles.features}>
