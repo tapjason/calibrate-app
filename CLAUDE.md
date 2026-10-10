@@ -17,7 +17,7 @@ The two primary goals:
 1. **Goal tracking** — Did you do what you said you'd do?
 2. **Self-knowledge** — Did your confidence level reflect reality?
 
-The product framing is **identity, not statistics**: "Sharp in health, Guesser in money"
+The product framing is **identity, not statistics**: "Sharp in health, Tracker in money"
 is a personality-test result with receipts. The math is the engine, never the pitch.
 
 ---
@@ -53,7 +53,9 @@ is a personality-test result with receipts. The math is the engine, never the pi
   status: 'pending' | 'resolved_yes' | 'resolved_no' | 'skipped'
   resolved_at: string | null
   reflection: string | null      // Optional freetext after resolution
-  integrity_bonus: boolean       // true if confidence was 35–65% (honest uncertainty)
+  integrity_bonus: boolean       // legacy: true if confidence was 35–65%. Still stored and
+                                 // synced for schema compatibility, never shown or rewarded
+                                 // (the integrity bonus was dropped 2026-10-10, D23)
 }
 ```
 
@@ -110,17 +112,25 @@ closed:
 A confidence of exactly 20 lands in `[20,40)`. A confidence of exactly 100 lands in
 `[80,100]`. This convention is fixed — do not re-derive it.
 
-### Formula (mean absolute error)
+### Formula (count-weighted mean absolute error)
 ```
 Per non-empty bucket:
   stated_confidence_mean = mean of stated confidences of predictions in the bucket
   actual_rate            = resolved_yes / total_resolved_in_bucket
   bucket_error           = | stated_confidence_mean/100 − actual_rate |
 
-calibration_score = 100 − (mean of bucket_errors × 100)
+calibration_score = 100 − ( Σ(n_bucket × bucket_error) / N × 100 )
 
-The mean is over NON-EMPTY buckets only. Score is clamped to [0, 100].
+  n_bucket = resolved yes/no predictions in the bucket; N = Σ n_bucket.
+The weighted mean is over NON-EMPTY buckets only. Score is clamped to [0, 100].
 ```
+
+**Why weighted by count** (decided 2026-10-10, roadmap D24). Each bucket counts in
+proportion to the predictions in it, the standard expected calibration error. The
+unweighted mean it replaced let a bucket with one prediction move the score as much
+as one with fifty, so a single answer in a rarely used range could swing the rating
+by twenty points (the "Weighting matters" example below). With one bucket, or buckets of equal
+size, the two agree.
 
 **Why absolute and not squared error.** Squared error compresses the usable range into
 roughly 84–100 for anyone who isn't at an extreme — a user stating 90% who is right 50%
@@ -136,10 +146,25 @@ discriminating and directly interpretable to the user.
 | Moderately overconfident | 0.80 | 0.60 | 0.20 | 80 |
 | Badly overconfident | 0.90 | 0.50 | 0.40 | 60 |
 | Underconfident | 0.60 | 0.85 | 0.25 | 75 |
-| Multi-bucket | errors 0.05, 0.20, 0.35 | — | mean 0.20 | 80 |
+| Multi-bucket | errors 0.05 (n=20), 0.20 (n=10), 0.35 (n=20) | — | weighted mean 0.20 | 80 |
+| Weighting matters | errors 0.05 (n=50), 0.45 (n=1) | — | weighted mean 0.0578 | 94.2 (unweighted it was 75) |
 
 A perfectly calibrated user's chart plots as a straight diagonal line. Deviations above
 the line = underconfident. Below = overconfident.
+
+### Brier score (secondary, decided 2026-10-10, roadmap D24)
+```
+brier = mean over resolved yes/no predictions of (confidence/100 − outcome)²
+        outcome = 1 for resolved_yes, 0 for resolved_no.  0 is perfect; always
+        saying 50% scores 0.25; lower is better.
+```
+The calibration score alone ignores sharpness: someone who logs only coin-flips at
+50%, or only sure things at 95%, can score well while saying little. The Brier score
+rewards being both calibrated and decisive, so it keeps the rating honest. It is
+**secondary and quiet**: computed by the engine (`computeBrier`), never stored in
+`UserStat`, never on Today or a share card, and shown only as one plain line under
+the rating on Insights and one paragraph in How scoring works, and only once the
+rating itself is unlocked (`MIN_N_OVERALL`). It is free.
 
 ### Minimum-N gating (required)
 Small samples make `actual_rate` meaningless — with two resolved predictions a bucket can
@@ -158,10 +183,12 @@ MIN_N_CATEGORY = 15   // below this, CategoryStat.score_is_provisional = true
 
 ### Range coverage caveat
 Most users cluster in 60–90% confidence and rarely log things they expect *not* to
-happen, leaving the low buckets empty and measuring only half the range. The integrity
-bonus pulls toward the middle; additionally, the Log screen should periodically nudge
-users to log a prediction they think is unlikely. Track bucket coverage as a product
-metric.
+happen, leaving the low buckets empty and measuring only half the range. The Log
+screen periodically nudges users to log a prediction they think is unlikely (the
+coverage nudge). Nothing rewards a particular confidence: the integrity bonus did,
+for 35–65%, and was dropped 2026-10-10 (D23) because paying for a stated number
+pushes reports toward it, the opposite of what a proper score does. Track bucket
+coverage as a product metric.
 
 `docs/CALIBRATION.md` may expand on this with additional fixtures, but this section is
 authoritative.
@@ -212,8 +239,9 @@ Entry point for creating a prediction. Fields: title, confidence slider (0–100
 category. Minimal friction — completable in under 15 seconds.
 
 The confidence starts **empty** and Save waits for a title and a number (decided
-2026-10-05, UI_ROADMAP D13). A preset 50% sat inside the 35–65% band, so a save that
-never touched the slider earned the integrity bonus.
+2026-10-05, UI_ROADMAP D13). The category starts **empty** too, and Save waits for one
+(decided 2026-10-10, D29): a preset Work filed untouched predictions under Work. A
+starter idea or "Log it again" fills it.
 
 An optional AI refine button is specced but **deferred** (see AI § A). Nothing
 about the save flow depends on it — which is why cutting it cost nothing.
@@ -222,6 +250,15 @@ about the save flow depends on it — which is why cutting it cost nothing.
 Triggered by push notification on due_date. User taps yes/no + optional one-line
 reflection. Calibration data is worthless without resolution.
 
+**An open prediction** (decided 2026-10-10, D25): tapping one that isn't due yet
+opens its details — what you said and when, the due date, **Edit** (title, category
+and due date; never the confidence, which is the record) and **Delete** — with
+**Answer it now** below, which first says it's early (`docs/design/DESIGN_SYSTEM.md`
+§7.23) and then opens Resolve; an early answer counts like any other. A prediction that is due opens Resolve directly, as before.
+A delete is synced as a deletion (a local tombstone pushed to Supabase), so it
+doesn't come back on the next pull; another signed-in device keeps its copy until
+it is deleted there.
+
 Note: resolution alone is a weak retention hook. The identity layer (badges climbing,
 weekly reveal) carries retention — build it deliberately.
 
@@ -229,9 +266,19 @@ weekly reveal) carries retention — build it deliberately.
 See the authoritative section above.
 
 ### 5. Stats & Insight Module
-- Overall calibration rating (0–100), or provisional-progress state
+- Overall calibration rating (0–100), or provisional-progress state. Until the first
+  answer, the progress state leads with when it comes ("Your first answer: tomorrow
+  evening", D30, 2026-10-10)
 - Calibration curve chart (stated vs. actual per bucket)
-- Per-category breakdown with badge levels
+- The Brier score, one quiet line under the rating once it's unlocked (D24, above)
+- Per-category breakdown with badge levels, and each category's own score once it is
+  past `MIN_N_CATEGORY` (D28, 2026-10-10); before that, the count to go
+- **The identity line** (D27, 2026-10-10): on Today and the share card, a tier is
+  named only for a category past the count gate (20 resolved, so Tracker or above).
+  "Guesser" means "fewer than 20 resolved here", which read as a verdict ("Guesser in
+  finance" after five months); it stays on Insights' badge rows, where the count to
+  go sits beside it. Tapping the identity line on Today explains the tiers (How
+  scoring works, at Badges) rather than opening Share.
 - Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**
   (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Today
   and on the answer that earned it. Every other day only the number climbs. The
@@ -254,8 +301,10 @@ See the authoritative section above.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)
-- **Category identity card** — "Sharp in health · Guesser in money," screenshot-native,
-  one-tap share, with a subtle "get your own" hook.
+- **Category identity card** — "Sharp in health · Tracker in money," screenshot-native,
+  one-tap share, with a subtle "get your own" hook. Its lines follow D27 (above): only
+  categories past the count gate are named; with none yet, it reads "Calibrating" and
+  the count to go.
 - **Calibration Wrapped** — weekly and yearly recap of the user's forecasting story.
 - Exports a PNG the OS share sheet accepts.
 - A text share ends on the App Store link with a campaign token (`ct=share-card-text`)
@@ -273,14 +322,18 @@ Nothing that produces a shareable artifact is ever paywalled.
   renewal date and the store's price, and no offer (decided 2026-10-07, roadmap
   D16). Cancelled when the trial is cancelled or over, or notifications are off.
 - **Practice reminder** — off until the user picks a moment ("With coffee ·
-  8:00 AM", "At lunch · 12:30 PM", "After dinner · 8:30 PM"), offered under a
-  finished practice and in You (decided 2026-10-07, roadmap step 89). One a day,
+  8:00 AM", "At lunch · 12:30 PM", "After dinner · 8:30 PM", or **Pick a time**,
+  any time of day, added 2026-10-10, D31), offered under a finished practice and in
+  You (decided 2026-10-07, roadmap step 89). One a day,
   only on days the practice isn't done, with a different title daily and that
   day's first question as the body. Scheduled at most three days ahead of the
   last time the app was open, so someone who stops opening it gets three, then
   silence. Never the streak, never a loss.
 
-All four follow the single Notifications toggle.
+All four follow the Notifications switch. Under it (decided 2026-10-10, D31),
+**Due-day reminders** and **Sunday digest** each have their own switch, on by
+default, and the practice reminder its own choice of time; the trial-ending reminder
+follows the main switch alone.
 
 ### 8. Rating prompt
 Apple's system rating prompt (`expo-store-review`), requested on Today after a
@@ -322,8 +375,9 @@ Plus sells insight, depth, and cosmetics only.
 | Log / Resolve / Stats, score, curve, badges, streaks | ✅ | ✅ |
 | Share cards + Calibration Wrapped | ✅ | ✅ (extra themes) |
 | Full history | ✅ | ✅ |
+| Export your predictions as CSV (D31, 2026-10-10) | ✅ | ✅ |
 | Coach agent + AI insights | — | ✅ |
-| Advanced analytics, trends, export | — | ✅ |
+| Advanced analytics, trends | — | ✅ |
 | Card/badge cosmetics | — | ✅ |
 
 Pricing intent: ~$4.99/mo, ~$29.99/yr (annual anchored, shown first), optional lifetime.
@@ -437,14 +491,17 @@ grounding validator (`COACH_AGENT.md`).
 
 ## Point / Badge System
 
-### Integrity Points
-Bonus awarded for logging predictions with confidence in the 35–65% range. These represent
-honest uncertainty and are the most valuable data points.
+### Integrity Points — dropped (2026-10-10, D23)
+There used to be a bonus for confidences of 35–65%. It paid for a stated number, which
+nudges reports toward it, and its rationale was wrong: calls near 50% carry the least
+information, not the most. Coverage of the whole range is encouraged by the coverage
+nudge instead. The `integrity_bonus` field stays in the data model for compatibility
+and is never shown.
 
 ### Badge Levels (per category)
 | Level | Name | Criteria |
 |---|---|---|
-| 1 | Guesser | Default starting badge (no threshold) |
+| 1 | Guesser | Default starting badge: fewer than 20 resolved in the category |
 | 2 | Tracker | 20 predictions resolved |
 | 3 | Forecaster | Calibration score above 70 **and ≥ 20 resolved** |
 | 4 | Sharp | Calibration score above 85 **and ≥ 50 resolved** |
@@ -456,6 +513,7 @@ app's purpose.
 
 Badges are per-category. A user can be Sharp in health and Guesser in finance
 simultaneously — this specificity is the key insight and the core shareable artifact.
+Today and the share card name only tiers past the count gate (D27, above).
 
 ---
 
@@ -496,15 +554,16 @@ the streak and practice rows (D22).
 | Screen | Purpose | Tier |
 |---|---|---|
 | Warmup (onboarding) | Estimation quiz → instant calibration verdict → first share card | Free |
-| Today (tab) | Pending predictions + calibration rating summary + today's practice row | Free |
+| Today (tab) | Pending predictions + calibration rating summary + today's practice row; a sign-in nudge after 30 days on one phone without an account (D31) | Free |
 | Practice (sheet, from Today) | Three daily questions, the answer key, the practice record | Free |
 | Log Prediction (sheet, from "+") | Title, confidence slider, due date, category (refine deferred) | Free |
+| Prediction (sheet, from an open card not yet due) | What you said, due date, Edit, Delete, Answer it now (D25) | Free |
 | Resolve (sheet) | Yes / No prompt + optional reflection | Free |
 | Insights (tab) | Calibration curve + category breakdown + badges + Coach cards | Free (Coach = Plus) |
 | Share / Wrapped (sheet) | Identity card + weekly/yearly recap, export & share | Free |
-| History (tab) | Full list of past predictions, filterable | Free |
+| History (tab) | Open predictions first, then the full list of past ones, filterable (D26) | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
-| You (tab) | Your card, Plus, notification prefs, Coach toggle, usage stats, how scoring works, account (sign in, delete account / erase device) | Free |
+| You (tab) | Your card, Plus, notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
 
 ---
 
@@ -535,11 +594,12 @@ for, and validate that people actually share before betting on the free tier.
   expected and fine. The score reflects honesty, not outcomes.
 - **Never present a number built on noise.** Provisional scores and min-N badge gates are
   non-negotiable.
-- **Integrity bonus matters.** Encourage users to log uncertain predictions, not just
-  safe ones.
+- **Coverage matters, not a number.** Encourage users to log predictions across the
+  whole range, including ones they think won't happen, without rewarding any
+  particular confidence (D23).
 - **Resolution is the data hook; identity is the retention hook.** Users return to watch
   their badges climb and get their weekly reveal.
-- **Per-category insight is the core value.** "Sharp in health, Guesser in finance" is
+- **Per-category insight is the core value.** "Sharp in health, Tracker in finance" is
   the aha moment and the thing that travels socially.
 - **The free tier is the marketing budget.** Never paywall a shareable artifact.
 

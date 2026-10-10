@@ -15,7 +15,7 @@ Most people are systematically **overconfident** or **underconfident**, and usua
 
 The core principle: **reward calibration, not correctness.** A prediction you made at 60% confidence that didn't pan out is *expected and fine* — the score measures the honesty of your confidence, not whether you were right. A perfectly calibrated person's "stated confidence vs. actual outcome" chart plots as a straight diagonal line.
 
-The product's "aha" moment is per-category insight — discovering you're an **Oracle** in health but a **Guesser** in finance.
+The product's "aha" moment is per-category insight — discovering you're an **Oracle** in health but only a **Tracker** in finance.
 
 ---
 
@@ -88,7 +88,7 @@ Resolved predictions are grouped into five confidence buckets, lower bound inclu
 ```
 actual_rate       = resolved_yes / total_resolved_in_bucket
 bucket_error      = | stated_confidence_mean/100 − actual_rate |    (absolute, not squared)
-calibration_score = 100 − (mean bucket_error × 100)                 (clamped to 0–100)
+calibration_score = 100 − (count-weighted mean bucket_error × 100)  (clamped to 0–100)
 ```
 
 Scores built on too little data are never shown as a headline number: the overall rating is provisional below 20 resolutions and a category below 15, and badges above Tracker need both a score and a resolution minimum. `CLAUDE.md` is the authoritative spec; [`docs/CALIBRATION.md`](./docs/CALIBRATION.md) adds fixtures.

@@ -147,7 +147,8 @@ found the RevenueCat Test Store drift below.
   made before submission. D17 (one a day keeps the streak) was built the same
   day; D18 (Day 0 is for calibration) was built 2026-10-08 and refined 2026-10-09
   with D20 (no warm-up score), and D19 (a first "Not now" lasts until morning) was
-  built the same day.
+  built the same day. D23–D31, from the blind dry runs, were decided on 2026-10-10
+  (`docs/design/UI_ROADMAP.md` §2) and are being built as steps 123–131.
 
 ---
 

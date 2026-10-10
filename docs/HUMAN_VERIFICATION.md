@@ -522,9 +522,9 @@ notification placeholder.
 - [ ] **History** cards say "Happened" / "Didn't happen" / "Not scored" — no ✓ or ✗.
       With nothing resolved, the empty state is a plain sentence, not grey italics.
 - [ ] **Log:** chips read "Tomorrow", "In a week", "In a month"; the line below
-      reads "Due Monday, 5 Oct" (your locale's format). At 35–65% the integrity
-      bonus shows as an indigo pill, not green text. The Prediction box has a
-      visible border.
+      reads "Due Monday, 5 Oct" (your locale's format). No chip or tinted band
+      appears at any confidence (the integrity bonus was dropped, D23). The
+      Prediction box has a visible border.
 - [ ] **Stats, fewer than 20 resolved:** the same Calibrating bar; section titles in
       sentence case, not ALL CAPS.
 - [ ] **Share → This week:** a line like "You said 40–60% once. It happened.", a

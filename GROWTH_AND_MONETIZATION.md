@@ -11,7 +11,7 @@ account (`docs/NEXT_STEPS.md`).
 ## 0. The plan on one page
 
 **Model.** The whole core loop and every shareable card are free forever. *Calibrate
-Plus* sells interpretation, depth and cosmetics: Coach, Trends with CSV export, and card
+Plus* sells interpretation, depth and cosmetics: Coach, Trends, and card
 themes. Free users sharing their cards is the growth thesis; the paid tier is how the
 app pays for itself, not how it grows (§1).
 
@@ -218,7 +218,8 @@ one-month trial nor a lifetime plan is a cost risk.
 | Identity card, Wrapped (weekly and yearly), the Warmup card | ✅ (the growth engine) | ✅ |
 | Full history | ✅ | ✅ |
 | **Coach**: up to three grounded reads of your own numbers (`COACH_AGENT.md`) | — | ✅ |
-| **Trends**: calibration month by month, per-category drill-down, "what your 80% really means" (the personal correction table), calibration by time horizon, CSV export | — | ✅ |
+| **Trends**: calibration month by month, per-category drill-down, "what your 80% really means" (the personal correction table), calibration by time horizon | — | ✅ |
+| CSV export of your own predictions (free since 2026-10-10, roadmap D31: your own data shouldn't be paid for) | ✅ | ✅ |
 | **Card themes** beyond Midnight | — | ✅ |
 
 **Rule:** nothing that generates a shareable artifact is ever paywalled, and the core
@@ -286,7 +287,7 @@ D18 exists to move.
 
 ### 5.2 Acquisition: identity cards and Wrapped (free)
 
-- **Identity card:** "Sharp in health · Guesser in money", a personality-test result
+- **Identity card:** "Sharp in health · Tracker in money", a personality-test result
   with receipts. Screenshot-native, one tap to share, Post and Story shapes.
 - **Calibration Wrapped:** weekly and yearly recaps of the user's forecasting story.
 - **Daily practice** (built 2026-10-07): the same three questions for everyone each
@@ -300,7 +301,7 @@ D18 exists to move.
 
 Coach and Trends are the paid aha. Plus is offered softly where it's relevant (the
 Insights teaser, Trends' locked panel) and never interrupts the core loop. Because AI
-payers churn faster, Coach comes with the sticky non-AI value (Trends, export, themes)
+payers churn faster, Coach comes with the sticky non-AI value (Trends, themes)
 so the subscription survives the novelty. Coach quality is load-bearing: a specific,
 true, surprising read converts; "you're doing great" doesn't (`COACH_AGENT.md` §9 has
 the evals).
@@ -313,7 +314,8 @@ Everything this document once asked `BUILD_PLAN.md` to add is built (status
 2026-10-03, unchanged since): the `Entitlement` type and its SQLite mirror (absence or
 any error reads as free), `useEntitlementStore` and `usePaywallStore`, RevenueCat
 billing with restore, the paywall, Plus gating, the Warmup and its card, the identity
-card and Wrapped with PNG export, card themes, Trends with CSV export, and Coach as the
+card and Wrapped with PNG export, card themes, Trends with CSV export (the export moves
+to You and becomes free with D31, 2026-10-10), and Coach as the
 `/functions/v1/coach` Edge Function (JWT, Plus checked server-side, rate limit, daily
 ceiling). Two things differ from this file's earliest plan: there is no
 `/functions/v1/insights` (Coach is specified by `COACH_AGENT.md`), and the weekly digest

@@ -41,7 +41,7 @@ The rest of this document says "Calibrate". Substitute as needed.
 **Promotional text** [170] (editable any time without review)
 
 > Log a prediction, say how sure you are, and find out if you were right to be.
-> Sharp in health, Guesser in money? Your calibration score shows you where.
+> Sharp in health, shaky with money? Your calibration score shows you where.
 
 **Keywords** [100 bytes, comma-separated, no spaces, no words already in the name]
 
@@ -107,7 +107,7 @@ leaves that judgement to the developer), so getting it right first time matters.
 > either-or questions, the same for everyone that day, each with how sure you
 > are. Practice stays apart from your real score.
 >
-> **SHARP IN HEALTH, GUESSER IN MONEY**
+> **SHARP IN HEALTH, TRACKER IN MONEY**
 > Calibration isn't one number. Calibrate scores you separately for work, health,
 > finance, social life, and personal goals, and gives each a badge from Guesser
 > to Oracle. Badges need a real track record, so a lucky streak won't earn one.
@@ -117,8 +117,8 @@ leaves that judgement to the developer), so getting it right first time matters.
 > exactly what 60% means.
 > • Your score stays hidden until you have enough resolved predictions for it to
 > mean something.
-> • An integrity bonus rewards the honest middle (35–65%), where the most useful
-> data lives.
+> • A second measure, the Brier score, rewards being decisive as well as
+> calibrated, so playing it safe doesn't flatter you.
 > • No money, no odds, no betting. Just your own track record.
 >
 > **SHARE YOUR RESULTS**
@@ -134,9 +134,9 @@ leaves that judgement to the developer), so getting it right first time matters.
 > • Coach: short AI feedback grounded in your own numbers. It sees your
 > statistics, never your predictions' text.
 > • Trends: month-by-month calibration, per-category drill-down, what your 80%
-> really means in each area, how you do by how far ahead you call it, and CSV
-> export.
+> really means in each area, and how you do by how far ahead you call it.
 > • Extra card themes.
+> (Exporting your own predictions as CSV is free.)
 >
 > Plus is available monthly, annually (with a one-month free trial), or as a
 > one-time lifetime purchase. The trial converts to a paid annual subscription
@@ -159,8 +159,8 @@ leaves that judgement to the developer), so getting it right first time matters.
 
 | Product id | Display name [30] | Description [45] |
 |---|---|---|
-| `calibrate_plus_monthly` | Calibrate Plus Monthly | Coach, trends, export and card themes |
-| `calibrate_plus_annual` | Calibrate Plus Annual | Coach, trends, export and card themes |
+| `calibrate_plus_monthly` | Calibrate Plus Monthly | Coach, trends and card themes |
+| `calibrate_plus_annual` | Calibrate Plus Annual | Coach, trends and card themes |
 | `calibrate_plus_lifetime` | Calibrate Plus Lifetime | Every Plus feature, one payment, forever |
 
 Subscription group name: **Calibrate Plus**. Put annual at level 1 and monthly
@@ -205,7 +205,7 @@ The order matters. Most people see only the first three.
 
 | # | Screen | Caption (short, large type) |
 |---|---|---|
-| 1 | **Identity card** (Share → Card) | **Sharp in health. Guesser in money.** |
+| 1 | **Identity card** (Share → Card) | **Sharp in health. Tracker in money.** |
 | 2 | **Calibration curve** (Stats, a post-threshold user, points off the diagonal) | **See exactly where you're overconfident** |
 | 3 | **Warmup verdict** | **Your first result in 60 seconds** |
 | 4 | **Log screen** with the confidence slider mid-range | **Say how sure you are. Find out later.** |

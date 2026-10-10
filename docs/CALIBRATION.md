@@ -22,7 +22,7 @@ calibratable(p)  ⇔  p.status ∈ { 'resolved_yes', 'resolved_no' }
 
 `pending` and `skipped` predictions are **not** calibratable. A skip is an explicit
 "don't score this," so letting it count would reward dismissing one's own
-predictions — against the integrity-first design.
+predictions — against the honesty-first design.
 
 | Aggregate | Counts pending? | Counts skipped? | Counts yes/no? |
 |-----------|:---:|:---:|:---:|
@@ -79,18 +79,21 @@ Because both terms are in `[0,1]`, `bucket_error ∈ [0,1]`.
 ## 4. Overall rating
 
 ```
-rating = 100 − ( mean(bucket_error over non-empty buckets) × 100 )
+rating = 100 − ( Σ(n_b × bucket_error_b) / N × 100 )
+
+  over non-empty buckets b; n_b = yes/no predictions in b; N = Σ n_b
 ```
 
 Properties:
 
 - **Range:** `rating ∈ [0, 100]`, provably — each `bucket_error ∈ [0,1]`, so their
-  mean is in `[0,1]`, so `rating ∈ [0,100]`. The code clamps to `[0,100]` as a cheap
+  weighted mean is in `[0,1]`, so `rating ∈ [0,100]`. The code clamps to `[0,100]` as a cheap
   guard against float drift; the algebra never requires it.
-- **Unweighted:** the mean is over *buckets*, not predictions. A bucket with 1
-  prediction influences the score exactly as much as a bucket with 50. This is a
-  deliberate "each confidence region weighted equally" choice; it differs from a
-  sample-size-weighted ECE.
+- **Weighted by count** (since 2026-10-10, roadmap D24): each bucket counts in
+  proportion to its predictions, the standard expected calibration error (ECE). It
+  used to be an unweighted mean over buckets, so a bucket with 1 prediction moved the
+  score as much as one with 50. With one bucket, or buckets of equal size, the two
+  are identical, so every single-bucket example below is unchanged.
 - **Empty input convention:** `computeCalibration([])` returns `{ rating: 0,
   buckets: [] }`. Rating `0` (not `100`) so callers can distinguish "no data" from
   "perfectly calibrated" by checking `buckets.length`.
@@ -114,9 +117,33 @@ category's subset).
 | Moderately overconfident (@ 80%, 60% yes) | 0.80 | 0.60 | 0.20 | **80** |
 | Badly overconfident (@ 90%, 50% yes) | 0.90 | 0.50 | 0.40 | **60** |
 | Underconfident (@ 60%, 85% yes) | 0.60 | 0.85 | 0.25 | **75** |
-| Multi-bucket (errors 0.05, 0.20, 0.35) | — | — | mean 0.20 | **80** |
+| Multi-bucket (errors 0.05 n=20, 0.20 n=10, 0.35 n=20) | — | — | weighted mean 0.20 | **80** |
+| Weighting matters (errors 0.05 n=50, 0.45 n=1) | — | — | weighted mean 0.0578 | **94.2** (unweighted: 75) |
 
 Over- and under-confidence are penalized symmetrically (the error is an absolute value).
+
+### Brier score (secondary)
+
+```
+brier = (1/N) × Σ over yes/no predictions of (confidence/100 − outcome)²
+        outcome = 1 for resolved_yes, 0 for resolved_no
+```
+
+`computeBrier` in `src/engine/calibration.ts`; `null` with nothing resolved. Range
+`[0, 1]`, lower is better: 0 is perfect, always saying 50% scores 0.25, and always
+saying 100% about things that never happen scores 1. Unlike the rating it rewards
+sharpness as well as calibration, so logging only coin-flips can't make it look
+good. Derived on every read, never stored; shown only as a quiet line on Insights
+and in How scoring works once the rating is unlocked (`MIN_N_OVERALL`), per
+`CLAUDE.md`.
+
+Worked examples (unit-tested):
+
+| Scenario | brier |
+|---|:---:|
+| 10 @ 90%, 9 yes | **0.09**: each yes (0.9 − 1)² = 0.01, the no (0.9 − 0)² = 0.81; (9 × 0.01 + 0.81) / 10 |
+| 10 @ 50%, any outcomes | **0.25** |
+| 1 @ 100%, no | **1** |
 
 ---
 
@@ -207,16 +234,19 @@ other zones use `__setTimeZoneForTests`.
 
 ---
 
-## 7. Integrity bonus
+## 7. Integrity bonus (dropped 2026-10-10, roadmap D23)
 
-Set once at creation time (`src/store/predictionStore.ts`), never recomputed:
+The field is still set at creation time (`src/store/predictionStore.ts`) and synced,
+so the schema doesn't change:
 
 ```
 integrity_bonus = (35 ≤ confidence ≤ 65)     // inclusive both ends
 ```
 
-It marks honest-uncertainty predictions. It is a flag only — it does **not** feed
-into the calibration rating, badges, or streak.
+Nothing reads it any more: no chip on Log, no band on the slider, no Wrapped note,
+no CSV column. It never fed the rating, badges or streak. The analytics event
+`prediction_logged` still carries it, as a coverage measure of how often people log
+mid-range calls.
 
 ---
 
@@ -228,7 +258,8 @@ the alignments, for context:
 1. **Guesser badge.** `CLAUDE.md` used to list Guesser as *"First 5 predictions
    resolved,"* but `evaluateBadge` has no such gate — `guesser` is the
    unconditional default floor (`evaluateBadge(4, 50) === 'guesser'`, asserted in
-   the tests). The spec reads "Default starting badge (no threshold)."
+   the tests). The spec reads "Default starting badge: fewer than 20 resolved in the
+   category" (the Tracker gate).
 
 2. **`bucket_error` shape.** `CLAUDE.md` used to write a single nominal value; the
    implementation uses the per-bucket **mean** stated confidence (§3). The spec now
@@ -244,3 +275,10 @@ the alignments, for context:
    also requires `resolved ≥ 20` and Sharp `resolved ≥ 50` (§5), so a high score on a
    handful of calls can no longer earn a top badge — this is the same principle as the
    min-N provisional gating (§4a).
+
+5. **Count-weighted rating and a Brier score** *(2026-10-10, roadmap D24)*. The
+   rating's mean over buckets is now weighted by each bucket's count (§4), and a
+   Brier score sits beside it as a secondary, quiet number. A blind tester who knew
+   the field pointed out that the unweighted score was jumpy and that a
+   calibration-only score can be raised by logging safe calls
+   (`docs/design/research/dryrun-2026-10-09.md`).

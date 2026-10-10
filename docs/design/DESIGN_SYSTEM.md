@@ -14,12 +14,13 @@ behind §7.3, §7.14 and §7.18; elements, done 2026-10-06 from 18 apps rated 4.
 8,057 of their reviews, behind §7.20 and §7.21; retention, done 2026-10-07, behind
 the rest days in §7.9 and §7.22's daily practice and reminder; day 0 and day 1, done
 2026-10-09, behind §7.5's Day-0 card, §7.10's first answer, §7.12's first due date
-and §7.18). The
+and §7.18; the blind dry runs, done 2026-10-09, behind D23–D31 across §7.1, §7.3–§7.5,
+§7.10–§7.12, §7.14, §7.17, §7.21 and §7.23). The
 "before" screens are in [`baseline/`](baseline/) (web-build captures, so fonts and the
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
 
-**Status (2026-10-09):** the tokens are in code at `src/constants/theme.ts` (light
+**Status (2026-10-10):** the tokens are in code at `src/constants/theme.ts` (light
 and dark both live, following the phone; Inter as the face), and `src/constants/theme.test.ts` pins every recorded
 contrast pair. Colour is fully migrated: no hex literal is left in `app/` or
 `src/components/` outside `BADGE_META` and `cardThemes`, which hold their own palettes
@@ -64,7 +65,7 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 | **Identity leads, the number is the receipt** | "Forecaster" in words first; "score 78" beside it; the curve is the proof. | 16Personalities, Spotify Wrapped 2025 "Clubs" |
 | **Restraint, then one pop of colour** | Near-monochrome canvas; colour reserved for the primary action and for meaning (over/under/calibrated). | Co–Star, Wrapped 2025 "selective pops of colour", HIG Color |
 | **Honest about uncertainty** | Calibrating states, labelled regions, ranges shown as soft bands, n shown on every dot. Showing ranges barely costs trust (van der Bles 2020). | WHOOP "calibrating", Oura baseline |
-| **Reward honesty, not correctness** | Neutral outcome styling; the integrity bonus is a brand chip, not a green "good job". | Product principle (`CLAUDE.md`) |
+| **Reward honesty, not correctness** | Neutral outcome styling; no confidence is ever rewarded for being a particular number (the integrity bonus went, D23). | Product principle (`CLAUDE.md`) |
 | **No guilt** | "Guesser" reads as a starting point; misses and broken streaks are never red, never animated. | Gentler Streak (ADA 2024), Finch |
 | **Craft in the frequent path, celebration only at milestones** | Log and Resolve get a precise small acknowledgement; only three moments get the full treatment (§6.2). | (Not Boring) Habits (ADA 2022), HIG Motion |
 | **Native first** | Real tab bar, sheets, SF Symbols, system haptics. | ADA 2025–2026 winners |
@@ -79,7 +80,7 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 
 | Token | Hex | Use | Contrast |
 |---|---|---|---|
-| `brand50` | `#EEF2FF` | selected chip / integrity chip background | — |
+| `brand50` | `#EEF2FF` | selected chip background | — |
 | `brand100` | `#E0E7FF` | pressed tint | — |
 | `brand200` | `#C7D2FE` | secondary text on dark cards | 12.1:1 on `inkCard` |
 | `brand400` | `#818CF8` | accent on dark surfaces | — |
@@ -116,7 +117,6 @@ Cool = underconfident, warm = overconfident, green = on the line.
 | `over` ("runs hot") | `#D55E00` (3.87) | `#B84E00` (5.09) | `#9A3F00` / `#FFF1E6` (6.15) | `#F28A4B` (7.31); mark `#E06B20` |
 | `under` ("runs cool") | `#0084C7` (4.10) | `#006C9E` (5.77) | `#005A85` / `#E6F4FB` (6.68) | `#5CB4EC` (7.90); mark `#2D96D8` |
 | `calibrated` ("on the line") | `#009E73` (3.42) | `#00785A` (5.48) | `#00664C` / `#E3F6EF` (6.22) | `#3CC79A` (8.44); mark `#14A87B` |
-| `integrity` (35–65%) | `brand600` + `circle.lefthalf.filled` | `brand800` on `brand50` (8.88) | | `#A5B4FC` (9.05) |
 | `oracleGold` (emblem hairline only) | `#B7791F` (graphic) | chip `#7A4F0E` / `#FDF6E7` (6.61) | | `#E8B64C` |
 
 Validated with the dataviz palette validator (Machado 2009 CVD simulation): worst
@@ -273,7 +273,6 @@ RN 0.83 (New Architecture) supports `boxShadow` natively — no shadow library.
 | Meaning | SF Symbol |
 |---|---|
 | work · health · finance · social · personal | `briefcase.fill` · `heart.fill` · `dollarsign.circle.fill` · `person.2.fill` · `person.fill` |
-| integrity bonus / honest uncertainty | `circle.lefthalf.filled` |
 | outcome yes / no (neutral ink) | `checkmark.circle.fill` / `xmark.circle` |
 | insights tab | `chart.line.uptrend.xyaxis` |
 | forecaster motif | `scope` |
@@ -337,8 +336,12 @@ as the new ones.
 
 - **Identity on Home** (roadmap step 28): under the bar, the share card's headline,
   from the same helper: the best category's emblem and "Sharp in health" in `title3`,
-  the contrast ("Guesser in finance") in `subhead` beneath. Tapping it opens Share.
-  Hidden while every category is a Guesser.
+  the contrast ("Tracker in finance") in `subhead` beneath. Hidden while every
+  category is a Guesser. **D27 (2026-10-10):** only categories past the count gate
+  (20 resolved) are named, so the contrast is never "Guesser in …", which means
+  "fewer than 20 here" and read as a verdict. Tapping the line opens How scoring works
+  at its Badges section (§7.17), not Share: two blind testers expected an
+  explanation.
 - **Unlocked:** `display` numeral in `textPrimary`; beside/under it the band's identity
   word ("Forecaster"), a one-line verdict from the engine's direction of error ("You run
   a little hot above 70%"), and a thin bullet-graph bar with ticks at 70 / 85 / 90 and a
@@ -354,6 +357,12 @@ as the new ones.
   date (roadmap step 32): "The next one comes due Tue, Oct 6." ("The first one" before
   any has resolved; the date never splits across lines), or "One is ready to resolve
   now." Nothing when nothing is open.
+- **The first answer leads** (D30, 2026-10-10): until anything has resolved, the
+  block opens with one `headline` line above the bar naming the evening the first
+  reminder comes: "Your first answer: tomorrow evening", "…: Friday evening" within a
+  week, "…: Fri, Oct 16" beyond, "Your first answer is ready" when one is due. The
+  0-of-20 bar and its caption follow. The newcomer read Day 0 as "come back in a
+  week, then 20 more"; the nearest thing now comes first.
 - **Ghost chart** before unlock: the full frame, diagonal and labelled regions with
   empty bucket slots — never an italic placeholder line. Its key names only what's
   drawn, so the grey-bars sentence waits for the first dot (roadmap step 68).
@@ -363,6 +372,12 @@ as the new ones.
   rating and sets half the spread of the middle 80% either side of it
   (`statsStore.ratingRange`); centred on the rating because resampling only adds
   error, so percentiles would sit below a calibrated user's own score.
+- **Brier score** (D24, 2026-10-10): on Insights only, once the rating is unlocked,
+  one `footnote` line in `textSecondary` under the give-or-take line: "Brier score
+  0.14 · lower is better; always saying 50% scores 0.25". Two decimals, from the
+  engine (`statsStore.brier`). Never on Today, never on a card, never in `display`
+  or `title` type: it keeps the rating honest for those who look, and stays out of
+  everyone else's way.
 - **Streak** (roadmap D2, step 61): a row on Home under the rating: a flame, "12-day
   streak", what today adds ("1 more today makes it 13", or "Today counts") and three
   pips for today. A day counts with 3 predictions logged or answered. Gain framing
@@ -417,9 +432,10 @@ small ±5 buttons).
 - A large percentage readout (≥ 48 pt, Rounded, tabular) with a natural-frequency
   companion: "70% · about 7 times in 10".
 - A slider (`@react-native-community/slider`, `step={5}`, ticks at 20/40/60/80 = the
-  bucket edges) with `selectionAsync` on each step. The 35–65 **integrity zone is
-  visibly tinted** (`brand50`) and the bonus shows as a `brand` chip with
-  `circle.lefthalf.filled` (replaces the failing 2.94:1 green text).
+  bucket edges) with `selectionAsync` on each step. No zone is tinted and no number
+  earns a chip: the 35–65 integrity zone and its "Integrity bonus · honest
+  uncertainty" chip went with D23 (2026-10-10). Three of four blind testers couldn't
+  say what the unlabelled band meant.
 - **Keep** the ±5 buttons (or equivalent `accessibilityActions`) and the existing
   `adjustable` role from `src/components/ui/adjustable.ts` — the slider must not
   regress VoiceOver. They sit on the readout's row, right-aligned, from 360pt wide
@@ -433,7 +449,7 @@ small ±5 buttons).
   ±5 sets a real number; the first ±5 sets the middle itself, where the grey thumb
   rests (step 120; it used to step past it, to 80 or 45). VoiceOver hears "not
   set", and the first swipe steps from the middle. Next (Warmup) and Save (Log)
-  wait for a number, and the integrity chip appears only once one is set. It used to
+  wait for a number. It used to
   start at 75% (Warmup) and 50% (Log, inside the integrity band), and "didn't touch
   it" couldn't be told from "chose it" (research: `confidence-2026-10.md` §2).
 
@@ -466,6 +482,14 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 - Each tier shows its receipt in one line: "Sharp: 52 resolved, score 87". Badge
   criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
   presentation only and loses its `emoji` field.
+- **The category's own score** (D28, 2026-10-10): on each Insights badge row, once
+  the category is past `MIN_N_CATEGORY` (15 resolved, `score_is_provisional` false),
+  its score in the row's meta line ("Score 84 · 52 resolved"), rounded, in
+  `textSecondary` (never a display size; the overall rating is the one hero).
+  Before that, the count to go, as now. A returning tester couldn't answer "how am I
+  doing in money" with a number.
+- **Guesser's tagline** says what it is: "Fewer than 20 resolved here" (it read "Just
+  getting started", which a five-month user took as a judgement).
 - Stats lists the badge rows in the app's one category order (`CATEGORIES` in
   `src/types`: work, health, finance, social, personal), as Log's chips and History's
   filters do (roadmap step 73). A launch used to read them alphabetically, so the rows
@@ -477,7 +501,7 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 ### 7.5 Share cards
 
 - **Hierarchy (at 1080 px wide):** identity line 88–96 px Rounded Bold ("Sharp in
-  health", top category only) → contrast line 56 px ("Guesser in money") → one receipt
+  health", top category only) → contrast line 56 px ("Tracker in money") → one receipt
   36–40 px in natural frequencies ("Right 84% of the time I said 80%") → a mini visual
   with no axes (5-bucket dot strip), legible at thumbnail size → footer hook **≥ 32 px
   at ≥ 4.5:1**, phrased as a question: "What are you sharp at? · calibrate.app". (The
@@ -506,6 +530,12 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   `APP_STORE_ID` is set; there's no domain yet, so until then the share ends on the
   score. An image share can't carry a link (the share sheet gets a bare PNG), so the
   name in the card's footer is its only way back to the store.
+- **Which categories it names** (D27, 2026-10-10): the identity and contrast lines
+  name only categories past the count gate (20 resolved, Tracker or above). Best
+  first; the contrast is the weakest of those, shown only when its tier differs.
+  With none past the gate yet, the identity line reads "Calibrating" over the
+  dashed Guesser lens and the subline counts what's left ("12 more resolutions
+  until my calibration unlocks"). The text share follows the same rule.
 - **Day-0 card:** the Warmup's counts as an invitation, so Share is never empty
   (D18 (5), step 101): "5 of 10 right" · "I was 77% sure. How sure are you?" ·
   "10 questions. Real predictions next." No lean ("I run hot" was as much luck as
@@ -659,6 +689,9 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   (`research/day0-2026-10.md` §6). From the second answer, the range line.
 - Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states
   follow §7.8.
+- **Opened from a prediction that isn't due yet**, it goes through the details sheet
+  first (§7.23): Resolve is for the evening it comes due, and two testers landed on
+  Yes/No a week early with no due date on screen.
 - **A skip can be taken back** (roadmap step 39): a "Not scored" card in History opens
   Resolve with "You marked this as can't tell" and a secondary **Answer it now**,
   which reopens it. Only skips: they never counted, so answering later can't rewrite a
@@ -703,8 +736,18 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   the one thing on Today that asks for a tap about a screen down.
 - Resolved (History): outcome as neutral ink glyph + word ("Happened" / "Didn't"), never
   ✓/✗ characters or green/red. Skipped reads "Not scored".
-- Tapping a ready card opens Resolve (§7.10). Keep the single-sentence
-  `accessibilityLabel`.
+- Tapping a ready card opens Resolve (§7.10); tapping one that isn't due yet opens
+  its details (§7.23). Keep the single-sentence `accessibilityLabel`.
+- **History holds open predictions too** (D26, 2026-10-10): an "Open · N" section
+  above the resolved list, in due order, the same cards as Today's, so nothing logged
+  is ever missing from History. The category filters apply to both; a confidence
+  range (step 51) applies to the resolved list only, since open ones have no outcome.
+  The summary line ("145 answered · 93 happened") still counts the resolved ones.
+- **Back it up** (D31, 2026-10-10): on Today, once the oldest prediction on the phone
+  is 30 days old and nobody is signed in, a quiet sunken card under the daily rows:
+  "Your predictions live only on this phone" over "Sign in to keep them if it's lost
+  or replaced.", with a secondary **Sign in** (opens Account) and **Not now** (30
+  days' quiet). Never before 30 days, never once signed in.
 - **History by range** (roadmap step 51): opened from a Stats coverage chip, History
   shows a selected-style chip "You said 80–100% ×" above the category filters; the
   two combine, × clears the range, and leaving the tab drops it. The summary line's
@@ -722,7 +765,10 @@ due date → Save. (Category comes before confidence, as built: the track record
 the control reads the chosen category.)
 
 - **Category:** chips with SF Symbol + word; selected = `brand50` fill, `brand800`
-  text, plus a check symbol (not colour alone).
+  text, plus a check symbol (not colour alone). **None chosen to start** (D29,
+  2026-10-10), and Save waits for one as it waits for a confidence; a starter idea or
+  "Log it again" chooses it. A preset Work filed an untouched gym prediction under
+  Work. The track record line reads all categories until one is chosen.
 - **Due date:** chips "Tomorrow", "In a week", "In a month" and **"Pick a date"**,
   which opens the native picker (`@react-native-community/datetimepicker`, §9). Under
   the chips, the resolved date as a sentence: "Due Friday, 3 Oct." One chip is chosen
@@ -778,8 +824,8 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 ### 7.14 Wrapped
 
 - **Weekly** is built from what is true at small n, because a week almost never reaches
-  20 resolutions and the verdict stays gated: (1) counts: "4 resolved · 3 logged · 1
-  honest coin-flip", and under the big count, **what happened against what the
+  20 resolutions and the verdict stays gated: (1) counts: "4 resolved · 3 logged",
+  and under the big count, **what happened against what the
   user's own numbers expected**: "6 happened. You expected about 4." (roadmap step
   48; the sum of stated confidences comes from the engine). It replaced "86% came
   in": a hit rate rewards safe calls. Outcome first, since "about 4. 6 happened" read
@@ -797,6 +843,10 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   range ("You ran overconfident at 80–100%."). Averages only speak when every such
   bucket is calibrated, because over- and underconfidence in different ranges
   cancel in the mean, and the card must never contradict Stats.
+- **The closing note** (D23, 2026-10-10) is about range, not a band: with a call
+  under 40% in the window, "2 calls under 40% this time. The unlikely end keeps your
+  score honest."; without, "Nothing under 40% this time. Log something you think won't
+  happen." It used to praise 35–65% "honest-uncertainty" calls.
 - Motion: `reveal` without confetti (§6.2), on the panel around the weekly card
   (never inside the card, which is captured to PNG), once a day per session, and
   only when the week has resolutions. The share button is disabled only when
@@ -866,9 +916,15 @@ A full-height reading sheet (roadmap step 29), opened by "How is this scored?" u
 the Stats rating and by a Settings row; never shown unasked, since the pitch is
 identity, not statistics. Sections in `headline` with `body` text in
 `textSecondary`: what the score measures, how it's worked out (the five bands and
-their edges, one worked example from `CLAUDE.md`), why it waits, badges (a legend of
-the five emblems with their criteria), honest uncertainty, your streak, what doesn't
-count (skips, the Warmup and, since step 95, the daily practice).
+their edges, that bigger bands count for more, one worked example from `CLAUDE.md`),
+the Brier score in one paragraph (D24: what it adds, that lower is better and 0.25 is
+always saying 50%), why it waits, badges (a legend of the five emblems with their
+criteria), the whole range (log unlikely things too; the integrity bonus section went
+with D23), your streak, what doesn't count (skips, the Warmup and, since step 95, the
+daily practice). The chance-bar sentence says what it is without overclaiming: "Half
+of a perfectly calibrated forecaster's dots land inside it, so a dot outside isn't
+proof of a lean." Opened with `?section=badges` (from Today's identity line, D27) it
+scrolls to Badges.
 Every number in the copy comes from the shared constants or `BADGE_META`, and a test
 holds it to the engine. A number that starts a sentence is spelled out ("Three a day
 is the daily goal").
@@ -958,9 +1014,12 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
 - **Groups:** *Account* ("Sign in ›" with "Not signed in. Your predictions live only
   on this phone." as the footer; signed in, a brand "Sign out" row under "Signed in as
   …") · *Your card ›* and *Calibrate Plus ›* ("Active" as its value when it is), with
-  Plus's one line as the footer · *Notifications* (switch, and the "Allow reminders" /
-  "Open Settings" row while iOS says no) · *Coach (AI)* and *Usage stats* (switches)
-  · *About* (How scoring works ›, Privacy policy › once hosted, Terms of use ›) ·
+  Plus's one line as the footer · *Notifications* (the main switch; under it, while
+  it's on, **Due-day reminders** and **Sunday digest** switches, D31; the practice
+  reminder; and the "Allow reminders" / "Open Settings" row while iOS says no) ·
+  *Coach (AI)* and *Usage stats* (switches) · *Your data* (**Export predictions
+  (CSV)**, free since D31, a row that acts in place, no chevron) · *About* (How
+  scoring works ›, Privacy policy › once hosted, Terms of use ›) ·
   *Erase all data on this device* / *Delete account* alone at the bottom, in
   `destructive`, no chevron.
 - **Rows:** the whole row is the target; a row that opens something ends in a chevron
@@ -973,9 +1032,10 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
 - HIG: "Minimize the number of settings you offer." Nothing moves to Settings that
   belongs to a task (the share card's theme stays on Share).
 - **Practice reminder** (step 89): a stacked row in the Notifications group, its
-  label and one line over four chips (Off, With coffee, At lunch, After dinner, each
-  with its time), two to a row. With Notifications off the choice is kept and the line
-  says nothing is sent.
+  label and one line over five chips (Off, With coffee, At lunch, After dinner, each
+  with its time, and **Pick a time**, D31, which opens the time picker and then shows
+  the chosen time on the chip), two to a row. With Notifications off the choice is
+  kept and the line says nothing is sent.
 
 ### 7.22 Daily practice (built as roadmap steps 88–89)
 
@@ -1000,6 +1060,28 @@ from everything real (`CLAUDE.md`, Daily practice).
 - **Never:** a practice streak (one counter is enough, and it stays about real
   predictions), a claim that practice improves the score, red or green for a wrong or
   right answer, or a share card (a scope call, not made).
+
+
+### 7.23 An open prediction (D25, 2026-10-10)
+
+Tapping a prediction that isn't due yet, on Today or in History, opens a medium-detent
+sheet with the round ×:
+
+- **What you said, first:** "On Oct 4 you said **70%**", the category, the title in
+  `title2`, then "Due Fri, Oct 16 · reminder that evening" (or "· reminders off").
+- **Edit** (secondary capsule): the title, category and due date in place, with the
+  Log form's fields and chips; **Save changes** as the one primary while editing,
+  waiting for a non-empty title. The confidence is shown, never editable: it is the
+  record (changing it is FUTURE_UI A7 and needs a scoring rule). A changed due date
+  moves the reminder.
+- **Delete** (text button in `destructive`): a confirmation sheet, "Delete this
+  prediction? It won't count anywhere, and it can't be undone." with **Delete** as an
+  outlined destructive capsule and **Cancel** beneath (§7.20). Synced as a deletion.
+- **Answer it now** (text button, brand): opens Resolve after one line, "It's due
+  Fri. Answering early is fine; just answer what you know now." with **Answer now**
+  and **Not yet**. Early answers count like any other.
+- A prediction that's due skips this sheet and opens Resolve, as before: the evening
+  run stays two taps.
 
 ---
 
