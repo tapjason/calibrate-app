@@ -347,8 +347,9 @@ export interface RatingRange {
 
 /**
  * Whether stated confidence ran ahead of, behind, or in line with reality.
- * One shared definition for the Warmup verdict, per-category Coach direction,
- * and any other over/under read — see engine/patterns.ts `classifyDirection`.
+ * One shared definition for per-category Coach direction and any other
+ * over/under read — see engine/patterns.ts `classifyDirection`. The Warmup uses
+ * the same three values but decides them from the chance range (warmup.ts).
  */
 export type Direction = 'overconfident' | 'underconfident' | 'calibrated';
 

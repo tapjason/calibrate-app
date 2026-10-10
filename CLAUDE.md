@@ -171,9 +171,10 @@ authoritative.
 ## Feature Modules
 
 ### 1. Warmup Module (onboarding — build early)
-A 60-second first-run quiz of 8–10 estimation questions ("What year was X?" + a 50–100%
-confidence slider). Immediately renders a mini calibration chart and a verdict
-("You were 85% confident but right 55% of the time — you run overconfident").
+A 60-second first-run quiz of ten two-choice questions ("Which happened first?" + a
+50–100% confidence slider). Immediately renders the counts, a mini calibration chart
+and a read of those ten ("You said 85% on average. 5 of 10 were right." under "On
+these ten, you were overconfident"); see the D18 bullets below.
 
 Purpose: a real calibration score takes weeks of resolutions, but the first session is
 where users decide whether the app is worth keeping. The Warmup delivers the core insight

@@ -8,8 +8,9 @@ import type { Direction } from '@/types';
 
 // A gap this large (5 percentage points) between mean stated confidence and the
 // actual outcome rate earns an over/under verdict; anything smaller is "close
-// enough" and reads as calibrated. Shared by the Warmup scorer so the two
-// features mean the same thing by "overconfident". EPSILON guards the boundary
+// enough" and reads as calibrated. The Warmup no longer uses it: ten answers
+// move in steps of 10 points, so it names a lean from the chance range instead
+// (warmup.ts, WARMUP_LEAN_MASS). EPSILON guards the boundary
 // against float error (e.g. 0.75 − 0.7 = 0.05000000000000004).
 const DIRECTION_THRESHOLD = 0.05;
 const EPSILON = 1e-9;

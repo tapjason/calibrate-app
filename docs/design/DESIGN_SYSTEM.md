@@ -206,7 +206,7 @@ the system font (SF Pro, SF Rounded for numerals) until then.
 | `display` | Inter | 64/68 | Bold | custom (cap Dynamic Type at 1.6×) | the one hero number per screen |
 | `readout` | Inter | 48/56 | Bold | custom (cap at 1.6×) | the live number on a control or celebration (confidence readout, milestone card) |
 | `titleXL` | Inter | 34/41 | Bold | Large Title | screen titles, verdict headline |
-| `title1` | Inter | 28/34 | Bold | Title 1 | section heroes, Warmup score |
+| `title1` | Inter | 28/34 | Bold | Title 1 | section heroes, the Warmup's read |
 | `title2` | Inter | 22/28 | Bold | Title 2 | quiz prompt, card headlines |
 | `title3` | Inter | 20/25 | Semibold | Title 3 | group headers |
 | `headline` | Inter | 17/22 | Semibold | Headline | row titles, buttons |
@@ -299,7 +299,7 @@ micro-interactions, layout animations for list reveals. Every animation checks
 | `detent` | numeral roll 80 ms per 5% step | `selectionAsync` per step | confidence control, pickers |
 | `commit` | card slides into list + check draws 250 ms | `impactAsync(Light)` | save prediction |
 | `resolve` | same neutral check for Yes **and** No; card collapses 300 ms | `impactAsync(Medium)` for both | Resolve |
-| `reveal` | count-up 700 ms ease-out; diagonal draws 400 ms; dots drop 60 ms stagger; regions fade 200 ms | `impactAsync(Rigid)` as the last dot lands | Warmup verdict, weekly Wrapped |
+| `reveal` | count-up 700 ms ease-out; diagonal draws 400 ms; dots drop 60 ms stagger; regions fade 200 ms | `impactAsync(Rigid)` as the last dot lands | Warmup verdict (chart only, no count-up since D20), weekly Wrapped |
 | `unlock` | ring completes 500 ms, morphs into numeral, symbol bounce | `notificationAsync(Success)` | rating / category unlock |
 | `tierUp` | emblem flips on Y 600 ms, ring count increments, ≤ 40-particle confetti ≤ 1.2 s | `notificationAsync(Success)` | badge tier-up |
 | `reduced` | all of the above → 200 ms cross-fade; no count-up, confetti or flips; haptics still fire | as above | Reduce Motion on |
@@ -589,7 +589,8 @@ filters are its way forward.
 
 ### 7.9 Copy and tone
 
-- Blunt and human, like the existing verdict copy ("You run overconfident"). Lead with
+- Blunt and human ("On these ten, you were overconfident"), and about the evidence,
+  never the person, until the evidence is enough (D18). Lead with
   the sentence; the chart comes second.
 - Numbers primary, words secondary — probability words mean different things to
   different people. Pair percentages with natural frequencies ("7 in 10").

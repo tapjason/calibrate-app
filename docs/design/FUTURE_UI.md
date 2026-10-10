@@ -38,15 +38,15 @@ One estimation question a day with the same confidence control, stored separatel
 like the Warmup and **never** mixed into `UserStat`/`CategoryStat`. Real predictions
 resolve when they come due, which the user doesn't control, so this gives a reason to
 open the app every day.
-- Needs a bank of ~200+ two-choice questions with sourced facts (the Warmup ships
-  10 in `warmupQuestions.ts`).
+- Needs a bank of ~200+ two-choice questions with sourced facts. (As built: reference
+  tables, `src/constants/practiceFacts.ts`, rather than a written bank.)
 - A rolling "drill calibration" mini-chart could sit on Stats, labelled as practice.
 - Interacts with **D2**: if the visible streak becomes weekly, a drill could count
   toward it.
 - The same bank, if sampled representatively rather than picked to be tricky, would
   let the Warmup draw its ten at random: option (c) of **D14**, so the Day-0 verdict
   describes the person, not the question selection (`research/confidence-2026-10.md`
-  §3).
+  §3). Done: the Warmup draws from the practice tables (steps 97 and 106).
 
 ### A4. Repeating predictions
 "Gym 3× this week", weekly. Each instance is its own prediction with its own

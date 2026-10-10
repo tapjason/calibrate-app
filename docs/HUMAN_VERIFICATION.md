@@ -568,11 +568,12 @@ Added 2026-09-29 (second pass):
       unlocked with ≥ 10 in a band "You're overconfident at 80–100%"), warm/cool
       tinted regions labelled Overconfident/Underconfident, coloured dots with
       "n=…", a five-box coverage row, and "Show as table".
-- [ ] **Warmup verdict:** the chart line draws in and the dot(s) appear after it.
-      The score counts up from 0 alongside it, and a single firm tap lands with the
-      last dot. With Reduce Motion on, no drawing or count-up, but the tap still fires. "Share my result" opens Share showing the
-      **warm-up card** ("I run hot", "77% sure, 50% right") — test on a fresh install
-      or after erasing the device's data, before any prediction resolves.
+- [ ] **Warmup verdict:** the chart line draws in and the dot(s) appear after it,
+      and a single firm tap lands with the last dot (no score, no count-up since
+      D20). With Reduce Motion on, no drawing, but the tap still fires. "Share my
+      result" opens Share showing the **warm-up card** ("5 of 10 right", "I was 77%
+      sure. How sure are you?") — test on a fresh install or after erasing the
+      device's data, before any prediction resolves.
 - [ ] **Badges** are drawn emblems (dashed square for Guesser, filled indigo for
       Forecaster, …), not emoji, in Stats and on the identity card.
 - [ ] **Icons:** SF Symbols in the tab bar and on category chips/cards on iOS;
@@ -708,10 +709,16 @@ Added 2026-09-29 (polish pass):
       ten-segment progress; on the verdict, "Predict something about tomorrow" and "Share my
       result" sit above the answer key.
 - [ ] **Warmup, Day 0 (D18):** the ten read as ordinary comparisons (no trick
-      questions); the verdict title reads "On these ten, you were …" with
+      questions), some close and some easy; the verdict title reads "On these ten,
+      you were …" (or "…no clear lean" when the counts are within luck; no 0–100
+      score) with
       "You said N% on average. K of 10 were right." under it; the thesis line sits
       above the button at 320pt without splitting; a first Log opens on Tomorrow;
       the Day-0 card reads "K of 10 right" and "How sure are you?".
+- [ ] **The first answer ever (step 107):** resolving your very first prediction,
+      Yes or No, shows "That's your first. A 70% call should come true about 7
+      times in 10…" in place of the range line; the second answer shows the range
+      line as before, in a single Resolve and in a run.
 - [ ] **Settings switches** are indigo when on (not green).
 - [ ] **Share → Shape:** "Post · 3:4" and "Story · 9:16" reshape the card, with a
       large emblem and the text centred. Export each and post the Story to an

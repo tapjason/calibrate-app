@@ -5,8 +5,8 @@ import type { PracticeFacts } from '@/types';
  *
  * Questions are drawn from these at random, two entries at a time, by the
  * engine (src/engine/practice.ts). That's the point of tables rather than a
- * list of questions: the Warmup's ten are picked to be tricky, and picked
- * items are how the research literature manufactures overconfidence
+ * list of questions: the Warmup's first ten were picked to be tricky, and
+ * picked items are how the research literature manufactures overconfidence
  * (Gigerenzer, Hoffrage & Kleinbölting 1991; Juslin, Winman & Olsson 2000).
  * Random pairs from a reference class give easy and hard questions in their
  * natural mix, so a practice record describes the person, not the selection
