@@ -187,15 +187,21 @@ verdict about a preset.
 **Day 0 is for calibration, not an identity verdict** (decided 2026-10-07, UI_ROADMAP
 D18; built 2026-10-08):
 - The ten are drawn from the practice tables (`warmupQuestions`, the same ten for
-  everyone, right answers five first and five second), not picked to be tricky.
+  everyone, right answers five first and five second), not picked to be tricky:
+  five inside the practice's closeness band, five from the whole class (refined
+  2026-10-09; the band alone tilts toward overconfidence).
 - The result leads with counts and reads these questions, not the person: "You said
   78% on average. 6 of 10 were right." under "On these ten, you were overconfident".
-  An overconfident verdict adds that ten is a small sample and trivia says little
-  about plans.
+  A lean is named only outside the central 80% of what luck gives at ten answers
+  (`WARMUP_LEAN_MASS`); otherwise "On these ten, no clear lean". The ±5 rule used
+  elsewhere called a lean on 47–73% of perfectly calibrated people
+  (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20, 2026-10-09).
 - A bridge to the person's own plans (the planning-fallacy line) sits above the
   button, "Predict something about tomorrow".
 - The first prediction defaults to Tomorrow, with starter ideas that resolve by then,
-  so the first real result lands on Day 1.
+  so the first real result lands on Day 1. That first yes/no answer says what the
+  number means, the same for Yes and No ("A 70% call should come true about 7 times
+  in 10, so one answer can't say much; 20 can.").
 - The Day-0 card shares the counts as an invitation: "5 of 10 right. I was 77% sure.
   How sure are you?"
 

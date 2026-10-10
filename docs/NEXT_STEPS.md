@@ -145,7 +145,8 @@ found the RevenueCat Test Store drift below.
   tabs), D7 (dark mode follows the system), D15 (rating prompt) and D16 (trial
   reminder) were decided and built on 2026-10-07, so every structural call is
   made before submission. D17 (one a day keeps the streak) was built the same
-  day, and D18 decided for now: Day 0 is for calibration, not built yet.
+  day; D18 (Day 0 is for calibration) was built 2026-10-08 and refined 2026-10-09
+  with D20 (no warm-up score). D19 (the Day-1 reminder and "Not now") is open.
 
 ---
 

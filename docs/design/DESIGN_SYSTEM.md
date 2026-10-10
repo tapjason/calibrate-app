@@ -12,12 +12,14 @@ anyone builds them — they are listed with the other open questions in
 done 2026-09-28 and behind §2.5 and §7.10–§7.15; confidence, done 2026-10-05 and
 behind §7.3, §7.14 and §7.18; elements, done 2026-10-06 from 18 apps rated 4.7+ and
 8,057 of their reviews, behind §7.20 and §7.21; retention, done 2026-10-07, behind
-the rest days in §7.9 and §7.22's daily practice and reminder). The
+the rest days in §7.9 and §7.22's daily practice and reminder; day 0 and day 1, done
+2026-10-09, behind §7.5's Day-0 card, §7.10's first answer, §7.12's first due date
+and §7.18). The
 "before" screens are in [`baseline/`](baseline/) (web-build captures, so fonts and the
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
 
-**Status (2026-10-07):** the tokens are in code at `src/constants/theme.ts` (light
+**Status (2026-10-09):** the tokens are in code at `src/constants/theme.ts` (light
 and dark both live, following the phone; Inter as the face), and `src/constants/theme.test.ts` pins every recorded
 contrast pair. Colour is fully migrated: no hex literal is left in `app/` or
 `src/components/` outside `BADGE_META` and `cardThemes`, which hold their own palettes
@@ -498,8 +500,10 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   `APP_STORE_ID` is set; there's no domain yet, so until then the share ends on the
   score. An image share can't carry a link (the share sheet gets a bare PNG), so the
   name in the card's footer is its only way back to the store.
-- **Day-0 card:** the Warmup verdict ("I run hot: 77% sure, 50% right") so Share is
-  never empty.
+- **Day-0 card:** the Warmup's counts as an invitation, so Share is never empty
+  (D18 (5), step 101): "5 of 10 right" · "I was 77% sure. How sure are you?" ·
+  "10 questions. Real predictions next." No lean ("I run hot" was as much luck as
+  anything, `research/day0-2026-10.md` §2) and no 0–100 score.
 - Gradients in cards are **SVG gradients** (they rasterise with `react-native-view-shot`);
   no Skia, blur or glass inside a card.
 - Free theme "Midnight" on `inkCard`; Plus themes are cosmetic only.
@@ -636,6 +640,12 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   outcomes barely did (`research/confidence-2026-10.md` §6).
   Then the optional one-line reflection ("What surprised you?"), never before the
   answer.
+- **The first answer ever** (step 107) gets a teaching line in place of the range
+  line, built from the stated number and identical for Yes and No: "That's your
+  first. A 70% call should come true about 7 times in 10, so one answer can't say
+  much; 20 can." A first "it happened" otherwise reads as *I was right* (outcome
+  bias, Baron & Hershey 1988), which isn't what 70% means
+  (`research/day0-2026-10.md` §6). From the second answer, the range line.
 - Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states
   follow §7.8.
 - **A skip can be taken back** (roadmap step 39): a "Not scored" card in History opens
@@ -706,8 +716,10 @@ the control reads the chosen category.)
 - **Starter ideas** (roadmap step 40): only before the first prediction ever, five
   quiet rows under the empty title field ("Not sure where to start? Try one, then
   make it yours:"), one per category with its icon. A tap fills title, category and
-  the due date its words imply (step 94: "replies the same day" is due tomorrow, the
-  "this week" ones in a week), never confidence.
+  the due date its words imply, never confidence. Since D18 (4), step 99, all five
+  resolve by tomorrow evening ("I'll get outside for a walk tomorrow"), and the first
+  prediction's due date starts on **Tomorrow**, so the first real answer lands on
+  Day 1 at 19:00; from the second prediction on it starts on **In a week**.
 - **Track record** (roadmap step 19): one `footnote` line in `textSecondary` under
   the confidence control, "Your 60–80% calls in finance: 7 of 12 happened." The
   category's band first, then all categories, and nothing below 10 resolved (the
@@ -843,32 +855,42 @@ is the daily goal").
 
 ### 7.18 Warmup verdict
 
-The Day-0 payoff (`WarmupVerdictScreen`): eyebrow "Your warm-up", the verdict in
-`title1` ("You run overconfident"), the receipt ("You were 77% confident on average,
-and right 50% of the time."), the warm-up score in `title1` (never `display`: it must
-not look like the real rating), the mini chart, one line of advice, the "not your
-calibration rating" note, then the two actions before the answer key. It opens at
-its top (roadmap step 72): the quiz shares its scroll view, and on a 667pt-tall phone
-the verdict used to inherit the quiz's offset and open on the chart.
+The Day-0 result (`WarmupVerdictScreen`), rebuilt by D18 (steps 97–101) and refined
+on 2026-10-09 (104–107). Day 0 is for calibration, so the result describes *these
+ten*, never the person. In order: eyebrow "Your warm-up"; the read in `title1` ("On
+these ten, you were overconfident" / "…underconfident" / "On these ten, no clear
+lean"); the counts ("You said 78% on average. 6 of 10 were right."); the mini chart;
+one line of advice; the bridge ("Trivia is the warm-up. People are most
+overconfident about their own plans: students who expected to finish their thesis in
+34 days took 56."); one note ("This is a warm-up, not your calibration rating. That
+one needs 20 of your own predictions."); **Predict something about tomorrow** and
+**Share my result**; then the answer key. It opens at its top (step 72).
 
+- **A lean only beyond luck** (step 104). Ten answers move accuracy in steps of 10
+  points, and the ±5 rule used elsewhere called a lean on 47–73% of perfectly
+  calibrated people. The engine names one only outside the central 80% of
+  `chanceRange` at n and the mean confidence (`WARMUP_LEAN_MASS`); a sentence reads as
+  a conclusion, so its bar sits above the chart's grey bars (the central half).
+  Inside it the advice is "Ten answers can't tell a small lean from luck. Your own
+  predictions are the real test." (`research/day0-2026-10.md` §2.)
+- **No 0–100 number** (D20, step 105). Ten answers can't carry one; the counts lead
+  and the chart shows them. It used to count up in `title1` beside "Warm-up
+  calibration".
+- **Which ten** (steps 97, 102, 106). Drawn from the practice tables, the same ten
+  for everyone, right answers five first and five second. Five come from inside the
+  practice's closeness band and five from the whole class: the band alone tilts
+  toward overconfidence (the hard–easy effect), and the whole class alone was eight
+  giveaways in ten.
 - **The answer key says it in words** (roadmap step 71): per question, the prompt in
   `subhead` secondary, then the right answer in semibold ink and the user's side of it
   ("· You got it", or "· You picked “The Atlantic”"), the fact, and the stated
   confidence at the right. The mark is the Resolve glyph pair in ink
   (`checkmark.circle.fill` / `xmark.circle`), not ✓/✗ text, and each row is one stop
-  for VoiceOver. It used to print "✗ Which is longer? A Boeing 737", which read as if
-  the 737 had been the wrong pick.
-
+  for VoiceOver.
 - **One number everywhere** (roadmap step 49): when all answers share a confidence,
-  the receipt says it ("You said 75% on all 10, and were right 50% of the time.") and
-  a second line notes that one number for the known and the guessed leaves part of
-  the skill unused. Not shown when every answer was right, or under three answers.
-- **Tricky questions** (roadmap D14, built as step 55): under an overconfident verdict
-  only, after the advice, "These were picked to be tricky, so most people run hot
-  here. Your own predictions are the real test." The bank is a selected,
-  hard-leaning set, and selected items are where overconfidence comes from in the
-  research (`research/confidence-2026-10.md` §3). Drawing the ten at random from a
-  larger bank (D14 option c) waits on FUTURE_UI A2.
+  the counts say it ("You said 75% on all 10. 5 of 10 were right.") and a second
+  line notes that one number for the known and the guessed leaves part of the skill
+  unused. Not shown when every answer was right, or under three answers.
 
 ---
 

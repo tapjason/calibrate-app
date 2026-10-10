@@ -276,8 +276,13 @@ picked to be tricky, which manufactures the overconfidence the verdict reports
 lead the result with counts about *these ten* ("78% sure, 6 of 10 right") instead of
 "You're overconfident"; bridge to the person's own plans, where overconfidence lives;
 make the first real prediction due tomorrow so the first real result lands on Day 1;
-and share the counts as an invitation. **Not built yet.** It trades a dramatic hook for
-an honest one, so read the Day-0 gates (§7) on either side of it.
+and share the counts as an invitation. **Built 2026-10-08**, refined 2026-10-09. It
+trades a dramatic hook for an honest one, so read the Day-0 gates (§7) on either side
+of it. Less was given up than it looked: ten answers called a lean on 47–73% of
+perfectly calibrated people, so "you're overconfident" was mostly luck
+(`docs/design/research/day0-2026-10.md` §2). Read one more number with the gates:
+Warmup finishers with a first real answer within 48 hours of the first launch, which
+D18 exists to move.
 
 ### 5.2 Acquisition: identity cards and Wrapped (free)
 
