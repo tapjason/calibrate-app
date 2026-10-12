@@ -43,7 +43,7 @@ export function DeleteAccountView({
   if (finished) {
     return (
       <View style={styles.wrap} testID="delete-finished">
-        <Text style={styles.title}>
+        <Text accessibilityRole="header" style={styles.title}>
           {wasSignedIn ? 'Your account has been deleted' : 'Your data has been erased'}
         </Text>
         <Text style={styles.body}>
@@ -73,7 +73,7 @@ export function DeleteAccountView({
 
   return (
     <View style={styles.wrap} testID="delete-confirm">
-      <Text style={styles.title}>
+      <Text accessibilityRole="header" style={styles.title}>
         {wasSignedIn ? 'Delete your account?' : 'Erase all data on this phone?'}
       </Text>
       <Text style={styles.body}>

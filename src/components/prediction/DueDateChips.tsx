@@ -46,7 +46,8 @@ export function DueDateChips({ presets, value, picking, onChange, onPickingChang
   const presetChosen = (iso: string) => !picking && value === iso;
   return (
     <View>
-      <View style={chipStyles.row}>
+      {/* One group, like the category chips, so assistive tech hears "1 of 4". */}
+      <View style={chipStyles.row} accessibilityRole="radiogroup" accessibilityLabel="Due date">
         {presets.map((preset) => (
           <Pressable
             key={preset.id}

@@ -27,7 +27,7 @@ export function PlusTeaser({ onUpgrade, monthsOnFile = 0 }: PlusTeaserProps) {
   return (
     <View style={styles.card} testID="plus-teaser">
       <Text style={styles.eyebrow}>Calibrate Plus</Text>
-      <Text style={styles.title}>Go deeper on your own numbers</Text>
+      <Text accessibilityRole="header" style={styles.title}>Go deeper on your own numbers</Text>
 
       <View style={styles.benefit}>
         <Icon sf="sparkles" fallback="sparkles" size={18} color={colors.brand600} />

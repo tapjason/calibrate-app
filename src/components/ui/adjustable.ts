@@ -34,6 +34,10 @@ export function adjustableProps({
   | 'accessibilityValue'
   | 'accessibilityActions'
   | 'onAccessibilityAction'
+  | 'aria-valuemin'
+  | 'aria-valuemax'
+  | 'aria-valuenow'
+  | 'aria-valuetext'
 > {
   const from = value ?? start ?? Math.round((min + max) / 2);
   return {
@@ -42,6 +46,13 @@ export function adjustableProps({
     accessibilityLabel: label,
     accessibilityValue:
       value === null ? { min, max, text: 'not set' } : { min, max, now: value, text: `${value}%` },
+    // The cross-platform props as well: react-native-web drops
+    // accessibilityValue, so on web the slider had no value at all (as
+    // accessibilityState before step 96).
+    'aria-valuemin': min,
+    'aria-valuemax': max,
+    'aria-valuenow': value ?? undefined,
+    'aria-valuetext': value === null ? 'not set' : `${value}%`,
     accessibilityActions: [{ name: 'increment' }, { name: 'decrement' }],
     onAccessibilityAction: (e: AccessibilityActionEvent) => {
       if (e.nativeEvent.actionName === 'increment') onChange(Math.min(max, from + step));

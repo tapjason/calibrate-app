@@ -77,6 +77,18 @@ describe('ConfidenceControl', () => {
     expect(control.props.accessibilityValue.text).toBe('40%');
   });
 
+  // react-native-web drops accessibilityValue: on web the slider had no value.
+  it('carries its value in aria props too, for the web build', () => {
+    render(<ConfidenceControl value={40} onChange={jest.fn()} min={50} />);
+    const control = screen.getByTestId('confidence-adjustable');
+    expect(control.props).toMatchObject({
+      'aria-valuemin': 50,
+      'aria-valuemax': 100,
+      'aria-valuenow': 40,
+      'aria-valuetext': '40%',
+    });
+  });
+
   // Roadmap D13: nothing preset, so "didn't touch it" can't pass for a choice.
   describe('before anything is set', () => {
     const slider = () => screen.getByTestId('confidence-slider', { includeHiddenElements: true });

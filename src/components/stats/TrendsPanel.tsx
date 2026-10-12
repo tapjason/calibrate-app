@@ -46,7 +46,7 @@ export function TrendsPanel({
   if (!isPlus) {
     return (
       <View style={styles.wrap} testID="trends-upsell">
-        <Text style={styles.heading}>Trends</Text>
+        <Text accessibilityRole="header" style={styles.heading}>Trends</Text>
         <Text style={styles.muted}>
           {hasHistory
             ? `Plus charts your calibration month by month — ${trends.periods.length} ${
@@ -68,7 +68,7 @@ export function TrendsPanel({
 
   return (
     <View style={styles.wrap} testID="trends-panel">
-      <Text style={styles.heading}>Trends</Text>
+      <Text accessibilityRole="header" style={styles.heading}>Trends</Text>
 
       {!hasHistory ? (
         <Text style={styles.muted} testID="trends-empty">
@@ -274,7 +274,7 @@ function CoverageLine({ trends }: { trends: TrendSummary }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
       {children}
     </View>
   );

@@ -129,7 +129,7 @@ export function CalibrationView({
       ) : null}
 
       {/* Title = takeaway, subtitle = natural frequencies (DESIGN_SYSTEM §7.2). */}
-      <Text style={styles.chartTitle} testID="chart-takeaway">
+      <Text accessibilityRole="header" style={styles.chartTitle} testID="chart-takeaway">
         {holdRanges(takeaway.title)}
       </Text>
       {takeaway.subtitle && (
@@ -190,7 +190,7 @@ export function CalibrationView({
         </>
       )}
 
-      <Text style={styles.sectionTitle}>Category badges</Text>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>Category badges</Text>
       {categoryStats.length === 0 ? (
         <Text style={styles.empty}>No category data yet.</Text>
       ) : (

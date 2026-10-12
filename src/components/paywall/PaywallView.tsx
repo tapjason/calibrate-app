@@ -78,7 +78,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   if (isPlus) {
     return (
       <View style={styles.wrap} testID="paywall-active">
-        <Text style={styles.title}>You're on Calibrate Plus</Text>
+        <Text accessibilityRole="header" style={styles.title}>You're on Calibrate Plus</Text>
         <Text style={styles.body}>
           {entitlement.source === 'trial'
             ? 'Your trial is running. Coach and the advanced analytics are unlocked.'
@@ -99,7 +99,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
       {onClose && (
         <CloseButton onPress={onClose} style={styles.dismiss} testID="paywall-dismiss" />
       )}
-      <Text style={[styles.title, onClose && styles.titleBesideClose]}>Calibrate Plus</Text>
+      <Text accessibilityRole="header" style={[styles.title, onClose && styles.titleBesideClose]}>Calibrate Plus</Text>
       {/* True on Day 0 too. It said "You already know how calibrated you
           are", which two blind testers with nothing resolved called false. */}
       <Text style={styles.body}>

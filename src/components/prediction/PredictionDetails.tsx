@@ -76,7 +76,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
   if (!prediction || prediction.status !== 'pending') {
     return (
       <View style={styles.center} testID="details-missing">
-        <Text style={styles.heading}>This prediction isn't open</Text>
+        <Text accessibilityRole="header" style={styles.heading}>This prediction isn't open</Text>
         <Text style={styles.body}>It may have been answered or deleted.</Text>
       </View>
     );

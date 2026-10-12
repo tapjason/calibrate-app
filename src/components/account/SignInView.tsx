@@ -73,7 +73,7 @@ export function SignInView({ onDone }: { onDone: () => void }) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>
+      <Text accessibilityRole="header" style={styles.title}>
         {mode === 'signIn' ? 'Sign in' : 'Create an account'}
       </Text>
       <Text style={styles.lede}>

@@ -18,7 +18,7 @@ interface CategoryChipsProps {
  */
 export function CategoryChips({ value, onChange }: CategoryChipsProps) {
   return (
-    <View style={styles.row} accessibilityRole="radiogroup">
+    <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="Category">
       {CATEGORIES.map((c) => (
         <Pressable
           key={c}

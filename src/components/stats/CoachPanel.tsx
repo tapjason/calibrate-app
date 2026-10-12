@@ -62,7 +62,7 @@ export function CoachPanel({
     // free and already rendered above.
     return (
       <View style={styles.wrap} testID="coach-upsell">
-        <Text style={styles.heading}>Coach</Text>
+        <Text accessibilityRole="header" style={styles.heading}>Coach</Text>
         <Text style={styles.muted}>
           Plus reads your calibration numbers and tells you what they mean.
         </Text>
@@ -84,7 +84,7 @@ export function CoachPanel({
   if (authStatus === 'guest') {
     return (
       <View style={styles.wrap} testID="coach-needs-account">
-        <Text style={styles.heading}>Coach</Text>
+        <Text accessibilityRole="header" style={styles.heading}>Coach</Text>
         <Text style={styles.muted}>
           Sign in to use Coach. It runs on our server, which needs to know it's
           you. Your predictions come with you.
@@ -104,7 +104,7 @@ export function CoachPanel({
   if (!coachEnabled) {
     return (
       <View style={styles.wrap} testID="coach-disabled">
-        <Text style={styles.heading}>Coach</Text>
+        <Text accessibilityRole="header" style={styles.heading}>Coach</Text>
         <Text style={styles.muted}>
           Turn Coach on under You to get AI feedback on your calibration.
         </Text>
@@ -118,7 +118,7 @@ export function CoachPanel({
   return (
     <View style={styles.wrap} testID="coach-panel">
       <View style={styles.header}>
-        <Text style={styles.heading}>Coach</Text>
+        <Text accessibilityRole="header" style={styles.heading}>Coach</Text>
         <Text style={styles.aiLabel}>AI</Text>
       </View>
 
