@@ -152,6 +152,8 @@ is checking it on an iPhone and the decisions.
 | 129 D29: no default category | Done 2026-10-10, unit-tested and web-verified (Save waits for a category; the track record reads every category until one is chosen; Log's and Edit's chips are now shared `CategoryChips` and `DueDateChips`) | — |
 | 130 D30: the first answer leads | Done 2026-10-10, unit-tested and web-verified ("Your first answer: tomorrow evening" above the 0-of-20 bar until anything resolves; the weekday within a week, the date beyond, "is ready" once due) | — |
 | 131 D31: notification switches, any practice time, a backup card, free CSV | Done 2026-10-10, unit-tested and web-verified (Due-day reminders and Sunday digest switches under Notifications; Pick a time with a time picker; Today's back-it-up card after 30 days as a guest, 30 days' quiet on Not now; Export predictions (CSV) free in You, and Plus copy no longer sells it) | Yes (the iOS time picker; the switches cancelling and restoring reminders and the digest) |
+| 132 Stats rebuilt at launch | Done 2026-10-12, unit-tested and web-verified (a launch rebuilt the demo's stored 92, from before D24, as the weighted 88; it had kept the old rating and badges until the next write). `loadForUser` now re-runs the engine whenever stats are stored, and sets no milestone, so a formula change can't celebrate a tier-up on an unrelated answer either | — |
+| 133 An open prediction once it's due | Done 2026-10-12, unit-tested and web-verified at 375 × 667 (edited to today, the details said "It's due Mon, Oct 12. Answering early is fine…" on Oct 12. Due today it reads "Due today" and **Answer it now** opens Resolve at once; a past due day promises no reminder) | — |
 
 Device checks are listed in `docs/HUMAN_VERIFICATION.md` C2. Verification for
 any new UI step: `npm test`, a web-build screenshot at phone width, and an iPhone run
@@ -290,3 +292,12 @@ prediction" capsule beside the "+" is deliberate, and DESIGN_SYSTEM §7.8 now sa
 why), You's grouped list, the paywall and How scoring works at 320pt, and every
 sheet's ×.
 
+### 1.5 A pass over D23–D31 (2026-10-12)
+
+Steps 123–131 landed on one day, so this pass went back over them on the web build
+with the demo data at 375 × 667 and 320pt: the details sheet's Edit, Answer it now
+and the date picker, History's open section, Insights' per-category scores and Brier
+line, You's new switches and practice times, Today's back-it-up card, and Log with no
+category chosen. Two fixes (132, 133), neither a product change. What held: the
+details sheet's three actions and Edit's shared chips; Log's Save waiting quietly for
+a category (deliberate, §7.12); the backup card's 30-day rule; the D31 switches.

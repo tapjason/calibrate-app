@@ -1083,6 +1083,9 @@ sheet with the round ×:
   **Answer now** and **Not yet**. Early answers count like any other.
 - A prediction that's due skips this sheet and opens Resolve, as before: the evening
   run stays two taps.
+- **Once it's due anyway** (step 133): an edit can move the date to today, and a link
+  can open a due one here. Then the date reads "Due today" (a past day promises no
+  reminder) and **Answer it now** opens Resolve without the early line.
 
 ---
 
