@@ -766,6 +766,13 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       chosen while it's open.
 - [ ] **VoiceOver on Log, the Warmup and the paywall:** the chosen category, due
       date, answer and plan are read as selected, and only those.
+- [ ] **VoiceOver headings (step 134):** on Insights, the rotor set to Headings
+      steps through the chart's takeaway, Category badges, Coach or the Plus card,
+      and Trends; the paywall, sign-in and delete screens each start on a heading.
+      On Log a due-date chip reads "Due in a week, selected, 2 of 4".
+- [ ] **Dynamic Type at the largest Accessibility size:** Today, Insights, Log and
+      the details sheet still read top to bottom with nothing clipped (the web
+      build can't scale text, so this was never checked; research/debiasing-2026-10.md §2).
 
 ---
 

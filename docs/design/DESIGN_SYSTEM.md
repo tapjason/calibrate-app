@@ -1103,6 +1103,12 @@ sheet with the round ×:
       its name; decorative pieces carry `aria-hidden` (iOS-only props don't reach
       web); a share card is one `image` whose label says what it shows, tiers in
       words. Steps 41–45, 2026-10-05.
+- [ ] Every section title is a heading (`accessibilityRole="header"`), so the
+      VoiceOver rotor can jump between them; not inside an element that is already
+      one grouped `accessible` view, which would swallow it. A chip row is a named
+      `radiogroup`. Step 134.
+- [ ] A value says so on web too: `adjustableProps` sets `aria-valuenow/min/max/text`
+      beside `accessibilityValue`, which react-native-web drops. Step 134.
 - [ ] A chosen chip, option, tab or toggle says so on web as well as iOS: spread
       `chosenProps(kind, chosen)` instead of writing `accessibilityState`, which
       react-native-web drops (radio and checkbox → `aria-checked`, tab →
