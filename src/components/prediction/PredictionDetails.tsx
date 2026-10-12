@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-nativ
 
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
+import { daysUntilDue } from '@/components/prediction/dueGroups';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon } from '@/components/ui/Icon';
@@ -127,6 +128,12 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
     }
   };
 
+  // An edit can move the due date to today (the picker's earliest day), and a
+  // deep link can open a due one here: then the answer isn't early, so it
+  // goes straight to Resolve, and the date reads "today".
+  const daysLeft = daysUntilDue(prediction, new Date());
+  const due = daysLeft <= 0;
+
   const header = (
     <>
       {/* What you said, first, as on Resolve (DESIGN_SYSTEM §7.10). */}
@@ -142,9 +149,14 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
         {prediction.title}
       </Text>
       <Text style={styles.due} testID="details-due">
-        Due {shortDate(prediction.due_date)}
-        {/* The web build sends no notifications, so it promises none. */}
-        {Platform.OS === 'web' ? '' : remindersOn ? ' · reminder that evening' : ' · reminders off'}
+        Due {daysLeft === 0 ? 'today' : shortDate(prediction.due_date)}
+        {/* The web build sends no notifications, so it promises none; a past
+            due day's reminder has been and gone. */}
+        {Platform.OS === 'web' || daysLeft < 0
+          ? ''
+          : remindersOn
+            ? ' · reminder that evening'
+            : ' · reminders off'}
       </Text>
     </>
   );
@@ -198,7 +210,11 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
       {mode === 'view' && (
         <View style={styles.actions}>
           <Button label="Edit" variant="secondary" onPress={startEditing} testID="details-edit-button" />
-          <TextButton label="Answer it now" onPress={() => setMode('early')} testID="details-answer" />
+          <TextButton
+            label="Answer it now"
+            onPress={() => (due ? onAnswer(prediction.id) : setMode('early'))}
+            testID="details-answer"
+          />
           <TextButton
             label="Delete"
             destructive

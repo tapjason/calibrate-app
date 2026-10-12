@@ -130,6 +130,25 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(onAnswer).toHaveBeenCalledWith('p1');
   });
 
+  it('goes straight to Resolve once it is due, as after an edit to today', async () => {
+    const noonToday = new Date();
+    noonToday.setHours(12, 0, 0, 0);
+    await insertPrediction(open({ due_date: noonToday.toISOString() }));
+    const onAnswer = jest.fn();
+    renderDetails({ onAnswer });
+    await waitFor(() => expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due today/));
+
+    fireEvent.press(screen.getByTestId('details-answer'));
+    expect(screen.queryByTestId('details-early')).toBeNull();
+    expect(onAnswer).toHaveBeenCalledWith('p1');
+  });
+
+  it('promises no reminder for a due day that has passed', async () => {
+    await insertPrediction(open({ due_date: '2020-10-16T12:00:00.000Z' }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due [^·]+$/));
+  });
+
   it('says so when the prediction is no longer open', async () => {
     await insertPrediction(open({ status: 'resolved_yes', resolved_at: '2026-10-09T12:00:00.000Z' }));
     renderDetails();
