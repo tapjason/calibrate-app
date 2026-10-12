@@ -15,7 +15,8 @@ behind §7.3, §7.14 and §7.18; elements, done 2026-10-06 from 18 apps rated 4.
 the rest days in §7.9 and §7.22's daily practice and reminder; day 0 and day 1, done
 2026-10-09, behind §7.5's Day-0 card, §7.10's first answer, §7.12's first due date
 and §7.18; the blind dry runs, done 2026-10-09, behind D23–D31 across §7.1, §7.3–§7.5,
-§7.10–§7.12, §7.14, §7.17, §7.21 and §7.23). The
+§7.10–§7.12, §7.14, §7.17, §7.21 and §7.23; debiasing and accessibility, done
+2026-10-12, behind §7.12's own record (D32) and two items in §8). The
 "before" screens are in [`baseline/`](baseline/) (web-build captures, so fonts and the
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
@@ -649,7 +650,8 @@ filters are its way forward.
   320pt): a range keeps its dash (`holdRanges`, a word joiner either side, applied
   wherever a range is drawn: the chart title and subtitle, Home's takeaway, Resolve's
   range line, and since step 74 How scoring works, Log's track record, the Wrapped
-  card, the counts table, History's range chip and Trends), a price keeps its period
+  card, the counts table, History's range chip and Trends), a count keeps its words
+  ("1 of 3" and "3 times" in Log's own record), a price keeps its period
   ("$29.90 a year"), a date keeps its day ("Tue, Oct 13"), and the streak row keeps
   "Next milestone:" and "30 days" each whole (it may break between them, as it does in
   a run's "All caught up" card at 375pt, never after "Next"). Done where the text is
@@ -787,6 +789,14 @@ the control reads the chosen category.)
   category's band first, then all categories, and nothing below 10 resolved (the
   chart title's threshold). Counts, never advice: it must not say what to pick.
   Free, because this is the core loop.
+- **Its own record** (D32, step 135): when the typed title matches predictions
+  already answered, one `footnote` line in `textSecondary` right under the title
+  field, inside its spacing: "Answered 3 times before: happened 1 of 3." (one:
+  "Answered once before: it happened." or "…it didn't happen."; two: "twice"). The
+  same words once case, spaces, end punctuation and curly quotes are set aside, so
+  "Log it again" always shows it. Outcomes only, never the earlier confidences,
+  which would anchor the new number; skips and open ones don't count. From the
+  first answer, since it's the person's own record, not a score. Free.
 - **Coverage nudge:** a quiet inline card on `surfaceSunken` above the title field. Its
   accept button is secondary; Save is the only primary action on the screen. Keep the
   current copy and the "Not now" cooldown.

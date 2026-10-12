@@ -773,6 +773,10 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
 - [ ] **Dynamic Type at the largest Accessibility size:** Today, Insights, Log and
       the details sheet still read top to bottom with nothing clipped (the web
       build can't scale text, so this was never checked; research/debiasing-2026-10.md §2).
+- [ ] **A prediction's own record (D32, step 135):** on Log, type a title already
+      answered, with the iPhone keyboard (Smart Punctuation turns ' into ’, as in
+      "I’ll"): the line under the field gives its counts. After an answer, "Log it
+      again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
 ---
 

@@ -243,6 +243,18 @@ The confidence starts **empty** and Save waits for a title and a number (decided
 (decided 2026-10-10, D29): a preset Work filed untouched predictions under Work. A
 starter idea or "Log it again" fills it.
 
+**This prediction's own record** (decided and built 2026-10-12, D32): when the typed
+title matches predictions already answered (the same words once case, spaces, end
+punctuation and curly quotes are set aside, so "Log it again" always matches), a line
+under the title says how they came out: "Answered 3 times before: happened 1 of 3."
+Outcomes only, never the earlier confidences, which would anchor the new number; skips
+and open ones don't count. From the first answer on, since it's the person's own
+record and not a score. Free. It sits beside the track record under the confidence
+("Your 60–80% calls in finance: 7 of 12 happened"). Linking past experience to the
+prediction is the one prompt with strong evidence against optimism about one's own
+plans (`docs/design/research/debiasing-2026-10.md` §1); premortems and "list reasons
+you're wrong" are recorded there as not worth building.
+
 An optional AI refine button is specced but **deferred** (see AI § A). Nothing
 about the save flow depends on it — which is why cutting it cost nothing.
 
