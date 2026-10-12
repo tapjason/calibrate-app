@@ -153,6 +153,85 @@ function deriveCategoryCalibration(
   return out;
 }
 
+type DerivedStats = Pick<
+  StatsState,
+  | 'categoryStats'
+  | 'nextBadges'
+  | 'calibration'
+  | 'categoryCalibration'
+  | 'trends'
+  | 'ratingRange'
+  | 'brier'
+  | 'coverageGap'
+> & { userStat: UserStat };
+
+/**
+ * Re-run the engine over all of a user's predictions and persist the result.
+ * Full, not incremental: simpler and bug-free, and N is small. Shared by
+ * recomputeForUser (after a write) and loadForUser (at launch).
+ */
+async function rebuildStats(userId: string): Promise<DerivedStats> {
+  const [pending, resolved] = await Promise.all([
+    listPendingPredictions(userId),
+    listResolvedPredictions(userId),
+  ]);
+  const all = [...pending, ...resolved];
+
+  // ---- User-level ----
+  const userCalc = computeCalibration(resolved);
+  const totalResolved = resolved.filter(isYesNo).length;
+  const userStat: UserStat = {
+    user_id: userId,
+    calibration_rating: userCalc.rating,
+    total_predictions: all.length,
+    total_resolved: totalResolved,
+    // Every prediction, open ones too: logging counts toward a day (D2).
+    current_streak: computeStreak(all, { now: new Date() }),
+    rating_is_provisional: isRatingProvisional(totalResolved),
+  };
+  await upsertUserStat(userStat);
+
+  // ---- Per-category ----
+  // Iterate ALL categories: empty ones get their stale row deleted so the
+  // next loadForUser doesn't resurrect a ghost category from disk.
+  const categoryStats: CategoryStat[] = [];
+  const categoryCalibration: Partial<Record<Category, CalibrationResult>> = {};
+  for (const category of CATEGORIES) {
+    const subsetAll = all.filter((p) => p.category === category);
+    if (subsetAll.length === 0) {
+      await deleteCategoryStat(userId, category);
+      continue;
+    }
+    const subsetResolved = resolved.filter((p) => p.category === category);
+    const calc = computeCalibration(subsetResolved);
+    if (subsetResolved.length > 0) categoryCalibration[category] = calc;
+    const resolvedCount = subsetResolved.filter(isYesNo).length;
+    const stat: CategoryStat = {
+      user_id: userId,
+      category,
+      predictions_made: subsetAll.length,
+      predictions_resolved: resolvedCount,
+      calibration_score: calc.rating,
+      score_is_provisional: isScoreProvisional(resolvedCount),
+      badge_level: evaluateBadge(resolvedCount, calc.rating),
+    };
+    await upsertCategoryStat(stat);
+    categoryStats.push(stat);
+  }
+
+  return {
+    userStat,
+    categoryStats,
+    nextBadges: deriveNextBadges(categoryStats),
+    calibration: userCalc,
+    categoryCalibration,
+    trends: buildTrendSummary(resolved),
+    ratingRange: computeRatingRange(resolved),
+    brier: computeBrier(resolved),
+    coverageGap: computeCoverageGap(all),
+  };
+}
+
 export const useStatsStore = create<StatsState>((set, get) => ({
   userStat: null,
   categoryStats: [],
@@ -178,27 +257,24 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   },
 
   loadForUser: async (userId) => {
-    // Persisted scalars + an on-demand bucket recompute. The buckets aren't
-    // stored (cheap to rebuild, no schema cost), so a fresh load fetches
-    // the resolved list too.
-    // Pending comes along for the coverage gap and the streak: both count what
-    // the user LOGS, so a prediction has to count the day it is made.
-    const [userStat, categoryStats, resolved, pending] = await Promise.all([
-      getUserStat(userId),
+    // Stored stats are rebuilt, not trusted: they were computed by whatever
+    // engine ran at the last write, and a formula change (D24 weighted the
+    // rating by count) would otherwise show the old number, and the old
+    // badges, until the next answer. A rebuild is cheap (N is small) and sets
+    // no milestone: reopening the app is not an achievement.
+    if (await getUserStat(userId)) {
+      set(await rebuildStats(userId));
+      return;
+    }
+    // Nothing computed yet (no write since install or erase): show what the
+    // predictions give without writing a row for a user who has none.
+    const [categoryStats, resolved, pending] = await Promise.all([
       listCategoryStats(userId),
       listResolvedPredictions(userId),
       listPendingPredictions(userId),
     ]);
     set({
-      // The stored streak was computed at the last resolution. Re-derive it
-      // against today, so one that ended days ago reads 0 on the next launch
-      // rather than waiting for a resolution to notice.
-      userStat: userStat
-        ? {
-            ...userStat,
-            current_streak: computeStreak([...pending, ...resolved], { now: new Date() }),
-          }
-        : null,
+      userStat: null,
       categoryStats,
       nextBadges: deriveNextBadges(categoryStats),
       calibration: computeCalibration(resolved),
@@ -211,76 +287,16 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   },
 
   recomputeForUser: async (userId) => {
-    // Full recompute: simpler and bug-free vs incremental. N is small.
-    const [pending, resolved] = await Promise.all([
-      listPendingPredictions(userId),
-      listResolvedPredictions(userId),
-    ]);
-    const all = [...pending, ...resolved];
-
-    // ---- User-level ----
-    const userCalc = computeCalibration(resolved);
-    const totalResolved = resolved.filter(isYesNo).length;
-    const userStat: UserStat = {
-      user_id: userId,
-      calibration_rating: userCalc.rating,
-      total_predictions: all.length,
-      total_resolved: totalResolved,
-      // Every prediction, open ones too: logging counts toward a day (D2).
-      current_streak: computeStreak(all, { now: new Date() }),
-      rating_is_provisional: isRatingProvisional(totalResolved),
-    };
-    await upsertUserStat(userStat);
-
-    // ---- Per-category ----
-    // Iterate ALL categories: empty ones get their stale row deleted so the
-    // next loadForUser doesn't resurrect a ghost category from disk.
-    const categoryStats: CategoryStat[] = [];
-    const categoryCalibration: Partial<Record<Category, CalibrationResult>> = {};
-    for (const category of CATEGORIES) {
-      const subsetAll = all.filter((p) => p.category === category);
-      if (subsetAll.length === 0) {
-        await deleteCategoryStat(userId, category);
-        continue;
-      }
-      const subsetResolved = resolved.filter((p) => p.category === category);
-      const calc = computeCalibration(subsetResolved);
-      if (subsetResolved.length > 0) categoryCalibration[category] = calc;
-      const resolvedCount = subsetResolved.filter(isYesNo).length;
-      const stat: CategoryStat = {
-        user_id: userId,
-        category,
-        predictions_made: subsetAll.length,
-        predictions_resolved: resolvedCount,
-        calibration_score: calc.rating,
-        score_is_provisional: isScoreProvisional(resolvedCount),
-        badge_level: evaluateBadge(resolvedCount, calc.rating),
-      };
-      await upsertCategoryStat(stat);
-      categoryStats.push(stat);
-    }
-
     const prev = get();
+    const next = await rebuildStats(userId);
     const milestone = detectMilestone(
       prev.userStat,
       prev.categoryStats,
-      userStat,
-      categoryStats,
+      next.userStat,
+      next.categoryStats,
     );
-
-    set({
-      userStat,
-      categoryStats,
-      nextBadges: deriveNextBadges(categoryStats),
-      calibration: userCalc,
-      categoryCalibration,
-      trends: buildTrendSummary(resolved),
-      ratingRange: computeRatingRange(resolved),
-      brier: computeBrier(resolved),
-      coverageGap: computeCoverageGap(all),
-      // Keep an uncelebrated milestone rather than overwrite it with null.
-      milestone: milestone ?? prev.milestone,
-    });
+    // Keep an uncelebrated milestone rather than overwrite it with null.
+    set({ ...next, milestone: milestone ?? prev.milestone });
   },
 }));
 

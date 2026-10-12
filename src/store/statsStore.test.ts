@@ -1,5 +1,6 @@
 import { setDbForTests } from '@/db/client';
 import { insertPrediction, resolvePrediction } from '@/db/predictions';
+import { getUserStat, listCategoryStats, upsertCategoryStat, upsertUserStat } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 import type { Prediction } from '@/types';
 
@@ -127,7 +128,7 @@ describe('statsStore.recomputeForUser', () => {
     expect(work?.score_is_provisional).toBe(false);
   });
 
-  it('loadForUser reads persisted stats without recomputing', async () => {
+  it('loadForUser restores the stats after a launch', async () => {
     // First recompute to populate, then mutate the in-memory store and reload.
     await insertPrediction(p({ id: 'x', category: 'work', confidence: 80 }));
     await resolvePrediction('x', 'resolved_yes');
@@ -142,6 +143,28 @@ describe('statsStore.recomputeForUser', () => {
 
     expect(useStatsStore.getState().userStat).not.toBeNull();
     expect(useStatsStore.getState().categoryStats).toHaveLength(1);
+  });
+
+  // Stored stats come from whatever engine ran at the last write. D24 changed
+  // the formula, and a launch kept showing the old rating and badges until
+  // the next answer.
+  it('loadForUser rebuilds stats an older engine stored, without a milestone', async () => {
+    await insertPrediction(p({ id: 'x', category: 'health', confidence: 80 }));
+    await resolvePrediction('x', 'resolved_yes');
+    await useStatsStore.getState().recomputeForUser(USER);
+    const fresh = (await getUserStat(USER))!;
+    await upsertUserStat({ ...fresh, calibration_rating: 41 });
+    const [cat] = await listCategoryStats(USER);
+    await upsertCategoryStat({ ...cat, calibration_score: 41, badge_level: 'sharp' });
+
+    useStatsStore.setState({ userStat: null, categoryStats: [], milestone: null });
+    await useStatsStore.getState().loadForUser(USER);
+
+    const state = useStatsStore.getState();
+    expect(state.userStat?.calibration_rating).toBe(fresh.calibration_rating);
+    expect(state.categoryStats[0]).toMatchObject({ badge_level: 'guesser' });
+    expect(state.milestone).toBeNull();
+    expect((await getUserStat(USER))!.calibration_rating).toBe(fresh.calibration_rating);
   });
 
   // Stats lists the badges in this order. A launch read them alphabetically
