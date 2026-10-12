@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import {
   StyleSheet,
   Text,
@@ -22,6 +23,11 @@ interface TextFieldProps {
   keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
   autoComplete?: TextInputProps['autoComplete'];
+  /**
+   * A line under the input, inside the field's spacing so it reads as the
+   * field's own (Log's past outcomes, roadmap D32).
+   */
+  children?: ReactNode;
 }
 
 export function TextField({
@@ -37,6 +43,7 @@ export function TextField({
   keyboardType,
   autoCapitalize,
   autoComplete,
+  children,
 }: TextFieldProps) {
   return (
     <View style={styles.wrap}>
@@ -57,6 +64,7 @@ export function TextField({
         autoCorrect={secureTextEntry || keyboardType === 'email-address' ? false : undefined}
         style={[styles.input, multiline && styles.multiline]}
       />
+      {children}
     </View>
   );
 }

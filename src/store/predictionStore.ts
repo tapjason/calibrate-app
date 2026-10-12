@@ -10,6 +10,7 @@ import { track } from '@/analytics/track';
 
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
+import { pastOutcomes } from '@/engine/pastOutcomes';
 import { checkpointReached, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
@@ -26,6 +27,7 @@ import {
 import type {
   AnswerTally,
   Category,
+  PastOutcomes,
   Prediction,
   PredictionEdit,
   ResolvedStatus,
@@ -299,3 +301,16 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     return true;
   },
 }));
+
+/**
+ * A prediction's own record on Log (roadmap D32): how the answered ones with
+ * the same title came out, or null before any has been. A pure function of the
+ * store's resolved list, called through here so the Log form never imports the
+ * engine (BUILD_PLAN invariant).
+ */
+export function pastOutcomesFor(
+  resolved: readonly Prediction[],
+  title: string,
+): PastOutcomes | null {
+  return pastOutcomes(resolved, title);
+}

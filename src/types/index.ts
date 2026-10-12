@@ -83,6 +83,19 @@ export interface AnswerTally {
   skipped: number;
 }
 
+/**
+ * How the predictions already answered under one title came out (roadmap
+ * D32): the Log form's line under the title. Outcomes only, by design: no
+ * confidence travels with them, so the old number can't reach the screen and
+ * anchor the new one.
+ */
+export interface PastOutcomes {
+  /** Answered yes or no; skips and open ones aren't counted. */
+  answered: number;
+  /** Of those, how many happened. */
+  happened: number;
+}
+
 /** Where today stands for the streak, as the engine reports it. */
 export interface StreakStatus {
   /** Consecutive counted days, through today if it counts, else yesterday. */

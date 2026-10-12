@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
@@ -7,6 +7,7 @@ import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
 import { type LogAgainDraft } from '@/components/prediction/logAgain';
+import { pastOutcomesLine } from '@/components/prediction/pastOutcomesLine';
 import { StarterIdeas } from '@/components/prediction/StarterIdeas';
 import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
@@ -17,7 +18,7 @@ import { TextField } from '@/components/ui/TextField';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
-import { usePredictionStore } from '@/store/predictionStore';
+import { pastOutcomesFor, usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   coverageNudgeNow,
@@ -111,6 +112,15 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
           bucketFor(confidence),
         );
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+
+  // This prediction's own record (roadmap D32): when the title matches ones
+  // already answered, how they came out. Outcomes only; the old confidence
+  // would anchor the new one. The matching is the engine's, through the store.
+  const resolved = usePredictionStore((s) => s.resolved);
+  const past = useMemo(
+    () => pastOutcomesLine(pastOutcomesFor(resolved, title)),
+    [resolved, title],
+  );
 
   useEffect(() => {
     if (nudge || nudgeDismissed) return;
@@ -219,7 +229,13 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
           placeholder="e.g. I'll finish the draft"
           maxLength={TITLE_MAX_LENGTH}
           testID="title-field"
-        />
+        >
+          {past !== null && (
+            <Text style={styles.record} testID="past-outcomes">
+              {past}
+            </Text>
+          )}
+        </TextField>
 
         {firstEver && title.trim().length === 0 && (
           <StarterIdeas
@@ -332,7 +348,8 @@ const styles = StyleSheet.create({
   },
   block: { marginBottom: space.xl },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginBottom: space.sm },
-  // Counts in plain ink: information, not a verdict or a nudge.
+  // Counts in plain ink: information, not a verdict or a nudge. The track
+  // record under the slider and the past outcomes under the title alike.
   record: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },

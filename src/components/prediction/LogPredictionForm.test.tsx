@@ -11,6 +11,7 @@ import {
 } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { CoverageGap } from '@/engine/coverageNudge';
+import type { Prediction } from '@/types';
 
 import { LogPredictionForm } from './LogPredictionForm';
 
@@ -510,6 +511,113 @@ describe('LogPredictionForm — Log it again (roadmap step 22)', () => {
     expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
       'not set',
     );
+  });
+});
+
+describe('LogPredictionForm — its own record (roadmap D32)', () => {
+  const NBSP = String.fromCharCode(0xa0);
+  /** The line as heard: its no-break spaces read as spaces. */
+  const pastLine = () =>
+    String(screen.getByTestId('past-outcomes').props.children).split(NBSP).join(' ');
+
+  const answered = (
+    id: string,
+    title: string,
+    status: Prediction['status'],
+    confidence: number,
+  ): Prediction => ({
+    id,
+    user_id: 'u1',
+    title,
+    category: 'health',
+    confidence,
+    created_at: '2026-09-28T10:00:00.000Z',
+    due_date: '2026-10-05T12:00:00.000Z',
+    status,
+    resolved_at: '2026-10-05T19:00:00.000Z',
+    reflection: null,
+    integrity_bonus: false,
+  });
+
+  beforeEach(() => {
+    usePredictionStore.setState({
+      pending: [],
+      resolved: [
+        answered('a1', 'Swim twice this week', 'resolved_yes', 90),
+        answered('a2', 'Swim twice this week', 'resolved_no', 85),
+        answered('a3', 'swim twice this week.', 'resolved_no', 80),
+        answered('a4', 'Swim twice this week', 'skipped', 75),
+        answered('a5', 'Run three times this week', 'resolved_yes', 70),
+      ],
+    });
+  });
+
+  it('gives the outcomes once the typed title matches answered ones', () => {
+    render(<LogPredictionForm />);
+    expect(screen.queryByTestId('past-outcomes')).toBeNull();
+
+    // Only the same words: a title on its way there says nothing yet.
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Swim twice');
+    expect(screen.queryByTestId('past-outcomes')).toBeNull();
+
+    // Case, spaces and end punctuation aside; the skip doesn't count.
+    fireEvent.changeText(screen.getByTestId('title-field'), '  SWIM twice  this week! ');
+    expect(pastLine()).toBe('Answered 3 times before: happened 1 of 3.');
+
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Swim twice this month');
+    expect(screen.queryByTestId('past-outcomes')).toBeNull();
+  });
+
+  // The earlier numbers would anchor the new one (step 22's reason too).
+  it('never shows an earlier confidence or sets one', () => {
+    render(<LogPredictionForm />);
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Swim twice this week');
+    expect(pastLine()).not.toMatch(/%|90|85|80/);
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
+      'not set',
+    );
+  });
+
+  it('is there from the start when a prediction is logged again', () => {
+    render(
+      <LogPredictionForm
+        again={{
+          sourceId: 'a5',
+          title: 'Run three times this week',
+          category: 'health',
+          dueIso: '2026-10-19T17:00:00.000Z',
+        }}
+      />,
+    );
+    expect(pastLine()).toBe('Answered once before: it happened.');
+  });
+
+  // Through the real store: an answer while Log is open moves the line.
+  it('follows the answered list', async () => {
+    usePredictionStore.setState({ pending: [], resolved: [] });
+    const store = usePredictionStore.getState();
+    const first = await store.create({
+      title: 'Call Grandma this week',
+      category: 'personal',
+      confidence: 70,
+      due_date: '2026-10-05T12:00:00.000Z',
+    });
+    const second = await store.create({
+      title: 'Call Grandma this week',
+      category: 'personal',
+      confidence: 70,
+      due_date: '2026-10-06T12:00:00.000Z',
+    });
+    await store.resolve(first.id, 'resolved_no');
+
+    render(<LogPredictionForm />);
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Call Grandma this week');
+    expect(pastLine()).toBe("Answered once before: it didn't happen.");
+
+    await act(async () => {
+      await usePredictionStore.getState().resolve(second.id, 'resolved_yes');
+    });
+    expect(pastLine()).toBe('Answered twice before: happened 1 of 2.');
   });
 });
 
