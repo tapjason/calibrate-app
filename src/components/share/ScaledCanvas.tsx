@@ -73,12 +73,22 @@ export function ScaledCanvas({ height, radius, children, testID }: ScaledCanvasP
       >
         {children}
       </View>
-      {/* Outside the card, so a capture of its ref never includes it. */}
+      {/* Outside the card, so a capture of its ref never includes it. Sized
+          to the scaled card, not to this wrapper: a widening the scale
+          ignores (a scrollbar going, nextCanvasWidth) would leave a
+          wrapper-sized outline standing past the card's edge. */}
       {radius !== undefined && (
         <View
           pointerEvents="none"
           aria-hidden
-          style={[styles.outline, { borderRadius: radius * scale }]}
+          style={[
+            styles.outline,
+            {
+              borderRadius: radius * scale,
+              height: canvasHeight * scale,
+              width: CARD_CANVAS_WIDTH * scale,
+            },
+          ]}
           testID={testID ? `${testID}-outline` : undefined}
         />
       )}
@@ -90,8 +100,10 @@ const styles = StyleSheet.create({
   unmeasured: { opacity: 0 },
   canvas: { transformOrigin: 'top left', width: CARD_CANVAS_WIDTH },
   outline: {
-    ...StyleSheet.absoluteFillObject,
     borderColor: colors.hairline,
+    left: 0,
+    position: 'absolute',
+    top: 0,
     borderWidth: 1,
   },
 });

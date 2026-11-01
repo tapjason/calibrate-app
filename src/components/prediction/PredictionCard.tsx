@@ -42,7 +42,7 @@ function formatDue(iso: string): string {
       day: 'numeric',
       month: 'short',
     })
-    .replace(/ /g, ' ');
+    .replace(/ /g, '\u00A0');
 }
 
 /**

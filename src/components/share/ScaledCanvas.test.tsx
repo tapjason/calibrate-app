@@ -88,6 +88,22 @@ describe('ScaledCanvas outline', () => {
     expect(outline.position).toBe('absolute');
   });
 
+  it('stays the size of the card when a scrollbar-sized widening is ignored', () => {
+    render(
+      <ScaledCanvas height={480} radius={24} testID="p">
+        <Text>card</Text>
+      </ScaledCanvas>,
+    );
+    fireEvent(screen.getByTestId('p'), 'layout', layout(343, 0));
+    // A scrollbar goes: 15pt wider, which the scale ignores (nextCanvasWidth).
+    fireEvent(screen.getByTestId('p'), 'layout', layout(358, 0));
+    const outline = StyleSheet.flatten(
+      screen.getByTestId('p-outline', { includeHiddenElements: true }).props.style,
+    );
+    expect(outline.width).toBeCloseTo(343);
+    expect(outline.height).toBeCloseTo(480 * (343 / CARD_CANVAS_WIDTH));
+  });
+
   it('sits outside the card, so a capture of the card never holds it', () => {
     render(
       <ScaledCanvas radius={24} testID="p">
