@@ -59,7 +59,15 @@ const styles = StyleSheet.create({
   },
   title: { ...type.headline, color: colors.textPrimary },
   body: { ...type.subhead, color: colors.textSecondary },
-  actions: { alignItems: 'center', flexDirection: 'row', gap: space.lg, marginTop: space.xs },
+  // Wraps at 320pt, where "Turn on reminders" and "Not now" overran the card.
+  actions: {
+    alignItems: 'center',
+    columnGap: space.lg,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: space.xs,
+    rowGap: space.xs,
+  },
   notNow: { paddingVertical: space.sm },
   notNowText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
 });

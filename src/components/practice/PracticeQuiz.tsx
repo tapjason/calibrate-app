@@ -112,7 +112,9 @@ const styles = StyleSheet.create({
   segments: { flexDirection: 'row', gap: space.xs },
   segment: { backgroundColor: colors.hairline, borderRadius: 999, flex: 1, height: 6 },
   segmentDone: { backgroundColor: colors.action },
-  segmentCurrent: { backgroundColor: colors.emphasis },
+  // controlBorder (≥ 3:1 on the canvas), between the ink of the answered steps
+  // and the hairline of those to come: emphasis was too close to hairline (D33).
+  segmentCurrent: { backgroundColor: colors.controlBorder },
   progress: { ...type.footnote, color: colors.textSecondary, fontWeight: '600', marginTop: -space.sm },
   prompt: { ...type.title2, color: colors.textPrimary },
 });

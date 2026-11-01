@@ -6,8 +6,18 @@
 // tests keep the plain string.
 
 const JOIN = '\u2060';
+const NBSP = '\u00A0';
 
 /** "80–100%" with the dash held to both numbers. */
 export function holdRanges(text: string): string {
   return text.replace(/(\d)–(?=\d)/g, `$1${JOIN}–${JOIN}`);
+}
+
+/**
+ * "3 more resolved to reach Tracker" with its target held together, so at
+ * 320pt the line breaks before "to" and never strands "Tracker" alone
+ * (roadmap D33, when "→ Tracker" became "to reach Tracker").
+ */
+export function holdTarget(text: string): string {
+  return text.replace(/ to reach (\S+)$/, ` to${NBSP}reach${NBSP}$1`);
 }

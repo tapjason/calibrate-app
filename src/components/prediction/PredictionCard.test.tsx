@@ -128,6 +128,6 @@ describe('PredictionCard — as a row in a group', () => {
     render(<PredictionCard prediction={prediction} />);
     // Hidden from screen readers, which hear it in the row's own label.
     expect(screen.getByText('70%', { includeHiddenElements: true })).toBeTruthy();
-    expect(screen.getByTestId('prediction-card-scale', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('confidence-scale-p1', { includeHiddenElements: true })).toBeTruthy();
   });
 });

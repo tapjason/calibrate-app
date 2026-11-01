@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CategoryIcon } from '@/components/ui/Icon';
+import { holdTarget } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import { colors, type } from '@/constants/theme';
@@ -52,7 +53,7 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
           </Text>
         )}
         <Text style={styles.hint} testID={`category-${stat.category}-hint`}>
-          {hint}
+          {holdTarget(hint)}
         </Text>
       </View>
       <View

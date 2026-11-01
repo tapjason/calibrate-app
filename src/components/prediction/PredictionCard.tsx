@@ -143,7 +143,7 @@ export function PredictionCard({
         importantForAccessibility="no-hide-descendants"
       >
         <Text style={styles.percent}>{prediction.confidence}%</Text>
-        <View style={styles.scale} testID="prediction-card-scale">
+        <View style={styles.scale} testID={`confidence-scale-${prediction.id}`}>
           <View style={styles.scaleTrack} />
           <View style={[styles.scaleMark, { left: `${confidence}%` }]} />
         </View>

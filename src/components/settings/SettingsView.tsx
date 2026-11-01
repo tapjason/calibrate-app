@@ -1,6 +1,7 @@
 import { openBrowserAsync } from 'expo-web-browser';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { AppState, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
@@ -185,13 +186,15 @@ function Group({ children, footer }: { children: ReactNode; footer?: string }) {
  * A row that opens something: the whole row is the target, ending in its
  * current value (if any) and a chevron (HIG Lists: "use a disclosure
  * indicator"). A row that acts in place (Sign out, Erase) leaves the chevron
- * off and says what it does in its label's colour.
+ * off and says what it does in its label's weight and colour; one whose verb
+ * alone doesn't say it acts can end in a symbol for what it does (`icon`).
  */
 function NavRow({
   label,
   value,
   onPress,
   chevron = true,
+  icon,
   tone = 'default',
   disabled,
   testID,
@@ -200,6 +203,8 @@ function NavRow({
   value?: string;
   onPress: () => void;
   chevron?: boolean;
+  /** A trailing symbol for a row that acts in place (export), in the label's ink. */
+  icon?: { sf: SFSymbol; ion: ComponentProps<typeof Icon>['fallback'] };
   tone?: 'default' | 'action' | 'destructive';
   disabled?: boolean;
   testID: string;
@@ -234,6 +239,16 @@ function NavRow({
           <Icon sf="chevron.right" fallback="chevron-forward" size={16} color={colors.textTertiary} />
         </View>
       )}
+      {icon && (
+        <View
+          aria-hidden
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          testID={`${testID}-icon`}
+        >
+          <Icon sf={icon.sf} fallback={icon.ion} size={18} color={colors.actionText} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -241,7 +256,8 @@ function NavRow({
 /**
  * Your data (roadmap D31): every prediction as a CSV, free. It was a Plus
  * feature, and your own record shouldn't be paid for. A row that acts in
- * place: no chevron, the label in brand (§7.21).
+ * place: no chevron, the label in semibold ink, and the export symbol at the
+ * end, since ink alone no longer marks it as tappable (roadmap D33).
  */
 function DataGroup() {
   const { exporting, message, run } = useCsvExport();
@@ -251,6 +267,7 @@ function DataGroup() {
         label={exporting ? 'Preparing…' : 'Export predictions (CSV)'}
         onPress={() => void run()}
         chevron={false}
+        icon={{ sf: 'square.and.arrow.up', ion: 'share-outline' }}
         tone="action"
         disabled={exporting}
         testID="settings-export"
