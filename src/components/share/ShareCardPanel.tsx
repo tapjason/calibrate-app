@@ -176,7 +176,7 @@ export function ShareCardPanel({
                 style={[styles.segment, format === f && styles.segmentOn]}
               >
                 <Text style={[styles.segmentText, format === f && styles.segmentTextOn]}>
-                  {f === 'post' ? 'Post · 3:4' : 'Story · 9:16'}
+                  {f === 'post' ? 'Post (3:4)' : 'Story (9:16)'}
                 </Text>
               </Pressable>
             ))}

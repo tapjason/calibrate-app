@@ -115,7 +115,7 @@ export function shareSubline(card: ShareCard): string {
     const remaining = Math.max(0, MIN_N_OVERALL - card.total_resolved);
     return `${remaining} more ${remaining === 1 ? 'resolution' : 'resolutions'} until my calibration unlocks`;
   }
-  return `Calibration ${card.rating}/100 · ${card.total_resolved} predictions resolved`;
+  return `Calibration ${card.rating}/100 from ${card.total_resolved} resolved predictions`;
 }
 
 /** One square per confidence band, Wordle-style. */

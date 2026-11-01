@@ -155,8 +155,8 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
         {Platform.OS === 'web' || daysLeft < 0
           ? ''
           : remindersOn
-            ? ' · reminder that evening'
-            : ' · reminders off'}
+            ? ', with a reminder that evening'
+            : ', reminders off'}
       </Text>
     </>
   );

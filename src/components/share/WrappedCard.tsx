@@ -171,8 +171,8 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           style={[styles.line, { color: theme.muted }]}
           testID="wrapped-boldest-hit"
         >
-          Boldest call that landed · {summary.boldest_hit.confidence}%
-          {showTitles ? ` · ${summary.boldest_hit.title}` : ''}
+          Boldest call that landed: {summary.boldest_hit.confidence}%
+          {showTitles ? `, ${summary.boldest_hit.title}` : ''}
         </Text>
       )}
       {summary.biggest_miss && (
@@ -181,8 +181,8 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           style={[styles.line, { color: theme.muted }]}
           testID="wrapped-biggest-miss"
         >
-          Surest thing that didn&apos;t · {summary.biggest_miss.confidence}%
-          {showTitles ? ` · ${summary.biggest_miss.title}` : ''}
+          Surest thing that didn&apos;t: {summary.biggest_miss.confidence}%
+          {showTitles ? `, ${summary.biggest_miss.title}` : ''}
         </Text>
       )}
 

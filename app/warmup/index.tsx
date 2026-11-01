@@ -57,7 +57,7 @@ export default function WarmupScreen() {
           // Next below the fold on a 667pt phone.
           intro={
             <View style={styles.intro}>
-              <Text style={styles.brand}>Calibrate · 60-second warm-up</Text>
+              <Text style={styles.brand}>A 60-second warm-up</Text>
               <Text style={styles.title} accessibilityRole="header">
                 How well do you know what you know?
               </Text>

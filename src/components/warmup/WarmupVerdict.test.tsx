@@ -100,9 +100,9 @@ describe('WarmupVerdictScreen', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
 
-    expect(screen.getByTestId('warmup-key-q1-answer')).toHaveTextContent('A Boeing 737 · You got it');
+    expect(screen.getByTestId('warmup-key-q1-answer')).toHaveTextContent('A Boeing 737. You got it');
     expect(screen.getByTestId('warmup-key-q2-answer')).toHaveTextContent(
-      'Pacific · You picked \u201CAtlantic\u201D',
+      'Pacific. You picked \u201CAtlantic\u201D',
     );
     expect(screen.getByTestId('warmup-key-q2').props.accessibilityLabel).toBe(
       'Which is deeper? Pacific. You picked \u201CAtlantic\u201D, 90% sure. The Mariana Trench is in the Pacific.',

@@ -50,7 +50,7 @@ export function UnlockProgress({
     onTheWay > 0 ? `${onTheWay} on ${onTheWay === 1 ? 'its' : 'their'} way` : null,
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join(', ');
 
   return (
     <View

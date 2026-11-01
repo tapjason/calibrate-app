@@ -137,7 +137,7 @@ describe('TrendsPanel — Plus', () => {
     render(<TrendsPanel />);
 
     expect(screen.getByTestId('trend-correction-finance-80')).toHaveTextContent(
-      holdRanges('Finance at 80–100%47% · 8 of 17'),
+      holdRanges('Finance at 80–100%47%, 8 of 17'),
     );
     // The worst band leads, as a sentence.
     expect(screen.getByTestId('trends-corrections-lead')).toHaveTextContent(
@@ -176,10 +176,10 @@ describe('TrendsPanel — Plus', () => {
     render(<TrendsPanel />);
 
     expect(screen.getByTestId('trend-horizon-next_day')).toHaveTextContent(
-      /^Next day or sooner\d+ · calibrated$/,
+      /^Next day or sooner\d+, calibrated$/,
     );
     expect(screen.getByTestId('trend-horizon-longer')).toHaveTextContent(
-      'Further out3 resolved · too few to score',
+      'Further out3 resolved, too few to score',
     );
     expect(screen.queryByTestId('trend-horizon-week')).toBeNull();
   });

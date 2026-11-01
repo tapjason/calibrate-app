@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { chosenProps } from '@/components/ui/chosen';
+import { Icon } from '@/components/ui/Icon';
 import { CARD_THEMES, resolveTheme } from '@/constants/cardThemes';
 import { colors, type } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -58,12 +59,11 @@ export function ThemePicker({ onUpgrade }: { onUpgrade?: () => void } = {}) {
               {locked && (
                 // The theme's own foreground, so the mark reads on light
                 // swatches (Paper) as well as dark ones.
-                <Text
-                  style={[styles.lock, { color: theme.foreground }]}
-                  testID={`theme-lock-${theme.id}`}
-                >
-                  ✦
-                </Text>
+                // A plain lock, not a sparkle (roadmap D33): it says what it
+                // means, where ✦ read as the stock mark for "AI".
+                <View style={styles.lock} testID={`theme-lock-${theme.id}`}>
+                  <Icon sf="lock.fill" fallback="lock-closed" size={11} color={theme.foreground} />
+                </View>
               )}
             </Pressable>
           );
@@ -72,7 +72,7 @@ export function ThemePicker({ onUpgrade }: { onUpgrade?: () => void } = {}) {
       <Text style={styles.hint}>
         {isPlus
           ? active.name
-          : `${active.name} · ✦ themes come with Plus. Every card exports the same either way.`}
+          : `${active.name}. Themes with a lock come with Plus. Every card exports the same either way.`}
       </Text>
     </View>
   );
@@ -96,7 +96,6 @@ const styles = StyleSheet.create({
   selected: { borderColor: colors.action },
   dot: { borderRadius: 5, height: 10, width: 10 },
   lock: {
-    fontSize: 11, // never below 11pt (DESIGN_SYSTEM §0 rule 7)
     position: 'absolute',
     right: 4,
     top: 3,

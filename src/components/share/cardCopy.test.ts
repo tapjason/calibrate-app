@@ -134,7 +134,7 @@ describe('shareSubline', () => {
   it('prints the rating once it has settled', () => {
     const card = buildShareCard(userStat(), [categoryStat()])!;
     expect(shareSubline(card)).toBe(
-      'Calibration 88/100 · 55 predictions resolved',
+      'Calibration 88/100 from 55 resolved predictions',
     );
   });
 
@@ -269,7 +269,7 @@ describe('identityCardSummary', () => {
     // The lines name gated tiers only (D27); the chips, read in full, show all.
     expect(identityCardSummary(card)).toBe(
       'Share card. Sharp in health. ' +
-        'Calibration 88/100 · 55 predictions resolved. ' +
+        'Calibration 88/100 from 55 resolved predictions. ' +
         'By category: Sharp in health, Guesser in finance.',
     );
   });

@@ -33,7 +33,7 @@ describe('CategoryBadge', () => {
     const view = render(
       <CategoryBadge stat={stat({ predictions_resolved: 8 })} next={next} />,
     );
-    expect(view.getByText('12 more resolved → Tracker')).toBeTruthy();
+    expect(view.getByText('12 more resolved to reach Tracker')).toBeTruthy();
   });
 
   it('shows the score target when the next badge gates on score', () => {
@@ -48,7 +48,7 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('Score above 70 → Forecaster')).toBeTruthy();
+    expect(view.getByText('Score above 70 to reach Forecaster')).toBeTruthy();
   });
 
   // Roadmap step 47: a Forecaster at 30 resolved with a score of 80 needs
@@ -66,7 +66,7 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('20 more resolved and a score above 85 → Sharp')).toBeTruthy();
+    expect(view.getByText('20 more resolved and a score above 85 to reach Sharp')).toBeTruthy();
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
       'Health: Forecaster, score 80 from 30 resolved. 20 more resolved and a score above 85 to reach Sharp.',
     );
@@ -80,7 +80,7 @@ describe('CategoryBadge', () => {
         next={{ badge: 'oracle', needResolved: 100, needScore: 90 }}
       />,
     );
-    expect(view.getByTestId('category-health-score')).toHaveTextContent('Score 87 · 52 resolved');
+    expect(view.getByTestId('category-health-score')).toHaveTextContent('Score 87, 52 resolved');
   });
 
   it('shows no score while it is provisional', () => {
@@ -102,7 +102,7 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('20 more resolved → Sharp')).toBeTruthy();
+    expect(view.getByText('20 more resolved to reach Sharp')).toBeTruthy();
   });
 
   it('celebrates when there is no next badge (top of the ladder)', () => {
@@ -112,7 +112,7 @@ describe('CategoryBadge', () => {
         next={null}
       />,
     );
-    expect(view.getByText('120 resolved · top badge reached')).toBeTruthy();
+    expect(view.getByText('120 resolved, top badge reached')).toBeTruthy();
   });
 });
 
@@ -126,8 +126,9 @@ describe('CategoryBadge — screen readers', () => {
     );
   });
 
-  it('says the arrow and the dot in words', () => {
-    expect(spokenHint('Score above 70 → Forecaster')).toBe('Score above 70 to reach Forecaster');
-    expect(spokenHint('120 resolved · top badge reached')).toBe('120 resolved, top badge reached');
+  // Roadmap D33: the hint is written in words, so it is spoken as written.
+  it('speaks the hint as written', () => {
+    expect(spokenHint('Score above 70 to reach Forecaster')).toBe('Score above 70 to reach Forecaster');
+    expect(spokenHint('120 resolved, top badge reached')).toBe('120 resolved, top badge reached');
   });
 });

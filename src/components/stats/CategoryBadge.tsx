@@ -66,26 +66,30 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
   );
 }
 
-/** "Score 84 · 52 resolved": a category's receipt once its score is unlocked. */
+/** "Score 84, 52 resolved": a category's receipt once its score is unlocked. */
 export function scoreReceipt(score: number, resolved: number): string {
-  return `Score ${score} · ${resolved} resolved`;
+  return `Score ${score}, ${resolved} resolved`;
 }
 
-/** The hint as it should sound: "3 more resolved to reach Tracker". */
+/**
+ * The hint as it should sound: "3 more resolved to reach Tracker". The hint
+ * is written that way now (roadmap D33 dropped the "→"), so this is the
+ * written hint itself; kept so screen-reader labels have one source.
+ */
 export function spokenHint(hint: string): string {
-  return hint.replace(' → ', ' to reach ').replace(' · ', ', ');
+  return hint;
 }
 
 /**
  * Build the progress line. When there's a next badge, name every requirement
  * still unmet: more resolutions, a higher score, or both. Naming only the
- * count when the score is short too ("20 more resolved → Sharp" for a work
+ * count when the score is short too ("20 more resolved to reach Sharp" for a work
  * score of 80) promised a badge that resolving alone can't earn (roadmap
  * step 47). At the top of the ladder, celebrate instead.
  */
 function progressHint(stat: CategoryStat, next: NextBadgeTarget | null): string {
   if (!next) {
-    return `${stat.predictions_resolved} resolved · top badge reached`;
+    return `${stat.predictions_resolved} resolved, top badge reached`;
   }
 
   const nextLabel = BADGE_META[next.badge].label;
@@ -94,11 +98,11 @@ function progressHint(stat: CategoryStat, next: NextBadgeTarget | null): string 
   if (next.needResolved !== null && stat.predictions_resolved < next.needResolved) {
     const remaining = next.needResolved - stat.predictions_resolved;
     const andScore = scoreShort ? ` and a score above ${next.needScore}` : '';
-    return `${remaining} more resolved${andScore} → ${nextLabel}`;
+    return `${remaining} more resolved${andScore} to reach ${nextLabel}`;
   }
 
   if (scoreShort) {
-    return `Score above ${next.needScore} → ${nextLabel}`;
+    return `Score above ${next.needScore} to reach ${nextLabel}`;
   }
 
   // Thresholds already met (e.g. score qualifies but the higher badge also

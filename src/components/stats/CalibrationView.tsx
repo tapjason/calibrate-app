@@ -111,7 +111,7 @@ export function CalibrationView({
           {!headline.provisional && (
             <Text style={styles.subtle}>
               {userStat.total_resolved} resolved
-              {userStat.current_streak > 0 ? ` · ${userStat.current_streak}-day streak` : ''}
+              {userStat.current_streak > 0 ? `, ${userStat.current_streak}-day streak` : ''}
             </Text>
           )}
           {/* The math on demand, one tap from the number it explains. */}
@@ -167,10 +167,10 @@ export function CalibrationView({
                 <View style={styles.bucketRow}>
                   <Text style={styles.bucketLabel}>{rangeLabel(b)}</Text>
                   <Text style={styles.bucketDetail}>
-                    said {Math.round(b.stated_confidence_mean)}% · happened{' '}
+                    said {Math.round(b.stated_confidence_mean)}%, happened{' '}
                     {Math.round(b.actual_rate * 100)}%
                     {/* The grey capsule's range, in numbers (roadmap D4). */}
-                    {holdRanges(` · chance ${Math.round(b.chance_low * 100)}–${Math.round(b.chance_high * 100)}%`)}
+                    {holdRanges(`, chance ${Math.round(b.chance_low * 100)}–${Math.round(b.chance_high * 100)}%`)}
                   </Text>
                   <Text style={styles.bucketCount}>n={b.total_resolved}</Text>
                 </View>

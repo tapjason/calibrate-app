@@ -98,7 +98,7 @@ describe('CalibrationView provisional progress', () => {
         pendingCount={3}
       />,
     );
-    expect(getByText('4 of 20 resolved · 3 on their way')).toBeTruthy();
+    expect(getByText('4 of 20 resolved, 3 on their way')).toBeTruthy();
     expect(getByTestId('rating-provisional').props.accessibilityValue).toEqual({
       min: 0,
       max: 20,
@@ -264,7 +264,7 @@ describe('CalibrationView Brier score', () => {
       />,
     );
     expect(getByTestId('stats-brier')).toHaveTextContent(
-      'Brier score\u00A00.14 · lower is better; always saying 50%\u00A0scores\u00A00.25',
+      'Brier score\u00A00.14. Lower is better; always saying 50%\u00A0scores\u00A00.25.',
     );
   });
 

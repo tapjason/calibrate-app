@@ -31,7 +31,8 @@ import {
 
 /** A symbol per benefit row, in PLUS_FEATURES order (DESIGN_SYSTEM §7.6). */
 const BENEFIT_ICONS = [
-  { sf: 'sparkles', ion: 'sparkles' },
+  // Coach: a speech bubble, what it is, not the stock "AI" sparkle (roadmap D33).
+  { sf: 'text.bubble', ion: 'chatbubble-ellipses-outline' },
   { sf: 'chart.line.uptrend.xyaxis', ion: 'trending-up' },
   { sf: 'paintpalette.fill', ion: 'color-palette' },
 ] as const;

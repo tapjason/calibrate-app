@@ -96,7 +96,7 @@ describe('ShareCardPanel', () => {
     render(<ShareCardPanel />);
 
     expect(
-      screen.getByText('Calibration 88/100 · 55 predictions resolved'),
+      screen.getByText('Calibration 88/100 from 55 resolved predictions'),
     ).toBeTruthy();
   });
 

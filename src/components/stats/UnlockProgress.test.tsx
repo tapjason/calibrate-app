@@ -16,7 +16,7 @@ describe('UnlockProgress', () => {
     );
     expect(screen.getByTestId('progress-lead')).toHaveTextContent('Your first answer: tomorrow evening');
     expect(screen.getByTestId('progress').props.accessibilityLabel).toBe(
-      'Calibrating. Your first answer: tomorrow evening. 0 of 20 resolved · 1 on its way.',
+      'Calibrating. Your first answer: tomorrow evening. 0 of 20 resolved, 1 on its way.',
     );
   });
 

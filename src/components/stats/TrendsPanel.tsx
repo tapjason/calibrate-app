@@ -142,7 +142,7 @@ function PeriodRow({ period }: { period: PeriodStat }) {
       <Text style={styles.rowValue}>
         {period.provisional
           ? `${period.resolved} resolved`
-          : `${Math.round(period.score)} · ${period.resolved} resolved`}
+          : `${Math.round(period.score)}, from ${period.resolved} resolved`}
       </Text>
     </View>
   );
@@ -156,8 +156,8 @@ function CategoryRow({ trend }: { trend: CategoryTrend }) {
         {/* A provisional category shows progress toward its threshold, never a
             score — the same rule the headline rating follows. */}
         {trend.provisional
-          ? `${trend.resolved} resolved · too few to score`
-          : `${Math.round(trend.score)} · ${trend.direction}`}
+          ? `${trend.resolved} resolved, too few to score`
+          : `${Math.round(trend.score)}, ${trend.direction}`}
       </Text>
     </View>
   );
@@ -180,8 +180,8 @@ function HorizonRow({ stat }: { stat: HorizonStat }) {
       <Text style={styles.rowLabelPlain}>{HORIZON_LABELS[stat.horizon]}</Text>
       <Text style={styles.rowValue}>
         {stat.provisional
-          ? `${stat.resolved} resolved · too few to score`
-          : `${Math.round(stat.score)} · ${stat.direction}`}
+          ? `${stat.resolved} resolved, too few to score`
+          : `${Math.round(stat.score)}, ${stat.direction}`}
       </Text>
     </View>
   );
@@ -243,7 +243,7 @@ function CorrectionLine({ row }: { row: CorrectionRow }) {
         {capitalize(row.category)} at {band(row.low, row.high)}
       </Text>
       <Text style={styles.rowValue}>
-        {percent(row.actual_rate)} · {row.happened} of {row.resolved}
+        {percent(row.actual_rate)}, {row.happened} of {row.resolved}
       </Text>
     </View>
   );

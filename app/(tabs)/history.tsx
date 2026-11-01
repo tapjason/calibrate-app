@@ -67,7 +67,7 @@ export default function HistoryScreen() {
     skipped > 0 ? `${skipped} not scored` : null,
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join(', ');
 
   return (
     <View style={styles.wrap}>

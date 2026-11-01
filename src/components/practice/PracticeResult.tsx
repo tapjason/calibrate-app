@@ -62,7 +62,7 @@ export function PracticeResult({ day, children }: PracticeResultProps) {
               <View style={styles.keyBody}>
                 <Text style={styles.keyPrompt}>{a.question.prompt}</Text>
                 <Text style={styles.keyAnswer}>
-                  {row.answer} · <Text style={styles.keyPick}>{row.pick}</Text>
+                  {row.answer}. <Text style={styles.keyPick}>{row.pick}</Text>
                 </Text>
                 <Text style={styles.keyFact}>{a.question.fact}</Text>
               </View>

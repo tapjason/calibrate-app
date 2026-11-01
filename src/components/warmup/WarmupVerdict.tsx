@@ -112,7 +112,7 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
               <View style={styles.keyBody}>
                 <Text style={styles.keyPrompt}>{q.prompt}</Text>
                 <Text style={styles.keyAnswer} testID={`warmup-key-${q.id}-answer`}>
-                  {row.answer} · <Text style={styles.keyPick}>{row.pick}</Text>
+                  {row.answer}. <Text style={styles.keyPick}>{row.pick}</Text>
                 </Text>
                 <Text style={styles.keyFact}>{q.fact}</Text>
               </View>
