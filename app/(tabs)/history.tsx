@@ -12,12 +12,13 @@ import {
   type FirstHistoryAction,
 } from '@/components/prediction/historyFilter';
 import { isReadyToResolve } from '@/components/prediction/dueGroups';
-import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { PredictionCard, rowPosition } from '@/components/prediction/PredictionCard';
 import { chosenProps } from '@/components/ui/chosen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { Icon } from '@/components/ui/Icon';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { confidenceRangeLow } from '@/store/statsStore';
@@ -160,14 +161,13 @@ export default function HistoryScreen() {
           renderSectionHeader={({ section }) =>
             // One section needs no header; with both, each says what it holds.
             open.length > 0 ? (
-              <Text style={styles.sectionTitle} accessibilityRole="header">
-                {section.title} · {section.data.length}
-              </Text>
+              <SectionHeader title={section.title} count={section.data.length} />
             ) : null
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index, section }) => (
             <PredictionCard
               prediction={item}
+              position={rowPosition(index, section.data.length)}
               onPress={
                 item.status === 'pending'
                   ? // Due: Resolve. Not yet: its details (roadmap D25).
@@ -209,13 +209,6 @@ const styles = StyleSheet.create({
   listContent: { paddingBottom: space.xxl },
   row: { flexDirection: 'row', gap: space.sm, paddingVertical: 4 },
   summary: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
-  sectionTitle: {
-    ...type.footnote,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    marginBottom: space.sm,
-    marginTop: space.md,
-  },
   footer: { ...type.subhead, color: colors.textSecondary, marginTop: space.lg },
   chip: {
     justifyContent: 'center',
@@ -226,10 +219,10 @@ const styles = StyleSheet.create({
     borderColor: colors.controlBorder,
     backgroundColor: colors.surface,
   },
-  // Selected = tint + bolder label, not colour alone (DESIGN_SYSTEM §7.12).
-  chipActive: { backgroundColor: colors.selectedFill, borderColor: colors.action },
+  // Selected = ink fill + bolder label, not colour alone (DESIGN_SYSTEM §7.12, D33).
+  chipActive: { backgroundColor: colors.action, borderColor: colors.action },
   chipText: { ...type.subhead, color: colors.textPrimary, textTransform: 'capitalize' },
-  chipTextActive: { color: colors.selectedText, fontWeight: '600' },
+  chipTextActive: { color: colors.onAction, fontWeight: '600' },
   // Selected styling, like a chosen category, plus an × that clears it.
   rangeChip: {
     alignItems: 'center',

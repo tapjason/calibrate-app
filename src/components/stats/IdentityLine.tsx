@@ -55,7 +55,7 @@ export function IdentityLine({ userStat, categoryStats, onPress }: IdentityLineP
       testID="home-identity"
     >
       <View style={styles.row}>
-        <LensEmblem tier={line.badge} size={22} />
+        <LensEmblem tier={line.badge} size={30} />
         <Text style={styles.identity}>{line.identity}</Text>
       </View>
       {line.contrast && <Text style={styles.contrast}>{line.contrast}</Text>}
@@ -63,10 +63,14 @@ export function IdentityLine({ userStat, categoryStats, onPress }: IdentityLineP
   );
 }
 
+// The identity leads the hero (roadmap D33): left-aligned, at title size,
+// with the contrast quieter beneath, indented to start under the words.
+const EMBLEM = 30;
+
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', gap: space.xxs, marginTop: space.md, minHeight: 44 },
+  wrap: { alignItems: 'flex-start', gap: space.xs, minHeight: 44 },
   pressed: { opacity: 0.6 },
-  row: { alignItems: 'center', flexDirection: 'row', gap: space.sm },
-  identity: { ...type.title3, color: colors.textPrimary },
-  contrast: { ...type.subhead, color: colors.textSecondary },
+  row: { alignItems: 'center', flexDirection: 'row', gap: space.md },
+  identity: { ...type.title1, color: colors.textPrimary, flexShrink: 1, letterSpacing: -0.4 },
+  contrast: { ...type.callout, color: colors.textSecondary, marginLeft: EMBLEM + space.md },
 });

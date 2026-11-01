@@ -8,7 +8,7 @@ import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
 
 import { identityCardSummary, shareLines, shareSubline } from './cardCopy';
-import { CARD_CANVAS_WIDTH } from './ScaledCanvas';
+import { CARD_CANVAS_WIDTH, CARD_RADIUS } from './ScaledCanvas';
 
 interface IdentityCardProps {
   card: ShareCard;
@@ -234,7 +234,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
 });
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 24, padding: 24 },
+  card: { borderRadius: CARD_RADIUS.identity, padding: 24 },
   // The content is centred in the room between the top and the footer, and
   // when it is shrunk to fit, it shrinks about its centre.
   body: { flex: 1, justifyContent: 'center', overflow: 'hidden' },

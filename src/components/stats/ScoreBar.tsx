@@ -27,9 +27,10 @@ const TICKS = [
 ] as const;
 
 /**
- * A thin bullet-graph under the hero rating (DESIGN_SYSTEM §7.1): where the
- * score sits on 0–100, with ticks at 70 / 85 / 90. No gauge, no colour for
- * good or bad — the fill is ink and the marker is the number's position.
+ * A thin bullet-graph in the hero (DESIGN_SYSTEM §7.1): where the score sits
+ * on 0–100, read like an instrument's scale (roadmap D33). A hairline track,
+ * an ink fill notched at 70 / 85 / 90, and a needle at the score. No colour
+ * for good or bad: everything is ink, and the needle is the number's place.
  */
 export function ScoreBar({ score, range, testID }: ScoreBarProps) {
   const clamped = Math.max(0, Math.min(100, score));
@@ -55,6 +56,7 @@ export function ScoreBar({ score, range, testID }: ScoreBarProps) {
         {TICKS.map((t) => (
           <View key={t.at} style={[styles.tick, { left: `${t.at}%` }]} />
         ))}
+        <View style={[styles.needle, { left: `${clamped}%` }]} testID={testID ? `${testID}-needle` : undefined} />
       </View>
       <View style={styles.labels}>
         {TICKS.map((t) => (
@@ -76,33 +78,45 @@ const LABEL_WIDTH = 24;
 const LABEL_GAP = 3;
 
 const styles = StyleSheet.create({
-  wrap: { alignSelf: 'stretch', marginTop: space.md },
+  wrap: { alignSelf: 'stretch', marginTop: space.lg, paddingTop: 8 },
   track: {
-    backgroundColor: colors.hairline,
+    backgroundColor: colors.emphasis,
     borderRadius: radius.pill,
-    height: 8,
+    height: 4,
     overflow: 'visible',
   },
-  fill: { backgroundColor: colors.textPrimary, borderRadius: radius.pill, height: 8 },
+  fill: { backgroundColor: colors.textPrimary, borderRadius: radius.pill, height: 4 },
   // The give-or-take: a taller, see-through capsule over the end of the fill,
   // so where the score could be reads as a zone, not a point.
   range: {
     backgroundColor: colors.textPrimary,
     borderRadius: radius.pill,
-    height: 14,
-    opacity: 0.18,
-    position: 'absolute',
-    top: -3,
-  },
-  tick: {
-    backgroundColor: colors.surface,
     height: 12,
+    opacity: 0.16,
+    position: 'absolute',
+    top: -4,
+  },
+  // A notch cut through the track in the canvas colour, where a tier begins.
+  tick: {
+    backgroundColor: colors.canvas,
+    height: 4,
     marginLeft: -1,
     position: 'absolute',
-    top: -2,
+    top: 0,
     width: 2,
   },
-  labels: { height: 18, marginTop: 4 },
+  // The needle stands above and below the track, so the score reads as a
+  // reading on the scale, not just the end of a bar.
+  needle: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: 2,
+    height: 20,
+    marginLeft: -1.5,
+    position: 'absolute',
+    top: -8,
+    width: 3,
+  },
+  labels: { height: 18, marginTop: 10 },
   label: {
     ...type.caption,
     color: colors.textSecondary,

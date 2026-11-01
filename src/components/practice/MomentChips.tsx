@@ -137,8 +137,9 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
   },
   // The thicker edge takes its extra point from the padding, so nothing shifts.
+  // Ink fill and a white label when chosen (roadmap D33).
   chipActive: {
-    backgroundColor: colors.selectedFill,
+    backgroundColor: colors.action,
     borderColor: colors.action,
     borderWidth: 2,
     paddingHorizontal: space.sm - 1,
@@ -147,8 +148,7 @@ const styles = StyleSheet.create({
   chipPressed: { backgroundColor: colors.surfaceSunken },
   half: { flexBasis: '40%' },
   title: { ...type.subhead, color: colors.textPrimary, fontWeight: '500' },
-  // selectedText on selectedFill: the text-safe brand ink in both appearances (D7).
-  titleActive: { color: colors.selectedText, fontWeight: '700' },
+  titleActive: { color: colors.onAction, fontWeight: '700' },
   subtitle: { ...type.caption, color: colors.textSecondary },
-  subtitleActive: { color: colors.selectedText },
+  subtitleActive: { color: colors.onAction },
 });

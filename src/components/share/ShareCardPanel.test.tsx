@@ -252,7 +252,7 @@ describe('ShareCardPanel — shape and contents', () => {
     const style = StyleSheet.flatten(preview().props.style);
     expect(style.opacity).toBeUndefined();
     expect(style.height).toBeCloseTo(480 * (343 / 360));
-    const canvas = StyleSheet.flatten(preview().props.children.props.style);
+    const canvas = StyleSheet.flatten(screen.getByTestId('card-preview-canvas').props.style);
     expect(canvas.transform).toEqual([{ scale: 343 / 360 }]);
     expect(canvas.transformOrigin).toBe('top left');
   });

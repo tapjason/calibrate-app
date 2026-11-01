@@ -1,19 +1,39 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
-import { colors, radius, space, type } from '@/constants/theme';
+import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 
 import { isReadyToResolve } from './dueGroups';
 
+/**
+ * Where a row sits in its list (roadmap D33): rows share one grouped surface,
+ * with hairlines between them, instead of each being its own card.
+ */
+export type RowPosition = 'single' | 'first' | 'middle' | 'last';
+
 interface PredictionCardProps {
   prediction: Prediction;
   onPress?: (id: string) => void;
+  /** Defaults to a row on its own. */
+  position?: RowPosition;
+  /**
+   * False under a "Ready to resolve" header, which already says it: the row
+   * doesn't repeat it ten times down the list.
+   */
+  showReady?: boolean;
+}
+
+/** The row's place in a list of `count`, from its `index`. */
+export function rowPosition(index: number, count: number): RowPosition {
+  if (count <= 1) return 'single';
+  if (index === 0) return 'first';
+  return index === count - 1 ? 'last' : 'middle';
 }
 
 /**
  * "Fri, 3 Oct" in the user's locale, held together with no-break spaces so a
- * narrow card never strands the day on a line of its own ("Oct / 4").
+ * narrow row never strands the day on a line of its own ("Oct / 4").
  */
 function formatDue(iso: string): string {
   return new Date(iso)
@@ -22,7 +42,7 @@ function formatDue(iso: string): string {
       day: 'numeric',
       month: 'short',
     })
-    .replace(/ /g, '\u00A0');
+    .replace(/ /g, ' ');
 }
 
 /**
@@ -43,10 +63,22 @@ function statusLabel(prediction: Prediction, now: Date): string {
   }
 }
 
-export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
+/**
+ * One prediction as a row: the words, then the category and the date, with
+ * the stated confidence in its own column on the right, as a number over a
+ * small 0–100 scale (DESIGN_SYSTEM §7.11). The confidence is the record, so
+ * it gets the column; the scale lets a list be read at a glance for where the
+ * calls sit, the way the chart reads them.
+ */
+export function PredictionCard({
+  prediction,
+  onPress,
+  position = 'single',
+  showReady = true,
+}: PredictionCardProps) {
   const due = formatDue(prediction.due_date);
   const status = statusLabel(prediction, new Date());
-  // A resolved card dates itself by when it was answered, not when it was due.
+  // A resolved row dates itself by when it was answered, not when it was due.
   const answered = prediction.status !== 'pending' && prediction.resolved_at;
   const when = answered ? `resolved ${formatDue(answered)}` : `due ${due}`;
   // Outcome glyphs in neutral ink, filled vs hollow — never green/red
@@ -58,9 +90,13 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
         ? ({ sf: 'xmark.circle', ion: 'close-circle-outline' } as const)
         : null;
   // Resolve asks "What surprised you?"; History is where the answer is read
-  // back (roadmap step 31). Only on a resolved card, and only if written.
+  // back (roadmap step 31). Only on a resolved row, and only if written.
   const reflection =
     prediction.status !== 'pending' ? prediction.reflection?.trim() || null : null;
+  // "Open" is the default state and the list's group header already says
+  // when it's due; "Ready to resolve" is dropped under a header saying so.
+  const showStatus = status !== 'Open' && (showReady || status !== 'Ready to resolve');
+  const confidence = Math.max(0, Math.min(100, prediction.confidence));
 
   return (
     <Pressable
@@ -73,70 +109,115 @@ export function PredictionCard({ prediction, onPress }: PredictionCardProps) {
         `${when}. ${status}.` +
         (reflection ? ` Your note: ${reflection}` : '')
       }
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.row, edges[position], pressed && styles.pressed]}
     >
-      <View style={styles.categoryRow}>
-        <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
-        <Text style={styles.category}>{prediction.category}</Text>
+      <View style={styles.main}>
+        <Text style={styles.title} numberOfLines={3}>
+          {prediction.title}
+        </Text>
+        {reflection && (
+          <Text style={styles.reflection} numberOfLines={4} testID="prediction-card-reflection">
+            “{reflection}”
+          </Text>
+        )}
+        <View style={styles.metaRow}>
+          <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
+          <Text style={styles.meta}>
+            <Text style={styles.category}>{prediction.category}</Text>, {when}
+          </Text>
+        </View>
+        {showStatus && (
+          <View style={styles.statusRow}>
+            {glyph && (
+              <Icon sf={glyph.sf} fallback={glyph.ion} size={15} color={colors.textPrimary} />
+            )}
+            <Text style={styles.status}>{status}</Text>
+          </View>
+        )}
       </View>
-      <Text style={styles.title} numberOfLines={3}>
-        {prediction.title}
-      </Text>
-      {reflection && (
-        <Text style={styles.reflection} numberOfLines={4} testID="prediction-card-reflection">
-          “{reflection}”
-        </Text>
-      )}
-      <View style={styles.footer}>
-        <Text style={styles.meta}>
-          {prediction.confidence}% · {when}
-        </Text>
-        <View style={styles.statusRow}>
-          {glyph && (
-            <Icon sf={glyph.sf} fallback={glyph.ion} size={16} color={colors.textPrimary} />
-          )}
-          {/* "Open" is the default state and the list's group header already
-              says when it's due, so it isn't repeated on every card. */}
-          {status !== 'Open' && <Text style={styles.status}>{status}</Text>}
+      {/* Read out in the row's label above; drawn for the eye. */}
+      <View
+        style={styles.confidence}
+        aria-hidden
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Text style={styles.percent}>{prediction.confidence}%</Text>
+        <View style={styles.scale} testID="prediction-card-scale">
+          <View style={styles.scaleTrack} />
+          <View style={[styles.scaleMark, { left: `${confidence}%` }]} />
         </View>
       </View>
     </Pressable>
   );
 }
 
+const SCALE_WIDTH = 44;
+
 const styles = StyleSheet.create({
-  card: {
+  row: {
     backgroundColor: colors.surface,
     borderColor: colors.hairline,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: space.xs,
-    marginBottom: space.sm,
-    padding: space.lg,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    columnGap: space.md,
+    flexDirection: 'row',
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
   },
-  pressed: { opacity: 0.7 },
-  categoryRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
-  statusRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
-  category: {
-    ...type.footnote,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
+  pressed: { backgroundColor: colors.surfaceSunken },
+  main: { flex: 1, gap: space.xs, minWidth: 0 },
   title: { ...type.body, color: colors.textPrimary },
   // The user's own words, quoted and quieter than the prediction they're about.
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
-  // Wraps rather than squeezes: at 320pt "Ready to resolve" takes its own
-  // line instead of folding the date beside it in two (roadmap step 52).
-  footer: {
-    alignItems: 'center',
-    columnGap: space.md,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: space.xs,
-    rowGap: space.xs,
+  metaRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
+  meta: { ...type.footnote, color: colors.textSecondary, flexShrink: 1 },
+  category: { textTransform: 'capitalize' },
+  statusRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
+  status: { ...type.footnote, color: colors.textPrimary, fontWeight: '600' },
+  confidence: { alignItems: 'flex-end', gap: 6, paddingTop: 2, width: SCALE_WIDTH },
+  percent: { ...type.headline, ...tabularNums, color: colors.textPrimary },
+  scale: { height: 10, width: SCALE_WIDTH },
+  scaleTrack: {
+    backgroundColor: colors.emphasis,
+    borderRadius: 1,
+    height: 2,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 4,
   },
-  meta: { ...type.subhead, color: colors.textSecondary },
-  status: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },
+  scaleMark: {
+    backgroundColor: colors.textPrimary,
+    borderRadius: 1,
+    height: 10,
+    marginLeft: -1,
+    position: 'absolute',
+    top: 0,
+    width: 2,
+  },
+});
+
+// Concentric with the group: the outer corners round, the joins stay square,
+// and a hairline runs under every row but the last.
+const edges = StyleSheet.create({
+  single: {
+    borderRadius: radius.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    marginBottom: space.sm,
+  },
+  first: {
+    borderTopLeftRadius: radius.md,
+    borderTopRightRadius: radius.md,
+    borderTopWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  middle: { borderBottomWidth: StyleSheet.hairlineWidth },
+  last: {
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    borderBottomWidth: 1,
+    marginBottom: space.sm,
+  },
 });

@@ -21,7 +21,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore, wrappedSummary, type WrappedSpan } from '@/store/statsStore';
 
 import { nextBadgeProgress } from './nextBadgeCopy';
-import { ScaledCanvas } from './ScaledCanvas';
+import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
 import { WrappedCard } from './WrappedCard';
 
 interface WrappedPanelProps {
@@ -134,7 +134,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     <View style={styles.wrap} testID={`wrapped-panel-${span}`}>
       <Animated.View style={revealStyle} testID="wrapped-reveal">
         {/* The 360pt card canvas, scaled to the screen (roadmap step 57). */}
-        <ScaledCanvas testID="wrapped-preview">
+        <ScaledCanvas radius={CARD_RADIUS.wrapped} testID="wrapped-preview">
           <WrappedCard
             ref={cardRef}
             summary={summary}

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react-native';
 
 import type { Prediction } from '@/types';
 
-import { PredictionCard } from './PredictionCard';
+import { PredictionCard, rowPosition } from './PredictionCard';
 
 const prediction: Prediction = {
   id: 'p1',
@@ -61,8 +61,9 @@ describe('PredictionCard', () => {
   // Roadmap step 52: at 320pt the date folded as "Oct / 4" beside the status.
   it('keeps the date in one piece', () => {
     render(<PredictionCard prediction={prediction} />);
-    const meta = screen.getByText(/^70% · resolved /);
-    const date = String(meta.props.children.join('')).replace(/^70% · resolved /, '');
+    // "work, resolved Fri 9 Jan": the category is its own nested Text.
+    const meta = screen.getByText(/, resolved /);
+    const date = String(meta.props.children.slice(1).join('')).replace(/^, resolved /, '');
     expect(date).not.toMatch(/ /);
     expect(date).toMatch(/\u00A0/);
   });
@@ -101,5 +102,32 @@ describe('PredictionCard — reflections', () => {
       />,
     );
     expect(screen.queryByTestId('prediction-card-reflection')).toBeNull();
+  });
+});
+
+// Roadmap D33: rows share one grouped surface, and the confidence gets a column.
+describe('PredictionCard — as a row in a group', () => {
+  it('knows its place in the list', () => {
+    expect(rowPosition(0, 1)).toBe('single');
+    expect(rowPosition(0, 3)).toBe('first');
+    expect(rowPosition(1, 3)).toBe('middle');
+    expect(rowPosition(2, 3)).toBe('last');
+  });
+
+  it('leaves "Ready to resolve" to a header that already says it', () => {
+    const due = { ...prediction, status: 'pending' as const, resolved_at: null, due_date: '2020-01-01T12:00:00.000Z' };
+    const { rerender } = render(<PredictionCard prediction={due} showReady={false} onPress={jest.fn()} />);
+    expect(screen.queryByText('Ready to resolve')).toBeNull();
+    // Still said to a screen reader, which hears the row alone.
+    expect(screen.getByRole('button').props.accessibilityLabel).toMatch(/Ready to resolve.$/);
+    rerender(<PredictionCard prediction={due} />);
+    expect(screen.getByText('Ready to resolve')).toBeTruthy();
+  });
+
+  it('draws the stated confidence as a number over a 0–100 scale', () => {
+    render(<PredictionCard prediction={prediction} />);
+    // Hidden from screen readers, which hear it in the row's own label.
+    expect(screen.getByText('70%', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('prediction-card-scale', { includeHiddenElements: true })).toBeTruthy();
   });
 });

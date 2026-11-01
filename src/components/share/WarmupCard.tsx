@@ -5,6 +5,7 @@ import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { CARD_MAX_SCALE, FONT_FAMILY } from '@/constants/theme';
 
+import { CARD_RADIUS } from './ScaledCanvas';
 import type { WarmupCardCopy } from './warmupCardCopy';
 
 interface WarmupCardProps {
@@ -81,7 +82,7 @@ export const WarmupCard = forwardRef<View, WarmupCardProps>(function WarmupCard(
 });
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 20, gap: 8, padding: 24 },
+  card: { borderRadius: CARD_RADIUS.warmup, gap: 8, padding: 24 },
   eyebrow: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   headline: {
     fontFamily: FONT_FAMILY,

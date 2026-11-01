@@ -17,7 +17,7 @@ import { useWarmupStore } from '@/store/warmupStore';
 import type { Category } from '@/types';
 
 import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
-import { ScaledCanvas } from './ScaledCanvas';
+import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
 import { ThemePicker } from './ThemePicker';
 import { buildShareCard, shareText as cardText } from './cardCopy';
 import { WarmupCard } from './WarmupCard';
@@ -116,7 +116,11 @@ export function ShareCardPanel({
     <View style={styles.wrap} testID="share-panel">
       {/* Every card on the 360pt canvas, scaled to the screen (steps 53, 57). */}
       {card ? (
-        <ScaledCanvas height={CARD_CANVAS_HEIGHT[format]} testID="card-preview">
+        <ScaledCanvas
+          height={CARD_CANVAS_HEIGHT[format]}
+          radius={CARD_RADIUS.identity}
+          testID="card-preview"
+        >
           <IdentityCard
             ref={cardRef}
             card={card}
@@ -127,7 +131,7 @@ export function ShareCardPanel({
         </ScaledCanvas>
       ) : (
         warmup && (
-          <ScaledCanvas testID="card-preview">
+          <ScaledCanvas radius={CARD_RADIUS.warmup} testID="card-preview">
             <WarmupCard ref={cardRef} copy={warmup} theme={theme} />
           </ScaledCanvas>
         )
@@ -199,7 +203,7 @@ export function ShareCardPanel({
                           sf="checkmark"
                           fallback="checkmark"
                           size={14}
-                          color={colors.selectedText}
+                          color={colors.onAction}
                         />
                       )}
                       <Text style={[styles.chipText, on && styles.chipTextOn]}>
@@ -253,7 +257,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
     paddingHorizontal: 12,
   },
-  chipOn: { backgroundColor: colors.selectedFill, borderColor: colors.action },
+  chipOn: { backgroundColor: colors.action, borderColor: colors.action },
   chipText: { ...type.subhead, color: colors.textSecondary, textTransform: 'capitalize' },
-  chipTextOn: { color: colors.selectedText, fontWeight: '600' },
+  chipTextOn: { color: colors.onAction, fontWeight: '600' },
 });

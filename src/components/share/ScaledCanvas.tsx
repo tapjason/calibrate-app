@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { colors } from '@/constants/theme';
+
 /**
  * Every share card lays out on a canvas 360pt wide, whatever the phone
  * (roadmap steps 53 and 57). Captured at 3x, that is the 1080px-wide image
@@ -8,6 +10,9 @@ import { StyleSheet, View } from 'react-native';
  * from a Pro Max: same line breaks, nothing squeezed or overflowing.
  */
 export const CARD_CANVAS_WIDTH = 360;
+
+/** Each card's corner radius on the canvas, shared with the preview's outline. */
+export const CARD_RADIUS = { identity: 24, wrapped: 20, warmup: 20 } as const;
 
 /**
  * A width change this small, upward, is ignored once measured. On web the
@@ -29,6 +34,13 @@ export function nextCanvasWidth(current: number, measured: number): number {
 interface ScaledCanvasProps {
   /** A fixed canvas height (the identity card's Post and Story), or omit to take the card's own. */
   height?: number;
+  /**
+   * The card's corner radius on the canvas (`CARD_RADIUS`). Draws a hairline
+   * round the preview: the free cards sit close to the canvas in tone (the
+   * light Wrapped card on the light canvas, Midnight on the dark one, about
+   * 1.1:1), and without it the preview had no edge (roadmap D33).
+   */
+  radius?: number;
   children: ReactNode;
   testID?: string;
 }
@@ -39,7 +51,7 @@ interface ScaledCanvasProps {
  * gets the canvas at its own size. Until the screen width is known the card
  * waits unseen, so a narrow phone never flashes it at full size.
  */
-export function ScaledCanvas({ height, children, testID }: ScaledCanvasProps) {
+export function ScaledCanvas({ height, radius, children, testID }: ScaledCanvasProps) {
   const [available, setAvailable] = useState(0);
   const [measured, setMeasured] = useState(0);
   const scale = available > 0 ? available / CARD_CANVAS_WIDTH : 1;
@@ -61,6 +73,15 @@ export function ScaledCanvas({ height, children, testID }: ScaledCanvasProps) {
       >
         {children}
       </View>
+      {/* Outside the card, so a capture of its ref never includes it. */}
+      {radius !== undefined && (
+        <View
+          pointerEvents="none"
+          aria-hidden
+          style={[styles.outline, { borderRadius: radius * scale }]}
+          testID={testID ? `${testID}-outline` : undefined}
+        />
+      )}
     </View>
   );
 }
@@ -68,4 +89,9 @@ export function ScaledCanvas({ height, children, testID }: ScaledCanvasProps) {
 const styles = StyleSheet.create({
   unmeasured: { opacity: 0 },
   canvas: { transformOrigin: 'top left', width: CARD_CANVAS_WIDTH },
+  outline: {
+    ...StyleSheet.absoluteFillObject,
+    borderColor: colors.hairline,
+    borderWidth: 1,
+  },
 });

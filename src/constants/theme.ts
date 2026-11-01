@@ -24,7 +24,7 @@ export interface Palette {
   // Actions and selection, drawn in ink (roadmap D33: the brand has no hue,
   // so the only colour on screen means over, under or on the line). Chrome,
   // never data.
-  /** Primary action fill, selection border, a switch that's on. */
+  /** Primary action fill, a selected chip's fill, selection border, a switch that's on. */
   action: string;
   /** A primary action while pressed. */
   actionPressed: string;
@@ -32,7 +32,10 @@ export interface Palette {
   onAction: string;
   /** Tappable text on the canvas or a surface (a text button, a link). */
   actionText: string;
-  /** The fill behind a selected chip or option. */
+  /**
+   * A quiet chosen state: a selected plan or option row, a checkpoint row.
+   * Selected chips take `action` instead (D33).
+   */
   selectedFill: string;
   /** Text on `selectedFill`. */
   selectedText: string;

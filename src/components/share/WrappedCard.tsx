@@ -9,6 +9,7 @@ import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
+import { CARD_RADIUS } from './ScaledCanvas';
 import { streakLine, wrappedCardSummary, wrappedStory, type OverallProgress } from './wrappedCopy';
 
 interface WrappedCardProps {
@@ -213,7 +214,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
+    borderRadius: CARD_RADIUS.wrapped,
     gap: 8,
     padding: 24,
   },

@@ -69,3 +69,41 @@ describe('nextCanvasWidth', () => {
     expect(nextCanvasWidth(320, 400)).toBe(400);
   });
 });
+
+// Roadmap D33: the free cards sit close to the canvas in tone, so the preview
+// gets a hairline at the card's own corner radius, outside the captured card.
+describe('ScaledCanvas outline', () => {
+  it('draws a hairline at the card radius, scaled with the card', () => {
+    render(
+      <ScaledCanvas radius={20} testID="p">
+        <Text>card</Text>
+      </ScaledCanvas>,
+    );
+    fireEvent(screen.getByTestId('p'), 'layout', layout(288, 0));
+    const outline = StyleSheet.flatten(
+      screen.getByTestId('p-outline', { includeHiddenElements: true }).props.style,
+    );
+    expect(outline.borderRadius).toBe(16);
+    expect(outline.borderWidth).toBe(1);
+    expect(outline.position).toBe('absolute');
+  });
+
+  it('sits outside the card, so a capture of the card never holds it', () => {
+    render(
+      <ScaledCanvas radius={24} testID="p">
+        <Text>card</Text>
+      </ScaledCanvas>,
+    );
+    const canvas = screen.getByTestId('p-canvas');
+    expect(canvas.findAllByProps({ testID: 'p-outline' })).toHaveLength(0);
+  });
+
+  it('draws none without a radius', () => {
+    render(
+      <ScaledCanvas testID="p">
+        <Text>card</Text>
+      </ScaledCanvas>,
+    );
+    expect(screen.queryByTestId('p-outline', { includeHiddenElements: true })).toBeNull();
+  });
+});

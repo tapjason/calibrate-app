@@ -9,7 +9,7 @@ import {
   isReadyToResolve,
   nextDueLine,
 } from '@/components/prediction/dueGroups';
-import { PredictionCard } from '@/components/prediction/PredictionCard';
+import { PredictionCard, rowPosition } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { BackupNudge } from '@/components/settings/BackupNudge';
@@ -17,6 +17,7 @@ import { chartTakeaway } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StreakLine } from '@/components/stats/StreakLine';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { Button } from '@/components/ui/Button';
@@ -29,6 +30,13 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL } from '@/types';
+
+/** Warm for over, cool for under, green on the line: the takeaway's own hue. */
+function directionMark(title: string): string {
+  if (title.includes('overconfident')) return colors.overMark;
+  if (title.includes('underconfident')) return colors.underMark;
+  return colors.calibratedMark;
+}
 
 export default function TodayScreen() {
   const router = useRouter();
@@ -75,12 +83,25 @@ export default function TodayScreen() {
     </>
   );
 
+  // The one-line read, only when a band has enough to say it (chartTakeaway's
+  // own min-N); otherwise the number stands alone.
+  const read = headline && !headline.provisional ? chartTakeaway(buckets, false) : null;
   const hero =
     headline && !headline.provisional ? (
       <View style={styles.rated}>
+        {/* Identity leads and the number is its receipt (DESIGN_SYSTEM §1,
+            §7.1; roadmap D33): the share card's headline, once a category
+            has climbed past Guesser. */}
+        <IdentityLine
+          userStat={userStat}
+          categoryStats={categoryStats}
+          // What the tiers mean, not the share card (roadmap D27).
+          onPress={() => router.push('/scoring?section=badges' as never)}
+        />
+        <ScoreBar score={headline.rating} testID="home-score-bar" />
         {/* Number and label as one stop for a screen reader (roadmap step 43). */}
         <View
-          style={styles.rated}
+          style={styles.receipt}
           accessible
           accessibilityRole="text"
           accessibilityLabel={`Calibration rating, ${headline.rating} out of 100.`}
@@ -89,25 +110,17 @@ export default function TodayScreen() {
           <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
           <Text style={styles.ratingLabel}>calibration rating</Text>
         </View>
-        <ScoreBar score={headline.rating} testID="home-score-bar" />
-        {/* Identity, not statistics (CLAUDE.md): the share card's headline,
-            here too, once a category has climbed past Guesser. */}
-        <IdentityLine
-          userStat={userStat}
-          categoryStats={categoryStats}
-          // What the tiers mean, not the share card (roadmap D27).
-          onPress={() => router.push('/scoring?section=badges' as never)}
-        />
-        {/* The one-line read, only when a band has enough to say it
-            (chartTakeaway's own min-N); otherwise the number stands alone. */}
-        {(() => {
-          const t = chartTakeaway(buckets, false);
-          return t.title.startsWith("You're") ? (
+        {read?.title.startsWith("You're") && (
+          <View style={styles.takeawayRow}>
+            {/* The direction's own hue, beside the words that carry it (rule 0.5). */}
+            <View
+              style={[styles.takeawayDot, { backgroundColor: directionMark(read.title) }]}
+            />
             <Text style={styles.takeaway} testID="home-takeaway">
-              {holdRanges(t.title)}
+              {holdRanges(read.title)}
             </Text>
-          ) : null;
-        })()}
+          </View>
+        )}
       </View>
     ) : (
       // Never a countdown in the hero slot (DESIGN_SYSTEM §0 rule 2).
@@ -147,9 +160,7 @@ export default function TodayScreen() {
       }
       renderSectionHeader={({ section }) => (
         <>
-          <Text style={styles.sectionTitle} accessibilityRole="header">
-            {section.title} · {section.data.length}
-          </Text>
+          <SectionHeader title={section.title} count={section.data.length} />
           {/* A backlog is where people quit: past a few, answer them in one
               sitting (roadmap step 18). */}
           {section.key === 'ready' && section.data.length >= RUN_THRESHOLD && (
@@ -163,9 +174,12 @@ export default function TodayScreen() {
           )}
         </>
       )}
-      renderItem={({ item }) => (
+      renderItem={({ item, index, section }) => (
         <PredictionCard
           prediction={item}
+          position={rowPosition(index, section.data.length)}
+          // The header already says it (roadmap D33).
+          showReady={section.key !== 'ready'}
           // A due one opens Resolve; one that isn't due yet opens its details,
           // where it can be edited, deleted or answered early (roadmap D25).
           onPress={(id) =>
@@ -193,17 +207,15 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, paddingBottom: space.xxl },
   // The daily rows after the ready ones (D22): spaced like a section.
   dailyAfterReady: { marginTop: space.lg },
-  hero: { marginBottom: space.xxl },
-  rated: { alignItems: 'center' },
+  hero: { marginBottom: space.xxxl, marginTop: space.sm },
+  // Left-aligned, like everything below it (roadmap D33).
+  rated: { alignItems: 'stretch' },
+  receipt: { alignItems: 'baseline', flexDirection: 'row', gap: space.md, marginTop: space.md },
   // The hero numeral is always ink (DESIGN_SYSTEM §2.4).
-  ratingNumber: { ...type.display, ...tabularNums, color: colors.textPrimary },
-  ratingLabel: { ...type.subhead, color: colors.textSecondary },
-  takeaway: { ...type.callout, color: colors.textPrimary, marginTop: space.sm },
+  ratingNumber: { ...type.readout, ...tabularNums, color: colors.textPrimary },
+  ratingLabel: { ...type.subhead, color: colors.textSecondary, flexShrink: 1 },
+  takeawayRow: { alignItems: 'center', flexDirection: 'row', gap: space.sm, marginTop: space.md },
+  takeawayDot: { borderRadius: 5, height: 10, width: 10 },
+  takeaway: { ...type.callout, color: colors.textPrimary, flexShrink: 1 },
   run: { marginBottom: space.md },
-  sectionTitle: {
-    ...type.eyebrow,
-    color: colors.textSecondary,
-    marginBottom: space.sm,
-    marginTop: space.md,
-  },
 });

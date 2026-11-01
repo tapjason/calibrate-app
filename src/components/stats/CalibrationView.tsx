@@ -11,6 +11,7 @@ import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { CountUp } from '@/components/ui/CountUp';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import {
@@ -100,7 +101,7 @@ export function CalibrationView({
               {/* Secondary and quiet (roadmap D24): it keeps the rating honest
                   for those who look, and stays out of everyone else's way. */}
               {brier !== null && (
-                <Text style={[styles.subtle, styles.centered]} testID="stats-brier">
+                <Text style={styles.subtle} testID="stats-brier">
                   {brierLine(brier)}
                 </Text>
               )}
@@ -190,7 +191,9 @@ export function CalibrationView({
         </>
       )}
 
-      <Text accessibilityRole="header" style={styles.sectionTitle}>Category badges</Text>
+      <View style={styles.sectionGap}>
+        <SectionHeader title="Category badges" />
+      </View>
       {categoryStats.length === 0 ? (
         <Text style={styles.empty}>No category data yet.</Text>
       ) : (
@@ -208,22 +211,15 @@ export function CalibrationView({
 
 const styles = StyleSheet.create({
   wrap: { padding: 16 },
-  summary: { alignItems: 'center', marginBottom: 24 },
+  // Left-aligned with the chart and the rows below it (roadmap D33).
+  summary: { alignItems: 'stretch', marginBottom: space.xxxl },
   // The hero numeral is always ink; colour belongs to direction, not to
-  // good/bad (DESIGN_SYSTEM §2.4).
-  rating: { ...type.display, ...tabularNums, color: colors.textPrimary },
-  ratingLabel: { ...type.subhead, color: colors.textSecondary },
-  ratingGroup: { alignItems: 'center' },
+  // good/bad (DESIGN_SYSTEM §2.4). Readout size: the chart is this screen's hero.
+  rating: { ...type.readout, ...tabularNums, color: colors.textPrimary },
+  ratingLabel: { ...type.subhead, color: colors.textSecondary, flexShrink: 1 },
+  ratingGroup: { alignItems: 'baseline', flexDirection: 'row', gap: space.md },
   subtle: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
-  // Two lines at 375pt: centred like the single lines around it.
-  centered: { textAlign: 'center' },
-  // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
-  sectionTitle: {
-    ...type.eyebrow,
-    color: colors.textSecondary,
-    marginTop: space.xxl,
-    marginBottom: space.sm,
-  },
+  sectionGap: { marginTop: space.xl },
   // Apart from the chart's key above it, which it otherwise read as a line of.
   empty: { ...type.subhead, color: colors.textSecondary, marginTop: space.md },
   chartTitle: { ...type.title3, color: colors.textPrimary, marginBottom: space.xs },
