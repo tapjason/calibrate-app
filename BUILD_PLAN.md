@@ -361,7 +361,8 @@ sandbox subscribe → Coach cards and cosmetics unlock.
   §4). The app renders whatever trial the store reports, so the length is a
   dashboard setting; what *is* code is that it renders in the store's own unit
   ("1 month", not "30 days") and states the 24-hour cancellation rule.
-- Subscription + AI privacy declarations; app icon, splash, screenshots.
+- Subscription + AI privacy declarations; app icon, splash, screenshots
+  (marketing frames with the parked stageshow skill: `docs/APP_STORE_LISTING.md` §5).
 - The 2026 age-rating questionnaire (answers drafted in
   `docs/APP_STORE_LISTING.md` §1), and the in-app OpenAI disclosure that
   Guideline 5.1.2(i) requires before the Coach sends anything.

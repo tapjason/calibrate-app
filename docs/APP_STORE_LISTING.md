@@ -229,6 +229,34 @@ rendering differs slightly (system font, no status bar), so treat those as
 layout drafts rather than uploads. Drafts of screens 1–6 were made 2026-10-03
 (git-ignored, `screenshots/draft/`).
 
+**Marketing visuals: the stageshow skill (parked 2026-11-01, use before
+release).** `.claude/skills/stageshow/` is a vendored Claude Code skill
+(`benjitaylor/skills`, MIT, pinned in `skills-lock.json`) for faux product UI:
+framed stills and short cursor-driven demos, built in browser React and CSS. It
+is installed but unused until release prep. Planned uses:
+
+- Framed screenshot compositions: a device frame, a crop and a caption set
+  around a real capture of each screen in the table above.
+- A landing-page hero and feature cards, e.g. the calibration curve drawing
+  itself, or a badge going from Tracker to Sharp.
+- Launch and social visuals for the "Sharp in health · Tracker in money" idea.
+
+Limits:
+
+- **Not for the app's own screens.** Its kit is web React (`div`, CSS, Vite),
+  not React Native, and its look rules are for illustrations, not for
+  `docs/design/DESIGN_SYSTEM.md`. It won't run in the Expo app.
+- **Not for the App Store preview video, and not as a substitute for the app
+  in screenshots.** Guideline 2.3.4 allows previews built only from screen
+  captures of the app itself, and 2.3.3 requires screenshots to show the app in
+  use. A stageshow mock may frame a real capture; it may not stand in for one
+  or show anything the app doesn't do.
+
+To use it: `cd .claude/skills/stageshow && npm install && npm run dev`, then
+follow its `SKILL.md` (it starts by filming the closest "gold" example). To
+refresh it from upstream, run `npx skills update stageshow -p`. If the folder is
+ever deleted, `npx skills experimental_install` restores it from the lockfile.
+
 ---
 
 ## Sources
