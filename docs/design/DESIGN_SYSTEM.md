@@ -21,8 +21,19 @@ and §7.18; the blind dry runs, done 2026-10-09, behind D23–D31 across §7.1, 
 tab bar look like a browser's). Contrast ratios below were recomputed 2026-09-26 with
 the WCAG 2.x formula.
 
-**Status (2026-10-10):** the tokens are in code at `src/constants/theme.ts` (light
-and dark both live, following the phone; Inter as the face), and `src/constants/theme.test.ts` pins every recorded
+**Visual direction (roadmap D33, decided and built 2026-11-01): Instrument.** The brand
+has no hue. Actions and selection are drawn in ink, so the only colour on any screen
+means over, under or on the line (§2). The face is Instrument Sans (§3). The identity
+leads the hero, left-aligned, with the rating as its receipt on a gauge (§7.1), and
+lists are grouped rows with each prediction's confidence in its own column (§7.11).
+It came out of a review against the frontend-design skill
+(`.claude/skills/frontend-design/`): Tailwind's indigo and Inter were the two most
+common defaults in generated apps, and the lists used the generic one-card-per-row
+kit. The skill's rule still holds after D33: this file is the brief, and the skill's
+process, restraint and writing rules apply within it (`CLAUDE.md`, Visual design).
+
+**Status (2026-11-01):** the tokens are in code at `src/constants/theme.ts` (light
+and dark both live, following the phone; Instrument Sans as the face), and `src/constants/theme.test.ts` pins every recorded
 contrast pair. Colour is fully migrated: no hex literal is left in `app/` or
 `src/components/` outside `BADGE_META` and `cardThemes`, which hold their own palettes
 by design. Many font sizes are still raw numbers rather than `type.*`; migrating them
@@ -45,8 +56,10 @@ list, because Chrome renders a bare `ui-rounded` as serif.
    colour. Green means *calibrated*, never *correct*; red never appears for an outcome.
 5. **Colour is never the only channel.** Every semantic colour comes with a word, shape
    or position. Categories get icons, not colours.
-6. **Indigo is chrome, not data.** Brand indigo marks actions and selection; the chart
-   uses only the three calibration hues plus ink.
+6. **Ink is chrome, colour is data.** Actions and selection are ink (`action`); the
+   chart and every other hue mean over, under or on the line. Nothing else on screen
+   carries a hue except the destructive red, the caution amber and Oracle's gold
+   (D33; `theme.test.ts` holds the rest near-neutral).
 7. **Text contrast ≥ 4.5:1**, UI/graphic contrast ≥ 3:1, no text under 11 pt, tap
    targets ≥ 44×44 pt.
 8. **Every animation respects Reduce Motion**; every haptic has a visual twin.
@@ -63,8 +76,8 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 
 | Principle | What it means on screen | Reference |
 |---|---|---|
-| **Identity leads, the number is the receipt** | "Forecaster" in words first; "score 78" beside it; the curve is the proof. | 16Personalities, Spotify Wrapped 2025 "Clubs" |
-| **Restraint, then one pop of colour** | Near-monochrome canvas; colour reserved for the primary action and for meaning (over/under/calibrated). | Co–Star, Wrapped 2025 "selective pops of colour", HIG Color |
+| **Identity leads, the number is the receipt** | "Sharp in health" first, left-aligned and large; the rating under it on its gauge; the curve is the proof (§7.1, D33). | 16Personalities, Spotify Wrapped 2025 "Clubs" |
+| **Ink chrome, colour only for meaning** | Actions and selection in ink; colour only where it means over, under or on the line, so every hue on screen is information (D33). | Co–Star, Wrapped 2025 "selective pops of colour", HIG Color |
 | **Honest about uncertainty** | Calibrating states, labelled regions, ranges shown as soft bands, n shown on every dot. Showing ranges barely costs trust (van der Bles 2020). | WHOOP "calibrating", Oura baseline |
 | **Reward honesty, not correctness** | Neutral outcome styling; no confidence is ever rewarded for being a particular number (the integrity bonus went, D23). | Product principle (`CLAUDE.md`) |
 | **No guilt** | "Guesser" reads as a starting point; misses and broken streaks are never red, never animated. | Gentler Streak (ADA 2024), Finch |
@@ -77,43 +90,53 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 
 ## 2. Colour
 
-### 2.1 Brand (indigo — matches the icon and splash)
+### 2.1 Actions and selection (ink — matches the icon and splash)
 
-| Token | Hex | Use | Contrast |
-|---|---|---|---|
-| `brand50` | `#EEF2FF` | selected chip background | — |
-| `brand100` | `#E0E7FF` | pressed tint | — |
-| `brand200` | `#C7D2FE` | secondary text on dark cards | 12.1:1 on `inkCard` |
-| `brand400` | `#818CF8` | accent on dark surfaces | — |
-| **`brand600`** | **`#4F46E5`** | primary CTA fill, selection, links, tab tint | white on it 6.29:1; as text on canvas 5.83:1 |
-| `brand700` | `#4338CA` | pressed CTA | white on it 7.90:1 |
-| `brand800` | `#3730A3` | text on `brand50` | 8.88:1 |
-| `brand900` | `#312E81` | Sharp emblem fill | — |
-| `brand950` | `#1E1B4B` | splash dark, Wrapped card | — |
-| `inkCard` | `#141233` | free "Midnight" share-card background | — |
+Since D33 (2026-11-01) the brand has no hue. The tokens are named by role; until then
+they were an indigo ramp (`brand50`–`brand950`, Tailwind's indigo exactly).
 
-One tinted primary action per screen (HIG Color: "refrain from adding colour to the
-background of multiple controls").
+| Token | Light | Dark | Use | Contrast |
+|---|---|---|---|---|
+| **`action`** | **`#15171B`** | `#F2F3F5` | primary CTA fill, the "+", a switch that's on, a selected chip's fill, a selection border | `onAction` on it 17.9:1 / 16.2:1 |
+| `actionPressed` | `#3A3D45` | `#C9CCD2` | a pressed CTA | |
+| `onAction` | `#FFFFFF` | `#15171B` | text and icons on an `action` fill; a switch's thumb | |
+| `actionText` | `#15171B` | `#F2F3F5` | tappable text (text buttons, links), set in semibold | 16.3:1 / 17.3:1 on canvas |
+| `selectedFill` | `#E3E5E9` | `#2A2D33` | a quiet chosen state: a selected plan, a checkpoint row, the Coach box | |
+| `selectedText` | `#15171B` | `#F2F3F5` | text on `selectedFill` | 14.2:1 / 12.4:1 |
+| `emphasis` | `#C9CCD3` | `#454952` | highlighted but not chosen: a checkpoint's edge, the current quiz step, a gauge's track, a row's scale | decorative |
 
-### 2.2 Neutrals (indigo-tinted; replace Tailwind gray)
+- One filled primary action per screen (HIG Color: "refrain from adding colour to the
+  background of multiple controls"). Selected chips are ink-filled too (§7.12); they
+  are choices, not actions, and carry the bolder weight as well as the fill.
+- In dark, actions turn light with ink on them (`onAction` flips). A switch's thumb
+  follows `onAction` so it reads on a light track.
+- Tappable text has no hue to mark it, so it is always semibold and says what it does.
 
-| Token | Hex | Contrast | Replaces |
-|---|---|---|---|
-| `canvas` | `#F6F6FA` | — | `#F2F2F2` (React Navigation's default background), `#f9fafb`, `#f8fafc` |
-| `surface` | `#FFFFFF` | — | |
-| `surfaceSunken` | `#EFEFF6` | — | `#f3f4f6`, `#f1f5f9` |
-| `hairline` | `#E2E2EC` | decorative only | `#e5e7eb`, `#d1d5db` |
-| `controlBorder` | `#8A889E` | 3.44:1 on white (UI ≥ 3:1) | |
-| `textPrimary` | `#16142E` | 16.6:1 on canvas | `#111827` |
-| `textSecondary` | `#4E4C66` | 7.64:1 on canvas | `#6b7280` (4.32:1, fails body), `#374151`, `#4b5563` |
-| `textTertiary` | `#6B6982` | 4.91:1 canvas · 4.62:1 sunken | `#9ca3af` (2.54:1, **fails**) |
-| `destructive` | `#C4271C` | 5.75:1 on white | `#dc2626`, `#b91c1c` (sign-out, delete only) |
+### 2.2 Neutrals (cool graphite)
+
+| Token | Hex | Contrast |
+|---|---|---|
+| `canvas` | `#F3F4F6` | — |
+| `surface` | `#FFFFFF` | — |
+| `surfaceSunken` | `#E9EBEE` | — |
+| `hairline` | `#DDE0E5` | decorative only |
+| `controlBorder` | `#858993` | 3.50:1 on white, 3.18:1 on canvas (UI ≥ 3:1) |
+| `textPrimary` | `#15171B` | 16.3:1 on canvas |
+| `textSecondary` | `#4B4F58` | 7.46:1 on canvas |
+| `textTertiary` | `#646873` | 5.06:1 canvas · 4.66:1 sunken |
+| `destructive` | `#C4271C` | 5.75:1 on white (sign-out, delete only) |
+| `cautionText` / `cautionBackground` | `#7E4600` / `#FBEFD6` | 6.67:1 (account deletion's warning only) |
+
+The Lens emblem has its own three (§7.4): `emblemMid` `#5B5F69` (Forecaster),
+`emblemDeep` `#15171B` (Sharp, and where Oracle's gradient starts) and `emblemMark`
+`#FFFFFF` (the diagonal and bezel on a filled face); in dark `#9EA2AB`, `#F2F3F5` and
+`#15171B`.
 
 ### 2.3 Calibration semantics (Okabe-Ito derived, colour-blind validated)
 
 Cool = underconfident, warm = overconfident, green = on the line.
 
-| Role | Chart mark (≥3:1) | Text on white | Chip text / bg | Dark card text on `inkCard` |
+| Role | Chart mark (≥3:1) | Text on white | Chip text / bg | Text on a dark card |
 |---|---|---|---|---|
 | `over` ("runs hot") | `#D55E00` (3.87) | `#B84E00` (5.09) | `#9A3F00` / `#FFF1E6` (6.15) | `#F28A4B` (7.31); mark `#E06B20` |
 | `under` ("runs cool") | `#0084C7` (4.10) | `#006C9E` (5.77) | `#005A85` / `#E6F4FB` (6.68) | `#5CB4EC` (7.90); mark `#2D96D8` |
@@ -121,8 +144,9 @@ Cool = underconfident, warm = overconfident, green = on the line.
 | `oracleGold` (emblem hairline only) | `#B7791F` (graphic) | chip `#7A4F0E` / `#FDF6E7` (6.61) | | `#E8B64C` |
 
 Validated with the dataviz palette validator (Machado 2009 CVD simulation): worst
-colour-blind ΔE 11.0 (light) and 11.0 (dark), both pass. Brand indigo sits only 3.7 ΔE
-from `under` for tritan viewers — the reason for rule 0.6.
+colour-blind ΔE 11.0 (light) and 11.0 (dark), both pass. Since D33 the brand has no
+hue, so no chrome can be mistaken for a calibration colour; indigo sat only 3.7 ΔE from
+`under` for tritan viewers. Rule 0.6 keeps it that way.
 
 ### 2.4 Rules
 
@@ -141,20 +165,21 @@ from `under` for tritan viewers — the reason for rule 0.6.
 
 ### 2.5 Dark neutrals (D7: decided and built 2026-10-07, following the system setting)
 
-Indigo-tinted, not an inversion. Ratios computed 2026-09-28 (WCAG 2.x). How it works:
+Cool graphite, not an inversion (D33; indigo-tinted until then). How it works:
 each token in `colors` resolves where it's drawn (DynamicColorIOS on iOS, a CSS custom
 property on web), so styles made once at load still switch; `themed()` does the same
 for a colour outside the palette (the badge chips). Share cards never use `colors`:
 an exported PNG keeps its own palette whatever the phone's appearance (`LensEmblem`
-takes `palettes.light` there).
+takes `paletteOn(card background)` there: the dark palette on a dark card, the light
+on a light one).
 
 Rules dark mode taught (2026-10-07):
 - **Every text style sets a colour token.** Unset, RN draws black, invisible on the
   dark canvas.
-- **Brand text uses `brandText` on canvas or surface, `brand800` on `brand50`.**
-  `brand600` and `brand700` are fills: as text on dark `brand50` they fall to 2:1.
-- **White stays white:** switch thumbs and text on a brand fill use `onBrand`, never
-  `surface`, which turns dark.
+- **Tappable text uses `actionText` on canvas or surface, `selectedText` on
+  `selectedFill`.** `action` is a fill; text on it uses `onAction`.
+- **`onAction` flips with the appearance** (D33): white on the ink fill in light, ink
+  on the light fill in dark. Switch thumbs use it too, never `surface`.
 - **Plain values read the appearance through `useAppearance`** (roadmap step 91),
   never react-native's `useColorScheme`. React Navigation's theme takes hex strings,
   so it's the one place a plain value is chosen per appearance, and on web
@@ -167,56 +192,61 @@ Rules dark mode taught (2026-10-07):
 
 | Token | Dark hex | on `canvas` | on `surface` |
 |---|---|---|---|
-| `canvas` | `#0C0B16` | — | — |
-| `surface` | `#17162A` | — | — |
-| `surfaceSunken` | `#211F36` | — | — |
-| `hairline` | `#2E2C47` | decorative | |
-| `controlBorder` | `#6E6C88` | 3.87 | 3.51 |
-| `textPrimary` | `#F4F3FA` | 17.72 | 16.08 |
-| `textSecondary` | `#B9B7CE` | 9.98 | 9.06 |
-| `textTertiary` | `#9391AC` | 6.41 | 5.81 |
-| link / selection text | `brand400` `#818CF8` | 6.55 | 5.94 |
-| `destructive` | `#FF6B5E` | 6.99 | 6.35 |
+| `canvas` | `#0E0F12` | — | — |
+| `surface` | `#18191D` | — | — |
+| `surfaceSunken` | `#222429` | — | — |
+| `hairline` | `#2D3036` | decorative | |
+| `controlBorder` | `#6E727C` | 3.98 | 3.65 |
+| `textPrimary` | `#F2F3F5` | 17.26 | 15.82 |
+| `textSecondary` | `#B4B8C0` | 9.64 | |
+| `textTertiary` | `#8D919B` | 6.07 | 5.57 |
+| `actionText` | `#F2F3F5` | 17.26 | 15.82 |
+| `destructive` | `#FF6B5E` | | 6.29 |
 
 Calibration marks and text use the "Dark card" column of §2.3 (marks ≥ 4.79:1 even on
-dark `surfaceSunken`). The CTA keeps `brand600` + white (6.29:1); its fill is only
-2.82:1 against dark `surface`, so CTAs on dark cards rely on the label, never on fill
-alone.
+dark `surfaceSunken`). The CTA is a light fill with ink on it (16.2:1), and the fill
+stands 15.8:1 off dark `surface`.
 
 ---
 
 ## 3. Typography
 
-**Decision (roadmap D1, decided and built 2026-10-07): Inter everywhere**, numerals
-included (`FONT_FAMILY`). One face on iOS and web, so web screenshots are a faithful
-preview of type, with more brand character than the system font. Five weights ship,
-400 · 500 · 600 · 700 · 800, the only ones used (a test holds the tokens to them).
+**Decision (roadmap D33, decided and built 2026-11-01): Instrument Sans everywhere**,
+numerals included (`FONT_FAMILY`). It replaced Inter (D1, 2026-10-07), the face the
+frontend-design skill names first as the generated-app default. Instrument Sans is a
+grotesque with a slightly condensed, drawn feel that suits an app about measuring, it
+has tabular figures (`tnum`), and it is one face on iOS and web, so web screenshots
+stay a faithful preview of type. Four weights ship, 400 · 500 · 600 · 700, the only
+ones used (a test holds the tokens to them; the 800s Inter allowed became 700).
 iOS embeds them at build time (the expo-font plugin in `app.json`) under the family
-"Inter", so `fontFamily` plus `fontWeight` picks the face; web registers the same files
-under the same family (`src/constants/fonts.web.ts`) with a system fallback stack.
-Header titles, tab labels, share cards and the chart's SVG labels use it too. It was
-the system font (SF Pro, SF Rounded for numerals) until then.
+"Instrument Sans", so `fontFamily` plus `fontWeight` picks the face; web registers the
+same files under the same family (`src/constants/fonts.web.ts`) with a system fallback
+stack. Header titles, tab labels, share cards and the chart's SVG labels use it too.
+The files carry "Instrument Sans" as their typographic family, as Inter's did; that
+iOS picks each weight from it is a device check (`docs/HUMAN_VERIFICATION.md`, D33).
 
-- **Inter's `tnum` widens punctuation too**: use `tabularNums` only on numbers that
-  animate or align in a column, never on a phrase ("15-day streak" read "15 - day").
-- Inter runs wider than SF: check text in fixed-width spots at 320pt (the coverage
-  cells' range labels sit at the 11pt floor for this reason).
+- **Tabular figures** only on numbers that animate or align in a column (the rating,
+  a row's confidence, counts), never on a phrase.
+- After a face change, check text in fixed-width spots at 320pt (the coverage cells'
+  range labels sit at the 11pt floor).
+- Headlines in `title1` and up may take a little negative tracking (−0.4 on the
+  identity line); body text keeps the face's own.
 
 | Token | Face | Size/line (pt) | Weight | iOS style | Use |
 |---|---|---|---|---|---|
-| `display` | Inter | 64/68 | Bold | custom (cap Dynamic Type at 1.6×) | the one hero number per screen |
-| `readout` | Inter | 48/56 | Bold | custom (cap at 1.6×) | the live number on a control or celebration (confidence readout, milestone card) |
-| `titleXL` | Inter | 34/41 | Bold | Large Title | screen titles, verdict headline |
-| `title1` | Inter | 28/34 | Bold | Title 1 | section heroes, the Warmup's read |
-| `title2` | Inter | 22/28 | Bold | Title 2 | quiz prompt, card headlines |
-| `title3` | Inter | 20/25 | Semibold | Title 3 | group headers |
-| `headline` | Inter | 17/22 | Semibold | Headline | row titles, buttons |
-| `body` | Inter | 17/22 | Regular | Body | prediction text, copy |
-| `callout` | Inter | 16/21 | Regular | Callout | explanations |
-| `subhead` | Inter | 15/20 | Regular | Subhead | metadata |
-| `footnote` | Inter | 13/18 | Regular | Footnote | captions, chart labels |
-| `caption` | Inter | 12/16 | Medium | Caption 1 | chart ticks (minimum for charts) |
-| `eyebrow` | Inter | 13/18, +0.4 tracking | Semibold, sentence case | Footnote | section labels (replaces ALL-CAPS grey) |
+| `display` | Instrument Sans | 64/68 | Bold | custom (cap Dynamic Type at 1.6×) | unused since D33 (both heroes take `readout`); kept for a future hero |
+| `readout` | Instrument Sans | 48/56 | Bold | custom (cap at 1.6×) | the rating on Today and Insights; the live number on a control or celebration (confidence readout, milestone card) |
+| `titleXL` | Instrument Sans | 34/41 | Bold | Large Title | screen titles, verdict headline |
+| `title1` | Instrument Sans | 28/34 | Bold | Title 1 | section heroes, the Warmup's read |
+| `title2` | Instrument Sans | 22/28 | Bold | Title 2 | quiz prompt, card headlines |
+| `title3` | Instrument Sans | 20/25 | Semibold | Title 3 | group headers |
+| `headline` | Instrument Sans | 17/22 | Semibold | Headline | row titles, buttons |
+| `body` | Instrument Sans | 17/22 | Regular | Body | prediction text, copy |
+| `callout` | Instrument Sans | 16/21 | Regular | Callout | explanations |
+| `subhead` | Instrument Sans | 15/20 | Regular | Subhead | metadata |
+| `footnote` | Instrument Sans | 13/18 | Regular | Footnote | captions, chart labels |
+| `caption` | Instrument Sans | 12/16 | Medium | Caption 1 | chart ticks (minimum for charts) |
+| `eyebrow` | Instrument Sans | 13/18, +0.4 tracking | Semibold, sentence case | Footnote | section labels (replaces ALL-CAPS grey) |
 
 - `fontVariant: ['tabular-nums']` on every number that animates (count-ups) or aligns
   in a list/table. It maps to `font-variant-numeric` on web.
@@ -335,20 +365,26 @@ as the new ones.
 
 ### 7.1 Hero score and provisional state
 
-- **Identity on Home** (roadmap step 28): under the bar, the share card's headline,
-  from the same helper: the best category's emblem and "Sharp in health" in `title3`,
-  the contrast ("Tracker in finance") in `subhead` beneath. Hidden while every
+- **Identity on Home** (roadmap step 28; D33 put it first): the share card's
+  headline leads the hero, left-aligned, from the same helper: the best category's
+  30pt emblem and "Sharp in health" in `title1` (tracking −0.4), the contrast
+  ("Tracker in finance") in `callout` beneath, indented to start under the words. Hidden while every
   category is a Guesser. **D27 (2026-10-10):** only categories past the count gate
   (20 resolved) are named, so the contrast is never "Guesser in …", which means
   "fewer than 20 here" and read as a verdict. Tapping the line opens How scoring works
   at its Badges section (§7.17), not Share: two blind testers expected an
   explanation.
-- **Unlocked:** `display` numeral in `textPrimary`; beside/under it the band's identity
-  word ("Forecaster"), a one-line verdict from the engine's direction of error ("You run
-  a little hot above 70%"), and a thin bullet-graph bar with ticks at 70 / 85 / 90 and a
-  marker. A month-over-month delta only when both months are non-provisional. No gauges.
-  The 70 label is centred on its tick; 85 sits left of its tick and 90 right of its own,
-  because centred they ran together as "8590" at 320pt (roadmap step 52).
+- **Unlocked** (D33): everything left-aligned. Under the identity, the gauge
+  (`ScoreBar`): a 4pt `emphasis` track, an ink fill notched at 70 / 85 / 90 in the
+  canvas colour, and a 3 × 20pt ink needle at the score, read like an instrument's
+  scale. Under it the receipt: the rating in `readout` (48pt, `textPrimary`, tabular)
+  with "calibration rating" beside it on its baseline. Then the one-line read from the
+  engine's direction of error ("You're overconfident at 80–100%") with a 10pt dot in
+  that direction's mark colour beside the words, the one place a hue appears in the
+  hero. On Insights the receipt comes first (the chart is that screen's hero). A
+  month-over-month delta only when both months are non-provisional. The 70 label is
+  centred on its tick; 85 sits left of its tick and 90 right of its own, because centred
+  they ran together as "8590" at 320pt (roadmap step 52).
 - **Provisional:** never put the countdown in the hero slot (baseline 04/05 do —
   "20" reads as a score of 20). Show a **20-segment ring or bar** (15 per category):
   filled = resolved, hatched = pending "on their way", hollow = to go. Label:
@@ -375,7 +411,7 @@ as the new ones.
   error, so percentiles would sit below a calibrated user's own score.
 - **Brier score** (D24, 2026-10-10): on Insights only, once the rating is unlocked,
   one `footnote` line in `textSecondary` under the give-or-take line: "Brier score
-  0.14 · lower is better; always saying 50% scores 0.25". Two decimals, from the
+  0.14. Lower is better; always saying 50% scores 0.25." Two decimals, from the
   engine (`statsStore.brier`). Never on Today, never on a card, never in `display`
   or `title` type: it keeps the rating honest for those who look, and stays out of
   everyone else's way.
@@ -387,7 +423,7 @@ as the new ones.
   the row names the next one ("Today counts. Next milestone: 30 days"). The day before
   one says so as a gain ("1 more today makes it 7: a full week"; "Today counts.
   Tomorrow can make it 7: a full week"). On the day itself the row takes the milestone
-  tint (`brand50` fill, `brand200` hairline) and reads "7-day streak · A full week.
+  tint (`selectedFill` fill, `emphasis` hairline) and reads "7-day streak · A full week.
   Next milestone: 30 days" until midnight. Names: A full week, A full month, Triple
   digits, A full year, Two full years… Static until the celebration is built (§6.2).
 
@@ -463,11 +499,11 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 
 | Tier | Emblem | Fill | Rings | Accent |
 |---|---|---|---|---|
-| Guesser | dashed outline, dotted diagonal | none | 0 | `#8A889E` |
+| Guesser | dashed outline, dotted diagonal | none | 0 | `controlBorder` |
 | Tracker | solid outline, solid diagonal | `surfaceSunken` | 1 | `textSecondary` |
-| Forecaster | filled | `brand600` | 2 | white diagonal |
-| Sharp | filled, deep | `brand900` | 3 + bezel ticks | white diagonal |
-| Oracle | gradient `#4F46E5`→`#6D28D9` | — | 4 + bezel | `oracleGold` hairline |
+| Forecaster | filled | `emblemMid` (graphite) | 2 | `emblemMark` diagonal |
+| Sharp | filled, deep | `emblemDeep` (ink) | 3 + bezel ticks | `emblemMark` diagonal |
+| Oracle | gradient `emblemDeep`→`oracleGold` | — | 4 + bezel | `oracleGold` hairline |
 
 - The category SF Symbol sits small in a corner; the label is always written
   ("Sharp · Health").
@@ -475,9 +511,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   progress arc and "9/15 to unlock". Implemented as `LensEmblem`'s `progress` prop: the
   outline goes dashed and faint, and a solid stroke traces it as far as the user has
   come (`src/components/ui/LensEmblem.tsx`).
-- The progress hint names every requirement still unmet: "3 more resolved →
-  Tracker", "Score above 70 → Forecaster", or both, "20 more resolved and a score
-  above 85 → Sharp" (roadmap step 47). Naming only the count promised a badge that
+- The progress hint names every requirement still unmet: "3 more resolved to reach
+  Tracker", "Score above 70 to reach Forecaster", or both, "20 more resolved and a
+  score above 85 to reach Sharp" (roadmap step 47; the "→" went with D33). Naming only the count promised a badge that
   resolving alone couldn't earn. Only the threshold is printed, never a provisional
   score.
 - Each tier shows its receipt in one line: "Sharp: 52 resolved, score 87". Badge
@@ -485,7 +521,7 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   presentation only and loses its `emoji` field.
 - **The category's own score** (D28, 2026-10-10): on each Insights badge row, once
   the category is past `MIN_N_CATEGORY` (15 resolved, `score_is_provisional` false),
-  its score in the row's meta line ("Score 84 · 52 resolved"), rounded, in
+  its score in the row's meta line ("Score 84, 52 resolved"), rounded, in
   `textSecondary` (never a display size; the overall rating is the one hero).
   Before that, the count to go, as now. A returning tester couldn't answer "how am I
   doing in money" with a number.
@@ -496,8 +532,11 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   filters do (roadmap step 73). A launch used to read them alphabetically, so the rows
   changed places after the session's first log.
 - Why not one hue per tier (16Personalities-style)? Five extra hues would collide with
-  the over/under/calibrated semantics. The indigo ramp + gold gives each tier a distinct
-  look without that cost.
+  the over/under/calibrated semantics. Graphite, ink and gold give each tier a distinct
+  look without that cost (D33; an indigo ramp until then). The badge chips beside the
+  emblem follow the same ladder (`BADGE_CHIP_COLORS`): each tier a step darker grey, up
+  to Sharp's mid grey, and Oracle gold. Sharp's chip stops short of ink because it
+  holds the emblem, whose Sharp face is ink: on an ink chip the face vanished.
 
 ### 7.5 Share cards
 
@@ -541,9 +580,20 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   (D18 (5), step 101): "5 of 10 right" · "I was 77% sure. How sure are you?" ·
   "10 questions. Real predictions next." No lean ("I run hot" was as much luck as
   anything, `research/day0-2026-10.md` §2) and no 0–100 score.
+- **The preview's edge** (D33): the Share and Wrapped previews draw a hairline
+  (`hairline`) at the card's own corner radius (`CARD_RADIUS`), outside the captured
+  card, so the PNG never carries it. The free cards sit close to the canvas in tone (the
+  light Wrapped card on the light canvas, Midnight on the dark one, about 1.1:1) and had
+  no edge without it. It is sized to the scaled card, not the preview's wrapper, so a
+  widening the scale ignores (a web scrollbar going) can't leave it standing past the
+  card.
 - Gradients in cards are **SVG gradients** (they rasterise with `react-native-view-shot`);
   no Skia, blur or glass inside a card.
-- Free theme "Midnight" on `inkCard`; Plus themes are cosmetic only.
+- Free theme "Midnight": graphite `#131418` for the identity card, and a light
+  `#ECEEF1` for Wrapped, so a verdict and a recap read differently. Plus themes are
+  cosmetic only. Every palette is the app's own (D33; until then all were Tailwind's,
+  and Paper was the cream generated pages default to). A locked theme shows a small
+  lock, not a ✦.
 - Offer per-category show/hide before sharing (Any Distance's eye toggles).
 
 ### 7.6 Paywall
@@ -602,7 +652,7 @@ third row) → **honest timeline** → **one** CTA.
   or only shares (Share) closes from the × and loses its bottom Done.
 - **Four tabs** (roadmap D3, decided and built 2026-10-07): *Today · Insights · History
   · You*. Log stopped being a tab (HIG: tabs navigate, they don't perform actions): a
-  tinted "+" (`LogButton`, a 32pt `brand600` disc in a 44pt target) sits at the
+  filled "+" (`LogButton`, a 32pt `action` disc in a 44pt target) sits at the
   trailing end of the title bar on Today, Insights and History (D21, step 114), and
   opens Log as a full-height sheet with its title ("New prediction") and the round ×.
   It floated above the tab bar until 2026-10-09 and sat over "Resolve all", card text
@@ -668,7 +718,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   metadata.
 - **Yes and No:** two equal capsules in the same neutral style (`surface` fill,
   `controlBorder` outline, `textPrimary` label, `checkmark.circle.fill` /
-  `xmark.circle`). Neither is `brand600` and neither is red: rule 0.4, and HIG Buttons
+  `xmark.circle`). Neither is the `action` fill and neither is red: rule 0.4, and HIG Buttons
   reserves red for destructive actions.
 - **Skip is not a peer.** A text button below: "Can't tell / doesn't apply", with the
   line "It won't count toward your score." Equal weight would make skipping a miss as
@@ -720,13 +770,24 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   2."; skips counted apart as "can't tell"), and the Home streak row beneath it, since
   a run of three is usually the one that makes the day count (roadmap step 65).
 
-### 7.11 Prediction card and the Today list
+### 7.11 Prediction rows and the Today list
 
-- Layout: category symbol + word, then title (`body`, up to 3 lines), then one metadata
-  line (`subhead`, `textSecondary`): "70% · due Fri 3 Oct". No ALL-CAPS, no brand
-  colour on the confidence. The status ("Ready to resolve", "Happened") sits at the
-  right of that line and wraps under it when the line is too narrow; the date holds
-  together with no-break spaces (roadmap step 52).
+- **Rows, not cards** (D33): a list's predictions share one grouped `surface`
+  (radius `md` on the outer corners only, hairlines between rows), via
+  `PredictionCard`'s `position` (`rowPosition(index, count)`). It replaced one white
+  card per prediction, the generic card kit.
+- **Layout:** the title (`body`, up to 3 lines); under it the category symbol and
+  "Health, due Fri 3 Oct" (`footnote`, `textSecondary`); then the status ("Happened",
+  "Ready to resolve") in semibold ink with its glyph, when there is one to say. On the
+  right, the stated confidence in its own column: "70%" in `headline` (tabular) over a
+  44pt 0–100 scale, an `emphasis` track with an ink tick where the number sits, so a
+  list reads at a glance for where its calls sit, as the chart does. No ALL-CAPS, no
+  hue on the confidence, no dot between the parts. The date holds together with
+  no-break spaces (roadmap step 52).
+- **Section headers** (`SectionHeader`): the title in `headline` ink and the count at
+  the right edge in tabular `subhead`, never "Title · N". Under a "Ready to resolve"
+  header the rows don't repeat it (`showReady={false}`); the row's accessible sentence
+  still says it.
 - **Due and past-due are neutral.** A prediction coming due is not a lapse. Group the
   Today list by date ("Ready to resolve", "Next 7 days", "Later"; it said "This week"
   until roadmap step 67, which put next Tuesday in this week) and let the group
@@ -740,11 +801,11 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   ✓/✗ characters or green/red. Skipped reads "Not scored".
 - Tapping a ready card opens Resolve (§7.10); tapping one that isn't due yet opens
   its details (§7.23). Keep the single-sentence `accessibilityLabel`.
-- **History holds open predictions too** (D26, 2026-10-10): an "Open · N" section
+- **History holds open predictions too** (D26, 2026-10-10): an "Open" section, count at the right,
   above the resolved list, in due order, the same cards as Today's, so nothing logged
   is ever missing from History. The category filters apply to both; a confidence
   range (step 51) applies to the resolved list only, since open ones have no outcome.
-  The summary line ("145 answered · 93 happened") still counts the resolved ones.
+  The summary line ("145 answered, 93 happened") still counts the resolved ones.
 - **Back it up** (D31, 2026-10-10): on Today, once the oldest prediction on the phone
   is 30 days old and nobody is signed in, a quiet sunken card under the daily rows:
   "Your predictions live only on this phone" over "Sign in to keep them if it's lost
@@ -753,7 +814,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
 - **History by range** (roadmap step 51): opened from a Stats coverage chip, History
   shows a selected-style chip "You said 80–100% ×" above the category filters; the
   two combine, × clears the range, and leaving the tab drops it. The summary line's
-  "57 answered · 38 happened" then matches the chart's subtitle. The range edges come
+  "57 answered, 38 happened" then matches the chart's subtitle. The range edges come
   from the engine through `statsStore.confidenceRangeLow`. A new range or category
   opens the list at its newest (roadmap step 76); it used to keep the old offset.
 - **Reflection** (roadmap step 31): on a resolved card, a saved reflection shows under
@@ -766,8 +827,10 @@ Completable in under 15 s (`CLAUDE.md`). Order: title → category → confidenc
 due date → Save. (Category comes before confidence, as built: the track record under
 the control reads the chosen category.)
 
-- **Category:** chips with SF Symbol + word; selected = `brand50` fill, `brand800`
-  text, plus a check symbol (not colour alone). **None chosen to start** (D29,
+- **Category:** chips with SF Symbol + word; selected = `action` (ink) fill with an
+  `onAction` label and symbol, plus the bolder weight (not colour alone; D33). The
+  due-date chips, History's filters, Share's category toggles and the practice
+  moments select the same way. **None chosen to start** (D29,
   2026-10-10), and Save waits for one as it waits for a confidence; a starter idea or
   "Log it again" chooses it. A preset Work filed an untouched gym prediction under
   Work. The track record line reads all categories until one is chosen.
@@ -984,12 +1047,12 @@ scrolling question, with **Skip for now** as a text button (step 117). It opens 
 
 ### 7.19 Launch
 
-The native splash (indigo, `app.json`) stays up until the first real screen is
+The native splash (ink `#15171B`, dark `#0E0F12`, `app.json`; indigo until D33) stays up until the first real screen is
 decided, then fades out over 250 ms (roadmap step 59): the database is open, the
 stores are loaded, and a first run has been sent to the Warmup. It used to hide on
-the first React frame, so a cold start cut from indigo to a white screen with a grey
+the first React frame, so a cold start cut from the splash to a white screen with a grey
 spinner, and a first run showed Home for a moment before the Warmup replaced it. It
-never holds longer than 4 s. The loading view behind it is `canvas` with a `brand600`
+never holds longer than 4 s. The loading view behind it is `canvas` with an `action`
 spinner, which is what the web build shows.
 
 ### 7.20 Choosing an element

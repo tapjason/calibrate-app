@@ -508,8 +508,9 @@ What changed is summarised in `docs/design/BUILT_LOG.md`. Check on an
 iOS simulator or phone as well as web — web can't show SF Rounded, haptics or the
 notification placeholder.
 
-- [ ] **Buttons** are capsules. The one filled button on a screen is indigo, not
-      Tailwind blue; others are white with a grey outline. The tab bar tint is indigo.
+- [ ] **Buttons** are capsules. The one filled button on a screen is ink (light
+      with ink on it in Dark, D33); others are white with a grey outline. The tab
+      bar tint is ink.
 - [ ] **Resolve:** the screen opens with "On {date} you said **N%**", then the
       prediction, then "Did it happen?". **Yes and No look identical** (same white
       capsule, same width). Nothing is red.
@@ -574,8 +575,8 @@ Added 2026-09-29 (second pass):
       result" opens Share showing the **warm-up card** ("5 of 10 right", "I was 77%
       sure. How sure are you?") — test on a fresh install or after erasing the
       device's data, before any prediction resolves.
-- [ ] **Badges** are drawn emblems (dashed square for Guesser, filled indigo for
-      Forecaster, …), not emoji, in Stats and on the identity card.
+- [ ] **Badges** are drawn emblems (dashed square for Guesser, filled graphite for
+      Forecaster, ink for Sharp, …), not emoji, in Stats and on the identity card.
 - [ ] **Icons:** SF Symbols in the tab bar and on category chips/cards on iOS;
       Ionicons on Android/web.
 - [ ] **Buttons** shrink slightly when pressed (Reduce Motion: they dim instead).
@@ -630,7 +631,7 @@ Added 2026-09-29 (polish pass):
       pips; VoiceOver reads it as one sentence.
 - [ ] **Streak checkpoint (added 2026-10-06, step 64; web-verified on Home):**
       on day 7 (or 30, 100…) the third log or answer turns Home's streak row
-      indigo-tinted with "A full week. Next milestone: 30 days". If it was an
+      grey-tinted with "A full week. Next milestone: 30 days". If it was an
       answer, the Resolve sheet shows the still flame card ("7", "A full
       week", "Next milestone: 30 days") above the range line, with no confetti and no extra
       haptic; Done and the reflection box stay reachable in the medium sheet.
@@ -648,7 +649,7 @@ Added 2026-09-29 (polish pass):
       bands whole; the paywall's "Restore purchases" is a text link between the
       CTA and "Not now", and still restores.
 - [ ] **The 2026-10-07 batch (steps 79–84; unit-tested, not yet seen on web):**
-      the tab bar reads Today · Insights · History · You; the indigo "+" sits
+      the tab bar reads Today · Insights · History · You; the ink "+" sits
       at the right of the title bar on Today, Insights and History (D21; it
       floated above the tab bar before 2026-10-09), and opens "New prediction"
       as a full-height sheet; with a title
@@ -667,8 +668,18 @@ Added 2026-09-29 (polish pass):
       chart, the badge chips and the switches read clearly, the status bar text
       turns light, and the tab bar and headers go dark with the rest. Export a
       card in Dark and in Light: the PNGs match.
+- [ ] **The Instrument direction (D33, step 136; web-verified):** in a new build,
+      every screen is set in Instrument Sans with real Medium, Semibold and Bold
+      faces (not one weight faux-bolded), which shows iOS picks each weight from
+      the family. Today opens with "Sharp in health" left-aligned over the needle
+      gauge; open predictions are one grouped list with a confidence scale on each
+      row. No indigo or violet anywhere: actions and selected chips are ink (light
+      in Dark), badge chips a grey ladder with Oracle gold, the Sharp emblem's
+      ink face visible on its chip. On Share, the card preview has a thin edge
+      in both appearances (the light recap on This week, Midnight in Dark) that
+      the exported PNG doesn't carry. The new icon and splash are ink.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
-      app. The indigo splash should fade straight into Home, with no white
+      app. The ink splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the
       Warmup without Home showing first.
 - [ ] **Empty confidence (added 2026-10-05, step 54; web-verified):** on the
@@ -720,8 +731,9 @@ Added 2026-09-29 (polish pass):
       Yes or No, shows "That's your first. A 70% call should come true about 7
       times in 10…" in place of the range line; the second answer shows the range
       line as before, in a single Resolve and in a run.
-- [ ] **Settings switches** are indigo when on (not green).
-- [ ] **Share → Shape:** "Post · 3:4" and "Story · 9:16" reshape the card, with a
+- [ ] **Settings switches** are ink when on (not green); in Dark the track is
+      light and the thumb dark.
+- [ ] **Share → Shape:** "Post (3:4)" and "Story (9:16)" reshape the card, with a
       large emblem and the text centred. Export each and post the Story to an
       Instagram/Snapchat story draft: nothing important under the top bar or the
       reply field.
@@ -874,8 +886,8 @@ code on 2026-09-24:
       through `npx expo config --type public`. The old note ("asset exists,
       config doesn't") was stale.
 - [x] ~~Real app icon.~~ Not a placeholder: `assets/icons/icon.png` is the
-      calibration diagonal with four points on it, 1024×1024, in the brand
-      indigo. Worth a look if you want a different mark, but nothing is
+      calibration diagonal with points on it, 1024×1024, in ink since D33
+      (indigo until then). Worth a look if you want a different mark, but nothing is
       blocked on it. (It carries an alpha channel; Expo flattens iOS icons at
       build time, so confirm it looks right in the TestFlight build rather
       than editing the PNG now.)

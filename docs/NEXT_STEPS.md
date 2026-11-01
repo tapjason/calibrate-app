@@ -141,7 +141,8 @@ found the RevenueCat Test Store drift below.
   with Apple `.p8` key, and deleting the RevenueCat customer needs a
   write-scoped server key. The function already handles both once the secrets
   exist (`ACCOUNT_SPEC.md` §3).
-- **Design decisions** in `docs/design/UI_ROADMAP.md` §2. D1 (Inter), D3 (four
+- **Design decisions** in `docs/design/UI_ROADMAP.md` §2. D33 (2026-11-01, the
+  Instrument direction: Instrument Sans and an ink brand) replaced D1's Inter. D1 (Inter), D3 (four
   tabs), D7 (dark mode follows the system), D15 (rating prompt) and D16 (trial
   reminder) were decided and built on 2026-10-07, so every structural call is
   made before submission. D17 (one a day keeps the streak) was built the same

@@ -653,7 +653,11 @@ for, and validate that people actually share before betting on the free tier.
 - No hex literals in components — use the tokens in `src/constants/theme.ts`. The
   tokens follow the phone's light or dark appearance (decided 2026-10-07), so every
   text style sets a colour token; share cards keep their own fixed palettes.
-- Type is Inter (decided 2026-10-07): use the `type` tokens, which carry the family.
+- Type is Instrument Sans (decided 2026-11-01, roadmap D33; Inter until then): use
+  the `type` tokens, which carry the family.
+- The brand has no hue (D33): actions and selection are ink (`action`, `onAction`),
+  and the only colours on screen mean over, under or on the line. A new hue needs a
+  meaning and a line in DESIGN_SYSTEM §2 first.
 - Yes and No resolutions get identical feedback; colour never carries meaning alone.
 - Install native packages with `npx expo install`, never `npm i`.
 - **The `frontend-design` skill** (`.claude/skills/frontend-design/`, from
@@ -662,7 +666,9 @@ for, and validate that people actually share before betting on the free tier.
   screenshots), its restraint and its writing rules. In the app, `DESIGN_SYSTEM.md`
   is the brief, and the skill's own rule is that the brief wins. So don't pick new
   typefaces, palettes, radii or motion from it, and decided copy stays as it is
-  (the "Sharp in health · Tracker in money" middle dot, for example). Its advice to
+  (the text share's "Sharp in health · Tracker in money" middle dot, for example).
+  The one review against it so far (2026-11-01) is what changed the brief itself:
+  roadmap D33, the Instrument direction. Its advice to
   find a fresh direction applies only to surfaces with no set look: a landing page,
   or App Store marketing frames (with the parked stageshow skill,
   `docs/APP_STORE_LISTING.md` §5).

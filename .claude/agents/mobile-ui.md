@@ -56,7 +56,12 @@ and the open decisions). The short version:
   `impactAsync(Medium)`, neutral ink. Green means calibrated, not
   correct. `notificationAsync(Success)` is only for unlocks and tier-ups.
 - Colour never carries meaning alone; categories get SF Symbols, not
-  colours; brand indigo is for actions, never chart marks.
+  colours; ink (`action`) is for actions and selection, and is the only chrome
+  colour: every hue on screen means over, under or on the line (D33).
+- Lists are grouped rows (`PredictionCard` with `position` from `rowPosition`)
+  under a `SectionHeader`, never one card per item and never "Title · N".
+  Metadata is joined with commas or set on its own line, not with " · ", and
+  no "→" in text.
 - Text ≥ 4.5:1, graphics ≥ 3:1, nothing under 11 pt, targets ≥ 44 pt.
   Every animation has a Reduce Motion variant.
 - Glass only on navigation chrome. No emoji in UI or badges.
