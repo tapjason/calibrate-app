@@ -103,7 +103,7 @@ they were an indigo ramp (`brand50`–`brand950`, Tailwind's indigo exactly).
 | `actionText` | `#15171B` | `#F2F3F5` | tappable text (text buttons, links), set in semibold | 16.3:1 / 17.3:1 on canvas |
 | `selectedFill` | `#E3E5E9` | `#2A2D33` | a quiet chosen state: a selected plan, a checkpoint row, the Coach box | |
 | `selectedText` | `#15171B` | `#F2F3F5` | text on `selectedFill` | 14.2:1 / 12.4:1 |
-| `emphasis` | `#C9CCD3` | `#454952` | highlighted but not chosen: a checkpoint's edge, the current quiz step, a gauge's track, a row's scale | decorative |
+| `emphasis` | `#C9CCD3` | `#454952` | highlighted but not chosen: a checkpoint's edge, a gauge's track, a row's scale | decorative |
 
 - One filled primary action per screen (HIG Color: "refrain from adding colour to the
   background of multiple controls"). Selected chips are ink-filled too (§7.12); they
@@ -1091,7 +1091,9 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   it's on, **Due-day reminders** and **Sunday digest** switches, D31; the practice
   reminder; and the "Allow reminders" / "Open Settings" row while iOS says no) ·
   *Coach (AI)* and *Usage stats* (switches) · *Your data* (**Export predictions
-  (CSV)**, free since D31, a row that acts in place, no chevron) · *About* (How
+  (CSV)**, free since D31, a row that acts in place: no chevron, and the export symbol
+  `square.and.arrow.up` at its end, since its ink label alone no longer marks it as
+  tappable, step 137) · *About* (How
   scoring works ›, Privacy policy › once hosted, Terms of use ›) ·
   *Erase all data on this device* / *Delete account* alone at the bottom, in
   `destructive`, no chevron.
@@ -1122,7 +1124,8 @@ from everything real (`CLAUDE.md`, Daily practice).
   opens the sheet. Not shown before the first prediction: on Day 0 the Warmup has
   just asked ten questions, and the next thing is the first real one.
 - **The sheet:** full height like Log, title and the round ×. The Warmup's question
-  form (segments, `title2` prompt, `ChoiceList`, the confidence control from 50%,
+  form (segments: answered in `action`, the current one in `controlBorder`, those to
+  come in `hairline`, step 137; `title2` prompt, `ChoiceList`, the confidence control from 50%,
   nothing preset), one question at a time, answers held to the end like the Warmup.
 - **The answers:** "2 of 3 right" in `title1`, never display size (a practice number
   must not look like the rating), "You expected about 2." under it, then the Warmup's

@@ -225,9 +225,13 @@ time.* `/dev/celebrations` replays the unlock and tier-up cards.
 
 **How:** final images from a device or simulator build. The web target plus
 Playwright at 440 × 956 CSS px, 3× scale, gives 1320 × 2868 drafts now. Web
-rendering differs slightly (system font, no status bar), so treat those as
-layout drafts rather than uploads. Drafts of screens 1–6 were made 2026-10-03
-(git-ignored, `screenshots/draft/`).
+rendering differs slightly (no status bar, and no SF Symbols or glass), so treat
+those as layout drafts rather than uploads. Bring the browser window to the front
+(`page.bringToFront()`) or force a repaint before each capture: a window hidden
+behind others keeps presenting its first frame, the launch spinner, after the
+screen has drawn. Drafts of screens 1–6 were made 2026-10-03
+(git-ignored, `screenshots/draft/`), before D33, so they show the old indigo and
+Inter and need redoing.
 
 **Marketing visuals: the stageshow skill (parked 2026-11-01, use before
 release).** `.claude/skills/stageshow/` is a vendored Claude Code skill

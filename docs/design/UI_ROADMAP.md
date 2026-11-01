@@ -12,14 +12,17 @@ What has been built, step by step (steps 0–135), is in
 
 ## 1. Where it stands
 
-Every step through 136 is built, D23–D31 (decided 2026-10-10), D32 (decided 2026-10-12) and D33 (decided 2026-11-01) included, with a pass over D23–D31 and an accessibility pass on 2026-10-12 (see [`BUILT_LOG.md`](BUILT_LOG.md) §1.5). The redesign
+Every step through 137 is built, D23–D31 (decided 2026-10-10), D32 (decided 2026-10-12) and D33 (decided 2026-11-01) included, with a pass over D23–D31 and an accessibility pass on 2026-10-12 (see [`BUILT_LOG.md`](BUILT_LOG.md) §1.5). The redesign
 pass, the element and retention research batches, the Day-0 rework (D18) and the
 daily-practice, rest-day and reminder features all shipped. **Everything not listed
 in the parking lot or §2 is done**; what's left is a first session on an iPhone
 (checklist: `docs/HUMAN_VERIFICATION.md` C2) and the decisions below.
 
 Verification for any new UI step: `npm test`, a web-build screenshot at phone width
-(320 and 375pt, both appearances), and an iPhone run for anything with haptics,
+(320 and 375pt, both appearances; bring the automation browser's window to the front,
+or force a repaint, before each capture: hidden behind other windows it keeps
+presenting its first frame, the launch spinner, long after the screen has drawn,
+which read as a stuck spinner until 2026-11-01), and an iPhone run for anything with haptics,
 symbols, sheets or glass (web shows none of them). Since 2026-10-04 an iPhone run
 means a development build (the App Store's Expo Go stops at SDK 54), which waits on
 the $99 Apple account, so device checks are one batch for the first device session.
