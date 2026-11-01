@@ -656,6 +656,16 @@ for, and validate that people actually share before betting on the free tier.
 - Type is Inter (decided 2026-10-07): use the `type` tokens, which carry the family.
 - Yes and No resolutions get identical feedback; colour never carries meaning alone.
 - Install native packages with `npx expo install`, never `npm i`.
+- **The `frontend-design` skill** (`.claude/skills/frontend-design/`, from
+  `anthropics/skills`, adopted 2026-11-01) applies to UI work for its process
+  (plan, check the plan against the brief, build, then critique with
+  screenshots), its restraint and its writing rules. In the app, `DESIGN_SYSTEM.md`
+  is the brief, and the skill's own rule is that the brief wins. So don't pick new
+  typefaces, palettes, radii or motion from it, and decided copy stays as it is
+  (the "Sharp in health · Tracker in money" middle dot, for example). Its advice to
+  find a fresh direction applies only to surfaces with no set look: a landing page,
+  or App Store marketing frames (with the parked stageshow skill,
+  `docs/APP_STORE_LISTING.md` §5).
 
 ### AI calls
 - AI requests go through `src/ai/refine.ts` and `src/ai/coach.ts` only. They must fail

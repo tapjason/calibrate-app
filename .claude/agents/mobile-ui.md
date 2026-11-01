@@ -69,6 +69,11 @@ and the open decisions). The short version:
   first — never compute them in a component.
 - The web build must render every screen, but it can't show SF Symbols,
   `ui-rounded`, glass or haptics — check those on iOS.
+- For a new screen or a reshaped one, also read
+  `.claude/skills/frontend-design/SKILL.md` and follow its process (plan, check
+  the plan against the brief, build, critique with screenshots), its restraint
+  and its writing rules. DESIGN_SYSTEM is the brief and wins: take no new
+  typefaces, palettes or radii from the skill.
 
 ## When you're done
 
