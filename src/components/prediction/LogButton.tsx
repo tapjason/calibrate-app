@@ -33,7 +33,7 @@ export function LogButton({ onPress }: LogButtonProps) {
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
       testID="log-button"
     >
-      <Icon sf="plus" fallback="add" size={20} color={colors.onBrand} />
+      <Icon sf="plus" fallback="add" size={20} color={colors.onAction} />
     </Pressable>
   );
 }
@@ -41,12 +41,12 @@ export function LogButton({ onPress }: LogButtonProps) {
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: colors.brand600,
+    backgroundColor: colors.action,
     borderRadius: radius.pill,
     height: DISC,
     justifyContent: 'center',
     marginRight: space.lg,
     width: DISC,
   },
-  pressed: { backgroundColor: colors.brand700 },
+  pressed: { backgroundColor: colors.actionPressed },
 });

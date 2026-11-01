@@ -61,5 +61,5 @@ const styles = StyleSheet.create({
   title: { ...type.headline, color: colors.textPrimary },
   body: { ...type.subhead, color: colors.textSecondary },
   notNow: { alignSelf: 'flex-start', paddingVertical: space.sm },
-  notNowText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  notNowText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
 });

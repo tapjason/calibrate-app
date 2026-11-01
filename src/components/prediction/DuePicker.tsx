@@ -47,7 +47,7 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
         if (y && m && d) onChange(localNoonIso(y, m - 1, d));
       },
       style: {
-        // Inter by name: 'inherit' found no family above it and drew the
+        // The face by name: 'inherit' found no family above it and drew the
         // date in the browser's serif (roadmap step 92).
         fontFamily: FONT_FAMILY,
         fontSize: type.callout.fontSize, // ≥ 16px or iOS Safari zooms on focus
@@ -84,7 +84,7 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
         mode="date"
         display="compact"
         minimumDate={today}
-        accentColor={colors.brand600}
+        accentColor={colors.action}
         // No themeVariant: it was pinned to light while the app was, and the
         // picker now follows the phone like the rest of the sheet (step 92).
         onChange={(_e, date) => pick(date)}

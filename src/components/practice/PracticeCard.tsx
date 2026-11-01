@@ -41,7 +41,7 @@ export function PracticeCard({ onOpen, testID = 'practice-card' }: PracticeCardP
         sf={copy.done ? 'checkmark.circle.fill' : 'target'}
         fallback={copy.done ? 'checkmark-circle' : 'locate-outline'}
         size={18}
-        color={colors.brand600}
+        color={colors.action}
       />
       <View style={styles.text}>
         <Text style={styles.title} testID={`${testID}-title`}>
@@ -82,5 +82,5 @@ const styles = StyleSheet.create({
   text: { flex: 1 },
   title: { ...type.headline, color: colors.textPrimary },
   detail: { ...type.footnote, color: colors.textSecondary },
-  action: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  action: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
 });

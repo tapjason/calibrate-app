@@ -23,7 +23,7 @@ describe('StreakLine (roadmap D2)', () => {
     );
     const pip = (i: number) =>
       StyleSheet.flatten(screen.getByTestId(`streak-line-pip-${i}`, { includeHiddenElements: true }).props.style);
-    expect(pip(0).backgroundColor).toBe(colors.brand600);
+    expect(pip(0).backgroundColor).toBe(colors.action);
     expect(pip(1).backgroundColor).toBeUndefined();
     expect(pip(1).borderWidth).toBeGreaterThan(0);
   });
@@ -39,7 +39,7 @@ describe('StreakLine (roadmap D2)', () => {
       <StreakLine status={{ streak: 30, today: 3, todayCounts: true, checkpoint: 30, nextCheckpoint: 100, ...NO_REST }} />,
     );
     const row = () => StyleSheet.flatten(screen.getByTestId('streak-line').props.style);
-    expect(row().backgroundColor).toBe(colors.brand50);
+    expect(row().backgroundColor).toBe(colors.selectedFill);
     expect(screen.getByTestId('streak-line-detail')).toHaveTextContent(
       'A full month. Next\u00A0milestone: 100\u00A0days',
     );

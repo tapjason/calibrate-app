@@ -4,8 +4,7 @@ import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { contrastRatio } from '@/constants/contrast';
-import { CARD_MAX_SCALE, FONT_FAMILY, palettes } from '@/constants/theme';
+import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
 
 import { identityCardSummary, shareLines, shareSubline } from './cardCopy';
@@ -57,8 +56,7 @@ const BAND_LOWS = [0, 20, 40, 60, 80] as const;
 
 /** Dot colours for the card's own background: light marks on light, dark on dark. */
 function marksFor(background: string): Record<Direction, string> {
-  const onDark = contrastRatio(background, '#FFFFFF') > 4.5;
-  const p = onDark ? palettes.dark : palettes.light;
+  const p = paletteOn(background);
   return {
     overconfident: p.overMark,
     underconfident: p.underMark,
@@ -93,6 +91,9 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
   const onRoom = (e: LayoutChangeEvent) => setRoom(e.nativeEvent.layout.height);
   const onContent = (e: LayoutChangeEvent) => setContentHeight(e.nativeEvent.layout.height);
   const marks = marksFor(theme.background);
+  // Emblems take the palette that reads on this card, fixed so the PNG looks
+  // the same from a dark-mode phone (D7).
+  const emblemPalette = paletteOn(theme.background);
   const byLow = new Map(buckets.map((b) => [b.low, b]));
   const maxN = buckets.reduce((m, b) => Math.max(m, b.total_resolved), 1);
 
@@ -128,11 +129,10 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
         >
           {format && card.categories[0] && (
             <View style={styles.hero} testID="card-hero-emblem">
-              {/* Fixed colours: the PNG looks the same from a dark-mode phone (D7). */}
               <LensEmblem
                 tier={card.categories[0].badge_level}
                 size={format === 'story' ? 112 : 88}
-                palette={palettes.light}
+                palette={emblemPalette}
               />
             </View>
           )}
@@ -195,7 +195,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
                 testID={`card-badge-${c.category}`}
                 style={[styles.chip, { borderColor: theme.divider }]}
               >
-                <LensEmblem tier={c.badge_level} size={18} palette={palettes.light} />
+                <LensEmblem tier={c.badge_level} size={18} palette={emblemPalette} />
                 <Text
                   maxFontSizeMultiplier={CARD_MAX_SCALE}
                   style={[styles.chipLabel, { color: theme.foreground }]}
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   identity: {
     fontFamily: FONT_FAMILY,
     fontSize: 34,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 40,
     marginTop: 4,
   },

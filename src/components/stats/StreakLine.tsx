@@ -37,7 +37,7 @@ export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) 
       accessibilityLabel={copy.spoken}
       testID={testID}
     >
-      <Icon sf="flame.fill" fallback="flame" size={18} color={colors.brand600} />
+      <Icon sf="flame.fill" fallback="flame" size={18} color={colors.action} />
       <View style={styles.text}>
         <Text style={styles.headline} testID={`${testID}-headline`}>
           {copy.headline}
@@ -89,16 +89,17 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   // The milestone card's tint (MilestoneCard), without its motion.
-  rowCheckpoint: { backgroundColor: colors.brand50, borderColor: colors.brand200 },
+  rowCheckpoint: { backgroundColor: colors.selectedFill, borderColor: colors.emphasis },
   text: { flex: 1 },
-  // Not tabular: in Inter, tnum widens the hyphen too ("15 - day"), and the
-  // count doesn't animate in place.
+  // Not tabular: the count sits in a phrase and doesn't animate in place, and
+  // tabular figures space a phrase's digits apart (Inter's widened the
+  // hyphen too, "15 - day").
   headline: { ...type.headline, color: colors.textPrimary },
   detail: { ...type.footnote, color: colors.textSecondary },
   // Quieter than the detail, still 4.6:1 or better on surface (§2.2).
   rest: { ...type.caption, color: colors.textTertiary, marginTop: space.xxs },
   pips: { flexDirection: 'row', gap: space.xs },
   pip: { borderRadius: PIP / 2, height: PIP, width: PIP },
-  pipOn: { backgroundColor: colors.brand600 },
+  pipOn: { backgroundColor: colors.action },
   pipOff: { borderColor: colors.controlBorder, borderWidth: 1.5 },
 });

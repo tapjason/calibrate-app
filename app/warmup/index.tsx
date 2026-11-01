@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   wrap: { gap: 16, padding: 20, paddingBottom: 40 },
   intro: { gap: 8 },
-  brand: { ...type.eyebrow, color: colors.brandText, fontWeight: '700' },
-  title: { ...type.title1, color: colors.textPrimary, fontWeight: '800' },
+  brand: { ...type.eyebrow, color: colors.actionText, fontWeight: '700' },
+  title: { ...type.title1, color: colors.textPrimary, fontWeight: '700' },
   body: { ...type.subhead, color: colors.textSecondary },
 });

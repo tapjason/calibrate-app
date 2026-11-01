@@ -30,7 +30,7 @@ export function StreakCheckpointCard({ days, next }: StreakCheckpointCardProps) 
       accessibilityLiveRegion="polite"
     >
       <View style={styles.figure}>
-        <Icon sf="flame.fill" fallback="flame" size={22} color={colors.brand600} />
+        <Icon sf="flame.fill" fallback="flame" size={22} color={colors.action} />
         <Text style={styles.number} maxFontSizeMultiplier={DISPLAY_MAX_SCALE}>
           {days}
         </Text>
@@ -46,8 +46,8 @@ export function StreakCheckpointCard({ days, next }: StreakCheckpointCardProps) 
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-    backgroundColor: colors.brand50,
-    borderColor: colors.brand200,
+    backgroundColor: colors.selectedFill,
+    borderColor: colors.emphasis,
     borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: 'row',

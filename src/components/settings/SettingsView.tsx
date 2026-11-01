@@ -523,12 +523,12 @@ function ToggleRow({
         importantForAccessibility="no-hide-descendants"
         // Brand tint when on; a 3:1 grey track when off, so "off" still reads
         // as a control (DESIGN_SYSTEM §2.2 controlBorder).
-        trackColor={{ true: colors.brand600, false: colors.controlBorder }}
+        trackColor={{ true: colors.action, false: colors.controlBorder }}
         // White in both appearances, as iOS draws its own (D7): the surface
         // token turns dark at night and the thumb sank into the track.
-        thumbColor={colors.onBrand}
+        thumbColor={colors.onAction}
         ios_backgroundColor={colors.controlBorder}
-        {...{ activeThumbColor: colors.onBrand }}
+        {...{ activeThumbColor: colors.onAction }}
       />
     </Pressable>
   );
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, paddingRight: space.sm },
   rowLabel: { ...type.callout, fontWeight: '500', color: colors.textPrimary },
   rowLabelFill: { flex: 1 },
-  rowLabelAction: { ...type.callout, fontWeight: '600', color: colors.brandText },
+  rowLabelAction: { ...type.callout, fontWeight: '600', color: colors.actionText },
   rowLabelDestructive: { color: colors.destructive },
   rowValue: { ...type.callout, color: colors.textSecondary },
   rowDescription: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },

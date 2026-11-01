@@ -40,8 +40,8 @@ interface TierLook {
 }
 
 // DESIGN_SYSTEM §7.4. Tier is carried by fill + ring count + the written
-// label beside the emblem — never by colour alone. Indigo ramp + gold, so no
-// tier collides with the over/under/calibrated hues.
+// label beside the emblem — never by colour alone. Graphite, ink and gold, so
+// no tier collides with the over/under/calibrated hues.
 function looksFor(colors: Palette): Record<BadgeLevel, TierLook> {
   return {
     guesser: {
@@ -61,17 +61,17 @@ function looksFor(colors: Palette): Record<BadgeLevel, TierLook> {
       dashed: false,
     },
     forecaster: {
-      fill: colors.brand600,
-      outline: colors.brand600,
-      diagonal: colors.onBrand,
+      fill: colors.emblemMid,
+      outline: colors.emblemMid,
+      diagonal: colors.emblemMark,
       rings: 2,
       bezel: false,
       dashed: false,
     },
     sharp: {
-      fill: colors.brand900,
-      outline: colors.brand900,
-      diagonal: colors.onBrand,
+      fill: colors.emblemDeep,
+      outline: colors.emblemDeep,
+      diagonal: colors.emblemMark,
       rings: 3,
       bezel: true,
       dashed: false,
@@ -79,7 +79,7 @@ function looksFor(colors: Palette): Record<BadgeLevel, TierLook> {
     oracle: {
       fill: 'gradient',
       outline: colors.oracleGold,
-      diagonal: colors.onBrand,
+      diagonal: colors.emblemMark,
       rings: 4,
       bezel: true,
       dashed: false,
@@ -160,8 +160,9 @@ export function LensEmblem({
         {look.fill === 'gradient' && !blueprint && (
           <Defs>
             <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={tones.brand600} />
-              <Stop offset="1" stopColor={tones.oracleViolet} />
+              <Stop offset="0" stopColor={tones.emblemDeep} />
+              <Stop offset="0.55" stopColor={tones.emblemDeep} />
+              <Stop offset="1" stopColor={tones.oracleGold} />
             </LinearGradient>
           </Defs>
         )}
@@ -200,7 +201,7 @@ export function LensEmblem({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={tier === 'oracle' ? tones.oracleGold : tones.onBrand}
+            stroke={tier === 'oracle' ? tones.oracleGold : tones.emblemMark}
             strokeWidth={stroke}
             strokeLinecap="round"
           />
@@ -226,7 +227,7 @@ export function LensEmblem({
             height={side}
             rx={r}
             fill="none"
-            stroke={progressColor ?? tones.brand600}
+            stroke={progressColor ?? tones.action}
             strokeWidth={stroke}
             strokeDasharray={`${done * perimeter} ${perimeter}`}
             strokeLinecap="round"

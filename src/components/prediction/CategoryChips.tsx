@@ -32,7 +32,7 @@ export function CategoryChips({ value, onChange }: CategoryChipsProps) {
           <CategoryIcon
             category={c}
             size={15}
-            color={value === c ? colors.brand800 : colors.textSecondary}
+            color={value === c ? colors.selectedText : colors.textSecondary}
           />
           <Text style={[styles.chipText, styles.capitalize, value === c && styles.chipTextActive]}>
             {c}
@@ -55,11 +55,11 @@ export const chipStyles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   // Selected = tint + bolder label, not colour alone (DESIGN_SYSTEM §7.12).
-  chipActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  chipActive: { backgroundColor: colors.selectedFill, borderColor: colors.action },
   chipText: { ...type.subhead, color: colors.textPrimary },
   capitalize: { textTransform: 'capitalize' },
   chipWithIcon: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  chipTextActive: { color: colors.brand800, fontWeight: '700' },
+  chipTextActive: { color: colors.selectedText, fontWeight: '700' },
 });
 
 const styles = chipStyles;

@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     height: 4,
     overflow: 'hidden',
   },
-  fill: { backgroundColor: colors.brand600, height: 4 },
+  fill: { backgroundColor: colors.action, height: 4 },
   done: { flex: 1, gap: space.md, justifyContent: 'center', padding: space.xxl },
   doneTitle: { ...type.title2, color: colors.textPrimary },
   doneBody: { ...type.subhead, color: colors.textSecondary },

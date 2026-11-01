@@ -25,7 +25,7 @@ describe('EmptyState', () => {
     const onAction = jest.fn();
     render(<EmptyState message="Nothing open." actionLabel="Log a prediction" onAction={onAction} />);
     const button = screen.getByRole('button', { name: 'Log a prediction' });
-    expect(StyleSheet.flatten(button.props.style).backgroundColor).toBe(colors.brand600);
+    expect(StyleSheet.flatten(button.props.style).backgroundColor).toBe(colors.action);
     fireEvent.press(button);
     expect(onAction).toHaveBeenCalledTimes(1);
   });

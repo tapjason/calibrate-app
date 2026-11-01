@@ -92,5 +92,5 @@ const styles = StyleSheet.create({
   body: { ...type.subhead, color: colors.textSecondary },
   actions: { alignItems: 'center', flexDirection: 'row', gap: space.lg, marginTop: space.xs },
   notNow: { paddingVertical: space.sm },
-  notNowText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  notNowText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
 });

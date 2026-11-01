@@ -100,10 +100,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: SEGMENT_HEIGHT,
   },
-  done: { backgroundColor: colors.brand600, borderColor: colors.brand600 },
+  done: { backgroundColor: colors.action, borderColor: colors.action },
   onTheWay: {
-    backgroundColor: colors.brand200,
-    borderColor: colors.brand600,
+    backgroundColor: colors.emphasis,
+    borderColor: colors.action,
     borderStyle: 'dashed',
   },
   toGo: { backgroundColor: colors.surface, borderColor: colors.controlBorder },

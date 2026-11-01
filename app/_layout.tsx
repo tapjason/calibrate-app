@@ -43,7 +43,7 @@ function navigationTheme(scheme: 'light' | 'dark'): Theme {
     ...base,
     colors: {
       ...base.colors,
-      primary: p.brand600,
+      primary: p.action,
       background: p.canvas,
       card: p.surface,
       text: p.textPrimary,
@@ -71,7 +71,7 @@ export default function RootLayout() {
   useEffect(() => {
     (async () => {
       try {
-        // Inter on web (roadmap D1), alongside the database, so the first
+        // Instrument Sans on web (D33), alongside the database, so the first
         // screen paints in it; native builds embed the font. Never rejects.
         await Promise.all([initDb(), loadFonts()]);
         await useAuthStore.getState().initialize();
@@ -194,7 +194,7 @@ export default function RootLayout() {
   if (!ready) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.brand600} />
+        <ActivityIndicator color={colors.action} />
       </View>
     );
   }

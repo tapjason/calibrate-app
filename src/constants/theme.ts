@@ -18,23 +18,31 @@
 
 import { DynamicColorIOS, Platform, type TextStyle } from 'react-native';
 
-export interface Palette {
-  // Brand (indigo — matches the icon and splash). Chrome, never data.
-  brand50: string;
-  brand100: string;
-  brand200: string;
-  brand400: string;
-  brand600: string;
-  brand700: string;
-  brand800: string;
-  brand900: string;
-  brand950: string;
-  /** Text/icons on a brand600 fill. */
-  onBrand: string;
-  /** Brand as text or selection ink on the canvas. */
-  brandText: string;
+import { contrastRatio } from './contrast';
 
-  // Neutrals (indigo-tinted).
+export interface Palette {
+  // Actions and selection, drawn in ink (roadmap D33: the brand has no hue,
+  // so the only colour on screen means over, under or on the line). Chrome,
+  // never data.
+  /** Primary action fill, selection border, a switch that's on. */
+  action: string;
+  /** A primary action while pressed. */
+  actionPressed: string;
+  /** Text and icons on an `action` fill; also a switch's thumb. */
+  onAction: string;
+  /** Tappable text on the canvas or a surface (a text button, a link). */
+  actionText: string;
+  /** The fill behind a selected chip or option. */
+  selectedFill: string;
+  /** Text on `selectedFill`. */
+  selectedText: string;
+  /**
+   * A quiet tone for what's highlighted but not chosen: a checkpoint's edge,
+   * the current step, an unlock bar.
+   */
+  emphasis: string;
+
+  // Neutrals (cool graphite).
   canvas: string;
   surface: string;
   surfaceSunken: string;
@@ -46,7 +54,7 @@ export interface Palette {
   destructive: string;
 
   // Calibration semantics: warm = over, cool = under, green = on the line.
-  // Never used for Yes/No outcomes (rule 0.4).
+  // Never used for Yes/No outcomes (rule 0.4). The only hues in the app.
   overMark: string;
   overText: string;
   underMark: string;
@@ -59,32 +67,37 @@ export interface Palette {
   cautionText: string;
   cautionBackground: string;
 
-  // Oracle emblem only: the gold hairline and the gradient's far stop.
+  // The Lens emblem (DESIGN_SYSTEM §7.4). Tier is carried by fill, rings and
+  // the written label; these give the filled tiers their faces.
+  /** Forecaster's face. */
+  emblemMid: string;
+  /** Sharp's face, and where Oracle's gradient starts. */
+  emblemDeep: string;
+  /** The diagonal and bezel drawn on a filled face. */
+  emblemMark: string;
+  /** Oracle only: the gold hairline and the gradient's far stop. */
   oracleGold: string;
-  oracleViolet: string;
 }
 
+// Values and their contrast ratios: DESIGN_SYSTEM §2 (roadmap D33, decided
+// 2026-11-01). theme.test.ts pins every pair the app draws.
 const light: Palette = {
-  brand50: '#EEF2FF',
-  brand100: '#E0E7FF',
-  brand200: '#C7D2FE',
-  brand400: '#818CF8',
-  brand600: '#4F46E5',
-  brand700: '#4338CA',
-  brand800: '#3730A3',
-  brand900: '#312E81',
-  brand950: '#1E1B4B',
-  onBrand: '#FFFFFF',
-  brandText: '#4F46E5', // 5.83:1 on canvas
+  action: '#15171B', // white on it 17.9:1
+  actionPressed: '#3A3D45',
+  onAction: '#FFFFFF',
+  actionText: '#15171B', // 16.3:1 on canvas
+  selectedFill: '#E3E5E9',
+  selectedText: '#15171B', // 14.2:1 on selectedFill
+  emphasis: '#C9CCD3',
 
-  canvas: '#F6F6FA',
+  canvas: '#F3F4F6',
   surface: '#FFFFFF',
-  surfaceSunken: '#EFEFF6',
-  hairline: '#E2E2EC',
-  controlBorder: '#8A889E', // 3.44:1 on white (UI ≥ 3:1)
-  textPrimary: '#16142E', // 16.6:1 on canvas
-  textSecondary: '#4E4C66', // 7.64:1 on canvas
-  textTertiary: '#6B6982', // 4.91:1 canvas · 4.62:1 sunken
+  surfaceSunken: '#E9EBEE',
+  hairline: '#DDE0E5',
+  controlBorder: '#858993', // 3.50:1 on white, 3.18:1 on canvas (UI ≥ 3:1)
+  textPrimary: '#15171B', // 16.3:1 on canvas
+  textSecondary: '#4B4F58', // 7.46:1 on canvas
+  textTertiary: '#646873', // 5.06:1 canvas · 4.66:1 sunken
   destructive: '#C4271C', // 5.75:1 on white
 
   overMark: '#D55E00',
@@ -94,35 +107,33 @@ const light: Palette = {
   calibratedMark: '#009E73',
   calibratedText: '#00785A',
 
-  cautionText: '#92400E', // 6.37:1 on cautionBackground
-  cautionBackground: '#FEF3C7',
+  cautionText: '#7E4600', // 6.67:1 on cautionBackground
+  cautionBackground: '#FBEFD6',
 
+  emblemMid: '#5B5F69',
+  emblemDeep: '#15171B',
+  emblemMark: '#FFFFFF',
   oracleGold: '#B7791F',
-  oracleViolet: '#6D28D9',
 };
 
-/** DESIGN_SYSTEM §2.5 (roadmap D7, decided 2026-10-07). */
+/** DESIGN_SYSTEM §2.5. Actions turn light on the dark canvas, with ink on them. */
 const dark: Palette = {
-  brand50: '#1E1B4B',
-  brand100: '#312E81',
-  brand200: '#C7D2FE',
-  brand400: '#818CF8',
-  brand600: '#4F46E5',
-  brand700: '#4338CA',
-  brand800: '#A5B4FC',
-  brand900: '#312E81',
-  brand950: '#1E1B4B',
-  onBrand: '#FFFFFF',
-  brandText: '#818CF8', // 6.55:1 on dark canvas
+  action: '#F2F3F5', // ink on it 16.2:1
+  actionPressed: '#C9CCD2',
+  onAction: '#15171B',
+  actionText: '#F2F3F5', // 17.3:1 on dark canvas
+  selectedFill: '#2A2D33',
+  selectedText: '#F2F3F5', // 12.4:1 on selectedFill
+  emphasis: '#454952',
 
-  canvas: '#0C0B16',
-  surface: '#17162A',
-  surfaceSunken: '#211F36',
-  hairline: '#2E2C47',
-  controlBorder: '#6E6C88',
-  textPrimary: '#F4F3FA',
-  textSecondary: '#B9B7CE',
-  textTertiary: '#9391AC',
+  canvas: '#0E0F12',
+  surface: '#18191D',
+  surfaceSunken: '#222429',
+  hairline: '#2D3036',
+  controlBorder: '#6E727C',
+  textPrimary: '#F2F3F5',
+  textSecondary: '#B4B8C0',
+  textTertiary: '#8D919B',
   destructive: '#FF6B5E',
 
   overMark: '#E06B20',
@@ -132,14 +143,25 @@ const dark: Palette = {
   calibratedMark: '#14A87B',
   calibratedText: '#3CC79A',
 
-  cautionText: '#F5C77A', // 10.7:1 on dark cautionBackground
-  cautionBackground: '#2A1A05',
+  cautionText: '#F5C77A', // 10.5:1 on dark cautionBackground
+  cautionBackground: '#2A1C06',
 
+  emblemMid: '#9EA2AB',
+  emblemDeep: '#F2F3F5',
+  emblemMark: '#15171B',
   oracleGold: '#E8B64C',
-  oracleViolet: '#6D28D9',
 };
 
 export const palettes = { light, dark } as const;
+
+/**
+ * The fixed palette that reads on a share card's own background: the dark
+ * palette's light marks on a dark card, the light palette's on a light one.
+ * Fixed either way, so an exported PNG doesn't follow the phone (D7).
+ */
+export function paletteOn(background: string): Palette {
+  return contrastRatio(background, light.surface) > 4.5 ? dark : light;
+}
 
 // Web: one stylesheet of custom properties, light at :root and dark under the
 // media query, filled in as themed() is called (module load, in practice).
@@ -189,19 +211,20 @@ export const colors: Palette = Object.fromEntries(
 ) as unknown as Palette;
 
 // ---- Type (DESIGN_SYSTEM §3) ----
-// Inter everywhere (roadmap D1, decided 2026-10-07): one face on iOS and web,
-// so screenshots match the phone, numbers included (Inter's tabular figures
-// via `tabularNums`). Five weights ship: 400, 500, 600, 700, 800.
+// Instrument Sans everywhere (roadmap D33, decided 2026-11-01; Inter until
+// then, D1): one face on iOS and web, so screenshots match the phone, numbers
+// included (its tabular figures via `tabularNums`). Four weights ship: 400,
+// 500, 600, 700.
 //
 // iOS embeds them at build time (the expo-font plugin in app.json) under the
-// family "Inter", so fontFamily plus fontWeight picks the face. Web registers
-// the same files under the same family with weight descriptors
+// family "Instrument Sans", so fontFamily plus fontWeight picks the face. Web
+// registers the same files under the same family with weight descriptors
 // (src/constants/fonts.web.ts), and needs a fallback list: a bare unknown
 // family falls through to the browser's serif default.
 
 export const FONT_FAMILY: string = Platform.select({
-  web: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  default: 'Inter',
+  web: '"Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  default: 'Instrument Sans',
 });
 
 const FONT = FONT_FAMILY;

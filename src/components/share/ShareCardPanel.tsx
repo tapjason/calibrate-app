@@ -199,7 +199,7 @@ export function ShareCardPanel({
                           sf="checkmark"
                           fallback="checkmark"
                           size={14}
-                          color={colors.brand800}
+                          color={colors.selectedText}
                         />
                       )}
                       <Text style={[styles.chipText, on && styles.chipTextOn]}>
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
     paddingHorizontal: 12,
   },
-  chipOn: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  chipOn: { backgroundColor: colors.selectedFill, borderColor: colors.action },
   chipText: { ...type.subhead, color: colors.textSecondary, textTransform: 'capitalize' },
-  chipTextOn: { color: colors.brand800, fontWeight: '600' },
+  chipTextOn: { color: colors.selectedText, fontWeight: '600' },
 });

@@ -225,9 +225,9 @@ const styles = StyleSheet.create({
   heading: { ...type.headline, color: colors.textPrimary },
   aiLabel: {
     ...type.caption,
-    backgroundColor: colors.brand50,
+    backgroundColor: colors.selectedFill,
     borderRadius: radius.xs,
-    color: colors.brand800,
+    color: colors.selectedText,
     fontWeight: '700',
     overflow: 'hidden',
     paddingHorizontal: 6,

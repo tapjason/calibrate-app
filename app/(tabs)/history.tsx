@@ -80,7 +80,7 @@ export default function HistoryScreen() {
           testID="history-range"
         >
           <Text style={styles.rangeChipText}>You said {holdRanges(rangeText(range))}</Text>
-          <Icon sf="xmark" fallback="close" size={14} color={colors.brand800} />
+          <Icon sf="xmark" fallback="close" size={14} color={colors.selectedText} />
         </Pressable>
       )}
       {/* One scrolling row of filters rather than chips wrapping to two, and
@@ -227,15 +227,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   // Selected = tint + bolder label, not colour alone (DESIGN_SYSTEM §7.12).
-  chipActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  chipActive: { backgroundColor: colors.selectedFill, borderColor: colors.action },
   chipText: { ...type.subhead, color: colors.textPrimary, textTransform: 'capitalize' },
-  chipTextActive: { color: colors.brand800, fontWeight: '600' },
+  chipTextActive: { color: colors.selectedText, fontWeight: '600' },
   // Selected styling, like a chosen category, plus an × that clears it.
   rangeChip: {
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: colors.brand50,
-    borderColor: colors.brand600,
+    backgroundColor: colors.selectedFill,
+    borderColor: colors.action,
     borderRadius: radius.pill,
     borderWidth: 1,
     flexDirection: 'row',
@@ -244,5 +244,5 @@ const styles = StyleSheet.create({
     minHeight: 36,
     paddingHorizontal: space.md,
   },
-  rangeChipText: { ...type.subhead, color: colors.brand800, fontWeight: '600' },
+  rangeChipText: { ...type.subhead, color: colors.selectedText, fontWeight: '600' },
 });

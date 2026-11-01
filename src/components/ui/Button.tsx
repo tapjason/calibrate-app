@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // One tinted primary per screen: brand600 fill, white label 6.29:1.
-  primary: { backgroundColor: colors.brand600 },
+  // One tinted primary per screen: action fill, white label 6.29:1.
+  primary: { backgroundColor: colors.action },
   // Neutral: surface fill with a 3:1 outline so it reads as a control on
   // white as well as on the canvas. Resolve's Yes and No both use this.
   secondary: {
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.4 },
   labelBase: type.headline,
-  label_primary: { color: colors.onBrand },
+  label_primary: { color: colors.onAction },
   label_secondary: { color: colors.textPrimary },
   label_danger: { color: colors.destructive },
 });

@@ -115,8 +115,8 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-    backgroundColor: colors.brand50,
-    borderColor: colors.brand200,
+    backgroundColor: colors.selectedFill,
+    borderColor: colors.emphasis,
     borderRadius: radius.lg,
     borderWidth: 1,
     flexDirection: 'row',

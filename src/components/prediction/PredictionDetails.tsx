@@ -69,7 +69,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.brand600} />
+        <ActivityIndicator color={colors.action} />
       </View>
     );
   }

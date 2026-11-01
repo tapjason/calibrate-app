@@ -9,6 +9,9 @@
 // Colors live here rather than in the card components so the identity card,
 // the Wrapped card, and the picker can't drift apart, and so a future theme is
 // one entry rather than three edits.
+//
+// Values are the app's own (roadmap D33, 2026-11-01), not a framework's
+// palette; muted and accent are each ≥ 4.5:1 on their background.
 
 /** Every color a card needs. */
 export interface CardTheme {
@@ -36,27 +39,28 @@ export const DEFAULT_THEME: CardTheme = {
   id: 'midnight',
   name: 'Midnight',
   plus: false,
-  background: '#0f172a',
-  foreground: '#f8fafc',
-  muted: '#94a3b8',
-  accent: '#7f8ea3', // 5.36:1 — was #64748b at 3.75:1
-  divider: '#1e293b',
+  background: '#131418',
+  foreground: '#F3F4F6',
+  muted: '#A6AAB3', // 7.91:1
+  accent: '#8E929C', // 5.91:1
+  divider: '#2A2C32',
 };
 
 /**
- * Wrapped's free theme. It has always been indigo where the identity card is
- * slate, and the two reading differently is the point — a recap and a verdict
- * are different artifacts. Both are free; a Plus theme applies to both.
+ * Wrapped's free theme. The identity card is dark and the recap is light, and
+ * the two reading differently is the point: a recap and a verdict are
+ * different artifacts. Both are free; a Plus theme applies to both. (Wrapped
+ * was indigo until roadmap D33, 2026-11-01.)
  */
 export const WRAPPED_DEFAULT_THEME: CardTheme = {
   id: 'midnight',
   name: 'Midnight',
   plus: false,
-  background: '#1e1b4b',
-  foreground: '#f8fafc',
-  muted: '#c7d2fe',
-  accent: '#a5b4fc',
-  divider: '#312e81',
+  background: '#ECEEF1',
+  foreground: '#15171B',
+  muted: '#4B4F58', // 7.06:1
+  accent: '#5B5F69', // 5.50:1
+  divider: '#D3D6DC',
 };
 
 export const CARD_THEMES: readonly CardTheme[] = [
@@ -65,41 +69,41 @@ export const CARD_THEMES: readonly CardTheme[] = [
     id: 'paper',
     name: 'Paper',
     plus: true,
-    background: '#faf7f2',
-    foreground: '#1c1917',
-    muted: '#57534e',
-    accent: '#716b66', // 4.92:1 — was #a8a29e at 2.36:1
-    divider: '#e7e5e4',
+    background: '#F4F4F0',
+    foreground: '#17181B',
+    muted: '#4F5259', // 7.10:1
+    accent: '#5F626A', // 5.53:1
+    divider: '#DCDCD6',
   },
   {
     id: 'ink',
     name: 'Ink',
     plus: true,
-    background: '#111827',
-    foreground: '#f9fafb',
-    muted: '#9ca3af',
-    accent: '#818cf8', // 5.95:1 — was #6366f1 at 3.97:1
-    divider: '#374151',
+    background: '#08090A',
+    foreground: '#F5F5F6',
+    muted: '#A2A5AC', // 8.08:1
+    accent: '#D2AE5B', // 9.44:1
+    divider: '#25262A',
   },
   {
     id: 'forest',
     name: 'Forest',
     plus: true,
-    background: '#052e26',
-    foreground: '#ecfdf5',
-    muted: '#6ee7b7',
-    accent: '#34d399',
-    divider: '#065f46',
+    background: '#10261F',
+    foreground: '#E9F2EE',
+    muted: '#9CC7B4', // 8.52:1
+    accent: '#6CBB98', // 6.97:1
+    divider: '#21423A',
   },
   {
     id: 'ember',
     name: 'Ember',
     plus: true,
-    background: '#2a0d0d',
-    foreground: '#fff7ed',
-    muted: '#fdba74',
-    accent: '#fb923c',
-    divider: '#7c2d12',
+    background: '#2A1411',
+    foreground: '#FAF0EA',
+    muted: '#E2AE94', // 8.88:1
+    accent: '#E58A5F', // 6.74:1
+    divider: '#4A261E',
   },
 ];
 

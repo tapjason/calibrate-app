@@ -70,7 +70,7 @@ export function PracticeTimePicker({ value, onChange }: PracticeTimePickerProps)
         value={at}
         mode="time"
         display="compact"
-        accentColor={colors.brand600}
+        accentColor={colors.action}
         onChange={(_e, date) => {
           if (date) onChange({ hour: date.getHours(), minute: date.getMinutes() });
         }}

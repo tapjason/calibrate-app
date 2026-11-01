@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   headline: {
     fontFamily: FONT_FAMILY,
     fontSize: 40,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 46,
     marginTop: 4,
   },

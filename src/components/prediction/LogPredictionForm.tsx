@@ -224,7 +224,8 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
             setTitle(v);
             if (suggestion) setSuggestion(null);
           }}
-          // Short enough to fit at 320pt in Inter, which runs wider than SF, and
+          // Short enough to fit at 320pt (checked in Inter, about 6% wider than
+          // Instrument Sans, D33), and
           // dateless: a first prediction starts on Tomorrow, later ones a week.
           placeholder="e.g. I'll finish the draft"
           maxLength={TITLE_MAX_LENGTH}
@@ -358,24 +359,24 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: colors.brand600,
-    backgroundColor: colors.brand50,
+    borderColor: colors.action,
+    backgroundColor: colors.selectedFill,
   },
   refinePressed: { opacity: 0.7 },
   refineDisabled: { opacity: 0.4 },
-  refineLabel: { ...type.footnote, color: colors.brandText, fontWeight: '600' },
+  refineLabel: { ...type.footnote, color: colors.actionText, fontWeight: '600' },
   suggestion: {
     marginBottom: 16,
     padding: 12,
     borderRadius: 8,
-    backgroundColor: colors.brand50,
+    backgroundColor: colors.selectedFill,
     borderWidth: 1,
-    borderColor: colors.brand200,
+    borderColor: colors.emphasis,
   },
   suggestionLabel: {
     ...type.caption,
     fontWeight: '600',
-    color: colors.brand800,
+    color: colors.selectedText,
     marginBottom: 4,
   },
   suggestionText: { ...type.subhead, color: colors.textPrimary, marginBottom: 12 },

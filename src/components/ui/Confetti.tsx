@@ -62,17 +62,17 @@ export function confettiPieces(
       spin: (next() * 2 - 1) * 720,
       width: 6 + next() * 4,
       height: 3 + next() * 2,
-      color: palette[i % palette.length] ?? colors.brand600,
+      color: palette[i % palette.length] ?? colors.action,
     };
   });
 }
 
-/** The brand ramp: decoration is chrome, never a calibration hue (§2.4). */
+/** The ink ramp: decoration is chrome, never a calibration hue (§2.4). */
 export const BRAND_CONFETTI: readonly string[] = [
-  colors.brand200,
-  colors.brand400,
-  colors.brand600,
-  colors.brand800,
+  colors.action,
+  colors.emblemMid,
+  colors.emphasis,
+  colors.textTertiary,
 ];
 
 interface ConfettiProps {

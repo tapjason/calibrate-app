@@ -108,9 +108,9 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     span === 'week' && summary.resolved > 0,
   );
 
-  // Wrapped's own free look is indigo, so an unthemed card keeps it; a chosen
-  // Plus theme applies to both cards, which is what makes it feel like a look
-  // rather than a per-screen setting.
+  // Wrapped's own free look is light (D33; indigo until then), so an
+  // unthemed card keeps it; a chosen Plus theme applies to both cards, which
+  // is what makes it feel like a look rather than a per-screen setting.
   const chosen = resolveTheme(cardThemeId, isPlus);
   const theme = chosen.plus ? chosen : WRAPPED_DEFAULT_THEME;
 
@@ -169,13 +169,13 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
           <Switch
             value={showTitles}
             onValueChange={setShowTitles}
-            trackColor={{ true: colors.brand600, false: colors.controlBorder }}
-            thumbColor={colors.onBrand}
+            trackColor={{ true: colors.action, false: colors.controlBorder }}
+            thumbColor={colors.onAction}
             ios_backgroundColor={colors.controlBorder}
             aria-hidden
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
-            {...{ activeThumbColor: colors.onBrand }}
+            {...{ activeThumbColor: colors.onAction }}
           />
         </Pressable>
       )}

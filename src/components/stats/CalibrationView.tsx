@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   chartSubtitle: { ...type.subhead, color: colors.textSecondary, marginBottom: space.md },
   tableToggle: { alignSelf: 'flex-start', marginTop: space.md, paddingVertical: space.xs },
   explain: { marginTop: space.sm, paddingVertical: space.xs },
-  tableToggleText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  tableToggleText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   bucket: {
     borderBottomColor: colors.hairline,
     borderBottomWidth: 1,

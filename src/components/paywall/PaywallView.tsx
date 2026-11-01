@@ -111,7 +111,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
           const icon = BENEFIT_ICONS[i] ?? BENEFIT_ICONS[0];
           return (
             <View key={feature} style={styles.featureRow}>
-              <Icon sf={icon.sf} fallback={icon.ion} size={20} color={colors.brand600} />
+              <Icon sf={icon.sf} fallback={icon.ion} size={20} color={colors.action} />
               <Text style={styles.feature}>{feature}</Text>
             </View>
           );
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     padding: space.lg,
   },
   planSmall: { paddingVertical: space.md },
-  planSelected: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  planSelected: { backgroundColor: colors.selectedFill, borderColor: colors.action },
   radio: {
     alignItems: 'center',
     borderColor: colors.controlBorder,
@@ -338,9 +338,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 22,
   },
-  radioOn: { borderColor: colors.brand600 },
+  radioOn: { borderColor: colors.action },
   radioDot: {
-    backgroundColor: colors.brand600,
+    backgroundColor: colors.action,
     borderRadius: radius.pill,
     height: 10,
     width: 10,
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
   },
   timelineRow: { flexDirection: 'row', gap: space.md },
   timelineDot: {
-    backgroundColor: colors.brand600,
+    backgroundColor: colors.action,
     borderRadius: radius.pill,
     height: 8,
     marginTop: 6,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   notice: { ...type.subhead, color: colors.textPrimary },
   freeNote: { ...type.footnote, color: colors.textSecondary },
   restore: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  restoreText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  restoreText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   restoreBusy: { color: colors.textTertiary },
   muted: { ...type.subhead, color: colors.textSecondary },
   terms: { ...type.caption, fontWeight: '400', color: colors.textSecondary },

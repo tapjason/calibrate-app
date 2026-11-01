@@ -138,8 +138,8 @@ const styles = StyleSheet.create({
   },
   // The thicker edge takes its extra point from the padding, so nothing shifts.
   chipActive: {
-    backgroundColor: colors.brand50,
-    borderColor: colors.brand600,
+    backgroundColor: colors.selectedFill,
+    borderColor: colors.action,
     borderWidth: 2,
     paddingHorizontal: space.sm - 1,
     paddingVertical: space.sm - 1,
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
   chipPressed: { backgroundColor: colors.surfaceSunken },
   half: { flexBasis: '40%' },
   title: { ...type.subhead, color: colors.textPrimary, fontWeight: '500' },
-  // brand800 on brand50: the text-safe brand ink in both appearances (D7).
-  titleActive: { color: colors.brand800, fontWeight: '700' },
+  // selectedText on selectedFill: the text-safe brand ink in both appearances (D7).
+  titleActive: { color: colors.selectedText, fontWeight: '700' },
   subtitle: { ...type.caption, color: colors.textSecondary },
-  subtitleActive: { color: colors.brand800 },
+  subtitleActive: { color: colors.selectedText },
 });

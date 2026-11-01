@@ -47,11 +47,11 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
-        // Indigo is chrome: selection tint matches the icon and the CTAs.
-        tabBarActiveTintColor: colors.brand600,
+        // Ink is chrome (D33): selection tint matches the icon and the CTAs.
+        tabBarActiveTintColor: colors.action,
         tabBarInactiveTintColor: colors.textTertiary,
         sceneStyle: { backgroundColor: colors.canvas },
-        // Inter in the chrome too (roadmap D1): the header titles and the tab
+        // The face in the chrome too (D33, Instrument Sans): the header titles and the tab
         // labels aren't Text the type tokens reach.
         headerTitleStyle: { fontFamily: FONT_FAMILY, fontWeight: type.headline.fontWeight },
         tabBarLabelStyle: { fontFamily: FONT_FAMILY },

@@ -22,31 +22,36 @@ export interface BadgeMeta {
 /**
  * The chip's ink and fill, light and dark (roadmap D7). Every pair is held to
  * 4.5:1 by badges.test.ts.
+ *
+ * A grey ladder (roadmap D33): each tier a step darker than the one below, up
+ * to Sharp, and gold only for Oracle. Blue and violet went, so no tier
+ * borrows a hue from the calibration colours or the AI defaults. Sharp stops
+ * at a mid grey, not solid ink: the chip holds the emblem, whose Sharp face
+ * is ink, and on an ink chip it vanished (10.6:1 on this grey).
  */
 export const BADGE_CHIP_COLORS: Record<
   BadgeLevel,
   Record<'light' | 'dark', { color: string; background: string }>
 > = {
   guesser: {
-    // #6b7280 was 4.39:1 on this fill, under the 4.5 floor; textSecondary's ink.
-    light: { color: '#4E4C66', background: '#f3f4f6' },
-    dark: { color: '#B9B7CE', background: '#211F36' },
+    light: { color: '#5E626C', background: '#EEF0F2' }, // 5.34:1
+    dark: { color: '#9599A3', background: '#1C1E22' }, // 5.85:1
   },
   tracker: {
-    light: { color: '#475569', background: '#f1f5f9' },
-    dark: { color: '#CBD5E1', background: '#1E293B' },
+    light: { color: '#4B4F58', background: '#E6E8EB' }, // 6.69:1
+    dark: { color: '#B4B8C0', background: '#24262B' }, // 7.61:1
   },
   forecaster: {
-    light: { color: '#2563eb', background: '#eff6ff' },
-    dark: { color: '#93C5FD', background: '#172554' },
+    light: { color: '#24272D', background: '#D8DBE0' }, // 10.8:1
+    dark: { color: '#E1E3E7', background: '#33363D' }, // 9.42:1
   },
   sharp: {
-    light: { color: '#7c3aed', background: '#f5f3ff' },
-    dark: { color: '#C4B5FD', background: '#2E1065' },
+    light: { color: '#15171B', background: '#C3C7CE' }, // 10.6:1
+    dark: { color: '#F2F3F5', background: '#44474F' }, // 8.37:1
   },
   oracle: {
-    light: { color: '#b45309', background: '#fffbeb' },
-    dark: { color: '#FCD34D', background: '#422006' },
+    light: { color: '#6B4510', background: '#F7ECD3' }, // 7.20:1
+    dark: { color: '#E8B64C', background: '#2A1E08' }, // 8.72:1
   },
 };
 

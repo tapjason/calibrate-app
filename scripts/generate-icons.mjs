@@ -17,11 +17,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Brand palette
-const BG = [79, 70, 229]; // indigo-600 #4F46E5
+// Brand palette: ink, no hue (roadmap D33, 2026-11-01; indigo until then)
+const BG = [21, 23, 27]; // ink #15171B
 const LINE = [255, 255, 255]; // diagonal
 const DOT = [255, 255, 255]; // data points
-const DOT_CORE = [79, 70, 229]; // indigo core, gives a "target" read
+const DOT_CORE = [21, 23, 27]; // ink core, gives a "target" read
 
 // Data points along the diagonal, expressed as (stated, actual) fractions of the
 // plot area. They wobble above and below the line — the whole point of the app.

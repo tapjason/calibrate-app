@@ -111,8 +111,8 @@ const styles = StyleSheet.create({
   wrap: { gap: space.xl },
   segments: { flexDirection: 'row', gap: space.xs },
   segment: { backgroundColor: colors.hairline, borderRadius: 999, flex: 1, height: 6 },
-  segmentDone: { backgroundColor: colors.brand600 },
-  segmentCurrent: { backgroundColor: colors.brand200 },
+  segmentDone: { backgroundColor: colors.action },
+  segmentCurrent: { backgroundColor: colors.emphasis },
   progress: { ...type.footnote, color: colors.textSecondary, fontWeight: '600', marginTop: -space.sm },
   prompt: { ...type.title2, color: colors.textPrimary },
 });

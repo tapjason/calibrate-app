@@ -162,9 +162,9 @@ export function ConfidenceControl({
             if (latest.current === null) set(v);
           }}
           tapToSeek
-          minimumTrackTintColor={unset ? colors.hairline : colors.brand600}
+          minimumTrackTintColor={unset ? colors.hairline : colors.action}
           maximumTrackTintColor={colors.hairline}
-          thumbTintColor={unset ? colors.controlBorder : colors.brand600}
+          thumbTintColor={unset ? colors.controlBorder : colors.action}
           style={styles.slider}
         />
       </View>

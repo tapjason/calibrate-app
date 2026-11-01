@@ -30,7 +30,7 @@ export function PlusTeaser({ onUpgrade, monthsOnFile = 0 }: PlusTeaserProps) {
       <Text accessibilityRole="header" style={styles.title}>Go deeper on your own numbers</Text>
 
       <View style={styles.benefit}>
-        <Icon sf="sparkles" fallback="sparkles" size={18} color={colors.brand600} />
+        <Icon sf="sparkles" fallback="sparkles" size={18} color={colors.action} />
         <Text style={styles.benefitText}>
           Coach: an AI read of what your calibration numbers mean.
         </Text>
@@ -40,7 +40,7 @@ export function PlusTeaser({ onUpgrade, monthsOnFile = 0 }: PlusTeaserProps) {
           sf="chart.line.uptrend.xyaxis"
           fallback="trending-up"
           size={18}
-          color={colors.brand600}
+          color={colors.action}
         />
         <Text style={styles.benefitText}>{trendsLine}</Text>
       </View>
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     marginBottom: space.lg,
     padding: space.lg,
   },
-  eyebrow: { ...type.eyebrow, color: colors.brandText },
+  eyebrow: { ...type.eyebrow, color: colors.actionText },
   title: { ...type.title3, color: colors.textPrimary },
   benefit: { alignItems: 'flex-start', flexDirection: 'row', gap: space.sm },
   benefitText: { ...type.subhead, color: colors.textSecondary, flex: 1 },

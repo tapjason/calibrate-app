@@ -5,7 +5,7 @@ import { holdRanges } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
-import { CARD_MAX_SCALE, FONT_FAMILY, palettes } from '@/constants/theme';
+import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
 
 import type { BadgeProgress } from './nextBadgeCopy';
@@ -128,7 +128,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
             progress={badge.progress}
             inkColor={theme.accent}
             progressColor={theme.foreground}
-            palette={palettes.light}
+            palette={paletteOn(theme.background)}
           />
           <Text
             maxFontSizeMultiplier={CARD_MAX_SCALE}
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   eyebrow: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
-  stat: { fontFamily: FONT_FAMILY, fontSize: 34, fontWeight: '800', lineHeight: 40 },
+  stat: { fontFamily: FONT_FAMILY, fontSize: 34, fontWeight: '700', lineHeight: 40 },
   statRate: { fontFamily: FONT_FAMILY, fontSize: 20, fontWeight: '700', lineHeight: 26, marginBottom: 4 },
   streak: { fontFamily: FONT_FAMILY, fontSize: 15, fontWeight: '700', lineHeight: 20, marginBottom: 4 },
   verdict: { fontFamily: FONT_FAMILY, fontSize: 15, lineHeight: 21 },

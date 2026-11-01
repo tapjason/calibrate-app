@@ -15,7 +15,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/adaptive-icon.png",
-        "backgroundColor": "#4F46E5"
+        "backgroundColor": "#15171B"
       }
     },
     "web": {
@@ -33,10 +33,10 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#4F46E5",
+          "backgroundColor": "#15171B",
           "dark": {
             "image": "./assets/images/splash-icon.png",
-            "backgroundColor": "#1E1B4B"
+            "backgroundColor": "#0E0F12"
           }
         }
       ],
@@ -46,11 +46,10 @@
         "expo-font",
         {
           "fonts": [
-            "node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
-            "node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf",
-            "node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
-            "node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf",
-            "node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf"
+            "node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.ttf",
+            "node_modules/@expo-google-fonts/instrument-sans/500Medium/InstrumentSans_500Medium.ttf",
+            "node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/instrument-sans/700Bold/InstrumentSans_700Bold.ttf"
           ]
         }
       ],

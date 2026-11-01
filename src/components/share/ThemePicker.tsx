@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
-  selected: { borderColor: colors.brand600 },
+  selected: { borderColor: colors.action },
   dot: { borderRadius: 5, height: 10, width: 10 },
   lock: {
     fontSize: 11, // never below 11pt (DESIGN_SYSTEM §0 rule 7)

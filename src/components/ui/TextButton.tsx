@@ -30,6 +30,6 @@ export function TextButton({ label, onPress, destructive = false, testID }: Text
 
 const styles = StyleSheet.create({
   button: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  label: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  label: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   destructive: { color: colors.destructive },
 });

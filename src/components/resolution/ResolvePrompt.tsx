@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   // Yes and No share the width equally.
   answer: { flex: 1 },
   skip: { alignItems: 'center', marginTop: space.lg, minHeight: 44, paddingVertical: space.sm },
-  skipText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  skipText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   skipNote: { ...type.footnote, color: colors.textSecondary, marginTop: space.xxs },
   recordedRow: {
     alignItems: 'center',
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   changeAnswer: { alignSelf: 'center', marginTop: space.lg, paddingVertical: space.sm },
   again: { marginTop: space.sm },
   addReflection: { alignSelf: 'flex-start', marginBottom: space.lg, paddingVertical: space.sm },
-  changeAnswerText: { ...type.subhead, color: colors.brandText, fontWeight: '600' },
+  changeAnswerText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   categoryRow: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -63,10 +63,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 22,
   },
-  radioOn: { borderColor: colors.brand600 },
-  radioDot: { backgroundColor: colors.brand600, borderRadius: 999, height: 10, width: 10 },
-  optionActive: { backgroundColor: colors.brand50, borderColor: colors.brand600 },
+  radioOn: { borderColor: colors.action },
+  radioDot: { backgroundColor: colors.action, borderRadius: 999, height: 10, width: 10 },
+  optionActive: { backgroundColor: colors.selectedFill, borderColor: colors.action },
   optionText: { ...type.body, color: colors.textPrimary, flex: 1 },
-  // brand800, the ink meant for brand50: brand700 sank to 2:1 on it in dark (D7).
-  optionTextActive: { color: colors.brand800, fontWeight: '600' },
+  // selectedText, the ink meant for selectedFill: actionPressed sank to 2:1 on it in dark (D7).
+  optionTextActive: { color: colors.selectedText, fontWeight: '600' },
 });
