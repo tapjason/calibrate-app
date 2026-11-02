@@ -424,8 +424,10 @@ as the new ones.
   one says so as a gain ("1 more today makes it 7: a full week"; "Today counts.
   Tomorrow can make it 7: a full week"). On the day itself the row takes the milestone
   tint (`selectedFill` fill, `emphasis` hairline) and reads "7-day streak · A full week.
-  Next milestone: 30 days" until midnight. Names: A full week, A full month, Triple
-  digits, A full year, Two full years… Static until the celebration is built (§6.2).
+  Next milestone: 30 days" until midnight. "Next milestone" starts a line of its own
+  in the row (step 138), so "Next" never ends the line before it. Names: A full week,
+  A full month, Triple digits, A full year, Two full years… Static until the
+  celebration is built (§6.2).
 
 ### 7.2 Calibration chart (`CalibrationChart`)
 
@@ -444,6 +446,10 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    button with the control outline ("80–100%: 57 resolved. Show them.") that opens
    History filtered to that range, under the line "Tap a range to see the predictions
    behind it." (roadmap step 51). Empty chips stay inert, and so does the Warmup's.
+   A chip's range label stays on one line while it fits and otherwise breaks after
+   its dash ("80–" over "100%"), the counts level along the bottom of the row (step
+   138). Held whole, it was cut to "20–4…" at large text sizes, where the web can't
+   shrink text to fit and iOS only shrinks it so far.
 5. Ticks "0%…100%" in `caption`, `textTertiary`.
 6. Keep `describeCalibrationCurve()` for screen readers and add a "Show as table"
    disclosure.
@@ -595,6 +601,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   and Paper was the cream generated pages default to). A locked theme shows a small
   lock, not a ✦.
 - Offer per-category show/hide before sharing (Any Distance's eye toggles).
+- **The shape and the categories left off are kept** between visits, like the theme
+  (step 138; both reset each time Share opened). Whatever was kept, the card never
+  hides every category on file: if it would, it shows them all.
 
 ### 7.6 Paywall
 
@@ -702,10 +711,13 @@ filters are its way forward.
   range line, and since step 74 How scoring works, Log's track record, the Wrapped
   card, the counts table, History's range chip and Trends), a count keeps its words
   ("1 of 3" and "3 times" in Log's own record), a price keeps its period
-  ("$29.90 a year"), a date keeps its day ("Tue, Oct 13"), and the streak row keeps
-  "Next milestone:" and "30 days" each whole (it may break between them, as it does in
-  a run's "All caught up" card at 375pt, never after "Next"). Done where the text is
-  drawn or with no-break spaces, so screen readers hear the same words.
+  ("$29.90 a year"), a date keeps its day ("Tue, Oct 13"), and the streak row starts
+  "Next milestone" on a line of its own and keeps "30 days" whole (step 138; holding
+  "Next milestone:" whole too broke it mid-word at large text sizes, "mileston / e").
+  Done where the text is drawn or with no-break spaces, so screen readers hear the
+  same words. One exception: the coverage chips' range labels, the narrowest in the
+  app, break after the dash once they no longer fit one line (§7.2), rather than be
+  cut short.
 
 ### 7.10 Resolve
 
@@ -827,6 +839,9 @@ Completable in under 15 s (`CLAUDE.md`). Order: title → category → confidenc
 due date → Save. (Category comes before confidence, as built: the track record under
 the control reads the chosen category.)
 
+- **Title:** one line that wraps and grows as it fills (step 138; a one-line field
+  scrolled a long prediction out of view while it was typed). Return is Done, never a
+  line break, and a pasted break becomes a space. Edit's title field is the same.
 - **Category:** chips with SF Symbol + word; selected = `action` (ink) fill with an
   `onAction` label and symbol, plus the bolder weight (not colour alone; D33). The
   due-date chips, History's filters, Share's category toggles and the practice
@@ -839,7 +854,9 @@ the control reads the chosen category.)
   the chips, the resolved date as a sentence: "Due Friday, 3 Oct." One chip is chosen
   at a time (roadmap step 93): while the picker is open "Pick a date" is the choice,
   even before the date moves off a preset's. It used to open with "In a week" still
-  chosen beside it.
+  chosen beside it. Whenever "Pick a date" is the choice its field shows, including
+  when Edit opens on a prediction due on a picked date (step 138; Edit showed the chip
+  chosen and no field until a second tap).
 - **Starter ideas** (roadmap step 40): only before the first prediction ever, five
   quiet rows under the empty title field ("Not sure where to start? Try one, then
   make it yours:"), one per category with its icon. A tap fills title, category and
@@ -869,7 +886,10 @@ the control reads the chosen category.)
   since Save also waits for a confidence and setting one means the keyboard is down.
   (Built as step 46; it used to answer an empty tap with the store's "title is
   required".) A failed save says "Couldn't save that. Try again.", never the store's
-  developer message.
+  developer message. Once the form is started, a `footnote` line over Save says what
+  it is waiting for, in the form's own words: "To save, add a category and a
+  confidence." An empty form has none, and Edit's **Save changes** does the same
+  (step 138; a greyed-out Save said nothing about why).
 - **A new form starts at the top** (roadmap step 75): after a save, and when "Log it
   again" fills it. The tab keeps its scroll offset otherwise, and on a short phone the
   next visit opened on an empty "—%" with the title field out of sight.
@@ -1090,7 +1110,9 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   Plus's one line as the footer · *Notifications* (the main switch; under it, while
   it's on, **Due-day reminders** and **Sunday digest** switches, D31; the practice
   reminder; and the "Allow reminders" / "Open Settings" row while iOS says no) ·
-  *Coach (AI)* and *Usage stats* (switches) · *Your data* (**Export predictions
+  *Coach (AI)* and *Usage stats* (switches; without Plus, Coach's line starts "Plus
+  only.", and once it's on, "On for when you have Plus. Nothing is sent before then.",
+  step 138, since on it did nothing a free user could see) · *Your data* (**Export predictions
   (CSV)**, free since D31, a row that acts in place: no chevron, and the export symbol
   `square.and.arrow.up` at its end, since its ink label alone no longer marks it as
   tappable, step 137) · *About* (How
@@ -1108,8 +1130,9 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   belongs to a task (the share card's theme stays on Share).
 - **Practice reminder** (step 89): a stacked row in the Notifications group, its
   label and one line over five chips (Off, With coffee, At lunch, After dinner, each
-  with its time, and **Pick a time**, D31, which opens the time picker and then shows
-  the chosen time on the chip), two to a row. With Notifications off the choice is
+  with its time, and **Pick a time**, D31, which opens the time picker; once a time
+  is picked the chip reads "Your time" over it, as the moments read, step 138), two
+  to a row. With Notifications off the choice is
   kept and the line says nothing is sent.
 
 ### 7.22 Daily practice (built as roadmap steps 88–89)
@@ -1191,8 +1214,8 @@ sheet with the round ×:
       `aria-selected`, toggle button → `aria-pressed`). Before step 96 every chip in a
       group read as unchosen on web, the picked one included.
 - [ ] Phrases that read as one hold together at 320pt: ranges through `holdRanges`,
-      counts and labels with no-break spaces ("Goal: 2 of 3", "Next milestone:
-      30 days"). Steps 70, 74 and 95.
+      counts and labels with no-break spaces ("Goal: 2 of 3", "30 days"), and
+      "Next milestone" on a line of its own. Steps 70, 74, 95 and 138.
 - [ ] Reduce Motion: `reduced` variant renders; haptics still fire.
 - [ ] Reduce Transparency and both ends of the iOS 27 glass slider (ultraclear ↔
       tinted): anything floating on glass stays legible.

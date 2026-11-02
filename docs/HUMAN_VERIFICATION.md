@@ -678,6 +678,13 @@ Added 2026-09-29 (polish pass):
       ink face visible on its chip. On Share, the card preview has a thin edge
       in both appearances (the light recap on This week, Midnight in Dark) that
       the exported PNG doesn't carry. The new icon and splash are ink.
+- [ ] **Playtest fixes (step 138; web-verified):** on Log, a long prediction
+      wraps and the field grows a line at a time, with no extra space above the
+      first line (iOS pads a multiline field on its own); Return reads Done and
+      closes the keyboard without a line break. With Reduce Motion on, a disabled
+      Save is dimmed. At the largest Dynamic Type sizes the coverage chips on
+      Insights break after the dash with nothing cut to "…", and the streak row
+      wraps between words.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The ink splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the

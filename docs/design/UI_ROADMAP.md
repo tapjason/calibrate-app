@@ -12,7 +12,7 @@ What has been built, step by step (steps 0–135), is in
 
 ## 1. Where it stands
 
-Every step through 137 is built, D23–D31 (decided 2026-10-10), D32 (decided 2026-10-12) and D33 (decided 2026-11-01) included, with a pass over D23–D31 and an accessibility pass on 2026-10-12 (see [`BUILT_LOG.md`](BUILT_LOG.md) §1.5). The redesign
+Every step through 138 is built, D23–D31 (decided 2026-10-10), D32 (decided 2026-10-12) and D33 (decided 2026-11-01) included, with a pass over D23–D31 and an accessibility pass on 2026-10-12 (see [`BUILT_LOG.md`](BUILT_LOG.md) §1.5). The redesign
 pass, the element and retention research batches, the Day-0 rework (D18) and the
 daily-practice, rest-day and reminder features all shipped. **Everything not listed
 in the parking lot or §2 is done**; what's left is a first session on an iPhone
@@ -85,6 +85,13 @@ And the decisions in §2 below.
 | D10 | What Skip means | ~~Relabel to "Can't tell / doesn't apply" with "It won't count toward your score", shown as a text button.~~ **Built 2026-10-04.** The open question was factual and the code answers it: skips are excluded from the score (`calibration.ts`), the streak (`streak.ts`), Wrapped (`wrapped.ts`), patterns and trends, and History already says "Not scored". So the line is true everywhere. One commit to revert if you'd rather keep a Skip button. | — |
 
 ---
+
+The blind playtests of 2026-11-01 raised six more, not yet given D numbers:
+fixing a recorded answer (and the "Can't tell" loophole), custom categories,
+reminder times, resistance to padding, naming the weakest area, and first-run
+wording. They are listed, with the runs behind each, in
+[`research/playtest-2026-11-01.md`](research/playtest-2026-11-01.md). Its ten fixes
+that needed no decision are built (step 138).
 
 ### Notes from the 2026-10-04 pass, for when you decide
 
