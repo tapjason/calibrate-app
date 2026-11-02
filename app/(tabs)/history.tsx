@@ -6,6 +6,7 @@ import {
   emptyHistoryMessage,
   filterHistory,
   firstHistoryCopy,
+  historySummary,
   openForHistory,
   parseRangeParam,
   rangeText,
@@ -57,17 +58,8 @@ export default function HistoryScreen() {
     [pending, filter, range],
   );
 
-  // Plain counts for the current filter — facts, never a verdict.
-  const yes = filtered.filter((p) => p.status === 'resolved_yes').length;
-  const no = filtered.filter((p) => p.status === 'resolved_no').length;
-  const skipped = filtered.length - yes - no;
-  const summary = [
-    `${yes + no} answered`,
-    `${yes} happened`,
-    skipped > 0 ? `${skipped} not scored` : null,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  // Plain counts for the current filter, as the Answered heading counts.
+  const summary = historySummary(filtered);
 
   return (
     <View style={styles.wrap}>

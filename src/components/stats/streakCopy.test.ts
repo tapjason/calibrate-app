@@ -49,7 +49,7 @@ describe('streakCopy', () => {
     expect(
       streakCopy(status({ streak: 13, today: 5, todayCounts: true, nextCheckpoint: 30 })),
     ).toMatchObject({
-      detail: "Today's goal met. Next\u00A0milestone: 30\u00A0days",
+      detail: "Today's goal met.\nNext milestone: 30\u00A0days",
       filled: 3,
     });
   });
@@ -72,9 +72,9 @@ describe('streak checkpoints', () => {
       streakCopy(status({ streak: 7, today: 3, todayCounts: true, checkpoint: 7, nextCheckpoint: 30 })),
     ).toEqual({
       headline: '7-day streak',
-      detail: 'A full week. Next\u00A0milestone: 30\u00A0days',
+      detail: 'A full week.\nNext milestone: 30\u00A0days',
       filled: 3,
-      spoken: '7-day streak. A full week. Next\u00A0milestone: 30\u00A0days.',
+      spoken: '7-day streak. A full week. Next milestone: 30\u00A0days.',
       checkpoint: true,
       rest: null,
     });
@@ -105,8 +105,8 @@ describe('streak checkpoints', () => {
   it('words the Resolve card', () => {
     expect(checkpointCopy(100, 365)).toEqual({
       title: 'Triple digits',
-      body: 'Next\u00A0milestone: 365\u00A0days.',
-      spoken: '100-day streak. Triple digits. Next\u00A0milestone: 365\u00A0days.',
+      body: 'Next milestone: 365\u00A0days.',
+      spoken: '100-day streak. Triple digits. Next milestone: 365\u00A0days.',
     });
   });
 });
@@ -132,7 +132,7 @@ describe('streakCopy — rest days', () => {
     expect(
       streakCopy(status({ streak: 7, today: 3, todayCounts: true, checkpoint: 7, nextCheckpoint: 30, restDays: 1, restEarnedToday: true })),
     ).toMatchObject({
-      detail: 'A full week. Next\u00A0milestone: 30\u00A0days',
+      detail: 'A full week.\nNext milestone: 30\u00A0days',
       rest: 'Today saved a rest day',
     });
     expect(running({ restDays: 2, restEarnedToday: true })?.rest).toBe('Today saved a second rest day');

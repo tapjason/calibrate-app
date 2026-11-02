@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useCsvExport } from '@/components/settings/useCsvExport';
+import { wholeMonthsSince } from '@/components/stats/wholeMonthsSince';
 import { Button } from '@/components/ui/Button';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, type } from '@/constants/theme';
@@ -40,6 +41,8 @@ export function TrendsPanel({
   const { exporting, message, run: onExport } = useCsvExport();
 
   const hasHistory = trends.periods.length > 0;
+  // Time since the first answer; under a month, no number (wholeMonthsSince).
+  const months = wholeMonthsSince(trends.first_resolved_at, new Date());
 
   if (!isPlus && !upsell) return null;
 
@@ -48,9 +51,9 @@ export function TrendsPanel({
       <View style={styles.wrap} testID="trends-upsell">
         <Text accessibilityRole="header" style={styles.heading}>Trends</Text>
         <Text style={styles.muted}>
-          {hasHistory
-            ? `Plus charts your calibration month by month — ${trends.periods.length} ${
-                trends.periods.length === 1 ? 'month' : 'months'
+          {months > 0
+            ? `Plus charts your calibration month by month — ${months} ${
+                months === 1 ? 'month' : 'months'
               } on file — and drills into each category.`
             : 'Plus charts your calibration month by month and drills into each category.'}
         </Text>

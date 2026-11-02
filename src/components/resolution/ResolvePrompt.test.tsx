@@ -424,7 +424,7 @@ describe('ResolvePrompt streak checkpoints', () => {
       expect(screen.getByTestId('streak-checkpoint')).toBeTruthy();
     });
     expect(screen.getByTestId('streak-checkpoint').props.accessibilityLabel).toBe(
-      '7-day streak. A full week. Next\u00A0milestone: 30\u00A0days.',
+      '7-day streak. A full week. Next milestone: 30\u00A0days.',
     );
     expect(screen.queryByTestId(/^milestone-/)).toBeNull();
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();

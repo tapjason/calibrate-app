@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, radius, space, type } from '@/constants/theme';
 import type { BucketStat } from '@/types';
 
@@ -36,17 +35,20 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
           const label = `${low}–${low + 20}%`;
           const content = (
             <>
-              {/* The narrowest range label in the app: held whole (DESIGN_SYSTEM
-                  §7.9), and shrunk to fit its cell at large text sizes rather
-                  than broken. Spoken plain, from the cell's label. */}
+              {/* The narrowest range label in the app. One line while it fits;
+                  past that it breaks after its dash ("80–" over "100%"), the
+                  one place a range may (DESIGN_SYSTEM §7.9): held whole, it
+                  was cut to "20–4…" at large text sizes, where the web can't
+                  shrink it and iOS only so far (blind playtest 2026-11-01).
+                  Spoken plain, from the cell's label. */}
               <Text
                 style={styles.range}
-                numberOfLines={1}
+                numberOfLines={2}
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
                 testID={`coverage-${low}-label`}
               >
-                {holdRanges(label)}
+                {label}
               </Text>
               <Text style={[styles.count, n === 0 && styles.countEmpty]}>
                 {n === 0 ? 'none' : n}
@@ -110,6 +112,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     flex: 1,
+    // A label broken over two lines makes its cell, and so the row, taller:
+    // the counts keep to the bottom edge, in line across the row.
+    justifyContent: 'space-between',
     paddingVertical: space.sm,
   },
   // A tappable range takes the control outline, the 3:1 border the app's
@@ -123,7 +128,13 @@ const styles = StyleSheet.create({
   },
   // 11pt, the floor (DESIGN_SYSTEM §0 rule 7): in Inter, "80–100%" at 12pt
   // didn't fit a 320pt screen's ~51pt cell, and web can't shrink it to fit.
-  range: { ...type.caption, color: colors.textSecondary, fontSize: 11, lineHeight: 14 },
+  range: {
+    ...type.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 14,
+    textAlign: 'center',
+  },
   count: { ...type.headline, color: colors.textPrimary },
   countEmpty: { ...type.footnote, color: colors.textTertiary },
   note: { ...type.footnote, color: colors.textSecondary },

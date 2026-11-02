@@ -1,5 +1,6 @@
-import { type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useRef, type ReactNode } from 'react';
 import {
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +16,13 @@ interface TextFieldProps {
   onChangeText: (next: string) => void;
   placeholder?: string;
   multiline?: boolean;
+  /**
+   * One line that wraps and grows as it fills, for a sentence such as a
+   * prediction: a one-line field scrolled a long one out of view as it was
+   * typed (blind playtest 2026-11-01). Return closes the keyboard, and a
+   * pasted line break becomes a space, so it stays one line of text.
+   */
+  grows?: boolean;
   maxLength?: number;
   testID?: string;
   accessibilityLabel?: string;
@@ -36,6 +44,7 @@ export function TextField({
   onChangeText,
   placeholder,
   multiline,
+  grows,
   maxLength,
   testID,
   accessibilityLabel,
@@ -45,17 +54,43 @@ export function TextField({
   autoComplete,
   children,
 }: TextFieldProps) {
+  const input = useRef<TextInput>(null);
+  // iOS sizes a multiline input to its text; a browser's textarea keeps the
+  // height it was given, so on web it is measured to its text here.
+  const fit = useCallback(() => {
+    if (!grows || Platform.OS !== 'web') return;
+    const node = input.current as unknown as HTMLTextAreaElement | null;
+    if (!node?.style) return;
+    node.style.height = 'auto';
+    // border-box (react-native-web's input reset): the text and padding,
+    // plus the 1pt border above and below.
+    node.style.height = `${node.scrollHeight + 2}px`;
+  }, [grows]);
+  useLayoutEffect(fit, [fit, value]);
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        ref={input}
         testID={testID}
         accessibilityLabel={accessibilityLabel ?? label}
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={grows ? (next) => onChangeText(next.replace(/\s*[\r\n]+\s*/g, ' ')) : onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.textTertiary}
-        multiline={multiline}
+        multiline={multiline || grows}
+        // Return is Done, never a line break: iOS by submitBehavior, the web
+        // build by blurOnSubmit, which keeps the break only with a handler.
+        submitBehavior={grows ? 'blurAndSubmit' : undefined}
+        blurOnSubmit={grows ? true : undefined}
+        onSubmitEditing={grows ? () => {} : undefined}
+        returnKeyType={grows ? 'done' : undefined}
+        scrollEnabled={grows ? false : undefined}
+        onLayout={grows ? fit : undefined}
+        // react-native-web's textarea starts at two rows; one, like the
+        // single-line field it replaces. Native ignores it.
+        {...(grows ? { rows: 1 } : null)}
         maxLength={maxLength}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}

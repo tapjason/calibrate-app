@@ -6,6 +6,7 @@ import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
 import { PlusTeaser } from '@/components/stats/PlusTeaser';
 import { TrendsPanel } from '@/components/stats/TrendsPanel';
+import { wholeMonthsSince } from '@/components/stats/wholeMonthsSince';
 import { Button } from '@/components/ui/Button';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { space } from '@/constants/theme';
@@ -25,7 +26,9 @@ export default function InsightsScreen() {
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const pending = usePredictionStore((s) => s.pending);
   const isPlus = useEntitlementStore((s) => s.isPlus);
-  const monthsOnFile = useStatsStore((s) => s.trends.periods.length);
+  // Time since the first answer, not the calendar months with one in them.
+  const firstResolvedAt = useStatsStore((s) => s.trends.first_resolved_at);
+  const monthsOnFile = wholeMonthsSince(firstResolvedAt, new Date());
 
   return (
     <ScrollView>

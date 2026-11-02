@@ -11,6 +11,7 @@ import { create } from 'zustand';
 
 import { clearEvents } from '@/db/analytics';
 import { DEFAULT_THEME } from '@/constants/cardThemes';
+import { CATEGORIES, type Category } from '@/types';
 
 export interface StoredSettings {
   notificationsEnabled: boolean;
@@ -35,6 +36,17 @@ export interface StoredSettings {
    * render time, so a lapsed subscriber keeps every card, in the free look.
    */
   cardThemeId: string;
+  /**
+   * The share card's shape, kept between visits like the theme: it reset to
+   * Post each time Share opened (blind playtest 2026-11-01, run 5).
+   */
+  cardFormat: CardShape;
+  /**
+   * Categories left off the share card (DESIGN_SYSTEM §7.5), kept like the
+   * shape. The card itself never hides every category on file: the last one
+   * stays, whatever is stored here.
+   */
+  cardHiddenCategories: Category[];
   /**
    * ISO timestamp of the last range-coverage nudge on the Log screen, or null
    * if it has never fired. Not a preference the user sets — it is the
@@ -76,6 +88,9 @@ export interface StoredSettings {
   practiceReminderOfferDismissedAt: string | null;
 }
 
+/** The share card's shape: Post (3:4) or Story (9:16). */
+export type CardShape = 'post' | 'story';
+
 /** A local time of day for the practice reminder. */
 export interface PracticeReminderTime {
   hour: number;
@@ -100,6 +115,8 @@ interface SettingsState extends StoredSettings {
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
   setCardThemeId: (id: string) => Promise<void>;
+  setCardFormat: (format: CardShape) => Promise<void>;
+  setCardHiddenCategories: (hidden: readonly Category[]) => Promise<void>;
   /** Start the coverage-nudge cooldown from now. */
   markCoverageNudgeShown: () => Promise<void>;
   /** "Not now" on the reminder prompt: hide it until tomorrow morning, then a week. */
@@ -134,6 +151,8 @@ const DEFAULTS: StoredSettings = {
   coachEnabled: false,
   analyticsEnabled: true,
   cardThemeId: DEFAULT_THEME.id,
+  cardFormat: 'post',
+  cardHiddenCategories: [],
   coverageNudgeLastShownAt: null,
   reminderPromptDismissedAt: null,
   reminderPromptDismissals: 0,
@@ -205,6 +224,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           analyticsEnabled:
             stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
           cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
+          cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
+          cardHiddenCategories:
+            validCategories(stored.cardHiddenCategories) ?? DEFAULTS.cardHiddenCategories,
           coverageNudgeLastShownAt:
             stored.coverageNudgeLastShownAt ??
             DEFAULTS.coverageNudgeLastShownAt,
@@ -269,6 +291,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await persist(snapshot(get()));
   },
 
+  setCardFormat: async (format) => {
+    set({ cardFormat: format });
+    await persist(snapshot(get()));
+  },
+
+  setCardHiddenCategories: async (hidden) => {
+    set({ cardHiddenCategories: validCategories(hidden) ?? [] });
+    await persist(snapshot(get()));
+  },
+
   markCoverageNudgeShown: async () => {
     set({ coverageNudgeLastShownAt: new Date().toISOString() });
     await persist(snapshot(get()));
@@ -303,6 +335,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 }));
 
+/** A stored card shape, if it is one. */
+function validShape(value: unknown): CardShape | null {
+  return value === 'post' || value === 'story' ? value : null;
+}
+
+/** Stored categories, if they are a list: known ones only, each once. */
+function validCategories(value: unknown): Category[] | null {
+  if (!Array.isArray(value)) return null;
+  return CATEGORIES.filter((c) => value.includes(c));
+}
+
 /** A stored time, if it is one: whole hours 0–23 and minutes 0–59. */
 function validTime(value: unknown): PracticeReminderTime | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -326,6 +369,8 @@ function snapshot(state: StoredSettings): StoredSettings {
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,
     cardThemeId: state.cardThemeId,
+    cardFormat: state.cardFormat,
+    cardHiddenCategories: state.cardHiddenCategories,
     coverageNudgeLastShownAt: state.coverageNudgeLastShownAt,
     reminderPromptDismissedAt: state.reminderPromptDismissedAt,
     reminderPromptDismissals: state.reminderPromptDismissals,

@@ -166,8 +166,11 @@ describe('CalibrationView chart section', () => {
     const filled = getByTestId('coverage-80');
     expect(filled.props.accessibilityRole).toBe('button');
     expect(filled.props.accessibilityLabel).toBe('80–100%: 12 resolved. Show them.');
-    // The drawn label keeps its dash; the spoken one stays plain.
-    expect(getByTestId('coverage-80-label')).toHaveTextContent(holdRanges('80–100%'));
+    // The drawn label may break after its dash, over two lines at most, rather
+    // than be cut short at large text sizes (blind playtest 2026-11-01).
+    const label = getByTestId('coverage-80-label');
+    expect(label).toHaveTextContent('80–100%');
+    expect(label.props.numberOfLines).toBe(2);
     fireEvent.press(filled);
     expect(onSelectRange).toHaveBeenCalledWith(80);
 

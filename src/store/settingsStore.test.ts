@@ -107,6 +107,8 @@ describe('settingsStore: setters persist', () => {
       coachEnabled: false,
       analyticsEnabled: true,
       cardThemeId: 'midnight',
+      cardFormat: 'post',
+      cardHiddenCategories: [],
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
       reminderPromptDismissals: 0,
@@ -132,6 +134,8 @@ describe('settingsStore: setters persist', () => {
       coachEnabled: false,
       analyticsEnabled: true,
       cardThemeId: 'midnight',
+      cardFormat: 'post',
+      cardHiddenCategories: [],
       coverageNudgeLastShownAt: null,
       reminderPromptDismissedAt: null,
       reminderPromptDismissals: 0,
@@ -249,5 +253,39 @@ describe('settingsStore: reminder prompt cooldown', () => {
     const at = useSettingsStore.getState().practiceReminderOfferDismissedAt;
     expect(typeof at).toBe('string');
     expect(saved.at(-1)?.practiceReminderOfferDismissedAt).toBe(at);
+  });
+});
+
+// Blind playtest 2026-11-01 (run 5): the card's shape and hidden categories
+// reset each time Share opened.
+describe('settingsStore: share card choices', () => {
+  it('keeps the shape and the hidden categories, and persists them', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().setCardFormat('story');
+    await useSettingsStore.getState().setCardHiddenCategories(['finance', 'work']);
+    expect(useSettingsStore.getState().cardFormat).toBe('story');
+    // Kept in the app's category order, whatever order they came in.
+    expect(saved.at(-1)?.cardHiddenCategories).toEqual(['work', 'finance']);
+  });
+
+  it('reads back only a known shape and known categories', async () => {
+    __setPersistenceForTests(
+      makeFakePersistence({
+        cardFormat: 'square',
+        cardHiddenCategories: ['health', 'travel', 'health'],
+      } as never).persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().cardFormat).toBe('post');
+    expect(useSettingsStore.getState().cardHiddenCategories).toEqual(['health']);
+
+    __setPersistenceForTests(
+      makeFakePersistence({ cardFormat: 'story', cardHiddenCategories: 'health' } as never)
+        .persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().cardFormat).toBe('story');
+    expect(useSettingsStore.getState().cardHiddenCategories).toEqual([]);
   });
 });

@@ -147,7 +147,16 @@ export function SettingsView({
           label="Coach (AI)"
           // Guideline 5.1.2(i): name the third-party AI before anything is sent.
           // The switch itself is the explicit permission; it starts off.
-          description="Plus only. When you ask for feedback, your calibration numbers — never your prediction text — go through our server to OpenAI, which writes it."
+          // Without Plus the switch only records the choice, and once it was
+          // on nothing happened, which read as broken (blind playtest
+          // 2026-11-01); on, it says it waits for Plus.
+          description={`${
+            isPlus
+              ? ''
+              : coachEnabled
+                ? 'On for when you have Plus. Nothing is sent before then. '
+                : 'Plus only. '
+          }When you ask for feedback, your calibration numbers — never your prediction text — go through our server to OpenAI, which writes it.`}
           value={coachEnabled}
           onValueChange={(v) => void setCoachEnabled(v)}
           testID="toggle-coach"

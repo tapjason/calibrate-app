@@ -47,12 +47,14 @@ export function checkpointName(days: number): string {
 }
 
 /**
- * "Next milestone: 30 days". No-break spaces inside "Next milestone:" and
- * "30 days", so at 320pt it wraps between them rather than leaving "Next" at
- * the end of one line (roadmap step 70).
+ * "Next milestone: 30 days", with "30 days" held by a no-break space. In the
+ * streak row it starts a line of its own, so "Next" can't end the line before
+ * it (roadmap step 70, which held "Next milestone:" whole instead: at large
+ * text sizes that unit outgrew the row and broke mid-word, "Next mileston /
+ * e", blind playtest 2026-11-01).
  */
 function nextLine(next: number): string {
-  return `Next\u00A0milestone: ${next}\u00A0days`;
+  return `Next milestone: ${next}\u00A0days`;
 }
 
 /** "Goal: 2 of 3", held together with no-break spaces like nextLine. */
@@ -116,7 +118,7 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
   const reaches = `${streak + 1}: ${name.charAt(0).toLowerCase()}${name.slice(1)}`;
   let detail: string;
   if (checkpoint !== null) {
-    detail = `${checkpointName(checkpoint)}. ${nextLine(nextCheckpoint)}`;
+    detail = `${checkpointName(checkpoint)}.\n${nextLine(nextCheckpoint)}`;
   } else if (!todayCounts) {
     detail = `One prediction today makes it ${eve ? reaches : streak + 1}`;
   } else if (eve) {
@@ -127,14 +129,16 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
     // (roadmap step 95).
     detail = `Today counts. ${goalLine(filled)}`;
   } else {
-    detail = `Today's goal met. ${nextLine(nextCheckpoint)}`;
+    detail = `Today's goal met.\n${nextLine(nextCheckpoint)}`;
   }
   const rest = restLine(status);
+  // One sentence after another when spoken; the line break is for the eye.
+  const said = detail.replace('\n', ' ');
   return {
     headline,
     detail,
     filled,
-    spoken: rest ? `${headline}. ${detail}. ${rest}.` : `${headline}. ${detail}.`,
+    spoken: rest ? `${headline}. ${said}. ${rest}.` : `${headline}. ${said}.`,
     checkpoint: checkpoint !== null,
     rest,
   };

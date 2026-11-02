@@ -82,7 +82,10 @@ export function DueDateChips({ presets, value, picking, onChange, onPickingChang
           </Text>
         </Pressable>
       </View>
-      {picking && <DuePicker value={value} onChange={onChange} />}
+      {/* Whenever "Pick a date" is the choice, its field is there: editing a
+          prediction with a picked date showed the chip chosen and no field
+          until a second tap (blind playtest 2026-11-01). */}
+      {(picking || isCustomDate) && <DuePicker value={value} onChange={onChange} />}
       <Text style={styles.dateValue} testID="due-sentence">
         Due{' '}
         {new Date(value).toLocaleDateString(undefined, {

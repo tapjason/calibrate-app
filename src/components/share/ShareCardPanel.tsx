@@ -48,24 +48,35 @@ export function ShareCardPanel({
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [format, setFormat] = useState<CardFormat>('post');
-  // Categories the user chose to leave off the card (Any Distance-style
-  // show/hide, DESIGN_SYSTEM §7.5). Never all of them: the last one stays.
-  const [hidden, setHidden] = useState<ReadonlySet<Category>>(new Set());
+  // The shape and the categories left off are kept between visits, like the
+  // theme: both reset each time Share opened (blind playtest 2026-11-01).
+  const format: CardFormat = useSettingsStore((s) => s.cardFormat);
+  const setFormat = useSettingsStore((s) => s.setCardFormat);
+  const storedHidden = useSettingsStore((s) => s.cardHiddenCategories);
+  const setStoredHidden = useSettingsStore((s) => s.setCardHiddenCategories);
 
   const allOnFile = categoryStats.filter((c) => c.predictions_resolved > 0);
+  // Categories the user chose to leave off the card (Any Distance-style
+  // show/hide, DESIGN_SYSTEM §7.5), among those on file. Never all of them:
+  // the last one stays, so a stored choice that would hide every category on
+  // file now (after an erase, say) hides none.
+  const hiddenOnFile = allOnFile
+    .map((c) => c.category)
+    .filter((c) => storedHidden.includes(c));
+  const hidden: ReadonlySet<Category> = new Set(
+    hiddenOnFile.length < allOnFile.length ? hiddenOnFile : [],
+  );
   const shown = categoryStats.filter((c) => !hidden.has(c.category));
   const card = buildShareCard(
     userStat,
     shown.some((c) => c.predictions_resolved > 0) ? shown : categoryStats,
   );
-  const toggleCategory = (c: Category) =>
-    setHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(c)) next.delete(c);
-      else if (allOnFile.length - next.size > 1) next.add(c);
-      return next;
-    });
+  const toggleCategory = (c: Category) => {
+    const next = new Set(hidden);
+    if (next.has(c)) next.delete(c);
+    else if (allOnFile.length - next.size > 1) next.add(c);
+    void setStoredHidden([...next]);
+  };
   // resolveTheme, not a raw lookup: a Plus theme held by someone who has
   // lapsed falls back to the free one instead of erroring or rendering blank.
   const theme = resolveTheme(cardThemeId, isPlus);
@@ -169,7 +180,7 @@ export function ShareCardPanel({
             {(['post', 'story'] as const).map((f) => (
               <Pressable
                 key={f}
-                onPress={() => setFormat(f)}
+                onPress={() => void setFormat(f)}
                 accessibilityRole="radio"
                 {...chosenProps('radio', format === f)}
                 testID={`share-format-${f}`}

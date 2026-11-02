@@ -80,15 +80,29 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(saved).toMatchObject({ category: 'personal', confidence: 70 });
   });
 
+  // Blind playtest 2026-11-01: a picked due date showed "Pick a date" chosen
+  // and no date field until a second tap.
+  it('shows the date field at once for a picked due date', async () => {
+    await insertPrediction(open());
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.getByTestId('due-pick').props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId('due-picker')).toBeTruthy();
+  });
+
   it('keeps Save changes waiting for a title', async () => {
     await insertPrediction(open());
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.queryByTestId('details-needs')).toBeNull();
     fireEvent.changeText(screen.getByTestId('details-title-field'), '   ');
     expect(screen.getByTestId('details-save').props.accessibilityState).toMatchObject({
       disabled: true,
     });
+    // And says so (blind playtest 2026-11-01).
+    expect(screen.getByTestId('details-needs')).toHaveTextContent('To save, add the prediction.');
   });
 
   it('deletes only after a confirmation, and closes', async () => {

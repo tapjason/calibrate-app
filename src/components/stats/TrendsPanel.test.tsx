@@ -98,6 +98,23 @@ describe('TrendsPanel — free', () => {
     expect(screen.queryByTestId('trends-export')).toBeNull();
     expect(screen.queryByTestId('trend-correction-work-80')).toBeNull();
   });
+
+  // Blind playtest 2026-11-01: it counted calendar months with an answer in
+  // them, so August 10 to September 19 read "2 months on file".
+  it('counts whole months since the first answer, and names none under one', () => {
+    jest.useFakeTimers({ now: new Date('2026-11-20T12:00:00.000Z') });
+    try {
+      seed({ isPlus: false });
+      render(<TrendsPanel />);
+      expect(screen.getByText(/3 months on file/)).toBeTruthy();
+
+      seed({ isPlus: false, resolved: [p(70, true, '2026-11-02T12:00:00.000Z')] });
+      render(<TrendsPanel />);
+      expect(screen.queryByText(/on file/)).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('TrendsPanel — Plus', () => {

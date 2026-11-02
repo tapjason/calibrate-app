@@ -9,6 +9,7 @@ import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips'
 import { type LogAgainDraft } from '@/components/prediction/logAgain';
 import { pastOutcomesLine } from '@/components/prediction/pastOutcomesLine';
 import { StarterIdeas } from '@/components/prediction/StarterIdeas';
+import { stillNeeded } from '@/components/prediction/stillNeeded';
 import { trackRecordLine } from '@/components/prediction/trackRecord';
 import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
@@ -195,6 +196,17 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
   // tap with an error far below the field.
   const canSave =
     title.trim().length > 0 && category !== null && confidence !== null && !submitting;
+  // What Save is waiting for, once the form is started (blind playtest
+  // 2026-11-01): an empty form needs no list, and a started one did.
+  const started = title.trim().length > 0 || category !== null || confidence !== null;
+  const needs =
+    started && !submitting
+      ? stillNeeded({
+          title: title.trim().length > 0,
+          category: category !== null,
+          confidence: confidence !== null,
+        })
+      : null;
 
   // Save is pinned under the fields (2026-10-09): at the end of the form it sat
   // below the fold on a 667pt phone even after the starter ideas had gone. The
@@ -228,6 +240,8 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
           // Instrument Sans, D33), and
           // dateless: a first prediction starts on Tomorrow, later ones a week.
           placeholder="e.g. I'll finish the draft"
+          // Wraps and grows, so a long prediction stays in view (playtest 2026-11-01).
+          grows
           maxLength={TITLE_MAX_LENGTH}
           testID="title-field"
         >
@@ -324,6 +338,11 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
 
       <View style={styles.footer}>
         {error && <Text style={styles.error} testID="log-error">{error}</Text>}
+        {needs && (
+          <Text style={styles.needs} testID="log-needs">
+            {needs}
+          </Text>
+        )}
         <Button
           label={submitting ? 'Saving…' : 'Save prediction'}
           onPress={onSubmit}
@@ -353,6 +372,8 @@ const styles = StyleSheet.create({
   // record under the slider and the past outcomes under the title alike.
   record: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
+  // Plain ink, like the counts: a direction, not an error.
+  needs: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
   refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
   refineButton: {
     paddingHorizontal: 12,

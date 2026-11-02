@@ -6,7 +6,10 @@ import { colors, radius, space, type } from '@/constants/theme';
 
 interface PlusTeaserProps {
   onUpgrade: () => void;
-  /** Months of resolved history on file — the Trends hook gets more concrete. */
+  /**
+   * Whole months since the first answer (wholeMonthsSince), so the Trends
+   * hook gets more concrete; 0 under a month, which names no number.
+   */
   monthsOnFile?: number;
 }
 

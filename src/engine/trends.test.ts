@@ -201,9 +201,21 @@ describe('buildTrendSummary', () => {
     expect(summary.delta_recent).not.toBeNull();
   });
 
+  // How long the record runs comes from the first answer, not a count of
+  // calendar months touched (blind playtest 2026-11-01).
+  it('carries when the first yes/no answer came, whatever the order', () => {
+    const summary = buildTrendSummary([
+      p(70, true, '2026-05-20T12:00:00.000Z'),
+      p(70, false, '2026-05-09T12:00:00.000Z'),
+      { ...p(70, false, '2026-04-01T12:00:00.000Z'), status: 'skipped' },
+    ]);
+    expect(summary.first_resolved_at).toBe('2026-05-09T12:00:00.000Z');
+  });
+
   it('is safe on an empty history', () => {
     expect(buildTrendSummary([])).toEqual({
       periods: [],
+      first_resolved_at: null,
       categories: [],
       coverage: {
         buckets_used: 0,

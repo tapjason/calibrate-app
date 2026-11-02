@@ -117,6 +117,13 @@ export interface CorrectionProgress {
 export interface TrendSummary {
   /** Most recent last. Only months with at least one resolution appear. */
   periods: PeriodStat[];
+  /**
+   * When the first yes/no answer came, or null. How long the record runs is
+   * time since this, not `periods.length`, which counts calendar months
+   * touched: one answer today read as "1 month on file", and May 9 to
+   * November 1 as 7 (blind playtest 2026-11-01).
+   */
+  first_resolved_at: string | null;
   /** Sorted worst score first — the drill-down starts where the problem is. */
   categories: CategoryTrend[];
   coverage: CoverageStat;
@@ -375,6 +382,7 @@ export function buildTrendSummary(resolved: readonly Prediction[]): TrendSummary
   const corrections = correctionTable(resolved);
   return {
     periods: monthlyTrend(resolved),
+    first_resolved_at: timeline(resolved)[0]?.resolved_at ?? null,
     categories: categoryTrends(resolved),
     coverage: confidenceCoverage(resolved),
     delta_recent: overallDelta(resolved),

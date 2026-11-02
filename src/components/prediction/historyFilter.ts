@@ -60,6 +60,26 @@ export function openForHistory(
     .sort((a, b) => a.due_date.localeCompare(b.due_date));
 }
 
+/**
+ * The counts over History's answered list, for its filter: facts, never a
+ * verdict. "Answered" is every row in the list, as the section heading counts
+ * them, skips included: "156 answered" over "Answered 157" read as a
+ * miscount (blind playtest 2026-11-01). The skips are then named as not
+ * scored.
+ */
+export function historySummary(rows: readonly Prediction[]): string {
+  const yes = rows.filter((p) => p.status === 'resolved_yes').length;
+  const no = rows.filter((p) => p.status === 'resolved_no').length;
+  const skipped = rows.length - yes - no;
+  return [
+    `${rows.length} answered`,
+    `${yes} happened`,
+    skipped > 0 ? `${skipped} not scored` : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
 /** One sentence for an empty filtered list: what's missing, in plain words. */
 export function emptyHistoryMessage({ category, range }: HistoryFilter): string {
   if (category === 'all' && range === null) {

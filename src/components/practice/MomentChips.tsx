@@ -42,6 +42,10 @@ export function MomentChips({
 }: MomentChipsProps) {
   const custom =
     selected !== null && !PRACTICE_REMINDER_MOMENTS.some((m) => same(selected, m));
+  // Once a time is chosen here, the chip says so ("Your time" over "6:45 AM",
+  // as the moments read), not "Pick a time" still: a tester took that as the
+  // choice not having stuck (blind playtest 2026-11-01).
+  const ownTime = (custom || picking) && selected !== null ? selected : null;
   return (
     <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="Practice reminder" testID={testID}>
       {withOff && (
@@ -68,8 +72,8 @@ export function MomentChips({
       ))}
       {onPickTime && (
         <Chip
-          title="Pick a time"
-          subtitle={custom && selected ? reminderTimeLabel(selected) : undefined}
+          title={ownTime ? 'Your time' : 'Pick a time'}
+          subtitle={ownTime ? reminderTimeLabel(ownTime) : undefined}
           active={picking || custom}
           disabled={disabled}
           half={withOff}

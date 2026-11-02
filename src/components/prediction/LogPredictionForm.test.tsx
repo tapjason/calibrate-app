@@ -119,6 +119,22 @@ describe('LogPredictionForm', () => {
     expect(save().props.accessibilityState).toMatchObject({ disabled: false });
   });
 
+  // Blind playtest 2026-11-01 (run 4): a disabled Save said nothing about why.
+  it('says what Save is waiting for once the form is started', () => {
+    render(<LogPredictionForm />);
+    // An empty form needs no list.
+    expect(screen.queryByTestId('log-needs')).toBeNull();
+
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
+    expect(screen.getByTestId('log-needs')).toHaveTextContent(
+      'To save, add a category and a confidence.',
+    );
+    fireEvent.press(screen.getByTestId('category-work'));
+    expect(screen.getByTestId('log-needs')).toHaveTextContent('To save, add a confidence.');
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    expect(screen.queryByTestId('log-needs')).toBeNull();
+  });
+
   it('keeps Save disabled until there is a title and a confidence', async () => {
     render(<LogPredictionForm />);
     fireEvent.press(screen.getByTestId('category-work'));

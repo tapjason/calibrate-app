@@ -4,6 +4,7 @@ import {
   emptyHistoryMessage,
   filterHistory,
   firstHistoryCopy,
+  historySummary,
   openForHistory,
   parseRangeParam,
   rangeText,
@@ -176,5 +177,23 @@ describe('openForHistory', () => {
 
   it('lists none under a confidence range, which is about outcomes', () => {
     expect(openForHistory(pending, { category: 'all', range: 60 })).toEqual([]);
+  });
+});
+
+describe('historySummary', () => {
+  // Blind playtest 2026-11-01: "156 answered, 100 happened, 1 not scored"
+  // sat over a heading reading "Answered 157".
+  it('counts every answered row, as the heading does, and names the skips', () => {
+    const rows = [
+      prediction({ status: 'resolved_yes' }),
+      prediction({ status: 'resolved_yes' }),
+      prediction({ status: 'resolved_no' }),
+      prediction({ status: 'skipped' }),
+    ];
+    expect(historySummary(rows)).toBe('4 answered, 2 happened, 1 not scored');
+  });
+
+  it('leaves out "not scored" when nothing was skipped', () => {
+    expect(historySummary([prediction({ status: 'resolved_no' })])).toBe('1 answered, 0 happened');
   });
 });

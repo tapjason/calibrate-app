@@ -89,6 +89,8 @@ describe('SettingsView', () => {
         coachEnabled: false,
         analyticsEnabled: true,
         cardThemeId: 'midnight',
+        cardFormat: 'post',
+        cardHiddenCategories: [],
         coverageNudgeLastShownAt: null,
         reminderPromptDismissedAt: null,
         reminderPromptDismissals: 0,
@@ -104,6 +106,26 @@ describe('SettingsView', () => {
   it('names OpenAI on the Coach toggle', () => {
     render(<SettingsView />);
     expect(screen.getByText(/to OpenAI/)).toBeTruthy();
+  });
+
+  // Blind playtest 2026-11-01: a free user switched Coach on and nothing
+  // happened. On, it now says it waits for Plus.
+  it('says what the Coach switch does without Plus, and with it', () => {
+    const hint = () => screen.getByTestId('toggle-coach-row').props.accessibilityHint as string;
+    useSettingsStore.setState({ coachEnabled: false });
+    const view = render(<SettingsView />);
+    expect(hint()).toMatch(/^Plus only\. /);
+
+    fireEvent.press(screen.getByTestId('toggle-coach-row'));
+    expect(hint()).toMatch(/^On for when you have Plus\. Nothing is sent before then\. /);
+    view.unmount();
+
+    useEntitlementStore.setState({
+      entitlement: { is_plus: true, source: 'annual', expires_at: null },
+      isPlus: true,
+    });
+    render(<SettingsView />);
+    expect(hint()).toMatch(/^When you ask for feedback/);
   });
 
   // Roadmap step 41: a bare Switch was an unnamed "switch, on" to VoiceOver.
@@ -270,11 +292,20 @@ describe('SettingsView — notification switches', () => {
 
 // Roadmap D31: a practice reminder at any time of day.
 describe('SettingsView — practice reminder time', () => {
-  it('offers Pick a time, which shows the chosen custom time', () => {
+  it('offers Pick a time, which then reads as the chosen time', () => {
+    useSettingsStore.setState({ notificationsEnabled: true, practiceReminder: null });
+    const view = render(<SettingsView />);
+    expect(screen.getByTestId('settings-practice-moments-custom').props.accessibilityLabel).toBe(
+      'Pick a time',
+    );
+    view.unmount();
+
+    // Blind playtest 2026-11-01: it still read "Pick a time" once one was picked.
     useSettingsStore.setState({ notificationsEnabled: true, practiceReminder: { hour: 6, minute: 45 } });
     render(<SettingsView />);
     const custom = screen.getByTestId('settings-practice-moments-custom');
-    expect(custom.props.accessibilityLabel).toMatch(/^Pick a time, 6:45/);
+    expect(custom).toHaveTextContent(/^Your time/);
+    expect(custom.props.accessibilityLabel).toMatch(/^Your time, 6:45/);
     expect(custom.props.accessibilityState).toMatchObject({ selected: true });
     expect(screen.getByTestId('settings-practice-moments-coffee').props.accessibilityState).toMatchObject({
       selected: false,

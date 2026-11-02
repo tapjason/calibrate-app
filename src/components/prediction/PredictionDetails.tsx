@@ -4,6 +4,7 @@ import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-nativ
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
 import { daysUntilDue } from '@/components/prediction/dueGroups';
+import { stillNeeded } from '@/components/prediction/stillNeeded';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon } from '@/components/ui/Icon';
@@ -163,6 +164,10 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
 
   if (mode === 'edit') {
     const canSave = title.trim().length > 0 && category !== null && !busy;
+    // What Save changes is waiting for, as on Log (blind playtest 2026-11-01).
+    const needs = busy
+      ? null
+      : stillNeeded({ title: title.trim().length > 0, category: category !== null });
     return (
       <View style={styles.wrap} testID="details-edit">
         <Text style={styles.stated}>
@@ -175,6 +180,8 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           label="Prediction"
           value={title}
           onChangeText={setTitle}
+          // Wraps and grows, so a long prediction stays in view (playtest 2026-11-01).
+          grows
           maxLength={TITLE_MAX_LENGTH}
           testID="details-title-field"
         />
@@ -189,6 +196,11 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           onPickingChange={setPicking}
         />
         {error && <Text style={styles.error}>{error}</Text>}
+        {needs && (
+          <Text style={styles.needs} testID="details-needs">
+            {needs}
+          </Text>
+        )}
         <View style={styles.actions}>
           <Button
             label={busy ? 'Saving…' : 'Save changes'}
@@ -277,4 +289,5 @@ const styles = StyleSheet.create({
   actions: { gap: space.xs, marginTop: space.xl },
   confirm: { gap: space.sm, marginTop: space.xl },
   error: { ...type.subhead, color: colors.destructive },
+  needs: { ...type.footnote, color: colors.textSecondary, marginTop: space.md },
 });

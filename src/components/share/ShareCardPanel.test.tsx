@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { __setShareDepsForTests, type ShareDeps } from '@/share/export';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { CategoryStat, UserStat, WarmupResult } from '@/types';
@@ -62,6 +63,8 @@ let warn: jest.SpyInstance;
 
 beforeEach(() => {
   useWarmupStore.setState({ result: null });
+  // The card's shape and hidden categories are kept between visits.
+  useSettingsStore.setState({ cardFormat: 'post', cardHiddenCategories: [] });
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   __setShareDepsForTests(shareDeps());
 });
@@ -271,5 +274,34 @@ describe('ShareCardPanel — shape and contents', () => {
     for (const c of rest) fireEvent.press(screen.getByTestId(`share-toggle-${c}`));
     // The last one standing can't be switched off.
     expect(screen.getAllByTestId(/^card-badge-/)).toHaveLength(1);
+  });
+
+  // Blind playtest 2026-11-01 (run 5): both reset each time Share opened.
+  it('keeps the shape and the categories left off for the next visit', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    const first = CATEGORY_STATS.find((c) => c.predictions_resolved > 0)!.category;
+    const visit = render(<ShareCardPanel />);
+    fireEvent.press(screen.getByTestId('share-format-story'));
+    fireEvent.press(screen.getByTestId(`share-toggle-${first}`));
+    visit.unmount();
+
+    render(<ShareCardPanel />);
+    expect(StyleSheet.flatten(screen.getByTestId('identity-card').props.style)).toMatchObject({
+      height: 640,
+    });
+    expect(screen.queryByTestId(`card-badge-${first}`)).toBeNull();
+    expect(screen.getByTestId(`share-toggle-${first}`).props.accessibilityState).toMatchObject({
+      checked: false,
+    });
+  });
+
+  // The card never hides every category on file, whatever was kept: here a
+  // choice that would leave nothing (after an erase and new answers, say).
+  it('shows every category when what was kept would hide them all', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    const onFile = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0).map((c) => c.category);
+    useSettingsStore.setState({ cardHiddenCategories: onFile });
+    render(<ShareCardPanel />);
+    expect(screen.getAllByTestId(/^card-badge-/).length).toBeGreaterThan(1);
   });
 });

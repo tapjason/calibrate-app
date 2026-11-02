@@ -24,6 +24,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 // Reduce Motion it becomes a plain opacity dip — feedback without movement.
 const PRESS_SCALE = 0.97;
 const SPRING = { damping: 20, stiffness: 320 };
+const DISABLED_OPACITY = 0.4;
 
 export function Button({
   label,
@@ -36,10 +37,15 @@ export function Button({
   const reduceMotion = useReducedMotion();
   const pressed = useSharedValue(0);
 
+  // The dimming lives here, with the press, not in a static style: under
+  // Reduce Motion the press dip set an opacity of its own, which came later
+  // in the style list and drew a disabled button at full strength (blind
+  // playtest 2026-11-01, run 4).
+  const rest = disabled ? DISABLED_OPACITY : 1;
   const pressStyle = useAnimatedStyle(() =>
     reduceMotion
-      ? { opacity: 1 - pressed.value * 0.2 }
-      : { transform: [{ scale: 1 - pressed.value * (1 - PRESS_SCALE) }] },
+      ? { opacity: rest * (1 - pressed.value * 0.2) }
+      : { opacity: rest, transform: [{ scale: 1 - pressed.value * (1 - PRESS_SCALE) }] },
   );
 
   return (
@@ -56,7 +62,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled }}
-      style={[styles.base, styles[variant], disabled && styles.disabled, pressStyle]}
+      style={[styles.base, styles[variant], pressStyle]}
     >
       <Text style={[styles.labelBase, styles[`label_${variant}`]]}>{label}</Text>
     </AnimatedPressable>
@@ -92,7 +98,6 @@ const styles = StyleSheet.create({
     borderColor: colors.destructive,
     borderWidth: 1,
   },
-  disabled: { opacity: 0.4 },
   labelBase: type.headline,
   label_primary: { color: colors.onAction },
   label_secondary: { color: colors.textPrimary },
