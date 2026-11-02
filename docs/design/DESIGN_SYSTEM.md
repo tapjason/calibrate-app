@@ -411,8 +411,10 @@ as the new ones.
   error, so percentiles would sit below a calibrated user's own score.
 - **Brier score** (D24, 2026-10-10): on Insights only, once the rating is unlocked,
   one `footnote` line in `textSecondary` under the give-or-take line: "Brier score
-  0.14. Lower is better; always saying 50% scores 0.25." Two decimals, from the
-  engine (`statsStore.brier`). Never on Today, never on a card, never in `display`
+  0.22, lower is better. Saying 64% every time, how often your calls came true, would
+  score 0.23." Two decimals, from the engine (`statsStore.brier`, `brierBaseline`).
+  Against the person's own base rate since D35 (step 140); "always saying 50% scores
+  0.25" flattered anyone whose calls mostly happen. Never on Today, never on a card, never in `display`
   or `title` type: it keeps the rating honest for those who look, and stays out of
   everyone else's way.
 - **Streak** (roadmap D2, step 61): a row on Home under the rating: a flame, "12-day
@@ -434,7 +436,18 @@ as the new ones.
 Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
 
 1. **Title = takeaway** ("You're overconfident at 80%+"); subtitle in natural
-   frequencies ("Of 12 things you called 80–100% likely, 7 happened").
+   frequencies ("Of 12 things you called 80–100% likely, 7 happened"). With a range
+   leaning each way (D37, step 142), the title names both: "You're too sure at
+   80–100% and too cautious at 60–80%", subtitle "Of 20 things you called 80–100%
+   likely, 8 happened. Of 55 at 60–80%, 42 happened." Naming only the worst hid a
+   power user's compression.
+   **Furthest off** (D37): the first line under Category badges, `subhead` in
+   `textPrimary`: "Furthest off: finance. You said about 85%, and 8 of 18 happened.
+   About 45% would have matched." Only for a category past `MIN_N_CATEGORY` whose
+   lean passes the one rule (D35); the matching number is what happened, to the
+   nearest 5. **Since last week** (D37): a quiet line under the give-or-take, once the
+   rating is unlocked a week ago and now and something was answered since: "Up 2
+   since last week, from 6 answers, within its give-or-take."
 2. **Regions labelled in place:** below the diagonal lightly warm-tinted, labelled
    *Overconfident*; above lightly cool-tinted, *Underconfident*; the diagonal labelled
    *Perfectly calibrated*. Position + tint + text = three channels.
@@ -455,10 +468,12 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    disclosure.
 7. Animate draw-in by animating `strokeDashoffset` on the existing polyline.
 8. **Chance bars and dots** (roadmap D4, built as step 62): behind each dot a grey
-   capsule (`textSecondary` at 16%, 10pt wide, no end caps) spans the binomial 50%
-   range a perfectly calibrated forecaster would hit at that bucket's n
-   (`BucketStat.chance_low/high`). The caption and spoken description say what it
-   is. "Show the counts" opens each range's said / happened / chance numbers and an
+   capsule (`textSecondary` at 16%, 10pt wide, no end caps) spans the central 80% of
+   the binomial outcomes a perfectly calibrated forecaster would hit at that bucket's
+   n (`BucketStat.chance_low/high`; the central half until D35, step 140). It is the
+   one lean rule: a dot is coloured as over or under only outside its bar, and by at
+   least 5 points. The caption ("…lands 8 times in 10 with that many predictions.
+   Only a dot outside its bar leans.") and spoken description say what it is. "Show the counts" opens each range's said / happened / chance numbers and an
    icon array: a dot per prediction (ink when it happened, hollow when not), an
    upright `textSecondary` bar at the expected count (`expected_yes`), and "40 of 52
    happened; your numbers expected about 36." Above 60 predictions each dot stands
@@ -489,9 +504,12 @@ small ±5 buttons).
   `textTertiary` at full size (so setting a number doesn't shift the layout) with "not
   set yet" beside it, the slider's thumb rests mid-range in `controlBorder` grey with
   no fill, and the first drag, tap on the track (`tapToSeek`), touch of the thumb or
-  ±5 sets a real number; the first ±5 sets the middle itself, where the grey thumb
-  rests (step 120; it used to step past it, to 80 or 45). VoiceOver hears "not
-  set", and the first swipe steps from the middle. Next (Warmup) and Save (Log)
+  ±5 sets a real number. The first ±5 steps from where the grey thumb rests, to 45 or
+  55 on Log and 70 or 80 in the Warmup, as VoiceOver's first swipe does (D36, step 141,
+  2026-11-01: three blind testers expected 55 from +5). This reverses step 120, which
+  set the middle itself after three earlier testers were surprised by the step past
+  it; the two rounds disagree, so watch it in the first iPhone session. VoiceOver
+  hears "not set". Next (Warmup) and Save (Log)
   wait for a number. It used to
   start at 75% (Warmup) and 50% (Log, inside the integrity band), and "didn't touch
   it" couldn't be told from "chose it" (research: `confidence-2026-10.md` §2).
@@ -527,12 +545,19 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   presentation only and loses its `emoji` field.
 - **The category's own score** (D28, 2026-10-10): on each Insights badge row, once
   the category is past `MIN_N_CATEGORY` (15 resolved, `score_is_provisional` false),
-  its score in the row's meta line ("Score 84, 52 resolved"), rounded, in
-  `textSecondary` (never a display size; the overall rating is the one hero).
+  its score in the row's meta line ("Score 84, give or take 5, from 52 resolved" since
+  D35, step 140), rounded, in `textSecondary` (never a display size; the overall
+  rating is the one hero). A tier above Tracker needs the score minus its
+  give-or-take over the bar; when only that is short, the hint says "Score above 85
+  even at its low end to reach Sharp".
   Before that, the count to go, as now. A returning tester couldn't answer "how am I
   doing in money" with a number.
-- **Guesser's tagline** says what it is: "Fewer than 20 resolved here" (it read "Just
-  getting started", which a five-month user took as a judgement).
+- **The first tier is "Getting started"** (D36, step 141; the id stays `guesser`):
+  "Guesser" stung after one prediction. Its tagline says what it is: "Fewer than 20
+  resolved here" (it read "Just getting started", which a five-month user took as a
+  judgement). The upper tiers' taglines say "at its low end" since D35. Until any
+  category has a badge, a line under Category badges says "A category earns its first
+  badge, Tracker, at 20 answered there."
 - Stats lists the badge rows in the app's one category order (`CATEGORIES` in
   `src/types`: work, health, finance, social, personal), as Log's chips and History's
   filters do (roadmap step 73). A launch used to read them alphabetically, so the rows
@@ -628,6 +653,12 @@ third row) → **honest timeline** → **one** CTA.
 - The CTA label follows the selected plan ("Start free month" / "Subscribe for
   $4.99/mo").
 - **No trial toggle** — Apple rejects them under 3.1.2 since January 2026.
+- **A sample before paying** (D37, step 142): once the rating is unlocked, Insights'
+  Plus card shows one card in the Coach card's shape, on `surfaceSunken` inside it:
+  "A sample, on your own numbers", the receipt ("76% came true at 60–80%", the range
+  used most with 10 or more answers), one line, and "Written by the app from your
+  record. With Plus, Coach writes cards like this when you ask." The app writes it,
+  never the model, and says so.
 - **Plus never interrupts.** No pop-up, nothing on launch or mid-task, at most one
   teaser per screen, and the × is always visible. Interrupting upsells, and an ×
   hidden in a corner, are what fill a 4.76-rated app's low reviews
@@ -751,6 +782,10 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   much; 20 can." A first "it happened" otherwise reads as *I was right* (outcome
   bias, Baron & Hershey 1988), which isn't what 70% means
   (`research/day0-2026-10.md` §6). From the second answer, the range line.
+- **Changing the answer** (D34, step 139): the text button under the recorded answer
+  says what it does, "Change to: it didn't happen" (or "it happened"), and switches
+  the answer in place, keeping the reflection typed so far. It used to put the
+  prediction back to open, one tap from "Can't tell", which parked a miss.
 - Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states
   follow §7.8.
 - **Opened from a prediction that isn't due yet**, it goes through the details sheet
@@ -818,6 +853,9 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   is ever missing from History. The category filters apply to both; a confidence
   range (step 51) applies to the resolved list only, since open ones have no outcome.
   The summary line ("145 answered, 93 happened") still counts the resolved ones.
+- **"Can't tell", counted** (D34, step 139): once the rating unlocks, a quiet line under
+  it on Insights says how many answers it leaves out: "2 of 163 answers were Can't
+  tell, so they aren't scored." Nothing when there are none.
 - **Back it up** (D31, 2026-10-10): on Today, once the oldest prediction on the phone
   is 30 days old and nobody is signed in, a quiet sunken card under the daily rows:
   "Your predictions live only on this phone" over "Sign in to keep them if it's lost
@@ -842,7 +880,10 @@ the control reads the chosen category.)
 - **Title:** one line that wraps and grows as it fills (step 138; a one-line field
   scrolled a long prediction out of view while it was typed). Return is Done, never a
   line break, and a pasted break becomes a space. Edit's title field is the same.
-- **Category:** chips with SF Symbol + word; selected = `action` (ink) fill with an
+- **Category:** the person's own list since D39 (step 144): the built-ins under their
+  names, then the ones they added (a tag symbol, `tag.fill`), and none they hid unless
+  it's the current choice.
+- **Category chips:** SF Symbol + word; selected = `action` (ink) fill with an
   `onAction` label and symbol, plus the bolder weight (not colour alone; D33). The
   due-date chips, History's filters, Share's category toggles and the practice
   moments select the same way. **None chosen to start** (D29,
@@ -1010,13 +1051,13 @@ the Stats rating and by a Settings row; never shown unasked, since the pitch is
 identity, not statistics. Sections in `headline` with `body` text in
 `textSecondary`: what the score measures, how it's worked out (the five bands and
 their edges, that bigger bands count for more, one worked example from `CLAUDE.md`),
-the Brier score in one paragraph (D24: what it adds, that lower is better and 0.25 is
-always saying 50%), why it waits, badges (a legend of the five emblems with their
+the Brier score in one paragraph (D24: what it adds, that lower is better, and since
+D35 the yardstick of saying your own base rate every time), why it waits, badges (a legend of the five emblems with their
 criteria), the whole range (log unlikely things too; the integrity bonus section went
 with D23), your streak, what doesn't count (skips, the Warmup and, since step 95, the
-daily practice). The chance-bar sentence says what it is without overclaiming: "Half
-of a perfectly calibrated forecaster's dots land inside it, so a dot outside isn't
-proof of a lean." Opened with `?section=badges` (from Today's identity line, D27) it
+daily practice). The chance-bar sentence says what it is: a perfectly calibrated
+forecaster's dot lands inside it 8 times in 10, and the app calls a lean only for a
+dot outside it (D35). Opened with `?section=badges` (from Today's identity line, D27) it
 scrolls to Badges.
 Every number in the copy comes from the shared constants or `BADGE_META`, and a test
 holds it to the engine. A number that starts a sentence is spelled out ("Three a day
@@ -1040,10 +1081,16 @@ scrolling question, with **Skip for now** as a text button (step 117). It opens 
 - **A lean only beyond luck** (step 104). Ten answers move accuracy in steps of 10
   points, and the ±5 rule used elsewhere called a lean on 47–73% of perfectly
   calibrated people. The engine names one only outside the central 80% of
-  `chanceRange` at n and the mean confidence (`WARMUP_LEAN_MASS`); a sentence reads as
-  a conclusion, so its bar sits above the chart's grey bars (the central half).
-  Inside it the advice is "Ten answers can't tell a small lean from luck. Your own
-  predictions are the real test." (`research/day0-2026-10.md` §2.)
+  `chanceRange` at n and the mean confidence (`WARMUP_LEAN_MASS`); since D35 that is
+  the one rule everywhere, and the chart's grey bars draw the same 80%.
+  Inside it the advice says what did happen, plainly (D36, step 141): "You expected
+  about 8 right and got 9. On ten answers luck often moves it that far, so it says
+  nothing either way yet. Your own predictions are the real test." ("Ten answers can't
+  tell a small lean from luck" alone read as "so… was I good?" at 9 of 10.)
+  (`research/day0-2026-10.md` §2.)
+- **"It isn't about being right"** (D36, step 141): under the two buttons, before the
+  chart, the How scoring works line "It isn't about being right. A 60% call that
+  doesn't happen isn't a mistake: about 4 in 10 of them shouldn't."
 - **No 0–100 number** (D20, step 105). Ten answers can't carry one; the counts lead
   and the chart shows them. It used to count up in `title1` beside "Warm-up
   calibration".
@@ -1108,7 +1155,11 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   on this phone." as the footer; signed in, a brand "Sign out" row under "Signed in as
   …") · *Your card ›* and *Calibrate Plus ›* ("Active" as its value when it is), with
   Plus's one line as the footer · *Notifications* (the main switch; under it, while
-  it's on, **Due-day reminders** and **Sunday digest** switches, D31; the practice
+  it's on, **Due-day reminders** and **Weekly digest** switches, D31, each with its
+  time under it while on (D38, step 143: "Reminder time" beside the native compact
+  time picker; the digest's seven day chips, Sun to Sat, and "Digest time"), and each
+  switch's line says when ("On the day each prediction comes due, at 7:00 PM.",
+  "What's open and coming up, Sunday at 6:00 PM."); the practice
   reminder; and the "Allow reminders" / "Open Settings" row while iOS says no) ·
   *Coach (AI)* and *Usage stats* (switches; without Plus, Coach's line starts "Plus
   only.", and once it's on, "On for when you have Plus. Nothing is sent before then.",
@@ -1128,6 +1179,17 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   "Read" capsules beside three switches, and only the capsule responded.
 - HIG: "Minimize the number of settings you offer." Nothing moves to Settings that
   belongs to a task (the share card's theme stays on Share).
+- **Categories** (D39, step 144): its own group above Notifications, "Categories ›"
+  with the footer "Rename, add or hide the categories you log under." It opens a
+  full-height sheet: a short line, then one card of rows, each the category's symbol,
+  its name and "Rename" (a tap edits it in place, **Save** and Cancel) and a switch
+  that offers it when logging. Under it "Add a category" with a field and a secondary
+  **Add**, which waits for a free name ("Another category already has that name.").
+  Signed in with an added category, a footnote: "Predictions in your own categories
+  stay on this phone for now: they don't back up to your account yet." Nothing is
+  deleted here; hiding keeps the predictions and the record. The last category
+  offered can't be switched off (logging needs one), and a built-in's own word
+  stays free for it while it's renamed.
 - **Practice reminder** (step 89): a stacked row in the Notifications group, its
   label and one line over five chips (Off, With coffee, At lunch, After dinner, each
   with its time, and **Pick a time**, D31, which opens the time picker; once a time
@@ -1185,6 +1247,15 @@ sheet with the round ×:
 - **Once it's due anyway** (step 133): an edit can move the date to today, and a link
   can open a due one here. Then the date reads "Due today" (a past day promises no
   reminder) and **Answer it now** opens Resolve without the early line.
+- **An answered one** (D34, step 139): a Yes or No in History opens the same sheet with
+  what you said, the category, the title, and the outcome as glyph and words ("It
+  didn't happen, answered Sun, Nov 1"), with the reflection if there is one. For a day
+  after the answer: "Until 6:00 PM tomorrow you can change the answer, move it to
+  another category or delete it. After that it's part of your record.", then **Change
+  to: it happened** (secondary capsule), the category chips (a tap moves it), and
+  **Delete** with the usual confirmation. After the day, one line instead: "Answers
+  can be changed for a day after they're given. This one is part of your record now."
+  Never "Can't tell" here. A skip still opens Resolve (step 39).
 
 ---
 

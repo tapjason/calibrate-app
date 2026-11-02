@@ -46,7 +46,9 @@ is a personality-test result with receipts. The math is the engine, never the pi
   id: string
   user_id: string
   title: string                  // The prediction text
-  category: 'work' | 'health' | 'finance' | 'social' | 'personal'
+  category: Category              // a built-in ('work' | 'health' | 'finance' | 'social'
+                                 // | 'personal') or one the person added, 'c-' + a
+                                 // random id (D39); never the name
   confidence: number             // 0–100 integer (user's stated confidence %)
   created_at: string             // ISO timestamp
   due_date: string               // When to resolve it
@@ -58,6 +60,27 @@ is a personality-test result with receipts. The math is the engine, never the pi
                                  // (the integrity bonus was dropped 2026-10-10, D23)
 }
 ```
+
+### CategoryDef (decided 2026-11-01, D39)
+```ts
+{
+  id: Category                   // a built-in or an added 'c-' id
+  user_id: string
+  name: string | null            // the name shown; null for a built-in under its own
+  hidden: boolean                // off Log's choices; its predictions and record stay
+  position: number               // order among the added ones
+  created_at: string
+}
+```
+The person renames any category, adds their own and hides one from Log's choices
+(You → Categories). A built-in has a row only once renamed or hidden. Device-local in
+the `categories` SQLite table, like the settings: not synced yet. Predictions carry
+only the id, so a rename changes no prediction and no name leaves the phone. Every
+category is shown through `categoryLabel`. **Until `supabase/migrations/006_custom_categories.sql`
+is applied, predictions filed under an added category stay on the phone**
+(`CUSTOM_CATEGORY_SYNC` is false; the server accepts only the five built-ins) and the
+Categories screen says so to a signed-in person. An added category never reaches the
+Coach: its name is the person's own text.
 
 ### UserStat
 ```ts
@@ -155,8 +178,10 @@ the line = underconfident. Below = overconfident.
 ### Brier score (secondary, decided 2026-10-10, roadmap D24)
 ```
 brier = mean over resolved yes/no predictions of (confidence/100 − outcome)²
-        outcome = 1 for resolved_yes, 0 for resolved_no.  0 is perfect; always
-        saying 50% scores 0.25; lower is better.
+        outcome = 1 for resolved_yes, 0 for resolved_no.  0 is perfect; lower
+        is better.
+baseline = p(1 − p), p = share of resolved yes/no predictions that happened:
+        what always saying p would score.
 ```
 The calibration score alone ignores sharpness: someone who logs only coin-flips at
 50%, or only sure things at 95%, can score well while saying little. The Brier score
@@ -165,6 +190,21 @@ rewards being both calibrated and decisive, so it keeps the rating honest. It is
 `UserStat`, never on Today or a share card, and shown only as one plain line under
 the rating on Insights and one paragraph in How scoring works, and only once the
 rating itself is unlocked (`MIN_N_OVERALL`). It is free.
+
+**Its yardstick is the person's own base rate** (decided 2026-11-01, D35): the line
+reads "Brier score 0.22, lower is better. Saying 64% every time, how often your calls
+came true, would score 0.23." (`computeBrierBaseline`). It used to say "always saying
+50% scores 0.25", which flatters anyone whose calls mostly happen: an analyst beat it
+while showing no skill over saying his own 64% every time.
+
+### Leans: one rule everywhere (decided 2026-11-01, D35)
+Over or under is named only when the share that happened falls outside the central
+80% of what luck gives a perfectly calibrated person at that count and confidence
+(`chanceRange`, `LEAN_MASS`), **and** by at least 5 points (`classifyDirection`). The
+chart's dots, its grey bars (the same 80%), month summaries, Wrapped, practice, the
+Warmup and the Coach's context all use it. Until D35 everything but the Warmup called
+a lean at any 5-point gap, so a dot could be "overconfident" on what the Warmup
+called luck.
 
 ### Minimum-N gating (required)
 Small samples make `actual_rate` meaningless — with two resolved predictions a bucket can
@@ -210,7 +250,9 @@ stored separately and **never** mixed into real `UserStat` / `CategoryStat` data
 
 Decided 2026-10-05 (`docs/design/UI_ROADMAP.md` D13): the confidence slider
 starts **empty** and Next waits for a number, so tapping through can't produce a
-verdict about a preset.
+verdict about a preset. Since D36 (2026-11-01) the first ±5 steps from where the
+resting thumb shows (70% or 80% here, 45% or 55% on Log), as VoiceOver's first
+swipe does.
 
 **Day 0 is for calibration, not an identity verdict** (decided 2026-10-07, UI_ROADMAP
 D18; built 2026-10-08):
@@ -221,8 +263,12 @@ D18; built 2026-10-08):
 - The result leads with counts and reads these questions, not the person: "You said
   78% on average. 6 of 10 were right." under "On these ten, you were overconfident".
   A lean is named only outside the central 80% of what luck gives at ten answers
-  (`WARMUP_LEAN_MASS`); otherwise "On these ten, no clear lean". The ±5 rule used
-  elsewhere called a lean on 47–73% of perfectly calibrated people
+  (`WARMUP_LEAN_MASS`); otherwise "On these ten, no clear lean", with what did happen
+  in plain counts (D36: "You expected about 8 right and got 9. On ten answers luck
+  often moves it that far, so it says nothing either way yet."). The result also
+  carries "It isn't about being right. A 60% call that doesn't happen isn't a
+  mistake: about 4 in 10 of them shouldn't." A bare ±5 rule (the
+  rest of the app's until D35 made this one rule everywhere) called a lean on 47–73% of perfectly calibrated people
   (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20, 2026-10-09).
 - A bridge to the person's own plans (the planning-fallacy line) sits above the
   button, "Make a real prediction" (the bridge ends "Make your first one about
@@ -271,6 +317,15 @@ A delete is synced as a deletion (a local tombstone pushed to Supabase), so it
 doesn't come back on the next pull; another signed-in device keeps its copy until
 it is deleted there.
 
+**Correcting an answer** (decided 2026-11-01, D34): "Change answer" right after a
+Yes or No switches it to the other in place; it no longer puts the prediction back
+to open. For **24 hours** after an answer (`CORRECTION_WINDOW_HOURS`, from the first
+answer, which a correction keeps), its details (a tap in History) can switch the
+answer, move it to another category or delete it; after that it is the record.
+A Yes or No never becomes "Can't tell": that was how a miss could be parked and
+answered later. A skip can still be answered later. Insights says how many answers
+were "Can't tell" beside the rating, which leaves them out.
+
 Note: resolution alone is a weak retention hook. The identity layer (badges climbing,
 weekly reveal) carries retention — build it deliberately.
 
@@ -283,13 +338,24 @@ See the authoritative section above.
   evening", D30, 2026-10-10)
 - Calibration curve chart (stated vs. actual per bucket)
 - The Brier score, one quiet line under the rating once it's unlocked (D24, above)
+- **The pattern, named** (decided 2026-11-01, D37), all free and all by the one lean
+  rule (D35): the category furthest off, past `MIN_N_CATEGORY` ("Furthest off:
+  finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.");
+  the chart's title naming both sides when there are both ("You're too sure at
+  80–100% and too cautious at 60–80%"); and "since last week" under the rating once
+  it's unlocked at both ends ("Up 2 since last week, from 6 answers, within its
+  give-or-take."). The Plus card shows one Coach-style card on the person's own
+  numbers as a sample, written by the app and labelled so (Coach itself needs Plus
+  and a sign-in).
 - Per-category breakdown with badge levels, and each category's own score once it is
   past `MIN_N_CATEGORY` (D28, 2026-10-10); before that, the count to go
 - **The identity line** (D27, 2026-10-10): on Today and the share card, a tier is
   named only for a category past the count gate (20 resolved, so Tracker or above).
-  "Guesser" means "fewer than 20 resolved here", which read as a verdict ("Guesser in
+  The first tier means "fewer than 20 resolved here", which read as a verdict ("Guesser in
   finance" after five months); it stays on Insights' badge rows, where the count to
-  go sits beside it. Tapping the identity line on Today explains the tiers (How
+  go sits beside it, and since D36 (2026-11-01) it is named **"Getting started"**
+  there (the stored id stays `guesser`): "Guesser" stung after one prediction.
+  Until a category has a badge, Insights says the first comes at 20 answered there. Tapping the identity line on Today explains the tiers (How
   scoring works, at Badges) rather than opening Share.
 - Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**
   (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Today
@@ -328,8 +394,10 @@ Nothing that produces a shareable artifact is ever paywalled.
 
 ### 7. Notification Service
 - **Resolution reminder** — fires at 19:00 local on the due day (decided 2026-10-05;
-  due dates are stored at noon, which was before most outcomes were known)
-- **Weekly digest** — fires Sunday evening, summarizes open and upcoming predictions
+  due dates are stored at noon, which was before most outcomes were known), or at
+  the time the person picks in You (D38, 2026-11-01)
+- **Weekly digest** — fires Sunday at 18:00 local, or on the day and time the person
+  picks (D38), and summarizes open and upcoming predictions
 - **Trial ending** — 10:00 local two days before a free trial renews, with the
   renewal date and the store's price, and no offer (decided 2026-10-07, roadmap
   D16). Cancelled when the trial is cancelled or over, or notifications are off.
@@ -343,9 +411,11 @@ Nothing that produces a shareable artifact is ever paywalled.
   silence. Never the streak, never a loss.
 
 All four follow the Notifications switch. Under it (decided 2026-10-10, D31),
-**Due-day reminders** and **Sunday digest** each have their own switch, on by
-default, and the practice reminder its own choice of time; the trial-ending reminder
-follows the main switch alone.
+**Due-day reminders** and **Weekly digest** (named "Sunday digest" until D38) each
+have their own switch, on by default, and the practice reminder its own choice of
+time; since D38 the reminders have a time (`dueReminderTime`) and the digest a day
+and time (`digestDay`, `digestTime`), each under its switch. The trial-ending
+reminder follows the main switch alone.
 
 ### 8. Rating prompt
 Apple's system rating prompt (`expo-store-review`), requested on Today after a
@@ -513,15 +583,22 @@ and is never shown.
 ### Badge Levels (per category)
 | Level | Name | Criteria |
 |---|---|---|
-| 1 | Guesser | Default starting badge: fewer than 20 resolved in the category |
+| 1 | Getting started (id `guesser`; "Guesser" until D36) | Default starting badge: fewer than 20 resolved in the category |
 | 2 | Tracker | 20 predictions resolved |
-| 3 | Forecaster | Calibration score above 70 **and ≥ 20 resolved** |
-| 4 | Sharp | Calibration score above 85 **and ≥ 50 resolved** |
-| 5 | Oracle | Calibration score above 90 **and ≥ 100 resolved** |
+| 3 | Forecaster | Calibration score above 70 **at its low end** **and ≥ 20 resolved** |
+| 4 | Sharp | Calibration score above 85 **at its low end** **and ≥ 50 resolved** |
+| 5 | Oracle | Calibration score above 90 **at its low end** **and ≥ 100 resolved** |
 
 The resolution minimums are required, not decorative — a badge earned on three lucky
 predictions actively misleads the user about themselves, which is the opposite of the
 app's purpose.
+
+**At its low end** (decided 2026-11-01, D35): the category's score minus its own
+give-or-take (the bootstrap behind the rating's, per category) must clear the bar,
+so a score that only luck put over the line doesn't earn the tier. Insights shows
+each unlocked category score with its give-or-take. Not adopted: discounting 95–100%
+calls or repeated titles, since a sure thing that happens is a calibrated call and
+"Log it again" exists for real repeats.
 
 Badges are per-category. A user can be Sharp in health and Guesser in finance
 simultaneously — this specificity is the key insight and the core shareable artifact.
@@ -575,7 +652,8 @@ the streak and practice rows (D22).
 | Share / Wrapped (sheet) | Identity card + weekly/yearly recap, export & share | Free |
 | History (tab) | Open predictions first, then the full list of past ones, filterable (D26) | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
-| You (tab) | Your card, Plus, notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
+| You (tab) | Your card, Plus, categories (D39), notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
+| Categories (sheet, from You) | Rename, add or hide categories (D39) | Free |
 
 ---
 

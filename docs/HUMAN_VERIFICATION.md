@@ -685,6 +685,16 @@ Added 2026-09-29 (polish pass):
       Save is dimmed. At the largest Dynamic Type sizes the coverage chips on
       Insights break after the dash with nothing cut to "…", and the streak row
       wraps between words.
+- [ ] **Custom categories (D39, step 144; web-verified):** in You → Categories,
+      rename Finance to "Money", add "Grad school", hide Social. Log offers Money
+      and Grad school and no Social; Insights, History, the card and This week say
+      "Money". Force-quit and reopen: all three kept.
+- [ ] **Before custom categories sync (D39, owner):** apply
+      `supabase/migrations/006_custom_categories.sql` to the live project, set
+      `CUSTOM_CATEGORY_SYNC` to true in `src/constants/app.ts`, sign in on two
+      phones and check a prediction filed under an added category reaches the
+      other. The names stay on each phone (not synced yet): the second shows
+      "Other" until it's named there.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
       app. The ink splash should fade straight into Home, with no white
       screen and spinner between. On a fresh install it should fade into the
