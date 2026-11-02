@@ -837,6 +837,15 @@ Expo Go — notifications and RevenueCat are both native modules.
       minutes out).
 - [ ] Tapping the notification deep-links into the Resolve screen for the
       right prediction — including from a **cold start** (force-quit first).
+- [ ] **Happened / Didn't (D8, step 145):** the same reminder shows Happened
+      and Didn't, and no Can't tell. Happened records it and opens straight to
+      "Recorded: it happened" (the range line, and a milestone if this answer
+      earned one), including from a cold start. Didn't does the same for no.
+      Tapping the notification body still opens the question. Answer one that
+      was already answered: it does not change. A reminder scheduled by the
+      previous build still opens Resolve from its body; after one launch of
+      this build the buttons are there too (the category is registered at
+      launch; the request is not rescheduled).
 - [ ] The Sunday digest is scheduled (check
       `getAllScheduledNotificationsAsync` in the dev console, or wait).
 - [ ] Turning notifications off in Settings cancels everything; turning it
