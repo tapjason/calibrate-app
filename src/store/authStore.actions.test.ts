@@ -21,6 +21,7 @@ import * as serverAccount from '@/supabase/account';
 import * as auth from '@/supabase/auth';
 
 import { useAuthStore } from './authStore';
+import { useCategoryStore } from './categoryStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
@@ -186,6 +187,8 @@ describe('authStore.eraseDeviceData', () => {
     usePredictionStore.setState({ loadPending, loadResolved });
     const loadForUser = jest.fn(async () => {});
     useStatsStore.setState({ loadForUser });
+    const loadCategories = jest.fn(async () => {});
+    useCategoryStore.setState({ load: loadCategories });
 
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
     expect(wipe).toHaveBeenCalledWith(LOCAL_GUEST_USER_ID);
@@ -194,6 +197,8 @@ describe('authStore.eraseDeviceData', () => {
     expect(clearPractice).toHaveBeenCalled();
     expect(loadPending).toHaveBeenCalled();
     expect(loadForUser).toHaveBeenCalledWith(LOCAL_GUEST_USER_ID);
+    // The erased categories (roadmap D39) are read again too.
+    expect(loadCategories).toHaveBeenCalled();
   });
 
   // A signed-in account's data also lives on the server; erasing only the

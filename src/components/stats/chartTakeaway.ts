@@ -62,6 +62,22 @@ export function chartTakeaway(
   const solid = buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
   if (solid.length === 0) return fallback();
 
+  // Both sides at once (roadmap D37): too sure in one range and too cautious
+  // in another. Naming only the worst hid that a power user "compresses":
+  // 85% calls came true 44% of the time while her 60–80% ones came true more
+  // often than she said (blind playtest 2026-11-01, run 3). Each side by the
+  // one lean rule (D35), the surest range and the largest gap first.
+  const over = solid.filter((b) => b.direction === 'overconfident');
+  const under = solid.filter((b) => b.direction === 'underconfident');
+  if (over.length > 0 && under.length > 0) {
+    const sure = over.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
+    const cautious = under.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
+    return {
+      title: `You're too sure at ${rangeLabel(sure)} and too cautious at ${rangeLabel(cautious)}`,
+      subtitle: `${naturalFrequency(sure)} Of ${cautious.total_resolved} at ${rangeLabel(cautious)}, ${cautious.resolved_yes} happened.`,
+    };
+  }
+
   // The biggest miss among the well-evidenced buckets is the story.
   const worst = solid.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
 

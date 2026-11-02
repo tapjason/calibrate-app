@@ -19,6 +19,7 @@ import {
   bucketLowFor,
   computeCalibration,
   computeBrier,
+  computeBrierBaseline,
   computeRatingRange,
   evaluateBadge,
   isRatingProvisional,
@@ -34,6 +35,13 @@ import {
 import { detectMilestone } from '@/engine/milestones';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
+import { categoriesIn } from '@/engine/categories';
+import {
+  furthestOffCategory,
+  weekChange,
+  type CategoryMiss,
+  type WeekChange,
+} from '@/engine/patterns';
 import { buildWrapped, type WrappedSpan, type WrappedSummary } from '@/engine/wrapped';
 import {
   CATEGORIES,
@@ -88,6 +96,11 @@ interface StatsState {
    */
   brier: number | null;
   /**
+   * What always saying the base rate would score (roadmap D35), the Brier
+   * line's yardstick. Derived with it; null with nothing resolved.
+   */
+  brierBaseline: { rate: number; score: number } | null;
+  /**
    * The confidence range this user's recent logs occupy — pending included,
    * because what it measures is the logging habit, not resolved outcomes.
    * Feeds the Log screen's range-coverage nudge via `coverageNudgeNow()`.
@@ -105,6 +118,17 @@ interface StatsState {
    * happened"), roadmap step 19.
    */
   categoryCalibration: Partial<Record<Category, CalibrationResult>>;
+  /**
+   * Each category's give-or-take (roadmap D35), like `ratingRange` for the
+   * rating: shown beside a category's score once it unlocks, and taken off
+   * the score before a badge above Tracker is awarded.
+   */
+  categoryRanges: Partial<Record<Category, RatingRange>>;
+  /**
+   * The category furthest from what was said (roadmap D37), past the count
+   * gate and by the one lean rule, or null. Insights names it in plain counts.
+   */
+  furthestOff: CategoryMiss | null;
   /** The category's bucket a stated confidence falls in, or null. */
   categoryBucketFor: (category: Category, confidence: number) => BucketStat | null;
   /**
@@ -129,10 +153,15 @@ const EMPTY_COVERAGE_GAP: CoverageGap = computeCoverageGap([]);
 /** Map each category to its next-badge target (engine call lives here, in L4). */
 function deriveNextBadges(
   stats: CategoryStat[],
+  ranges: Partial<Record<Category, RatingRange>> = {},
 ): Partial<Record<Category, NextBadgeTarget | null>> {
   const out: Partial<Record<Category, NextBadgeTarget | null>> = {};
   for (const s of stats) {
-    out[s.category] = nextBadge(s.predictions_resolved, s.calibration_score);
+    out[s.category] = nextBadge(
+      s.predictions_resolved,
+      s.calibration_score,
+      ranges[s.category]?.giveOrTake ?? 0,
+    );
   }
   return out;
 }
@@ -146,9 +175,20 @@ function deriveCategoryCalibration(
   resolved: readonly Prediction[],
 ): Partial<Record<Category, CalibrationResult>> {
   const out: Partial<Record<Category, CalibrationResult>> = {};
-  for (const category of CATEGORIES) {
+  for (const category of categoriesIn(resolved)) {
     const subset = resolved.filter((p) => p.category === category);
     if (subset.length > 0) out[category] = computeCalibration(subset);
+  }
+  return out;
+}
+
+function deriveCategoryRanges(
+  resolved: readonly Prediction[],
+): Partial<Record<Category, RatingRange>> {
+  const out: Partial<Record<Category, RatingRange>> = {};
+  for (const category of categoriesIn(resolved)) {
+    const range = computeRatingRange(resolved.filter((p) => p.category === category));
+    if (range) out[category] = range;
   }
   return out;
 }
@@ -159,9 +199,12 @@ type DerivedStats = Pick<
   | 'nextBadges'
   | 'calibration'
   | 'categoryCalibration'
+  | 'categoryRanges'
+  | 'furthestOff'
   | 'trends'
   | 'ratingRange'
   | 'brier'
+  | 'brierBaseline'
   | 'coverageGap'
 > & { userStat: UserStat };
 
@@ -192,11 +235,16 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
   await upsertUserStat(userStat);
 
   // ---- Per-category ----
-  // Iterate ALL categories: empty ones get their stale row deleted so the
+  // Every category with a stat row or a prediction, the person's own
+  // included (roadmap D39): empty ones get their stale row deleted so the
   // next loadForUser doesn't resurrect a ghost category from disk.
   const categoryStats: CategoryStat[] = [];
   const categoryCalibration: Partial<Record<Category, CalibrationResult>> = {};
-  for (const category of CATEGORIES) {
+  const categoryRanges: Partial<Record<Category, RatingRange>> = {};
+  const stored = (await listCategoryStats(userId)).map((s) => s.category);
+  const used = categoriesIn(all);
+  const walk = [...used, ...stored.filter((c) => !used.includes(c))];
+  for (const category of walk) {
     const subsetAll = all.filter((p) => p.category === category);
     if (subsetAll.length === 0) {
       await deleteCategoryStat(userId, category);
@@ -206,6 +254,10 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
     const calc = computeCalibration(subsetResolved);
     if (subsetResolved.length > 0) categoryCalibration[category] = calc;
     const resolvedCount = subsetResolved.filter(isYesNo).length;
+    // The category's own give-or-take (roadmap D35): shown beside its score,
+    // and a badge above Tracker needs the score minus it to clear the bar.
+    const range = computeRatingRange(subsetResolved);
+    if (range) categoryRanges[category] = range;
     const stat: CategoryStat = {
       user_id: userId,
       category,
@@ -213,7 +265,7 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
       predictions_resolved: resolvedCount,
       calibration_score: calc.rating,
       score_is_provisional: isScoreProvisional(resolvedCount),
-      badge_level: evaluateBadge(resolvedCount, calc.rating),
+      badge_level: evaluateBadge(resolvedCount, calc.rating, range?.giveOrTake ?? 0),
     };
     await upsertCategoryStat(stat);
     categoryStats.push(stat);
@@ -222,12 +274,15 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
   return {
     userStat,
     categoryStats,
-    nextBadges: deriveNextBadges(categoryStats),
+    nextBadges: deriveNextBadges(categoryStats, categoryRanges),
     calibration: userCalc,
     categoryCalibration,
+    categoryRanges,
+    furthestOff: furthestOffCategory(resolved),
     trends: buildTrendSummary(resolved),
     ratingRange: computeRatingRange(resolved),
     brier: computeBrier(resolved),
+    brierBaseline: computeBrierBaseline(resolved),
     coverageGap: computeCoverageGap(all),
   };
 }
@@ -238,9 +293,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   nextBadges: {},
   calibration: EMPTY_CALIBRATION,
   categoryCalibration: {},
+  categoryRanges: {},
+  furthestOff: null,
   trends: EMPTY_TRENDS,
   ratingRange: null,
   brier: null,
+  brierBaseline: null,
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
 
@@ -273,15 +331,19 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       listResolvedPredictions(userId),
       listPendingPredictions(userId),
     ]);
+    const ranges = deriveCategoryRanges(resolved);
     set({
       userStat: null,
       categoryStats,
-      nextBadges: deriveNextBadges(categoryStats),
+      nextBadges: deriveNextBadges(categoryStats, ranges),
       calibration: computeCalibration(resolved),
       categoryCalibration: deriveCategoryCalibration(resolved),
+      categoryRanges: ranges,
+      furthestOff: furthestOffCategory(resolved),
       trends: buildTrendSummary(resolved),
       ratingRange: computeRatingRange(resolved),
       brier: computeBrier(resolved),
+      brierBaseline: computeBrierBaseline(resolved),
       coverageGap: computeCoverageGap([...pending, ...resolved]),
     });
   },
@@ -344,3 +406,14 @@ export function wrappedSummary(
  * produced here by `coverageNudgeNow()`; the type travels with it.
  */
 export type { CoverageGap, CoverageNudgeDecision, WrappedSpan, WrappedSummary };
+
+/**
+ * "Since last week" (roadmap D37): the rating now against a week ago, from
+ * the resolved list the caller holds. Read at render, since it depends on the
+ * day; the engine does the arithmetic, screens read it here.
+ */
+export function weekChangeFor(resolved: readonly Prediction[], now: Date): WeekChange | null {
+  return weekChange(resolved, now);
+}
+
+export type { CategoryMiss, WeekChange };

@@ -54,6 +54,13 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.queryByText(/out of 100/)).toBeNull();
   });
 
+  // Roadmap D36: the line that answers 'so was I good?' is on the result.
+  it('says it is not about being right', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    expect(screen.getByTestId('warmup-not-right')).toHaveTextContent(/^It isn’t about being right. /);
+  });
+
   it('headlines the counts, the read of these answers and the chart', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);

@@ -16,6 +16,7 @@ import type {
   TrendSummary,
 } from '@/engine/trends';
 import { MIN_N_BAND } from '@/types';
+import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 /**
  * Advanced analytics (Plus) — the sticky, non-AI half of the subscription.
@@ -35,6 +36,7 @@ export function TrendsPanel({
   /** False when the screen shows one shared Plus teaser instead. */
   upsell?: boolean;
 } = {}) {
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const trends = useStatsStore((s) => s.trends);
   // Free since D31: the same export as You's row, offered here too.
@@ -154,7 +156,7 @@ function PeriodRow({ period }: { period: PeriodStat }) {
 function CategoryRow({ trend }: { trend: CategoryTrend }) {
   return (
     <View style={styles.row} testID={`trend-category-${trend.category}`}>
-      <Text style={styles.rowLabel}>{trend.category}</Text>
+      <Text style={styles.rowLabel}>{categoryTitle(trend.category)}</Text>
       <Text style={styles.rowValue}>
         {/* A provisional category shows progress toward its threshold, never a
             score — the same rule the headline rating follows. */}
@@ -210,14 +212,14 @@ function Corrections({ trends }: { trends: TrendSummary }) {
       {rows.length === 0 && progress ? (
         <Text style={styles.muted} testID="trends-corrections-progress">
           A band needs {MIN_N_BAND} calls in one category before it gets a row.
-          Closest: {progress.category} at {band(progress.low, progress.high)}, with{' '}
+          Closest: {categoryLabel(progress.category)} at {band(progress.low, progress.high)}, with{' '}
           {progress.resolved}.
         </Text>
       ) : (
         <>
           {worst && worst.direction !== 'calibrated' && (
             <Text style={styles.delta} testID="trends-corrections-lead">
-              In {worst.category}, your {band(worst.low, worst.high)} has come true{' '}
+              In {categoryLabel(worst.category)}, your {band(worst.low, worst.high)} has come true{' '}
               {percent(worst.actual_rate)} of the time.
             </Text>
           )}
@@ -313,7 +315,6 @@ const styles = StyleSheet.create({
     ...type.subhead,
     color: colors.textPrimary,
     fontWeight: '500',
-    textTransform: 'capitalize',
   },
   // For labels that carry a number: textTransform would capitalize "at" too.
   rowLabelPlain: { ...type.subhead, color: colors.textPrimary, fontWeight: '500' },

@@ -94,3 +94,26 @@ describe('nextBadgeProgress', () => {
     expect(progressFor([stat('health', 120, 95)])).toBeNull();
   });
 });
+
+// Roadmap D35: a tier above Tracker needs the score minus its give-or-take
+// over the bar; over the bar itself isn't enough.
+describe('nextBadgeProgress with a give-or-take', () => {
+  it('says what is short when only the low end is under the bar', () => {
+    const stats = [
+      {
+        user_id: 'u1',
+        category: 'health' as const,
+        predictions_made: 60,
+        predictions_resolved: 60,
+        calibration_score: 87.4,
+        score_is_provisional: false,
+        badge_level: 'forecaster' as const,
+      },
+    ];
+    const next = { health: { badge: 'sharp' as const, needResolved: 50, needScore: 85 } };
+    expect(nextBadgeProgress(stats, next, { health: 4 })?.text).toBe(
+      'Sharp in health: a score above 85 even at its low end (now 87, give or take 4)',
+    );
+    expect(nextBadgeProgress(stats, next, {})).toBeNull();
+  });
+});

@@ -4,6 +4,7 @@ import { track } from '@/analytics/track';
 import { csvFileName, predictionsToCsv } from '@/export/csv';
 import { shareTextFile, type ExportOutcome } from '@/export/file';
 import { usePredictionStore } from '@/store/predictionStore';
+import { categoryLabel } from '@/store/categoryStore';
 
 const EXPORT_MESSAGES: Record<Exclude<ExportOutcome, 'shared'>, string> = {
   unavailable: "Exporting isn't available on this device.",
@@ -32,7 +33,7 @@ export function useCsvExport(): {
       const all = [...pending, ...resolved];
       const outcome = await shareTextFile(
         csvFileName(),
-        predictionsToCsv(all),
+        predictionsToCsv(all, categoryLabel),
         'text/csv',
         'Export your predictions',
       );

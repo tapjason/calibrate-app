@@ -36,6 +36,7 @@ import {
   clearDeletion,
   getPredictionUpdatedAt,
   isDeletionPending,
+  isHeldLocally,
   listDirtyPredictions,
   listPendingDeletions,
   markPredictionSynced,
@@ -43,7 +44,8 @@ import {
 } from '@/db/predictions';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import { useStatsStore } from '@/store/statsStore';
-import type { PredictionWireRow } from '@/types';
+import { CUSTOM_CATEGORY_SYNC } from '@/constants/app';
+import { isBuiltInCategory, type PredictionWireRow } from '@/types';
 
 import { getSupabaseClient, isSupabaseConfigured } from './client';
 
@@ -172,6 +174,13 @@ export async function pullRemote(
       continue;
     }
 
+    // Held back on this phone (roadmap D39): its local copy wins until it can
+    // be pushed, or the server's older one would overwrite it.
+    if (!CUSTOM_CATEGORY_SYNC && (await isHeldLocally(remote.id))) {
+      if (remote.updated_at > lastSeen) lastSeen = remote.updated_at;
+      continue;
+    }
+
     const localUpdatedAt = await getPredictionUpdatedAt(remote.id);
     if (!localUpdatedAt || localUpdatedAt < remote.updated_at) {
       await upsertPredictionFromRemote(remote);
@@ -203,7 +212,12 @@ export async function pushDirty(
   userId: string,
   client: SupabaseClient,
 ): Promise<number> {
-  const dirty = await listDirtyPredictions(userId);
+  // A prediction filed under a category the person added (roadmap D39)
+  // waits on the phone until the server accepts it (CUSTOM_CATEGORY_SYNC):
+  // pushed now, it would fail every sync. It stays dirty, so it goes up later.
+  const dirty = (await listDirtyPredictions(userId)).filter(
+    (row) => CUSTOM_CATEGORY_SYNC || isBuiltInCategory(row.category),
+  );
   if (dirty.length === 0) return 0;
 
   const upsertBatch = async (rows: PredictionWireRow[]) => {

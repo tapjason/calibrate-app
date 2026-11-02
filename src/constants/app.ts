@@ -55,3 +55,13 @@ export const APP_STORE_ID: string | null = null;
  * campaign, so App Store Connect can't say which share brought an install.
  */
 export const APP_STORE_PROVIDER_TOKEN: string | null = null;
+
+/**
+ * Whether predictions filed under a category the person added (roadmap D39)
+ * go up to Supabase. Off until `supabase/migrations/006_custom_categories.sql`
+ * is applied to the live project: its predictions table only accepts the five
+ * built-ins, so pushing one would fail on every sync. Until then they stay on
+ * the phone, still dirty, and go up on the first sync after this is turned on.
+ * The Categories screen says so to a signed-in person.
+ */
+export const CUSTOM_CATEGORY_SYNC = false;

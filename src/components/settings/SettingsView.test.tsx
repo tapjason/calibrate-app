@@ -85,6 +85,9 @@ describe('SettingsView', () => {
         notificationsEnabled: false,
         remindersEnabled: true,
         digestEnabled: true,
+        dueReminderTime: { hour: 19, minute: 0 },
+        digestDay: 0,
+        digestTime: { hour: 18, minute: 0 },
         aiRefineEnabled: true,
         coachEnabled: false,
         analyticsEnabled: true,
@@ -287,6 +290,41 @@ describe('SettingsView — notification switches', () => {
     render(<SettingsView />);
     expect(screen.queryByTestId('toggle-reminders-row')).toBeNull();
     expect(screen.queryByTestId('toggle-digest-row')).toBeNull();
+  });
+});
+
+// Roadmap D38: due-day reminders and the weekly digest at the person's times.
+describe('SettingsView — reminder and digest times', () => {
+  it('says each time, and offers it under its switch', async () => {
+    useSettingsStore.setState({
+      notificationsEnabled: true,
+      remindersEnabled: true,
+      digestEnabled: true,
+      dueReminderTime: { hour: 19, minute: 0 },
+      digestDay: 0,
+      digestTime: { hour: 18, minute: 0 },
+    });
+    render(<SettingsView />);
+    expect(screen.getByTestId('toggle-reminders-row').props.accessibilityHint).toMatch(
+      /^On the day each prediction comes due, at 7:00.PM.$/,
+    );
+    expect(screen.getByTestId('toggle-digest-row').props.accessibilityLabel).toBe('Weekly digest');
+    expect(screen.getByTestId('toggle-digest-row').props.accessibilityHint).toMatch(
+      /^What's open and coming up, Sunday at 6:00.PM.$/,
+    );
+    expect(screen.getByTestId('settings-reminder-time')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('digest-day-3'));
+    await waitFor(() => expect(useSettingsStore.getState().digestDay).toBe(3));
+    expect(screen.getByTestId('digest-day-3').props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByTestId('toggle-digest-row').props.accessibilityHint).toMatch(/Wednesday at/);
+  });
+
+  it('hides a time while its switch is off', () => {
+    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: false, digestEnabled: false });
+    render(<SettingsView />);
+    expect(screen.queryByTestId('settings-reminder-time')).toBeNull();
+    expect(screen.queryByTestId('settings-digest-when')).toBeNull();
   });
 });
 

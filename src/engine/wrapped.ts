@@ -165,7 +165,7 @@ function rollUpCategories(preds: readonly Prediction[]): WrappedCategory[] {
       category,
       resolved: list.length,
       score: rating,
-      direction: classifyDirection(meanConfidence, hitRate),
+      direction: classifyDirection(meanConfidence, hitRate, list.length),
     });
   }
 
@@ -281,7 +281,7 @@ export function buildWrapped(
     happened,
     expected: confidenceSum / 100,
     score: rating,
-    direction: classifyDirection(meanConfidence, hitRate),
+    direction: classifyDirection(meanConfidence, hitRate, preds.length),
     score_is_provisional: preds.length < MIN_N_OVERALL,
     categories: rollUpCategories(preds),
     boldest_hit: boldest(preds, 'resolved_yes'),

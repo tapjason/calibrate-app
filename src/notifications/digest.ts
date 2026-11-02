@@ -1,4 +1,5 @@
-// Weekly digest scheduler. One repeating notification, Sunday 18:00 local.
+// Weekly digest scheduler. One repeating notification, Sunday 18:00 local unless
+// the person picks another day and time (roadmap D38).
 // Body summarizes the current pending count so taps land in an already-
 // relevant context.
 //
@@ -35,10 +36,13 @@ import { useSettingsStore } from '@/store/settingsStore';
 
 import { DIGEST_CATEGORY, DIGEST_PLACEHOLDER, DIGEST_TITLE, digestBody } from './copy';
 
-// Sunday at 18:00 local. expo-notifications weekday is 1..7 with 1 = Sunday.
-const DIGEST_WEEKDAY = 1;
-const DIGEST_HOUR = 18;
-const DIGEST_MINUTE = 0;
+// Sunday at 18:00 local by default; since roadmap D38 (2026-11-01) the day
+// and time are the person's (settingsStore.digestDay, digestTime).
+// expo-notifications weekday is 1..7 with 1 = Sunday; the store's day is 0..6.
+function digestWhen(): { weekday: number; hour: number; minute: number } {
+  const { digestDay, digestTime } = useSettingsStore.getState();
+  return { weekday: digestDay + 1, hour: digestTime.hour, minute: digestTime.minute };
+}
 
 // Stable identifier lets re-scheduling replace the previous request without
 // needing to remember the OS-generated id across calls.
@@ -142,10 +146,11 @@ export function __setDepsForTests(next: Deps | null): void {
   }
 }
 
-async function scheduleDigest(pendingCount: number): Promise<void> {
+async function scheduleDigest(pendingCount: number, force = false): Promise<void> {
   if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled)
     return;
-  if (lastScheduledCount === pendingCount) return;
+  if (!force && lastScheduledCount === pendingCount) return;
+  const when = digestWhen();
 
   try {
     // Same identifier replaces the prior request — no explicit cancel needed.
@@ -160,9 +165,9 @@ async function scheduleDigest(pendingCount: number): Promise<void> {
       },
       trigger: {
         type: 'weekly',
-        weekday: DIGEST_WEEKDAY,
-        hour: DIGEST_HOUR,
-        minute: DIGEST_MINUTE,
+        weekday: when.weekday,
+        hour: when.hour,
+        minute: when.minute,
       },
     });
     lastScheduledCount = pendingCount;
@@ -267,7 +272,13 @@ export async function activateDigest(): Promise<void> {
 
   settingsUnsub = useSettingsStore.subscribe((state, prev) => {
     const next = digestOn(state);
-    if (next === digestOn(prev)) return;
-    void applyEnabled(next);
+    if (next !== digestOn(prev)) {
+      void applyEnabled(next);
+      return;
+    }
+    // A new day or time (roadmap D38): the same identifier replaces it.
+    if (next && (state.digestDay !== prev.digestDay || state.digestTime !== prev.digestTime)) {
+      void scheduleDigest(usePredictionStore.getState().pending.length, true);
+    }
   });
 }

@@ -115,7 +115,7 @@ export function computeCalibrationPoints(
       stated_confidence_mean: statedMean,
       actual_rate: actualRate,
       bucket_error: error,
-      direction: classifyDirection(statedMean, actualRate),
+      direction: classifyDirection(statedMean, actualRate, a.total),
       chance_low: chance.low,
       chance_high: chance.high,
       expected_yes: (a.total * statedMean) / 100,
@@ -220,6 +220,30 @@ export function computeBrier(resolved: readonly Prediction[]): number | null {
 }
 
 /**
+ * What always saying one number would have scored, that number being how
+ * often this person's calls came true (roadmap D35): the Brier score of a
+ * forecaster who knows only the base rate, p(1 − p). The honest yardstick
+ * for the Brier score: always saying 50% scores 0.25, which flatters anyone
+ * whose calls mostly happen (an analyst at a 64% base rate beat it while
+ * showing no skill over saying 64% every time; blind playtest 2026-11-01).
+ * Null with nothing resolved.
+ */
+export function computeBrierBaseline(
+  resolved: readonly Prediction[],
+): { rate: number; score: number } | null {
+  let yes = 0;
+  let n = 0;
+  for (const p of resolved) {
+    if (!isCalibratable(p)) continue;
+    if (p.status === 'resolved_yes') yes += 1;
+    n += 1;
+  }
+  if (n === 0) return null;
+  const rate = yes / n;
+  return { rate, score: rate * (1 - rate) };
+}
+
+/**
  * Overall rating is provisional (must not be shown as a headline number) until
  * the user has at least MIN_N_OVERALL resolved predictions. Below that, a
  * bucket's actual_rate is too coarse to trust.
@@ -242,11 +266,17 @@ export const isScoreProvisional = (resolvedCount: number): boolean =>
  * badge earned on a handful of lucky calls misleads the user about themselves,
  * which is the opposite of the app's purpose:
  *
- *   Oracle      score > 90 AND predictionsResolved ≥ 100
- *   Sharp       score > 85 AND predictionsResolved ≥ 50
- *   Forecaster  score > 70 AND predictionsResolved ≥ 20
- *   Tracker                     predictionsResolved ≥ 20
- *   Guesser     default floor
+ *   Oracle      score − giveOrTake > 90 AND predictionsResolved ≥ 100
+ *   Sharp       score − giveOrTake > 85 AND predictionsResolved ≥ 50
+ *   Forecaster  score − giveOrTake > 70 AND predictionsResolved ≥ 20
+ *   Tracker                                 predictionsResolved ≥ 20
+ *   Guesser     default floor ("Getting started" on screen since D36)
+ *
+ * The give-or-take is the category's own (computeRatingRange over its
+ * answers, roadmap D35): a score that clears the bar only on lucky draws
+ * doesn't earn the badge. Sure things that happen narrow it, so this is no
+ * wall against padding; it stops a score that luck alone could have put over
+ * the line (blind playtest 2026-11-01, run 6).
  *
  * The resolution gates also enforce "no badge above tracker while provisional":
  * every gate above tracker is ≥ 20 > MIN_N_CATEGORY, so a provisional category
@@ -255,10 +285,12 @@ export const isScoreProvisional = (resolvedCount: number): boolean =>
 export const evaluateBadge: EvaluateBadge = (
   predictionsResolved,
   calibrationScore,
+  giveOrTake = 0,
 ) => {
-  if (predictionsResolved >= 100 && calibrationScore > 90) return 'oracle';
-  if (predictionsResolved >= 50 && calibrationScore > 85) return 'sharp';
-  if (predictionsResolved >= 20 && calibrationScore > 70) return 'forecaster';
+  const low = calibrationScore - Math.max(0, giveOrTake);
+  if (predictionsResolved >= 100 && low > 90) return 'oracle';
+  if (predictionsResolved >= 50 && low > 85) return 'sharp';
+  if (predictionsResolved >= 20 && low > 70) return 'forecaster';
   if (predictionsResolved >= 20) return 'tracker';
   return 'guesser' satisfies BadgeLevel;
 };
@@ -288,8 +320,8 @@ const BADGE_REQUIREMENTS: Record<BadgeLevel, NextBadgeTarget> = {
  * always sharp even if they skipped tracker's resolution count, matching
  * evaluateBadge's highest-qualifying rule.
  */
-export const nextBadge: NextBadge = (predictionsResolved, calibrationScore) => {
-  const current = evaluateBadge(predictionsResolved, calibrationScore);
+export const nextBadge: NextBadge = (predictionsResolved, calibrationScore, giveOrTake = 0) => {
+  const current = evaluateBadge(predictionsResolved, calibrationScore, giveOrTake);
   const idx = BADGE_LADDER.indexOf(current);
   if (idx >= BADGE_LADDER.length - 1) return null;
   return BADGE_REQUIREMENTS[BADGE_LADDER[idx + 1]];

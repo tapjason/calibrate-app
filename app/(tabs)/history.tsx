@@ -23,9 +23,9 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { confidenceRangeLow } from '@/store/statsStore';
-import { CATEGORIES, type Category } from '@/types';
+import { categoryOptions, categoryTitle, isCategoryHidden, useCategoryStore } from '@/store/categoryStore';
+import type { Category } from '@/types';
 
-const FILTERS: readonly (Category | 'all')[] = ['all', ...CATEGORIES];
 
 export default function HistoryScreen() {
   const router = useRouter();
@@ -35,6 +35,14 @@ export default function HistoryScreen() {
   const resolved = usePredictionStore((s) => s.resolved);
   const pending = usePredictionStore((s) => s.pending);
   const [filter, setFilter] = useState<Category | 'all'>('all');
+  // The person's own categories (roadmap D39): every one shown on Log, and a
+  // hidden one while it still has predictions to find.
+  useCategoryStore((s) => s.defs);
+  const used = new Set([...resolved, ...pending].map((p) => p.category));
+  const filters: (Category | 'all')[] = [
+    'all',
+    ...categoryOptions({ includeHidden: true }).filter((c) => used.has(c) || !isCategoryHidden(c)),
+  ];
   // A confidence range arrives from a tap on Stats' coverage row (roadmap
   // step 51): the predictions behind one dot on the chart.
   const range = parseRangeParam(useLocalSearchParams<{ range?: string }>().range);
@@ -85,7 +93,7 @@ export default function HistoryScreen() {
           contentContainerStyle={styles.row}
           style={styles.filters}
         >
-          {FILTERS.map((f) => (
+          {filters.map((f) => (
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
@@ -96,7 +104,7 @@ export default function HistoryScreen() {
               style={[styles.chip, filter === f && styles.chipActive]}
             >
               <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>
-                {f}
+                {f === 'all' ? 'All' : categoryTitle(f)}
               </Text>
             </Pressable>
           ))}
@@ -169,10 +177,11 @@ export default function HistoryScreen() {
                           ? `/resolve/${id}`
                           : `/prediction/${id}`) as never,
                       )
-                  : // Only a skip can be revisited: it never counted (step 39).
+                  : // A skip is answered in Resolve (step 39); a Yes or No opens
+                    // its details, correctable for a day (roadmap D34).
                     item.status === 'skipped'
                     ? (id) => router.push(`/resolve/${id}` as never)
-                    : undefined
+                    : (id) => router.push(`/prediction/${id}` as never)
               }
             />
           )}
@@ -213,7 +222,7 @@ const styles = StyleSheet.create({
   },
   // Selected = ink fill + bolder label, not colour alone (DESIGN_SYSTEM §7.12, D33).
   chipActive: { backgroundColor: colors.action, borderColor: colors.action },
-  chipText: { ...type.subhead, color: colors.textPrimary, textTransform: 'capitalize' },
+  chipText: { ...type.subhead, color: colors.textPrimary },
   chipTextActive: { color: colors.onAction, fontWeight: '600' },
   // Selected styling, like a chosen category, plus an × that clears it.
   rangeChip: {

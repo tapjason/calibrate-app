@@ -20,6 +20,7 @@ import {
 import { usePracticeStore } from '@/store/practiceStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { syncForUser, useAuthStore } from '@/store/authStore';
+import { useCategoryStore } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { selectHasCompletedWarmup, useWarmupStore } from '@/store/warmupStore';
@@ -79,6 +80,8 @@ export default function RootLayout() {
         if (userId) {
           // Warm the local lists + stats so the first paint of any screen has data.
           await Promise.all([
+            // The person's own category names (roadmap D39).
+            useCategoryStore.getState().load(),
             usePredictionStore.getState().loadPending(),
             usePredictionStore.getState().loadResolved(),
             useStatsStore.getState().loadForUser(userId),
@@ -248,6 +251,16 @@ export default function RootLayout() {
         {/* Reading, not a task: a full-height sheet, dismissed by the grabber or Done. */}
         <Stack.Screen
           name="scoring"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [1.0],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 24,
+          }}
+        />
+        {/* The person's own categories (roadmap D39), from You: a sheet like scoring. */}
+        <Stack.Screen
+          name="categories"
           options={{
             presentation: 'formSheet',
             sheetAllowedDetents: [1.0],

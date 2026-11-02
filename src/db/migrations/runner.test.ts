@@ -168,3 +168,61 @@ describe('migrations runner', () => {
     expect(row?.dirty).toBe(1);
   });
 });
+
+// Roadmap D39: the tables that only allowed the five built-ins are rebuilt,
+// with every row and column carried across.
+describe('migration 009 (custom categories)', () => {
+  it('keeps every row and accepts an added category, still refusing nonsense', async () => {
+    const raw = await createRawTestDb();
+    const upTo8 = MIGRATIONS.filter((m) => m.id < '009');
+    await runMigrations(raw, upTo8);
+    await raw.run(
+      `INSERT INTO predictions
+         (id, user_id, title, category, confidence, created_at, due_date, status,
+          resolved_at, reflection, integrity_bonus, updated_at, dirty)
+       VALUES ('p1', 'u1', 'kept', 'finance', 80, '2026-10-01T12:00:00.000Z',
+               '2026-10-02T12:00:00.000Z', 'resolved_no', '2026-10-02T19:00:00.000Z',
+               'a note', 0, '2026-10-02T19:00:00.000Z', 0)`,
+    );
+    await raw.run(
+      `INSERT INTO category_stats
+         (user_id, category, predictions_made, predictions_resolved, calibration_score,
+          badge_level, score_is_provisional)
+       VALUES ('u1', 'finance', 1, 1, 20, 'guesser', 1)`,
+    );
+
+    await runMigrations(raw);
+
+    expect(await raw.get(`SELECT * FROM predictions WHERE id = 'p1'`)).toMatchObject({
+      title: 'kept',
+      category: 'finance',
+      status: 'resolved_no',
+      reflection: 'a note',
+      updated_at: '2026-10-02T19:00:00.000Z',
+      dirty: 0,
+    });
+    expect(await raw.get(`SELECT * FROM category_stats WHERE user_id = 'u1'`)).toMatchObject({
+      category: 'finance',
+      calibration_score: 20,
+      score_is_provisional: 1,
+    });
+
+    await raw.run(
+      `INSERT INTO predictions (id, user_id, title, category, confidence, created_at, due_date, status)
+       VALUES ('p2', 'u1', 'grad school', 'c-ab12cd', 60, 'x', 'y', 'pending')`,
+    );
+    await expect(
+      raw.run(
+        `INSERT INTO predictions (id, user_id, title, category, confidence, created_at, due_date, status)
+         VALUES ('p3', 'u1', 'bad', 'groceries', 60, 'x', 'y', 'pending')`,
+      ),
+    ).rejects.toThrow();
+    const indexes = (await raw.all<{ name: string }>(`PRAGMA index_list(predictions)`)).map(
+      (i) => i.name,
+    );
+    expect(indexes).toEqual(
+      expect.arrayContaining(['idx_predictions_user_status', 'idx_predictions_user_due', 'idx_predictions_dirty']),
+    );
+    expect(await raw.all(`SELECT * FROM categories`)).toEqual([]);
+  });
+});

@@ -86,9 +86,9 @@ describe('WarmupQuiz', () => {
     fireEvent.press(screen.getByTestId('warmup-next'));
     expect(useWarmupStore.getState().answers).toEqual([]);
 
-    // The first ±5 sets the middle of 50–100, where the thumb rests.
+    // The first ±5 steps from the middle of 50–100, where the thumb rests (D36).
     fireEvent.press(screen.getByTestId('warmup-confidence-decrement'));
-    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('75%');
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('70%');
     expect(screen.getByTestId('warmup-next').props.accessibilityState).toMatchObject({
       disabled: false,
     });
@@ -98,8 +98,7 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-1')); // correct
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 75, the middle
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80, a step from 75
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {
@@ -113,8 +112,7 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-0')); // wrong
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 75, the middle
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80, a step from 75
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {
@@ -129,7 +127,7 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-0'));
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment'));
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80
     fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 85
     fireEvent.press(screen.getByTestId('warmup-next'));
 

@@ -195,6 +195,9 @@ beforeEach(async () => {
     notificationsEnabled: true,
     remindersEnabled: true,
     digestEnabled: true,
+    dueReminderTime: { hour: 19, minute: 0 },
+    digestDay: 0,
+    digestTime: { hour: 18, minute: 0 },
     aiRefineEnabled: true,
     hydrated: false,
   });
@@ -894,5 +897,31 @@ describe('scheduler: permission in context', () => {
     __setDepsForTests({ notifications: null, navigator: makeFakeNavigator() });
     expect(await reminderPermission()).toBe('unsupported');
     expect(await requestReminderPermission()).toBe('unsupported');
+  });
+});
+
+// Roadmap D38: due-day reminders at the person's own time.
+describe('scheduler: a chosen reminder time', () => {
+  it('fires at the chosen time on the due day, and moves when it changes', async () => {
+    useSettingsStore.setState({ dueReminderTime: { hour: 8, minute: 15 } });
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+
+    await usePredictionStore.getState().create({
+      title: 'A',
+      category: 'work',
+      confidence: 50,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await flush();
+    let [rec] = Array.from(notifications.scheduled.values());
+    expect([rec.date.getHours(), rec.date.getMinutes()]).toEqual([8, 15]);
+
+    useSettingsStore.setState({ dueReminderTime: { hour: 20, minute: 30 } });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
+    [rec] = Array.from(notifications.scheduled.values());
+    expect([rec.date.getHours(), rec.date.getMinutes()]).toEqual([20, 30]);
   });
 });

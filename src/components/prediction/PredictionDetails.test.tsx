@@ -53,7 +53,7 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details')).toBeTruthy());
     expect(screen.getByTestId('details-stated')).toHaveTextContent(/you said 70%/);
     expect(screen.getByTestId('details-title')).toHaveTextContent('Ship the beta');
-    expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due .+, with a reminder that evening$/);
+    expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due .+, with a reminder at 7:00\sPM$/);
   });
 
   it('says reminders are off when they are', async () => {
@@ -163,9 +163,79 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due [^·]+$/));
   });
 
+  // A Yes or No has its own details since D34; a skip is answered in Resolve.
   it('says so when the prediction is no longer open', async () => {
-    await insertPrediction(open({ status: 'resolved_yes', resolved_at: '2026-10-09T12:00:00.000Z' }));
+    await insertPrediction(open({ status: 'skipped', resolved_at: '2026-10-09T12:00:00.000Z' }));
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-missing')).toBeTruthy());
+  });
+});
+
+// Roadmap D34: an answered prediction opens its details from History, and for
+// a day can be switched, moved or deleted; after that it's the record.
+describe('PredictionDetails, answered (roadmap D34)', () => {
+  const answered = (hoursAgo: number, over: Partial<Prediction> = {}) => {
+    const at = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
+    return open({ status: 'resolved_no', resolved_at: at, due_date: at, ...over });
+  };
+
+  it('switches the answer, moves it and keeps when it was answered', async () => {
+    const p = answered(1);
+    await insertPrediction(p);
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-window')).toBeTruthy());
+    expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It didn’t happen/);
+
+    fireEvent.press(screen.getByTestId('answered-switch'));
+    await waitFor(() =>
+      expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It happened/),
+    );
+    fireEvent.press(screen.getByTestId('category-health'));
+    await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
+
+    const saved = await getPrediction('p1');
+    expect(saved).toMatchObject({ status: 'resolved_yes', category: 'health', confidence: 70 });
+    expect(saved?.resolved_at).toBe(p.resolved_at);
+  });
+
+  it('deletes one only after a confirmation', async () => {
+    await insertPrediction(answered(2));
+    const onClose = jest.fn();
+    renderDetails({ onClose });
+    await waitFor(() => expect(screen.getByTestId('answered-delete')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('answered-delete'));
+    fireEvent.press(screen.getByTestId('answered-delete-yes'));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(await getPrediction('p1')).toBeNull();
+  });
+
+  it('says an answer older than a day is the record, and offers nothing to change', async () => {
+    await insertPrediction(answered(30));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-locked')).toBeTruthy());
+    expect(screen.queryByTestId('answered-switch')).toBeNull();
+    expect(screen.queryByTestId('answered-delete')).toBeNull();
+    expect(screen.queryByTestId('category-health')).toBeNull();
+  });
+});
+
+// Review 2026-11-01: a window that closes while the sheet is open says so in
+// the store's words, and the controls go.
+describe('PredictionDetails, answered, window closed while open', () => {
+  it('shows the record sentence and drops the controls', async () => {
+    const at = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
+    const p = open({ status: 'resolved_no', resolved_at: at, due_date: at });
+    await insertPrediction(p);
+    const { AnsweredDetails } = jest.requireActual('./AnsweredDetails');
+    // The sheet believes it's an hour after the answer; the store knows better.
+    const onePastAnswer = new Date(Date.parse(at) + 60 * 60 * 1000);
+    const { rerender } = render(
+      <AnsweredDetails prediction={p} onChanged={jest.fn()} onClose={jest.fn()} now={onePastAnswer} />,
+    );
+    fireEvent.press(screen.getByTestId('answered-switch'));
+    await waitFor(() => expect(screen.getByText(/part of the record now/)).toBeTruthy());
+    rerender(<AnsweredDetails prediction={p} onChanged={jest.fn()} onClose={jest.fn()} />);
+    expect(screen.queryByTestId('answered-switch')).toBeNull();
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
   });
 });

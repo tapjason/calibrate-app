@@ -11,7 +11,7 @@ import { create } from 'zustand';
 
 import { clearEvents } from '@/db/analytics';
 import { DEFAULT_THEME } from '@/constants/cardThemes';
-import { CATEGORIES, type Category } from '@/types';
+import { CATEGORIES, isCategory, type Category } from '@/types';
 
 export interface StoredSettings {
   notificationsEnabled: boolean;
@@ -20,8 +20,18 @@ export interface StoredSettings {
    * be on for a reminder to be scheduled.
    */
   remindersEnabled: boolean;
-  /** The Sunday digest, under the Notifications switch (roadmap D31). */
+  /** The weekly digest, under the Notifications switch (roadmap D31). */
   digestEnabled: boolean;
+  /**
+   * When a due-day reminder fires on its due day (roadmap D38): 7:00 PM
+   * unless the person picks another time. The evening was D9's choice, since
+   * most of a day's outcomes are known by then.
+   */
+  dueReminderTime: PracticeReminderTime;
+  /** The weekly digest's day, 0 = Sunday … 6 = Saturday (roadmap D38). */
+  digestDay: number;
+  /** The weekly digest's time (roadmap D38): 6:00 PM unless picked. */
+  digestTime: PracticeReminderTime;
   aiRefineEnabled: boolean;
   /** Plus-only Coach insights on the Stats screen. Opt-in — see DEFAULTS. */
   coachEnabled: boolean;
@@ -111,6 +121,9 @@ interface SettingsState extends StoredSettings {
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   setRemindersEnabled: (enabled: boolean) => Promise<void>;
   setDigestEnabled: (enabled: boolean) => Promise<void>;
+  setDueReminderTime: (time: PracticeReminderTime) => Promise<void>;
+  setDigestDay: (day: number) => Promise<void>;
+  setDigestTime: (time: PracticeReminderTime) => Promise<void>;
   setAiRefineEnabled: (enabled: boolean) => Promise<void>;
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
@@ -147,6 +160,9 @@ const DEFAULTS: StoredSettings = {
   notificationsEnabled: true,
   remindersEnabled: true,
   digestEnabled: true,
+  dueReminderTime: { hour: 19, minute: 0 },
+  digestDay: 0,
+  digestTime: { hour: 18, minute: 0 },
   aiRefineEnabled: true,
   coachEnabled: false,
   analyticsEnabled: true,
@@ -219,6 +235,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             stored.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
           remindersEnabled: stored.remindersEnabled ?? DEFAULTS.remindersEnabled,
           digestEnabled: stored.digestEnabled ?? DEFAULTS.digestEnabled,
+          dueReminderTime: validTime(stored.dueReminderTime) ?? DEFAULTS.dueReminderTime,
+          digestDay: validDay(stored.digestDay) ?? DEFAULTS.digestDay,
+          digestTime: validTime(stored.digestTime) ?? DEFAULTS.digestTime,
           aiRefineEnabled: stored.aiRefineEnabled ?? DEFAULTS.aiRefineEnabled,
           coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
           analyticsEnabled:
@@ -265,6 +284,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setDigestEnabled: async (enabled) => {
     set({ digestEnabled: enabled });
+    await persist(snapshot(get()));
+  },
+
+  setDueReminderTime: async (time) => {
+    set({ dueReminderTime: validTime(time) ?? DEFAULTS.dueReminderTime });
+    await persist(snapshot(get()));
+  },
+
+  setDigestDay: async (day) => {
+    set({ digestDay: validDay(day) ?? DEFAULTS.digestDay });
+    await persist(snapshot(get()));
+  },
+
+  setDigestTime: async (time) => {
+    set({ digestTime: validTime(time) ?? DEFAULTS.digestTime });
     await persist(snapshot(get()));
   },
 
@@ -335,15 +369,31 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 }));
 
+/** A stored day of the week, if it is one: 0 (Sunday) to 6. */
+function validDay(value: unknown): number | null {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 6
+    ? (value as number)
+    : null;
+}
+
 /** A stored card shape, if it is one. */
 function validShape(value: unknown): CardShape | null {
   return value === 'post' || value === 'story' ? value : null;
 }
 
-/** Stored categories, if they are a list: known ones only, each once. */
+/**
+ * Stored categories, if they are a list: category ids only (the person's own
+ * included, roadmap D39), each once, in the order given.
+ */
 function validCategories(value: unknown): Category[] | null {
   if (!Array.isArray(value)) return null;
-  return CATEGORIES.filter((c) => value.includes(c));
+  const ids = [...new Set(value.filter(isCategory))];
+  // Built-ins in the app's order, then added ones as given.
+  const rank = (c: Category) => {
+    const i = (CATEGORIES as readonly string[]).indexOf(c);
+    return i >= 0 ? i : CATEGORIES.length;
+  };
+  return ids.sort((a, b) => rank(a) - rank(b));
 }
 
 /** A stored time, if it is one: whole hours 0–23 and minutes 0–59. */
@@ -365,6 +415,9 @@ function snapshot(state: StoredSettings): StoredSettings {
     notificationsEnabled: state.notificationsEnabled,
     remindersEnabled: state.remindersEnabled,
     digestEnabled: state.digestEnabled,
+    dueReminderTime: state.dueReminderTime,
+    digestDay: state.digestDay,
+    digestTime: state.digestTime,
     aiRefineEnabled: state.aiRefineEnabled,
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,

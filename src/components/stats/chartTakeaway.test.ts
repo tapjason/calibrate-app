@@ -65,7 +65,8 @@ describe('chartTakeaway', () => {
     const t = chartTakeaway(
       [
         bucket(80, 12, 7, 'overconfident', 0.3),
-        bucket(40, 10, 8, 'underconfident', 0.2),
+        // Both sides would name both (D37); one side names its worst.
+        bucket(40, 10, 5, 'calibrated', 0.04),
         bucket(20, 3, 3, 'underconfident', 0.7), // too thin to headline
       ],
       false,
@@ -80,5 +81,22 @@ describe('chartTakeaway', () => {
       false,
     );
     expect(t.title).toBe("You're well calibrated");
+  });
+});
+
+// Roadmap D37: both sides at once, the compression pattern.
+describe('chartTakeaway, both sides', () => {
+  it('names a range too sure and a range too cautious together', () => {
+    const t = chartTakeaway(
+      [
+        bucket(60, 55, 42, 'underconfident', 0.08),
+        bucket(80, 20, 8, 'overconfident', 0.45),
+      ],
+      false,
+    );
+    expect(t).toEqual({
+      title: "You're too sure at 80–100% and too cautious at 60–80%",
+      subtitle: 'Of 20 things you called 80–100% likely, 8 happened. Of 55 at 60–80%, 42 happened.',
+    });
   });
 });

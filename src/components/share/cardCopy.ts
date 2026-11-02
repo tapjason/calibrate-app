@@ -18,6 +18,7 @@ import {
   type ShareCard,
   type UserStat,
 } from '@/types';
+import { categoryLabel } from '@/store/categoryStore';
 
 /** Ladder order, weakest to strongest. Index doubles as the rank. */
 const BADGE_ORDER: readonly BadgeLevel[] = [
@@ -93,7 +94,7 @@ export function shareLines(card: ShareCard): { identity: string; contrast: strin
   const [best] = gated;
   if (!best) return { identity: UNGATED_IDENTITY, contrast: null };
   const label = (c: ShareCard['categories'][number]) =>
-    `${BADGE_META[c.badge_level].label} in ${c.category}`;
+    `${BADGE_META[c.badge_level].label} in ${categoryLabel(c.category)}`;
   const worst = gated[gated.length - 1];
   const contrast =
     gated.length > 1 && worst.badge_level !== best.badge_level ? label(worst) : null;
@@ -170,7 +171,7 @@ export function identityCardSummary(card: ShareCard): string {
   const { identity, contrast } = shareLines(card);
   const lead = contrast ? `${identity}, ${contrast}` : identity;
   const each = card.categories
-    .map((c) => `${BADGE_META[c.badge_level].label} in ${c.category}`)
+    .map((c) => `${BADGE_META[c.badge_level].label} in ${categoryLabel(c.category)}`)
     .join(', ');
   return `Share card. ${lead}. ${shareSubline(card)}. By category: ${each}.`;
 }

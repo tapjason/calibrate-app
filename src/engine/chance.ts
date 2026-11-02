@@ -16,8 +16,13 @@
 //
 // Layer rule: L3 — imports only from @/types and sibling engine files.
 
-/** The share of binomial outcomes the chance range spans: the central half. */
-export const CHANCE_MASS = 0.5;
+/**
+ * The share of binomial outcomes the chance range spans: the central 80%, the
+ * band a lean must fall outside (direction.ts LEAN_MASS, roadmap D35). It was
+ * the central half until 2026-11-01, so a dot outside its grey bar could
+ * still be no lean at all.
+ */
+export const CHANCE_MASS = 0.8;
 
 /** The share of bootstrap scores the rating range spans: the central 80%. */
 export const RATING_RANGE_MASS = 0.8;

@@ -18,6 +18,7 @@ export default function YouScreen() {
         onOpenAccount={() => router.push('/account' as never)}
         onOpenDelete={() => router.push('/account/delete' as never)}
         onOpenScoring={() => router.push('/scoring' as never)}
+        onOpenCategories={() => router.push('/categories' as never)}
       />
     </ScrollView>
   );

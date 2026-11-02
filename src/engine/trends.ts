@@ -177,7 +177,7 @@ function summarize(points: CalibrationPoint[]): {
     score: rating,
     mean_confidence: meanConfidence,
     hit_rate: hitRate,
-    direction: classifyDirection(meanConfidence, hitRate),
+    direction: classifyDirection(meanConfidence, hitRate, points.length),
   };
 }
 

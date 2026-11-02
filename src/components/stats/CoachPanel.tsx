@@ -10,6 +10,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { CoachInsight } from '@/types';
+import { categoryTitle } from '@/store/categoryStore';
 
 import { coachReceipt } from './coachReceipt';
 import { SupportSurface } from './SupportSurface';
@@ -187,7 +188,7 @@ function InsightCard({
   return (
     <View style={styles.card} testID={`coach-insight-${insight.category}`}>
       <View style={styles.cardHeader}>
-        <Text style={styles.category}>{insight.category}</Text>
+        <Text style={styles.category}>{categoryTitle(insight.category)}</Text>
         <Pressable
           onPress={onDismiss}
           accessibilityRole="button"
@@ -248,7 +249,6 @@ const styles = StyleSheet.create({
     ...type.footnote,
     color: colors.textSecondary,
     fontWeight: '600',
-    textTransform: 'capitalize',
   },
   dismiss: { ...type.title3, color: colors.textTertiary, lineHeight: 20 },
   receipt: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },

@@ -41,7 +41,9 @@ const PLAN: Record<Category, Cell[]> = {
   personal: [
     { confidence: 15, count: 5, yes: 1 },
     { confidence: 40, count: 6, yes: 4 },
-    { confidence: 70, count: 16, yes: 13 },
+    // 14 of 16: underconfident by the one lean rule (D35), not just by a
+    // 5-point gap luck could give at 27 answers.
+    { confidence: 70, count: 16, yes: 14 },
   ],
   social: [
     { confidence: 50, count: 8, yes: 4 },

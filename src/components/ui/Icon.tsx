@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 import { View } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
-import type { Category } from '@/types';
+import { isBuiltInCategory, type BuiltInCategory, type Category } from '@/types';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -44,13 +44,15 @@ export function Icon({ sf, fallback, size = 20, color, testID }: IconProps) {
  * Categories are told apart by symbol + word, never by colour (DESIGN_SYSTEM
  * §2.4, §5).
  */
-export const CATEGORY_ICONS: Record<Category, { sf: SFSymbol; fallback: IoniconName }> = {
+export const CATEGORY_ICONS: Record<BuiltInCategory, { sf: SFSymbol; fallback: IoniconName }> = {
   work: { sf: 'briefcase.fill', fallback: 'briefcase' },
   health: { sf: 'heart.fill', fallback: 'heart' },
   finance: { sf: 'dollarsign.circle.fill', fallback: 'cash' },
   social: { sf: 'person.2.fill', fallback: 'people' },
   personal: { sf: 'person.fill', fallback: 'person' },
 };
+
+const ADDED_ICON: { sf: SFSymbol; fallback: IoniconName } = { sf: 'tag.fill', fallback: 'pricetag' };
 
 export function CategoryIcon({
   category,
@@ -61,6 +63,7 @@ export function CategoryIcon({
   size?: number;
   color: string;
 }) {
-  const { sf, fallback } = CATEGORY_ICONS[category];
+  // A category the person added (roadmap D39) has no symbol of its own: a tag.
+  const { sf, fallback } = isBuiltInCategory(category) ? CATEGORY_ICONS[category] : ADDED_ICON;
   return <Icon sf={sf} fallback={fallback} size={size} color={color} />;
 }

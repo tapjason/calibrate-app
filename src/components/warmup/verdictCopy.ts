@@ -40,9 +40,23 @@ const ADVICE = {
     "When you felt sure, you were right less often than you thought. Try shading your confidence down.",
   underconfident:
     'You knew more than you gave yourself credit for. Try trusting your gut a little further.',
-  calibrated:
-    "Ten answers can't tell a small lean from luck. Your own predictions are the real test.",
 } as const;
+
+/**
+ * No clear lean, said as what did happen (roadmap D36): "no clear lean" alone,
+ * at 9 of 10 right, read as "so… was I good?" (blind playtest 2026-11-01,
+ * run 1). The expected count beside the real one is the plain read, and the
+ * reason it isn't a verdict follows.
+ */
+function noLeanAdvice(expected: number, right: number, n: number): string {
+  const word = NUMBER_WORDS[n] ?? String(n);
+  const Word = word.charAt(0).toUpperCase() + word.slice(1);
+  const counts = `You expected about ${expected} right and got ${right}`;
+  if (expected === right) {
+    return `${counts}: just what you said. ${Word} answers can't prove that, so your own predictions are the real test.`;
+  }
+  return `${counts}. On ${word} answers luck often moves it that far, so it says nothing either way yet. Your own predictions are the real test.`;
+}
 
 const SAME_NUMBER_NOTE =
   'One number for every question, the ones you knew and the ones you guessed. ' +
@@ -82,7 +96,10 @@ export function warmupVerdict(
       same === null
         ? `You said ${stated}% on average. ${count}`
         : `You said ${same}% on all ${n}. ${count}`,
-    advice: ADVICE[result.direction],
+    advice:
+      result.direction === 'calibrated'
+        ? noLeanAdvice(Math.round((result.mean_confidence / 100) * n), right, n)
+        : ADVICE[result.direction],
     // Nothing to tell apart when every answer was right.
     sameNumber: same !== null && result.accuracy < 1 ? SAME_NUMBER_NOTE : null,
   };

@@ -6,6 +6,7 @@ import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
+import { categoryTitle } from '@/store/categoryStore';
 
 import { identityCardSummary, shareLines, shareSubline } from './cardCopy';
 import { CARD_CANVAS_WIDTH, CARD_RADIUS } from './ScaledCanvas';
@@ -200,7 +201,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
                   maxFontSizeMultiplier={CARD_MAX_SCALE}
                   style={[styles.chipLabel, { color: theme.foreground }]}
                 >
-                  {c.category}
+                  {categoryTitle(c.category)}
                 </Text>
               </View>
             ))}
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  chipLabel: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
+  chipLabel: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700' },
   footer: { borderTopWidth: 1, gap: 2, marginTop: 14, paddingTop: 14 },
   footerPinned: { marginTop: 'auto' },
   story: { paddingVertical: 56 },

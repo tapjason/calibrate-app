@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
+import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
 import { daysUntilDue } from '@/components/prediction/dueGroups';
@@ -12,8 +13,10 @@ import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
+import { reminderTimeLabel } from '@/notifications/practiceReminder';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Category, Prediction } from '@/types';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 /** As Log's field: long enough for a sentence, short enough for a reminder. */
 const TITLE_MAX_LENGTH = 200;
@@ -43,12 +46,15 @@ const shortDate = (iso: string) =>
  * owner filter, as Resolve's does.
  */
 export function PredictionDetails({ predictionId, onClose, onAnswer }: PredictionDetailsProps) {
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const remindersOn = useSettingsStore((s) => s.notificationsEnabled && s.remindersEnabled);
+  // The person's own time since D38, not always "that evening".
+  const reminderAt = useSettingsStore((s) => s.dueReminderTime);
 
   // The edit draft, and the presets frozen when editing starts (as on Log).
   const [title, setTitle] = useState('');
@@ -73,6 +79,10 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
         <ActivityIndicator color={colors.action} />
       </View>
     );
+  }
+  // An answered one: its own details, open to correction for a day (D34).
+  if (prediction && (prediction.status === 'resolved_yes' || prediction.status === 'resolved_no')) {
+    return <AnsweredDetails prediction={prediction} onChanged={setPrediction} onClose={onClose} />;
   }
   if (!prediction || prediction.status !== 'pending') {
     return (
@@ -144,7 +154,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
       </Text>
       <View style={styles.categoryRow}>
         <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
-        <Text style={styles.category}>{prediction.category}</Text>
+        <Text style={styles.category}>{categoryTitle(prediction.category)}</Text>
       </View>
       <Text style={styles.title} testID="details-title">
         {prediction.title}
@@ -156,7 +166,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
         {Platform.OS === 'web' || daysLeft < 0
           ? ''
           : remindersOn
-            ? ', with a reminder that evening'
+            ? `, with a reminder at ${reminderTimeLabel(reminderAt)}`
             : ', reminders off'}
       </Text>
     </>
@@ -279,7 +289,6 @@ const styles = StyleSheet.create({
     ...type.footnote,
     color: colors.textSecondary,
     fontWeight: '600',
-    textTransform: 'capitalize',
   },
   title: { ...type.title2, color: colors.textPrimary },
   due: { ...type.subhead, color: colors.textSecondary },

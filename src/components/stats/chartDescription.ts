@@ -24,7 +24,7 @@ export function describeCalibrationCurve(buckets: readonly BucketStat[]): string
       const chance =
         lo === hi
           ? `Perfectly calibrated, that would be ${lo}%.`
-          : `Perfectly calibrated, half the time that would land between ${lo} and ${hi}%.`;
+          : `Perfectly calibrated, 8 times in 10 that would land between ${lo} and ${hi}%.`;
       return (
         `When you said ${b.low} to ${b.high}%, averaging ${said}%, ` +
         `you were right ${right}% of the time, over ${n} ${n === 1 ? 'prediction' : 'predictions'}. ` +

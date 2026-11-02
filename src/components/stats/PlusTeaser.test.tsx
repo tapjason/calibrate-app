@@ -37,3 +37,22 @@ describe('panels under a shared teaser', () => {
     expect(trends.toJSON()).toBeNull();
   });
 });
+
+// Roadmap D37: one Coach card on the person's own numbers, labelled as the app's.
+describe('PlusTeaser sample', () => {
+  it('shows a sample card, and says who wrote it', () => {
+    render(
+      <PlusTeaser
+        onUpgrade={jest.fn()}
+        sample={{ figure: '76%', label: 'came true at 60–80%', message: 'Your 60–80% calls…' }}
+      />,
+    );
+    expect(screen.getByTestId('plus-teaser-sample')).toHaveTextContent(/Written by the app from your record/);
+    expect(screen.getByText('76%')).toBeTruthy();
+  });
+
+  it('shows none without one', () => {
+    render(<PlusTeaser onUpgrade={jest.fn()} />);
+    expect(screen.queryByTestId('plus-teaser-sample')).toBeNull();
+  });
+});

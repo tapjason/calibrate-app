@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
+import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { isReadyToResolve } from './dueGroups';
 
@@ -76,6 +77,7 @@ export function PredictionCard({
   position = 'single',
   showReady = true,
 }: PredictionCardProps) {
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const due = formatDue(prediction.due_date);
   const status = statusLabel(prediction, new Date());
   // A resolved row dates itself by when it was answered, not when it was due.
@@ -105,7 +107,7 @@ export function PredictionCard({
       accessibilityRole={onPress ? 'button' : undefined}
       // One sentence instead of fragments read in layout order.
       accessibilityLabel={
-        `${prediction.title}. ${prediction.category}, ${prediction.confidence}% confident, ` +
+        `${prediction.title}. ${categoryLabel(prediction.category)}, ${prediction.confidence}% confident, ` +
         `${when}. ${status}.` +
         (reflection ? ` Your note: ${reflection}` : '')
       }
@@ -123,7 +125,7 @@ export function PredictionCard({
         <View style={styles.metaRow}>
           <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
           <Text style={styles.meta}>
-            <Text style={styles.category}>{prediction.category}</Text>, {when}
+            <Text style={styles.category}>{categoryTitle(prediction.category)}</Text>, {when}
           </Text>
         </View>
         {showStatus && (
@@ -172,7 +174,7 @@ const styles = StyleSheet.create({
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   meta: { ...type.footnote, color: colors.textSecondary, flexShrink: 1 },
-  category: { textTransform: 'capitalize' },
+  category: {},
   statusRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   status: { ...type.footnote, color: colors.textPrimary, fontWeight: '600' },
   confidence: { alignItems: 'flex-end', gap: 6, paddingTop: 2, width: SCALE_WIDTH },

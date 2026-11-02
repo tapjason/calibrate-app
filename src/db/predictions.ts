@@ -16,6 +16,8 @@ import type {
   DeletePrediction,
   SetReflection,
   ReopenPrediction,
+  CorrectPredictionOutcome,
+  RefilePrediction,
   UpdatePrediction,
 } from '@/types';
 
@@ -176,6 +178,34 @@ export const reopenPrediction: ReopenPrediction = async (id) => {
 };
 
 /**
+ * Correct a Yes to a No or back (roadmap D34). `resolved_at` stays as it was,
+ * so the correction window is measured from the first answer and correcting
+ * can't stretch it. Only between Yes and No: never to "Can't tell", which is
+ * how a miss used to be parked (blind playtest 2026-11-01). The window itself
+ * is the store's to check; it knows the time.
+ */
+export const correctPredictionOutcome: CorrectPredictionOutcome = async (id, outcome) => {
+  const now = nowIso();
+  await getDb().run(
+    `UPDATE predictions
+       SET status = ?, updated_at = ?, dirty = 1
+       WHERE id = ? AND status IN ('resolved_yes', 'resolved_no')`,
+    [outcome, now, id],
+  );
+};
+
+/** Move an answered prediction to another category (roadmap D34). */
+export const refilePrediction: RefilePrediction = async (id, category) => {
+  const now = nowIso();
+  await getDb().run(
+    `UPDATE predictions
+       SET category = ?, updated_at = ?, dirty = 1
+       WHERE id = ? AND status IN ('resolved_yes', 'resolved_no')`,
+    [category, now, id],
+  );
+};
+
+/**
  * Edit an open prediction's title, category or due date (roadmap D25).
  * `status = 'pending'` keeps an answered one as it was; `dirty = 1` carries
  * the edit through sync like any other write.
@@ -252,6 +282,20 @@ export async function isDeletionPending(id: string): Promise<boolean> {
 /** Forget a tombstone once the server has the deletion. */
 export async function clearDeletion(id: string): Promise<void> {
   await getDb().run(`DELETE FROM prediction_deletions WHERE id = ?`, [id]);
+}
+
+/**
+ * Whether a row is held back on this phone (roadmap D39): filed under a
+ * category the person added and not yet pushed. Pull leaves it alone, since
+ * the server's older copy would otherwise overwrite its answer, correction or
+ * category the moment another device touched that copy.
+ */
+export async function isHeldLocally(id: string): Promise<boolean> {
+  const row = await getDb().get<{ category: string; dirty: number }>(
+    `SELECT category, dirty FROM predictions WHERE id = ?`,
+    [id],
+  );
+  return !!row && row.dirty === 1 && row.category.startsWith('c-');
 }
 
 /** `updated_at` of a row, used by pull to decide if remote is newer. */

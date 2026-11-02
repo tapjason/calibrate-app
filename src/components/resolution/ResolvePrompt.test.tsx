@@ -501,26 +501,27 @@ describe('ResolvePrompt change answer', () => {
     await waitFor(() => {
       expect(screen.getByTestId('resolve-change')).toBeTruthy();
     });
+    // Roadmap D34: it switches in place, never back to open, where "Can't
+    // tell" could park the miss.
+    expect(screen.getByTestId('resolve-change')).toHaveTextContent('Change to: it happened');
     fireEvent.press(screen.getByTestId('resolve-change'));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
-    });
-    expect((await getPrediction('p1'))?.status).toBe('pending');
-
-    fireEvent.press(screen.getByTestId('resolve-yes'));
     await waitFor(() => {
       expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
         'Recorded: it happened',
       );
     });
-    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+    expect(screen.queryByTestId('resolve-skip')).toBeNull();
+    const after = await getPrediction('p1');
+    expect(after?.status).toBe('resolved_yes');
+    expect(after?.resolved_at).not.toBeNull();
+    expect(screen.getByTestId('resolve-change')).toHaveTextContent('Change to: it didn’t happen');
     expect(onResolved).not.toHaveBeenCalled();
   });
 });
 
 describe('ResolvePrompt reflection draft', () => {
-  it('reports the unsaved reflection, and clears it when the answer is changed', async () => {
+  it('reports the unsaved reflection, and keeps it when the answer is changed', async () => {
     await insertPrediction(samplePending());
     const onDraftChange = jest.fn();
     render(<ResolvePrompt predictionId="p1" onDraftChange={onDraftChange} />);
@@ -537,9 +538,9 @@ describe('ResolvePrompt reflection draft', () => {
 
     fireEvent.press(screen.getByTestId('resolve-change'));
     await waitFor(() => {
-      expect(screen.getByTestId('resolve-yes')).toBeTruthy();
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(/^Recorded: it didn/);
     });
-    expect(onDraftChange).toHaveBeenLastCalledWith('');
+    expect(onDraftChange).toHaveBeenLastCalledWith('lucky timing');
   });
 });
 

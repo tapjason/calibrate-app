@@ -10,16 +10,19 @@ import { track } from '@/analytics/track';
 
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
+import { canCorrect, correctableUntil } from '@/engine/corrections';
 import { pastOutcomes } from '@/engine/pastOutcomes';
 import { checkpointReached, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
+  correctPredictionOutcome,
   deletePrediction,
   getPrediction,
   insertPrediction,
   listPendingPredictions,
   listResolvedPredictions,
   resolvePrediction,
+  refilePrediction,
   reopenPrediction,
   setPredictionReflection,
   updatePrediction,
@@ -78,6 +81,16 @@ interface PredictionState {
    * transaction, exactly as for resolve, so nothing counts a withdrawn answer.
    */
   reopen: (id: string) => Promise<void>;
+  /**
+   * Switch an answer between Yes and No (roadmap D34): "Change answer" right
+   * after, or from its details within the correction window. Throws outside
+   * the window. Never to "Can't tell". Stats recompute in the same
+   * transaction; a milestone the switch crosses is cleared, since a
+   * correction is not an achievement.
+   */
+  correct: (id: string, outcome: 'resolved_yes' | 'resolved_no') => Promise<void>;
+  /** Move an answered prediction to another category, within the window (D34). */
+  refile: (id: string, category: Category) => Promise<void>;
   /** Attach (or clear, with an empty string) a reflection after resolving. */
   reflect: (id: string, reflection: string) => Promise<void>;
   /**
@@ -249,6 +262,28 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     set({ streakCheckpoint: null });
   },
 
+  correct: async (id, outcome) => {
+    const userId = requireUserId();
+    await requireCorrectable(get().getById, id);
+    await withTransaction(async () => {
+      await correctPredictionOutcome(id, outcome);
+      await useStatsStore.getState().recomputeForUser(userId);
+    });
+    useStatsStore.getState().clearMilestone();
+    await get().loadResolved();
+  },
+
+  refile: async (id, category) => {
+    const userId = requireUserId();
+    await requireCorrectable(get().getById, id);
+    await withTransaction(async () => {
+      await refilePrediction(id, category);
+      await useStatsStore.getState().recomputeForUser(userId);
+    });
+    useStatsStore.getState().clearMilestone();
+    await get().loadResolved();
+  },
+
   reflect: async (id, reflection) => {
     requireUserId();
     const text = reflection.trim();
@@ -272,6 +307,16 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   remove: async (id) => {
     const userId = requireUserId();
+    // An answered one only within the correction window (roadmap D34); an
+    // open one or a skip any time.
+    const target = await get().getById(id);
+    if (
+      target &&
+      (target.status === 'resolved_yes' || target.status === 'resolved_no') &&
+      !canCorrect(target, new Date())
+    ) {
+      throw new Error(PAST_WINDOW);
+    }
     // Deleting a resolved prediction changes calibration, streak, and per-
     // category counts — recompute inside the same transaction so the stats
     // never reflect a ghost prediction.
@@ -313,4 +358,29 @@ export function pastOutcomesFor(
   title: string,
 ): PastOutcomes | null {
   return pastOutcomes(resolved, title);
+}
+
+/**
+ * When an answer's correction window closes (roadmap D34), or null when it
+ * has closed or there is none (open, skipped). The rule is the engine's;
+ * screens read it here.
+ */
+export function correctionWindow(p: Prediction, now: Date): Date | null {
+  return canCorrect(p, now) ? correctableUntil(p) : null;
+}
+
+const PAST_WINDOW = 'This answer is part of the record now and can no longer be changed.';
+
+/**
+ * The prediction, if it is this user's (getById applies the owner filter) and
+ * an answer still inside the correction window (roadmap D34); throws if not.
+ */
+async function requireCorrectable(
+  getById: (id: string) => Promise<Prediction | null>,
+  id: string,
+): Promise<Prediction> {
+  const p = await getById(id);
+  if (!p) throw new Error('Prediction not found');
+  if (!canCorrect(p, new Date())) throw new Error(PAST_WINDOW);
+  return p;
 }

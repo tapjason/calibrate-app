@@ -2,6 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { colors, radius, space, type } from '@/constants/theme';
+import { reminderTimeLabel } from '@/notifications/practiceReminder';
+import { useSettingsStore } from '@/store/settingsStore';
 
 interface ReminderPromptCardProps {
   /** "Tue, Oct 6": when the first reminder would come, or null if none is ahead. */
@@ -19,13 +21,15 @@ interface ReminderPromptCardProps {
  * coverage nudge: sunken, a secondary button, and "Not now" as a real answer.
  */
 export function ReminderPromptCard({ firstDue, onAllow, onDismiss, busy }: ReminderPromptCardProps) {
+  // The person's own time since D38, not always the evening.
+  const reminderAt = useSettingsStore((s) => s.dueReminderTime);
   return (
     <View style={styles.wrap} testID="reminder-prompt">
       <Text style={styles.title}>Want a reminder when it's due?</Text>
       <Text style={styles.body}>
-        On the evening each prediction comes due, one nudge to say how it went
-        {firstDue ? `, starting ${firstDue}` : ''}. And a quiet summary on Sunday
-        evenings. Nothing else.
+        At {reminderTimeLabel(reminderAt)} on the day each prediction comes due, one nudge to
+        say how it went{firstDue ? `, starting ${firstDue}` : ''}. And a quiet weekly summary.
+        Nothing else.
       </Text>
       <View style={styles.actions}>
         <Button

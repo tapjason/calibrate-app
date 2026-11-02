@@ -6,9 +6,11 @@
 //
 // Layer rule: engine — imports only from @/types and sibling engine files.
 
-import type { Prediction } from '@/types';
+import { MIN_N_CATEGORY, MIN_N_OVERALL, type Category, type Prediction } from '@/types';
 
 import { computeCalibrationPoints } from './calibration';
+import { categoriesIn } from './categories';
+import { classifyDirection as classifyLean } from './direction';
 import { localParts } from './localTime';
 
 // classifyDirection lives in ./direction so the calibration core can label
@@ -114,5 +116,80 @@ export function categoryDrift(
     earlier_score: earlier,
     recent_score: recent,
     delta: recent - earlier,
+  };
+}
+
+/** The category furthest from what was said, in plain counts (roadmap D37). */
+export interface CategoryMiss {
+  category: Category;
+  resolved: number;
+  happened: number;
+  mean_stated: number; // 0–100
+  actual_rate: number; // 0–1
+  direction: 'overconfident' | 'underconfident';
+}
+
+/**
+ * The category whose answers sit furthest from what was said, among those
+ * past MIN_N_CATEGORY whose gap passes the one lean rule (D35), or null when
+ * none does (roadmap D37). A power user's finance calls were 18 at about 85%
+ * with 8 happening, and no screen said so; she found it with History's
+ * filters (blind playtest 2026-11-01, run 3). Largest gap first; ties go to
+ * the category with more answers, then the app's category order.
+ */
+export function furthestOffCategory(resolved: readonly Prediction[]): CategoryMiss | null {
+  let best: CategoryMiss | null = null;
+  for (const category of categoriesIn(resolved)) {
+    const list = resolved.filter((p) => p.category === category && isYesNo(p));
+    if (list.length < MIN_N_CATEGORY) continue;
+    const happened = list.filter((p) => p.status === 'resolved_yes').length;
+    const meanStated = list.reduce((s, p) => s + p.confidence, 0) / list.length;
+    const rate = happened / list.length;
+    const direction = classifyLean(meanStated, rate, list.length);
+    if (direction === 'calibrated') continue;
+    const gap = Math.abs(meanStated / 100 - rate);
+    const bestGap = best ? Math.abs(best.mean_stated / 100 - best.actual_rate) : -1;
+    if (!best || gap > bestGap + 1e-9 || (Math.abs(gap - bestGap) <= 1e-9 && list.length > best.resolved)) {
+      best = {
+        category,
+        resolved: list.length,
+        happened,
+        mean_stated: meanStated,
+        actual_rate: rate,
+        direction,
+      };
+    }
+  }
+  return best;
+}
+
+/** The rating now against a week ago (roadmap D37), with the answers between. */
+export interface WeekChange {
+  before: number;
+  now: number;
+  answered: number;
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * "Since last week" (roadmap D37): the rating over every yes/no answer now
+ * against the rating over those answered before seven days ago, and how many
+ * came in between. Null unless the rating is unlocked at both ends
+ * (MIN_N_OVERALL) and something was answered this week: a week with nothing
+ * answered has no change to report. Nothing free showed change over time.
+ */
+export function weekChange(resolved: readonly Prediction[], now: Date): WeekChange | null {
+  const all = resolved.filter((p) => isYesNo(p) && p.resolved_at !== null);
+  const cutoff = now.getTime() - WEEK_MS;
+  const earlier = all.filter((p) => new Date(p.resolved_at!).getTime() <= cutoff);
+  const answered = all.length - earlier.length;
+  if (answered === 0 || earlier.length < MIN_N_OVERALL || all.length < MIN_N_OVERALL) return null;
+  const toPoints = (ps: Prediction[]) =>
+    ps.map((p) => ({ confidence: p.confidence, yes: p.status === 'resolved_yes' }));
+  return {
+    before: Math.round(computeCalibrationPoints(toPoints(earlier)).rating),
+    now: Math.round(computeCalibrationPoints(toPoints(all)).rating),
+    answered,
   };
 }

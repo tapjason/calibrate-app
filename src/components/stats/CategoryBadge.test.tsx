@@ -122,7 +122,7 @@ describe('CategoryBadge — screen readers', () => {
     const next: NextBadgeTarget = { badge: 'tracker', needResolved: 20, needScore: null };
     const view = render(<CategoryBadge stat={stat({ predictions_resolved: 17 })} next={next} />);
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
-      'Health: Guesser. 3 more resolved to reach Tracker.',
+      'Health: Getting started. 3 more resolved to reach Tracker.',
     );
   });
 
@@ -130,5 +130,43 @@ describe('CategoryBadge — screen readers', () => {
   it('speaks the hint as written', () => {
     expect(spokenHint('Score above 70 to reach Forecaster')).toBe('Score above 70 to reach Forecaster');
     expect(spokenHint('120 resolved, top badge reached')).toBe('120 resolved, top badge reached');
+  });
+});
+
+// Roadmap D35: a category's score shows its give-or-take, and when only the
+// give-or-take keeps it from the next tier, the hint says so.
+describe('CategoryBadge with a give-or-take', () => {
+  it('says the give-or-take beside an unlocked score', () => {
+    const view = render(
+      <CategoryBadge
+        stat={stat({ predictions_resolved: 17, calibration_score: 93.4, score_is_provisional: false })}
+        next={{ badge: 'tracker', needResolved: 20, needScore: null }}
+        giveOrTake={6}
+      />,
+    );
+    expect(view.getByTestId('category-health-score')).toHaveTextContent(
+      'Score 93, give or take 6, from 17 resolved',
+    );
+    expect(view.getByTestId('category-health').props.accessibilityLabel).toMatch(
+      /score 93 give or take 6 from 17 resolved/,
+    );
+  });
+
+  it('asks for the score at its low end when only the give-or-take is short', () => {
+    const view = render(
+      <CategoryBadge
+        stat={stat({
+          predictions_resolved: 60,
+          calibration_score: 87,
+          score_is_provisional: false,
+          badge_level: 'forecaster',
+        })}
+        next={{ badge: 'sharp', needResolved: 50, needScore: 85 }}
+        giveOrTake={4}
+      />,
+    );
+    expect(view.getByTestId('category-health-hint')).toHaveTextContent(
+      /^Score above 85 even at its low end to.reach.Sharp$/,
+    );
   });
 });

@@ -6,11 +6,17 @@ import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import { colors, type } from '@/constants/theme';
 import type { CategoryStat, NextBadgeTarget } from '@/types';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 interface CategoryBadgeProps {
   stat: CategoryStat;
   /** The next badge up the ladder, or null when already at the top (oracle). */
   next: NextBadgeTarget | null;
+  /**
+   * The category score's give-or-take (roadmap D35): said beside the score,
+   * and taken off it before a tier above Tracker counts.
+   */
+  giveOrTake?: number;
 }
 
 /**
@@ -19,19 +25,25 @@ interface CategoryBadgeProps {
  * the badge level and next-target are computed upstream (L3 engine via L4
  * store); this component only formats them.
  */
-export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
+export function CategoryBadge({ stat, next, giveOrTake = 0 }: CategoryBadgeProps) {
   const meta = BADGE_META[stat.badge_level];
-  const hint = progressHint(stat, next);
+  const hint = progressHint(stat, next, giveOrTake);
 
   // One sentence for a screen reader (roadmap step 43) instead of the name,
   // the hint with its arrow read aloud, and the badge word as three stops.
-  const category = stat.category.charAt(0).toUpperCase() + stat.category.slice(1);
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
+  const name = categoryTitle(stat.category);
+  const category = name;
   // The category's own score once it's past MIN_N_CATEGORY (roadmap D28):
   // "how am I doing in money" had no number. Never while provisional, which
   // is the engine's flag, not a count kept here.
   const score = stat.score_is_provisional ? null : Math.round(stat.calibration_score);
-  const receipt = score === null ? null : scoreReceipt(score, stat.predictions_resolved);
-  const spokenScore = score === null ? '' : `, score ${score} from ${stat.predictions_resolved} resolved`;
+  const receipt =
+    score === null ? null : scoreReceipt(score, stat.predictions_resolved, giveOrTake);
+  const spokenScore =
+    score === null
+      ? ''
+      : `, score ${score}${giveOrTake > 0 ? ` give or take ${giveOrTake}` : ''} from ${stat.predictions_resolved} resolved`;
   const spoken = `${category}: ${meta.label}${spokenScore}. ${spokenHint(hint)}.`;
 
   return (
@@ -45,7 +57,7 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
       <View style={styles.left}>
         <View style={styles.categoryRow}>
           <CategoryIcon category={stat.category} size={16} color={colors.textSecondary} />
-          <Text style={styles.category}>{stat.category}</Text>
+          <Text style={styles.category}>{name}</Text>
         </View>
         {receipt && (
           <Text style={styles.score} testID={`category-${stat.category}-score`}>
@@ -67,9 +79,16 @@ export function CategoryBadge({ stat, next }: CategoryBadgeProps) {
   );
 }
 
-/** "Score 84, 52 resolved": a category's receipt once its score is unlocked. */
-export function scoreReceipt(score: number, resolved: number): string {
-  return `Score ${score}, ${resolved} resolved`;
+/**
+ * "Score 84, give or take 5, from 52 resolved": a category's receipt once its
+ * score is unlocked, with how far luck could move it (roadmap D35). One answer
+ * moved a 17-answer score five points, unannounced (blind playtest
+ * 2026-11-01).
+ */
+export function scoreReceipt(score: number, resolved: number, giveOrTake = 0): string {
+  return giveOrTake > 0
+    ? `Score ${score}, give or take ${giveOrTake}, from ${resolved} resolved`
+    : `Score ${score}, ${resolved} resolved`;
 }
 
 /**
@@ -88,22 +107,34 @@ export function spokenHint(hint: string): string {
  * score of 80) promised a badge that resolving alone can't earn (roadmap
  * step 47). At the top of the ladder, celebrate instead.
  */
-function progressHint(stat: CategoryStat, next: NextBadgeTarget | null): string {
+function progressHint(
+  stat: CategoryStat,
+  next: NextBadgeTarget | null,
+  giveOrTake = 0,
+): string {
   if (!next) {
     return `${stat.predictions_resolved} resolved, top badge reached`;
   }
 
   const nextLabel = BADGE_META[next.badge].label;
-  const scoreShort = next.needScore !== null && stat.calibration_score <= next.needScore;
+  // Short counting the give-or-take (roadmap D35); "even at its low end" when
+  // only the give-or-take is what's short, since "a score above 85" beside a
+  // score of 87 would read as met.
+  const low = stat.calibration_score - giveOrTake;
+  const scoreShort = next.needScore !== null && low <= next.needScore;
+  const lowOnly = scoreShort && next.needScore !== null && stat.calibration_score > next.needScore;
+  const scoreClause = lowOnly
+    ? `score above ${next.needScore} even at its low end`
+    : `score above ${next.needScore}`;
 
   if (next.needResolved !== null && stat.predictions_resolved < next.needResolved) {
     const remaining = next.needResolved - stat.predictions_resolved;
-    const andScore = scoreShort ? ` and a score above ${next.needScore}` : '';
+    const andScore = scoreShort ? ` and a ${scoreClause}` : '';
     return `${remaining} more resolved${andScore} to reach ${nextLabel}`;
   }
 
   if (scoreShort) {
-    return `Score above ${next.needScore} to reach ${nextLabel}`;
+    return `S${scoreClause.slice(1)} to reach ${nextLabel}`;
   }
 
   // Thresholds already met (e.g. score qualifies but the higher badge also
@@ -126,7 +157,6 @@ const styles = StyleSheet.create({
     ...type.subhead,
     fontWeight: '600',
     color: colors.textPrimary,
-    textTransform: 'capitalize',
   },
   // The number in secondary ink, never display size: the overall rating is
   // the one hero (DESIGN_SYSTEM §7.4).

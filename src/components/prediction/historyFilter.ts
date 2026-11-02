@@ -4,6 +4,7 @@
 // never learns where the edges are.
 
 import type { Category, Prediction } from '@/types';
+import { categoryLabel } from '@/store/categoryStore';
 
 import { isReadyToResolve, nextDueLine, RUN_THRESHOLD } from './dueGroups';
 
@@ -86,7 +87,7 @@ export function emptyHistoryMessage({ category, range }: HistoryFilter): string 
     return 'Resolved predictions collect here, with how each one turned out.';
   }
   const where = [
-    category === 'all' ? null : `in ${category}`,
+    category === 'all' ? null : `in ${categoryLabel(category)}`,
     range === null ? null : `at ${rangeText(range)}`,
   ]
     .filter(Boolean)

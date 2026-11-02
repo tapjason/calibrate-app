@@ -270,7 +270,7 @@ describe('identityCardSummary', () => {
     expect(identityCardSummary(card)).toBe(
       'Share card. Sharp in health. ' +
         'Calibration 88/100 from 55 resolved predictions. ' +
-        'By category: Sharp in health, Guesser in finance.',
+        'By category: Sharp in health, Getting started in finance.',
     );
   });
 });

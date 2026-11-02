@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
-import { CalibrationView } from '@/components/stats/CalibrationView';
+import { CalibrationView, skippedLine } from '@/components/stats/CalibrationView';
 import { holdRanges } from '@/components/ui/holdRanges';
 import type { CalibrationResult, UserStat } from '@/types';
 
@@ -264,10 +264,11 @@ describe('CalibrationView Brier score', () => {
         categoryStats={[]}
         nextBadges={{}}
         brier={0.1423}
+        brierBaseline={{ rate: 0.64, score: 0.2304 }}
       />,
     );
     expect(getByTestId('stats-brier')).toHaveTextContent(
-      'Brier score\u00A00.14. Lower is better; always saying 50%\u00A0scores\u00A00.25.',
+      'Brier score\u00A00.14, lower is better. Saying 64%\u00A0every time, how often your calls came true, would score\u00A00.23.',
     );
   });
 
@@ -282,6 +283,64 @@ describe('CalibrationView Brier score', () => {
       />,
     );
     expect(queryByTestId('stats-brier')).toBeNull();
+  });
+});
+
+// Roadmap D36: when a first badge can come, until one has.
+describe('CalibrationView first badge', () => {
+  const cat = (category: 'health' | 'work', resolved: number) => ({
+    user_id: 'u1',
+    category,
+    predictions_made: resolved,
+    predictions_resolved: resolved,
+    calibration_score: 80,
+    score_is_provisional: resolved < 15,
+    badge_level: resolved >= 20 ? ('tracker' as const) : ('guesser' as const),
+  });
+  const view = (stats: ReturnType<typeof cat>[]) =>
+    render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 1 })}
+        calibration={EMPTY_CAL}
+        categoryStats={stats}
+        nextBadges={{}}
+      />,
+    );
+
+  it('says a first badge comes at 20 answered in a category', () => {
+    expect(view([]).getByTestId('badges-first')).toHaveTextContent(
+      'A category earns its first badge, Tracker, at 20 answered there.',
+    );
+    expect(view([cat('health', 19)]).getByTestId('badges-first')).toBeTruthy();
+  });
+
+  it('stops once a category has one', () => {
+    expect(view([cat('health', 19), cat('work', 20)]).queryByTestId('badges-first')).toBeNull();
+  });
+});
+
+// Roadmap D34: the Can't tell answers the rating leaves out, said beside it.
+describe('CalibrationView skipped answers', () => {
+  it("says how many answers were Can't tell, once the rating unlocks", () => {
+    const view = (skippedCount: number, total = 161) =>
+      render(
+        <CalibrationView
+          userStat={userStat({ total_resolved: total, rating_is_provisional: total < 20 })}
+          calibration={{ rating: 87, buckets: [] }}
+          categoryStats={[]}
+          nextBadges={{}}
+          skippedCount={skippedCount}
+        />,
+      );
+    expect(view(2).getByTestId('stats-skipped')).toHaveTextContent(
+      '2 of 163 answers were Can’t tell, so they aren’t scored.',
+    );
+    expect(view(0).queryByTestId('stats-skipped')).toBeNull();
+    expect(view(3, 12).queryByTestId('stats-skipped')).toBeNull();
+  });
+
+  it('words one', () => {
+    expect(skippedLine(1, 40)).toBe('1 of 41 answers was Can’t tell, so it isn’t scored.');
   });
 });
 
@@ -315,5 +374,35 @@ describe('CalibrationView counts', () => {
       '10 of 12 happened; your numbers expected about 8.',
     );
     expect(getByTestId('bucket-60-dots', { includeHiddenElements: true })).toBeTruthy();
+  });
+});
+
+// Roadmap D37: the pattern named plainly, and the change since last week.
+describe('CalibrationView pattern lines', () => {
+  it('names the area furthest off and the change since last week', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 145, rating_is_provisional: false })}
+        calibration={{ rating: 87, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={{ giveOrTake: 3, low: 84, high: 90 }}
+        furthestOff={{
+          category: 'finance',
+          resolved: 18,
+          happened: 8,
+          mean_stated: 85,
+          actual_rate: 8 / 18,
+          direction: 'overconfident',
+        }}
+        weekChange={{ before: 85, now: 87, answered: 6 }}
+      />,
+    );
+    expect(getByTestId('stats-furthest-off')).toHaveTextContent(
+      'Furthest off: finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.',
+    );
+    expect(getByTestId('stats-week-change')).toHaveTextContent(
+      'Up 2 since last week, from 6 answers, within its give\u2060-\u2060or\u2060-\u2060take.',
+    );
   });
 });

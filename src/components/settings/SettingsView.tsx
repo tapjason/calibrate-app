@@ -7,6 +7,8 @@ import { Icon } from '@/components/ui/Icon';
 import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { MomentChips } from '@/components/practice/MomentChips';
+import { DAY_NAMES, DayChips } from '@/components/settings/DayChips';
+import { TimeSetting } from '@/components/settings/TimeSetting';
 import { useCsvExport } from '@/components/settings/useCsvExport';
 import { openPracticeTimeDialog, PracticeTimePicker } from '@/components/practice/PracticeTimePicker';
 import {
@@ -14,7 +16,7 @@ import {
   reminderPermission,
   type ReminderPermission,
 } from '@/notifications/permission';
-import { choosePracticeReminder } from '@/notifications/practiceReminder';
+import { choosePracticeReminder, reminderTimeLabel } from '@/notifications/practiceReminder';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
@@ -43,6 +45,7 @@ export function SettingsView({
   onOpenDelete,
   onOpenScoring,
   onOpenCard,
+  onOpenCategories,
 }: {
   onOpenPaywall?: () => void;
   onOpenAccount?: () => void;
@@ -51,6 +54,8 @@ export function SettingsView({
   onOpenScoring?: () => void;
   /** The share card (Share), one tap from the tab named after you. */
   onOpenCard?: () => void;
+  /** Rename, add or hide categories (roadmap D39). */
+  onOpenCategories?: () => void;
 } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
@@ -62,6 +67,13 @@ export function SettingsView({
   const setRemindersEnabled = useSettingsStore((s) => s.setRemindersEnabled);
   const digestEnabled = useSettingsStore((s) => s.digestEnabled);
   const setDigestEnabled = useSettingsStore((s) => s.setDigestEnabled);
+  // Their times (roadmap D38).
+  const dueReminderTime = useSettingsStore((s) => s.dueReminderTime);
+  const setDueReminderTime = useSettingsStore((s) => s.setDueReminderTime);
+  const digestDay = useSettingsStore((s) => s.digestDay);
+  const setDigestDay = useSettingsStore((s) => s.setDigestDay);
+  const digestTime = useSettingsStore((s) => s.digestTime);
+  const setDigestTime = useSettingsStore((s) => s.setDigestTime);
   const setAiRefineEnabled = useSettingsStore((s) => s.setAiRefineEnabled);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
   const setCoachEnabled = useSettingsStore((s) => s.setCoachEnabled);
@@ -97,6 +109,13 @@ export function SettingsView({
         </Group>
       )}
 
+      {/* The person's own categories (roadmap D39). */}
+      {onOpenCategories && (
+        <Group footer="Rename, add or hide the categories you log under.">
+          <NavRow label="Categories" onPress={onOpenCategories} testID="settings-categories" />
+        </Group>
+      )}
+
       <Group>
         <ToggleRow
           label="Notifications"
@@ -111,18 +130,44 @@ export function SettingsView({
           <>
             <ToggleRow
               label="Due-day reminders"
-              description="On the evening each prediction comes due."
+              description={`On the day each prediction comes due, at ${reminderTimeLabel(dueReminderTime)}.`}
               value={remindersEnabled}
               onValueChange={(v) => void setRemindersEnabled(v)}
               testID="toggle-reminders"
             />
+            {/* Their own times (roadmap D38): four testers wanted them. */}
+            {remindersEnabled && (
+              <View style={styles.stacked} testID="settings-reminder-time">
+                <TimeSetting
+                  label="Reminder time"
+                  value={dueReminderTime}
+                  onChange={(t) => void setDueReminderTime(t)}
+                  testID="reminder-time"
+                />
+              </View>
+            )}
             <ToggleRow
-              label="Sunday digest"
-              description="What's open and coming up, on Sunday evening."
+              label="Weekly digest"
+              description={`What's open and coming up, ${DAY_NAMES[digestDay]} at ${reminderTimeLabel(digestTime)}.`}
               value={digestEnabled}
               onValueChange={(v) => void setDigestEnabled(v)}
               testID="toggle-digest"
             />
+            {digestEnabled && (
+              <View style={styles.stacked} testID="settings-digest-when">
+                <DayChips
+                  value={digestDay}
+                  onChange={(d) => void setDigestDay(d)}
+                  testID="digest-day"
+                />
+                <TimeSetting
+                  label="Digest time"
+                  value={digestTime}
+                  onChange={(t) => void setDigestTime(t)}
+                  testID="digest-time"
+                />
+              </View>
+            )}
           </>
         )}
         <NotificationPermissionRow />

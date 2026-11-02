@@ -21,6 +21,7 @@ import {
   type,
 } from '@/constants/theme';
 import { MIN_N_OVERALL, type Milestone } from '@/types';
+import { categoryLabel } from '@/store/categoryStore';
 
 /** The words for a milestone. Exported for tests. */
 export function milestoneCopy(m: Milestone): { title: string; body: string } {
@@ -32,12 +33,12 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
       };
     case 'tier_up':
       return {
-        title: `${BADGE_META[m.badge].label} in ${m.category}`,
+        title: `${BADGE_META[m.badge].label} in ${categoryLabel(m.category)}`,
         body: BADGE_META[m.badge].tagline,
       };
     case 'category_unlocked':
       return {
-        title: `Your ${m.category} score is unlocked`,
+        title: `Your ${categoryLabel(m.category)} score is unlocked`,
         body: 'Enough resolutions in this category for its score to count.',
       };
   }

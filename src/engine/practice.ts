@@ -425,7 +425,7 @@ export function scorePractice(answers: readonly PracticeAnswer[]): PracticeRecor
     days: new Set(answers.map((a) => a.day)).size,
     mean_confidence: meanConfidence,
     accuracy,
-    direction: enough ? classifyDirection(meanConfidence, accuracy) : null,
+    direction: enough ? classifyDirection(meanConfidence, accuracy, answered) : null,
     buckets: enough
       ? computeCalibrationPoints(answers.map((a) => ({ confidence: a.confidence, yes: a.correct })))
           .buckets

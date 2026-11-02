@@ -7,6 +7,7 @@ import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
 import { CoverageRow } from '@/components/stats/CoverageRow';
+import { furthestOffLine, weekChangeLine } from '@/components/stats/patternCopy';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
@@ -14,6 +15,7 @@ import { CountUp } from '@/components/ui/CountUp';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
+import type { CategoryMiss, WeekChange } from '@/store/statsStore';
 import {
   MIN_N_OVERALL,
   type CalibrationResult,
@@ -41,6 +43,19 @@ interface CalibrationViewProps {
   ratingRange?: RatingRange | null;
   /** The Brier score, one quiet line once the rating is unlocked (roadmap D24). */
   brier?: number | null;
+  /** What saying the base rate every time would score, the Brier line's yardstick (D35). */
+  brierBaseline?: { rate: number; score: number } | null;
+  /**
+   * Answers marked "Can't tell", which the rating leaves out (roadmap D34):
+   * said beside it, so a record with the misses parked as skips shows it.
+   */
+  skippedCount?: number;
+  /** Each category score's give-or-take (roadmap D35). */
+  categoryRanges?: Partial<Record<Category, RatingRange>>;
+  /** The category furthest from what was said (roadmap D37), or null. */
+  furthestOff?: CategoryMiss | null;
+  /** The rating's change since last week (roadmap D37), or null. */
+  weekChange?: WeekChange | null;
 }
 
 /**
@@ -60,6 +75,11 @@ export function CalibrationView({
   onSelectRange,
   ratingRange = null,
   brier = null,
+  brierBaseline = null,
+  skippedCount = 0,
+  categoryRanges = {},
+  furthestOff = null,
+  weekChange = null,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
@@ -98,11 +118,22 @@ export function CalibrationView({
                   {ratingRange.giveOrTake === 1 ? 'point' : 'points'} with this many predictions.
                 </Text>
               )}
+              {/* Free (roadmap D37): nothing free showed change over time. */}
+              {weekChange && (
+                <Text style={styles.subtle} testID="stats-week-change">
+                  {weekChangeLine(weekChange, ratingRange?.giveOrTake ?? 0)}
+                </Text>
+              )}
               {/* Secondary and quiet (roadmap D24): it keeps the rating honest
                   for those who look, and stays out of everyone else's way. */}
-              {brier !== null && (
+              {brier !== null && brierBaseline !== null && (
                 <Text style={styles.subtle} testID="stats-brier">
-                  {brierLine(brier)}
+                  {brierLine(brier, brierBaseline)}
+                </Text>
+              )}
+              {skippedCount > 0 && (
+                <Text style={styles.subtle} testID="stats-skipped">
+                  {skippedLine(skippedCount, userStat.total_resolved)}
                 </Text>
               )}
             </>
@@ -194,14 +225,27 @@ export function CalibrationView({
       <View style={styles.sectionGap}>
         <SectionHeader title="Category badges" />
       </View>
-      {categoryStats.length === 0 ? (
-        <Text style={styles.empty}>No category data yet.</Text>
-      ) : (
+      {/* The area furthest off, said plainly (roadmap D37): a power user found
+          her finance pattern only through History's filters. */}
+      {furthestOff && (
+        <Text style={styles.pattern} testID="stats-furthest-off">
+          {furthestOffLine(furthestOff)}
+        </Text>
+      )}
+      {/* When a first badge can come (roadmap D36): a first-timer saw a tier
+          name and nothing about when another could arrive. */}
+      {categoryStats.every((c) => c.predictions_resolved < FIRST_BADGE_AT) && (
+        <Text style={styles.empty} testID="badges-first">
+          A category earns its first badge, Tracker, at {FIRST_BADGE_AT} answered there.
+        </Text>
+      )}
+      {categoryStats.length === 0 ? null : (
         categoryStats.map((c) => (
           <CategoryBadge
             key={c.category}
             stat={c}
             next={nextBadges[c.category] ?? null}
+            giveOrTake={categoryRanges[c.category]?.giveOrTake ?? 0}
           />
         ))
       )}
@@ -211,6 +255,7 @@ export function CalibrationView({
 
 const styles = StyleSheet.create({
   wrap: { padding: 16 },
+  pattern: { ...type.subhead, color: colors.textPrimary, marginBottom: space.sm },
   // Left-aligned with the chart and the rows below it (roadmap D33).
   summary: { alignItems: 'stretch', marginBottom: space.xxxl },
   // The hero numeral is always ink; colour belongs to direction, not to
@@ -243,3 +288,18 @@ const styles = StyleSheet.create({
   bucketDetail: { ...type.footnote, flex: 1, color: colors.textSecondary },
   bucketCount: { ...type.caption, ...tabularNums, color: colors.textTertiary, width: 40, textAlign: 'right' },
 });
+
+/**
+ * "2 of 163 answers were Can't tell, so they aren't scored." (roadmap D34).
+ * The rating counts Yes and No only, so a habit of parking misses as skips
+ * would flatter it unseen; said beside it, it can't.
+ */
+export function skippedLine(skipped: number, yesNo: number): string {
+  const total = skipped + yesNo;
+  return skipped === 1
+    ? `1 of ${total} answers was Can’t tell, so it isn’t scored.`
+    : `${skipped} of ${total} answers were Can’t tell, so they aren’t scored.`;
+}
+
+/** Tracker's count (CLAUDE.md badge table): where a category's first badge comes. */
+const FIRST_BADGE_AT = 20;

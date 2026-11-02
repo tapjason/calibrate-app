@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import type { CoachSample } from '@/components/stats/patternCopy';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
-import { colors, radius, space, type } from '@/constants/theme';
+import { colors, FONT_FAMILY, radius, space, tabularNums, type } from '@/constants/theme';
 
 interface PlusTeaserProps {
   onUpgrade: () => void;
@@ -11,6 +12,11 @@ interface PlusTeaserProps {
    * hook gets more concrete; 0 under a month, which names no number.
    */
   monthsOnFile?: number;
+  /**
+   * One Coach card written by the app from the person's own record (roadmap
+   * D37), shown as a sample of what Coach does, or null.
+   */
+  sample?: CoachSample | null;
 }
 
 /**
@@ -21,7 +27,7 @@ interface PlusTeaserProps {
  * One card, one button, two benefits in a line each, the way the paywall
  * itself will read.
  */
-export function PlusTeaser({ onUpgrade, monthsOnFile = 0 }: PlusTeaserProps) {
+export function PlusTeaser({ onUpgrade, monthsOnFile = 0, sample = null }: PlusTeaserProps) {
   const trendsLine =
     monthsOnFile > 0
       ? `Trends: your ${monthsOnFile} ${monthsOnFile === 1 ? 'month' : 'months'} on file, and what your 80% really means.`
@@ -38,6 +44,26 @@ export function PlusTeaser({ onUpgrade, monthsOnFile = 0 }: PlusTeaserProps) {
           Coach: an AI read of what your calibration numbers mean.
         </Text>
       </View>
+      {sample && (
+        <View style={styles.sample} testID="plus-teaser-sample">
+          <Text style={styles.sampleLabel}>A sample, on your own numbers</Text>
+          <View
+            style={styles.sampleReceipt}
+            accessible
+            accessibilityLabel={`${sample.figure}, ${sample.label}`}
+          >
+            <Text style={styles.sampleFigure}>{sample.figure}</Text>
+            <Text style={styles.sampleReceiptLabel}>{sample.label}</Text>
+          </View>
+          <Text style={styles.sampleMessage}>{sample.message}</Text>
+          {/* Honest about who wrote it: the app, from the record. Coach itself
+              needs Plus and a sign-in, and writes its own. */}
+          <Text style={styles.sampleNote}>
+            Written by the app from your record. With Plus, Coach writes cards like this when you
+            ask.
+          </Text>
+        </View>
+      )}
       <View style={styles.benefit}>
         <Icon
           sf="chart.line.uptrend.xyaxis"
@@ -76,4 +102,18 @@ const styles = StyleSheet.create({
   benefit: { alignItems: 'flex-start', flexDirection: 'row', gap: space.sm },
   benefitText: { ...type.subhead, color: colors.textSecondary, flex: 1 },
   free: { ...type.footnote, color: colors.textSecondary },
+  // The Coach card's look (CoachPanel), sunken so it reads as an example
+  // inside the card rather than a second card.
+  sample: {
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    gap: space.xs,
+    padding: space.md,
+  },
+  sampleLabel: { ...type.footnote, color: colors.textSecondary, fontWeight: '600' },
+  sampleReceipt: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  sampleFigure: { ...type.title2, ...tabularNums, color: colors.textPrimary, fontFamily: FONT_FAMILY },
+  sampleReceiptLabel: { ...type.footnote, color: colors.textSecondary },
+  sampleMessage: { ...type.subhead, color: colors.textPrimary },
+  sampleNote: { ...type.caption, color: colors.textSecondary },
 });

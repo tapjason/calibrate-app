@@ -25,6 +25,7 @@ import {
   type Prediction,
   type ResolvedStatus,
 } from '@/types';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { MilestoneCard } from './MilestoneCard';
 import { StreakCheckpointCard } from './StreakCheckpointCard';
@@ -122,6 +123,7 @@ export function ResolvePrompt({
   reflectionCollapsed = false,
   onPredictAgain,
 }: ResolvePromptProps) {
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [loading, setLoading] = useState(true);
   const [reflectionOpen, setReflectionOpen] = useState(!reflectionCollapsed);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -199,17 +201,31 @@ export function ResolvePrompt({
     }
   };
 
+  // Switches Yes and No in place (roadmap D34). It used to put the
+  // prediction back to open, where "Can't tell" was one tap away: a miss could
+  // be parked and answered later (blind playtest 2026-11-01). The reflection
+  // typed so far stays; it's about the same prediction.
   const changeAnswer = async () => {
-    if (!prediction) return;
+    if (!prediction || !answered) return;
     setError(null);
     setSubmitting(true);
     try {
-      await usePredictionStore.getState().reopen(prediction.id);
-      // A milestone from the withdrawn answer mustn't linger for the next one.
-      useStatsStore.getState().clearMilestone();
-      setReflection('');
-      setReflectionOpen(!reflectionCollapsed);
-      setAnswered(null);
+      const outcome = answered.outcome === 'resolved_yes' ? 'resolved_no' : 'resolved_yes';
+      await usePredictionStore.getState().correct(prediction.id, outcome);
+      const stats = useStatsStore.getState();
+      const bucket = stats.bucketFor(prediction.confidence);
+      setAnswered({
+        ...answered,
+        outcome,
+        line:
+          stats.userStat?.total_resolved === 1
+            ? firstAnswerLine(prediction.confidence)
+            : bucket
+              ? bucketLine(bucket)
+              : null,
+        // What the first answer crossed isn't this one's to show.
+        milestone: null,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -343,7 +359,11 @@ export function ResolvePrompt({
           style={styles.changeAnswer}
           testID="resolve-change"
         >
-          <Text style={styles.changeAnswerText}>Change answer</Text>
+          <Text style={styles.changeAnswerText}>
+            {answered.outcome === 'resolved_yes'
+              ? 'Change to: it didn’t happen'
+              : 'Change to: it happened'}
+          </Text>
         </Pressable>
       </View>
     );
@@ -404,7 +424,7 @@ export function ResolvePrompt({
       </Text>
       <View style={styles.categoryRow}>
         <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
-        <Text style={styles.category}>{prediction.category}</Text>
+        <Text style={styles.category}>{categoryTitle(prediction.category)}</Text>
       </View>
       <Text style={styles.title}>{prediction.title}</Text>
 
@@ -481,7 +501,6 @@ const styles = StyleSheet.create({
     ...type.footnote,
     color: colors.textSecondary,
     fontWeight: '600',
-    textTransform: 'capitalize',
   },
   title: { ...type.title2, color: colors.textPrimary, marginBottom: space.xxl },
   question: { ...type.headline, color: colors.textPrimary, marginBottom: space.md },

@@ -14,7 +14,7 @@
 
 import { categoryDrift, classifyDirection, weakestDayOfWeek } from '@/engine/patterns';
 import { computeCalibrationPoints } from '@/engine/calibration';
-import type { CoachContext, Category, Prediction, UserStat } from '@/types';
+import { isBuiltInCategory, type CoachContext, type Category, type Prediction, type UserStat } from '@/types';
 
 /** Predictions that count: yes/no outcomes only. */
 function isYesNo(p: Prediction): boolean {
@@ -38,6 +38,9 @@ export function buildCoachContext(
 
   const byCategory = new Map<Category, Prediction[]>();
   for (const p of yesNo) {
+    // Built-ins only (roadmap D39): a category the person added is named in
+    // their own words, and freetext never goes to the model (COACH_AGENT.md).
+    if (!isBuiltInCategory(p.category)) continue;
     const list = byCategory.get(p.category) ?? [];
     list.push(p);
     byCategory.set(p.category, list);
@@ -61,7 +64,7 @@ export function buildCoachContext(
       calibration_score: rating,
       mean_stated_confidence: meanStated,
       actual_rate: actualRate,
-      direction: classifyDirection(meanStated, actualRate),
+      direction: classifyDirection(meanStated, actualRate, list.length),
     });
   }
 

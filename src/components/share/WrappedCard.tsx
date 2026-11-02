@@ -7,6 +7,7 @@ import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
+import { categoryTitle } from '@/store/categoryStore';
 
 import type { BadgeProgress } from './nextBadgeCopy';
 import { CARD_RADIUS } from './ScaledCanvas';
@@ -152,7 +153,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
                 maxFontSizeMultiplier={CARD_MAX_SCALE}
                 style={[styles.chipLabel, { color: theme.foreground }]}
               >
-                {c.category}
+                {categoryTitle(c.category)}
               </Text>
               <Text
                 maxFontSizeMultiplier={CARD_MAX_SCALE}
@@ -234,7 +235,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  chipLabel: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', textTransform: 'capitalize' },
+  chipLabel: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700' },
   chipCount: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '600' },
   line: { fontFamily: FONT_FAMILY, fontSize: 13, lineHeight: 19 },
   badgeRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 4 },

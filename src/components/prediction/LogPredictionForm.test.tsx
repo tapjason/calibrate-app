@@ -84,8 +84,8 @@ describe('LogPredictionForm', () => {
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship the prototype');
     fireEvent.press(screen.getByTestId('category-health'));
-    fireEvent.press(screen.getByTestId('confidence-increment')); // unset → 50, the middle
-    fireEvent.press(screen.getByTestId('confidence-increment')); // 55
+    // Unset → 55, a step from where the thumb rests (roadmap D36).
+    fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 
     await waitFor(() => {
@@ -152,7 +152,7 @@ describe('LogPredictionForm', () => {
     expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
 
     fireEvent.press(screen.getByTestId('confidence-decrement'));
-    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('50%');
+    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('45%');
     expect(save().props.accessibilityState).toMatchObject({ disabled: false });
   });
 
@@ -160,7 +160,7 @@ describe('LogPredictionForm', () => {
   it('shows no integrity bonus at any confidence', () => {
     render(<LogPredictionForm />);
     expect(screen.queryByTestId('integrity-bonus')).toBeNull();
-    fireEvent.press(screen.getByTestId('confidence-increment')); // 50
+    fireEvent.press(screen.getByTestId('confidence-increment')); // 55
     expect(screen.queryByTestId('integrity-bonus')).toBeNull();
     expect(screen.queryByText(/integrity/i)).toBeNull();
   });

@@ -15,7 +15,7 @@
 // the user's screen, and it is the half we can be sure ships together.
 
 import {
-  CATEGORIES,
+  isBuiltInCategory,
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
   type Category,
@@ -209,8 +209,10 @@ function parseInsight(raw: unknown): CoachInsight | null {
   if (!INSIGHT_TYPES.includes(r.type as CoachInsightType)) return null;
 
   const category = r.category;
+  // Built-ins only: a category the person added never reaches the Coach
+  // (roadmap D39; its name is their own text), so no insight can be about one.
   const validCategory =
-    category === 'overall' || CATEGORIES.includes(category as Category);
+    category === 'overall' || (typeof category === 'string' && isBuiltInCategory(category));
   if (!validCategory) return null;
 
   if (!isNonEmptyString(r.message, MAX_MESSAGE_LENGTH)) return null;

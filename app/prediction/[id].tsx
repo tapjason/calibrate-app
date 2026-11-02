@@ -8,7 +8,8 @@ import { space } from '@/constants/theme';
 
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23),
- * as a sheet from Today or History. A due one opens Resolve instead.
+ * as a sheet from Today or History; a due one opens Resolve instead. An
+ * answered one opens here from History too, correctable for a day (D34).
  */
 export default function PredictionScreen() {
   const router = useRouter();

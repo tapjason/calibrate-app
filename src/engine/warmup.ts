@@ -9,16 +9,16 @@
 import type { WarmupAnswer, WarmupResult } from '@/types';
 
 import { computeCalibrationPoints } from './calibration';
-import { chanceRange } from './chance';
+import { classifyDirection, LEAN_MASS } from './direction';
 
 /**
  * The share of chance outcomes a Warmup result may land in and still be called
- * luck: the central 80%. Ten answers move accuracy in steps of 10 points, so
- * the ±5 rule used elsewhere called a lean on 47–73% of perfectly calibrated
- * people (research/day0-2026-10.md §2). A sentence reads as a conclusion, so
- * its bar sits higher than the chart's grey bars (the central half).
+ * luck: the central 80%. Ten answers move accuracy in steps of 10 points, so a
+ * bare ±5 rule called a lean on 47–73% of perfectly calibrated people
+ * (research/day0-2026-10.md §2). Since D35 (2026-11-01) this is the one rule
+ * everywhere, not the Warmup's own.
  */
-export const WARMUP_LEAN_MASS = 0.8;
+export const WARMUP_LEAN_MASS = LEAN_MASS;
 
 const EMPTY: WarmupResult = {
   answered: 0,
@@ -67,8 +67,5 @@ function leanFor(
   meanConfidence: number,
   accuracy: number,
 ): WarmupResult['direction'] {
-  const { low, high } = chanceRange(n, meanConfidence / 100, WARMUP_LEAN_MASS);
-  if (accuracy < low - 1e-9) return 'overconfident';
-  if (accuracy > high + 1e-9) return 'underconfident';
-  return 'calibrated';
+  return classifyDirection(meanConfidence, accuracy, n);
 }

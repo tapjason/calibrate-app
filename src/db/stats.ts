@@ -2,6 +2,7 @@
 
 import {
   CATEGORIES,
+  type Category,
   type UserStat,
   type CategoryStat,
   type GetUserStat,
@@ -145,5 +146,15 @@ export const listCategoryStats: ListCategoryStats = async (userId) => {
   // the alphabet: Stats' badge rows changed places after the first log.
   return rows
     .map(toCategoryStat)
-    .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
+    .sort((a, b) => categoryRank(a.category) - categoryRank(b.category));
 };
+
+/**
+ * Built-ins in the app's order, then any the person added (roadmap D39), by
+ * id so the order holds from one load to the next; screens order added ones
+ * by the person's own order.
+ */
+function categoryRank(c: Category): number {
+  const i = CATEGORIES.indexOf(c as (typeof CATEGORIES)[number]);
+  return i >= 0 ? i : CATEGORIES.length;
+}

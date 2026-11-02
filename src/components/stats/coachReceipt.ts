@@ -1,3 +1,4 @@
+import { categoryLabel } from '@/store/categoryStore';
 import type { CoachEvidenceSource } from '@/types';
 
 export interface CoachReceipt {
@@ -17,7 +18,9 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
  * leaves the receipt off.
  */
 export function coachReceipt(source: CoachEvidenceSource): CoachReceipt | null {
-  const { field, scope, value, kind } = source;
+  const { field, value, kind } = source;
+  // A built-in under the name the person gave it (roadmap D39).
+  const scope = source.scope === 'overall' ? 'overall' : categoryLabel(source.scope);
   const round = Math.round(value);
   switch (field) {
     case 'calibration_rating':

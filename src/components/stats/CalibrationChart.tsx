@@ -81,8 +81,10 @@ const MARK: Record<Direction, string> = {
  * two predictions reads as exactly that.
  *
  * Behind each dot, a soft grey capsule (roadmap D4): where a perfectly
- * calibrated forecaster's dot lands half the time at that confidence and that
- * n. A dot inside it is as close to the diagonal as chance allows; a dot of 5
+ * calibrated forecaster's dot lands 8 times in 10 at that confidence and that
+ * n (the central 80%, the one lean rule of roadmap D35: a dot is coloured as a
+ * lean only outside it). A dot inside it is as close to the diagonal as
+ * chance allows; a dot of 5
  * gets a long capsule, which is the point. The engine computes the range
  * (`BucketStat.chance_low/high`); this only draws it.
  *
@@ -347,7 +349,7 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
         Across: how sure you said you were. Up: how often it happened. Dashed line:
         perfectly calibrated.
         {buckets.length > 0 &&
-          ' Grey bars: where a perfectly calibrated dot lands half the time with that many predictions.'}
+          ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. Only a dot outside its bar leans.'}
       </Text>
     </View>
   );

@@ -19,6 +19,7 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore, wrappedSummary, type WrappedSpan } from '@/store/statsStore';
+import { useCategoryStore } from '@/store/categoryStore';
 
 import { nextBadgeProgress } from './nextBadgeCopy';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
@@ -87,9 +88,11 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const pending = usePredictionStore((s) => s.pending);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const nextBadges = useStatsStore((s) => s.nextBadges);
+  const categoryRanges = useStatsStore((s) => s.categoryRanges);
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -148,7 +151,13 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                 : null
             }
             upcoming={span === 'week' ? dueWithin(pending, new Date(), 7) : 0}
-            badge={nextBadgeProgress(categoryStats, nextBadges)}
+            badge={nextBadgeProgress(
+              categoryStats,
+              nextBadges,
+              Object.fromEntries(
+                Object.entries(categoryRanges).map(([c, r]) => [c, r?.giveOrTake ?? 0]),
+              ),
+            )}
             theme={theme}
             showTitles={showTitles}
           />

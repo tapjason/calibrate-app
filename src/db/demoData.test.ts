@@ -24,7 +24,7 @@ function profile(c: Category) {
     n: list.length,
     score,
     badge: evaluateBadge(list.length, score),
-    direction: classifyDirection(mean, rate),
+    direction: classifyDirection(mean, rate, list.length),
   };
 }
 

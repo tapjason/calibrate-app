@@ -3,6 +3,7 @@ import type { Prediction } from '@/types';
 import {
   bucketLowFor,
   computeBrier,
+  computeBrierBaseline,
   computeCalibration,
   evaluateBadge,
   isRatingProvisional,
@@ -278,5 +279,49 @@ describe('computeBrier', () => {
 
   it('scores 100% on something that did not happen as 1', () => {
     expect(computeBrier([p({ confidence: 100, status: 'resolved_no' })])).toBe(1);
+  });
+});
+
+// Roadmap D35: above Tracker, the score minus its give-or-take must clear the
+// bar, so a score that only luck put over the line doesn't earn the badge.
+describe('evaluateBadge with a give-or-take (D35)', () => {
+  it('awards a tier only when the low end of the score clears its bar', () => {
+    expect(evaluateBadge(50, 88)).toBe('sharp');
+    expect(evaluateBadge(50, 88, 2)).toBe('sharp');
+    expect(evaluateBadge(50, 88, 3)).toBe('forecaster'); // 85 is not above 85
+    expect(evaluateBadge(20, 74, 6)).toBe('tracker');
+    expect(evaluateBadge(100, 95, 4)).toBe('oracle');
+    expect(evaluateBadge(100, 95, 6)).toBe('sharp');
+  });
+
+  it('never takes away what the counts alone give', () => {
+    expect(evaluateBadge(20, 40, 30)).toBe('tracker');
+    expect(evaluateBadge(5, 100, 0)).toBe('guesser');
+  });
+
+  it('names the next tier from the same low end', () => {
+    expect(nextBadge(50, 88, 3)?.badge).toBe('sharp');
+    expect(nextBadge(50, 88, 0)?.badge).toBe('oracle');
+  });
+});
+
+// Roadmap D35: the Brier score's yardstick is the person's own base rate.
+describe('computeBrierBaseline', () => {
+  it('is what saying the base rate every time would score', () => {
+    const rows = [
+      ...Array.from({ length: 16 }, () => p({ status: 'resolved_yes' })),
+      ...Array.from({ length: 9 }, () => p({ status: 'resolved_no' })),
+      p({ status: 'skipped' }),
+      p({ status: 'pending', resolved_at: null }),
+    ];
+    const baseline = computeBrierBaseline(rows)!;
+    expect(baseline.rate).toBeCloseTo(0.64, 10);
+    expect(baseline.score).toBeCloseTo(0.2304, 10);
+    // Saying 64% on every one of them scores exactly that.
+    expect(computeBrier(rows.map((r) => ({ ...r, confidence: 64 })))).toBeCloseTo(0.2304, 10);
+  });
+
+  it('is null with nothing answered', () => {
+    expect(computeBrierBaseline([p({ status: 'skipped' })])).toBeNull();
   });
 });

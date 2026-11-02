@@ -38,6 +38,7 @@ import {
 } from '@/supabase/client';
 import { syncNow } from '@/supabase/sync';
 
+import { useCategoryStore } from './categoryStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
@@ -112,6 +113,8 @@ let lastUserId: string | null = null;
  */
 async function reloadForUser(userId: string): Promise<void> {
   await Promise.all([
+    // The person's own category names (roadmap D39).
+    useCategoryStore.getState().load(),
     usePredictionStore.getState().loadPending(),
     usePredictionStore.getState().loadResolved(),
     useStatsStore.getState().loadForUser(userId),

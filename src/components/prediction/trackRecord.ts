@@ -10,6 +10,7 @@
 
 import { MIN_BUCKET_N_FOR_VERDICT, rangeLabel } from '@/components/stats/chartTakeaway';
 import type { BucketStat, Category } from '@/types';
+import { categoryLabel } from '@/store/categoryStore';
 
 export interface TrackRecord {
   text: string;
@@ -43,7 +44,7 @@ export function trackRecordLine(
   ) {
     return {
       scope: 'category',
-      text: `Your ${rangeLabel(categoryBucket)} calls in ${category}: ${happened(categoryBucket)}.`,
+      text: `Your ${rangeLabel(categoryBucket)} calls in ${categoryLabel(category)}: ${happened(categoryBucket)}.`,
     };
   }
   if (overallBucket && overallBucket.total_resolved >= MIN_BUCKET_N_FOR_VERDICT) {

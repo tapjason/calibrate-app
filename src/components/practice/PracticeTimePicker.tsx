@@ -8,6 +8,9 @@ interface PracticeTimePickerProps {
   /** The time shown to start from. */
   value: PracticeReminderTime;
   onChange: (time: PracticeReminderTime) => void;
+  /** Spoken name; the due-day reminder and the digest reuse this (D38). */
+  label?: string;
+  testID?: string;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -33,13 +36,18 @@ export function parseTimeInputValue(value: string): PracticeReminderTime | null 
  * The native compact time picker on iOS, the browser's time input on web;
  * Android opens the system dialog from the chip (openPracticeTimeDialog).
  */
-export function PracticeTimePicker({ value, onChange }: PracticeTimePickerProps) {
+export function PracticeTimePicker({
+  value,
+  onChange,
+  label = 'Practice reminder time',
+  testID = 'practice-time-picker',
+}: PracticeTimePickerProps) {
   if (Platform.OS === 'web') {
     return createElement('input', {
       type: 'time',
       value: toTimeInputValue(value),
-      'aria-label': 'Practice reminder time',
-      'data-testid': 'practice-time-picker',
+      'aria-label': label,
+      'data-testid': testID,
       onChange: (e: { target: { value: string } }) => {
         const t = parseTimeInputValue(e.target.value);
         if (t) onChange(t);
@@ -65,7 +73,7 @@ export function PracticeTimePicker({ value, onChange }: PracticeTimePickerProps)
   const at = new Date();
   at.setHours(value.hour, value.minute, 0, 0);
   return (
-    <View style={styles.ios} testID="practice-time-picker">
+    <View style={styles.ios} testID={testID}>
       <DateTimePicker
         value={at}
         mode="time"
@@ -74,7 +82,7 @@ export function PracticeTimePicker({ value, onChange }: PracticeTimePickerProps)
         onChange={(_e, date) => {
           if (date) onChange({ hour: date.getHours(), minute: date.getMinutes() });
         }}
-        accessibilityLabel="Practice reminder time"
+        accessibilityLabel={label}
       />
     </View>
   );

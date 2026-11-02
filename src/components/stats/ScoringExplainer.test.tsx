@@ -86,7 +86,8 @@ describe('scoringCopy (roadmap step 29)', () => {
   it('explains the Brier score in one paragraph', () => {
     const brier = scoringSections().find((s) => s.title === 'The Brier score');
     expect(brier?.paragraphs).toHaveLength(1);
-    expect(brier?.paragraphs[0]).toContain('Lower is better; always saying 50% scores 0.25.');
+    // Roadmap D35: against the person's own base rate, not always saying 50%.
+    expect(brier?.paragraphs[0]).toContain('how often your calls came true');
   });
 
   // Roadmap D23: no bonus for a number, anywhere in the explanation.
@@ -96,13 +97,13 @@ describe('scoringCopy (roadmap step 29)', () => {
 
   it('lists the five badges in ladder order with their criteria', () => {
     expect(badgeRows().map((r) => r.label)).toEqual([
-      'Guesser',
+      'Getting started',
       'Tracker',
       'Forecaster',
       'Sharp',
       'Oracle',
     ]);
-    expect(badgeRows()[2].criteria).toBe('Above 70 over 20+ predictions');
+    expect(badgeRows()[2].criteria).toBe('Above 70 at its low end, over 20+ predictions');
     expect(badgeRows()[0].criteria).toBe('Fewer than 20 resolved here');
   });
 });
@@ -115,7 +116,7 @@ describe('ScoringExplainer', () => {
       expect(screen.getByText(section.title)).toBeTruthy();
     }
     expect(screen.getByTestId('scoring-badge-oracle').props.accessibilityLabel).toBe(
-      'Oracle: Above 90 over 100+ predictions',
+      'Oracle: Above 90 at its low end, over 100+ predictions',
     );
     fireEvent.press(screen.getByTestId('scoring-close'));
     expect(onClose).toHaveBeenCalledTimes(1);

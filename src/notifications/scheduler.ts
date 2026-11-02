@@ -245,17 +245,22 @@ export function __setDepsForTests(next: Deps | null): void {
 }
 
 /**
- * The local hour a reminder fires on its due day (roadmap D9, decided
+ * The default local hour a reminder fires on its due day (roadmap D9, decided
  * 2026-10-05). Due dates are stored at 12:00 local, and a reminder at noon
  * asked "Did it happen?" about "I'll finish the report by Friday" before
  * Friday was over. The evening is when most of a day's outcomes are known.
+ * Since D38 (2026-11-01) the person can pick another time in You
+ * (`settingsStore.dueReminderTime`, 7:00 PM by default).
  */
 export const REMINDER_HOUR = 19;
 
-/** When a prediction's reminder fires: its due day, at REMINDER_HOUR local. */
-export function reminderTimeFor(dueIso: string): Date {
+/** When a prediction's reminder fires: its due day, at the chosen local time. */
+export function reminderTimeFor(
+  dueIso: string,
+  time: { hour: number; minute: number } = useSettingsStore.getState().dueReminderTime,
+): Date {
   const at = new Date(dueIso);
-  at.setHours(REMINDER_HOUR, 0, 0, 0);
+  at.setHours(time.hour, time.minute, 0, 0);
   return at;
 }
 
@@ -384,6 +389,15 @@ async function applyEnabled(enabled: boolean): Promise<void> {
       void schedule(p);
     }
   }
+}
+
+/** Move every reminder to the chosen time (roadmap D38): cancel, then set again. */
+async function rescheduleAll(): Promise<void> {
+  if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled) return;
+  for (const predictionId of [...scheduledByPredictionId.keys()]) {
+    await cancel(predictionId);
+  }
+  for (const p of usePredictionStore.getState().pending) await schedule(p);
 }
 
 function handleStoreUpdate(pending: Prediction[]): void {
@@ -617,8 +631,12 @@ async function activate(): Promise<void> {
   notificationsEnabled = remindersOn(useSettingsStore.getState());
   settingsUnsub = useSettingsStore.subscribe((state, prev) => {
     const next = remindersOn(state);
-    if (next === remindersOn(prev)) return;
-    void applyEnabled(next);
+    if (next !== remindersOn(prev)) {
+      void applyEnabled(next);
+      return;
+    }
+    // A new time (roadmap D38): every reminder moves to it.
+    if (state.dueReminderTime !== prev.dueReminderTime && next) void rescheduleAll();
   });
 
   // Match the OS to the store before watching for changes, then take the

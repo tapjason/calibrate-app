@@ -42,9 +42,9 @@ describe('describeCalibrationCurve', () => {
     expect(text).toBe(
       'Calibration curve. ' +
         'When you said 40 to 60%, averaging 50%, you were right 100% of the time, over 1 prediction. ' +
-        'Perfectly calibrated, half the time that would land between 0 and 100%. ' +
+        'Perfectly calibrated, 8 times in 10 that would land between 0 and 100%. ' +
         'When you said 80 to 100%, averaging 86%, you were right 58% of the time, over 12 predictions. ' +
-        'Perfectly calibrated, half the time that would land between 75 and 92%.',
+        'Perfectly calibrated, 8 times in 10 that would land between 75 and 92%.',
     );
   });
 });

@@ -124,15 +124,55 @@ export interface StreakStatus {
   nextRestAt: number | null;
 }
 
-export type Category = 'work' | 'health' | 'finance' | 'social' | 'personal';
+/** The five categories every install starts with. */
+export type BuiltInCategory = 'work' | 'health' | 'finance' | 'social' | 'personal';
 
 /**
- * Every category, in the one order the app lists them: Log's chips, History's
- * filters, Stats' badges. Stats loaded its badges alphabetically at launch and
- * in this order after a recompute, so the rows changed places after the
- * session's first log or answer.
+ * A built-in category, or one the person added (roadmap D39, decided
+ * 2026-11-01): "c-" and a random id, never the name, so a rename changes no
+ * prediction and no name is ever stored on one. Names, renames of the
+ * built-ins and hiding live in the local `categories` table (CategoryDef).
  */
-export const CATEGORIES: readonly Category[] = ['work', 'health', 'finance', 'social', 'personal'];
+export type Category = BuiltInCategory | `c-${string}`;
+
+/**
+ * The built-in categories, in the one order the app lists them: Log's chips,
+ * History's filters, Stats' badges, with any the person added after them.
+ * Stats loaded its badges alphabetically at launch and in this order after a
+ * recompute, so the rows changed places after the session's first log or
+ * answer.
+ */
+export const CATEGORIES: readonly BuiltInCategory[] = ['work', 'health', 'finance', 'social', 'personal'];
+
+/** Whether a category is one of the five built-ins (roadmap D39). */
+export function isBuiltInCategory(value: string): value is BuiltInCategory {
+  return (CATEGORIES as readonly string[]).includes(value);
+}
+
+/** A category the person added: "c-" and 4–24 lowercase letters or digits. */
+const CUSTOM_CATEGORY_ID = /^c-[a-z0-9]{4,24}$/;
+
+/** Whether a value is a category id the app accepts, built-in or added. */
+export function isCategory(value: unknown): value is Category {
+  return typeof value === 'string' && (isBuiltInCategory(value) || CUSTOM_CATEGORY_ID.test(value));
+}
+
+/**
+ * How the person has named, hidden and ordered a category (roadmap D39). A
+ * built-in has a row only once renamed or hidden; one they added always has
+ * one. Device-local, like the settings: not synced yet.
+ */
+export interface CategoryDef {
+  id: Category;
+  user_id: string;
+  /** The name shown; null for a built-in under its own name. */
+  name: string | null;
+  /** Off Log's choices; its predictions and record stay. */
+  hidden: boolean;
+  /** Order among the added ones (built-ins keep CATEGORIES order). */
+  position: number;
+  created_at: string;
+}
 
 export type PredictionStatus =
   | 'pending'
@@ -318,11 +358,12 @@ export interface BucketStat {
   stated_confidence_mean: number; // mean user-stated confidence in this bucket
   actual_rate: number;            // resolved_yes / total_resolved
   bucket_error: number;           // | stated_confidence_mean/100 − actual_rate |
-  direction: Direction;           // which side of the diagonal (5-pt band = calibrated)
+  direction: Direction;           // a lean only outside the chance range and by 5+ points (D35)
   /**
-   * Where actual_rate would land half the time for a perfectly calibrated
-   * forecaster at this bucket's stated mean and n: the central 50% of the
-   * binomial outcomes, as shares 0–1 (roadmap D4). Small buckets get wide ranges.
+   * Where actual_rate would land 8 times in 10 for a perfectly calibrated
+   * forecaster at this bucket's stated mean and n: the central 80% of the
+   * binomial outcomes, as shares 0–1 (roadmap D4; the central half until D35).
+   * Small buckets get wide ranges.
    */
   chance_low: number;
   chance_high: number;
@@ -590,10 +631,15 @@ export interface PracticeRecord {
 /** Compute calibration buckets and rolling score from resolved predictions. */
 export type ComputeCalibration = (resolved: Prediction[]) => CalibrationResult;
 
-/** Decide the badge level for a category given its rolled-up stats. */
+/**
+ * Decide the badge level for a category given its rolled-up stats. Above
+ * Tracker the score minus its give-or-take must clear the bar (roadmap D35);
+ * the give-or-take defaults to 0 for callers that have none.
+ */
 export type EvaluateBadge = (
   predictionsResolved: number,
   calibrationScore: number,
+  giveOrTake?: number,
 ) => BadgeLevel;
 
 /**
@@ -612,6 +658,7 @@ export interface NextBadgeTarget {
 export type NextBadge = (
   predictionsResolved: number,
   calibrationScore: number,
+  giveOrTake?: number,
 ) => NextBadgeTarget | null;
 
 /**
@@ -649,6 +696,17 @@ export interface PredictionEdit {
 export type UpdatePrediction = (id: string, edit: PredictionEdit) => Promise<void>;
 /** Undo a resolution: back to pending, outcome and reflection cleared. */
 export type ReopenPrediction = (id: string) => Promise<void>;
+/**
+ * Switch a Yes to a No or back (roadmap D34), keeping when it was answered.
+ * A no-op on an open prediction or a skip: an answer never becomes "Can't
+ * tell", and a skip is answered instead.
+ */
+export type CorrectPredictionOutcome = (
+  id: string,
+  outcome: 'resolved_yes' | 'resolved_no',
+) => Promise<void>;
+/** Move an answered prediction to another category (roadmap D34). */
+export type RefilePrediction = (id: string, category: Category) => Promise<void>;
 /** Set or clear the reflection on an already-resolved prediction. */
 export type SetReflection = (id: string, reflection: string | null) => Promise<void>;
 

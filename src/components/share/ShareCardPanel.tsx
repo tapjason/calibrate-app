@@ -15,6 +15,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { Category } from '@/types';
+import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
@@ -39,6 +40,7 @@ export function ShareCardPanel({
   onUpgrade,
   onTakeWarmup,
 }: { onUpgrade?: () => void; onTakeWarmup?: () => void } = {}) {
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const buckets = useStatsStore((s) => s.calibration.buckets);
@@ -205,7 +207,7 @@ export function ShareCardPanel({
                       onPress={() => toggleCategory(c.category)}
                       accessibilityRole="checkbox"
                       {...chosenProps('checkbox', on)}
-                      accessibilityLabel={`Show ${c.category} on the card`}
+                      accessibilityLabel={`Show ${categoryLabel(c.category)} on the card`}
                       testID={`share-toggle-${c.category}`}
                       style={[styles.chip, on && styles.chipOn]}
                     >
@@ -218,7 +220,7 @@ export function ShareCardPanel({
                         />
                       )}
                       <Text style={[styles.chipText, on && styles.chipTextOn]}>
-                        {c.category}
+                        {categoryTitle(c.category)}
                       </Text>
                     </Pressable>
                   );
@@ -269,6 +271,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   chipOn: { backgroundColor: colors.action, borderColor: colors.action },
-  chipText: { ...type.subhead, color: colors.textSecondary, textTransform: 'capitalize' },
+  chipText: { ...type.subhead, color: colors.textSecondary },
   chipTextOn: { color: colors.onAction, fontWeight: '600' },
 });

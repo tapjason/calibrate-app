@@ -78,7 +78,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: 'The Brier score',
       paragraphs: [
-        "Once your score unlocks, Insights also shows a Brier score: the average of the squared gap between how sure you said you were and what happened. It rewards being decisive as well as calibrated, so calling everything 50% can't flatter it. Lower is better; always saying 50% scores 0.25.",
+        "Once your score unlocks, Insights also shows a Brier score: the average of the squared gap between how sure you said you were and what happened. It rewards being decisive as well as calibrated, so calling everything 50% can't flatter it. Lower is better, and beside it is what you'd score by saying the same number every time, that number being how often your calls came true: beat that and your numbers carry real information.",
       ],
     },
     {
@@ -86,13 +86,13 @@ export function scoringSections(): ScoringSection[] {
       paragraphs: [
         'With two predictions in a band, it can only read 0%, 50% or 100%. That is noise, not a score.',
         `So your rating stays "calibrating" until ${MIN_N_OVERALL} predictions have resolved, a category's score until ${MIN_N_CATEGORY} have in that category, and the app doesn't say which way a band leans until it holds ${MIN_N_BAND}.`,
-        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands half the time with that many predictions, so a dot outside it isn\'t proof of a lean. And your rating comes with a "give or take": how far it could move on the same habits with different luck. Both narrow as you resolve more.',
+        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands 8 times in 10 with that many predictions, and the app calls a lean only for a dot outside it. And your rating comes with a "give or take": how far it could move on the same habits with different luck. Both narrow as you resolve more.',
       ],
     },
     {
       title: 'Badges',
       paragraphs: [
-        'Each category earns its own badge, so you can be Sharp in one and a Guesser in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing.',
+        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing.',
       ],
     },
     {

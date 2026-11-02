@@ -1,17 +1,26 @@
 import type { Prediction } from '@/types';
 
 import { computeCalibration, computeRatingRange } from './calibration';
-import { bootstrapRange, chanceRange } from './chance';
+import { bootstrapRange, CHANCE_MASS, chanceRange } from './chance';
 
 // Roadmap D4: how far chance alone moves a bucket's dot, and the rating.
 describe('chanceRange', () => {
-  it('spans the central half of the binomial outcomes, as shares', () => {
+  // Roadmap D35: the central 80% by default, the band a lean must leave.
+  it('spans the central 80% of the binomial outcomes, as shares', () => {
+    expect(CHANCE_MASS).toBe(0.8);
+    // Binomial(10, 0.75): P(≤5) = .078, P(≤6) = .224; P(≤8) = .756, P(≤9) = .944.
+    expect(chanceRange(10, 0.75)).toEqual({ low: 0.6, high: 0.9 });
+    // Binomial(5, 0.15): P(0) = .444; P(≤1) = .835, P(≤2) = .973.
+    expect(chanceRange(5, 0.15)).toEqual({ low: 0, high: 0.4 });
+    // Binomial(100, 0.5): P(≤43) = .097, P(≤44) = .136; P(≤55) = .864, P(≤56) = .903.
+    expect(chanceRange(100, 0.5)).toEqual({ low: 0.44, high: 0.56 });
+  });
+
+  it('spans another share when asked: the central half', () => {
     // Binomial(10, 0.75): P(≤6) = .224, P(≤7) = .474, P(≤8) = .756.
-    expect(chanceRange(10, 0.75)).toEqual({ low: 0.7, high: 0.8 });
-    // Binomial(5, 0.15): P(0) = .444, P(≤1) = .835.
-    expect(chanceRange(5, 0.15)).toEqual({ low: 0, high: 0.2 });
+    expect(chanceRange(10, 0.75, 0.5)).toEqual({ low: 0.7, high: 0.8 });
     // Binomial(100, 0.5): quartiles at 47 and 53.
-    expect(chanceRange(100, 0.5)).toEqual({ low: 0.47, high: 0.53 });
+    expect(chanceRange(100, 0.5, 0.5)).toEqual({ low: 0.47, high: 0.53 });
   });
 
   it('narrows as the count grows', () => {
@@ -39,8 +48,8 @@ describe('chanceRange', () => {
   it("is attached to every bucket the engine returns, with the bucket's expected count", () => {
     const resolved = Array.from({ length: 10 }, (_, i) => prediction(75, i < 6));
     const [bucket] = computeCalibration(resolved).buckets;
-    expect(bucket.chance_low).toBe(0.7);
-    expect(bucket.chance_high).toBe(0.8);
+    expect(bucket.chance_low).toBe(0.6);
+    expect(bucket.chance_high).toBe(0.9);
     expect(bucket.expected_yes).toBeCloseTo(7.5);
   });
 });

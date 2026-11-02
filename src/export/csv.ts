@@ -51,7 +51,11 @@ function cell(value: string | number | boolean | null): string {
  * CRLF line endings, per RFC 4180 — it is what Excel expects and what every
  * other reader tolerates.
  */
-export function predictionsToCsv(predictions: readonly Prediction[]): string {
+export function predictionsToCsv(
+  predictions: readonly Prediction[],
+  /** The name each category shows under (roadmap D39): an added one's id means nothing. */
+  label: (category: Prediction['category']) => string = (c) => c,
+): string {
   const rows = [...predictions].sort((a, b) =>
     a.created_at < b.created_at ? 1 : -1,
   );
@@ -62,7 +66,7 @@ export function predictionsToCsv(predictions: readonly Prediction[]): string {
       [
         cell(p.id),
         cell(p.title),
-        cell(p.category),
+        cell(label(p.category)),
         cell(p.confidence),
         cell(p.created_at),
         cell(p.due_date),

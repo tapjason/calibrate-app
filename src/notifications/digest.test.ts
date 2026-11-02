@@ -92,6 +92,9 @@ beforeEach(async () => {
     notificationsEnabled: true,
     remindersEnabled: true,
     digestEnabled: true,
+    dueReminderTime: { hour: 19, minute: 0 },
+    digestDay: 0,
+    digestTime: { hour: 18, minute: 0 },
     aiRefineEnabled: true,
     hydrated: false,
   });
@@ -423,5 +426,23 @@ describe('digest: permission in context', () => {
 
     await activateDigest(); // idempotent
     expect(notifications.scheduleCalls).toBe(1);
+  });
+});
+
+// Roadmap D38: the digest's day and time are the person's.
+describe('digest: a chosen day and time', () => {
+  it('schedules on the chosen day and time, and moves when they change', async () => {
+    useSettingsStore.setState({ digestDay: 3, digestTime: { hour: 8, minute: 30 } });
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications });
+    await initDigest();
+    let [rec] = Array.from(notifications.scheduled.values());
+    expect(rec).toMatchObject({ weekday: 4, hour: 8, minute: 30 }); // Wednesday
+
+    useSettingsStore.setState({ digestDay: 6, digestTime: { hour: 19, minute: 15 } });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
+    [rec] = Array.from(notifications.scheduled.values());
+    expect(rec).toMatchObject({ weekday: 7, hour: 19, minute: 15 }); // Saturday
   });
 });

@@ -103,16 +103,20 @@ describe('ConfidenceControl', () => {
       );
     });
 
-    // 2026-10-09 dry run: the first ±5 sets the number the thumb rests on,
-    // instead of jumping past it; after that, each tap steps 5.
-    it('sets the resting middle on the first ±5, then steps', () => {
+    // Roadmap D36 (blind playtest 2026-11-01): the first ±5 steps from where
+    // the resting thumb shows, as VoiceOver's first swipe does.
+    it('steps from the resting thumb on the first ±5', () => {
       const onChange = jest.fn();
       const { rerender } = render(<ConfidenceControl value={null} onChange={onChange} />);
       fireEvent.press(screen.getByTestId('confidence-decrement'));
-      expect(onChange).toHaveBeenLastCalledWith(50);
-      rerender(<ConfidenceControl value={50} onChange={onChange} />);
+      expect(onChange).toHaveBeenLastCalledWith(45);
+      rerender(<ConfidenceControl value={null} onChange={onChange} />);
       fireEvent.press(screen.getByTestId('confidence-increment'));
       expect(onChange).toHaveBeenLastCalledWith(55);
+      // The Warmup's 50–100 rests at 75.
+      rerender(<ConfidenceControl value={null} onChange={onChange} min={50} />);
+      fireEvent.press(screen.getByTestId('confidence-increment'));
+      expect(onChange).toHaveBeenLastCalledWith(80);
     });
 
     it('takes a touch of the resting thumb as a choice, once', () => {

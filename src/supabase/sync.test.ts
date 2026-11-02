@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { setDbForTests } from '@/db/client';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import {
+  getPrediction,
   insertPrediction,
   listDirtyPredictions,
   listPendingPredictions,
@@ -193,6 +194,19 @@ describe('pullRemote', () => {
     expect(written).toBe(0);
   });
 
+  // Review 2026-11-01: a prediction held back on this phone (an added
+  // category, roadmap D39) keeps its local answer even if the server's copy is newer.
+  it('leaves a held-back prediction alone, however new the server copy', async () => {
+    await insertPrediction(
+      localPrediction({ id: 'held', category: 'c-grad123456', status: 'resolved_yes', resolved_at: '2026-06-01T19:00:00.000Z' }),
+    );
+    const newer = wire({ id: 'held', category: 'work', status: 'pending', updated_at: '2099-01-01T00:00:00.000Z' });
+    const { client } = makeFakeClient({ selectResult: { data: [newer], error: null } });
+    const written = await pullRemote('user-aaa', client, makeInMemoryCursorStore());
+    expect(written).toBe(0);
+    expect(await getPrediction('held')).toMatchObject({ category: 'c-grad123456', status: 'resolved_yes' });
+  });
+
   it('skips a remote row whose user_id does not match (RLS defense)', async () => {
     const foreign = wire({ id: 'foreign', user_id: 'someone-else' });
     const { client } = makeFakeClient({
@@ -262,6 +276,19 @@ describe('pushDirty', () => {
     expect(upsertCalls).toHaveLength(1);
     expect(upsertCalls[0]).toHaveLength(2);
     expect(await listDirtyPredictions('user-aaa')).toEqual([]);
+  });
+
+  // Roadmap D39: the server only accepts the five built-ins until its 006
+  // migration is applied, so a prediction in an added category waits, dirty.
+  it('holds back a prediction filed under an added category, still dirty', async () => {
+    await insertPrediction(localPrediction({ id: 'built-in' }));
+    await insertPrediction(localPrediction({ id: 'added', category: 'c-grad123456' }));
+
+    const { client, upsertCalls } = makeFakeClient();
+    const pushed = await pushDirty('user-aaa', client);
+    expect(pushed).toBe(1);
+    expect(upsertCalls[0].map((r: { id: string }) => r.id)).toEqual(['built-in']);
+    expect((await listDirtyPredictions('user-aaa')).map((r) => r.id)).toEqual(['added']);
   });
 
   it('falls back to per-row upsert when the batch fails', async () => {

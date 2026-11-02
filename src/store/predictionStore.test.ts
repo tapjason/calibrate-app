@@ -504,3 +504,104 @@ describe('predictionStore.update and remove', () => {
     expect(stat?.total_predictions).toBe(0);
   });
 });
+
+// Roadmap D34: an answer can be corrected, re-filed or deleted for 24 hours,
+// and never turned into "Can't tell".
+describe('predictionStore.correct, refile and remove within the window', () => {
+  const answer = async (outcome: 'resolved_yes' | 'resolved_no' = 'resolved_no') => {
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship it',
+      category: 'work',
+      confidence: 70,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(p.id, outcome);
+    return usePredictionStore.getState().resolved.find((r) => r.id === p.id)!;
+  };
+  /** An answer given two days ago: past the window. */
+  const oldAnswer = async () => {
+    const userId = useAuthStore.getState().userId!;
+    const at = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    await insertPrediction({
+      id: 'old-1',
+      user_id: userId,
+      title: 'Old one',
+      category: 'work',
+      confidence: 70,
+      created_at: at,
+      due_date: at,
+      status: 'resolved_no',
+      resolved_at: at,
+      reflection: null,
+      integrity_bonus: false,
+    });
+    await usePredictionStore.getState().loadResolved();
+    return 'old-1';
+  };
+
+  it('switches No to Yes in place, keeping when it was answered', async () => {
+    const before = await answer('resolved_no');
+    await usePredictionStore.getState().correct(before.id, 'resolved_yes');
+    const after = usePredictionStore.getState().resolved.find((r) => r.id === before.id)!;
+    expect(after.status).toBe('resolved_yes');
+    expect(after.resolved_at).toBe(before.resolved_at);
+    expect(usePredictionStore.getState().pending).toHaveLength(0);
+    expect(useStatsStore.getState().calibration.buckets[0]?.resolved_yes).toBe(1);
+  });
+
+  it('moves an answer to another category, with its counts', async () => {
+    const p = await answer();
+    await usePredictionStore.getState().refile(p.id, 'health');
+    const stats = await listCategoryStats(p.user_id);
+    expect(stats.find((c) => c.category === 'health')?.predictions_resolved).toBe(1);
+    expect(stats.find((c) => c.category === 'work')).toBeUndefined();
+  });
+
+  it('deletes an answer inside the window', async () => {
+    const p = await answer();
+    await usePredictionStore.getState().remove(p.id);
+    expect(usePredictionStore.getState().resolved).toHaveLength(0);
+  });
+
+  it('refuses all three once the window has closed', async () => {
+    const id = await oldAnswer();
+    const s = usePredictionStore.getState();
+    await expect(s.correct(id, 'resolved_yes')).rejects.toThrow(/part of the record/);
+    await expect(s.refile(id, 'health')).rejects.toThrow(/part of the record/);
+    await expect(s.remove(id)).rejects.toThrow(/part of the record/);
+    expect(usePredictionStore.getState().resolved[0]).toMatchObject({
+      status: 'resolved_no',
+      category: 'work',
+    });
+  });
+
+  it('never corrects a skip', async () => {
+    const p = await usePredictionStore.getState().create({
+      title: 'Unclear',
+      category: 'work',
+      confidence: 70,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(p.id, 'skipped');
+    await expect(usePredictionStore.getState().correct(p.id, 'resolved_no')).rejects.toThrow();
+  });
+});
+
+// Roadmap D39: a category the person added counts like any other.
+describe('predictionStore with an added category', () => {
+  it('logs, answers and scores a prediction filed under it', async () => {
+    const p = await usePredictionStore.getState().create({
+      title: 'Thesis chapter done',
+      category: 'c-grad123456',
+      confidence: 70,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    const stats = await listCategoryStats(p.user_id);
+    expect(stats.map((s) => s.category)).toEqual(['c-grad123456']);
+    expect(useStatsStore.getState().categoryStats[0]).toMatchObject({
+      category: 'c-grad123456',
+      predictions_resolved: 1,
+    });
+  });
+});

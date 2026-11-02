@@ -62,7 +62,9 @@ function chipColor(tier: BadgeLevel, part: 'color' | 'background'): string {
 
 export const BADGE_META: Record<BadgeLevel, BadgeMeta> = {
   guesser: {
-    label: 'Guesser',
+    // 'Getting started' since roadmap D36 (2026-11-01): 'Guesser' stung after one
+    // prediction (blind playtest runs 1 and 2). The id stays 'guesser'.
+    label: 'Getting started',
     color: chipColor('guesser', 'color'),
     background: chipColor('guesser', 'background'),
     // What it is: fewer than the Tracker's 20 resolved. "Just getting started"
@@ -79,18 +81,18 @@ export const BADGE_META: Record<BadgeLevel, BadgeMeta> = {
     label: 'Forecaster',
     color: chipColor('forecaster', 'color'),
     background: chipColor('forecaster', 'background'),
-    tagline: 'Above 70 over 20+ predictions',
+    tagline: 'Above 70 at its low end, over 20+ predictions',
   },
   sharp: {
     label: 'Sharp',
     color: chipColor('sharp', 'color'),
     background: chipColor('sharp', 'background'),
-    tagline: 'Above 85 over 50+ predictions',
+    tagline: 'Above 85 at its low end, over 50+ predictions',
   },
   oracle: {
     label: 'Oracle',
     color: chipColor('oracle', 'color'),
     background: chipColor('oracle', 'background'),
-    tagline: 'Above 90 over 100+ predictions',
+    tagline: 'Above 90 at its low end, over 100+ predictions',
   },
 };

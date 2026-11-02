@@ -72,6 +72,14 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         )}
       </View>
 
+      {/* The best line in the app sat two taps deep in How scoring works
+          (blind playtest 2026-11-01, run 1); the result is where it's needed
+          first (roadmap D36). */}
+      <Text style={styles.advice} testID="warmup-not-right">
+        It isn’t about being right. A 60% call that doesn’t happen isn’t a mistake: about 4 in
+        10 of them shouldn’t.
+      </Text>
+
       <CalibrationChart buckets={result.buckets} animateIn />
 
       <Text style={styles.advice}>{verdict.advice}</Text>

@@ -12,6 +12,7 @@
 
 import { BADGE_META } from '@/constants/badges';
 import type { BadgeLevel, Category, CategoryStat, NextBadgeTarget } from '@/types';
+import { categoryLabel } from '@/store/categoryStore';
 
 export interface BadgeProgress {
   category: Category;
@@ -47,7 +48,13 @@ type NextBadges = Partial<Record<Category, NextBadgeTarget | null>>;
 export function nextBadgeProgress(
   stats: readonly CategoryStat[],
   nextBadges: NextBadges,
+  /**
+   * Each category score's give-or-take (roadmap D35): a tier above Tracker
+   * needs the score minus it over the bar, so that is what "short" means.
+   */
+  giveOrTake: Partial<Record<Category, number>> = {},
 ): BadgeProgress | null {
+  const low = (s: CategoryStat) => s.calibration_score - (giveOrTake[s.category] ?? 0);
   const byName = [...stats].sort((a, b) => a.category.localeCompare(b.category));
 
   let bestCount: {
@@ -71,14 +78,14 @@ export function nextBadgeProgress(
     // When the score is short as well, "20 to go" alone would promise a badge
     // that resolving can't earn (roadmap step 47). Only the threshold is
     // printed, never the score itself.
-    const scoreShort = next.needScore !== null && stat.calibration_score <= next.needScore;
+    const scoreShort = next.needScore !== null && low(stat) <= next.needScore;
     return {
       category: stat.category,
       badge: next.badge,
       badgeLabel,
       text: scoreShort
-        ? `${badgeLabel} in ${stat.category}: ${remaining} more resolved and a score above ${next.needScore}`
-        : `${badgeLabel} in ${stat.category}: ${remaining} to go`,
+        ? `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more resolved and a score above ${next.needScore}`
+        : `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} to go`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
   }
@@ -91,7 +98,7 @@ export function nextBadgeProgress(
   for (const stat of byName) {
     const next = nextBadges[stat.category];
     if (!next || next.needScore === null || stat.score_is_provisional) continue;
-    const gap = next.needScore - stat.calibration_score;
+    const gap = next.needScore - low(stat);
     if (gap < 0) continue;
     if (!bestScore || gap < bestScore.gap) bestScore = { stat, next, gap };
   }
@@ -99,13 +106,21 @@ export function nextBadgeProgress(
   if (bestScore) {
     const { stat, next } = bestScore;
     const badgeLabel = BADGE_META[next.badge].label;
+    const spread = giveOrTake[stat.category] ?? 0;
+    // Over the bar itself but not at its low end: "(now 87)" beside "above
+    // 85" would read as met, so it says what is short.
+    const lowOnly = next.needScore !== null && stat.calibration_score > next.needScore;
     return {
       category: stat.category,
       badge: next.badge,
       badgeLabel,
-      text: `${badgeLabel} in ${stat.category}: a score above ${next.needScore} (now ${Math.floor(
-        stat.calibration_score,
-      )})`,
+      text: lowOnly
+        ? `${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} even at its low end (now ${Math.floor(
+            stat.calibration_score,
+          )}, give or take ${spread})`
+        : `${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} (now ${Math.floor(
+            stat.calibration_score,
+          )})`,
       progress: null,
     };
   }
