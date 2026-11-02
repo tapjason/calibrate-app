@@ -114,6 +114,8 @@ second build that can't test billing.
 
 - [ ] **Web run-through: Batch C, minus what web can't show.** An agent can
       drive this one (`NEXT_STEPS.md` item k) and mark boxes *web-verified*.
+      Age assurance (D4) does not run on web: first launch still opens the
+      Warmup, with no age sheet and no feature locked.
 - [ ] ~~**Expo Go run-through: Batch C, minus billing.**~~ **Not possible on
       SDK 55 (2026-10-04).** Do Batch C on the iOS dev build instead (Tier 2),
       signing in with **email** (Apple sign-in needs the paid account too;
@@ -815,8 +817,10 @@ Requires a dev build (`eas build --profile development --platform ios`), not
 Expo Go — notifications and RevenueCat are both native modules.
 
 ### D1. Notifications
-- [ ] **No permission prompt at first launch** (changed 2026-10-05, roadmap
-      step 38): the Warmup opens with no iOS alert over it. After logging a
+- [ ] **No notification permission prompt at first launch** (changed 2026-10-05,
+      roadmap step 38): the Warmup opens with no notification alert over it.
+      Apple's age-range sheet, if it appears, is D4 and is not this alert.
+      After logging a
       first prediction, Home shows "Want a reminder when it's due?"; **Turn on
       reminders** brings up the iOS alert. Allow it: the prediction's reminder
       is scheduled. On a second install, refuse it: Settings → Notifications
@@ -890,6 +894,25 @@ Only possible after D2 and B3 (the webhook is what tells the server you paid).
 - [ ] Turn Coach on in Settings; tap "Get feedback"; insights render with the
       AI label.
 - [ ] Every number in an insight matches a number on the Stats screen.
+
+### D4. Age assurance (iOS 26, a dev build that includes the entitlement)
+Needs a signed-in Apple Account. The entitlement is
+`com.apple.developer.declared-age-range` in `app.json`. If the build fails to
+sign, enable Declared Age Range on the App ID and rebuild. Simulator runtimes
+often don't present this API; prefer a device.
+- [ ] **iOS 26, first launch:** after the splash, Apple's age-range sheet may
+      appear (the app has no sheet of its own). Share a range: the Warmup or
+      Today is usable, and nothing is locked. Force-quit and reopen: the sheet
+      does not appear again.
+- [ ] **Decline:** the app continues as it does today. Nothing is locked, and
+      you are not stuck on the sheet. Force-quit and reopen: still not stuck
+      (a second sheet, if Apple shows one, still lets you through when you
+      decline).
+- [ ] **Not signed into an Apple Account, or an older iOS:** no sheet, and the
+      app behaves as it did before this check. Web and Android are the same
+      (no Play Age Signals call).
+- [ ] **Erase all data on this device:** the next launch can ask again. Until
+      then, predictions and the rest of the app are unchanged.
 
 ---
 
