@@ -1,5 +1,7 @@
 # Calibrate — Agent Document
 
+**Read `HANDOFF.md` first** when it is on the branch.
+
 **Canonical spec.** This file and `BUILD_PLAN.md` are the two always-current build
 documents. `GROWTH_AND_MONETIZATION.md` and `COACH_AGENT.md` are rationale/reference —
 read them for the *why*, but this file governs *what gets built*. If they ever conflict,

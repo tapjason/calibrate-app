@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { StyleSheet } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
+import { PRIVACY_POLICY_URL } from '@/constants/app';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
 import { FREE_ENTITLEMENT } from '@/types';
@@ -265,10 +266,13 @@ describe('PaywallView', () => {
     );
   });
 
-  // A link that 404s is worse than none; it appears once the policy is hosted.
-  it('omits the privacy link while no policy URL is configured', () => {
+  // Guideline 3.1.2: the purchase screen links the hosted policy, not only the terms.
+  it('links the hosted privacy policy', () => {
+    const { openBrowserAsync } = jest.requireMock('expo-web-browser');
     seed();
     render(<PaywallView />);
-    expect(screen.queryByTestId('paywall-privacy-link')).toBeNull();
+    expect(PRIVACY_POLICY_URL).toBe('https://tapjason.github.io/calibrate-app/privacy/');
+    fireEvent.press(screen.getByTestId('paywall-privacy-link'));
+    expect(openBrowserAsync).toHaveBeenCalledWith(PRIVACY_POLICY_URL);
   });
 });

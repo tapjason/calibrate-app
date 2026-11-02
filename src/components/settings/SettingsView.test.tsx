@@ -167,11 +167,19 @@ describe('SettingsView', () => {
     expect(onOpenScoring).toHaveBeenCalledTimes(1);
   });
 
-  // A link that 404s is worse than none: no policy URL, no privacy link.
-  it('links the terms, and the privacy policy only once it is hosted', () => {
+  // Guideline 5.1.1(i): both legal links render, and Privacy opens the hosted policy.
+  it('links the terms and the hosted privacy policy', () => {
+    const { openBrowserAsync } = jest.requireMock('expo-web-browser');
     render(<SettingsView />);
     expect(screen.getByTestId('settings-terms-link')).toBeTruthy();
-    expect(screen.queryByTestId('settings-privacy-link')).toBeNull();
+    fireEvent.press(screen.getByTestId('settings-privacy-link'));
+    expect(openBrowserAsync).toHaveBeenLastCalledWith(
+      'https://tapjason.github.io/calibrate-app/privacy/',
+    );
+    fireEvent.press(screen.getByTestId('settings-terms-link'));
+    expect(openBrowserAsync).toHaveBeenLastCalledWith(
+      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+    );
   });
 
   it('offers a route to Plus for a free user', () => {

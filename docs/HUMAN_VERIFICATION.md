@@ -157,7 +157,7 @@ second build that can't test billing.
 | Thing | Status | Needed for |
 |---|---|---|
 | App Store screenshots | **Drafts made 2026-10-03** from the web build with the demo data (git-ignored `screenshots/draft/`). Finals need a device build. | E |
-| Privacy policy page + public URL | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Name and contact filled in; the effective date is set on publishing. Hosting needs a URL (GitHub Pages works, since the repo is public). | E |
+| Privacy policy page + public URL | **URL is in the app:** `https://tapjason.github.io/calibrate-app/privacy/` (`PRIVACY_POLICY_URL`). The page is [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md) (effective November 2, 2026). It 404s until GitHub Pages is on for `master` / `/docs`, after that commit is on `master`. Steps in Batch E. | E |
 | App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **The name "Calibrate" is already taken twice on the App Store.** See §0 there; the choice is yours. | E |
 | Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25, deployed 2026-10-02.** The optional Apple-revoke and RevenueCat-delete legs wait on their keys (Batch E). | E |
 
@@ -948,13 +948,44 @@ What is still yours:
         (a 10-digit number, not the bundle id).
       - `appleTeamId` — developer.apple.com → Membership details → Team ID.
 
-- [ ] Privacy policy URL — App Store Connect requires one, and
-      `docs/APP_PRIVACY.md` §5 lists the five things it has to say. A draft
-      is in `docs/PRIVACY_POLICY.md`. **Once it's hosted, put the URL in
-      `PRIVACY_POLICY_URL` (`src/constants/app.ts`)**. The paywall and
-      Settings (since 2026-10-05) show their Privacy Policy links only when
-      that's set, and 3.1.2 requires the
-      link in the app, not only in the listing.
+- [ ] **Privacy policy URL — turn GitHub Pages on after this is on `master`.**
+      The app already links to
+      `https://tapjason.github.io/calibrate-app/privacy/`
+      (`PRIVACY_POLICY_URL` in `src/constants/app.ts`). Paywall and Settings
+      show it, so it 404s until Pages is serving `master`. App Store Connect
+      needs the same URL, and it has to load (Guideline 3.1.2). What the page
+      has to say is `docs/APP_PRIVACY.md` §5; the text is `docs/PRIVACY_POLICY.md`.
+
+      Do this **after** the privacy-policy commit is on `master`, not before.
+      Enabling Pages on an older `master` builds every file in `docs/` (no
+      `_config.yml` yet). That can fail the build, and `/privacy/` does not
+      exist until this commit is the one Pages builds.
+
+      1. On GitHub, open `tapjason/calibrate-app` → **Settings** → **Pages**
+         (under Code and automation).
+      2. **Build and deployment** → **Source**: **Deploy from a branch**.
+      3. **Branch**: `master`. **Folder**: `/docs`. Save.
+      4. Wait until the Pages deployment is green. The first build takes a
+         few minutes. The site address at the top of that settings page
+         should be `https://tapjason.github.io/calibrate-app/`.
+
+      Confirm, in a browser:
+
+      - `https://tapjason.github.io/calibrate-app/privacy/` shows the policy:
+        heading "Calibrate Privacy Policy", effective date November 2, 2026,
+        contact tapjason-dev@gmail.com. It is a rendered page, not the raw
+        Markdown file. Without the trailing slash should redirect to the
+        same page.
+      - `https://tapjason.github.io/calibrate-app/` loads and its link opens
+        the policy.
+      - `https://tapjason.github.io/calibrate-app/HUMAN_VERIFICATION` and
+        `https://tapjason.github.io/calibrate-app/NEXT_STEPS` are 404s.
+        Those files stay in the repo. They are not part of the site.
+      - In the app (the web build is enough): You → Privacy policy, and the
+        paywall's Privacy Policy, both open that URL.
+
+      Do this before a build that contains the URL is handed to anyone. The
+      links are already visible.
 - [ ] `npx expo install --check` before the build. `expo-doctor` is 19/20
       green; the one failure is patch drift inside SDK 55 (15 packages on
       2026-10-04, e.g.
