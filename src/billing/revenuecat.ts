@@ -52,6 +52,28 @@ export const PRODUCT_IDS = {
 export type PlanId = keyof typeof PRODUCT_IDS;
 
 /**
+ * Other product ids that sell the same plan. A store product's price and
+ * trial can't always be edited in place, so a corrected one gets a new id:
+ * the RevenueCat Test Store's annual at $29.99 and monthly without a trial
+ * (2026-11-03). Mirrored in the webhook's entitlementFromEvent.ts.
+ */
+export const PRODUCT_ALIASES: Readonly<Record<PlanId, readonly string[]>> = {
+  monthly: ['calibrate_plus_monthly_notrial'],
+  annual: ['calibrate_plus_annual_2999'],
+  lifetime: [],
+};
+
+/** Which plan a store product sells, or null for one we don't know. */
+export function planForProduct(productId: string | null | undefined): PlanId | null {
+  if (typeof productId !== 'string') return null;
+  return (
+    (Object.keys(PRODUCT_IDS) as PlanId[]).find(
+      (plan) => PRODUCT_IDS[plan] === productId || PRODUCT_ALIASES[plan].includes(productId),
+    ) ?? null
+  );
+}
+
+/**
  * Display order. Annual first — GROWTH_AND_MONETIZATION.md §4 anchors on it,
  * and the re-verification adds a second reason: the AI retention penalty
  * concentrates in monthly plans (36% worse over 12 months) and Coach is what
@@ -267,18 +289,11 @@ function sourceFor(info: RcEntitlementInfo): EntitlementSource {
   const period = info.periodType?.toUpperCase();
   if (period === 'TRIAL' || period === 'INTRO') return 'trial';
 
-  switch (info.productIdentifier) {
-    case PRODUCT_IDS.monthly:
-      return 'monthly';
-    case PRODUCT_IDS.annual:
-      return 'annual';
-    case PRODUCT_IDS.lifetime:
-      return 'lifetime';
-    default:
-      // Unknown product, active entitlement: honor the entitlement (RevenueCat
-      // is the source of truth) and infer the source from whether it expires.
-      return info.expirationDate ? 'monthly' : 'lifetime';
-  }
+  const plan = planForProduct(info.productIdentifier);
+  if (plan) return plan;
+  // Unknown product, active entitlement: honor the entitlement (RevenueCat
+  // is the source of truth) and infer the source from whether it expires.
+  return info.expirationDate ? 'monthly' : 'lifetime';
 }
 
 /**
@@ -321,9 +336,7 @@ export function trialStatusFromCustomerInfo(info: unknown): TrialStatus | null {
   const plus = (info as RcCustomerInfo | null)?.entitlements?.active?.[PLUS_ENTITLEMENT_ID];
   if (!plus || plus.isActive !== true) return null;
   if (plus.periodType?.toUpperCase() !== 'TRIAL' || !plus.expirationDate) return null;
-  const plan =
-    (Object.keys(PRODUCT_IDS) as PlanId[]).find((id) => PRODUCT_IDS[id] === plus.productIdentifier) ??
-    null;
+  const plan = planForProduct(plus.productIdentifier);
   return { endsAt: plus.expirationDate, willRenew: plus.willRenew !== false, plan };
 }
 
@@ -355,14 +368,6 @@ function trialDaysFor(period: TrialPeriod | null): number | null {
   return period.count * DAYS_PER_UNIT[period.unit];
 }
 
-function planFor(productId: string): PlanId | null {
-  return (
-    (Object.keys(PRODUCT_IDS) as PlanId[]).find(
-      (k) => PRODUCT_IDS[k] === productId,
-    ) ?? null
-  );
-}
-
 /** Normalize an offerings payload into our plan list, in PLAN_ORDER. */
 export function plansFromOfferings(offerings: unknown): PlusPlan[] {
   const packages = (offerings as RcOfferings | null)?.current?.availablePackages;
@@ -371,7 +376,7 @@ export function plansFromOfferings(offerings: unknown): PlusPlan[] {
   const plans: PlusPlan[] = [];
   for (const pkg of packages) {
     const productId = pkg?.product?.identifier;
-    const plan = typeof productId === 'string' ? planFor(productId) : null;
+    const plan = planForProduct(productId);
     // Unknown products are dropped rather than guessed at: the paywall would
     // otherwise show a plan whose price we can print but whose entitlement we
     // cannot describe.

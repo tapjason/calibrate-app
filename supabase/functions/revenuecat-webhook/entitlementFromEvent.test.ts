@@ -2,7 +2,7 @@
 // Deno and can't be tested here, which is exactly why the part that decides
 // who is Plus was pulled into a plain-TypeScript module.
 
-import { PRODUCT_IDS, decideFromEvent } from './entitlementFromEvent';
+import { PRODUCT_ALIASES, PRODUCT_IDS, decideFromEvent } from './entitlementFromEvent';
 
 const USER = '11111111-2222-3333-4444-555555555555';
 const NOW = Date.parse('2026-09-07T12:00:00.000Z');
@@ -47,6 +47,16 @@ describe('granting', () => {
     for (const [source, product_id] of Object.entries(PRODUCT_IDS)) {
       expect(decideFromEvent(event({ product_id }), NOW)).toMatchObject({ source });
     }
+  });
+
+  it('maps a product alias to its plan (the Test Store products, 2026-11-03)', () => {
+    for (const [source, ids] of Object.entries(PRODUCT_ALIASES)) {
+      for (const product_id of ids) {
+        expect(decideFromEvent(event({ product_id }), NOW)).toMatchObject({ source });
+      }
+    }
+    expect(PRODUCT_ALIASES.annual).toContain('calibrate_plus_annual_2999');
+    expect(PRODUCT_ALIASES.monthly).toContain('calibrate_plus_monthly_notrial');
   });
 
   it('records a trial as source=trial', () => {

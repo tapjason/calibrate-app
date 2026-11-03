@@ -25,6 +25,13 @@ export const PRODUCT_IDS = {
   lifetime: 'calibrate_plus_lifetime',
 } as const;
 
+/** Mirrors PRODUCT_ALIASES in src/billing/revenuecat.ts. Keep in lockstep. */
+export const PRODUCT_ALIASES: Readonly<Record<keyof typeof PRODUCT_IDS, readonly string[]>> = {
+  monthly: ['calibrate_plus_monthly_notrial'],
+  annual: ['calibrate_plus_annual_2999'],
+  lifetime: [],
+};
+
 /** Mirrors PLUS_ENTITLEMENT_ID in src/billing/revenuecat.ts. */
 export const PLUS_ENTITLEMENT_ID = 'plus';
 
@@ -113,16 +120,11 @@ function grantsPlus(event: RevenueCatEvent): boolean {
 }
 
 function sourceForProduct(productId: string): EntitlementSource | null {
-  switch (productId) {
-    case PRODUCT_IDS.monthly:
-      return 'monthly';
-    case PRODUCT_IDS.annual:
-      return 'annual';
-    case PRODUCT_IDS.lifetime:
-      return 'lifetime';
-    default:
-      return null;
-  }
+  const plans = Object.keys(PRODUCT_IDS) as (keyof typeof PRODUCT_IDS)[];
+  return (
+    plans.find((plan) => PRODUCT_IDS[plan] === productId || PRODUCT_ALIASES[plan].includes(productId)) ??
+    null
+  );
 }
 
 function sourceFor(event: RevenueCatEvent, expiresAtMs: number | null): EntitlementSource {

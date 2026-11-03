@@ -1,6 +1,7 @@
 import { FREE_ENTITLEMENT } from '@/types';
 
 import {
+  PRODUCT_ALIASES,
   PRODUCT_IDS,
   __setBillingDepsForTests,
   configureBilling,
@@ -149,6 +150,28 @@ describe('entitlementFromCustomerInfo', () => {
       const e = entitlementFromCustomerInfo(customerInfo({ productIdentifier }));
       expect(e.source).toBe(source);
     }
+  });
+
+  it('maps a product alias to its plan (the Test Store products, 2026-11-03)', () => {
+    for (const [source, ids] of Object.entries(PRODUCT_ALIASES)) {
+      for (const productIdentifier of ids) {
+        expect(entitlementFromCustomerInfo(customerInfo({ productIdentifier })).source).toBe(source);
+      }
+    }
+  });
+
+  it('shows the Test Store offering as all three plans, annual first', () => {
+    const plans = plansFromOfferings({
+      current: {
+        availablePackages: [
+          pkg('calibrate_plus_monthly_notrial', '$4.99'),
+          pkg('calibrate_plus_annual_2999', '$29.99', { periodNumberOfUnits: 1, periodUnit: 'MONTH', price: 0 }),
+          pkg(PRODUCT_IDS.lifetime, '$59.99'),
+        ],
+      },
+    });
+    expect(plans.map((p) => p.plan)).toEqual(['annual', 'monthly', 'lifetime']);
+    expect(plans[0].trialPeriod).toEqual({ count: 1, unit: 'MONTH' });
   });
 
   it('reports a trial as source=trial whatever product backs it', () => {
