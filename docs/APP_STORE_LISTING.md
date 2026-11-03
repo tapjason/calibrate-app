@@ -6,27 +6,62 @@ The limits in brackets are Apple's, and every field was counted against them.
 
 ---
 
-## 0. The name is the open question
+## 0. The name: Fairly Sure (working choice)
 
-Two US App Store apps already use it:
+**Chosen 2026-11-03, for now: Fairly Sure**, store name `Fairly Sure: Calibration Log`.
+Not final until the trademark search and the App Store Connect record (next
+steps below). The app and the rest of the docs still say "Calibrate".
 
-- **Calibrate – Metabolic Health** by Calibrate Inc., a GLP-1 weight-loss
-  program with an established brand, in the health space.
-- **Calibrate: Recovery & Fitness**, a wearable-recovery app.
+**Re-researched 2026-11-03. Recommendation: rename.** Not legal advice; a
+trademark search by counsel is the real check.
 
-App Store names must be unique, and a bare "Calibrate" will almost certainly be
-refused when the App Store Connect record is created. A descriptor suffix
-("Calibrate: …") may be accepted, but it still sits next to a health company's
-brand while this app ships a *health* category. **Whether that's acceptable is
-a legal and brand call. It's yours, not the agent's.**
+### The other Calibrate apps (US App Store, 2026-11-03)
 
-Options, in order of how little they change:
+| App | Ratings | Since | Read |
+|---|---|---|---|
+| Calibrate – Metabolic Health (Calibrate Health, Inc.) | 5,378, 4.8★ | 2020 | Established and steady, not surging. Moved to selling through employers (about 90% of its business, Feb 2026); expects its first profitable year. Updated 2026-10-26. |
+| Calibrate: Recovery & Fitness | 1 | Jan 2026 | Negligible. |
+| Calibrate: Time Block Planner | 0 | Jan 2026 | Negligible. |
+| Calibrate: ADHD Med Tracker | 0 | May 2026 | Negligible. |
+| Calibrate: Calorie Tracker | 0 | Sep 2026 | Negligible. |
 
-| Option | Store name [30] | Note |
-|---|---|---|
-| Keep the brand, add a descriptor | `Calibrate: Prediction Journal` | Smallest change. Trademark exposure unchanged. |
-| Keep the brand, add a qualifier | `Calibrated – Trust Your Gut` | Distinct string, same idea. |
-| Rename | e.g. `Hunchmark`, `Brier`, `Oddsmith` | Cleanest. Every `Calibrate` string in the app and docs changes. **None checked for availability.** Creating the App Store Connect record is the only definitive check. |
+None of them is trending; the point is the crowd and the mark. Five apps now
+use "Calibrate:", four of them in Health & Fitness, and **Calibrate Health
+holds a registered CALIBRATE mark (Reg. 7432181, 2024) listed in classes 9 and
+42, software and apps**, by third-party trademark sites (verify in USPTO TSDR).
+A "Calibrate: Prediction Journal" store name would sit inside that mark's
+classes, beside its owner's health brand, while this app ships a *health*
+category. A direct competitor also exists: **Hedge: Calibrated Trivia** (a
+calibration game, 5 ratings, 2026).
+
+### Words to avoid
+
+- **Odds, wager, bet, "prediction"** in the name: the App Store's "prediction"
+  results are now prediction markets (Polymarket-style), and gambling words
+  invite a closer review. "Prediction" is fine in the subtitle.
+- **Names about being right** ("Called It", "Mostly Right"): the app rewards
+  calibration, not correctness (CLAUDE.md principles).
+- **Taken in the same space:** "Surely" (Surely – Smarter Decisions, Surely
+  Predictions), "Reckon" (Reckon: Decision Journal), "Hunch" (a dating app,
+  7.5k ratings), "Credence" and "Likely" (crowded), "Surecast" (registered
+  SURECAST mark, classes 38 and 41).
+
+### Shortlist (each clear on the US App Store by name, `.app` domain unregistered, 2026-11-03)
+
+| Name | Store name [30] | Why | Against |
+|---|---|---|---|
+| **Fairly Sure** (first choice) | `Fairly Sure: Calibration Log` (28) | Speaks the product's own language: the share line is "How sure are you?" and a 70% call *is* fairly sure. Humble, which is the point of calibration. Reads as identity ("I'm fairly sure"). No app, brand or mark found. | A common phrase: harder to own in web search. Two words. `fairlysure.com` is registered (nothing identifiable on it). |
+| **Hunchmark** | `Hunchmark: Calibration Journal` (30) | Coined, so ownable: no app, brand, mark or web result at all. "Mark your hunches", with a nod to benchmark. | Says less about confidence; "hunch" is gut, not measurement. `hunchmark.com` registered, not serving. |
+| **Sure Enough** | `Sure Enough: Prediction Log` (27) | Warm, and it names the resolution moment. No app, brand or mark found. | Leans toward being right ("sure enough, it happened"). `sureenough.com` registered. |
+
+Also clear but weaker: Hunchwise, Truehunch. Checked and dropped: Brier,
+Oddsmith, Calibrated, Inkling, Priors, Plumbline, Lodestar, Sharpen, Ninety,
+Second Guess, Gut Check, Percently, Callmark, Sureline, Gutmark.
+
+**Next steps for the chosen name:** a USPTO search (classes 9 and 42), then claim
+the `.app` domain and create the App Store Connect record, which is the only
+definitive name check. Every "Calibrate" string in the app and docs then
+changes; the bundle id `com.calibrate.app` can stay (users never see it).
 
 The rest of this document says "Calibrate". Substitute as needed.
 

@@ -67,7 +67,8 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
 ## Suggested order for the next iterations
 
 1. ~~Fix the Test Store prices~~ (done 2026-11-03, with the keep-alive, migration 006 and the old test account), then your calls.
-2. Your calls below: the name, pricing (P1), Pages for the privacy policy.
+2. Your calls below: pricing (P1), Pages for the privacy policy. The name is
+   chosen for now (Fairly Sure); its trademark search and store record remain.
    Age assurance (a) is built.
 3. The $99 account → **g** → first EAS development build → Batch C/D on the
    iPhone → TestFlight.
@@ -99,10 +100,10 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
   that commit is on `master` (no `_config.yml` yet: the build would process
   every doc and `/privacy/` would not exist). The agent must not change the
   Pages setting.
-- **The app name.** Two US App Store apps already use "Calibrate", one of them
-  an established health brand (and this app has a *health* category).
-  `APP_STORE_LISTING.md` proposes alternatives; the choice and any trademark
-  check are yours.
+- **The app name.** Chosen for now (2026-11-03): **Fairly Sure**
+  (`APP_STORE_LISTING.md` §0; "Calibrate" is crowded and a registered mark).
+  Still yours: a trademark search (classes 9 and 42), the `.app` domain and
+  the App Store Connect record, which is the definitive check.
   Since 2026-10-08 it also blocks the share loop: a share's App Store link
   needs the app's App Store id, which needs the record, which needs the name
   (`GROWTH_AND_MONETIZATION.md` §0, step 1).
