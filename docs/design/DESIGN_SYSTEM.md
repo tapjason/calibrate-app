@@ -55,7 +55,8 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 4. **Yes and No look and feel identical.** Same animation, same haptic, same neutral
    colour. Green means *calibrated*, never *correct*; red never appears for an outcome.
 5. **Colour is never the only channel.** Every semantic colour comes with a word, shape
-   or position. Categories get icons, not colours.
+   or position. Categories get icons, not colours (a person's own icon, D40, is
+   theirs: never a meaning).
 6. **Ink is chrome, colour is data.** Actions and selection are ink (`action`); the
    chart and every other hue mean over, under or on the line. Nothing else on screen
    carries a hue except the destructive red, the caution amber and Oracle's gold
@@ -154,7 +155,9 @@ hue, so no chrome can be mistaken for a calibration colour; indigo sat only 3.7 
   `xmark.circle`), never green/red.
 - The hero score numeral is always `textPrimary`. Colour goes to the *direction* of
   miscalibration (over/under), never to good/bad.
-- Categories are identified by SF Symbol + label only (§5).
+- Categories are identified by SF Symbol + label only (§5), or by the person's own
+  emoji or picture + label (D40, §7.24). That is the one place a hue appears that
+  isn't over, under or on the line: it means "the icon you chose" and nothing else.
 - The app is pinned to light (`app.json` `userInterfaceStyle: "light"`). The dark
   values above exist for share cards; a future dark mode maps onto them.
 - **Build the token file as light/dark pairs from the first commit** (e.g.
@@ -310,7 +313,8 @@ RN 0.83 (New Architecture) supports `boxShadow` natively — no shadow library.
 | unlock | `lock.open.fill` |
 
 - **No emoji in UI chrome or badges** (they render differently per platform and read
-  as toys). Emoji are fine only in the plain-text share (§7.5).
+  as toys). Emoji are fine in the plain-text share (§7.5) and as a category icon the
+  person chose themselves (D40, §7.24); the app never picks one for them.
 
 ---
 
@@ -1257,6 +1261,31 @@ sheet with the round ×:
   can be changed for a day after they're given. This one is part of your record now."
   Never "Can't tell" here. A skip still opens Resolve (step 39).
 
+### 7.24 Category icons (D40, 2026-11-03)
+
+On You → Categories, each row starts with its icon in a 44 pt square button
+(`hairline` border, `radius.sm`); tapping it opens the icon editor under that row,
+for a built-in as much as for an added category. Tapping it again, or Done, closes it.
+
+- **Heading:** the current icon at 28 pt and "Icon for Health" (`headline`).
+- **Suggested emoji:** 24 in a wrapping grid of 44 pt cells (`SUGGESTED_CATEGORY_EMOJI`),
+  a radio group; the chosen one has a 2 pt `action` border. A tap saves at once.
+- **Or any emoji:** a field ("Type or paste one") and a secondary **Use**, enabled
+  only for exactly one emoji; otherwise a footnote says why ("Use just one emoji.",
+  "Use an emoji, not a letter.").
+- **Choose a picture** (secondary; "Choose another picture" once one is set): the
+  photo library with the system's square crop, then shrunk to 120 px. The web picker
+  has no crop step, so the centre square is taken. A failed pick says "That picture
+  couldn't be used. Try another." and keeps the icon. Footnote: "Pictures stay on
+  this phone. Share cards keep their own look."
+- **Use the default** (text button, only when an icon is set) and **Done**, right-aligned.
+- **Rendering** (`CategoryIcon`): an emoji at 85% of the icon size, a picture at
+  the icon size with corners of a quarter of it, both in their own colours and hidden
+  from VoiceOver like every icon here (the word beside it says what it is).
+- **Not on share cards or Wrapped** (owner's call, 2026-11-03): the exported card
+  keeps its fixed design, so a photo never leaves the phone by accident. Neither the
+  cards nor Share's own controls draw category icons.
+
 ---
 
 ## 8. Accessibility checklist (per change)
@@ -1307,6 +1336,7 @@ Pinned for **Expo SDK 55 / RN 0.83.6** (verified in
 | Charts | existing `react-native-svg` | 15.15.3 | Animate via Reanimated. |
 | Share export | existing `react-native-view-shot` | 4.0.3 | Stay pinned until the SDK moves. |
 | Icons | `expo-symbols` | ~55.0.9 | Ionicons as fallback. |
+| Category pictures (D40) | `expo-image-picker` + `expo-image-manipulator` | ~55.0.24 / ~55.0.21 | Library only (camera and microphone permissions off in `app.json`); square crop, 120 px PNG. Both work on web. |
 | Haptics | `expo-haptics` | ~55.0.14 | Web: no-op, harmless. |
 | Slider | `@react-native-community/slider` | 5.1.2 | Works on web. |
 | Date picker | `@react-native-community/datetimepicker` | 8.6.0 | "Pick a date" on Log (§7.12). Check its web behaviour before relying on it in screenshots. |

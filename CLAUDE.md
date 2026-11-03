@@ -67,13 +67,15 @@ is a personality-test result with receipts. The math is the engine, never the pi
   id: Category                   // a built-in or an added 'c-' id
   user_id: string
   name: string | null            // the name shown; null for a built-in under its own
+  icon: CategoryIconChoice | null // the person's own emoji or picture (D40); null for
+                                 // the default symbol
   hidden: boolean                // off Log's choices; its predictions and record stay
   position: number               // order among the added ones
   created_at: string
 }
 ```
 The person renames any category, adds their own and hides one from Log's choices
-(You → Categories). A built-in has a row only once renamed or hidden. Device-local in
+(You → Categories). A built-in has a row only once renamed, hidden or given an icon. Device-local in
 the `categories` SQLite table, like the settings: not synced yet. Predictions carry
 only the id, so a rename changes no prediction and no name leaves the phone. Every
 category is shown through `categoryLabel`. **Predictions filed under an added category
@@ -82,6 +84,15 @@ project (2026-11-03, `CUSTOM_CATEGORY_SYNC` true); only the id goes up, so anoth
 phone shows "Other" until it's named there. With the flag off they stay on the phone
 and the Categories screen says so to a signed-in person. An added category never
 reaches the Coach: its name is the person's own text.
+
+**Category icons** (decided 2026-11-03, D40): any category, a built-in included, can
+show one emoji (a suggested grid or any emoji typed in) or a picture from the photo
+library, cropped square and shrunk to 120 px (`src/media/iconImage.ts`), instead of
+its symbol. "Use the default" goes back. Stored in the same `categories` row (SQLite
+migration 010, `icon_emoji` / `icon_image`): on this phone only, not synced, cleared
+by Erase. Shown in full colour wherever the app shows a category's icon; **never on a
+share card or Wrapped**, which keep their fixed design, so a photo can't leave the
+phone in a shared image.
 
 ### UserStat
 ```ts
@@ -654,7 +665,7 @@ the streak and practice rows (D22).
 | History (tab) | Open predictions first, then the full list of past ones, filterable (D26) | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
 | You (tab) | Your card, Plus, categories (D39), notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
-| Categories (sheet, from You) | Rename, add or hide categories (D39) | Free |
+| Categories (sheet, from You) | Rename, add or hide categories (D39); an emoji or picture for any of them (D40) | Free |
 
 ---
 
@@ -735,7 +746,8 @@ for, and validate that people actually share before betting on the free tier.
 - Type is Instrument Sans (decided 2026-11-01, roadmap D33; Inter until then): use
   the `type` tokens, which carry the family.
 - The brand has no hue (D33): actions and selection are ink (`action`, `onAction`),
-  and the only colours on screen mean over, under or on the line. A new hue needs a
+  and the only colours on screen mean over, under or on the line. The one exception
+  is a category icon the person chose (D40): their emoji or picture, in its own colours. A new hue needs a
   meaning and a line in DESIGN_SYSTEM §2 first.
 - Yes and No resolutions get identical feedback; colour never carries meaning alone.
 - Install native packages with `npx expo install`, never `npm i`.

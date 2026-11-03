@@ -72,7 +72,8 @@ enforce usage limits.
 
 ### What we never collect
 Location, contacts, health or fitness data, financial accounts, photos, your
-device's advertising identifier, or crash reports. "Health" and "finance" in
+device's advertising identifier, or crash reports. A picture you pick as a category
+icon is shrunk and kept on your phone; it is never uploaded. "Health" and "finance" in
 Calibrate are labels you choose for your own predictions. The app doesn't
 connect to any health or financial service.
 

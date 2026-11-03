@@ -693,6 +693,14 @@ Added 2026-09-29 (polish pass):
       rename Finance to "Money", add "Grad school", hide Social. Log offers Money
       and Grad school and no Social; Insights, History, the card and This week say
       "Money". Force-quit and reopen: all three kept.
+- [ ] **Category icons (D40, step 145; web-verified):** in You → Categories, tap
+      Health's icon and pick 🏃; tap Finance's icon → Choose a picture. iOS should ask
+      for photo access once with "Calibrate uses a picture you pick as a category
+      icon. It stays on this phone.", show its square crop, and the row should show
+      the picture with rounded corners. Check Today's cards, Log's chips and Insights'
+      badge rows show both, in light and dark, and that the share card is unchanged
+      (it draws no category icons). Type "ok" in "Or any emoji": Use stays off. Force-quit and
+      reopen: both kept. Use the default: the symbol is back.
 - [ ] **Custom categories sync (D39):** 006 applied and the flag on
       (2026-11-03). Left: sign in on two
       phones and check a prediction filed under an added category reaches the
