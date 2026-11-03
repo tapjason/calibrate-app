@@ -221,6 +221,20 @@ Warmup and the Coach's context all use it. Until D35 everything but the Warmup c
 a lean at any 5-point gap, so a dot could be "overconfident" on what the Warmup
 called luck.
 
+### Same-day answers aren't scored (decided 2026-11-03, D41)
+A Yes or No given on the local day the prediction was logged (`isSameDayAnswer`,
+`src/engine/sameDay.ts`) stays in History, marked "not scored", and still keeps the
+streak, but counts toward nothing calibrated: the rating, category scores and
+badges, the chart, the Brier line, the patterns, Wrapped and the Coach. Logging a
+sure thing, answering it at once and repeating it with "Log it again" bought a
+badge in three minutes, and the share card showed nothing of it (blind playtests
+2026-11-01 run 6 and 2026-11-03 run 4). Derived on every read from `created_at` and
+`resolved_at`, never stored. A correction keeps the first answer's time (D34), so
+it can't move an answer to another day. The earliest due date "Pick a date"
+offers is the day after logging; Insights, Resolve and "Answer it now" say when an
+answer isn't scored. It raises the cost of padding, it doesn't end it: a sure
+thing due tomorrow and answered tomorrow still counts.
+
 ### Minimum-N gating (required)
 Small samples make `actual_rate` meaningless — with two resolved predictions a bucket can
 only read 0, 0.5, or 1.0. Therefore:
@@ -327,7 +341,7 @@ reflection. Calibration data is worthless without resolution.
 opens its details — what you said and when, the due date, **Edit** (title, category
 and due date; never the confidence, which is the record) and **Delete** — with
 **Answer it now** below, which first says it's early (`docs/design/DESIGN_SYSTEM.md`
-§7.23) and then opens Resolve; an early answer counts like any other. A prediction that is due opens Resolve directly, as before.
+§7.23) and then opens Resolve; an early answer counts like any other, except on the day it was logged (D41, below). A prediction that is due opens Resolve directly, as before.
 A delete is synced as a deletion (a local tombstone pushed to Supabase), so it
 doesn't come back on the next pull; another signed-in device keeps its copy until
 it is deleted there.
