@@ -71,7 +71,7 @@ the reason:
 | User-generated content, messaging, chat | No | No user-to-user interaction. Shared cards go out through the OS share sheet, which Apple doesn't count as in-app user-generated content. |
 | Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms). |
 | Advertising | No | There are no ads. |
-| In-app controls (parental controls, age assurance) | No, or **Yes** for age assurance once `NEXT_STEPS.md` item i ships | Answer to match the build that's submitted. |
+| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once (`src/age/ageRange.ts`). Nothing in the app is gated on the result. |
 
 Read the questions as App Store Connect words them on the day; if one doesn't
 map onto this table, ask rather than guess. A rating that's later found to be

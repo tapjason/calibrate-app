@@ -122,6 +122,15 @@ function nowIso(): string {
 }
 
 /**
+ * One resolve per prediction at a time. A reminder action and a tap on the
+ * question can both call resolve before either commits; the second waits and
+ * does not write, so the streak checkpoint and the analytics event belong to
+ * the write that landed. The SQL `status = 'pending'` guard is still what
+ * makes a later call a no-op.
+ */
+const resolvesInFlight = new Map<string, Promise<void>>();
+
+/**
  * Unique-enough ID for the local single-user MVP. Format: `<ts>-<rand>` in
  * base36. NOT a UUID — when L5 turns on Supabase sync, swap this for a real
  * UUID (expo-crypto's randomUUID or similar) so cross-device IDs can't
@@ -225,29 +234,45 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   },
 
   resolve: async (id, outcome, reflection) => {
-    const userId = requireUserId();
-    // The streak before this answer, from the database rather than the lists
-    // held here: a sync can write rows those lists haven't seen, and the
-    // reload after the answer would then credit this answer with a
-    // checkpoint those rows reached.
-    await Promise.all([get().loadPending(), get().loadResolved()]);
-    const before = get().streakNow();
-    // Atomic: if stats recompute throws, the resolution rolls back too.
-    await withTransaction(async () => {
-      await resolvePrediction(id, outcome, reflection);
-      await useStatsStore.getState().recomputeForUser(userId);
+    const running = resolvesInFlight.get(id);
+    if (running) {
+      await running;
+      return;
+    }
+    let settle!: () => void;
+    const done = new Promise<void>((resolveDone) => {
+      settle = resolveDone;
     });
-    // Refresh local lists from the source of truth.
-    await Promise.all([get().loadPending(), get().loadResolved()]);
-    // Kept until shown, like an uncelebrated milestone.
-    const reached = checkpointReached(before, get().streakNow());
-    if (reached !== null) set({ streakCheckpoint: reached });
-    const resolvedPrediction = get().resolved.find((p) => p.id === id);
-    if (resolvedPrediction) {
-      void track('prediction_resolved', {
-        confidence: resolvedPrediction.confidence,
-        correct: outcome === 'resolved_yes',
+    // Taken before the body awaits, so a second caller can't start a write.
+    resolvesInFlight.set(id, done);
+    try {
+      const userId = requireUserId();
+      // The streak before this answer, from the database rather than the lists
+      // held here: a sync can write rows those lists haven't seen, and the
+      // reload after the answer would then credit this answer with a
+      // checkpoint those rows reached.
+      await Promise.all([get().loadPending(), get().loadResolved()]);
+      const before = get().streakNow();
+      // Atomic: if stats recompute throws, the resolution rolls back too.
+      await withTransaction(async () => {
+        await resolvePrediction(id, outcome, reflection);
+        await useStatsStore.getState().recomputeForUser(userId);
       });
+      // Refresh local lists from the source of truth.
+      await Promise.all([get().loadPending(), get().loadResolved()]);
+      // Kept until shown, like an uncelebrated milestone.
+      const reached = checkpointReached(before, get().streakNow());
+      if (reached !== null) set({ streakCheckpoint: reached });
+      const resolvedPrediction = get().resolved.find((p) => p.id === id);
+      if (resolvedPrediction && resolvedPrediction.status === outcome) {
+        void track('prediction_resolved', {
+          confidence: resolvedPrediction.confidence,
+          correct: outcome === 'resolved_yes',
+        });
+      }
+    } finally {
+      settle();
+      if (resolvesInFlight.get(id) === done) resolvesInFlight.delete(id);
     }
   },
 

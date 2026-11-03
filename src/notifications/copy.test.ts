@@ -1,4 +1,4 @@
-import { digestBody, reminderBody } from './copy';
+import { digestBody, REMINDER_ACTIONS, reminderBody } from './copy';
 
 describe('reminderBody', () => {
   // The stated confidence rides along so a resolve from the notification
@@ -11,6 +11,14 @@ describe('reminderBody', () => {
     const body = reminderBody('a'.repeat(200), 85);
     expect(body.length).toBeLessThanOrEqual(80);
     expect(body.endsWith('… · You said 85%')).toBe(true);
+  });
+});
+
+describe('reminder actions', () => {
+  it('offers Happened and Didn\'t, in the foreground, and no skip', () => {
+    expect(REMINDER_ACTIONS.map((action) => action.buttonTitle)).toEqual(['Happened', "Didn't"]);
+    expect(REMINDER_ACTIONS.map((action) => action.identifier)).toEqual(['happened', 'didnt']);
+    expect(REMINDER_ACTIONS.every((action) => action.options.opensAppToForeground)).toBe(true);
   });
 });
 

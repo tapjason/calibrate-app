@@ -1,26 +1,51 @@
 # Handoff
 
-**Branch:** `builder/privacy-policy-url` · **Not merged.**
+**Branch:** `builder/notification-actions` · **Not merged.**
 
 ## What this PR did
 
-Set `PRIVACY_POLICY_URL` to `https://tapjason.github.io/calibrate-app/privacy/`. Once the owner turns GitHub Pages on for `master` / `docs`, that URL is `docs/PRIVACY_POLICY.md` (`permalink: /privacy/`). `docs/_config.yml` publishes only that page and a one-line index, so the rest of `docs/` is not a site and Liquid in the research notes cannot fail the build. Paywall and Settings show the Privacy link. The policy's effective date is November 2, 2026, and it describes CSV export as free.
+D8, step 145. A resolution reminder offers Happened and Didn't. Choosing one records that answer once and opens the app on the resolved state (the acknowledgement, the range line, and a milestone or streak checkpoint when this answer earned it). Tapping the notification body still opens the question. Can't tell stays in the app. Web is unchanged.
+
+Already-scheduled reminders are not rescheduled. The next launch registers the category, and the OS attaches the buttons when the reminder is delivered. A reminder that fires before this version has launched once still opens Resolve from a body tap.
 
 ## In progress / broken
 
-The link is in the app and **404s until Pages is enabled on `master`**. Do not enable Pages before this commit is on `master`: without `docs/_config.yml` the build processes every Markdown file (and can fail) and `/privacy/` does not exist. `scripts/check.sh` is not in the repo.
+Nothing in this change is unfinished. There is no device here, so the buttons are untested (`docs/HUMAN_VERIFICATION.md` batch D1). `scripts/check.sh` is not in the repo. Background actions (`opensAppToForeground: false`) are not built (expo#36282).
 
 ## Next step
 
-Merge, then immediately: GitHub → the repo → **Settings** → **Pages** → **Build and deployment** → Source **Deploy from a branch** → Branch **`master`**, folder **`/docs`** → Save. Open `https://tapjason.github.io/calibrate-app/privacy/` and confirm the policy renders (HTML, not raw Markdown, not a 404). Also open `https://tapjason.github.io/calibrate-app/HUMAN_VERIFICATION` and confirm it 404s. Do not change the Pages setting from the agent. The steps are in `docs/HUMAN_VERIFICATION.md` (Batch E).
+Do not build background notification actions until a device confirms these buttons (HUMAN_VERIFICATION batch D1). The next owner call among the open UI decisions is D6. Do not start NEXT_STEPS item g or j, or UI_ROADMAP D5, before a device build on SDK 55 has passed Batch C.
+
+PR #7 (`builder/age-assurance`) also adds `HANDOFF.md` and the `CLAUDE.md` line that says to read it. Whoever merges second resolves that conflict.
 
 ## Read first
 
-`HANDOFF.md`, `CLAUDE.md`, `BUILD_PLAN.md`. For this change: `src/constants/app.ts`, `docs/_config.yml`, `docs/PRIVACY_POLICY.md`.
+`HANDOFF.md`, `CLAUDE.md`, `BUILD_PLAN.md`, `docs/design/UI_ROADMAP.md` (D8). For this change: `src/notifications/scheduler.ts`, `src/components/resolution/ResolvePrompt.tsx`.
 
 ## Open decisions
 
-App name, pricing (P1), and the RevenueCat Test Store prices (NEXT_STEPS, "Waiting on you"). PRs #7 (`builder/age-assurance`) and #8 (`builder/notification-actions`) also add `HANDOFF.md` and the `CLAUDE.md` line; whoever merges second resolves that conflict. Do not start NEXT_STEPS item g or j until a device build on SDK 55 has passed Batch C.
+D6, D11, and D12 in `docs/design/UI_ROADMAP.md` still need the owner. D5 waits on a device build. App name, pricing (P1), privacy-policy hosting, and the RevenueCat Test Store prices are in NEXT_STEPS, "Waiting on you".
+**Branch:** `builder/age-assurance` · **Not merged.**
+
+## What this PR did
+
+Declared Age Range (NEXT_STEPS item i, owner option (a)). On iOS 26+, after the first screen is up, the app asks Apple once per launch until a band is stored. SQLite keeps only the lower and upper bounds (`age_bucket`, migration 010). Web, Android, older iOS, a missing module, a decline, and any error store nothing and change nothing else. Nothing is gated on the band. The band is not synced. Erase and account deletion delete the row. Entitlement: `com.apple.developer.declared-age-range`. Package: `expo-age-range` 0.2.21 (SDK 55). `npx expo install` with no version resolved 58 and was not kept.
+
+## In progress / broken
+
+Nothing in this change is unfinished. There is no device here, so the Apple sheet is untested (HUMAN_VERIFICATION D4). `scripts/check.sh` is not in the repo.
+
+## Next step
+
+This waits on the owner. Buy the $99 Apple Developer account, then do **NEXT_STEPS item g** (SDK 55 dependency drift) on the day of the first EAS build. Do not start g earlier, and do not start item j or UI_ROADMAP D5 (SDK 58) until a device build on SDK 55 has passed Batch C. UI steps through 144 are built.
+
+## Read first
+
+`HANDOFF.md`, `CLAUDE.md`, `BUILD_PLAN.md`, `docs/NEXT_STEPS.md`. For this check: `src/age/ageRange.ts`.
+
+## Open decisions
+
+App name, pricing (P1), privacy-policy hosting, and the RevenueCat Test Store prices (NEXT_STEPS, "Waiting on you"). Age-rating questionnaire: answer **Yes** for age assurance. D6, D8, D11, and D12 in `docs/design/UI_ROADMAP.md` still need the owner. Do not gate any feature on the age band unless the owner decides to; the docs don't require it.
 
 ## Checks
 
