@@ -59,6 +59,11 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const scrollY = useRef(0);
   const wrapY = useRef(0);
   const confidenceBox = useRef({ y: 0, height: 0 });
+  // The ScrollView is keyed by question, so each one opens at the top: forget
+  // the last question's offset, or a needed scroll could be skipped.
+  useEffect(() => {
+    scrollY.current = 0;
+  }, [index]);
   const pick = (choice: 0 | 1) => {
     setSelected(choice);
     const bottom = wrapY.current + confidenceBox.current.y + confidenceBox.current.height;

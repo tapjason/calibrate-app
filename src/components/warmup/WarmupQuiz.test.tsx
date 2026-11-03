@@ -1,9 +1,9 @@
 import { AccessibilityInfo, ScrollView } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { space } from '@/constants/theme';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
-import { space } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { WarmupQuestion } from '@/types';
 
@@ -91,6 +91,25 @@ describe('WarmupQuiz', () => {
       expect(scrollTo).toHaveBeenCalledWith(
         expect.objectContaining({ y: 620 - 500 + space.lg }),
       );
+    });
+
+    it("forgets the last question's scroll on the next one", async () => {
+      render(<WarmupQuiz />);
+      const first = layOut(500);
+      fireEvent.press(screen.getByTestId('warmup-option-0'));
+      expect(first).toHaveBeenCalledTimes(1);
+      // Scrolled well down on question 1, then on to question 2.
+      fireEvent.scroll(screen.UNSAFE_getByType(ScrollView), {
+        nativeEvent: { contentOffset: { y: 900 } },
+      });
+      fireEvent.press(screen.getByTestId('warmup-confidence-increment'));
+      fireEvent.press(screen.getByTestId('warmup-next'));
+      await waitFor(() =>
+        expect(screen.getByTestId('warmup-prompt')).toHaveTextContent('Which is deeper?'),
+      );
+      const second = layOut(500);
+      fireEvent.press(screen.getByTestId('warmup-option-0'));
+      expect(second).toHaveBeenCalledWith(expect.objectContaining({ y: 620 - 500 + space.lg }));
     });
 
     it('leaves the scroll alone when it is already visible', () => {
