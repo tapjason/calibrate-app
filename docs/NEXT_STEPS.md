@@ -94,10 +94,15 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
   blocks submissions until the updated questions are answered (in-app
   controls, capabilities, medical or wellness topics; AI features count toward
   content frequency). Proposed answers are in `APP_STORE_LISTING.md` §1.
-- **Privacy policy hosting.** The repo is public, so GitHub Pages can serve
-  `docs/` for free. Once it's on, set `PRIVACY_POLICY_URL` in
-  `src/constants/app.ts` and the Privacy links on the paywall and in Settings appear. The agent can
-  turn Pages on with `gh` if you say so.
+- **Privacy policy: turn GitHub Pages on.** The URL is already set
+  (`PRIVACY_POLICY_URL` in `src/constants/app.ts`,
+  `https://tapjason.github.io/calibrate-app/privacy/`), so the paywall and
+  Settings show it and it 404s until Pages is on. Merge first, then
+  Settings → Pages → Deploy from a branch → `master` → `/docs`. Steps and
+  how to confirm are in `HUMAN_VERIFICATION.md`. Do not enable Pages before
+  that commit is on `master` (no `_config.yml` yet: the build would process
+  every doc and `/privacy/` would not exist). The agent must not change the
+  Pages setting.
 - **The app name.** Two US App Store apps already use "Calibrate", one of them
   an established health brand (and this app has a *health* category).
   `APP_STORE_LISTING.md` proposes alternatives; the choice and any trademark

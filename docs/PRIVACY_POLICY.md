@@ -1,15 +1,17 @@
+---
+layout: default
+title: Calibrate Privacy Policy
+permalink: /privacy/
+---
+
 <!--
-DRAFT — not yet published. Before hosting:
-  1. Set the effective [DATE] (name and contact are filled in).
-  2. ~~Ship account deletion~~ Done: delete-account deployed 2026-10-02; §7 describes it.
-  3. If the app's name changes (see docs/APP_STORE_LISTING.md), update it here.
-  4. Re-derive against docs/APP_PRIVACY.md. If they disagree, the code is right.
-  5. This is not legal advice. Have it read by someone qualified if you can.
+Published at https://tapjason.github.io/calibrate-app/privacy/
+If the app's name changes, update it here. Not legal advice.
 -->
 
 # Calibrate Privacy Policy
 
-**Effective:** [DATE] · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 2, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Calibrate ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
@@ -148,7 +150,7 @@ You can also email tapjason-dev@gmail.com to request deletion or a copy of your 
 Depending on where you live (for example, under the GDPR in the EU/UK or the
 CCPA in California), you may have the right to access, correct, export, or
 delete your personal data, and to object to or restrict its processing. You can
-export your predictions yourself as CSV (Calibrate Plus) or ask us for a copy at
+export your predictions yourself as CSV or ask us for a copy at
 tapjason-dev@gmail.com. We'll respond within 30 days. We don't sell personal
 information as the CCPA defines it.
 

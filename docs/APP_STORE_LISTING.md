@@ -144,14 +144,16 @@ leaves that judgement to the developer), so getting it right first time matters.
 > automatically unless cancelled at least 24 hours before the end of the
 > current period, and you can manage them in your App Store account settings.
 >
-> Privacy policy: [URL]
+> Privacy policy: https://tapjason.github.io/calibrate-app/privacy/
 > Terms of use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 **The last two lines are required, not decoration.** Apple's subscription rules
 (Guideline 3.1.2) require a functional privacy policy link and terms of use
-(Apple's standard EULA is fine) in the metadata. The paywall links to both as of
-2026-09-25; its Privacy Policy link appears once `PRIVACY_POLICY_URL` in
-`src/constants/app.ts` is set to the hosted policy.
+(Apple's standard EULA is fine) in the metadata. The paywall and Settings link
+to both. That privacy URL is `docs/PRIVACY_POLICY.md` on GitHub Pages
+(`permalink: /privacy/`). It has to load before submission: Pages on, source
+`master` / `/docs`. Until then the in-app link 404s.
+`docs/HUMAN_VERIFICATION.md` has the switch and the check.
 
 ---
 
