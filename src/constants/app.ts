@@ -58,10 +58,11 @@ export const APP_STORE_PROVIDER_TOKEN: string | null = null;
 
 /**
  * Whether predictions filed under a category the person added (roadmap D39)
- * go up to Supabase. Off until `supabase/migrations/006_custom_categories.sql`
- * is applied to the live project: its predictions table only accepts the five
- * built-ins, so pushing one would fail on every sync. Until then they stay on
- * the phone, still dirty, and go up on the first sync after this is turned on.
- * The Categories screen says so to a signed-in person.
+ * go up to Supabase. It needs `supabase/migrations/006_custom_categories.sql`
+ * on the live project (applied 2026-11-03): before it, the predictions table
+ * accepted only the five built-ins, so pushing one failed on every sync. With
+ * this off they stay on the phone, still dirty, and go up on the first sync
+ * after it's on, and the Categories screen says so to a signed-in person.
+ * Only the id syncs; the names stay on each phone.
  */
-export const CUSTOM_CATEGORY_SYNC = false;
+export const CUSTOM_CATEGORY_SYNC = true;

@@ -25,6 +25,16 @@ import {
   syncNow,
 } from './sync';
 
+// Roadmap D39: added categories sync once 006 is applied. Both settings are
+// tested, so turning the flag back off still holds them on the phone.
+jest.mock('@/constants/app', () => ({
+  ...jest.requireActual('@/constants/app'),
+  CUSTOM_CATEGORY_SYNC: true,
+}));
+const setCustomCategorySync = (on: boolean): void => {
+  jest.requireMock<{ CUSTOM_CATEGORY_SYNC: boolean }>('@/constants/app').CUSTOM_CATEGORY_SYNC = on;
+};
+
 // ----------------------------------------------------------------------------
 // Fixtures
 // ----------------------------------------------------------------------------
@@ -153,6 +163,7 @@ function makeFakeClient(opts: {
 // ----------------------------------------------------------------------------
 
 beforeEach(async () => {
+  setCustomCategorySync(true);
   setDbForTests(await createTestDb());
   __resetSyncStateForTests();
 });
@@ -197,6 +208,7 @@ describe('pullRemote', () => {
   // Review 2026-11-01: a prediction held back on this phone (an added
   // category, roadmap D39) keeps its local answer even if the server's copy is newer.
   it('leaves a held-back prediction alone, however new the server copy', async () => {
+    setCustomCategorySync(false);
     await insertPrediction(
       localPrediction({ id: 'held', category: 'c-grad123456', status: 'resolved_yes', resolved_at: '2026-06-01T19:00:00.000Z' }),
     );
@@ -281,6 +293,7 @@ describe('pushDirty', () => {
   // Roadmap D39: the server only accepts the five built-ins until its 006
   // migration is applied, so a prediction in an added category waits, dirty.
   it('holds back a prediction filed under an added category, still dirty', async () => {
+    setCustomCategorySync(false);
     await insertPrediction(localPrediction({ id: 'built-in' }));
     await insertPrediction(localPrediction({ id: 'added', category: 'c-grad123456' }));
 
@@ -289,6 +302,17 @@ describe('pushDirty', () => {
     expect(pushed).toBe(1);
     expect(upsertCalls[0].map((r: { id: string }) => r.id)).toEqual(['built-in']);
     expect((await listDirtyPredictions('user-aaa')).map((r) => r.id)).toEqual(['added']);
+  });
+
+  it('pushes a prediction filed under an added category once the server accepts it', async () => {
+    await insertPrediction(localPrediction({ id: 'built-in' }));
+    await insertPrediction(localPrediction({ id: 'added', category: 'c-grad123456' }));
+
+    const { client, upsertCalls } = makeFakeClient();
+    const pushed = await pushDirty('user-aaa', client);
+    expect(pushed).toBe(2);
+    expect(upsertCalls[0].map((r: { id: string }) => r.id).sort()).toEqual(['added', 'built-in']);
+    expect(await listDirtyPredictions('user-aaa')).toEqual([]);
   });
 
   it('falls back to per-row upsert when the batch fails', async () => {

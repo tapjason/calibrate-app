@@ -5,9 +5,8 @@
 -- the name: names, renames and hidden flags stay on the device for now, so
 -- no category name (the person's own text) reaches the server.
 --
--- Not applied yet (the project is paused). Once applied, set
--- CUSTOM_CATEGORY_SYNC to true in src/constants/app.ts so those predictions
--- start syncing; until then the app keeps them on the phone.
+-- Applied to the live project 2026-11-03, and CUSTOM_CATEGORY_SYNC in
+-- src/constants/app.ts turned on the same day, so those predictions sync.
 
 alter table public.predictions
   drop constraint if exists predictions_category_check;

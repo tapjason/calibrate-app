@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-nati
 import { Button } from '@/components/ui/Button';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
+import { CUSTOM_CATEGORY_SYNC } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -182,10 +183,9 @@ export function CategoryManager() {
         disabled={busy || newName.trim().length === 0 || addProblem !== null}
         testID="manage-add"
       />
-      {/* Honest about backup (roadmap D39): the server only knows the five
-          built-ins until its migration is applied, so predictions filed under
-          an added category stay on this phone. */}
-      {signedIn && hasOwn && (
+      {/* Honest about backup (roadmap D39): while CUSTOM_CATEGORY_SYNC is off,
+          predictions filed under an added category stay on this phone. */}
+      {!CUSTOM_CATEGORY_SYNC && signedIn && hasOwn && (
         <Text style={styles.footnote} testID="manage-local-note">
           Predictions in your own categories stay on this phone for now: they don’t back up to
           your account yet.
