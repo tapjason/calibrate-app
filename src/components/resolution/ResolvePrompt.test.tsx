@@ -120,6 +120,122 @@ describe('ResolvePrompt', () => {
   });
 });
 
+describe('ResolvePrompt opened from a reminder action', () => {
+  it('opens on the recorded answer and does not write again', async () => {
+    await insertPrediction(samplePending());
+    await usePredictionStore.getState().resolve('p1', 'resolved_yes');
+    const recorded = await getPrediction('p1');
+
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_yes" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
+        'Recorded: it happened',
+      );
+    });
+    expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(/That's your first/);
+    expect(screen.getByTestId('reflection-field')).toBeTruthy();
+    expect(screen.queryByText('Did it happen?')).toBeNull();
+    expect((await getPrediction('p1'))?.resolved_at).toBe(recorded?.resolved_at);
+  });
+
+  it("opens on Didn't the same way", async () => {
+    await insertPrediction(samplePending());
+    await usePredictionStore.getState().resolve('p1', 'resolved_no');
+
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_no" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
+        "Recorded: it didn't happen",
+      );
+    });
+  });
+
+  it('does not celebrate an answer the reminder did not record', async () => {
+    await insertPrediction(
+      samplePending({ status: 'resolved_yes', resolved_at: '2026-06-01T00:00:00.000Z' }),
+    );
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_no" />);
+    await waitFor(() => {
+      expect(screen.getByText(/already resolved/i)).toBeTruthy();
+    });
+    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+    expect((await getPrediction('p1'))?.resolved_at).toBe('2026-06-01T00:00:00.000Z');
+  });
+
+  it('shows the question when the answer was not actually recorded', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_yes" />);
+    await waitFor(() => {
+      expect(screen.getByText('Did it happen?')).toBeTruthy();
+    });
+    expect((await getPrediction('p1'))?.status).toBe('pending');
+  });
+
+  it('does not overwrite an answer a reminder recorded while the question was open', async () => {
+    await insertPrediction(samplePending());
+    const onResolved = jest.fn();
+    render(<ResolvePrompt predictionId="p1" onResolved={onResolved} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+
+    await usePredictionStore.getState().resolve('p1', 'resolved_yes');
+    fireEvent.press(screen.getByTestId('resolve-no'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/already resolved/i)).toBeTruthy();
+    });
+    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+    expect(onResolved).not.toHaveBeenCalled();
+    expect(screen.queryByText("Recorded: it didn't happen")).toBeNull();
+  });
+
+  it('still lets a mis-tap be switched', async () => {
+    await insertPrediction(samplePending());
+    await usePredictionStore.getState().resolve('p1', 'resolved_yes');
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_yes" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-change')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('resolve-change'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
+        "Recorded: it didn't happen",
+      );
+    });
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
+    expect(screen.queryByTestId('resolve-skip')).toBeNull();
+  });
+
+  it('celebrates a milestone the reminder answer reached', async () => {
+    for (let i = 0; i < 19; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 2 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await insertPrediction(samplePending());
+    await useStatsStore.getState().recomputeForUser(useAuthStore.getState().userId!);
+    useStatsStore.getState().clearMilestone();
+    await usePredictionStore.getState().resolve('p1', 'resolved_yes');
+
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_yes" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy();
+    });
+    expect(useStatsStore.getState().milestone).toBeNull();
+    expect(useRatingStore.getState().moment).toBe(true);
+  });
+});
+
 describe('ResolvePrompt layout', () => {
   // Hindsight bias: the stated number is read before the outcome is asked for.
   it('leads with what the user said, then asks the question', async () => {
@@ -427,6 +543,20 @@ describe('ResolvePrompt streak checkpoints', () => {
       '7-day streak. A full week. Next milestone: 30\u00A0days.',
     );
     expect(screen.queryByTestId(/^milestone-/)).toBeNull();
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+  });
+
+  it('names the checkpoint when the reminder action earned it', async () => {
+    await sixDaysThenToday();
+    await usePredictionStore.getState().resolve('p1', 'resolved_no');
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_no" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('streak-checkpoint')).toBeTruthy();
+    });
+    expect(screen.getByTestId('streak-checkpoint').props.accessibilityLabel).toBe(
+      '7-day streak. A full week. Next milestone: 30\u00A0days.',
+    );
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
   });
 

@@ -13,6 +13,33 @@
 export const REMINDER_CATEGORY = 'calibrate-resolution-reminder';
 export const DIGEST_CATEGORY = 'calibrate-weekly-digest';
 
+/**
+ * Foreground actions on the resolution reminder (roadmap D8). Tapping one
+ * opens the app straight into the resolved state. "Can't tell" stays an
+ * in-app choice: a notification has no room to explain that it won't count.
+ * `opensAppToForeground` is true on purpose. A background action is not
+ * guaranteed to reach JS on iOS when the app is killed (expo#36282).
+ */
+export const REMINDER_ACTION_HAPPENED = 'happened';
+export const REMINDER_ACTION_DIDNT = 'didnt';
+
+export const REMINDER_ACTIONS: {
+  identifier: string;
+  buttonTitle: string;
+  options: { opensAppToForeground: true };
+}[] = [
+  {
+    identifier: REMINDER_ACTION_HAPPENED,
+    buttonTitle: 'Happened',
+    options: { opensAppToForeground: true },
+  },
+  {
+    identifier: REMINDER_ACTION_DIDNT,
+    buttonTitle: "Didn't",
+    options: { opensAppToForeground: true },
+  },
+];
+
 export const REMINDER_PLACEHOLDER = 'A prediction is ready to resolve';
 export const DIGEST_PLACEHOLDER = 'Weekly check-in';
 

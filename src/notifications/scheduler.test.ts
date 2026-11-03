@@ -12,6 +12,7 @@
 import { Platform } from 'react-native';
 
 import { setDbForTests } from '@/db/client';
+import { getPrediction } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -51,13 +52,20 @@ interface FakeNotifications extends NotificationsApi {
   scheduleCalls: number;
   cancelCalls: number;
   /**
-   * Fire the tap handler with a given prediction id, as if the user tapped.
-   * Pass an explicit identifier to simulate the OS replaying a specific
-   * response (e.g. the launching tap) to the runtime listener.
+   * Fire the tap handler with a given prediction id, as if the user tapped
+   * the notification body. Pass an explicit identifier to simulate the OS
+   * replaying a specific response (e.g. the launching tap) to the runtime
+   * listener.
    */
-  triggerTap(predictionId: string, identifier?: string): void;
+  triggerTap(predictionId: string, identifier?: string): Promise<void>;
+  /** A tap on Happened, Didn't, or any other action identifier. */
+  triggerAction(
+    predictionId: string,
+    actionIdentifier: string,
+    identifier?: string,
+  ): Promise<void>;
   /** A tap on a notification carrying `data` (the digest's, the practice reminder's). */
-  triggerTapData(data: Record<string, unknown>): void;
+  triggerTapData(data: Record<string, unknown>): Promise<void>;
 }
 
 interface FakeNavigator extends Navigator {
@@ -69,17 +77,18 @@ function makeFakeNotifications(
   options: {
     scheduleThrows?: boolean;
     launchPredictionId?: string;
+    /** Which button launched the app. Absent means a tap on the body. */
+    launchAction?: string;
     /** Not asked yet: the check says no, and asking returns `answer`. */
     undetermined?: { answer: boolean };
   } = {},
 ): FakeNotifications {
-  let tapListener:
-    | ((event: {
-        notification: {
-          request: { identifier: string; content: { data?: Record<string, unknown> } };
-        };
-      }) => void)
-    | null = null;
+  let tapListener: ((event: {
+    actionIdentifier?: string;
+    notification: {
+      request: { identifier: string; content: { data?: Record<string, unknown> } };
+    };
+  }) => void | Promise<void>) | null = null;
   let nextId = 1;
   const fake: FakeNotifications = {
     scheduled: new Map(),
@@ -138,21 +147,29 @@ function makeFakeNotifications(
       };
     },
     triggerTap(predictionId: string, identifier = `tap-${predictionId}-${nextId++}`) {
+      return fake.triggerAction(predictionId, 'expo.modules.notifications.actions.DEFAULT', identifier);
+    },
+    triggerAction(predictionId: string, actionIdentifier: string, identifier = `tap-${actionIdentifier}-${nextId++}`) {
       if (!tapListener) throw new Error('no tap listener installed');
-      tapListener({
-        notification: {
-          request: {
-            identifier,
-            content: { data: { predictionId } },
+      return Promise.resolve(
+        tapListener({
+          actionIdentifier,
+          notification: {
+            request: {
+              identifier,
+              content: { data: { predictionId } },
+            },
           },
-        },
-      });
+        }),
+      );
     },
     triggerTapData(data: Record<string, unknown>) {
       if (!tapListener) throw new Error('no tap listener installed');
-      tapListener({
-        notification: { request: { identifier: `tap-data-${nextId++}`, content: { data } } },
-      });
+      return Promise.resolve(
+        tapListener({
+          notification: { request: { identifier: `tap-data-${nextId++}`, content: { data } } },
+        }),
+      );
     },
     async getLastNotificationResponseAsync() {
       // Simulates the cold-start launch response: null when the app was
@@ -160,6 +177,7 @@ function makeFakeNotifications(
       // The identifier is stable so a replayed tap of the same launch dedupes.
       if (!options.launchPredictionId) return null;
       return {
+        actionIdentifier: options.launchAction,
         notification: {
           request: {
             identifier: `launch-${options.launchPredictionId}`,
@@ -530,6 +548,8 @@ describe('scheduler: web platform', () => {
       });
       await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
 
+      await routeFromLaunchNotification();
+      expect(navigator.pushed).toHaveLength(0);
       expect(warnSpy).not.toHaveBeenCalled();
 
       debugSpy.mockRestore();
@@ -703,9 +723,22 @@ describe('scheduler: hidden-preview placeholder', () => {
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     await initNotifications();
 
-    expect(setCategory).toHaveBeenCalledWith('calibrate-resolution-reminder', [], {
-      previewPlaceholder: 'A prediction is ready to resolve',
-    });
+    expect(setCategory).toHaveBeenCalledWith(
+      'calibrate-resolution-reminder',
+      [
+        {
+          identifier: 'happened',
+          buttonTitle: 'Happened',
+          options: { opensAppToForeground: true },
+        },
+        {
+          identifier: 'didnt',
+          buttonTitle: "Didn't",
+          options: { opensAppToForeground: true },
+        },
+      ],
+      { previewPlaceholder: 'A prediction is ready to resolve' },
+    );
 
     await usePredictionStore.getState().create({
       title: 'See the doctor',
@@ -923,5 +956,283 @@ describe('scheduler: a chosen reminder time', () => {
     expect(notifications.scheduled.size).toBe(1);
     [rec] = Array.from(notifications.scheduled.values());
     expect([rec.date.getHours(), rec.date.getMinutes()]).toEqual([20, 30]);
+  });
+});
+
+// Roadmap D8: Happened / Didn't on the resolution reminder. Foreground actions
+// record the answer once, then open Resolve already resolved. The body still
+// opens the question. Older reminders are not rewritten; the category registered
+// at launch is what the OS attaches when they are delivered.
+describe('scheduler: reminder actions', () => {
+  async function pending(title = 'Ship the prototype') {
+    return await usePredictionStore.getState().create({
+      title,
+      category: 'work',
+      confidence: 70,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+  }
+
+  it('records Happened once and opens the resolved state', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+
+    await notifications.triggerAction(p.id, 'happened');
+    await flush();
+
+    const row = await getPrediction(p.id);
+    expect(row?.status).toBe('resolved_yes');
+    expect(row?.reflection).toBeNull();
+    expect(useStatsStore.getState().userStat?.total_resolved).toBe(1);
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+    expect(notifications.scheduled.size).toBe(0);
+  });
+
+  it("records Didn't and opens that resolved state", async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+
+    await notifications.triggerAction(p.id, 'didnt');
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=didnt`]);
+  });
+
+  it('leaves the question open when the notification body is tapped', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+
+    await notifications.triggerTap(p.id);
+
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+  });
+
+  it('does not record an unknown action, including a skip', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+
+    await notifications.triggerAction(p.id, 'skip');
+    await notifications.triggerAction(p.id, 'something-else', 'other');
+
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`, `/resolve/${p.id}`]);
+  });
+
+  it('does not change an answer that was already recorded', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes', 'kept');
+    const first = await getPrediction(p.id);
+
+    await notifications.triggerAction(p.id, 'didnt');
+    await notifications.triggerAction(p.id, 'happened', 'again');
+
+    const after = await getPrediction(p.id);
+    expect(after?.status).toBe('resolved_yes');
+    expect(after?.resolved_at).toBe(first?.resolved_at);
+    expect(after?.reflection).toBe('kept');
+    expect(useStatsStore.getState().userStat?.total_resolved).toBe(1);
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`, `/resolve/${p.id}`]);
+  });
+
+  it('records once when two actions arrive together', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+
+    const first = notifications.triggerAction(p.id, 'happened', 'delivery-a');
+    const second = notifications.triggerAction(p.id, 'didnt', 'delivery-b');
+    await first;
+    await second;
+
+    const row = await getPrediction(p.id);
+    expect(row?.status).toBe('resolved_yes');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+  });
+
+  it('records once when the same response is delivered twice', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+
+    const first = notifications.triggerAction(p.id, 'happened', 'same');
+    const second = notifications.triggerAction(p.id, 'happened', 'same');
+    await first;
+    await second;
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_yes');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+  });
+
+  it('opens Resolve and records nothing for an unknown or deleted prediction', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+    await usePredictionStore.getState().remove(p.id);
+
+    await expect(notifications.triggerAction('no-such-id', 'happened')).resolves.toBeUndefined();
+    await expect(notifications.triggerAction(p.id, 'didnt')).resolves.toBeUndefined();
+
+    expect(await getPrediction(p.id)).toBeNull();
+    expect(await getPrediction('no-such-id')).toBeNull();
+    expect(navigator.pushed).toEqual(['/resolve/no-such-id', `/resolve/${p.id}`]);
+    expect(useStatsStore.getState().userStat?.total_resolved ?? 0).toBe(0);
+  });
+
+  it('keeps the edited prediction when a stale reminder is answered', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending('Ship it');
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Ship the beta',
+      category: 'health',
+      due_date: p.due_date,
+    });
+    await flush();
+
+    await notifications.triggerAction(p.id, 'happened');
+
+    const row = await getPrediction(p.id);
+    expect(row?.status).toBe('resolved_yes');
+    expect(row?.title).toBe('Ship the beta');
+    expect(row?.category).toBe('health');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+  });
+
+  it('records a cold-start Happened from the launching response', async () => {
+    const p = await pending();
+    const notifications = makeFakeNotifications(true, {
+      launchPredictionId: p.id,
+      launchAction: 'happened',
+    });
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    await routeFromLaunchNotification();
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_yes');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+  });
+
+  it('records once when the launching action also reaches the listener', async () => {
+    const p = await pending();
+    const notifications = makeFakeNotifications(true, {
+      launchPredictionId: p.id,
+      launchAction: 'didnt',
+    });
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    const replay = notifications.triggerAction(p.id, 'didnt', `launch-${p.id}`);
+    await routeFromLaunchNotification();
+    await replay;
+
+    const row = await getPrediction(p.id);
+    expect(row?.status).toBe('resolved_no');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=didnt`]);
+  });
+
+  it('still opens the resolved state if the first navigation threw, without writing again', async () => {
+    const p = await pending();
+    const notifications = makeFakeNotifications(true, {
+      launchPredictionId: p.id,
+      launchAction: 'happened',
+    });
+    let throwOnce = true;
+    const navigator: FakeNavigator = {
+      pushed: [],
+      push(path: string) {
+        if (throwOnce) {
+          throwOnce = false;
+          throw new Error('navigate before mounting the Root Layout');
+        }
+        navigator.pushed.push(path);
+      },
+    };
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await routeFromLaunchNotification();
+    const first = await getPrediction(p.id);
+    expect(first?.status).toBe('resolved_yes');
+    expect(navigator.pushed).toHaveLength(0);
+
+    await routeFromLaunchNotification();
+    const second = await getPrediction(p.id);
+    expect(second?.resolved_at).toBe(first?.resolved_at);
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+    warn.mockRestore();
+  });
+
+  it('stays silent when recording fails, and still opens the question', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+    const realGetState = usePredictionStore.getState.bind(usePredictionStore);
+    const spy = jest.spyOn(usePredictionStore, 'getState').mockImplementation(() => {
+      const state = realGetState();
+      return {
+        ...state,
+        resolve: async () => {
+          throw new Error('disk full');
+        },
+      };
+    });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(notifications.triggerAction(p.id, 'happened')).resolves.toBeUndefined();
+
+    spy.mockRestore();
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('records a cold-start action even when notification permission is off', async () => {
+    const p = await pending();
+    const notifications = makeFakeNotifications(false, {
+      launchPredictionId: p.id,
+      launchAction: 'didnt',
+    });
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await initNotifications();
+
+    await routeFromLaunchNotification();
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=didnt`]);
+    warn.mockRestore();
   });
 });
