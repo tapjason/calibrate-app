@@ -83,6 +83,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: 'row',
+    // Narrow or zoomed, the dots drop below the words instead of squeezing
+    // them to a letter a line (playtest 2026-11-03).
+    flexWrap: 'wrap',
     gap: space.md,
     marginBottom: space.lg,
     paddingHorizontal: space.lg,
@@ -90,7 +93,9 @@ const styles = StyleSheet.create({
   },
   // The milestone card's tint (MilestoneCard), without its motion.
   rowCheckpoint: { backgroundColor: colors.selectedFill, borderColor: colors.emphasis },
-  text: { flex: 1 },
+  // Wraps below the flame when there isn't room for about 160, then shrinks
+  // to fit the line it has.
+  text: { flexBasis: 160, flexGrow: 1, flexShrink: 1 },
   // Not tabular: the count sits in a phrase and doesn't animate in place, and
   // tabular figures space a phrase's digits apart (Inter's widened the
   // hyphen too, "15 - day").

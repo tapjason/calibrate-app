@@ -79,7 +79,7 @@ export function predictionsToCsv(
   return lines.join('\r\n');
 }
 
-/** File name for an export taken at `now`, e.g. `calibrate-2026-09-07.csv`. */
+/** File name for an export taken at `now`, e.g. `fairly-sure-2026-09-07.csv`. */
 export function csvFileName(now: Date = new Date()): string {
-  return `calibrate-${now.toISOString().slice(0, 10)}.csv`;
+  return `fairly-sure-${now.toISOString().slice(0, 10)}.csv`;
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { APP_NAME, PLUS_NAME } from '@/constants/app';
 import { colors, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -49,7 +50,7 @@ export function DeleteAccountView({
         <Text style={styles.body}>
           {wasSignedIn
             ? 'Your predictions and account are gone from our servers and this phone.'
-            : 'Everything Calibrate stored on this phone is gone.'}
+            : `Everything ${APP_NAME} stored on this phone is gone.`}
         </Text>
         <Button label="Done" onPress={onDone} testID="delete-done" />
       </View>
@@ -90,7 +91,7 @@ export function DeleteAccountView({
         <View style={styles.warning} testID="delete-subscription-warning">
           <Text style={styles.warningTitle}>Your subscription won't stop</Text>
           <Text style={styles.warningBody}>
-            Calibrate Plus is billed by{' '}
+            {PLUS_NAME} is billed by{' '}
             {Platform.OS === 'android' ? 'Google Play' : 'Apple'}, and deleting your
             account doesn't cancel it. Cancel it first, or you'll keep being charged.
           </Text>
@@ -107,7 +108,7 @@ export function DeleteAccountView({
 
       {wasSignedIn && provider === 'apple' && (
         <Text style={styles.muted} testID="delete-apple-note">
-          You'll be asked to confirm with Apple, so Calibrate's access to your Apple ID
+          You'll be asked to confirm with Apple, so {APP_NAME}'s access to your Apple ID
           is removed too.
         </Text>
       )}

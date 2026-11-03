@@ -325,7 +325,7 @@ export function ResolvePrompt({
           <Text style={styles.recorded} accessibilityRole="header" testID="resolve-recorded-label">
             {answered.outcome === 'resolved_yes'
               ? 'Recorded: it happened'
-              : "Recorded: it didn't happen"}
+              : 'Recorded: it didn’t happen'}
           </Text>
         </View>
         <Text style={styles.title}>{prediction.title}</Text>

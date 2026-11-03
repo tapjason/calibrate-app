@@ -4,7 +4,13 @@ import { AppState, Linking, Platform, Pressable, StyleSheet, Switch, Text, View 
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { Icon } from '@/components/ui/Icon';
-import { PRIVACY_POLICY_URL, REFINE_ENABLED, TERMS_OF_USE_URL } from '@/constants/app';
+import {
+  APP_NAME,
+  PLUS_NAME,
+  PRIVACY_POLICY_URL,
+  REFINE_ENABLED,
+  TERMS_OF_USE_URL,
+} from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { MomentChips } from '@/components/practice/MomentChips';
 import { DAY_NAMES, DayChips } from '@/components/settings/DayChips';
@@ -30,7 +36,7 @@ import { useSettingsStore, type PracticeReminderTime } from '@/store/settingsSto
  *
  *   - Account: sign in, or who you are and sign out. Hidden on a build with no
  *     Supabase config, where accounts can't exist.
- *   - Your card, then Calibrate Plus (also the permanent route to Restore).
+ *   - Your card, then Plus (also the permanent route to Restore).
  *   - Notifications: the single kill-switch for reminders and the digest.
  *   - AI Refine (hidden while REFINE_ENABLED is false), Coach, usage stats.
  *   - About: how scoring works, terms, privacy.
@@ -100,7 +106,7 @@ export function SettingsView({
           {onOpenCard && <NavRow label="Your card" onPress={onOpenCard} testID="settings-card" />}
           {onOpenPaywall && (
             <NavRow
-              label="Calibrate Plus"
+              label={PLUS_NAME}
               value={isPlus ? 'Active' : undefined}
               onPress={onOpenPaywall}
               testID="settings-plus"
@@ -119,7 +125,7 @@ export function SettingsView({
       <Group>
         <ToggleRow
           label="Notifications"
-          description="Everything Calibrate sends. Each kind has its own choice below."
+          description={`Everything ${APP_NAME} sends. Each kind has its own choice below.`}
           value={notificationsEnabled}
           onValueChange={(v) => void setNotificationsEnabled(v)}
           testID="toggle-notifications"
@@ -451,7 +457,7 @@ function NotificationPermissionRow() {
     <View style={styles.permission} testID="settings-notification-permission">
       <Text style={styles.rowDescription}>
         {asked
-          ? 'Notifications are off for Calibrate in iOS Settings, so reminders can’t reach you.'
+          ? `Notifications are off for ${APP_NAME} in iOS Settings, so reminders can’t reach you.`
           : 'iOS hasn’t been asked yet, so reminders can’t reach you.'}
       </Text>
       <Pressable

@@ -181,8 +181,14 @@ function writeWebVars(): void {
   }
   const light = webVars.map((v) => v.split('|')[0]).join('');
   const dark = webVars.map((v) => v.split('|')[1]).join('');
+  // The keyboard focus ring in ink, so it shows in both appearances: the
+  // browser's default is near-black and vanished on the dark canvas
+  // (playtest 2026-11-03). Drawn inside the edge: rows sit in rounded cards
+  // that clip anything outside them.
   webStyle.textContent =
-    `:root{${light}}` + `@media (prefers-color-scheme: dark){:root{${dark}}}`;
+    `:root{${light}}` +
+    `@media (prefers-color-scheme: dark){:root{${dark}}}` +
+    ':focus-visible{outline:2px solid var(--cal-textPrimary);outline-offset:-2px}';
 }
 
 /**

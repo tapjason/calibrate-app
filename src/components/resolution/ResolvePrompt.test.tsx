@@ -147,7 +147,7 @@ describe('ResolvePrompt opened from a reminder action', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
-        "Recorded: it didn't happen",
+        'Recorded: it didn’t happen',
       );
     });
   });
@@ -189,7 +189,7 @@ describe('ResolvePrompt opened from a reminder action', () => {
     });
     expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
     expect(onResolved).not.toHaveBeenCalled();
-    expect(screen.queryByText("Recorded: it didn't happen")).toBeNull();
+    expect(screen.queryByText('Recorded: it didn’t happen')).toBeNull();
   });
 
   it('still lets a mis-tap be switched', async () => {
@@ -204,7 +204,7 @@ describe('ResolvePrompt opened from a reminder action', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
-        "Recorded: it didn't happen",
+        'Recorded: it didn’t happen',
       );
     });
     expect((await getPrediction('p1'))?.status).toBe('resolved_no');
@@ -612,7 +612,7 @@ describe('ResolvePrompt recorded label', () => {
     fireEvent.press(screen.getByTestId('resolve-no'));
     await waitFor(() => {
       expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(
-        "Recorded: it didn't happen",
+        'Recorded: it didn’t happen',
       );
     });
   });

@@ -180,7 +180,7 @@ describe('shareText', () => {
       bucket(80, 'underconfident'),
     ]);
     expect(text).toBe(
-      'My calibration · Calibrate\nSharp in health · Tracker in finance\n⬜🟩🟩🟧🟦 score 81',
+      'My calibration · Fairly Sure\nSharp in health · Tracker in finance\n⬜🟩🟩🟧🟦 score 81',
     );
   });
 

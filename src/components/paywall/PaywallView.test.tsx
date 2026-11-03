@@ -246,7 +246,7 @@ describe('PaywallView', () => {
   it('narrows the title for the close control only when it shows', () => {
     seed();
     const marginOf = () =>
-      StyleSheet.flatten(screen.getByText('Calibrate Plus').props.style).marginRight;
+      StyleSheet.flatten(screen.getByText('Fairly Sure Plus').props.style).marginRight;
     const { rerender } = render(<PaywallView />);
     expect(marginOf()).toBeUndefined();
     rerender(<PaywallView onClose={jest.fn()} />);

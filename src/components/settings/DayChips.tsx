@@ -55,18 +55,23 @@ export function DayChips({ value, onChange, testID }: DayChipsProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.sm },
+  row: { flexDirection: 'row', gap: space.xxs, marginTop: space.sm },
   chip: {
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.controlBorder,
     borderRadius: radius.pill,
     borderWidth: 1,
+    // Seven equal chips on one row: a basis of 0 shares the width evenly, so
+    // nothing wraps at phone widths. With natural widths, Saturday wrapped
+    // alone onto a second row (playtest 2026-11-03); at 320 points each is
+    // still about 34 wide, enough for a three-letter day.
+    flexBasis: 0,
     flexGrow: 1,
     justifyContent: 'center',
     minHeight: 36,
-    minWidth: 44,
-    paddingHorizontal: space.sm,
+    minWidth: 0,
+    paddingHorizontal: space.xxs,
   },
   chipOn: { backgroundColor: colors.action, borderColor: colors.action },
   text: { ...type.footnote, color: colors.textPrimary },

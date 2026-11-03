@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { CoachSample } from '@/components/stats/patternCopy';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { PLUS_NAME } from '@/constants/app';
 import { colors, FONT_FAMILY, radius, space, tabularNums, type } from '@/constants/theme';
 
 interface PlusTeaserProps {
@@ -35,7 +36,7 @@ export function PlusTeaser({ onUpgrade, monthsOnFile = 0, sample = null }: PlusT
 
   return (
     <View style={styles.card} testID="plus-teaser">
-      <Text style={styles.eyebrow}>Calibrate Plus</Text>
+      <Text style={styles.eyebrow}>{PLUS_NAME}</Text>
       <Text accessibilityRole="header" style={styles.title}>Go deeper on your own numbers</Text>
 
       <View style={styles.benefit}>

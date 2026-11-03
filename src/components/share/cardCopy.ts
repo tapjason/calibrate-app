@@ -134,7 +134,7 @@ const BAND_LOWS = [0, 20, 40, 60, 80] as const;
  * score appear only once the rating is unlocked — a row of verdicts built on
  * a handful of predictions is exactly the noise CLAUDE.md forbids publishing.
  *
- *   My calibration · Calibrate
+ *   My calibration · Fairly Sure
  *   Sharp in health · Guesser in finance
  *   ⬜🟩🟩🟧🟧 score 81
  *   https://apps.apple.com/app/apple-store/id…?pt=…&ct=share-card-text&mt=8

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Calibrate",
+    "name": "Fairly Sure",
     "slug": "calibrate",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -47,7 +47,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Calibrate uses a picture you pick as a category icon. It stays on this phone.",
+          "photosPermission": "Fairly Sure uses a picture you pick as a category icon. It stays on this phone.",
           "cameraPermission": false,
           "microphonePermission": false
         }

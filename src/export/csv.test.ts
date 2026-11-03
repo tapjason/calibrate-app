@@ -79,7 +79,7 @@ describe('predictionsToCsv', () => {
 describe('csvFileName', () => {
   it('is dated', () => {
     expect(csvFileName(new Date('2026-09-07T12:00:00.000Z'))).toBe(
-      'calibrate-2026-09-07.csv',
+      'fairly-sure-2026-09-07.csv',
     );
   });
 });
