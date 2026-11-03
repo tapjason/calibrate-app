@@ -77,9 +77,16 @@ export function CategoryIcon({
         testID={`category-icon-${own.kind}`}
       >
         {own.kind === 'emoji' ? (
+          // At the icon size, as large as the symbols beside it: at 85% it
+          // drew 11 px against 13 px symbols on Today (playtest 2026-11-03).
           <Text
             allowFontScaling={false}
-            style={{ color, fontSize: Math.round(size * 0.85), lineHeight: size, textAlign: 'center' }}
+            style={{
+              color,
+              fontSize: size,
+              lineHeight: Math.round(size * 1.2),
+              textAlign: 'center',
+            }}
           >
             {own.emoji}
           </Text>

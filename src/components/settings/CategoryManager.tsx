@@ -227,9 +227,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
   },
+  // At large sizes the switch wraps under the name instead of covering it
+  // (playtest 2026-11-03, run 3).
   row: {
     alignItems: 'center',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: space.sm,
     minHeight: 52,
     paddingHorizontal: space.lg,
@@ -248,11 +251,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
+  // "Rename" wraps under the name rather than running off the edge.
   nameButton: {
+    // Wrapped lines pack to the top by default; centre them in the row.
+    alignContent: 'center',
     alignItems: 'center',
-    flex: 1,
+    flexBasis: 120,
     flexDirection: 'row',
-    gap: space.sm,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    columnGap: space.sm,
     minHeight: 44,
   },
   name: { ...type.callout, color: colors.textPrimary, flexShrink: 1 },

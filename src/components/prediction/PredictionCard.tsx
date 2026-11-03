@@ -167,11 +167,15 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     columnGap: space.md,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: space.sm,
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
   },
   pressed: { backgroundColor: colors.surfaceSunken },
-  main: { flex: 1, gap: space.xs, minWidth: 0 },
+  // At large sizes the confidence column drops below the words instead of
+  // squeezing them to a few letters a line (playtest 2026-11-03, run 3).
+  main: { flexBasis: 140, flexGrow: 1, flexShrink: 1, gap: space.xs, minWidth: 0 },
   title: { ...type.body, color: colors.textPrimary },
   // The user's own words, quoted and quieter than the prediction they're about.
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },

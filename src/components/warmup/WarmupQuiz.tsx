@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/Button';
 import { ChoiceList } from '@/components/ui/ChoiceList';
@@ -47,6 +48,29 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const [confidence, setConfidence] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // On the first question at 375 × 667 the intro pushes the confidence control
+  // below the fold, and two blind playtests (2026-11-01, 2026-11-03) found it
+  // only by scrolling. Once an answer is picked, bring the control into view if
+  // it's out of sight, no further than needed, without motion under Reduce
+  // Motion. Positions are kept from layout and scroll events, not measured.
+  const reduceMotion = useReducedMotion();
+  const scrollRef = useRef<ScrollView>(null);
+  const viewportHeight = useRef(0);
+  const scrollY = useRef(0);
+  const wrapY = useRef(0);
+  const confidenceBox = useRef({ y: 0, height: 0 });
+  const pick = (choice: 0 | 1) => {
+    setSelected(choice);
+    const bottom = wrapY.current + confidenceBox.current.y + confidenceBox.current.height;
+    const visibleBottom = scrollY.current + viewportHeight.current;
+    if (viewportHeight.current > 0 && bottom > visibleBottom) {
+      scrollRef.current?.scrollTo({
+        y: bottom - viewportHeight.current + space.lg,
+        animated: !reduceMotion,
+      });
+    }
+  };
+
   // Next swaps the question in place while focus stays on the button, so a
   // screen reader would never hear the new one (roadmap step 44). Say it.
   const firstQuestion = useRef(true);
@@ -80,9 +104,26 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
 
   return (
     <View style={styles.screen}>
-      <ScrollView key={index} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        key={index}
+        ref={scrollRef}
+        contentContainerStyle={styles.scroll}
+        onLayout={(e) => {
+          viewportHeight.current = e.nativeEvent.layout.height;
+        }}
+        onScroll={(e) => {
+          scrollY.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={32}
+      >
         {index === 0 && intro}
-        <View style={styles.wrap} testID="warmup-quiz">
+        <View
+          style={styles.wrap}
+          testID="warmup-quiz"
+          onLayout={(e) => {
+            wrapY.current = e.nativeEvent.layout.y;
+          }}
+        >
           {/* Said as part of the question heading below, so not twice. */}
           <Text style={styles.progress} aria-hidden accessibilityElementsHidden>
             Question {index + 1} of {total}
@@ -119,11 +160,18 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
             label={question.prompt}
             options={question.options}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={pick}
             idPrefix="warmup-option"
           />
 
-          <View style={styles.block}>
+          <View
+            style={styles.block}
+            testID="warmup-confidence-block"
+            onLayout={(e) => {
+              const { y, height } = e.nativeEvent.layout;
+              confidenceBox.current = { y, height };
+            }}
+          >
             <ConfidenceControl
               value={confidence}
               onChange={setConfidence}

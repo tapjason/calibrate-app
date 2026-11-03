@@ -1,8 +1,9 @@
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, ScrollView } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
+import { space } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { WarmupQuestion } from '@/types';
 
@@ -65,6 +66,39 @@ describe('WarmupQuiz', () => {
       expect(announce).toHaveBeenCalledWith('Question 2 of 2. Which is deeper?'),
     );
     announce.mockRestore();
+  });
+
+  // Playtests 2026-11-01 and 2026-11-03: at 375 × 667 the confidence control
+  // sat below the fold on the first question. Picking an answer brings it in.
+  describe('bringing the confidence control into view', () => {
+    const layOut = (viewport: number) => {
+      const scroll = screen.UNSAFE_getByType(ScrollView);
+      fireEvent(scroll, 'layout', { nativeEvent: { layout: { height: viewport } } });
+      fireEvent(screen.getByTestId('warmup-quiz'), 'layout', { nativeEvent: { layout: { y: 300 } } });
+      fireEvent(screen.getByTestId('warmup-confidence-block'), 'layout', {
+        nativeEvent: { layout: { y: 200, height: 120 } },
+      });
+      const scrollTo = jest.fn();
+      scroll.instance.scrollTo = scrollTo;
+      return scrollTo;
+    };
+
+    it('scrolls just far enough when it is out of sight', () => {
+      render(<WarmupQuiz />);
+      const scrollTo = layOut(500);
+      fireEvent.press(screen.getByTestId('warmup-option-0'));
+      // Its bottom is at 300 + 200 + 120 = 620; a 500-high view shows 0–500.
+      expect(scrollTo).toHaveBeenCalledWith(
+        expect.objectContaining({ y: 620 - 500 + space.lg }),
+      );
+    });
+
+    it('leaves the scroll alone when it is already visible', () => {
+      render(<WarmupQuiz />);
+      const scrollTo = layOut(800);
+      fireEvent.press(screen.getByTestId('warmup-option-0'));
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
   });
 
   it('requires an answer before advancing', () => {

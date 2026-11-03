@@ -62,7 +62,7 @@ export default function ShareScreen() {
           />
         </View>
 
-        <View style={styles.tabs}>
+        <View style={styles.tabs} accessibilityRole="tablist">
           {TABS.map((t) => (
             <Pressable
               key={t.key}
@@ -106,11 +106,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSunken,
     borderRadius: 10,
     flexDirection: 'row',
+    // Three equal tabs; when there's no room for three, they stack rather
+    // than break their words (playtest 2026-11-03, run 3).
+    flexWrap: 'wrap',
     gap: 4,
     padding: 4,
   },
-  tab: { alignItems: 'center', borderRadius: 8, flex: 1, paddingVertical: 8 },
+  tab: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flexBasis: 80,
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
   tabActive: { backgroundColor: colors.surface },
-  tabLabel: { ...type.subhead, color: colors.textSecondary, fontWeight: '600' },
+  // Stretched to the tab, so a long label wraps inside it at large sizes
+  // instead of running into the next one (playtest 2026-11-03, run 3).
+  tabLabel: {
+    ...type.subhead,
+    alignSelf: 'stretch',
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   tabLabelActive: { color: colors.textPrimary },
 });
