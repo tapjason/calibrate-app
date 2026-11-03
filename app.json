@@ -4,12 +4,12 @@
     "slug": "calibrate",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "calibrate",
+    "scheme": "fairlysure",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icons/icon.png",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.calibrate.app",
+      "bundleIdentifier": "app.fairlysure",
       "usesAppleSignIn": true,
       "entitlements": {
         "com.apple.developer.declared-age-range": true

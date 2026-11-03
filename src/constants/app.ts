@@ -1,7 +1,9 @@
 /**
  * The name people see (chosen for now 2026-11-03, `docs/APP_STORE_LISTING.md` §0).
- * Internal ids (the database, storage keys, notification ids, the URL scheme,
- * product ids, the bundle id) keep `calibrate`: renaming those loses data.
+ * Internal ids (the database, storage keys, notification ids, product ids,
+ * the Expo slug) keep `calibrate`: renaming those loses data or unlinks the
+ * EAS project. The bundle id (`app.fairlysure`) and the URL scheme
+ * (`fairlysure`) changed before anything was registered with Apple.
  */
 export const APP_NAME = 'Fairly Sure';
 /** "Fairly Sure Plus": the paid tier's name. */

@@ -12,7 +12,7 @@ const FULL_ENV: Record<string, string> = {
   APPLE_TEAM_ID: 'TEAM123456',
   APPLE_SIWA_KEY_ID: 'KEY1234567',
   APPLE_SIWA_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----',
-  APPLE_CLIENT_ID: 'com.calibrate.app',
+  APPLE_CLIENT_ID: 'app.fairlysure',
   REVENUECAT_DELETE_KEY: 'sk_write',
   REVENUECAT_PROJECT_ID: 'projb27eccad',
 };
@@ -144,7 +144,7 @@ describe('appleClientSecretClaims', () => {
       iat: 1_000,
       exp: 1_300,
       aud: 'https://appleid.apple.com',
-      sub: 'com.calibrate.app',
+      sub: 'app.fairlysure',
     });
   });
 });

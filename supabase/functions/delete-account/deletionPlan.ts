@@ -23,7 +23,7 @@ export interface AppleConfig {
   keyId: string;
   /** PEM, PKCS#8 — the .p8 file's contents. */
   privateKey: string;
-  /** The bundle id, e.g. com.calibrate.app. */
+  /** The bundle id, app.fairlysure. */
   clientId: string;
 }
 

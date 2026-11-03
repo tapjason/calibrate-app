@@ -94,7 +94,7 @@ export async function signInWithGoogle(): Promise<AuthOutcome> {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser');
 
-    const redirectTo = AuthSession.makeRedirectUri({ scheme: 'calibrate' });
+    const redirectTo = AuthSession.makeRedirectUri({ scheme: 'fairlysure' });
 
     const { data, error } = await getSupabaseClient().auth.signInWithOAuth({
       provider: 'google',

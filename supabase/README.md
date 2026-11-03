@@ -253,7 +253,7 @@ are skipped and logged until then:
 ```sh
 # Sign in with Apple token revocation. A key with "Sign in with Apple"
 # enabled (developer.apple.com → Keys), not the In-App Purchase key.
-npx supabase secrets set APPLE_TEAM_ID=... APPLE_SIWA_KEY_ID=...   APPLE_CLIENT_ID=com.calibrate.app   APPLE_SIWA_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"
+npx supabase secrets set APPLE_TEAM_ID=... APPLE_SIWA_KEY_ID=...   APPLE_CLIENT_ID=app.fairlysure   APPLE_SIWA_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"
 
 # RevenueCat customer deletion. A v2 secret key with customers *write*.
 # The existing sk_ key is read-only for customers and won't work.
