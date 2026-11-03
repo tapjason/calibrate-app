@@ -1,4 +1,4 @@
-# Calibrate — Agent Document
+# Fairly Sure — Agent Document
 
 **Read `HANDOFF.md` first.** It is the shared state for this branch and is overwritten each PR.
 
@@ -10,7 +10,8 @@ Read `HANDOFF.md` at the repo root first when picking up a branch.
 
 ## Project Overview
 
-**Calibrate** is a mobile app that helps users track personal predictions with confidence
+**Fairly Sure** (working name since 2026-11-03, `APP_STORE_LISTING.md` §0; the
+repo, the internal ids and older docs still say Calibrate) is a mobile app that helps users track personal predictions with confidence
 levels, then measures how accurately their confidence matches real outcomes over time. The
 core insight: most people are systematically overconfident or underconfident in specific
 life domains. This app surfaces that pattern so users can learn where to trust their own

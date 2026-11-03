@@ -299,12 +299,12 @@ The order matters. Most people see only the first three.
 | # | Screen | Caption (short, large type) |
 |---|---|---|
 | 1 | **Identity card** (Share → Card) | **Sharp in health. Tracker in money.** |
-| 2 | **Calibration curve** (Stats, a post-threshold user, points off the diagonal) | **See exactly where you're overconfident** |
-| 3 | **Warmup verdict** | **Your first result in 60 seconds** |
+| 2 | **Calibration curve** (Insights, a post-threshold user, points off the diagonal) | **See exactly where you're overconfident** |
+| 3 | **Warm-up result** (counts, chart and the answers) | **Your first result in 60 seconds** |
 | 4 | **Log screen** with the confidence slider mid-range | **Say how sure you are. Find out later.** |
-| 5 | **Category badges** on Stats | **Earn your badges. No lucky streaks.** |
-| 6 | **Wrapped** (This year) | **Your year in predictions** |
-| 7 | **Coach panel** with insights | **Feedback grounded in your own numbers** (Plus) |
+| 5 | **Category badges** on Insights | **Earn your badges. No lucky streaks.** |
+| 6 | **Wrapped** (Share → This year) | **Your year in predictions** |
+| 7 | **Coach panel** on Insights, with insights | **Feedback grounded in your own numbers** (Plus) |
 
 **Data for them:** a seeded user with at least 60 resolved predictions spread
 across all five categories, with real miscalibration (overconfident in finance,
@@ -312,7 +312,7 @@ well calibrated in health). Without it, screens 2, 5 and 7 show the provisional
 state. `src/db/demoData.ts` is that user; on a development build, `/dev/seed` loads
 it on the device. The same screen's **Preview Plus until reload** turns on the Plus
 surfaces in memory only (nothing is written to the entitlement mirror), for screen
-7 and for the correction table on Stats ("What your confidence means"), which is a
+7 and for the correction table on Insights ("What your confidence means"), which is a
 candidate for a screen of its own: *In finance, your 80–100% came true 47% of the
 time.* `/dev/celebrations` replays the unlock and tier-up cards.
 
@@ -322,9 +322,14 @@ rendering differs slightly (no status bar, and no SF Symbols or glass), so treat
 those as layout drafts rather than uploads. Bring the browser window to the front
 (`page.bringToFront()`) or force a repaint before each capture: a window hidden
 behind others keeps presenting its first frame, the launch spinner, after the
-screen has drawn. Drafts of screens 1–6 were made 2026-10-03
-(git-ignored, `screenshots/draft/`), before D33, so they show the old indigo and
-Inter and need redoing.
+screen has drawn. **Drafts redone 2026-11-03** under the Fairly Sure name and D33
+(git-ignored, `screenshots/draft/`, files `1-` to `6-`; the `0x-` files are the
+pre-D33 set): a 1320 × 2868 window with the page zoomed 3×, so it lays out at
+440 × 956, from a fresh install with the Warm-up done and the demo data loaded.
+Screen 7 (Coach with insights) needs a signed-in Plus account, so it waits for a
+device build; screen 5 already shows the Plus card's sample. Screen 6 shows two
+open copy calls as they stand (the yearly lean names one side; "Boldest call
+that landed: 95%").
 
 **Marketing visuals: the stageshow skill (parked 2026-11-01, use before
 release).** `.claude/skills/stageshow/` is a vendored Claude Code skill

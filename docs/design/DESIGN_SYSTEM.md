@@ -1282,7 +1282,8 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
   couldn't be used. Try another." and keeps the icon. Footnote: "Pictures stay on
   this phone. Share cards keep their own look."
 - **Use the default** (text button, only when an icon is set) and **Done**, right-aligned.
-- **Rendering** (`CategoryIcon`): an emoji at 85% of the icon size, a picture at
+- **Rendering** (`CategoryIcon`): an emoji at the icon size (85% until the
+  2026-11-03 playtest found it smaller than the symbols beside it), a picture at
   the icon size with corners of a quarter of it, both in their own colours and hidden
   from VoiceOver like every icon here (the word beside it says what it is).
 - **Not on share cards or Wrapped** (owner's call, 2026-11-03): the exported card

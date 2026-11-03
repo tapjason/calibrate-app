@@ -1,4 +1,4 @@
-# Calibrate — Next Steps an Agent Can Do Alone
+# Fairly Sure — Next Steps an Agent Can Do Alone
 
 **As of:** 2026-10-04 (second pass) · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
 133 suites / 1495 tests green (after the UI batches through step 135, 2026-10-12).
