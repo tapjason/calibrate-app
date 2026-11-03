@@ -68,7 +68,8 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
 
 1. ~~Fix the Test Store prices~~ (done 2026-11-03, with the keep-alive, migration 006 and the old test account), then your calls.
 2. Your calls below: pricing (P1), Pages for the privacy policy. The name is
-   chosen for now (Fairly Sure); its trademark search and store record remain.
+   chosen for now (Fairly Sure) and screened clear (2026-11-03); counsel's
+   clearance, the domain and the store record remain.
    Age assurance (a) is built.
 3. The $99 account → **g** → first EAS development build → Batch C/D on the
    iPhone → TestFlight.
@@ -102,8 +103,11 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
   Pages setting.
 - **The app name.** Chosen for now (2026-11-03): **Fairly Sure**
   (`APP_STORE_LISTING.md` §0; "Calibrate" is crowded and a registered mark).
-  Still yours: a trademark search (classes 9 and 42), the `.app` domain and
-  the App Store Connect record, which is the definitive check.
+  Screened 2026-11-03: no conflicting mark; the nearest is FAIRLY (AI
+  compliance software, classes 9 and 42), low to moderate risk (§0 there).
+  Still yours: a clearance opinion and filing by counsel (classes 9 and 42),
+  the `.app` domain (the `.com` is parked for sale), and the App Store Connect
+  record, which is the definitive check.
   Since 2026-10-08 it also blocks the share loop: a share's App Store link
   needs the app's App Store id, which needs the record, which needs the name
   (`GROWTH_AND_MONETIZATION.md` §0, step 1).

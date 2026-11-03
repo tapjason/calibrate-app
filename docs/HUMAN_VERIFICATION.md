@@ -164,7 +164,7 @@ second build that can't test billing.
 |---|---|---|
 | App Store screenshots | **Drafts made 2026-10-03** from the web build with the demo data (git-ignored `screenshots/draft/`). Finals need a device build. | E |
 | Privacy policy page + public URL | **URL is in the app:** `https://tapjason.github.io/calibrate-app/privacy/` (`PRIVACY_POLICY_URL`). The page is [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md) (effective November 2, 2026). It 404s until GitHub Pages is on for `master` / `/docs`, after that commit is on `master`. Steps in Batch E. | E |
-| App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **Name chosen for now (2026-11-03): Fairly Sure** (`Fairly Sure: Calibration Log`), see §0 there. Still yours: the trademark search and the App Store Connect record. The app still says "Calibrate" until the rename. | E |
+| App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **Name chosen for now (2026-11-03): Fairly Sure** (`Fairly Sure: Calibration Log`), see §0 there. Trademark screen done 2026-11-03: no conflicting mark, two low-to-moderate risks for counsel (§0). Still yours: counsel's clearance and filing, the `.app` domain and the App Store Connect record. The app says "Fairly Sure" since step 147. | E |
 | Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25, deployed 2026-10-02.** The optional Apple-revoke and RevenueCat-delete legs wait on their keys (Batch E). | E |
 
 ---

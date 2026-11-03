@@ -9,8 +9,48 @@ The limits in brackets are Apple's, and every field was counted against them.
 ## 0. The name: Fairly Sure (working choice)
 
 **Chosen 2026-11-03, for now: Fairly Sure**, store name `Fairly Sure: Calibration Log`.
-Not final until the trademark search and the App Store Connect record (next
-steps below). The app and the rest of the docs still say "Calibrate".
+Not final until a lawyer's clearance and the App Store Connect record (next
+steps below). The app says "Fairly Sure" since step 147; older docs still say
+"Calibrate".
+
+### Trademark screen (2026-11-03): clear to proceed, two risks to put to counsel
+
+A knockout screen, not a legal opinion. US register through the USPTO's own
+search index (the API behind tmsearch.uspto.gov, checked against CALIBRATE, which
+returned its 102 records), plus common-law and store searches.
+
+- **No conflicting mark.** Nothing live or dead for FAIRLY SURE, FAIRLYSURE, FAIR
+  SURE, FAIRSURE, FAIRLY CERTAIN, FAIRLY CONFIDENT or QUITE SURE. PRETTY SURE (4)
+  and SURE ENOUGH (22, mostly SHO NUFF) are furniture, clothing, food and drink.
+- **The nearest mark: FAIRLY** (Fairly AI Inc., Canada; Reg. 8320299, 8320298 and
+  FAIRLY AI 8340321, registered 2026, classes 9 and 42) for software for the
+  governance, risk and compliance monitoring of AI applications. It sits wholly
+  inside FAIRLY SURE and in the same classes, so an examiner could cite it. Against
+  that: different meaning (fairness, against "moderately"), different commercial
+  impression as a phrase, and different goods and buyers (enterprise AI compliance,
+  against a consumer journal). Also live: FAIRLY (Fairly Inc., class 42, vacation
+  rentals) and FAIRLY EVEN (pricing software). **Risk: low to moderate.**
+- **SURE is a crowded word:** 119 live marks contain it in classes 9 and 42, so it
+  carries little weight on its own. None covers prediction tracking. SURELY
+  (SureVoter LLC, filed, AI knowledge-graph software) and the two "Surely" decision
+  apps are a different word.
+- **The phrase itself.** FAIRLY SURE is suggestive for the goods (it names a degree
+  of confidence, not the app), so it should register on the Principal Register. The
+  risk to raise with counsel is a "failure to function" refusal for an everyday
+  expression (TMEP §1202.04), weaker here because the phrase isn't a slogan anyone in
+  the trade uses. **Risk: low to moderate.**
+- **No common-law use found:** no app on the App Store or Google Play, and no
+  company, podcast or product by the name.
+- **Domains:** `fairlysure.app`, `.co`, `.io`, `.net` and `.org` unregistered.
+  `fairlysure.com` (registered 2022, GoDaddy) is parked at Afternic, a resale
+  marketplace, so it is most likely for sale.
+
+**Not checked:** other countries (Canada, where Fairly AI is based, the EU and the
+UK matter if the app ships there), state registers, social handles.
+
+**Next:** a clearance opinion and filing by counsel in classes 9 and 42 (an
+intent-to-use application can be filed before launch), claim `fairlysure.app`,
+ask Afternic for the `.com` price, then the App Store Connect record.
 
 **Re-researched 2026-11-03. Recommendation: rename.** Not legal advice; a
 trademark search by counsel is the real check.
