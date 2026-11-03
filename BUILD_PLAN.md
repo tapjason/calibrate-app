@@ -366,9 +366,10 @@ sandbox subscribe → Coach cards and cosmetics unlock.
 - The 2026 age-rating questionnaire (answers drafted in
   `docs/APP_STORE_LISTING.md` §1), and the in-app OpenAI disclosure that
   Guideline 5.1.2(i) requires before the Coach sends anything.
-- Age assurance where the law requires it (Texas since 2026-06-04): the
-  Declared Age Range API through `expo-age-range`, failing open. Owner decision
-  first (`docs/NEXT_STEPS.md` item i).
+- Age assurance (owner chose (a), built): `expo-age-range` 0.2.21, the SDK 55
+  release, and the `com.apple.developer.declared-age-range` entitlement. One
+  call after the first screen is up, failing open; only the age band is stored
+  on the device. Nothing is gated on it.
 - Build toolchain: App Store uploads need Xcode 26 / the iOS 26 SDK since
   2026-04-28. EAS's SDK 55 image meets that; the SDK upgrade (55 → 58) is a
   separate iteration after the first device build.

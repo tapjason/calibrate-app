@@ -5,6 +5,7 @@
 // only after the server has confirmed the account is gone, so a failed server
 // call never leaves a device wiped and an account still standing.
 
+import { clearAgeBucket } from './ageBucket';
 import { getDb, withTransaction } from './client';
 
 /**
@@ -20,6 +21,10 @@ import { getDb, withTransaction } from './client';
  * Not touched here: the entitlement mirror (billing resets it to free when
  * the identity changes) and the Warmup record, which has no owner — the
  * caller clears that separately when the whole device is being reset.
+ *
+ * The age band is the exception among ownerless rows. It is personal data
+ * with no second copy to protect, and both "Erase all data" and account
+ * deletion promise the on-device copy is gone.
  */
 export async function wipeLocalUserData(userId: string): Promise<void> {
   await withTransaction(async () => {
@@ -33,5 +38,6 @@ export async function wipeLocalUserData(userId: string): Promise<void> {
     await db.run(`DELETE FROM prediction_deletions WHERE user_id = ?`, [userId]);
     // The person's own categories (roadmap D39) go with the predictions in them.
     await db.run(`DELETE FROM categories WHERE user_id = ?`, [userId]);
+    await clearAgeBucket();
   });
 }

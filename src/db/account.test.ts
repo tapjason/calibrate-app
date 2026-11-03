@@ -1,6 +1,7 @@
 import type { Prediction } from '@/types';
 
 import { wipeLocalUserData } from './account';
+import { getAgeBucket, saveAgeBucket } from './ageBucket';
 import { enqueueEvent, listUnsyncedEvents } from './analytics';
 import { getDb, setDbForTests } from './client';
 import { insertPrediction, listPendingPredictions } from './predictions';
@@ -61,9 +62,11 @@ describe('wipeLocalUserData', () => {
   it("removes the user's predictions, stats and queued events", async () => {
     await seedUser('me');
 
+    await saveAgeBucket({ lowerBound: 16, upperBound: 18 });
     await wipeLocalUserData('me');
 
     await expect(listPendingPredictions('me')).resolves.toEqual([]);
+    await expect(getAgeBucket()).resolves.toBeNull();
     await expect(getUserStat('me')).resolves.toBeNull();
     await expect(listCategoryStats('me')).resolves.toEqual([]);
     await expect(listUnsyncedEvents('me', 10)).resolves.toEqual([]);

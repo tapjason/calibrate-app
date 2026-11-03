@@ -3,6 +3,7 @@ import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
+import { ensureAgeBucket } from '@/age/ageRange';
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
 import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
@@ -164,6 +165,18 @@ export default function RootLayout() {
       setLaunched(true);
     })();
   }, [ready, navState?.key, router]);
+
+  // Age assurance, once the first screen is up. Not part of the ready gate:
+  // Apple's sheet needs a view controller, and a missing API, a decline, or
+  // a throw must not hold the splash. One attempt per launch; a stored band
+  // means it is not asked again. The promise never rejects.
+  useEffect(() => {
+    if (!launched) return;
+    void ensureAgeBucket().catch((e) => {
+      // eslint-disable-next-line no-console
+      console.warn('[age] check failed:', e);
+    });
+  }, [launched]);
 
   // Foreground sync. Sign-in already triggers one sweep via authStore; this
   // catches every subsequent return to the app so other devices' writes

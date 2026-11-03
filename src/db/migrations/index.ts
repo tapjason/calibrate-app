@@ -26,6 +26,7 @@ import { MIGRATION_006 } from './006_analytics';
 import { MIGRATION_007 } from './007_practice';
 import { MIGRATION_008 } from './008_prediction_deletions';
 import { MIGRATION_009 } from './009_custom_categories';
+import { MIGRATION_010 } from './010_age_bucket';
 
 export interface Migration {
   id: string;
@@ -42,6 +43,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: '007_practice', sql: MIGRATION_007 },
   { id: '008_prediction_deletions', sql: MIGRATION_008 },
   { id: '009_custom_categories', sql: MIGRATION_009 },
+  { id: '010_age_bucket', sql: MIGRATION_010 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();
