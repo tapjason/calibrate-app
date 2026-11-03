@@ -13,10 +13,13 @@ The short version:
   no crash reporter, no cross-app or cross-site linkage. `package.json` has no
   third-party analytics or attribution dependency at all. **No ATT prompt is
   required.**
-- **No data is collected from users who never sign in.** The whole core loop —
-  log, resolve, stats, share — runs offline against local SQLite. Analytics
-  never flushes for a guest (`src/analytics/flush.ts`), and sync has nothing to
-  sync.
+- **From someone who never signs in, only a few usage counts, with no id.**
+  The whole core loop — log, resolve, stats, share — runs offline against local
+  SQLite, and sync has nothing to sync. Since D43 (2026-11-03) eight funnel
+  events go up to `guest_analytics_events` with no user, install or device id
+  (`src/analytics/flush.ts`, `GUEST_EVENT_NAMES`), once migration 007 is
+  applied and `GUEST_ANALYTICS` is on. Until then nothing leaves a guest's
+  phone.
 - **Freetext never reaches the AI.** The one feature that would have sent it,
   Refine, is cut from v1 (2026-09-24). The Coach sends numbers only.
 
@@ -29,7 +32,7 @@ The short version:
 | Contact Info → **Email address** | Yes | Yes | No | App Functionality (account + sync) | `src/supabase/auth.ts` — email/password, Apple, Google |
 | User Content → **Other User Content** (prediction titles, reflections) | Yes | Yes | No | App Functionality | `PredictionWireRow`, `src/types/index.ts:167`; `src/supabase/sync.ts` |
 | Identifiers → **User ID** | Yes | Yes | No | App Functionality, Analytics | Supabase auth user id; passed to RevenueCat as `appUserID`, `src/billing/revenuecat.ts:174` |
-| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics | `src/analytics/events.ts` — closed catalogue, numeric properties only |
+| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics | `src/analytics/events.ts` — closed catalogue, numeric properties only. A guest's funnel events carry no id (D43), but Apple asks per data type, and a signed-in person's are linked, so answer **linked** |
 | Purchases → **Purchase History** | Yes | Yes | No | App Functionality | Apple IAP via RevenueCat; `supabase/functions/revenuecat-webhook/` |
 | Identifiers → Device ID / Advertising | **No** | — | — | — | no ad or attribution SDK in `package.json` |
 | Diagnostics (crash, performance) | **No** | — | — | — | no crash reporter in `package.json` |
@@ -98,10 +101,13 @@ relay address — the app treats it as any other email).
   is no open string property type.** A prediction title cannot be put into an
   event, correctly or by accident, because there is no field shaped like one.
 - The queue is local (migration `006_analytics`), capped, push-then-delete, and
-  flushes only on foreground alongside sync — never for a guest. A guest's
-  queued events move to the account on sign-in (`migrateGuestDataToUser`),
-  so they are sent then; the policy says so. Turning usage stats off clears
-  the queue first.
+  flushes on foreground alongside sync. A guest's eight funnel events go to
+  `guest_analytics_events` with an event id (random, `track.ts`), the name,
+  its numbers and the time, and nothing else: no user, install or device id,
+  so two rows can't be tied to one person (D43, once `GUEST_ANALYTICS` is
+  on). Their other events move to the account on sign-in
+  (`migrateGuestDataToUser`), so they are sent then; the policy says so.
+  Turning usage stats off clears the queue first and sends nothing more.
 - Users can turn it off: Settings → "Usage stats" (default on). Renamed from
   "Anonymous usage stats" on 2026-10-04: the events are linked to the account,
   so "anonymous" contradicted this sheet.

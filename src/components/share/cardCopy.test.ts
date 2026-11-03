@@ -2,6 +2,7 @@ import type { BucketStat, CategoryStat, ShareCard, UserStat } from '@/types';
 
 import {
   buildShareCard,
+  hiddenLine,
   identityCardSummary,
   shareHeadline,
   shareLines,
@@ -272,5 +273,38 @@ describe('identityCardSummary', () => {
         'Calibration 88/100 from 55 resolved predictions. ' +
         'By category: Sharp in health, Getting started in finance.',
     );
+  });
+});
+
+// Decided 2026-11-03 (playtest run 4): the card carries the rating's
+// give-or-take, and says when categories were left off it.
+describe('the honest card', () => {
+  it('prints the give-or-take beside the rating', () => {
+    const card = buildShareCard(userStat(), [categoryStat()], { giveOrTake: 3.4 })!;
+    expect(shareSubline(card)).toBe(
+      'Calibration 88/100, give or take 3, from 55 resolved predictions',
+    );
+    expect(shareText(card, [])).toContain('score 88, give or take 3');
+  });
+
+  it('prints no give-or-take while the rating is provisional, or when it is 0', () => {
+    const provisional = buildShareCard(
+      userStat({ rating_is_provisional: true, total_resolved: 8 }),
+      [categoryStat()],
+      { giveOrTake: 9 },
+    )!;
+    expect(provisional.give_or_take).toBeUndefined();
+    const exact = buildShareCard(userStat(), [categoryStat()], { giveOrTake: 0 })!;
+    expect(shareSubline(exact)).toBe('Calibration 88/100 from 55 resolved predictions');
+  });
+
+  it('says how many categories were left off', () => {
+    const one = buildShareCard(userStat(), [categoryStat()], { hiddenCount: 1 })!;
+    expect(hiddenLine(one)).toBe('1 category not shown');
+    const two = buildShareCard(userStat(), [categoryStat()], { hiddenCount: 2 })!;
+    expect(hiddenLine(two)).toBe('2 categories not shown');
+    expect(shareText(two, []).split('\n')).toContain('2 categories not shown');
+    expect(identityCardSummary(two)).toMatch(/2 categories not shown\.$/);
+    expect(hiddenLine(buildShareCard(userStat(), [categoryStat()])!)).toBeNull();
   });
 });

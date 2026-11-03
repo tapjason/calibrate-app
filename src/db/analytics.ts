@@ -136,15 +136,19 @@ export async function enqueueEvent(event: QueuedEvent): Promise<boolean> {
 export async function listUnsyncedEvents(
   userId: string,
   limit: number,
+  /** Only these event names (a guest's funnel events, D43). Omitted, all. */
+  names?: readonly string[],
 ): Promise<QueuedEvent[]> {
   try {
+    if (names && names.length === 0) return [];
+    const byName = names ? ` AND name IN (${names.map(() => '?').join(', ')})` : '';
     const rows = await getDb().all<EventRow>(
       `SELECT id, user_id, name, props_json, created_at
          FROM analytics_events
-        WHERE synced = 0 AND user_id = ?
+        WHERE synced = 0 AND user_id = ?${byName}
         ORDER BY created_at ASC, id ASC
         LIMIT ?`,
-      [userId, limit],
+      [userId, ...(names ?? []), limit],
     );
     return rows.map(parseRow);
   } catch (e) {

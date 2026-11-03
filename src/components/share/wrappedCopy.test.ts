@@ -106,9 +106,20 @@ describe('wrappedStory verdict', () => {
   // calibrated" from the averages while Stats said "overconfident at 80–100%".
   it('names the worst well-evidenced bucket instead of letting averages cancel', () => {
     const story = wrappedStory(
-      summary([bucket(40, 24, 13, 48), bucket(60, 52, 39, 69), bucket(80, 57, 38, 88)]),
+      summary([bucket(40, 24, 12, 48), bucket(60, 52, 36, 69), bucket(80, 57, 38, 88)]),
     );
     expect(story.verdict).toBe('This year, you ran overconfident at 80–100%.');
+  });
+
+  // Decided 2026-11-03 (playtest run 4): the year card named only the
+  // overconfident half that Insights names beside a cautious one (D37).
+  it('names both sides when there are both, as Insights does', () => {
+    const story = wrappedStory(
+      summary([bucket(40, 24, 13, 48), bucket(60, 52, 39, 69), bucket(80, 57, 38, 88)]),
+    );
+    expect(story.verdict).toBe(
+      'This year, you ran too sure at 80–100% and too cautious at 40–60%.',
+    );
   });
 
   it('keeps the averages line when every solid bucket is calibrated', () => {
@@ -124,6 +135,34 @@ describe('wrappedStory verdict', () => {
   });
 });
 
+// Decided 2026-11-03 (playtest runs 2 and 4): the week's read beside the
+// whole record's, so the two don't read as a contradiction.
+describe('wrappedStory allTime', () => {
+  const week = (buckets: BucketStat[]): WrappedSummary => ({ ...summary(buckets), span: 'week' });
+  const solidWeek = [bucket(60, 12, 11, 68), bucket(80, 10, 9, 88)];
+  const overall = {
+    resolved: 148,
+    provisional: false,
+    lean: "You're too sure at 80–100% and too cautious at 60–80%",
+  };
+
+  it("sets the whole record's read beside the week's", () => {
+    const story = wrappedStory(week(solidWeek), overall);
+    expect(story.verdict).toMatch(/^This week, /);
+    expect(story.allTime).toBe(
+      "Across all 148 answers, you're too sure at 80–100% and too cautious at 60–80%.",
+    );
+    expect(wrappedCardSummary(story)).toContain('Across all 148 answers');
+  });
+
+  it('says nothing more without a week verdict, an all-time read, or on the year', () => {
+    const small = { ...week([bucket(80, 4, 3, 88)]), score_is_provisional: true };
+    expect(wrappedStory(small, overall).allTime).toBeNull();
+    expect(wrappedStory(week(solidWeek), { ...overall, lean: null }).allTime).toBeNull();
+    expect(wrappedStory(summary(solidWeek), overall).allTime).toBeNull();
+  });
+});
+
 describe('wrappedCardSummary (roadmap step 45)', () => {
   it('joins what the card shows into sentences, skipping empty parts', () => {
     expect(
@@ -133,6 +172,7 @@ describe('wrappedCardSummary (roadmap step 45)', () => {
         statCount: '4 resolved',
         statRate: '3 happened. You expected about\u00A03.',
         verdict: null,
+        allTime: null,
         receipt: 'You said 80–100% 3 times. 2 of 3 happened.',
         provisionalNote: 'A week is too short for a verdict.',
         note: '1 call under 40% this time. The unlikely end keeps your score honest.',

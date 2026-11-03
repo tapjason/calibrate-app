@@ -41,6 +41,11 @@ schema is safe.
   by policy (insert + select for the owning user, no update or delete grant),
   with CHECK constraints keeping `props` a small JSON object. There is no
   column freetext could go in.
+- `migrations/007_guest_analytics_events.sql` — a guest's funnel events (D43,
+  2026-11-03): no user, install or device id; insert only, for `anon` only;
+  the eight event names in a CHECK; nobody but the service role reads it.
+  **Not applied yet**: `GUEST_ANALYTICS` in `src/constants/app.ts` stays
+  false until it is.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decision logic lives in
   `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can

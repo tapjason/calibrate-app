@@ -44,6 +44,7 @@ export function ShareCardPanel({
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const buckets = useStatsStore((s) => s.calibration.buckets);
+  const ratingRange = useStatsStore((s) => s.ratingRange);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
   const warmupResult = useWarmupStore((s) => s.result);
@@ -72,6 +73,7 @@ export function ShareCardPanel({
   const card = buildShareCard(
     userStat,
     shown.some((c) => c.predictions_resolved > 0) ? shown : categoryStats,
+    { giveOrTake: ratingRange?.giveOrTake, hiddenCount: hidden.size },
   );
   const toggleCategory = (c: Category) => {
     const next = new Set(hidden);

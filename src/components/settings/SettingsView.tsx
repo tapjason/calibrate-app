@@ -6,6 +6,7 @@ import type { SFSymbol } from 'sf-symbols-typescript';
 import { Icon } from '@/components/ui/Icon';
 import {
   APP_NAME,
+  GUEST_ANALYTICS,
   PLUS_NAME,
   PRIVACY_POLICY_URL,
   REFINE_ENABLED,
@@ -216,7 +217,7 @@ export function SettingsView({
           // Not "anonymous": once you sign in, events are tied to the account
           // (APP_PRIVACY.md declares them linked), so the label mustn't say so.
           label="Usage stats"
-          description="Counts of which features get used, sent only once you sign in — never your predictions, reflections, or any text. Turning this off deletes what's queued."
+          description={USAGE_STATS_DESCRIPTION}
           value={analyticsEnabled}
           onValueChange={(v) => void setAnalyticsEnabled(v)}
           testID="toggle-analytics"
@@ -610,6 +611,14 @@ function ToggleRow({
     </Pressable>
   );
 }
+
+/**
+ * What the Usage stats switch covers. Since D43 (2026-11-03) a guest's funnel
+ * counts go up with no id, once GUEST_ANALYTICS is on.
+ */
+export const USAGE_STATS_DESCRIPTION = GUEST_ANALYTICS
+  ? "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no id at all; once you sign in, they're tied to your account. Turning this off deletes what's queued."
+  : "Counts of which features get used, sent only once you sign in — never your predictions, reflections, or any text. Turning this off deletes what's queued.";
 
 const styles = StyleSheet.create({
   wrap: { gap: space.xxl, padding: space.lg, paddingBottom: space.huge },

@@ -13,7 +13,7 @@
 // provisional line points at the user's overall progress rather than asking
 // for twenty resolutions inside seven days (DESIGN_SYSTEM §7.14).
 
-import { MIN_BUCKET_N_FOR_VERDICT, rangeLabel } from '@/components/stats/chartTakeaway';
+import { bothSides, MIN_BUCKET_N_FOR_VERDICT, rangeLabel } from '@/components/stats/chartTakeaway';
 import type { WrappedReceipt, WrappedSummary } from '@/engine/wrapped';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -30,6 +30,12 @@ export interface WrappedStory {
   statRate: string | null;
   /** The calibration read, or null while the window is too small to support one. */
   verdict: string | null;
+  /**
+   * On the week's card, beside its own read: the read over every answer, as
+   * Insights words it ("Across all 148 answers, you're too sure at
+   * 80–100%."). Null without a week verdict or an all-time read.
+   */
+  allTime: string | null;
   /**
    * One factual line from the busiest confidence bucket ("You said 80–100% 3
    * times. 2 happened."). Counts only, so it shows provisional or not.
@@ -68,6 +74,11 @@ export interface OverallProgress {
   provisional: boolean;
   /** The current daily streak (roadmap D2), for the card's streak line. */
   streak?: number;
+  /**
+   * Insights' chart read over every answer ("You're too sure at 80–100%"),
+   * or null while it has none (chartVerdict).
+   */
+  lean?: string | null;
 }
 
 /** A streak this long or more goes on the card: one day isn't a run yet. */
@@ -98,6 +109,7 @@ export function wrappedStory(
       statCount: `${upcoming} on the way`,
       statRate: null,
       verdict: null,
+      allTime: null,
       receipt: null,
       provisionalNote: null,
       note: `${upcoming === 1 ? 'It comes' : 'They come'} due within the week. This recap fills in as you resolve ${upcoming === 1 ? 'it' : 'them'}.`,
@@ -111,6 +123,7 @@ export function wrappedStory(
       statCount: 'Nothing resolved yet',
       statRate: null,
       verdict: null,
+      allTime: null,
       receipt: null,
       provisionalNote: null,
       note: EMPTY_NOTE[span],
@@ -121,6 +134,9 @@ export function wrappedStory(
   const stated = Math.round(summary.mean_confidence);
   const plural = resolved === 1 ? 'prediction' : 'predictions';
   const expected = expectedLine(summary);
+  const verdict = summary.score_is_provisional
+    ? null
+    : verdictLine(summary, stated, hitRate, span);
 
   return {
     title: TITLES[span],
@@ -129,7 +145,8 @@ export function wrappedStory(
       : `${resolved} ${plural} resolved`,
     statCount: `${resolved} resolved`,
     statRate: expected,
-    verdict: summary.score_is_provisional ? null : verdictLine(summary, stated, hitRate, span),
+    verdict,
+    allTime: span === 'week' && verdict ? allTimeLine(overall) : null,
     receipt: summary.receipt ? receiptLine(summary.receipt) : null,
     provisionalNote: summary.score_is_provisional
       ? provisionalLine(summary, overall)
@@ -157,9 +174,29 @@ function verdictLine(
   const solid = summary.buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
   if (solid.length === 0) return `${w}, ${VERDICTS[summary.direction]} — ${averages}`;
 
+  // Both sides, as Insights names them (D37): the year card named only
+  // "overconfident at 80–100%" over the same 148 answers Insights read as too
+  // sure there and too cautious at 60–80% (playtest 2026-11-03, run 4).
+  const sides = bothSides(solid);
+  if (sides) {
+    return `${w}, you ran too sure at ${rangeLabel(sides.sure)} and too cautious at ${rangeLabel(sides.cautious)}.`;
+  }
+
   const worst = solid.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
   if (worst.direction === 'calibrated') return `${w}, ${VERDICTS.calibrated} — ${averages}`;
   return `${w}, ${VERDICTS[worst.direction]} at ${rangeLabel(worst)}.`;
+}
+
+/**
+ * The week's read set against the whole record (decided 2026-11-03). "This
+ * week, you ran underconfident" beside Insights' "too sure at 80–100%" read
+ * as a contradiction to two blind testers (2026-11-03, runs 2 and 4): both
+ * are right, over different spans, and only the week's said which it was.
+ */
+function allTimeLine(overall: OverallProgress | null | undefined): string | null {
+  if (!overall?.lean || overall.provisional) return null;
+  const read = overall.lean.charAt(0).toLowerCase() + overall.lean.slice(1);
+  return `Across all ${overall.resolved} answers, ${read}.`;
 }
 
 /**
@@ -264,6 +301,7 @@ export function wrappedCardSummary(story: WrappedStory, streak: string | null = 
     story.stat,
     streak,
     story.verdict,
+    story.allTime,
     story.receipt,
     story.provisionalNote,
     story.note,

@@ -112,6 +112,15 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           {holdRanges(story.verdict)}
         </Text>
       )}
+      {story.allTime && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.verdict, { color: theme.muted }]}
+          testID="wrapped-all-time"
+        >
+          {holdRanges(story.allTime)}
+        </Text>
+      )}
       {story.provisionalNote && (
         <Text
           maxFontSizeMultiplier={CARD_MAX_SCALE}

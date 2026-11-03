@@ -125,7 +125,7 @@ export default function RootLayout() {
         initPracticeReminder();
         // One sweep at startup so a queue built up offline doesn't wait for
         // the next foreground. Fire-and-forget; it returns 0 and logs on any
-        // failure, including for guests, who never flush at all.
+        // failure. A guest sends only funnel counts, with no id (D43).
         void flushEvents(useAuthStore.getState().userId);
         setReady(true);
       } catch (e) {

@@ -123,14 +123,16 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
   only 2× annual. Recommendation: $34.99/yr and $79.99 lifetime, monthly
   unchanged (`GROWTH_AND_MONETIZATION.md` §4). Decide before the App Store
   Connect products are created; afterwards a change is a price change.
-- **Anonymous funnel numbers.** Analytics only flushes for signed-in users, so
-  the validation checkpoint's aha rate (`warmup_completed / warmup_started`)
-  measures the signed-in cohort, which reads high. Counting guests would need an
-  anonymous per-install id for a small allowlist of events, and that
-  contradicts `APP_PRIVACY.md`'s "no data is collected from users who never
-  sign in". Until you decide, read the numbers as signed-in only. The share
-  gate doesn't wait on this: App Store campaign links count every install from
-  a share, signed in or not (GROWTH §7).
+- **Guest funnel numbers: decided 2026-11-03 (D43), built, one step left.**
+  A guest's eight funnel events go up with no id of any kind, to
+  `guest_analytics_events`. Left: apply
+  `supabase/migrations/007_guest_analytics_events.sql` to the live project,
+  then set `GUEST_ANALYTICS` to true in `src/constants/app.ts`. Until then a
+  guest's events wait for an account, as before. Once on, the aha rate is
+  `warmup_completed / warmup_started` summed over both tables. With no id,
+  guests' numbers are counts, not people: a reinstall counts twice. The
+  share gate doesn't wait on this: App Store campaign links count every
+  install from a share (GROWTH §7).
 - **Email sign-up for strangers.** Supabase's built-in sender only delivers to
   members of your Supabase organization, at 2 messages an hour (re-checked
   2026-10-04). "Confirm email" is on for testing (decided 2026-10-01); before

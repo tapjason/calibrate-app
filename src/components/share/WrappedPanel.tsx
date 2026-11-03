@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { dueWithin } from '@/components/prediction/dueGroups';
+import { chartVerdict } from '@/components/stats/chartTakeaway';
 import { haptics } from '@/components/ui/haptics';
 import { colors, space, type } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -93,6 +94,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const categoryRanges = useStatsStore((s) => s.categoryRanges);
+  const buckets = useStatsStore((s) => s.calibration.buckets);
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -147,6 +149,8 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                     resolved: userStat.total_resolved,
                     provisional: userStat.rating_is_provisional,
                     streak: userStat.current_streak,
+                    // Insights' read, for the week's card to set beside its own.
+                    lean: chartVerdict(buckets, userStat.rating_is_provisional)?.title ?? null,
                   }
                 : null
             }

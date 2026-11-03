@@ -44,34 +44,42 @@ function busiest(buckets: readonly BucketStat[]): BucketStat {
   );
 }
 
-export function chartTakeaway(
-  buckets: readonly BucketStat[],
-  ratingProvisional: boolean,
-): ChartTakeaway {
-  if (buckets.length === 0) {
-    return { title: 'Your calibration curve', subtitle: null };
-  }
-
-  const fallback = (): ChartTakeaway => ({
-    title: 'Your curve so far',
-    subtitle: naturalFrequency(busiest(buckets)),
-  });
-
-  if (ratingProvisional) return fallback();
-
-  const solid = buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
-  if (solid.length === 0) return fallback();
-
-  // Both sides at once (roadmap D37): too sure in one range and too cautious
-  // in another. Naming only the worst hid that a power user "compresses":
-  // 85% calls came true 44% of the time while her 60–80% ones came true more
-  // often than she said (blind playtest 2026-11-01, run 3). Each side by the
-  // one lean rule (D35), the surest range and the largest gap first.
+/**
+ * Both sides at once (roadmap D37): too sure in one range and too cautious
+ * in another. Naming only the worst hid that a power user "compresses":
+ * 85% calls came true 44% of the time while her 60–80% ones came true more
+ * often than she said (blind playtest 2026-11-01, run 3). Each side by the
+ * one lean rule (D35), the largest gap on each side. Null unless there are
+ * both. Shared with Wrapped, so a recap names both sides too (2026-11-03).
+ */
+export function bothSides(
+  solid: readonly BucketStat[],
+): { sure: BucketStat; cautious: BucketStat } | null {
   const over = solid.filter((b) => b.direction === 'overconfident');
   const under = solid.filter((b) => b.direction === 'underconfident');
-  if (over.length > 0 && under.length > 0) {
-    const sure = over.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
-    const cautious = under.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
+  if (over.length === 0 || under.length === 0) return null;
+  return {
+    sure: over.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a)),
+    cautious: under.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a)),
+  };
+}
+
+/**
+ * The chart's read when it has one ("You're too sure at 80–100%"), or null
+ * while the rating is provisional or no band has enough in it. The week's
+ * recap sets its own read beside this one (2026-11-03).
+ */
+export function chartVerdict(
+  buckets: readonly BucketStat[],
+  ratingProvisional: boolean,
+): ChartTakeaway | null {
+  if (ratingProvisional || buckets.length === 0) return null;
+  const solid = buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
+  if (solid.length === 0) return null;
+
+  const sides = bothSides(solid);
+  if (sides) {
+    const { sure, cautious } = sides;
     return {
       title: `You're too sure at ${rangeLabel(sure)} and too cautious at ${rangeLabel(cautious)}`,
       subtitle: `${naturalFrequency(sure)} Of ${cautious.total_resolved} at ${rangeLabel(cautious)}, ${cautious.resolved_yes} happened.`,
@@ -95,4 +103,19 @@ export function chartTakeaway(
     title: `You're ${worst.direction} at ${rangeLabel(worst)}`,
     subtitle: naturalFrequency(worst),
   };
+}
+
+export function chartTakeaway(
+  buckets: readonly BucketStat[],
+  ratingProvisional: boolean,
+): ChartTakeaway {
+  if (buckets.length === 0) {
+    return { title: 'Your calibration curve', subtitle: null };
+  }
+  return (
+    chartVerdict(buckets, ratingProvisional) ?? {
+      title: 'Your curve so far',
+      subtitle: naturalFrequency(busiest(buckets)),
+    }
+  );
 }

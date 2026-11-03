@@ -8,7 +8,7 @@ import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { BucketStat, Direction, ShareCard } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
-import { identityCardSummary, shareLines, shareSubline } from './cardCopy';
+import { hiddenLine, identityCardSummary, shareLines, shareSubline } from './cardCopy';
 import { CARD_CANVAS_WIDTH, CARD_RADIUS } from './ScaledCanvas';
 
 interface IdentityCardProps {
@@ -82,6 +82,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
   ref,
 ) {
   const { identity, contrast } = shareLines(card);
+  const hidden = hiddenLine(card);
   const showStrip = card.rating !== null && buckets.length > 0;
   // A long identity line, five badges and a larger text size can still be
   // taller than the canvas. Then the content shrinks as one piece to fit,
@@ -206,6 +207,17 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
               </View>
             ))}
           </View>
+          {/* Said on the card itself, so a curated card can't pass for the
+              whole record (decided 2026-11-03). */}
+          {hidden && (
+            <Text
+              maxFontSizeMultiplier={CARD_MAX_SCALE}
+              style={[styles.hidden, { color: theme.muted }]}
+              testID="card-hidden"
+            >
+              {hidden}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -270,6 +282,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipLabel: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700' },
+  hidden: { fontFamily: FONT_FAMILY, fontSize: 13, lineHeight: 18 },
   footer: { borderTopWidth: 1, gap: 2, marginTop: 14, paddingTop: 14 },
   footerPinned: { marginTop: 'auto' },
   story: { paddingVertical: 56 },

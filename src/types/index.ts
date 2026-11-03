@@ -480,6 +480,17 @@ export interface ShareCard {
   categories: ShareCardCategory[];
   rating: number | null;
   total_resolved: number;
+  /**
+   * The rating's give-or-take, as Insights shows it (D35), printed beside it
+   * so a card can't claim more precision than the record has (decided
+   * 2026-11-03). Absent or 0, nothing is printed.
+   */
+  give_or_take?: number;
+  /**
+   * Categories on file that the person left off this card. The card says so,
+   * so a curated card can't pass for the whole record (decided 2026-11-03).
+   */
+  hidden_count?: number;
 }
 
 /**

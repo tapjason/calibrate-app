@@ -704,6 +704,12 @@ Added 2026-09-29 (polish pass):
       badge rows show both, in light and dark, and that the share card is unchanged
       (it draws no category icons). Type "ok" in "Or any emoji": Use stays off. Force-quit and
       reopen: both kept. Use the default: the symbol is back.
+- [ ] **Guest funnel counts (D43, step 150):** apply migration 007 (SQL editor
+      or `npx supabase db push`), then set `GUEST_ANALYTICS` to true. On a
+      fresh install, signed out, finish the Warm-up and foreground the app
+      again: `select name, count(*) from guest_analytics_events group by 1`
+      shows `warmup_started` and `warmup_completed`, and the rows have no
+      user column. Turn Usage stats off, do it again: nothing new arrives.
 - [ ] **Custom categories sync (D39):** 006 applied and the flag on
       (2026-11-03). Left: sign in on two
       phones and check a prediction filed under an added category reaches the

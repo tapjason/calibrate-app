@@ -43,6 +43,11 @@ const rankOf = (badge: BadgeLevel): number => BADGE_ORDER.indexOf(badge);
 export function buildShareCard(
   userStat: UserStat | null,
   categoryStats: CategoryStat[],
+  /**
+   * The rating's give-or-take and how many categories on file the person left
+   * off (decided 2026-11-03). Both go on the card; neither changes its lines.
+   */
+  extras: { giveOrTake?: number | null; hiddenCount?: number } = {},
 ): ShareCard | null {
   if (!userStat) return null;
 
@@ -59,6 +64,8 @@ export function buildShareCard(
     return b.predictions_resolved - a.predictions_resolved;
   });
 
+  const giveOrTake = Math.round(extras.giveOrTake ?? 0);
+  const hiddenCount = extras.hiddenCount ?? 0;
   return {
     categories: ordered.map((c) => ({
       category: c.category,
@@ -71,6 +78,8 @@ export function buildShareCard(
       ? null
       : Math.round(userStat.calibration_rating),
     total_resolved: userStat.total_resolved,
+    ...(giveOrTake > 0 && !userStat.rating_is_provisional ? { give_or_take: giveOrTake } : {}),
+    ...(hiddenCount > 0 ? { hidden_count: hiddenCount } : {}),
   };
 }
 
@@ -116,7 +125,21 @@ export function shareSubline(card: ShareCard): string {
     const remaining = Math.max(0, MIN_N_OVERALL - card.total_resolved);
     return `${remaining} more ${remaining === 1 ? 'resolution' : 'resolutions'} until my calibration unlocks`;
   }
-  return `Calibration ${card.rating}/100 from ${card.total_resolved} resolved predictions`;
+  // The give-or-take in Insights' words (D35): a card is the most public
+  // number the app makes, so it carries the same honesty (decided 2026-11-03).
+  const range = card.give_or_take ? `, give or take ${card.give_or_take},` : '';
+  return `Calibration ${card.rating}/100${range} from ${card.total_resolved} resolved predictions`;
+}
+
+/**
+ * "2 categories not shown", when the person left some off the card, or null.
+ * Hiding one can change the headline, and a blind tester's curated card read
+ * as the whole record (playtest 2026-11-03, run 4).
+ */
+export function hiddenLine(card: ShareCard): string | null {
+  const n = card.hidden_count ?? 0;
+  if (n <= 0) return null;
+  return `${n} ${n === 1 ? 'category' : 'categories'} not shown`;
 }
 
 /** One square per confidence band, Wordle-style. */
@@ -154,10 +177,13 @@ export function shareText(
       const d = byLow.get(low);
       return d ? SQUARE[d] : EMPTY_SQUARE;
     }).join('');
-    lines.push(`${squares} score ${card.rating}`);
+    const range = card.give_or_take ? `, give or take ${card.give_or_take}` : '';
+    lines.push(`${squares} score ${card.rating}${range}`);
   } else {
     lines.push(`${card.total_resolved} predictions resolved so far`);
   }
+  const hidden = hiddenLine(card);
+  if (hidden) lines.push(hidden);
   if (link) lines.push(link);
   return lines.join('\n');
 }
@@ -173,5 +199,6 @@ export function identityCardSummary(card: ShareCard): string {
   const each = card.categories
     .map((c) => `${BADGE_META[c.badge_level].label} in ${categoryLabel(c.category)}`)
     .join(', ');
-  return `Share card. ${lead}. ${shareSubline(card)}. By category: ${each}.`;
+  const hidden = hiddenLine(card);
+  return `Share card. ${lead}. ${shareSubline(card)}. By category: ${each}.${hidden ? ` ${hidden}.` : ''}`;
 }

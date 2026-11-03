@@ -19,8 +19,9 @@ to be read, not skimmed past.
 
 ## 1. The short version
 
-- **Without an account, nothing leaves your phone.** You can log, resolve,
-  score, and share predictions entirely offline.
+- **Without an account, your predictions never leave your phone.** You can
+  log, resolve, score, and share predictions entirely offline. A few usage
+  counts do, with no id that could tell us who or which phone (§2).
 - **With an account, your predictions are backed up to our server** so they
   survive a new phone. That includes their text.
 - **We don't sell your data, show ads, or track you across other apps or
@@ -33,10 +34,14 @@ to be read, not skimmed past.
 ## 2. What we collect
 
 ### If you don't sign in
-Nothing leaves your phone. Your predictions, results, and settings are stored
-in a database on your device. Usage events (§2.3) are recorded on the device
-but never sent. If you later create an account, the ones still on the device
-are sent with it, unless you turned usage stats off, which deletes them.
+Your predictions, results, and settings stay in a database on your device.
+Usage events (§2.3) are recorded on the device. A few of them, those that
+count how many people start and finish the warm-up, log, answer, share and
+practise, are sent to us with no account, no device or install identifier and
+nothing else that could tell us who you are or which phone sent them, so we
+can't link them to you or to each other. The others are sent only if you
+later create an account, with it. Turning usage stats off deletes the ones
+still on the device and stops all of them.
 
 On an iPhone running iOS 26 or later, the app may ask Apple for an age range
 the first time a screen is up. If you share one, only the age band — a lower
@@ -69,7 +74,8 @@ full list:
 `practice_reminder_set`, `coach_requested`, `data_exported`.
 
 These are linked to your account. **You can turn them off** in Settings →
-Usage stats.
+Usage stats. (Before you sign in, the few described above are sent with no
+identifier, so they can't be linked to you, or deleted as yours.)
 
 **2.4 Purchase status.** Whether you have Fairly Sure Plus, which plan, and when it
 renews or ends. We receive this from our subscription provider (§4). We never

@@ -84,7 +84,12 @@ beforeEach(() => {
   seq = 0;
   __resetRevealedWeeksForTests();
   jest.mocked(haptics.reveal).mockClear();
-  useStatsStore.setState({ userStat: null, categoryStats: [], nextBadges: {} });
+  useStatsStore.setState({
+    userStat: null,
+    categoryStats: [],
+    nextBadges: {},
+    calibration: { rating: 0, buckets: [] },
+  });
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   __setShareDepsForTests(shareDeps());
 });
@@ -208,6 +213,37 @@ describe('WrappedPanel', () => {
     expect(screen.getByTestId('wrapped-verdict')).toBeTruthy();
     expect(screen.queryByTestId('wrapped-provisional')).toBeNull();
     expect(screen.getByText(/you ran overconfident/)).toBeTruthy();
+  });
+
+  // Decided 2026-11-03 (playtest runs 2 and 4): the week's read beside the
+  // whole record's, as Insights words it.
+  it("sets the whole record's read beside the week's verdict", () => {
+    seed(run(MIN_N_OVERALL, 10));
+    seedOverall(148);
+    const band = (low: number, n: number, yes: number, stated: number, direction: 'overconfident' | 'underconfident') => ({
+      low,
+      high: low + 20,
+      total_resolved: n,
+      resolved_yes: yes,
+      stated_confidence_mean: stated,
+      actual_rate: yes / n,
+      bucket_error: Math.abs(stated / 100 - yes / n),
+      direction,
+      chance_low: 0,
+      chance_high: 1,
+      expected_yes: (n * stated) / 100,
+    });
+    useStatsStore.setState({
+      calibration: {
+        rating: 87,
+        buckets: [band(60, 40, 36, 70, 'underconfident'), band(80, 60, 39, 88, 'overconfident')],
+      },
+    });
+    render(<WrappedPanel span="week" />);
+
+    expect(screen.getByTestId('wrapped-all-time')).toHaveTextContent(
+      holdRanges("Across all 148 answers, you're too sure at 80–100% and too cautious at 60–80%."),
+    );
   });
 
   it('features the boldest call and the surest miss', () => {

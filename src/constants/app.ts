@@ -78,3 +78,12 @@ export const APP_STORE_PROVIDER_TOKEN: string | null = null;
  * Only the id syncs; the names stay on each phone.
  */
 export const CUSTOM_CATEGORY_SYNC = true;
+
+/**
+ * Whether a guest's funnel events go up, with no id of any kind (roadmap D43,
+ * decided 2026-11-03), so the funnel counts people who never sign in. It
+ * needs `supabase/migrations/007_guest_analytics_events.sql` on the live
+ * project: before it, every push would fail. With this off a guest's events
+ * wait on the phone as before and go up with an account.
+ */
+export const GUEST_ANALYTICS = false;

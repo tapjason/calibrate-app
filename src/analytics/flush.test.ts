@@ -128,12 +128,12 @@ describe('flushEvents', () => {
   it.each([
     ['a guest', LOCAL_GUEST_USER_ID],
     ['no user', null],
-  ])('sends nothing for %s', async (_label, userId) => {
+  ])('sends nothing for %s (guests while GUEST_ANALYTICS is off)', async (_label, userId) => {
     await seed(2);
     const insert = ok();
 
     await expect(
-      flushEvents(userId, { client: fakeClient(insert) }),
+      flushEvents(userId, { client: fakeClient(insert), guests: false }),
     ).resolves.toBe(0);
 
     expect(insert).not.toHaveBeenCalled();
@@ -203,5 +203,69 @@ describe('flushEvents', () => {
 
     expect(insert).toHaveBeenCalledTimes(1);
     expect(a).toBe(b);
+  });
+});
+
+// Roadmap D43 (decided 2026-11-03): a guest's funnel events count, with no id.
+describe('flushEvents for a guest', () => {
+  const tables: string[] = [];
+  const guestClient = (insert: InsertMock): SupabaseClient =>
+    ({
+      from: (table: string) => {
+        tables.push(table);
+        return { insert };
+      },
+    }) as unknown as SupabaseClient;
+
+  beforeEach(async () => {
+    tables.length = 0;
+    const events = [
+      ['g1', 'warmup_started', {}],
+      ['g2', 'warmup_completed', { score: 70, question_count: 10 }],
+      ['g3', 'paywall_viewed', { source: 'settings' }],
+      ['g4', 'share_completed', { surface: 'warmup' }],
+    ] as const;
+    for (const [id, name, props] of events) {
+      await enqueueEvent({
+        id,
+        user_id: LOCAL_GUEST_USER_ID,
+        name,
+        props,
+        created_at: new Date(1_700_000_000_000 + Number(id[1]) * 1000).toISOString(),
+      });
+    }
+  });
+
+  it('sends only the funnel events, to their own table, with no id of any kind', async () => {
+    const insert = ok();
+
+    await expect(
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert), guests: true }),
+    ).resolves.toBe(3);
+
+    expect(tables).toEqual(['guest_analytics_events']);
+    const sent = insert.mock.calls.flatMap((c) => c[0]);
+    expect(sent.map((r) => r.name)).toEqual([
+      'warmup_started',
+      'warmup_completed',
+      'share_completed',
+    ]);
+    for (const row of sent) {
+      expect(Object.keys(row).sort()).toEqual(['created_at', 'id', 'name', 'props']);
+    }
+    // The paywall view waits for an account, as before.
+    await expect(countUnsyncedEvents()).resolves.toBe(1);
+  });
+
+  it('sends nothing while GUEST_ANALYTICS is off, or with usage stats off', async () => {
+    const insert = ok();
+    await expect(
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert), guests: false }),
+    ).resolves.toBe(0);
+    useSettingsStore.setState({ analyticsEnabled: false });
+    await expect(
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert), guests: true }),
+    ).resolves.toBe(0);
+    expect(insert).not.toHaveBeenCalled();
   });
 });

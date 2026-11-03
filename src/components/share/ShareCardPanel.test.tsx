@@ -56,6 +56,7 @@ function seedStats(
     userStat,
     categoryStats,
     calibration: { rating: 0, buckets: [] },
+    ratingRange: null,
   });
 }
 
@@ -100,6 +101,17 @@ describe('ShareCardPanel', () => {
 
     expect(
       screen.getByText('Calibration 88/100 from 55 resolved predictions'),
+    ).toBeTruthy();
+  });
+
+  // Decided 2026-11-03: the card carries the rating's give-or-take.
+  it('prints the give-or-take beside the rating', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    useStatsStore.setState({ ratingRange: { giveOrTake: 4, low: 84, high: 92 } });
+    render(<ShareCardPanel />);
+
+    expect(
+      screen.getByText('Calibration 88/100, give or take 4, from 55 resolved predictions'),
     ).toBeTruthy();
   });
 
@@ -268,8 +280,11 @@ describe('ShareCardPanel — shape and contents', () => {
     );
     const [first, ...rest] = categories;
 
+    expect(screen.queryByTestId('card-hidden')).toBeNull();
     fireEvent.press(screen.getByTestId(`share-toggle-${first}`));
     expect(screen.queryByTestId(`card-badge-${first}`)).toBeNull();
+    // Said on the card (decided 2026-11-03): a curated card isn't the record.
+    expect(screen.getByTestId('card-hidden')).toHaveTextContent('1 category not shown');
 
     for (const c of rest) fireEvent.press(screen.getByTestId(`share-toggle-${c}`));
     // The last one standing can't be switched off.

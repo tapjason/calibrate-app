@@ -414,6 +414,15 @@ See the authoritative section above.
   categories past the count gate are named; with none yet, it reads "Calibrating" and
   the count to go.
 - **Calibration Wrapped** — weekly and yearly recap of the user's forecasting story.
+  Its read follows Insights (decided 2026-11-03, D42): both sides when there are
+  both ("This year, you ran too sure at 80–100% and too cautious at 60–80%."), and
+  the week's card sets the whole record's read beside its own ("Across all 148
+  answers, you're too sure at 80–100%."), so the two spans don't read as a
+  contradiction.
+- **The card is honest about itself** (decided 2026-11-03, D42): the rating carries
+  its give-or-take ("Calibration 87/100, give or take 3, from 148 resolved
+  predictions"), and a card with categories left off says so ("2 categories not
+  shown"), in the image and the text share alike.
 - Exports a PNG the OS share sheet accepts.
 - A text share ends on the App Store link with a campaign token (`ct=share-card-text`)
   once `APP_STORE_ID` is set (decided 2026-10-08, `GROWTH_AND_MONETIZATION.md` §0

@@ -71,6 +71,23 @@ export const EVENT_NAMES = [
 
 export type EventName = (typeof EVENT_NAMES)[number];
 
+/**
+ * The funnel events a guest's phone sends with no id of any kind (roadmap
+ * D43, decided 2026-11-03): enough to count how many start and finish the
+ * Warm-up, log, answer, share and practise. The rest wait for an account.
+ * `supabase/migrations/007_guest_analytics_events.sql` holds the same list.
+ */
+export const GUEST_EVENT_NAMES = [
+  'warmup_started',
+  'warmup_completed',
+  'prediction_logged',
+  'prediction_resolved',
+  'share_opened',
+  'share_completed',
+  'practice_started',
+  'practice_completed',
+] as const satisfies readonly EventName[];
+
 /** Where a paywall view came from. Enum, so no free-form strings leak in. */
 export const PAYWALL_SOURCES = [
   'stats',
