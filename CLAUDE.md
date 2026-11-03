@@ -76,11 +76,12 @@ The person renames any category, adds their own and hides one from Log's choices
 (You → Categories). A built-in has a row only once renamed or hidden. Device-local in
 the `categories` SQLite table, like the settings: not synced yet. Predictions carry
 only the id, so a rename changes no prediction and no name leaves the phone. Every
-category is shown through `categoryLabel`. **Until `supabase/migrations/006_custom_categories.sql`
-is applied, predictions filed under an added category stay on the phone**
-(`CUSTOM_CATEGORY_SYNC` is false; the server accepts only the five built-ins) and the
-Categories screen says so to a signed-in person. An added category never reaches the
-Coach: its name is the person's own text.
+category is shown through `categoryLabel`. **Predictions filed under an added category
+sync** since `supabase/migrations/006_custom_categories.sql` was applied to the live
+project (2026-11-03, `CUSTOM_CATEGORY_SYNC` true); only the id goes up, so another
+phone shows "Other" until it's named there. With the flag off they stay on the phone
+and the Categories screen says so to a signed-in person. An added category never
+reaches the Coach: its name is the person's own text.
 
 ### UserStat
 ```ts

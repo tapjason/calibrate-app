@@ -61,7 +61,7 @@ found the RevenueCat Test Store drift below.
 
 ## Suggested order for the next iterations
 
-1. Fix the Test Store prices (below), then your calls.
+1. ~~Fix the Test Store prices~~ (done 2026-11-03, with the keep-alive, migration 006 and the old test account), then your calls.
 2. Your calls below: age assurance, the name, pricing (P1), Pages for the
    privacy policy.
    Then **i** if you pick (a).
@@ -74,10 +74,6 @@ found the RevenueCat Test Store drift below.
 
 ## Waiting on you, not code
 
-- **RevenueCat Test Store drifted (found 2026-10-04).** Annual reads $29.90
-  instead of $29.99, and monthly has a 1-month trial it shouldn't. The API
-  can't set Test Store prices; fix both in the dashboard (Tier 0 steps in
-  `HUMAN_VERIFICATION.md`) and ask the agent to re-read `store_state`.
 - **The $99 Apple Developer account now gates any iPhone test** (finding 1).
   The only free check left is the web build (item k). When you want to see the
   app on your phone, this is the purchase. It also unlocks billing, TestFlight
@@ -122,11 +118,6 @@ found the RevenueCat Test Store drift below.
   2026-10-04). "Confirm email" is on for testing (decided 2026-10-01); before
   strangers sign up, either configure custom SMTP or turn confirmation off
   (`ACCOUNT_SPEC.md` §1).
-- **Supabase keep-alive, one step left.** `.github/workflows/supabase-keepalive.yml`
-  (2026-10-03) needs the `SUPABASE_URL` and `SUPABASE_ANON_KEY` repository
-  secrets. It can't wake a paused project, so restore the project from the
-  dashboard first. Free projects still pause after 7 days without requests;
-  the data is kept and can be restored for a year.
 - **Demo account for App Review.** Create the user in the dashboard, run
   `node scripts/seed-demo-sql.mjs <user-uuid>` and paste the SQL into the SQL
   editor. Dates are relative to the run, so re-seed shortly before review. The
@@ -134,9 +125,6 @@ found the RevenueCat Test Store drift below.
 - **Sandbox purchases on the server.** `REVENUECAT_IGNORE_SANDBOX` exists and
   defaults to off. Keep it off through review: App Review purchases are sandbox
   too, and ignoring them would hand the reviewer a Coach that answers 403.
-- **The old test account.** A test user's password was once committed to this
-  public repo (removed from the file, still in history). Delete that user, or
-  ask the agent to do it with the service key.
 - **Account deletion, last two legs.** Apple token revocation needs a Sign in
   with Apple `.p8` key, and deleting the RevenueCat customer needs a
   write-scoped server key. The function already handles both once the secrets

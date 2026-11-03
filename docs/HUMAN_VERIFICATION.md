@@ -39,10 +39,14 @@ detailed procedures; this section is the order to do them in.
 | App icon, splash, Android adaptive icon: real artwork, 1024², wired in `app.json` | 2026-09-25 |
 | ~~Test Store prices ($4.99 / $29.99 / $59.99) and the 1-month trial on annual only~~ **Reopened 2026-10-04:** the API now reads annual $29.90 and a P1M trial on monthly too. See Tier 0. | 2026-10-01 |
 | `delete-account` deployed (JWT on), and the webhook redeployed to match `e597583` | 2026-10-02 |
+| Supabase restored (`ACTIVE_HEALTHY`, REST 200); keep-alive secrets set and a manual run green | 2026-11-03 |
+| Test Store fixed with new products: `calibrate_plus_annual_2999` $29.99 + 1-month trial, `calibrate_plus_monthly_notrial` $4.99 no trial, lifetime $59.99; the old ones and `calibrate_pro` archived; `plus` and the `default` offering hold exactly these three. The app and webhook accept them as aliases (`PRODUCT_ALIASES`); webhook redeployed (v3, unauthenticated POST still 401) | 2026-11-03 |
+| Migration 006 applied (category check accepts `c-` ids, read back live); `CUSTOM_CATEGORY_SYNC` on | 2026-11-03 |
+| The leaked test account is gone: `auth.users` is empty | 2026-11-03 |
 
 ### Tier 0: free, at a desk, no phone
 
-- [ ] **Test Store trial and prices — reopened 2026-10-04.** `store_state`
+- [x] **Test Store trial and prices — reopened 2026-10-04, fixed 2026-11-03** (see the table above). `store_state`
       now reads annual **USD 29.90** (should be 29.99) and **monthly with
       `trial.duration: P1M`** (should have no trial). Redo steps 3–4 below,
       removing the trial from monthly, then step 6.
@@ -685,13 +689,12 @@ Added 2026-09-29 (polish pass):
       Save is dimmed. At the largest Dynamic Type sizes the coverage chips on
       Insights break after the dash with nothing cut to "…", and the streak row
       wraps between words.
-- [ ] **Custom categories (D39, step 144; web-verified):** in You → Categories,
+- [ ] **Custom categories (D39, step 144; web-verified, re-checked by the owner on web 2026-11-03):** in You → Categories,
       rename Finance to "Money", add "Grad school", hide Social. Log offers Money
       and Grad school and no Social; Insights, History, the card and This week say
       "Money". Force-quit and reopen: all three kept.
-- [ ] **Before custom categories sync (D39, owner):** apply
-      `supabase/migrations/006_custom_categories.sql` to the live project, set
-      `CUSTOM_CATEGORY_SYNC` to true in `src/constants/app.ts`, sign in on two
+- [ ] **Custom categories sync (D39):** 006 applied and the flag on
+      (2026-11-03). Left: sign in on two
       phones and check a prediction filed under an added category reaches the
       other. The names stay on each phone (not synced yet): the second shows
       "Other" until it's named there.
