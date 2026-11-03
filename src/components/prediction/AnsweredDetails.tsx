@@ -10,6 +10,7 @@ import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme
 import { correctionWindow, usePredictionStore } from '@/store/predictionStore';
 import type { Category, Prediction } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { answeredSameDay } from '@/store/statsStore';
 
 interface AnsweredDetailsProps {
   prediction: Prediction;
@@ -121,6 +122,11 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
           {prediction.resolved_at ? `, answered ${shortDate(prediction.resolved_at)}` : ''}
         </Text>
       </View>
+      {answeredSameDay(prediction) && (
+        <Text style={styles.body} testID="answered-same-day">
+          Answered the day it was logged, so it isn’t scored.
+        </Text>
+      )}
       {prediction.reflection && (
         <Text style={styles.reflection}>“{prediction.reflection}”</Text>
       )}

@@ -50,6 +50,12 @@ interface CalibrationViewProps {
    * said beside it, so a record with the misses parked as skips shows it.
    */
   skippedCount?: number;
+  /**
+   * Answers given the day they were logged, which aren't scored (roadmap
+   * D41): said beside the rating, before it unlocks too, so a count that
+   * didn't move after an answer is explained.
+   */
+  sameDayCount?: number;
   /** Each category score's give-or-take (roadmap D35). */
   categoryRanges?: Partial<Record<Category, RatingRange>>;
   /** The category furthest from what was said (roadmap D37), or null. */
@@ -77,6 +83,7 @@ export function CalibrationView({
   brier = null,
   brierBaseline = null,
   skippedCount = 0,
+  sameDayCount = 0,
   categoryRanges = {},
   furthestOff = null,
   weekChange = null,
@@ -137,6 +144,11 @@ export function CalibrationView({
                 </Text>
               )}
             </>
+          )}
+          {sameDayCount > 0 && (
+            <Text style={styles.subtle} testID="stats-same-day">
+              {sameDayLine(sameDayCount)}
+            </Text>
           )}
           {/* The progress bar already counts resolutions while provisional. */}
           {!headline.provisional && (
@@ -299,6 +311,17 @@ export function skippedLine(skipped: number, yesNo: number): string {
   return skipped === 1
     ? `1 of ${total} answers was Can’t tell, so it isn’t scored.`
     : `${skipped} of ${total} answers were Can’t tell, so they aren’t scored.`;
+}
+
+/**
+ * "3 answers came the day they were logged, so they aren't scored." (roadmap
+ * D41). Logging a sure thing and answering it at once bought a badge in
+ * minutes; said beside the rating, the rule is never a surprise.
+ */
+export function sameDayLine(count: number): string {
+  return count === 1
+    ? '1 answer came the day it was logged, so it isn’t scored.'
+    : `${count} answers came the day they were logged, so they aren’t scored.`;
 }
 
 /** Tracker's count (CLAUDE.md badge table): where a category's first badge comes. */

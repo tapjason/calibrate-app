@@ -117,6 +117,7 @@ export function scoringSections(): ScoringSection[] {
       title: "What doesn't count",
       paragraphs: [
         '"Can\'t tell / doesn\'t apply" answers, which stay out of the score, the streak and your recaps. And the Warmup and the daily practice, which are practice and kept apart from your real record.',
+        "An answer given the same day the prediction was logged. It stays in History and keeps your streak, but it isn't scored: a call made and settled in one day says little, and it made the score easy to pad. So the earliest due date is tomorrow.",
       ],
     },
   ];

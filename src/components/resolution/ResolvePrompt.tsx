@@ -17,7 +17,7 @@ import {
 } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
-import { useStatsStore } from '@/store/statsStore';
+import { answeredSameDay, useStatsStore } from '@/store/statsStore';
 import {
   MIN_N_OVERALL,
   type BucketStat,
@@ -115,6 +115,10 @@ export function firstAnswerLine(confidence: number): string {
  * streak checkpoint. Reads what the resolve just left in the stores, then
  * clears it so a later screen doesn't celebrate the same answer again.
  */
+/** After a same-day answer (roadmap D41), in place of the range's record. */
+export const SAME_DAY_LINE =
+  'Answered the day you logged it, so it isn’t scored. It stays in History.';
+
 function readAcknowledgement(
   prediction: Prediction,
   outcome: 'resolved_yes' | 'resolved_no',
@@ -132,10 +136,18 @@ function readAcknowledgement(
   if (milestone?.kind === 'rating_unlocked') useRatingStore.getState().noteMoment();
   stats.clearMilestone();
   predictions.clearStreakCheckpoint();
+  // Answered the day it was logged (roadmap D41): said instead of the range's
+  // record, which this answer doesn't join.
+  const sameDay = answeredSameDay({
+    ...prediction,
+    status: outcome,
+    resolved_at: prediction.resolved_at ?? new Date().toISOString(),
+  });
   return {
     outcome,
-    line:
-      stats.userStat?.total_resolved === 1
+    line: sameDay
+      ? SAME_DAY_LINE
+      : stats.userStat?.total_resolved === 1
         ? firstAnswerLine(prediction.confidence)
         : bucket
           ? bucketLine(bucket)
@@ -254,12 +266,15 @@ export function ResolvePrompt({
       setAnswered({
         ...answered,
         outcome,
+        // A same-day answer stays one after a correction (D34 keeps its time).
         line:
-          stats.userStat?.total_resolved === 1
-            ? firstAnswerLine(prediction.confidence)
-            : bucket
-              ? bucketLine(bucket)
-              : null,
+          answered.line === SAME_DAY_LINE
+            ? SAME_DAY_LINE
+            : stats.userStat?.total_resolved === 1
+              ? firstAnswerLine(prediction.confidence)
+              : bucket
+                ? bucketLine(bucket)
+                : null,
         // What the first answer crossed isn't this one's to show.
         milestone: null,
       });

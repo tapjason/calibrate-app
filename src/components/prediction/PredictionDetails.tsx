@@ -12,7 +12,11 @@ import { CategoryIcon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
-import { usePredictionStore } from '@/store/predictionStore';
+import {
+  answerNowIsSameDay,
+  earliestDueFor,
+  usePredictionStore,
+} from '@/store/predictionStore';
 import { reminderTimeLabel } from '@/notifications/practiceReminder';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Category, Prediction } from '@/types';
@@ -204,6 +208,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           picking={picking}
           onChange={setDueDate}
           onPickingChange={setPicking}
+          earliest={earliestDueFor(prediction.created_at)}
         />
         {error && <Text style={styles.error}>{error}</Text>}
         {needs && (
@@ -251,6 +256,9 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           <Text style={styles.body}>
             It's due {shortDate(prediction.due_date)}. Answering early is fine; just answer what
             you know now.
+            {answerNowIsSameDay(prediction)
+              ? ' You logged it today, though, so an answer today isn’t scored. From tomorrow it is.'
+              : ''}
           </Text>
           <Button label="Answer now" onPress={() => onAnswer(prediction.id)} testID="details-answer-now" />
           <TextButton label="Not yet" onPress={() => setMode('view')} testID="details-not-yet" />

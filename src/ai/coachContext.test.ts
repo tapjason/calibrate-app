@@ -83,6 +83,18 @@ describe('buildCoachContext', () => {
     expect(ctx.by_category[0].resolved).toBe(1);
   });
 
+  // Roadmap D41: an answer the day it was logged isn't scored, Coach included.
+  it('excludes answers given the day they were logged', () => {
+    const ctx = buildCoachContext(USER_STAT, [
+      prediction({
+        created_at: new Date(2026, 7, 5, 9).toISOString(),
+        resolved_at: new Date(2026, 7, 5, 20).toISOString(),
+      }),
+      prediction({ status: 'resolved_yes' }),
+    ]);
+    expect(ctx.by_category[0].resolved).toBe(1);
+  });
+
   // Thin categories are included ON PURPOSE: the Coach has to be able to see
   // that a category is thin in order to say "keep logging" instead of guessing.
   it('includes a thin category with its real resolution count', () => {

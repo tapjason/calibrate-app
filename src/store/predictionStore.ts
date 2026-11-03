@@ -12,6 +12,7 @@ import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
 import { canCorrect, correctableUntil } from '@/engine/corrections';
 import { pastOutcomes } from '@/engine/pastOutcomes';
+import { earliestDueDay, isSameDayAnswer } from '@/engine/sameDay';
 import { checkpointReached, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
@@ -392,6 +393,20 @@ export function pastOutcomesFor(
  */
 export function correctionWindow(p: Prediction, now: Date): Date | null {
   return canCorrect(p, now) ? correctableUntil(p) : null;
+}
+
+/**
+ * The earliest due day for a prediction logged at `createdAt` (roadmap D41):
+ * the next day, since an answer on the day it was logged isn't scored. For
+ * the date pickers of Log and Edit.
+ */
+export function earliestDueFor(createdAt: string | Date, now: Date = new Date()): Date {
+  return earliestDueDay(new Date(createdAt), now);
+}
+
+/** Whether an answer given at `now` would be a same-day one, not scored (D41). */
+export function answerNowIsSameDay(p: Prediction, now: Date = new Date()): boolean {
+  return isSameDayAnswer({ ...p, status: 'resolved_yes', resolved_at: now.toISOString() });
 }
 
 const PAST_WINDOW = 'This answer is part of the record now and can no longer be changed.';

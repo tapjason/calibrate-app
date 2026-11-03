@@ -42,6 +42,19 @@ describe('PredictionCard', () => {
     expect(screen.queryByText(/[✓✗]/)).toBeNull();
   });
 
+  // Roadmap D41: answered the day it was logged, the outcome stands, unscored.
+  it('marks an answer given the day it was logged as not scored', () => {
+    const sameDay = {
+      ...prediction,
+      created_at: new Date(2026, 8, 8, 9).toISOString(),
+      resolved_at: new Date(2026, 8, 8, 21).toISOString(),
+    };
+    const { rerender } = render(<PredictionCard prediction={sameDay} />);
+    expect(screen.getByText('Happened, not scored')).toBeTruthy();
+    rerender(<PredictionCard prediction={{ ...sameDay, status: 'resolved_no' }} />);
+    expect(screen.getByText("Didn't happen, not scored")).toBeTruthy();
+  });
+
   // Coming due is not a lapse: no "Overdue", no warning colour.
   it('calls a past-due prediction ready, not overdue', () => {
     render(

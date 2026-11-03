@@ -33,6 +33,7 @@ import {
   type CoverageNudgeDecision,
 } from '@/engine/coverageNudge';
 import { detectMilestone } from '@/engine/milestones';
+import { isSameDayAnswer, sameDayCount, scoredOnly } from '@/engine/sameDay';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import { categoriesIn } from '@/engine/categories';
@@ -214,11 +215,14 @@ type DerivedStats = Pick<
  * recomputeForUser (after a write) and loadForUser (at launch).
  */
 async function rebuildStats(userId: string): Promise<DerivedStats> {
-  const [pending, resolved] = await Promise.all([
+  const [pending, answered] = await Promise.all([
     listPendingPredictions(userId),
     listResolvedPredictions(userId),
   ]);
-  const all = [...pending, ...resolved];
+  // Every prediction for the streak, the counts and coverage; only the
+  // scored answers for anything calibrated (same-day ones aren't, D41).
+  const all = [...pending, ...answered];
+  const resolved = scoredOnly(answered);
 
   // ---- User-level ----
   const userCalc = computeCalibration(resolved);
@@ -326,11 +330,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     }
     // Nothing computed yet (no write since install or erase): show what the
     // predictions give without writing a row for a user who has none.
-    const [categoryStats, resolved, pending] = await Promise.all([
+    const [categoryStats, answered, pending] = await Promise.all([
       listCategoryStats(userId),
       listResolvedPredictions(userId),
       listPendingPredictions(userId),
     ]);
+    const resolved = scoredOnly(answered);
     const ranges = deriveCategoryRanges(resolved);
     set({
       userStat: null,
@@ -344,7 +349,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       ratingRange: computeRatingRange(resolved),
       brier: computeBrier(resolved),
       brierBaseline: computeBrierBaseline(resolved),
-      coverageGap: computeCoverageGap([...pending, ...resolved]),
+      coverageGap: computeCoverageGap([...pending, ...answered]),
     });
   },
 
@@ -398,7 +403,7 @@ export function wrappedSummary(
   span: WrappedSpan,
   now: Date = new Date(),
 ): WrappedSummary {
-  return buildWrapped(resolved, span, now);
+  return buildWrapped(scoredOnly(resolved), span, now);
 }
 
 /**
@@ -413,7 +418,20 @@ export type { CoverageGap, CoverageNudgeDecision, WrappedSpan, WrappedSummary };
  * day; the engine does the arithmetic, screens read it here.
  */
 export function weekChangeFor(resolved: readonly Prediction[], now: Date): WeekChange | null {
-  return weekChange(resolved, now);
+  return weekChange(scoredOnly(resolved), now);
+}
+
+/**
+ * Same-day answers (roadmap D41): given on the day the prediction was
+ * logged, so not scored. The rule is the engine's; screens read it here.
+ */
+export function answeredSameDay(p: Prediction): boolean {
+  return isSameDayAnswer(p);
+}
+
+/** How many answers in the list aren't scored for being same-day (D41). */
+export function sameDayAnswerCount(resolved: readonly Prediction[]): number {
+  return sameDayCount(resolved);
 }
 
 export type { CategoryMiss, WeekChange };

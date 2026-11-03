@@ -22,17 +22,21 @@ jest.mock('@/components/ui/haptics', () => ({
 
 let seq = 0;
 
-/** Resolved today, so it always lands inside the seven-day window. */
+/**
+ * Resolved today, so it always lands inside the seven-day window, and logged
+ * the day before: a same-day answer isn't scored (roadmap D41).
+ */
 function prediction(over: Partial<Prediction> = {}): Prediction {
   seq += 1;
   const now = new Date().toISOString();
+  const dayBefore = new Date(Date.now() - 86_400_000).toISOString();
   return {
     id: `p${seq}`,
     user_id: 'u1',
     title: `Prediction ${seq}`,
     category: 'work',
     confidence: 80,
-    created_at: now,
+    created_at: dayBefore,
     due_date: now,
     status: 'resolved_yes',
     resolved_at: now,

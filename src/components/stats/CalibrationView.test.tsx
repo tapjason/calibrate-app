@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
-import { CalibrationView, skippedLine } from '@/components/stats/CalibrationView';
+import { CalibrationView, sameDayLine, skippedLine } from '@/components/stats/CalibrationView';
 import { holdRanges } from '@/components/ui/holdRanges';
 import type { CalibrationResult, UserStat } from '@/types';
 
@@ -341,6 +341,32 @@ describe('CalibrationView skipped answers', () => {
 
   it('words one', () => {
     expect(skippedLine(1, 40)).toBe('1 of 41 answers was Can’t tell, so it isn’t scored.');
+  });
+});
+
+// Roadmap D41: answers given the day they were logged, said beside the rating.
+describe('CalibrationView same-day answers', () => {
+  const view = (sameDayCount: number, total: number) =>
+    render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: total, rating_is_provisional: total < 20 })}
+        calibration={{ rating: 87, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        sameDayCount={sameDayCount}
+      />,
+    );
+
+  it('says how many, before the rating unlocks too', () => {
+    expect(view(3, 161).getByTestId('stats-same-day')).toHaveTextContent(
+      '3 answers came the day they were logged, so they aren’t scored.',
+    );
+    expect(view(2, 4).getByTestId('stats-same-day')).toBeTruthy();
+    expect(view(0, 161).queryByTestId('stats-same-day')).toBeNull();
+  });
+
+  it('words one', () => {
+    expect(sameDayLine(1)).toBe('1 answer came the day it was logged, so it isn’t scored.');
   });
 });
 

@@ -131,6 +131,17 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(await getPrediction('p1')).not.toBeNull();
   });
 
+  // Roadmap D41: logged today, an answer today isn't scored; it says so first.
+  it('warns that an answer the day it was logged is not scored', async () => {
+    await insertPrediction(open({ created_at: new Date().toISOString() }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-answer'));
+    expect(screen.getByTestId('details-early')).toHaveTextContent(
+      /You logged it today, though, so an answer today isn’t scored\. From tomorrow it is\./,
+    );
+  });
+
   it('says it is early before answering, then hands over to Resolve', async () => {
     await insertPrediction(open());
     const onAnswer = jest.fn();
@@ -139,6 +150,7 @@ describe('PredictionDetails (roadmap D25)', () => {
 
     fireEvent.press(screen.getByTestId('details-answer'));
     expect(screen.getByTestId('details-early')).toHaveTextContent(/It's due .+\. Answering early is fine/);
+    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/isn’t scored/);
     expect(onAnswer).not.toHaveBeenCalled();
     fireEvent.press(screen.getByTestId('details-answer-now'));
     expect(onAnswer).toHaveBeenCalledWith('p1');

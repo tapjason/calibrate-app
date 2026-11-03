@@ -30,6 +30,7 @@ import {
   type NotificationsApi,
   type Navigator,
 } from './scheduler';
+import { loggedEarlier } from '../../jest/loggedEarlier';
 
 /** Let fire-and-forget schedule/cancel work settle. */
 const flush = () => new Promise((r) => setImmediate(r));
@@ -964,13 +965,16 @@ describe('scheduler: a chosen reminder time', () => {
 // opens the question. Older reminders are not rewritten; the category registered
 // at launch is what the OS attaches when they are delivered.
 describe('scheduler: reminder actions', () => {
+  // Logged the day before: a same-day answer isn't scored (roadmap D41).
   async function pending(title = 'Ship the prototype') {
-    return await usePredictionStore.getState().create({
-      title,
-      category: 'work',
-      confidence: 70,
-      due_date: '2099-06-01T12:00:00.000Z',
-    });
+    return await loggedEarlier(() =>
+      usePredictionStore.getState().create({
+        title,
+        category: 'work',
+        confidence: 70,
+        due_date: '2099-06-01T12:00:00.000Z',
+      }),
+    );
   }
 
   it('records Happened once and opens the resolved state', async () => {

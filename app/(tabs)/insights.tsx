@@ -14,7 +14,7 @@ import { useLocalDay } from '@/components/ui/useLocalDay';
 import { space } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
-import { useStatsStore, weekChangeFor } from '@/store/statsStore';
+import { sameDayAnswerCount, useStatsStore, weekChangeFor } from '@/store/statsStore';
 import { MIN_N_BAND } from '@/types';
 
 export default function InsightsScreen() {
@@ -47,6 +47,8 @@ export default function InsightsScreen() {
   const skippedCount = usePredictionStore(
     (s) => s.resolved.filter((p) => p.status === 'skipped').length,
   );
+  // Answers given the day they were logged, which aren't scored (D41).
+  const sameDayCount = usePredictionStore((s) => sameDayAnswerCount(s.resolved));
   const isPlus = useEntitlementStore((s) => s.isPlus);
   // Time since the first answer, not the calendar months with one in them.
   const firstResolvedAt = useStatsStore((s) => s.trends.first_resolved_at);
@@ -70,6 +72,7 @@ export default function InsightsScreen() {
         brier={brier}
         brierBaseline={brierBaseline}
         skippedCount={skippedCount}
+        sameDayCount={sameDayCount}
         categoryRanges={categoryRanges}
         furthestOff={furthestOff}
         weekChange={weekChange}

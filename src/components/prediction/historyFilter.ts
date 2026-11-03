@@ -5,6 +5,7 @@
 
 import type { Category, Prediction } from '@/types';
 import { categoryLabel } from '@/store/categoryStore';
+import { answeredSameDay } from '@/store/statsStore';
 
 import { isReadyToResolve, nextDueLine, RUN_THRESHOLD } from './dueGroups';
 
@@ -65,13 +66,13 @@ export function openForHistory(
  * The counts over History's answered list, for its filter: facts, never a
  * verdict. "Answered" is every row in the list, as the section heading counts
  * them, skips included: "156 answered" over "Answered 157" read as a
- * miscount (blind playtest 2026-11-01). The skips are then named as not
- * scored.
+ * miscount (blind playtest 2026-11-01). The skips, and answers given the day
+ * they were logged (roadmap D41), are then named as not scored.
  */
 export function historySummary(rows: readonly Prediction[]): string {
   const yes = rows.filter((p) => p.status === 'resolved_yes').length;
   const no = rows.filter((p) => p.status === 'resolved_no').length;
-  const skipped = rows.length - yes - no;
+  const skipped = rows.length - yes - no + rows.filter(answeredSameDay).length;
   return [
     `${rows.length} answered`,
     `${yes} happened`,

@@ -8,6 +8,11 @@ interface DuePickerProps {
   value: string;
   /** Called with the chosen day, anchored at local noon like the presets. */
   onChange: (iso: string) => void;
+  /**
+   * The earliest day it offers, at local midnight: the day after the
+   * prediction was logged (roadmap D41), never before today.
+   */
+  earliest: Date;
 }
 
 /** Local noon on the given calendar day: same UTC date in every zone ±12h. */
@@ -22,24 +27,21 @@ function toDateInputValue(iso: string): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-function todayInputValue(): string {
-  return toDateInputValue(new Date().toISOString());
-}
-
 /**
  * "Pick a date" for the Log form (DESIGN_SYSTEM §7.12): the native compact
  * picker on iOS, the system dialog on Android, and the browser's own date
- * input on web. Earliest choice is today — a prediction due in the past
- * would fire its reminder immediately.
+ * input on web. Earliest choice is `earliest`: never the past, where the
+ * reminder would fire at once, and never the day it was logged, since an
+ * answer that day isn't scored (roadmap D41).
  */
-export function DuePicker({ value, onChange }: DuePickerProps) {
+export function DuePicker({ value, onChange, earliest }: DuePickerProps) {
   if (Platform.OS === 'web') {
     // react-native-web renders to the DOM, so a real <input type="date"> is
     // the most accessible picker a browser offers.
     return createElement('input', {
       type: 'date',
       value: toDateInputValue(value),
-      min: todayInputValue(),
+      min: toDateInputValue(earliest.toISOString()),
       'aria-label': 'Due date',
       'data-testid': 'due-picker',
       onChange: (e: { target: { value: string } }) => {
@@ -66,8 +68,6 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
 
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const picker = require('@react-native-community/datetimepicker') as typeof import('@react-native-community/datetimepicker');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   const pick = (date?: Date) => {
     if (date) onChange(localNoonIso(date.getFullYear(), date.getMonth(), date.getDate()));
   };
@@ -83,7 +83,7 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
         value={new Date(value)}
         mode="date"
         display="compact"
-        minimumDate={today}
+        minimumDate={earliest}
         accentColor={colors.action}
         // No themeVariant: it was pinned to light while the app was, and the
         // picker now follows the phone like the rest of the sheet (step 92).
@@ -98,15 +98,17 @@ export function DuePicker({ value, onChange }: DuePickerProps) {
  * Android: open the system date dialog. Called from the "Pick a date" tap,
  * never during render, so a re-render can't reopen it.
  */
-export function openDueDialog(value: string, onChange: (iso: string) => void): void {
+export function openDueDialog(
+  value: string,
+  onChange: (iso: string) => void,
+  earliest: Date,
+): void {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const picker = require('@react-native-community/datetimepicker') as typeof import('@react-native-community/datetimepicker');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
   picker.DateTimePickerAndroid.open({
     value: new Date(value),
     mode: 'date',
-    minimumDate: today,
+    minimumDate: earliest,
     onChange: (_e, date) => {
       if (date) onChange(localNoonIso(date.getFullYear(), date.getMonth(), date.getDate()));
     },

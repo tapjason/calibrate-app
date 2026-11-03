@@ -14,11 +14,12 @@
 
 import { categoryDrift, classifyDirection, weakestDayOfWeek } from '@/engine/patterns';
 import { computeCalibrationPoints } from '@/engine/calibration';
+import { isSameDayAnswer } from '@/engine/sameDay';
 import { isBuiltInCategory, type CoachContext, type Category, type Prediction, type UserStat } from '@/types';
 
-/** Predictions that count: yes/no outcomes only. */
+/** Predictions that count: yes/no outcomes, not given the day they were logged (D41). */
 function isYesNo(p: Prediction): boolean {
-  return p.status === 'resolved_yes' || p.status === 'resolved_no';
+  return (p.status === 'resolved_yes' || p.status === 'resolved_no') && !isSameDayAnswer(p);
 }
 
 /**

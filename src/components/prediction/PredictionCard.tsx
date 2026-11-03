@@ -4,6 +4,7 @@ import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { answeredSameDay } from '@/store/statsStore';
 
 import { isReadyToResolve } from './dueGroups';
 
@@ -53,10 +54,12 @@ function formatDue(iso: string): string {
  */
 function statusLabel(prediction: Prediction, now: Date): string {
   switch (prediction.status) {
+    // Answered the day it was logged (roadmap D41): the outcome stands, the
+    // score leaves it out, and the row says so.
     case 'resolved_yes':
-      return 'Happened';
+      return answeredSameDay(prediction) ? 'Happened, not scored' : 'Happened';
     case 'resolved_no':
-      return "Didn't happen";
+      return answeredSameDay(prediction) ? "Didn't happen, not scored" : "Didn't happen";
     case 'skipped':
       return 'Not scored';
     case 'pending':

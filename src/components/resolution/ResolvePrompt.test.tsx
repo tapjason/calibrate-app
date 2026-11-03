@@ -12,7 +12,7 @@ import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { bucketLine, firstAnswerLine, ResolvePrompt } from './ResolvePrompt';
+import { bucketLine, firstAnswerLine, ResolvePrompt, SAME_DAY_LINE } from './ResolvePrompt';
 
 const USER = 'local-user-v1';
 
@@ -117,6 +117,27 @@ describe('ResolvePrompt', () => {
     await waitFor(() => {
       expect(screen.getByText(/already resolved/i)).toBeTruthy();
     });
+  });
+});
+
+// Roadmap D41: an answer the day it was logged isn't scored, and Resolve says so.
+describe('ResolvePrompt on a same-day answer', () => {
+  it('says it is not scored instead of the range line, and keeps saying so after a change', async () => {
+    await insertPrediction(samplePending({ created_at: new Date().toISOString() }));
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByText('Ship the prototype')).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() =>
+      expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(SAME_DAY_LINE),
+    );
+    expect(await getUserStat(USER)).toMatchObject({ total_resolved: 0 });
+
+    fireEvent.press(screen.getByTestId('resolve-change'));
+    await waitFor(() =>
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(/didn’t happen/),
+    );
+    expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(SAME_DAY_LINE);
   });
 });
 

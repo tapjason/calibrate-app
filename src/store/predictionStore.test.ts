@@ -6,6 +6,7 @@ import { createTestDb } from '@/db/testing';
 import { useAuthStore } from './authStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
+import { loggedEarlier } from '../../jest/loggedEarlier';
 
 beforeEach(async () => {
   setDbForTests(await createTestDb());
@@ -134,12 +135,12 @@ describe('predictionStore.getById', () => {
 
 describe('predictionStore.resolve (L4 gate)', () => {
   it('moves a prediction from pending to resolved and persists fresh stats', async () => {
-    const p = await usePredictionStore.getState().create({
+    const p = await loggedEarlier(() => usePredictionStore.getState().create({
       title: 'Ship the prototype',
       category: 'work',
       confidence: 80,
       due_date: '2026-06-01T00:00:00.000Z',
-    });
+    }));
 
     await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
 
@@ -163,12 +164,12 @@ describe('predictionStore.resolve (L4 gate)', () => {
 
   it('updates calibration_rating across multiple resolutions', async () => {
     const create = (overrides: { confidence: number }) =>
-      usePredictionStore.getState().create({
+      loggedEarlier(() => usePredictionStore.getState().create({
         title: 't',
         category: 'work',
         confidence: overrides.confidence,
         due_date: '2026-06-01T00:00:00.000Z',
-      });
+      }));
 
     // 10 predictions at confidence 90, 5 resolved yes → overconfident bucket
     const created = await Promise.all(
@@ -252,12 +253,12 @@ describe('predictionStore.reflect', () => {
 
 describe('statsStore.bucketFor', () => {
   it('finds the bucket a confidence falls in, after a resolve', async () => {
-    const p = await usePredictionStore.getState().create({
+    const p = await loggedEarlier(() => usePredictionStore.getState().create({
       title: 'A',
       category: 'work',
       confidence: 60,
       due_date: '2026-06-01T00:00:00.000Z',
-    });
+    }));
     await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
     expect(useStatsStore.getState().bucketFor(75)?.low).toBe(60);
     expect(useStatsStore.getState().bucketFor(20)).toBeNull();
@@ -266,12 +267,12 @@ describe('statsStore.bucketFor', () => {
 
 describe('predictionStore.reopen', () => {
   it('undoes a resolution: back to pending, and stats forget it', async () => {
-    const p = await usePredictionStore.getState().create({
+    const p = await loggedEarlier(() => usePredictionStore.getState().create({
       title: 'Ship it',
       category: 'work',
       confidence: 70,
       due_date: '2026-06-01T00:00:00.000Z',
-    });
+    }));
     await usePredictionStore.getState().resolve(p.id, 'resolved_no', 'oops');
     expect(useStatsStore.getState().userStat?.total_resolved).toBe(1);
 
@@ -509,12 +510,12 @@ describe('predictionStore.update and remove', () => {
 // and never turned into "Can't tell".
 describe('predictionStore.correct, refile and remove within the window', () => {
   const answer = async (outcome: 'resolved_yes' | 'resolved_no' = 'resolved_no') => {
-    const p = await usePredictionStore.getState().create({
+    const p = await loggedEarlier(() => usePredictionStore.getState().create({
       title: 'Ship it',
       category: 'work',
       confidence: 70,
       due_date: '2026-06-01T12:00:00.000Z',
-    });
+    }));
     await usePredictionStore.getState().resolve(p.id, outcome);
     return usePredictionStore.getState().resolved.find((r) => r.id === p.id)!;
   };
@@ -588,14 +589,51 @@ describe('predictionStore.correct, refile and remove within the window', () => {
 });
 
 // Roadmap D39: a category the person added counts like any other.
+// Roadmap D41: an answer given the day the prediction was logged isn't scored.
+describe('same-day answers', () => {
+  it('leave the rating and the category alone, and still keep the streak', async () => {
+    const p = await usePredictionStore.getState().create({
+      title: 'Pay the electric bill',
+      category: 'finance',
+      confidence: 80,
+      due_date: '2026-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+
+    const stats = useStatsStore.getState();
+    expect(usePredictionStore.getState().resolved).toHaveLength(1);
+    expect(stats.userStat?.total_predictions).toBe(1);
+    expect(stats.userStat?.total_resolved).toBe(0);
+    expect(stats.userStat?.current_streak).toBe(1);
+    expect(stats.categoryStats.find((c) => c.category === 'finance')).toMatchObject({
+      predictions_made: 1,
+      predictions_resolved: 0,
+    });
+    expect(stats.calibration.buckets).toHaveLength(0);
+  });
+
+  it('count once logged the day before', async () => {
+    const p = await loggedEarlier(() =>
+      usePredictionStore.getState().create({
+        title: 'Pay the electric bill',
+        category: 'finance',
+        confidence: 80,
+        due_date: '2026-06-01T12:00:00.000Z',
+      }),
+    );
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    expect(useStatsStore.getState().userStat?.total_resolved).toBe(1);
+  });
+});
+
 describe('predictionStore with an added category', () => {
   it('logs, answers and scores a prediction filed under it', async () => {
-    const p = await usePredictionStore.getState().create({
+    const p = await loggedEarlier(() => usePredictionStore.getState().create({
       title: 'Thesis chapter done',
       category: 'c-grad123456',
       confidence: 70,
       due_date: '2026-06-01T12:00:00.000Z',
-    });
+    }));
     await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
     const stats = await listCategoryStats(p.user_id);
     expect(stats.map((s) => s.category)).toEqual(['c-grad123456']);

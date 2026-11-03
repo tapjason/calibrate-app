@@ -193,6 +193,19 @@ describe('historySummary', () => {
     expect(historySummary(rows)).toBe('4 answered, 2 happened, 1 not scored');
   });
 
+  // Roadmap D41: an answer the day it was logged isn't scored either.
+  it('counts same-day answers as not scored', () => {
+    const rows = [
+      prediction({ status: 'resolved_yes' }),
+      prediction({
+        status: 'resolved_yes',
+        created_at: new Date(2026, 8, 8, 9).toISOString(),
+        resolved_at: new Date(2026, 8, 8, 21).toISOString(),
+      }),
+    ];
+    expect(historySummary(rows)).toBe('2 answered, 2 happened, 1 not scored');
+  });
+
   it('leaves out "not scored" when nothing was skipped', () => {
     expect(historySummary([prediction({ status: 'resolved_no' })])).toBe('1 answered, 0 happened');
   });

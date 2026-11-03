@@ -5,6 +5,7 @@ import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
 import { noonInDays } from '@/components/prediction/logAgain';
 import { chosenProps } from '@/components/ui/chosen';
 import { colors, space, type } from '@/constants/theme';
+import { earliestDueFor } from '@/store/predictionStore';
 
 export interface DuePreset {
   id: 'tomorrow' | 'week' | 'month';
@@ -33,6 +34,12 @@ interface DueDateChipsProps {
   picking: boolean;
   onChange: (iso: string) => void;
   onPickingChange: (picking: boolean) => void;
+  /**
+   * The earliest day "Pick a date" offers. Defaults to tomorrow, for a
+   * prediction being logged now: one answered the day it was logged isn't
+   * scored (roadmap D41). Edit passes the day after it was logged.
+   */
+  earliest?: Date;
 }
 
 /**
@@ -41,7 +48,14 @@ interface DueDateChipsProps {
  * chosen at a time (roadmap step 93): while the picker is open, "Pick a date"
  * is the choice, even before the date moves off a preset's.
  */
-export function DueDateChips({ presets, value, picking, onChange, onPickingChange }: DueDateChipsProps) {
+export function DueDateChips({
+  presets,
+  value,
+  picking,
+  onChange,
+  onPickingChange,
+  earliest = earliestDueFor(new Date()),
+}: DueDateChipsProps) {
   const isCustomDate = !presets.some((p) => p.iso === value);
   const presetChosen = (iso: string) => !picking && value === iso;
   return (
@@ -68,7 +82,7 @@ export function DueDateChips({ presets, value, picking, onChange, onPickingChang
         ))}
         <Pressable
           onPress={() => {
-            if (Platform.OS === 'android') openDueDialog(value, onChange);
+            if (Platform.OS === 'android') openDueDialog(value, onChange, earliest);
             else onPickingChange(true);
           }}
           testID="due-pick"
@@ -85,7 +99,7 @@ export function DueDateChips({ presets, value, picking, onChange, onPickingChang
       {/* Whenever "Pick a date" is the choice, its field is there: editing a
           prediction with a picked date showed the chip chosen and no field
           until a second tap (blind playtest 2026-11-01). */}
-      {(picking || isCustomDate) && <DuePicker value={value} onChange={onChange} />}
+      {(picking || isCustomDate) && <DuePicker value={value} onChange={onChange} earliest={earliest} />}
       <Text style={styles.dateValue} testID="due-sentence">
         Due{' '}
         {new Date(value).toLocaleDateString(undefined, {
