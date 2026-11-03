@@ -3,7 +3,7 @@
 # The built files are served at https://tapjason.github.io/calibrate-app/
 # Permalinks are site-root paths. Do not put /calibrate-app in a permalink;
 # that prefix is the project site, not part of the file path.
-title: Calibrate
+title: Fairly Sure
 url: https://tapjason.github.io
 baseurl: /calibrate-app
 # Primer is the Pages default. Turn it off so this site is only the layout
@@ -17,7 +17,8 @@ kramdown:
 
 # Pages runs Jekyll with optional front matter, so every Markdown file would
 # become a public page, and Liquid-looking braces in the research notes would
-# fail the build. Publish the privacy policy and the short index only.
+# fail the build. Publish the privacy policy, the support page and the short
+# index only.
 # `include` wins over `exclude` (Jekyll 3.10 EntryFilter).
 exclude:
   - design
@@ -31,6 +32,7 @@ exclude:
 include:
   - index.md
   - PRIVACY_POLICY.md
+  - SUPPORT.md
 
 defaults:
   - scope:

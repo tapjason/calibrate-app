@@ -69,7 +69,7 @@ gets the link. Pick one:
 | Option | Cost | Trade-off |
 |---|---|---|
 | **A. Turn off "Confirm email"** (Auth → Providers → Email) | Free, 1 minute | `signUp` returns a session immediately. Unverified addresses are accepted. **Password reset still can't send.** Fine for a beta. |
-| **B. Custom SMTP** (e.g. Resend or Postmark free tier) | Free tier, needs a domain you control | Real confirmation and password reset. Needs `emailRedirectTo: 'calibrate://auth-callback'` in `signUpWithEmail` and a route that calls `exchangeCodeForSession`. |
+| **B. Custom SMTP** (e.g. Resend or Postmark free tier) | Free tier, needs a domain you control | Real confirmation and password reset. Needs `emailRedirectTo: 'fairlysure://auth-callback'` in `signUpWithEmail` and a route that calls `exchangeCodeForSession`. |
 
 **Recommendation:** A for TestFlight, B before public launch. Make Sign in with
 Apple the default on iOS either way, since it never touches email.
@@ -189,7 +189,7 @@ Secrets it needs (**human steps**, none of them exist yet):
 | Secret | Where from |
 |---|---|
 | `APPLE_TEAM_ID`, `APPLE_SIWA_KEY_ID`, `APPLE_SIWA_PRIVATE_KEY` | developer.apple.com → Keys → a key with **Sign in with Apple** enabled (not the In-App Purchase key from B0.3). Needs the $99 account. |
-| `APPLE_CLIENT_ID` | the bundle id, `com.calibrate.app` |
+| `APPLE_CLIENT_ID` | the bundle id, `app.fairlysure` |
 | `REVENUECAT_DELETE_KEY` + `REVENUECAT_PROJECT_ID` | a v2 secret key with **customers write**. The existing `sk_` key is read-only for customers. Project `projb27eccad`. |
 
 The function must work **without** the Apple and RevenueCat secrets, skipping

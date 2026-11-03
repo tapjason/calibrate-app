@@ -163,7 +163,7 @@ second build that can't test billing.
 | Thing | Status | Needed for |
 |---|---|---|
 | App Store screenshots | **Drafts made 2026-10-03** from the web build with the demo data (git-ignored `screenshots/draft/`). Finals need a device build. | E |
-| Privacy policy page + public URL | **URL is in the app:** `https://tapjason.github.io/calibrate-app/privacy/` (`PRIVACY_POLICY_URL`). The page is [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md) (effective November 2, 2026). It 404s until GitHub Pages is on for `master` / `/docs`, after that commit is on `master`. Steps in Batch E. | E |
+| Privacy policy page + public URL | **URL is in the app:** `https://tapjason.github.io/calibrate-app/privacy/` (`PRIVACY_POLICY_URL`). The page is [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md) (effective November 3, 2026, renamed Fairly Sure). The Support URL, `/support/`, is [`docs/SUPPORT.md`](./SUPPORT.md). It 404s until GitHub Pages is on for `master` / `/docs`, after that commit is on `master`. Steps in Batch E. | E |
 | App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **Name chosen for now (2026-11-03): Fairly Sure** (`Fairly Sure: Calibration Log`), see §0 there. Trademark screen done 2026-11-03: no conflicting mark, two low-to-moderate risks for counsel (§0). Still yours: counsel's clearance and filing, the `.app` domain and the App Store Connect record. The app says "Fairly Sure" since step 147. | E |
 | Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25, deployed 2026-10-02.** The optional Apple-revoke and RevenueCat-delete legs wait on their keys (Batch E). | E |
 
@@ -239,11 +239,12 @@ the store setup below:
    Until it is *Active*, StoreKit returns no products, **even in sandbox**.
    The paywall then shows its unavailable state and nothing explains why.
    Approval can take a day or more, so start it first.
-2. **Register the bundle id** `com.calibrate.app` (developer.apple.com →
-   Identifiers) and create the App Store Connect app record for it. Bundle ids
-   are unique across all of Apple, so if it is already taken, pick another
-   one (e.g. `com.<you>.calibrate`) and say so. It is set in `app.json`
-   and must be changed there too.
+2. **Register the bundle id** `app.fairlysure` (developer.apple.com →
+   Identifiers; chosen 2026-11-03, the reverse of `fairlysure.app`) and create
+   the App Store Connect app record for it. It can never change once
+   registered. Bundle ids are unique across all of Apple, so if it is already
+   taken, say so before picking another: it is set in `app.json`, and
+   `APPLE_CLIENT_ID` on Supabase must match it.
 3. **In-App Purchase Key** (App Store Connect → Users and Access →
    Integrations → In-App Purchase → generate). Download the `.p8` once and note
    its Key ID and your Issuer ID. RevenueCat needs it to validate StoreKit 2
@@ -271,7 +272,7 @@ free trial** on `calibrate_plus_annual` only, confirmed through
 $29.90, a trial on monthly). The App Store app half (steps below) waits on B0.
 
 1. Create the project (one already exists, since the `test_` key came from
-   it); add the iOS App Store app with bundle id `com.calibrate.app` and upload
+   it); add the iOS App Store app with bundle id `app.fairlysure` and upload
    the In-App Purchase Key from B0.3. Optionally copy RevenueCat's App Store
    Server Notifications URL into App Store Connect → App Information, which
    gives faster renewal/cancel events.
@@ -1015,12 +1016,14 @@ What is still yours:
       Confirm, in a browser:
 
       - `https://tapjason.github.io/calibrate-app/privacy/` shows the policy:
-        heading "Calibrate Privacy Policy", effective date November 2, 2026,
+        heading "Fairly Sure Privacy Policy", effective date November 3, 2026,
         contact tapjason-dev@gmail.com. It is a rendered page, not the raw
         Markdown file. Without the trailing slash should redirect to the
         same page.
-      - `https://tapjason.github.io/calibrate-app/` loads and its link opens
-        the policy.
+      - `https://tapjason.github.io/calibrate-app/support/` shows "Fairly Sure
+        Support" (the App Store's Support URL, `docs/SUPPORT.md`).
+      - `https://tapjason.github.io/calibrate-app/` loads and its links open
+        the policy and the support page.
       - `https://tapjason.github.io/calibrate-app/HUMAN_VERIFICATION` and
         `https://tapjason.github.io/calibrate-app/NEXT_STEPS` are 404s.
         Those files stay in the repo. They are not part of the site.

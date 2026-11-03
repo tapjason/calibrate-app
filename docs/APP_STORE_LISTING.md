@@ -1,4 +1,4 @@
-# Calibrate — App Store Listing (draft)
+# Fairly Sure — App Store Listing (draft)
 
 **As of:** 2026-10-08 (daily practice and "no betting" added to the description; age rating re-done for Apple's 2026 questionnaire on 2026-10-04) · Drafted from `CLAUDE.md` and the shipped code. Every
 feature claimed below exists in `master`; ✨ Refine is cut and appears nowhere.
@@ -98,16 +98,29 @@ Also clear but weaker: Hunchwise, Truehunch. Checked and dropped: Brier,
 Oddsmith, Calibrated, Inkling, Priors, Plumbline, Lodestar, Sharpen, Ninety,
 Second Guess, Gut Check, Percently, Callmark, Sureline, Gutmark.
 
-**Next steps for the chosen name:** a USPTO search (classes 9 and 42), then claim
-the `.app` domain and create the App Store Connect record, which is the only
-definitive name check. Every "Calibrate" string in the app and docs then
-changes; the bundle id `com.calibrate.app` can stay (users never see it).
+**Done for the chosen name (2026-11-03):** the US trademark screen (above), the
+in-app rename (step 147), the policy, and this listing. **Permanent ids, decided
+before anything is registered with Apple:** bundle id `app.fairlysure` (the
+reverse of `fairlysure.app`; it can never change once registered) and URL scheme
+`fairlysure` (`calibrate://` could be claimed by Calibrate Health's app, and two
+apps claiming one scheme make a sign-in redirect unpredictable). Kept: the
+product ids `calibrate_plus_*` (never shown to anyone, and RevenueCat and the
+webhook use them; once created in App Store Connect they can never be reused),
+the Expo slug `calibrate` (the EAS project is linked to it), and the repo name
+(the policy's URL carries it until Pages has a custom domain).
 
-The rest of this document says "Calibrate". Substitute as needed.
+**Store name** [30]: `Fairly Sure: Calibration Log` (28). "Calibration" and
+"Log" are indexed from the name, so the keywords below leave them out. Never put
+"Calibrate" in the keywords: it is another company's registered mark
+(Guideline 2.3.7).
 
 ---
 
 ## 1. Store fields
+
+**Support URL** (required): https://tapjason.github.io/calibrate-app/support/
+(`docs/SUPPORT.md`; loads once Pages is on, like the policy).
+**Copyright:** 2026 Jason Zou.
 
 **Subtitle** [30]
 
@@ -159,23 +172,23 @@ leaves that judgement to the developer), so getting it right first time matters.
 ## 2. Description [4000]
 
 > Most people are overconfident about some things and underconfident about
-> others, and never find out which. Calibrate shows you.
+> others, and never find out which. Fairly Sure shows you.
 >
 > **HOW IT WORKS**
 > Write a prediction ("I'll finish the report by Friday"), set how confident you
 > are, from 0 to 100%, and pick a due date. As you set it, you see how your past
-> calls at that confidence turned out. When it comes due, Calibrate reminds you.
+> calls at that confidence turned out. When it comes due, Fairly Sure reminds you.
 > Tap yes or no. That's it.
 >
-> Over time, Calibrate compares what you said against what happened. If you're
+> Over time, Fairly Sure compares what you said against what happened. If you're
 > 80% sure of things, about 80% of them should come true. Your calibration curve
 > shows where you're on target, where you're overconfident, and where you sell
 > yourself short.
 >
 > **YOUR RESULT IN 60 SECONDS**
 > Don't want to wait weeks? The warmup quiz gives you a first read on day one:
-> ten quick estimation questions, and a verdict on how well your confidence
-> matches your accuracy.
+> ten quick either-or questions, each with how sure you are, and how your
+> confidence compared with how many you got right.
 >
 > **THREE QUESTIONS A DAY**
 > On days when nothing comes due, there's daily practice: three quick
@@ -183,17 +196,20 @@ leaves that judgement to the developer), so getting it right first time matters.
 > are. Practice stays apart from your real score.
 >
 > **SHARP IN HEALTH, TRACKER IN MONEY**
-> Calibration isn't one number. Calibrate scores you separately for work, health,
-> finance, social life, and personal goals, and gives each a badge from Guesser
-> to Oracle. Badges need a real track record, so a lucky streak won't earn one.
+> Calibration isn't one number. Fairly Sure scores you separately for work,
+> health, finance, social life, personal goals and any category you add, and
+> each earns a badge from Tracker to Oracle. Badges need a real track record, so
+> a lucky streak won't earn one.
 >
 > **HONEST BY DESIGN**
-> • Calibrate rewards calibration, not correctness. A miss at 60% confidence is
+> • Fairly Sure rewards calibration, not correctness. A miss at 60% confidence is
 > exactly what 60% means.
 > • Your score stays hidden until you have enough resolved predictions for it to
 > mean something.
 > • A second measure, the Brier score, rewards being decisive as well as
 > calibrated, so playing it safe doesn't flatter you.
+> • An answer given the day you logged the prediction isn't scored, so the
+> score can't be padded with sure things.
 > • No money, no odds, no betting. Just your own track record.
 >
 > **SHARE YOUR RESULTS**
@@ -204,7 +220,7 @@ leaves that judgement to the developer), so getting it right first time matters.
 > Everything works offline, without an account. Sign in only if you want a
 > backup. No ads, no tracking.
 >
-> **CALIBRATE PLUS**
+> **FAIRLY SURE PLUS**
 > Optional, for going deeper:
 > • Coach: short AI feedback grounded in your own numbers. It sees your
 > statistics, never your predictions' text.
@@ -236,28 +252,28 @@ to both. That privacy URL is `docs/PRIVACY_POLICY.md` on GitHub Pages
 
 | Product id | Display name [30] | Description [45] |
 |---|---|---|
-| `calibrate_plus_monthly` | Calibrate Plus Monthly | Coach, trends and card themes |
-| `calibrate_plus_annual` | Calibrate Plus Annual | Coach, trends and card themes |
-| `calibrate_plus_lifetime` | Calibrate Plus Lifetime | Every Plus feature, one payment, forever |
+| `calibrate_plus_monthly` | Fairly Sure Plus Monthly | Coach, trends and card themes |
+| `calibrate_plus_annual` | Fairly Sure Plus Annual | Coach, trends and card themes |
+| `calibrate_plus_lifetime` | Fairly Sure Plus Lifetime | Every Plus feature, one payment, forever |
 
-Subscription group name: **Calibrate Plus**. Put annual at level 1 and monthly
+Subscription group name: **Fairly Sure Plus**. Put annual at level 1 and monthly
 at level 2 (same features, so this only orders upgrades and downgrades).
 
 ---
 
 ## 4. App Review notes
 
-> Calibrate works fully without an account; no sign-in is needed to review the
-> core features (Log, Resolve, Stats, Share).
+> Fairly Sure works fully without an account; no sign-in is needed to review
+> the core features (log with +, answer on Today, Insights, Share).
 >
-> To review Calibrate Plus: Stats → "See Plus" → purchase any plan with your
-> sandbox account. The Coach requires signing in (Settings → Account) because
-> it runs on our server. It is off by default; enable it in Settings → Coach,
-> then Stats → Get feedback. Coach feedback needs predictions resolved in the
+> To review Fairly Sure Plus: You → Fairly Sure Plus → purchase any plan with
+> your sandbox account. The Coach requires signing in (You → Sign in) because
+> it runs on our server. It is off by default; enable it in You → Coach (AI), then
+> Insights → Get feedback. Coach feedback needs predictions resolved in the
 > past. To see it with data, [DEMO ACCOUNT: email / password, pre-seeded with
 > 145 resolved predictions].
 >
-> Account deletion: Settings → Account → Delete account.
+> Account deletion: You → Delete account (at the bottom, once signed in).
 >
 > Notifications are local reminders only; no push server is involved.
 

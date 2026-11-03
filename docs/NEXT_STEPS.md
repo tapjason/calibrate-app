@@ -72,7 +72,14 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
    clearance, the domain and the store record remain.
    Age assurance (a) is built.
 3. The $99 account → **g** → first EAS development build → Batch C/D on the
-   iPhone → TestFlight.
+   iPhone → TestFlight. Ready for the App Store Connect record (2026-11-03):
+   bundle id `app.fairlysure` and scheme `fairlysure` set in `app.json`, the
+   policy and listing renamed, a Support URL page (`docs/SUPPORT.md`). Yours,
+   in order: decide to enroll as yourself or a company (a company needs a
+   D-U-N-S number, days to weeks), enroll, register `fairlysure.app`, turn
+   Pages on, then HUMAN_VERIFICATION Batch B0 (Paid Applications Agreement
+   first, since approval takes a day or more; register `app.fairlysure`;
+   create the record with store name `Fairly Sure: Calibration Log`).
 4. **j** (SDK 58), then the design decisions that wait on it (D3, D5) and
    FUTURE_UI A10.
 

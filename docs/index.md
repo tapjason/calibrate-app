@@ -1,8 +1,8 @@
 ---
 layout: default
-title: Calibrate
+title: Fairly Sure
 ---
 
-# Calibrate
+# Fairly Sure
 
-[Privacy policy](privacy/)
+[Privacy policy](privacy/) · [Support](support/)

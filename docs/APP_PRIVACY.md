@@ -1,4 +1,4 @@
-# Calibrate — App Privacy declarations
+# Fairly Sure — App Privacy declarations
 
 **As of:** 2026-09-24 · Derived from the code, not from intent.
 
@@ -188,7 +188,7 @@ policy's §3.
 
 Expo SDK 55 modules and `react-native-purchases` ship their own
 `PrivacyInfo.xcprivacy` declarations for the required-reason APIs they use
-(AsyncStorage → UserDefaults, file timestamps). Calibrate adds no native code of
+(AsyncStorage → UserDefaults, file timestamps). Fairly Sure adds no native code of
 its own, so it declares none directly. Confirm the generated build carries them
 when the first `eas build` runs — a missing manifest surfaces as an App Store
 Connect email after upload, not as a build failure.

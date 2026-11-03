@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Calibrate Privacy Policy
+title: Fairly Sure Privacy Policy
 permalink: /privacy/
 ---
 
@@ -9,11 +9,11 @@ Published at https://tapjason.github.io/calibrate-app/privacy/
 If the app's name changes, update it here. Not legal advice.
 -->
 
-# Calibrate Privacy Policy
+# Fairly Sure Privacy Policy
 
-**Effective:** November 2, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 3, 2026 · **Contact:** tapjason-dev@gmail.com
 
-Calibrate ("the app") is made by Jason Zou. This policy says what
+Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
 to be read, not skimmed past.
 
@@ -71,7 +71,7 @@ full list:
 These are linked to your account. **You can turn them off** in Settings →
 Usage stats.
 
-**2.4 Purchase status.** Whether you have Calibrate Plus, which plan, and when it
+**2.4 Purchase status.** Whether you have Fairly Sure Plus, which plan, and when it
 renews or ends. We receive this from our subscription provider (§4). We never
 see your payment details.
 
@@ -82,10 +82,10 @@ enforce usage limits.
 Location, contacts, health or fitness data, financial accounts, photos, your
 device's advertising identifier, or crash reports. A picture you pick as a category
 icon is shrunk and kept on your phone; it is never uploaded. "Health" and "finance" in
-Calibrate are labels you choose for your own predictions. The app doesn't
+Fairly Sure are labels you choose for your own predictions. The app doesn't
 connect to any health or financial service.
 
-## 3. The AI Coach (Calibrate Plus, off by default)
+## 3. The AI Coach (Fairly Sure Plus, off by default)
 
 The Coach is optional and is turned off until you switch it on. When you tap
 **Get feedback**, the app sends our server a summary of your statistics: your
@@ -157,7 +157,7 @@ information as the CCPA defines it.
 
 ## 9. Children
 
-Calibrate is not directed to children under 13, and we don't knowingly collect
+Fairly Sure is not directed to children under 13, and we don't knowingly collect
 their personal information. If you believe a child has created an account,
 contact us and we'll delete it.
 
