@@ -9,8 +9,9 @@
 //      belongs to the moment the user turns reminders on, not to launch,
 //      where it would land on the Warmup. Not granted → stay inactive until
 //      requestReminderPermission() is called from that moment.
-//   3. Once granted, we install the tap handler that deep-links to
-//      /resolve/[id].
+//   3. Once granted, we install the tap handler. A tap on the notification
+//      body deep-links to /resolve/[id]. Happened / Didn't (roadmap D8)
+//      record that answer first, then open the same screen already resolved.
 //   4. We reconcile with what the OS already has scheduled (roadmap step
 //      37): reminders from an earlier session are re-adopted for open
 //      predictions and cancelled for anything else, and an open prediction
@@ -34,8 +35,12 @@ import { Platform } from 'react-native';
 import type { Prediction } from '@/types';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useStatsStore } from '@/store/statsStore';
 
 import {
+  REMINDER_ACTION_DIDNT,
+  REMINDER_ACTION_HAPPENED,
+  REMINDER_ACTIONS,
   REMINDER_CATEGORY,
   REMINDER_PLACEHOLDER,
   REMINDER_TITLE,
@@ -80,29 +85,34 @@ export interface NotificationsApi {
    */
   setNotificationCategoryAsync?(
     identifier: string,
-    actions: [],
+    actions: typeof REMINDER_ACTIONS,
     options: { previewPlaceholder: string },
   ): Promise<unknown>;
   setNotificationHandler(handler: unknown): void;
   addNotificationResponseReceivedListener(
-    listener: (event: {
-      notification: {
-        request: { identifier: string; content: { data?: Record<string, unknown> } };
-      };
-    }) => void,
+    listener: (event: NotificationResponseEvent) => void | Promise<void>,
   ): { remove: () => void };
   /**
    * The notification response that launched the app from a killed state, or
    * null if the app was opened normally. The launching tap (cold start) is
-   * read explicitly via this call. Note that addNotificationResponseReceivedListener
-   * may *also* replay the same launching response to a freshly-installed
-   * listener, so both paths dedupe on request.identifier to navigate once.
+   * read explicitly via this call, including which action button was used.
+   * Note that addNotificationResponseReceivedListener may *also* replay the
+   * same launching response to a freshly-installed listener, so both paths
+   * dedupe on request.identifier to navigate once.
    */
-  getLastNotificationResponseAsync(): Promise<{
-    notification: {
-      request: { identifier: string; content: { data?: Record<string, unknown> } };
-    };
-  } | null>;
+  getLastNotificationResponseAsync(): Promise<NotificationResponseEvent | null>;
+}
+
+/** A tap on a notification or one of its actions, as the scheduler reads it. */
+export interface NotificationResponseEvent {
+  /**
+   * The action button, or absent / the platform default when the body was
+   * tapped. Happened and Didn't are the only ones that record an answer.
+   */
+  actionIdentifier?: string;
+  notification: {
+    request: { identifier: string; content: { data?: Record<string, unknown> } };
+  };
 }
 
 export interface Navigator {
@@ -140,6 +150,17 @@ let lastPendingById = new Map<string, Prediction>();
 // and getLastNotificationResponseAsync. Whichever routes first records the id;
 // the other is then a no-op.
 const routedResponseIdentifiers = new Set<string>();
+
+// Response identifier → the answer it recorded. A cold start can fail to
+// navigate (the root layout isn't mounted yet) and then succeed on the retry.
+// The retry must still open the resolved state, and must not write again.
+const recordedAnswers = new Map<string, 'happened' | 'didnt'>();
+
+// One in-flight record per prediction. A second delivery (the listener and
+// the cold-start read, or two taps) waits and does not write.
+const actionInFlight = new Map<string, Promise<ActionResult>>();
+
+type ActionResult = 'recorded' | 'unchanged' | 'missing' | 'failed';
 
 let storeUnsub: (() => void) | null = null;
 let settingsUnsub: (() => void) | null = null;
@@ -196,7 +217,12 @@ function defaultNotificationsApi(): NotificationsApi | null {
       }));
     },
     async setNotificationCategoryAsync(identifier, actions, options) {
-      return await Notifications.setNotificationCategoryAsync(identifier, actions, options);
+      return await Notifications.setNotificationCategoryAsync(
+        identifier,
+        // Our buttons are the SDK's NotificationAction shape (foreground, no text field).
+        actions as unknown as Parameters<typeof Notifications.setNotificationCategoryAsync>[1],
+        options,
+      );
     },
     setNotificationHandler(handler) {
       Notifications.setNotificationHandler(
@@ -229,6 +255,8 @@ export function __setDepsForTests(next: Deps | null): void {
   notificationsEnabled = true;
   scheduledByPredictionId.clear();
   routedResponseIdentifiers.clear();
+  recordedAnswers.clear();
+  actionInFlight.clear();
   lastPendingById = new Map();
   if (storeUnsub) {
     storeUnsub();
@@ -444,10 +472,83 @@ function handleStoreUpdate(pending: Prediction[]): void {
  * anything else (the digest, the trial reminder) nowhere past opening the app.
  */
 function pathFor(data: Record<string, unknown> | undefined): string | null {
-  const predictionId = data?.predictionId;
-  if (typeof predictionId === 'string' && predictionId.length > 0) return `/resolve/${predictionId}`;
+  const predictionId = predictionIdOf(data);
+  if (predictionId) return `/resolve/${predictionId}`;
   if (data?.kind === 'practice') return '/practice';
   return null;
+}
+
+function predictionIdOf(data: Record<string, unknown> | undefined): string | null {
+  const predictionId = data?.predictionId;
+  return typeof predictionId === 'string' && predictionId.length > 0 ? predictionId : null;
+}
+
+/** Happened / Didn't, or null for a body tap and for any other action. */
+function answerSlug(actionIdentifier: string | undefined): 'happened' | 'didnt' | null {
+  if (actionIdentifier === REMINDER_ACTION_HAPPENED) return 'happened';
+  if (actionIdentifier === REMINDER_ACTION_DIDNT) return 'didnt';
+  return null;
+}
+
+/**
+ * Record a reminder's Happened / Didn't through the store, so the write and
+ * the stats recompute stay in one transaction behind `status = 'pending'`.
+ * A second delivery for the same prediction waits and does not write.
+ * Failures are logged and reported as 'failed'; they never throw.
+ */
+async function recordReminderAnswer(
+  predictionId: string,
+  outcome: 'resolved_yes' | 'resolved_no',
+): Promise<ActionResult | 'folded'> {
+  const running = actionInFlight.get(predictionId);
+  if (running) {
+    await running;
+    return 'folded';
+  }
+  let settle!: (result: ActionResult) => void;
+  const done = new Promise<ActionResult>((resolve) => {
+    settle = resolve;
+  });
+  // Set before any await so a second tap can't slip a second write in.
+  actionInFlight.set(predictionId, done);
+  try {
+    const result = await writeReminderAnswer(predictionId, outcome);
+    settle(result);
+    return result;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] resolve from reminder failed:', e);
+    settle('failed');
+    return 'failed';
+  } finally {
+    if (actionInFlight.get(predictionId) === done) actionInFlight.delete(predictionId);
+  }
+}
+
+async function writeReminderAnswer(
+  predictionId: string,
+  outcome: 'resolved_yes' | 'resolved_no',
+): Promise<ActionResult> {
+  try {
+    const before = await usePredictionStore.getState().getById(predictionId);
+    if (!before) return 'missing';
+    if (before.status !== 'pending') return 'unchanged';
+    // A milestone or checkpoint left from an earlier answer belongs to that
+    // answer. Clear both so this one celebrates only what it crossed, the
+    // same order as answering on the Resolve screen.
+    useStatsStore.getState().clearMilestone();
+    usePredictionStore.getState().clearStreakCheckpoint();
+    await usePredictionStore.getState().resolve(predictionId, outcome);
+    const after = await usePredictionStore.getState().getById(predictionId);
+    // The SQL guard (`AND status = 'pending'`) makes a lost race a no-op.
+    // Only the write that landed opens the resolved state.
+    if (after?.status !== outcome) return 'unchanged';
+    return 'recorded';
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] resolve from reminder failed:', e);
+    return 'failed';
+  }
 }
 
 /**
@@ -476,17 +577,64 @@ function routeToResolve(request: {
   }
 }
 
+/**
+ * Body tap: open Resolve on the question, as before. Happened / Didn't:
+ * record that answer once, then open Resolve already on the acknowledgement
+ * (`?answer=happened` or `didnt`). Anything else with a prediction id (an
+ * unknown action, a deleted prediction, a second tap) still opens Resolve
+ * and does not throw. The claim is taken before the first await so the
+ * listener and the cold-start read can't both record.
+ */
+async function handleResponse(response: NotificationResponseEvent): Promise<void> {
+  const request = response.notification.request;
+  if (routedResponseIdentifiers.has(request.identifier)) return;
+
+  const slug = answerSlug(response.actionIdentifier);
+  const predictionId = predictionIdOf(request.content.data);
+  if (!slug || !predictionId) {
+    routeToResolve(request);
+    return;
+  }
+
+  routedResponseIdentifiers.add(request.identifier);
+  try {
+    let show = recordedAnswers.get(request.identifier) ?? null;
+    if (!show) {
+      const outcome = slug === 'happened' ? 'resolved_yes' : 'resolved_no';
+      const result = await recordReminderAnswer(predictionId, outcome);
+      // The other delivery is the one that opens the screen.
+      if (result === 'folded') return;
+      if (result === 'recorded') {
+        recordedAnswers.set(request.identifier, slug);
+        show = slug;
+      }
+    }
+    const path = show
+      ? `/resolve/${predictionId}?answer=${show}`
+      : `/resolve/${predictionId}`;
+    deps?.navigator.push(path);
+  } catch (e) {
+    // The answer, if it landed, is remembered in recordedAnswers, so the
+    // retry opens the resolved state and does not write again.
+    routedResponseIdentifiers.delete(request.identifier);
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] action navigation failed:', e);
+  }
+}
+
 function installTapHandler(): void {
   if (!deps || !deps.notifications) return;
-  listenerSub = deps.notifications.addNotificationResponseReceivedListener(
-    (event) => routeToResolve(event.notification.request),
+  listenerSub = deps.notifications.addNotificationResponseReceivedListener((event) =>
+    handleResponse(event),
   );
 }
 
 /**
  * Cold start: when a reminder tap launches the app from a killed state, the
  * runtime listener is installed too late to reliably see it, so we read the
- * launching response explicitly and route from it.
+ * launching response explicitly and route from it. The action identifier is
+ * read here as well as from the listener; a cold-start Happened / Didn't is
+ * lost if only the listener is consulted.
  *
  * This is intentionally NOT called from initNotifications(): init is fired
  * before the root navigator mounts, and an early router.push throws ("navigate
@@ -498,9 +646,7 @@ export async function routeFromLaunchNotification(): Promise<void> {
   if (!deps || !deps.notifications) return;
   try {
     const last = await deps.notifications.getLastNotificationResponseAsync();
-    if (last) {
-      routeToResolve(last.notification.request);
-    }
+    if (last) await handleResponse(last);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[notifications] cold-start deep link failed:', e);
@@ -508,15 +654,21 @@ export async function routeFromLaunchNotification(): Promise<void> {
 }
 
 /**
- * Registers the reminder category so iOS shows REMINDER_PLACEHOLDER instead of
- * the prediction title when previews are hidden. Best-effort: a failure here
- * leaves the reminder working with the system's generic placeholder.
+ * Registers the reminder category: the hidden-preview placeholder, and
+ * Happened / Didn't (roadmap D8). The OS looks the category up when a
+ * reminder is delivered, so registering it here covers reminders an older
+ * build already scheduled — those requests are not cancelled or rewritten
+ * just to gain the buttons. A reminder that fires before this version has
+ * launched once still opens Resolve from a body tap. Best-effort: a failure
+ * leaves the reminder working, without buttons where the platform has none.
  */
 async function registerCategory(): Promise<void> {
   try {
-    await deps?.notifications?.setNotificationCategoryAsync?.(REMINDER_CATEGORY, [], {
-      previewPlaceholder: REMINDER_PLACEHOLDER,
-    });
+    await deps?.notifications?.setNotificationCategoryAsync?.(
+      REMINDER_CATEGORY,
+      REMINDER_ACTIONS,
+      { previewPlaceholder: REMINDER_PLACEHOLDER },
+    );
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[notifications] category registration failed:', e);

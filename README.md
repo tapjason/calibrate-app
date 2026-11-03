@@ -171,7 +171,7 @@ UI feature ideas beyond the roadmap are parked in [`docs/design/FUTURE_UI.md`](.
 **Backend & platform (Layer 7)**
 - [ ] Notification deep-links verified on a device. (No push credentials are needed: every notification is a local, scheduled one.)
 - [x] App icon, splash, and the App Privacy answers (`docs/APP_PRIVACY.md`).
-- [ ] Store screenshots, a hosted privacy policy, and a final app name (`docs/APP_STORE_LISTING.md` §0).
+- [ ] Store screenshots and a final app name (`docs/APP_STORE_LISTING.md` §0). The privacy policy URL is in the app; turn GitHub Pages on (`docs/HUMAN_VERIFICATION.md`) or that link 404s.
 - [ ] `eas build` → TestFlight → App Store submission.
 - [ ] Clear remaining transitive dependency advisories once the Expo SDK upgrade allows it (currently only resolvable via a breaking `--force`).
 

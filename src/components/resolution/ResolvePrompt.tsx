@@ -53,6 +53,11 @@ interface ResolvePromptProps {
    * leaving for the Log screen would end the run.
    */
   onPredictAgain?: (prediction: Prediction) => void;
+  /**
+   * Set when a reminder action already recorded this answer (roadmap D8).
+   * The screen opens on the acknowledgement and does not record again.
+   */
+  recordedAnswer?: 'resolved_yes' | 'resolved_no';
 }
 
 /**
@@ -106,6 +111,41 @@ export function firstAnswerLine(confidence: number): string {
 }
 
 /**
+ * The acknowledgement after a yes or no: the range line, a milestone, a
+ * streak checkpoint. Reads what the resolve just left in the stores, then
+ * clears it so a later screen doesn't celebrate the same answer again.
+ */
+function readAcknowledgement(
+  prediction: Prediction,
+  outcome: 'resolved_yes' | 'resolved_no',
+): {
+  outcome: 'resolved_yes' | 'resolved_no';
+  line: string | null;
+  milestone: Milestone | null;
+  checkpoint: { days: number; next: number } | null;
+} {
+  const stats = useStatsStore.getState();
+  const bucket = stats.bucketFor(prediction.confidence);
+  const predictions = usePredictionStore.getState();
+  const days = predictions.streakCheckpoint;
+  const milestone = stats.milestone;
+  if (milestone?.kind === 'rating_unlocked') useRatingStore.getState().noteMoment();
+  stats.clearMilestone();
+  predictions.clearStreakCheckpoint();
+  return {
+    outcome,
+    line:
+      stats.userStat?.total_resolved === 1
+        ? firstAnswerLine(prediction.confidence)
+        : bucket
+          ? bucketLine(bucket)
+          : null,
+    milestone,
+    checkpoint: days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
+  };
+}
+
+/**
  * Resolve one prediction: what you said, then the question, then — after the
  * answer — one factual line about that confidence range and an optional
  * reflection. The reflection comes after the answer because typing first
@@ -122,6 +162,7 @@ export function ResolvePrompt({
   advanceLabel = 'Done',
   reflectionCollapsed = false,
   onPredictAgain,
+  recordedAnswer,
 }: ResolvePromptProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [loading, setLoading] = useState(true);
@@ -140,17 +181,28 @@ export function ResolvePrompt({
   } | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const p = await usePredictionStore.getState().getById(predictionId);
+        if (cancelled) return;
         setPrediction(p);
+        // A reminder action already recorded this. Show the same
+        // acknowledgement a tap in the app would, including a milestone.
+        if (p && recordedAnswer && p.status === recordedAnswer) {
+          setAnswered(readAcknowledgement(p, recordedAnswer));
+          haptics.resolve();
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [predictionId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [predictionId, recordedAnswer]);
 
   useEffect(() => {
     onDraftChange?.(answered ? reflection : '');
@@ -161,39 +213,24 @@ export function ResolvePrompt({
     setError(null);
     setSubmitting(true);
     try {
-      // Anything left over belongs to an earlier change (a sync, say), not to
-      // this answer — clear it so the card below celebrates only this one.
+      // Anything left over belongs to an earlier change, not to this answer.
       useStatsStore.getState().clearMilestone();
       usePredictionStore.getState().clearStreakCheckpoint();
       await usePredictionStore.getState().resolve(prediction.id, outcome);
+      const landed = await usePredictionStore.getState().getById(prediction.id);
+      // A reminder action may have recorded this already. Don't celebrate an
+      // outcome the row doesn't have, and don't leave on a skip that didn't land.
+      if (!landed || landed.status !== outcome) {
+        setPrediction(landed);
+        return;
+      }
       // One haptic for Yes, No and Skip alike — a No is not an error.
       haptics.resolve();
       if (outcome === 'skipped') {
         onResolved?.();
         return;
       }
-      // Stats recompute inside resolve(), so the bucket already counts this one.
-      const stats = useStatsStore.getState();
-      const bucket = stats.bucketFor(prediction.confidence);
-      const predictions = usePredictionStore.getState();
-      const days = predictions.streakCheckpoint;
-      setAnswered({
-        outcome,
-        line:
-          stats.userStat?.total_resolved === 1
-            ? firstAnswerLine(prediction.confidence)
-            : bucket
-              ? bucketLine(bucket)
-              : null,
-        milestone: stats.milestone,
-        checkpoint:
-          days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
-      });
-      // The score's unlock is one of the two moments that may earn a rating
-      // ask, on Today after the sheet closes (roadmap D15).
-      if (stats.milestone?.kind === 'rating_unlocked') useRatingStore.getState().noteMoment();
-      stats.clearMilestone();
-      predictions.clearStreakCheckpoint();
+      setAnswered(readAcknowledgement(prediction, outcome));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

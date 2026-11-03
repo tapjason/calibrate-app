@@ -1021,10 +1021,13 @@ the same thing, no instructions, title-style titles without ending punctuation.
   practice isn't done, and scheduled no more than three days past the last visit, so
   it falls silent for someone who has stopped opening the app. Its wording changes
   every day, because a repeated reminder wears out (Yancey & Settles 2020).
-- **Proposed** (roadmap D8): *Happened* / *Didn't* actions on the reminder via
-  `setNotificationCategoryAsync`, as foreground actions that open straight into the
-  resolved state. Background (no-open) action handling is only documented to reach JS on
-  Android; verify on an iOS device before relying on it.
+- **Happened / Didn't** (roadmap D8, built as step 145): foreground actions on the
+  reminder. Tapping one records that answer and opens the app on the resolved
+  state (the acknowledgement, the range line, a milestone when this answer
+  earned one). Tapping the notification itself still opens the question.
+  "Can't tell" stays in the app. Background actions are not used: on iOS an
+  action that doesn't open the app is not guaranteed to reach JS when the app
+  is killed (expo#36282).
 - **Evening** (roadmap D9, built as step 60): the reminder fires at 19:00 local on the
   due day (`REMINDER_HOUR`); due dates are stored at noon, which asked about Friday's
   outcome before Friday was over. Each reminder records its time, and the launch

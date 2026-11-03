@@ -34,10 +34,14 @@ The short version:
 | Identifiers → Device ID / Advertising | **No** | — | — | — | no ad or attribution SDK in `package.json` |
 | Diagnostics (crash, performance) | **No** | — | — | — | no crash reporter in `package.json` |
 | Health, Financial Info, Location, Contacts, Browsing History, Sensitive Info | **No** | — | — | — | never requested, never collected |
+| Other Data → age range | **No** | — | — | — | Asked of Apple on iOS 26+; only the band is stored on the device and never transmitted (`src/age/ageRange.ts`) |
 
 "Finance" and "health" are *prediction categories the user picks* — a label on
 their own sentence, not financial or health data in Apple's sense. The app
 reads no accounts, no HealthKit, no transactions.
+
+The age band is not a collected data type. Apple's nutrition label counts data
+that leaves the device. The band does not: see §4a.
 
 ---
 
@@ -128,6 +132,21 @@ Two consequences:
 
 ---
 
+## 4a. Age range — on the device only
+
+On iOS 26 and later, once the first screen is up, the app may call Apple's
+Declared Age Range API (`expo-age-range` 0.2.21, entitlement
+`com.apple.developer.declared-age-range`). The gates are 13, 16 and 18. If
+Apple returns a band, SQLite stores only `lower_bound` and `upper_bound`
+(migration `010_age_bucket`). It does not store who declared the age, parental
+controls, or any install id. Web, Android, older iOS, a decline, and any error
+store nothing — the SDK's fake adult answer on those platforms is not kept.
+
+The band is not synced, not sent to analytics, and not sent to the Coach. No
+feature reads it. Erase and account deletion delete the row. Apple enforces a
+revoked consent by refusing to launch the app, so there is no server-side
+rescind path.
+
 ## 5. Policy text this implies
 
 The privacy policy URL App Store Connect requires must at minimum say:
@@ -141,6 +160,9 @@ The privacy policy URL App Store Connect requires must at minimum say:
    off in Settings.
 4. That subscriptions are processed by Apple and managed via RevenueCat.
 5. How to delete an account and its data.
+6. That on iOS 26 or later the app may keep an age band from Apple on the
+   device, and that the band is not sent off the device or used to lock a
+   feature. The draft in `docs/PRIVACY_POLICY.md` says so.
 
 **Item 5 is built (2026-09-25).** Settings → Delete account calls the
 `delete-account` Edge Function, which revokes Sign in with Apple (once its key

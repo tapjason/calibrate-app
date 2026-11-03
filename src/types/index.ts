@@ -263,6 +263,17 @@ export const FREE_ENTITLEMENT: Entitlement = {
   expires_at: null,
 };
 
+/**
+ * The only age fact the app keeps: the bounds from Apple's Declared Age
+ * Range API. Null on a side means that side was open. Nothing else from the
+ * response is stored, and the band is never synced. Absence means we have
+ * no band — the app does not treat that as any particular age.
+ */
+export interface AgeBucket {
+  lowerBound: number | null;
+  upperBound: number | null;
+}
+
 // ---- Coach agent (Plus). Authoritative shapes: COACH_AGENT.md §4 and §6. ----
 
 /**
@@ -744,6 +755,15 @@ export type ListCategoryStats = (userId: string) => Promise<CategoryStat[]>;
 
 export type GetEntitlement = () => Promise<Entitlement>;
 export type UpsertEntitlement = (e: Entitlement) => Promise<void>;
+
+// ---- DB: age bucket (L2) ----
+//
+// Device-local, one row, no user_id. Not synced. A missing row is "no band",
+// not an age. clearAgeBucket runs from the device wipe.
+
+export type GetAgeBucket = () => Promise<AgeBucket | null>;
+export type SaveAgeBucket = (bucket: AgeBucket) => Promise<void>;
+export type ClearAgeBucket = () => Promise<void>;
 
 // ---- DB: warmup (L2) ----
 //

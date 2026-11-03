@@ -34,11 +34,14 @@ export const TERMS_OF_USE_URL =
   'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 /**
- * Where `docs/PRIVACY_POLICY.md` is published. **Null until it is hosted** —
- * the paywall omits the link rather than shipping one that 404s. 3.1.2 needs
- * this set before submission; `docs/HUMAN_VERIFICATION.md` Batch E tracks it.
+ * Public URL of `docs/PRIVACY_POLICY.md`.
+ *
+ * GitHub Pages project site for `tapjason/calibrate-app`, source folder
+ * `/docs` on `master`. The file's permalink is `/privacy/`, so the page is
+ * this URL once Pages is on. The paywall and Settings show the link. It 404s
+ * until that switch is flipped (`docs/HUMAN_VERIFICATION.md`).
  */
-export const PRIVACY_POLICY_URL: string | null = null;
+export const PRIVACY_POLICY_URL = 'https://tapjason.github.io/calibrate-app/privacy/';
 
 /**
  * The app's numeric App Store id ("6740000000"), once App Store Connect has a

@@ -24,6 +24,7 @@
     "@react-navigation/native": "7.2.4",
     "@supabase/supabase-js": "^2.106.2",
     "expo": "^55.0.24",
+    "expo-age-range": "0.2.21",
     "expo-apple-authentication": "~55.0.13",
     "expo-asset": "~55.0.20",
     "expo-auth-session": "~55.0.16",

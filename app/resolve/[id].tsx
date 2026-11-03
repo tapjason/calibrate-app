@@ -10,8 +10,17 @@ import { colors, space, type } from '@/constants/theme';
 
 export default function ResolveScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; answer?: string | string[] }>();
   const id = params.id;
+  const answerParam = Array.isArray(params.answer) ? params.answer[0] : params.answer;
+  // `answer` is set by a Happened / Didn't action (roadmap D8). The body of
+  // the notification opens this screen without it, on the question.
+  const recordedAnswer =
+    answerParam === 'happened'
+      ? 'resolved_yes'
+      : answerParam === 'didnt'
+        ? 'resolved_no'
+        : undefined;
   const [draft, setDraft] = useState('');
   // Asks before a swipe-down discards a typed reflection.
   const guard = useReflectionGuard(typeof id === 'string' ? id : '', draft);
@@ -63,6 +72,7 @@ export default function ResolveScreen() {
             else router.replace('/' as never);
           }}
           onDraftChange={setDraft}
+          recordedAnswer={recordedAnswer}
           // Roadmap step 22: a fresh call on Log. Log is a sheet too (D3), so
           // it takes this sheet's place rather than stacking on it (HIG: one
           // sheet at a time), and closes back to the tab underneath.

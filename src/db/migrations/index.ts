@@ -26,7 +26,8 @@ import { MIGRATION_006 } from './006_analytics';
 import { MIGRATION_007 } from './007_practice';
 import { MIGRATION_008 } from './008_prediction_deletions';
 import { MIGRATION_009 } from './009_custom_categories';
-import { MIGRATION_010 } from './010_category_icons';
+import { MIGRATION_010 } from './010_age_bucket';
+import { MIGRATION_011 } from './011_category_icons';
 
 export interface Migration {
   id: string;
@@ -43,7 +44,9 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: '007_practice', sql: MIGRATION_007 },
   { id: '008_prediction_deletions', sql: MIGRATION_008 },
   { id: '009_custom_categories', sql: MIGRATION_009 },
-  { id: '010_category_icons', sql: MIGRATION_010 },
+  { id: '010_age_bucket', sql: MIGRATION_010 },
+  // Keeps the id it was first run under (2026-11-03); see 011_category_icons.ts.
+  { id: '010_category_icons', sql: MIGRATION_011 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();

@@ -118,6 +118,8 @@ second build that can't test billing.
 
 - [ ] **Web run-through: Batch C, minus what web can't show.** An agent can
       drive this one (`NEXT_STEPS.md` item k) and mark boxes *web-verified*.
+      Age assurance (D4) does not run on web: first launch still opens the
+      Warmup, with no age sheet and no feature locked.
 - [ ] ~~**Expo Go run-through: Batch C, minus billing.**~~ **Not possible on
       SDK 55 (2026-10-04).** Do Batch C on the iOS dev build instead (Tier 2),
       signing in with **email** (Apple sign-in needs the paid account too;
@@ -161,7 +163,7 @@ second build that can't test billing.
 | Thing | Status | Needed for |
 |---|---|---|
 | App Store screenshots | **Drafts made 2026-10-03** from the web build with the demo data (git-ignored `screenshots/draft/`). Finals need a device build. | E |
-| Privacy policy page + public URL | **Drafted:** [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md). Name and contact filled in; the effective date is set on publishing. Hosting needs a URL (GitHub Pages works, since the repo is public). | E |
+| Privacy policy page + public URL | **URL is in the app:** `https://tapjason.github.io/calibrate-app/privacy/` (`PRIVACY_POLICY_URL`). The page is [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md) (effective November 2, 2026). It 404s until GitHub Pages is on for `master` / `/docs`, after that commit is on `master`. Steps in Batch E. | E |
 | App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **The name "Calibrate" is already taken twice on the App Store.** See §0 there; the choice is yours. | E |
 | Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25, deployed 2026-10-02.** The optional Apple-revoke and RevenueCat-delete legs wait on their keys (Batch E). | E |
 
@@ -693,7 +695,7 @@ Added 2026-09-29 (polish pass):
       rename Finance to "Money", add "Grad school", hide Social. Log offers Money
       and Grad school and no Social; Insights, History, the card and This week say
       "Money". Force-quit and reopen: all three kept.
-- [ ] **Category icons (D40, step 145; web-verified):** in You → Categories, tap
+- [ ] **Category icons (D40, step 146; web-verified):** in You → Categories, tap
       Health's icon and pick 🏃; tap Finance's icon → Choose a picture. iOS should ask
       for photo access once with "Calibrate uses a picture you pick as a category
       icon. It stays on this phone.", show its square crop, and the row should show
@@ -826,8 +828,10 @@ Requires a dev build (`eas build --profile development --platform ios`), not
 Expo Go — notifications and RevenueCat are both native modules.
 
 ### D1. Notifications
-- [ ] **No permission prompt at first launch** (changed 2026-10-05, roadmap
-      step 38): the Warmup opens with no iOS alert over it. After logging a
+- [ ] **No notification permission prompt at first launch** (changed 2026-10-05,
+      roadmap step 38): the Warmup opens with no notification alert over it.
+      Apple's age-range sheet, if it appears, is D4 and is not this alert.
+      After logging a
       first prediction, Home shows "Want a reminder when it's due?"; **Turn on
       reminders** brings up the iOS alert. Allow it: the prediction's reminder
       is scheduled. On a second install, refuse it: Settings → Notifications
@@ -848,6 +852,15 @@ Expo Go — notifications and RevenueCat are both native modules.
       minutes out).
 - [ ] Tapping the notification deep-links into the Resolve screen for the
       right prediction — including from a **cold start** (force-quit first).
+- [ ] **Happened / Didn't (D8, step 145):** the same reminder shows Happened
+      and Didn't, and no Can't tell. Happened records it and opens straight to
+      "Recorded: it happened" (the range line, and a milestone if this answer
+      earned one), including from a cold start. Didn't does the same for no.
+      Tapping the notification body still opens the question. Answer one that
+      was already answered: it does not change. A reminder scheduled by the
+      previous build still opens Resolve from its body; after one launch of
+      this build the buttons are there too (the category is registered at
+      launch; the request is not rescheduled).
 - [ ] The Sunday digest is scheduled (check
       `getAllScheduledNotificationsAsync` in the dev console, or wait).
 - [ ] Turning notifications off in Settings cancels everything; turning it
@@ -901,6 +914,25 @@ Only possible after D2 and B3 (the webhook is what tells the server you paid).
 - [ ] Turn Coach on in Settings; tap "Get feedback"; insights render with the
       AI label.
 - [ ] Every number in an insight matches a number on the Stats screen.
+
+### D4. Age assurance (iOS 26, a dev build that includes the entitlement)
+Needs a signed-in Apple Account. The entitlement is
+`com.apple.developer.declared-age-range` in `app.json`. If the build fails to
+sign, enable Declared Age Range on the App ID and rebuild. Simulator runtimes
+often don't present this API; prefer a device.
+- [ ] **iOS 26, first launch:** after the splash, Apple's age-range sheet may
+      appear (the app has no sheet of its own). Share a range: the Warmup or
+      Today is usable, and nothing is locked. Force-quit and reopen: the sheet
+      does not appear again.
+- [ ] **Decline:** the app continues as it does today. Nothing is locked, and
+      you are not stuck on the sheet. Force-quit and reopen: still not stuck
+      (a second sheet, if Apple shows one, still lets you through when you
+      decline).
+- [ ] **Not signed into an Apple Account, or an older iOS:** no sheet, and the
+      app behaves as it did before this check. Web and Android are the same
+      (no Play Age Signals call).
+- [ ] **Erase all data on this device:** the next launch can ask again. Until
+      then, predictions and the rest of the app are unchanged.
 
 ---
 
@@ -959,13 +991,44 @@ What is still yours:
         (a 10-digit number, not the bundle id).
       - `appleTeamId` — developer.apple.com → Membership details → Team ID.
 
-- [ ] Privacy policy URL — App Store Connect requires one, and
-      `docs/APP_PRIVACY.md` §5 lists the five things it has to say. A draft
-      is in `docs/PRIVACY_POLICY.md`. **Once it's hosted, put the URL in
-      `PRIVACY_POLICY_URL` (`src/constants/app.ts`)**. The paywall and
-      Settings (since 2026-10-05) show their Privacy Policy links only when
-      that's set, and 3.1.2 requires the
-      link in the app, not only in the listing.
+- [ ] **Privacy policy URL — turn GitHub Pages on after this is on `master`.**
+      The app already links to
+      `https://tapjason.github.io/calibrate-app/privacy/`
+      (`PRIVACY_POLICY_URL` in `src/constants/app.ts`). Paywall and Settings
+      show it, so it 404s until Pages is serving `master`. App Store Connect
+      needs the same URL, and it has to load (Guideline 3.1.2). What the page
+      has to say is `docs/APP_PRIVACY.md` §5; the text is `docs/PRIVACY_POLICY.md`.
+
+      Do this **after** the privacy-policy commit is on `master`, not before.
+      Enabling Pages on an older `master` builds every file in `docs/` (no
+      `_config.yml` yet). That can fail the build, and `/privacy/` does not
+      exist until this commit is the one Pages builds.
+
+      1. On GitHub, open `tapjason/calibrate-app` → **Settings** → **Pages**
+         (under Code and automation).
+      2. **Build and deployment** → **Source**: **Deploy from a branch**.
+      3. **Branch**: `master`. **Folder**: `/docs`. Save.
+      4. Wait until the Pages deployment is green. The first build takes a
+         few minutes. The site address at the top of that settings page
+         should be `https://tapjason.github.io/calibrate-app/`.
+
+      Confirm, in a browser:
+
+      - `https://tapjason.github.io/calibrate-app/privacy/` shows the policy:
+        heading "Calibrate Privacy Policy", effective date November 2, 2026,
+        contact tapjason-dev@gmail.com. It is a rendered page, not the raw
+        Markdown file. Without the trailing slash should redirect to the
+        same page.
+      - `https://tapjason.github.io/calibrate-app/` loads and its link opens
+        the policy.
+      - `https://tapjason.github.io/calibrate-app/HUMAN_VERIFICATION` and
+        `https://tapjason.github.io/calibrate-app/NEXT_STEPS` are 404s.
+        Those files stay in the repo. They are not part of the site.
+      - In the app (the web build is enough): You → Privacy policy, and the
+        paywall's Privacy Policy, both open that URL.
+
+      Do this before a build that contains the URL is handed to anyone. The
+      links are already visible.
 - [ ] `npx expo install --check` before the build. `expo-doctor` is 19/20
       green; the one failure is patch drift inside SDK 55 (15 packages on
       2026-10-04, e.g.

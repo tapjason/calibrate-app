@@ -1,9 +1,12 @@
 # Calibrate — Agent Document
 
+**Read `HANDOFF.md` first.** It is the shared state for this branch and is overwritten each PR.
+
 **Canonical spec.** This file and `BUILD_PLAN.md` are the two always-current build
 documents. `GROWTH_AND_MONETIZATION.md` and `COACH_AGENT.md` are rationale/reference —
 read them for the *why*, but this file governs *what gets built*. If they ever conflict,
 this file wins. Visual and interaction design lives in `docs/design/DESIGN_SYSTEM.md`.
+Read `HANDOFF.md` at the repo root first when picking up a branch.
 
 ## Project Overview
 
@@ -407,7 +410,10 @@ Nothing that produces a shareable artifact is ever paywalled.
 ### 7. Notification Service
 - **Resolution reminder** — fires at 19:00 local on the due day (decided 2026-10-05;
   due dates are stored at noon, which was before most outcomes were known), or at
-  the time the person picks in You (D38, 2026-11-01)
+  the time the person picks in You (D38, 2026-11-01). **Happened** and **Didn't**
+  on the reminder record that answer and open the app on the resolved state
+  (D8, 2026-11-02); tapping the notification itself still opens the question,
+  and "Can't tell" stays in the app. Web has no actions.
 - **Weekly digest** — fires Sunday at 18:00 local, or on the day and time the person
   picks (D38), and summarizes open and upcoming predictions
 - **Trial ending** — 10:00 local two days before a free trial renews, with the
