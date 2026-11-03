@@ -31,10 +31,16 @@ to be read, not skimmed past.
 ## 2. What we collect
 
 ### If you don't sign in
-Nothing. Your predictions, results, and settings are stored in a database on
-your device. Usage events (§2.3) are recorded on the device but never sent. If
-you later create an account, the ones still on the device are sent with it,
-unless you turned usage stats off, which deletes them.
+Nothing leaves your phone. Your predictions, results, and settings are stored
+in a database on your device. Usage events (§2.3) are recorded on the device
+but never sent. If you later create an account, the ones still on the device
+are sent with it, unless you turned usage stats off, which deletes them.
+
+On an iPhone running iOS 26 or later, the app may ask Apple for an age range
+the first time a screen is up. If you share one, only the age band — a lower
+and an upper bound, not your birthday — is stored on the device. It is not
+sent to us and it is not used to lock any feature. Erase and account deletion
+remove it with the rest of the on-device data.
 
 ### If you create an account
 

@@ -51,7 +51,6 @@ affects; this is the summary.
 | # | Item | Size | Why it matters |
 |---|---|---|---|
 | g | **Dependency drift within SDK 55.** `npx expo install --check` now lists 15 packages behind (re-run 2026-10-04: `expo` 55.0.26 → 55.0.31, `react-native` 0.83.6 → 0.83.10, `expo-router`, `expo-notifications`, `expo-sqlite`, `jest-expo`, …). Run `npx expo install --fix`, then `npm test`. | S | Do it the day of the first EAS build. Doing it earlier means retesting twice. |
-| i | **Age assurance, once you decide it applies** (see "Waiting on you"). Add `expo-age-range` and the `com.apple.developer.declared-age-range` entitlement. Call it once at first run, behind a deps seam that fails open to today's behaviour wherever the API is unavailable (web, older iOS, regions that don't require it), and store only the age bucket. Apple enforces consent revocation by blocking launch, so `RESCIND_CONSENT` needs no server work unless you want the notification. | M | Texas applies to new accounts now; California (2027-01-01) and Utah (2027-05-06) follow. |
 | j | **SDK upgrade, 55 → 58**, as its own iteration *after* the first device build passes Batch C on 55. Go straight to 58 once it's stable, following `docs.expo.dev/router/migrate/sdk-57-to-58/`. 58 adopts the UIScene lifecycle through prebuild, makes React Native's strict TypeScript API the default, and has breaking changes in `expo-router`, `expo-sqlite` and `expo-file-system`, all of which this app uses. | L | Unblocks D3 (stable native tabs), FUTURE_UI A10 (`expo-app-intents`), stable `@expo/ui`, and the platform features in FUTURE_UI §D (widgets, Siri, an on-device Coach; research 2026-10-05). Upgrading *before* the first device run means nobody can tell whether a device bug comes from the app or from the upgrade. |
 
 Done 2026-10-04 (second pass): **h** — Settings and the Coach panel now name
@@ -59,12 +58,17 @@ OpenAI before the first request; **k** — the web run-through, recorded at the
 top of `HUMAN_VERIFICATION.md` Batch C, which also fixed six UI defects and
 found the RevenueCat Test Store drift below.
 
+Done 2026-11-02: **i** — Declared Age Range, owner option (a). `expo-age-range`
+0.2.21 (the SDK 55 release; `npx expo install` with no version resolved 58 and
+was not kept) and the `com.apple.developer.declared-age-range` entitlement.
+One ask after the first screen is up, failing open, and only the age band is
+stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
+
 ## Suggested order for the next iterations
 
 1. Fix the Test Store prices (below), then your calls.
-2. Your calls below: age assurance, the name, pricing (P1), Pages for the
-   privacy policy.
-   Then **i** if you pick (a).
+2. Your calls below: the name, pricing (P1), Pages for the privacy policy.
+   Age assurance (a) is built.
 3. The $99 account → **g** → first EAS development build → Batch C/D on the
    iPhone → TestFlight.
 4. **j** (SDK 58), then the design decisions that wait on it (D3, D5) and
@@ -82,13 +86,10 @@ found the RevenueCat Test Store drift below.
   The only free check left is the web build (item k). When you want to see the
   app on your phone, this is the purchase. It also unlocks billing, TestFlight
   and submission.
-- **Age assurance: does it apply, and how far?** Apple says that in regions
-  that require it "you must check the age of the people using your app", and
-  Texas has required it since 2026-06-04. Options: (a) build the Declared Age
-  Range check now (item i), (b) ship without it and add it in the first update,
-  (c) ask counsel first. Recommendation: **(a), before submission.** It's
-  M-sized, it can only fail open, and California's law (2027-01-01) will need
-  it anyway. This isn't legal advice.
+- **Age assurance: decided (a), built 2026-11-02.** The check fails open and
+  stores only the band. Nothing in the app is gated on it; say so if that
+  should change. The age-rating questionnaire should answer **Yes** for age
+  assurance on a build that includes it (`APP_STORE_LISTING.md` §1).
 - **The new age-rating questionnaire.** Since 2026-01-31, App Store Connect
   blocks submissions until the updated questions are answered (in-app
   controls, capabilities, medical or wellness topics; AI features count toward

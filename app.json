@@ -10,7 +10,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.calibrate.app",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "entitlements": {
+        "com.apple.developer.declared-age-range": true
+      }
     },
     "android": {
       "adaptiveIcon": {
