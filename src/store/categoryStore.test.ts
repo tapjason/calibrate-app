@@ -2,7 +2,11 @@ import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 
 import { useAuthStore } from './authStore';
+import { listCategoryDefs } from '@/db/categories';
+
 import {
+  categoryEmojiProblem,
+  categoryIcon,
   categoryLabel,
   categoryNameProblem,
   categoryOptions,
@@ -105,5 +109,59 @@ describe('categoryStore', () => {
     await useCategoryStore.getState().rename('health', 'Body');
     expect(categoryNameProblem('Health')).toBe('Another category already has that name.');
     expect(categoryNameProblem('Health', 'health')).toBeNull();
+  });
+});
+
+const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+// Roadmap D40: an emoji or a picture for any category, built-ins included.
+describe('category icons', () => {
+  it('gives a built-in an emoji, keeps it on disk, and goes back to the default', async () => {
+    await useCategoryStore.getState().setIcon('health', { kind: 'emoji', emoji: ' 🏃 ' });
+    expect(categoryIcon('health')).toEqual({ kind: 'emoji', emoji: '🏃' });
+    const userId = useAuthStore.getState().userId as string;
+    expect((await listCategoryDefs(userId)).find((d) => d.id === 'health')?.icon).toEqual({
+      kind: 'emoji',
+      emoji: '🏃',
+    });
+    // An icon alone leaves the name and the switch as they were.
+    expect(categoryLabel('health')).toBe('health');
+    expect(isCategoryHidden('health')).toBe(false);
+    await useCategoryStore.getState().setIcon('health', null);
+    expect(categoryIcon('health')).toBeNull();
+  });
+
+  it('gives an added category a picture, which a rename and a hide keep', async () => {
+    const id = await useCategoryStore.getState().add('Grad school');
+    await useCategoryStore.getState().setIcon(id, { kind: 'image', uri: PNG });
+    await useCategoryStore.getState().rename(id, 'PhD');
+    await useCategoryStore.getState().setHidden(id, true);
+    expect(categoryIcon(id)).toEqual({ kind: 'image', uri: PNG });
+    // And setting an icon keeps the name and the hide.
+    await useCategoryStore.getState().setIcon(id, { kind: 'emoji', emoji: '🎓' });
+    expect(categoryLabel(id)).toBe('PhD');
+    expect(isCategoryHidden(id)).toBe(true);
+  });
+
+  it('refuses a word, or something that is not a picture', async () => {
+    await expect(
+      useCategoryStore.getState().setIcon('work', { kind: 'emoji', emoji: 'ok' }),
+    ).rejects.toThrow('Use just one emoji.');
+    await expect(
+      useCategoryStore
+        .getState()
+        .setIcon('work', { kind: 'image', uri: 'https://example.com/a.png' }),
+    ).rejects.toThrow("That picture couldn't be used.");
+    expect(categoryIcon('work')).toBeNull();
+  });
+
+  it('takes exactly one emoji, joined ones and flags included', () => {
+    for (const ok of ['🎓', '❤️', '👨‍👩‍👧', '🇯🇵', '👍🏽']) {
+      expect(categoryEmojiProblem(ok)).toBeNull();
+    }
+    expect(categoryEmojiProblem('')).toBe('Pick an emoji.');
+    expect(categoryEmojiProblem('🎓📚')).toBe('Use just one emoji.');
+    expect(categoryEmojiProblem('A')).toBe('Use an emoji, not a letter.');
+    expect(categoryEmojiProblem('🎓 x')).toBe('Use just one emoji.');
   });
 });

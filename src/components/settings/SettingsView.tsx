@@ -54,7 +54,7 @@ export function SettingsView({
   onOpenScoring?: () => void;
   /** The share card (Share), one tap from the tab named after you. */
   onOpenCard?: () => void;
-  /** Rename, add or hide categories (roadmap D39). */
+  /** Rename, add or hide categories (roadmap D39), and give them icons (D40). */
   onOpenCategories?: () => void;
 } = {}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
@@ -111,7 +111,7 @@ export function SettingsView({
 
       {/* The person's own categories (roadmap D39). */}
       {onOpenCategories && (
-        <Group footer="Rename, add or hide the categories you log under.">
+        <Group footer="Rename, add, hide or give an icon to the categories you log under.">
           <NavRow label="Categories" onPress={onOpenCategories} testID="settings-categories" />
         </Group>
       )}

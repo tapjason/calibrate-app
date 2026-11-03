@@ -162,11 +162,22 @@ export function isCategory(value: unknown): value is Category {
  * built-in has a row only once renamed or hidden; one they added always has
  * one. Device-local, like the settings: not synced yet.
  */
+/**
+ * A category's own icon (roadmap D40): one emoji, or a small square image the
+ * person picked, as a PNG data URI. Device-local like the name; never on a
+ * share card.
+ */
+export type CategoryIconChoice =
+  | { kind: 'emoji'; emoji: string }
+  | { kind: 'image'; uri: string };
+
 export interface CategoryDef {
   id: Category;
   user_id: string;
   /** The name shown; null for a built-in under its own name. */
   name: string | null;
+  /** The person's own icon; null for the category's default symbol (D40). */
+  icon: CategoryIconChoice | null;
   /** Off Log's choices; its predictions and record stay. */
   hidden: boolean;
   /** Order among the added ones (built-ins keep CATEGORIES order). */

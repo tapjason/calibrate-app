@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
-import { View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import { useCategoryStore } from '@/store/categoryStore';
 import { isBuiltInCategory, type BuiltInCategory, type Category } from '@/types';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -63,6 +64,34 @@ export function CategoryIcon({
   size?: number;
   color: string;
 }) {
+  // The person's own emoji or picture (roadmap D40), shown as it is, in its
+  // own colours: the one place on screen a colour means "your icon".
+  const own = useCategoryStore((s) => s.defs.find((d) => d.id === category)?.icon ?? null);
+  if (own) {
+    return (
+      <View
+        aria-hidden
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+        testID={`category-icon-${own.kind}`}
+      >
+        {own.kind === 'emoji' ? (
+          <Text
+            allowFontScaling={false}
+            style={{ color, fontSize: Math.round(size * 0.85), lineHeight: size, textAlign: 'center' }}
+          >
+            {own.emoji}
+          </Text>
+        ) : (
+          <Image
+            source={{ uri: own.uri }}
+            style={{ width: size, height: size, borderRadius: Math.round(size / 4) }}
+          />
+        )}
+      </View>
+    );
+  }
   // A category the person added (roadmap D39) has no symbol of its own: a tag.
   const { sf, fallback } = isBuiltInCategory(category) ? CATEGORY_ICONS[category] : ADDED_ICON;
   return <Icon sf={sf} fallback={fallback} size={size} color={color} />;

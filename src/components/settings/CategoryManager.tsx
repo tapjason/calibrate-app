@@ -18,17 +18,21 @@ import {
 } from '@/store/categoryStore';
 import { isBuiltInCategory, type Category } from '@/types';
 
+import { CategoryIconEditor } from './CategoryIconEditor';
+
 /**
  * Categories (roadmap D39, decided 2026-11-01): rename any of them, add your
  * own, and hide one from Log's choices. Four blind testers wanted "Family",
  * "Research" or "Grad school", and the five fixed ones misfiled their
- * predictions. A hidden category keeps its predictions and record; nothing is
+ * predictions. Since D40 (2026-11-03) the icon at the start of each row opens
+ * its icon editor: an emoji or a picture. A hidden category keeps its predictions and record; nothing is
  * deleted here.
  */
 export function CategoryManager() {
   useCategoryStore((s) => s.defs);
   const signedIn = useAuthStore((s) => s.status === 'authenticated');
   const [editing, setEditing] = useState<Category | null>(null);
+  const [iconFor, setIconFor] = useState<Category | null>(null);
   const [draft, setDraft] = useState('');
   const [newName, setNewName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +73,8 @@ export function CategoryManager() {
         Categories
       </Text>
       <Text style={styles.body}>
-        Rename any category, add your own, or hide one from the choices when you log. A hidden
-        category keeps its predictions and its record.
+        Rename any category, give it an icon, add your own, or hide one from the choices when you
+        log. A hidden category keeps its predictions and its record.
       </Text>
 
       <View style={styles.card}>
@@ -78,75 +82,93 @@ export function CategoryManager() {
           const hidden = isCategoryHidden(c);
           const name = categoryTitle(c);
           return (
-            <View
-              key={c}
-              style={[styles.row, i > 0 && styles.rowDivider]}
-              testID={`manage-${c}`}
-            >
-              {editing === c ? (
-                <View style={styles.editing}>
-                  <TextInput
-                    value={draft}
-                    onChangeText={setDraft}
-                    autoFocus
-                    maxLength={CATEGORY_NAME_MAX}
-                    accessibilityLabel={`New name for ${name}`}
-                    placeholderTextColor={colors.textTertiary}
-                    style={styles.input}
-                    onSubmitEditing={() => void saveRename(c)}
-                    returnKeyType="done"
-                    testID={`manage-${c}-input`}
-                  />
-                  <View style={styles.editActions}>
-                    <Button
-                      label="Save"
-                      onPress={() => void saveRename(c)}
-                      disabled={busy || categoryNameProblem(draft, c) !== null}
-                      testID={`manage-${c}-save`}
+            <View key={c} style={i > 0 && styles.rowDivider}>
+              <View style={styles.row} testID={`manage-${c}`}>
+                {editing === c ? (
+                  <View style={styles.editing}>
+                    <TextInput
+                      value={draft}
+                      onChangeText={setDraft}
+                      autoFocus
+                      maxLength={CATEGORY_NAME_MAX}
+                      accessibilityLabel={`New name for ${name}`}
+                      placeholderTextColor={colors.textTertiary}
+                      style={styles.input}
+                      onSubmitEditing={() => void saveRename(c)}
+                      returnKeyType="done"
+                      testID={`manage-${c}-input`}
                     />
-                    <TextButton
-                      label="Cancel"
+                    <View style={styles.editActions}>
+                      <Button
+                        label="Save"
+                        onPress={() => void saveRename(c)}
+                        disabled={busy || categoryNameProblem(draft, c) !== null}
+                        testID={`manage-${c}-save`}
+                      />
+                      <TextButton
+                        label="Cancel"
+                        onPress={() => {
+                          setEditing(null);
+                          setError(null);
+                        }}
+                        testID={`manage-${c}-cancel`}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <Pressable
+                      style={styles.iconButton}
                       onPress={() => {
-                        setEditing(null);
+                        setIconFor(iconFor === c ? null : c);
                         setError(null);
                       }}
-                      testID={`manage-${c}-cancel`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${name} icon. Change`}
+                      accessibilityState={{ expanded: iconFor === c }}
+                      testID={`manage-${c}-icon`}
+                    >
+                      <CategoryIcon category={c} size={22} color={colors.textSecondary} />
+                    </Pressable>
+                    <Pressable
+                      style={styles.nameButton}
+                      onPress={() => {
+                        setDraft(name);
+                        setEditing(c);
+                        setError(null);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${name}. Rename`}
+                      testID={`manage-${c}-rename`}
+                    >
+                      <Text style={[styles.name, hidden && styles.nameHidden]}>{name}</Text>
+                      <Text style={styles.renameHint}>Rename</Text>
+                    </Pressable>
+                    {/* On = offered when logging. The whole switch is one element. */}
+                    <Switch
+                      value={!hidden}
+                      // The last one offered stays on: logging needs a category.
+                      disabled={!hidden && shown.length === 1}
+                      onValueChange={(on) =>
+                        void run(() => useCategoryStore.getState().setHidden(c, !on))
+                      }
+                      accessibilityLabel={`Offer ${name} when logging`}
+                      trackColor={{
+                        true: colors.action,
+                        false: colors.controlBorder,
+                      }}
+                      thumbColor={colors.onAction}
+                      ios_backgroundColor={colors.controlBorder}
+                      {...{ activeThumbColor: colors.onAction }}
+                      testID={`manage-${c}-shown`}
                     />
-                  </View>
+                  </>
+                )}
+              </View>
+              {iconFor === c && (
+                <View style={styles.rowDivider}>
+                  <CategoryIconEditor category={c} name={name} onDone={() => setIconFor(null)} />
                 </View>
-              ) : (
-                <>
-                  <Pressable
-                    style={styles.nameButton}
-                    onPress={() => {
-                      setDraft(name);
-                      setEditing(c);
-                      setError(null);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${name}. Rename`}
-                    testID={`manage-${c}-rename`}
-                  >
-                    <CategoryIcon category={c} size={16} color={colors.textSecondary} />
-                    <Text style={[styles.name, hidden && styles.nameHidden]}>{name}</Text>
-                    <Text style={styles.renameHint}>Rename</Text>
-                  </Pressable>
-                  {/* On = offered when logging. The whole switch is one element. */}
-                  <Switch
-                    value={!hidden}
-                    // The last one offered stays on: logging needs a category.
-                    disabled={!hidden && shown.length === 1}
-                    onValueChange={(on) =>
-                      void run(() => useCategoryStore.getState().setHidden(c, !on))
-                    }
-                    accessibilityLabel={`Offer ${name} when logging`}
-                    trackColor={{ true: colors.action, false: colors.controlBorder }}
-                    thumbColor={colors.onAction}
-                    ios_backgroundColor={colors.controlBorder}
-                    {...{ activeThumbColor: colors.onAction }}
-                    testID={`manage-${c}-shown`}
-                  />
-                </>
               )}
             </View>
           );
@@ -187,8 +209,8 @@ export function CategoryManager() {
           predictions filed under an added category stay on this phone. */}
       {!CUSTOM_CATEGORY_SYNC && signedIn && hasOwn && (
         <Text style={styles.footnote} testID="manage-local-note">
-          Predictions in your own categories stay on this phone for now: they don’t back up to
-          your account yet.
+          Predictions in your own categories stay on this phone for now: they don’t back up to your
+          account yet.
         </Text>
       )}
     </View>
@@ -213,8 +235,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingVertical: space.sm,
   },
-  rowDivider: { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth },
-  nameButton: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: space.sm, minHeight: 44 },
+  rowDivider: {
+    borderTopColor: colors.hairline,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  iconButton: {
+    alignItems: 'center',
+    borderColor: colors.hairline,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  nameButton: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: space.sm,
+    minHeight: 44,
+  },
   name: { ...type.callout, color: colors.textPrimary, flexShrink: 1 },
   nameHidden: { color: colors.textSecondary },
   renameHint: { ...type.footnote, color: colors.textSecondary },
@@ -230,7 +270,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: 10,
   },
-  label: { ...type.footnote, color: colors.textSecondary, fontWeight: '500', marginTop: space.lg },
+  label: {
+    ...type.footnote,
+    color: colors.textSecondary,
+    fontWeight: '500',
+    marginTop: space.lg,
+  },
   footnote: { ...type.footnote, color: colors.textSecondary },
   error: { ...type.subhead, color: colors.destructive },
 });

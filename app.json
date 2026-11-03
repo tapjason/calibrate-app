@@ -41,6 +41,14 @@
         }
       ],
       "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Calibrate uses a picture you pick as a category icon. It stays on this phone.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-font",
