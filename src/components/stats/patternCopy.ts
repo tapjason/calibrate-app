@@ -33,7 +33,7 @@ export function weekChangeLine(change: WeekChange, giveOrTake: number): string {
       ? `Up ${delta} since last week, from ${answers}`
       : delta < 0
         ? `Down ${-delta} since last week, from ${answers}`
-        : `No change since last week, over ${answers}`;
+        : `No change since last week, from ${answers}`;
   return delta !== 0 && Math.abs(delta) <= giveOrTake
     ? `${lead}, within its ${GIVE_OR_TAKE}.`
     : `${lead}.`;

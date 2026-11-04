@@ -48,7 +48,7 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('Score above 70 to reach Forecaster')).toBeTruthy();
+    expect(view.getByText('Score above 70 at its low end to reach Forecaster')).toBeTruthy();
   });
 
   // Roadmap step 47: a Forecaster at 30 resolved with a score of 80 needs
@@ -66,9 +66,9 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('20 more resolved and a score above 85 to reach Sharp')).toBeTruthy();
+    expect(view.getByText('20 more resolved and a score above 85 at its low end to reach Sharp')).toBeTruthy();
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
-      'Health: Forecaster, score 80 from 30 resolved. 20 more resolved and a score above 85 to reach Sharp.',
+      'Health: Forecaster, score 80 from 30 resolved. 20 more resolved and a score above 85 at its low end to reach Sharp.',
     );
   });
 
@@ -128,7 +128,7 @@ describe('CategoryBadge — screen readers', () => {
 
   // Roadmap D33: the hint is written in words, so it is spoken as written.
   it('speaks the hint as written', () => {
-    expect(spokenHint('Score above 70 to reach Forecaster')).toBe('Score above 70 to reach Forecaster');
+    expect(spokenHint('Score above 70 at its low end to reach Forecaster')).toBe('Score above 70 at its low end to reach Forecaster');
     expect(spokenHint('120 resolved, top badge reached')).toBe('120 resolved, top badge reached');
   });
 });
@@ -166,7 +166,7 @@ describe('CategoryBadge with a give-or-take', () => {
       />,
     );
     expect(view.getByTestId('category-health-hint')).toHaveTextContent(
-      /^Score above 85 even at its low end to.reach.Sharp$/,
+      /^Score above 85 at its low end to.reach.Sharp$/,
     );
   });
 });

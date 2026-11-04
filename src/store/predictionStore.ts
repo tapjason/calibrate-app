@@ -12,7 +12,7 @@ import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
 import { canCorrect, correctableUntil } from '@/engine/corrections';
 import { pastOutcomes } from '@/engine/pastOutcomes';
-import { earliestDueDay, isSameDayAnswer } from '@/engine/sameDay';
+import { clampDueDate, earliestDueDay, isSameDayAnswer } from '@/engine/sameDay';
 import { checkpointReached, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
@@ -201,14 +201,16 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       throw new Error('title is required');
     }
 
+    const createdAt = nowIso();
     const prediction: Prediction = {
       id: newId(),
       user_id: userId,
       title: trimmedTitle,
       category: input.category,
       confidence: input.confidence,
-      created_at: nowIso(),
-      due_date: input.due_date,
+      created_at: createdAt,
+      // Never today or earlier (D41): an answer today wouldn't be scored.
+      due_date: clampDueDate(input.due_date, new Date(createdAt), new Date()),
       status: 'pending',
       resolved_at: null,
       reflection: null,
@@ -323,9 +325,12 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const title = edit.title.trim();
     if (title.length === 0) throw new Error('title is required');
     // Only this user's own prediction (getById applies the owner filter).
-    if (!(await get().getById(id))) return;
+    const current = await get().getById(id);
+    if (!current) return;
+    // The picker's floor, held here too: a typed date can get past it.
+    const due_date = clampDueDate(edit.due_date, new Date(current.created_at), new Date());
     await withTransaction(async () => {
-      await updatePrediction(id, { ...edit, title });
+      await updatePrediction(id, { ...edit, title, due_date });
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await get().loadPending();

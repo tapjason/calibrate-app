@@ -11,7 +11,7 @@ If the app's name changes, update it here. Not legal advice.
 
 # Fairly Sure Privacy Policy
 
-**Effective:** November 3, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 4, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
@@ -42,6 +42,13 @@ nothing else that could tell us who you are or which phone sent them, so we
 can't link them to you or to each other. The others are sent only if you
 later create an account, with it. Turning usage stats off deletes the ones
 still on the device and stops all of them.
+
+To know whether you have Fairly Sure Plus, the app asks RevenueCat, the
+service that manages subscriptions, each time it starts. Without an account
+that request carries a random identifier RevenueCat makes for this install,
+not your name, email or anything you typed, along with the technical details
+any app request carries (such as the app version, language and time zone).
+None of your predictions are sent.
 
 On an iPhone running iOS 26 or later, the app may ask Apple for an age range
 the first time a screen is up. If you share one, only the age band — a lower
@@ -115,7 +122,7 @@ contacting the Coach. That check never sends your text anywhere.
 |---|---|---|
 | **Supabase** (database and sign-in; servers in the United States) | Everything in §2.1–2.5 | Stores your account and backed-up predictions |
 | **OpenAI** | The statistics summary in §3, only when you request Coach feedback | Generates Coach feedback |
-| **RevenueCat** | An account identifier and your App Store purchase records | Manages subscriptions |
+| **RevenueCat** | An account identifier (a random one for this install if you haven't signed in) and your App Store purchase records | Manages subscriptions |
 | **Apple** | Payments, and sign-in if you use Sign in with Apple | App Store billing and authentication |
 
 We share data with these providers only to run the app. We don't sell or rent

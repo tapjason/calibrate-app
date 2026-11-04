@@ -122,6 +122,22 @@ describe('ResolvePrompt', () => {
 
 // Roadmap D41: an answer the day it was logged isn't scored, and Resolve says so.
 describe('ResolvePrompt on a same-day answer', () => {
+  // Blind playtest 2026-11-04: finding out only after Yes read as a trick.
+  it('says before the answer that an answer today is not scored', async () => {
+    await insertPrediction(samplePending({ created_at: new Date().toISOString() }));
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() =>
+      expect(screen.getByTestId('resolve-same-day')).toHaveTextContent(/isn’t scored/),
+    );
+  });
+
+  it('says nothing of the kind for one logged on an earlier day', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByText('Ship the prototype')).toBeTruthy());
+    expect(screen.queryByTestId('resolve-same-day')).toBeNull();
+  });
+
   it('says it is not scored instead of the range line, and keeps saying so after a change', async () => {
     await insertPrediction(samplePending({ created_at: new Date().toISOString() }));
     render(<ResolvePrompt predictionId="p1" />);

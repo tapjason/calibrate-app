@@ -3,8 +3,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { holdRanges } from '@/components/ui/holdRanges';
 import { __setShareDepsForTests, type ShareDeps } from '@/share/export';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
-import { MIN_N_OVERALL, type Prediction } from '@/types';
+import { MIN_N_OVERALL, type CategoryStat, type Prediction } from '@/types';
 
 import { haptics } from '@/components/ui/haptics';
 
@@ -261,6 +262,44 @@ describe('WrappedPanel', () => {
     fireEvent.press(screen.getByTestId('wrapped-titles-toggle'));
     expect(screen.getByText(/Ship the beta/)).toBeTruthy();
     expect(screen.getByText(/Close the deal/)).toBeTruthy();
+  });
+
+  // Blind playtest 2026-11-04, run 3: Finance left off the card came back
+  // on both recaps, with its next badge and, with titles on, its title.
+  it("leaves off what the person left off their card, and says so", () => {
+    const stat = (category: CategoryStat["category"], n: number): CategoryStat => ({
+      user_id: "u1",
+      category,
+      predictions_made: n,
+      predictions_resolved: n,
+      calibration_score: 80,
+      score_is_provisional: true,
+      badge_level: "guesser",
+    });
+    useStatsStore.setState({
+      categoryStats: [stat("work", 2), stat("finance", 1)],
+      nextBadges: {
+        work: { badge: "tracker", needResolved: 20, needScore: null },
+        finance: { badge: "tracker", needResolved: 20, needScore: null },
+      },
+    });
+    useSettingsStore.setState({ cardHiddenCategories: ["finance"] });
+    seed([
+      prediction({ confidence: 70, status: "resolved_yes", title: "Ship the beta" }),
+      prediction({ confidence: 60, status: "resolved_yes" }),
+      prediction({ category: "finance", confidence: 95, status: "resolved_no", title: "Cancel subscriptions" }),
+    ]);
+    render(<WrappedPanel span="week" />);
+
+    expect(screen.getByTestId("wrapped-category-work")).toBeTruthy();
+    expect(screen.queryByTestId("wrapped-category-finance")).toBeNull();
+    expect(screen.getByTestId("wrapped-hidden")).toHaveTextContent("1 category not shown");
+    expect(screen.getByTestId("wrapped-next-badge")).toHaveTextContent(/^Tracker in work/);
+
+    fireEvent.press(screen.getByTestId("wrapped-titles-toggle"));
+    expect(screen.getByText(/Ship the beta/)).toBeTruthy();
+    expect(screen.queryByText(/Cancel subscriptions/)).toBeNull();
+    useSettingsStore.setState({ cardHiddenCategories: [] });
   });
 
   // Roadmap D23: the note counts calls under 40%, not a 35–65% bonus.

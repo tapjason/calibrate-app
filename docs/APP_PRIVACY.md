@@ -80,7 +80,13 @@ model — the text still never leaves the device (`src/ai/crisisFilter.ts`).
 
 ### RevenueCat — subscriptions
 Receives the Supabase user id as `appUserID` plus the purchase Apple reports.
-No prediction data, no email. Its webhook writes the entitlement back to
+No prediction data, no email. **Signed out**, the app still configures it at
+launch to read the entitlement (`src/billing/init.ts`, `appUserIdFor`): the
+SDK mints a random per-install `$RCAnonymousID` and sends it with the usual
+request details (app version, locale, time zone). A blind playtest
+(2026-11-04, run 4) saw this on launch with nothing on screen saying so; the
+policy's "If you don't sign in" now does. It is not a device identifier and
+isn't used for tracking, so it adds no row to the table above. Its webhook writes the entitlement back to
 `public.entitlements` so the server can gate Plus without trusting the client.
 
 ### Apple

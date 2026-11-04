@@ -15,7 +15,7 @@ import {
   tabularNums,
   type,
 } from '@/constants/theme';
-import { usePredictionStore } from '@/store/predictionStore';
+import { answerNowIsSameDay, usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { answeredSameDay, useStatsStore } from '@/store/statsStore';
 import {
@@ -482,6 +482,15 @@ export function ResolvePrompt({
 
       {error && <Text style={styles.error}>{error}</Text>}
 
+      {/* Said before the answer, not only after it (roadmap D41): finding
+          out once Yes is tapped read as a trick (blind playtest 2026-11-04). */}
+      {answerNowIsSameDay(prediction) && (
+        <Text style={styles.sameDayNote} testID="resolve-same-day">
+          You logged this today, so an answer today isn’t scored. It still keeps
+          your streak, and from tomorrow it counts.
+        </Text>
+      )}
+
       <Text style={styles.question} accessibilityRole="header">
         Did it happen?
       </Text>
@@ -562,6 +571,7 @@ const styles = StyleSheet.create({
   skip: { alignItems: 'center', marginTop: space.lg, minHeight: 44, paddingVertical: space.sm },
   skipText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   skipNote: { ...type.footnote, color: colors.textSecondary, marginTop: space.xxs },
+  sameDayNote: { ...type.footnote, color: colors.textSecondary, marginBottom: space.md },
   recordedRow: {
     alignItems: 'center',
     flexDirection: 'row',

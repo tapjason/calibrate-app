@@ -13,6 +13,7 @@ import {
   MIN_N_OVERALL,
   type BadgeLevel,
   type BucketStat,
+  type Category,
   type Direction,
   type CategoryStat,
   type ShareCard,
@@ -132,14 +133,34 @@ export function shareSubline(card: ShareCard): string {
 }
 
 /**
+ * The categories the person left off their cards (roadmap D42), among those
+ * on file. Never all of them: the last one stays, so a stored choice that
+ * would hide every category on file now (after an erase, say) hides none.
+ * The share card and both recaps read it, so a category hidden on one
+ * doesn't come back on another (blind playtest 2026-11-04, run 3).
+ */
+export function cardHiddenCategories(
+  categoryStats: readonly CategoryStat[],
+  stored: readonly Category[],
+): ReadonlySet<Category> {
+  const onFile = categoryStats.filter((c) => c.predictions_resolved > 0);
+  const hidden = onFile.map((c) => c.category).filter((c) => stored.includes(c));
+  return new Set(hidden.length < onFile.length ? hidden : []);
+}
+
+/** "2 categories not shown", or null for none. */
+export function hiddenCountLine(n: number): string | null {
+  if (n <= 0) return null;
+  return `${n} ${n === 1 ? 'category' : 'categories'} not shown`;
+}
+
+/**
  * "2 categories not shown", when the person left some off the card, or null.
  * Hiding one can change the headline, and a blind tester's curated card read
  * as the whole record (playtest 2026-11-03, run 4).
  */
 export function hiddenLine(card: ShareCard): string | null {
-  const n = card.hidden_count ?? 0;
-  if (n <= 0) return null;
-  return `${n} ${n === 1 ? 'category' : 'categories'} not shown`;
+  return hiddenCountLine(card.hidden_count ?? 0);
 }
 
 /** One square per confidence band, Wordle-style. */

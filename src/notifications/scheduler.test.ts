@@ -844,7 +844,9 @@ describe('scheduler: launch-time reconcile', () => {
     const notifications = makeFakeNotifications(true);
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     const future = await openPrediction('2099-06-01T12:00:00.000Z');
-    await openPrediction('2020-01-01T12:00:00.000Z'); // overdue: on Home already
+    // Overdue: on Home already. Logged years back, since a due date is never
+    // before the day after logging (D41).
+    await loggedEarlier(() => openPrediction('2020-01-01T12:00:00.000Z'), 3000);
 
     await initNotifications();
     const scheduled = Array.from(notifications.scheduled.values());

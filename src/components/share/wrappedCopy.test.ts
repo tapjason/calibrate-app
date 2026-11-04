@@ -123,8 +123,38 @@ describe('wrappedStory verdict', () => {
   });
 
   it('keeps the averages line when every solid bucket is calibrated', () => {
+    const story = wrappedStory({
+      ...summary([bucket(60, 20, 14, 70), bucket(80, 20, 18, 88)]),
+      mean_confidence: 79,
+    });
+    expect(story.verdict).toBe(
+      'This year, you ran well calibrated — 79% confident on average, right 80% of the time.',
+    );
+  });
+
+  // Blind playtest 2026-11-04 (runs 2, 3, 4): "well calibrated — 66%
+  // confident, right 81%" read as a contradiction.
+  it('says "no clear lean" when no band leans but the averages are 5 or more apart', () => {
     const story = wrappedStory(summary([bucket(60, 20, 14, 70), bucket(80, 20, 18, 88)]));
-    expect(story.verdict).toMatch(/^This year, you ran well calibrated — /);
+    expect(story.verdict).toBe(
+      'This year, no clear lean — 68% confident on average, right 80% of the time. On 40 answers, luck often moves it that far.',
+    );
+  });
+
+  it('names the whole window’s lean when no single band has enough to show it', () => {
+    const story = wrappedStory({
+      // Each band inside its luck range at 10–12 answers, as the engine's
+      // rule (D35) would read them; the 22 together are not.
+      ...summary([
+        { ...bucket(60, 12, 10, 66), direction: 'calibrated' },
+        { ...bucket(80, 10, 9, 85), direction: 'calibrated' },
+      ]),
+      mean_confidence: 66,
+      direction: 'underconfident',
+    });
+    expect(story.verdict).toBe(
+      'This year, you ran underconfident — 66% confident on average, right 86% of the time.',
+    );
   });
 
   it('falls back to the averages when no bucket has enough in it', () => {

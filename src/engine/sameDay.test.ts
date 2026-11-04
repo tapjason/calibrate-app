@@ -1,6 +1,12 @@
 import type { Prediction } from '@/types';
 
-import { earliestDueDay, isSameDayAnswer, sameDayCount, scoredOnly } from './sameDay';
+import {
+  clampDueDate,
+  earliestDueDay,
+  isSameDayAnswer,
+  sameDayCount,
+  scoredOnly,
+} from './sameDay';
 
 // Local times, so the tests hold in any zone the suite runs in.
 const at = (day: number, hour: number) => new Date(2026, 10, day, hour, 0, 0, 0).toISOString();
@@ -62,6 +68,22 @@ describe('scoredOnly and sameDayCount', () => {
     const skip = prediction({ id: 'skip', status: 'skipped', resolved_at: at(3, 20) });
     expect(scoredOnly([same, later, skip]).map((p) => p.id)).toEqual(['later', 'skip']);
     expect(sameDayCount([same, later, skip])).toBe(1);
+  });
+});
+
+describe('clampDueDate (blind playtest 2026-11-04)', () => {
+  const logged = new Date(2026, 10, 3, 19, 0);
+
+  it('keeps a date on or after the earliest day', () => {
+    const due = new Date(2026, 10, 4, 12).toISOString();
+    expect(clampDueDate(due, logged, logged)).toBe(due);
+  });
+
+  it('moves today, a past date or an unreadable one to the earliest day at noon', () => {
+    const earliest = new Date(2026, 10, 4, 12).toISOString();
+    expect(clampDueDate(new Date(2026, 10, 3, 12).toISOString(), logged, logged)).toBe(earliest);
+    expect(clampDueDate(new Date(1906, 10, 5, 12).toISOString(), logged, logged)).toBe(earliest);
+    expect(clampDueDate('not a date', logged, logged)).toBe(earliest);
   });
 });
 

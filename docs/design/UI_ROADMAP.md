@@ -12,7 +12,7 @@ What has been built, step by step (steps 0–135), is in
 
 ## 1. Where it stands
 
-Every step through 150 is built, D8 (decided 2026-11-02), D23–D31 (decided 2026-10-10), D32 (decided 2026-10-12), D33 and D34–D39 (decided 2026-11-01) and D40 (decided 2026-11-03) included, with a pass over D23–D31 and an accessibility pass on 2026-10-12 (see [`BUILT_LOG.md`](BUILT_LOG.md) §1.5). The redesign
+Every step through 151 is built, D8 (decided 2026-11-02), D23–D31 (decided 2026-10-10), D32 (decided 2026-10-12), D33 and D34–D39 (decided 2026-11-01) and D40 (decided 2026-11-03) included, with a pass over D23–D31 and an accessibility pass on 2026-10-12 (see [`BUILT_LOG.md`](BUILT_LOG.md) §1.5). The redesign
 pass, the element and retention research batches, the Day-0 rework (D18) and the
 daily-practice, rest-day and reminder features all shipped. **Everything not listed
 in the parking lot or §2 is done**; what's left is a first session on an iPhone

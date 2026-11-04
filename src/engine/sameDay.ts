@@ -51,3 +51,22 @@ export function earliestDueDay(createdAt: Date, now: Date): Date {
   today.setHours(0, 0, 0, 0);
   return next > today ? next : today;
 }
+
+/**
+ * A due date no earlier than earliestDueDay, at local noon like the presets.
+ * The pickers offer nothing earlier, but a web date field takes a typed date
+ * below its min, and a typed year can land in 1906 (blind playtest
+ * 2026-11-04, runs 1 and 5), so the store holds the line as well. An
+ * unreadable date also becomes the earliest day.
+ */
+export function clampDueDate(dueIso: string, createdAt: Date, now: Date): string {
+  const earliest = earliestDueDay(createdAt, now);
+  const due = new Date(dueIso);
+  if (!Number.isNaN(due.getTime()) && due >= earliest) return dueIso;
+  return new Date(
+    earliest.getFullYear(),
+    earliest.getMonth(),
+    earliest.getDate(),
+    12,
+  ).toISOString();
+}

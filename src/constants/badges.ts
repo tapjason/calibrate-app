@@ -75,24 +75,24 @@ export const BADGE_META: Record<BadgeLevel, BadgeMeta> = {
     label: 'Tracker',
     color: chipColor('tracker', 'color'),
     background: chipColor('tracker', 'background'),
-    tagline: '20+ predictions resolved',
+    tagline: '20 or more resolved',
   },
   forecaster: {
     label: 'Forecaster',
     color: chipColor('forecaster', 'color'),
     background: chipColor('forecaster', 'background'),
-    tagline: 'Above 70 at its low end, over 20+ predictions',
+    tagline: 'Above 70 at its low end, with 20 or more resolved',
   },
   sharp: {
     label: 'Sharp',
     color: chipColor('sharp', 'color'),
     background: chipColor('sharp', 'background'),
-    tagline: 'Above 85 at its low end, over 50+ predictions',
+    tagline: 'Above 85 at its low end, with 50 or more resolved',
   },
   oracle: {
     label: 'Oracle',
     color: chipColor('oracle', 'color'),
     background: chipColor('oracle', 'background'),
-    tagline: 'Above 90 at its low end, over 100+ predictions',
+    tagline: 'Above 90 at its low end, with 100 or more resolved',
   },
 };

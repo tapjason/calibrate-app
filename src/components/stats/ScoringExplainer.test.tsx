@@ -103,7 +103,7 @@ describe('scoringCopy (roadmap step 29)', () => {
       'Sharp',
       'Oracle',
     ]);
-    expect(badgeRows()[2].criteria).toBe('Above 70 at its low end, over 20+ predictions');
+    expect(badgeRows()[2].criteria).toBe('Above 70 at its low end, with 20 or more resolved');
     expect(badgeRows()[0].criteria).toBe('Fewer than 20 resolved here');
   });
 });
@@ -116,7 +116,7 @@ describe('ScoringExplainer', () => {
       expect(screen.getByText(section.title)).toBeTruthy();
     }
     expect(screen.getByTestId('scoring-badge-oracle').props.accessibilityLabel).toBe(
-      'Oracle: Above 90 at its low end, over 100+ predictions',
+      'Oracle: Above 90 at its low end, with 100 or more resolved',
     );
     fireEvent.press(screen.getByTestId('scoring-close'));
     expect(onClose).toHaveBeenCalledTimes(1);

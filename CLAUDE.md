@@ -422,7 +422,8 @@ See the authoritative section above.
 - **The card is honest about itself** (decided 2026-11-03, D42): the rating carries
   its give-or-take ("Calibration 87/100, give or take 3, from 148 resolved
   predictions"), and a card with categories left off says so ("2 categories not
-  shown"), in the image and the text share alike.
+  shown"), in the image and the text share alike. The recaps leave the same
+  categories off and say so too (2026-11-04).
 - Exports a PNG the OS share sheet accepts.
 - A text share ends on the App Store link with a campaign token (`ct=share-card-text`)
   once `APP_STORE_ID` is set (decided 2026-10-08, `GROWTH_AND_MONETIZATION.md` §0

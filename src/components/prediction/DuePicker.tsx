@@ -46,7 +46,12 @@ export function DuePicker({ value, onChange, earliest }: DuePickerProps) {
       'data-testid': 'due-picker',
       onChange: (e: { target: { value: string } }) => {
         const [y, m, d] = e.target.value.split('-').map(Number);
-        if (y && m && d) onChange(localNoonIso(y, m - 1, d));
+        if (!(y && m && d)) return;
+        // `min` only greys out the calendar: a date typed by keyboard gets
+        // past it, today or a year like 1906 (blind playtest 2026-11-04).
+        const picked = new Date(y, m - 1, d);
+        const floor = picked < earliest ? earliest : picked;
+        onChange(localNoonIso(floor.getFullYear(), floor.getMonth(), floor.getDate()));
       },
       style: {
         // The face by name: 'inherit' found no family above it and drew the

@@ -117,15 +117,12 @@ function progressHint(
   }
 
   const nextLabel = BADGE_META[next.badge].label;
-  // Short counting the give-or-take (roadmap D35); "even at its low end" when
-  // only the give-or-take is what's short, since "a score above 85" beside a
-  // score of 87 would read as met.
+  // Short counting the give-or-take (roadmap D35), and said that way every
+  // time: "even at its low end" only when the score itself cleared the bar
+  // read as two different rules (blind playtest 2026-11-04, runs 2 and 5).
   const low = stat.calibration_score - giveOrTake;
   const scoreShort = next.needScore !== null && low <= next.needScore;
-  const lowOnly = scoreShort && next.needScore !== null && stat.calibration_score > next.needScore;
-  const scoreClause = lowOnly
-    ? `score above ${next.needScore} even at its low end`
-    : `score above ${next.needScore}`;
+  const scoreClause = `score above ${next.needScore} at its low end`;
 
   if (next.needResolved !== null && stat.predictions_resolved < next.needResolved) {
     const remaining = next.needResolved - stat.predictions_resolved;

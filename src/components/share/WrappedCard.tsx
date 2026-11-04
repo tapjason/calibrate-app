@@ -7,11 +7,15 @@ import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
+import type { Category, Prediction } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
+import { hiddenCountLine } from './cardCopy';
 import type { BadgeProgress } from './nextBadgeCopy';
 import { CARD_RADIUS } from './ScaledCanvas';
 import { streakLine, wrappedCardSummary, wrappedStory, type OverallProgress } from './wrappedCopy';
+
+const NONE_HIDDEN: ReadonlySet<Category> = new Set();
 
 interface WrappedCardProps {
   summary: WrappedSummary;
@@ -29,6 +33,11 @@ interface WrappedCardProps {
    * want in a group chat (DESIGN_SYSTEM §7.5, show/hide before sharing).
    */
   showTitles?: boolean;
+  /**
+   * Categories left off the share card (cardHiddenCategories): left off here
+   * too, with "N categories not shown" said on the card.
+   */
+  hidden?: ReadonlySet<Category>;
 }
 
 /**
@@ -43,10 +52,22 @@ interface WrappedCardProps {
  * verdict built on four resolutions.
  */
 export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCard(
-  { summary, overall, upcoming = 0, badge, theme = WRAPPED_DEFAULT_THEME, showTitles = false },
+  {
+    summary,
+    overall,
+    upcoming = 0,
+    badge,
+    theme = WRAPPED_DEFAULT_THEME,
+    showTitles = false,
+    hidden = NONE_HIDDEN,
+  },
   ref,
 ) {
   const story = wrappedStory(summary, overall, upcoming);
+  const shown = summary.categories.filter((c) => !hidden.has(c.category));
+  const titleOf = (p: Prediction) =>
+    showTitles && !hidden.has(p.category) ? `, ${p.title}` : '';
+  const hiddenText = hiddenCountLine(hidden.size);
   // The number that climbs every day (roadmap D2) travels with the recap.
   const streak = streakLine(overall);
 
@@ -56,7 +77,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
       // One element for a screen reader, in words (roadmap step 45).
       accessible
       accessibilityRole="image"
-      accessibilityLabel={wrappedCardSummary(story, streak)}
+      accessibilityLabel={`${wrappedCardSummary(story, streak)}${hiddenText ? ` ${hiddenText}.` : ''}`}
       style={[styles.card, { backgroundColor: theme.background }]}
       testID="wrapped-card"
       collapsable={false}
@@ -150,9 +171,9 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
         </View>
       )}
 
-      {summary.categories.length > 0 && (
+      {shown.length > 0 && (
         <View style={styles.badges}>
-          {summary.categories.map((c) => (
+          {shown.map((c) => (
             <View
               key={c.category}
               testID={`wrapped-category-${c.category}`}
@@ -175,6 +196,16 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
         </View>
       )}
 
+      {hiddenText && (
+        <Text
+          maxFontSizeMultiplier={CARD_MAX_SCALE}
+          style={[styles.line, { color: theme.muted }]}
+          testID="wrapped-hidden"
+        >
+          {hiddenText}
+        </Text>
+      )}
+
       {summary.boldest_hit && (
         <Text
           maxFontSizeMultiplier={CARD_MAX_SCALE}
@@ -182,7 +213,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           testID="wrapped-boldest-hit"
         >
           Boldest call that landed: {summary.boldest_hit.confidence}%
-          {showTitles ? `, ${summary.boldest_hit.title}` : ''}
+          {titleOf(summary.boldest_hit)}
         </Text>
       )}
       {summary.biggest_miss && (
@@ -192,7 +223,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           testID="wrapped-biggest-miss"
         >
           Surest thing that didn&apos;t: {summary.biggest_miss.confidence}%
-          {showTitles ? `, ${summary.biggest_miss.title}` : ''}
+          {titleOf(summary.biggest_miss)}
         </Text>
       )}
 

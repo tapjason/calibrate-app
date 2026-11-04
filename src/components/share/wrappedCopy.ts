@@ -171,8 +171,20 @@ function verdictLine(
 ): string {
   const w = WINDOW[span];
   const averages = `${stated}% confident on average, right ${hitRate}% of the time.`;
+  // "Well calibrated" only when the averages are close. A gap the luck rule
+  // lets pass (D35) is "no clear lean", as the Warm-up says: "well
+  // calibrated — 66% confident, right 81%" read as a contradiction to three
+  // blind testers (2026-11-04, runs 2, 3 and 4).
+  const calibrated = () =>
+    Math.abs(stated - hitRate) < 5
+      ? `${w}, ${VERDICTS.calibrated} — ${averages}`
+      : `${w}, no clear lean — ${averages} On ${summary.resolved} answers, luck often moves it that far.`;
+  const pooled = () =>
+    summary.direction === 'calibrated'
+      ? calibrated()
+      : `${w}, ${VERDICTS[summary.direction]} — ${averages}`;
   const solid = summary.buckets.filter((b) => b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT);
-  if (solid.length === 0) return `${w}, ${VERDICTS[summary.direction]} — ${averages}`;
+  if (solid.length === 0) return pooled();
 
   // Both sides, as Insights names them (D37): the year card named only
   // "overconfident at 80–100%" over the same 148 answers Insights read as too
@@ -183,7 +195,9 @@ function verdictLine(
   }
 
   const worst = solid.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
-  if (worst.direction === 'calibrated') return `${w}, ${VERDICTS.calibrated} — ${averages}`;
+  // No band leans on its own. The whole window still can, when every band
+  // tilts the same way and only the total has enough answers to show it.
+  if (worst.direction === 'calibrated') return pooled();
   return `${w}, ${VERDICTS[worst.direction]} at ${rangeLabel(worst)}.`;
 }
 

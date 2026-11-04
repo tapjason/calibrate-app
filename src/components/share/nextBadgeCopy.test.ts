@@ -48,7 +48,7 @@ describe('nextBadgeProgress', () => {
   // 85; with both short, the count alone over-promised.
   it('names the score threshold too when both requirements are short', () => {
     expect(progressFor([stat('work', 30, 80)])?.text).toBe(
-      'Sharp in work: 20 more resolved and a score above 85',
+      'Sharp in work: 20 more resolved and a score above 85 at its low end',
     );
     expect(progressFor([stat('work', 30, 92)])?.text).toBe('Sharp in work: 20 to go');
   });
@@ -80,7 +80,7 @@ describe('nextBadgeProgress', () => {
       category: 'work',
       badge: 'forecaster',
       badgeLabel: 'Forecaster',
-      text: 'Forecaster in work: a score above 70 (now 64)',
+      text: 'Forecaster in work: a score above 70 at its low end (now 64)',
       progress: null,
     });
   });
@@ -112,7 +112,7 @@ describe('nextBadgeProgress with a give-or-take', () => {
     ];
     const next = { health: { badge: 'sharp' as const, needResolved: 50, needScore: 85 } };
     expect(nextBadgeProgress(stats, next, { health: 4 })?.text).toBe(
-      'Sharp in health: a score above 85 even at its low end (now 87, give or take 4)',
+      'Sharp in health: a score above 85 at its low end (now 87, give or take 4)',
     );
     expect(nextBadgeProgress(stats, next, {})).toBeNull();
   });

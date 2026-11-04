@@ -26,7 +26,7 @@ describe('weekChangeLine (roadmap D37)', () => {
       'Down 2 since last week, from 1 answer.',
     );
     expect(weekChangeLine({ before: 86, now: 86, answered: 4 }, 3)).toBe(
-      'No change since last week, over 4 answers.',
+      'No change since last week, from 4 answers.',
     );
   });
 

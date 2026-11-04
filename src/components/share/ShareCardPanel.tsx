@@ -20,7 +20,7 @@ import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/category
 import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
 import { ThemePicker } from './ThemePicker';
-import { buildShareCard, shareText as cardText } from './cardCopy';
+import { buildShareCard, cardHiddenCategories, shareText as cardText } from './cardCopy';
 import { WarmupCard } from './WarmupCard';
 import { warmupCardCopy } from './warmupCardCopy';
 
@@ -60,15 +60,8 @@ export function ShareCardPanel({
 
   const allOnFile = categoryStats.filter((c) => c.predictions_resolved > 0);
   // Categories the user chose to leave off the card (Any Distance-style
-  // show/hide, DESIGN_SYSTEM §7.5), among those on file. Never all of them:
-  // the last one stays, so a stored choice that would hide every category on
-  // file now (after an erase, say) hides none.
-  const hiddenOnFile = allOnFile
-    .map((c) => c.category)
-    .filter((c) => storedHidden.includes(c));
-  const hidden: ReadonlySet<Category> = new Set(
-    hiddenOnFile.length < allOnFile.length ? hiddenOnFile : [],
-  );
+  // show/hide, DESIGN_SYSTEM §7.5). The recaps leave them off too.
+  const hidden = cardHiddenCategories(categoryStats, storedHidden);
   const shown = categoryStats.filter((c) => !hidden.has(c.category));
   const card = buildShareCard(
     userStat,

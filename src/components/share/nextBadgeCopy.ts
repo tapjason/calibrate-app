@@ -84,7 +84,7 @@ export function nextBadgeProgress(
       badge: next.badge,
       badgeLabel,
       text: scoreShort
-        ? `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more resolved and a score above ${next.needScore}`
+        ? `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more resolved and a score above ${next.needScore} at its low end`
         : `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} to go`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
@@ -107,20 +107,15 @@ export function nextBadgeProgress(
     const { stat, next } = bestScore;
     const badgeLabel = BADGE_META[next.badge].label;
     const spread = giveOrTake[stat.category] ?? 0;
-    // Over the bar itself but not at its low end: "(now 87)" beside "above
-    // 85" would read as met, so it says what is short.
-    const lowOnly = next.needScore !== null && stat.calibration_score > next.needScore;
+    // One rule, said one way (blind playtest 2026-11-04): the score with its
+    // give-or-take, since the low end is what has to clear the bar.
     return {
       category: stat.category,
       badge: next.badge,
       badgeLabel,
-      text: lowOnly
-        ? `${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} even at its low end (now ${Math.floor(
-            stat.calibration_score,
-          )}, give or take ${spread})`
-        : `${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} (now ${Math.floor(
-            stat.calibration_score,
-          )})`,
+      text: `${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} at its low end (now ${Math.floor(
+        stat.calibration_score,
+      )}${spread > 0 ? `, give or take ${spread}` : ''})`,
       progress: null,
     };
   }

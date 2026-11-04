@@ -445,27 +445,53 @@ describe('predictionStore.streakNow', () => {
 // Roadmap D25: an open prediction can be edited (never its confidence) and
 // deleted, with stats following in the same transaction.
 describe('predictionStore.update and remove', () => {
+  // Far enough ahead that the D41 floor (tomorrow) never moves them.
   const create = (category: 'work' | 'health' = 'work') =>
     usePredictionStore.getState().create({
       title: 'Ship it',
       category,
       confidence: 70,
-      due_date: '2026-06-01T12:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
     });
+
+  // Blind playtest 2026-11-04: a date typed into the web field got past its
+  // min, so a prediction could be due today (or in 1906) and answered at once.
+  it('never saves a due date before tomorrow, on create or edit', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = (iso: string) =>
+      new Date(iso).toDateString() === tomorrow.toDateString();
+
+    const p = await usePredictionStore.getState().create({
+      title: 'Typed today',
+      category: 'work',
+      confidence: 70,
+      due_date: new Date().toISOString(),
+    });
+    expect(isTomorrow(p.due_date)).toBe(true);
+
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Typed today',
+      category: 'work',
+      due_date: '1906-11-05T12:00:00.000Z',
+    });
+    const [after] = usePredictionStore.getState().pending;
+    expect(isTomorrow(after.due_date)).toBe(true);
+  });
 
   it('changes title, category and due date, and moves the category counts', async () => {
     const p = await create('work');
     await usePredictionStore.getState().update(p.id, {
       title: '  Ship the beta  ',
       category: 'health',
-      due_date: '2026-06-08T12:00:00.000Z',
+      due_date: '2099-06-08T12:00:00.000Z',
     });
     const [after] = usePredictionStore.getState().pending;
     expect(after).toMatchObject({
       id: p.id,
       title: 'Ship the beta',
       category: 'health',
-      due_date: '2026-06-08T12:00:00.000Z',
+      due_date: '2099-06-08T12:00:00.000Z',
       confidence: 70,
     });
     const stats = await listCategoryStats(after.user_id);

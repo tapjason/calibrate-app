@@ -22,6 +22,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore, wrappedSummary, type WrappedSpan } from '@/store/statsStore';
 import { useCategoryStore } from '@/store/categoryStore';
 
+import { cardHiddenCategories } from './cardCopy';
 import { nextBadgeProgress } from './nextBadgeCopy';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
 import { WrappedCard } from './WrappedCard';
@@ -95,6 +96,11 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const categoryRanges = useStatsStore((s) => s.categoryRanges);
   const buckets = useStatsStore((s) => s.calibration.buckets);
+  const storedHidden = useSettingsStore((s) => s.cardHiddenCategories);
+  // What the person left off their card stays off the recaps (playtest
+  // 2026-11-04, run 3): its counts, its titles and its next badge.
+  const hidden = cardHiddenCategories(categoryStats, storedHidden);
+  const shownStats = categoryStats.filter((c) => !hidden.has(c.category));
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -156,7 +162,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
             }
             upcoming={span === 'week' ? dueWithin(pending, new Date(), 7) : 0}
             badge={nextBadgeProgress(
-              categoryStats,
+              shownStats,
               nextBadges,
               Object.fromEntries(
                 Object.entries(categoryRanges).map(([c, r]) => [c, r?.giveOrTake ?? 0]),
@@ -164,6 +170,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
             )}
             theme={theme}
             showTitles={showTitles}
+            hidden={hidden}
           />
         </ScaledCanvas>
       </Animated.View>
