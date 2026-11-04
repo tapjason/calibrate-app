@@ -24,7 +24,7 @@ a native build.
 | A6 | Calibration by time horizon | S–M | **Shipped 2026-10-04** (roadmap step 21) |
 | A7 | Changing your confidence before the due date | L | Schema change; scoring rule |
 | A8 | Web Warmup as the share-card landing page | M | Hosting (GitHub Pages) |
-| A9 | Predict the same event with a friend | L | Backend, invites |
+| A9 | Predict the same event with a friend, and friend streaks (cooperative only, D44) | L | Backend, invites, guideline 1.2 |
 | A10 | Widgets and a Siri Shortcut | L (the Shortcut drops to M on SDK 58) | EAS build; SDK 58 for `expo-app-intents` |
 | A11 | Today's three as a share card | S–M | A scope call, like D6 |
 
@@ -78,6 +78,18 @@ once it resolves. It's a second way for the app to spread beyond the share card.
   Not before sync has real users.
 - Keep it to *calibration* ("you were both 70%; it happened"), not a winner/loser
   leaderboard. That would reward correctness, not calibration.
+- **Cooperative only** (decided 2026-11-03, roadmap D44). The owner wants this and
+  friend streaks as add-ons after v1, with no competition at all: no head-to-head
+  score, not even a Brier comparison on the shared event, no group table, no
+  leaderboard. People choose and answer their own predictions, so points between
+  people reward gaming; a shared event is still answered by one side.
+- **Friend streaks** go with it: two friends who each log or answer something on
+  a day keep a shared count, with the same rest days as the streak. Evidence
+  (correlational): `docs/design/research/retention-2026-10.md` §2.6.
+- Showing one person's prediction text to another is user-generated content
+  under App Store guideline 1.2: a filter, report and block, and a contact, and
+  the age rating, `APP_PRIVACY.md` and the policy change with it. A friend needs
+  an account. Invite links need the domain and associated domains.
 
 ### A10. Widgets and a Siri Shortcut
 A Home or Lock Screen widget ("3 ready to resolve", or the identity line once a
