@@ -100,8 +100,8 @@ export function SettingsView({
         <Group
           footer={
             isPlus
-              ? 'Active. Coach and advanced analytics are unlocked.'
-              : 'Plus adds Coach, advanced analytics, and extra card themes. Your score, curve, badges and cards stay free.'
+              ? 'Active. Coach and Trends are unlocked.'
+              : 'Plus adds Coach, Trends and extra card themes. Your score, curve, badges and cards stay free.'
           }
         >
           {onOpenCard && <NavRow label="Your card" onPress={onOpenCard} testID="settings-card" />}

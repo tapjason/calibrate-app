@@ -60,8 +60,10 @@ function statusLabel(prediction: Prediction, now: Date): string {
       return answeredSameDay(prediction) ? 'Happened, not scored' : 'Happened';
     case 'resolved_no':
       return answeredSameDay(prediction) ? "Didn't happen, not scored" : "Didn't happen";
+    // Named, not only "Not scored", which is also a same-day answer's
+    // (playtest 2026-11-04b, run 5, took it for one).
     case 'skipped':
-      return 'Not scored';
+      return "Can't tell, not scored";
     case 'pending':
       return isReadyToResolve(prediction, now) ? 'Ready to resolve' : 'Open';
   }

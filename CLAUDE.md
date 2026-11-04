@@ -417,7 +417,7 @@ See the authoritative section above.
   Its read follows Insights (decided 2026-11-03, D42): both sides when there are
   both ("This year, you ran too sure at 80–100% and too cautious at 60–80%."), and
   the week's card sets the whole record's read beside its own ("Across all 148
-  answers, you're too sure at 80–100%."), so the two spans don't read as a
+  scored answers, you're too sure at 80–100%."), so the two spans don't read as a
   contradiction.
 - **The card is honest about itself** (decided 2026-11-03, D42): the rating carries
   its give-or-take ("Calibration 87/100, give or take 3, from 148 resolved

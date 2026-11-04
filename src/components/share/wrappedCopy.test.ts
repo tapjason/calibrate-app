@@ -128,7 +128,7 @@ describe('wrappedStory verdict', () => {
       mean_confidence: 79,
     });
     expect(story.verdict).toBe(
-      'This year, you ran well calibrated — 79% confident on average, right 80% of the time.',
+      'This year, you ran well calibrated — 79% confident on average, and 80% happened.',
     );
   });
 
@@ -137,7 +137,7 @@ describe('wrappedStory verdict', () => {
   it('says "no clear lean" when no band leans but the averages are 5 or more apart', () => {
     const story = wrappedStory(summary([bucket(60, 20, 14, 70), bucket(80, 20, 18, 88)]));
     expect(story.verdict).toBe(
-      'This year, no clear lean — 68% confident on average, right 80% of the time. On 40 answers, luck often moves it that far.',
+      'This year, no clear lean — 68% confident on average, and 80% happened. On 40 answers, luck often moves it that far.',
     );
   });
 
@@ -153,7 +153,7 @@ describe('wrappedStory verdict', () => {
       direction: 'underconfident',
     });
     expect(story.verdict).toBe(
-      'This year, you ran underconfident — 66% confident on average, right 86% of the time.',
+      'This year, you ran underconfident — 66% confident on average, and 86% happened.',
     );
   });
 
@@ -180,9 +180,9 @@ describe('wrappedStory allTime', () => {
     const story = wrappedStory(week(solidWeek), overall);
     expect(story.verdict).toMatch(/^This week, /);
     expect(story.allTime).toBe(
-      "Across all 148 answers, you're too sure at 80–100% and too cautious at 60–80%.",
+      "Across all 148 scored answers, you're too sure at 80–100% and too cautious at 60–80%.",
     );
-    expect(wrappedCardSummary(story)).toContain('Across all 148 answers');
+    expect(wrappedCardSummary(story)).toContain('Across all 148 scored answers');
   });
 
   it('says nothing more without a week verdict, an all-time read, or on the year', () => {

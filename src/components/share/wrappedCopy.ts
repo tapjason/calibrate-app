@@ -170,7 +170,9 @@ function verdictLine(
   span: keyof typeof WINDOW,
 ): string {
   const w = WINDOW[span];
-  const averages = `${stated}% confident on average, right ${hitRate}% of the time.`;
+  // "happened", never "right": a 15% call that doesn't happen isn't wrong
+  // (playtest 2026-11-04b, run 5).
+  const averages = `${stated}% confident on average, and ${hitRate}% happened.`;
   // "Well calibrated" only when the averages are close. A gap the luck rule
   // lets pass (D35) is "no clear lean", as the Warm-up says: "well
   // calibrated — 66% confident, right 81%" read as a contradiction to three
@@ -210,7 +212,8 @@ function verdictLine(
 function allTimeLine(overall: OverallProgress | null | undefined): string | null {
   if (!overall?.lean || overall.provisional) return null;
   const read = overall.lean.charAt(0).toLowerCase() + overall.lean.slice(1);
-  return `Across all ${overall.resolved} answers, ${read}.`;
+  // "scored": Insights counts a Can't tell among the answers, this doesn't.
+  return `Across all ${overall.resolved} scored answers, ${read}.`;
 }
 
 /**

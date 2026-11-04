@@ -73,8 +73,11 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
 
   const busy = purchasing !== null || restoring;
   const message = noticeText(notice);
-  const terms = termsLine(plans);
-  const trialTerms = trialTermsLine(plans);
+  // The fine print for the plan chosen, not every plan on offer: Lifetime
+  // read "Your free trial turns into a paid subscription" (blind playtest
+  // 2026-11-04, second round, run 4).
+  const terms = termsLine(selected ? [selected] : plans);
+  const trialTerms = trialTermsLine(selected ? [selected] : plans);
 
   if (isPlus) {
     return (
@@ -82,8 +85,8 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
         <Text accessibilityRole="header" style={styles.title}>You're on {PLUS_NAME}</Text>
         <Text style={styles.body}>
           {entitlement.source === 'trial'
-            ? 'Your trial is running. Coach and the advanced analytics are unlocked.'
-            : 'Coach and the advanced analytics are unlocked.'}
+            ? 'Your trial is running. Coach and Trends are unlocked.'
+            : 'Coach and Trends are unlocked.'}
         </Text>
         <Text style={styles.muted}>
           Manage or cancel in your App Store account settings.

@@ -135,6 +135,21 @@ describe('PaywallView', () => {
     expect(screen.queryByTestId('paywall-trial-terms')).toBeNull();
   });
 
+  // Blind playtest 2026-11-04, second round, run 4: Lifetime read "Your free
+  // trial turns into a paid subscription" and "Subscriptions renew".
+  it('states the terms of the plan chosen, not of every plan on offer', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.getByText(/renew automatically/)).toBeTruthy();
+    fireEvent.press(screen.getByTestId('plan-monthly'));
+    expect(screen.queryByTestId('paywall-trial-terms')).toBeNull();
+    expect(screen.getByText(/renew automatically/)).toBeTruthy();
+    fireEvent.press(screen.getByTestId('plan-lifetime'));
+    expect(screen.queryByTestId('paywall-trial-terms')).toBeNull();
+    expect(screen.queryByText(/renew automatically/)).toBeNull();
+    expect(screen.getByText('One-time purchase. No subscription, no renewal.')).toBeTruthy();
+  });
+
   it('buys the plan that was selected, through the one button', async () => {
     const { purchase } = seed();
     render(<PaywallView />);

@@ -17,7 +17,9 @@ export const PLAN_LABELS: Record<PlanId, string> = {
  */
 export const PLAN_TAGLINES: Record<PlanId, string> = {
   annual: 'Best value',
-  monthly: 'Cancel any time',
+  // Not "Cancel any time": every plan that renews can be cancelled, and on
+  // Monthly alone it read as if Annual couldn't (playtest 2026-11-04b, run 4).
+  monthly: 'Month to month',
   lifetime: 'Pay once, keep it',
 };
 
@@ -32,7 +34,9 @@ export const PLAN_TAGLINES: Record<PlanId, string> = {
  * app doesn't do is a refund request with extra steps.
  */
 export const PLUS_FEATURES: readonly string[] = [
-  'Coach: an AI read of what your calibration numbers mean',
+  // Coach runs on the server for a signed-in person; say so before the
+  // purchase, not after (playtest 2026-11-04b, run 4).
+  'Coach: an AI read of what your calibration numbers mean, once you sign in',
   'Trends: month by month, by category, and what your 80% really means',
   'Extra themes for your cards; the cards themselves stay free',
 ];

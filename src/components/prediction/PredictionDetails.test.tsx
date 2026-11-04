@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { setDbForTests } from '@/db/client';
 import { getPrediction, insertPrediction, listPendingDeletions } from '@/db/predictions';
@@ -134,12 +135,16 @@ describe('PredictionDetails (roadmap D25)', () => {
   // Roadmap D41: logged today, an answer today isn't scored; it says so first.
   it('warns that an answer the day it was logged is not scored', async () => {
     await insertPrediction(open({ created_at: new Date().toISOString() }));
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-answer'));
     expect(screen.getByTestId('details-early')).toHaveTextContent(
       /You logged it today, though, so an answer today isn’t scored\. From tomorrow it is\./,
     );
+    // Said aloud too: it appears in place of the button (playtest 2026-11-04b, run 2).
+    expect(announce).toHaveBeenCalledWith(expect.stringMatching(/isn’t scored\. From tomorrow it is\.$/));
+    announce.mockRestore();
   });
 
   it('says it is early before answering, then hands over to Resolve', async () => {
@@ -228,6 +233,19 @@ describe('PredictionDetails, answered (roadmap D34)', () => {
     expect(screen.queryByTestId('answered-switch')).toBeNull();
     expect(screen.queryByTestId('answered-delete')).toBeNull();
     expect(screen.queryByTestId('category-health')).toBeNull();
+  });
+
+  // Blind playtest 2026-11-04, second round, run 3: after a switch the note
+  // read as the opposite of the answer, with no way to take it off.
+  it('removes a note at any time, the record locked or not', async () => {
+    await insertPrediction(answered(30, { reflection: 'Holiday helps.' }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-reflection')).toBeTruthy());
+    expect(screen.getByTestId('answered-locked')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('answered-remove-note'));
+    await waitFor(async () => expect((await getPrediction('p1'))?.reflection).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('answered-reflection')).toBeNull());
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
   });
 });
 

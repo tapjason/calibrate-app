@@ -27,7 +27,7 @@ export function describeCalibrationCurve(buckets: readonly BucketStat[]): string
           : `Perfectly calibrated, 8 times in 10 that would land between ${lo} and ${hi}%.`;
       return (
         `When you said ${b.low} to ${b.high}%, averaging ${said}%, ` +
-        `you were right ${right}% of the time, over ${n} ${n === 1 ? 'prediction' : 'predictions'}. ` +
+        `${right}% of them happened, over ${n} ${n === 1 ? 'prediction' : 'predictions'}. ` +
         chance
       );
     });

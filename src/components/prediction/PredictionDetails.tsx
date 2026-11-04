@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
@@ -148,6 +148,17 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
   // goes straight to Resolve, and the date reads "today".
   const daysLeft = daysUntilDue(prediction, new Date());
   const due = daysLeft <= 0;
+  const earlyText =
+    `It's due ${shortDate(prediction.due_date)}. Answering early is fine; just answer what you know now.` +
+    (answerNowIsSameDay(prediction)
+      ? ' You logged it today, though, so an answer today isn’t scored. From tomorrow it is.'
+      : '');
+  const answerEarly = () => {
+    setMode('early');
+    // The warning appears in place of the button; a screen reader hears it
+    // (blind playtest 2026-11-04, second round, run 2).
+    AccessibilityInfo.announceForAccessibility(earlyText);
+  };
 
   const header = (
     <>
@@ -239,7 +250,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           <Button label="Edit" variant="secondary" onPress={startEditing} testID="details-edit-button" />
           <TextButton
             label="Answer it now"
-            onPress={() => (due ? onAnswer(prediction.id) : setMode('early'))}
+            onPress={() => (due ? onAnswer(prediction.id) : answerEarly())}
             testID="details-answer"
           />
           <TextButton
@@ -253,13 +264,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
 
       {mode === 'early' && (
         <View style={styles.confirm} testID="details-early">
-          <Text style={styles.body}>
-            It's due {shortDate(prediction.due_date)}. Answering early is fine; just answer what
-            you know now.
-            {answerNowIsSameDay(prediction)
-              ? ' You logged it today, though, so an answer today isn’t scored. From tomorrow it is.'
-              : ''}
-          </Text>
+          <Text style={styles.body}>{earlyText}</Text>
           <Button label="Answer now" onPress={() => onAnswer(prediction.id)} testID="details-answer-now" />
           <TextButton label="Not yet" onPress={() => setMode('view')} testID="details-not-yet" />
         </View>

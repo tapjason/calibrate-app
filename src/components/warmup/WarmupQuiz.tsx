@@ -183,7 +183,7 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
               min={MIN_WARMUP_CONFIDENCE}
               max={MAX_WARMUP_CONFIDENCE}
               label="How sure are you?"
-              hint="50% is a coin flip — there are only two options."
+              hint="50% is a coin flip: there are only two options."
               idPrefix="warmup-confidence"
             />
           </View>

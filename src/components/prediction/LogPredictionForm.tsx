@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
@@ -172,6 +172,9 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
         due_date: dueDate,
       });
       haptics.commit();
+      // The sheet closes on save; a screen reader hears that it worked
+      // (blind playtest 2026-11-04, second round, run 2).
+      AccessibilityInfo.announceForAccessibility('Saved.');
       setTitle('');
       setCategory(null);
       setConfidence(null);

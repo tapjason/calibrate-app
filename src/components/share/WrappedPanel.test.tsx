@@ -243,7 +243,7 @@ describe('WrappedPanel', () => {
     render(<WrappedPanel span="week" />);
 
     expect(screen.getByTestId('wrapped-all-time')).toHaveTextContent(
-      holdRanges("Across all 148 answers, you're too sure at 80–100% and too cautious at 60–80%."),
+      holdRanges("Across all 148 scored answers, you're too sure at 80–100% and too cautious at 60–80%."),
     );
   });
 
@@ -295,10 +295,18 @@ describe('WrappedPanel', () => {
     expect(screen.queryByTestId("wrapped-category-finance")).toBeNull();
     expect(screen.getByTestId("wrapped-hidden")).toHaveTextContent("1 category not shown");
     expect(screen.getByTestId("wrapped-next-badge")).toHaveTextContent(/^Tracker in work/);
+    // A screen reader hears the same card (playtest 2026-11-04b, run 2).
+    const spoken = () => screen.getByTestId("wrapped-card").props.accessibilityLabel as string;
+    expect(spoken()).toMatch(/Tracker in work/);
+    expect(spoken()).toContain("By category: Work, 2 resolved.");
+    expect(spoken()).toContain("1 category not shown.");
+    expect(spoken()).not.toMatch(/Finance/);
 
     fireEvent.press(screen.getByTestId("wrapped-titles-toggle"));
     expect(screen.getByText(/Ship the beta/)).toBeTruthy();
     expect(screen.queryByText(/Cancel subscriptions/)).toBeNull();
+    expect(spoken()).toContain("Ship the beta");
+    expect(spoken()).not.toContain("Cancel subscriptions");
     useSettingsStore.setState({ cardHiddenCategories: [] });
   });
 

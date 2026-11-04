@@ -38,7 +38,7 @@ describe('PredictionCard', () => {
     rerender(<PredictionCard prediction={{ ...prediction, status: 'resolved_no' }} />);
     expect(screen.getByText("Didn't happen")).toBeTruthy();
     rerender(<PredictionCard prediction={{ ...prediction, status: 'skipped' }} />);
-    expect(screen.getByText('Not scored')).toBeTruthy();
+    expect(screen.getByText("Can't tell, not scored")).toBeTruthy();
     expect(screen.queryByText(/[✓✗]/)).toBeNull();
   });
 

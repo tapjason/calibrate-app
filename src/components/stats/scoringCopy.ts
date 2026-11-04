@@ -78,7 +78,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: 'The Brier score',
       paragraphs: [
-        "Once your score unlocks, Insights also shows a Brier score: the average of the squared gap between how sure you said you were and what happened. It rewards being decisive as well as calibrated, so calling everything 50% can't flatter it. Lower is better, and beside it is what you'd score by saying the same number every time, that number being how often your calls came true: beat that and your numbers carry real information.",
+        "Once your score unlocks, Insights also shows a Brier score: the average of the squared gap between how sure you said you were and what happened. It rewards being decisive as well as calibrated, so calling everything 50% can't flatter it. Lower is better, and beside it is what you'd score by saying the same number every time, that number being how often your calls came true. Beat it clearly and your numbers say more than your base rate does; a gap of a hundredth or two can be luck.",
       ],
     },
     {

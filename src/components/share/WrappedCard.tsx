@@ -68,6 +68,25 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
   const titleOf = (p: Prediction) =>
     showTitles && !hidden.has(p.category) ? `, ${p.title}` : '';
   const hiddenText = hiddenCountLine(hidden.size);
+  // Everything else the card shows, for a screen reader: the badge line,
+  // the categories and the two calls (blind playtest 2026-11-04, second
+  // round, run 2, heard the card without its badge line).
+  const spokenRest = [
+    badge?.text ?? null,
+    shown.length > 0
+      ? `By category: ${shown.map((c) => `${categoryTitle(c.category)}, ${c.resolved} resolved`).join('; ')}`
+      : null,
+    hiddenText,
+    summary.boldest_hit
+      ? `Boldest call that landed: ${summary.boldest_hit.confidence}%${titleOf(summary.boldest_hit)}`
+      : null,
+    summary.biggest_miss
+      ? `Surest thing that didn’t: ${summary.biggest_miss.confidence}%${titleOf(summary.biggest_miss)}`
+      : null,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .map((part) => ` ${part.replace(/[.s]+$/, '')}.`)
+    .join('');
   // The number that climbs every day (roadmap D2) travels with the recap.
   const streak = streakLine(overall);
 
@@ -77,7 +96,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
       // One element for a screen reader, in words (roadmap step 45).
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`${wrappedCardSummary(story, streak)}${hiddenText ? ` ${hiddenText}.` : ''}`}
+      accessibilityLabel={`${wrappedCardSummary(story, streak)}${spokenRest}`}
       style={[styles.card, { backgroundColor: theme.background }]}
       testID="wrapped-card"
       collapsable={false}

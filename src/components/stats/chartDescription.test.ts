@@ -41,9 +41,9 @@ describe('describeCalibrationCurve', () => {
     // Roadmap D4: each range also says where chance alone would put it.
     expect(text).toBe(
       'Calibration curve. ' +
-        'When you said 40 to 60%, averaging 50%, you were right 100% of the time, over 1 prediction. ' +
+        'When you said 40 to 60%, averaging 50%, 100% of them happened, over 1 prediction. ' +
         'Perfectly calibrated, 8 times in 10 that would land between 0 and 100%. ' +
-        'When you said 80 to 100%, averaging 86%, you were right 58% of the time, over 12 predictions. ' +
+        'When you said 80 to 100%, averaging 86%, 58% of them happened, over 12 predictions. ' +
         'Perfectly calibrated, 8 times in 10 that would land between 75 and 92%.',
     );
   });

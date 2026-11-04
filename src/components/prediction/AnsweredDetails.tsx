@@ -90,6 +90,15 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
     }, "Couldn't move that. Try again.");
   };
 
+  // A note changes no number, so it can go at any time: after a switch it
+  // can read as the opposite of the answer (blind playtest 2026-11-04,
+  // second round, run 3), and it is the person's own words.
+  const removeNote = () =>
+    run(async () => {
+      await usePredictionStore.getState().reflect(prediction.id, '');
+      await reload();
+    }, "Couldn't remove that. Try again.");
+
   const remove = () =>
     run(async () => {
       await usePredictionStore.getState().remove(prediction.id);
@@ -128,14 +137,23 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
         </Text>
       )}
       {prediction.reflection && (
-        <Text style={styles.reflection}>“{prediction.reflection}”</Text>
+        <View style={styles.noteRow}>
+          <Text style={styles.reflection} testID="answered-reflection">
+            “{prediction.reflection}”
+          </Text>
+          <TextButton
+            label="Remove note"
+            onPress={() => void removeNote()}
+            testID="answered-remove-note"
+          />
+        </View>
       )}
 
       {until === null && error && <Text style={styles.error}>{error}</Text>}
       {until === null ? (
         <Text style={styles.body} testID="answered-locked">
-          Answers can be changed for a day after they’re given. This one is part of your record
-          now.
+          Answers can be changed for a day after they’re given, so a miss can’t be quietly
+          undone later. This one is part of your record now.
         </Text>
       ) : (
         <>
@@ -205,6 +223,7 @@ const styles = StyleSheet.create({
   title: { ...type.title2, color: colors.textPrimary },
   outcomeRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   outcome: { ...type.subhead, color: colors.textPrimary, flexShrink: 1 },
+  noteRow: { alignItems: 'flex-start', gap: space.xs },
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginTop: space.lg },
   actions: { gap: space.sm, marginTop: space.lg },
