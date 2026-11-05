@@ -301,14 +301,16 @@ const UNLIKELY_BELOW = 40;
  * It used to praise 35–65% "honest-uncertainty" calls, which paid for a number.
  */
 function rangeNote(summary: WrappedSummary): string {
+  // The span by name: "this time" read oddly on a year (playtest 2026-11-05).
+  const when = summary.span === 'week' ? 'this week' : 'this year';
   const n = summary.buckets
     .filter((b) => b.low < UNLIKELY_BELOW)
     .reduce((sum, b) => sum + b.total_resolved, 0);
   if (n === 0) {
-    return "Nothing under 40% this time. Log something you think won't happen.";
+    return `Nothing under 40% ${when}. Log something you think won't happen.`;
   }
   const plural = n === 1 ? 'call' : 'calls';
-  return `${n} ${plural} under 40% this time. The unlikely end keeps your score honest.`;
+  return `${n} ${plural} under 40% ${when}. The unlikely end keeps your score honest.`;
 }
 
 /** What a screen reader hears for the Wrapped card: one element (step 45). */

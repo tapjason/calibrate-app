@@ -303,6 +303,9 @@ describe('CalibrationChart chance capsules', () => {
     empty.unmount();
     const drawn = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
     expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/Grey bars: where a perfectly calibrated dot lands/);
+    // Inside the bar is "can't be told apart", not "as close as luck allows"
+    // (blind playtest 2026-11-05, run 3), and Insights adds nothing after it.
+    expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/can't be told apart from perfect calibration.$/);
   });
 });
 

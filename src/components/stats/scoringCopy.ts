@@ -86,13 +86,13 @@ export function scoringSections(): ScoringSection[] {
       paragraphs: [
         'With two predictions in a band, it can only read 0%, 50% or 100%. That is noise, not a score.',
         `So your rating stays "calibrating" until ${MIN_N_OVERALL} predictions have resolved, a category's score until ${MIN_N_CATEGORY} have in that category, and the app doesn't say which way a band leans until it holds ${MIN_N_BAND}.`,
-        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands 8 times in 10 with that many predictions, and the app calls a lean only for a dot outside it. And your rating comes with a "give or take": how far it could move on the same habits with different luck. Both narrow as you resolve more.',
+        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands 8 times in 10 with that many predictions, and the app calls a lean only for a dot outside it. And your rating comes with a "give or take": how far it could move on the same habits with different luck, 8 times in 10. Both narrow as you resolve more.',
       ],
     },
     {
       title: 'Badges',
       paragraphs: [
-        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above Tracker, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. So luck alone can\'t carry a category over a line.',
+        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above Tracker, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. That makes it hard for luck alone to carry a category over a line.',
       ],
     },
     {

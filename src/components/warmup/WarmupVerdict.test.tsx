@@ -73,6 +73,16 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.getByTestId('calibration-chart')).toBeTruthy();
   });
 
+  // Blind playtests 2026-11-04 and 11-05: the headline and the chart's bars
+  // seemed to disagree. The chart says the headline reads all ten together.
+  it('says the read takes the answers together, not band by band', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    expect(screen.getByTestId('chart-caption')).toHaveTextContent(
+      /can't be told apart from perfect calibration. The read above takes all 2 together/,
+    );
+  });
+
   // Roadmap D18 (3).
   it('bridges to the person\'s own plans', () => {
     seed(ANSWERS);

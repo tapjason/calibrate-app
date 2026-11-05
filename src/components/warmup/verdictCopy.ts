@@ -35,11 +35,22 @@ const READS = {
 
 const NUMBER_WORDS: Record<number, string> = { 10: 'ten' };
 
+/**
+ * Under the Warmup's chart: the headline reads all the answers together, so it
+ * can name a lean over dots inside their bars, or none over a dot outside one
+ * (blind playtests 2026-11-04 and 11-05).
+ */
+export function warmupChartNote(answered: number): string {
+  return `The read above takes all ${NUMBER_WORDS[answered] ?? answered} together, which says more than any one band.`;
+}
+
 const ADVICE = {
   overconfident:
-    "When you felt sure, you were right less often than you thought. Try shading your confidence down.",
+    // Plain words, no idioms ("shading down", "trusting your gut"): a
+    // second-language tester read "gut" as stomach (playtest 2026-11-05).
+    "When you felt sure, you were right less often than you thought. Try a lower number when you feel sure.",
   underconfident:
-    'You knew more than you gave yourself credit for. Try trusting your gut a little further.',
+    'You knew more than you thought. When you feel sure, try a higher number.',
 } as const;
 
 /**

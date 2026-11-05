@@ -1,7 +1,7 @@
 import { scoreWarmup } from '@/engine/warmup';
 import type { WarmupAnswer } from '@/types';
 
-import { warmupVerdict } from './verdictCopy';
+import { warmupChartNote, warmupVerdict } from './verdictCopy';
 
 const run = (confidence: number, n: number, correct: number): WarmupAnswer[] =>
   Array.from({ length: n }, (_, i) => ({ confidence, correct: i < correct }));
@@ -94,7 +94,16 @@ describe('warmupVerdict', () => {
 
   it("says the overconfident advice the way it's meant", () => {
     expect(warmupVerdict(scoreWarmup(OVERCONFIDENT))?.advice).toBe(
-      "When you felt sure, you were right less often than you thought. Try shading your confidence down.",
+      "When you felt sure, you were right less often than you thought. Try a lower number when you feel sure.",
     );
+  });
+});
+
+describe('warmupChartNote', () => {
+  it('names the count the headline reads together', () => {
+    expect(warmupChartNote(10)).toBe(
+      'The read above takes all ten together, which says more than any one band.',
+    );
+    expect(warmupChartNote(2)).toMatch(/^The read above takes all 2 together/);
   });
 });

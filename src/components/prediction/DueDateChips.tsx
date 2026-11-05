@@ -100,6 +100,14 @@ export function DueDateChips({
           prediction with a picked date showed the chip chosen and no field
           until a second tap (blind playtest 2026-11-01). */}
       {(picking || isCustomDate) && <DuePicker value={value} onChange={onChange} earliest={earliest} />}
+      {/* Why today can't be picked, where it can't (D41): a typed date was
+          moved to tomorrow without a word (blind playtest 2026-11-05). Not
+          when editing one logged earlier, whose earliest day is past. */}
+      {(picking || isCustomDate) && earliest.getTime() > Date.now() && (
+        <Text style={styles.floorNote} testID="due-floor-note">
+          Tomorrow at the earliest: an answer on the day it's logged isn't scored.
+        </Text>
+      )}
       <Text style={styles.dateValue} testID="due-sentence">
         Due{' '}
         {new Date(value).toLocaleDateString(undefined, {
@@ -114,4 +122,5 @@ export function DueDateChips({
 
 const styles = StyleSheet.create({
   dateValue: { ...type.subhead, marginTop: space.sm, color: colors.textSecondary },
+  floorNote: { ...type.footnote, marginTop: space.xs, color: colors.textSecondary },
 });

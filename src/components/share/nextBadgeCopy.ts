@@ -84,7 +84,9 @@ export function nextBadgeProgress(
       badge: next.badge,
       badgeLabel,
       text: scoreShort
-        ? `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more resolved and a score above ${next.needScore} at its low end`
+        ? // "To reach": on a shared card "Sharp in work: …" read as a claim
+          // to be Sharp in work (blind playtest 2026-11-05, run 5).
+          `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more resolved and a score above ${next.needScore} at its low end`
         : `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} to go`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
@@ -113,7 +115,7 @@ export function nextBadgeProgress(
       category: stat.category,
       badge: next.badge,
       badgeLabel,
-      text: `${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} at its low end (now ${Math.floor(
+      text: `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: a score above ${next.needScore} at its low end (now ${Math.floor(
         stat.calibration_score,
       )}${spread > 0 ? `, give or take ${spread}` : ''})`,
       progress: null,

@@ -32,6 +32,8 @@ interface CalibrationChartProps {
    * Warmup verdict — never on an ordinary visit to Stats.
    */
   animateIn?: boolean;
+  /** A sentence after the key, for a chart whose headline reads the dots together (the Warmup). */
+  captionNote?: string;
 }
 
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
@@ -93,7 +95,7 @@ const MARK: Record<Direction, string> = {
  *
  * react-native-svg, so it draws identically on web and native.
  */
-export function CalibrationChart({ buckets, animateIn = false }: CalibrationChartProps) {
+export function CalibrationChart({ buckets, animateIn = false, captionNote }: CalibrationChartProps) {
   const reduceMotion = useReducedMotion();
   const animate = animateIn && !reduceMotion;
   const [width, setWidth] = useState(0);
@@ -349,7 +351,8 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
         Across: how sure you said you were. Up: how often it happened. Dashed line:
         perfectly calibrated.
         {buckets.length > 0 &&
-          ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. A dot inside its bar is as close as luck allows.'}
+          ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. A dot inside its bar can\'t be told apart from perfect calibration.'}
+        {captionNote ? ` ${captionNote}` : null}
       </Text>
     </View>
   );

@@ -315,14 +315,14 @@ describe('WrappedPanel', () => {
     seed([prediction({ confidence: 20 }), prediction({ confidence: 30 })]);
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText(/2 calls under 40% this time/)).toBeTruthy();
+    expect(screen.getByText(/2 calls under 40% this week/)).toBeTruthy();
   });
 
   it('asks for an unlikely call when there were none', () => {
     seed(run(3, 2));
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText(/Nothing under 40% this time/)).toBeTruthy();
+    expect(screen.getByText(/Nothing under 40% this week/)).toBeTruthy();
   });
 
   it('captures the recap and opens the share sheet', async () => {

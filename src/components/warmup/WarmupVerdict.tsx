@@ -7,7 +7,7 @@ import { colors, type } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_OVERALL } from '@/types';
 
-import { answerKeyRow, warmupVerdict } from './verdictCopy';
+import { answerKeyRow, warmupChartNote, warmupVerdict } from './verdictCopy';
 
 interface WarmupVerdictScreenProps {
   /** Continue into the app. The screen owns the navigation. */
@@ -80,7 +80,14 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         10 of them shouldn’t.
       </Text>
 
-      <CalibrationChart buckets={result.buckets} animateIn />
+      {/* The headline reads all ten together; a band of two or eight says
+          less, so a lean can be named over dots inside their bars, or none
+          over a dot outside one (blind playtests 2026-11-04 and 11-05). */}
+      <CalibrationChart
+        buckets={result.buckets}
+        animateIn
+        captionNote={warmupChartNote(result.answered)}
+      />
 
       <Text style={styles.advice}>{verdict.advice}</Text>
       {verdict.sameNumber && (
