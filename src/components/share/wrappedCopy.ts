@@ -112,7 +112,7 @@ export function wrappedStory(
       allTime: null,
       receipt: null,
       provisionalNote: null,
-      note: `${upcoming === 1 ? 'It comes' : 'They come'} due within the week. This recap fills in as you resolve ${upcoming === 1 ? 'it' : 'them'}.`,
+      note: `${upcoming === 1 ? 'It comes' : 'They come'} due in the next 7 days. This recap fills in as you resolve ${upcoming === 1 ? 'it' : 'them'}.`,
     };
   }
 

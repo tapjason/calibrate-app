@@ -78,7 +78,8 @@ export function SignInView({ onDone }: { onDone: () => void }) {
       </Text>
       <Text style={styles.lede}>
         Back up your predictions and use Coach. Everything already on this phone
-        moves into your account.
+        moves into your account, notes included, so another phone can restore it.
+        We don't read or share it.
       </Text>
 
       <AppleSignInButton onPress={() => void onApple()} disabled={pending} />

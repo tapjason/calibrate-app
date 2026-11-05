@@ -253,12 +253,16 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
             onPress={() => (due ? onAnswer(prediction.id) : answerEarly())}
             testID="details-answer"
           />
-          <TextButton
-            label="Delete"
-            destructive
-            onPress={() => setMode('delete')}
-            testID="details-delete"
-          />
+          {/* Set apart from "Answer it now", which sat 6pt above it (blind
+              playtest 2026-11-04, third round). It still asks first. */}
+          <View style={styles.apart}>
+            <TextButton
+              label="Delete"
+              destructive
+              onPress={() => setMode('delete')}
+              testID="details-delete"
+            />
+          </View>
         </View>
       )}
 
@@ -310,6 +314,7 @@ const styles = StyleSheet.create({
   spaced: { marginTop: space.lg },
   actions: { gap: space.xs, marginTop: space.xl },
   confirm: { gap: space.sm, marginTop: space.xl },
+  apart: { marginTop: space.lg },
   error: { ...type.subhead, color: colors.destructive },
   needs: { ...type.footnote, color: colors.textSecondary, marginTop: space.md },
 });

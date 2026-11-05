@@ -349,7 +349,7 @@ export function CalibrationChart({ buckets, animateIn = false }: CalibrationChar
         Across: how sure you said you were. Up: how often it happened. Dashed line:
         perfectly calibrated.
         {buckets.length > 0 &&
-          ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. Only a dot outside its bar leans.'}
+          ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. A dot inside its bar is as close as luck allows.'}
       </Text>
     </View>
   );

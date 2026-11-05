@@ -111,11 +111,11 @@ describe('ResolvePrompt', () => {
     });
   });
 
-  it('shows "already resolved" if the prediction is no longer pending', async () => {
+  it('shows the answer details if the prediction is no longer pending', async () => {
     await insertPrediction(samplePending({ status: 'resolved_yes' }));
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => {
-      expect(screen.getByText(/already resolved/i)).toBeTruthy();
+      expect(screen.getByTestId('answered-details')).toBeTruthy();
     });
   });
 });
@@ -195,7 +195,7 @@ describe('ResolvePrompt opened from a reminder action', () => {
     );
     render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_no" />);
     await waitFor(() => {
-      expect(screen.getByText(/already resolved/i)).toBeTruthy();
+      expect(screen.getByTestId('answered-details')).toBeTruthy();
     });
     expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
     expect((await getPrediction('p1'))?.resolved_at).toBe('2026-06-01T00:00:00.000Z');
@@ -222,7 +222,7 @@ describe('ResolvePrompt opened from a reminder action', () => {
     fireEvent.press(screen.getByTestId('resolve-no'));
 
     await waitFor(() => {
-      expect(screen.getByText(/already resolved/i)).toBeTruthy();
+      expect(screen.getByTestId('answered-details')).toBeTruthy();
     });
     expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
     expect(onResolved).not.toHaveBeenCalled();
@@ -424,8 +424,23 @@ describe('ResolvePrompt — answering a skipped prediction later', () => {
       samplePending({ status: 'resolved_no', resolved_at: '2026-05-20T00:00:00.000Z' }),
     );
     render(<ResolvePrompt predictionId="p1" />);
-    await waitFor(() => expect(screen.getByText('Already resolved')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('answered-details')).toBeTruthy());
     expect(screen.queryByTestId('resolve-unskip')).toBeNull();
+    expect(screen.queryByTestId('resolve-yes')).toBeNull();
+  });
+
+  // Blind playtest 2026-11-04, third round, run 5: a reload after a mis-tap
+  // showed a bare "Already resolved", with no answer named and no way to fix it.
+  it('opened again within the day, says what was recorded and can change it', async () => {
+    await insertPrediction(
+      samplePending({ status: 'resolved_yes', resolved_at: new Date().toISOString() }),
+    );
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('answered-details')).toBeTruthy());
+    expect(screen.queryByText('Already resolved')).toBeNull();
+    expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It happened/);
+    fireEvent.press(screen.getByTestId('answered-switch'));
+    await waitFor(async () => expect((await getPrediction('p1'))?.status).toBe('resolved_no'));
   });
 });
 
@@ -724,7 +739,14 @@ describe('firstAnswerLine', () => {
   it('handles the ends of the scale', () => {
     expect(firstAnswerLine(100)).toMatch(/A 100% call should always come true/);
     expect(firstAnswerLine(0)).toMatch(/A 0% call should never come true/);
-    expect(firstAnswerLine(97)).toMatch(/nearly every time/);
-    expect(firstAnswerLine(3)).toMatch(/almost never/);
+    expect(firstAnswerLine(97)).toMatch(/almost every time/);
+    expect(firstAnswerLine(3)).toMatch(/less than once in 10/);
+    // The slider's words, and the article said aloud (playtest 2026-11-04, third round).
+    expect(firstAnswerLine(85)).toMatch(/^That's your first\. An 85% call should come true 8 or 9 times in 10,/);
+    expect(firstAnswerLine(8)).toMatch(/An 8% call/);
+    expect(firstAnswerLine(18)).toMatch(/An 18% call/);
+    expect(firstAnswerLine(80)).toMatch(/An 80% call should come true about 8 times in 10/);
+    expect(firstAnswerLine(70)).toMatch(/A 70% call/);
+    expect(firstAnswerLine(50)).toMatch(/A 50% call should come true half the time/);
   });
 });

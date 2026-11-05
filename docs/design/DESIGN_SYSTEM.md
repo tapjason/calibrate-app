@@ -827,7 +827,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   (radius `md` on the outer corners only, hairlines between rows), via
   `PredictionCard`'s `position` (`rowPosition(index, count)`). It replaced one white
   card per prediction, the generic card kit.
-- **Layout:** the title (`body`, up to 3 lines); under it the category symbol and
+- **Layout:** the title (`body`, up to 3 lines, 6 above a 1.15 text scale); under it the category symbol and
   "Health, due Fri 3 Oct" (`footnote`, `textSecondary`); then the status ("Happened",
   "Ready to resolve") in semibold ink with its glyph, when there is one to say. On the
   right, the stated confidence in its own column: "70%" in `headline` (tabular) over a

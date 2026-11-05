@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
@@ -13,6 +13,9 @@ import { isReadyToResolve } from './dueGroups';
  * with hairlines between them, instead of each being its own card.
  */
 export type RowPosition = 'single' | 'first' | 'middle' | 'last';
+
+/** Above this text scale a title may take more lines (as ConfidenceControl's steppers wrap). */
+const LARGE_TEXT_SCALE = 1.15;
 
 interface PredictionCardProps {
   prediction: Prediction;
@@ -83,6 +86,7 @@ export function PredictionCard({
   showReady = true,
 }: PredictionCardProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
+  const { fontScale } = useWindowDimensions();
   const due = formatDue(prediction.due_date);
   const status = statusLabel(prediction, new Date());
   // A resolved row dates itself by when it was answered, not when it was due.
@@ -119,7 +123,10 @@ export function PredictionCard({
       style={({ pressed }) => [styles.row, edges[position], pressed && styles.pressed]}
     >
       <View style={styles.main}>
-        <Text style={styles.title} numberOfLines={3}>
+        {/* Three lines, more at a larger text size, where the same title
+            takes more lines: at 135% a 53-character one lost its last word,
+            the day it was due (blind playtest 2026-11-04, third round). */}
+        <Text style={styles.title} numberOfLines={fontScale > LARGE_TEXT_SCALE ? 6 : 3}>
           {prediction.title}
         </Text>
         {reflection && (

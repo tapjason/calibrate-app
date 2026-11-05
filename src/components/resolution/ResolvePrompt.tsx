@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
 import { Button } from '@/components/ui/Button';
+import { naturalFrequencyFor } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
@@ -93,19 +95,20 @@ export function bucketLine(bucket: BucketStat): string {
  * right" (outcome bias, Baron & Hershey 1988), which isn't what 70% means.
  */
 export function firstAnswerLine(confidence: number): string {
-  const tenths = Math.round(confidence / 10);
+  // The slider's own words for the number, so 85% reads "8 or 9 times in
+  // 10" here too, not a flat 9 (blind playtest 2026-11-04, third round).
   const often =
     confidence >= 100
       ? 'should always come true'
       : confidence <= 0
         ? 'should never come true'
-        : tenths >= 10
-          ? 'should come true nearly every time'
-          : tenths <= 0
-            ? 'should almost never come true'
-            : `should come true about ${tenths} ${tenths === 1 ? 'time' : 'times'} in 10`;
+        : confidence === 50
+          ? 'should come true half the time'
+          : `should come true ${naturalFrequencyFor(confidence)}`;
+  // "An 8%", "an 11%", "an 18%", "an 80–89%": said aloud, they start with a vowel.
+  const article = /^(8|11|18|8\d)$/.test(String(confidence)) ? 'An' : 'A';
   return (
-    `That's your first. A ${confidence}% call ${often}, so one answer ` +
+    `That's your first. ${article} ${confidence}% call ${often}, so one answer ` +
     `can't say much; ${MIN_N_OVERALL} can.`
   );
 }
@@ -456,6 +459,19 @@ export function ResolvePrompt({
     );
   }
 
+  // Opened again once answered (a reload, a second tap on a reminder): its
+  // details, which say what was recorded and, for a day, can change it (D34).
+  // A bare "Already resolved" left a mis-tap hunting through History (blind
+  // playtest 2026-11-04, third round, run 5).
+  if (prediction.status === 'resolved_yes' || prediction.status === 'resolved_no') {
+    return (
+      <AnsweredDetails
+        prediction={prediction}
+        onChanged={setPrediction}
+        onClose={() => onResolved?.()}
+      />
+    );
+  }
   if (prediction.status !== 'pending') {
     return (
       <View style={styles.center}>

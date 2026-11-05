@@ -115,7 +115,7 @@ describe('WrappedPanel — an empty week (roadmap step 34)', () => {
     });
     render(<WrappedPanel span="week" />);
     expect(screen.getByText('2 on the way')).toBeTruthy();
-    expect(screen.getByText(/They come due within the week/)).toBeTruthy();
+    expect(screen.getByText(/They come due in the next 7 days/)).toBeTruthy();
     expect(screen.queryByText('Nothing resolved yet')).toBeNull();
   });
 

@@ -19,6 +19,24 @@ const prediction: Prediction = {
 };
 
 describe('PredictionCard', () => {
+  // Blind playtest 2026-11-04, third round: at a larger text size a title
+  // lost its last words, the day it was due.
+  it('gives a title more lines at a larger text size', () => {
+    const linesAt = (fontScale: number) => {
+      const spy = jest
+        // The hook's own module: react-native's index re-exports it by getter.
+        .spyOn(require('react-native/Libraries/Utilities/useWindowDimensions'), 'default')
+        .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale });
+      const { unmount } = render(<PredictionCard prediction={prediction} />);
+      const lines = screen.getByText(prediction.title).props.numberOfLines;
+      unmount();
+      spy.mockRestore();
+      return lines;
+    };
+    expect(linesAt(1)).toBe(3);
+    expect(linesAt(1.35)).toBe(6);
+  });
+
   // One sentence, not five fragments in layout order, and no "check mark".
   it('reads as one sentence, without the status glyph', () => {
     render(<PredictionCard prediction={prediction} onPress={jest.fn()} />);
