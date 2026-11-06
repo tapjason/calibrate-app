@@ -404,11 +404,14 @@ describe('ResolvePrompt — Log it again (roadmap step 22)', () => {
 // Roadmap step 39: a skip never counted, so it can be taken back.
 describe('ResolvePrompt — answering a skipped prediction later', () => {
   it('offers to answer it, and then it counts like any other', async () => {
+    // Due yesterday, so inside the week a skip stays open (roadmap D45).
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     await insertPrediction(
-      samplePending({ status: 'skipped', resolved_at: '2026-05-20T00:00:00.000Z' }),
+      samplePending({ status: 'skipped', due_date: yesterday, resolved_at: yesterday }),
     );
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => expect(screen.getByTestId('resolve-skipped')).toBeTruthy());
+    expect(screen.getByTestId('resolve-skip-open')).toHaveTextContent(/answer it until the end of/);
 
     fireEvent.press(screen.getByTestId('resolve-unskip'));
     await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
@@ -417,6 +420,24 @@ describe('ResolvePrompt — answering a skipped prediction later', () => {
     fireEvent.press(screen.getByTestId('resolve-yes'));
     await waitFor(() => expect(screen.getByTestId('resolve-recorded')).toBeTruthy());
     expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+  });
+
+  // Roadmap D45: open forever, a bad-looking call could be parked as a skip
+  // and only the good ones answered (blind playtest 2026-11-05).
+  it('stays Can’t tell more than a week past its due day', async () => {
+    await insertPrediction(
+      samplePending({
+        status: 'skipped',
+        due_date: '2026-05-01T12:00:00.000Z',
+        resolved_at: '2026-05-20T00:00:00.000Z',
+      }),
+    );
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-skip-closed')).toBeTruthy());
+    expect(screen.queryByTestId('resolve-unskip')).toBeNull();
+    // The store holds the line too.
+    await expect(usePredictionStore.getState().reopen('p1')).rejects.toThrow(/more than a week/);
+    expect((await getPrediction('p1'))?.status).toBe('skipped');
   });
 
   it('still refuses to reopen a Yes or No from here', async () => {

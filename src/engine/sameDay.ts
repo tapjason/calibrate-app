@@ -12,18 +12,41 @@
 // correction keeps the first answer's time (D34), so it can't move an
 // answer to another day.
 //
+// A reworded prediction counts as logged when it was reworded (roadmap D45,
+// decided 2026-11-06): "The Fed holds rates" at 70% turned into "The Fed
+// does NOT hold rates" at 70% on the day the news came out, the same as
+// moving the number to 30% after the fact (blind playtest 2026-11-05).
+//
 // Layer rule: imports @/types and ./localTime only.
 
 import type { Prediction } from '@/types';
 
 import { localDayNumber } from './localTime';
 
-/** A Yes or No given on the local day the prediction was logged. */
+/**
+ * When the prediction, as it now reads, was made (roadmap D45): when it was
+ * logged, or when its words last changed if that's later. `created_at` itself
+ * never moves, since the streak counts the day of logging.
+ */
+export function scoredFrom(p: Pick<Prediction, 'created_at' | 'title_edited_at'>): string {
+  const edited = p.title_edited_at;
+  if (!edited) return p.created_at;
+  const e = new Date(edited).getTime();
+  if (Number.isNaN(e)) return p.created_at;
+  const c = new Date(p.created_at).getTime();
+  if (Number.isNaN(c)) return edited;
+  return e > c ? edited : p.created_at;
+}
+
+/**
+ * A Yes or No given on the local day the prediction was logged, or reworded
+ * (D45).
+ */
 export function isSameDayAnswer(p: Prediction): boolean {
   if (p.status !== 'resolved_yes' && p.status !== 'resolved_no') return false;
   if (!p.resolved_at) return false;
   const answered = new Date(p.resolved_at);
-  const logged = new Date(p.created_at);
+  const logged = new Date(scoredFrom(p));
   if (Number.isNaN(answered.getTime()) || Number.isNaN(logged.getTime())) return false;
   return localDayNumber(answered) === localDayNumber(logged);
 }

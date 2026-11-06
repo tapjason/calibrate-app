@@ -56,6 +56,11 @@ interface CalibrationViewProps {
    * didn't move after an answer is explained.
    */
   sameDayCount?: number;
+  /**
+   * Predictions deleted after their answer or due day (roadmap D45), which
+   * this phone counts: said beside the rating so a quiet delete shows.
+   */
+  deletedCount?: number;
   /** Each category score's give-or-take (roadmap D35). */
   categoryRanges?: Partial<Record<Category, RatingRange>>;
   /** The category furthest from what was said (roadmap D37), or null. */
@@ -84,6 +89,7 @@ export function CalibrationView({
   brierBaseline = null,
   skippedCount = 0,
   sameDayCount = 0,
+  deletedCount = 0,
   categoryRanges = {},
   furthestOff = null,
   weekChange = null,
@@ -148,6 +154,11 @@ export function CalibrationView({
           {sameDayCount > 0 && (
             <Text style={styles.subtle} testID="stats-same-day">
               {sameDayLine(sameDayCount)}
+            </Text>
+          )}
+          {deletedCount > 0 && (
+            <Text style={styles.subtle} testID="stats-deleted">
+              {deletedLine(deletedCount)}
             </Text>
           )}
           {/* The progress bar already counts resolutions while provisional. */}
@@ -311,6 +322,18 @@ export function skippedLine(skipped: number, yesNo: number): string {
   return skipped === 1
     ? `1 of ${total} answers was Can’t tell, so it isn’t scored.`
     : `${skipped} of ${total} answers were Can’t tell, so they aren’t scored.`;
+}
+
+/**
+ * "2 predictions were deleted after they were answered or due." (roadmap
+ * D45). A miss could be deleted within a day of its answer, or an open call
+ * just before it missed, and nothing showed it. Tombstones don't sync, so the
+ * count is this phone's, and the line says so.
+ */
+export function deletedLine(count: number): string {
+  return count === 1
+    ? '1 prediction was deleted after it was answered or due. Only this phone keeps this count.'
+    : `${count} predictions were deleted after they were answered or due. Only this phone keeps this count.`;
 }
 
 /**

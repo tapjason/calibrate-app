@@ -122,6 +122,31 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(await listPendingDeletions(USER)).toEqual(['p1']);
   });
 
+  // Roadmap D45: new words make a new prediction from today, said before Save.
+  it('warns that new words make it a new prediction, not a fixed full stop', async () => {
+    await insertPrediction(open());
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.queryByTestId('details-reword-note')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('details-title-field'), 'ship the beta.');
+    expect(screen.queryByTestId('details-reword-note')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('details-title-field'), "Don't ship the beta");
+    expect(screen.getByTestId('details-reword-note')).toHaveTextContent(/new prediction from today/);
+
+    fireEvent.press(screen.getByTestId('details-save'));
+    await waitFor(() => expect(screen.getByTestId('details-reworded')).toBeTruthy());
+    expect((await getPrediction('p1'))?.title_edited_at).toBeTruthy();
+  });
+
+  it('says a delete is counted once the prediction is due', async () => {
+    await insertPrediction(open({ due_date: new Date().toISOString() }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-delete')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-delete'));
+    expect(screen.getByTestId('details-delete-text')).toHaveTextContent(/Insights will count it/);
+  });
+
   it('cancels a delete', async () => {
     await insertPrediction(open());
     renderDetails();

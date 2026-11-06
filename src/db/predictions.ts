@@ -7,6 +7,7 @@
 
 import type {
   Prediction,
+  PredictionDeletion,
   PredictionWireRow,
   InsertPrediction,
   GetPrediction,
@@ -37,8 +38,18 @@ interface PredictionRow {
   resolved_at: string | null;
   reflection: string | null;
   integrity_bonus: number;
+  /** Roadmap D45; null when never reworded. */
+  title_edited_at: string | null;
   updated_at: string;
   dirty: number;
+}
+
+/**
+ * `title_edited_at` only when set: the field is optional on Prediction, so a
+ * never-reworded row reads exactly as it did before D45.
+ */
+function rewordedField(r: PredictionRow): { title_edited_at?: string } {
+  return r.title_edited_at ? { title_edited_at: r.title_edited_at } : {};
 }
 
 function rowToPrediction(r: PredictionRow): Prediction {
@@ -54,6 +65,7 @@ function rowToPrediction(r: PredictionRow): Prediction {
     resolved_at: r.resolved_at,
     reflection: r.reflection,
     integrity_bonus: r.integrity_bonus === 1,
+    ...rewordedField(r),
   };
 }
 
@@ -70,6 +82,7 @@ function rowToWire(r: PredictionRow): PredictionWireRow {
     resolved_at: r.resolved_at,
     reflection: r.reflection,
     integrity_bonus: r.integrity_bonus === 1,
+    ...rewordedField(r),
     updated_at: r.updated_at,
   };
 }
@@ -83,8 +96,9 @@ export const insertPrediction: InsertPrediction = async (p) => {
   await getDb().run(
     `INSERT INTO predictions
        (id, user_id, title, category, confidence, created_at, due_date,
-        status, resolved_at, reflection, integrity_bonus, updated_at, dirty)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        status, resolved_at, reflection, integrity_bonus, title_edited_at,
+        updated_at, dirty)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [
       p.id,
       p.user_id,
@@ -97,6 +111,7 @@ export const insertPrediction: InsertPrediction = async (p) => {
       p.resolved_at,
       p.reflection,
       p.integrity_bonus ? 1 : 0,
+      p.title_edited_at ?? null,
       now,
     ],
   );
@@ -210,23 +225,28 @@ export const refilePrediction: RefilePrediction = async (id, category) => {
  * `status = 'pending'` keeps an answered one as it was; `dirty = 1` carries
  * the edit through sync like any other write.
  */
-export const updatePrediction: UpdatePrediction = async (id, edit) => {
+export const updatePrediction: UpdatePrediction = async (id, edit, opts) => {
   const now = nowIso();
+  // Whether the words changed is the store's call (the engine's titleKey,
+  // D45); a rewording only ever moves title_edited_at forward.
   await getDb().run(
     `UPDATE predictions
-       SET title = ?, category = ?, due_date = ?, updated_at = ?, dirty = 1
+       SET title = ?, category = ?, due_date = ?,
+           title_edited_at = COALESCE(?, title_edited_at),
+           updated_at = ?, dirty = 1
        WHERE id = ? AND status = 'pending'`,
-    [edit.title, edit.category, edit.due_date, now, id],
+    [edit.title, edit.category, edit.due_date, opts?.rewordedAt ?? null, now, id],
   );
 };
 
 /**
  * Delete a prediction and leave a tombstone (roadmap D25), so sync can delete
- * it on the server and pull won't bring it back. Two statements and no
+ * it on the server and pull won't bring it back. The tombstone stays after
+ * the push, with whether Insights counts it (D45). Two statements and no
  * transaction of its own: the caller (predictionStore.remove) wraps it with
  * the stats recompute, and SQLite doesn't nest transactions.
  */
-export const deletePrediction: DeletePrediction = async (id) => {
+export const deletePrediction: DeletePrediction = async (id, opts) => {
   const db = getDb();
   const row = await db.get<{ user_id: string }>(
     `SELECT user_id FROM predictions WHERE id = ?`,
@@ -235,10 +255,31 @@ export const deletePrediction: DeletePrediction = async (id) => {
   if (!row) return;
   await db.run(`DELETE FROM predictions WHERE id = ?`, [id]);
   await db.run(
-    `INSERT OR REPLACE INTO prediction_deletions (id, user_id, deleted_at) VALUES (?, ?, ?)`,
-    [id, row.user_id, nowIso()],
+    `INSERT OR REPLACE INTO prediction_deletions (id, user_id, deleted_at, pushed_at, counted)
+       VALUES (?, ?, ?, NULL, ?)`,
+    [id, row.user_id, nowIso(), opts?.counted ? 1 : 0],
   );
 };
+
+/**
+ * This phone's deletions for `userId` (roadmap D45), newest first. Insights
+ * counts the ones marked `counted`; nothing here syncs.
+ */
+export async function listDeletions(userId: string): Promise<PredictionDeletion[]> {
+  const rows = await getDb().all<{
+    id: string;
+    user_id: string;
+    deleted_at: string;
+    pushed_at: string | null;
+    counted: number;
+  }>(
+    `SELECT id, user_id, deleted_at, pushed_at, counted FROM prediction_deletions
+       WHERE user_id = ?
+       ORDER BY deleted_at DESC`,
+    [userId],
+  );
+  return rows.map((r) => ({ ...r, counted: r.counted === 1 }));
+}
 
 // ----------------------------------------------------------------------------
 // Sync helpers — used only by src/supabase/sync.ts.
@@ -264,14 +305,19 @@ export async function listDirtyPredictions(
 /** Deletions not yet pushed for `userId`, oldest first (roadmap D25). */
 export async function listPendingDeletions(userId: string): Promise<string[]> {
   const rows = await getDb().all<{ id: string }>(
-    `SELECT id FROM prediction_deletions WHERE user_id = ? ORDER BY deleted_at ASC`,
+    `SELECT id FROM prediction_deletions
+       WHERE user_id = ? AND pushed_at IS NULL
+       ORDER BY deleted_at ASC`,
     [userId],
   );
   return rows.map((r) => r.id);
 }
 
-/** Whether `id` was deleted here and the deletion hasn't been pushed yet. */
-export async function isDeletionPending(id: string): Promise<boolean> {
+/**
+ * Whether `id` was deleted on this phone, pushed or not. Pull skips it either
+ * way: another device's stale copy shouldn't bring a deletion back.
+ */
+export async function isDeletedHere(id: string): Promise<boolean> {
   const row = await getDb().get<{ id: string }>(
     `SELECT id FROM prediction_deletions WHERE id = ?`,
     [id],
@@ -279,9 +325,15 @@ export async function isDeletionPending(id: string): Promise<boolean> {
   return row !== null && row !== undefined;
 }
 
-/** Forget a tombstone once the server has the deletion. */
-export async function clearDeletion(id: string): Promise<void> {
-  await getDb().run(`DELETE FROM prediction_deletions WHERE id = ?`, [id]);
+/**
+ * Record that the server has the deletion. The tombstone stays (D45), so the
+ * deletion is still counted and still skipped on pull.
+ */
+export async function markDeletionPushed(id: string): Promise<void> {
+  await getDb().run(
+    `UPDATE prediction_deletions SET pushed_at = ? WHERE id = ? AND pushed_at IS NULL`,
+    [nowIso(), id],
+  );
 }
 
 /**
@@ -319,8 +371,9 @@ export async function upsertPredictionFromRemote(
   await getDb().run(
     `INSERT INTO predictions
        (id, user_id, title, category, confidence, created_at, due_date,
-        status, resolved_at, reflection, integrity_bonus, updated_at, dirty)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        status, resolved_at, reflection, integrity_bonus, title_edited_at,
+        updated_at, dirty)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT(id) DO UPDATE SET
        user_id         = excluded.user_id,
        title           = excluded.title,
@@ -332,6 +385,16 @@ export async function upsertPredictionFromRemote(
        resolved_at     = excluded.resolved_at,
        reflection      = excluded.reflection,
        integrity_bonus = excluded.integrity_bonus,
+       -- The later of the two (D45): a server without migration 008 sends
+       -- none, and a rewording is never undone, so a missing or older value
+       -- never clears this phone's.
+       title_edited_at = CASE
+         WHEN excluded.title_edited_at IS NULL THEN predictions.title_edited_at
+         WHEN predictions.title_edited_at IS NULL THEN excluded.title_edited_at
+         WHEN julianday(excluded.title_edited_at) > julianday(predictions.title_edited_at)
+           THEN excluded.title_edited_at
+         ELSE predictions.title_edited_at
+       END,
        updated_at      = excluded.updated_at,
        dirty           = 0`,
     [
@@ -346,6 +409,7 @@ export async function upsertPredictionFromRemote(
       row.resolved_at,
       row.reflection,
       row.integrity_bonus ? 1 : 0,
+      row.title_edited_at ?? null,
       row.updated_at,
     ],
   );

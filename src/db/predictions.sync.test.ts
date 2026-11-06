@@ -6,7 +6,10 @@
 import type { Prediction, PredictionWireRow } from '@/types';
 
 import { getDb, setDbForTests } from './client';
+import { forTheServer } from '@/supabase/sync';
+
 import {
+  getPrediction,
   getPredictionUpdatedAt,
   insertPrediction,
   listDirtyPredictions,
@@ -195,5 +198,46 @@ describe('getPredictionUpdatedAt', () => {
     const got = await getPredictionUpdatedAt('p1');
     expect(typeof got).toBe('string');
     expect(got).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+});
+
+// Roadmap D45: the date a prediction was reworded.
+describe('title_edited_at across sync', () => {
+  const EDITED = '2026-05-10T09:00:00.000Z';
+
+  it('goes up only once the live schema has it (TITLE_EDIT_SYNC)', async () => {
+    await insertPrediction(samplePrediction({ title_edited_at: EDITED }));
+    const [row] = await listDirtyPredictions('u1');
+    expect(row.title_edited_at).toBe(EDITED);
+    // The flag is off until migration 008 is applied to the live project.
+    expect('title_edited_at' in forTheServer(row)).toBe(false);
+    expect(forTheServer(row)).toMatchObject({ id: 'p1', title: 'Ship the prototype' });
+  });
+
+  it('is never cleared by a pull from a server without it', async () => {
+    await insertPrediction(samplePrediction({ title_edited_at: EDITED }));
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', title: 'Edited elsewhere', updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    const after = await getPrediction('p1');
+    expect(after?.title).toBe('Edited elsewhere');
+    expect(after?.title_edited_at).toBe(EDITED);
+  });
+
+  it('keeps the later of the two dates', async () => {
+    await insertPrediction(samplePrediction({ title_edited_at: EDITED }));
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', title_edited_at: '2026-05-12T09:00:00+00:00', updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    expect((await getPrediction('p1'))?.title_edited_at).toBe('2026-05-12T09:00:00+00:00');
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', title_edited_at: '2026-05-02T09:00:00+00:00', updated_at: '2099-01-02T00:00:00.000Z' }),
+    );
+    expect((await getPrediction('p1'))?.title_edited_at).toBe('2026-05-12T09:00:00+00:00');
+  });
+
+  it('reads as absent on a row never reworded', async () => {
+    await insertPrediction(samplePrediction());
+    expect(await getPrediction('p1')).not.toHaveProperty('title_edited_at');
   });
 });

@@ -17,7 +17,12 @@ import {
   tabularNums,
   type,
 } from '@/constants/theme';
-import { answerNowIsSameDay, usePredictionStore } from '@/store/predictionStore';
+import {
+  answerNowIsSameDay,
+  madeAt,
+  skipAnswerBy,
+  usePredictionStore,
+} from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { answeredSameDay, useStatsStore } from '@/store/statsStore';
 import {
@@ -426,8 +431,11 @@ export function ResolvePrompt({
 
   // A skip can be taken back (roadmap step 39). It never counted, so
   // answering it later can't move a score after the fact, and a mis-tap on
-  // "Can't tell" otherwise had no undo (HIG: let people undo).
+  // "Can't tell" otherwise had no undo (HIG: let people undo). Only for a
+  // week past its due day (D45): open forever, a call that looked bad could
+  // be parked as a skip and only the good ones answered.
   if (prediction.status === 'skipped') {
+    const answerBy = skipAnswerBy(prediction);
     const answerNow = async () => {
       setError(null);
       setSubmitting(true);
@@ -443,18 +451,28 @@ export function ResolvePrompt({
     return (
       <View style={styles.center} testID="resolve-skipped">
         <Text style={styles.notFoundTitle}>Not scored</Text>
-        <Text style={[styles.notFoundBody, styles.skippedBody]}>
-          You marked “{prediction.title}” as can’t tell. If you can tell now, answer it
-          and it counts like any other.
-        </Text>
+        {answerBy ? (
+          <Text style={[styles.notFoundBody, styles.skippedBody]} testID="resolve-skip-open">
+            You marked “{prediction.title}” as can’t tell. If you can tell now, answer it
+            and it counts like any other. You can answer it until the end of{' '}
+            {formatDay(answerBy)}.
+          </Text>
+        ) : (
+          <Text style={[styles.notFoundBody, styles.skippedBody]} testID="resolve-skip-closed">
+            You marked “{prediction.title}” as can’t tell. It’s more than a week past its due
+            day, so it stays that way and isn’t scored.
+          </Text>
+        )}
         {error && <Text style={styles.error}>{error}</Text>}
-        <Button
-          label={submitting ? '…' : 'Answer it now'}
-          variant="secondary"
-          onPress={() => void answerNow()}
-          disabled={submitting}
-          testID="resolve-unskip"
-        />
+        {answerBy && (
+          <Button
+            label={submitting ? '…' : 'Answer it now'}
+            variant="secondary"
+            onPress={() => void answerNow()}
+            disabled={submitting}
+            testID="resolve-unskip"
+          />
+        )}
       </View>
     );
   }
@@ -502,8 +520,9 @@ export function ResolvePrompt({
           out once Yes is tapped read as a trick (blind playtest 2026-11-04). */}
       {answerNowIsSameDay(prediction) && (
         <Text style={styles.sameDayNote} testID="resolve-same-day">
-          You logged this today, so an answer today isn’t scored. It still keeps
-          your streak, and from tomorrow it counts.
+          {madeAt(prediction) !== prediction.created_at
+            ? 'You changed its words today, so an answer today isn’t scored. It still keeps your streak, and from tomorrow it counts.'
+            : 'You logged this today, so an answer today isn’t scored. It still keeps your streak, and from tomorrow it counts.'}
         </Text>
       )}
 
@@ -556,6 +575,11 @@ export function ResolvePrompt({
 /** "3 Sep" in the user's locale. */
 function formatLogged(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+/** "Thu, Nov 13": the last day a skip can be answered (D45). */
+function formatDay(day: Date): string {
+  return day.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 const styles = StyleSheet.create({

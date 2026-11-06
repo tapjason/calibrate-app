@@ -14,7 +14,10 @@ import { TextField } from '@/components/ui/TextField';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
 import {
   answerNowIsSameDay,
-  earliestDueFor,
+  deleteIsCounted,
+  earliestDueForEdit,
+  madeAt,
+  rewords,
   usePredictionStore,
 } from '@/store/predictionStore';
 import { reminderTimeLabel } from '@/notifications/practiceReminder';
@@ -148,11 +151,19 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
   // goes straight to Resolve, and the date reads "today".
   const daysLeft = daysUntilDue(prediction, new Date());
   const due = daysLeft <= 0;
+  // Reworded since it was logged (D45): it counts as made then.
+  const reworded = madeAt(prediction) !== prediction.created_at;
   const earlyText =
     `It's due ${shortDate(prediction.due_date)}. Answering early is fine; just answer what you know now.` +
     (answerNowIsSameDay(prediction)
-      ? ' You logged it today, though, so an answer today isn’t scored. From tomorrow it is.'
+      ? reworded
+        ? ' You changed its words today, though, so an answer today isn’t scored. From tomorrow it is.'
+        : ' You logged it today, though, so an answer today isn’t scored. From tomorrow it is.'
       : '');
+  // Deleting a due one hides an outcome that may be known, so it is counted.
+  const deleteText = deleteIsCounted(prediction)
+    ? 'Delete this prediction? It’s due, so Insights will count it as deleted. This can’t be undone.'
+    : "Delete this prediction? It won't count anywhere, and it can't be undone.";
   const answerEarly = () => {
     setMode('early');
     // The warning appears in place of the button; a screen reader hears it
@@ -174,6 +185,11 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
       <Text style={styles.title} testID="details-title">
         {prediction.title}
       </Text>
+      {reworded && (
+        <Text style={styles.due} testID="details-reworded">
+          Words changed {shortDate(madeAt(prediction))}, so it counts as made that day
+        </Text>
+      )}
       <Text style={styles.due} testID="details-due">
         Due {daysLeft === 0 ? 'today' : shortDate(prediction.due_date)}
         {/* The web build sends no notifications, so it promises none; a past
@@ -193,6 +209,8 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
     const needs = busy
       ? null
       : stillNeeded({ title: title.trim().length > 0, category: category !== null });
+    // New words are a new prediction from today (D45), said before Save.
+    const changingWords = title.trim().length > 0 && rewords(prediction.title, title);
     return (
       <View style={styles.wrap} testID="details-edit">
         <Text style={styles.stated}>
@@ -210,6 +228,12 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           maxLength={TITLE_MAX_LENGTH}
           testID="details-title-field"
         />
+        {changingWords && (
+          <Text style={styles.note} testID="details-reword-note" accessibilityLiveRegion="polite">
+            Changing the words makes this a new prediction from today: an answer today
+            isn’t scored, and the earliest due date is tomorrow.
+          </Text>
+        )}
         <Text style={styles.label}>Category</Text>
         <CategoryChips value={category} onChange={setCategory} />
         <Text style={[styles.label, styles.spaced]}>Due date</Text>
@@ -219,7 +243,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           picking={picking}
           onChange={setDueDate}
           onPickingChange={setPicking}
-          earliest={earliestDueFor(prediction.created_at)}
+          earliest={earliestDueForEdit(prediction, title)}
         />
         {error && <Text style={styles.error}>{error}</Text>}
         {needs && (
@@ -276,9 +300,7 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
 
       {mode === 'delete' && (
         <View style={styles.confirm} testID="details-delete-confirm">
-          <Text style={styles.body}>
-            Delete this prediction? It won't count anywhere, and it can't be undone.
-          </Text>
+          <Text style={styles.body} testID="details-delete-text">{deleteText}</Text>
           {/* Outlined with a destructive label, never a filled primary (§7.20). */}
           <Button
             label={busy ? 'Deleting…' : 'Delete'}

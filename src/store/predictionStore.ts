@@ -10,9 +10,15 @@ import { track } from '@/analytics/track';
 
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
-import { canCorrect, correctableUntil } from '@/engine/corrections';
-import { pastOutcomes } from '@/engine/pastOutcomes';
-import { clampDueDate, earliestDueDay, isSameDayAnswer } from '@/engine/sameDay';
+import {
+  canAnswerSkip,
+  canCorrect,
+  correctableUntil,
+  deletionCounts,
+  skipLastDay,
+} from '@/engine/corrections';
+import { pastOutcomes, titleKey } from '@/engine/pastOutcomes';
+import { clampDueDate, earliestDueDay, isSameDayAnswer, scoredFrom } from '@/engine/sameDay';
 import { checkpointReached, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
@@ -20,6 +26,7 @@ import {
   deletePrediction,
   getPrediction,
   insertPrediction,
+  listDeletions,
   listPendingPredictions,
   listResolvedPredictions,
   resolvePrediction,
@@ -51,6 +58,12 @@ interface CreatePredictionInput {
 interface PredictionState {
   pending: Prediction[];
   resolved: Prediction[];
+  /**
+   * Deletions Insights counts (roadmap D45): scored answers, and open ones
+   * deleted on or after their due day. This phone's only; loaded with the
+   * resolved list.
+   */
+  deletedCount: number;
   loadPending: () => Promise<void>;
   loadResolved: () => Promise<void>;
   /**
@@ -75,11 +88,14 @@ interface PredictionState {
    * Edit an open prediction's title, category or due date (roadmap D25).
    * Never the confidence. A no-op on an answered one. Stats recompute with it,
    * since a category change moves a prediction between categories' counts.
+   * New words make it a prediction made now (D45): the reword is dated, and
+   * the due date is held to the next day at the earliest.
    */
   update: (id: string, edit: PredictionEdit) => Promise<void>;
   /**
    * Undo a resolution (the "Change answer" tap). Stats recompute in the same
    * transaction, exactly as for resolve, so nothing counts a withdrawn answer.
+   * A "Can't tell" past its deadline (D45) throws: it stays as it is.
    */
   reopen: (id: string) => Promise<void>;
   /**
@@ -163,6 +179,7 @@ function requireUserId(): string {
 export const usePredictionStore = create<PredictionState>((set, get) => ({
   pending: [],
   resolved: [],
+  deletedCount: 0,
   streakCheckpoint: null,
 
   clearStreakCheckpoint: () => set({ streakCheckpoint: null }),
@@ -174,7 +191,11 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   loadResolved: async () => {
     const userId = requireUserId();
-    set({ resolved: await listResolvedPredictions(userId) });
+    const [resolved, deletions] = await Promise.all([
+      listResolvedPredictions(userId),
+      listDeletions(userId),
+    ]);
+    set({ resolved, deletedCount: deletions.filter((d) => d.counted).length });
   },
 
   getById: async (id) => {
@@ -281,6 +302,10 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   reopen: async (id) => {
     const userId = requireUserId();
+    const target = await get().getById(id);
+    if (target && target.status === 'skipped' && !canAnswerSkip(target, new Date())) {
+      throw new Error(SKIP_CLOSED);
+    }
     await withTransaction(async () => {
       await reopenPrediction(id);
       await useStatsStore.getState().recomputeForUser(userId);
@@ -327,10 +352,15 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // Only this user's own prediction (getById applies the owner filter).
     const current = await get().getById(id);
     if (!current) return;
+    // New words are a new prediction from now (D45); a fixed typo, case or
+    // punctuation isn't (the same key as D32's own record).
+    const now = new Date();
+    const rewordedAt = rewords(current.title, title) ? now.toISOString() : undefined;
+    const from = rewordedAt ?? scoredFrom(current);
     // The picker's floor, held here too: a typed date can get past it.
-    const due_date = clampDueDate(edit.due_date, new Date(current.created_at), new Date());
+    const due_date = clampDueDate(edit.due_date, new Date(from), now);
     await withTransaction(async () => {
-      await updatePrediction(id, { ...edit, title, due_date });
+      await updatePrediction(id, { ...edit, title, due_date }, { rewordedAt });
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await get().loadPending();
@@ -348,11 +378,13 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     ) {
       throw new Error(PAST_WINDOW);
     }
+    // Counted on Insights when it hides something scored or due (D45).
+    const counted = target ? deletionCounts(target, new Date()) : false;
     // Deleting a resolved prediction changes calibration, streak, and per-
     // category counts — recompute inside the same transaction so the stats
     // never reflect a ghost prediction.
     await withTransaction(async () => {
-      await deletePrediction(id);
+      await deletePrediction(id, { counted });
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await Promise.all([get().loadPending(), get().loadResolved()]);
@@ -414,7 +446,45 @@ export function answerNowIsSameDay(p: Prediction, now: Date = new Date()): boole
   return isSameDayAnswer({ ...p, status: 'resolved_yes', resolved_at: now.toISOString() });
 }
 
+/**
+ * Whether changing `before` to `after` counts as new words (roadmap D45): not
+ * a change of case, spacing, end punctuation or quote style. Edit warns
+ * before saving one.
+ */
+export function rewords(before: string, after: string): boolean {
+  return titleKey(before) !== titleKey(after);
+}
+
+/**
+ * The earliest due day Edit offers (D41, D45): the day after the prediction
+ * was logged or last reworded, or the day after today when the draft
+ * rewords it.
+ */
+export function earliestDueForEdit(p: Prediction, draftTitle: string, now: Date = new Date()): Date {
+  return earliestDueDay(new Date(rewords(p.title, draftTitle) ? now : scoredFrom(p)), now);
+}
+
+/** When the prediction, as it now reads, was made: logged or last reworded (D45). */
+export function madeAt(p: Prediction): string {
+  return scoredFrom(p);
+}
+
+/**
+ * The last day a "Can't tell" can be answered (D45), or null when that day
+ * has passed or it isn't a skip.
+ */
+export function skipAnswerBy(p: Prediction, now: Date = new Date()): Date | null {
+  return canAnswerSkip(p, now) ? skipLastDay(p) : null;
+}
+
+/** Whether deleting this one now would be counted on Insights (D45). */
+export function deleteIsCounted(p: Prediction, now: Date = new Date()): boolean {
+  return deletionCounts(p, now);
+}
+
 const PAST_WINDOW = 'This answer is part of the record now and can no longer be changed.';
+const SKIP_CLOSED =
+  'It’s more than a week past its due day, so it stays Can’t tell and can no longer be answered.';
 
 /**
  * The prediction, if it is this user's (getById applies the owner filter) and

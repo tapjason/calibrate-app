@@ -141,6 +141,11 @@ the other pre-device work below before the first device build.
   guests' numbers are counts, not people: a reinstall counts twice. The
   share gate doesn't wait on this: App Store campaign links count every
   install from a share (GROWTH §7).
+- **Reword dates on the server: one step left (D45, step 156).** Apply
+  `supabase/migrations/008_title_edited_at.sql` to the live project, then set
+  `TITLE_EDIT_SYNC` to true in `src/constants/app.ts`. Until then the date a
+  prediction was reworded stays on the phone that made the edit, so another
+  phone would score a same-day answer to it. Nothing fails meanwhile.
 - **Email sign-up for strangers.** Supabase's built-in sender only delivers to
   members of your Supabase organization, at 2 messages an hour (re-checked
   2026-10-04). "Confirm email" is on for testing (decided 2026-10-01); before

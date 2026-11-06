@@ -5,6 +5,7 @@ import {
   earliestDueDay,
   isSameDayAnswer,
   sameDayCount,
+  scoredFrom,
   scoredOnly,
 } from './sameDay';
 
@@ -97,5 +98,23 @@ describe('earliestDueDay', () => {
     const logged = new Date(2026, 9, 1, 9);
     const now = new Date(2026, 10, 3, 15);
     expect(earliestDueDay(logged, now)).toEqual(new Date(2026, 10, 3, 0, 0, 0, 0));
+  });
+});
+
+describe('a reworded prediction (roadmap D45)', () => {
+  it('counts as logged when it was reworded', () => {
+    expect(scoredFrom(prediction())).toBe(at(3, 9));
+    expect(scoredFrom(prediction({ title_edited_at: at(4, 8) }))).toBe(at(4, 8));
+    // Never earlier than the logging, and an unreadable date is ignored.
+    expect(scoredFrom(prediction({ title_edited_at: at(2, 8) }))).toBe(at(3, 9));
+    expect(scoredFrom(prediction({ title_edited_at: 'never' }))).toBe(at(3, 9));
+    expect(scoredFrom(prediction({ title_edited_at: null }))).toBe(at(3, 9));
+  });
+
+  it('is not scored when answered the day it was reworded', () => {
+    // Logged on the 3rd, flipped on the due day and answered that evening.
+    expect(isSameDayAnswer(prediction({ title_edited_at: at(4, 8) }))).toBe(true);
+    // Reworded the day before the answer: scored, like a prediction logged then.
+    expect(isSameDayAnswer(prediction({ title_edited_at: at(3, 20) }))).toBe(false);
   });
 });

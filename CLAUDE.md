@@ -62,6 +62,8 @@ is a personality-test result with receipts. The math is the engine, never the pi
   integrity_bonus: boolean       // legacy: true if confidence was 35–65%. Still stored and
                                  // synced for schema compatibility, never shown or rewarded
                                  // (the integrity bonus was dropped 2026-10-10, D23)
+  title_edited_at?: string | null // when the words last changed (D45); the prediction
+                                 // counts as made then. Synced behind TITLE_EDIT_SYNC
 }
 ```
 
@@ -355,6 +357,25 @@ answer, move it to another category or delete it; after that it is the record.
 A Yes or No never becomes "Can't tell": that was how a miss could be parked and
 answered later. A skip can still be answered later. Insights says how many answers
 were "Can't tell" beside the rating, which leaves them out.
+
+**The score holes, closed** (decided 2026-11-06, D45; blind playtests 2026-11-04 and
+2026-11-05, three runs each):
+- **New words are a new prediction.** Editing an open prediction's title to
+  different words (not case, spacing, end punctuation or quote style: the D32
+  `titleKey`) sets `title_edited_at`, and the prediction counts as made then
+  (`scoredFrom`): an answer that day isn't scored (D41) and the due date is the
+  next day at the earliest. `created_at` stays, so the streak's days don't move.
+  Edit says so before Save. Supabase migration 008 adds the column; until it is
+  applied to the live project `TITLE_EDIT_SYNC` is off and the date stays on the
+  phone that made the edit.
+- **Deleted calls are counted.** Tombstones are kept after the push, marked
+  `counted` when the deletion hid something: a scored Yes or No (inside its
+  24-hour window), or an open prediction deleted on or after its due day
+  (`deletionCounts`). Insights says how many, and that only this phone keeps the
+  count. The delete confirmation says so first.
+- **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
+  after its due day, and never less than the correction window after the skip, so
+  a mis-tap can still be undone. After that it stays "Can't tell".
 
 Note: resolution alone is a weak retention hook. The identity layer (badges climbing,
 weekly reveal) carries retention — build it deliberately.

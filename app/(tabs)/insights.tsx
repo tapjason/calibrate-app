@@ -49,6 +49,8 @@ export default function InsightsScreen() {
   );
   // Answers given the day they were logged, which aren't scored (D41).
   const sameDayCount = usePredictionStore((s) => sameDayAnswerCount(s.resolved));
+  // Deleted after their answer or due day, on this phone (roadmap D45).
+  const deletedCount = usePredictionStore((s) => s.deletedCount);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   // Time since the first answer, not the calendar months with one in them.
   const firstResolvedAt = useStatsStore((s) => s.trends.first_resolved_at);
@@ -73,6 +75,7 @@ export default function InsightsScreen() {
         brierBaseline={brierBaseline}
         skippedCount={skippedCount}
         sameDayCount={sameDayCount}
+        deletedCount={deletedCount}
         categoryRanges={categoryRanges}
         furthestOff={furthestOff}
         weekChange={weekChange}

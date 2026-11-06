@@ -66,6 +66,16 @@ export async function migrateGuestDataToUser(
       [newUserId, LOCAL_GUEST_USER_ID],
     );
 
+    // The guest's deletions go with the predictions (roadmap D45), so the
+    // account's Insights still counts them. Marked pushed: those rows were
+    // never on the server, so there's nothing there to delete.
+    await db.run(
+      `UPDATE prediction_deletions
+         SET user_id = ?, pushed_at = COALESCE(pushed_at, ?)
+         WHERE user_id = ?`,
+      [newUserId, new Date().toISOString(), LOCAL_GUEST_USER_ID],
+    );
+
     // The guest's own categories (roadmap D39) move with the predictions
     // filed under them; one the account already has keeps the account's.
     await db.run(

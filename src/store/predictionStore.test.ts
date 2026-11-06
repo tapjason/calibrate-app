@@ -12,7 +12,7 @@ beforeEach(async () => {
   setDbForTests(await createTestDb());
   // Reset every Zustand singleton to a clean state.
   useAuthStore.getState().reset();
-  usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
+  usePredictionStore.setState({ pending: [], resolved: [], deletedCount: 0, streakCheckpoint: null });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
@@ -529,6 +529,90 @@ describe('predictionStore.update and remove', () => {
     expect(usePredictionStore.getState().pending).toHaveLength(0);
     const stat = await getUserStat(p.user_id);
     expect(stat?.total_predictions).toBe(0);
+  });
+});
+
+// Roadmap D45 (decided 2026-11-06): the three score holes from the November
+// blind playtests.
+describe('the score holes (roadmap D45)', () => {
+  const DAY = 86_400_000;
+
+  it('dates new words, so an answer the same day is not scored', async () => {
+    // Logged yesterday, due today: an answer today would normally count.
+    const p = await loggedEarlier(() =>
+      usePredictionStore.getState().create({
+        title: 'The Fed holds rates',
+        category: 'finance',
+        confidence: 70,
+        due_date: new Date(Date.now() + DAY).toISOString(),
+      }),
+    );
+    await usePredictionStore.getState().update(p.id, {
+      title: 'The Fed does NOT hold rates',
+      category: 'finance',
+      due_date: new Date().toISOString(),
+    });
+    const after = await usePredictionStore.getState().getById(p.id);
+    expect(after?.title_edited_at).toBeTruthy();
+    // created_at stays, for the streak.
+    expect(after?.created_at).toBe(p.created_at);
+    // Held to tomorrow at the earliest, like a prediction logged today.
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    expect(new Date(after!.due_date).toDateString()).toBe(tomorrow.toDateString());
+
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    expect((await getUserStat(p.user_id))?.total_resolved).toBe(0);
+  });
+
+  it("doesn't date a fixed case, spacing or full stop", async () => {
+    const p = await usePredictionStore.getState().create({
+      title: 'ship it',
+      category: 'work',
+      confidence: 70,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Ship  it.',
+      category: 'work',
+      due_date: p.due_date,
+    });
+    const after = await usePredictionStore.getState().getById(p.id);
+    expect(after?.title).toBe('Ship  it.');
+    expect(after?.title_edited_at).toBeUndefined();
+  });
+
+  it('counts a deleted scored answer and a deleted due one, not an early delete', async () => {
+    const answered = await loggedEarlier(() =>
+      usePredictionStore.getState().create({
+        title: 'A miss',
+        category: 'work',
+        confidence: 85,
+        due_date: new Date(Date.now() + DAY).toISOString(),
+      }),
+    );
+    await usePredictionStore.getState().resolve(answered.id, 'resolved_no');
+    const due = await loggedEarlier(
+      () =>
+        usePredictionStore.getState().create({
+          title: 'About to miss',
+          category: 'work',
+          confidence: 85,
+          due_date: new Date(Date.now() - DAY).toISOString(),
+        }),
+      3,
+    );
+    const early = await usePredictionStore.getState().create({
+      title: 'A typo',
+      category: 'work',
+      confidence: 50,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+
+    await usePredictionStore.getState().remove(answered.id);
+    await usePredictionStore.getState().remove(due.id);
+    await usePredictionStore.getState().remove(early.id);
+    expect(usePredictionStore.getState().deletedCount).toBe(2);
   });
 });
 

@@ -7,7 +7,7 @@ import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
-import { correctionWindow, usePredictionStore } from '@/store/predictionStore';
+import { correctionWindow, deleteIsCounted, usePredictionStore } from '@/store/predictionStore';
 import type { Category, Prediction } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 import { answeredSameDay } from '@/store/statsStore';
@@ -164,8 +164,11 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
           {error && <Text style={styles.error}>{error}</Text>}
           {confirmingDelete ? (
             <View style={styles.actions} testID="answered-delete-confirm">
-              <Text style={styles.body}>
-                Delete this prediction? It won’t count anywhere, and it can’t be undone.
+              <Text style={styles.body} testID="answered-delete-text">
+                {/* A scored answer leaves a count behind (roadmap D45). */}
+                {deleteIsCounted(prediction)
+                  ? 'Delete this prediction? Its answer leaves your scores, and Insights will count it as deleted after answering. This can’t be undone.'
+                  : 'Delete this prediction? It won’t count anywhere, and it can’t be undone.'}
               </Text>
               <Button
                 label={busy ? 'Deleting…' : 'Delete'}

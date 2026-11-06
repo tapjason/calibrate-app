@@ -87,3 +87,13 @@ export const CUSTOM_CATEGORY_SYNC = true;
  * wait on the phone as before and go up with an account.
  */
 export const GUEST_ANALYTICS = false;
+
+/**
+ * Whether the date a prediction was reworded goes up to Supabase (roadmap
+ * D45, decided 2026-11-06). It needs `supabase/migrations/008_title_edited_at.sql`
+ * on the live project: before it, an upsert naming the column fails on every
+ * sync. With this off, the rest of the row syncs as before and the date
+ * stays on the phone that made the edit, so another phone scores a
+ * same-day answer to it as it did before D45.
+ */
+export const TITLE_EDIT_SYNC = false;

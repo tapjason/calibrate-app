@@ -213,6 +213,30 @@ export interface Prediction {
   resolved_at: string | null;
   reflection: string | null;
   integrity_bonus: boolean; // true if confidence was 35–65%
+  /**
+   * When the words were last changed (roadmap D45), or absent if never. A
+   * reworded prediction counts as one logged then: an answer that day isn't
+   * scored and it can't be due before the next day. `created_at` stays, so
+   * the streak's days don't move.
+   */
+  title_edited_at?: string | null;
+}
+
+/**
+ * A deletion as this phone keeps it (roadmap D25, D45): the tombstone sync
+ * pushes, kept after the push so Insights can count deleted calls.
+ */
+export interface PredictionDeletion {
+  id: string;
+  user_id: string;
+  deleted_at: string;
+  /** When the server got the deletion, or null while it waits. */
+  pushed_at: string | null;
+  /**
+   * Whether Insights counts it (D45): a scored Yes or No, or an open one
+   * deleted on or after its due day. Decided at delete time by the engine.
+   */
+  counted: boolean;
 }
 
 export interface UserStat {
@@ -368,6 +392,8 @@ export interface PredictionWireRow {
   resolved_at: string | null;
   reflection: string | null;
   integrity_bonus: boolean;
+  /** Roadmap D45. Absent from a server without migration 008. */
+  title_edited_at?: string | null;
   updated_at: string;
 }
 
@@ -715,7 +741,11 @@ export type ResolvePrediction = (
   outcome: ResolvedStatus,
   reflection?: string,
 ) => Promise<void>;
-export type DeletePrediction = (id: string) => Promise<void>;
+/**
+ * Delete and leave a tombstone (D25). `counted` is the engine's call on
+ * whether Insights counts the deletion (D45); false when omitted.
+ */
+export type DeletePrediction = (id: string, opts?: { counted?: boolean }) => Promise<void>;
 /**
  * What an open prediction's details let you change (roadmap D25): never the
  * confidence, which is the record (FUTURE_UI A7), and never an outcome.
@@ -725,8 +755,15 @@ export interface PredictionEdit {
   category: Category;
   due_date: string;
 }
-/** Edit an open prediction; a no-op on one that has been answered. */
-export type UpdatePrediction = (id: string, edit: PredictionEdit) => Promise<void>;
+/**
+ * Edit an open prediction; a no-op on one that has been answered. With
+ * `rewordedAt`, the words changed (D45) and `title_edited_at` is set to it.
+ */
+export type UpdatePrediction = (
+  id: string,
+  edit: PredictionEdit,
+  opts?: { rewordedAt?: string },
+) => Promise<void>;
 /** Undo a resolution: back to pending, outcome and reflection cleared. */
 export type ReopenPrediction = (id: string) => Promise<void>;
 /**

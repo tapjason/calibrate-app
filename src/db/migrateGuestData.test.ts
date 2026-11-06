@@ -6,7 +6,13 @@ import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
 } from './migrateGuestData';
-import { insertPrediction, listPendingPredictions } from './predictions';
+import {
+  deletePrediction,
+  insertPrediction,
+  listDeletions,
+  listPendingDeletions,
+  listPendingPredictions,
+} from './predictions';
 import { upsertUserStat, getUserStat, upsertCategoryStat } from './stats';
 import { createTestDb } from './testing';
 
@@ -34,6 +40,22 @@ afterEach(() => {
 });
 
 describe('migrateGuestDataToUser', () => {
+  // Roadmap D45: the count of deleted calls follows the predictions, and
+  // nothing tries to delete on the server what was never there.
+  it("moves the guest's deletions, already marked pushed", async () => {
+    await insertPrediction(p({ id: 'gone' }));
+    await deletePrediction('gone', { counted: true });
+
+    await migrateGuestDataToUser('real-user');
+
+    const moved = await listDeletions('real-user');
+    expect(moved).toHaveLength(1);
+    expect(moved[0]).toMatchObject({ id: 'gone', counted: true });
+    expect(moved[0].pushed_at).not.toBeNull();
+    expect(await listPendingDeletions('real-user')).toEqual([]);
+    expect(await listDeletions(LOCAL_GUEST_USER_ID)).toEqual([]);
+  });
+
   it('moves every guest-owned prediction to the new user_id', async () => {
     await insertPrediction(p({ id: 'a' }));
     await insertPrediction(p({ id: 'b', category: 'health' }));

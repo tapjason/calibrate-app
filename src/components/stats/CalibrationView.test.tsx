@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react-native';
 
-import { CalibrationView, sameDayLine, skippedLine } from '@/components/stats/CalibrationView';
+import { CalibrationView, deletedLine, sameDayLine, skippedLine } from '@/components/stats/CalibrationView';
 import { holdRanges } from '@/components/ui/holdRanges';
 import type { CalibrationResult, UserStat } from '@/types';
 
@@ -367,6 +367,34 @@ describe('CalibrationView same-day answers', () => {
 
   it('words one', () => {
     expect(sameDayLine(1)).toBe('1 answer came the day it was logged, so it isn’t scored.');
+  });
+});
+
+// Roadmap D45: deletions after an answer or the due day, said beside the rating.
+describe('CalibrationView deleted predictions', () => {
+  const view = (deletedCount: number, total: number) =>
+    render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: total, rating_is_provisional: total < 20 })}
+        calibration={{ rating: 87, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        deletedCount={deletedCount}
+      />,
+    );
+
+  it('says how many, and that only this phone keeps the count, before the rating unlocks too', () => {
+    expect(view(2, 161).getByTestId('stats-deleted')).toHaveTextContent(
+      '2 predictions were deleted after they were answered or due. Only this phone keeps this count.',
+    );
+    expect(view(1, 4).getByTestId('stats-deleted')).toBeTruthy();
+    expect(view(0, 161).queryByTestId('stats-deleted')).toBeNull();
+  });
+
+  it('words one', () => {
+    expect(deletedLine(1)).toBe(
+      '1 prediction was deleted after it was answered or due. Only this phone keeps this count.',
+    );
   });
 });
 

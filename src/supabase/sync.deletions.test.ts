@@ -9,7 +9,8 @@ import {
   deletePrediction,
   getPrediction,
   insertPrediction,
-  isDeletionPending,
+  isDeletedHere,
+  listDeletions,
   listPendingDeletions,
 } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
@@ -116,7 +117,7 @@ describe('deletePrediction', () => {
     await deletePrediction('p1');
     expect(await getPrediction('p1')).toBeNull();
     expect(await listPendingDeletions(USER)).toEqual(['p1']);
-    expect(await isDeletionPending('p1')).toBe(true);
+    expect(await isDeletedHere('p1')).toBe(true);
   });
 
   it('does nothing for an id that is not there', async () => {
@@ -126,13 +127,21 @@ describe('deletePrediction', () => {
 });
 
 describe('pushDeletions', () => {
-  it('deletes on the server, then forgets the tombstone', async () => {
+  it('deletes on the server, then marks the tombstone pushed and keeps it (D45)', async () => {
     await insertPrediction(prediction());
-    await deletePrediction('p1');
+    await deletePrediction('p1', { counted: true });
     const { client, deleted } = fakeClient();
     expect(await pushDeletions(USER, client)).toBe(1);
     expect(deleted).toEqual(['p1']);
     expect(await listPendingDeletions(USER)).toEqual([]);
+    // Still skipped on pull, and still counted.
+    expect(await isDeletedHere('p1')).toBe(true);
+    const kept = await listDeletions(USER);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].counted).toBe(true);
+    expect(kept[0].pushed_at).not.toBeNull();
+    // A second sweep has nothing left to push.
+    expect(await pushDeletions(USER, client)).toBe(0);
   });
 
   it('keeps a tombstone whose delete failed, for the next sweep', async () => {
