@@ -1,7 +1,8 @@
 # Fairly Sure — Next Steps an Agent Can Do Alone
 
-**As of:** 2026-10-04 (second pass) · **Branch:** `master` · **Baseline:** `tsc --noEmit` clean,
-133 suites / 1495 tests green (after the UI batches through step 135, 2026-10-12).
+**As of:** 2026-11-06 · **Branch:** `master` · **Baseline:** `bash scripts/check.sh`
+ends in `CHECK PASSED`: `tsc --noEmit` clean, 147 suites / 1712 tests green (after
+step 154, 2026-11-05).
 
 `docs/HUMAN_VERIFICATION.md` lists what needs a person. This is the other half:
 work an agent can finish from the repo with no device, no dashboard and no
@@ -66,22 +67,30 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
 
 ## Suggested order for the next iterations
 
-1. ~~Fix the Test Store prices~~ (done 2026-11-03, with the keep-alive, migration 006 and the old test account), then your calls.
-2. Your calls below: pricing (P1), Pages for the privacy policy. The name is
-   chosen for now (Fairly Sure) and screened clear (2026-11-03); counsel's
-   clearance, the domain and the store record remain.
-   Age assurance (a) is built.
-3. The $99 account → **g** → first EAS development build → Batch C/D on the
-   iPhone → TestFlight. Ready for the App Store Connect record (2026-11-03):
-   bundle id `app.fairlysure` and scheme `fairlysure` set in `app.json`, the
-   policy and listing renamed, a Support URL page (`docs/SUPPORT.md`). Yours,
-   in order: decide to enroll as yourself or a company (a company needs a
-   D-U-N-S number, days to weeks), enroll, register `fairlysure.app`, turn
-   Pages on, then HUMAN_VERIFICATION Batch B0 (Paid Applications Agreement
-   first, since approval takes a day or more; register `app.fairlysure`;
-   create the record with store name `Fairly Sure: Calibration Log`).
-4. **j** (SDK 58), then the design decisions that wait on it (D3, D5) and
-   FUTURE_UI A10.
+Re-planned 2026-11-06, while the Apple Developer enrollment is pending. The
+owner chose to close the three score holes from the November playtests and do
+the other pre-device work below before the first device build.
+
+1. **Step 155, build prep** (this step): `scripts/check.sh`, the explicit
+   EAS environment per profile, and the build day runbook at the top of
+   `HUMAN_VERIFICATION.md` Tier 2.
+2. **Step 156, D45: close the score holes.** A title edit counts as a new
+   prediction from that day (`title_edited_at`, synced behind a flag until
+   Supabase migration 008 is applied); deletions after an answer, or of an
+   open one on or after its due day, are counted on Insights; a "Can't tell"
+   can be answered only up to 7 days after its due date.
+3. **Step 157, D46:** a category's score unlocks at 20 answers, the same as
+   its badge (`MIN_N_CATEGORY` 15 → 20).
+4. **Step 158, D47: accessibility.** The chart's luck bars at 3:1 (WCAG
+   1.4.11); the share card's dot row labelled and not colour-only.
+5. **Step 159, D48: Today on a small phone.** Scroll to a newly saved card;
+   open predictions above the streak and practice rows when nothing is ready.
+6. **Build day,** once the account is active: B0 → **g** → the runbook →
+   Batch C/D on the iPhone → B1/B2 → TestFlight.
+   Owner, in order: enroll (as yourself or a company; a company needs a
+   D-U-N-S number), register `fairlysure.app`, turn Pages on, decide P1, then
+   B0 (Paid Applications Agreement first, since approval takes a day or more).
+7. **j** (SDK 58), only after Batch C passes on 55; then D3, D5, D12 and D11.
 
 ---
 
@@ -104,10 +113,9 @@ stored. Nothing is gated on it. Device check: `HUMAN_VERIFICATION.md` D4.
   `https://tapjason.github.io/calibrate-app/privacy/`), so the paywall and
   Settings show it and it 404s until Pages is on. Merge first, then
   Settings → Pages → Deploy from a branch → `master` → `/docs`. Steps and
-  how to confirm are in `HUMAN_VERIFICATION.md`. Do not enable Pages before
-  that commit is on `master` (no `_config.yml` yet: the build would process
-  every doc and `/privacy/` would not exist). The agent must not change the
-  Pages setting.
+  how to confirm are in `HUMAN_VERIFICATION.md`. `docs/_config.yml` is on
+  `master`, so it's ready; the Pages API still read 404 (off) on
+  2026-11-06. The agent must not change the Pages setting.
 - **The app name.** Chosen for now (2026-11-03): **Fairly Sure**
   (`APP_STORE_LISTING.md` §0; "Calibrate" is crowded and a registered mark).
   Screened 2026-11-03: no conflicting mark; the nearest is FAIRLY (AI

@@ -1,52 +1,41 @@
 # Handoff
 
-**Branch:** `builder/notification-actions` · **Not merged.**
+**Branch:** `builder/build-prep` · **Not merged.** Step 155.
 
 ## What this PR did
 
-D8, step 145. A resolution reminder offers Happened and Didn't. Choosing one records that answer once and opens the app on the resolved state (the acknowledgement, the range line, and a milestone or streak checkpoint when this answer earned it). Tapping the notification body still opens the question. Can't tell stays in the app. Web is unchanged.
+Prepares the first iOS build while the Apple Developer account is pending.
 
-Already-scheduled reminders are not rescheduled. The next launch registers the category, and the OS attaches the buttons when the reminder is delivered. A reminder that fires before this version has launched once still opens Resolve from a body tap.
+- `scripts/check.sh`, the check this file has always pointed to: `tsc --noEmit`, then `jest --ci`, then `CHECK PASSED`. It stops at the first failure.
+- `eas.json` names the EAS environment for each profile (development, preview, production) and requires eas-cli 20 or later, the version on this machine, which accepts the `environment` key. `eas config --profile development --platform ios` accepts it, and showed that EAS has no env vars yet.
+- `docs/HUMAN_VERIFICATION.md` Tier 2 has a build day runbook: identifier capabilities, `eas login`, the three `eas env:create` lines (names only), item g, the build, the install. It also lists what's left on purpose: `ascAppId`, the export-compliance declaration (the owner's call), and the privacy-manifest check after the first upload.
+- `docs/NEXT_STEPS.md` is re-planned for 2026-11-06 (steps 155–159, then build day). Its Pages note is corrected: `_config.yml` is on master.
 
-## In progress / broken
-
-Nothing in this change is unfinished. There is no device here, so the buttons are untested (`docs/HUMAN_VERIFICATION.md` batch D1). `scripts/check.sh` is not in the repo. Background actions (`opensAppToForeground: false`) are not built (expo#36282).
-
-## Next step
-
-Do not build background notification actions until a device confirms these buttons (HUMAN_VERIFICATION batch D1). The next owner call among the open UI decisions is D6. Do not start NEXT_STEPS item g or j, or UI_ROADMAP D5, before a device build on SDK 55 has passed Batch C.
-
-PR #7 (`builder/age-assurance`) also adds `HANDOFF.md` and the `CLAUDE.md` line that says to read it. Whoever merges second resolves that conflict.
-
-## Read first
-
-`HANDOFF.md`, `CLAUDE.md`, `BUILD_PLAN.md`, `docs/design/UI_ROADMAP.md` (D8). For this change: `src/notifications/scheduler.ts`, `src/components/resolution/ResolvePrompt.tsx`.
-
-## Open decisions
-
-D6, D11, and D12 in `docs/design/UI_ROADMAP.md` still need the owner. D5 waits on a device build. App name, pricing (P1), privacy-policy hosting, and the RevenueCat Test Store prices are in NEXT_STEPS, "Waiting on you".
-**Branch:** `builder/age-assurance` · **Not merged.**
-
-## What this PR did
-
-Declared Age Range (NEXT_STEPS item i, owner option (a)). On iOS 26+, after the first screen is up, the app asks Apple once per launch until a band is stored. SQLite keeps only the lower and upper bounds (`age_bucket`, migration 010). Web, Android, older iOS, a missing module, a decline, and any error store nothing and change nothing else. Nothing is gated on the band. The band is not synced. Erase and account deletion delete the row. Entitlement: `com.apple.developer.declared-age-range`. Package: `expo-age-range` 0.2.21 (SDK 55). `npx expo install` with no version resolved 58 and was not kept.
+No app code changed.
 
 ## In progress / broken
 
-Nothing in this change is unfinished. There is no device here, so the Apple sheet is untested (HUMAN_VERIFICATION D4). `scripts/check.sh` is not in the repo.
+Nothing. Baseline: 147 suites / 1712 tests, `CHECK PASSED`.
 
 ## Next step
 
-This waits on the owner. Buy the $99 Apple Developer account, then do **NEXT_STEPS item g** (SDK 55 dependency drift) on the day of the first EAS build. Do not start g earlier, and do not start item j or UI_ROADMAP D5 (SDK 58) until a device build on SDK 55 has passed Batch C. UI steps through 144 are built.
+**Step 156, D45: close the score holes.** The plan is in `docs/NEXT_STEPS.md` item 2 under "Suggested order":
+
+- a title edit sets `title_edited_at` (SQLite 012, Supabase 008, behind `TITLE_EDIT_SYNC`), and same-day scoring and the earliest due date measure from it;
+- tombstones are kept after a push and counted on Insights;
+- a "Can't tell" can be answered up to 7 days past due.
+
+After that come steps 157 (`MIN_N_CATEGORY` 20), 158 (accessibility) and 159 (Today on a small phone). Leave item g and the SDK work for build day, as before.
 
 ## Read first
 
-`HANDOFF.md`, `CLAUDE.md`, `BUILD_PLAN.md`, `docs/NEXT_STEPS.md`. For this check: `src/age/ageRange.ts`.
+`HANDOFF.md`, `CLAUDE.md`, `BUILD_PLAN.md`, `docs/NEXT_STEPS.md`. For 156: `src/engine/sameDay.ts`, `src/engine/corrections.ts`, `src/db/predictions.ts`, `src/store/predictionStore.ts`, `src/supabase/sync.ts`.
 
 ## Open decisions
 
-App name, pricing (P1), privacy-policy hosting, and the RevenueCat Test Store prices (NEXT_STEPS, "Waiting on you"). Age-rating questionnaire: answer **Yes** for age assurance. D6, D8, D11, and D12 in `docs/design/UI_ROADMAP.md` still need the owner. Do not gate any feature on the age band unless the owner decides to; the docs don't require it.
+- **Owner:** pricing (P1), turning on Pages, the domain, enrollment (as yourself or a company), and export compliance (`usesNonExemptEncryption`).
+- **From the November playtests, undecided:** the identity line naming the weakest category second, a terminology pass, a "hide titles in reminders" switch, a day-0 share card, "this weekend" due chips. D6, D11 and D12 in `docs/design/UI_ROADMAP.md`.
 
 ## Checks
 
-`bash scripts/check.sh` must end in `CHECK PASSED`. Until that script exists, `npx tsc --noEmit` and `npm test` are the check, and both must pass.
+`bash scripts/check.sh` must end in `CHECK PASSED`.

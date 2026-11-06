@@ -147,14 +147,60 @@ second build that can't test billing.
 
 ### Tier 2: costs money, so only after Tier 0 and the web run-through pass
 
+#### Build day runbook (added 2026-11-06, step 155)
+
+The first iOS development build, start to finish, from Windows. Do B0 first:
+the identifier must exist before EAS can sign for it.
+
+1. **On the identifier `app.fairlysure`** (developer.apple.com → Identifiers),
+   tick **Sign in with Apple** and **Declared Age Range**. `app.json` asks for
+   both (`usesAppleSignIn`, `com.apple.developer.declared-age-range`). EAS
+   syncs capabilities itself on most runs; if the build fails on a
+   provisioning profile, this is the step to check.
+2. **Log in to EAS** (the project is owned by `tapjason`):
+   `npx eas login`. Then `npx eas whoami` should print `tapjason`.
+3. **Set the build's public values.** `.env.local` is git-ignored, so EAS
+   never sees it; `eas config` read 2026-11-06 found no variables on EAS. The
+   app reads exactly these three on iOS. Run each with the value from your
+   `.env.local` (the agent never reads or prints them):
+   ```
+   npx eas env:create --environment development --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value <from .env.local>
+   npx eas env:create --environment development --visibility plaintext --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <from .env.local>
+   npx eas env:create --environment development --visibility plaintext --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value <the test_ key until B1 gives an appl_ key>
+   ```
+   Never the `sk_`, `OPENAI_` or webhook secrets: those stay on Supabase.
+   `eas.json` names the environment for each profile (development,
+   preview, production) since step 155, so the right set is picked.
+4. **Item g, the same day:** `npx expo install --fix`, then
+   `bash scripts/check.sh` until it prints `CHECK PASSED`. Commit that on its
+   own branch before building, so a device bug can be traced to it or not.
+5. **Build:** `npx eas build --profile development --platform ios`. Sign in
+   to Apple when asked, and let EAS register your iPhone (it opens a page to
+   install a profile on the phone). The build takes about 15–30 minutes in
+   the free queue.
+6. **Install** from the link EAS prints, open it on the phone, then
+   `npx expo start --dev-client` on the PC and scan the QR code with the
+   camera. Then Batch C and D below.
+
+Left for later, on purpose:
+
+- `submit.production` in `eas.json` gets `ascAppId` once the App Store
+  Connect record exists (B0 step 2). `eas submit` asks for it otherwise.
+- **Export compliance.** The app uses only HTTPS through the system, which
+  is exempt. Setting `ios.config.usesNonExemptEncryption: false` in
+  `app.json` answers App Store Connect's question for every build; until
+  then it asks once per upload. It's your declaration to make, so it isn't
+  set.
+- **Privacy manifests** (`APP_PRIVACY.md` §6): check the first upload's
+  App Store Connect email for a missing required-reason API.
+- The `preview` profile builds for the simulator only, so it needs a Mac.
+  Use `development`, and `production` for TestFlight.
+
 - **Apple Developer Program, $99/yr.** Unlocks **any run on your iPhone**
   (since 2026-10-04: Expo Go can't open SDK 55), plus B0, B2, the `appl_` key,
   C and D on a development build, and E (TestFlight, submission). Sandbox
   purchases are free; the $99 is the only spend. First build after buying:
-  `npx expo install --fix` (NEXT_STEPS g), set the EAS env vars (Tier 1 step 2
-  above, iOS keys instead of Android), then
-  `eas build --profile development --platform ios`. EAS registers your iPhone
-  for the internal-distribution build when it asks.
+  the build day runbook above.
 - **Supabase free tier pauses after ~7 days idle.** Not a cost, but it breaks
   testing silently. Restore it from the dashboard if DNS stops resolving.
 
