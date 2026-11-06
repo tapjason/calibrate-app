@@ -1,0 +1,2 @@
+# Shell scripts keep LF: bash fails on a CRLF line ending (step 155).
+*.sh text eol=lf
