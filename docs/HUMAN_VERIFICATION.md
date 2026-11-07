@@ -199,11 +199,10 @@ Left for later, on purpose:
   the EU, which puts a verified address, phone and email on the EU product
   pages. Undeclared, the app just isn't offered in EU storefronts; the owner
   may launch outside the EU first and add it later.
-- **Export compliance.** The app uses only HTTPS through the system, which
-  is exempt. Setting `ios.config.usesNonExemptEncryption: false` in
-  `app.json` answers App Store Connect's question for every build; until
-  then it asks once per upload. It's your declaration to make, so it isn't
-  set.
+- **Export compliance: declared 2026-11-07** by the owner at the first EAS
+  build (exempt: HTTPS through the system only). EAS wrote
+  `ios.infoPlist.ITSAppUsesNonExemptEncryption: false` into `app.json`, so
+  App Store Connect stops asking on each upload.
 - **Privacy manifests** (`APP_PRIVACY.md` §6): check the first upload's
   App Store Connect email for a missing required-reason API.
 - The `preview` profile builds for the simulator only, so it needs a Mac.
