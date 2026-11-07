@@ -157,6 +157,13 @@ the identifier must exist before EAS can sign for it.
    both (`usesAppleSignIn`, `com.apple.developer.declared-age-range`). EAS
    syncs capabilities itself on most runs; if the build fails on a
    provisioning profile, this is the step to check.
+   **Done 2026-11-07:** identifier registered, App Store Connect record
+   created (Apple ID `6831917395`, now `APP_STORE_ID` and `ascAppId`).
+   **Supabase:** Authentication → Sign In / Providers → **Apple** enabled
+   with `app.fairlysure` in Client IDs (done 2026-11-07). Native sign-in
+   (`signInWithIdToken`) is refused without it, even on a working build.
+   **The iPhone:** Settings → Privacy & Security → **Developer Mode** on, or a
+   development build won't open.
 2. **Log in to EAS** (the project is owned by `tapjason`):
    `npx eas login`. Then `npx eas whoami` should print `tapjason`.
 3. **Set the build's public values.** `.env.local` is git-ignored, so EAS
@@ -171,9 +178,12 @@ the identifier must exist before EAS can sign for it.
    Never the `sk_`, `OPENAI_` or webhook secrets: those stay on Supabase.
    `eas.json` names the environment for each profile (development,
    preview, production) since step 155, so the right set is picked.
+   **Steps 2 and 3 done 2026-11-07** (by the owner; values never read by the agent).
 4. **Item g, the same day:** `npx expo install --fix`, then
    `bash scripts/check.sh` until it prints `CHECK PASSED`. Commit that on its
    own branch before building, so a device bug can be traced to it or not.
+   **Done 2026-11-07** on `builder/expo-fix`: 15 SDK 55 patch updates
+   (`expo` 55.0.32, `react-native` 0.83.10).
 5. **Build:** `npx eas build --profile development --platform ios`. Sign in
    to Apple when asked, and let EAS register your iPhone (it opens a page to
    install a profile on the phone). The build takes about 15–30 minutes in
@@ -184,8 +194,11 @@ the identifier must exist before EAS can sign for it.
 
 Left for later, on purpose:
 
-- `submit.production` in `eas.json` gets `ascAppId` once the App Store
-  Connect record exists (B0 step 2). `eas submit` asks for it otherwise.
+- `submit.production` in `eas.json` has `ascAppId` since 2026-11-07.
+- **EU (DSA trader status).** Selling Plus makes the developer a trader in
+  the EU, which puts a verified address, phone and email on the EU product
+  pages. Undeclared, the app just isn't offered in EU storefronts; the owner
+  may launch outside the EU first and add it later.
 - **Export compliance.** The app uses only HTTPS through the system, which
   is exempt. Setting `ios.config.usesNonExemptEncryption: false` in
   `app.json` answers App Store Connect's question for every build; until

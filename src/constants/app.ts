@@ -53,12 +53,13 @@ export const TERMS_OF_USE_URL =
 export const PRIVACY_POLICY_URL = 'https://tapjason.github.io/calibrate-app/privacy/';
 
 /**
- * The app's numeric App Store id ("6740000000"), once App Store Connect has a
- * record for it, which needs the developer account. **Null until then**: a
- * share carries no link rather than one that goes nowhere.
- * `GROWTH_AND_MONETIZATION.md` §0, step 1.
+ * The app's numeric App Store id, from App Store Connect → App Information →
+ * Apple ID (record created 2026-11-07). Text shares end on its product page.
+ * The page is live only once the app is released, so until then a link from
+ * a development or TestFlight build goes to a page that isn't there yet.
+ * `GROWTH_AND_MONETIZATION.md` §0, step 1. Also `ascAppId` in `eas.json`.
  */
-export const APP_STORE_ID: string | null = null;
+export const APP_STORE_ID: string | null = '6831917395';
 
 /**
  * The provider token (`pt=`) App Store Connect issues with the first campaign

@@ -15,9 +15,15 @@ describe('share links (GROWTH §0, step 1)', () => {
     }
   });
 
-  it('is null until the app has an App Store id', () => {
-    expect(appStoreLink('share-card-text')).toBeNull();
+  it('is null without an App Store id', () => {
+    expect(appStoreLink('share-card-text', { id: null, providerToken: null })).toBeNull();
     expect(appStoreLink('share-card-text', { id: null, providerToken: '123' })).toBeNull();
+  });
+
+  it("uses the app's own id (App Store Connect record, 2026-11-07)", () => {
+    expect(appStoreLink('share-card-text')).toMatch(
+      /^https:\/\/apps\.apple\.com\/app\/apple-store\/id6831917395/,
+    );
   });
 
   it('links to the product page without a campaign until there is a provider token', () => {
