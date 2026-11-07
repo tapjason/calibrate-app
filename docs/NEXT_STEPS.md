@@ -51,7 +51,7 @@ affects; this is the summary.
 
 | # | Item | Size | Why it matters |
 |---|---|---|---|
-| g | **Dependency drift within SDK 55.** `npx expo install --check` now lists 15 packages behind (re-run 2026-10-04: `expo` 55.0.26 → 55.0.31, `react-native` 0.83.6 → 0.83.10, `expo-router`, `expo-notifications`, `expo-sqlite`, `jest-expo`, …). Run `npx expo install --fix`, then `npm test`. | S | Do it the day of the first EAS build. Doing it earlier means retesting twice. |
+| g | **Dependency drift within SDK 55.** `npx expo install --check` now lists 15 packages behind (re-run 2026-10-04: `expo` 55.0.26 → 55.0.31, `react-native` 0.83.6 → 0.83.10, `expo-router`, `expo-notifications`, `expo-sqlite`, `jest-expo`, …). Run `npx expo install --fix`, then `npm test`. | S | **Done 2026-11-07** (`builder/expo-fix`): `expo` 55.0.32, `react-native` 0.83.10; `--check` clean. |
 | j | **SDK upgrade, 55 → 58**, as its own iteration *after* the first device build passes Batch C on 55. Go straight to 58 once it's stable, following `docs.expo.dev/router/migrate/sdk-57-to-58/`. 58 adopts the UIScene lifecycle through prebuild, makes React Native's strict TypeScript API the default, and has breaking changes in `expo-router`, `expo-sqlite` and `expo-file-system`, all of which this app uses. | L | Unblocks D3 (stable native tabs), FUTURE_UI A10 (`expo-app-intents`), stable `@expo/ui`, and the platform features in FUTURE_UI §D (widgets, Siri, an on-device Coach; research 2026-10-05). Upgrading *before* the first device run means nobody can tell whether a device bug comes from the app or from the upgrade. |
 
 Done 2026-10-04 (second pass): **h** — Settings and the Coach panel now name
@@ -71,10 +71,16 @@ Re-planned 2026-11-06, while the Apple Developer enrollment is pending. The
 owner chose to close the three score holes from the November playtests and do
 the other pre-device work below before the first device build.
 
-1. **Step 155, build prep** (this step): `scripts/check.sh`, the explicit
+**Update 2026-11-07:** the account is active and build day has started, ahead
+of steps 157–159 (the owner's choice: see it on the phone first). Steps 155
+and 156 are on `master` (locally); B0's identifier, the App Store Connect
+record (`6831917395`), the Supabase Apple provider, EAS login and variables
+and item g are done. Next: the owner runs the development build.
+
+1. **Step 155, build prep** (done): `scripts/check.sh`, the explicit
    EAS environment per profile, and the build day runbook at the top of
    `HUMAN_VERIFICATION.md` Tier 2.
-2. **Step 156, D45: close the score holes.** A title edit counts as a new
+2. **Step 156, D45: close the score holes** (done). A title edit counts as a new
    prediction from that day (`title_edited_at`, synced behind a flag until
    Supabase migration 008 is applied); deletions after an answer, or of an
    open one on or after its due day, are counted on Insights; a "Can't tell"
@@ -96,7 +102,7 @@ the other pre-device work below before the first device build.
 
 ## Waiting on you, not code
 
-- **The $99 Apple Developer account now gates any iPhone test** (finding 1).
+- **The $99 Apple Developer account** (active 2026-11-07) **gated any iPhone test** (finding 1).
   The only free check left is the web build (item k). When you want to see the
   app on your phone, this is the purchase. It also unlocks billing, TestFlight
   and submission.
