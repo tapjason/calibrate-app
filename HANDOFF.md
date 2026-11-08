@@ -6,7 +6,7 @@
 
 Fixes from the first run on the owner's iPhone 17 (2026-11-07, development build over `--tunnel`).
 
-- **Log's header was hidden.** The title field sat over "New prediction" and the ×. Log is now iOS's page sheet (`presentation: 'modal'` in `app/_layout.tsx`), not a formSheet. The likely cause, not confirmed on a device: the keyboard pushing a full-height formSheet up. The swipe-down and the draft guard are unchanged.
+- **Log's header was hidden.** The title field sat over "New prediction" and the ×, with no keyboard up (owner's screenshot). Two changes: Log is iOS's page sheet (`presentation: 'modal'` in `app/_layout.tsx`), not a formSheet, and the title row is the first thing inside the form's scroll view (`header` prop on `LogPredictionForm`), so nothing can be laid over it. Likely cause: react-native-screens resizes a formSheet's scroll view to the whole sheet and, on the new architecture, can put it at the top (`RNSScreenContentWrapper.mm`, `coerceChildScrollViewComponentSizeToSize`). The swipe-down and the draft guard are unchanged; the × now scrolls with the form, as on Your card.
 - **Categories:** Rename is its own pill button (ink on `surfaceSunken`, no new hue, D33) instead of grey text after the name. The switch is boxed at the row's 44pt height, because on the iPhone it sat above the row's centre (the web build was already centred).
 - **Apple sign-in error text:** a provider switched off on Supabase ('Provider (issuer "https://appleid.apple.com") is not enabled') now reads "This way of signing in isn't available right now. Sign in with your email instead." (`authErrorText`).
 
@@ -14,12 +14,13 @@ Fixes from the first run on the owner's iPhone 17 (2026-11-07, development build
 
 - **Apple sign-in fails on the server:** the Apple provider isn't enabled on the live project, or wasn't saved. That's for the owner to fix, not code.
 - **You → Your card alignment:** reported, not yet seen. Waiting on a screenshot.
-- Not yet re-checked on the phone: the Log sheet and the switch box.
+- Not yet re-checked on the phone: the Log sheet, the switch box, and the Practice sheet (same header-beside-scroll shape as the old Log, not reported).
+- **Switches may still sit high.** In the Categories row the switch was already centred in a 44pt line before the box, so the offset is probably inside the native view: RN sizes the switch from a default `UISwitch`, and iOS 26 may draw the custom-tinted one at another size, anchored top-left. If the box doesn't fix it, the You-tab switches will show it too; a fix needs the phone to measure against.
 
 ## Next step
 
 - **Owner:** re-save the Supabase Apple provider; send a screenshot of Your card; reload the app and re-check Log and Categories; the notification checks.
-- **Agent:** Your card once the screenshot arrives; then steps 157–159.
+- **Agent:** Your card once the screenshot arrives (on web at 402pt it renders as designed, so it's native-only); the switches if the box didn't do it; then steps 157–159.
 
 ## Read first
 

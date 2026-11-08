@@ -284,9 +284,12 @@ export default function RootLayout() {
         {/* Logging is an action, not a place (roadmap D3): the "+" opens it as a
             full-height sheet over whichever tab you're on. iOS's own page
             sheet, not a formSheet: on the first device run (2026-11-07, iOS
-            26) the keyboard pushed the formSheet up, so the title field sat
-            over "New prediction" and hid the ×. A page sheet stays put, and
-            still swipes down (through the draft guard). */}
+            26) the title field sat over "New prediction" and hid the ×, with
+            no keyboard up. react-native-screens resizes a formSheet's scroll
+            view to the whole sheet and, on the new architecture, can place it
+            at the top over a header beside it. The header now scrolls inside
+            the form (app/log.tsx), and a page sheet skips that resizing
+            altogether. It still swipes down, through the draft guard. */}
         <Stack.Screen name="log" options={{ presentation: 'modal' }} />
         {/* Today's practice (roadmap step 88): a task, so a sheet like Log. */}
         <Stack.Screen
