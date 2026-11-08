@@ -69,8 +69,12 @@ export default function HistoryScreen() {
   // Plain counts for the current filter, as the Answered heading counts.
   const summary = historySummary(filtered);
 
-  return (
-    <View style={styles.wrap}>
+  // The filters and the summary scroll away with the list rather than
+  // sitting fixed over it: fixed, they left the list 84 pt tall in landscape
+  // and 168 at large text (playtest 2026-11-08, finding 7). With nothing to
+  // list they sit above the empty state.
+  const header = (
+    <>
       {range !== null && (
         <Pressable
           onPress={clearRange}
@@ -103,7 +107,10 @@ export default function HistoryScreen() {
               hitSlop={{ top: 4, bottom: 4 }}
               style={[styles.chip, filter === f && styles.chipActive]}
             >
-              <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>
+              <Text
+                style={[styles.chipText, filter === f && styles.chipTextActive]}
+                numberOfLines={1}
+              >
                 {f === 'all' ? 'All' : categoryTitle(f)}
               </Text>
             </Pressable>
@@ -115,6 +122,12 @@ export default function HistoryScreen() {
           {summary}
         </Text>
       )}
+    </>
+  );
+
+  return (
+    <View style={styles.wrap}>
+      {filtered.length === 0 && open.length === 0 && header}
       {filtered.length === 0 && open.length === 0 ? (
         resolved.length === 0 ? (
           // Nothing resolved at all: when the first answer can come, and a
@@ -158,6 +171,7 @@ export default function HistoryScreen() {
             ...(filtered.length > 0 ? [{ key: 'answered', title: 'Answered', data: filtered }] : []),
           ]}
           keyExtractor={(p) => p.id}
+          ListHeaderComponent={header}
           renderSectionHeader={({ section }) =>
             // One section needs no header; with both, each says what it holds.
             open.length > 0 ? (
@@ -211,8 +225,11 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: space.sm, paddingVertical: 4 },
   summary: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
   footer: { ...type.subhead, color: colors.textSecondary, marginTop: space.lg },
+  // Capped so one long name can't fill the row (playtest 2026-11-08,
+  // finding 1); the name ends in an ellipsis.
   chip: {
     justifyContent: 'center',
+    maxWidth: 200,
     minHeight: 36,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,

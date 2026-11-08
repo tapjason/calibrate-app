@@ -188,7 +188,9 @@ function InsightCard({
   return (
     <View style={styles.card} testID={`coach-insight-${insight.category}`}>
       <View style={styles.cardHeader}>
-        <Text style={styles.category}>{categoryTitle(insight.category)}</Text>
+        <Text style={styles.category} numberOfLines={1}>
+          {categoryTitle(insight.category)}
+        </Text>
         <Pressable
           onPress={onDismiss}
           accessibilityRole="button"
@@ -243,11 +245,17 @@ const styles = StyleSheet.create({
     gap: space.xs,
     padding: space.lg,
   },
-  cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  cardHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: space.md,
+    justifyContent: 'space-between',
+  },
   // Sentence case, not ALL-CAPS grey (DESIGN_SYSTEM §7.9).
   category: {
     ...type.footnote,
     color: colors.textSecondary,
+    flexShrink: 1,
     fontWeight: '600',
   },
   dismiss: { ...type.title3, color: colors.textTertiary, lineHeight: 20 },

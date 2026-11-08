@@ -18,7 +18,13 @@ import {
   skipLastDay,
 } from '@/engine/corrections';
 import { pastOutcomes, titleKey } from '@/engine/pastOutcomes';
-import { clampDueDate, earliestDueDay, isSameDayAnswer, scoredFrom } from '@/engine/sameDay';
+import {
+  clampDueDate,
+  earliestDueDay,
+  isSameDayAnswer,
+  latestDueDay,
+  scoredFrom,
+} from '@/engine/sameDay';
 import { checkpointReached, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
@@ -439,6 +445,14 @@ export function correctionWindow(p: Prediction, now: Date): Date | null {
  */
 export function earliestDueFor(createdAt: string | Date, now: Date = new Date()): Date {
   return earliestDueDay(new Date(createdAt), now);
+}
+
+/**
+ * The latest due day the date pickers offer, at local midnight: two years on
+ * (playtest 2026-11-08).
+ */
+export function latestDueFor(now: Date = new Date()): Date {
+  return latestDueDay(now);
 }
 
 /** Whether an answer given at `now` would be a same-day one, not scored (D41). */

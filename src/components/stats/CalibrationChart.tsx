@@ -65,6 +65,43 @@ export function xTickLabel(t: number, tickGap: number): string {
   return tickGap >= X_TICK_PERCENT_MIN_GAP ? `${t}%` : String(t);
 }
 
+/**
+ * Below this gap between ticks, only every other tick is labelled (0, 40,
+ * 80): in a narrow chart "80" and "100" ran together as "80100" (playtest
+ * 2026-11-08, finding 4). The gridlines all stay.
+ */
+const TICK_LABEL_MIN_GAP = 34;
+/** Up the side the labels stack, so they need only a line's height. */
+const Y_TICK_LABEL_MIN_GAP = TICK_FONT + 5;
+export function tickLabelled(index: number, tickGap: number, minGap = TICK_LABEL_MIN_GAP): boolean {
+  return tickGap >= minGap || index % 2 === 0;
+}
+
+/** Estimated box of a chart label, for keeping labels off each other. */
+interface LabelBox {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/** The region labels' boxes, from the same anchors as the drawn text. */
+export function regionLabelBoxes(
+  left: number,
+  right: number,
+  top: number,
+  bottom: number,
+): LabelBox[] {
+  // Bold, so a little wider than the ticks' estimate.
+  const charW = TICK_FONT * 0.65;
+  const over = 'Overconfident'.length * charW;
+  const under = 'Underconfident'.length * charW;
+  return [
+    { x0: right - 8 - over, x1: right - 8, y0: bottom - 10 - TICK_FONT, y1: bottom - 10 },
+    { x0: left + 8, x1: left + 8 + under, y0: top + 18 - TICK_FONT, y1: top + 18 },
+  ];
+}
+
 /** Dot fill per side of the diagonal (DESIGN_SYSTEM §2.3). */
 const MARK: Record<Direction, string> = {
   overconfident: colors.overMark,
@@ -146,7 +183,11 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
     })),
     top,
     bottom,
+    // "n=52" printed on "Underconfident" (playtest 2026-11-08, finding 4).
+    regionLabelBoxes(left, right, top, bottom),
   );
+  const tickGapX = (right - left) / (TICKS.length - 1);
+  const tickGapY = (bottom - top) / (TICKS.length - 1);
 
   return (
     <View
@@ -178,7 +219,7 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
               fillOpacity={0.07}
             />
 
-            {TICKS.map((t) => (
+            {TICKS.map((t, i) => (
               <G key={t}>
                 <Line
                   x1={xOf(t)}
@@ -196,16 +237,19 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
                   stroke={colors.hairline}
                   strokeWidth={1}
                 />
-                <SvgText
-                  x={left - 5}
-                  y={yOf(t / 100) + 4}
-                  fontSize={TICK_FONT}
-                  fontFamily={svgFontFamily}
-                  fill={colors.textTertiary}
-                  textAnchor="end"
-                >
-                  {t}
-                </SvgText>
+                {tickLabelled(i, tickGapY, Y_TICK_LABEL_MIN_GAP) && (
+                  <SvgText
+                    x={left - 5}
+                    y={yOf(t / 100) + 4}
+                    fontSize={TICK_FONT}
+                    fontFamily={svgFontFamily}
+                    fill={colors.textTertiary}
+                    textAnchor="end"
+                  >
+                    {t}
+                  </SvgText>
+                )}
+                {tickLabelled(i, tickGapX) && (
                 <SvgText
                   x={xOf(t)}
                   y={bottom + 17}
@@ -216,8 +260,9 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
                   // clipped by the right edge.
                   textAnchor={t === 100 ? 'end' : 'middle'}
                 >
-                  {xTickLabel(t, (right - left) / (TICKS.length - 1))}
+                  {xTickLabel(t, tickGapX)}
                 </SvgText>
+                )}
               </G>
             ))}
 
@@ -414,9 +459,15 @@ export function labelAt(
  * reads as nothing). Widths are estimated, which is enough to keep apart
  * labels this short. Exported for tests.
  */
-export function placeDotLabels(dots: DotLabelInput[], top: number, bottom: number): number[] {
+export function placeDotLabels(
+  dots: DotLabelInput[],
+  top: number,
+  bottom: number,
+  reserved: readonly LabelBox[] = [],
+): number[] {
   const charW = TICK_FONT * 0.6;
-  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  // Boxes already taken: the region labels, then each label as it's placed.
+  const placed: LabelBox[] = [...reserved];
   const boxAt = (d: DotLabelInput, y: number) => {
     const half = (d.text.length * charW) / 2;
     return { x0: d.cx - half, x1: d.cx + half, y0: y - TICK_FONT, y1: y };

@@ -40,10 +40,12 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
                   one place a range may (DESIGN_SYSTEM §7.9): held whole, it
                   was cut to "20–4…" at large text sizes, where the web can't
                   shrink it and iOS only so far (blind playtest 2026-11-01).
+                  Three lines, so a cell too narrow even for "100%" breaks it
+                  rather than cutting it to "80–10…" (playtest 2026-11-08).
                   Spoken plain, from the cell's label. */}
               <Text
                 style={styles.range}
-                numberOfLines={2}
+                numberOfLines={3}
                 adjustsFontSizeToFit
                 minimumFontScale={0.7}
                 testID={`coverage-${low}-label`}

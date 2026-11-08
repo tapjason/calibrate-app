@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { chosenProps } from '@/components/ui/chosen';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -26,6 +26,11 @@ interface DayChipsProps {
  * group, selected in ink with a bolder label (D33), each spoken in full.
  */
 export function DayChips({ value, onChange, testID }: DayChipsProps) {
+  // Each chip is at least wide enough for its three letters at the current
+  // text size; when seven don't fit, they wrap to a second row instead of
+  // running together ("SuMorTueWe", playtest 2026-11-08, finding 9).
+  const { fontScale } = useWindowDimensions();
+  const minWidth = Math.ceil(31 * Math.min(Math.max(fontScale, 1), 2));
   return (
     <View
       style={styles.row}
@@ -43,10 +48,12 @@ export function DayChips({ value, onChange, testID }: DayChipsProps) {
             accessibilityLabel={name}
             {...chosenProps('radio', on)}
             hitSlop={{ top: 4, bottom: 4 }}
-            style={[styles.chip, on && styles.chipOn]}
+            style={[styles.chip, { minWidth }, on && styles.chipOn]}
             testID={`${testID}-${day}`}
           >
-            <Text style={[styles.text, on && styles.textOn]}>{name.slice(0, 3)}</Text>
+            <Text style={[styles.text, on && styles.textOn]} numberOfLines={1}>
+              {name.slice(0, 3)}
+            </Text>
           </Pressable>
         );
       })}
@@ -55,7 +62,9 @@ export function DayChips({ value, onChange, testID }: DayChipsProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: space.xxs, marginTop: space.sm },
+  // space.xs between chips: at xxs two selected-looking borders all but
+  // touched (1 px apart, playtest 2026-11-08, finding 9).
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.sm },
   chip: {
     alignItems: 'center',
     backgroundColor: colors.surface,
@@ -70,7 +79,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     minHeight: 36,
-    minWidth: 0,
     paddingHorizontal: space.xxs,
   },
   chipOn: { backgroundColor: colors.action, borderColor: colors.action },

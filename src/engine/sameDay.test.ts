@@ -4,6 +4,8 @@ import {
   clampDueDate,
   earliestDueDay,
   isSameDayAnswer,
+  latestDueDay,
+  MAX_DUE_YEARS,
   sameDayCount,
   scoredFrom,
   scoredOnly,
@@ -85,6 +87,15 @@ describe('clampDueDate (blind playtest 2026-11-04)', () => {
     expect(clampDueDate(new Date(2026, 10, 3, 12).toISOString(), logged, logged)).toBe(earliest);
     expect(clampDueDate(new Date(1906, 10, 5, 12).toISOString(), logged, logged)).toBe(earliest);
     expect(clampDueDate('not a date', logged, logged)).toBe(earliest);
+  });
+});
+
+// Playtest 2026-11-08, finding 6: Pick a date took 12/31/9999.
+describe('latestDueDay', () => {
+  it('is today at midnight, MAX_DUE_YEARS on', () => {
+    expect(latestDueDay(new Date(2026, 10, 3, 19, 0))).toEqual(
+      new Date(2026 + MAX_DUE_YEARS, 10, 3),
+    );
   });
 });
 

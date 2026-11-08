@@ -53,12 +53,14 @@ export function PracticeCard({ onOpen, testID = 'practice-card' }: PracticeCardP
       </View>
       {/* Done, the row's chevron is enough: "See answers" crowded the count
           onto a second line at 375pt. It stays in the spoken hint. */}
-      {!copy.done && (
-        <Text style={styles.action} testID={`${testID}-action`}>
-          {copy.action}
-        </Text>
-      )}
-      <Icon sf="chevron.right" fallback="chevron-forward" size={14} color={colors.textTertiary} />
+      <View style={styles.end}>
+        {!copy.done && (
+          <Text style={styles.action} testID={`${testID}-action`}>
+            {copy.action}
+          </Text>
+        )}
+        <Icon sf="chevron.right" fallback="chevron-forward" size={14} color={colors.textTertiary} />
+      </View>
     </Pressable>
   );
 }
@@ -72,6 +74,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: space.md,
     marginBottom: space.lg,
     minHeight: 56,
@@ -79,7 +82,11 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   pressed: { backgroundColor: colors.surfaceSunken },
-  text: { flex: 1 },
+  // The words keep a readable width: at large text "Start" and the chevron
+  // wrap under them, at the right, instead of squeezing them to "T / o / d /
+  // ay" (playtest 2026-11-08, finding 2).
+  text: { flexBasis: 140, flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  end: { alignItems: 'center', flexDirection: 'row', gap: space.md, marginLeft: 'auto' },
   title: { ...type.headline, color: colors.textPrimary },
   detail: { ...type.footnote, color: colors.textSecondary },
   action: { ...type.subhead, color: colors.actionText, fontWeight: '600' },

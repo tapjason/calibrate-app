@@ -76,6 +76,22 @@ export function earliestDueDay(createdAt: Date, now: Date): Date {
 }
 
 /**
+ * How far ahead Log's and Edit's date pickers go. Pick a date took 12/31/9999
+ * (playtest 2026-11-08, finding 6): a prediction no one can answer in their
+ * lifetime is a typo, and it sat open in every list. The pickers hold it; the
+ * store doesn't, since a far date harms no score.
+ */
+export const MAX_DUE_YEARS = 2;
+
+/** The latest due day, at local midnight: today, MAX_DUE_YEARS on. */
+export function latestDueDay(now: Date): Date {
+  const latest = new Date(now);
+  latest.setHours(0, 0, 0, 0);
+  latest.setFullYear(latest.getFullYear() + MAX_DUE_YEARS);
+  return latest;
+}
+
+/**
  * A due date no earlier than earliestDueDay, at local noon like the presets.
  * The pickers offer nothing earlier, but a web date field takes a typed date
  * below its min, and a typed year can land in 1906 (blind playtest

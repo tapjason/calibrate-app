@@ -10,6 +10,8 @@ import {
 
 import { colors, radius, space, type } from '@/constants/theme';
 
+import { LengthCounter } from './LengthCounter';
+
 interface TextFieldProps {
   label: string;
   value: string;
@@ -99,6 +101,13 @@ export function TextField({
         autoCorrect={secureTextEntry || keyboardType === 'email-address' ? false : undefined}
         style={[styles.input, multiline && styles.multiline]}
       />
+      {maxLength !== undefined && (
+        <LengthCounter
+          length={value.length}
+          max={maxLength}
+          testID={testID ? `${testID}-count` : undefined}
+        />
+      )}
       {children}
     </View>
   );

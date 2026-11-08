@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { CategoryIcon } from '@/components/ui/Icon';
+import { LengthCounter } from '@/components/ui/LengthCounter';
 import { TextButton } from '@/components/ui/TextButton';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { CUSTOM_CATEGORY_SYNC } from '@/constants/app';
@@ -99,6 +100,7 @@ export function CategoryManager() {
                       returnKeyType="done"
                       testID={`manage-${c}-input`}
                     />
+                    <LengthCounter length={draft.length} max={CATEGORY_NAME_MAX} />
                     <View style={styles.editActions}>
                       <Button
                         label="Save"
@@ -129,9 +131,16 @@ export function CategoryManager() {
                       accessibilityState={{ expanded: iconFor === c }}
                       testID={`manage-${c}-icon`}
                     >
-                      <CategoryIcon category={c} size={22} color={colors.textSecondary} />
+                      {/* A hidden row is dimmed, icon and name, so it reads as
+                          off before the switch is found (playtest 2026-11-08,
+                          finding 21). */}
+                      <View style={hidden && styles.dimmed}>
+                        <CategoryIcon category={c} size={22} color={colors.textSecondary} />
+                      </View>
                     </Pressable>
-                    <Text style={[styles.name, hidden && styles.nameHidden]}>{name}</Text>
+                    <Text style={[styles.name, hidden && styles.nameHidden]} numberOfLines={1}>
+                      {name}
+                    </Text>
                     {/* Its own button, not grey text after the name (first device
                         run, 2026-11-07: it read as part of the label). Ink on a
                         sunken pill: the brand has no hue for actions (D33). */}
@@ -162,6 +171,9 @@ export function CategoryManager() {
                           void run(() => useCategoryStore.getState().setHidden(c, !on))
                         }
                         accessibilityLabel={`Offer ${name} when logging`}
+                        accessibilityHint={
+                          !hidden && shown.length === 1 ? LAST_SHOWN_NOTE : undefined
+                        }
                         testID={`manage-${c}-shown`}
                       />
                     </View>
@@ -178,6 +190,13 @@ export function CategoryManager() {
         })}
       </View>
       <Text style={styles.footnote}>The switch offers a category when you log.</Text>
+      {/* The last switch on can't be turned off: said, not silent (playtest
+          2026-11-08, finding 21). */}
+      {shown.length === 1 && (
+        <Text style={styles.footnote} testID="manage-last-shown">
+          {LAST_SHOWN_NOTE}
+        </Text>
+      )}
 
       {error && (
         <Text style={styles.error} testID="manage-error">
@@ -200,6 +219,7 @@ export function CategoryManager() {
         returnKeyType="done"
         testID="manage-new-name"
       />
+      <LengthCounter length={newName.length} max={CATEGORY_NAME_MAX} testID="manage-new-count" />
       {addProblem && <Text style={styles.footnote}>{addProblem}</Text>}
       <Button
         label="Add"
@@ -219,6 +239,8 @@ export function CategoryManager() {
     </View>
   );
 }
+
+const LAST_SHOWN_NOTE = 'One category stays on: logging needs one.';
 
 const styles = StyleSheet.create({
   wrap: { gap: space.sm, padding: space.lg, paddingBottom: space.huge },
@@ -254,15 +276,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
-  // The name takes the room; at large sizes Rename and the switch wrap under it.
+  // The name takes what's left and gives way first, on one line: at 320 wide
+  // a basis of 80 sent the switch to its own line even for "x", and a long
+  // name ran out of the row (playtest 2026-11-08, findings 1 and 3). At large
+  // sizes Rename and the switch still wrap under it once they can't fit.
   name: {
     ...type.callout,
     color: colors.textPrimary,
-    flexBasis: 80,
+    flexBasis: 0,
     flexGrow: 1,
     flexShrink: 1,
+    minWidth: 48,
   },
-  nameHidden: { color: colors.textSecondary },
+  nameHidden: { color: colors.textTertiary },
+  dimmed: { opacity: 0.45 },
   renameButton: {
     alignItems: 'center',
     backgroundColor: colors.surfaceSunken,

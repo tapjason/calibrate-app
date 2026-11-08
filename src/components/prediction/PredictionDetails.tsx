@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
+import { localDate } from '@/components/ui/dates';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
@@ -39,7 +40,7 @@ interface PredictionDetailsProps {
 type Mode = 'view' | 'edit' | 'delete' | 'early';
 
 const shortDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  localDate(new Date(iso), { weekday: 'short', month: 'short', day: 'numeric' });
 
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23):
@@ -175,12 +176,14 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
     <>
       {/* What you said, first, as on Resolve (DESIGN_SYSTEM §7.10). */}
       <Text style={styles.stated} testID="details-stated">
-        On {new Date(prediction.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{' '}
+        On {localDate(new Date(prediction.created_at), { day: 'numeric', month: 'short' })}{' '}
         you said <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
       </Text>
       <View style={styles.categoryRow}>
         <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
-        <Text style={styles.category}>{categoryTitle(prediction.category)}</Text>
+        <Text style={styles.category} numberOfLines={1}>
+          {categoryTitle(prediction.category)}
+        </Text>
       </View>
       <Text style={styles.title} testID="details-title">
         {prediction.title}
@@ -324,9 +327,12 @@ const styles = StyleSheet.create({
   stated: { ...type.title3, color: colors.textSecondary },
   statedNumber: { ...type.title1, ...tabularNums, fontFamily: FONT_FAMILY, color: colors.textPrimary },
   categoryRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs, marginTop: space.sm },
+  // One line beside its icon: a long name ends in an ellipsis instead of
+  // running off the sheet (playtest 2026-11-08, finding 1).
   category: {
     ...type.footnote,
     color: colors.textSecondary,
+    flexShrink: 1,
     fontWeight: '600',
   },
   title: { ...type.title2, color: colors.textPrimary },

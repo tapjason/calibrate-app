@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { chosenProps } from '@/components/ui/chosen';
@@ -5,6 +6,31 @@ import { CategoryIcon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
 import { categoryLabel, categoryOptions, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 import type { Category } from '@/types';
+
+/**
+ * Past this many choices the row shows the first ones and "N more": thirteen
+ * chips pushed Log's confidence to y 557 and its due date to 695 of 844
+ * (playtest 2026-11-08, finding 13).
+ */
+export const CATEGORY_CHIPS_COLLAPSE_AFTER = 8;
+const CATEGORY_CHIPS_SHOWN = 6;
+
+/**
+ * The choices shown while collapsed: the first few in order, plus the chosen
+ * one wherever it is in the list, so the current choice is always visible.
+ * Exported for tests.
+ */
+export function visibleCategories(
+  options: readonly Category[],
+  value: Category | null,
+  expanded: boolean,
+): Category[] {
+  if (expanded || options.length <= CATEGORY_CHIPS_COLLAPSE_AFTER) return [...options];
+  const first = options.slice(0, CATEGORY_CHIPS_SHOWN);
+  return value !== null && options.includes(value) && !first.includes(value)
+    ? [...first, value]
+    : first;
+}
 
 interface CategoryChipsProps {
   /** Null until one is chosen (roadmap D29): nothing is preset. */
@@ -22,9 +48,12 @@ interface CategoryChipsProps {
 export function CategoryChips({ value, onChange }: CategoryChipsProps) {
   useCategoryStore((s) => s.defs);
   const options = categoryOptions({ keep: value });
+  const [expanded, setExpanded] = useState(false);
+  const shown = visibleCategories(options, value, expanded);
+  const more = options.length - shown.length;
   return (
     <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="Category">
-      {options.map((c) => (
+      {shown.map((c) => (
         <Pressable
           key={c}
           onPress={() => onChange(c)}
@@ -39,11 +68,25 @@ export function CategoryChips({ value, onChange }: CategoryChipsProps) {
             size={15}
             color={value === c ? colors.onAction : colors.textSecondary}
           />
-          <Text style={[styles.chipText, value === c && styles.chipTextActive]}>
+          <Text
+            style={[styles.chipText, styles.chipTextFit, value === c && styles.chipTextActive]}
+            numberOfLines={1}
+          >
             {categoryTitle(c)}
           </Text>
         </Pressable>
       ))}
+      {more > 0 && (
+        <Pressable
+          onPress={() => setExpanded(true)}
+          testID="category-more"
+          accessibilityRole="button"
+          accessibilityLabel={`Show ${more} more ${more === 1 ? 'category' : 'categories'}`}
+          style={[styles.chip, styles.chipWithIcon]}
+        >
+          <Text style={styles.chipText}>{more} more</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -65,7 +108,11 @@ export const chipStyles = StyleSheet.create({
   chipActive: { backgroundColor: colors.action, borderColor: colors.action },
   chipText: { ...type.subhead, color: colors.textPrimary },
   capitalize: { textTransform: 'capitalize' },
-  chipWithIcon: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  // A long name stays inside the row with an ellipsis instead of running off
+  // it (playtest 2026-11-08, finding 1): the chip is never wider than the
+  // row, and its label is what gives way.
+  chipWithIcon: { alignItems: 'center', flexDirection: 'row', gap: 6, maxWidth: '100%' },
+  chipTextFit: { flexShrink: 1 },
   chipTextActive: { color: colors.onAction, fontWeight: '700' },
 });
 

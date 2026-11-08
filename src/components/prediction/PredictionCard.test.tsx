@@ -92,9 +92,10 @@ describe('PredictionCard', () => {
   // Roadmap step 52: at 320pt the date folded as "Oct / 4" beside the status.
   it('keeps the date in one piece', () => {
     render(<PredictionCard prediction={prediction} />);
-    // "work, resolved Fri 9 Jan": the category is its own nested Text.
+    // "Work" and ", resolved Fri 9 Jan" are sibling Texts, so a long name can
+    // give way while the date stays whole (playtest 2026-11-08).
     const meta = screen.getByText(/, resolved /);
-    const date = String(meta.props.children.slice(1).join('')).replace(/^, resolved /, '');
+    const date = String([].concat(meta.props.children).join('')).replace(/^, resolved /, '');
     expect(date).not.toMatch(/ /);
     expect(date).toMatch(/\u00A0/);
   });

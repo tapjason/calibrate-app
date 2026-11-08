@@ -57,7 +57,9 @@ export function CategoryBadge({ stat, next, giveOrTake = 0 }: CategoryBadgeProps
       <View style={styles.left}>
         <View style={styles.categoryRow}>
           <CategoryIcon category={stat.category} size={16} color={colors.textSecondary} />
-          <Text style={styles.category}>{name}</Text>
+          <Text style={styles.category} numberOfLines={1}>
+            {name}
+          </Text>
         </View>
         {receipt && (
           <Text style={styles.score} testID={`category-${stat.category}-score`}>
@@ -140,18 +142,26 @@ function progressHint(
 }
 
 const styles = StyleSheet.create({
+  // The badge pill keeps its own slot. When the words and the pill don't fit
+  // on one line (large text, a narrow screen), the pill wraps under the words
+  // instead of squeezing them to a letter a line ("Scor / e 87") or sitting
+  // on a long name (playtest 2026-11-08, findings 1 and 2).
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    columnGap: 12,
+    rowGap: 6,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.hairline,
   },
-  left: { flex: 1, paddingRight: 12 },
+  left: { flexBasis: 160, flexGrow: 1, flexShrink: 1, minWidth: 0 },
   categoryRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   category: {
     ...type.subhead,
+    flexShrink: 1,
     fontWeight: '600',
     color: colors.textPrimary,
   },
@@ -161,6 +171,7 @@ const styles = StyleSheet.create({
   hint: { ...type.caption, fontWeight: '400', color: colors.textTertiary, marginTop: 2 },
   chip: {
     flexDirection: 'row',
+    flexShrink: 0,
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,

@@ -24,6 +24,8 @@ import { buildShareCard, cardHiddenCategories, shareText as cardText } from './c
 import { WarmupCard } from './WarmupCard';
 import { warmupCardCopy } from './warmupCardCopy';
 
+const LAST_ON_NOTE = 'One category stays on the card.';
+
 const MESSAGES: Record<Exclude<ShareOutcome, 'shared'>, string> = {
   unavailable: "Sharing isn't available on this device — screenshot it instead.",
   failed: "Couldn't build the image. Try again?",
@@ -68,6 +70,7 @@ export function ShareCardPanel({
     shown.some((c) => c.predictions_resolved > 0) ? shown : categoryStats,
     { giveOrTake: ratingRange?.giveOrTake, hiddenCount: hidden.size },
   );
+  const lastOn = allOnFile.length - hidden.size === 1;
   const toggleCategory = (c: Category) => {
     const next = new Set(hidden);
     if (next.has(c)) next.delete(c);
@@ -196,12 +199,15 @@ export function ShareCardPanel({
               <View style={styles.chips}>
                 {allOnFile.map((c) => {
                   const on = !hidden.has(c.category);
+                  // The last one on stays on: a card needs a category.
+                  const locked = on && lastOn;
                   return (
                     <Pressable
                       key={c.category}
                       onPress={() => toggleCategory(c.category)}
                       accessibilityRole="checkbox"
                       {...chosenProps('checkbox', on)}
+                      accessibilityHint={locked ? LAST_ON_NOTE : undefined}
                       accessibilityLabel={`Show ${categoryLabel(c.category)} on the card`}
                       testID={`share-toggle-${c.category}`}
                       style={[styles.chip, on && styles.chipOn]}
@@ -214,13 +220,23 @@ export function ShareCardPanel({
                           color={colors.onAction}
                         />
                       )}
-                      <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                      <Text
+                        style={[styles.chipText, styles.chipTextFit, on && styles.chipTextOn]}
+                        numberOfLines={1}
+                      >
                         {categoryTitle(c.category)}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
+              {/* Said, not silent: the last chip refused to untick with no
+                  reason given (playtest 2026-11-08, finding 21). */}
+              {lastOn && (
+                <Text style={styles.lockNote} testID="share-last-on">
+                  {LAST_ON_NOTE}
+                </Text>
+              )}
             </>
           )}
         </View>
@@ -237,6 +253,7 @@ const styles = StyleSheet.create({
   message: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
   controls: { gap: 8 },
   controlLabel: { ...type.footnote, color: colors.textSecondary, fontWeight: '600' },
+  lockNote: { ...type.footnote, color: colors.textSecondary },
   segmented: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: 999,
@@ -262,10 +279,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
     justifyContent: 'center',
+    maxWidth: '100%',
     minHeight: 36,
     paddingHorizontal: 12,
   },
   chipOn: { backgroundColor: colors.action, borderColor: colors.action },
   chipText: { ...type.subhead, color: colors.textSecondary },
   chipTextOn: { color: colors.onAction, fontWeight: '600' },
+  chipTextFit: { flexShrink: 1 },
 });

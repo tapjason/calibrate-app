@@ -190,6 +190,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
           <ToggleSwitch
             value={showTitles}
             onValueChange={setShowTitles}
+            style={styles.switchFixed}
             aria-hidden
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
@@ -223,5 +224,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 44,
   },
-  toggleLabel: { ...type.subhead, color: colors.textPrimary, flex: 1 },
+  toggleLabel: { ...type.subhead, color: colors.textPrimary, flex: 1, minWidth: 0 },
+  switchFixed: { flexShrink: 0 },
 });

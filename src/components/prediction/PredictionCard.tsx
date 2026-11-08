@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { localDate } from '@/components/ui/dates';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
@@ -41,12 +42,7 @@ export function rowPosition(index: number, count: number): RowPosition {
  * narrow row never strands the day on a line of its own ("Oct / 4").
  */
 function formatDue(iso: string): string {
-  return new Date(iso)
-    .toLocaleDateString(undefined, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    })
+  return localDate(new Date(iso), { weekday: 'short', day: 'numeric', month: 'short' })
     .replace(/ /g, '\u00A0');
 }
 
@@ -136,9 +132,12 @@ export function PredictionCard({
         )}
         <View style={styles.metaRow}>
           <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
-          <Text style={styles.meta}>
-            <Text style={styles.category}>{categoryTitle(prediction.category)}</Text>, {when}
+          {/* The name gives way, the date never does: a 24-character name ran
+              past the card's edge (playtest 2026-11-08, finding 1). */}
+          <Text style={styles.meta} numberOfLines={1}>
+            {categoryTitle(prediction.category)}
           </Text>
+          <Text style={[styles.meta, styles.metaWhen]}>, {when}</Text>
         </View>
         {showStatus && (
           <View style={styles.statusRow}>
@@ -190,7 +189,7 @@ const styles = StyleSheet.create({
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   meta: { ...type.footnote, color: colors.textSecondary, flexShrink: 1 },
-  category: {},
+  metaWhen: { flexShrink: 0 },
   statusRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   status: { ...type.footnote, color: colors.textPrimary, fontWeight: '600' },
   confidence: { alignItems: 'flex-end', gap: 6, paddingTop: 2, width: SCALE_WIDTH },

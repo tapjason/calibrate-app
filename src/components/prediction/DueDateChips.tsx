@@ -1,11 +1,12 @@
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { localDate } from '@/components/ui/dates';
 import { chipStyles } from '@/components/prediction/CategoryChips';
 import { DuePicker, openDueDialog } from '@/components/prediction/DuePicker';
 import { noonInDays } from '@/components/prediction/logAgain';
 import { chosenProps } from '@/components/ui/chosen';
 import { colors, space, type } from '@/constants/theme';
-import { earliestDueFor } from '@/store/predictionStore';
+import { earliestDueFor, latestDueFor } from '@/store/predictionStore';
 
 export interface DuePreset {
   id: 'tomorrow' | 'week' | 'month';
@@ -82,7 +83,7 @@ export function DueDateChips({
         ))}
         <Pressable
           onPress={() => {
-            if (Platform.OS === 'android') openDueDialog(value, onChange, earliest);
+            if (Platform.OS === 'android') openDueDialog(value, onChange, earliest, latestDueFor());
             else onPickingChange(true);
           }}
           testID="due-pick"
@@ -99,7 +100,9 @@ export function DueDateChips({
       {/* Whenever "Pick a date" is the choice, its field is there: editing a
           prediction with a picked date showed the chip chosen and no field
           until a second tap (blind playtest 2026-11-01). */}
-      {(picking || isCustomDate) && <DuePicker value={value} onChange={onChange} earliest={earliest} />}
+      {(picking || isCustomDate) && (
+        <DuePicker value={value} onChange={onChange} earliest={earliest} latest={latestDueFor()} />
+      )}
       {/* Why today can't be picked, where it can't (D41): a typed date was
           moved to tomorrow without a word (blind playtest 2026-11-05). Not
           when editing one logged earlier, whose earliest day is past. */}
@@ -110,7 +113,7 @@ export function DueDateChips({
       )}
       <Text style={styles.dateValue} testID="due-sentence">
         Due{' '}
-        {new Date(value).toLocaleDateString(undefined, {
+        {localDate(new Date(value), {
           weekday: 'long',
           day: 'numeric',
           month: 'short',

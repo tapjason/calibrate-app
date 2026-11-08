@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { localDate } from '@/components/ui/dates';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
 import { Button } from '@/components/ui/Button';
@@ -510,7 +511,9 @@ export function ResolvePrompt({
       </Text>
       <View style={styles.categoryRow}>
         <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
-        <Text style={styles.category}>{categoryTitle(prediction.category)}</Text>
+        <Text style={styles.category} numberOfLines={1}>
+          {categoryTitle(prediction.category)}
+        </Text>
       </View>
       <Text style={styles.title}>{prediction.title}</Text>
 
@@ -574,12 +577,12 @@ export function ResolvePrompt({
 
 /** "3 Sep" in the user's locale. */
 function formatLogged(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return localDate(new Date(iso), { day: 'numeric', month: 'short' });
 }
 
 /** "Thu, Nov 13": the last day a skip can be answered (D45). */
 function formatDay(day: Date): string {
-  return day.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return localDate(day, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 const styles = StyleSheet.create({
@@ -598,9 +601,12 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY,
     color: colors.textPrimary,
   },
+  // One line beside its icon: a long name ends in an ellipsis instead of
+  // running off the sheet (playtest 2026-11-08, finding 1).
   category: {
     ...type.footnote,
     color: colors.textSecondary,
+    flexShrink: 1,
     fontWeight: '600',
   },
   title: { ...type.title2, color: colors.textPrimary, marginBottom: space.xxl },

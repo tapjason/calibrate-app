@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
 
@@ -29,6 +29,25 @@ export function nextCanvasWidth(current: number, measured: number): number {
   if (current === 0) return measured;
   if (measured > current && measured - current <= SCROLLBAR_SLACK) return current;
   return measured;
+}
+
+/**
+ * The most of the window's height a preview may take. Scaled to the width
+ * alone, a Post card in landscape was 757 × 1009 on a 375-tall screen, and
+ * Story moved it off-screen (playtest 2026-11-08, finding 8). In portrait no
+ * card reaches it.
+ */
+export const MAX_PREVIEW_HEIGHT_SHARE = 0.8;
+
+/**
+ * The preview's scale: the width on screen over the canvas width, unless that
+ * would make it taller than `maxHeight`. Exported for tests.
+ */
+export function previewScale(available: number, canvasHeight: number, maxHeight: number): number {
+  if (available <= 0) return 1;
+  const byWidth = available / CARD_CANVAS_WIDTH;
+  if (canvasHeight <= 0 || maxHeight <= 0) return byWidth;
+  return Math.min(byWidth, maxHeight / canvasHeight);
 }
 
 interface ScaledCanvasProps {
@@ -61,8 +80,11 @@ interface ScaledCanvasProps {
 export function ScaledCanvas({ height, radius, children, testID }: ScaledCanvasProps) {
   const [available, setAvailable] = useState(0);
   const [measured, setMeasured] = useState(0);
-  const scale = available > 0 ? available / CARD_CANVAS_WIDTH : 1;
+  const { height: windowHeight } = useWindowDimensions();
   const canvasHeight = height ?? measured;
+  const scale = previewScale(available, canvasHeight, windowHeight * MAX_PREVIEW_HEIGHT_SHARE);
+  // Capped by the height, the card is narrower than the room: centre it.
+  const inset = available > 0 ? Math.max(0, (available - CARD_CANVAS_WIDTH * scale) / 2) : 0;
 
   return (
     <View
@@ -74,7 +96,7 @@ export function ScaledCanvas({ height, radius, children, testID }: ScaledCanvasP
       testID={testID}
     >
       <View
-        style={[styles.canvas, { transform: [{ scale }] }]}
+        style={[styles.canvas, { left: inset, transform: [{ scale }] }]}
         onLayout={height === undefined ? (e) => setMeasured(e.nativeEvent.layout.height) : undefined}
         testID={testID ? `${testID}-canvas` : undefined}
       >
@@ -93,6 +115,7 @@ export function ScaledCanvas({ height, radius, children, testID }: ScaledCanvasP
             {
               borderRadius: radius * scale,
               height: canvasHeight * scale,
+              left: inset,
               width: CARD_CANVAS_WIDTH * scale,
             },
           ]}

@@ -600,6 +600,7 @@ function ToggleRow({
           value={value}
           onValueChange={onValueChange}
           testID={testID}
+          style={styles.switchFixed}
           aria-hidden
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
@@ -650,7 +651,11 @@ const styles = StyleSheet.create({
   toggleDescription: { marginTop: 0 },
   rowText: { flex: 1, paddingRight: space.sm },
   rowLabel: { ...type.callout, fontWeight: '500', color: colors.textPrimary },
-  rowLabelFill: { flex: 1 },
+  // The label wraps and the switch keeps its size: at large text a long word
+  // held the label wide and pushed the switch off the card's clipped edge
+  // (playtest 2026-11-08, finding 2).
+  rowLabelFill: { flex: 1, minWidth: 0 },
+  switchFixed: { flexShrink: 0 },
   rowLabelAction: { ...type.callout, fontWeight: '600', color: colors.actionText },
   rowLabelDestructive: { color: colors.destructive },
   rowValue: { ...type.callout, color: colors.textSecondary },

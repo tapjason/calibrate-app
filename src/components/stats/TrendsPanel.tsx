@@ -4,7 +4,7 @@ import { useCsvExport } from '@/components/settings/useCsvExport';
 import { wholeMonthsSince } from '@/components/stats/wholeMonthsSince';
 import { Button } from '@/components/ui/Button';
 import { holdRanges } from '@/components/ui/holdRanges';
-import { colors, type } from '@/constants/theme';
+import { colors, space, type } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useStatsStore } from '@/store/statsStore';
 import type {
@@ -156,7 +156,9 @@ function PeriodRow({ period }: { period: PeriodStat }) {
 function CategoryRow({ trend }: { trend: CategoryTrend }) {
   return (
     <View style={styles.row} testID={`trend-category-${trend.category}`}>
-      <Text style={styles.rowLabel}>{categoryTitle(trend.category)}</Text>
+      <Text style={[styles.rowLabel, styles.rowLabelName]} numberOfLines={1}>
+        {categoryTitle(trend.category)}
+      </Text>
       <Text style={styles.rowValue}>
         {/* A provisional category shows progress toward its threshold, never a
             score — the same rule the headline rating follows. */}
@@ -308,9 +310,12 @@ const styles = StyleSheet.create({
   sectionTitle: { ...type.eyebrow, color: colors.textSecondary, marginBottom: 2 },
   row: {
     flexDirection: 'row',
+    gap: space.md,
     justifyContent: 'space-between',
     paddingVertical: 6,
   },
+  // A category's name gives way to its figure (playtest 2026-11-08, finding 1).
+  rowLabelName: { flexShrink: 1 },
   rowLabel: {
     ...type.subhead,
     color: colors.textPrimary,

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { localDate } from '@/components/ui/dates';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
@@ -22,7 +23,7 @@ interface AnsweredDetailsProps {
 }
 
 const shortDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  localDate(new Date(iso), { weekday: 'short', day: 'numeric', month: 'short' });
 
 /** "6:00 PM today" or "6:00 PM tomorrow": when the window closes. */
 function closesAt(until: Date, now: Date): string {
@@ -108,12 +109,12 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
   return (
     <View style={styles.wrap} testID="answered-details">
       <Text style={styles.stated} testID="answered-stated">
-        On {new Date(prediction.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}{' '}
+        On {localDate(new Date(prediction.created_at), { day: 'numeric', month: 'short' })}{' '}
         you said <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
       </Text>
       <View style={styles.categoryRow}>
         <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
-        <Text style={styles.category} testID="answered-category">
+        <Text style={styles.category} numberOfLines={1} testID="answered-category">
           {categoryTitle(prediction.category)}
         </Text>
       </View>
@@ -218,9 +219,12 @@ const styles = StyleSheet.create({
   stated: { ...type.title3, color: colors.textSecondary },
   statedNumber: { ...type.title1, ...tabularNums, fontFamily: FONT_FAMILY, color: colors.textPrimary },
   categoryRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs, marginTop: space.sm },
+  // One line beside its icon: a long name ends in an ellipsis instead of
+  // running off the sheet (playtest 2026-11-08, finding 1).
   category: {
     ...type.footnote,
     color: colors.textSecondary,
+    flexShrink: 1,
     fontWeight: '600',
   },
   title: { ...type.title2, color: colors.textPrimary },

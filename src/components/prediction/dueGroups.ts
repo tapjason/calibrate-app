@@ -8,6 +8,7 @@
 // Days are the device's local calendar days, like the streak engine: "due
 // today" means the user's today.
 
+import { localDate } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
 
 export interface DueGroup {
@@ -98,7 +99,7 @@ export function nextDueLine(
     .filter((t) => !Number.isNaN(t))
     .sort((a, b) => a - b)[0];
   if (next === undefined) return null;
-  const day = new Date(next).toLocaleDateString(undefined, {
+  const day = localDate(new Date(next), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -126,7 +127,7 @@ export function firstAnswerLead(pending: readonly Prediction[], now: Date): stri
   if (days < 7) {
     return `Your first answer: ${due.toLocaleDateString(undefined, { weekday: 'long' })} evening`;
   }
-  const day = due.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  const day = localDate(due, { weekday: 'short', day: 'numeric', month: 'short' }, now);
   return `Your first answer: ${day.replace(/ /g, '\u00A0')}`;
 }
 

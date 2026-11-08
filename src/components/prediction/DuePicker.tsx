@@ -13,6 +13,11 @@ interface DuePickerProps {
    * prediction was logged (roadmap D41), never before today.
    */
   earliest: Date;
+  /**
+   * The latest day it offers, at local midnight: two years on (playtest
+   * 2026-11-08, which picked 12/31/9999).
+   */
+  latest: Date;
 }
 
 /** Local noon on the given calendar day: same UTC date in every zone ±12h. */
@@ -28,13 +33,24 @@ function toDateInputValue(iso: string): string {
 }
 
 /**
+ * A picked day held between `earliest` and `latest`. A web date field's `min`
+ * and `max` only grey out its calendar: a date typed by keyboard gets past
+ * both, today, a year like 1906 (blind playtest 2026-11-04) or 9999
+ * (2026-11-08). Exported for tests.
+ */
+export function clampPicked(picked: Date, earliest: Date, latest: Date): Date {
+  if (picked < earliest) return earliest;
+  return picked > latest ? latest : picked;
+}
+
+/**
  * "Pick a date" for the Log form (DESIGN_SYSTEM §7.12): the native compact
  * picker on iOS, the system dialog on Android, and the browser's own date
  * input on web. Earliest choice is `earliest`: never the past, where the
  * reminder would fire at once, and never the day it was logged, since an
  * answer that day isn't scored (roadmap D41).
  */
-export function DuePicker({ value, onChange, earliest }: DuePickerProps) {
+export function DuePicker({ value, onChange, earliest, latest }: DuePickerProps) {
   if (Platform.OS === 'web') {
     // react-native-web renders to the DOM, so a real <input type="date"> is
     // the most accessible picker a browser offers.
@@ -42,16 +58,14 @@ export function DuePicker({ value, onChange, earliest }: DuePickerProps) {
       type: 'date',
       value: toDateInputValue(value),
       min: toDateInputValue(earliest.toISOString()),
+      max: toDateInputValue(latest.toISOString()),
       'aria-label': 'Due date',
       'data-testid': 'due-picker',
       onChange: (e: { target: { value: string } }) => {
         const [y, m, d] = e.target.value.split('-').map(Number);
         if (!(y && m && d)) return;
-        // `min` only greys out the calendar: a date typed by keyboard gets
-        // past it, today or a year like 1906 (blind playtest 2026-11-04).
-        const picked = new Date(y, m - 1, d);
-        const floor = picked < earliest ? earliest : picked;
-        onChange(localNoonIso(floor.getFullYear(), floor.getMonth(), floor.getDate()));
+        const day = clampPicked(new Date(y, m - 1, d), earliest, latest);
+        onChange(localNoonIso(day.getFullYear(), day.getMonth(), day.getDate()));
       },
       style: {
         // The face by name: 'inherit' found no family above it and drew the
@@ -89,6 +103,7 @@ export function DuePicker({ value, onChange, earliest }: DuePickerProps) {
         mode="date"
         display="compact"
         minimumDate={earliest}
+        maximumDate={latest}
         accentColor={colors.action}
         // No themeVariant: it was pinned to light while the app was, and the
         // picker now follows the phone like the rest of the sheet (step 92).
@@ -107,6 +122,7 @@ export function openDueDialog(
   value: string,
   onChange: (iso: string) => void,
   earliest: Date,
+  latest: Date,
 ): void {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const picker = require('@react-native-community/datetimepicker') as typeof import('@react-native-community/datetimepicker');
@@ -114,6 +130,7 @@ export function openDueDialog(
     value: new Date(value),
     mode: 'date',
     minimumDate: earliest,
+    maximumDate: latest,
     onChange: (_e, date) => {
       if (date) onChange(localNoonIso(date.getFullYear(), date.getMonth(), date.getDate()));
     },

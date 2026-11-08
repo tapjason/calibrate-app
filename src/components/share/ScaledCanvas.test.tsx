@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet, Text } from 'react-native';
 
-import { CARD_CANVAS_WIDTH, nextCanvasWidth, ScaledCanvas } from './ScaledCanvas';
+import { CARD_CANVAS_WIDTH, nextCanvasWidth, previewScale, ScaledCanvas } from './ScaledCanvas';
 
 const layout = (width: number, height: number) => ({
   nativeEvent: { layout: { width, height, x: 0, y: 0 } },
@@ -53,6 +53,24 @@ describe('ScaledCanvas', () => {
       </ScaledCanvas>,
     );
     expect(StyleSheet.flatten(screen.getByTestId('p').props.style).opacity).toBe(0);
+  });
+});
+
+// Playtest 2026-11-08, finding 8: in landscape a Post card scaled to the
+// width was 1009 tall on a 375-tall screen.
+describe('previewScale', () => {
+  it('scales to the width when the card fits the height', () => {
+    expect(previewScale(288, 480, 600)).toBe(0.8);
+  });
+
+  it('caps the scale so the card is no taller than allowed', () => {
+    // 757 wide in landscape, a 480-tall Post, 300 allowed: 300 / 480.
+    expect(previewScale(757, 480, 300)).toBe(0.625);
+  });
+
+  it('scales to the width until the height is known', () => {
+    expect(previewScale(288, 0, 300)).toBe(0.8);
+    expect(previewScale(0, 480, 300)).toBe(1);
   });
 });
 

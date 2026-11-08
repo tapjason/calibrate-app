@@ -6,6 +6,7 @@ import {
   reminderTimeFor,
   type ReminderPermission,
 } from '@/notifications/permission';
+import { localDate } from '@/components/ui/dates';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Prediction } from '@/types';
@@ -71,7 +72,7 @@ export function firstReminderDay(pending: readonly Prediction[], now: Date): str
     .filter((t) => !Number.isNaN(t) && t > now.getTime())
     .sort((a, b) => a - b)[0];
   if (next === undefined) return null;
-  return new Date(next).toLocaleDateString(undefined, {
+  return localDate(new Date(next), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
