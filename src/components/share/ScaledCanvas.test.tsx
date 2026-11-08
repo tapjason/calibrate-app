@@ -20,6 +20,9 @@ describe('ScaledCanvas', () => {
     expect(canvas.width).toBe(CARD_CANVAS_WIDTH);
     expect(canvas.transform).toEqual([{ scale: 0.8 }]);
     expect(canvas.transformOrigin).toBe('top left');
+    // Out of flow, so the wrapper's height (0 until measured) can't squash
+    // the card it measures (first device run, 2026-11-08).
+    expect(canvas.position).toBe('absolute');
   });
 
   it("takes a content-sized card's own height, scaled", () => {

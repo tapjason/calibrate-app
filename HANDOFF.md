@@ -12,7 +12,7 @@ Fixes from the first run on the owner's iPhone 17 (2026-11-07, development build
 
 ## In progress / broken
 
-- **You → Your card alignment:** reported, not yet seen. Waiting on a screenshot.
+- **Your card, This week (fixed, not yet re-checked on the phone):** the recap collapsed under the Share button. `ScaledCanvas` sized its wrapper from the card's measured height, starting at 0; on native the in-flow card was squashed to its padding inside that 0-tall wrapper and measured as such. The canvas is now `position: 'absolute'`, so it always measures its own height. Web never showed it (CSS doesn't shrink below content). Categories' switches confirmed lined up on the phone.
 - Confirmed on the phone (2026-11-07): Apple sign-in works; Log's form no longer overlaps its header. Not yet re-checked: the switch box, and the Practice sheet (same header-beside-scroll shape as the old Log, not reported).
 - **Switches (You):** the device screenshot with a dev-only frame outline showed the iOS 26 switch (63 × 28pt) is drawn exactly in its measured frame and centred in the row, between the label and a two-line description, lining up with neither. Each switch row now puts the switch on the label's line with the description full width beneath (`ToggleRow`). Every switch goes through `src/components/ui/ToggleSwitch.tsx`; the outline is removed. Categories (one-line rows) not yet re-checked.
 

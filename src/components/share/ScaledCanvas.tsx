@@ -50,6 +50,13 @@ interface ScaledCanvasProps {
  * sits on this wrapper, never on the card, so a capture of the card's ref
  * gets the canvas at its own size. Until the screen width is known the card
  * waits unseen, so a narrow phone never flashes it at full size.
+ *
+ * The card is placed absolutely, so the wrapper's height never constrains it.
+ * In flow, a card that takes its own height measured inside a wrapper still 0
+ * tall: on the phone it was squashed to its padding, measured that, and the
+ * preview stayed collapsed under the Share button (first device run,
+ * 2026-11-08, This week). A browser never squashes content below its own
+ * height, so web hid it.
  */
 export function ScaledCanvas({ height, radius, children, testID }: ScaledCanvasProps) {
   const [available, setAvailable] = useState(0);
@@ -98,7 +105,13 @@ export function ScaledCanvas({ height, radius, children, testID }: ScaledCanvasP
 
 const styles = StyleSheet.create({
   unmeasured: { opacity: 0 },
-  canvas: { transformOrigin: 'top left', width: CARD_CANVAS_WIDTH },
+  canvas: {
+    left: 0,
+    position: 'absolute',
+    top: 0,
+    transformOrigin: 'top left',
+    width: CARD_CANVAS_WIDTH,
+  },
   outline: {
     borderColor: colors.hairline,
     left: 0,
