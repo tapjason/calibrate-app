@@ -1,17 +1,6 @@
-import { StyleSheet, Switch, View, type SwitchProps } from 'react-native';
+import { Switch, type SwitchProps } from 'react-native';
 
 import { colors } from '@/constants/theme';
-
-/**
- * Development builds only: outlines the frame React Native gives each switch.
- * On the first device run (2026-11-07, iOS 26) every switch sat above its
- * row's centre line, in Categories and You alike, even boxed and centred. The
- * frame is measured from a default UISwitch, and UIKit draws the switch from
- * its frame's top-left corner at its own size, so if the two sizes differ the
- * switch can't be centred from the layout. A screenshot with the outline shows
- * both sizes. Off in release builds; remove once the switch is fixed.
- */
-const SHOW_FRAME = __DEV__;
 
 type ToggleSwitchProps = Omit<
   SwitchProps,
@@ -19,33 +8,25 @@ type ToggleSwitchProps = Omit<
 >;
 
 /**
- * The app's one switch: ink when on (the brand has no hue, D33), a 3:1 grey
- * track when off so "off" still reads as a control (DESIGN_SYSTEM §2.2
- * controlBorder), and a white thumb in both appearances, as iOS draws its own
- * (D7). Every switch goes through here, so a fix for how the phone draws it
- * lands everywhere at once.
+ * The app's one switch, so every switch looks and lines up the same. Ink
+ * when on (the brand has no hue, D33), with the thumb in the opposite ink so
+ * it reads on the track: white in light mode, near-black in dark, where the
+ * track turns light. Off, a 3:1 grey track still reads as a control
+ * (DESIGN_SYSTEM §2.2 controlBorder).
+ *
+ * On iOS 26 the switch is 63 × 28pt and is drawn exactly in the frame React
+ * Native measures (checked on the device, 2026-11-07), so centring it is the
+ * row's job.
  */
 export function ToggleSwitch(props: ToggleSwitchProps) {
   return (
-    <View style={styles.frame}>
-      <Switch
-        {...props}
-        trackColor={{ true: colors.action, false: colors.controlBorder }}
-        thumbColor={colors.onAction}
-        ios_backgroundColor={colors.controlBorder}
-        // react-native-web's name for the thumb when on.
-        {...{ activeThumbColor: colors.onAction }}
-      />
-      {SHOW_FRAME && <View pointerEvents="none" style={styles.outline} />}
-    </View>
+    <Switch
+      {...props}
+      trackColor={{ true: colors.action, false: colors.controlBorder }}
+      thumbColor={colors.onAction}
+      ios_backgroundColor={colors.controlBorder}
+      // react-native-web's name for the thumb when on.
+      {...{ activeThumbColor: colors.onAction }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  frame: { alignSelf: 'center' },
-  outline: {
-    ...StyleSheet.absoluteFillObject,
-    borderColor: colors.destructive,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-});

@@ -14,7 +14,7 @@ Fixes from the first run on the owner's iPhone 17 (2026-11-07, development build
 
 - **You → Your card alignment:** reported, not yet seen. Waiting on a screenshot.
 - Confirmed on the phone (2026-11-07): Apple sign-in works; Log's form no longer overlaps its header. Not yet re-checked: the switch box, and the Practice sheet (same header-beside-scroll shape as the old Log, not reported).
-- **Switches may still sit high.** In the Categories row the switch was already centred in a 44pt line before the box, so the offset is probably inside the native view: RN sizes the switch from a default `UISwitch`, and iOS 26 may draw the custom-tinted one at another size, anchored top-left. The box didn't fix it: the owner reports the You-tab switches still sit off. Every switch now goes through `src/components/ui/ToggleSwitch.tsx`, which in development builds outlines the frame RN gives the switch (`SHOW_FRAME`). The next phone screenshot shows that frame against the drawn switch; fix it there, then remove the outline.
+- **Switches (You):** the device screenshot with a dev-only frame outline showed the iOS 26 switch (63 × 28pt) is drawn exactly in its measured frame and centred in the row, between the label and a two-line description, lining up with neither. Each switch row now puts the switch on the label's line with the description full width beneath (`ToggleRow`). Every switch goes through `src/components/ui/ToggleSwitch.tsx`; the outline is removed. Categories (one-line rows) not yet re-checked.
 
 ## Next step
 

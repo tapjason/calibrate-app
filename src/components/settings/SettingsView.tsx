@@ -577,9 +577,14 @@ function ToggleRow({
   // attach nearby text to a bare Switch, so on its own it was an unnamed
   // "switch, on". The row carries the name, state and description; the
   // inner Switch is hidden from assistive tech and still works by touch.
+  //
+  // The switch sits on the label's line and the description runs full width
+  // beneath both. Centred on label and description together, it floated
+  // between the two lines and lined up with neither (first device run,
+  // 2026-11-07, iOS 26).
   return (
     <Pressable
-      style={styles.row}
+      style={[styles.row, styles.toggleRow]}
       onPress={() => onValueChange(!value)}
       accessibilityRole="switch"
       accessibilityLabel={label}
@@ -589,18 +594,18 @@ function ToggleRow({
       aria-checked={value}
       testID={`${testID}-row`}
     >
-      <View style={styles.rowText}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={styles.rowDescription}>{description}</Text>
+      <View style={styles.toggleHead}>
+        <Text style={[styles.rowLabel, styles.rowLabelFill]}>{label}</Text>
+        <ToggleSwitch
+          value={value}
+          onValueChange={onValueChange}
+          testID={testID}
+          aria-hidden
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
       </View>
-      <ToggleSwitch
-        value={value}
-        onValueChange={onValueChange}
-        testID={testID}
-        aria-hidden
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      />
+      <Text style={[styles.rowDescription, styles.toggleDescription]}>{description}</Text>
     </Pressable>
   );
 }
@@ -637,6 +642,12 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   rowPressed: { backgroundColor: colors.surfaceSunken },
+  // A switch row: the label and switch on one line, the description under both.
+  toggleRow: { alignItems: 'stretch', flexDirection: 'column', gap: 0 },
+  toggleHead: { alignItems: 'center', flexDirection: 'row', gap: space.md },
+  // The switch (28pt on iOS 26) is taller than the label's line, which already
+  // leaves a gap above the description.
+  toggleDescription: { marginTop: 0 },
   rowText: { flex: 1, paddingRight: space.sm },
   rowLabel: { ...type.callout, fontWeight: '500', color: colors.textPrimary },
   rowLabelFill: { flex: 1 },
