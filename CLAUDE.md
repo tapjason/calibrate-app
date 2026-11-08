@@ -1,6 +1,7 @@
 # Fairly Sure — Agent Document
 
 **Read `HANDOFF.md` first.** It is the shared state for this branch and is overwritten each PR.
+The agent harness (subagents, skills, the check hook) is described under "Agent harness" below.
 
 **Canonical spec.** This file and `BUILD_PLAN.md` are the two always-current build
 documents. `GROWTH_AND_MONETIZATION.md` and `COACH_AGENT.md` are rationale/reference —
@@ -829,6 +830,73 @@ for, and validate that people actually share before betting on the free tier.
 - Component-test the critical Warmup, Log, and Resolve flows.
 - Coach requires the adversarial fixtures in `COACH_AGENT.md` §9 before shipping.
 - Run with `npm test`.
+
+---
+
+## Agent harness (adopted 2026-11-08)
+
+Subagents and skills from idea to the App Store, adapted from the owner's other projects.
+How they fit together: `docs/agent-harness.md`. What they know about this app (the flow, the
+record rules R1–R12, the test bridge, personas, budgets, human-only actions, the iPhone):
+`docs/app-profile.md`. Machine and web-build quirks: `docs/tooling-notes.md`. Run
+`bash scripts/check-harness.sh` after changing an agent or skill.
+
+### Commands (Git Bash, from the repo root)
+
+| Command | What it does |
+|---|---|
+| `bash scripts/check.sh` | Types, then every test. Must end in `CHECK PASSED` before a task is done. |
+| `bash scripts/check.sh --quick` | Incremental types only; runs automatically after every edit of a `.ts`/`.tsx` file under `app/`, `src/` or `supabase/` (hook). |
+| `bash scripts/check.sh --release` | The full check plus `expo config`, `expo-doctor`, dependency drift and the iOS export (sizes in `.tooling/export`). |
+| `bash scripts/web-serve.sh start\|status\|stop` | The web build on http://localhost:8097 for the playtest agents. Never port 8081: that is the iPhone dev server. |
+| `bash scripts/check-harness.sh` | The harness is well-formed. |
+| `npx expo start --dev-client --tunnel` | Serves JS to the development build on the owner's iPhone (port 8081). |
+
+Skills: `/step <n | topic>` (build a roadmap step on its own `builder/` branch), `/design`,
+`/playtest`, `/device-check`, `/build <development | production>`, `/release-gate`,
+`/live-review` (after launch), `/check`, `/new-content`, plus `frontend-design` for UI work.
+
+### When to use subagents
+
+The reviewing agents read and report; the builder agents write code in their layer when
+delegated; the main session owns the branch, the commits and `HANDOFF.md`. Each reviewing agent
+ends with "Needs you" and "Not verified". Browser agents run one at a time.
+
+| Stage | Subagent | Use it when |
+|---|---|---|
+| Decide | `design-analyst` | Before building a feature, a tuning change, a finding that needs the owner, or an open D number (`/design`) |
+| Decide | `platform-api-checker` | Before relying on an Expo, RN, Supabase, RevenueCat or Apple API, config, entitlement or limit the repo doesn't use yet |
+| Build | `core-domain`, `services`, `mobile-ui` | A large, self-contained piece of L1–L4, L5 or L6 |
+| Build | `code-reviewer` | After every task that changes `app/`, `src/`, `supabase/` or config; again after fixes (up to 3 rounds); release mode at the gate |
+| Build | `record-auditor` | Any change that computes, shows or explains a score, badge, lean or count, a card or recap, or the Coach context |
+| Build | `policy-auditor` | Any change to sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy |
+| Play | `web-playtester` | After a flow or UI change (`/playtest`): does it work in the web build |
+| Play | `blind-playtester` | One persona per run, browser only (`/playtest`): would this person keep it |
+| Ship | `release-auditor` | Before every production build and at every `/release-gate` |
+| Ship | `live-ops-analyst` | After launch only (`/live-review`) |
+
+Don't use a subagent for a quick lookup in this repo, a one-line fix, or anything the main session
+already knows.
+
+### The iPhone
+
+The app ships on iOS only, iPhone only. The owner's phone is an iPhone 17 on iOS 26 running a
+development build (Apple Developer account active since 2026-11-07); there is no simulator and no
+Mac. Web and tests are stand-ins: haptics, SF Symbols, Liquid Glass, native sheets, the iOS switch,
+pickers, notifications, Sign in with Apple, the age-range sheet, the share sheet, purchases,
+Dynamic Type and VoiceOver are confirmed only on the phone (`docs/app-profile.md` §18, which also
+lists the iOS-vs-web layout traps found there). Say what no device has run, and use
+`/device-check` for the owner's checklist. A native change (a native package, an `app.json`
+plugin, an entitlement) needs a new development build; a JS change needs only a reload.
+
+### Owner-only actions (stop and ask)
+
+The list in `docs/app-profile.md` §16: App Store Connect, identifiers and capabilities, the `.p8`
+key (never handled), `eas login`, `eas credentials`, `eas env:create`, `eas build` (an agent runs
+it only after the owner confirms the exact command), `eas submit` (never an agent), Supabase and
+RevenueCat dashboards, applying live migrations and deploying Edge Functions, `git push`, GitHub
+Pages, running the app on the iPhone, pricing and other open decisions, anything that spends money
+or deletes someone's data.
 
 ## Agent security
 

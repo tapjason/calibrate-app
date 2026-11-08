@@ -4,7 +4,8 @@ description: Use for external-system integrations — Supabase (auth, Postgres s
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch
 ---
 
-You are the Services agent for **Calibrate**. Your scope is Layer 5
+You are the Services agent for **Fairly Sure** (the repo and older docs
+say Calibrate), an iPhone app. Your scope is Layer 5
 of BUILD_PLAN.md: every external-system integration. These services
 sit *outside* the offline core loop — the app must remain fully
 usable when any of them is unavailable.
@@ -60,7 +61,7 @@ usable when any of them is unavailable.
 
 ## When you're done
 
-- `npx tsc --noEmit` clean (client-side TS).
+- `bash scripts/check.sh` ends in `CHECK PASSED` (types, then every test).
 - New service has tests that simulate the integration's failure
   modes — at minimum, a "service down → app still works" test.
 - If you added a notification trigger, document the user-visible

@@ -1,0 +1,18 @@
+---
+name: playtest
+description: Playtest the web build - web-playtester (does it work) then blind-playtester runs, one persona each from docs/app-profile.md §10, one after the other in one browser, synthesised against the docs into a ranked findings file in docs/design/research/. Starts the web server; needs the playwright MCP. Never counts as an iPhone check.
+argument-hint: "[optional: focus, personas, sizes, or 'blind only']"
+disable-model-invocation: true
+---
+
+Playtest the current build. Focus: $ARGUMENTS (if empty: everything changed since the last `docs/design/research/playtest-*.md`).
+
+1. **Ready.** `git status` (the playtest runs whatever is on disk; note uncommitted changes). Read `docs/tooling-notes.md`, `docs/app-profile.md` §9, §10 and §18, and the last playtest file (what was flagged before). Run `bash scripts/web-serve.sh start` and wait for it to report up (the first bundle is slow). The server doesn't hot-reload: if code changed since it started, `stop` then `start`. If it can't start, read `.tooling/expo-web.log`, fix a build error if it's ours, otherwise stop and tell the user the playtest is owed.
+2. **Does it work.** Unless the focus says "blind only", delegate to `web-playtester` with the focus, the checks from the step or decision rows, and the start states. Wait for its report. If it's BLOCKED, stop and tell the user what to run.
+3. **Plan the blind runs.** Pick the personas (default: profile §10's default set; add Elena, Kofi or Dana when the focus calls for them). For each run write a self-contained brief, because `blind-playtester` can't read files: the persona in a paragraph (who, what they want, how they use a phone, how judgemental to be), the start state, the size and appearance, the URL (from `bash scripts/web-serve.sh status`), the tasks, the screenshot names `playtest-<yyyy-mm-dd>/run<n>-<moment>.png`, and the rules (no sign-in, no purchase, no erase, stay on localhost). Never tell it what the app is supposed to do beyond what the persona would know from the App Store page.
+4. **Run them one at a time** (one browser, one database): prepare the start state yourself between runs (a fresh install per profile §9, or `/dev/seed` → Load demo data; later runs may keep what earlier runs left, and say so), then delegate to `blind-playtester` and wait.
+5. **Synthesise against the docs.** For every finding: check it against the code (`Grep`/`Read`), drop what is web-only (profile §18, `docs/tooling-notes.md`: the draft guard, `hitSlop`, the VoiceOver adjustable, the iOS switch, the dev overlay, focus handling) into a "Web-only, so not ranked" paragraph, and rank the rest: P1 breaks and record risks (§5 ids first), P1 hierarchy and story, P2 polish, P2 consistency, P2–P3 structure, accessibility on iOS too. Mark each "no decision needed" or "needs the owner" (anything that changes what a screen says or how it's arranged, or a decided D number).
+6. **Record** a new `docs/design/research/playtest-<yyyy-mm-dd>.md` in the established shape (the banner "Raw findings, <date>. … Where they differ, `CLAUDE.md`, `DESIGN_SYSTEM.md` and `UI_ROADMAP.md` win."; Method; the persona table with verdicts and scores; What held up; Ranked findings). Commit it as `docs: <nth> blind playtest round (<focus>), raw findings ranked`.
+7. **Reply** with the scores, the top findings, which groups can be fixed without a decision, and which need the owner. Leave the server running if the user is mid-session (say so); stop it otherwise. If the server was stopped by the system (low memory), say so and don't restart it unasked.
+
+Never run two browser agents at once, never let a blind run see the repo, and never count a web pass as an iPhone pass.

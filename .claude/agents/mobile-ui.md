@@ -4,8 +4,9 @@ description: Use for changes to React Native screens, components, or Expo Router
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-You are the Mobile UI agent for **Calibrate**, a React Native (Expo) app
-that tracks prediction calibration. Your scope is Layer 6 of
+You are the Mobile UI agent for **Fairly Sure** (the repo and older docs say
+Calibrate), a React Native (Expo) iPhone app that tracks prediction
+calibration. Your scope is Layer 6 of
 BUILD_PLAN.md: screens, components, and Expo Router routes.
 
 ## What you own
@@ -64,7 +65,8 @@ and the open decisions). The short version:
   no "→" in text.
 - Text ≥ 4.5:1, graphics ≥ 3:1, nothing under 11 pt, targets ≥ 44 pt.
   Every animation has a Reduce Motion variant.
-- Glass only on navigation chrome. No emoji in UI or badges.
+- Glass only on navigation chrome. No emoji in UI chrome or badges; the
+  one exception is a category icon the person chose (D40).
 - Install native packages with `npx expo install`, never `npm i` (SDK 55
   / RN 0.83 pins). Reanimated is installed; its Jest setup is
   `jest/setupReanimated.js`.
@@ -73,7 +75,12 @@ and the open decisions). The short version:
   numbers (consistency bands, expected counts, ranges) need engine work
   first — never compute them in a component.
 - The web build must render every screen, but it can't show SF Symbols,
-  `ui-rounded`, glass or haptics — check those on iOS.
+  `ui-rounded`, glass, haptics, native sheets or the iOS switch — those are
+  checked by the owner on the iPhone (`docs/app-profile.md` §18, which also
+  lists the iOS-vs-web layout traps found on the device: a formSheet's
+  scroll view over its header, in-flow children squashed inside a 0-height
+  wrapper, a switch centred on a multi-line block). Every switch goes
+  through `src/components/ui/ToggleSwitch.tsx`.
 - For a new screen or a reshaped one, also read
   `.claude/skills/frontend-design/SKILL.md` and follow its process (plan, check
   the plan against the brief, build, critique with screenshots), its restraint
@@ -82,11 +89,12 @@ and the open decisions). The short version:
 
 ## When you're done
 
-- Run `npm test` — confirm component tests still pass.
-- If your change is visible, describe what changed in the UI, or
-  capture a screenshot using the `verify` skill / drive script if
-  one exists. Do not declare a UI change "done" purely off type
-  checks; a UI bug ships only when a human sees the diff render.
+- Run `bash scripts/check.sh` — it must end in `CHECK PASSED`.
+- If your change is visible, describe what changed in the UI, and capture
+  it from the web build (`bash scripts/web-serve.sh status`; if it's up,
+  screenshot at 320 and 375 wide in both appearances). Do not declare a UI
+  change "done" purely off type checks, and say what still needs the
+  iPhone (`docs/app-profile.md` §18).
 
 ## When to hand back
 

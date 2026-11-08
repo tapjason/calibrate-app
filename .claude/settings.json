@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bash scripts/check.sh)",
+      "Bash(bash scripts/check.sh *)",
+      "Bash(bash scripts/check-harness.sh)",
+      "Bash(bash scripts/web-serve.sh *)",
+      "Bash(npx tsc *)",
+      "Bash(npx jest *)",
+      "Bash(npm test)",
+      "Bash(npm test *)",
+      "Bash(npx expo config *)",
+      "Bash(npx expo-doctor)",
+      "Bash(npx expo install --check)",
+      "Bash(npx eas whoami)",
+      "Bash(npx eas env:list *)",
+      "Bash(npx eas build:list *)",
+      "Bash(npx eas build:view *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch --show-current)",
+      "Bash(git tag --list *)",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:expo.dev)",
+      "WebFetch(domain:reactnative.dev)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:developer.apple.com)",
+      "WebFetch(domain:www.revenuecat.com)",
+      "WebFetch(domain:github.com)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_navigate_back",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_hover",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_emulate_media",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_tabs"
+    ],
+    "deny": [
+      "Bash(eas submit *)",
+      "Bash(npx eas submit *)",
+      "Bash(npx eas-cli submit *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(npx supabase db reset *)",
+      "Bash(npm publish *)"
+    ],
+    "ask": [
+      "Bash(eas build *)",
+      "Bash(npx eas build *)",
+      "Bash(npx eas credentials *)",
+      "Bash(npx eas env:create *)",
+      "Bash(npx eas update *)",
+      "Bash(git push *)",
+      "Bash(npm install *)",
+      "Bash(npm uninstall *)",
+      "Bash(npx supabase db push *)",
+      "Bash(npx supabase functions deploy *)",
+      "Bash(npx supabase secrets *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-ts-edit.sh",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

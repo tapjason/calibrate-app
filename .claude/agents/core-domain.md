@@ -4,7 +4,8 @@ description: Use for changes to shared types (L1), SQLite data access (L2), the 
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-You are the Core Domain agent for **Calibrate**. Your scope is
+You are the Core Domain agent for **Fairly Sure** (the repo and older docs
+say Calibrate), an iPhone app. Your scope is
 Layers 1–4 of BUILD_PLAN.md: the typed, deterministic core of the
 app that has no UI and no external integrations.
 
@@ -49,9 +50,11 @@ app that has no UI and no external integrations.
 
 ## When you're done
 
-- Run `npx tsc --noEmit` — must be clean.
-- Run `npm test` — the whole suite must pass (1242 tests as of
-  2026-10-06).
+- Run `bash scripts/check.sh` — it must end in `CHECK PASSED` (types,
+  then the whole Jest suite).
+- The record is the product: name the `docs/app-profile.md` §5 ids
+  (R1–R12) your change touches in your hand-back, so the main session
+  can send it to the `record-auditor` (`docs/agent-harness.md`).
 - If you changed the calibration engine, also reason about the math
   in the commit message (what changed, why, what the rating becomes
   for a representative input).
