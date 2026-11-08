@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 
 import { localDate } from '@/components/ui/dates';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
+import { spokenExcerpt, textLanguage } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
@@ -114,7 +115,10 @@ export function PredictionCard({
       accessibilityLabel={
         `${prediction.title}. ${categoryLabel(prediction.category)}, ${prediction.confidence}% confident, ` +
         `${when}. ${status}.` +
-        (reflection ? ` Your note: ${reflection}` : '')
+        // The start of the note, not all of it: a long one made the row's
+        // label about 1,000 characters (playtest 2026-11-08, finding 40). The
+        // details read it in full.
+        (reflection ? ` Your note: ${spokenExcerpt(reflection)}` : '')
       }
       style={({ pressed }) => [styles.row, edges[position], pressed && styles.pressed]}
     >

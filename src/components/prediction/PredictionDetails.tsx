@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { localDate } from '@/components/ui/dates';
+import { textLanguage } from '@/components/ui/textLanguage';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
@@ -185,7 +186,12 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
           {categoryTitle(prediction.category)}
         </Text>
       </View>
-      <Text style={styles.title} testID="details-title">
+      <Text
+        style={styles.title}
+        testID="details-title"
+        // Read in its own language's voice (playtest 2026-11-08, finding 41).
+        accessibilityLanguage={textLanguage(prediction.title)}
+      >
         {prediction.title}
       </Text>
       {reworded && (

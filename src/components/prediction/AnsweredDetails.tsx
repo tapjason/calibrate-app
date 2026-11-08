@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { localDate } from '@/components/ui/dates';
+import { textLanguage } from '@/components/ui/textLanguage';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
@@ -118,7 +119,9 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
           {categoryTitle(prediction.category)}
         </Text>
       </View>
-      <Text style={styles.title}>{prediction.title}</Text>
+      <Text style={styles.title} accessibilityLanguage={textLanguage(prediction.title)}>
+        {prediction.title}
+      </Text>
       {/* Glyph and words in neutral ink, the same for Yes and No (§2.4). */}
       <View style={styles.outcomeRow}>
         <Icon

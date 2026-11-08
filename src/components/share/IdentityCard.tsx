@@ -248,11 +248,15 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
 
 const styles = StyleSheet.create({
   card: { borderRadius: CARD_RADIUS.identity, padding: 24 },
-  // The content is centred in the room between the top and the footer, and
-  // when it is shrunk to fit, it shrinks about its centre.
-  body: { flex: 1, justifyContent: 'center', overflow: 'hidden' },
+  // The content is centred in the room between the top and the footer. Its
+  // bottom margin keeps the footer's 14pt gap when the content fills the room:
+  // without it the chips sat on the divider (playtest 2026-11-08, finding 14).
+  body: { flex: 1, justifyContent: 'center', marginBottom: 14, overflow: 'hidden' },
   bodyCompact: {},
-  content: { gap: 8 },
+  // Shrunk to fit, it shrinks toward the left edge, which it shares with the
+  // footer; about its centre it pulled in from the footer's edge by up to
+  // 27pt (playtest 2026-11-08, finding 15).
+  content: { gap: 8, transformOrigin: 'left center' },
   hero: { marginBottom: 12 },
   eyebrow: { fontFamily: FONT_FAMILY, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
   identity: {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { CategoryIcon } from '@/components/ui/Icon';
@@ -59,11 +59,14 @@ export function CategoryManager() {
     run(async () => {
       await useCategoryStore.getState().rename(id, draft);
       setEditing(null);
+      // Said, not only drawn (playtest 2026-11-08, finding 38).
+      AccessibilityInfo.announceForAccessibility(`Renamed to ${categoryTitle(id)}.`);
     });
 
   const add = () =>
     run(async () => {
       await useCategoryStore.getState().add(newName);
+      AccessibilityInfo.announceForAccessibility(`Added ${newName.trim()}.`);
       setNewName('');
     });
 

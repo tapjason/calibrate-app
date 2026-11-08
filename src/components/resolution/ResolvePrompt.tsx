@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { localDate } from '@/components/ui/dates';
+import { textLanguage } from '@/components/ui/textLanguage';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
 import { Button } from '@/components/ui/Button';
@@ -248,10 +249,14 @@ export function ResolvePrompt({
       // One haptic for Yes, No and Skip alike — a No is not an error.
       haptics.resolve();
       if (outcome === 'skipped') {
+        AccessibilityInfo.announceForAccessibility('Recorded: can’t tell.');
         onResolved?.();
         return;
       }
       setAnswered(readAcknowledgement(prediction, outcome));
+      // Said, as Log's "Saved." is: the screen changed under the finger and
+      // nothing was announced (playtest 2026-11-08, finding 38).
+      AccessibilityInfo.announceForAccessibility(recordedText(outcome));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -287,6 +292,9 @@ export function ResolvePrompt({
         // What the first answer crossed isn't this one's to show.
         milestone: null,
       });
+      AccessibilityInfo.announceForAccessibility(
+        outcome === 'resolved_yes' ? 'Changed to: it happened.' : 'Changed to: it didn’t happen.',
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -347,12 +355,12 @@ export function ResolvePrompt({
             color={colors.textPrimary}
           />
           <Text style={styles.recorded} accessibilityRole="header" testID="resolve-recorded-label">
-            {answered.outcome === 'resolved_yes'
-              ? 'Recorded: it happened'
-              : 'Recorded: it didn’t happen'}
+            {recordedText(answered.outcome)}
           </Text>
         </View>
-        <Text style={styles.title}>{prediction.title}</Text>
+        <Text style={styles.title} accessibilityLanguage={textLanguage(prediction.title)}>
+          {prediction.title}
+        </Text>
         {answered.milestone && <MilestoneCard milestone={answered.milestone} />}
         {/* CLAUDE.md names a checkpoint on the answer that earned it, so it
             shows even beside a score or badge milestone, after it. */}
@@ -515,7 +523,9 @@ export function ResolvePrompt({
           {categoryTitle(prediction.category)}
         </Text>
       </View>
-      <Text style={styles.title}>{prediction.title}</Text>
+      <Text style={styles.title} accessibilityLanguage={textLanguage(prediction.title)}>
+        {prediction.title}
+      </Text>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -562,8 +572,9 @@ export function ResolvePrompt({
         onPress={() => void submit('skipped')}
         disabled={submitting}
         accessibilityRole="button"
-        accessibilityLabel="Can't tell / doesn't apply"
-        accessibilityHint="It won't count toward your score."
+        // The note in the label, not only the hint, which screen readers can
+        // skip (playtest 2026-11-08, finding 39).
+        accessibilityLabel="Can't tell / doesn't apply. It won't count toward your score."
         hitSlop={8}
         style={styles.skip}
         testID="resolve-skip"
@@ -573,6 +584,11 @@ export function ResolvePrompt({
       </Pressable>
     </View>
   );
+}
+
+/** What Resolve says it recorded, on screen and to VoiceOver. */
+function recordedText(outcome: 'resolved_yes' | 'resolved_no'): string {
+  return outcome === 'resolved_yes' ? 'Recorded: it happened' : 'Recorded: it didn’t happen';
 }
 
 /** "3 Sep" in the user's locale. */
