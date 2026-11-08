@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
+import { localDate } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
 
 import { PredictionCard, rowPosition } from './PredictionCard';
@@ -41,9 +42,12 @@ describe('PredictionCard', () => {
   it('reads as one sentence, without the status glyph', () => {
     render(<PredictionCard prediction={prediction} onPress={jest.fn()} />);
     // Resolved cards date themselves by the answer, not the due date.
-    const resolved = new Date(prediction.resolved_at as string)
-      .toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
-      .replace(/ /g, '\u00A0');
+    // Through localDate, which adds the year from next year on.
+    const resolved = localDate(new Date(prediction.resolved_at as string), {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    }).replace(/ /g, '\u00A0');
     expect(screen.getByRole('button').props.accessibilityLabel).toBe(
       `I ship the report by Friday. work, 70% confident, resolved ${resolved}. Happened.`,
     );
@@ -92,10 +96,10 @@ describe('PredictionCard', () => {
   // Roadmap step 52: at 320pt the date folded as "Oct / 4" beside the status.
   it('keeps the date in one piece', () => {
     render(<PredictionCard prediction={prediction} />);
-    // "Work" and ", resolved Fri 9 Jan" are sibling Texts, so a long name can
-    // give way while the date stays whole (playtest 2026-11-08).
-    const meta = screen.getByText(/, resolved /);
-    const date = String([].concat(meta.props.children).join('')).replace(/^, resolved /, '');
+    // "work," and "resolved Fri 9 Jan" are sibling Texts, so a long name can
+    // give way and the date moves under it (playtest 2026-11-08).
+    const meta = screen.getByText(/^resolved /);
+    const date = String([].concat(meta.props.children).join('')).replace(/^resolved /, '');
     expect(date).not.toMatch(/ /);
     expect(date).toMatch(/\u00A0/);
   });

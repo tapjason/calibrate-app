@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 
 import { localDate } from '@/components/ui/dates';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
-import { spokenExcerpt, textLanguage } from '@/components/ui/textLanguage';
+import { spokenExcerpt } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
@@ -136,12 +136,14 @@ export function PredictionCard({
         )}
         <View style={styles.metaRow}>
           <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
-          {/* The name gives way, the date never does: a 24-character name ran
-              past the card's edge (playtest 2026-11-08, finding 1). */}
+          {/* The name keeps to one line, ending in "…" when it's long: a
+              24-character name ran past the card's edge (playtest 2026-11-08,
+              finding 1). When name and date don't fit together, the date
+              moves under them, so neither is lost. */}
           <Text style={styles.meta} numberOfLines={1}>
-            {categoryTitle(prediction.category)}
+            {categoryTitle(prediction.category)},
           </Text>
-          <Text style={[styles.meta, styles.metaWhen]}>, {when}</Text>
+          <Text style={styles.meta}>{when}</Text>
         </View>
         {showStatus && (
           <View style={styles.statusRow}>
@@ -191,9 +193,14 @@ const styles = StyleSheet.create({
   title: { ...type.body, color: colors.textPrimary },
   // The user's own words, quoted and quieter than the prediction they're about.
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
-  metaRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
+  metaRow: {
+    alignItems: 'center',
+    columnGap: space.xs,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: 0,
+  },
   meta: { ...type.footnote, color: colors.textSecondary, flexShrink: 1 },
-  metaWhen: { flexShrink: 0 },
   statusRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },
   status: { ...type.footnote, color: colors.textPrimary, fontWeight: '600' },
   confidence: { alignItems: 'flex-end', gap: 6, paddingTop: 2, width: SCALE_WIDTH },

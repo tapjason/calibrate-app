@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { holdRanges } from '@/components/ui/holdRanges';
@@ -154,6 +154,46 @@ describe('ResolvePrompt on a same-day answer', () => {
       expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(/didn’t happen/),
     );
     expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(SAME_DAY_LINE);
+  });
+});
+
+// Playtest 2026-11-08, finding 38: the screen changed under the finger and
+// VoiceOver heard nothing. Yes and No are said the same way.
+describe('ResolvePrompt announcements', () => {
+  it.each([
+    ['resolve-yes', 'Recorded: it happened'],
+    ['resolve-no', 'Recorded: it didn’t happen'],
+  ])('says what %s recorded', async (button, said) => {
+    await insertPrediction(samplePending());
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId(button)).toBeTruthy());
+    fireEvent.press(screen.getByTestId(button));
+    await waitFor(() => expect(announce).toHaveBeenCalledWith(said));
+    announce.mockRestore();
+  });
+
+  it('says a change of answer', async () => {
+    await insertPrediction(samplePending());
+    await usePredictionStore.getState().resolve('p1', 'resolved_yes');
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_yes" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-change')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-change'));
+    await waitFor(() =>
+      expect(announce).toHaveBeenCalledWith('Changed to: it didn’t happen.'),
+    );
+    announce.mockRestore();
+  });
+
+  // Finding 39: the note was only the hint.
+  it("reads Can't tell's note in its label", async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-skip')).toBeTruthy());
+    expect(screen.getByTestId('resolve-skip').props.accessibilityLabel).toBe(
+      "Can't tell / doesn't apply. It won't count toward your score.",
+    );
   });
 });
 

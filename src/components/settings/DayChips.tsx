@@ -30,7 +30,7 @@ export function DayChips({ value, onChange, testID }: DayChipsProps) {
   // text size; when seven don't fit, they wrap to a second row instead of
   // running together ("SuMorTueWe", playtest 2026-11-08, finding 9).
   const { fontScale } = useWindowDimensions();
-  const minWidth = Math.ceil(31 * Math.min(Math.max(fontScale, 1), 2));
+  const minWidth = Math.ceil(31 * Math.max(fontScale, 1));
   return (
     <View
       style={styles.row}

@@ -76,7 +76,7 @@ export function firstReminderDay(pending: readonly Prediction[], now: Date): str
     weekday: 'short',
     day: 'numeric',
     month: 'short',
-  });
+  }, now);
 }
 
 /**

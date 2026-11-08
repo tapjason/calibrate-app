@@ -34,8 +34,8 @@ export function nextCanvasWidth(current: number, measured: number): number {
 /**
  * The most of the window's height a preview may take. Scaled to the width
  * alone, a Post card in landscape was 757 × 1009 on a 375-tall screen, and
- * Story moved it off-screen (playtest 2026-11-08, finding 8). In portrait no
- * card reaches it.
+ * Story moved it off-screen (playtest 2026-11-08, finding 8). In portrait only
+ * a Story on a 667pt-tall phone (iPhone SE) reaches it, and shrinks a little.
  */
 export const MAX_PREVIEW_HEIGHT_SHARE = 0.8;
 

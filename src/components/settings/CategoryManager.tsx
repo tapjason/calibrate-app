@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { CategoryIcon } from '@/components/ui/Icon';
@@ -42,6 +50,11 @@ export function CategoryManager() {
   const all = categoryOptions({ includeHidden: true });
   const shown = categoryOptions();
   const hasOwn = all.some((c) => !isBuiltInCategory(c));
+
+  // About six letters of name at the current text size: past that, Rename and
+  // the switch wrap under it rather than leave "Gr…" (review, 2026-11-08).
+  const { fontScale } = useWindowDimensions();
+  const nameFloor = Math.round(48 * Math.max(fontScale, 1));
 
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -141,7 +154,10 @@ export function CategoryManager() {
                         <CategoryIcon category={c} size={22} color={colors.textSecondary} />
                       </View>
                     </Pressable>
-                    <Text style={[styles.name, hidden && styles.nameHidden]} numberOfLines={1}>
+                    <Text
+                      style={[styles.name, { minWidth: nameFloor }, hidden && styles.nameHidden]}
+                      numberOfLines={1}
+                    >
                       {name}
                     </Text>
                     {/* Its own button, not grey text after the name (first device
@@ -289,7 +305,6 @@ const styles = StyleSheet.create({
     flexBasis: 0,
     flexGrow: 1,
     flexShrink: 1,
-    minWidth: 48,
   },
   nameHidden: { color: colors.textTertiary },
   dimmed: { opacity: 0.45 },

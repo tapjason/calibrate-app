@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
@@ -56,6 +57,20 @@ describe('CategoryManager', () => {
     fireEvent.press(screen.getByTestId('manage-finance-save'));
     await waitFor(() => expect(categoryLabel('finance')).toBe('Money'));
     expect(screen.queryByTestId('manage-finance-input')).toBeNull();
+  });
+
+  // Playtest 2026-11-08, finding 38: Rename and Add said nothing.
+  it('announces a rename and an addition', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    render(<CategoryManager />);
+    fireEvent.press(screen.getByTestId('manage-finance-rename'));
+    fireEvent.changeText(screen.getByTestId('manage-finance-input'), 'Money');
+    fireEvent.press(screen.getByTestId('manage-finance-save'));
+    await waitFor(() => expect(announce).toHaveBeenCalledWith('Renamed to Money.'));
+    fireEvent.changeText(screen.getByTestId('manage-new-name'), 'Grad school');
+    fireEvent.press(screen.getByTestId('manage-add'));
+    await waitFor(() => expect(announce).toHaveBeenCalledWith('Added Grad school.'));
+    announce.mockRestore();
   });
 
   it('hides one from the choices when logging', async () => {

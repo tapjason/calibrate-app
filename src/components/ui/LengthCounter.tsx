@@ -1,4 +1,5 @@
-import { StyleSheet, Text } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 
 import { colors, space, tabularNums, type } from '@/constants/theme';
 
@@ -29,6 +30,16 @@ interface LengthCounterProps {
  * finding 20).
  */
 export function LengthCounter({ length, max, testID }: LengthCounterProps) {
+  // Said once as the field fills, so a VoiceOver user doesn't type on into
+  // silence either.
+  const wasFull = useRef(length >= max);
+  useEffect(() => {
+    const full = length >= max;
+    if (full && !wasFull.current) {
+      AccessibilityInfo.announceForAccessibility(`${max} characters, the most it takes.`);
+    }
+    wasFull.current = full;
+  }, [length, max]);
   if (!showLength(length, max)) return null;
   return (
     <Text style={[styles.count, length >= max && styles.full]} testID={testID}>

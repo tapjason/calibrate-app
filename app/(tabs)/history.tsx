@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -24,7 +24,7 @@ import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { confidenceRangeLow } from '@/store/statsStore';
 import { categoryOptions, categoryTitle, isCategoryHidden, useCategoryStore } from '@/store/categoryStore';
-import type { Category } from '@/types';
+import type { Category, Prediction } from '@/types';
 
 
 export default function HistoryScreen() {
@@ -65,6 +65,16 @@ export default function HistoryScreen() {
     () => openForHistory(pending, { category: filter, range }),
     [pending, filter, range],
   );
+
+  // A new filter is a new list, read from its newest: without this it kept
+  // the old scroll offset, and a range opened from Stats after scrolling
+  // History showed the last three of its eight. Scrolled here rather than by
+  // keying the list, which would remount the filter strip in its header and
+  // snap it back to "All" on every tap (review, 2026-11-08).
+  const listRef = useRef<SectionList<Prediction>>(null);
+  useEffect(() => {
+    listRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: false });
+  }, [filter, range]);
 
   // Plain counts for the current filter, as the Answered heading counts.
   const summary = historySummary(filtered);
@@ -159,10 +169,7 @@ export default function HistoryScreen() {
         )
       ) : (
         <SectionList
-          // A new filter is a new list, read from its newest. Without the key
-          // it kept the old scroll offset: a range opened from Stats after
-          // scrolling History showed the last three of its eight.
-          key={`${filter}-${range ?? 'any'}`}
+          ref={listRef}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={false}

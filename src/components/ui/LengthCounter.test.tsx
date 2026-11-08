@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { LengthCounter, lengthText, showLength } from './LengthCounter';
 
@@ -19,6 +20,17 @@ describe('LengthCounter', () => {
   it('renders nothing far from the limit', () => {
     render(<LengthCounter length={10} max={200} testID="c" />);
     expect(screen.queryByTestId('c')).toBeNull();
+  });
+
+  it('says the limit once, as the field reaches it', () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    const { rerender } = render(<LengthCounter length={199} max={200} />);
+    expect(announce).not.toHaveBeenCalled();
+    rerender(<LengthCounter length={200} max={200} />);
+    rerender(<LengthCounter length={200} max={200} />);
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith('200 characters, the most it takes.');
+    announce.mockRestore();
   });
 
   it('renders the count near it', () => {
