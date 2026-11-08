@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
@@ -45,9 +45,20 @@ interface LogPredictionFormProps {
    * different one.
    */
   again?: LogAgainDraft | null;
+  /**
+   * The sheet's title row, drawn as the first thing inside the scroll view.
+   * As a sibling above it, the first device run (iOS 26, 2026-11-07) drew the
+   * scroll view from the top of the sheet, over the title and the ×.
+   */
+  header?: ReactNode;
 }
 
-export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPredictionFormProps) {
+export function LogPredictionForm({
+  onSubmitted,
+  onDirtyChange,
+  again,
+  header,
+}: LogPredictionFormProps) {
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
@@ -224,6 +235,7 @@ export function LogPredictionForm({ onSubmitted, onDirtyChange, again }: LogPred
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
+        {header}
         {nudge && !nudgeDismissed && (
           <CoverageNudge
             suggestedConfidence={nudge.suggested_confidence}

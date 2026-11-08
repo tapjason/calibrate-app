@@ -44,19 +44,22 @@ export default function LogScreen() {
 
   return (
     <View style={styles.sheet}>
-      {/* The way out before anything is saved (roadmap step 79), besides the
-          grabber and the swipe; a typed draft asks first. */}
-      <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">
-          New prediction
-        </Text>
-        <CloseButton onPress={close} testID="log-close" />
-      </View>
       {/* The form scrolls its own fields and pins Save beneath them. A new key
-          per repeated prediction, so the form starts from it. */}
+          per repeated prediction, so the form starts from it. The title row
+          rides inside the scroll view (see LogPredictionForm's `header`). */}
       <LogPredictionForm
         key={draft?.sourceId ?? 'blank'}
         again={draft}
+        header={
+          // The way out before anything is saved (roadmap step 79), besides
+          // the swipe; a typed draft asks first.
+          <View style={styles.header}>
+            <Text style={styles.title} accessibilityRole="header">
+              New prediction
+            </Text>
+            <CloseButton onPress={close} testID="log-close" />
+          </View>
+        }
         onDirtyChange={setDirty}
         onSubmitted={() => {
           guard.markLeaving();
@@ -69,12 +72,12 @@ export default function LogScreen() {
 
 const styles = StyleSheet.create({
   sheet: { backgroundColor: colors.canvas, flex: 1 },
+  // Inside the form's padded scroll content, so no padding of its own.
   header: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingTop: space.lg,
+    marginBottom: space.md,
   },
   title: { ...type.title2, color: colors.textPrimary },
 });
