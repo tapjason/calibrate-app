@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { CUSTOM_CATEGORY_SYNC } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
@@ -153,7 +154,7 @@ export function CategoryManager() {
                         iPhone the bare switch sat above the row's centre line
                         (first device run, 2026-11-07). */}
                     <View style={styles.switchBox}>
-                      <Switch
+                      <ToggleSwitch
                         value={!hidden}
                         // The last one offered stays on: logging needs a category.
                         disabled={!hidden && shown.length === 1}
@@ -161,13 +162,6 @@ export function CategoryManager() {
                           void run(() => useCategoryStore.getState().setHidden(c, !on))
                         }
                         accessibilityLabel={`Offer ${name} when logging`}
-                        trackColor={{
-                          true: colors.action,
-                          false: colors.controlBorder,
-                        }}
-                        thumbColor={colors.onAction}
-                        ios_backgroundColor={colors.controlBorder}
-                        {...{ activeThumbColor: colors.onAction }}
                         testID={`manage-${c}-shown`}
                       />
                     </View>

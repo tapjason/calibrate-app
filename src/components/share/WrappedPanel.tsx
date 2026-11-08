@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -13,6 +13,7 @@ import { chartVerdict } from '@/components/stats/chartTakeaway';
 import { haptics } from '@/components/ui/haptics';
 import { colors, space, type } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { track } from '@/analytics/track';
 import { resolveTheme, WRAPPED_DEFAULT_THEME } from '@/constants/cardThemes';
 import { shareCard, type ShareOutcome } from '@/share/export';
@@ -186,16 +187,12 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
           testID="wrapped-titles-toggle"
         >
           <Text style={styles.toggleLabel}>Show prediction titles on the card</Text>
-          <Switch
+          <ToggleSwitch
             value={showTitles}
             onValueChange={setShowTitles}
-            trackColor={{ true: colors.action, false: colors.controlBorder }}
-            thumbColor={colors.onAction}
-            ios_backgroundColor={colors.controlBorder}
             aria-hidden
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
-            {...{ activeThumbColor: colors.onAction }}
           />
         </Pressable>
       )}

@@ -1,9 +1,10 @@
 import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
-import { AppState, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { AppState, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { Icon } from '@/components/ui/Icon';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
   APP_NAME,
   GUEST_ANALYTICS,
@@ -592,21 +593,13 @@ function ToggleRow({
         <Text style={styles.rowLabel}>{label}</Text>
         <Text style={styles.rowDescription}>{description}</Text>
       </View>
-      <Switch
+      <ToggleSwitch
         value={value}
         onValueChange={onValueChange}
         testID={testID}
         aria-hidden
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        // Brand tint when on; a 3:1 grey track when off, so "off" still reads
-        // as a control (DESIGN_SYSTEM §2.2 controlBorder).
-        trackColor={{ true: colors.action, false: colors.controlBorder }}
-        // White in both appearances, as iOS draws its own (D7): the surface
-        // token turns dark at night and the thumb sank into the track.
-        thumbColor={colors.onAction}
-        ios_backgroundColor={colors.controlBorder}
-        {...{ activeThumbColor: colors.onAction }}
       />
     </Pressable>
   );
