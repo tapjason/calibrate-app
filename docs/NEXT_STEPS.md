@@ -85,6 +85,10 @@ and item g are done. Next: the owner runs the development build.
    Supabase migration 008 is applied); deletions after an answer, or of an
    open one on or after its due day, are counted on Insights; a "Can't tell"
    can be answered only up to 7 days after its due date.
+   **Step 160, the seventh playtest round's fixes** (done 2026-11-08, on
+   `builder/playtest-limits`): groups 1, 2, 3, 5 and 7 of
+   `docs/design/research/playtest-2026-11-08.md`. Groups 4 and 6 wait on the
+   owner (`/design`).
 3. **Step 157, D46:** a category's score unlocks at 20 answers, the same as
    its badge (`MIN_N_CATEGORY` 15 → 20).
 4. **Step 158, D47: accessibility.** The chart's luck bars at 3:1 (WCAG

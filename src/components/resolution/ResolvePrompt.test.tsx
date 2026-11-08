@@ -173,6 +173,16 @@ describe('ResolvePrompt announcements', () => {
     announce.mockRestore();
   });
 
+  it("says a Can't tell", async () => {
+    await insertPrediction(samplePending());
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    render(<ResolvePrompt predictionId="p1" onResolved={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('resolve-skip')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-skip'));
+    await waitFor(() => expect(announce).toHaveBeenCalledWith('Recorded: can’t tell.'));
+    announce.mockRestore();
+  });
+
   it('says a change of answer', async () => {
     await insertPrediction(samplePending());
     await usePredictionStore.getState().resolve('p1', 'resolved_yes');

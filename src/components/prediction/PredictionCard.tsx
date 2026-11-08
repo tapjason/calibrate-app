@@ -135,14 +135,17 @@ export function PredictionCard({
           </Text>
         )}
         <View style={styles.metaRow}>
-          <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
-          {/* The name keeps to one line, ending in "…" when it's long: a
-              24-character name ran past the card's edge (playtest 2026-11-08,
-              finding 1). When name and date don't fit together, the date
-              moves under them, so neither is lost. */}
-          <Text style={styles.meta} numberOfLines={1}>
-            {categoryTitle(prediction.category)},
-          </Text>
+          {/* The name keeps to one line beside its icon, ending in "…" when
+              it's long: a 24-character name ran past the card's edge
+              (playtest 2026-11-08, finding 1). When name and date don't fit
+              together, the date moves under them, so neither is lost; icon
+              and name stay together as one item. */}
+          <View style={styles.metaName}>
+            <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
+            <Text style={styles.meta} numberOfLines={1}>
+              {categoryTitle(prediction.category)},
+            </Text>
+          </View>
           <Text style={styles.meta}>{when}</Text>
         </View>
         {showStatus && (
@@ -199,6 +202,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     rowGap: 0,
+  },
+  metaName: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexShrink: 1,
+    gap: space.xs,
+    minWidth: 0,
   },
   meta: { ...type.footnote, color: colors.textSecondary, flexShrink: 1 },
   statusRow: { alignItems: 'center', flexDirection: 'row', gap: space.xs },

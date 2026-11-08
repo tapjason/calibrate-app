@@ -1,68 +1,68 @@
 # Handoff
 
-**Branch:** `builder/agent-harness`, from `builder/device-fixes` (21bb262, the seventh playtest round). Nothing pushed; `builder/device-fixes`, `builder/expo-fix`, `builder/score-holes`, `builder/build-prep` and `master` are still local only.
+**Branch:** `builder/playtest-limits`, from `builder/agent-harness` (01315f6, the agent harness). Nothing pushed; `builder/agent-harness`, `builder/device-fixes`, `builder/expo-fix`, `builder/score-holes`, `builder/build-prep` and `master` are still local only.
 
 ## What this PR did
 
-The agent harness from the owner's other projects (`duolingo-bible`'s Expo version of the Roblox harness kit), adapted to this iPhone app (owner's request, 2026-11-08). No app code changed.
+Step 160: the fixes from the seventh blind playtest round (`docs/design/research/playtest-2026-11-08.md`), groups 1, 2, 3, 5 and 7. JS only: a reload on the phone, no new build. The full list is the step's row in `docs/design/BUILT_LOG.md`.
 
-- **The profile:** `docs/app-profile.md`, §1–§18. It points to the canonical docs rather than copying them. §5 sets out the record rules (R1–R12) from `CLAUDE.md` as a checklist. §18 covers the iPhone: what only the phone shows, and the iOS-vs-web traps found on the device on 2026-11-07 and 08.
-- **Nine read-only agents:**
-  - `code-reviewer`
-  - `record-auditor`: the record's integrity. It replaces the other project's Scripture checker.
-  - `design-analyst`
-  - `platform-api-checker`: checks against SDK 55, RN 0.83 and Apple.
-  - `policy-auditor`: App Review, subscriptions, 5.1.2(i), age assurance.
-  - `web-playtester`
-  - `blind-playtester`: browser tools only, the blind method every round has used.
-  - `release-auditor`: iOS only.
-  - `live-ops-analyst`
-- **The three builder agents** keep writing code. Their stale facts are fixed: test count, D40 emoji exception, `check.sh`, the iOS traps.
-- **Skills:**
-  - `/step`: replaces the other projects' `/milestone`. It works on builder branches, BUILT_LOG and HANDOFF.
-  - `/design`: records D numbers in UI_ROADMAP §2.
-  - `/playtest`
-  - `/device-check`: new. It writes the owner's iPhone checklist and records the results.
-  - `/build`: iOS development or production. It runs only after the owner confirms, and never submits.
-  - `/release-gate`
-  - `/live-review`
-  - `/check`
-  - `/new-content`
-- **Hook:** `.claude/hooks/check-ts-edit.sh` type-checks incrementally after every edit of a `.ts`/`.tsx` file under `app/`, `src/` or `supabase/`. It runs `bash scripts/check.sh --quick` (about 5–10 s).
-- **Shared settings:** `.claude/settings.json`.
-  - Allows: the check scripts, read-only git and EAS listing, the docs domains, and the Playwright tools.
-  - Asks before: `eas build`, `credentials`, `env:create` and `update`; `git push`; `npm install`; Supabase deploys.
-  - Denies: `eas submit`, force pushes, `supabase db reset` and `npm publish`.
-- **Scripts:**
-  - `scripts/check.sh` gained `--quick` and `--release`. The default is unchanged. `--release` sets `EXPO_NO_DOTENV=1`.
-  - `scripts/web-serve.sh` runs the web build on 8097. It refuses 8081, the iPhone dev server's port.
-  - `scripts/check-harness.sh` checks the harness. It fails if a read-only agent gets a writing tool, or if the blind playtester can see more than the browser.
-- **Docs:**
-  - `docs/agent-harness.md`: the map, formats, skills and settings.
-  - `docs/tooling-notes.md`: machine, EAS and phone, web build, Jest.
-  - `CLAUDE.md` has a new "Agent harness" section: commands, the agent table, the iPhone, owner-only actions.
-  - `.tooling/` is ignored.
+- **Long names and large text (findings 1–4, 9):**
+  - Category names keep to one line with an ellipsis everywhere.
+  - Fixed-width items (the practice row's "Start", the badge pill) wrap under the words at large text instead of squeezing them.
+  - Switches keep their size beside a wrapping label.
+  - Categories rows fit at 320.
+  - The chart thins tick labels and keeps its n= labels off the region labels.
+  - The day pills wrap; the range cells break instead of truncating.
+- **Structure (7, 8, 13):**
+  - History's filters scroll with the list (the list scrolls to the top on a new filter, so the strip keeps its place).
+  - The card preview is capped at 80% of the window's height.
+  - Log and Edit show six categories plus "N more" past eight.
+- **Dates and limits (6, 20, 21):**
+  - Pick a date stops two years ahead (the pickers only; the store doesn't clamp).
+  - Dates show their year when it isn't this year's (`src/components/ui/dates.ts`).
+  - Text fields count down near their limit and say it once reached.
+  - The last card category and the last offered category say why they stay on; hidden categories are dimmed.
+- **Card (14, 15):** the gap above the footer is kept, and shrunk content keeps the footer's left edge.
+- **VoiceOver (38–41):**
+  - Resolve announces what it recorded or changed; Categories announces renames and additions.
+  - Can't tell's note is in its label.
+  - History rows read only the start of a long note.
+  - Hebrew and Arabic titles use their own voice on Resolve and the details.
+- **Not changed, on purpose:**
+  - Share stays above the card settings (finding 17). The code records the placement as deliberate; moving it is the owner's call.
+  - The Story card keeps its bottom safe band.
+- **Review:** `code-reviewer` found no blockers in either round.
+  - Round 1's seven should-fix items are fixed in 62e77dd.
+  - Round 2's one should-fix item is fixed in the last commit: the category icon could be left alone on its own line at the largest sizes, and now stays with the name.
+  - No `record-auditor` or `policy-auditor` run: nothing touches a score, count, data or store copy.
 
 ## In progress / broken
 
-- **Not run:** `check.sh --release`'s `expo-doctor` and iOS export steps. The export is heavy, and the web server was running. Its `expo config` and `expo install --check` steps were run by hand and pass ("Dependencies are up to date").
-- **New agents load in the next session.** Their first real triggers are the "First use" checks in `docs/agent-harness.md`.
+- **Not seen yet:** no web screenshots of these changes. The 8097 server still serves the code from before this branch, and restarting it waits on the owner's say-so.
+- **Finding 41 in list rows:** Today's and History's rows read the title inside one mixed-language label, so the Hebrew/Arabic voice applies only on Resolve and the details.
+- **Known small gaps (review nits, not fixed):**
+  - After "N more" is tapped, VoiceOver focus has nowhere to go.
+  - A prediction already due past the new maximum opens Edit with the iOS picker clamped to the maximum while "Due …" shows the stored date. Nothing is saved unless a date is picked.
+  - Wrapped day pills on a second row grow to fill it.
 - **Carried over from `builder/device-fixes`, still open on the phone:**
   - Your card → This week / This year (the absolute-canvas fix): not re-checked.
-  - You's switch rows (switch on the label's line): not re-checked.
-  - The Practice sheet (same header-beside-scroll shape as the old Log): not reported.
-  - Confirmed earlier: Log's header, Apple sign-in, Categories' switches.
+  - You's switch rows (the switch on the label's line): not re-checked.
+  - The Practice sheet: not reported.
 
 ## Next step
 
-- **Owner:**
-  - Reload the app and check the items above (`/device-check` writes the list).
-  - The reminder test: two predictions are due tomorrow.
-  - Say which branches to push.
+- **Owner, on the iPhone** (reload; `/device-check` can write the full list):
+  1. Settings → Accessibility → Display & Text Size → Larger Text, at the largest size. Check that Today's practice row, Insights' category rows, You's switches, Categories and the digest's day pills read as words, not letter by letter.
+  2. Add a category with a 24-character name (e.g. "WWWWWWWWWWWWWWWWWWWWWWWW"). Check that Log, Today, History, Insights and Categories show it with "…" inside the screen.
+  3. Add categories until there are ten or more. Log shows six plus "N more". In History, scroll the filter strip right and tap a chip: the strip stays where it was.
+  4. Your card in landscape: the whole card is visible; Story too.
+  5. Pick a date: nothing past two years from today.
+  6. With VoiceOver on, answer a prediction Yes. It says "Recorded: it happened".
+  7. The reminder test: two predictions are due tomorrow.
 - **Agent:**
-  - The playtest fix groups 1–3, 5 and 7 (`docs/design/research/playtest-2026-11-08.md`), as `/step`.
+  - Web screenshots at 320 and 375 wide, light and dark, once the web server may restart.
   - Then steps 157–159.
-  - Groups 4 and 6 wait on the owner (`/design`).
+  - Groups 4 and 6 of the playtest wait on the owner (`/design`).
 
 ## Read first
 
@@ -76,9 +76,10 @@ The agent harness from the owner's other projects (`duolingo-bible`'s Expo versi
   - Pages;
   - the domain;
   - email confirmation for strangers;
-  - the 2026-11-08 playtest's groups 4 (Insights hierarchy, the recap's lead) and 6 (sheet headers, vocabulary, formats).
+  - the 2026-11-08 playtest's group 4 (Insights' hierarchy, the 70/85/90 meter's label, the recap's lead) and group 6 (sheet headers, vocabulary, formats);
+  - finding 17: Share above or below the card's settings.
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 148 suites, 1736 tests.
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 152 suites, 1763 tests.
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.
