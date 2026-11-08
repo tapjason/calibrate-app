@@ -282,16 +282,12 @@ export default function RootLayout() {
           }}
         />
         {/* Logging is an action, not a place (roadmap D3): the "+" opens it as a
-            full-height sheet over whichever tab you're on. */}
-        <Stack.Screen
-          name="log"
-          options={{
-            presentation: 'formSheet',
-            sheetAllowedDetents: [1.0],
-            sheetGrabberVisible: true,
-            sheetCornerRadius: 24,
-          }}
-        />
+            full-height sheet over whichever tab you're on. iOS's own page
+            sheet, not a formSheet: on the first device run (2026-11-07, iOS
+            26) the keyboard pushed the formSheet up, so the title field sat
+            over "New prediction" and hid the ×. A page sheet stays put, and
+            still swipes down (through the draft guard). */}
+        <Stack.Screen name="log" options={{ presentation: 'modal' }} />
         {/* Today's practice (roadmap step 88): a task, so a sheet like Log. */}
         <Stack.Screen
           name="practice"

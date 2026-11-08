@@ -27,6 +27,8 @@ export type SignUpOutcome =
   | { ok: false; error: string };
 
 const OFFLINE = "Couldn't reach the server. Check your connection and try again.";
+const PROVIDER_OFF =
+  "This way of signing in isn't available right now. Sign in with your email instead.";
 
 /**
  * The words a person sees for an auth failure. Supabase reports an
@@ -38,7 +40,12 @@ const OFFLINE = "Couldn't reach the server. Check your connection and try again.
 export function authErrorText(message: string): string {
   const unreachable =
     /failed to fetch|network request failed|fetch failed|networkerror|load failed/i;
-  return unreachable.test(message) ? OFFLINE : message;
+  if (unreachable.test(message)) return OFFLINE;
+  // A provider switched off on the project (seen on the first device build,
+  // 2026-11-07: 'Provider (issuer "https://appleid.apple.com") is not
+  // enabled'). Server wording, not the person's to fix; email still works.
+  if (/provider.*(is )?not enabled|unsupported provider/i.test(message)) return PROVIDER_OFF;
+  return message;
 }
 
 function errMessage(e: unknown): string {

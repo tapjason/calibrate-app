@@ -82,4 +82,16 @@ describe('authErrorText', () => {
   it("passes Supabase's own messages through", () => {
     expect(authErrorText('Invalid login credentials')).toBe('Invalid login credentials');
   });
+
+  // The first device build, 2026-11-07, before the Apple provider was saved.
+  it('points to email when a sign-in provider is off on the server', () => {
+    for (const raw of [
+      'Provider (issuer "https://appleid.apple.com") is not enabled',
+      'Unsupported provider: provider is not enabled',
+    ]) {
+      expect(authErrorText(raw)).toBe(
+        "This way of signing in isn't available right now. Sign in with your email instead.",
+      );
+    }
+  });
 });

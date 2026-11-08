@@ -130,8 +130,13 @@ export function CategoryManager() {
                     >
                       <CategoryIcon category={c} size={22} color={colors.textSecondary} />
                     </Pressable>
+                    <Text style={[styles.name, hidden && styles.nameHidden]}>{name}</Text>
+                    {/* Its own button, not grey text after the name (first device
+                        run, 2026-11-07: it read as part of the label). Ink on a
+                        sunken pill: the brand has no hue for actions (D33). */}
                     <Pressable
-                      style={styles.nameButton}
+                      style={({ pressed }) => [styles.renameButton, pressed && styles.renamePressed]}
+                      hitSlop={6}
                       onPress={() => {
                         setDraft(name);
                         setEditing(c);
@@ -141,27 +146,31 @@ export function CategoryManager() {
                       accessibilityLabel={`${name}. Rename`}
                       testID={`manage-${c}-rename`}
                     >
-                      <Text style={[styles.name, hidden && styles.nameHidden]}>{name}</Text>
-                      <Text style={styles.renameHint}>Rename</Text>
+                      <Text style={styles.renameLabel}>Rename</Text>
                     </Pressable>
-                    {/* On = offered when logging. The whole switch is one element. */}
-                    <Switch
-                      value={!hidden}
-                      // The last one offered stays on: logging needs a category.
-                      disabled={!hidden && shown.length === 1}
-                      onValueChange={(on) =>
-                        void run(() => useCategoryStore.getState().setHidden(c, !on))
-                      }
-                      accessibilityLabel={`Offer ${name} when logging`}
-                      trackColor={{
-                        true: colors.action,
-                        false: colors.controlBorder,
-                      }}
-                      thumbColor={colors.onAction}
-                      ios_backgroundColor={colors.controlBorder}
-                      {...{ activeThumbColor: colors.onAction }}
-                      testID={`manage-${c}-shown`}
-                    />
+                    {/* On = offered when logging. The whole switch is one element.
+                        Boxed at the row's 44pt height and centred in it: on the
+                        iPhone the bare switch sat above the row's centre line
+                        (first device run, 2026-11-07). */}
+                    <View style={styles.switchBox}>
+                      <Switch
+                        value={!hidden}
+                        // The last one offered stays on: logging needs a category.
+                        disabled={!hidden && shown.length === 1}
+                        onValueChange={(on) =>
+                          void run(() => useCategoryStore.getState().setHidden(c, !on))
+                        }
+                        accessibilityLabel={`Offer ${name} when logging`}
+                        trackColor={{
+                          true: colors.action,
+                          false: colors.controlBorder,
+                        }}
+                        thumbColor={colors.onAction}
+                        ios_backgroundColor={colors.controlBorder}
+                        {...{ activeThumbColor: colors.onAction }}
+                        testID={`manage-${c}-shown`}
+                      />
+                    </View>
                   </>
                 )}
               </View>
@@ -251,22 +260,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
-  // "Rename" wraps under the name rather than running off the edge.
-  nameButton: {
-    // Wrapped lines pack to the top by default; centre them in the row.
-    alignContent: 'center',
-    alignItems: 'center',
-    flexBasis: 120,
-    flexDirection: 'row',
+  // The name takes the room; at large sizes Rename and the switch wrap under it.
+  name: {
+    ...type.callout,
+    color: colors.textPrimary,
+    flexBasis: 80,
     flexGrow: 1,
     flexShrink: 1,
-    flexWrap: 'wrap',
-    columnGap: space.sm,
-    minHeight: 44,
   },
-  name: { ...type.callout, color: colors.textPrimary, flexShrink: 1 },
   nameHidden: { color: colors.textSecondary },
-  renameHint: { ...type.footnote, color: colors.textSecondary },
+  renameButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSunken,
+    borderColor: colors.controlBorder,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    minHeight: 32,
+    paddingHorizontal: space.md,
+  },
+  renamePressed: { opacity: 0.6 },
+  renameLabel: { ...type.footnote, color: colors.action, fontWeight: '600' },
+  switchBox: { alignItems: 'center', height: 44, justifyContent: 'center' },
   editing: { flex: 1, gap: space.sm, paddingVertical: space.xs },
   editActions: { alignItems: 'center', flexDirection: 'row', gap: space.md },
   input: {
