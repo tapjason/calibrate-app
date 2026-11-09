@@ -227,9 +227,49 @@ the browser.
 | Elena, 52 | Data-protection lawyer, reads every privacy line and the network log | Exactly what leaves the phone, said plainly | Anything sent that the copy didn't say |
 | Kofi, 45 | Blind, accessibility consultant, keyboard and screen reader | Every control named, announcements, order | Unnamed buttons, silent state changes |
 | Dana, 31 | QA engineer, breaks inputs for a living, 320 wide and landscape | Limits that are stated and hold | Silent truncation, dates in the year 9999 |
+| Grace, 58 | Runs a small bakery, phone mostly for WhatsApp, low tech confidence, reads every word slowly | To know it saved and what to do next, without fear of breaking something | Icons without words, anything that vanishes, "did it save?" |
+| Mateus, 29 | Brazilian in Lisbon, English is his third language, 24-hour clock, day-month dates | Plain words and familiar formats | Idioms, US-only formats, sentences he has to read twice |
+| Jun, 19 | Student, ADHD, logs ten things in a burst, forgets to answer, back after three weeks away | A way back in that doesn't scold, a pile he can clear fast | A wall of overdue items, a lost streak said as a loss |
+| Leah, 36 | Teacher with essential tremor, mis-taps, avoids precise drags | Big targets, undo, no slider-only input | A wrong tap that can't be taken back, controls 2 pt apart |
+| Sam, 27 | Night-shift paramedic, red-green colour blind, dark mode in a dark room | Charts and states readable without colour | Meaning carried by red and green alone, glare |
+| Noor, 44 | Anxious perfectionist, accountant, hates being "wrong" | Feedback that reads as information, not a grade | A verdict that sounds like a judgement of her |
+| Tomás, 41 | Forecasting hobbyist (Brier, Metaculus), sceptical of apps that do maths | Claims that are statistically right and say their limits | A wrong or overstated claim, a number without its method |
+| Amira, 38 | Nurse on rotating shifts, Arabic first, titles in Arabic, one hand, two-minute breaks | Things she can do one-handed in short bursts, RTL text that reads right | Reminders at the wrong hour, RTL text garbled, long flows |
 
-Default set: Maya (fresh), Priya, Walt, Kai, Rosa. Elena after any change to what leaves the
-phone; Kofi after accessibility work; Dana after input or layout work.
+**Diversity axes.** A round covers people, not only screens. Each run's persona has a value on
+every axis; a round's cast spreads across them:
+
+| Axis | Values |
+| --- | --- |
+| Age | 18–25, 26–40, 41–60, 61+ |
+| Language | native English, fluent second language, careful third language, plain-language reader |
+| Locale conventions | US (12-hour, M/D), 24-hour and D/M, right-to-left text in titles |
+| Access need | none, low vision (zoom), motor (tremor, one hand), colour vision, screen reader and keyboard, attention (ADHD), Reduce Motion |
+| Tech confidence | low, everyday, expert |
+| Mindset | curious, competitive, sceptical, anxious, social, privacy-minded |
+| Where they are in the app | first five minutes, first week, daily habit, back after a gap, long-time (months or years) |
+| Context | sitting with time, two-minute break, interrupted mid-task, dark room, on the move |
+| Screen | 320 × 568, 375 × 812, 402 × 874, 440 × 956, landscape; light or dark |
+
+**Choosing a round's cast.** Five or six runs. The focus picks one or two personas who must be
+there (Elena for data leaving the phone, Kofi for accessibility, Dana for inputs and layout, Kai for
+the record). Fill the rest so that:
+- at least one fresh install and one long-time or returning user;
+- at least one non-native or plain-language reader, and one access need other than large text;
+- no two runs share both screen size and appearance, and at least one run is at 320 wide;
+- no persona from either of the last two rounds' tables comes back unless the focus needs them;
+- one **wildcard**: draw each axis at random (as in `research/playtest-2026-11-05.md`), fix only
+  what doesn't hang together, and record the draw and the fixes in the round's Method.
+
+The round's file lists each run's axis values, so gaps show across rounds.
+
+**Usability method.** Tasks are goals in the persona's words ("make sure you'll hear about it
+tomorrow"), never button names. The tester says what it expects before a meaningful tap and whether
+that happened, rates each task's ease (1–7, the Single Ease Question), answers three comprehension
+questions in its own words at the end, and gives each issue a severity (0 cosmetic to 4 blocks the
+task). The main session can add interruptions (a reload mid-flow, back navigation, an app-switch
+pause) and a stand-in the agent can't set itself: colour vision through a CDP vision deficiency or a
+colour matrix, offline through CDP network conditions.
 
 ## §11 Models
 
