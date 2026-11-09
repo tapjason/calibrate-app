@@ -245,6 +245,7 @@ the browser.
 | Bea, 44 | Single parent of three, logs the kids' week in 30-second bursts, interrupted constantly | To pick up exactly where she left off | Lost typing, a flow that must be finished in one go |
 | Marcus, 38 | Eight months sober, predicts "I'll make my meeting"; a miss hurts | Misses said as information, a streak that doesn't shame | "You failed", a red mark on a hard day, cheer after a miss |
 | Rahel, 28 | Eritrean in Germany, Tigrinya first, German second, English third; shares a phone with her sister | Titles nobody else reads by accident, plain words | Her predictions on the lock screen or open to whoever picks the phone up |
+| Conceição, 64 | Retired biostatistician in Porto, Portuguese first, dyslexic, ADHD, follows football and cycling, back after two months away | Statistics that are right and say their limits, a way back in that names what changed | A silent drop in her number, long paragraphs, losing her place after an interruption |
 
 **Diversity axes.** A round covers people, not only screens. Each run's persona has a value on
 every axis; a round's cast spreads across them:

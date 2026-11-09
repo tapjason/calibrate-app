@@ -62,6 +62,15 @@ that apply here.
 - **One tab at a time:** the browser hands the database to one tab; a second tab runs without it.
 - Demo data: `/dev/seed` → "Load demo data" (testID `dev-seed-load`; the status line is
   `dev-seed-status`). Loading twice says it was already loaded.
+- On a fresh install every route, `/dev/seed` included, redirects to `/warmup` until the Warm-up
+  is finished ("Skip for now" isn't remembered with no predictions). For a seeded start state,
+  finish it through the store: `useWarmupStore.getState().hydrate()`, then `answer(choice,
+  confidence)` ten times (2026-11-09b kept this as `.playwright-mcp/warmup-done.js`).
+- Playwright's click scrolls its target into view first, so a button near the fold "jumps" the
+  page under a blind tester. Before ranking a jump, repeat it with `el.click()` in
+  `browser_evaluate` (2026-11-09b: the Log +5 jump at 320 was this).
+- Relative screenshot names resolve against the repo root: brief agents with the full
+  `.playwright-mcp/playtest-<date>/` path.
 - Dark mode: `browser_emulate_media` with `colorScheme: 'dark'`. Reduce Motion: `reducedMotion:
   'reduce'`. Large text: CSS zoom (2 and 1.5) through `browser_evaluate`, which also halves the
   layout width, so it is harsher than Dynamic Type.
