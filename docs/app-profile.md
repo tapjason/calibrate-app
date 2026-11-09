@@ -235,31 +235,54 @@ the browser.
 | Noor, 44 | Anxious perfectionist, accountant, hates being "wrong" | Feedback that reads as information, not a grade | A verdict that sounds like a judgement of her |
 | Tomás, 41 | Forecasting hobbyist (Brier, Metaculus), sceptical of apps that do maths | Claims that are statistically right and say their limits | A wrong or overstated claim, a number without its method |
 | Amira, 38 | Nurse on rotating shifts, Arabic first, titles in Arabic, one hand, two-minute breaks | Things she can do one-handed in short bursts, RTL text that reads right | Reminders at the wrong hour, RTL text garbled, long flows |
+| Hiroshi, 71 | Retired civil engineer in Osaka, Japanese first, careful English, an old small iPhone (320 wide) with Reduce Motion, titles in Japanese | Calm screens, exact words, his script shown whole | Motion that makes him dizzy, Japanese clipped mid-character, idioms |
+| Destiny, 22 | Retail worker, her phone is her only computer, prepaid data, uneasy with percentages | "How sure" in words she uses, numbers she can picture ("7 in 10") | A score she can't place, maths homework, anything that eats her data |
+| Seun, 33 | Accountant in Lagos who bets on football every weekend, fluent Nigerian English, wants to test his "sure things" | To know whether his locks really are | (He's the test: does the app ever read as a betting aid or reward a punt) |
+| Ben, 40 | Electrician with dyslexia, dictates titles by voice, skims and guesses from the first word | Short lines, forgiveness for dictation slips | Long paragraphs, look-alike words, a slip that blocks Save |
+| Ravi, 35 | Autistic software tester, literal reader, notices every change of word for the same thing | One word per idea, rules stated before they apply | "Answered", "resolved" and "scored" for one thing, a rule met only by breaking it |
+| Hannah, 30 | Long COVID, predicts her good and bad days, brain fog, about ten minutes of energy a day | Few steps, nothing to hold in her head between screens, health titles kept private | A long flow, a streak that punishes a bad week, health words on the lock screen |
+| Lucía, 16 | Secondary-school student in Mexico City, Spanish first, predicts her exam marks, her brother's old phone | Words a teenager reads easily, nothing pushing her to pay | A paywall in her way, being talked down to |
+| Bea, 44 | Single parent of three, logs the kids' week in 30-second bursts, interrupted constantly | To pick up exactly where she left off | Lost typing, a flow that must be finished in one go |
+| Marcus, 38 | Eight months sober, predicts "I'll make my meeting"; a miss hurts | Misses said as information, a streak that doesn't shame | "You failed", a red mark on a hard day, cheer after a miss |
+| Rahel, 28 | Eritrean in Germany, Tigrinya first, German second, English third; shares a phone with her sister | Titles nobody else reads by accident, plain words | Her predictions on the lock screen or open to whoever picks the phone up |
 
 **Diversity axes.** A round covers people, not only screens. Each run's persona has a value on
 every axis; a round's cast spreads across them:
 
 | Axis | Values |
 | --- | --- |
-| Age | 18–25, 26–40, 41–60, 61+ |
-| Language | native English, fluent second language, careful third language, plain-language reader |
-| Locale conventions | US (12-hour, M/D), 24-hour and D/M, right-to-left text in titles |
-| Access need | none, low vision (zoom), motor (tremor, one hand), colour vision, screen reader and keyboard, attention (ADHD), Reduce Motion |
+| Age | 13–17 (the 4+ rating lets teenagers in), 18–25, 26–40, 41–60, 61+ |
+| Language | native English, fluent second language, careful third language, plain-language reader, dyslexic reader |
+| Locale conventions | US (12-hour, M/D), 24-hour and D/M, right-to-left text in titles, other scripts in titles (Japanese, Ge'ez), Spanish or Portuguese first |
+| Numeracy | at ease with percentages, thinks in "7 in 10", a statistics expert |
+| Access need | none, low vision (zoom), motor (tremor, one hand), colour vision, screen reader and keyboard, attention (ADHD), Reduce Motion, dyslexia and dictation, fatigue and brain fog |
+| What they predict | work, health, money, sport (and betting), family, exams, recovery and habits |
+| Stakes | curiosity, self-improvement, a miss that hurts |
+| Device and network | a new phone, an old small phone, slow or capped data, offline mid-flow, a shared phone |
 | Tech confidence | low, everyday, expert |
 | Mindset | curious, competitive, sceptical, anxious, social, privacy-minded |
 | Where they are in the app | first five minutes, first week, daily habit, back after a gap, long-time (months or years) |
 | Context | sitting with time, two-minute break, interrupted mid-task, dark room, on the move |
 | Screen | 320 × 568, 375 × 812, 402 × 874, 440 × 956, landscape; light or dark |
 
-**Choosing a round's cast.** Five or six runs. The focus picks one or two personas who must be
+**Choosing a round's cast.** Six to eight runs. The focus picks one or two personas who must be
 there (Elena for data leaving the phone, Kofi for accessibility, Dana for inputs and layout, Kai for
 the record). Fill the rest so that:
 - at least one fresh install and one long-time or returning user;
-- at least one non-native or plain-language reader, and one access need other than large text;
+- at least one non-native, plain-language or dyslexic reader, one access need other than large text,
+  and one who thinks in "7 in 10" rather than percentages;
+- at least one under 26 and one over 60;
+- no two runs predicting about the same part of life, and at least one whose stakes hurt (a miss
+  that matters to them);
+- one run with a device or network stand-in (an old small phone, slow data or offline mid-flow);
+- one **edge of the audience** (a teenager, a bettor, a shared phone): someone the app wasn't
+  designed around but will meet, to check it treats them responsibly;
 - no two runs share both screen size and appearance, and at least one run is at 320 wide;
 - no persona from either of the last two rounds' tables comes back unless the focus needs them;
 - one **wildcard**: draw each axis at random (as in `research/playtest-2026-11-05.md`), fix only
-  what doesn't hang together, and record the draw and the fixes in the round's Method.
+  what doesn't hang together, and record the draw and the fixes in the round's Method;
+- prefer personas never cast before. When the axes leave a gap nobody in the table covers, write a
+  new persona row here first, in the same commit as the round.
 
 The round's file lists each run's axis values, so gaps show across rounds.
 
