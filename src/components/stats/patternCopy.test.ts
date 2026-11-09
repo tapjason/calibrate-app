@@ -13,7 +13,7 @@ describe('furthestOffLine (roadmap D37)', () => {
         actual_rate: 8 / 18,
         direction: 'overconfident',
       }),
-    ).toBe('Furthest off: finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.');
+    ).toBe('Furthest off: Finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.');
   });
 });
 

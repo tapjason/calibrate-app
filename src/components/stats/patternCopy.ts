@@ -3,7 +3,7 @@
 
 import type { CategoryMiss, WeekChange } from '@/store/statsStore';
 import type { BucketStat } from '@/types';
-import { categoryLabel } from '@/store/categoryStore';
+import { categoryTitle } from '@/store/categoryStore';
 
 /**
  * "Furthest off: finance. You said about 85%, and 8 of 18 happened. About 45%
@@ -15,7 +15,7 @@ export function furthestOffLine(miss: CategoryMiss): string {
   const said = Math.round(miss.mean_stated);
   const matched = Math.round((miss.actual_rate * 100) / 5) * 5;
   return (
-    `Furthest off: ${categoryLabel(miss.category)}. You said about ${said}%, and ${miss.happened} of ` +
+    `Furthest off: ${categoryTitle(miss.category)}. You said about ${said}%, and ${miss.happened} of ` +
     `${miss.resolved} happened. About ${matched}% would have matched.`
   );
 }

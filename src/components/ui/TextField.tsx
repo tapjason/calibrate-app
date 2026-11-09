@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { colors, radius, space, type } from '@/constants/theme';
+import { fitEdit, graphemeLength, unitBackstop } from '@/store/text';
 
 import { LengthCounter } from './LengthCounter';
 
@@ -57,17 +58,27 @@ export function TextField({
   children,
 }: TextFieldProps) {
   const input = useRef<TextInput>(null);
+  // The limit counts characters as a person sees them, and the cut never
+  // splits an emoji (playtest 2026-11-08b, finding 6); the input's own
+  // maxLength, in UTF-16 units, is only a backstop against a huge paste.
+  const change = (next: string) => {
+    const flat = grows ? next.replace(/\s*[\r\n]+\s*/g, ' ') : next;
+    onChangeText(maxLength === undefined ? flat : fitEdit(value, flat, maxLength));
+  };
   // iOS sizes a multiline input to its text; a browser's textarea keeps the
-  // height it was given, so on web it is measured to its text here.
+  // height it was given, so on web it is measured to its text here. A
+  // multiline note too: 500 characters sat in an 80pt box (playtest
+  // 2026-11-08b, finding 27).
+  const sized = grows || multiline;
   const fit = useCallback(() => {
-    if (!grows || Platform.OS !== 'web') return;
+    if (!sized || Platform.OS !== 'web') return;
     const node = input.current as unknown as HTMLTextAreaElement | null;
     if (!node?.style) return;
     node.style.height = 'auto';
     // border-box (react-native-web's input reset): the text and padding,
     // plus the 1pt border above and below.
     node.style.height = `${node.scrollHeight + 2}px`;
-  }, [grows]);
+  }, [sized]);
   useLayoutEffect(fit, [fit, value]);
 
   return (
@@ -78,7 +89,7 @@ export function TextField({
         testID={testID}
         accessibilityLabel={accessibilityLabel ?? label}
         value={value}
-        onChangeText={grows ? (next) => onChangeText(next.replace(/\s*[\r\n]+\s*/g, ' ')) : onChangeText}
+        onChangeText={change}
         placeholder={placeholder}
         placeholderTextColor={colors.textTertiary}
         multiline={multiline || grows}
@@ -89,11 +100,11 @@ export function TextField({
         onSubmitEditing={grows ? () => {} : undefined}
         returnKeyType={grows ? 'done' : undefined}
         scrollEnabled={grows ? false : undefined}
-        onLayout={grows ? fit : undefined}
+        onLayout={sized ? fit : undefined}
         // react-native-web's textarea starts at two rows; one, like the
         // single-line field it replaces. Native ignores it.
         {...(grows ? { rows: 1 } : null)}
-        maxLength={maxLength}
+        maxLength={maxLength === undefined ? undefined : unitBackstop(maxLength)}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
@@ -103,7 +114,7 @@ export function TextField({
       />
       {maxLength !== undefined && (
         <LengthCounter
-          length={value.length}
+          length={graphemeLength(value)}
           max={maxLength}
           testID={testID ? `${testID}-count` : undefined}
         />

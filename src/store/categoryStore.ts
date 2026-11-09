@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 
 import { listCategoryDefs, upsertCategoryDef } from '@/db/categories';
+import { graphemeLength } from '@/engine/graphemes';
 import {
   CATEGORIES,
   isBuiltInCategory,
@@ -206,7 +207,7 @@ export function isCategoryHidden(id: Category): boolean {
 export function categoryNameProblem(name: string, renaming?: Category): string | null {
   const clean = tidy(name);
   if (clean.length === 0) return 'Give it a name.';
-  if (clean.length > CATEGORY_NAME_MAX) return `Keep it to ${CATEGORY_NAME_MAX} characters.`;
+  if (graphemeLength(clean) > CATEGORY_NAME_MAX) return `Keep it to ${CATEGORY_NAME_MAX} characters.`;
   const lower = clean.toLowerCase();
   const taken =
     categoryOptions({ includeHidden: true }).some(
@@ -215,26 +216,6 @@ export function categoryNameProblem(name: string, renaming?: Category): string |
     // A built-in can always go back to its own word, so nothing else takes it.
     CATEGORIES.some((c) => c !== renaming && c === lower);
   return taken ? 'Another category already has that name.' : null;
-}
-
-interface GraphemeSegmenter {
-  segment(text: string): Iterable<unknown>;
-}
-type SegmenterConstructor = new (
-  locale?: string,
-  options?: { granularity: 'grapheme' },
-) => GraphemeSegmenter;
-
-/**
- * How many characters a person sees: Intl.Segmenter where the engine has it;
- * elsewhere a length cap that still lets a family emoji or a flag count as one.
- */
-function graphemeCount(text: string): number {
-  const Segmenter = (Intl as unknown as { Segmenter?: SegmenterConstructor }).Segmenter;
-  if (Segmenter) {
-    return Array.from(new Segmenter(undefined, { granularity: 'grapheme' }).segment(text)).length;
-  }
-  return text.length <= 16 ? 1 : 2;
 }
 
 /** Emoji by Unicode property, where the engine supports it; null where not. */
@@ -253,7 +234,7 @@ const PICTOGRAPHIC: RegExp | null = (() => {
 export function categoryEmojiProblem(text: string): string | null {
   const clean = text.trim();
   if (clean.length === 0) return 'Pick an emoji.';
-  if (/\s/.test(clean) || graphemeCount(clean) !== 1) return 'Use just one emoji.';
+  if (/\s/.test(clean) || graphemeLength(clean) !== 1) return 'Use just one emoji.';
   const pictographic = PICTOGRAPHIC ? PICTOGRAPHIC.test(clean) : !/[A-Za-z0-9]/.test(clean);
   return pictographic ? null : 'Use an emoji, not a letter.';
 }

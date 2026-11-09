@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
@@ -94,6 +94,10 @@ export function LogPredictionForm({
   }, [day, presetsDay, presets, dueDate]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Set before the first await: taps landing in the same frame all saw
+  // `submitting` false and saved one prediction each (playtest 2026-11-08b,
+  // finding 1).
+  const submittingRef = useRef(false);
   const [refining, setRefining] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   // REFINE_ENABLED is the release-level switch (currently off — see the
@@ -172,7 +176,8 @@ export function LogPredictionForm({
   };
 
   const onSubmit = async () => {
-    if (confidence === null || category === null) return;
+    if (confidence === null || category === null || submittingRef.current) return;
+    submittingRef.current = true;
     setError(null);
     setSubmitting(true);
     try {
@@ -201,6 +206,7 @@ export function LogPredictionForm({
       console.warn('[log] save failed:', e);
       setError("Couldn't save that. Try again.");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

@@ -98,6 +98,10 @@ export function ConfidenceControl({
   // number itself because three testers were surprised by a step past it.
   const middle = Math.round((min + max) / 2 / STEP) * STEP;
   const from = value ?? middle;
+  // From the latest value, not the one this render drew: two taps landing
+  // before the next render both stepped from it, and moved once (playtest
+  // 2026-11-08b, finding 25).
+  const step = (delta: number) => set((latest.current ?? middle) + delta);
 
   const steppers = (
     <View style={[styles.steppers, !inlineSteppers && styles.steppersBelow]}>
@@ -105,14 +109,14 @@ export function ConfidenceControl({
         label="−5"
         accessibilityLabel="Lower confidence by 5"
         variant="secondary"
-        onPress={() => set(from - STEP)}
+        onPress={() => step(-STEP)}
         testID={`${idPrefix}-decrement`}
       />
       <Button
         label="+5"
         accessibilityLabel="Raise confidence by 5"
         variant="secondary"
-        onPress={() => set(from + STEP)}
+        onPress={() => step(STEP)}
         testID={`${idPrefix}-increment`}
       />
     </View>

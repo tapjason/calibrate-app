@@ -1,69 +1,61 @@
 # Handoff
 
-**Branch:** `builder/playtest-limits`, from `builder/agent-harness` (01315f6, the agent harness). Nothing pushed; `builder/agent-harness`, `builder/device-fixes`, `builder/expo-fix`, `builder/score-holes`, `builder/build-prep` and `master` are still local only.
+**Branch:** `builder/limits-fixes`, from `builder/playtest-limits` (ddd4952, the eighth playtest round's write-up). Nothing pushed; `builder/playtest-limits`, `builder/agent-harness`, `builder/device-fixes`, `builder/expo-fix`, `builder/score-holes`, `builder/build-prep` and `master` are still local only.
 
 ## What this PR did
 
-Step 160: the fixes from the seventh blind playtest round (`docs/design/research/playtest-2026-11-08.md`), groups 1, 2, 3, 5 and 7. JS only: a reload on the phone, no new build. The full list is the step's row in `docs/design/BUILT_LOG.md`.
+Step 161: the findings from the eighth blind playtest round (`docs/design/research/playtest-2026-11-08b.md`) that need no decision. JS only: a reload on the phone, no new build. The full list is the step's row in `docs/design/BUILT_LOG.md`.
 
-- **Long names and large text (findings 1–4, 9):**
-  - Category names keep to one line with an ellipsis everywhere.
-  - Fixed-width items (the practice row's "Start", the badge pill) wrap under the words at large text instead of squeezing them.
-  - Switches keep their size beside a wrapping label.
-  - Categories rows fit at 320.
-  - The chart thins tick labels and keeps its n= labels off the region labels.
-  - The day pills wrap; the range cells break instead of truncating.
-- **Structure (7, 8, 13):**
-  - History's filters scroll with the list (the list scrolls to the top on a new filter, so the strip keeps its place).
-  - The card preview is capped at 80% of the window's height.
-  - Log and Edit show six categories plus "N more" past eight.
-- **Dates and limits (6, 20, 21):**
-  - Pick a date stops two years ahead (the pickers only; the store doesn't clamp).
-  - Dates show their year when it isn't this year's (`src/components/ui/dates.ts`).
-  - Text fields count down near their limit and say it once reached.
-  - The last card category and the last offered category say why they stay on; hidden categories are dimmed.
-- **Card (14, 15):** the gap above the footer is kept, and shrunk content keeps the footer's left edge.
-- **VoiceOver (38–41):**
-  - Resolve announces what it recorded or changed; Categories announces renames and additions.
-  - Can't tell's note is in its label.
-  - History rows read only the start of a long note.
-  - Hebrew and Arabic titles use their own voice on Resolve and the details.
-- **Not changed, on purpose:**
-  - Share stays above the card settings (finding 17). The code records the placement as deliberate; moving it is the owner's call.
-  - The Story card keeps its bottom safe band.
-- **Review:** `code-reviewer` found no blockers in either round.
-  - Round 1's seven should-fix items are fixed in 62e77dd.
-  - Round 2's one should-fix item is fixed in the last commit: the category icon could be left alone on its own line at the largest sizes, and now stays with the name.
-  - No `record-auditor` or `policy-auditor` run: nothing touches a score, count, data or store copy.
+- **Record safety (findings 1, 2, 4, 6, 25):**
+  - Save tapped three times in one frame saves once (`submittingRef`).
+  - "Answer it now" on a Can't tell writes nothing until Yes or No. The store then reopens and answers in one transaction (`resolve(…, { answeringSkip: true })`, through `unskipPrediction`, which only touches a row still skipped), still held to D45's week. "Leave it as can't tell" backs out, and VoiceOver hears both changes.
+  - Chip taps wait 400 ms after "N more" or "Show fewer" (new), so a double tap can't choose the chip that slid under it.
+  - Text limits count and cut by character as a person sees it (`src/engine/graphemes.ts`, reached through `src/store/text.ts`). An edit at the limit trims only what was typed or pasted (`fitEdit`), never the end of the text.
+  - Two ±5 taps before a render move twice.
+- **Stale or missing (3, 13, 20, 21):** Today's identity line follows a rename; a second tap on any tab scrolls to the top (`useScrollToTop`); History lists only categories with predictions, plus the chosen one; Edit asks before a changed draft is swiped away (`useEditDraftGuard`).
+- **Large text and narrow screens (14, 16, 17, 18, 26, 27):**
+  - You's switch goes under a label that can't share its line, at the trailing edge.
+  - The range cells wrap before two counts touch.
+  - The 70/85/90 marks hug their ticks, at most 1.5× size.
+  - An edge-pinned n= label is checked where it is drawn.
+  - Categories puts Rename and the switch on their own line under a name they'd cut.
+  - Insights' badge pills share the widest one's width at the current text size.
+  - A typed emoji icon starts at the text edge.
+  - On web, the note box grows.
+- **Words (11, 28, 29):**
+  - Counts and streaks are grouped ("1,001-day streak") on Today, Insights, the card subline and the recaps.
+  - A built-in name at a phrase start is capitalised ("Furthest off: Finance.").
+  - Section counts say "predictions".
+  - "Answer now" carries the early warning as its hint.
+  - The icon button names the current icon.
+- **Not changed:** the details screen still reads what you said before the title (DESIGN_SYSTEM §7.10, deliberate).
+- **Review:**
+  - `record-auditor`: HOLDS, no blocker. Its race (a sync landing between the check and the reopen) is closed with a single guarded statement, its count-format mismatch is fixed, and it asked for a same-day skip test, which is added.
+  - `code-reviewer` round 1: no blockers. All four should-fix items are done: the edit-aware cut, the pill-width ratchet, the VoiceOver announcements and the race. Three nits were taken too.
+  - `code-reviewer` round 2: no blockers. Its should-fix is done: the `fitEdit` tests also run without `Intl.Segmenter`, the path the phone likely takes. Its backspace guard (a deletion from a value already over the limit goes through) is taken too. Not taken: the pill width still only grows at one text size until the screen remounts; harmless while "Getting started" is the longest tier.
 
 ## In progress / broken
 
-- **Seen on web** (2026-11-08) at 320 and 375 wide, light and dark, and the card at 568 × 320, with eleven categories and a 24-character name. Screenshots in `.playwright-mcp/step160/` (git-ignored). The check found two problems, both fixed in the last commit:
-  - Categories rows: at 320 the iOS 26 switch (63pt, the web's is 40) left the name about 33pt, under its 48pt floor, so the switch would have wrapped. Gaps after the name are 4pt, and the Rename pill and the row edge are 4pt slimmer. Measured on web with the switch forced to 63pt: every row stays on one line and the name gets 57pt, so at 320 "Finance" and "Personal" end in "…" (only a mini with Display Zoom is 320 wide). Every built-in fits from 375. The icon editor under a row is now inset 12pt too.
-  - History: a filter with nothing to list rendered the filter strip outside the list, so it remounted, scrolled back to "All" and hid the chosen chip. The list now stays mounted and shows the empty state inside it.
-- **Finding 41 in list rows:** Today's and History's rows read the title inside one mixed-language label, so the Hebrew/Arabic voice applies only on Resolve and the details.
-- **Known small gaps (review nits, not fixed):**
-  - After "N more" is tapped, VoiceOver focus has nowhere to go.
-  - A prediction already due past the new maximum opens Edit with the iOS picker clamped to the maximum while "Due …" shows the stored date. Nothing is saved unless a date is picked.
-  - Wrapped day pills on a second row grow to fill it.
-- **Carried over from `builder/device-fixes`, still open on the phone:**
-  - Your card → This week / This year (the absolute-canvas fix): not re-checked.
-  - You's switch rows (the switch on the label's line): not re-checked.
-  - The Practice sheet: not reported.
+- **Seen on web** (2026-11-08), before the round-1 review fixes, at 320 wide and 200% zoom with a 1,001-day record: Categories with long names, Insights' range cells, score scale, chart labels and badge pills, You's switch rows, History's filters and the tab re-tap. Screenshots are in `.playwright-mcp/limits-fixes/` (git-ignored).
+  - The review fixes were not re-seen: the automation browser came back with an empty profile, so the switch's trailing edge on its second line hasn't been looked at.
+- **Left as is (review notes):**
+  - The store's `reopen` is no longer called by any screen, but it can still reopen a Yes or No (three store tests use it). Restrict it to skips or delete it when those tests are reworked.
+  - Notification bodies and VoiceOver excerpts still cut titles by UTF-16 unit (`src/notifications/copy.ts`, `src/components/ui/textLanguage.ts`), which was already so; `fitGraphemes` can fix them.
+  - "N more" and "Show fewer" unmount themselves, so VoiceOver focus has nowhere to go.
+  - The chart's "n=" labels aren't grouped.
+- **Hermes:** `Intl.Segmenter` likely isn't there, so the phone uses `splitGraphemesFallback` (tested for emoji, flags, keycaps and accents; stricter for Indic and Hangul). `localCount` falls back to plain digits if `Intl.NumberFormat` is missing.
 
 ## Next step
 
 - **Owner, on the iPhone** (reload; `/device-check` can write the full list):
-  1. Settings → Accessibility → Display & Text Size → Larger Text, at the largest size. Check that Today's practice row, Insights' category rows, You's switches, Categories and the digest's day pills read as words, not letter by letter.
-  2. Add a category with a 24-character name (e.g. "WWWWWWWWWWWWWWWWWWWWWWWW"). Check that Log, Today, History, Insights and Categories show it with "…" inside the screen.
-  3. Add categories until there are ten or more. Log shows six plus "N more". In History, scroll the filter strip right and tap a chip: the strip stays where it was.
-  4. Your card in landscape: the whole card is visible; Story too.
-  5. Pick a date: nothing past two years from today.
-  6. With VoiceOver on, answer a prediction Yes. It says "Recorded: it happened".
-  7. The reminder test: two predictions are due tomorrow.
-- **Agent:**
-  - Then steps 157–159.
-  - Groups 4 and 6 of the playtest wait on the owner (`/design`).
+  1. At the largest Larger Text size: You's switch rows, Categories with a long name, Insights' range cells, the 70/85/90 scale and the badge pills, then lower the size again and check the pills shrink.
+  2. Double-tap "N more" in Log; double-tap +5.
+  3. Type a family emoji at a category name's limit; type in the middle of a full title; type Chinese or Japanese near a limit (does composition survive?).
+  4. Mark a prediction Can't tell, tap "Answer it now", then "Leave it as can't tell": it stays Can't tell.
+  5. Edit an open prediction, change the title, swipe the sheet down: "Discard changes" is offered.
+  6. Tap each tab twice after scrolling.
+  7. A category with an emoji icon: it lines up with the text edge.
+- **Agent:** steps 157–159; the playtest's "needs the owner" findings wait on `/design`.
 
 ## Read first
 
@@ -79,8 +71,10 @@ Step 160: the fixes from the seventh blind playtest round (`docs/design/research
   - email confirmation for strangers;
   - the 2026-11-08 playtest's group 4 (Insights' hierarchy, the 70/85/90 meter's label, the recap's lead) and group 6 (sheet headers, vocabulary, formats);
   - finding 17: Share above or below the card's settings.
+  - from `record-auditor`: say in D45 that an answered Can't tell gets its own 24-hour correction window from the Yes or No (the code and `corrections.ts` already read it so); and whether to accept that the skip week and same-day rule use the device clock.
+  - the eighth round's "needs the owner" findings (5, 7 with `expo-localization`, 8–13, 19, 22, 23, 27's note editing, 30–35).
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 152 suites, 1763 tests.
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 156 suites, 1,809 tests. If `tsc` reports three typed-route errors, the generated route types are a stub (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

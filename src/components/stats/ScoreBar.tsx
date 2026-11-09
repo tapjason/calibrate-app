@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { colors, radius, space, type } from '@/constants/theme';
 
@@ -19,9 +19,10 @@ interface ScoreBarProps {
 // 85 and 90 sit 5% apart, which on a 320pt-wide screen (an iPhone mini in
 // Display Zoom) is narrower than two labels: centred, they ran together as
 // "8590". So those two hug their ticks from the outside, 85 on the left and
-// 90 on the right, and only 70 is centred (roadmap step 52).
+// 90 on the right (roadmap step 52). 70 hugs from the left too: centred, it
+// ran into 85 at large text, "7085" (playtest 2026-11-08b, finding 16).
 const TICKS = [
-  { at: 70, align: 'center' },
+  { at: 70, align: 'before' },
   { at: 85, align: 'before' },
   { at: 90, align: 'after' },
 ] as const;
@@ -37,6 +38,11 @@ export function ScoreBar({ score, range, testID }: ScoreBarProps) {
   const low = range ? Math.max(0, range.low) : 0;
   const high = range ? Math.min(100, range.high) : 0;
   const band = range && high > low ? { left: low, width: high - low } : null;
+  // The labels grow with the text up to half again, like the chart's own
+  // fixed-size ticks beside them; their boxes grow with them.
+  const { fontScale } = useWindowDimensions();
+  const scale = Math.min(Math.max(fontScale, 1), LABEL_MAX_SCALE);
+  const labelWidth = Math.ceil(LABEL_WIDTH * scale);
   return (
     <View
       style={styles.wrap}
@@ -58,12 +64,20 @@ export function ScoreBar({ score, range, testID }: ScoreBarProps) {
         ))}
         <View style={[styles.needle, { left: `${clamped}%` }]} testID={testID ? `${testID}-needle` : undefined} />
       </View>
-      <View style={styles.labels}>
+      <View style={[styles.labels, { height: Math.ceil(LABELS_HEIGHT * scale) }]}>
         {TICKS.map((t) => (
           <Text
             key={t.at}
             testID={`score-bar-label-${t.at}`}
-            style={[styles.label, styles[t.align], { left: `${t.at}%` }]}
+            maxFontSizeMultiplier={LABEL_MAX_SCALE}
+            numberOfLines={1}
+            style={[
+              styles.label,
+              { left: `${t.at}%`, width: labelWidth },
+              t.align === 'before'
+                ? { marginLeft: -labelWidth - LABEL_GAP, textAlign: 'right' }
+                : { marginLeft: LABEL_GAP, textAlign: 'left' },
+            ]}
           >
             {t.at}
           </Text>
@@ -76,6 +90,8 @@ export function ScoreBar({ score, range, testID }: ScoreBarProps) {
 // Wide enough for "100" at caption size; the gap clears the 2pt tick.
 const LABEL_WIDTH = 24;
 const LABEL_GAP = 3;
+const LABELS_HEIGHT = 18;
+const LABEL_MAX_SCALE = 1.5;
 
 const styles = StyleSheet.create({
   wrap: { alignSelf: 'stretch', marginTop: space.lg, paddingTop: 8 },
@@ -116,16 +132,11 @@ const styles = StyleSheet.create({
     top: -8,
     width: 3,
   },
-  labels: { height: 18, marginTop: 10 },
+  labels: { marginTop: 10 },
+  // Each label ends just left of its tick, or (90) starts just right of it.
   label: {
     ...type.caption,
     color: colors.textSecondary,
     position: 'absolute',
-    width: LABEL_WIDTH,
   },
-  center: { marginLeft: -LABEL_WIDTH / 2, textAlign: 'center' },
-  // Ends just left of its tick.
-  before: { marginLeft: -LABEL_WIDTH - LABEL_GAP, textAlign: 'right' },
-  // Starts just right of its tick.
-  after: { marginLeft: LABEL_GAP, textAlign: 'left' },
 });

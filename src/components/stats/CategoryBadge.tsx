@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CategoryIcon } from '@/components/ui/Icon';
+import { localCount } from '@/components/ui/count';
 import { holdTarget } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
@@ -17,6 +18,10 @@ interface CategoryBadgeProps {
    * and taken off it before a tier above Tracker counts.
    */
   giveOrTake?: number;
+  /** The list's widest pill, so every row's pill is that wide (finding 18). */
+  pillMinWidth?: number;
+  /** Reports this pill's width to the list. */
+  onPillWidth?: (width: number) => void;
 }
 
 /**
@@ -25,7 +30,13 @@ interface CategoryBadgeProps {
  * the badge level and next-target are computed upstream (L3 engine via L4
  * store); this component only formats them.
  */
-export function CategoryBadge({ stat, next, giveOrTake = 0 }: CategoryBadgeProps) {
+export function CategoryBadge({
+  stat,
+  next,
+  giveOrTake = 0,
+  pillMinWidth = 0,
+  onPillWidth,
+}: CategoryBadgeProps) {
   const meta = BADGE_META[stat.badge_level];
   const hint = progressHint(stat, next, giveOrTake);
 
@@ -71,7 +82,8 @@ export function CategoryBadge({ stat, next, giveOrTake = 0 }: CategoryBadgeProps
         </Text>
       </View>
       <View
-        style={[styles.chip, { backgroundColor: meta.background }]}
+        style={[styles.chip, { backgroundColor: meta.background, minWidth: pillMinWidth }]}
+        onLayout={onPillWidth ? (e) => onPillWidth(e.nativeEvent.layout.width) : undefined}
         testID={`badge-${stat.category}`}
       >
         <LensEmblem tier={stat.badge_level} size={22} />
@@ -89,8 +101,8 @@ export function CategoryBadge({ stat, next, giveOrTake = 0 }: CategoryBadgeProps
  */
 export function scoreReceipt(score: number, resolved: number, giveOrTake = 0): string {
   return giveOrTake > 0
-    ? `Score ${score}, give or take ${giveOrTake}, from ${resolved} resolved`
-    : `Score ${score}, ${resolved} resolved`;
+    ? `Score ${score}, give or take ${giveOrTake}, from ${localCount(resolved)} resolved`
+    : `Score ${score}, ${localCount(resolved)} resolved`;
 }
 
 /**
@@ -115,7 +127,7 @@ function progressHint(
   giveOrTake = 0,
 ): string {
   if (!next) {
-    return `${stat.predictions_resolved} resolved, top badge reached`;
+    return `${localCount(stat.predictions_resolved)} resolved, top badge reached`;
   }
 
   const nextLabel = BADGE_META[next.badge].label;
@@ -173,6 +185,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexShrink: 0,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,

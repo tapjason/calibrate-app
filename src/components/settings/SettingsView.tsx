@@ -595,7 +595,7 @@ function ToggleRow({
       testID={`${testID}-row`}
     >
       <View style={styles.toggleHead}>
-        <Text style={[styles.rowLabel, styles.rowLabelFill]}>{label}</Text>
+        <Text style={[styles.rowLabel, styles.toggleLabel]}>{label}</Text>
         <ToggleSwitch
           value={value}
           onValueChange={onValueChange}
@@ -645,7 +645,22 @@ const styles = StyleSheet.create({
   rowPressed: { backgroundColor: colors.surfaceSunken },
   // A switch row: the label and switch on one line, the description under both.
   toggleRow: { alignItems: 'stretch', flexDirection: 'column', gap: 0 },
-  toggleHead: { alignItems: 'center', flexDirection: 'row', gap: space.md },
+  // When the label can't sit on one line beside the switch, the switch goes
+  // under it instead of the label breaking mid-word ("Notifica / tions" at
+  // the largest sizes, where the iOS switch keeps its 63pt; playtest
+  // 2026-11-08b, finding 14).
+  toggleHead: {
+    alignItems: 'center',
+    columnGap: space.md,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: space.sm,
+  },
+  // Its own width first, so a label too long for the line wraps the switch
+  // under it; past the whole row it wraps by word.
+  toggleLabel: { flexGrow: 1, flexShrink: 1 },
+  // At the trailing edge on either line, as iOS keeps switches.
+  switchFixed: { flexShrink: 0, marginLeft: 'auto' },
   // The switch (28pt on iOS 26) is taller than the label's line, which already
   // leaves a gap above the description.
   toggleDescription: { marginTop: 0 },
@@ -655,7 +670,6 @@ const styles = StyleSheet.create({
   // held the label wide and pushed the switch off the card's clipped edge
   // (playtest 2026-11-08, finding 2).
   rowLabelFill: { flex: 1, minWidth: 0 },
-  switchFixed: { flexShrink: 0 },
   rowLabelAction: { ...type.callout, fontWeight: '600', color: colors.actionText },
   rowLabelDestructive: { color: colors.destructive },
   rowValue: { ...type.callout, color: colors.textSecondary },

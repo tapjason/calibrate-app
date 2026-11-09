@@ -1,8 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PredictionDetails } from '@/components/prediction/PredictionDetails';
+import { useEditDraftGuard } from '@/components/prediction/useLogDraftGuard';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { space } from '@/constants/theme';
 
@@ -14,6 +16,10 @@ import { space } from '@/constants/theme';
 export default function PredictionScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  // A changed, unsaved edit asks before the sheet is swiped away, as Log
+  // does (playtest 2026-11-08b, finding 20).
+  const [dirty, setDirty] = useState(false);
+  useEditDraftGuard(dirty);
   const close = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/' as never);
@@ -30,6 +36,7 @@ export default function PredictionScreen() {
           onClose={close}
           // One sheet at a time (HIG): Resolve takes this one's place.
           onAnswer={(pid) => router.replace(`/resolve/${pid}` as never)}
+          onDirtyChange={setDirty}
         />
       </ScrollView>
     </SafeAreaView>

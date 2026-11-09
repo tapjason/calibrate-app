@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { chosenProps } from '@/components/ui/chosen';
 import { CategoryIcon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
-import { categoryLabel, categoryOptions, categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { categoryOptions, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 import type { Category } from '@/types';
 
 /**
@@ -14,6 +14,12 @@ import type { Category } from '@/types';
  */
 export const CATEGORY_CHIPS_COLLAPSE_AFTER = 8;
 const CATEGORY_CHIPS_SHOWN = 6;
+/**
+ * After "N more" or "Show fewer", chip taps are ignored this long: the row
+ * changes under the finger, and the second tap of a double tap chose
+ * whichever chip had moved there (playtest 2026-11-08b, finding 4).
+ */
+export const CATEGORY_CHIPS_SETTLE_MS = 400;
 
 /**
  * The choices shown while collapsed: the first few in order, plus the chosen
@@ -49,17 +55,28 @@ export function CategoryChips({ value, onChange }: CategoryChipsProps) {
   useCategoryStore((s) => s.defs);
   const options = categoryOptions({ keep: value });
   const [expanded, setExpanded] = useState(false);
+  const toggledAt = useRef(0);
+  const toggle = (next: boolean) => {
+    toggledAt.current = Date.now();
+    setExpanded(next);
+  };
+  const choose = (c: Category) => {
+    if (Date.now() - toggledAt.current < CATEGORY_CHIPS_SETTLE_MS) return;
+    onChange(c);
+  };
   const shown = visibleCategories(options, value, expanded);
   const more = options.length - shown.length;
+  // Expanded, the list can fold again (finding 21).
+  const canFold = expanded && options.length > CATEGORY_CHIPS_COLLAPSE_AFTER;
   return (
     <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="Category">
       {shown.map((c) => (
         <Pressable
           key={c}
-          onPress={() => onChange(c)}
+          onPress={() => choose(c)}
           testID={`category-${c}`}
           accessibilityRole="radio"
-          accessibilityLabel={`Category: ${categoryLabel(c)}`}
+          accessibilityLabel={`Category: ${categoryTitle(c)}`}
           {...chosenProps('radio', value === c)}
           style={[styles.chip, styles.chipWithIcon, value === c && styles.chipActive]}
         >
@@ -78,13 +95,23 @@ export function CategoryChips({ value, onChange }: CategoryChipsProps) {
       ))}
       {more > 0 && (
         <Pressable
-          onPress={() => setExpanded(true)}
+          onPress={() => toggle(true)}
           testID="category-more"
           accessibilityRole="button"
           accessibilityLabel={`Show ${more} more ${more === 1 ? 'category' : 'categories'}`}
           style={[styles.chip, styles.chipWithIcon]}
         >
           <Text style={styles.chipText}>{more} more</Text>
+        </Pressable>
+      )}
+      {canFold && (
+        <Pressable
+          onPress={() => toggle(false)}
+          testID="category-fewer"
+          accessibilityRole="button"
+          style={[styles.chip, styles.chipWithIcon]}
+        >
+          <Text style={styles.chipText}>Show fewer</Text>
         </Pressable>
       )}
     </View>

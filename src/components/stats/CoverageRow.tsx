@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { localCount } from '@/components/ui/count';
 import { colors, radius, space, type } from '@/constants/theme';
 import type { BucketStat } from '@/types';
 
@@ -26,6 +27,12 @@ const EDGES = [0, 20, 40, 60, 80] as const;
 export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
   const byLow = new Map(buckets.map((b) => [b.low, b.total_resolved]));
   const lowUsed = (byLow.get(0) ?? 0) + (byLow.get(20) ?? 0) > 0;
+  // Each cell is at least as wide as its biggest count at this text size;
+  // when five don't fit across, the row wraps instead of one count running
+  // into the next ("277300" at large text; playtest 2026-11-08b, finding 16).
+  const { fontScale } = useWindowDimensions();
+  const widest = Math.max(0, ...EDGES.map((low) => localCount(byLow.get(low) ?? 0).length));
+  const cellFloor = coverageCellFloor(widest, fontScale);
 
   return (
     <View style={styles.wrap} testID="coverage-row">
@@ -52,8 +59,8 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
               >
                 {label}
               </Text>
-              <Text style={[styles.count, n === 0 && styles.countEmpty]}>
-                {n === 0 ? 'none' : n}
+              <Text style={[styles.count, n === 0 && styles.countEmpty]} numberOfLines={1}>
+                {n === 0 ? 'none' : localCount(n)}
               </Text>
             </>
           );
@@ -68,6 +75,7 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
                 accessibilityLabel={`${label}: ${n} resolved. Show them.`}
                 style={({ pressed }) => [
                   styles.cell,
+                  { flexBasis: cellFloor },
                   styles.cellTappable,
                   pressed && styles.cellPressed,
                 ]}
@@ -80,7 +88,7 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
             <View
               key={low}
               testID={`coverage-${low}`}
-              style={[styles.cell, n === 0 && styles.empty]}
+              style={[styles.cell, { flexBasis: cellFloor }, n === 0 && styles.empty]}
               accessible
               accessibilityLabel={`${label}: ${n === 0 ? 'none yet' : `${n} resolved`}`}
             >
@@ -104,16 +112,27 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
   );
 }
 
+/**
+ * A range cell's least width: its count at headline size (about 10.5pt a
+ * digit, and "none" as four), plus the cell's own padding, scaled with the
+ * text. Exported for tests.
+ */
+export function coverageCellFloor(digits: number, fontScale: number): number {
+  return Math.ceil(Math.max(digits * 10.5, 30) * Math.max(fontScale, 1) + 8);
+}
+
 const styles = StyleSheet.create({
   wrap: { gap: space.sm, marginTop: space.md },
-  row: { flexDirection: 'row', gap: space.xs },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   cell: {
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.hairline,
     borderRadius: radius.sm,
     borderWidth: 1,
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 0,
+    paddingHorizontal: 2,
     // A label broken over two lines makes its cell, and so the row, taller:
     // the counts keep to the bottom edge, in line across the row.
     justifyContent: 'space-between',

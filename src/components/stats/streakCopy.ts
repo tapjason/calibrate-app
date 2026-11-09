@@ -16,6 +16,7 @@
 // rest day is said plainly and as a relief ("Yesterday was a rest day"),
 // never as something missed.
 
+import { localCount } from '@/components/ui/count';
 import { DAILY_GOAL, type StreakStatus } from '@/types';
 
 export interface StreakCopy {
@@ -54,7 +55,7 @@ export function checkpointName(days: number): string {
  * e", blind playtest 2026-11-01).
  */
 function nextLine(next: number): string {
-  return `Next milestone: ${next}\u00A0days`;
+  return `Next milestone: ${localCount(next)}\u00A0days`;
 }
 
 /** "Goal: 2 of 3", held together with no-break spaces like nextLine. */
@@ -74,7 +75,7 @@ export function checkpointCopy(
 ): { title: string; body: string; spoken: string } {
   const title = checkpointName(days);
   const body = `${nextLine(next)}.`;
-  return { title, body, spoken: `${days}-day streak. ${title}. ${body}` };
+  return { title, body, spoken: `${localCount(days)}-day streak. ${title}. ${body}` };
 }
 
 /**
@@ -95,7 +96,7 @@ function restLine(status: StreakStatus): string | null {
     return restDays > 1 ? 'Today saved a second rest day' : 'Today saved a rest day';
   }
   if (restDays > 0) return saved(restDays);
-  return nextRestAt === null ? null : `A rest day comes with day\u00A0${nextRestAt}`;
+  return nextRestAt === null ? null : `A rest day comes with day\u00A0${localCount(nextRestAt)}`;
 }
 
 /**
@@ -111,16 +112,16 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
   const filled = Math.min(today, DAILY_GOAL);
   const toGoal = DAILY_GOAL - filled;
 
-  const headline = `${streak}-day streak`;
+  const headline = `${localCount(streak)}-day streak`;
   // The day before one says so, as a gain: "makes it 7: a full week".
   const eve = streak + 1 === nextCheckpoint;
   const name = checkpointName(nextCheckpoint);
-  const reaches = `${streak + 1}: ${name.charAt(0).toLowerCase()}${name.slice(1)}`;
+  const reaches = `${localCount(streak + 1)}: ${name.charAt(0).toLowerCase()}${name.slice(1)}`;
   let detail: string;
   if (checkpoint !== null) {
     detail = `${checkpointName(checkpoint)}.\n${nextLine(nextCheckpoint)}`;
   } else if (!todayCounts) {
-    detail = `One prediction today makes it ${eve ? reaches : streak + 1}`;
+    detail = `One prediction today makes it ${eve ? reaches : localCount(streak + 1)}`;
   } else if (eve) {
     detail = `Today counts. Tomorrow can make it ${reaches}`;
   } else if (toGoal > 0) {

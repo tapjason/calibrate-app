@@ -193,6 +193,11 @@ export function ResolvePrompt({
   const [reflection, setReflection] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /**
+   * "Answer it now" on a Can't tell: the question shows, and the skip stays
+   * as it is until Yes or No is tapped (playtest 2026-11-08b, finding 2).
+   */
+  const [answeringSkip, setAnsweringSkip] = useState(false);
   /** Set once Yes or No has been recorded: the acknowledgement step. */
   const [answered, setAnswered] = useState<{
     outcome: 'resolved_yes' | 'resolved_no';
@@ -238,7 +243,9 @@ export function ResolvePrompt({
       // Anything left over belongs to an earlier change, not to this answer.
       useStatsStore.getState().clearMilestone();
       usePredictionStore.getState().clearStreakCheckpoint();
-      await usePredictionStore.getState().resolve(prediction.id, outcome);
+      await usePredictionStore
+        .getState()
+        .resolve(prediction.id, outcome, undefined, { answeringSkip });
       const landed = await usePredictionStore.getState().getById(prediction.id);
       // A reminder action may have recorded this already. Don't celebrate an
       // outcome the row doesn't have, and don't leave on a skip that didn't land.
@@ -253,7 +260,9 @@ export function ResolvePrompt({
         onResolved?.();
         return;
       }
-      setAnswered(readAcknowledgement(prediction, outcome));
+      // The row as it now stands: an answered skip's time is this answer's,
+      // not the skip's.
+      setAnswered(readAcknowledgement(landed, outcome));
       // Said, as Log's "Saved." is: the screen changed under the finger and
       // nothing was announced (playtest 2026-11-08, finding 38).
       AccessibilityInfo.announceForAccessibility(recordedText(outcome));
@@ -443,20 +452,8 @@ export function ResolvePrompt({
   // "Can't tell" otherwise had no undo (HIG: let people undo). Only for a
   // week past its due day (D45): open forever, a call that looked bad could
   // be parked as a skip and only the good ones answered.
-  if (prediction.status === 'skipped') {
-    const answerBy = skipAnswerBy(prediction);
-    const answerNow = async () => {
-      setError(null);
-      setSubmitting(true);
-      try {
-        await usePredictionStore.getState().reopen(prediction.id);
-        setPrediction({ ...prediction, status: 'pending', resolved_at: null, reflection: null });
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setSubmitting(false);
-      }
-    };
+  const answerBy = prediction.status === 'skipped' ? skipAnswerBy(prediction) : null;
+  if (prediction.status === 'skipped' && !(answeringSkip && answerBy)) {
     return (
       <View style={styles.center} testID="resolve-skipped">
         <Text style={styles.notFoundTitle}>Not scored</Text>
@@ -475,9 +472,13 @@ export function ResolvePrompt({
         {error && <Text style={styles.error}>{error}</Text>}
         {answerBy && (
           <Button
-            label={submitting ? '…' : 'Answer it now'}
+            label="Answer it now"
             variant="secondary"
-            onPress={() => void answerNow()}
+            onPress={() => {
+              setAnsweringSkip(true);
+              // The button goes with the screen it was on; say what replaced it.
+              AccessibilityInfo.announceForAccessibility('Did it happen?');
+            }}
             disabled={submitting}
             testID="resolve-unskip"
           />
@@ -499,7 +500,7 @@ export function ResolvePrompt({
       />
     );
   }
-  if (prediction.status !== 'pending') {
+  if (prediction.status !== 'pending' && prediction.status !== 'skipped') {
     return (
       <View style={styles.center}>
         <Text style={styles.notFoundTitle}>Already resolved</Text>
@@ -568,20 +569,38 @@ export function ResolvePrompt({
           miss as cheap as recording it. Skips are excluded from the score,
           the streak and Wrapped alike, so the line below is true everywhere
           (DESIGN_SYSTEM §7.10, roadmap D10). */}
-      <Pressable
-        onPress={() => void submit('skipped')}
-        disabled={submitting}
-        accessibilityRole="button"
-        // The note in the label, not only the hint, which screen readers can
-        // skip (playtest 2026-11-08, finding 39).
-        accessibilityLabel="Can't tell / doesn't apply. It won't count toward your score."
-        hitSlop={8}
-        style={styles.skip}
-        testID="resolve-skip"
-      >
-        <Text style={styles.skipText}>Can't tell / doesn't apply</Text>
-        <Text style={styles.skipNote}>It won't count toward your score.</Text>
-      </Pressable>
+      {prediction.status === 'skipped' ? (
+        // Answering a Can't tell: nothing is written yet, so going back
+        // leaves it as it was.
+        <Pressable
+          onPress={() => {
+            setAnsweringSkip(false);
+            AccessibilityInfo.announceForAccessibility('Left as can’t tell.');
+          }}
+          disabled={submitting}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={styles.skip}
+          testID="resolve-keep-skip"
+        >
+          <Text style={styles.skipText}>Leave it as can’t tell</Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => void submit('skipped')}
+          disabled={submitting}
+          accessibilityRole="button"
+          // The note in the label, not only the hint, which screen readers can
+          // skip (playtest 2026-11-08, finding 39).
+          accessibilityLabel="Can't tell / doesn't apply. It won't count toward your score."
+          hitSlop={8}
+          style={styles.skip}
+          testID="resolve-skip"
+        >
+          <Text style={styles.skipText}>Can't tell / doesn't apply</Text>
+          <Text style={styles.skipNote}>It won't count toward your score.</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

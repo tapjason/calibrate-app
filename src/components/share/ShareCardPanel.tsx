@@ -15,7 +15,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { Category } from '@/types';
-import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
@@ -208,7 +208,7 @@ export function ShareCardPanel({
                       accessibilityRole="checkbox"
                       {...chosenProps('checkbox', on)}
                       accessibilityHint={locked ? LAST_ON_NOTE : undefined}
-                      accessibilityLabel={`Show ${categoryLabel(c.category)} on the card`}
+                      accessibilityLabel={`Show ${categoryTitle(c.category)} on the card`}
                       testID={`share-toggle-${c.category}`}
                       style={[styles.chip, on && styles.chipOn]}
                     >

@@ -27,4 +27,20 @@ describe('TextField', () => {
     fireEvent.changeText(screen.getByTestId('f'), 'a\nb');
     expect(onChangeText).toHaveBeenCalledWith('a\nb');
   });
+
+  // Playtest 2026-11-08b, finding 6: a family emoji cut in half at the limit,
+  // and a counter that counted UTF-16 units.
+  it('cuts at the limit by character, never inside an emoji', () => {
+    const onChangeText = jest.fn();
+    render(<TextField label="Name" value="" onChangeText={onChangeText} maxLength={18} testID="f" />);
+    fireEvent.changeText(screen.getByTestId('f'), 'Friends and famil👩‍👩‍👧‍👦 and more');
+    expect(onChangeText).toHaveBeenLastCalledWith('Friends and famil👩‍👩‍👧‍👦');
+  });
+
+  it('counts an emoji as one character', () => {
+    render(
+      <TextField label="Name" value={'a'.repeat(19) + '👩‍👩‍👧‍👦'} onChangeText={jest.fn()} maxLength={20} testID="f" />,
+    );
+    expect(screen.getByTestId('f-count')).toHaveTextContent(/^20 of 20/);
+  });
 });

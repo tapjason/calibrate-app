@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { buildShareCard, shareLines } from '@/components/share/cardCopy';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { colors, space, type } from '@/constants/theme';
+import { useCategoryStore } from '@/store/categoryStore';
 import type { BadgeLevel, CategoryStat, UserStat } from '@/types';
 
 export interface HomeIdentity {
@@ -42,6 +43,9 @@ interface IdentityLineProps {
  * the share card.
  */
 export function IdentityLine({ userStat, categoryStats, onPress }: IdentityLineProps) {
+  // The names come from the category store through the card's helpers: a
+  // rename re-renders the line (playtest 2026-11-08b, finding 3).
+  useCategoryStore((s) => s.defs);
   const line = homeIdentity(userStat, categoryStats);
   if (!line) return null;
   return (

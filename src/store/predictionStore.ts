@@ -38,6 +38,7 @@ import {
   resolvePrediction,
   refilePrediction,
   reopenPrediction,
+  unskipPrediction,
   setPredictionReflection,
   updatePrediction,
 } from '@/db/predictions';
@@ -80,10 +81,18 @@ interface PredictionState {
    */
   getById: (id: string) => Promise<Prediction | null>;
   create: (input: CreatePredictionInput) => Promise<Prediction>;
+  /**
+   * Record an answer. A no-op on a row that isn't open, unless
+   * `answeringSkip`: then a "Can't tell" still inside its week (D45) takes
+   * a Yes or No, reopened and answered in one transaction, so leaving
+   * Resolve before answering changes nothing (playtest 2026-11-08b,
+   * finding 2). Past its week that throws.
+   */
   resolve: (
     id: string,
     outcome: ResolvedStatus,
     reflection?: string,
+    options?: { answeringSkip?: boolean },
   ) => Promise<void>;
   /**
    * Delete a prediction (roadmap D25). Leaves a tombstone so sync deletes it
@@ -263,7 +272,7 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     return prediction;
   },
 
-  resolve: async (id, outcome, reflection) => {
+  resolve: async (id, outcome, reflection, options) => {
     const running = resolvesInFlight.get(id);
     if (running) {
       await running;
@@ -277,6 +286,14 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     resolvesInFlight.set(id, done);
     try {
       const userId = requireUserId();
+      let reopenFirst = false;
+      if (options?.answeringSkip && outcome !== 'skipped') {
+        const target = await get().getById(id);
+        if (target?.status === 'skipped') {
+          if (!canAnswerSkip(target, new Date())) throw new Error(SKIP_CLOSED);
+          reopenFirst = true;
+        }
+      }
       // The streak before this answer, from the database rather than the lists
       // held here: a sync can write rows those lists haven't seen, and the
       // reload after the answer would then credit this answer with a
@@ -285,6 +302,9 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       const before = get().streakNow();
       // Atomic: if stats recompute throws, the resolution rolls back too.
       await withTransaction(async () => {
+        // Only a row still skipped: a sync between the check above and here
+        // may have brought an answer from another phone (review, 2026-11-08).
+        if (reopenFirst) await unskipPrediction(id);
         await resolvePrediction(id, outcome, reflection);
         await useStatsStore.getState().recomputeForUser(userId);
       });

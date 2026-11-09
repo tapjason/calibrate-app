@@ -49,7 +49,7 @@ describe('PredictionCard', () => {
       month: 'short',
     }).replace(/ /g, '\u00A0');
     expect(screen.getByRole('button').props.accessibilityLabel).toBe(
-      `I ship the report by Friday. work, 70% confident, resolved ${resolved}. Happened.`,
+      `I ship the report by Friday. Work, 70% confident, resolved ${resolved}. Happened.`,
     );
   });
 

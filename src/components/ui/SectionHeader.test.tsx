@@ -22,4 +22,17 @@ describe('SectionHeader', () => {
     render(<SectionHeader title="Category badges" testID="h" />);
     expect(screen.getByTestId('h').props.accessibilityLabel).toBe('Category badges');
   });
+
+  // Playtest 2026-11-08b, finding 29: "Next 7 days, 7" said nothing of what.
+  it('says what the count counts when given a unit', () => {
+    render(
+      <SectionHeader title="Next 7 days" count={7} unit={{ one: 'prediction', other: 'predictions' }} testID="h" />,
+    );
+    expect(screen.getByTestId('h').props.accessibilityLabel).toBe('Next 7 days, 7 predictions');
+  });
+
+  it('uses the singular for one', () => {
+    render(<SectionHeader title="Open" count={1} unit={{ one: 'prediction', other: 'predictions' }} testID="h" />);
+    expect(screen.getByTestId('h').props.accessibilityLabel).toBe('Open, 1 prediction');
+  });
 });

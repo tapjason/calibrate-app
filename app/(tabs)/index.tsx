@@ -1,5 +1,6 @@
+import { useScrollToTop } from '@react-navigation/native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { PracticeCard } from '@/components/practice/PracticeCard';
@@ -29,7 +30,7 @@ import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
-import { MIN_N_OVERALL } from '@/types';
+import { MIN_N_OVERALL, type Prediction } from '@/types';
 
 /** Warm for over, cool for under, green on the line: the takeaway's own hue. */
 function directionMark(title: string): string {
@@ -40,6 +41,10 @@ function directionMark(title: string): string {
 
 export default function TodayScreen() {
   const router = useRouter();
+  const listRef = useRef<SectionList<Prediction>>(null);
+  // A second tap on the tab scrolls back to the top, as iOS tabs do
+  // (playtest 2026-11-08b, finding 13).
+  useScrollToTop(listRef);
   // The groups, the streak row and the dates below read the clock: re-render
   // when the day turns, not only when a store changes.
   useLocalDay();
@@ -140,6 +145,7 @@ export default function TodayScreen() {
 
   return (
     <SectionList
+      ref={listRef}
       style={styles.screen}
       contentContainerStyle={styles.content}
       sections={groups}
@@ -160,7 +166,7 @@ export default function TodayScreen() {
       }
       renderSectionHeader={({ section }) => (
         <>
-          <SectionHeader title={section.title} count={section.data.length} />
+          <SectionHeader title={section.title} count={section.data.length} unit={PREDICTIONS} />
           {/* A backlog is where people quit: past a few, answer them in one
               sitting (roadmap step 18). */}
           {section.key === 'ready' && section.data.length >= RUN_THRESHOLD && (
@@ -201,6 +207,8 @@ export default function TodayScreen() {
     />
   );
 }
+
+const PREDICTIONS = { one: 'prediction', other: 'predictions' };
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.canvas },

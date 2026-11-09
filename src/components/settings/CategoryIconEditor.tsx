@@ -99,7 +99,9 @@ export function CategoryIconEditor({
         <TextInput
           value={typed}
           onChangeText={setTyped}
-          maxLength={16}
+          // Room for the longest single emoji (a family with skin tones is 19
+          // UTF-16 units); the one-emoji rule is categoryEmojiProblem's.
+          maxLength={32}
           placeholder="Type or paste one"
           placeholderTextColor={colors.textTertiary}
           accessibilityLabel={`Any emoji for ${name}`}

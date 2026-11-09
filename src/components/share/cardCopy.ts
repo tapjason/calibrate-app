@@ -7,6 +7,7 @@
 // the CONTRAST between the user's best and worst category, not with an average.
 // An average says nothing anyone wants to post.
 
+import { localCount } from '@/components/ui/count';
 import { APP_NAME } from '@/constants/app';
 import { BADGE_META } from '@/constants/badges';
 import {
@@ -129,7 +130,7 @@ export function shareSubline(card: ShareCard): string {
   // The give-or-take in Insights' words (D35): a card is the most public
   // number the app makes, so it carries the same honesty (decided 2026-11-03).
   const range = card.give_or_take ? `, give or take ${card.give_or_take},` : '';
-  return `Calibration ${card.rating}/100${range} from ${card.total_resolved} resolved predictions`;
+  return `Calibration ${card.rating}/100${range} from ${localCount(card.total_resolved)} resolved predictions`;
 }
 
 /**

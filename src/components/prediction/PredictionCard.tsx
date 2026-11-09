@@ -5,7 +5,7 @@ import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { spokenExcerpt } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
-import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 import { answeredSameDay } from '@/store/statsStore';
 
 import { isReadyToResolve } from './dueGroups';
@@ -113,7 +113,7 @@ export function PredictionCard({
       accessibilityRole={onPress ? 'button' : undefined}
       // One sentence instead of fragments read in layout order.
       accessibilityLabel={
-        `${prediction.title}. ${categoryLabel(prediction.category)}, ${prediction.confidence}% confident, ` +
+        `${prediction.title}. ${categoryTitle(prediction.category)}, ${prediction.confidence}% confident, ` +
         `${when}. ${status}.` +
         // The start of the note, not all of it: a long one made the row's
         // label about 1,000 characters (playtest 2026-11-08, finding 40). The

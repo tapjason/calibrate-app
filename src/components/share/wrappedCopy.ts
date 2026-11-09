@@ -14,6 +14,7 @@
 // for twenty resolutions inside seven days (DESIGN_SYSTEM §7.14).
 
 import { bothSides, MIN_BUCKET_N_FOR_VERDICT, rangeLabel } from '@/components/stats/chartTakeaway';
+import { localCount } from '@/components/ui/count';
 import type { WrappedReceipt, WrappedSummary } from '@/engine/wrapped';
 import { MIN_N_OVERALL } from '@/types';
 
@@ -87,7 +88,7 @@ export const MIN_STREAK_ON_CARD = 2;
 /** "15-day streak" for the card (roadmap step 63), or null below the minimum. */
 export function streakLine(overall?: OverallProgress | null): string | null {
   const streak = overall?.streak ?? 0;
-  return streak >= MIN_STREAK_ON_CARD ? `${streak}-day streak` : null;
+  return streak >= MIN_STREAK_ON_CARD ? `${localCount(streak)}-day streak` : null;
 }
 
 export function wrappedStory(
@@ -141,9 +142,9 @@ export function wrappedStory(
   return {
     title: TITLES[span],
     stat: expected
-      ? `${resolved} ${plural} resolved. ${expected}`
-      : `${resolved} ${plural} resolved`,
-    statCount: `${resolved} resolved`,
+      ? `${localCount(resolved)} ${plural} resolved. ${expected}`
+      : `${localCount(resolved)} ${plural} resolved`,
+    statCount: `${localCount(resolved)} resolved`,
     statRate: expected,
     verdict,
     allTime: span === 'week' && verdict ? allTimeLine(overall) : null,
@@ -213,7 +214,7 @@ function allTimeLine(overall: OverallProgress | null | undefined): string | null
   if (!overall?.lean || overall.provisional) return null;
   const read = overall.lean.charAt(0).toLowerCase() + overall.lean.slice(1);
   // "scored": Insights counts a Can't tell among the answers, this doesn't.
-  return `Across all ${overall.resolved} scored answers, ${read}.`;
+  return `Across all ${localCount(overall.resolved)} scored answers, ${read}.`;
 }
 
 /**

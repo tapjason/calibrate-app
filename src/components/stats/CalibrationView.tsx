@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { BucketDots } from '@/components/stats/BucketDots';
 import { brierLine } from '@/components/stats/brierLine';
@@ -12,6 +12,7 @@ import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { CountUp } from '@/components/ui/CountUp';
+import { localCount } from '@/components/ui/count';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
@@ -96,6 +97,27 @@ export function CalibrationView({
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
+  // Every badge pill in the list as wide as the widest, so the rows wrap
+  // their pill under the words all together or not at all (playtest
+  // 2026-11-08b, finding 18: at 320 some kept it on the right, others
+  // dropped it under, by the length of the tier's name).
+  // Learned afresh at each text size: the box reported includes the width
+  // already set, so a smaller size would otherwise keep the larger one
+  // (review, 2026-11-08).
+  const { fontScale } = useWindowDimensions();
+  const [pill, setPill] = useState({ scale: fontScale, width: 0 });
+  const pillWidth = pill.scale === fontScale ? pill.width : 0;
+  const notePill = useCallback(
+    (w: number) =>
+      setPill((prev) =>
+        prev.scale !== fontScale
+          ? { scale: fontScale, width: Math.ceil(w) }
+          : w > prev.width + 0.5
+            ? { scale: fontScale, width: Math.ceil(w) }
+            : prev,
+      ),
+    [fontScale],
+  );
   const takeaway = chartTakeaway(calibration.buckets, headline?.provisional ?? true);
 
   return (
@@ -164,8 +186,10 @@ export function CalibrationView({
           {/* The progress bar already counts resolutions while provisional. */}
           {!headline.provisional && (
             <Text style={styles.subtle}>
-              {userStat.total_resolved} resolved
-              {userStat.current_streak > 0 ? `, ${userStat.current_streak}-day streak` : ''}
+              {localCount(userStat.total_resolved)} resolved
+              {userStat.current_streak > 0
+                ? `, ${localCount(userStat.current_streak)}-day streak`
+                : ''}
             </Text>
           )}
           {/* The math on demand, one tap from the number it explains. */}
@@ -269,6 +293,8 @@ export function CalibrationView({
             stat={c}
             next={nextBadges[c.category] ?? null}
             giveOrTake={categoryRanges[c.category]?.giveOrTake ?? 0}
+            pillMinWidth={pillWidth}
+            onPillWidth={notePill}
           />
         ))
       )}

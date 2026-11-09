@@ -15,11 +15,14 @@ describe('ScoreBar', () => {
 
   // Roadmap step 52: 85 and 90 are 5% apart and ran together as "8590" at
   // 320pt. They now sit on the outer side of their ticks.
-  it('sets 85 left of its tick and 90 right of its own', () => {
+  // 70 hugs its tick from the left too: centred, it ran into 85 at large
+  // text ("7085"; playtest 2026-11-08b, finding 16).
+  it('sets 70 and 85 left of their ticks and 90 right of its own', () => {
     render(<ScoreBar score={78} testID="bar" />);
     const style = (t: number) =>
       StyleSheet.flatten(screen.getByTestId(`score-bar-label-${t}`, hidden).props.style);
-    expect(style(70).textAlign).toBe('center');
+    expect(style(70).textAlign).toBe('right');
+    expect(style(70).marginLeft).toBeLessThan(-style(70).width);
     expect(style(85).textAlign).toBe('right');
     expect(style(85).marginLeft).toBeLessThan(-style(85).width);
     expect(style(90).textAlign).toBe('left');

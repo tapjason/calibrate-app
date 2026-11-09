@@ -1,4 +1,6 @@
+import { useScrollToTop } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import { useRef } from 'react';
 import { ScrollView } from 'react-native';
 
 import { SettingsView } from '@/components/settings/SettingsView';
@@ -10,8 +12,12 @@ import { SettingsView } from '@/components/settings/SettingsView';
  */
 export default function YouScreen() {
   const router = useRouter();
+  const scroll = useRef<ScrollView>(null);
+  // A second tap on the tab scrolls back to the top, as iOS tabs do
+  // (playtest 2026-11-08b, finding 13).
+  useScrollToTop(scroll);
   return (
-    <ScrollView>
+    <ScrollView ref={scroll}>
       <SettingsView
         onOpenCard={() => router.push('/share' as never)}
         onOpenPaywall={() => router.push('/paywall?from=settings' as never)}

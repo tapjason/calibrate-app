@@ -272,6 +272,21 @@ describe('placeDotLabels', () => {
     expect(second).toBeGreaterThan(150);
   });
 
+  // Playtest 2026-11-08b, finding 16: the right-most label ends at the
+  // chart's edge, so it sits further left than its dot; measured as centred,
+  // "n=300" was never checked against "n=277" beside it.
+  it('checks a label where it is drawn, ended at the edge', () => {
+    const dots = [
+      { cx: 230, cy: 150, r: 8, text: 'n=277' },
+      { cx: 275, cy: 150, r: 8, text: 'n=300' },
+    ];
+    const [, centred] = placeDotLabels(dots, TOP, BOTTOM);
+    expect(centred).toBeLessThan(150);
+    const [first, second] = placeDotLabels(dots, TOP, BOTTOM, [], 290);
+    expect(first).toBeLessThan(150);
+    expect(second).toBeGreaterThan(150);
+  });
+
   it('keeps a label inside the plot at the top edge', () => {
     const [y] = placeDotLabels([{ cx: 100, cy: 14, r: 6, text: 'n=2' }], TOP, BOTTOM);
     expect(y).toBeGreaterThan(14);

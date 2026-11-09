@@ -6,6 +6,8 @@ interface SectionHeaderProps {
   title: string;
   /** How many the section holds, set apart on the right rather than joined with a dot. */
   count?: number;
+  /** What the count counts, spoken with it: "Next 7 days, 7 predictions". */
+  unit?: { one: string; other: string };
   testID?: string;
 }
 
@@ -15,13 +17,17 @@ interface SectionHeaderProps {
  * numbers belongs. It replaced "Ready to resolve · 10", the small grey label
  * with a middle dot that sat above most lists.
  */
-export function SectionHeader({ title, count, testID }: SectionHeaderProps) {
+export function SectionHeader({ title, count, unit, testID }: SectionHeaderProps) {
+  // A bare number after the title said nothing of what it counted (playtest
+  // 2026-11-08b, finding 29).
+  const counted =
+    count === undefined ? '' : `, ${count}${unit ? ` ${count === 1 ? unit.one : unit.other}` : ''}`;
   return (
     <View
       style={styles.row}
       accessible
       accessibilityRole="header"
-      accessibilityLabel={count === undefined ? title : `${title}, ${count}`}
+      accessibilityLabel={`${title}${counted}`}
       testID={testID}
     >
       <Text style={styles.title}>{title}</Text>

@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { useCategoryStore } from '@/store/categoryStore';
 import type { BadgeLevel, Category, CategoryStat, UserStat } from '@/types';
 
 import { homeIdentity, IdentityLine } from './IdentityLine';
@@ -51,6 +52,30 @@ describe('homeIdentity (roadmap step 28)', () => {
 });
 
 describe('IdentityLine', () => {
+  // Playtest 2026-11-08b, finding 3: the line kept the old name until
+  // something else re-rendered Today.
+  it('follows a rename', () => {
+    render(<IdentityLine userStat={USER} categoryStats={[cat('health', 'sharp', 60, 96)]} onPress={jest.fn()} />);
+    expect(screen.getByText('Sharp in health')).toBeTruthy();
+    act(() => {
+      useCategoryStore.setState({
+        defs: [
+          {
+            id: 'health',
+            user_id: 'u1',
+            name: 'Running',
+            icon: null,
+            hidden: false,
+            position: 0,
+            created_at: '2026-11-01T00:00:00.000Z',
+          },
+        ],
+      });
+    });
+    expect(screen.getByText('Sharp in Running')).toBeTruthy();
+    act(() => useCategoryStore.setState({ defs: [] }));
+  });
+
   it('explains the badges when tapped, and reads as one sentence', () => {
     const onPress = jest.fn();
     render(

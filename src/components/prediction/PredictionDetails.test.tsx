@@ -81,6 +81,20 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(saved).toMatchObject({ category: 'personal', confidence: 70 });
   });
 
+  // Playtest 2026-11-08b, finding 20: the sheet's draft guard needs to know.
+  it('reports unsaved changes while editing, and none once they are undone', async () => {
+    await insertPrediction(open());
+    const onDirtyChange = jest.fn();
+    renderDetails({ onDirtyChange });
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+    fireEvent.changeText(screen.getByTestId('details-title-field'), 'Ship the beta to ten people');
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+    fireEvent.press(screen.getByTestId('details-cancel-edit'));
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+  });
+
   // Blind playtest 2026-11-01: a picked due date showed "Pick a date" chosen
   // and no date field until a second tap.
   it('shows the date field at once for a picked due date', async () => {

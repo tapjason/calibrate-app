@@ -157,6 +157,26 @@ describe('ResolvePrompt on a same-day answer', () => {
   });
 });
 
+// A Can't tell given and answered on the day it was logged is a same-day
+// answer like any other (record audit, 2026-11-08).
+describe('ResolvePrompt on a skip answered the day it was logged', () => {
+  it('is not scored', async () => {
+    const now = new Date().toISOString();
+    await insertPrediction(
+      samplePending({ created_at: now, due_date: now, status: 'skipped', resolved_at: now }),
+    );
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-unskip')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-unskip'));
+    await waitFor(() => expect(screen.getByTestId('resolve-same-day')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() =>
+      expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(SAME_DAY_LINE),
+    );
+    expect(await getUserStat(USER)).toMatchObject({ total_resolved: 0 });
+  });
+});
+
 // Playtest 2026-11-08, finding 38: the screen changed under the finger and
 // VoiceOver heard nothing. Yes and No are said the same way.
 describe('ResolvePrompt announcements', () => {
@@ -465,11 +485,46 @@ describe('ResolvePrompt — answering a skipped prediction later', () => {
 
     fireEvent.press(screen.getByTestId('resolve-unskip'));
     await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
-    expect((await getPrediction('p1'))?.status).toBe('pending');
+    // Nothing is written until an answer (playtest 2026-11-08b, finding 2).
+    expect((await getPrediction('p1'))?.status).toBe('skipped');
+    expect(screen.queryByTestId('resolve-skip')).toBeNull();
 
     fireEvent.press(screen.getByTestId('resolve-yes'));
     await waitFor(() => expect(screen.getByTestId('resolve-recorded')).toBeTruthy());
-    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+    const answered = await getPrediction('p1');
+    expect(answered?.status).toBe('resolved_yes');
+    // The answer's own time, not the skip's.
+    expect(answered?.resolved_at).not.toBe(yesterday);
+  });
+
+  it('leaves the skip as it was when the question is left unanswered', async () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await insertPrediction(
+      samplePending({ status: 'skipped', due_date: yesterday, resolved_at: yesterday }),
+    );
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-unskip')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-unskip'));
+    await waitFor(() => expect(screen.getByTestId('resolve-keep-skip')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-keep-skip'));
+    await waitFor(() => expect(screen.getByTestId('resolve-skipped')).toBeTruthy());
+    const kept = await getPrediction('p1');
+    expect(kept?.status).toBe('skipped');
+    expect(kept?.resolved_at).toBe(yesterday);
+  });
+
+  it('answers a skip in one step only when asked to', async () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await insertPrediction(
+      samplePending({ status: 'skipped', due_date: yesterday, resolved_at: yesterday }),
+    );
+    // A plain resolve (a reminder's action) leaves a skip alone.
+    await usePredictionStore.getState().resolve('p1', 'resolved_no');
+    expect((await getPrediction('p1'))?.status).toBe('skipped');
+    await usePredictionStore
+      .getState()
+      .resolve('p1', 'resolved_no', undefined, { answeringSkip: true });
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
   });
 
   // Roadmap D45: open forever, a bad-looking call could be parked as a skip
@@ -487,6 +542,9 @@ describe('ResolvePrompt — answering a skipped prediction later', () => {
     expect(screen.queryByTestId('resolve-unskip')).toBeNull();
     // The store holds the line too.
     await expect(usePredictionStore.getState().reopen('p1')).rejects.toThrow(/more than a week/);
+    await expect(
+      usePredictionStore.getState().resolve('p1', 'resolved_yes', undefined, { answeringSkip: true }),
+    ).rejects.toThrow(/more than a week/);
     expect((await getPrediction('p1'))?.status).toBe('skipped');
   });
 

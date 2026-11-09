@@ -156,4 +156,11 @@ describe('streakCopy — rest days', () => {
     ].map((c) => c?.rest ?? '');
     for (const line of lines) expect(line).not.toMatch(/lose|lost|break|miss/i);
   });
+
+  // Playtest 2026-11-08b, finding 11: "1001-day streak".
+  it('groups a four-digit streak', () => {
+    const copy = streakCopy(status({ streak: 1001, today: 3, todayCounts: true, nextCheckpoint: 1095 }));
+    expect(copy?.headline).toMatch(/^1\D001-day streak$/);
+    expect(copy?.detail).toMatch(/Next milestone: 1\D095 days/);
+  });
 });

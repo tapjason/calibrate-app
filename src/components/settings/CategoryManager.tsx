@@ -21,11 +21,13 @@ import {
   CATEGORY_NAME_MAX,
   categoryLabel,
   categoryNameProblem,
+  categoryIcon,
   categoryTitle,
   categoryOptions,
   isCategoryHidden,
   useCategoryStore,
 } from '@/store/categoryStore';
+import { fitEdit, graphemeLength, unitBackstop } from '@/store/text';
 import { isBuiltInCategory, type Category } from '@/types';
 
 import { CategoryIconEditor } from './CategoryIconEditor';
@@ -106,9 +108,9 @@ export function CategoryManager() {
                   <View style={styles.editing}>
                     <TextInput
                       value={draft}
-                      onChangeText={setDraft}
+                      onChangeText={(t) => setDraft(fitEdit(draft, t, CATEGORY_NAME_MAX))}
                       autoFocus
-                      maxLength={CATEGORY_NAME_MAX}
+                      maxLength={unitBackstop(CATEGORY_NAME_MAX)}
                       accessibilityLabel={`New name for ${name}`}
                       placeholderTextColor={colors.textTertiary}
                       style={styles.input}
@@ -116,7 +118,7 @@ export function CategoryManager() {
                       returnKeyType="done"
                       testID={`manage-${c}-input`}
                     />
-                    <LengthCounter length={draft.length} max={CATEGORY_NAME_MAX} />
+                    <LengthCounter length={graphemeLength(draft)} max={CATEGORY_NAME_MAX} />
                     <View style={styles.editActions}>
                       <Button
                         label="Save"
@@ -136,65 +138,74 @@ export function CategoryManager() {
                   </View>
                 ) : (
                   <>
-                    <Pressable
-                      style={styles.iconButton}
-                      onPress={() => {
-                        setIconFor(iconFor === c ? null : c);
-                        setError(null);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${name} icon. Change`}
-                      accessibilityState={{ expanded: iconFor === c }}
-                      testID={`manage-${c}-icon`}
-                    >
-                      {/* A hidden row is dimmed, icon and name, so it reads as
-                          off before the switch is found (playtest 2026-11-08,
-                          finding 21). */}
-                      <View style={hidden && styles.dimmed}>
-                        <CategoryIcon category={c} size={22} color={colors.textSecondary} />
+                    {/* The icon and the name as one: the name never ends up on a
+                        line apart from its icon. */}
+                    <View style={styles.head}>
+                      <Pressable
+                        style={styles.iconButton}
+                        onPress={() => {
+                          setIconFor(iconFor === c ? null : c);
+                          setError(null);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${name} icon: ${iconWords(c)}. Change`}
+                        accessibilityState={{ expanded: iconFor === c }}
+                        testID={`manage-${c}-icon`}
+                      >
+                        {/* A hidden row is dimmed, icon and name, so it reads as
+                            off before the switch is found (playtest 2026-11-08,
+                            finding 21). */}
+                        <View style={hidden && styles.dimmed}>
+                          <CategoryIcon category={c} size={22} color={colors.textSecondary} />
+                        </View>
+                      </Pressable>
+                      <Text
+                        style={[styles.name, { minWidth: nameFloor }, hidden && styles.nameHidden]}
+                        numberOfLines={2}
+                      >
+                        {name}
+                      </Text>
+                    </View>
+                    {/* Rename and the switch keep together: when the whole name
+                        can't sit beside them they wrap under it as a pair, at the
+                        row's end (playtest 2026-11-08b, finding 17). */}
+                    <View style={styles.controls}>
+                      {/* Its own button, not grey text after the name (first device
+                          run, 2026-11-07: it read as part of the label). Ink on a
+                          sunken pill: the brand has no hue for actions (D33). */}
+                      <Pressable
+                        style={({ pressed }) => [styles.renameButton, pressed && styles.renamePressed]}
+                        hitSlop={6}
+                        onPress={() => {
+                          setDraft(name);
+                          setEditing(c);
+                          setError(null);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${name}. Rename`}
+                        testID={`manage-${c}-rename`}
+                      >
+                        <Text style={styles.renameLabel}>Rename</Text>
+                      </Pressable>
+                      {/* On = offered when logging. The whole switch is one element.
+                          Boxed at the row's 44pt height and centred in it: on the
+                          iPhone the bare switch sat above the row's centre line
+                          (first device run, 2026-11-07). */}
+                      <View style={styles.switchBox}>
+                        <ToggleSwitch
+                          value={!hidden}
+                          // The last one offered stays on: logging needs a category.
+                          disabled={!hidden && shown.length === 1}
+                          onValueChange={(on) =>
+                            void run(() => useCategoryStore.getState().setHidden(c, !on))
+                          }
+                          accessibilityLabel={`Offer ${name} when logging`}
+                          accessibilityHint={
+                            !hidden && shown.length === 1 ? LAST_SHOWN_NOTE : undefined
+                          }
+                          testID={`manage-${c}-shown`}
+                        />
                       </View>
-                    </Pressable>
-                    <Text
-                      style={[styles.name, { minWidth: nameFloor }, hidden && styles.nameHidden]}
-                      numberOfLines={1}
-                    >
-                      {name}
-                    </Text>
-                    {/* Its own button, not grey text after the name (first device
-                        run, 2026-11-07: it read as part of the label). Ink on a
-                        sunken pill: the brand has no hue for actions (D33). */}
-                    <Pressable
-                      style={({ pressed }) => [styles.renameButton, pressed && styles.renamePressed]}
-                      hitSlop={6}
-                      onPress={() => {
-                        setDraft(name);
-                        setEditing(c);
-                        setError(null);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${name}. Rename`}
-                      testID={`manage-${c}-rename`}
-                    >
-                      <Text style={styles.renameLabel}>Rename</Text>
-                    </Pressable>
-                    {/* On = offered when logging. The whole switch is one element.
-                        Boxed at the row's 44pt height and centred in it: on the
-                        iPhone the bare switch sat above the row's centre line
-                        (first device run, 2026-11-07). */}
-                    <View style={styles.switchBox}>
-                      <ToggleSwitch
-                        value={!hidden}
-                        // The last one offered stays on: logging needs a category.
-                        disabled={!hidden && shown.length === 1}
-                        onValueChange={(on) =>
-                          void run(() => useCategoryStore.getState().setHidden(c, !on))
-                        }
-                        accessibilityLabel={`Offer ${name} when logging`}
-                        accessibilityHint={
-                          !hidden && shown.length === 1 ? LAST_SHOWN_NOTE : undefined
-                        }
-                        testID={`manage-${c}-shown`}
-                      />
                     </View>
                   </>
                 )}
@@ -226,8 +237,8 @@ export function CategoryManager() {
       <Text style={styles.label}>Add a category</Text>
       <TextInput
         value={newName}
-        onChangeText={setNewName}
-        maxLength={CATEGORY_NAME_MAX}
+        onChangeText={(t) => setNewName(fitEdit(newName, t, CATEGORY_NAME_MAX))}
+        maxLength={unitBackstop(CATEGORY_NAME_MAX)}
         placeholder="e.g. Family"
         placeholderTextColor={colors.textTertiary}
         accessibilityLabel="New category name"
@@ -238,7 +249,7 @@ export function CategoryManager() {
         returnKeyType="done"
         testID="manage-new-name"
       />
-      <LengthCounter length={newName.length} max={CATEGORY_NAME_MAX} testID="manage-new-count" />
+      <LengthCounter length={graphemeLength(newName)} max={CATEGORY_NAME_MAX} testID="manage-new-count" />
       {addProblem && <Text style={styles.footnote}>{addProblem}</Text>}
       <Button
         label="Add"
@@ -261,6 +272,17 @@ export function CategoryManager() {
 
 const LAST_SHOWN_NOTE = 'One category stays on: logging needs one.';
 
+/**
+ * The icon as said aloud: "X icon. Change" didn't say which icon it was
+ * (playtest 2026-11-08b, finding 29).
+ */
+function iconWords(c: Category): string {
+  const own = categoryIcon(c);
+  if (own?.kind === 'emoji') return own.emoji;
+  if (own?.kind === 'image') return 'your picture';
+  return 'the default';
+}
+
 const styles = StyleSheet.create({
   wrap: { gap: space.sm, padding: space.lg, paddingBottom: space.huge },
   title: { ...type.title2, color: colors.textPrimary },
@@ -271,12 +293,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
   },
-  // At large sizes the switch wraps under the name instead of covering it
-  // (playtest 2026-11-03, run 3). 4pt gaps and a 12pt edge: at 320 wide the
-  // iOS 26 switch (63pt, the web's is 40) left the name about 33pt, under its
-  // floor, so the switch wrapped. Now the name gets 57pt there: "Finance" and
-  // "Personal" end in an ellipsis at 320 (a mini with Display Zoom), and every
-  // built-in fits from 375 (web check, 2026-11-08).
+  // Rename and the switch wrap under a name they'd cut (playtest 2026-11-03,
+  // run 3; 2026-11-08b, finding 17). 4pt gaps and a 12pt edge keep a short
+  // name on one line with them at 320 wide, beside the iOS 26 switch (63pt;
+  // the web's is 40).
   row: {
     alignItems: 'center',
     columnGap: space.xs,
@@ -298,20 +318,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 44,
     justifyContent: 'center',
-    // With the row's 4pt gap, 8pt from the icon to the name.
-    marginRight: space.xs,
+    // 8pt from the icon to the name.
+    marginRight: space.sm,
     width: 44,
   },
-  // The name takes what's left and gives way first, on one line: at 320 wide
-  // a basis of 80 sent the switch to its own line even for "x", and a long
-  // name ran out of the row (playtest 2026-11-08, findings 1 and 3). At large
-  // sizes Rename and the switch still wrap under it once they can't fit.
-  name: {
-    ...type.callout,
-    color: colors.textPrimary,
-    flexBasis: 0,
+  // The icon and name at their own width, then what's left: a name too long to sit
+  // beside Rename and the switch sends them to a line of their own, so it is
+  // read whole instead of "Hot girl w…" (playtest 2026-11-08b, finding 17:
+  // 13 of Rosa's 20 names were cut at 320). Two lines at most, past which it
+  // ends in an ellipsis.
+  head: {
+    alignItems: 'center',
+    flexBasis: 'auto',
+    flexDirection: 'row',
     flexGrow: 1,
     flexShrink: 1,
+  },
+  name: { ...type.callout, color: colors.textPrimary, flexShrink: 1 },
+  controls: {
+    alignItems: 'center',
+    columnGap: space.xs,
+    flexDirection: 'row',
+    marginLeft: 'auto',
   },
   nameHidden: { color: colors.textTertiary },
   dimmed: { opacity: 0.45 },

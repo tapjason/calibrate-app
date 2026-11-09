@@ -36,6 +36,8 @@ interface PredictionDetailsProps {
   onClose: () => void;
   /** Answer it now: the route opens Resolve in this sheet's place. */
   onAnswer: (id: string) => void;
+  /** Whether Edit holds changes not saved yet, for the sheet's draft guard. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 type Mode = 'view' | 'edit' | 'delete' | 'early';
@@ -54,7 +56,12 @@ const shortDate = (iso: string) =>
  * The id arrives untrusted (a URL); predictionStore.getById applies the
  * owner filter, as Resolve's does.
  */
-export function PredictionDetails({ predictionId, onClose, onAnswer }: PredictionDetailsProps) {
+export function PredictionDetails({
+  predictionId,
+  onClose,
+  onAnswer,
+  onDirtyChange,
+}: PredictionDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +78,17 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
   const [dueDate, setDueDate] = useState('');
   const [presets, setPresets] = useState(datePresets);
   const [picking, setPicking] = useState(false);
+
+  // Unsaved: editing, with anything changed from what is stored.
+  const dirty =
+    mode === 'edit' &&
+    prediction !== null &&
+    (title !== prediction.title ||
+      category !== prediction.category ||
+      dueDate !== prediction.due_date);
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   useEffect(() => {
     (async () => {
@@ -302,7 +320,14 @@ export function PredictionDetails({ predictionId, onClose, onAnswer }: Predictio
       {mode === 'early' && (
         <View style={styles.confirm} testID="details-early">
           <Text style={styles.body}>{earlyText}</Text>
-          <Button label="Answer now" onPress={() => onAnswer(prediction.id)} testID="details-answer-now" />
+          <Button
+            label="Answer now"
+            onPress={() => onAnswer(prediction.id)}
+            // The warning above, on the button too: a swipe can skip the text
+            // (playtest 2026-11-08b, finding 29).
+            accessibilityHint={earlyText}
+            testID="details-answer-now"
+          />
           <TextButton label="Not yet" onPress={() => setMode('view')} testID="details-not-yet" />
         </View>
       )}

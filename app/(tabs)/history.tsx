@@ -1,3 +1,4 @@
+import { useScrollToTop } from '@react-navigation/native';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
@@ -23,7 +24,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { confidenceRangeLow } from '@/store/statsStore';
-import { categoryOptions, categoryTitle, isCategoryHidden, useCategoryStore } from '@/store/categoryStore';
+import { categoryOptions, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 import type { Category, Prediction } from '@/types';
 
 
@@ -35,13 +36,14 @@ export default function HistoryScreen() {
   const resolved = usePredictionStore((s) => s.resolved);
   const pending = usePredictionStore((s) => s.pending);
   const [filter, setFilter] = useState<Category | 'all'>('all');
-  // The person's own categories (roadmap D39): every one shown on Log, and a
-  // hidden one while it still has predictions to find.
+  // The person's own categories (roadmap D39) that have something to find,
+  // hidden or not, plus the one chosen: with every category listed, 52 chips
+  // ran about 4,000 pt, most of them empty (playtest 2026-11-08b, finding 21).
   useCategoryStore((s) => s.defs);
   const used = new Set([...resolved, ...pending].map((p) => p.category));
   const filters: (Category | 'all')[] = [
     'all',
-    ...categoryOptions({ includeHidden: true }).filter((c) => used.has(c) || !isCategoryHidden(c)),
+    ...categoryOptions({ includeHidden: true }).filter((c) => used.has(c) || c === filter),
   ];
   // A confidence range arrives from a tap on Stats' coverage row (roadmap
   // step 51): the predictions behind one dot on the chart.
@@ -72,6 +74,9 @@ export default function HistoryScreen() {
   // keying the list, which would remount the filter strip in its header and
   // snap it back to "All" on every tap (review, 2026-11-08).
   const listRef = useRef<SectionList<Prediction>>(null);
+  // A second tap on the tab scrolls back to the top, as iOS tabs do
+  // (playtest 2026-11-08b, finding 13).
+  useScrollToTop(listRef);
   useEffect(() => {
     listRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: false });
   }, [filter, range]);
@@ -185,7 +190,7 @@ export default function HistoryScreen() {
         renderSectionHeader={({ section }) =>
           // One section needs no header; with both, each says what it holds.
           open.length > 0 ? (
-            <SectionHeader title={section.title} count={section.data.length} />
+            <SectionHeader title={section.title} count={section.data.length} unit={PREDICTIONS} />
           ) : null
         }
         renderItem={({ item, index, section }) => (
@@ -223,6 +228,8 @@ export default function HistoryScreen() {
     </View>
   );
 }
+
+const PREDICTIONS = { one: 'prediction', other: 'predictions' };
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: space.lg, backgroundColor: colors.canvas },

@@ -214,7 +214,7 @@ function Corrections({ trends }: { trends: TrendSummary }) {
       {rows.length === 0 && progress ? (
         <Text style={styles.muted} testID="trends-corrections-progress">
           A band needs {MIN_N_BAND} calls in one category before it gets a row.
-          Closest: {categoryLabel(progress.category)} at {band(progress.low, progress.high)}, with{' '}
+          Closest: {categoryTitle(progress.category)} at {band(progress.low, progress.high)}, with{' '}
           {progress.resolved}.
         </Text>
       ) : (

@@ -16,6 +16,8 @@ interface ButtonProps {
   testID?: string;
   /** Spoken instead of `label` — for labels like "+5" that mean nothing aloud. */
   accessibilityLabel?: string;
+  /** What the tap does, where the label alone doesn't say it. */
+  accessibilityHint?: string;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -33,6 +35,7 @@ export function Button({
   disabled,
   testID,
   accessibilityLabel,
+  accessibilityHint,
 }: ButtonProps) {
   const reduceMotion = useReducedMotion();
   const pressed = useSharedValue(0);
@@ -61,6 +64,7 @@ export function Button({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled }}
       style={[styles.base, styles[variant], pressStyle]}
     >

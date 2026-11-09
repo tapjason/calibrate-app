@@ -156,6 +156,34 @@ describe('LogPredictionForm', () => {
     expect(save().props.accessibilityState).toMatchObject({ disabled: false });
   });
 
+  // Playtest 2026-11-08b, finding 1: three taps in one frame saved three.
+  it('saves once when Save is tapped three times before a render', async () => {
+    render(<LogPredictionForm />);
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Ship it');
+    fireEvent.press(screen.getByTestId('category-work'));
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    const save = screen.getByTestId('submit-button');
+    await act(async () => {
+      fireEvent.press(save);
+      fireEvent.press(save);
+      fireEvent.press(save);
+    });
+    await waitFor(() => expect(usePredictionStore.getState().pending).toHaveLength(1));
+    await act(async () => {});
+    expect(usePredictionStore.getState().pending).toHaveLength(1);
+  });
+
+  // Playtest 2026-11-08b, finding 25: a double tap on +5 moved once.
+  it('steps twice for two +5 taps before a render', async () => {
+    render(<LogPredictionForm />);
+    const plus = screen.getByTestId('confidence-increment');
+    await act(async () => {
+      fireEvent.press(plus);
+      fireEvent.press(plus);
+    });
+    expect(screen.getByTestId('confidence-readout')).toHaveTextContent('60%');
+  });
+
   // Roadmap D23: no chip for any number, before or after one is set.
   it('shows no integrity bonus at any confidence', () => {
     render(<LogPredictionForm />);

@@ -73,7 +73,16 @@ export function CategoryIcon({
         aria-hidden
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+        style={{
+          width: size,
+          height: size,
+          // An emoji is wider than its font size; centred, it stuck out a few
+          // points left of the edge the symbols and text keep, so it starts
+          // at that edge and any extra falls into the gap after it (playtest
+          // 2026-11-08b, finding 26).
+          alignItems: own.kind === 'emoji' ? 'flex-start' : 'center',
+          justifyContent: 'center',
+        }}
         testID={`category-icon-${own.kind}`}
       >
         {own.kind === 'emoji' ? (
@@ -85,7 +94,7 @@ export function CategoryIcon({
               color,
               fontSize: size,
               lineHeight: Math.round(size * 1.2),
-              textAlign: 'center',
+              textAlign: 'left',
             }}
           >
             {own.emoji}

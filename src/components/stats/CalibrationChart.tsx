@@ -52,6 +52,9 @@ const PAD_BOTTOM = 28;
 // Ticks at the bucket edges, so each dot sits between two gridlines.
 const TICKS = [0, 20, 40, 60, 80, 100];
 const TICK_FONT = type.caption.fontSize; // DESIGN_SYSTEM §3: 12pt is the chart minimum.
+/** An "n=…" character's estimated width, and the gap kept between two labels. */
+const LABEL_CHAR_W = TICK_FONT * 0.62;
+const LABEL_AIR = 2;
 // The chance capsule (roadmap D4): a soft bar, no end caps (DESIGN_SYSTEM §7.2).
 const CHANCE_WIDTH = 10;
 
@@ -185,6 +188,7 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
     bottom,
     // "n=52" printed on "Underconfident" (playtest 2026-11-08, finding 4).
     regionLabelBoxes(left, right, top, bottom),
+    width,
   );
   const tickGapX = (right - left) / (TICKS.length - 1);
   const tickGapY = (bottom - top) / (TICKS.length - 1);
@@ -447,7 +451,7 @@ export function labelAt(
   text: string,
   width: number,
 ): { x: number; anchor: 'middle' | 'end' } {
-  const half = (text.length * TICK_FONT * 0.6) / 2;
+  const half = (text.length * LABEL_CHAR_W) / 2;
   const edge = width - 2;
   return cx + half > edge ? { x: edge, anchor: 'end' } : { x: cx, anchor: 'middle' };
 }
@@ -464,13 +468,19 @@ export function placeDotLabels(
   top: number,
   bottom: number,
   reserved: readonly LabelBox[] = [],
+  width?: number,
 ): number[] {
-  const charW = TICK_FONT * 0.6;
   // Boxes already taken: the region labels, then each label as it's placed.
   const placed: LabelBox[] = [...reserved];
+  // Where the label is drawn, not only where its dot is: the right-most one
+  // ends at the chart's edge, and measured as centred it was never checked
+  // against its neighbour ("n=277" crowding "n=300" at 320 wide; playtest
+  // 2026-11-08b, finding 16). A little air either side, too.
   const boxAt = (d: DotLabelInput, y: number) => {
-    const half = (d.text.length * charW) / 2;
-    return { x0: d.cx - half, x1: d.cx + half, y0: y - TICK_FONT, y1: y };
+    const w = d.text.length * LABEL_CHAR_W;
+    const at = width === undefined ? { x: d.cx, anchor: 'middle' as const } : labelAt(d.cx, d.text, width);
+    const x0 = at.anchor === 'end' ? at.x - w : at.x - w / 2;
+    return { x0: x0 - LABEL_AIR, x1: x0 + w + LABEL_AIR, y0: y - TICK_FONT, y1: y };
   };
   const clashes = (box: (typeof placed)[number]) =>
     placed.some((o) => box.x0 < o.x1 && o.x0 < box.x1 && box.y0 < o.y1 && o.y0 < box.y1);

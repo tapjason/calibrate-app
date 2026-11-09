@@ -1,5 +1,6 @@
+import { useScrollToTop } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { nextDueLine } from '@/components/prediction/dueGroups';
@@ -19,6 +20,10 @@ import { MIN_N_BAND } from '@/types';
 
 export default function InsightsScreen() {
   const router = useRouter();
+  const scroll = useRef<ScrollView>(null);
+  // A second tap on the tab scrolls back to the top, as iOS tabs do
+  // (playtest 2026-11-08b, finding 13).
+  useScrollToTop(scroll);
   // The calibrating caption names the next due date: keep it to the calendar
   // (the day is read below, for "since last week").
   const userStat = useStatsStore((s) => s.userStat);
@@ -57,7 +62,7 @@ export default function InsightsScreen() {
   const monthsOnFile = wholeMonthsSince(firstResolvedAt, new Date());
 
   return (
-    <ScrollView>
+    <ScrollView ref={scroll}>
       <CalibrationView
         userStat={userStat}
         calibration={calibration}

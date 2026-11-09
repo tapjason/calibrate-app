@@ -177,6 +177,23 @@ export const setPredictionReflection: SetReflection = async (id, reflection) => 
 };
 
 /**
+ * Put a "Can't tell" back to open, and only a "Can't tell": the guard is in
+ * the statement, so a Yes or No pulled from another phone a moment earlier
+ * is never wiped (review, 2026-11-08). Answering a skip (D45) runs this and
+ * the answer in one transaction.
+ */
+export async function unskipPrediction(id: string): Promise<void> {
+  const now = nowIso();
+  await getDb().run(
+    `UPDATE predictions
+       SET status = 'pending', resolved_at = NULL, reflection = NULL,
+           updated_at = ?, dirty = 1
+       WHERE id = ? AND status = 'skipped'`,
+    [now, id],
+  );
+}
+
+/**
  * Undo a resolution — the "Change answer" escape hatch right after a tap.
  * `status != 'pending'` makes it a no-op on an unanswered row; `dirty = 1`
  * carries the reversal through sync (last write wins on `updated_at`).

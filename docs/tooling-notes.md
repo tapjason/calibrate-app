@@ -96,3 +96,9 @@ that apply here.
   2026-11-08). The
   edit hook runs only `--quick` (incremental `tsc`, `.tooling/tsbuildinfo`; delete it if types
   look stale).
+- **Typed routes stub** (2026-11-08 and 09): `.expo/types/router.d.ts` is sometimes an 816-byte
+  stub with no app routes. Seen right after `web-serve.sh start`, before the first page request, and
+  once mid-session with no cause found (not Jest: a full check left the full file alone). `tsc`
+  then fails with three typed-route errors (`app/dev/celebrations.tsx`, `app/dev/seed.tsx`,
+  `app/log.tsx`). Fix: `web-serve.sh stop`, `start`, load http://localhost:8097/ once, wait until
+  the file is about 6 KB, then check again.
