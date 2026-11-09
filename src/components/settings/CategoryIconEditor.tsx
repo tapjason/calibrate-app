@@ -156,7 +156,8 @@ const CELL = 44;
 const styles = StyleSheet.create({
   wrap: {
     gap: space.sm,
-    paddingHorizontal: space.lg,
+    // The rows above it are inset 12pt; the grid starts under their icons.
+    paddingHorizontal: space.md,
     paddingVertical: space.md,
   },
   heading: { alignItems: 'center', flexDirection: 'row', gap: space.sm },

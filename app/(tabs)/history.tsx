@@ -135,89 +135,91 @@ export default function HistoryScreen() {
     </>
   );
 
-  return (
-    <View style={styles.wrap}>
-      {filtered.length === 0 && open.length === 0 && header}
-      {filtered.length === 0 && open.length === 0 ? (
-        resolved.length === 0 ? (
-          // Nothing resolved at all: when the first answer can come, and a
-          // way forward (roadmap step 69). A filtered-empty list has the
-          // filters for that.
-          (() => {
-            const first = firstHistoryCopy(pending, new Date());
-            const go = (action: FirstHistoryAction) => {
-              if (action.kind === 'resolve') router.push(`/resolve/${action.id}` as never);
-              else if (action.kind === 'run') router.push('/resolve/run' as never);
-              else router.push('/log' as never);
-            };
-            return (
-              <EmptyState
-                testID="history-empty"
-                symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
-                message={first.message}
-                actionLabel={first.action.label}
-                onAction={() => go(first.action)}
-              />
-            );
-          })()
-        ) : (
+  // With nothing to list, the empty state sits under the filters inside the
+  // same list, so the strip keeps its place and its scroll: rendered apart, it
+  // remounted and snapped back to "All" when a filter had nothing in it.
+  const empty =
+    open.length > 0 || filtered.length > 0 ? null : resolved.length === 0 ? (
+      // Nothing resolved at all: when the first answer can come, and a
+      // way forward (roadmap step 69). A filtered-empty list has the
+      // filters for that.
+      (() => {
+        const first = firstHistoryCopy(pending, new Date());
+        const go = (action: FirstHistoryAction) => {
+          if (action.kind === 'resolve') router.push(`/resolve/${action.id}` as never);
+          else if (action.kind === 'run') router.push('/resolve/run' as never);
+          else router.push('/log' as never);
+        };
+        return (
           <EmptyState
             testID="history-empty"
             symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
-            message={holdRanges(emptyHistoryMessage({ category: filter, range }))}
+            message={first.message}
+            actionLabel={first.action.label}
+            onAction={() => go(first.action)}
           />
-        )
-      ) : (
-        <SectionList
-          ref={listRef}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          stickySectionHeadersEnabled={false}
-          sections={[
-            ...(open.length > 0 ? [{ key: 'open', title: 'Open', data: open }] : []),
-            ...(filtered.length > 0 ? [{ key: 'answered', title: 'Answered', data: filtered }] : []),
-          ]}
-          keyExtractor={(p) => p.id}
-          ListHeaderComponent={header}
-          renderSectionHeader={({ section }) =>
-            // One section needs no header; with both, each says what it holds.
-            open.length > 0 ? (
-              <SectionHeader title={section.title} count={section.data.length} />
-            ) : null
-          }
-          renderItem={({ item, index, section }) => (
-            <PredictionCard
-              prediction={item}
-              position={rowPosition(index, section.data.length)}
-              onPress={
-                item.status === 'pending'
-                  ? // Due: Resolve. Not yet: its details (roadmap D25).
-                    (id) =>
-                      router.push(
-                        (isReadyToResolve(item, new Date())
-                          ? `/resolve/${id}`
-                          : `/prediction/${id}`) as never,
-                      )
-                  : // A skip is answered in Resolve (step 39); a Yes or No opens
-                    // its details, correctable for a day (roadmap D34).
-                    item.status === 'skipped'
-                    ? (id) => router.push(`/resolve/${id}` as never)
-                    : (id) => router.push(`/prediction/${id}` as never)
-              }
-            />
-          )}
-          ListFooterComponent={
-            filtered.length === 0 ? (
-              // Open ones listed, nothing answered yet under this filter.
-              <Text style={styles.footer} testID="history-answered-empty">
-                {resolved.length === 0
-                  ? firstHistoryCopy(pending, new Date()).message
-                  : holdRanges(emptyHistoryMessage({ category: filter, range }))}
-              </Text>
-            ) : null
-          }
-        />
-      )}
+        );
+      })()
+    ) : (
+      <EmptyState
+        testID="history-empty"
+        symbol={{ sf: 'clock.arrow.circlepath', fallback: 'time-outline' }}
+        message={holdRanges(emptyHistoryMessage({ category: filter, range }))}
+      />
+    );
+
+  return (
+    <View style={styles.wrap}>
+      <SectionList
+        ref={listRef}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        stickySectionHeadersEnabled={false}
+        sections={[
+          ...(open.length > 0 ? [{ key: 'open', title: 'Open', data: open }] : []),
+          ...(filtered.length > 0 ? [{ key: 'answered', title: 'Answered', data: filtered }] : []),
+        ]}
+        keyExtractor={(p) => p.id}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        renderSectionHeader={({ section }) =>
+          // One section needs no header; with both, each says what it holds.
+          open.length > 0 ? (
+            <SectionHeader title={section.title} count={section.data.length} />
+          ) : null
+        }
+        renderItem={({ item, index, section }) => (
+          <PredictionCard
+            prediction={item}
+            position={rowPosition(index, section.data.length)}
+            onPress={
+              item.status === 'pending'
+                ? // Due: Resolve. Not yet: its details (roadmap D25).
+                  (id) =>
+                    router.push(
+                      (isReadyToResolve(item, new Date())
+                        ? `/resolve/${id}`
+                        : `/prediction/${id}`) as never,
+                    )
+                : // A skip is answered in Resolve (step 39); a Yes or No opens
+                  // its details, correctable for a day (roadmap D34).
+                  item.status === 'skipped'
+                  ? (id) => router.push(`/resolve/${id}` as never)
+                  : (id) => router.push(`/prediction/${id}` as never)
+            }
+          />
+        )}
+        ListFooterComponent={
+          filtered.length === 0 && open.length > 0 ? (
+            // Open ones listed, nothing answered yet under this filter.
+            <Text style={styles.footer} testID="history-answered-empty">
+              {resolved.length === 0
+                ? firstHistoryCopy(pending, new Date()).message
+                : holdRanges(emptyHistoryMessage({ category: filter, range }))}
+            </Text>
+          ) : null
+        }
+      />
     </View>
   );
 }

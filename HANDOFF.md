@@ -38,7 +38,9 @@ Step 160: the fixes from the seventh blind playtest round (`docs/design/research
 
 ## In progress / broken
 
-- **Not seen yet:** no web screenshots of these changes. The 8097 server still serves the code from before this branch, and restarting it waits on the owner's say-so.
+- **Seen on web** (2026-11-08) at 320 and 375 wide, light and dark, and the card at 568 × 320, with eleven categories and a 24-character name. Screenshots in `.playwright-mcp/step160/` (git-ignored). The check found two problems, both fixed in the last commit:
+  - Categories rows: at 320 the iOS 26 switch (63pt, the web's is 40) left the name about 33pt, under its 48pt floor, so the switch would have wrapped. Gaps after the name are 4pt, and the Rename pill and the row edge are 4pt slimmer. Measured on web with the switch forced to 63pt: every row stays on one line and the name gets 57pt, so at 320 "Finance" and "Personal" end in "…" (only a mini with Display Zoom is 320 wide). Every built-in fits from 375. The icon editor under a row is now inset 12pt too.
+  - History: a filter with nothing to list rendered the filter strip outside the list, so it remounted, scrolled back to "All" and hid the chosen chip. The list now stays mounted and shows the empty state inside it.
 - **Finding 41 in list rows:** Today's and History's rows read the title inside one mixed-language label, so the Hebrew/Arabic voice applies only on Resolve and the details.
 - **Known small gaps (review nits, not fixed):**
   - After "N more" is tapped, VoiceOver focus has nowhere to go.
@@ -60,7 +62,6 @@ Step 160: the fixes from the seventh blind playtest round (`docs/design/research
   6. With VoiceOver on, answer a prediction Yes. It says "Recorded: it happened".
   7. The reminder test: two predictions are due tomorrow.
 - **Agent:**
-  - Web screenshots at 320 and 375 wide, light and dark, once the web server may restart.
   - Then steps 157–159.
   - Groups 4 and 6 of the playtest wait on the owner (`/design`).
 

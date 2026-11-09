@@ -272,15 +272,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   // At large sizes the switch wraps under the name instead of covering it
-  // (playtest 2026-11-03, run 3).
+  // (playtest 2026-11-03, run 3). 4pt gaps and a 12pt edge: at 320 wide the
+  // iOS 26 switch (63pt, the web's is 40) left the name about 33pt, under its
+  // floor, so the switch wrapped. Now the name gets 57pt there: "Finance" and
+  // "Personal" end in an ellipsis at 320 (a mini with Display Zoom), and every
+  // built-in fits from 375 (web check, 2026-11-08).
   row: {
     alignItems: 'center',
+    columnGap: space.xs,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: space.sm,
     minHeight: 52,
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.md,
     paddingVertical: space.sm,
+    rowGap: space.sm,
   },
   rowDivider: {
     borderTopColor: colors.hairline,
@@ -293,6 +298,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 44,
     justifyContent: 'center',
+    // With the row's 4pt gap, 8pt from the icon to the name.
+    marginRight: space.xs,
     width: 44,
   },
   // The name takes what's left and gives way first, on one line: at 320 wide
@@ -316,7 +323,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     justifyContent: 'center',
     minHeight: 32,
-    paddingHorizontal: space.md,
+    paddingHorizontal: space.sm,
   },
   renamePressed: { opacity: 0.6 },
   renameLabel: { ...type.footnote, color: colors.action, fontWeight: '600' },
