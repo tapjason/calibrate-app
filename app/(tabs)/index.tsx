@@ -12,6 +12,7 @@ import {
 } from '@/components/prediction/dueGroups';
 import { PredictionCard, rowPosition } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
+import { WelcomeBackCard } from '@/components/prediction/WelcomeBackCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { BackupNudge } from '@/components/settings/BackupNudge';
 import { chartTakeaway } from '@/components/stats/chartTakeaway';
@@ -161,6 +162,8 @@ export default function TodayScreen() {
       stickySectionHeadersEnabled={false}
       ListHeaderComponent={
         <>
+          {/* Back after a long gap: what changed, before anything else (D51). */}
+          <WelcomeBackCard />
           <View style={styles.hero}>{hero}</View>
           {!hasReady && daily}
         </>

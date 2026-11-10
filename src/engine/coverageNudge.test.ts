@@ -8,6 +8,7 @@ import {
   NUDGE_WINDOW,
   coverageGap,
   evaluateCoverageNudge,
+  NUDGE_QUIET_AFTER_ANSWER_MINUTES,
 } from './coverageNudge';
 
 let seq = 0;
@@ -111,6 +112,15 @@ describe('evaluateCoverageNudge', () => {
   it('stays quiet once the user has logged something unlikely', () => {
     const gap = coverageGap([...logs(NUDGE_MIN_LOGGED, 85), p(25, day(199))]);
     expect(evaluateCoverageNudge(gap, null, NOW).show).toBe(false);
+  });
+
+  // Roadmap D50: it opened on Log right after a tester's miss.
+  it('stays quiet for half an hour after any answer', () => {
+    const gap = coverageGap(logs(NUDGE_MIN_LOGGED, 85));
+    const minutesAgo = (m: number) => new Date(Date.parse(NOW) - m * 60_000).toISOString();
+    expect(evaluateCoverageNudge(gap, null, NOW, minutesAgo(5)).show).toBe(false);
+    expect(evaluateCoverageNudge(gap, null, NOW, minutesAgo(NUDGE_QUIET_AFTER_ANSWER_MINUTES + 1)).show).toBe(true);
+    expect(evaluateCoverageNudge(gap, null, NOW, 'not-a-date').show).toBe(true);
   });
 
   it('stays quiet inside the cooldown', () => {

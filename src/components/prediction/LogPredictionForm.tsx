@@ -140,7 +140,12 @@ export function LogPredictionForm({
 
   useEffect(() => {
     if (nudge || nudgeDismissed) return;
-    const decision = coverageNudgeNow();
+    // Not right after an answer, whichever way it went (roadmap D50).
+    const lastAnsweredAt = resolved.reduce<string | null>(
+      (latest, p) => (p.resolved_at && (!latest || p.resolved_at > latest) ? p.resolved_at : latest),
+      null,
+    );
+    const decision = coverageNudgeNow(lastAnsweredAt);
     if (!decision.show) return;
     setNudge(decision);
     void track('coverage_nudge_shown', { buckets_used: decision.buckets_used });

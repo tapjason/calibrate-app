@@ -51,6 +51,13 @@ export const NUDGE_COOLDOWN_DAYS = 7;
  */
 export const NUDGE_CONFIDENCE = 25;
 
+/**
+ * Quiet for this long after any answer, Yes, No or Can't tell alike (roadmap
+ * D50): it opened on Log right after a tester's miss, and read as a lesson
+ * about it (blind playtest 2026-11-09b, finding 6).
+ */
+export const NUDGE_QUIET_AFTER_ANSWER_MINUTES = 30;
+
 const BUCKET_WIDTH = 20;
 const BUCKET_COUNT = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -124,9 +131,12 @@ export function evaluateCoverageNudge(
   gap: CoverageGap,
   lastShownAt: string | null,
   nowIso: string,
+  /** When the latest answer was given, or null for none. */
+  lastAnsweredAt: string | null = null,
 ): CoverageNudgeDecision {
   if (gap.logged < NUDGE_MIN_LOGGED) return NO_NUDGE;
   if (!gap.low_end_empty) return NO_NUDGE;
+  if (answeredJustNow(lastAnsweredAt, nowIso)) return { ...NO_NUDGE, buckets_used: gap.buckets_used };
   if (!coolingDown(lastShownAt, nowIso)) {
     return {
       show: true,
@@ -135,6 +145,15 @@ export function evaluateCoverageNudge(
     };
   }
   return { ...NO_NUDGE, buckets_used: gap.buckets_used };
+}
+
+/** True within NUDGE_QUIET_AFTER_ANSWER_MINUTES after an answer. */
+function answeredJustNow(lastAnsweredAt: string | null, nowIso: string): boolean {
+  if (!lastAnsweredAt) return false;
+  const at = Date.parse(lastAnsweredAt);
+  const now = Date.parse(nowIso);
+  if (!Number.isFinite(at) || !Number.isFinite(now) || at > now) return false;
+  return now - at < NUDGE_QUIET_AFTER_ANSWER_MINUTES * 60 * 1000;
 }
 
 /** True while the cooldown from `lastShownAt` has not yet elapsed. */

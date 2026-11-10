@@ -102,8 +102,18 @@ export function bucketLine(bucket: BucketStat): string {
  * right" (outcome bias, Baron & Hershey 1988), which isn't what 70% means.
  */
 export function firstAnswerLine(confidence: number): string {
-  // The slider's own words for the number, so 85% reads "8 or 9 times in
-  // 10" here too, not a flat 9 (blind playtest 2026-11-04, third round).
+  return (
+    `That's your first. ${callOften(confidence)}, so one answer ` +
+    `can't say much; ${MIN_N_OVERALL} can.`
+  );
+}
+
+/**
+ * "A 70% call should come true about 7 times in 10", with the right article.
+ * The slider's own words for the number, so 85% reads "8 or 9 times in 10"
+ * here too, not a flat 9 (blind playtest 2026-11-04, third round).
+ */
+function callOften(confidence: number): string {
   const often =
     confidence >= 100
       ? 'should always come true'
@@ -114,10 +124,39 @@ export function firstAnswerLine(confidence: number): string {
           : `should come true ${naturalFrequencyFor(confidence)}`;
   // "An 8%", "an 11%", "an 18%", "an 80–89%": said aloud, they start with a vowel.
   const article = /^(8|11|18|8\d)$/.test(String(confidence)) ? 'An' : 'A';
-  return (
-    `That's your first. ${article} ${confidence}% call ${often}, so one answer ` +
-    `can't say much; ${MIN_N_OVERALL} can.`
-  );
+  return `${article} ${confidence}% call ${often}`;
+}
+
+/**
+ * Under the range's record on every answer until the rating unlocks (roadmap
+ * D50), the same for Yes and No: what one answer means. "A miss at 70% isn't
+ * a mistake" was on the Warmup and in How scoring works, but not on the
+ * screen where a tester's miss stung (blind playtest 2026-11-09b, finding 6).
+ * Null at 0% and 100%, where one the other way is a miss of the number.
+ */
+export function meaningLine(confidence: number): string | null {
+  if (confidence <= 0 || confidence >= 100) return null;
+  return `${callOften(confidence)}: one that doesn't isn't a mistake, and one that does isn't proof.`;
+}
+
+/**
+ * Once the rating is unlocked, what this answer did to it, the same for Yes
+ * and No (roadmap D50): it moved on Today with nothing said, and two testers
+ * read the drop as a grade (blind playtest 2026-11-09b, findings 4 and 6).
+ */
+export function ratingChangeLine(before: number, after: number): string {
+  const move =
+    before === after
+      ? `Your rating stays at ${after}.`
+      : `Your rating moved from ${before} to ${after}.`;
+  return `${move} One answer nudges it either way; the pattern over many is what counts.`;
+}
+
+/** The rating as Today shows it, or null while it's provisional. */
+function shownRating(): number | null {
+  const stat = useStatsStore.getState().userStat;
+  if (!stat || stat.rating_is_provisional) return null;
+  return Math.round(stat.calibration_rating);
 }
 
 /**
@@ -132,9 +171,13 @@ export const SAME_DAY_LINE =
 function readAcknowledgement(
   prediction: Prediction,
   outcome: 'resolved_yes' | 'resolved_no',
+  /** The rating before this answer, or null if it was provisional or unknown. */
+  ratingBefore: number | null = null,
 ): {
   outcome: 'resolved_yes' | 'resolved_no';
   line: string | null;
+  note: string | null;
+  ratingBefore: number | null;
   milestone: Milestone | null;
   checkpoint: { days: number; next: number } | null;
 } {
@@ -153,18 +196,33 @@ function readAcknowledgement(
     status: outcome,
     resolved_at: prediction.resolved_at ?? new Date().toISOString(),
   });
+  const first = stats.userStat?.total_resolved === 1;
   return {
     outcome,
     line: sameDay
       ? SAME_DAY_LINE
-      : stats.userStat?.total_resolved === 1
+      : first
         ? firstAnswerLine(prediction.confidence)
         : bucket
           ? bucketLine(bucket)
           : null,
+    note: answerNote(prediction.confidence, sameDay || first, ratingBefore),
+    ratingBefore,
     milestone,
     checkpoint: days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
   };
+}
+
+/**
+ * The second line after a Yes or No (roadmap D50): the rating's move once it's
+ * unlocked, what the number means before then. Nothing after a same-day answer
+ * (it moves nothing) or the first answer (its line already says it).
+ */
+function answerNote(confidence: number, skip: boolean, ratingBefore: number | null): string | null {
+  if (skip) return null;
+  const after = shownRating();
+  if (after !== null) return ratingBefore === null ? null : ratingChangeLine(ratingBefore, after);
+  return meaningLine(confidence);
 }
 
 /**
@@ -202,6 +260,10 @@ export function ResolvePrompt({
   const [answered, setAnswered] = useState<{
     outcome: 'resolved_yes' | 'resolved_no';
     line: string | null;
+    /** What the number means, or what the answer did to the rating (D50). */
+    note: string | null;
+    /** The rating before the first answer, kept for a correction's line. */
+    ratingBefore: number | null;
     milestone: Milestone | null;
     /** A streak checkpoint this answer reached (7, 30, 100…), and the next one. */
     checkpoint: { days: number; next: number } | null;
@@ -217,7 +279,9 @@ export function ResolvePrompt({
         // A reminder action already recorded this. Show the same
         // acknowledgement a tap in the app would, including a milestone.
         if (p && recordedAnswer && p.status === recordedAnswer) {
-          setAnswered(readAcknowledgement(p, recordedAnswer));
+          setAnswered(
+            readAcknowledgement(p, recordedAnswer, useStatsStore.getState().takeRatingBefore(p.id)),
+          );
           haptics.resolve();
         }
       } catch (e) {
@@ -243,6 +307,7 @@ export function ResolvePrompt({
       // Anything left over belongs to an earlier change, not to this answer.
       useStatsStore.getState().clearMilestone();
       usePredictionStore.getState().clearStreakCheckpoint();
+      const ratingBefore = shownRating();
       await usePredictionStore
         .getState()
         .resolve(prediction.id, outcome, undefined, { answeringSkip });
@@ -262,7 +327,7 @@ export function ResolvePrompt({
       }
       // The row as it now stands: an answered skip's time is this answer's,
       // not the skip's.
-      setAnswered(readAcknowledgement(landed, outcome));
+      setAnswered(readAcknowledgement(landed, outcome, ratingBefore));
       // Said, as Log's "Saved." is: the screen changed under the finger and
       // nothing was announced (playtest 2026-11-08, finding 38).
       AccessibilityInfo.announceForAccessibility(recordedText(outcome));
@@ -283,6 +348,7 @@ export function ResolvePrompt({
     setSubmitting(true);
     try {
       const outcome = answered.outcome === 'resolved_yes' ? 'resolved_no' : 'resolved_yes';
+      const { ratingBefore } = answered;
       await usePredictionStore.getState().correct(prediction.id, outcome);
       const stats = useStatsStore.getState();
       const bucket = stats.bucketFor(prediction.confidence);
@@ -298,6 +364,17 @@ export function ResolvePrompt({
               : bucket
                 ? bucketLine(bucket)
                 : null,
+        // No rating line after a correction: both answers' effect on one
+        // screen made a false outcome a one-tap comparison (record audit,
+        // 2026-11-09). The meaning line still shows while provisional.
+        note:
+          ratingBefore !== null || shownRating() !== null
+            ? null
+            : answerNote(
+                prediction.confidence,
+                answered.line === SAME_DAY_LINE || stats.userStat?.total_resolved === 1,
+                null,
+              ),
         // What the first answer crossed isn't this one's to show.
         milestone: null,
       });
@@ -384,6 +461,11 @@ export function ResolvePrompt({
             <Text style={styles.bucketLine} testID="resolve-bucket-line">
               {holdRanges(answered.line)}
             </Text>
+            {answered.note && (
+              <Text style={styles.bucketNote} testID="resolve-answer-note">
+                {answered.note}
+              </Text>
+            )}
           </View>
         )}
 
@@ -392,7 +474,9 @@ export function ResolvePrompt({
             label="Reflection (optional)"
             value={reflection}
             onChangeText={setReflection}
-            placeholder="What surprised you?"
+            // The same for Yes and No: "What surprised you?" read as a grade
+            // after a miss (blind playtest 2026-11-09b, finding 6).
+            placeholder="Anything to remember about this one?"
             multiline
             maxLength={500}
             testID="reflection-field"
@@ -667,6 +751,7 @@ const styles = StyleSheet.create({
     padding: space.lg,
   },
   bucketLine: { ...type.callout, color: colors.textPrimary },
+  bucketNote: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
   changeAnswer: { alignSelf: 'center', marginTop: space.lg, paddingVertical: space.sm },
   again: { marginTop: space.sm },
   addReflection: { alignSelf: 'flex-start', marginBottom: space.lg, paddingVertical: space.sm },

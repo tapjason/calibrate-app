@@ -4,52 +4,24 @@
 
 ## What this PR did
 
-Step 162: the findings from the tenth blind playtest round (`docs/design/research/playtest-2026-11-09b.md`) that need no decision. JS only: a reload on the phone, no new build (migration 013 runs on the next start). The full list is the step's row in `docs/design/BUILT_LOG.md`.
+Branch `builder/miss-and-return`, from `builder/playtest-09b-fixes` (step 162). Step 163: the owner's calls on the tenth round's findings 4–6, recorded as D49–D52 in `docs/design/UI_ROADMAP.md` §2. JS only: a reload, no new build. The full list is the step's row in `docs/design/BUILT_LOG.md`.
 
-- **The Warm-up keeps its answers (finding 1):**
-  - Each answer is saved as it's given, in a new device-only table, `warmup_progress` (SQLite migration 013), along with the ids of the questions answered.
-  - A reload reopens the quiz at the next question. Kept answers to a different set of questions start it over.
-  - Finishing, retaking or erasing drops the table's row.
-  - `warmup_started` isn't fired again for a resumed quiz.
-  - The quiz clears the chosen answer before the save, so the next question never shows a frame with the last answer still picked.
-- **Words:**
-  - **How scoring works (7):** now gives D45's floor for answering a Can't tell.
-  - **Today's first-answer line (13):** names the reminder's part of the day (`partOfDay`).
-  - **The empty week recap (10):** says "Nothing resolved this week." and drops "Log a prediction…" when one is open. "Came due" was false after a Can't tell (record audit).
-- **Layout:**
-  - **Practice (16):** scrolls Next into view once an answer is picked, and each question opens at its top.
-  - **History (17):** the range filter survives a sheet over History and clears only on a tab change (`rangeClearsOnTabState`).
-  - **Details (18):** the title is the screen's heading.
-- **Tooling:**
-  - `setDbForTests` closes the database it replaces. sql.js's fixed heap ran out with one more table.
-  - `docs/tooling-notes.md` has the typed-routes stub's cause: any change under `app/` while the web server runs. It also lists the three known require cycles (22).
-  - `docs/app-profile.md` R6 now includes D45's floor.
-- **Review:**
-  - `code-reviewer`: no blockers. All three should-fix items are done: the stale answer frame, practice's kept scroll offset, and a test for the History rule. Its nits are taken too (question ids on the kept answers, stale comments, the payload comment).
-  - Not taken: an intro or "picking up where you left off" line on a resumed Warm-up. That's new copy.
-  - `record-auditor`: HOLDS, no blocker. The recap wording, the exact floor wording, the R6 profile line and an isolation test are all done.
+- **D49:** an empty confidence control rests at 50% on every screen; the first ±5 steps from it.
+- **D50:** after a Yes or No, the same for both, a second line: what the number means until the rating unlocks, then how far the rating moved, including after a reminder's buttons (`statsStore.noteRatingBefore` / `takeRatingBefore`), but not after "Change answer". New reflection placeholder; the coverage nudge is quiet 30 minutes after an answer and reworded; a locked answer's text is neutral; 5% and 95% read in twenties.
+- **D51:** Today's Welcome back card after 14 days with nothing logged, answered or practised (`returnAfterGap`, `welcomeBackDismissedFor`), and "answers given since then" on Insights.
+- **D52:** the findings the owner closed without a change.
+- **Review:** `code-reviewer`, no blockers; its four should-fix items are done (the reminder path, the correction baseline, dismissal by time, practice counting as presence) and most nits. `record-auditor`: BROKEN on two blockers, both fixed (a correction's line now shows no rating; the nudge no longer claims the chart is empty), plus its other defects (the ended streak through a Can't tell day, the card's overclaim, 5%/95%, stale docs).
 
 ## In progress / broken
 
-- **Seen on web** (2026-11-09, 320 × 568):
-  - A reload at Warm-up question 5 reopens at 5, and finishing saves ten answers with no progress left.
-  - History's range survives the Log sheet and clears on a tab change.
-  - Practice's Next moves from 584 to 553 in a 568 window, and question 2 opens at its top.
-  - Not seen on web: the copy changes and the details heading (unit tests only).
-- **Left as is:**
-  - `reopen()` can still put a Can't tell back to pending, which has no deadline. No screen calls it, so restrict it to skips or delete it before one does (record-auditor, and the step-161 review).
-  - Deleting a signed-in account leaves the Warm-up rows (`warmup_results`, `warmup_progress`) on the phone, as `warmup_results` already did; Erase clears both. A question for `policy-auditor`.
-  - At the largest text sizes, when the confidence control and Next together are taller than the screen, revealing Next cuts off the control's top. The Warm-up has the same limit.
+- Seen on web: the Welcome back card with a record back after eight weeks, and the rating line after a No (91 to 90). The fixes after review were not re-seen on web; they're unit-tested.
+- The Warm-up's grey thumb now rests at the left end of its 50–100 track: check on the phone that it reads as unset.
+- Steps 164 (per-category counts, the rating's date estimate) and 165 (one word for "resolved", the 70/85/90 labels, card headlines) follow on their own branches.
 
 ## Next step
 
-- **Owner, on the iPhone** (reload; `/device-check` can write the full list):
-  1. Start a fresh Warm-up, close the app at question 5 and reopen: it continues at question 5.
-  2. Practice at the largest text size: picking an answer brings Next into view inside the sheet, and question 2 opens at its top.
-  3. History from an Insights range, then "+" and close: the range stays. Change tabs and come back: it's gone.
-  4. VoiceOver's heading rotor on a prediction's details lands on its title.
-  5. With no answers yet and the reminder at 8 AM, Today says "Your first answer: tomorrow morning".
-- **Agent:** steps 157–159; the playtest's "needs the owner" findings wait on `/design`.
+- **Owner, on the iPhone:** the first ±5 from empty on the Warm-up and Log (and VoiceOver's first swipe); the line under an answer before and after the rating unlocks, and after Happened/Didn't on a reminder; the Welcome back card after a 15-day gap (date forward) and "Got it".
+- **Owner, decisions:** 11–13 from the reply of 2026-11-09 (delete `reopen()`, the two D45 clarifications, clear Warm-up rows on account deletion).
 
 ## Read first
 

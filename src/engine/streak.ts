@@ -45,6 +45,7 @@ import {
   STREAK_DAY_MIN,
   type ComputeStreak,
   type Prediction,
+  type ReturnAfterGap,
   type StreakStatus,
 } from '@/types';
 
@@ -182,4 +183,53 @@ export const computeStreak: ComputeStreak = (predictions, opts) => {
 
 function isYesNo(p: Prediction): boolean {
   return p.status === 'resolved_yes' || p.status === 'resolved_no';
+}
+
+/** Days without logging or answering anything that make a return (roadmap D51). */
+export const RETURN_GAP_DAYS = 14;
+
+/**
+ * Whether today is a return after RETURN_GAP_DAYS or more with nothing logged
+ * or answered, judged by what happened before today, so it holds all day
+ * while the person catches up (roadmap D51). Null otherwise. A tester back
+ * after two months was told nothing: not the gap, not the streak, not what
+ * came due (blind playtest 2026-11-09b, finding 4).
+ *
+ * `practiceDays` are the local days the daily practice was done: someone who
+ * practised every day wasn't away, though they logged nothing (review,
+ * 2026-11-09). They count as being here, never toward the streak.
+ */
+export function returnAfterGap(
+  predictions: readonly Prediction[],
+  now: Date,
+  practiceDays: readonly number[] = [],
+): ReturnAfterGap | null {
+  const today = localDayNumber(now);
+  let lastAt: string | null = null;
+  let lastTime = -Infinity;
+  let lastDay = -Infinity;
+  for (const p of predictions) {
+    for (const iso of [p.created_at, p.resolved_at]) {
+      if (!iso) continue;
+      const at = Date.parse(iso);
+      if (Number.isNaN(at)) continue;
+      const day = localDayNumber(new Date(at));
+      if (day < today && at > lastTime) {
+        lastTime = at;
+        lastDay = day;
+        lastAt = iso;
+      }
+    }
+  }
+  if (lastAt === null) return null;
+  let present = lastDay;
+  for (const day of practiceDays) if (day < today && day > present) present = day;
+  if (today - present < RETURN_GAP_DAYS) return null;
+  // The streak as it last stood: to the last day that counted, so a final day
+  // with only a Can't tell doesn't read as no streak at all.
+  const counted = countedDays(doneByDay(predictions));
+  let lastCounted = -Infinity;
+  for (const day of counted) if (day <= lastDay && day > lastCounted) lastCounted = day;
+  const endedStreak = Number.isFinite(lastCounted) ? walk(counted, lastCounted).streak : 0;
+  return { awayDays: today - present, lastActiveAt: lastAt, endedStreak };
 }

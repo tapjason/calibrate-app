@@ -84,7 +84,7 @@ describe('LogPredictionForm', () => {
 
     fireEvent.changeText(screen.getByTestId('title-field'), 'Ship the prototype');
     fireEvent.press(screen.getByTestId('category-health'));
-    // Unset → 55, a step from where the thumb rests (roadmap D36).
+    // Unset → 55, a step from the coin flip where the thumb rests (roadmap D49).
     fireEvent.press(screen.getByTestId('confidence-increment'));
     fireEvent.press(screen.getByTestId('submit-button'));
 

@@ -451,7 +451,7 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    lean passes the one rule (D35); the matching number is what happened, to the
    nearest 5. **Since last week** (D37): a quiet line under the give-or-take, once the
    rating is unlocked a week ago and now and something was answered since: "Up 2
-   since last week, from 6 answers, within its give-or-take."
+   since last week, from 6 answers given since then, within its give-or-take."
 2. **Regions labelled in place:** below the diagonal lightly warm-tinted, labelled
    *Overconfident*; above lightly cool-tinted, *Underconfident*; the diagonal labelled
    *Perfectly calibrated*. Position + tint + text = three channels.
@@ -506,11 +506,13 @@ small ±5 buttons).
 - Warmup range stays 50–100 (spec).
 - **Starts empty** (roadmap D13, built as step 54): the readout shows "—%" in
   `textTertiary` at full size (so setting a number doesn't shift the layout) with "not
-  set yet" beside it, the slider's thumb rests mid-range in `controlBorder` grey with
-  no fill, and the first drag, tap on the track (`tapToSeek`), touch of the thumb or
-  ±5 sets a real number. The first ±5 steps from where the grey thumb rests, to 45 or
-  55 on Log and 70 or 80 in the Warmup, as VoiceOver's first swipe does (D36, step 141,
-  2026-11-01: three blind testers expected 55 from +5). This reverses step 120, which
+  set yet" beside it, the slider's thumb rests at the coin flip, 50%, in
+  `controlBorder` grey with no fill (the left end of the Warmup's and practice's
+  50–100 track), and the first drag, tap on the track (`tapToSeek`), touch of the thumb
+  or ±5 sets a real number. The first ±5 steps from where the grey thumb rests, to 45 or
+  55 on Log and 50 or 55 in the Warmup and practice, as VoiceOver's first swipe does
+  (D49, step 163, 2026-11-09: resting mid-range at 75 made 70 one tap and a coin flip
+  five; D36, step 141, 2026-11-01: three blind testers expected 55 from +5). This reverses step 120, which
   set the middle itself after three earlier testers were surprised by the step past
   it; the two rounds disagree, so watch it in the first iPhone session. VoiceOver
   hears "not set". Next (Warmup) and Save (Log)

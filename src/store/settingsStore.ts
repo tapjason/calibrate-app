@@ -83,6 +83,11 @@ export interface StoredSettings {
    */
   backupNudgeDismissedAt: string | null;
   /**
+   * The return Today's welcome-back card was dismissed for (roadmap D51): the
+   * last activity before that gap, so the next long gap shows it again.
+   */
+  welcomeBackDismissedFor: string | null;
+  /**
    * When the App Store rating prompt was last requested (roadmap D15), or
    * null. The cooldown's memory, like the two above.
    */
@@ -136,6 +141,8 @@ interface SettingsState extends StoredSettings {
   dismissReminderPrompt: () => Promise<void>;
   /** "Not now" on the back-it-up card: 30 days' quiet. */
   dismissBackupNudge: () => Promise<void>;
+  /** "Got it" on the welcome-back card, for the return after `lastActiveAt`. */
+  dismissWelcomeBack: (lastActiveAt: string) => Promise<void>;
   /** The rating prompt was requested now: start its cooldown. */
   markRatingAsked: () => Promise<void>;
   /** Set the practice reminder's time, or null to turn it off. */
@@ -173,6 +180,7 @@ const DEFAULTS: StoredSettings = {
   reminderPromptDismissedAt: null,
   reminderPromptDismissals: 0,
   backupNudgeDismissedAt: null,
+  welcomeBackDismissedFor: null,
   ratingAskedAt: null,
   practiceReminder: null,
   practiceReminderOfferDismissedAt: null,
@@ -257,6 +265,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             (stored.reminderPromptDismissedAt ? 1 : DEFAULTS.reminderPromptDismissals),
           backupNudgeDismissedAt:
             stored.backupNudgeDismissedAt ?? DEFAULTS.backupNudgeDismissedAt,
+          welcomeBackDismissedFor:
+            typeof stored.welcomeBackDismissedFor === 'string'
+              ? stored.welcomeBackDismissedFor
+              : DEFAULTS.welcomeBackDismissedFor,
           ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
           practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
           practiceReminderOfferDismissedAt:
@@ -353,6 +365,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await persist(snapshot(get()));
   },
 
+  dismissWelcomeBack: async (lastActiveAt) => {
+    set({ welcomeBackDismissedFor: lastActiveAt });
+    await persist(snapshot(get()));
+  },
+
   markRatingAsked: async () => {
     set({ ratingAskedAt: new Date().toISOString() });
     await persist(snapshot(get()));
@@ -428,6 +445,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     reminderPromptDismissedAt: state.reminderPromptDismissedAt,
     reminderPromptDismissals: state.reminderPromptDismissals,
     backupNudgeDismissedAt: state.backupNudgeDismissedAt,
+    welcomeBackDismissedFor: state.welcomeBackDismissedFor,
     ratingAskedAt: state.ratingAskedAt,
     practiceReminder: state.practiceReminder,
     practiceReminderOfferDismissedAt: state.practiceReminderOfferDismissedAt,

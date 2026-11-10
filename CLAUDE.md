@@ -283,9 +283,10 @@ stored separately and **never** mixed into real `UserStat` / `CategoryStat` data
 
 Decided 2026-10-05 (`docs/design/UI_ROADMAP.md` D13): the confidence slider
 starts **empty** and Next waits for a number, so tapping through can't produce a
-verdict about a preset. Since D36 (2026-11-01) the first ±5 steps from where the
-resting thumb shows (70% or 80% here, 45% or 55% on Log), as VoiceOver's first
-swipe does.
+verdict about a preset. Since D49 (2026-11-09) the resting thumb sits at the coin
+flip, 50%, on every screen, and the first ±5 steps from it (50% or 55% here, 45% or
+55% on Log), as VoiceOver's first swipe does. From D36 it rested mid-range, 75% on
+the two-choice scales, which made 70% one tap and a coin flip five.
 
 **Day 0 is for calibration, not an identity verdict** (decided 2026-10-07, UI_ROADMAP
 D18; built 2026-10-08):
@@ -350,6 +351,16 @@ A delete is synced as a deletion (a local tombstone pushed to Supabase), so it
 doesn't come back on the next pull; another signed-in device keeps its copy until
 it is deleted there.
 
+**After a Yes or No** (decided 2026-11-09, D50; blind playtest 2026-11-09b): the
+same for both. Under the range's record, until the rating unlocks, what the number
+means ("A 70% call should come true about 7 times in 10: one that doesn't isn't a
+mistake, and one that does isn't proof."); once it's unlocked, what the answer did to
+it ("Your rating moved from 91 to 89. One answer nudges it either way; the pattern
+over many is what counts."), including after a reminder's Happened or Didn't, but
+not after "Change answer", where it would make a false answer a one-tap comparison.
+The reflection asks "Anything to remember about this
+one?", and the coverage nudge stays quiet for 30 minutes after any answer.
+
 **Correcting an answer** (decided 2026-11-01, D34): "Change answer" right after a
 Yes or No switches it to the other in place; it no longer puts the prediction back
 to open. For **24 hours** after an answer (`CORRECTION_WINDOW_HOURS`, from the first
@@ -395,8 +406,8 @@ See the authoritative section above.
   finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.");
   the chart's title naming both sides when there are both ("You're too sure at
   80–100% and too cautious at 60–80%"); and "since last week" under the rating once
-  it's unlocked at both ends ("Up 2 since last week, from 6 answers, within its
-  give-or-take."). The Plus card shows one Coach-style card on the person's own
+  it's unlocked at both ends ("Up 2 since last week, from 6 answers given since then,
+  within its give-or-take."). The Plus card shows one Coach-style card on the person's own
   numbers as a sample, written by the app and labelled so (Coach itself needs Plus
   and a sign-in).
 - Per-category breakdown with badge levels, and each category's own score once it is
@@ -708,7 +719,7 @@ the streak and practice rows (D22).
 | Screen | Purpose | Tier |
 |---|---|---|
 | Warmup (onboarding) | Estimation quiz → instant calibration verdict → first share card | Free |
-| Today (tab) | Pending predictions + calibration rating summary + today's practice row; a sign-in nudge after 30 days on one phone without an account (D31) | Free |
+| Today (tab) | Pending predictions + calibration rating summary + today's practice row; a sign-in nudge after 30 days on one phone without an account (D31); a welcome-back card after 14 days with nothing logged or answered (D51) | Free |
 | Practice (sheet, from Today) | Three daily questions, the answer key, the practice record | Free |
 | Log Prediction (sheet, from "+") | Title, confidence slider, due date, category (refine deferred) | Free |
 | Prediction (sheet, from an open card not yet due) | What you said, due date, Edit, Delete, Answer it now (D25) | Free |

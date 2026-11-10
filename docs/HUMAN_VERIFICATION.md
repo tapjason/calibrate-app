@@ -779,7 +779,7 @@ Added 2026-09-29 (polish pass):
       Warmup without Home showing first.
 - [ ] **Empty confidence (added 2026-10-05, step 54; web-verified):** on the
       Warmup and on Log the readout says "—% not set yet" and the thumb rests
-      grey in the middle. On the phone: tapping the track jumps the thumb
+      grey at 50% (the middle on Log, the left end in the Warmup; D49). On the phone: tapping the track jumps the thumb
       there (tap-to-seek), touching the resting thumb without moving it sets
       the middle value, a drag gives one detent per 5% (not two at the end),
       and VoiceOver reads the control as "not set" until a swipe sets it.

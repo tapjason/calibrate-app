@@ -8,6 +8,8 @@ import {
   nextStreakCheckpoint,
   REST_DAY_EVERY,
   REST_DAYS_MAX,
+  RETURN_GAP_DAYS,
+  returnAfterGap,
   STREAK_DAY_MIN,
   streakStatus,
 } from './streak';
@@ -369,5 +371,47 @@ describe('rest days', () => {
     expect(computeStreak([...days(1, 7), ...days(9, 1)])).toBe(8);
     expect(computeStreak(days(1, 7), { now: at(9) })).toBe(7);
     expect(computeStreak(days(1, 7), { now: at(10) })).toBe(0);
+  });
+});
+
+// Roadmap D51 (blind playtest 2026-11-09b, finding 4).
+describe('returnAfterGap', () => {
+  const day = (d: number) => `2026-03-${String(d).padStart(2, '0')}T12:00:00.000Z`;
+  const tenDays = () => Array.from({ length: 10 }, (_, i) => logged(day(i + 1))).flat();
+
+  it('names the gap and the streak it ended', () => {
+    const got = returnAfterGap(tenDays(), new Date(day(24)));
+    expect(got).toEqual({ awayDays: 14, lastActiveAt: day(10), endedStreak: 10 });
+  });
+
+  it('is nothing under the gap, or with nothing before today', () => {
+    expect(RETURN_GAP_DAYS).toBe(14);
+    expect(returnAfterGap(tenDays(), new Date(day(23)))).toBeNull();
+    expect(returnAfterGap([], new Date(day(24)))).toBeNull();
+    expect(returnAfterGap(logged(day(24)), new Date(day(24)))).toBeNull();
+  });
+
+  it('holds all day while the person catches up', () => {
+    const today = [...tenDays(), ...answered(day(24), 5)];
+    expect(returnAfterGap(today, new Date(day(24)))?.awayDays).toBe(14);
+  });
+
+  it('counts a day of practice as having been here, never toward the streak', () => {
+    const practiceDay = Math.floor(Date.parse(day(20)) / 86_400_000);
+    expect(returnAfterGap(tenDays(), new Date(day(24)), [practiceDay])).toBeNull();
+    const longAgo = Math.floor(Date.parse(day(3)) / 86_400_000);
+    expect(returnAfterGap(tenDays(), new Date(day(24)), [longAgo])?.awayDays).toBe(14);
+  });
+
+  it("names the streak up to its last counted day when the last day was a Can't tell", () => {
+    const skip = answered(day(11), 1, 'skipped');
+    const got = returnAfterGap([...tenDays(), ...skip], new Date(day(25)));
+    expect(got?.endedStreak).toBe(10);
+    expect(got?.awayDays).toBe(14);
+  });
+
+  it("counts a Can't tell as having been there", () => {
+    const skip = answered(day(12), 1, 'skipped');
+    expect(returnAfterGap([...tenDays(), ...skip], new Date(day(24)))).toBeNull();
   });
 });

@@ -34,10 +34,13 @@ export function CoverageNudge({
     <View style={styles.wrap} testID="coverage-nudge">
       <Text style={styles.title}>Try one you think won't happen</Text>
       <Text style={styles.body}>
-        Everything you've logged lately sits above {LOW_END_LABEL}%. That only
-        measures the confident half of you — a score built on one end of the
-        range is a score about that end. Something you'd put at{' '}
-        {suggestedConfidence}% tells us far more.
+        {/* Plain, and no more than true: "the confident half of you… tells
+            us far more" read as self-help, and a 25% call says what a 75% one
+            does (blind playtest 2026-11-09b, finding 6). */}
+        Everything you've logged lately sits above {LOW_END_LABEL}%, so your
+        recent calls add nothing to the low end of your chart. A call you'd put
+        at {suggestedConfidence}% does, and counts as much as one at{' '}
+        {100 - suggestedConfidence}%.
       </Text>
       <View style={styles.actions}>
         {/* Secondary on purpose: Save is the one primary action on Log

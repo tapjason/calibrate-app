@@ -457,7 +457,7 @@ describe('CalibrationView pattern lines', () => {
       'Furthest off: Finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.',
     );
     expect(getByTestId('stats-week-change')).toHaveTextContent(
-      'Up 2 since last week, from 6 answers, within its give\u2060-\u2060or\u2060-\u2060take.',
+      'Up 2 since last week, from 6 answers given since then, within its give\u2060-\u2060or\u2060-\u2060take.',
     );
   });
 });

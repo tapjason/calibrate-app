@@ -12,7 +12,14 @@ import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { bucketLine, firstAnswerLine, ResolvePrompt, SAME_DAY_LINE } from './ResolvePrompt';
+import {
+  bucketLine,
+  firstAnswerLine,
+  meaningLine,
+  ratingChangeLine,
+  ResolvePrompt,
+  SAME_DAY_LINE,
+} from './ResolvePrompt';
 
 const USER = 'local-user-v1';
 
@@ -228,6 +235,33 @@ describe('ResolvePrompt announcements', () => {
 });
 
 describe('ResolvePrompt opened from a reminder action', () => {
+  // Review 2026-11-09: the answer is recorded before the screen opens, so the
+  // rating before it is kept by the reminder's handler (noteRatingBefore).
+  it('says how far the rating moved for an answer a reminder recorded', async () => {
+    for (let i = 0; i < 24; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 5 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await insertPrediction(samplePending());
+    const userId = useAuthStore.getState().userId!;
+    await useStatsStore.getState().recomputeForUser(userId);
+    const before = Math.round(useStatsStore.getState().userStat!.calibration_rating);
+    useStatsStore.getState().noteRatingBefore('p1');
+    await usePredictionStore.getState().resolve('p1', 'resolved_no');
+    const after = Math.round(useStatsStore.getState().userStat!.calibration_rating);
+
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_no" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(ratingChangeLine(before, after));
+    });
+    expect(useStatsStore.getState().ratingBeforeAnswer).toBeNull();
+  });
+
   it('opens on the recorded answer and does not write again', async () => {
     await insertPrediction(samplePending());
     await usePredictionStore.getState().resolve('p1', 'resolved_yes');
@@ -393,6 +427,47 @@ describe('ResolvePrompt acknowledgement', () => {
       expect(screen.getByTestId('resolve-bucket-line')).toBeTruthy();
     });
     expect(screen.getByText(holdRanges("That's your first call in the 80–100% range."))).toBeTruthy();
+  });
+
+  // Roadmap D50 (blind playtest 2026-11-09b, finding 6).
+  it('says what the number means under the range line until the rating unlocks', async () => {
+    await insertPrediction(samplePending({ id: 'p0', status: 'resolved_yes', resolved_at: '2026-06-01T00:00:00.000Z', confidence: 40 }));
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(meaningLine(80)!);
+    });
+  });
+
+  it('says how far the rating moved once it is unlocked, Yes or No alike', async () => {
+    for (let i = 0; i < 24; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 5 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await insertPrediction(samplePending());
+    const userId = useAuthStore.getState().userId!;
+    await useStatsStore.getState().recomputeForUser(userId);
+    const before = Math.round(useStatsStore.getState().userStat!.calibration_rating);
+
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-no')).toBeTruthy();
+    });
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-answer-note')).toBeTruthy();
+    });
+    const after = Math.round(useStatsStore.getState().userStat!.calibration_rating);
+    expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(ratingChangeLine(before, after));
   });
 
   it('finishes without a reflection, leaving it empty', async () => {
@@ -829,6 +904,32 @@ describe('ResolvePrompt change answer', () => {
     expect(screen.getByTestId('resolve-change')).toHaveTextContent('Change to: it didn’t happen');
     expect(onResolved).not.toHaveBeenCalled();
   });
+
+  // Record audit 2026-11-09: both answers' effect on one screen made a false
+  // outcome a one-tap comparison, so a correction drops the rating line.
+  it('drops the rating line after a correction', async () => {
+    for (let i = 0; i < 24; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 5 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await insertPrediction(samplePending());
+    const userId = useAuthStore.getState().userId!;
+    await useStatsStore.getState().recomputeForUser(userId);
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-no')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => expect(screen.getByTestId('resolve-answer-note')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-change'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent('Recorded: it happened');
+    });
+    expect(screen.queryByTestId('resolve-answer-note')).toBeNull();
+  });
 });
 
 describe('ResolvePrompt reflection draft', () => {
@@ -877,5 +978,22 @@ describe('firstAnswerLine', () => {
     expect(firstAnswerLine(80)).toMatch(/An 80% call should come true about 8 times in 10/);
     expect(firstAnswerLine(70)).toMatch(/A 70% call/);
     expect(firstAnswerLine(50)).toMatch(/A 50% call should come true half the time/);
+  });
+});
+
+describe('meaningLine and ratingChangeLine (roadmap D50)', () => {
+  it('says what the number means, both ways at once', () => {
+    expect(meaningLine(70)).toBe(
+      "A 70% call should come true about 7 times in 10: one that doesn't isn't a mistake, and one that does isn't proof.",
+    );
+    expect(meaningLine(80)).toMatch(/^An 80% call/);
+    expect(meaningLine(100)).toBeNull();
+    expect(meaningLine(0)).toBeNull();
+  });
+
+  it('names the move, or that there was none', () => {
+    expect(ratingChangeLine(91, 89)).toMatch(/^Your rating moved from 91 to 89\. /);
+    expect(ratingChangeLine(88, 89)).toMatch(/^Your rating moved from 88 to 89\. /);
+    expect(ratingChangeLine(89, 89)).toMatch(/^Your rating stays at 89\. /);
   });
 });

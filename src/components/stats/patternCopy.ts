@@ -27,7 +27,10 @@ export function furthestOffLine(miss: CategoryMiss): string {
  */
 export function weekChangeLine(change: WeekChange, giveOrTake: number): string {
   const delta = change.now - change.before;
-  const answers = `${change.answered} ${change.answered === 1 ? 'answer' : 'answers'}`;
+  // "given since then": after two months away, seven answers given that
+  // morning to old predictions read as a week of new ones (blind playtest
+  // 2026-11-09b, finding 4).
+  const answers = `${change.answered} ${change.answered === 1 ? 'answer' : 'answers'} given since then`;
   const lead =
     delta > 0
       ? `Up ${delta} since last week, from ${answers}`

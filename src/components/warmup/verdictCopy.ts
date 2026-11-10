@@ -17,7 +17,7 @@ export interface WarmupVerdict {
   advice: string;
   /**
    * Said only when every answer carried the same number (roadmap step 49):
-   * the slider starts at 75%, so tapping straight through reads as "75% on
+   * someone who taps the same number through all ten reads as "75% on
    * everything", and the verdict should say that plainly. Null otherwise.
    */
   sameNumber: string | null;

@@ -20,19 +20,19 @@ describe('furthestOffLine (roadmap D37)', () => {
 describe('weekChangeLine (roadmap D37)', () => {
   it('says the change since last week and the answers behind it', () => {
     expect(weekChangeLine({ before: 80, now: 87, answered: 10 }, 3)).toBe(
-      'Up 7 since last week, from 10 answers.',
+      'Up 7 since last week, from 10 answers given since then.',
     );
     expect(weekChangeLine({ before: 88, now: 86, answered: 1 }, 0)).toBe(
-      'Down 2 since last week, from 1 answer.',
+      'Down 2 since last week, from 1 answer given since then.',
     );
     expect(weekChangeLine({ before: 86, now: 86, answered: 4 }, 3)).toBe(
-      'No change since last week, from 4 answers.',
+      'No change since last week, from 4 answers given since then.',
     );
   });
 
   it('says when the change is within its give-or-take', () => {
     expect(weekChangeLine({ before: 86, now: 88, answered: 6 }, 3)).toBe(
-      'Up 2 since last week, from 6 answers, within its give\u2060-\u2060or\u2060-\u2060take.',
+      'Up 2 since last week, from 6 answers given since then, within its give\u2060-\u2060or\u2060-\u2060take.',
     );
   });
 });

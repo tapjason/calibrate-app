@@ -139,9 +139,10 @@ describe('WarmupQuiz', () => {
     fireEvent.press(screen.getByTestId('warmup-next'));
     expect(useWarmupStore.getState().answers).toEqual([]);
 
-    // The first ±5 steps from the middle of 50–100, where the thumb rests (D36).
+    // The first ±5 steps from the coin flip, where the thumb rests (D49): −5
+    // sets 50%, the scale's floor.
     fireEvent.press(screen.getByTestId('warmup-confidence-decrement'));
-    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('70%');
+    expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('50%');
     expect(screen.getByTestId('warmup-next').props.accessibilityState).toMatchObject({
       disabled: false,
     });
@@ -151,12 +152,12 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-1')); // correct
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80, a step from 75
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 55, a step from the coin flip
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {
       expect(useWarmupStore.getState().answers).toEqual([
-        { confidence: 80, correct: true },
+        { confidence: 55, correct: true },
       ]);
     });
   });
@@ -165,14 +166,14 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-0')); // wrong
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80, a step from 75
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 55, a step from the coin flip
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     await waitFor(() => {
       expect(screen.getByText('Which is deeper?')).toBeTruthy();
     });
     expect(useWarmupStore.getState().answers).toEqual([
-      { confidence: 80, correct: false },
+      { confidence: 55, correct: false },
     ]);
   });
 
@@ -180,8 +181,8 @@ describe('WarmupQuiz', () => {
     render(<WarmupQuiz />);
 
     fireEvent.press(screen.getByTestId('warmup-option-0'));
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 80
-    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 85
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 55
+    fireEvent.press(screen.getByTestId('warmup-confidence-increment')); // 60
     fireEvent.press(screen.getByTestId('warmup-next'));
 
     // Empty again, not carried over and not preset.

@@ -538,6 +538,8 @@ async function writeReminderAnswer(
     // same order as answering on the Resolve screen.
     useStatsStore.getState().clearMilestone();
     usePredictionStore.getState().clearStreakCheckpoint();
+    // For Resolve's "Your rating moved from…" line, which opens after this.
+    useStatsStore.getState().noteRatingBefore(predictionId);
     await usePredictionStore.getState().resolve(predictionId, outcome);
     const after = await usePredictionStore.getState().getById(predictionId);
     // The SQL guard (`AND status = 'pending'`) makes a lost race a no-op.

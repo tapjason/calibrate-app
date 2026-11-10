@@ -20,8 +20,9 @@ describe('naturalFrequencyFor', () => {
     expect(naturalFrequencyFor(50)).toBe('a coin flip');
     expect(naturalFrequencyFor(0)).toBe('never');
     expect(naturalFrequencyFor(100)).toBe('every time');
-    expect(naturalFrequencyFor(95)).toBe('almost every time');
-    expect(naturalFrequencyFor(5)).toBe('about 1 time in 10');
+    // In twenties, not "almost every time" and "1 in 10" (record audit, 2026-11-09).
+    expect(naturalFrequencyFor(95)).toBe('about 19 times in 20');
+    expect(naturalFrequencyFor(5)).toBe('about 1 time in 20');
     expect(naturalFrequencyFor(75)).toBe('about 3 times in 4');
     expect(naturalFrequencyFor(25)).toBe('about 1 time in 4');
     // Halfway steps name both neighbours instead of rounding up.
@@ -93,19 +94,19 @@ describe('ConfidenceControl', () => {
   describe('before anything is set', () => {
     const slider = () => screen.getByTestId('confidence-slider', { includeHiddenElements: true });
 
-    it('reads as empty, with the thumb resting grey mid-range', () => {
+    it('reads as empty, with the thumb resting grey at the coin flip', () => {
       render(<ConfidenceControl value={null} onChange={jest.fn()} min={50} />);
       expect(screen.getByTestId('confidence-readout')).toHaveTextContent('—%');
       expect(screen.getByText('not set yet')).toBeTruthy();
-      expect(slider().props.value).toBe(75);
+      expect(slider().props.value).toBe(50);
       expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
         'not set',
       );
     });
 
-    // Roadmap D36 (blind playtest 2026-11-01): the first ±5 steps from where
-    // the resting thumb shows, as VoiceOver's first swipe does.
-    it('steps from the resting thumb on the first ±5', () => {
+    // Roadmap D49 (blind playtest 2026-11-09b): the first ±5 steps from the
+    // coin flip on every screen, as VoiceOver's first swipe does.
+    it('steps from the coin flip on the first ±5', () => {
       const onChange = jest.fn();
       const { rerender } = render(<ConfidenceControl value={null} onChange={onChange} />);
       fireEvent.press(screen.getByTestId('confidence-decrement'));
@@ -113,10 +114,13 @@ describe('ConfidenceControl', () => {
       rerender(<ConfidenceControl value={null} onChange={onChange} />);
       fireEvent.press(screen.getByTestId('confidence-increment'));
       expect(onChange).toHaveBeenLastCalledWith(55);
-      // The Warmup's 50–100 rests at 75.
+      // The Warmup's 50–100 rests at 50 too: +5 is 55, and −5 sets 50.
       rerender(<ConfidenceControl value={null} onChange={onChange} min={50} />);
       fireEvent.press(screen.getByTestId('confidence-increment'));
-      expect(onChange).toHaveBeenLastCalledWith(80);
+      expect(onChange).toHaveBeenLastCalledWith(55);
+      rerender(<ConfidenceControl value={null} onChange={onChange} min={50} />);
+      fireEvent.press(screen.getByTestId('confidence-decrement'));
+      expect(onChange).toHaveBeenLastCalledWith(50);
     });
 
     it('takes a touch of the resting thumb as a choice, once', () => {

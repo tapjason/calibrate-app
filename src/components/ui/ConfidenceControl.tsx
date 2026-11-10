@@ -26,6 +26,8 @@ interface ConfidenceControlProps {
 }
 
 const STEP = 5;
+/** Where an unset control rests and the first ±5 steps from (roadmap D49). */
+const COIN_FLIP = 50;
 
 /**
  * Below this width, or above this text scale, the ±5 buttons drop to their own
@@ -42,6 +44,10 @@ export function naturalFrequencyFor(percent: number): string {
   if (percent === 50) return 'a coin flip';
   if (percent === 25) return 'about 1 time in 4';
   if (percent === 75) return 'about 3 times in 4';
+  // Not "1 in 10" (Math.round(0.5) is 1) or "almost every time" (record
+  // audit, 2026-11-09).
+  if (percent === 5) return 'about 1 time in 20';
+  if (percent === 95) return 'about 19 times in 20';
   // Halfway steps say both neighbours rather than rounding up: 85% is "8 or
   // 9 times in 10", not a flat 9 that overstates it.
   if (percent % 10 === 5 && percent > 5 && percent < 95) {
@@ -59,8 +65,9 @@ export function naturalFrequencyFor(percent: number): string {
  * §7.3): a large readout with its natural-frequency twin, a stepped slider
  * with a haptic detent per 5%, and the ±5 buttons kept for precision.
  *
- * It starts empty ("—%, not set yet") with a grey thumb resting mid-range;
- * the first drag, tap, touch of the thumb or ±5 sets a number (roadmap D13).
+ * It starts empty ("—%, not set yet") with a grey thumb resting at the coin
+ * flip, 50%; the first drag, tap, touch of the thumb or ±5 sets a number
+ * (roadmap D13, D49).
  *
  * For VoiceOver the whole control is one `adjustable` element (swipe up/down,
  * hear the value), exactly as before the slider existed; the slider itself is
@@ -91,12 +98,14 @@ export function ConfidenceControl({
   const { width, fontScale } = useWindowDimensions();
   const inlineSteppers =
     width >= INLINE_STEPPERS_MIN_WIDTH && fontScale <= INLINE_STEPPERS_MAX_FONT_SCALE;
-  // Unset, the thumb rests mid-range in grey, and the first ±5 steps from
-  // it: 45% or 55% on Log, 70% or 80% in the Warmup, as VoiceOver's first
-  // swipe does (roadmap D36, 2026-11-01: three blind testers expected 55%
-  // from +5). This reverses 2026-10-09, when the first ±5 set the resting
-  // number itself because three testers were surprised by a step past it.
-  const middle = Math.round((min + max) / 2 / STEP) * STEP;
+  // Unset, the thumb rests in grey at the coin flip, 50%, on every screen,
+  // and the first ±5 steps from it, as VoiceOver's first swipe does: 45% or
+  // 55% on Log, 50% or 55% in the Warmup and practice (roadmap D49). Until
+  // 2026-11-09 it rested mid-range (D36), 75% on the two-choice scales, so a
+  // coin flip cost five taps and 70% one, and a tester took 70 "because it was
+  // one tap" (blind playtest 2026-11-09b, finding 5). Any number is still one
+  // tap on the track.
+  const middle = Math.min(max, Math.max(min, COIN_FLIP));
   const from = value ?? middle;
   // From the latest value, not the one this render drew: two taps landing
   // before the next render both stepped from it, and moved once (playtest

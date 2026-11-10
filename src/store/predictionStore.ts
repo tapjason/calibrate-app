@@ -25,7 +25,7 @@ import {
   latestDueDay,
   scoredFrom,
 } from '@/engine/sameDay';
-import { checkpointReached, streakStatus } from '@/engine/streak';
+import { checkpointReached, returnAfterGap, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
   correctPredictionOutcome,
@@ -49,6 +49,7 @@ import type {
   Prediction,
   PredictionEdit,
   ResolvedStatus,
+  ReturnAfterGap,
   StreakStatus,
 } from '@/types';
 
@@ -136,6 +137,8 @@ interface PredictionState {
    * the lists held here, read at render so it follows each log and answer.
    */
   streakNow: (now?: Date) => StreakStatus;
+  /** A return after a long gap, today (roadmap D51), or null; practice days count as being here. */
+  returnNow: (now?: Date, practiceDays?: readonly number[]) => ReturnAfterGap | null;
   /**
    * The streak checkpoint (7, 30, 100, 365…) the last answer reached, not yet
    * shown; Resolve shows it and clears it, as with statsStore.milestone.
@@ -417,6 +420,8 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   },
 
   streakNow: (now = new Date()) => streakStatus([...get().pending, ...get().resolved], now),
+  returnNow: (now = new Date(), practiceDays = []) =>
+    returnAfterGap([...get().pending, ...get().resolved], now, practiceDays),
 
   tallyFor: (ids) => {
     const wanted = new Set(ids);

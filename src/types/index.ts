@@ -96,6 +96,16 @@ export interface PastOutcomes {
   happened: number;
 }
 
+/** A return after a gap: how long, since when, and the streak it ended. */
+export interface ReturnAfterGap {
+  /** Local days from the last activity before today to today. */
+  awayDays: number;
+  /** The last log or answer (Can't tell included) before today. */
+  lastActiveAt: string;
+  /** The streak as it stood at the end of that day; 0 if there was none. */
+  endedStreak: number;
+}
+
 /** Where today stands for the streak, as the engine reports it. */
 export interface StreakStatus {
   /** Consecutive counted days, through today if it counts, else yesterday. */

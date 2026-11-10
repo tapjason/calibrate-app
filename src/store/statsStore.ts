@@ -139,6 +139,16 @@ interface StatsState {
    */
   milestone: Milestone | null;
   clearMilestone: () => void;
+  /**
+   * The rating as Today showed it just before a reminder's Happened or
+   * Didn't recorded an answer, for Resolve's "moved from…" line (roadmap
+   * D50), which opens after the write. Null while provisional.
+   */
+  ratingBeforeAnswer: { predictionId: string; rating: number | null } | null;
+  /** Keep the shown rating before an answer recorded off-screen. */
+  noteRatingBefore: (predictionId: string) => void;
+  /** Read and clear what noteRatingBefore kept for this prediction. */
+  takeRatingBefore: (predictionId: string) => number | null;
   /** Pull persisted stats from the DB into the store and refresh buckets. */
   loadForUser: (userId: string) => Promise<void>;
   /** Re-run the engine over all of a user's predictions and persist. */
@@ -308,6 +318,19 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   clearMilestone: () => set({ milestone: null }),
 
+  ratingBeforeAnswer: null,
+  noteRatingBefore: (predictionId) => {
+    const stat = get().userStat;
+    const rating = stat && !stat.rating_is_provisional ? Math.round(stat.calibration_rating) : null;
+    set({ ratingBeforeAnswer: { predictionId, rating } });
+  },
+  takeRatingBefore: (predictionId) => {
+    const kept = get().ratingBeforeAnswer;
+    if (!kept || kept.predictionId !== predictionId) return null;
+    set({ ratingBeforeAnswer: null });
+    return kept.rating;
+  },
+
   bucketFor: (confidence) => {
     const low = bucketLowFor(confidence);
     return get().calibration.buckets.find((b) => b.low === low) ?? null;
@@ -384,11 +407,12 @@ export function confidenceRangeLow(confidence: number): number {
  * writer is the nudge itself, and the screen latches visibility once shown, so
  * a reactive read would just re-hide the panel the instant it appeared.
  */
-export function coverageNudgeNow(): CoverageNudgeDecision {
+export function coverageNudgeNow(lastAnsweredAt: string | null = null): CoverageNudgeDecision {
   return evaluateCoverageNudge(
     useStatsStore.getState().coverageGap,
     useSettingsStore.getState().coverageNudgeLastShownAt,
     new Date().toISOString(),
+    lastAnsweredAt,
   );
 }
 

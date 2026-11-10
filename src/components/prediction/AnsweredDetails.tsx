@@ -156,8 +156,9 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
       {until === null && error && <Text style={styles.error}>{error}</Text>}
       {until === null ? (
         <Text style={styles.body} testID="answered-locked">
-          Answers can be changed for a day after they’re given, so a miss can’t be quietly
-          undone later. This one is part of your record now.
+          Answers can be changed for a day after they’re given. After that they stay as they
+          are, whichever way they went, so the record can’t be rewritten later. This one is
+          part of your record now.
         </Text>
       ) : (
         <>
