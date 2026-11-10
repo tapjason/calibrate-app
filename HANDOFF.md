@@ -26,6 +26,7 @@ Step 165:
 - **Not traced:** whether due-day and practice reminders already scheduled are cancelled right after an account deletion, before the next launch (policy-auditor and code-reviewer both flagged it as outside step 166).
 - **Owner, on the iPhone:** `/device-check` can write the list from the BUILT_LOG rows 162–165 (the Warm-up's resting thumb at the left end, the Welcome back card, the rating line after a reminder's buttons, the card with long names, VoiceOver on the new lines).
 - **Agent:** steps 157–159.
+- **Owner:** the eleventh playtest round (people from other goal apps) ran 2026-11-10 on branch `builder/playtest-11`: `docs/design/research/playtest-2026-11-10.md`, from the competitor research in `competitors-2026-11.md` and the plan in `round11-plan-2026-11-10.md` (eight new personas in `app-profile.md` §10, plus a "What they use now" axis). Median 6/10, seven unsure. Its "needs the owner" findings join the open decisions; the no-decision ones are 10 (a plural), 17 (Plus offline), 25 and 27. The six seed scripts are in `.playwright-mcp/` (gitignored).
 
 ## Read first
 

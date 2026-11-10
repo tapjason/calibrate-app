@@ -89,7 +89,8 @@ that apply here.
 - **Three require-cycle warnings in the console are known** (2026-11-09b web check), all in
   `src/store`: `categoryStore` ↔ `authStore`; `authStore` → `practiceStore` → `analytics` →
   `authStore`; `authStore` ↔ `predictionStore`. Every use sits inside a function, not at module
-  load, so nothing reads an unfinished module. Not a playtest finding; a new cycle is worth a look.
+  load, so nothing reads an unfinished module. Not a playtest finding; a new cycle is worth a look. Also known: "props.pointerEvents is
+  deprecated. Use style.pointerEvents", from the react-native-web bundle, not app code (2026-11-10).
 - **Device-only behaviour the web build hides** (found on the phone, 2026-11-07 and 08): see
   `docs/app-profile.md` §18 "Known iOS-vs-web traps". The web never showed any of them because CSS
   won't shrink content below its size and has no native sheets or switch.
