@@ -7,6 +7,7 @@ import { getDb, setDbForTests } from './client';
 import { insertPrediction, listPendingPredictions } from './predictions';
 import { getUserStat, listCategoryStats, upsertCategoryStat, upsertUserStat } from './stats';
 import { createTestDb } from './testing';
+import { getWarmupProgress, getWarmupRecord, saveWarmupProgress, saveWarmupRecord } from './warmup';
 
 const p = (id: string, user_id: string): Prediction => ({
   id,
@@ -70,6 +71,17 @@ describe('wipeLocalUserData', () => {
     await expect(getUserStat('me')).resolves.toBeNull();
     await expect(listCategoryStats('me')).resolves.toEqual([]);
     await expect(listUnsyncedEvents('me', 10)).resolves.toEqual([]);
+  });
+
+  // Owner, 2026-11-09: account deletion left the Warmup on the phone.
+  it('removes the Warmup and any unfinished one', async () => {
+    await saveWarmupRecord({ completed_at: '2026-08-29T12:00:00.000Z', answers: [{ confidence: 70, correct: true }] });
+    await saveWarmupProgress({ question_ids: ['q1'], answers: [{ confidence: 60, correct: false }] });
+
+    await wipeLocalUserData('me');
+
+    await expect(getWarmupRecord()).resolves.toBeNull();
+    await expect(getWarmupProgress()).resolves.toBeNull();
   });
 
   // Sign-out keeps an account's rows on the device for when that person signs

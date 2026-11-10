@@ -387,7 +387,16 @@ were "Can't tell" beside the rating, which leaves them out.
   count. The delete confirmation says so first.
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
   after its due day, and never less than the correction window after the skip, so
-  a mis-tap can still be undone. After that it stays "Can't tell".
+  a mis-tap can still be undone. After that it stays "Can't tell". A Yes or No
+  given to it later is an answer like any other: it gets its own 24-hour
+  correction window, counted from that answer (clarified 2026-11-09, owner).
+  There is no way to put any answer back to open (`reopen` was deleted
+  2026-11-09).
+- **The phone's clock is the clock** (clarified 2026-11-09, owner): the skip week,
+  the correction window and same-day answers are judged by the device's time,
+  which the app accepts. It works offline, and a server clock would need a
+  connection without stopping someone set on padding; the rules raise the cost of
+  padding, they don't end it (D41).
 
 Note: resolution alone is a weak retention hook. The identity layer (badges climbing,
 weekly reveal) carries retention — build it deliberately.

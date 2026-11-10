@@ -616,7 +616,6 @@ describe('ResolvePrompt — answering a skipped prediction later', () => {
     await waitFor(() => expect(screen.getByTestId('resolve-skip-closed')).toBeTruthy());
     expect(screen.queryByTestId('resolve-unskip')).toBeNull();
     // The store holds the line too.
-    await expect(usePredictionStore.getState().reopen('p1')).rejects.toThrow(/more than a week/);
     await expect(
       usePredictionStore.getState().resolve('p1', 'resolved_yes', undefined, { answeringSkip: true }),
     ).rejects.toThrow(/more than a week/);

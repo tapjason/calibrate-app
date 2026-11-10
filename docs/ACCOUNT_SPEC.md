@@ -202,15 +202,16 @@ so Jest can cover it.
 
 ### 3.4 Device wipe
 
-A new `src/db/account.ts` helper, `wipeLocalData(userId)`, in one
+The `src/db/account.ts` helper `wipeLocalUserData(userId)`, in one
 `withTransaction`:
 
 - `DELETE FROM predictions WHERE user_id = ?`, and the same for `user_stats`,
   `category_stats` and `analytics_events`.
 - Reset the entitlement mirror to free.
-- **Keep** the Warmup row. It has no `user_id`, was never uploaded, and is the
-  device's onboarding state rather than account data. (Clear it too if you'd
-  rather make deletion feel like a factory reset; either is defensible.)
+- **Clear** the Warmup rows (`warmup_results`, `warmup_progress`) and the age
+  band, device-wide: they have no `user_id` but are the person's own (owner,
+  2026-11-09; this said "keep" until then). After the wipe, account deletion
+  also resets the Warmup store and clears daily practice, as guest Erase does.
 
 Then clear the per-user sync cursor in AsyncStorage.
 

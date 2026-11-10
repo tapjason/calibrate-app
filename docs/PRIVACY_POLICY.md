@@ -80,7 +80,7 @@ full list:
 `coverage_nudge_accepted`, `practice_started`, `practice_completed`,
 `practice_reminder_set`, `coach_requested`, `data_exported`.
 
-These are linked to your account. **You can turn them off** in Settings →
+These are linked to your account. **You can turn them off** in You →
 Usage stats. (Before you sign in, the few described above are sent with no
 identifier, so they can't be linked to you, or deleted as yours.)
 
@@ -140,13 +140,13 @@ removed as described in §7.
 
 ## 7. Deleting your account
 
-In the app: **Settings → Account → Delete account.** This permanently deletes:
+In the app: **You → Delete account** (at the bottom). This permanently deletes:
 
 - your account and email address,
 - all backed-up predictions and reflections,
 - your usage events and Coach usage count,
 - your subscription record at RevenueCat,
-- and the copy of your data on that device.
+- and the copy of your data on that device, your warm-up and practice answers included.
 
 If you signed in with Apple, we also revoke the app's access to your Apple ID.
 
@@ -154,7 +154,7 @@ If you signed in with Apple, we also revoke the app's access to your Apple ID.
 it, so cancel it first in Settings → [your name] → Subscriptions, or the app
 will point you there.
 
-Without an account, **Settings → Erase all data on this device** removes
+Without an account, **You → Erase all data on this device** removes
 everything the app stored.
 
 You can also email tapjason-dev@gmail.com to request deletion or a copy of your data.

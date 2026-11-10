@@ -265,37 +265,10 @@ describe('statsStore.bucketFor', () => {
   });
 });
 
-describe('predictionStore.reopen', () => {
-  it('undoes a resolution: back to pending, and stats forget it', async () => {
-    const p = await loggedEarlier(() => usePredictionStore.getState().create({
-      title: 'Ship it',
-      category: 'work',
-      confidence: 70,
-      due_date: '2026-06-01T00:00:00.000Z',
-    }));
-    await usePredictionStore.getState().resolve(p.id, 'resolved_no', 'oops');
-    expect(useStatsStore.getState().userStat?.total_resolved).toBe(1);
-
-    await usePredictionStore.getState().reopen(p.id);
-
-    const back = await usePredictionStore.getState().getById(p.id);
-    expect(back?.status).toBe('pending');
-    expect(back?.resolved_at).toBeNull();
-    expect(back?.reflection).toBeNull();
-    expect(usePredictionStore.getState().pending).toHaveLength(1);
-    expect(useStatsStore.getState().userStat?.total_resolved).toBe(0);
-  });
-
-  it('does nothing to a prediction that was never answered', async () => {
-    const p = await usePredictionStore.getState().create({
-      title: 'Ship it',
-      category: 'work',
-      confidence: 70,
-      due_date: '2026-06-01T00:00:00.000Z',
-    });
-    await usePredictionStore.getState().reopen(p.id);
-    expect((await usePredictionStore.getState().getById(p.id))?.status).toBe('pending');
-  });
+// Roadmap D45, owner 2026-11-09: there is no reopen. A Yes or No switches in
+// place (correct), and a Can't tell is answered through resolve.
+it('has no way to put an answer back to open', () => {
+  expect('reopen' in usePredictionStore.getState()).toBe(false);
 });
 
 describe('predictionStore.loadDemoData', () => {
@@ -388,7 +361,7 @@ describe('predictionStore.streakNow', () => {
   };
 
   // Decided 2026-10-06: checkpoints at 7, 30, 100 and 365 days.
-  it('holds the checkpoint an answer reached until Resolve shows it, and a withdrawn answer takes it back', async () => {
+  it('holds the checkpoint an answer reached until Resolve shows it, earned once', async () => {
     const userId = useAuthStore.getState().userId!;
     await sixCountedDays(userId);
     await usePredictionStore.getState().loadPending();
@@ -403,11 +376,7 @@ describe('predictionStore.streakNow', () => {
     expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
     expect(usePredictionStore.getState().streakCheckpoint).toBe(7);
 
-    await usePredictionStore.getState().reopen('d6-0');
-    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
-
-    // Answered again, then a second: only the first earned it.
-    await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
+    // A second answer the same day: only the first earned it.
     usePredictionStore.getState().clearStreakCheckpoint();
     await usePredictionStore.getState().resolve('d6-1', 'resolved_no');
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();

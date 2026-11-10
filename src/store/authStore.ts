@@ -312,6 +312,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // deleted account. A local step that fails is logged and passed over.
       try {
         await wipeLocalUserData(userId);
+        // The Warmup's rows went with the wipe; its store forgets them too.
+        // Practice belongs to the device like the Warmup, and the privacy
+        // policy promises this phone's copy is gone (owner, 2026-11-09).
+        await useWarmupStore.getState().retake();
+        await usePracticeStore.getState().clear();
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[auth] local wipe after account deletion failed:', e);

@@ -792,8 +792,6 @@ export type UpdatePrediction = (
   edit: PredictionEdit,
   opts?: { rewordedAt?: string },
 ) => Promise<void>;
-/** Undo a resolution: back to pending, outcome and reflection cleared. */
-export type ReopenPrediction = (id: string) => Promise<void>;
 /**
  * Switch a Yes to a No or back (roadmap D34), keeping when it was answered.
  * A no-op on an open prediction or a skip: an answer never becomes "Can't

@@ -19,12 +19,13 @@ import { getDb, withTransaction } from './client';
  * your account must not delete theirs.
  *
  * Not touched here: the entitlement mirror (billing resets it to free when
- * the identity changes) and the Warmup record, which has no owner — the
- * caller clears that separately when the whole device is being reset.
+ * the identity changes).
  *
- * The age band is the exception among ownerless rows. It is personal data
- * with no second copy to protect, and both "Erase all data" and account
- * deletion promise the on-device copy is gone.
+ * The age band and the Warmup are the exceptions among ownerless rows, and
+ * are cleared device-wide, whoever's they were. They are the person's own,
+ * with no second copy to protect, and both "Erase all
+ * data" and account deletion promise the on-device copy is gone (the Warmup
+ * since 2026-11-09, owner: it stayed behind after account deletion).
  */
 export async function wipeLocalUserData(userId: string): Promise<void> {
   await withTransaction(async () => {
@@ -39,5 +40,7 @@ export async function wipeLocalUserData(userId: string): Promise<void> {
     // The person's own categories (roadmap D39) go with the predictions in them.
     await db.run(`DELETE FROM categories WHERE user_id = ?`, [userId]);
     await clearAgeBucket();
+    await db.run(`DELETE FROM warmup_results`);
+    await db.run(`DELETE FROM warmup_progress`);
   });
 }

@@ -103,6 +103,9 @@ describe('authStore.deleteAccount', () => {
   it('deletes on the server, then wipes this device, then drops the session', async () => {
     signedIn('email');
     const order: string[] = [];
+    // The Warmup and practice go too (owner, 2026-11-09).
+    useWarmupStore.setState({ retake: jest.fn(async () => { order.push('warmup'); }) });
+    usePracticeStore.setState({ clear: jest.fn(async () => { order.push('practice'); }) });
     server.deleteAccountOnServer.mockImplementation(async () => {
       order.push('server');
       return { ok: true };
@@ -116,7 +119,7 @@ describe('authStore.deleteAccount', () => {
     });
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
-    expect(order).toEqual(['server', 'wipe', 'signOut']);
+    expect(order).toEqual(['server', 'wipe', 'warmup', 'practice', 'signOut']);
     expect(wipe).toHaveBeenCalledWith('user-1');
     // Not an Apple account: no re-auth sheet.
     expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();

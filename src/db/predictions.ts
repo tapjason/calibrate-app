@@ -16,7 +16,6 @@ import type {
   ResolvePrediction,
   DeletePrediction,
   SetReflection,
-  ReopenPrediction,
   CorrectPredictionOutcome,
   RefilePrediction,
   UpdatePrediction,
@@ -192,22 +191,6 @@ export async function unskipPrediction(id: string): Promise<void> {
     [now, id],
   );
 }
-
-/**
- * Undo a resolution — the "Change answer" escape hatch right after a tap.
- * `status != 'pending'` makes it a no-op on an unanswered row; `dirty = 1`
- * carries the reversal through sync (last write wins on `updated_at`).
- */
-export const reopenPrediction: ReopenPrediction = async (id) => {
-  const now = nowIso();
-  await getDb().run(
-    `UPDATE predictions
-       SET status = 'pending', resolved_at = NULL, reflection = NULL,
-           updated_at = ?, dirty = 1
-       WHERE id = ? AND status != 'pending'`,
-    [now, id],
-  );
-};
 
 /**
  * Correct a Yes to a No or back (roadmap D34). `resolved_at` stays as it was,

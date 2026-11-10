@@ -80,7 +80,8 @@ export function DeleteAccountView({
       <Text style={styles.body}>
         {wasSignedIn
           ? 'This permanently deletes your account, every prediction and reflection, ' +
-            'and your calibration history, from our servers and from this phone. ' +
+            'your calibration history and your Warmup and practice answers, from our ' +
+            'servers and from this phone. ' +
             "It happens immediately and can't be undone."
           : 'This permanently erases every prediction, reflection and your Warmup ' +
             "result from this phone. You aren't signed in, so there is no other copy. " +

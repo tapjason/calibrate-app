@@ -37,7 +37,6 @@ import {
   listResolvedPredictions,
   resolvePrediction,
   refilePrediction,
-  reopenPrediction,
   unskipPrediction,
   setPredictionReflection,
   updatePrediction,
@@ -108,12 +107,6 @@ interface PredictionState {
    * the due date is held to the next day at the earliest.
    */
   update: (id: string, edit: PredictionEdit) => Promise<void>;
-  /**
-   * Undo a resolution (the "Change answer" tap). Stats recompute in the same
-   * transaction, exactly as for resolve, so nothing counts a withdrawn answer.
-   * A "Can't tell" past its deadline (D45) throws: it stays as it is.
-   */
-  reopen: (id: string) => Promise<void>;
   /**
    * Switch an answer between Yes and No (roadmap D34): "Change answer" right
    * after, or from its details within the correction window. Throws outside
@@ -327,21 +320,6 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       settle();
       if (resolvesInFlight.get(id) === done) resolvesInFlight.delete(id);
     }
-  },
-
-  reopen: async (id) => {
-    const userId = requireUserId();
-    const target = await get().getById(id);
-    if (target && target.status === 'skipped' && !canAnswerSkip(target, new Date())) {
-      throw new Error(SKIP_CLOSED);
-    }
-    await withTransaction(async () => {
-      await reopenPrediction(id);
-      await useStatsStore.getState().recomputeForUser(userId);
-    });
-    await Promise.all([get().loadPending(), get().loadResolved()]);
-    // A withdrawn answer takes back the checkpoint it reached.
-    set({ streakCheckpoint: null });
   },
 
   correct: async (id, outcome) => {

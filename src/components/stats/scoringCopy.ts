@@ -118,7 +118,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: "What doesn't count",
       paragraphs: [
-        '"Can\'t tell / doesn\'t apply" answers, which stay out of the score, the streak and your recaps. If you can tell later, you can answer one until a week after its due day, or until the end of the day after you chose Can\'t tell, if that\'s later; after that it stays Can\'t tell. And the Warmup and the daily practice, which are practice and kept apart from your real record.',
+        '"Can\'t tell / doesn\'t apply" answers, which stay out of the score, the streak and your recaps. If you can tell later, you can answer one until a week after its due day, or until the end of the day after you chose Can\'t tell, if that\'s later; after that it stays Can\'t tell. An answer you give it then can be changed for a day, like any other. And the Warmup and the daily practice, which are practice and kept apart from your real record.',
         "An answer given the same day the prediction was logged. It stays in History and keeps your streak, but it isn't scored: a call made and settled in one day says little, and it made the score easy to pad. So the earliest due date is tomorrow.",
         "Changing a prediction's words makes it a new prediction from that day, with the same number: an answer that day isn't scored, and its due date is tomorrow at the earliest. Otherwise a call could be turned into its opposite once the outcome was known. Fixing case or a full stop doesn't count.",
         "A deleted prediction leaves the score. If it was already answered, or was due, Insights says how many were, so a miss can't disappear without a trace. Only this phone keeps that count.",

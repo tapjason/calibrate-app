@@ -803,7 +803,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   Yes/No a week early with no due date on screen.
 - **A skip can be taken back** (roadmap step 39): a "Not scored" card in History opens
   Resolve with "You marked this as can't tell" and a secondary **Answer it now**,
-  which reopens it. Only skips: they never counted, so answering later can't rewrite a
+  which shows the question and writes nothing until Yes or No (then un-skips and
+  answers in one step; step 161). Only skips: they never counted, so answering later can't rewrite a
   score.
 - **Streak checkpoint** (step 64): when the answer is the one that made today count
   and that reached a checkpoint, a still card in the milestone tint sits where the

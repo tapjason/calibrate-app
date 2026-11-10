@@ -527,7 +527,9 @@ Tick each:
 - [ ] **Delete as a signed-in user** (`delete-account` is live as of 2026-10-02):
       Settings → Delete account → Delete my account. It reads "Your account
       has been deleted", the app is an empty guest, and signing in with the
-      same email fails.
+      same email fails. Force-quit and relaunch: the Warmup opens, as on a
+      fresh install, and Share has no Warmup card (2026-11-09: deletion now
+      clears the Warmup and practice).
 - [ ] **Coach as a Plus guest** (needs Plus on the device, so it waits on a
       dev build): signed out, the Coach panel says "Sign in to use Coach"
       rather than offering a request that would fail.

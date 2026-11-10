@@ -4,7 +4,9 @@
 
 ## What this PR did
 
-A stack of four branches, each from the one before, none pushed: `builder/playtest-09b-fixes` (step 162, the tenth round's no-decision fixes) → `builder/miss-and-return` (163, D49–D52) → `builder/before-the-score` (164, D53) → `builder/one-word` (165, D54, this one). The owner's calls of 2026-11-09 on the tenth round are D49–D54 in `docs/design/UI_ROADMAP.md` §2; each step's row in `docs/design/BUILT_LOG.md` lists what changed. JS only throughout: a reload, no new build (SQLite migration 013 runs on the next start).
+A stack of five branches, each from the one before, none pushed: `builder/playtest-09b-fixes` (step 162, the tenth round's no-decision fixes) → `builder/miss-and-return` (163, D49–D52) → `builder/before-the-score` (164, D53) → `builder/one-word` (165, D54) → `builder/reopen-and-erase` (166, the owner's decisions 11–13, this one). The owner's calls of 2026-11-09 on the tenth round are D49–D54 in `docs/design/UI_ROADMAP.md` §2; each step's row in `docs/design/BUILT_LOG.md` lists what changed. JS only throughout: a reload, no new build (SQLite migration 013 runs on the next start).
+
+Step 166: `reopen` is deleted (no answer goes back to open); D45 now says an answered Can't tell gets its own 24-hour window and that the phone's clock is accepted; account deletion clears the Warmup and practice from the phone, its confirmation says so, and the privacy policy's in-app paths are corrected (You → …). Reviewed (no blockers) and policy-audited; their fixes are in.
 
 Step 165:
 - **Words (D54 a):** "resolve" leaves the screens. "Answer" is any answer; "scored" marks counts behind a score or badge. Done as exact phrase replacements; identifiers, testIDs, routes, notification ids and analytics names are unchanged (code-reviewer checked).
@@ -16,11 +18,12 @@ Step 165:
 ## In progress / broken
 
 - **Seen on web** (320 wide): the Warm-up resuming after a reload; History's range under a sheet; practice's Next; the Welcome back card and the rating line after an answer; the per-category counts and the estimate; "Ready to answer", "Answer all 3", the marks caption on Insights only, "145 scored", "20 more scored answers…".
-- **Left as is:** `reopen()` can still put a Can't tell back to pending (owner decision 11, below); account deletion leaves Warm-up rows (decision 13); the year recap's badge row and a week recap of old answers (finding 10's other bullets); an estimate isn't floored by open due dates.
+- **Left as is:** the year recap's badge row and a week recap of old answers (finding 10's other bullets); an estimate isn't floored by open due dates.
 
 ## Next step
 
-- **Owner, decisions:** 11–13 from 2026-11-09 (recommended: delete `reopen()`; write the answered-skip window and the device clock into D45; clear Warm-up rows on account deletion).
+- **Owner:** republish the privacy policy once GitHub Pages is on (its in-app paths and §7 changed in step 166).
+- **Not traced:** whether due-day and practice reminders already scheduled are cancelled right after an account deletion, before the next launch (policy-auditor and code-reviewer both flagged it as outside step 166).
 - **Owner, on the iPhone:** `/device-check` can write the list from the BUILT_LOG rows 162–165 (the Warm-up's resting thumb at the left end, the Welcome back card, the rating line after a reminder's buttons, the card with long names, VoiceOver on the new lines).
 - **Agent:** steps 157–159.
 
