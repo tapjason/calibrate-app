@@ -31,7 +31,7 @@ describe('homeIdentity (roadmap step 28)', () => {
     expect(
       homeIdentity(USER, [cat('finance', 'tracker', 24, 62), cat('health', 'sharp', 60, 96)]),
     ).toEqual({ identity: 'Sharp in health', contrast: 'Tracker in finance', badge: 'sharp' });
-    // Roadmap D27: a Guesser (fewer than 20 resolved) is never the contrast.
+    // Roadmap D27: a Guesser (fewer than 20 answered) is never the contrast.
     expect(
       homeIdentity(USER, [cat('finance', 'guesser', 17, 62), cat('health', 'sharp', 60, 96)]),
     ).toEqual({ identity: 'Sharp in health', contrast: null, badge: 'sharp' });

@@ -14,7 +14,7 @@ export function holdRanges(text: string): string {
 }
 
 /**
- * "3 more resolved to reach Tracker" with its target held together, so at
+ * "3 more scored answers to reach Tracker" with its target held together, so at
  * 320pt the line breaks before "to" and never strands "Tracker" alone
  * (roadmap D33, when "→ Tracker" became "to reach Tracker").
  */

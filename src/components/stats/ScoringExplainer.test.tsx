@@ -25,7 +25,7 @@ describe('scoringCopy (roadmap step 29)', () => {
   it('states the minimums from the shared constants', () => {
     const text = allText();
     expect(text).toContain(`Why it waits for ${MIN_N_OVERALL}`);
-    expect(text).toContain(`until ${MIN_N_OVERALL} predictions have resolved`);
+    expect(text).toContain(`until ${MIN_N_OVERALL} answers are scored`);
     expect(text).toContain(`until ${MIN_N_CATEGORY} have in that category`);
     expect(text).toContain(`until it holds ${MIN_N_BAND}`);
   });
@@ -103,8 +103,8 @@ describe('scoringCopy (roadmap step 29)', () => {
       'Sharp',
       'Oracle',
     ]);
-    expect(badgeRows()[2].criteria).toBe('Above 70 at its low end, with 20 or more resolved');
-    expect(badgeRows()[0].criteria).toBe('Fewer than 20 resolved here');
+    expect(badgeRows()[2].criteria).toBe('Above 70 at its low end, with 20 or more scored answers');
+    expect(badgeRows()[0].criteria).toBe('Fewer than 20 scored here');
   });
 });
 
@@ -116,7 +116,7 @@ describe('ScoringExplainer', () => {
       expect(screen.getByText(section.title)).toBeTruthy();
     }
     expect(screen.getByTestId('scoring-badge-oracle').props.accessibilityLabel).toBe(
-      'Oracle: Above 90 at its low end, with 100 or more resolved',
+      'Oracle: Above 90 at its low end, with 100 or more scored answers',
     );
     fireEvent.press(screen.getByTestId('scoring-close'));
     expect(onClose).toHaveBeenCalledTimes(1);

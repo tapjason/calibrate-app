@@ -14,7 +14,7 @@ interface SectionHeaderProps {
 /**
  * A list section's heading (roadmap D33): the title in the face's own
  * weight, the count in its own column at the right edge, where a column of
- * numbers belongs. It replaced "Ready to resolve · 10", the small grey label
+ * numbers belongs. It replaced "Ready to answer · 10", the small grey label
  * with a middle dot that sat above most lists.
  */
 export function SectionHeader({ title, count, unit, testID }: SectionHeaderProps) {

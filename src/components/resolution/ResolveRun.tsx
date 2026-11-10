@@ -110,7 +110,7 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss }: ResolveRunProp
         ) : (
           <Text style={styles.doneBody}>
             {queue.length === 0
-              ? 'Nothing is ready to resolve right now.'
+              ? 'Nothing is ready to answer right now.'
               : 'Every prediction that was ready has an answer.'}
           </Text>
         )}

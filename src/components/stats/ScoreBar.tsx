@@ -1,5 +1,6 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { BADGE_META } from '@/constants/badges';
 import { colors, radius, space, type } from '@/constants/theme';
 
 interface ScoreBarProps {
@@ -10,6 +11,8 @@ interface ScoreBarProps {
    * soft band across the end of the fill. The engine computes it.
    */
   range?: { low: number; high: number } | null;
+  /** Say what the marks are beneath the bar: on Insights, not Today's hero (D54). */
+  caption?: boolean;
   testID?: string;
 }
 
@@ -22,9 +25,9 @@ interface ScoreBarProps {
 // 90 on the right (roadmap step 52). 70 hugs from the left too: centred, it
 // ran into 85 at large text, "7085" (playtest 2026-11-08b, finding 16).
 const TICKS = [
-  { at: 70, align: 'before' },
-  { at: 85, align: 'before' },
-  { at: 90, align: 'after' },
+  { at: 70, align: 'before', badge: 'forecaster' },
+  { at: 85, align: 'before', badge: 'sharp' },
+  { at: 90, align: 'after', badge: 'oracle' },
 ] as const;
 
 /**
@@ -33,7 +36,17 @@ const TICKS = [
  * an ink fill notched at 70 / 85 / 90, and a needle at the score. No colour
  * for good or bad: everything is ink, and the needle is the number's place.
  */
-export function ScoreBar({ score, range, testID }: ScoreBarProps) {
+/**
+ * "The marks are a category's badge bars: Forecaster above 70, Sharp above 85,
+ * Oracle above 90." Unlabelled, three rounds of testers read them as a rising
+ * trend or a goal for the overall rating (blind playtest 2026-11-09b, finding
+ * 9; roadmap D54), and a screen reader heard nothing of them.
+ */
+export const SCORE_MARKS_CAPTION = `The marks are a category's badge bars: ${TICKS.map(
+  (t) => `${BADGE_META[t.badge].label} above ${t.at}`,
+).join(', ')}, at its score's low end.`;
+
+export function ScoreBar({ score, range, caption = false, testID }: ScoreBarProps) {
   const clamped = Math.max(0, Math.min(100, score));
   const low = range ? Math.max(0, range.low) : 0;
   const high = range ? Math.min(100, range.high) : 0;
@@ -44,8 +57,8 @@ export function ScoreBar({ score, range, testID }: ScoreBarProps) {
   const scale = Math.min(Math.max(fontScale, 1), LABEL_MAX_SCALE);
   const labelWidth = Math.ceil(LABEL_WIDTH * scale);
   return (
+    <View style={styles.wrap}>
     <View
-      style={styles.wrap}
       testID={testID}
       aria-hidden
       accessibilityElementsHidden
@@ -83,6 +96,13 @@ export function ScoreBar({ score, range, testID }: ScoreBarProps) {
           </Text>
         ))}
       </View>
+    </View>
+      {/* What the marks are, on screen and to a screen reader (roadmap D54). */}
+      {caption && (
+        <Text style={styles.caption} testID={testID ? `${testID}-caption` : undefined}>
+          {SCORE_MARKS_CAPTION}
+        </Text>
+      )}
     </View>
   );
 }
@@ -133,6 +153,7 @@ const styles = StyleSheet.create({
     width: 3,
   },
   labels: { marginTop: 10 },
+  caption: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
   // Each label ends just left of its tick, or (90) starts just right of it.
   label: {
     ...type.caption,

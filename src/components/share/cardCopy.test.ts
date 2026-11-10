@@ -1,3 +1,4 @@
+import { useCategoryStore } from '@/store/categoryStore';
 import type { BucketStat, CategoryStat, ShareCard, UserStat } from '@/types';
 
 import {
@@ -119,7 +120,7 @@ describe('shareHeadline', () => {
       categoryStat({ category: 'work', badge_level: 'tracker' }),
       categoryStat({ category: 'finance', badge_level: 'guesser' }),
     ])!;
-    // Roadmap D27: finance, a Guesser (fewer than 20 resolved), isn't named.
+    // Roadmap D27: finance, a Guesser (fewer than 20 answered), isn't named.
     expect(shareHeadline(card)).toBe('Sharp in health · Tracker in work');
   });
 
@@ -135,7 +136,7 @@ describe('shareSubline', () => {
   it('prints the rating once it has settled', () => {
     const card = buildShareCard(userStat(), [categoryStat()])!;
     expect(shareSubline(card)).toBe(
-      'Calibration 88/100 from 55 resolved predictions',
+      'Calibration 88/100 from 55 scored answers',
     );
   });
 
@@ -145,7 +146,7 @@ describe('shareSubline', () => {
       [categoryStat()],
     )!;
     expect(shareSubline(card)).toBe(
-      '12 more resolutions until my calibration unlocks',
+      '12 more scored answers until my calibration unlocks',
     );
   });
 });
@@ -188,8 +189,8 @@ describe('shareText', () => {
   // CLAUDE.md: never publish a verdict built on noise.
   it('drops the squares and score while provisional', () => {
     const text = shareText(card(null), [bucket(80, 'overconfident')]);
-    expect(text).not.toMatch(/score|🟧/);
-    expect(text).toContain('40 predictions resolved so far');
+    expect(text).not.toMatch(/score \d|🟧/);
+    expect(text).toContain('40 answers scored so far');
   });
 
   it('never carries a prediction title', () => {
@@ -224,7 +225,7 @@ describe('shareLines', () => {
     });
   });
 
-  // Roadmap D27: Guesser means fewer than 20 resolved, so it's never named.
+  // Roadmap D27: Guesser means fewer than 20 answered, so it's never named.
   it('never names a Guesser as the contrast', () => {
     expect(shareLines(card([['health', 'sharp'], ['finance', 'guesser']]))).toEqual({
       identity: 'Sharp in health',
@@ -252,10 +253,10 @@ describe('shareLines', () => {
 });
 
 describe('shareSubline plural', () => {
-  it('says "1 more resolution", not "resolutions"', () => {
+  it('says "1 more scored answer", not "answers"', () => {
     expect(
       shareSubline({ categories: [], rating: null, total_resolved: 19 }),
-    ).toBe('1 more resolution until my calibration unlocks');
+    ).toBe('1 more scored answer until my calibration unlocks');
   });
 });
 
@@ -270,7 +271,7 @@ describe('identityCardSummary', () => {
     // The lines name gated tiers only (D27); the chips, read in full, show all.
     expect(identityCardSummary(card)).toBe(
       'Share card. Sharp in health. ' +
-        'Calibration 88/100 from 55 resolved predictions. ' +
+        'Calibration 88/100 from 55 scored answers. ' +
         'By category: Sharp in health, Getting started in finance.',
     );
   });
@@ -282,7 +283,7 @@ describe('the honest card', () => {
   it('prints the give-or-take beside the rating', () => {
     const card = buildShareCard(userStat(), [categoryStat()], { giveOrTake: 3.4 })!;
     expect(shareSubline(card)).toBe(
-      'Calibration 88/100, give or take 3, from 55 resolved predictions',
+      'Calibration 88/100, give or take 3, from 55 scored answers',
     );
     expect(shareText(card, [])).toContain('score 88, give or take 3');
   });
@@ -295,7 +296,7 @@ describe('the honest card', () => {
     )!;
     expect(provisional.give_or_take).toBeUndefined();
     const exact = buildShareCard(userStat(), [categoryStat()], { giveOrTake: 0 })!;
-    expect(shareSubline(exact)).toBe('Calibration 88/100 from 55 resolved predictions');
+    expect(shareSubline(exact)).toBe('Calibration 88/100 from 55 scored answers');
   });
 
   it('says how many categories were left off', () => {
@@ -306,5 +307,50 @@ describe('the honest card', () => {
     expect(shareText(two, []).split('\n')).toContain('2 categories not shown');
     expect(identityCardSummary(two)).toMatch(/2 categories not shown\.$/);
     expect(hiddenLine(buildShareCard(userStat(), [categoryStat()])!)).toBeNull();
+  });
+});
+
+// Roadmap D54 (blind playtest 2026-11-09b, finding 10).
+describe('shareLines and shareSubline, the headline that agrees with itself', () => {
+  const card = (levels: Array<[string, string]>, rating: number | null): ShareCard => ({
+    categories: levels.map(([category, badge_level]) => ({
+      category: category as ShareCard['categories'][number]['category'],
+      badge_level: badge_level as ShareCard['categories'][number]['badge_level'],
+    })),
+    rating,
+    total_resolved: 148,
+    give_or_take: rating === null ? undefined : 3,
+  });
+
+  it('names every category at the top tier', () => {
+    expect(shareLines(card([['health', 'forecaster'], ['finance', 'forecaster'], ['work', 'tracker']], 80))).toEqual({
+      identity: 'Forecaster in health and finance',
+      contrast: 'Tracker in work',
+    });
+    expect(
+      shareLines(card([['health', 'tracker'], ['finance', 'tracker'], ['work', 'tracker'], ['social', 'tracker']], 80))
+        .identity,
+    ).toBe('Tracker in health and 3 more');
+  });
+
+  it("pairs two names only when both are short, so a person's own long name doesn't shrink the card", () => {
+    useCategoryStore.setState({
+      defs: [
+        { id: 'finance', user_id: 'u1', name: 'Grandchildren visits', icon: null, hidden: false, position: 0, created_at: '2026-01-01T00:00:00.000Z' },
+      ],
+    });
+    expect(shareLines(card([['health', 'forecaster'], ['finance', 'forecaster']], 80)).identity).toBe(
+      'Forecaster in health and 1 more',
+    );
+    useCategoryStore.setState({ defs: [] });
+  });
+
+  it('leads with the rating, once, when it is unlocked and no category has a badge', () => {
+    const c = card([['health', 'guesser']], 89);
+    expect(shareLines(c)).toEqual({ identity: 'Calibration 89/100', contrast: null });
+    expect(shareSubline(c)).toBe('Give or take 3, from 148 scored answers');
+    // The text share doesn't say the score a second time.
+    expect(shareText(c, []).match(/89/g)).toHaveLength(1);
+    expect(shareLines(card([['health', 'guesser']], null)).identity).toBe('Calibrating');
   });
 });

@@ -16,7 +16,7 @@ describe('UnlockProgress', () => {
     );
     expect(screen.getByTestId('progress-lead')).toHaveTextContent('Your first answer: tomorrow evening');
     expect(screen.getByTestId('progress').props.accessibilityLabel).toBe(
-      'Calibrating. Your first answer: tomorrow evening. 0 of 20 resolved, 1 on its way.',
+      'Calibrating. Your first answer: tomorrow evening. 0 of 20 scored, 1 on its way.',
     );
   });
 
@@ -31,6 +31,6 @@ describe('UnlockProgress', () => {
   it('has no lead once answers have come in', () => {
     render(<UnlockProgress resolved={4} pending={2} total={20} testID="progress" />);
     expect(screen.queryByTestId('progress-lead')).toBeNull();
-    expect(screen.getByText('16 more resolutions and your score unlocks.')).toBeTruthy();
+    expect(screen.getByText('16 more scored answers and your score unlocks.')).toBeTruthy();
   });
 });

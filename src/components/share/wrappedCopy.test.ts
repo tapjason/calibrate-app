@@ -199,7 +199,7 @@ describe('wrappedCardSummary (roadmap step 45)', () => {
       wrappedCardSummary({
         title: 'Your week in predictions',
         stat: '4 predictions resolved. 3 happened. You expected about\u00A03.',
-        statCount: '4 resolved',
+        statCount: '4 scored',
         statRate: '3 happened. You expected about\u00A03.',
         verdict: null,
         allTime: null,

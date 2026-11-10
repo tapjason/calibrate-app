@@ -30,8 +30,8 @@ describe('CalibrationView headline', () => {
     expect(queryByTestId('rating-value')).toBeNull();
     // …instead the remaining count (20 − 8 = 12) is shown.
     expect(getByTestId('rating-provisional')).toBeTruthy();
-    expect(getByText('8 of 20 resolved')).toBeTruthy();
-    expect(getByText(/12 more resolutions and your score unlocks/)).toBeTruthy();
+    expect(getByText('8 of 20 scored')).toBeTruthy();
+    expect(getByText(/12 more scored answers and your score unlocks/)).toBeTruthy();
   });
 
   it('headlines the rounded rating once non-provisional', () => {
@@ -98,7 +98,7 @@ describe('CalibrationView provisional progress', () => {
         pendingCount={3}
       />,
     );
-    expect(getByText('4 of 20 resolved, 3 on their way')).toBeTruthy();
+    expect(getByText('4 of 20 scored, 3 on their way')).toBeTruthy();
     expect(getByTestId('rating-provisional').props.accessibilityValue).toEqual({
       min: 0,
       max: 20,
@@ -165,7 +165,7 @@ describe('CalibrationView chart section', () => {
     );
     const filled = getByTestId('coverage-80');
     expect(filled.props.accessibilityRole).toBe('button');
-    expect(filled.props.accessibilityLabel).toBe('80–100%: 12 resolved. Show them.');
+    expect(filled.props.accessibilityLabel).toBe('80–100%: 12 scored. Show them.');
     // The drawn label may break after its dash, and once more if a cell is too
     // narrow even for "100%", rather than be cut short at large text sizes
     // (blind playtests 2026-11-01 and 2026-11-08).
@@ -334,14 +334,14 @@ describe('CalibrationView skipped answers', () => {
         />,
       );
     expect(view(2).getByTestId('stats-skipped')).toHaveTextContent(
-      '2 of 163 answers were Can’t tell, so they aren’t scored.',
+      '2 answers were Can’t tell, so they aren’t scored.',
     );
     expect(view(0).queryByTestId('stats-skipped')).toBeNull();
     expect(view(3, 12).queryByTestId('stats-skipped')).toBeNull();
   });
 
   it('words one', () => {
-    expect(skippedLine(1, 40)).toBe('1 of 41 answers was Can’t tell, so it isn’t scored.');
+    expect(skippedLine(1, 40)).toBe('1 answer was Can’t tell, so it isn’t scored.');
   });
 });
 

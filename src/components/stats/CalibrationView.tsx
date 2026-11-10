@@ -154,7 +154,7 @@ export function CalibrationView({
                 <CountUp value={headline.rating} style={styles.rating} testID="rating-value" />
                 <Text style={styles.ratingLabel}>calibration rating</Text>
               </View>
-              <ScoreBar score={headline.rating} range={ratingRange} testID="stats-score-bar" />
+              <ScoreBar score={headline.rating} range={ratingRange} caption testID="stats-score-bar" />
               {ratingRange && ratingRange.giveOrTake > 0 && (
                 <Text style={styles.subtle} testID="stats-rating-range">
                   Give or take {ratingRange.giveOrTake}{' '}
@@ -194,7 +194,7 @@ export function CalibrationView({
           {/* The progress bar already counts resolutions while provisional. */}
           {!headline.provisional && (
             <Text style={styles.subtle}>
-              {localCount(userStat.total_resolved)} resolved
+              {localCount(userStat.total_resolved)} scored
               {userStat.current_streak > 0
                 ? `, ${localCount(userStat.current_streak)}-day streak`
                 : ''}
@@ -226,7 +226,7 @@ export function CalibrationView({
       {/* Drawn even when empty: a ghost frame shows what's coming. */}
       <CalibrationChart buckets={calibration.buckets} />
       {calibration.buckets.length === 0 && (
-        <Text style={styles.empty}>Resolve a prediction and your first dot lands here.</Text>
+        <Text style={styles.empty}>Answer a prediction and your first dot lands here.</Text>
       )}
 
       <CoverageRow buckets={calibration.buckets} onSelectRange={onSelectRange} />
@@ -352,11 +352,12 @@ const styles = StyleSheet.create({
  * The rating counts Yes and No only, so a habit of parking misses as skips
  * would flatter it unseen; said beside it, it can't.
  */
-export function skippedLine(skipped: number, yesNo: number): string {
-  const total = skipped + yesNo;
+export function skippedLine(skipped: number, _scored?: number): string {
+  // No "of N": skips plus scored answers left out same-day ones, a total
+  // that matched no screen (record audit, 2026-11-09).
   return skipped === 1
-    ? `1 of ${total} answers was Can’t tell, so it isn’t scored.`
-    : `${skipped} of ${total} answers were Can’t tell, so they aren’t scored.`;
+    ? '1 answer was Can’t tell, so it isn’t scored.'
+    : `${skipped} answers were Can’t tell, so they aren’t scored.`;
 }
 
 /**

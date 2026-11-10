@@ -198,7 +198,7 @@ export default function TodayScreen() {
           {section.key === 'ready' && section.data.length >= RUN_THRESHOLD && (
             <View style={styles.run}>
               <Button
-                label={`Resolve all ${section.data.length}`}
+                label={`Answer all ${section.data.length}`}
                 testID="home-resolve-all"
                 onPress={() => router.push('/resolve/run' as never)}
               />

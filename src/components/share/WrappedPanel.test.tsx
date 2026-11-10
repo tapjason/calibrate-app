@@ -116,21 +116,21 @@ describe('WrappedPanel — an empty week (roadmap step 34)', () => {
     render(<WrappedPanel span="week" />);
     expect(screen.getByText('2 on the way')).toBeTruthy();
     expect(screen.getByText(/They come due in the next 7 days/)).toBeTruthy();
-    expect(screen.queryByText('Nothing resolved yet')).toBeNull();
+    expect(screen.queryByText('Nothing scored yet')).toBeNull();
   });
 
   it('keeps the plain empty copy with nothing due this week, and for the year', () => {
     usePredictionStore.setState({ pending: [due(30, 'next-month')], resolved: [] });
     const week = render(<WrappedPanel span="week" />);
-    expect(screen.getByText('Nothing resolved yet')).toBeTruthy();
+    expect(screen.getByText('Nothing scored yet')).toBeTruthy();
     // One is open, so it doesn't ask for one (playtest 2026-11-09b, finding 10).
-    expect(screen.getByText('Nothing resolved this week.')).toBeTruthy();
+    expect(screen.getByText('Nothing scored this week.')).toBeTruthy();
     expect(screen.queryByText(/Log a prediction/)).toBeNull();
     week.unmount();
 
     usePredictionStore.setState({ pending: [due(2, 'soon')], resolved: [] });
     render(<WrappedPanel span="year" />);
-    expect(screen.getByText('Nothing resolved yet')).toBeTruthy();
+    expect(screen.getByText('Nothing scored yet')).toBeTruthy();
   });
 });
 
@@ -139,7 +139,7 @@ describe('WrappedPanel', () => {
     seed([]);
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText('Nothing resolved yet')).toBeTruthy();
+    expect(screen.getByText('Nothing scored yet')).toBeTruthy();
     expect(screen.getByText(/Log a prediction and the story starts/)).toBeTruthy();
   });
 
@@ -155,7 +155,7 @@ describe('WrappedPanel', () => {
     seed(run(4, 3));
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText('4 resolved')).toBeTruthy();
+    expect(screen.getByText('4 scored')).toBeTruthy();
     // Four at 80% expect 3.2; three happened (roadmap step 48).
     expect(screen.getByTestId('wrapped-expected')).toHaveTextContent(
       '3 happened. You expected about\u00A03.',
@@ -163,7 +163,7 @@ describe('WrappedPanel', () => {
     expect(screen.queryByText(/came in/)).toBeNull();
     // Read as one sentence by screen readers.
     expect(screen.getByTestId('wrapped-stat').props.accessibilityLabel).toBe(
-      '4 predictions resolved. 3 happened. You expected about\u00A03.',
+      '4 predictions scored. 3 happened. You expected about\u00A03.',
     );
   });
 
@@ -183,8 +183,8 @@ describe('WrappedPanel', () => {
     seedOverall(12);
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText(/12 of 20 resolutions toward your first calibration score/)).toBeTruthy();
-    expect(screen.queryByText(/more resolutions and this/)).toBeNull();
+    expect(screen.getByText(/12 of 20 scored answers toward your first calibration score/)).toBeTruthy();
+    expect(screen.queryByText(/more answers and this/)).toBeNull();
   });
 
   it('points at the all-time score once the rating has unlocked', () => {
@@ -199,7 +199,7 @@ describe('WrappedPanel', () => {
     seed(run(4, 2));
     render(<WrappedPanel span="year" />);
 
-    expect(screen.getByText(/16 more resolutions and this year earns/)).toBeTruthy();
+    expect(screen.getByText(/16 more scored answers and this year earns/)).toBeTruthy();
   });
 
   it('gives a factual receipt from the busiest bucket, even while provisional', () => {
@@ -301,7 +301,7 @@ describe('WrappedPanel', () => {
     // A screen reader hears the same card (playtest 2026-11-04b, run 2).
     const spoken = () => screen.getByTestId("wrapped-card").props.accessibilityLabel as string;
     expect(spoken()).toMatch(/Tracker in work/);
-    expect(spoken()).toContain("By category: Work, 2 resolved.");
+    expect(spoken()).toContain("By category: Work, 2 scored.");
     expect(spoken()).toContain("1 category not shown.");
     expect(spoken()).not.toMatch(/Finance/);
 

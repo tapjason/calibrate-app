@@ -67,32 +67,32 @@ export const BADGE_META: Record<BadgeLevel, BadgeMeta> = {
     label: 'Getting started',
     color: chipColor('guesser', 'color'),
     background: chipColor('guesser', 'background'),
-    // What it is: fewer than the Tracker's 20 resolved. "Just getting started"
+    // What it is: fewer than the Tracker's 20 answered. "Just getting started"
     // read as a judgement to a five-month user (2026-10-09 dry run, D27).
-    tagline: 'Fewer than 20 resolved here',
+    tagline: 'Fewer than 20 scored here',
   },
   tracker: {
     label: 'Tracker',
     color: chipColor('tracker', 'color'),
     background: chipColor('tracker', 'background'),
-    tagline: '20 or more resolved',
+    tagline: '20 or more scored answers',
   },
   forecaster: {
     label: 'Forecaster',
     color: chipColor('forecaster', 'color'),
     background: chipColor('forecaster', 'background'),
-    tagline: 'Above 70 at its low end, with 20 or more resolved',
+    tagline: 'Above 70 at its low end, with 20 or more scored answers',
   },
   sharp: {
     label: 'Sharp',
     color: chipColor('sharp', 'color'),
     background: chipColor('sharp', 'background'),
-    tagline: 'Above 85 at its low end, with 50 or more resolved',
+    tagline: 'Above 85 at its low end, with 50 or more scored answers',
   },
   oracle: {
     label: 'Oracle',
     color: chipColor('oracle', 'color'),
     background: chipColor('oracle', 'background'),
-    tagline: 'Above 90 at its low end, with 100 or more resolved',
+    tagline: 'Above 90 at its low end, with 100 or more scored answers',
   },
 };

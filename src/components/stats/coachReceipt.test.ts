@@ -4,7 +4,7 @@ describe('coachReceipt', () => {
   it('says what each category figure counts', () => {
     expect(coachReceipt({ field: 'resolved', scope: 'finance', value: 25 })).toEqual({
       figure: '25',
-      label: 'resolved in finance',
+      label: 'scored in finance',
     });
     expect(coachReceipt({ field: 'calibration_score', scope: 'health', value: 71.4 })).toEqual({
       figure: '71',
@@ -27,7 +27,7 @@ describe('coachReceipt', () => {
       'your calibration rating',
     );
     expect(coachReceipt({ field: 'total_resolved', scope: 'overall', value: 40 })?.label).toBe(
-      'resolved in total',
+      'scored in total',
     );
   });
 

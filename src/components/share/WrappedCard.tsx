@@ -77,7 +77,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
   const spokenRest = [
     badge?.text ?? null,
     shown.length > 0
-      ? `By category: ${shown.map((c) => `${categoryTitle(c.category)}, ${c.resolved} resolved`).join('; ')}`
+      ? `By category: ${shown.map((c) => `${categoryTitle(c.category)}, ${c.resolved} scored`).join('; ')}`
       : null,
     hiddenText,
     summary.boldest_hit

@@ -70,7 +70,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: "How it's worked out",
       paragraphs: [
-        'Your resolved calls are grouped into five bands by how sure you said you were: 0–20%, 20–40%, 40–60%, 60–80% and 80–100%. A call at exactly 20% goes in 20–40%, and 100% goes in 80–100%.',
+        'Your scored calls are grouped into five bands by how sure you said you were: 0–20%, 20–40%, 40–60%, 60–80% and 80–100%. A call at exactly 20% goes in 20–40%, and 100% goes in 80–100%.',
         'In each band, the app compares what you said, on average, with how often it happened. The gap is the miss. The score is 100 minus your average miss, with each band counting in proportion to the calls in it: a band of fifty counts for more than a band of one.',
         'Say you called ten things 90% likely and five happened. You said 90%, 50% happened: a 40-point miss, and a score of 60. With misses of 5, 20 and 35 points in bands of 20, 10 and 20 calls, the average miss is 20, so the score is 80.',
       ],
@@ -85,8 +85,10 @@ export function scoringSections(): ScoringSection[] {
       title: `Why it waits for ${MIN_N_OVERALL}`,
       paragraphs: [
         'With two predictions in a band, it can only read 0%, 50% or 100%. That is noise, not a score.',
-        `So your rating stays "calibrating" until ${MIN_N_OVERALL} predictions have resolved, a category's score until ${MIN_N_CATEGORY} have in that category, and the app doesn't say which way a band leans until it holds ${MIN_N_BAND}.`,
-        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands 8 times in 10 with that many predictions, and the app calls a lean only for a dot outside it. And your rating comes with a "give or take": how far it could move on the same habits with different luck, 8 times in 10. Both narrow as you resolve more.',
+        `So your rating stays "calibrating" until ${MIN_N_OVERALL} answers are scored, a category's score until ${MIN_N_CATEGORY} have in that category, and the app doesn't say which way a band leans until it holds ${MIN_N_BAND}.`,
+        // One word for it (roadmap D54): "answered" everywhere, said once here.
+        "Scored answers are the Yes and No ones that count toward your numbers. A Can't tell, or an answer given the day the prediction was logged, is answered but not scored.",
+        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands 8 times in 10 with that many predictions, and the app calls a lean only for a dot outside it. And your rating comes with a "give or take": how far it could move on the same habits with different luck, 8 times in 10. Both narrow as you answer more.',
       ],
     },
     {

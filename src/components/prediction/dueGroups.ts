@@ -2,7 +2,7 @@
 // Today list (DESIGN_SYSTEM §7.11).
 //
 // The group header carries the state, so no card has to: a prediction whose
-// day has come is "Ready to resolve", not an amber "Overdue". Coming due is
+// day has come is "Ready to answer", not an amber "Overdue". Coming due is
 // not a lapse — the user doesn't choose when the world answers.
 //
 // Days are the device's local calendar days, like the streak engine: "due
@@ -18,7 +18,7 @@ export interface DueGroup {
 }
 
 const TITLES: Record<DueGroup['key'], string> = {
-  ready: 'Ready to resolve',
+  ready: 'Ready to answer',
   // The next seven days, not the calendar week (roadmap step 67): on a
   // Tuesday, "In a week" lands next Tuesday, which "This week" called this
   // week. Share's "This week" is the calendar week; this one isn't.
@@ -91,8 +91,8 @@ export function nextDueLine(
   if (open.length === 0) return null;
 
   const ready = open.filter((p) => isReadyToResolve(p, now)).length;
-  if (ready === 1) return 'One is ready to resolve now.';
-  if (ready > 1) return `${ready} are ready to resolve now.`;
+  if (ready === 1) return 'One is ready to answer now.';
+  if (ready > 1) return `${ready} are ready to answer now.`;
 
   const next = open
     .map((p) => Date.parse(p.due_date))

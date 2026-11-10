@@ -250,7 +250,7 @@ MIN_N_CATEGORY = 15   // below this, CategoryStat.score_is_provisional = true
 
 - While provisional, the engine still computes the score (for internal trend use) but the
   UI **must not** present it as a headline number. Show progress toward the threshold
-  ("12 more resolutions until your finance score unlocks") instead.
+  ("12 more scored answers until your finance score unlocks") instead.
 - No badge above `tracker` may be awarded while `score_is_provisional` is true.
 - The Coach agent must not issue verdicts on provisional data (see `COACH_AGENT.md`).
 
@@ -419,7 +419,7 @@ See the authoritative section above.
   days (or since the first prediction, a week at least), no estimate with fewer than 3
 - **The identity line** (D27, 2026-10-10): on Today and the share card, a tier is
   named only for a category past the count gate (20 resolved, so Tracker or above).
-  The first tier means "fewer than 20 resolved here", which read as a verdict ("Guesser in
+  The first tier means "fewer than 20 scored here", which read as a verdict ("Guesser in
   finance" after five months); it stays on Insights' badge rows, where the count to
   go sits beside it, and since D36 (2026-11-01) it is named **"Getting started"**
   there (the stored id stays `guesser`): "Guesser" stung after one prediction.
@@ -449,8 +449,9 @@ See the authoritative section above.
 ### 6. Share & Wrapped Module (free — this is the growth engine)
 - **Category identity card** — "Sharp in health · Tracker in money," screenshot-native,
   one-tap share, with a subtle "get your own" hook. Its lines follow D27 (above): only
-  categories past the count gate are named; with none yet, it reads "Calibrating" and
-  the count to go.
+  categories past the count gate are named, every one at the top tier ("Forecaster in
+  health and money", D54); with none yet, it reads "Calibrating" and the count to go,
+  or, once the rating is unlocked, leads with it ("Calibration 89/100").
 - **Calibration Wrapped** — weekly and yearly recap of the user's forecasting story.
   Its read follows Insights (decided 2026-11-03, D42): both sides when there are
   both ("This year, you ran too sure at 80–100% and too cautious at 60–80%."), and

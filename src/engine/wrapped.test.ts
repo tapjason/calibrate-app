@@ -25,7 +25,7 @@ function prediction(over: Partial<Prediction> = {}): Prediction {
   };
 }
 
-/** n resolved predictions inside the week window, `yes` of them correct. */
+/** n scored answers inside the week window, `yes` of them correct. */
 function run(n: number, yes: number, over: Partial<Prediction> = {}): Prediction[] {
   return Array.from({ length: n }, (_, i) =>
     prediction({

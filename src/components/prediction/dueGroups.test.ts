@@ -60,7 +60,7 @@ describe('groupByDue', () => {
       [dueIn(30), dueIn(3), dueIn(-1), dueIn(0), dueIn(7), dueIn(8)],
       NOW,
     );
-    expect(groups.map((g) => g.title)).toEqual(['Ready to resolve', 'Next 7 days', 'Later']);
+    expect(groups.map((g) => g.title)).toEqual(['Ready to answer', 'Next 7 days', 'Later']);
     expect(groups.map((g) => g.data.map((p) => p.id))).toEqual([
       ['d-1', 'd0'],
       ['d3', 'd7'],
@@ -106,9 +106,9 @@ describe('nextDueLine', () => {
   });
 
   it('says how many are ready when some already are', () => {
-    expect(nextDueLine([dueIn(0, 'a'), dueIn(5, 'b')], NOW)).toBe('One is ready to resolve now.');
+    expect(nextDueLine([dueIn(0, 'a'), dueIn(5, 'b')], NOW)).toBe('One is ready to answer now.');
     expect(nextDueLine([dueIn(0, 'a'), dueIn(-2, 'b'), dueIn(5, 'c')], NOW)).toBe(
-      '2 are ready to resolve now.',
+      '2 are ready to answer now.',
     );
   });
 

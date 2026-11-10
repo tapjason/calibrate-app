@@ -394,7 +394,7 @@ as the new ones.
   filled = resolved, hatched = pending "on their way", hollow = to go. Label:
   "Calibrating · 4 on their way · 16 to go". Pending predictions really will count,
   so this endowed progress is honest (Nunes & Drèze 2006: 19% → 34% completion).
-  After "N more resolutions and your score unlocks.", the caption gives the wait a
+  After "N more scored answers and your score unlocks.", the caption gives the wait a
   date (roadmap step 32): "The next one comes due Tue, Oct 6." ("The first one" before
   any has resolved; the date never splits across lines), or "One is ready to resolve
   now." Nothing when nothing is open.
@@ -460,7 +460,7 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
 4. **Coverage row** under the chart: five bucket chips with counts, empty ones hatched
    ("You've never logged anything under 40%"). This is the spec's range-coverage caveat
    made visible; it links to the `CoverageNudge`. On Stats each filled chip is a
-   button with the control outline ("80–100%: 57 resolved. Show them.") that opens
+   button with the control outline ("80–100%: 57 scored. Show them.") that opens
    History filtered to that range, under the line "Tap a range to see the predictions
    behind it." (roadmap step 51). Empty chips stay inert, and so does the Warmup's.
    A chip's range label stays on one line while it fits and otherwise breaks after
@@ -546,12 +546,12 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   score above 85 to reach Sharp" (roadmap step 47; the "→" went with D33). Naming only the count promised a badge that
   resolving alone couldn't earn. Only the threshold is printed, never a provisional
   score.
-- Each tier shows its receipt in one line: "Sharp: 52 resolved, score 87". Badge
+- Each tier shows its receipt in one line: "Sharp: 52 scored, score 87". Badge
   criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
   presentation only and loses its `emoji` field.
 - **The category's own score** (D28, 2026-10-10): on each Insights badge row, once
   the category is past `MIN_N_CATEGORY` (15 resolved, `score_is_provisional` false),
-  its score in the row's meta line ("Score 84, give or take 5, from 52 resolved" since
+  its score in the row's meta line ("Score 84, give or take 5, from 52 scored" since
   D35, step 140), rounded, in `textSecondary` (never a display size; the overall
   rating is the one hero). A tier above Tracker needs the score minus its
   give-or-take over the bar; when only that is short, the hint says "Score above 85
@@ -578,7 +578,8 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 ### 7.5 Share cards
 
 - **Hierarchy (at 1080 px wide):** identity line 88–96 px Rounded Bold ("Sharp in
-  health", top category only) → contrast line 56 px ("Tracker in money") → one receipt
+  health"; every category at the top tier, two short names at most, else "and N
+  more", D54) → contrast line 56 px ("Tracker in money") → one receipt
   36–40 px in natural frequencies ("Right 84% of the time I said 80%") → a mini visual
   with no axes (5-bucket dot strip), legible at thumbnail size → footer hook **≥ 32 px
   at ≥ 4.5:1**, phrased as a question: "What are you sharp at? · calibrate.app". (The
@@ -608,11 +609,14 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   score. An image share can't carry a link (the share sheet gets a bare PNG), so the
   name in the card's footer is its only way back to the store.
 - **Which categories it names** (D27, 2026-10-10): the identity and contrast lines
-  name only categories past the count gate (20 resolved, Tracker or above). Best
-  first; the contrast is the weakest of those, shown only when its tier differs.
-  With none past the gate yet, the identity line reads "Calibrating" over the
-  dashed Guesser lens and the subline counts what's left ("12 more resolutions
-  until my calibration unlocks"). The text share follows the same rule.
+  name only categories past the count gate (20 scored, Tracker or above). Best
+  first, every one at that tier ("Forecaster in health and money", D54); the
+  contrast is the weakest of those, shown only when its tier differs. With none
+  past the gate yet, the identity line reads "Calibrating" over the dashed Guesser
+  lens and the subline counts what's left ("12 more scored answers until my
+  calibration unlocks"); once the rating is unlocked it leads instead ("Calibration
+  89/100", the subline then "Give or take 3, from 148 scored answers"). The text
+  share follows the same rule and says the score once.
 - **Day-0 card:** the Warmup's counts as an invitation, so Share is never empty
   (D18 (5), step 101): "5 of 10 right" · "I was 77% sure. How sure are you?" ·
   "10 questions. Real predictions next." No lean ("I run hot" was as much luck as
@@ -701,7 +705,7 @@ third row) → **honest timeline** → **one** CTA.
   filled "+" (`LogButton`, a 32pt `action` disc in a 44pt target) sits at the
   trailing end of the title bar on Today, Insights and History (D21, step 114), and
   opens Log as a full-height sheet with its title ("New prediction") and the round ×.
-  It floated above the tab bar until 2026-10-09 and sat over "Resolve all", card text
+  It floated above the tab bar until 2026-10-09 and sat over "Answer all", card text
   and the chart's top-right corner; in the header nothing is ever under it. A typed,
   unsaved prediction asks before a swipe or the × discards it (Discard prediction /
   Keep editing).
@@ -720,7 +724,7 @@ repeats the title bar's "+" (D3, D21) on purpose: in words, for someone who hasn
 learned the symbol yet, and only until there's something to list. History had none until step 69: before
 anything resolves it says when the first answer comes ("The first one comes due Tue,
 Oct 13.") and offers **Resolve it now** (one ready), **Resolve the first one** (two),
-**Resolve all N** (three or more, Home's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
+**Answer all N** (three or more, Home's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
 filters are its way forward.
 
 ### 7.9 Copy and tone
@@ -792,7 +796,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   says what it does, "Change to: it didn't happen" (or "it happened"), and switches
   the answer in place, keeping the reflection typed so far. It used to put the
   prediction back to open, one tap from "Can't tell", which parked a miss.
-- Presented as a medium-detent sheet (§7.7). "Already resolved" and "not found" states
+- Presented as a medium-detent sheet (§7.7). "Already answered" and "not found" states
   follow §7.8.
 - **Opened from a prediction that isn't due yet**, it goes through the details sheet
   first (§7.23): Resolve is for the evening it comes due, and two testers landed on
@@ -813,7 +817,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   Done. It saves any reflection, closes the sheet and opens Log with the title,
   category and lead time carried over, and the confidence empty: a fresh call, never
   the old number. Not offered inside a run.
-- **A run** (three or more ready; roadmap step 18): Home's primary **Resolve all N**
+- **A run** (three or more ready; roadmap step 18): Home's primary **Answer all N**
   opens the same sheet with "2 of 5" and a thin brand progress bar above one prompt
   at a time. After an answer the finishing button reads **Next** (**Finish** on the
   last) and the reflection waits behind "Add a reflection"; Skip moves on at once.
@@ -831,22 +835,22 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   card per prediction, the generic card kit.
 - **Layout:** the title (`body`, up to 3 lines, 6 above a 1.15 text scale); under it the category symbol and
   "Health, due Fri 3 Oct" (`footnote`, `textSecondary`); then the status ("Happened",
-  "Ready to resolve") in semibold ink with its glyph, when there is one to say. On the
+  "Ready to answer") in semibold ink with its glyph, when there is one to say. On the
   right, the stated confidence in its own column: "70%" in `headline` (tabular) over a
   44pt 0–100 scale, an `emphasis` track with an ink tick where the number sits, so a
   list reads at a glance for where its calls sit, as the chart does. No ALL-CAPS, no
   hue on the confidence, no dot between the parts. The date holds together with
   no-break spaces (roadmap step 52).
 - **Section headers** (`SectionHeader`): the title in `headline` ink and the count at
-  the right edge in tabular `subhead`, never "Title · N". Under a "Ready to resolve"
+  the right edge in tabular `subhead`, never "Title · N". Under a "Ready to answer"
   header the rows don't repeat it (`showReady={false}`); the row's accessible sentence
   still says it.
 - **Due and past-due are neutral.** A prediction coming due is not a lapse. Group the
-  Today list by date ("Ready to resolve", "Next 7 days", "Later"; it said "This week"
+  Today list by date ("Ready to answer", "Next 7 days", "Later"; it said "This week"
   until roadmap step 67, which put next Tuesday in this week) and let the group
   header carry the state. No amber, no "Overdue" label, no warning colour.
 - **Order** (D22, step 115): the score or its progress; then, when anything is
-  ready, "Ready to resolve" with **Resolve all N**; then the streak row, the
+  ready, "Ready to answer" with **Answer all N**; then the streak row, the
   reminder card and today's practice; then "Next 7 days" and "Later". With nothing
   ready the daily rows follow the score directly. They used to come first and push
   the one thing on Today that asks for a tap about a screen down.
@@ -947,7 +951,7 @@ Sources: HIG Generative AI (updated 2026-06), Google PAIR Explainability + Trust
 Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 
 - **Lead with the receipt.** Each card: the `evidence` number in `title2` Rounded, what
-  it counts in `footnote` ("in your 80–100% range · 12 resolved"), then the message
+  it counts in `footnote` ("in your 80–100% range · 12 scored"), then the message
   (`body`), then the suggestion (`callout`, `textSecondary`). The number is already
   validated against the input; showing it lets the user check the Coach against the
   chart above it, which is the calibrated trust PAIR asks for.
@@ -964,7 +968,7 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 ### 7.14 Wrapped
 
 - **Weekly** is built from what is true at small n, because a week almost never reaches
-  20 resolutions and the verdict stays gated: (1) counts: "4 resolved · 3 logged",
+  20 resolutions and the verdict stays gated: (1) counts: "4 scored · 3 logged",
   and under the big count, **what happened against what the
   user's own numbers expected**: "6 happened. You expected about 4." (roadmap step
   48; the sum of stated confidences comes from the engine). It replaced "86% came
@@ -1049,7 +1053,7 @@ own n, and a row below its threshold shows counts, never a score.
 - **By how far ahead** (roadmap step 21): rows for *Next day or sooner* (0–1 local
   days from logging to due), *Within a week* (2–7), *Within a month* (8–31) and
   *Further out*; empty horizons are left out. Score and direction from 15 resolved
-  (`MIN_N_CATEGORY`), "N resolved · too few to score" below it, like a category.
+  (`MIN_N_CATEGORY`), "N scored answers · too few for a score" below it, like a category.
 - Labels that contain numbers or small words don't use `textTransform:
   'capitalize'` (it produced "Range You Use"); capitalise the string instead.
 

@@ -49,7 +49,7 @@ export const PLUS_FEATURES: readonly string[] = [
  * tomorrow.
  */
 export const FREE_FOREVER_NOTE =
-  'Logging, resolving, your score, the curve, badges, streaks, full history, ' +
+  'Logging, answering, your score, the curve, badges, streaks, full history, ' +
   'and every share card stay free forever. Plus adds interpretation, not access.';
 
 const TRIAL_UNIT_NOUN: Record<TrialUnit, string> = {

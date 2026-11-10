@@ -10,7 +10,7 @@ import type { BucketStat } from '@/types';
  */
 export function describeCalibrationCurve(buckets: readonly BucketStat[]): string {
   if (buckets.length === 0) {
-    return 'Calibration curve. No resolved predictions yet.';
+    return 'Calibration curve. No scored answers yet.';
   }
   const ranges = [...buckets]
     .sort((a, b) => a.low - b.low)

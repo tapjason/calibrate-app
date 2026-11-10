@@ -100,7 +100,7 @@ describe('ShareCardPanel', () => {
     render(<ShareCardPanel />);
 
     expect(
-      screen.getByText('Calibration 88/100 from 55 resolved predictions'),
+      screen.getByText('Calibration 88/100 from 55 scored answers'),
     ).toBeTruthy();
   });
 
@@ -111,7 +111,7 @@ describe('ShareCardPanel', () => {
     render(<ShareCardPanel />);
 
     expect(
-      screen.getByText('Calibration 88/100, give or take 4, from 55 resolved predictions'),
+      screen.getByText('Calibration 88/100, give or take 4, from 55 scored answers'),
     ).toBeTruthy();
   });
 
@@ -125,7 +125,7 @@ describe('ShareCardPanel', () => {
     render(<ShareCardPanel />);
 
     expect(
-      screen.getByText('12 more resolutions until my calibration unlocks'),
+      screen.getByText('12 more scored answers until my calibration unlocks'),
     ).toBeTruthy();
     expect(screen.queryByText(/Calibration 88/)).toBeNull();
   });

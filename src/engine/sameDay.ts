@@ -51,7 +51,7 @@ export function isSameDayAnswer(p: Prediction): boolean {
   return localDayNumber(answered) === localDayNumber(logged);
 }
 
-/** The answered predictions that are scored: all but same-day answers. */
+/** The scored answers that are scored: all but same-day answers. */
 export function scoredOnly(resolved: readonly Prediction[]): Prediction[] {
   return resolved.filter((p) => !isSameDayAnswer(p));
 }

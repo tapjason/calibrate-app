@@ -40,7 +40,7 @@ export const REMINDER_ACTIONS: {
   },
 ];
 
-export const REMINDER_PLACEHOLDER = 'A prediction is ready to resolve';
+export const REMINDER_PLACEHOLDER = 'A prediction is ready to answer';
 export const DIGEST_PLACEHOLDER = 'Weekly check-in';
 
 export const REMINDER_TITLE = 'Did it happen';

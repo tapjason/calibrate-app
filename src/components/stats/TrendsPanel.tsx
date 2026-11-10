@@ -77,7 +77,7 @@ export function TrendsPanel({
 
       {!hasHistory ? (
         <Text style={styles.muted} testID="trends-empty">
-          Resolve a few predictions and your month-by-month record shows up here.
+          Answer a few predictions and your month-by-month record shows up here.
         </Text>
       ) : (
         <>
@@ -146,8 +146,8 @@ function PeriodRow({ period }: { period: PeriodStat }) {
       <Text style={styles.rowLabel}>{formatMonth(period.period)}</Text>
       <Text style={styles.rowValue}>
         {period.provisional
-          ? `${period.resolved} resolved`
-          : `${Math.round(period.score)}, from ${period.resolved} resolved`}
+          ? `${period.resolved} scored`
+          : `${Math.round(period.score)}, from ${period.resolved} scored`}
       </Text>
     </View>
   );
@@ -163,7 +163,7 @@ function CategoryRow({ trend }: { trend: CategoryTrend }) {
         {/* A provisional category shows progress toward its threshold, never a
             score — the same rule the headline rating follows. */}
         {trend.provisional
-          ? `${trend.resolved} resolved, too few to score`
+          ? `${trend.resolved} scored answers, too few for a score`
           : `${Math.round(trend.score)}, ${trend.direction}`}
       </Text>
     </View>
@@ -187,7 +187,7 @@ function HorizonRow({ stat }: { stat: HorizonStat }) {
       <Text style={styles.rowLabelPlain}>{HORIZON_LABELS[stat.horizon]}</Text>
       <Text style={styles.rowValue}>
         {stat.provisional
-          ? `${stat.resolved} resolved, too few to score`
+          ? `${stat.resolved} scored answers, too few for a score`
           : `${Math.round(stat.score)}, ${stat.direction}`}
       </Text>
     </View>

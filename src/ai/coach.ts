@@ -95,7 +95,7 @@ export async function fetchCoachInsights(
     return { insights: [], safe: false, crisisTopic: scan.topic, ok: true };
   }
 
-  // 3. Nothing resolved means nothing to interpret. Skipping the call here
+  // 3. Nothing answered means nothing to interpret. Skipping the call here
   //    saves a round trip that could only ever return "keep logging".
   if (context.overall.total_resolved === 0) return empty();
 

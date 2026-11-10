@@ -1,7 +1,7 @@
 // Deterministic pattern derivations (L3). These are the ONLY source of the
 // numbers the Coach (Plus, L5) is allowed to talk about — per COACH_AGENT.md the
 // app computes every statistic and the model merely interprets it. Everything
-// here is a pure function over resolved predictions; nothing calls a model, and
+// here is a pure function over scored answers; nothing calls a model, and
 // the Coach never recomputes its own figures.
 //
 // Layer rule: engine — imports only from @/types and sibling engine files.
@@ -36,7 +36,7 @@ export interface DayOfWeekStat {
 }
 
 /**
- * Per-weekday breakdown of resolved predictions, keyed by the LOCAL weekday of
+ * Per-weekday breakdown of scored answers, keyed by the LOCAL weekday of
  * `resolved_at`. Only weekdays with at least one yes/no resolution appear, and
  * the result is sorted Sunday→Saturday. Local, because this becomes a sentence
  * the Coach says to the user about "your Mondays" — in UTC, a US user's

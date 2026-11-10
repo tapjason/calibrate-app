@@ -187,7 +187,7 @@ export function computeRatingRange(resolved: readonly Prediction[]): RatingRange
 }
 
 /**
- * Score a set of resolved predictions. Thin adapter over
+ * Score a set of scored answers. Thin adapter over
  * computeCalibrationPoints: keep only yes/no outcomes and reduce each to a
  * {confidence, yes} point.
  */
@@ -245,14 +245,14 @@ export function computeBrierBaseline(
 
 /**
  * Overall rating is provisional (must not be shown as a headline number) until
- * the user has at least MIN_N_OVERALL resolved predictions. Below that, a
+ * the user has at least MIN_N_OVERALL scored answers. Below that, a
  * bucket's actual_rate is too coarse to trust.
  */
 export const isRatingProvisional = (totalResolved: number): boolean =>
   totalResolved < MIN_N_OVERALL;
 
 /**
- * A category score is provisional until MIN_N_CATEGORY resolved predictions in
+ * A category score is provisional until MIN_N_CATEGORY scored answers in
  * that category. While provisional, no badge above `tracker` may be awarded —
  * which the resolution gates in evaluateBadge already enforce, since every
  * badge above tracker requires ≥20 ≥ MIN_N_CATEGORY resolved.

@@ -25,7 +25,7 @@ interface PredictionCardProps {
   /** Defaults to a row on its own. */
   position?: RowPosition;
   /**
-   * False under a "Ready to resolve" header, which already says it: the row
+   * False under a "Ready to answer" header, which already says it: the row
    * doesn't repeat it ten times down the list.
    */
   showReady?: boolean;
@@ -65,7 +65,7 @@ function statusLabel(prediction: Prediction, now: Date): string {
     case 'skipped':
       return "Can't tell, not scored";
     case 'pending':
-      return isReadyToResolve(prediction, now) ? 'Ready to resolve' : 'Open';
+      return isReadyToResolve(prediction, now) ? 'Ready to answer' : 'Open';
   }
 }
 
@@ -88,7 +88,7 @@ export function PredictionCard({
   const status = statusLabel(prediction, new Date());
   // A resolved row dates itself by when it was answered, not when it was due.
   const answered = prediction.status !== 'pending' && prediction.resolved_at;
-  const when = answered ? `resolved ${formatDue(answered)}` : `due ${due}`;
+  const when = answered ? `answered ${formatDue(answered)}` : `due ${due}`;
   // Outcome glyphs in neutral ink, filled vs hollow — never green/red
   // (DESIGN_SYSTEM §2.4). The word beside them carries the meaning.
   const glyph =
@@ -102,8 +102,8 @@ export function PredictionCard({
   const reflection =
     prediction.status !== 'pending' ? prediction.reflection?.trim() || null : null;
   // "Open" is the default state and the list's group header already says
-  // when it's due; "Ready to resolve" is dropped under a header saying so.
-  const showStatus = status !== 'Open' && (showReady || status !== 'Ready to resolve');
+  // when it's due; "Ready to answer" is dropped under a header saying so.
+  const showStatus = status !== 'Open' && (showReady || status !== 'Ready to answer');
   const confidence = Math.max(0, Math.min(100, prediction.confidence));
 
   return (

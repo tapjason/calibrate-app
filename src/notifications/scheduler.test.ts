@@ -738,7 +738,7 @@ describe('scheduler: hidden-preview placeholder', () => {
           options: { opensAppToForeground: true },
         },
       ],
-      { previewPlaceholder: 'A prediction is ready to resolve' },
+      { previewPlaceholder: 'A prediction is ready to answer' },
     );
 
     await usePredictionStore.getState().create({

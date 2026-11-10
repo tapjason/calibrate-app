@@ -306,7 +306,7 @@ async function schedule(p: Prediction): Promise<void> {
   }
   // A due time already past would fire the moment it's scheduled, which is
   // what a launch-time backfill of overdue predictions would otherwise do.
-  // They're on Home's "Ready to resolve" list already.
+  // They're on Home's "Ready to answer" list already.
   if (fireDate.getTime() <= Date.now()) return;
   try {
     const id = await deps.notifications.scheduleNotificationAsync({

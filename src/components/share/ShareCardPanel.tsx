@@ -89,7 +89,7 @@ export function ShareCardPanel({
       <EmptyState
         testID="share-empty"
         symbol={{ sf: 'square.and.arrow.up', fallback: 'share-outline' }}
-        message="Take the 60-second warm-up for your first card, or resolve a prediction and your category card appears here."
+        message="Take the 60-second warm-up for your first card, or answer a prediction and your category card appears here."
         actionLabel={onTakeWarmup ? 'Take the warm-up' : undefined}
         onAction={onTakeWarmup}
       />

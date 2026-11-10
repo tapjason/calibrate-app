@@ -97,7 +97,7 @@ describe('detectMilestone', () => {
     });
   });
 
-  // Reaching 20 resolved with a score above 70 skips Tracker; the flip has to
+  // Reaching 20 answered with a score above 70 skips Tracker; the flip has to
   // start from the tier the user actually had.
   it('reports the tier it came from when a jump skips a rung', () => {
     const m = detectMilestone(

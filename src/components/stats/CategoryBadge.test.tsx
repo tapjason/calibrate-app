@@ -51,7 +51,7 @@ describe('CategoryBadge', () => {
     const view = render(
       <CategoryBadge stat={stat({ predictions_resolved: 8 })} next={next} />,
     );
-    expect(view.getByText('12 more resolved to reach Tracker')).toBeTruthy();
+    expect(view.getByText('12 more scored answers to reach Tracker')).toBeTruthy();
   });
 
   it('shows the score target when the next badge gates on score', () => {
@@ -69,7 +69,7 @@ describe('CategoryBadge', () => {
     expect(view.getByText('Score above 70 at its low end to reach Forecaster')).toBeTruthy();
   });
 
-  // Roadmap step 47: a Forecaster at 30 resolved with a score of 80 needs
+  // Roadmap step 47: a Forecaster at 30 answered with a score of 80 needs
   // both for Sharp; the count alone promised a badge resolving can't earn.
   it('names the score as well when both requirements are short', () => {
     const next: NextBadgeTarget = { badge: 'sharp', needResolved: 50, needScore: 85 };
@@ -84,9 +84,9 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('20 more resolved and a score above 85 at its low end to reach Sharp')).toBeTruthy();
+    expect(view.getByText('20 more scored answers and a score above 85 at its low end to reach Sharp')).toBeTruthy();
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
-      'Health: Forecaster, score 80 from 30 resolved. 20 more resolved and a score above 85 at its low end to reach Sharp.',
+      'Health: Forecaster, score 80 from 30 scored. 20 more scored answers and a score above 85 at its low end to reach Sharp.',
     );
   });
 
@@ -98,7 +98,7 @@ describe('CategoryBadge', () => {
         next={{ badge: 'oracle', needResolved: 100, needScore: 90 }}
       />,
     );
-    expect(view.getByTestId('category-health-score')).toHaveTextContent('Score 87, 52 resolved');
+    expect(view.getByTestId('category-health-score')).toHaveTextContent('Score 87, 52 scored');
   });
 
   it('shows no score while it is provisional', () => {
@@ -120,7 +120,7 @@ describe('CategoryBadge', () => {
         next={next}
       />,
     );
-    expect(view.getByText('20 more resolved to reach Sharp')).toBeTruthy();
+    expect(view.getByText('20 more scored answers to reach Sharp')).toBeTruthy();
   });
 
   it('celebrates when there is no next badge (top of the ladder)', () => {
@@ -130,7 +130,7 @@ describe('CategoryBadge', () => {
         next={null}
       />,
     );
-    expect(view.getByText('120 resolved, top badge reached')).toBeTruthy();
+    expect(view.getByText('120 scored, top badge reached')).toBeTruthy();
   });
 });
 
@@ -140,14 +140,14 @@ describe('CategoryBadge — screen readers', () => {
     const next: NextBadgeTarget = { badge: 'tracker', needResolved: 20, needScore: null };
     const view = render(<CategoryBadge stat={stat({ predictions_resolved: 17 })} next={next} />);
     expect(view.getByTestId('category-health').props.accessibilityLabel).toBe(
-      'Health: Getting started. 3 more resolved to reach Tracker.',
+      'Health: Getting started. 3 more scored answers to reach Tracker.',
     );
   });
 
   // Roadmap D33: the hint is written in words, so it is spoken as written.
   it('speaks the hint as written', () => {
     expect(spokenHint('Score above 70 at its low end to reach Forecaster')).toBe('Score above 70 at its low end to reach Forecaster');
-    expect(spokenHint('120 resolved, top badge reached')).toBe('120 resolved, top badge reached');
+    expect(spokenHint('120 scored, top badge reached')).toBe('120 scored, top badge reached');
   });
 });
 
@@ -163,10 +163,10 @@ describe('CategoryBadge with a give-or-take', () => {
       />,
     );
     expect(view.getByTestId('category-health-score')).toHaveTextContent(
-      'Score 93, give or take 6, from 17 resolved',
+      'Score 93, give or take 6, from 17 scored',
     );
     expect(view.getByTestId('category-health').props.accessibilityLabel).toMatch(
-      /score 93 give or take 6 from 17 resolved/,
+      /score 93 give or take 6 from 17 scored/,
     );
   });
 

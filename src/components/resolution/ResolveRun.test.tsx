@@ -156,7 +156,7 @@ describe('ResolveRun (roadmap step 18)', () => {
     render(<ResolveRun onClose={jest.fn()} />);
     // Nothing answered here: no moment for a rating ask.
     expect(useRatingStore.getState().moment).toBe(false);
-    expect(screen.getByText('Nothing is ready to resolve right now.')).toBeTruthy();
+    expect(screen.getByText('Nothing is ready to answer right now.')).toBeTruthy();
     expect(screen.queryByTestId('resolve-run-summary')).toBeNull();
     expect(screen.queryByTestId('resolve-run-streak')).toBeNull();
   });

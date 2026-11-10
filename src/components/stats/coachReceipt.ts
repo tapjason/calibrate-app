@@ -26,9 +26,9 @@ export function coachReceipt(source: CoachEvidenceSource): CoachReceipt | null {
     case 'calibration_rating':
       return { figure: String(round), label: 'your calibration rating' };
     case 'total_resolved':
-      return { figure: String(round), label: 'resolved in total' };
+      return { figure: String(round), label: 'scored in total' };
     case 'resolved':
-      return { figure: String(round), label: `resolved in ${scope}` };
+      return { figure: String(round), label: `scored in ${scope}` };
     case 'calibration_score':
       return { figure: String(round), label: `your ${scope} score` };
     case 'mean_stated_confidence':

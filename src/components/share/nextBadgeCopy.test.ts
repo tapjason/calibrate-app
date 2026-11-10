@@ -44,11 +44,11 @@ describe('nextBadgeProgress', () => {
     });
   });
 
-  // Roadmap step 47: Forecaster → Sharp needs 50 resolved and a score above
+  // Roadmap step 47: Forecaster → Sharp needs 50 answered and a score above
   // 85; with both short, the count alone over-promised.
   it('names the score threshold too when both requirements are short', () => {
     expect(progressFor([stat('work', 30, 80)])?.text).toBe(
-      'To reach Sharp in work: 20 more resolved and a score above 85 at its low end',
+      'To reach Sharp in work: 20 more scored answers and a score above 85 at its low end',
     );
     expect(progressFor([stat('work', 30, 92)])?.text).toBe('Sharp in work: 20 to go');
   });

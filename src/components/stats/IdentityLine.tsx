@@ -59,7 +59,9 @@ export function IdentityLine({ userStat, categoryStats, onPress }: IdentityLineP
       testID="home-identity"
     >
       <View style={styles.row}>
-        <LensEmblem tier={line.badge} size={30} />
+        <View style={styles.emblem}>
+          <LensEmblem tier={line.badge} size={30} />
+        </View>
         <Text style={styles.identity}>{line.identity}</Text>
       </View>
       {line.contrast && <Text style={styles.contrast}>{line.contrast}</Text>}
@@ -74,7 +76,9 @@ const EMBLEM = 30;
 const styles = StyleSheet.create({
   wrap: { alignItems: 'flex-start', gap: space.xs, minHeight: 44 },
   pressed: { opacity: 0.6 },
-  row: { alignItems: 'center', flexDirection: 'row', gap: space.md },
+  // On the first line, not centred on a headline that wraps (review, 2026-11-09).
+  row: { alignItems: 'flex-start', flexDirection: 'row', gap: space.md },
+  emblem: { marginTop: 2 },
   identity: { ...type.title1, color: colors.textPrimary, flexShrink: 1, letterSpacing: -0.4 },
   contrast: { ...type.callout, color: colors.textSecondary, marginLeft: EMBLEM + space.md },
 });

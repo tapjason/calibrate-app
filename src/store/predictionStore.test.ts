@@ -171,7 +171,7 @@ describe('predictionStore.resolve (L4 gate)', () => {
         due_date: '2026-06-01T00:00:00.000Z',
       }));
 
-    // 10 predictions at confidence 90, 5 resolved yes → overconfident bucket
+    // 10 predictions at confidence 90, 5 answered yes → overconfident bucket
     const created = await Promise.all(
       Array.from({ length: 10 }, () => create({ confidence: 90 })),
     );

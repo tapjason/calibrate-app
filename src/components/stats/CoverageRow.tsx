@@ -72,7 +72,7 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
                 testID={`coverage-${low}`}
                 onPress={() => onSelectRange(low)}
                 accessibilityRole="button"
-                accessibilityLabel={`${label}: ${n} resolved. Show them.`}
+                accessibilityLabel={`${label}: ${n} scored. Show them.`}
                 style={({ pressed }) => [
                   styles.cell,
                   { flexBasis: cellFloor },
@@ -90,7 +90,7 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
               testID={`coverage-${low}`}
               style={[styles.cell, { flexBasis: cellFloor }, n === 0 && styles.empty]}
               accessible
-              accessibilityLabel={`${label}: ${n === 0 ? 'none yet' : `${n} resolved`}`}
+              accessibilityLabel={`${label}: ${n === 0 ? 'none yet' : `${n} scored`}`}
             >
               {content}
             </View>

@@ -146,7 +146,7 @@ export function CoachPanel({
 
           {insights.length === 0 && lastAnsweredAt && !failed && (
             <Text style={styles.muted} testID="coach-nothing-to-say">
-              Nothing worth flagging yet — keep logging and resolving.
+              Nothing worth flagging yet — keep logging and answering.
             </Text>
           )}
 

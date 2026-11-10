@@ -81,16 +81,16 @@ describe('filterHistory', () => {
 describe('emptyHistoryMessage', () => {
   it('says what is missing, in words', () => {
     expect(emptyHistoryMessage({ category: 'all', range: null })).toBe(
-      'Resolved predictions collect here, with how each one turned out.',
+      'Answered predictions collect here, with how each one turned out.',
     );
     expect(emptyHistoryMessage({ category: 'finance', range: null })).toBe(
-      'Nothing resolved in finance yet.',
+      'Nothing answered in finance yet.',
     );
     expect(emptyHistoryMessage({ category: 'all', range: 0 })).toBe(
-      'Nothing resolved at 0–20% yet.',
+      'Nothing answered at 0–20% yet.',
     );
     expect(emptyHistoryMessage({ category: 'social', range: 80 })).toBe(
-      'Nothing resolved in social at 80–100% yet.',
+      'Nothing answered in social at 80–100% yet.',
     );
   });
 
@@ -108,7 +108,7 @@ describe('firstHistoryCopy', () => {
 
   it('offers a first prediction when nothing is open', () => {
     expect(firstHistoryCopy([], now)).toEqual({
-      message: 'Resolved predictions collect here, with how each one turned out.',
+      message: 'Answered predictions collect here, with how each one turned out.',
       action: { kind: 'log', label: 'Log a prediction' },
     });
   });
@@ -116,7 +116,7 @@ describe('firstHistoryCopy', () => {
   it('dates the first answer, and offers another prediction meanwhile', () => {
     const copy = firstHistoryCopy([open('2026-09-15', 'a')], now);
     expect(copy.message).toMatch(
-      /^Resolved predictions collect here, with how each one turned out\. The first one comes due /,
+      /^Answered predictions collect here, with how each one turned out\. The first one comes due /,
     );
     expect(copy.action).toEqual({ kind: 'log', label: 'Log a prediction' });
   });
@@ -124,19 +124,19 @@ describe('firstHistoryCopy', () => {
   it('opens the one that is ready, or all of them from as many as Home runs', () => {
     expect(firstHistoryCopy([open('2026-09-09', 'a'), open('2026-09-20', 'b')], now)).toEqual({
       message:
-        'Resolved predictions collect here, with how each one turned out. One is ready to resolve now.',
-      action: { kind: 'resolve', label: 'Resolve it now', id: 'a' },
+        'Answered predictions collect here, with how each one turned out. One is ready to answer now.',
+      action: { kind: 'resolve', label: 'Answer it now', id: 'a' },
     });
     // Two ready: Home shows two cards and no run, so History opens the soonest.
     expect(
       firstHistoryCopy([open('2026-09-09', 'a'), open('2026-09-08', 'b')], now).action,
-    ).toEqual({ kind: 'resolve', label: 'Resolve the first one', id: 'b' });
+    ).toEqual({ kind: 'resolve', label: 'Answer the first one', id: 'b' });
     expect(
       firstHistoryCopy(
         [open('2026-09-09', 'a'), open('2026-09-08', 'b'), open('2026-09-07', 'c')],
         now,
       ).action,
-    ).toEqual({ kind: 'run', label: 'Resolve all 3' });
+    ).toEqual({ kind: 'run', label: 'Answer all 3' });
   });
 });
 

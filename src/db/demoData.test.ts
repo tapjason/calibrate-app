@@ -70,7 +70,7 @@ describe('buildDemoPredictions', () => {
     expect(computeStreak([...resolved, ...pending], { now: NOW })).toBeGreaterThanOrEqual(12);
   });
 
-  it('leaves some open predictions, including ones ready to resolve', () => {
+  it('leaves some open predictions, including ones ready to answer', () => {
     expect(pending.length).toBeGreaterThanOrEqual(4);
     expect(pending.some((p) => Date.parse(p.due_date) < NOW.getTime())).toBe(true);
   });

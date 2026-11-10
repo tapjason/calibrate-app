@@ -49,7 +49,7 @@ export function UnlockProgress({
   const toGo = total - done;
 
   const summary = [
-    `${done} of ${total} resolved`,
+    `${done} of ${total} scored`,
     onTheWay > 0 ? `${onTheWay} on ${onTheWay === 1 ? 'its' : 'their'} way` : null,
   ]
     .filter(Boolean)
@@ -83,7 +83,7 @@ export function UnlockProgress({
       </View>
       <Text style={styles.summary}>{summary}</Text>
       <Text style={styles.caption}>
-        {toGo} more {toGo === 1 ? 'resolution' : 'resolutions'} and your score unlocks.
+        {toGo} more scored {toGo === 1 ? 'answer' : 'answers'} and your score unlocks.
         {nextDue ? ` ${nextDue}` : ''}
       </Text>
       {estimate && (

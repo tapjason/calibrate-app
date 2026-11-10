@@ -64,7 +64,7 @@ describe('statsStore.recomputeForUser', () => {
     expect(userStat).not.toBeNull();
     expect(userStat?.total_predictions).toBe(3);
     expect(userStat?.total_resolved).toBe(2);
-    // 2 resolved is far below MIN_N_OVERALL (20) → rating stays provisional.
+    // 2 answered is far below MIN_N_OVERALL (20) → rating stays provisional.
     expect(userStat?.rating_is_provisional).toBe(true);
 
     const work = categoryStats.find((s) => s.category === 'work');
@@ -110,10 +110,10 @@ describe('statsStore.recomputeForUser', () => {
   });
 
   it('assigns badge levels according to the calibration table', async () => {
-    // 25 resolved predictions in work, all confidence 100 + resolved_yes
-    // → perfect calibration → score = 100. Sharp requires ≥50 resolved and
+    // 25 scored answers in work, all confidence 100 + resolved_yes
+    // → perfect calibration → score = 100. Sharp requires ≥50 answered and
     // oracle ≥100, so 25 resolutions caps the badge at 'forecaster' (score >70
-    // AND ≥20 resolved). 25 ≥ MIN_N_CATEGORY (15) so the score is not provisional.
+    // AND ≥20 answered). 25 ≥ MIN_N_CATEGORY (15) so the score is not provisional.
     for (let i = 0; i < 25; i++) {
       await insertPrediction(
         p({ id: `w${i}`, category: 'work', confidence: 100 }),

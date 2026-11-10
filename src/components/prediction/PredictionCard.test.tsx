@@ -49,7 +49,7 @@ describe('PredictionCard', () => {
       month: 'short',
     }).replace(/ /g, '\u00A0');
     expect(screen.getByRole('button').props.accessibilityLabel).toBe(
-      `I ship the report by Friday. Work, 70% confident, resolved ${resolved}. Happened.`,
+      `I ship the report by Friday. Work, 70% confident, answered ${resolved}. Happened.`,
     );
   });
 
@@ -89,7 +89,7 @@ describe('PredictionCard', () => {
         }}
       />,
     );
-    expect(screen.getByText('Ready to resolve')).toBeTruthy();
+    expect(screen.getByText('Ready to answer')).toBeTruthy();
     expect(screen.queryByText(/overdue/i)).toBeNull();
   });
 
@@ -98,8 +98,8 @@ describe('PredictionCard', () => {
     render(<PredictionCard prediction={prediction} />);
     // "work," and "resolved Fri 9 Jan" are sibling Texts, so a long name can
     // give way and the date moves under it (playtest 2026-11-08).
-    const meta = screen.getByText(/^resolved /);
-    const date = String([].concat(meta.props.children).join('')).replace(/^resolved /, '');
+    const meta = screen.getByText(/^answered /);
+    const date = String([].concat(meta.props.children).join('')).replace(/^answered /, '');
     expect(date).not.toMatch(/ /);
     expect(date).toMatch(/\u00A0/);
   });
@@ -150,14 +150,14 @@ describe('PredictionCard — as a row in a group', () => {
     expect(rowPosition(2, 3)).toBe('last');
   });
 
-  it('leaves "Ready to resolve" to a header that already says it', () => {
+  it('leaves "Ready to answer" to a header that already says it', () => {
     const due = { ...prediction, status: 'pending' as const, resolved_at: null, due_date: '2020-01-01T12:00:00.000Z' };
     const { rerender } = render(<PredictionCard prediction={due} showReady={false} onPress={jest.fn()} />);
-    expect(screen.queryByText('Ready to resolve')).toBeNull();
+    expect(screen.queryByText('Ready to answer')).toBeNull();
     // Still said to a screen reader, which hears the row alone.
-    expect(screen.getByRole('button').props.accessibilityLabel).toMatch(/Ready to resolve.$/);
+    expect(screen.getByRole('button').props.accessibilityLabel).toMatch(/Ready to answer.$/);
     rerender(<PredictionCard prediction={due} />);
-    expect(screen.getByText('Ready to resolve')).toBeTruthy();
+    expect(screen.getByText('Ready to answer')).toBeTruthy();
   });
 
   it('draws the stated confidence as a number over a 0–100 scale', () => {

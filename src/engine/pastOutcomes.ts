@@ -45,7 +45,7 @@ export function titleKey(title: string): string {
 }
 
 /**
- * How the answered predictions titled like `title` came out, or null until
+ * How the scored answers titled like `title` came out, or null until
  * one has been answered yes or no. From the first one on: it's the person's
  * own record, not a score, so no minimum applies. A repeated prediction
  * ("Log it again") always matches the one it repeats.

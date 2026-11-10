@@ -26,7 +26,7 @@ const p = (overrides: Partial<Prediction> = {}): Prediction => ({
   ...overrides,
 });
 
-/** `total` resolved predictions at a fixed confidence, `yes` of them resolved_yes. */
+/** `total` scored answers at a fixed confidence, `yes` of them resolved_yes. */
 const bucketPreds = (confidence: number, total: number, yes: number): Prediction[] =>
   Array.from({ length: total }, (_, i) =>
     p({
@@ -167,27 +167,27 @@ describe('evaluateBadge', () => {
 
   it('never awards a badge above guesser on too few resolutions (min-N)', () => {
     // High score but under the resolution gates → capped at guesser/tracker.
-    expect(evaluateBadge(10, 100)).toBe('guesser'); // <20 resolved
+    expect(evaluateBadge(10, 100)).toBe('guesser'); // <20 answered
     expect(evaluateBadge(49, 100)).toBe('forecaster'); // ≥20 but <50 → not sharp
   });
 
-  it('returns tracker when ≥20 resolved but score ≤70', () => {
+  it('returns tracker when ≥20 answered but score ≤70', () => {
     expect(evaluateBadge(20, 0)).toBe('tracker');
     expect(evaluateBadge(30, 70)).toBe('tracker'); // 70 is not > 70
     expect(evaluateBadge(99, 70)).toBe('tracker');
   });
 
-  it('returns forecaster when score > 70 AND ≥20 resolved', () => {
+  it('returns forecaster when score > 70 AND ≥20 answered', () => {
     expect(evaluateBadge(20, 71)).toBe('forecaster');
-    expect(evaluateBadge(30, 86)).toBe('forecaster'); // score high, but <50 resolved
+    expect(evaluateBadge(30, 86)).toBe('forecaster'); // score high, but <50 answered
   });
 
-  it('returns sharp when score > 85 AND ≥50 resolved', () => {
+  it('returns sharp when score > 85 AND ≥50 answered', () => {
     expect(evaluateBadge(50, 86)).toBe('sharp');
-    expect(evaluateBadge(99, 95)).toBe('sharp'); // <100 resolved → not oracle
+    expect(evaluateBadge(99, 95)).toBe('sharp'); // <100 answered → not oracle
   });
 
-  it('returns oracle only when score > 90 AND ≥100 resolved', () => {
+  it('returns oracle only when score > 90 AND ≥100 answered', () => {
     expect(evaluateBadge(100, 91)).toBe('oracle');
     expect(evaluateBadge(500, 99)).toBe('oracle');
     expect(evaluateBadge(100, 90)).toBe('sharp'); // 90 is not > 90

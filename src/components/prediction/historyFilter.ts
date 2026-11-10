@@ -85,7 +85,7 @@ export function historySummary(rows: readonly Prediction[]): string {
 /** One sentence for an empty filtered list: what's missing, in plain words. */
 export function emptyHistoryMessage({ category, range }: HistoryFilter): string {
   if (category === 'all' && range === null) {
-    return 'Resolved predictions collect here, with how each one turned out.';
+    return 'Answered predictions collect here, with how each one turned out.';
   }
   const where = [
     category === 'all' ? null : `in ${categoryLabel(category)}`,
@@ -93,7 +93,7 @@ export function emptyHistoryMessage({ category, range }: HistoryFilter): string 
   ]
     .filter(Boolean)
     .join(' ');
-  return `Nothing resolved ${where} yet.`;
+  return `Nothing answered ${where} yet.`;
 }
 
 /** Where an empty History's button goes (roadmap step 69). */
@@ -121,10 +121,10 @@ export function firstHistoryCopy(
   // A run from the same count as Home's, so one state never offers two
   // flows; below it, the soonest opens on its own, as a tap on Home would.
   if (ready.length >= RUN_THRESHOLD) {
-    return { message, action: { kind: 'run', label: `Resolve all ${ready.length}` } };
+    return { message, action: { kind: 'run', label: `Answer all ${ready.length}` } };
   }
   if (ready.length > 0) {
-    const label = ready.length === 1 ? 'Resolve it now' : 'Resolve the first one';
+    const label = ready.length === 1 ? 'Answer it now' : 'Answer the first one';
     return { message, action: { kind: 'resolve', label, id: ready[0].id } };
   }
   return { message, action: { kind: 'log', label: 'Log a prediction' } };

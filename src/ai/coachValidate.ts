@@ -163,7 +163,7 @@ function matchesFor(evidence: number, values: readonly GroundedValue[]): Grounde
 /**
  * The one figure a grounded number refers to, or undefined when that can't be
  * told. A match in the insight's own category (or overall) wins over matches
- * elsewhere; if what's left is still more than one figure — 20 resolved and a
+ * elsewhere; if what's left is still more than one figure — 20 answered and a
  * score of 20, say — no source is claimed. This labels; it never decides
  * whether an insight is grounded.
  */

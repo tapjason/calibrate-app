@@ -64,16 +64,16 @@ const VERDICTS = {
 // tester as a contradiction. Both are true, over different spans.
 const WINDOW = { week: 'This week', year: 'This year' } as const;
 
-// "Resolved", not "came due": the week counts Yes and No answers given in it,
+// "Answered" (once "resolved"), not "came due": the week counts Yes and No answers given in it,
 // so "Nothing came due" was false after a Can't tell (record audit, 2026-11-09).
 const EMPTY_NOTE = {
-  week: 'Nothing resolved this week. Log a prediction and the story starts.',
-  year: 'Nothing resolved this year yet.',
+  week: 'Nothing scored this week. Log a prediction and the story starts.',
+  year: 'Nothing scored this year yet.',
 } as const;
 
 // With one already open, "Log a prediction" read as if it hadn't saved
 // (blind playtest 2026-11-09b, finding 10).
-const EMPTY_NOTE_WITH_OPEN = 'Nothing resolved this week.';
+const EMPTY_NOTE_WITH_OPEN = 'Nothing scored this week.';
 
 /** The user's all-time progress toward an unlocked rating, from UserStat. */
 export interface OverallProgress {
@@ -121,15 +121,15 @@ export function wrappedStory(
       allTime: null,
       receipt: null,
       provisionalNote: null,
-      note: `${upcoming === 1 ? 'It comes' : 'They come'} due in the next 7 days. This recap fills in as you resolve ${upcoming === 1 ? 'it' : 'them'}.`,
+      note: `${upcoming === 1 ? 'It comes' : 'They come'} due in the next 7 days. This recap fills in as you answer ${upcoming === 1 ? 'it' : 'them'}.`,
     };
   }
 
   if (resolved === 0) {
     return {
       title: TITLES[span],
-      stat: 'Nothing resolved yet',
-      statCount: 'Nothing resolved yet',
+      stat: 'Nothing scored yet',
+      statCount: 'Nothing scored yet',
       statRate: null,
       verdict: null,
       allTime: null,
@@ -150,9 +150,9 @@ export function wrappedStory(
   return {
     title: TITLES[span],
     stat: expected
-      ? `${localCount(resolved)} ${plural} resolved. ${expected}`
-      : `${localCount(resolved)} ${plural} resolved`,
-    statCount: `${localCount(resolved)} resolved`,
+      ? `${localCount(resolved)} ${plural} scored. ${expected}`
+      : `${localCount(resolved)} ${plural} scored`,
+    statCount: `${localCount(resolved)} scored`,
     statRate: expected,
     verdict,
     allTime: span === 'week' && verdict ? allTimeLine(overall) : null,
@@ -235,10 +235,10 @@ function provisionalLine(
   overall: OverallProgress | null | undefined,
 ): string {
   if (summary.span === 'year') {
-    return `${MIN_N_OVERALL - summary.resolved} more resolutions and this year earns a calibration read.`;
+    return `${MIN_N_OVERALL - summary.resolved} more scored answers and this year earns a calibration read.`;
   }
   if (overall?.provisional) {
-    return `${overall.resolved} of ${MIN_N_OVERALL} resolutions toward your first calibration score.`;
+    return `${overall.resolved} of ${MIN_N_OVERALL} scored answers toward your first calibration score.`;
   }
   return 'A week is too short for a verdict. Your all-time score has the full story.';
 }

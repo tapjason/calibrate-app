@@ -641,7 +641,7 @@ describe('ResolvePrompt — answering a skipped prediction later', () => {
     );
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => expect(screen.getByTestId('answered-details')).toBeTruthy());
-    expect(screen.queryByText('Already resolved')).toBeNull();
+    expect(screen.queryByText('Already answered')).toBeNull();
     expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It happened/);
     fireEvent.press(screen.getByTestId('answered-switch'));
     await waitFor(async () => expect((await getPrediction('p1'))?.status).toBe('resolved_no'));
@@ -685,7 +685,7 @@ describe('bucketLine', () => {
     ).toBe('In your 60–80% range, 1 of 2 has happened.');
   });
 
-  // Roadmap step 58: from 10 resolved, the range's said-against-happened.
+  // Roadmap step 58: from 10 answered, the range's said-against-happened.
   it('sets what happened against what was said once the range holds 10', () => {
     expect(
       bucketLine({
@@ -820,7 +820,7 @@ describe('ResolvePrompt streak checkpoints', () => {
   // that earned it. It used to give way to a score or badge milestone.
   it('names the checkpoint beside a milestone the same answer reached', async () => {
     await sixDaysThenToday();
-    // 19 resolved long ago: this answer is also the 20th, which unlocks the score.
+    // 19 answered long ago: this answer is also the 20th, which unlocks the score.
     for (let i = 0; i < 19; i++) {
       await insertPrediction(
         samplePending({

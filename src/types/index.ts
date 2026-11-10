@@ -17,19 +17,19 @@
 // import only from @/types) and the stores read the same source of truth.
 
 /**
- * Minimum resolved predictions before the overall rating stops being
+ * Minimum scored answers before the overall rating stops being
  * provisional. Below this, a bucket's actual_rate is too noisy to headline.
  */
 export const MIN_N_OVERALL = 20;
 
 /**
- * Minimum resolved predictions in a single category before its score stops
+ * Minimum scored answers in a single category before its score stops
  * being provisional and badges above `tracker` may be awarded.
  */
 export const MIN_N_CATEGORY = 15;
 
 /**
- * Minimum resolved predictions in one confidence band before anything is said
+ * Minimum scored answers in one confidence band before anything is said
  * about that band: the chart's verdict, the Log screen's track record, the
  * correction table. Ten is where a band's rate stops jumping in 10-point
  * steps; below it, counts only.
@@ -715,7 +715,7 @@ export interface PracticeRecord {
 
 // ---- Engine (L3) ----
 
-/** Compute calibration buckets and rolling score from resolved predictions. */
+/** Compute calibration buckets and rolling score from scored answers. */
 export type ComputeCalibration = (resolved: Prediction[]) => CalibrationResult;
 
 /**

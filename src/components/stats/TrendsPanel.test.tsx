@@ -141,7 +141,7 @@ describe('TrendsPanel — Plus', () => {
     render(<TrendsPanel />);
 
     const row = screen.getByTestId('trend-period-2026-07');
-    expect(row).toHaveTextContent(/1 resolved$/);
+    expect(row).toHaveTextContent(/1 scored$/);
     expect(row).not.toHaveTextContent('·');
   });
 
@@ -196,7 +196,7 @@ describe('TrendsPanel — Plus', () => {
       /^Next day or sooner\d+, calibrated$/,
     );
     expect(screen.getByTestId('trend-horizon-longer')).toHaveTextContent(
-      'Further out3 resolved, too few to score',
+      'Further out3 scored answers, too few for a score',
     );
     expect(screen.queryByTestId('trend-horizon-week')).toBeNull();
   });

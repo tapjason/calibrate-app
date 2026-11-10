@@ -9,7 +9,7 @@
 //                 as chance typically allows; small buckets get wide ranges.
 //
 //   bootstrapRange  For the overall rating (calibration.ts computeRatingRange):
-//                 resample the resolved predictions with replacement,
+//                 resample the scored answers with replacement,
 //                 re-score, and keep the middle 80% of the scores, so "92"
 //                 reads as "likely 88–95" with 145 resolved and as something
 //                 much wider with 20.

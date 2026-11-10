@@ -1,6 +1,6 @@
 // Long-range trend derivations (L3). The math behind the Plus analytics tier.
 //
-// Pure functions over resolved predictions — no I/O, no state, no store. Same
+// Pure functions over scored answers — no I/O, no state, no store. Same
 // rule as the rest of the engine: plain objects in, plain objects out, and the
 // screens read the result through a store rather than importing this.
 //
@@ -28,7 +28,7 @@ import {
  */
 export const MIN_N_PERIOD = 8;
 
-/** One month of resolved predictions. */
+/** One month of scored answers. */
 export interface PeriodStat {
   /** 'YYYY-MM', the device's local month — a resolution at 20:00 on Jan 31 is January's. */
   period: string;

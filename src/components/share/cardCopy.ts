@@ -93,7 +93,7 @@ export const UNGATED_IDENTITY = 'Calibrating';
  * line large, the contrast line smaller beneath it.
  *
  * Only categories past the count gate are named (roadmap D27, 2026-10-10):
- * Guesser means "fewer than 20 resolved here", and "Guesser in finance" after
+ * Guesser means "fewer than 20 scored here", and "Guesser in finance" after
  * five months read as a verdict. So the identity is the best gated category,
  * the contrast the weakest gated one when its tier differs, and with none
  * gated yet the identity is "Calibrating" and there's no contrast. Categories
@@ -103,13 +103,37 @@ export function shareLines(card: ShareCard): { identity: string; contrast: strin
   if (card.categories.length === 0) return { identity: '', contrast: null };
   const gated = card.categories.filter((c) => c.badge_level !== 'guesser');
   const [best] = gated;
-  if (!best) return { identity: UNGATED_IDENTITY, contrast: null };
+  // With no badge yet but the rating unlocked, the rating leads: "Calibrating"
+  // above "Calibration 89/100" read as a contradiction (blind playtest
+  // 2026-11-09b, finding 10; roadmap D54).
+  if (!best) {
+    return {
+      identity: card.rating !== null ? `Calibration ${card.rating}/100` : UNGATED_IDENTITY,
+      contrast: null,
+    };
+  }
   const label = (c: ShareCard['categories'][number]) =>
     `${BADGE_META[c.badge_level].label} in ${categoryLabel(c.category)}`;
+  // Every category at the top tier, not one picked by an unstated rule
+  // (finding 10): "Forecaster in health and money".
+  const top = gated.filter((c) => c.badge_level === best.badge_level).map((c) => categoryLabel(c.category));
+  const identity = `${BADGE_META[best.badge_level].label} in ${joinNames(top)}`;
   const worst = gated[gated.length - 1];
   const contrast =
     gated.length > 1 && worst.badge_level !== best.badge_level ? label(worst) : null;
-  return { identity: label(best), contrast };
+  return { identity, contrast };
+}
+
+/**
+ * "health", "health and money", "health and 2 more". Two names only when both
+ * are short: a person's own names run to 24 characters, and a long line made
+ * the card shrink to fit until its chips were unreadable (review, 2026-11-09).
+ */
+const SHORT_NAME = 12;
+function joinNames(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length === 2 && names.every((n) => n.length <= SHORT_NAME)) return `${names[0]} and ${names[1]}`;
+  return `${names[0]} and ${names.length - 1} more`;
 }
 
 /** The headline on one line, for the text share: "Sharp in health · Tracker in finance". */
@@ -125,12 +149,18 @@ export function shareHeadline(card: ShareCard): string {
 export function shareSubline(card: ShareCard): string {
   if (card.rating === null) {
     const remaining = Math.max(0, MIN_N_OVERALL - card.total_resolved);
-    return `${remaining} more ${remaining === 1 ? 'resolution' : 'resolutions'} until my calibration unlocks`;
+    return `${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'} until my calibration unlocks`;
   }
   // The give-or-take in Insights' words (D35): a card is the most public
   // number the app makes, so it carries the same honesty (decided 2026-11-03).
   const range = card.give_or_take ? `, give or take ${card.give_or_take},` : '';
-  return `Calibration ${card.rating}/100${range} from ${localCount(card.total_resolved)} resolved predictions`;
+  // The rating already leads as the identity (no badge yet): not twice.
+  if (!card.categories.some((c) => c.badge_level !== 'guesser')) {
+    return card.give_or_take
+      ? `Give or take ${card.give_or_take}, from ${localCount(card.total_resolved)} scored answers`
+      : `From ${localCount(card.total_resolved)} scored answers`;
+  }
+  return `Calibration ${card.rating}/100${range} from ${localCount(card.total_resolved)} scored answers`;
 }
 
 /**
@@ -200,9 +230,11 @@ export function shareText(
       return d ? SQUARE[d] : EMPTY_SQUARE;
     }).join('');
     const range = card.give_or_take ? `, give or take ${card.give_or_take}` : '';
-    lines.push(`${squares} score ${card.rating}${range}`);
+    // Not twice when the rating already leads (no badge yet, D54).
+    const leads = !card.categories.some((c) => c.badge_level !== 'guesser');
+    lines.push(leads ? `${squares}${card.give_or_take ? ` give or take ${card.give_or_take}` : ''}` : `${squares} score ${card.rating}${range}`);
   } else {
-    lines.push(`${card.total_resolved} predictions resolved so far`);
+    lines.push(`${card.total_resolved} answers scored so far`);
   }
   const hidden = hiddenLine(card);
   if (hidden) lines.push(hidden);

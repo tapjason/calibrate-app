@@ -4,22 +4,25 @@
 
 ## What this PR did
 
-Branch `builder/before-the-score`, from `builder/miss-and-return` (step 163). Step 164: the owner's "Yes, estimate" on the tenth round's finding 2, recorded as D53. JS only.
+A stack of four branches, each from the one before, none pushed: `builder/playtest-09b-fixes` (step 162, the tenth round's no-decision fixes) → `builder/miss-and-return` (163, D49–D52) → `builder/before-the-score` (164, D53) → `builder/one-word` (165, D54, this one). The owner's calls of 2026-11-09 on the tenth round are D49–D54 in `docs/design/UI_ROADMAP.md` §2; each step's row in `docs/design/BUILT_LOG.md` lists what changed. JS only throughout: a reload, no new build (SQLite migration 013 runs on the next start).
 
-- **Per category** (Insights): before its score unlocks, "You said about 90% on average, and 7 of the 9 scored predictions happened. Too few to read yet." (`categoryCounts` in `src/engine/patterns.ts`, `statsStore.categoryCounts`, `CategoryBadge` `counts`).
-- **When the rating unlocks** (Today and Insights, while calibrating): "At your recent pace, about 3 weeks (around Nov 30)." (`src/engine/pace.ts`, `statsStore.unlockEstimateFor`, `UnlockProgress` `estimate`). None with fewer than 3 answers in the window; "more than a year" with no date past that.
-- **Review:** `code-reviewer`, no blockers; both should-fix items done (Today memoises the estimate and skips it once rated; store-level tests for the filtering), plus the no-break-space and the year span. `record-auditor`: BROKEN on History's and Insights' "happened" disagreeing (same-day answers), fixed by saying "scored" on Insights; its open questions decided as above (a luck clause, a 3-answer minimum, no date past a year).
+Step 165:
+- **Words (D54 a):** "resolve" leaves the screens. "Answer" is any answer; "scored" marks counts behind a score or badge. Done as exact phrase replacements; identifiers, testIDs, routes, notification ids and analytics names are unchanged (code-reviewer checked).
+- **Marks (b):** a caption under Insights' score bar, at the score's low end (D35).
+- **Headlines (c):** every top-tier category named, two short names at most; "Calibration N/100" leads a card with no badge; the score isn't repeated in the sub-line or the text share; Today's emblem sits on the first line.
+- **Review:** `code-reviewer`, no blockers; all five should-fix items done (the last "resolved" in the text share, the repeated score, the emblem, the headline length budget, DESIGN_SYSTEM §7.5), the caption moved to Insights only. `record-auditor`: BROKEN on three wording blockers ("answered" meaning two sets; Wrapped's "Nothing answered" beside History's answered rows; the caption without "at its low end"), all fixed by the answered/scored split and the caption text.
+- **Not re-reviewed:** the fixes after each step's review (163, 164, 165) weren't put through a second review round; they're unit-tested and the full check passes.
 
 ## In progress / broken
 
-- Seen on web: the Welcome back card with a record back after eight weeks, and the rating line after a No (91 to 90). The fixes after review were not re-seen on web; they're unit-tested.
-- The Warm-up's grey thumb now rests at the left end of its 50–100 track: check on the phone that it reads as unset.
-- Steps 164 (per-category counts, the rating's date estimate) and 165 (one word for "resolved", the 70/85/90 labels, card headlines) follow on their own branches.
+- **Seen on web** (320 wide): the Warm-up resuming after a reload; History's range under a sheet; practice's Next; the Welcome back card and the rating line after an answer; the per-category counts and the estimate; "Ready to answer", "Answer all 3", the marks caption on Insights only, "145 scored", "20 more scored answers…".
+- **Left as is:** `reopen()` can still put a Can't tell back to pending (owner decision 11, below); account deletion leaves Warm-up rows (decision 13); the year recap's badge row and a week recap of old answers (finding 10's other bullets); an estimate isn't floored by open due dates.
 
 ## Next step
 
-- **Owner, on the iPhone:** the first ±5 from empty on the Warm-up and Log (and VoiceOver's first swipe); the line under an answer before and after the rating unlocks, and after Happened/Didn't on a reminder; the Welcome back card after a 15-day gap (date forward) and "Got it".
-- **Owner, decisions:** 11–13 from the reply of 2026-11-09 (delete `reopen()`, the two D45 clarifications, clear Warm-up rows on account deletion).
+- **Owner, decisions:** 11–13 from 2026-11-09 (recommended: delete `reopen()`; write the answered-skip window and the device clock into D45; clear Warm-up rows on account deletion).
+- **Owner, on the iPhone:** `/device-check` can write the list from the BUILT_LOG rows 162–165 (the Warm-up's resting thumb at the left end, the Welcome back card, the rating line after a reminder's buttons, the card with long names, VoiceOver on the new lines).
+- **Agent:** steps 157–159.
 
 ## Read first
 

@@ -10,7 +10,7 @@ export function localDayKey(at: Date): string {
  * The local calendar day, as a key that changes at midnight while the app is
  * open and when the app comes back to the foreground on a later day.
  *
- * Screens that read the clock at render ("Ready to resolve", the streak row,
+ * Screens that read the clock at render ("Ready to answer", the streak row,
  * "due Tue, Oct 13") only re-rendered on a store change, and a tab stays
  * mounted, so Home could still say "Today counts" the next morning. Calling
  * this re-renders them when the day turns; setting the same key again is a

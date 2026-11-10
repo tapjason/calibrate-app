@@ -2,11 +2,11 @@ import { render, screen } from '@testing-library/react-native';
 
 import { SectionHeader } from './SectionHeader';
 
-// Roadmap D33: "Ready to resolve · 10" became a heading with the count apart.
+// Roadmap D33: "Ready to answer · 10" became a heading with the count apart.
 describe('SectionHeader', () => {
   it('sets the count apart instead of joining it with a dot', () => {
-    render(<SectionHeader title="Ready to resolve" count={10} />);
-    expect(screen.getByText('Ready to resolve')).toBeTruthy();
+    render(<SectionHeader title="Ready to answer" count={10} />);
+    expect(screen.getByText('Ready to answer')).toBeTruthy();
     expect(screen.getByText('10')).toBeTruthy();
     expect(screen.queryByText(/·/)).toBeNull();
   });

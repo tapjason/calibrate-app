@@ -20,7 +20,7 @@ const bucket = (over: Partial<BucketStat>): BucketStat => ({
 describe('describeCalibrationCurve', () => {
   it('says so when there is nothing to plot', () => {
     expect(describeCalibrationCurve([])).toBe(
-      'Calibration curve. No resolved predictions yet.',
+      'Calibration curve. No scored answers yet.',
     );
   });
 

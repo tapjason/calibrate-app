@@ -29,7 +29,7 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
     case 'rating_unlocked':
       return {
         title: 'Your calibration score is unlocked',
-        body: `${MIN_N_OVERALL} real resolutions. From here the number means something.`,
+        body: `${MIN_N_OVERALL} scored answers. From here the number means something.`,
       };
     case 'tier_up':
       return {
@@ -39,7 +39,7 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
     case 'category_unlocked':
       return {
         title: `Your ${categoryLabel(m.category)} score is unlocked`,
-        body: 'Enough resolutions in this category for its score to count.',
+        body: 'Enough scored answers in this category for its score to count.',
       };
   }
 }

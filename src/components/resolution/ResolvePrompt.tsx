@@ -587,7 +587,7 @@ export function ResolvePrompt({
   if (prediction.status !== 'pending' && prediction.status !== 'skipped') {
     return (
       <View style={styles.center}>
-        <Text style={styles.notFoundTitle}>Already resolved</Text>
+        <Text style={styles.notFoundTitle}>Already answered</Text>
         <Text style={styles.notFoundBody}>This prediction has already been recorded.</Text>
       </View>
     );

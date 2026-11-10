@@ -105,7 +105,7 @@ const TITLES: Record<Category, string[]> = {
 };
 
 /**
- * Open predictions for the Today list: three ready to resolve (enough for Home
+ * Open predictions for the Today list: three ready to answer (enough for Home
  * to offer "Resolve all", roadmap step 18), the rest coming up.
  */
 const PENDING: Array<{ category: Category; confidence: number; title: string; dueInDays: number }> =

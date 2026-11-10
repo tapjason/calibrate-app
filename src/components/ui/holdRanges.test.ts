@@ -19,12 +19,12 @@ describe('holdRanges (roadmap step 70)', () => {
 describe('holdTarget', () => {
   const NBSP = String.fromCharCode(0xa0);
   it('holds "to reach" to its target, leaving the space before "to" to break', () => {
-    expect(holdTarget('3 more resolved to reach Tracker')).toBe(
-      `3 more resolved to${NBSP}reach${NBSP}Tracker`,
+    expect(holdTarget('3 more scored answers to reach Tracker')).toBe(
+      `3 more scored answers to${NBSP}reach${NBSP}Tracker`,
     );
   });
 
   it('leaves a hint with no target alone', () => {
-    expect(holdTarget('120 resolved, top badge reached')).toBe('120 resolved, top badge reached');
+    expect(holdTarget('120 scored, top badge reached')).toBe('120 scored, top badge reached');
   });
 });

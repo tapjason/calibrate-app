@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { ScoreBar } from './ScoreBar';
+import { SCORE_MARKS_CAPTION, ScoreBar } from './ScoreBar';
 
 const hidden = { includeHiddenElements: true } as const;
 
@@ -58,5 +58,18 @@ describe('ScoreBar range', () => {
   it('draws nothing for an empty or missing range', () => {
     render(<ScoreBar score={92} range={{ low: 92, high: 92 }} testID="bar" />);
     expect(screen.queryByTestId('bar-range', { includeHiddenElements: true })).toBeNull();
+  });
+
+  // Roadmap D54 (blind playtest 2026-11-09b, finding 9): the marks, named.
+  it('says what the marks are, where a screen reader hears it too', () => {
+    const view = render(<ScoreBar score={78} caption testID="bar" />);
+    // At the score's low end, as the badge table says (D35).
+    expect(SCORE_MARKS_CAPTION).toBe(
+      "The marks are a category's badge bars: Forecaster above 70, Sharp above 85, Oracle above 90, at its score's low end.",
+    );
+    expect(screen.getByTestId('bar-caption')).toHaveTextContent(SCORE_MARKS_CAPTION);
+    // Not in Today's hero, where it would sit there every day.
+    view.rerender(<ScoreBar score={78} testID="bar" />);
+    expect(screen.queryByTestId('bar-caption')).toBeNull();
   });
 });

@@ -62,7 +62,7 @@ export function CategoryBadge({
   const spokenScore =
     score === null
       ? ''
-      : `, score ${score}${giveOrTake > 0 ? ` give or take ${giveOrTake}` : ''} from ${stat.predictions_resolved} resolved`;
+      : `, score ${score}${giveOrTake > 0 ? ` give or take ${giveOrTake}` : ''} from ${stat.predictions_resolved} scored`;
   const spoken = `${category}: ${meta.label}${spokenScore}.${plain ? ` ${plain}` : ''} ${spokenHint(hint)}.`;
 
   return (
@@ -107,19 +107,19 @@ export function CategoryBadge({
 }
 
 /**
- * "Score 84, give or take 5, from 52 resolved": a category's receipt once its
+ * "Score 84, give or take 5, from 52 scored": a category's receipt once its
  * score is unlocked, with how far luck could move it (roadmap D35). One answer
  * moved a 17-answer score five points, unannounced (blind playtest
  * 2026-11-01).
  */
 export function scoreReceipt(score: number, resolved: number, giveOrTake = 0): string {
   return giveOrTake > 0
-    ? `Score ${score}, give or take ${giveOrTake}, from ${localCount(resolved)} resolved`
-    : `Score ${score}, ${localCount(resolved)} resolved`;
+    ? `Score ${score}, give or take ${giveOrTake}, from ${localCount(resolved)} scored`
+    : `Score ${score}, ${localCount(resolved)} scored`;
 }
 
 /**
- * The hint as it should sound: "3 more resolved to reach Tracker". The hint
+ * The hint as it should sound: "3 more scored answers to reach Tracker". The hint
  * is written that way now (roadmap D33 dropped the "→"), so this is the
  * written hint itself; kept so screen-reader labels have one source.
  */
@@ -130,7 +130,7 @@ export function spokenHint(hint: string): string {
 /**
  * Build the progress line. When there's a next badge, name every requirement
  * still unmet: more resolutions, a higher score, or both. Naming only the
- * count when the score is short too ("20 more resolved to reach Sharp" for a work
+ * count when the score is short too ("20 more scored answers to reach Sharp" for a work
  * score of 80) promised a badge that resolving alone can't earn (roadmap
  * step 47). At the top of the ladder, celebrate instead.
  */
@@ -140,7 +140,7 @@ function progressHint(
   giveOrTake = 0,
 ): string {
   if (!next) {
-    return `${localCount(stat.predictions_resolved)} resolved, top badge reached`;
+    return `${localCount(stat.predictions_resolved)} scored, top badge reached`;
   }
 
   const nextLabel = BADGE_META[next.badge].label;
@@ -154,7 +154,7 @@ function progressHint(
   if (next.needResolved !== null && stat.predictions_resolved < next.needResolved) {
     const remaining = next.needResolved - stat.predictions_resolved;
     const andScore = scoreShort ? ` and a ${scoreClause}` : '';
-    return `${remaining} more resolved${andScore} to reach ${nextLabel}`;
+    return `${remaining} more scored answers${andScore} to reach ${nextLabel}`;
   }
 
   if (scoreShort) {

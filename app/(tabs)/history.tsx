@@ -159,7 +159,7 @@ export default function HistoryScreen() {
   // remounted and snapped back to "All" when a filter had nothing in it.
   const empty =
     open.length > 0 || filtered.length > 0 ? null : resolved.length === 0 ? (
-      // Nothing resolved at all: when the first answer can come, and a
+      // Nothing answered at all: when the first answer can come, and a
       // way forward (roadmap step 69). A filtered-empty list has the
       // filters for that.
       (() => {

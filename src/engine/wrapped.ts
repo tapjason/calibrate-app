@@ -1,4 +1,4 @@
-// Calibration Wrapped (L3). Rolls a window of resolved predictions into the
+// Calibration Wrapped (L3). Rolls a window of scored answers into the
 // recap the Share/Wrapped screen tells a story from.
 //
 // Pure like the rest of the engine: plain objects in, plain objects out, no
