@@ -1,6 +1,6 @@
 import { useScrollToTop } from '@react-navigation/native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { PracticeCard } from '@/components/practice/PracticeCard';
@@ -15,6 +15,7 @@ import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { WelcomeBackCard } from '@/components/prediction/WelcomeBackCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { BackupNudge } from '@/components/settings/BackupNudge';
+import { unlockEstimateLine } from '@/components/stats/beforeScoreCopy';
 import { chartTakeaway } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
@@ -31,7 +32,7 @@ import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { useStatsStore } from '@/store/statsStore';
+import { unlockEstimateFor, useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL, type Prediction } from '@/types';
 
 /** Warm for over, cool for under, green on the line: the takeaway's own hue. */
@@ -49,7 +50,7 @@ export default function TodayScreen() {
   useScrollToTop(listRef);
   // The groups, the streak row and the dates below read the clock: re-render
   // when the day turns, not only when a store changes.
-  useLocalDay();
+  const day = useLocalDay();
   // Back on Today after a Resolve sheet: the one place a rating ask may come,
   // if a finished run or the score's unlock earned one (roadmap D15).
   useFocusEffect(
@@ -58,8 +59,9 @@ export default function TodayScreen() {
     }, []),
   );
   const pending = usePredictionStore((s) => s.pending);
-  // Subscribed so the streak line follows each answer as well as each log.
-  const resolvedCount = usePredictionStore((s) => s.resolved.length);
+  // Subscribed so the streak line and the estimate follow each answer.
+  const resolved = usePredictionStore((s) => s.resolved);
+  const resolvedCount = resolved.length;
   const streak = usePredictionStore.getState().streakNow();
   const userStat = useStatsStore((s) => s.userStat);
   // The first answer's part of the day follows the reminder's time (D38).
@@ -67,6 +69,17 @@ export default function TodayScreen() {
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const buckets = useStatsStore((s) => s.calibration.buckets);
   const headline = ratingHeadline(userStat);
+  // When it could unlock at the recent pace (roadmap D53): only while
+  // calibrating, and not on every render (review, 2026-11-09).
+  const calibrating = !userStat || userStat.rating_is_provisional;
+  const estimate = useMemo(() => {
+    if (!calibrating) return null;
+    const now = new Date();
+    const e = unlockEstimateFor(resolved, pending, now);
+    return e ? unlockEstimateLine(e, now) : null;
+    // `day` re-reads it when the date turns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calibrating, resolved, pending, day]);
   const groups = groupByDue(pending, new Date());
   // What's ready to answer comes before the streak and practice rows (D22,
   // 2026-10-09): it's the one thing on Today that asks for a tap, and below
@@ -149,6 +162,8 @@ export default function TodayScreen() {
         nextDue={
           (userStat?.total_resolved ?? 0) === 0 ? null : nextDueLine(pending, new Date())
         }
+        // When it could unlock at the recent pace (roadmap D53).
+        estimate={estimate}
       />
     );
 

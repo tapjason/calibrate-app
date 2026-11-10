@@ -6,7 +6,13 @@
 //
 // Layer rule: engine — imports only from @/types and sibling engine files.
 
-import { MIN_N_CATEGORY, MIN_N_OVERALL, type Category, type Prediction } from '@/types';
+import {
+  MIN_N_CATEGORY,
+  MIN_N_OVERALL,
+  type Category,
+  type CategoryCounts,
+  type Prediction,
+} from '@/types';
 
 import { computeCalibrationPoints } from './calibration';
 import { categoriesIn } from './categories';
@@ -192,4 +198,24 @@ export function weekChange(resolved: readonly Prediction[], now: Date): WeekChan
     now: Math.round(computeCalibrationPoints(toPoints(all)).rating),
     answered,
   };
+}
+
+/**
+ * Each category's plain counts over its Yes/No answers (roadmap D53): how
+ * many, how many happened, the mean said. Counts, never a lean (D35): a
+ * tester with 9 answered asked "am I too sure about Recovery?" and Insights
+ * gave a category nothing before its score unlocks (blind playtest
+ * 2026-11-09b, finding 2). Pass scored answers only.
+ */
+export function categoryCounts(resolved: readonly Prediction[]): Partial<Record<Category, CategoryCounts>> {
+  const out: Partial<Record<Category, CategoryCounts>> = {};
+  for (const p of resolved) {
+    if (!isYesNo(p)) continue;
+    const c = out[p.category] ?? { resolved: 0, happened: 0, mean_stated: 0 };
+    c.mean_stated = (c.mean_stated * c.resolved + p.confidence) / (c.resolved + 1);
+    c.resolved += 1;
+    if (p.status === 'resolved_yes') c.happened += 1;
+    out[p.category] = c;
+  }
+  return out;
 }

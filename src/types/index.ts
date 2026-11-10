@@ -96,6 +96,24 @@ export interface PastOutcomes {
   happened: number;
 }
 
+/** When the rating could unlock at the recent pace (roadmap D53). */
+export interface UnlockEstimate {
+  /** Scored answers still to go. */
+  remaining: number;
+  /** Days the rest would take at the recent pace, at least 1. */
+  days: number;
+  /** That many days from now. */
+  at: Date;
+}
+
+/** A category's plain counts: scored answers, how many happened, the mean said (D53). */
+export interface CategoryCounts {
+  resolved: number;
+  happened: number;
+  /** Mean stated confidence, 0–100. */
+  mean_stated: number;
+}
+
 /** A return after a gap: how long, since when, and the streak it ended. */
 export interface ReturnAfterGap {
   /** Local days from the last activity before today to today. */

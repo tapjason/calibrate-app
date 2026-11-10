@@ -6,8 +6,10 @@ import { holdTarget } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import { colors, type } from '@/constants/theme';
-import type { CategoryStat, NextBadgeTarget } from '@/types';
+import type { CategoryCounts, CategoryStat, NextBadgeTarget } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
+
+import { plainCountsLine } from './beforeScoreCopy';
 
 interface CategoryBadgeProps {
   stat: CategoryStat;
@@ -22,6 +24,8 @@ interface CategoryBadgeProps {
   pillMinWidth?: number;
   /** Reports this pill's width to the list. */
   onPillWidth?: (width: number) => void;
+  /** Plain counts, said before the score unlocks (roadmap D53). */
+  counts?: CategoryCounts | null;
 }
 
 /**
@@ -36,6 +40,7 @@ export function CategoryBadge({
   giveOrTake = 0,
   pillMinWidth = 0,
   onPillWidth,
+  counts = null,
 }: CategoryBadgeProps) {
   const meta = BADGE_META[stat.badge_level];
   const hint = progressHint(stat, next, giveOrTake);
@@ -51,11 +56,14 @@ export function CategoryBadge({
   const score = stat.score_is_provisional ? null : Math.round(stat.calibration_score);
   const receipt =
     score === null ? null : scoreReceipt(score, stat.predictions_resolved, giveOrTake);
+  // Before the score, what was said and what happened, never a verdict
+  // (roadmap D53; blind playtest 2026-11-09b, finding 2).
+  const plain = score === null && counts ? plainCountsLine(counts) : null;
   const spokenScore =
     score === null
       ? ''
       : `, score ${score}${giveOrTake > 0 ? ` give or take ${giveOrTake}` : ''} from ${stat.predictions_resolved} resolved`;
-  const spoken = `${category}: ${meta.label}${spokenScore}. ${spokenHint(hint)}.`;
+  const spoken = `${category}: ${meta.label}${spokenScore}.${plain ? ` ${plain}` : ''} ${spokenHint(hint)}.`;
 
   return (
     <View
@@ -75,6 +83,11 @@ export function CategoryBadge({
         {receipt && (
           <Text style={styles.score} testID={`category-${stat.category}-score`}>
             {receipt}
+          </Text>
+        )}
+        {plain && (
+          <Text style={styles.score} testID={`category-${stat.category}-counts`}>
+            {plain}
           </Text>
         )}
         <Text style={styles.hint} testID={`category-${stat.category}-hint`}>

@@ -16,6 +16,8 @@ interface UnlockProgressProps {
    * shown above the bar so the nearest thing comes first. Null otherwise.
    */
   lead?: string | null;
+  /** When it could unlock at the recent pace (roadmap D53), or null. */
+  estimate?: string | null;
   testID?: string;
 }
 
@@ -39,6 +41,7 @@ export function UnlockProgress({
   total,
   nextDue,
   lead = null,
+  estimate = null,
   testID,
 }: UnlockProgressProps) {
   const done = Math.min(resolved, total);
@@ -58,7 +61,7 @@ export function UnlockProgress({
       testID={testID}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Calibrating. ${lead ? `${lead}. ` : ''}${summary}.`}
+      accessibilityLabel={`Calibrating. ${lead ? `${lead}. ` : ''}${summary}.${estimate ? ` ${estimate}` : ''}`}
       accessibilityValue={{ min: 0, max: total, now: done }}
     >
       <Text style={styles.title}>Calibrating</Text>
@@ -83,6 +86,11 @@ export function UnlockProgress({
         {toGo} more {toGo === 1 ? 'resolution' : 'resolutions'} and your score unlocks.
         {nextDue ? ` ${nextDue}` : ''}
       </Text>
+      {estimate && (
+        <Text style={styles.caption} testID={testID ? `${testID}-estimate` : undefined}>
+          {estimate}
+        </Text>
+      )}
     </View>
   );
 }

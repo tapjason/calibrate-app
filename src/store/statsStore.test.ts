@@ -9,7 +9,7 @@ import {
   __setPersistenceForTests,
   useSettingsStore,
 } from './settingsStore';
-import { confidenceRangeLow, coverageNudgeNow, useStatsStore } from './statsStore';
+import { confidenceRangeLow, coverageNudgeNow, unlockEstimateFor, useStatsStore } from './statsStore';
 
 const USER = 'local-user-v1';
 
@@ -298,5 +298,46 @@ describe('confidenceRangeLow', () => {
     expect(confidenceRangeLow(65)).toBe(60);
     expect(confidenceRangeLow(80)).toBe(80);
     expect(confidenceRangeLow(100)).toBe(80);
+  });
+});
+
+// Roadmap D53: the store does the filtering, so the store is tested for it
+// (review, 2026-11-09).
+describe('statsStore before the score', () => {
+  const NOW = new Date('2026-11-09T12:00:00.000Z');
+  const daysAgo = (d: number) => new Date(NOW.getTime() - d * 86_400_000).toISOString();
+  const answered = (id: string, d: number, extra: Partial<Prediction> = {}): Prediction =>
+    p({ id, created_at: daysAgo(d + 3), status: 'resolved_yes', resolved_at: daysAgo(d), ...extra });
+
+  it('leaves same-day answers and skips out of the pace and what remains', () => {
+    const scored = [answered('a', 1), answered('b', 2), answered('e', 3)];
+    const sameDay = p({ id: 'c', created_at: daysAgo(1), status: 'resolved_yes', resolved_at: daysAgo(1) });
+    const skip = answered('d', 1, { status: 'skipped' });
+    const base = unlockEstimateFor(scored, [], NOW);
+    const withNoise = unlockEstimateFor([...scored, sameDay, skip], [], NOW);
+    expect(withNoise).toEqual(base);
+    expect(base?.remaining).toBe(17);
+  });
+
+  it('reads the window from the first prediction, open ones included', () => {
+    const scored = [answered('a', 1), answered('b', 2), answered('e', 3)];
+    const old = p({ id: 'o', created_at: daysAgo(20) });
+    // 3 answers over 20 days, 17 to go: 114 days; over 7 (the floor), 40.
+    expect(unlockEstimateFor(scored, [old], NOW)?.days).toBe(114);
+  });
+
+  it('keeps same-day answers out of the category counts, on both paths', async () => {
+    await insertPrediction(p({ id: 'a', category: 'health', confidence: 80, created_at: '2026-01-01T09:00:00.000Z' }));
+    await resolvePrediction('a', 'resolved_yes');
+    await insertPrediction(
+      p({ id: 'b', category: 'health', confidence: 60, created_at: new Date().toISOString() }),
+    );
+    await resolvePrediction('b', 'resolved_no'); // same day: not scored
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().categoryCounts.health).toEqual({ resolved: 1, happened: 1, mean_stated: 80 });
+
+    useStatsStore.setState({ categoryCounts: {} });
+    await useStatsStore.getState().loadForUser(USER);
+    expect(useStatsStore.getState().categoryCounts.health).toEqual({ resolved: 1, happened: 1, mean_stated: 80 });
   });
 });

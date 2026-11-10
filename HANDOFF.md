@@ -4,13 +4,11 @@
 
 ## What this PR did
 
-Branch `builder/miss-and-return`, from `builder/playtest-09b-fixes` (step 162). Step 163: the owner's calls on the tenth round's findings 4–6, recorded as D49–D52 in `docs/design/UI_ROADMAP.md` §2. JS only: a reload, no new build. The full list is the step's row in `docs/design/BUILT_LOG.md`.
+Branch `builder/before-the-score`, from `builder/miss-and-return` (step 163). Step 164: the owner's "Yes, estimate" on the tenth round's finding 2, recorded as D53. JS only.
 
-- **D49:** an empty confidence control rests at 50% on every screen; the first ±5 steps from it.
-- **D50:** after a Yes or No, the same for both, a second line: what the number means until the rating unlocks, then how far the rating moved, including after a reminder's buttons (`statsStore.noteRatingBefore` / `takeRatingBefore`), but not after "Change answer". New reflection placeholder; the coverage nudge is quiet 30 minutes after an answer and reworded; a locked answer's text is neutral; 5% and 95% read in twenties.
-- **D51:** Today's Welcome back card after 14 days with nothing logged, answered or practised (`returnAfterGap`, `welcomeBackDismissedFor`), and "answers given since then" on Insights.
-- **D52:** the findings the owner closed without a change.
-- **Review:** `code-reviewer`, no blockers; its four should-fix items are done (the reminder path, the correction baseline, dismissal by time, practice counting as presence) and most nits. `record-auditor`: BROKEN on two blockers, both fixed (a correction's line now shows no rating; the nudge no longer claims the chart is empty), plus its other defects (the ended streak through a Can't tell day, the card's overclaim, 5%/95%, stale docs).
+- **Per category** (Insights): before its score unlocks, "You said about 90% on average, and 7 of the 9 scored predictions happened. Too few to read yet." (`categoryCounts` in `src/engine/patterns.ts`, `statsStore.categoryCounts`, `CategoryBadge` `counts`).
+- **When the rating unlocks** (Today and Insights, while calibrating): "At your recent pace, about 3 weeks (around Nov 30)." (`src/engine/pace.ts`, `statsStore.unlockEstimateFor`, `UnlockProgress` `estimate`). None with fewer than 3 answers in the window; "more than a year" with no date past that.
+- **Review:** `code-reviewer`, no blockers; both should-fix items done (Today memoises the estimate and skips it once rated; store-level tests for the filtering), plus the no-break-space and the year span. `record-auditor`: BROKEN on History's and Insights' "happened" disagreeing (same-day answers), fixed by saying "scored" on Insights; its open questions decided as above (a luck clause, a 3-answer minimum, no date past a year).
 
 ## In progress / broken
 

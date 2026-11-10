@@ -37,7 +37,9 @@ import { isSameDayAnswer, sameDayCount, scoredOnly } from '@/engine/sameDay';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import { categoriesIn } from '@/engine/categories';
+import { unlockEstimate } from '@/engine/pace';
 import {
+  categoryCounts,
   furthestOffCategory,
   weekChange,
   type CategoryMiss,
@@ -46,14 +48,17 @@ import {
 import { buildWrapped, type WrappedSpan, type WrappedSummary } from '@/engine/wrapped';
 import {
   CATEGORIES,
+  MIN_N_OVERALL,
   type BucketStat,
   type CalibrationResult,
   type Category,
+  type CategoryCounts,
   type CategoryStat,
   type Milestone,
   type NextBadgeTarget,
   type Prediction,
   type RatingRange,
+  type UnlockEstimate,
   type UserStat,
 } from '@/types';
 
@@ -130,6 +135,8 @@ interface StatsState {
    * gate and by the one lean rule, or null. Insights names it in plain counts.
    */
   furthestOff: CategoryMiss | null;
+  /** Each category's plain counts over scored answers (roadmap D53). */
+  categoryCounts: Partial<Record<Category, CategoryCounts>>;
   /** The category's bucket a stated confidence falls in, or null. */
   categoryBucketFor: (category: Category, confidence: number) => BucketStat | null;
   /**
@@ -212,6 +219,7 @@ type DerivedStats = Pick<
   | 'categoryCalibration'
   | 'categoryRanges'
   | 'furthestOff'
+  | 'categoryCounts'
   | 'trends'
   | 'ratingRange'
   | 'brier'
@@ -293,6 +301,7 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
     categoryCalibration,
     categoryRanges,
     furthestOff: furthestOffCategory(resolved),
+    categoryCounts: categoryCounts(resolved),
     trends: buildTrendSummary(resolved),
     ratingRange: computeRatingRange(resolved),
     brier: computeBrier(resolved),
@@ -309,6 +318,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   categoryCalibration: {},
   categoryRanges: {},
   furthestOff: null,
+  categoryCounts: {},
   trends: EMPTY_TRENDS,
   ratingRange: null,
   brier: null,
@@ -368,6 +378,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       categoryCalibration: deriveCategoryCalibration(resolved),
       categoryRanges: ranges,
       furthestOff: furthestOffCategory(resolved),
+      categoryCounts: categoryCounts(resolved),
       trends: buildTrendSummary(resolved),
       ratingRange: computeRatingRange(resolved),
       brier: computeBrier(resolved),
@@ -456,6 +467,24 @@ export function answeredSameDay(p: Prediction): boolean {
 /** How many answers in the list aren't scored for being same-day (D41). */
 export function sameDayAnswerCount(resolved: readonly Prediction[]): number {
   return sameDayCount(resolved);
+}
+
+/**
+ * When the rating could unlock at the recent pace (roadmap D53), from the
+ * lists the caller holds: the pace over scored answers, read over the days
+ * since the first prediction was logged. Read at render, since it depends on
+ * the day.
+ */
+export function unlockEstimateFor(
+  resolved: readonly Prediction[],
+  pending: readonly Prediction[],
+  now: Date,
+): UnlockEstimate | null {
+  let first: string | null = null;
+  for (const p of [...resolved, ...pending]) {
+    if (first === null || Date.parse(p.created_at) < Date.parse(first)) first = p.created_at;
+  }
+  return unlockEstimate(scoredOnly(resolved).filter(isYesNo), MIN_N_OVERALL, now, first);
 }
 
 export type { CategoryMiss, WeekChange };

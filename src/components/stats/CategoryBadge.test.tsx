@@ -24,6 +24,24 @@ describe('CategoryBadge', () => {
     expect(view.getByText('Forecaster')).toBeTruthy();
   });
 
+  // Roadmap D53 (blind playtest 2026-11-09b, finding 2).
+  it('says the plain counts before the score unlocks, and not after', () => {
+    const counts = { resolved: 9, happened: 7, mean_stated: 90 };
+    const view = render(<CategoryBadge stat={stat({ predictions_resolved: 9 })} next={null} counts={counts} />);
+    expect(view.getByTestId('category-health-counts')).toHaveTextContent(
+      'You said about 90% on average, and 7 of the 9 scored predictions happened. Too few to read yet.',
+    );
+    expect(view.getByTestId('category-health').props.accessibilityLabel).toMatch(/7 of the 9 scored predictions happened\./);
+    view.rerender(
+      <CategoryBadge
+        stat={stat({ predictions_resolved: 30, score_is_provisional: false, calibration_score: 80 })}
+        next={null}
+        counts={{ resolved: 30, happened: 20, mean_stated: 80 }}
+      />,
+    );
+    expect(view.queryByTestId('category-health-counts')).toBeNull();
+  });
+
   it('shows remaining resolutions when the next badge gates on count', () => {
     const next: NextBadgeTarget = {
       badge: 'tracker',

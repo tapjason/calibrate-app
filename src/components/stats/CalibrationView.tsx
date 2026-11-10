@@ -21,6 +21,7 @@ import {
   MIN_N_OVERALL,
   type CalibrationResult,
   type Category,
+  type CategoryCounts,
   type CategoryStat,
   type NextBadgeTarget,
   type RatingRange,
@@ -68,6 +69,10 @@ interface CalibrationViewProps {
   furthestOff?: CategoryMiss | null;
   /** The rating's change since last week (roadmap D37), or null. */
   weekChange?: WeekChange | null;
+  /** Each category's plain counts, said before its score unlocks (roadmap D53). */
+  categoryCounts?: Partial<Record<Category, CategoryCounts>>;
+  /** When the rating could unlock at the recent pace (roadmap D53), or null. */
+  unlockEstimate?: string | null;
 }
 
 /**
@@ -94,6 +99,8 @@ export function CalibrationView({
   categoryRanges = {},
   furthestOff = null,
   weekChange = null,
+  categoryCounts = {},
+  unlockEstimate = null,
 }: CalibrationViewProps) {
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
@@ -132,6 +139,7 @@ export function CalibrationView({
               pending={pendingCount}
               total={MIN_N_OVERALL}
               nextDue={nextDue}
+              estimate={unlockEstimate}
             />
           ) : (
             <>
@@ -295,6 +303,7 @@ export function CalibrationView({
             giveOrTake={categoryRanges[c.category]?.giveOrTake ?? 0}
             pillMinWidth={pillWidth}
             onPillWidth={notePill}
+            counts={categoryCounts[c.category] ?? null}
           />
         ))
       )}

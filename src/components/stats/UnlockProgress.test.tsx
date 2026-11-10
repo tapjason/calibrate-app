@@ -20,6 +20,14 @@ describe('UnlockProgress', () => {
     );
   });
 
+  // Roadmap D53 (blind playtest 2026-11-09b, finding 2).
+  it('says when it could unlock at the recent pace, on screen and aloud', () => {
+    const line = 'At your recent pace, about 3 weeks (around Nov 30).';
+    render(<UnlockProgress resolved={7} pending={2} total={20} estimate={line} testID="progress" />);
+    expect(screen.getByTestId('progress-estimate')).toHaveTextContent(line);
+    expect(screen.getByTestId('progress').props.accessibilityLabel).toMatch(/about 3 weeks/);
+  });
+
   it('has no lead once answers have come in', () => {
     render(<UnlockProgress resolved={4} pending={2} total={20} testID="progress" />);
     expect(screen.queryByTestId('progress-lead')).toBeNull();

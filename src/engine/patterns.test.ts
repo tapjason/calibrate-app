@@ -2,6 +2,7 @@ import type { Prediction } from '@/types';
 
 import { __setTimeZoneForTests } from './localTime';
 import {
+  categoryCounts,
   categoryDrift,
   classifyDirection,
   dayOfWeekAccuracy,
@@ -216,5 +217,20 @@ describe('weekChange', () => {
   it('says nothing without an answer this week, or before the rating unlocks at both ends', () => {
     expect(weekChange(answered(25, 10, 18), NOW)).toBeNull();
     expect(weekChange([...answered(10, 10, 7), ...answered(15, 2, 10)], NOW)).toBeNull();
+  });
+});
+
+// Roadmap D53 (blind playtest 2026-11-09b, finding 2).
+describe('categoryCounts', () => {
+  it('counts Yes and No per category, with the mean said', () => {
+    const got = categoryCounts([
+      p({ category: 'health', confidence: 90 }),
+      p({ category: 'health', confidence: 80, status: 'resolved_no' }),
+      p({ category: 'work', confidence: 60, status: 'resolved_no' }),
+      p({ category: 'work', confidence: 99, status: 'skipped' }),
+    ]);
+    expect(got.health).toEqual({ resolved: 2, happened: 1, mean_stated: 85 });
+    expect(got.work).toEqual({ resolved: 1, happened: 0, mean_stated: 60 });
+    expect(got.finance).toBeUndefined();
   });
 });

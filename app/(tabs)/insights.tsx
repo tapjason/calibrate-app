@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { nextDueLine } from '@/components/prediction/dueGroups';
+import { unlockEstimateLine } from '@/components/stats/beforeScoreCopy';
 import { CalibrationView } from '@/components/stats/CalibrationView';
 import { CoachPanel } from '@/components/stats/CoachPanel';
 import { coachSample } from '@/components/stats/patternCopy';
@@ -15,7 +16,12 @@ import { useLocalDay } from '@/components/ui/useLocalDay';
 import { space } from '@/constants/theme';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
-import { sameDayAnswerCount, useStatsStore, weekChangeFor } from '@/store/statsStore';
+import {
+  sameDayAnswerCount,
+  unlockEstimateFor,
+  useStatsStore,
+  weekChangeFor,
+} from '@/store/statsStore';
 import { MIN_N_BAND } from '@/types';
 
 export default function InsightsScreen() {
@@ -34,6 +40,7 @@ export default function InsightsScreen() {
   const brierBaseline = useStatsStore((s) => s.brierBaseline);
   const categoryRanges = useStatsStore((s) => s.categoryRanges);
   const furthestOff = useStatsStore((s) => s.furthestOff);
+  const categoryCounts = useStatsStore((s) => s.categoryCounts);
   const resolved = usePredictionStore((s) => s.resolved);
   // "Since last week" depends on the day (roadmap D37): recomputed when the
   // answers or the local day change, not on every render.
@@ -48,6 +55,13 @@ export default function InsightsScreen() {
   );
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const pending = usePredictionStore((s) => s.pending);
+  // When the rating could unlock at the recent pace (roadmap D53).
+  const estimate = useMemo(() => {
+    if (unlocked) return null;
+    const now = new Date();
+    const e = unlockEstimateFor(resolved, pending, now);
+    return e ? unlockEstimateLine(e, now) : null;
+  }, [unlocked, resolved, pending, day]);
   // "Can't tell" answers, said beside the rating (roadmap D34).
   const skippedCount = usePredictionStore(
     (s) => s.resolved.filter((p) => p.status === 'skipped').length,
@@ -84,6 +98,8 @@ export default function InsightsScreen() {
         categoryRanges={categoryRanges}
         furthestOff={furthestOff}
         weekChange={weekChange}
+        categoryCounts={categoryCounts}
+        unlockEstimate={estimate}
       />
       {/* Free users get one Plus teaser, not a grey upsell per panel. */}
       {!isPlus && (

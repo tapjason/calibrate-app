@@ -411,7 +411,12 @@ See the authoritative section above.
   numbers as a sample, written by the app and labelled so (Coach itself needs Plus
   and a sign-in).
 - Per-category breakdown with badge levels, and each category's own score once it is
-  past `MIN_N_CATEGORY` (D28, 2026-10-10); before that, the count to go
+  past `MIN_N_CATEGORY` (D28, 2026-10-10); before that, the count to go and its plain
+  counts ("You said about 90% on average, and 7 of 9 happened.", D53, 2026-11-09),
+  never a lean
+- While the rating is calibrating, when it could unlock at the recent pace ("At your
+  recent pace, about 3 weeks (around Nov 30).", D53): scored answers over the last 28
+  days (or since the first prediction, a week at least), no estimate with fewer than 3
 - **The identity line** (D27, 2026-10-10): on Today and the share card, a tier is
   named only for a category past the count gate (20 resolved, so Tracker or above).
   The first tier means "fewer than 20 resolved here", which read as a verdict ("Guesser in
