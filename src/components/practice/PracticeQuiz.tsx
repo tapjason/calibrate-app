@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -14,6 +14,13 @@ import {
 interface PracticeQuizProps {
   day: number;
   slot: number;
+  /**
+   * Bring this content offset (the bottom of Next) into view, if it's out of
+   * sight. Called once an answer is picked: at 320 × 568 Next sat below the
+   * fold (blind playtest 2026-11-09b, finding 16), as the Warmup's confidence
+   * once did (WarmupQuiz `pick`).
+   */
+  reveal?: (bottom: number) => void;
 }
 
 /**
@@ -24,13 +31,23 @@ interface PracticeQuizProps {
  *
  * Keyed by slot by its parent, so each question starts with nothing chosen.
  */
-export function PracticeQuiz({ day, slot }: PracticeQuizProps) {
+export function PracticeQuiz({ day, slot, reveal }: PracticeQuizProps) {
   const questions = usePracticeStore.getState().questionsFor(day);
   const question = questions[slot];
   const total = questions.length;
   const [selected, setSelected] = useState<0 | 1 | null>(null);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Positions kept from layout events, not measured: where this quiz sits in
+  // the scroll content, and where Next sits in the quiz.
+  const wrapY = useRef(0);
+  const nextBox = useRef({ y: 0, height: 0 });
+  const pick = (choice: 0 | 1) => {
+    setSelected(choice);
+    if (nextBox.current.height > 0) {
+      reveal?.(wrapY.current + nextBox.current.y + nextBox.current.height);
+    }
+  };
 
   // A new question replaces the last while focus stays on the button, so a
   // screen reader would never hear it (roadmap step 44). Say it.
@@ -53,7 +70,13 @@ export function PracticeQuiz({ day, slot }: PracticeQuizProps) {
   };
 
   return (
-    <View style={styles.wrap} testID="practice-quiz">
+    <View
+      style={styles.wrap}
+      testID="practice-quiz"
+      onLayout={(e) => {
+        wrapY.current = e.nativeEvent.layout.y;
+      }}
+    >
       <View
         style={styles.segments}
         aria-hidden
@@ -83,7 +106,7 @@ export function PracticeQuiz({ day, slot }: PracticeQuizProps) {
         label={question.prompt}
         options={question.options}
         selected={selected}
-        onSelect={setSelected}
+        onSelect={pick}
         idPrefix="practice-option"
       />
 
@@ -97,12 +120,20 @@ export function PracticeQuiz({ day, slot }: PracticeQuizProps) {
         idPrefix="practice-confidence"
       />
 
-      <Button
-        label={slot + 1 === total ? 'See answers' : 'Next'}
-        testID="practice-next"
-        disabled={selected === null || confidence === null || submitting}
-        onPress={onNext}
-      />
+      <View
+        testID="practice-next-box"
+        onLayout={(e) => {
+          const { y, height } = e.nativeEvent.layout;
+          nextBox.current = { y, height };
+        }}
+      >
+        <Button
+          label={slot + 1 === total ? 'See answers' : 'Next'}
+          testID="practice-next"
+          disabled={selected === null || confidence === null || submitting}
+          onPress={onNext}
+        />
+      </View>
     </View>
   );
 }

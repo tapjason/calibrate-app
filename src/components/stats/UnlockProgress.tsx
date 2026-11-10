@@ -12,7 +12,7 @@ interface UnlockProgressProps {
   /** When the next resolution can come (roadmap step 32), or null. */
   nextDue?: string | null;
   /**
-   * Before anything has resolved, the first answer's evening (roadmap D30),
+   * Before anything has resolved, when the first answer comes (roadmap D30),
    * shown above the bar so the nearest thing comes first. Null otherwise.
    */
   lead?: string | null;

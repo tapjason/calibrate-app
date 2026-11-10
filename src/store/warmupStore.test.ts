@@ -1,7 +1,7 @@
 import { setDbForTests } from '@/db/client';
 import { listCategoryStats, getUserStat } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
-import { getWarmupRecord } from '@/db/warmup';
+import { getWarmupProgress, getWarmupRecord, saveWarmupProgress } from '@/db/warmup';
 import type { WarmupQuestion } from '@/types';
 
 import {
@@ -131,6 +131,42 @@ describe('warmupStore', () => {
     expect(useWarmupStore.getState().answers).toHaveLength(before);
   });
 
+  // Blind playtest 2026-11-09b, finding 1: a reload at question 5 started over.
+  it('reopens an unfinished quiz at the next question after a reload', async () => {
+    await useWarmupStore.getState().answer(0, 80);
+    reset(); // the app reloads: memory is gone
+    await useWarmupStore.getState().hydrate();
+
+    const s = useWarmupStore.getState();
+    expect(s.index).toBe(1);
+    expect(s.answers).toEqual([{ confidence: 80, correct: true }]);
+    expect(selectCurrentQuestion(s)?.id).toBe('q2');
+    expect(selectHasCompletedWarmup(s)).toBe(false);
+
+    await useWarmupStore.getState().answer(1, 60);
+    expect(useWarmupStore.getState().result?.answered).toBe(2);
+    expect(await getWarmupProgress()).toBeNull();
+  });
+
+  it('starts over when the kept answers are not a prefix of these questions', async () => {
+    // As many as the quiz has: nothing left to ask.
+    await saveWarmupProgress({
+      question_ids: ['q1', 'q2'],
+      answers: [
+        { confidence: 80, correct: true },
+        { confidence: 80, correct: true },
+      ],
+    });
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().index).toBe(0);
+
+    // Answered against another question (an update changed the ten).
+    reset();
+    await saveWarmupProgress({ question_ids: ['old-q'], answers: [{ confidence: 80, correct: true }] });
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().index).toBe(0);
+  });
+
   it('restart clears progress but keeps the stored record', async () => {
     await useWarmupStore.getState().answer(0, 80);
     await useWarmupStore.getState().answer(1, 80);
@@ -140,6 +176,13 @@ describe('warmupStore', () => {
     expect(useWarmupStore.getState().index).toBe(0);
     expect(useWarmupStore.getState().result).toBeNull();
     expect(await getWarmupRecord()).not.toBeNull();
+  });
+
+  it('restart drops the answers kept so far', async () => {
+    await useWarmupStore.getState().answer(0, 80);
+    useWarmupStore.getState().restart();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await getWarmupProgress()).toBeNull();
   });
 
   it('retake wipes the stored record and resets', async () => {

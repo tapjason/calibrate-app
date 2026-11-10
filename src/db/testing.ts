@@ -58,6 +58,9 @@ function adaptSqlJs(db: Database): DbAdapter {
         throw e;
       }
     },
+    close() {
+      db.close();
+    },
   };
 }
 

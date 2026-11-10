@@ -123,6 +123,9 @@ describe('WrappedPanel — an empty week (roadmap step 34)', () => {
     usePredictionStore.setState({ pending: [due(30, 'next-month')], resolved: [] });
     const week = render(<WrappedPanel span="week" />);
     expect(screen.getByText('Nothing resolved yet')).toBeTruthy();
+    // One is open, so it doesn't ask for one (playtest 2026-11-09b, finding 10).
+    expect(screen.getByText('Nothing resolved this week.')).toBeTruthy();
+    expect(screen.queryByText(/Log a prediction/)).toBeNull();
     week.unmount();
 
     usePredictionStore.setState({ pending: [due(2, 'soon')], resolved: [] });

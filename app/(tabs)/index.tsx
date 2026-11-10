@@ -29,6 +29,7 @@ import { useLocalDay } from '@/components/ui/useLocalDay';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL, type Prediction } from '@/types';
 
@@ -60,6 +61,8 @@ export default function TodayScreen() {
   const resolvedCount = usePredictionStore((s) => s.resolved.length);
   const streak = usePredictionStore.getState().streakNow();
   const userStat = useStatsStore((s) => s.userStat);
+  // The first answer's part of the day follows the reminder's time (D38).
+  const reminderAt = useSettingsStore((s) => s.dueReminderTime);
   const categoryStats = useStatsStore((s) => s.categoryStats);
   const buckets = useStatsStore((s) => s.calibration.buckets);
   const headline = ratingHeadline(userStat);
@@ -134,9 +137,14 @@ export default function TodayScreen() {
         resolved={userStat?.total_resolved ?? 0}
         pending={pending.length}
         total={MIN_N_OVERALL}
-        // Before the first answer, the lead names its evening (roadmap D30), and
+        // Before the first answer, the lead names its day and the reminder's part
+        // of it (roadmap D30, D38), and
         // the caption doesn't repeat the date.
-        lead={(userStat?.total_resolved ?? 0) === 0 ? firstAnswerLead(pending, new Date()) : null}
+        lead={
+          (userStat?.total_resolved ?? 0) === 0
+            ? firstAnswerLead(pending, new Date(), reminderAt.hour)
+            : null
+        }
         nextDue={
           (userStat?.total_resolved ?? 0) === 0 ? null : nextDueLine(pending, new Date())
         }

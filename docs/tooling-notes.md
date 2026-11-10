@@ -86,6 +86,10 @@ that apply here.
   visited tabs stay in the Tab order, sheets drop focus to `body`, Escape closes nothing, every route
   is titled "Fairly Sure", every heading is `h1`; the lightning-bolt button is Expo's dev overlay.
   Times show as "07:00 PM" where the phone shows its locale ("19:00").
+- **Three require-cycle warnings in the console are known** (2026-11-09b web check), all in
+  `src/store`: `categoryStore` ↔ `authStore`; `authStore` → `practiceStore` → `analytics` →
+  `authStore`; `authStore` ↔ `predictionStore`. Every use sits inside a function, not at module
+  load, so nothing reads an unfinished module. Not a playtest finding; a new cycle is worth a look.
 - **Device-only behaviour the web build hides** (found on the phone, 2026-11-07 and 08): see
   `docs/app-profile.md` §18 "Known iOS-vs-web traps". The web never showed any of them because CSS
   won't shrink content below its size and has no native sheets or switch.
@@ -106,8 +110,9 @@ that apply here.
   edit hook runs only `--quick` (incremental `tsc`, `.tooling/tsbuildinfo`; delete it if types
   look stale).
 - **Typed routes stub** (2026-11-08 and 09): `.expo/types/router.d.ts` is sometimes an 816-byte
-  stub with no app routes. Seen right after `web-serve.sh start`, before the first page request, and
-  once mid-session with no cause found (not Jest: a full check left the full file alone). `tsc`
+  stub with no app routes. Seen right after `web-serve.sh start`, before the first page request,
+  and **whenever a file under `app/` changes while the web server runs** (an edit, a `touch`, a
+  `git stash`; reproduced 2026-11-09, rewritten within two seconds). Jest doesn't do it. `tsc`
   then fails with three typed-route errors (`app/dev/celebrations.tsx`, `app/dev/seed.tsx`,
   `app/log.tsx`). Fix: `web-serve.sh stop`, `start`, load http://localhost:8097/ once, wait until
-  the file is about 6 KB, then check again.
+  the file is about 6 KB, then check again. Finish the edits under `app/` before that restart.

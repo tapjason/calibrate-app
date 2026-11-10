@@ -1,5 +1,5 @@
-import { useScrollToTop } from '@react-navigation/native';
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useRoute, useScrollToTop } from '@react-navigation/native';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 
@@ -10,6 +10,7 @@ import {
   historySummary,
   openForHistory,
   parseRangeParam,
+  rangeClearsOnTabState,
   rangeText,
   type FirstHistoryAction,
 } from '@/components/prediction/historyFilter';
@@ -53,9 +54,22 @@ export default function HistoryScreen() {
     // This screen's own params, even while another tab is taking focus.
     navigation.setParams({ range: undefined } as never);
   }, [navigation]);
-  // Leaving History drops the range, so the tab opens on everything next time
-  // instead of a filter set from another screen days ago.
-  useFocusEffect(useCallback(() => clearRange, [clearRange]));
+  // Leaving History for another tab drops the range, so the tab opens on
+  // everything next time instead of a filter set from another screen days ago.
+  // Only a tab change: a sheet over History (Log, a prediction) takes focus
+  // too, and dropped the range under it (playtest 2026-11-09b, finding 17).
+  const route = useRoute();
+  const rangeSet = useRef(range !== null);
+  rangeSet.current = range !== null;
+  useEffect(
+    () =>
+      navigation.addListener('state', (e) => {
+        // The navigator's payload, checked in rangeClearsOnTabState.
+        const { state } = (e.data ?? {}) as { state?: unknown };
+        if (rangeClearsOnTabState(state, route.key, rangeSet.current)) clearRange();
+      }),
+    [navigation, route.key, clearRange],
+  );
 
   const filtered = useMemo(
     () => filterHistory(resolved, { category: filter, range }, confidenceRangeLow),

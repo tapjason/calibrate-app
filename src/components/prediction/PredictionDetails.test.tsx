@@ -54,6 +54,8 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details')).toBeTruthy());
     expect(screen.getByTestId('details-stated')).toHaveTextContent(/you said 70%/);
     expect(screen.getByTestId('details-title')).toHaveTextContent('Ship the beta');
+    // The screen's heading (playtest 2026-11-09b, finding 18).
+    expect(screen.getByRole('header', { name: 'Ship the beta' })).toBeTruthy();
     expect(screen.getByTestId('details-due')).toHaveTextContent(/^Due .+, with a reminder at 7:00\sPM$/);
   });
 

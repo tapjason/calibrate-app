@@ -6,6 +6,9 @@
 //     calibration math; it collects answers and asks the engine what they mean.
 //   • Persistence goes through src/db/warmup.ts (L2), which stores raw answers
 //     only. `result` is re-derived on hydrate, so it can never be stale.
+//   • An unfinished quiz keeps its answers after each one (blind playtest
+//     2026-11-09b: a reload at question 5 started it over), and hydrate
+//     reopens it at the next question. The ten are the same for everyone.
 //   • Warmup data is NEVER written to UserStat / CategoryStat. This store has
 //     no path to those tables at all (CLAUDE.md Warmup Module).
 //
@@ -19,7 +22,9 @@ import { track } from '@/analytics/track';
 import { PRACTICE_FACTS } from '@/constants/practiceFacts';
 import {
   clearWarmupRecord,
+  getWarmupProgress,
   getWarmupRecord,
+  saveWarmupProgress,
   saveWarmupRecord,
 } from '@/db/warmup';
 import { warmupQuestions } from '@/engine/practice';
@@ -43,7 +48,7 @@ interface WarmupState {
   /** True once hydrate() has run (whether or not a record existed). */
   hydrated: boolean;
 
-  /** Load any past Warmup from SQLite and re-derive its verdict. */
+  /** Load any past Warmup from SQLite and re-derive its verdict, or the answers so far. */
   hydrate: () => Promise<void>;
   /** Answer the current question and advance; scores + persists on the last one. */
   answer: (optionIndex: number, confidence: number) => Promise<void>;
@@ -84,6 +89,19 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
           result: scoreWarmup(record.answers),
           index: record.answers.length,
         });
+      } else {
+        const sofar = await getWarmupProgress();
+        // Only answers to these same questions, in order, and not all of
+        // them: kept from an older set of questions, the quiz starts over.
+        const { questions } = get();
+        if (
+          sofar &&
+          sofar.answers.length > 0 &&
+          sofar.answers.length < questions.length &&
+          sofar.question_ids.every((id, i) => questions[i]?.id === id)
+        ) {
+          set({ answers: sofar.answers, index: sofar.answers.length });
+        }
       }
     } catch (e) {
       // Onboarding state is not worth blocking app start over. Treated as
@@ -109,7 +127,19 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
     ];
     set({ answers: next, index: index + 1 });
 
-    if (next.length < questions.length) return;
+    if (next.length < questions.length) {
+      try {
+        await saveWarmupProgress({
+          question_ids: questions.slice(0, next.length).map((q) => q.id),
+          answers: next,
+        });
+      } catch (e) {
+        // A reload would start the quiz over, as it always did; not worth more.
+        // eslint-disable-next-line no-console
+        console.warn('[warmup] progress save failed:', e);
+      }
+      return;
+    }
 
     // Last question: score it, show the verdict, then persist. Scoring first
     // means a storage failure still leaves the user with their Day-0 result.
@@ -132,6 +162,7 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
 
   restart: () => {
     set({ ...initialProgress, result: null });
+    void saveWarmupProgress({ question_ids: [], answers: [] }).catch(() => undefined);
   },
 
   retake: async () => {

@@ -110,22 +110,40 @@ export function nextDueLine(
 }
 
 /**
+ * The part of the day a reminder at this hour falls in: "morning",
+ * "afternoon", "evening" or "night". 7 PM, the default, is the evening.
+ */
+export function partOfDay(hour: number): string {
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 21) return 'evening';
+  if (hour >= 21) return 'night';
+  return 'early morning';
+}
+
+/**
  * Until anything has resolved, the nearest thing (roadmap D30): when the first
  * answer comes. "Your first answer: tomorrow evening", "…: Friday evening"
  * within the week, "…: Fri, Oct 16" beyond it, or "Your first answer is ready"
- * once one is due. The reminder fires that evening (D9), which is why it says
- * evening. Null with nothing open.
+ * once one is due. The part of the day follows the reminder's time (D38): a
+ * tester with it at 4 PM read "Friday evening" (playtest 2026-11-09b, finding
+ * 13). Null with nothing open.
  */
-export function firstAnswerLead(pending: readonly Prediction[], now: Date): string | null {
+export function firstAnswerLead(
+  pending: readonly Prediction[],
+  now: Date,
+  reminderHour = 19,
+): string | null {
   const open = pending.filter((p) => p.status === 'pending' && !Number.isNaN(Date.parse(p.due_date)));
   if (open.length === 0) return null;
   if (open.some((p) => isReadyToResolve(p, now))) return 'Your first answer is ready';
   const soonest = open.reduce((a, b) => (daysUntilDue(b, now) < daysUntilDue(a, now) ? b : a));
   const days = daysUntilDue(soonest, now);
   const due = new Date(soonest.due_date);
-  if (days === 1) return 'Your first answer: tomorrow evening';
+  const part = partOfDay(reminderHour);
+  if (days === 1) return `Your first answer: tomorrow ${part}`;
   if (days < 7) {
-    return `Your first answer: ${due.toLocaleDateString(undefined, { weekday: 'long' })} evening`;
+    return `Your first answer: ${due.toLocaleDateString(undefined, { weekday: 'long' })} ${part}`;
   }
   const day = localDate(due, { weekday: 'short', day: 'numeric', month: 'short' }, now);
   return `Your first answer: ${day.replace(/ /g, '\u00A0')}`;

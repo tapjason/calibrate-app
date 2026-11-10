@@ -23,6 +23,8 @@ interface WrappedCardProps {
   overall?: OverallProgress | null;
   /** Open predictions due within the week, for an empty week (roadmap step 34). */
   upcoming?: number;
+  /** Whether any prediction is open, so an empty week doesn't ask for one. */
+  hasOpen?: boolean;
   /** The badge closest to hand, from nextBadgeProgress(); null hides the row. */
   badge?: BadgeProgress | null;
   /** Cosmetic only (Plus); the free theme is the default. */
@@ -56,6 +58,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
     summary,
     overall,
     upcoming = 0,
+    hasOpen = false,
     badge,
     theme = WRAPPED_DEFAULT_THEME,
     showTitles = false,
@@ -63,7 +66,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
   },
   ref,
 ) {
-  const story = wrappedStory(summary, overall, upcoming);
+  const story = wrappedStory(summary, overall, upcoming, hasOpen);
   const shown = summary.categories.filter((c) => !hidden.has(c.category));
   const titleOf = (p: Prediction) =>
     showTitles && !hidden.has(p.category) ? `, ${p.title}` : '';

@@ -207,6 +207,9 @@ export function PredictionDetails({
       <Text
         style={styles.title}
         testID="details-title"
+        // The screen's heading, so a heading jump lands on it, as Resolve's
+        // question does (playtest 2026-11-09b, finding 18).
+        accessibilityRole="header"
         // Read in its own language's voice (playtest 2026-11-08, finding 41).
         accessibilityLanguage={textLanguage(prediction.title)}
       >

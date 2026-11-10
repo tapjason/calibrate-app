@@ -8,6 +8,7 @@ import {
   openForHistory,
   parseRangeParam,
   rangeText,
+  rangeClearsOnTabState,
 } from './historyFilter';
 
 let seq = 0;
@@ -208,5 +209,31 @@ describe('historySummary', () => {
 
   it('leaves out "not scored" when nothing was skipped', () => {
     expect(historySummary([prediction({ status: 'resolved_no' })])).toBe('1 answered, 0 happened');
+  });
+});
+
+// Blind playtest 2026-11-09b, finding 17: the range dropped under the Log sheet.
+describe('rangeClearsOnTabState', () => {
+  const tabs = (focused: number) => ({
+    index: focused,
+    routes: [{ key: 'today-1' }, { key: 'insights-1' }, { key: 'history-1' }, { key: 'you-1' }],
+  });
+
+  it('clears when another tab takes focus', () => {
+    expect(rangeClearsOnTabState(tabs(0), 'history-1', true)).toBe(true);
+  });
+
+  it('keeps the range while History is still the focused tab (a sheet over it)', () => {
+    expect(rangeClearsOnTabState(tabs(2), 'history-1', true)).toBe(false);
+  });
+
+  it('does nothing with no range set, so clearing never loops', () => {
+    expect(rangeClearsOnTabState(tabs(0), 'history-1', false)).toBe(false);
+  });
+
+  it('reads an odd payload as no change', () => {
+    expect(rangeClearsOnTabState(undefined, 'history-1', true)).toBe(false);
+    expect(rangeClearsOnTabState({ index: 'x', routes: [] }, 'history-1', true)).toBe(false);
+    expect(rangeClearsOnTabState({ index: 5, routes: [] }, 'history-1', true)).toBe(false);
   });
 });

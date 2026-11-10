@@ -27,8 +27,11 @@ export default function WarmupScreen() {
   // quiz, against the warmup_completed events. Fired on mount rather than on
   // the first answer, because someone who opens the quiz and leaves is exactly
   // who that metric is about.
+  // A quiz reopened part-way (its answers are kept, playtest 2026-11-09b) has
+  // already been counted.
+  const resumed = useWarmupStore((s) => s.index > 0);
   useEffect(() => {
-    if (!finished) void track('warmup_started');
+    if (!finished && !resumed) void track('warmup_started');
     // Deliberately once per mount, not per question.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -96,12 +96,16 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const onNext = async () => {
     if (selected === null || confidence === null || submitting) return;
     setSubmitting(true);
+    const choice = selected;
+    const sure = confidence;
+    // Reset for the next question. Confidence resets too: carrying it over
+    // would quietly anchor every later answer to the first one. Before the
+    // answer, which now waits on a save (kept progress, playtest 2026-11-09b):
+    // after it, a frame could show the next question with this one's answer.
+    setSelected(null);
+    setConfidence(null);
     try {
-      await answer(selected, confidence);
-      // Reset for the next question. Confidence resets too: carrying it over
-      // would quietly anchor every later answer to the first one.
-      setSelected(null);
-      setConfidence(null);
+      await answer(choice, sure);
     } finally {
       setSubmitting(false);
     }

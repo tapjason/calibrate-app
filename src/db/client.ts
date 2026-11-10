@@ -25,6 +25,13 @@ export interface DbAdapter {
    * (e.g. resolve a prediction + recompute stats in one go).
    */
   transaction<T>(fn: () => Promise<T>): Promise<T>;
+
+  /**
+   * Test adapters only: free the database. setDbForTests() calls it on the one
+   * it replaces, so a suite's databases don't pile up in sql.js's fixed heap
+   * (one more table in 2026-11 ran ResolvePrompt's suite out of memory).
+   */
+  close?(): void;
 }
 
 let db: DbAdapter | null = null;
@@ -127,6 +134,7 @@ export function setDbForTests(testDb: DbAdapter | null): void {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('setDbForTests is only allowed when NODE_ENV=test');
   }
+  if (db && db !== testDb) db.close?.();
   db = testDb;
   initPromise = null; // drop any cached init so a later initDb() rebuilds cleanly
 }

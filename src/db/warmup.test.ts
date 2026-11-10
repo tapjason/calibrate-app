@@ -3,7 +3,13 @@ import type { WarmupAnswer } from '@/types';
 import { getDb, setDbForTests } from './client';
 import { getUserStat, listCategoryStats } from './stats';
 import { createTestDb } from './testing';
-import { clearWarmupRecord, getWarmupRecord, saveWarmupRecord } from './warmup';
+import {
+  clearWarmupRecord,
+  getWarmupProgress,
+  getWarmupRecord,
+  saveWarmupProgress,
+  saveWarmupRecord,
+} from './warmup';
 
 const ANSWERS: WarmupAnswer[] = [
   { confidence: 90, correct: true },
@@ -93,5 +99,49 @@ describe('warmup db', () => {
 
     const predictions = await getDb().all(`SELECT * FROM predictions`);
     expect(predictions).toEqual([]);
+  });
+
+  describe('progress (playtest 2026-11-09b)', () => {
+    const progress = (n: number) => ({
+      question_ids: ['q1', 'q2', 'q3'].slice(0, n),
+      answers: ANSWERS.slice(0, n),
+    });
+
+    it('keeps the answers so far, replacing what was kept', async () => {
+      expect(await getWarmupProgress()).toBeNull();
+      await saveWarmupProgress(progress(1));
+      await saveWarmupProgress(progress(2));
+      expect(await getWarmupProgress()).toEqual(progress(2));
+    });
+
+    it('saving none, finishing or clearing drops it', async () => {
+      await saveWarmupProgress(progress(3));
+      await saveWarmupProgress(progress(0));
+      expect(await getWarmupProgress()).toBeNull();
+
+      await saveWarmupProgress(progress(3));
+      await saveWarmupRecord({ completed_at: '2026-08-29T12:00:00.000Z', answers: ANSWERS });
+      expect(await getWarmupProgress()).toBeNull();
+
+      await saveWarmupProgress(progress(3));
+      await clearWarmupRecord();
+      expect(await getWarmupProgress()).toBeNull();
+    });
+
+    it('never writes into real stats (R9)', async () => {
+      await saveWarmupProgress(progress(2));
+      expect(await getUserStat('user-1')).toBeNull();
+      expect(await listCategoryStats('user-1')).toEqual([]);
+    });
+
+    it('reads unparseable answers as none', async () => {
+      await getDb().run(
+        `INSERT INTO warmup_progress (id, answers_json, question_ids, updated_at) VALUES ('me', '{nope', '[]', 'x')`,
+      );
+      expect(await getWarmupProgress()).toBeNull();
+      await saveWarmupProgress(progress(2));
+      await getDb().run(`UPDATE warmup_progress SET question_ids = '["q1"]'`);
+      expect(await getWarmupProgress()).toBeNull(); // ids and answers disagree
+    });
   });
 });

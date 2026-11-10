@@ -824,6 +824,15 @@ export type ClearAgeBucket = () => Promise<void>;
 export type GetWarmupRecord = () => Promise<WarmupRecord | null>;
 export type SaveWarmupRecord = (record: WarmupRecord) => Promise<void>;
 export type ClearWarmupRecord = () => Promise<void>;
+/** An unfinished Warm-up: its answers so far and the questions they answered. */
+export interface WarmupProgress {
+  question_ids: string[];
+  answers: WarmupAnswer[];
+}
+/** The kept progress, oldest answer first, or null with none. */
+export type GetWarmupProgress = () => Promise<WarmupProgress | null>;
+/** Keep the progress, replacing what was kept; no answers deletes it. */
+export type SaveWarmupProgress = (progress: WarmupProgress) => Promise<void>;
 
 // ---- DB: daily practice (L2) ----
 

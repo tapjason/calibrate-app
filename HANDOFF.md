@@ -1,60 +1,54 @@
 # Handoff
 
-**Branch:** `builder/limits-fixes`, from `builder/playtest-limits` (ddd4952, the eighth playtest round's write-up). Nothing pushed; `builder/playtest-limits`, `builder/agent-harness`, `builder/device-fixes`, `builder/expo-fix`, `builder/score-holes`, `builder/build-prep` and `master` are still local only.
+**Branch:** `builder/playtest-09b-fixes`, from `builder/limits-fixes` (0967435, the tenth playtest round's write-up). Nothing pushed; `builder/limits-fixes`, `builder/playtest-limits`, `builder/agent-harness`, `builder/device-fixes`, `builder/expo-fix`, `builder/score-holes`, `builder/build-prep` and `master` are still local only.
 
 ## What this PR did
 
-Step 161: the findings from the eighth blind playtest round (`docs/design/research/playtest-2026-11-08b.md`) that need no decision. JS only: a reload on the phone, no new build. The full list is the step's row in `docs/design/BUILT_LOG.md`.
+Step 162: the findings from the tenth blind playtest round (`docs/design/research/playtest-2026-11-09b.md`) that need no decision. JS only: a reload on the phone, no new build (migration 013 runs on the next start). The full list is the step's row in `docs/design/BUILT_LOG.md`.
 
-- **Record safety (findings 1, 2, 4, 6, 25):**
-  - Save tapped three times in one frame saves once (`submittingRef`).
-  - "Answer it now" on a Can't tell writes nothing until Yes or No. The store then reopens and answers in one transaction (`resolve(…, { answeringSkip: true })`, through `unskipPrediction`, which only touches a row still skipped), still held to D45's week. "Leave it as can't tell" backs out, and VoiceOver hears both changes.
-  - Chip taps wait 400 ms after "N more" or "Show fewer" (new), so a double tap can't choose the chip that slid under it.
-  - Text limits count and cut by character as a person sees it (`src/engine/graphemes.ts`, reached through `src/store/text.ts`). An edit at the limit trims only what was typed or pasted (`fitEdit`), never the end of the text.
-  - Two ±5 taps before a render move twice.
-- **Stale or missing (3, 13, 20, 21):** Today's identity line follows a rename; a second tap on any tab scrolls to the top (`useScrollToTop`); History lists only categories with predictions, plus the chosen one; Edit asks before a changed draft is swiped away (`useEditDraftGuard`).
-- **Large text and narrow screens (14, 16, 17, 18, 26, 27):**
-  - You's switch goes under a label that can't share its line, at the trailing edge.
-  - The range cells wrap before two counts touch.
-  - The 70/85/90 marks hug their ticks, at most 1.5× size.
-  - An edge-pinned n= label is checked where it is drawn.
-  - Categories puts Rename and the switch on their own line under a name they'd cut.
-  - Insights' badge pills share the widest one's width at the current text size.
-  - A typed emoji icon starts at the text edge.
-  - On web, the note box grows.
-- **Words (11, 28, 29):**
-  - Counts and streaks are grouped ("1,001-day streak") on Today, Insights, the card subline and the recaps.
-  - A built-in name at a phrase start is capitalised ("Furthest off: Finance.").
-  - Section counts say "predictions".
-  - "Answer now" carries the early warning as its hint.
-  - The icon button names the current icon.
-- **Not changed:** the details screen still reads what you said before the title (DESIGN_SYSTEM §7.10, deliberate).
+- **The Warm-up keeps its answers (finding 1):**
+  - Each answer is saved as it's given, in a new device-only table, `warmup_progress` (SQLite migration 013), along with the ids of the questions answered.
+  - A reload reopens the quiz at the next question. Kept answers to a different set of questions start it over.
+  - Finishing, retaking or erasing drops the table's row.
+  - `warmup_started` isn't fired again for a resumed quiz.
+  - The quiz clears the chosen answer before the save, so the next question never shows a frame with the last answer still picked.
+- **Words:**
+  - **How scoring works (7):** now gives D45's floor for answering a Can't tell.
+  - **Today's first-answer line (13):** names the reminder's part of the day (`partOfDay`).
+  - **The empty week recap (10):** says "Nothing resolved this week." and drops "Log a prediction…" when one is open. "Came due" was false after a Can't tell (record audit).
+- **Layout:**
+  - **Practice (16):** scrolls Next into view once an answer is picked, and each question opens at its top.
+  - **History (17):** the range filter survives a sheet over History and clears only on a tab change (`rangeClearsOnTabState`).
+  - **Details (18):** the title is the screen's heading.
+- **Tooling:**
+  - `setDbForTests` closes the database it replaces. sql.js's fixed heap ran out with one more table.
+  - `docs/tooling-notes.md` has the typed-routes stub's cause: any change under `app/` while the web server runs. It also lists the three known require cycles (22).
+  - `docs/app-profile.md` R6 now includes D45's floor.
 - **Review:**
-  - `record-auditor`: HOLDS, no blocker. Its race (a sync landing between the check and the reopen) is closed with a single guarded statement, its count-format mismatch is fixed, and it asked for a same-day skip test, which is added.
-  - `code-reviewer` round 1: no blockers. All four should-fix items are done: the edit-aware cut, the pill-width ratchet, the VoiceOver announcements and the race. Three nits were taken too.
-  - `code-reviewer` round 2: no blockers. Its should-fix is done: the `fitEdit` tests also run without `Intl.Segmenter`, the path the phone likely takes. Its backspace guard (a deletion from a value already over the limit goes through) is taken too. Not taken: the pill width still only grows at one text size until the screen remounts; harmless while "Getting started" is the longest tier.
+  - `code-reviewer`: no blockers. All three should-fix items are done: the stale answer frame, practice's kept scroll offset, and a test for the History rule. Its nits are taken too (question ids on the kept answers, stale comments, the payload comment).
+  - Not taken: an intro or "picking up where you left off" line on a resumed Warm-up. That's new copy.
+  - `record-auditor`: HOLDS, no blocker. The recap wording, the exact floor wording, the R6 profile line and an isolation test are all done.
 
 ## In progress / broken
 
-- **Seen on web** (2026-11-08), before the round-1 review fixes, at 320 wide and 200% zoom with a 1,001-day record: Categories with long names, Insights' range cells, score scale, chart labels and badge pills, You's switch rows, History's filters and the tab re-tap. Screenshots are in `.playwright-mcp/limits-fixes/` (git-ignored).
-  - The review fixes were not re-seen: the automation browser came back with an empty profile, so the switch's trailing edge on its second line hasn't been looked at.
-- **Left as is (review notes):**
-  - The store's `reopen` is no longer called by any screen, but it can still reopen a Yes or No (three store tests use it). Restrict it to skips or delete it when those tests are reworked.
-  - Notification bodies and VoiceOver excerpts still cut titles by UTF-16 unit (`src/notifications/copy.ts`, `src/components/ui/textLanguage.ts`), which was already so; `fitGraphemes` can fix them.
-  - "N more" and "Show fewer" unmount themselves, so VoiceOver focus has nowhere to go.
-  - The chart's "n=" labels aren't grouped.
-- **Hermes:** `Intl.Segmenter` likely isn't there, so the phone uses `splitGraphemesFallback` (tested for emoji, flags, keycaps and accents; stricter for Indic and Hangul). `localCount` falls back to plain digits if `Intl.NumberFormat` is missing.
+- **Seen on web** (2026-11-09, 320 × 568):
+  - A reload at Warm-up question 5 reopens at 5, and finishing saves ten answers with no progress left.
+  - History's range survives the Log sheet and clears on a tab change.
+  - Practice's Next moves from 584 to 553 in a 568 window, and question 2 opens at its top.
+  - Not seen on web: the copy changes and the details heading (unit tests only).
+- **Left as is:**
+  - `reopen()` can still put a Can't tell back to pending, which has no deadline. No screen calls it, so restrict it to skips or delete it before one does (record-auditor, and the step-161 review).
+  - Deleting a signed-in account leaves the Warm-up rows (`warmup_results`, `warmup_progress`) on the phone, as `warmup_results` already did; Erase clears both. A question for `policy-auditor`.
+  - At the largest text sizes, when the confidence control and Next together are taller than the screen, revealing Next cuts off the control's top. The Warm-up has the same limit.
 
 ## Next step
 
 - **Owner, on the iPhone** (reload; `/device-check` can write the full list):
-  1. At the largest Larger Text size: You's switch rows, Categories with a long name, Insights' range cells, the 70/85/90 scale and the badge pills, then lower the size again and check the pills shrink.
-  2. Double-tap "N more" in Log; double-tap +5.
-  3. Type a family emoji at a category name's limit; type in the middle of a full title; type Chinese or Japanese near a limit (does composition survive?).
-  4. Mark a prediction Can't tell, tap "Answer it now", then "Leave it as can't tell": it stays Can't tell.
-  5. Edit an open prediction, change the title, swipe the sheet down: "Discard changes" is offered.
-  6. Tap each tab twice after scrolling.
-  7. A category with an emoji icon: it lines up with the text edge.
+  1. Start a fresh Warm-up, close the app at question 5 and reopen: it continues at question 5.
+  2. Practice at the largest text size: picking an answer brings Next into view inside the sheet, and question 2 opens at its top.
+  3. History from an Insights range, then "+" and close: the range stays. Change tabs and come back: it's gone.
+  4. VoiceOver's heading rotor on a prediction's details lands on its title.
+  5. With no answers yet and the reminder at 8 AM, Today says "Your first answer: tomorrow morning".
 - **Agent:** steps 157–159; the playtest's "needs the owner" findings wait on `/design`.
 
 ## Read first
@@ -70,11 +64,24 @@ Step 161: the findings from the eighth blind playtest round (`docs/design/resear
   - the domain;
   - email confirmation for strangers;
   - the 2026-11-08 playtest's group 4 (Insights' hierarchy, the 70/85/90 meter's label, the recap's lead) and group 6 (sheet headers, vocabulary, formats);
-  - finding 17: Share above or below the card's settings.
-  - from `record-auditor`: say in D45 that an answered Can't tell gets its own 24-hour correction window from the Yes or No (the code and `corrections.ts` already read it so); and whether to accept that the skip week and same-day rule use the device clock.
+  - finding 17 there: Share above or below the card's settings.
+  - from `record-auditor`:
+    - say in D45 that an answered Can't tell gets its own 24-hour correction window from the Yes or No;
+    - whether to accept that the skip week and same-day rule use the device clock;
+    - what `reopen()` should do to a skip.
   - the eighth round's "needs the owner" findings (5, 7 with `expo-localization`, 8–13, 19, 22, 23, 27's note editing, 30–35).
+  - the tenth round's (`playtest-2026-11-09b.md`):
+    - 1 (keep an unsaved Log draft);
+    - 2 (per-category plain counts before 15, a date estimate);
+    - 3 (card defaults for own-named categories, reminders without titles);
+    - 4 (coming back after a gap);
+    - 5 (where ±5 starts, D36);
+    - 6 (after a miss);
+    - 7–9 (one save model, "resolved", the 70/85/90 labels);
+    - 10 (the card and recap headlines);
+    - 11–15, 19, 20.
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 156 suites, 1,809 tests. If `tsc` reports three typed-route errors, the generated route types are a stub (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 156 suites, 1,823 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

@@ -29,6 +29,7 @@ import { MIGRATION_009 } from './009_custom_categories';
 import { MIGRATION_010 } from './010_age_bucket';
 import { MIGRATION_011 } from './011_category_icons';
 import { MIGRATION_012 } from './012_score_holes';
+import { MIGRATION_013 } from './013_warmup_progress';
 
 export interface Migration {
   id: string;
@@ -49,6 +50,7 @@ export const MIGRATIONS: readonly Migration[] = [
   // Keeps the id it was first run under (2026-11-03); see 011_category_icons.ts.
   { id: '010_category_icons', sql: MIGRATION_011 },
   { id: '012_score_holes', sql: MIGRATION_012 },
+  { id: '013_warmup_progress', sql: MIGRATION_013 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();

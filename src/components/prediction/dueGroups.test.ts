@@ -7,6 +7,7 @@ import {
   groupByDue,
   isReadyToResolve,
   nextDueLine,
+  partOfDay,
 } from './dueGroups';
 
 // Local noon on 10 Sep 2026; every due date below is built in local time too,
@@ -136,6 +137,21 @@ describe('firstAnswerLead', () => {
 
   it('gives the date beyond the week', () => {
     expect(firstAnswerLead([dueIn(9)], NOW)).toMatch(/^Your first answer: Sat,?\u00A0Sep\u00A019$|^Your first answer: Sat,\u00A019\u00A0Sep$/);
+  });
+
+  // Playtest 2026-11-09b, finding 13: reminders at 4 PM still read "evening".
+  it("names the reminder's part of the day", () => {
+    expect(firstAnswerLead([dueIn(1)], NOW, 16)).toBe('Your first answer: tomorrow afternoon');
+    expect(firstAnswerLead([dueIn(3)], NOW, 8)).toBe('Your first answer: Sunday morning');
+    expect(firstAnswerLead([dueIn(1)], NOW, 22)).toBe('Your first answer: tomorrow night');
+    expect(firstAnswerLead([dueIn(1)], NOW, 19)).toBe('Your first answer: tomorrow evening');
+  });
+
+  it('puts every hour in one part of the day', () => {
+    expect([0, 4, 5, 11, 12, 16, 17, 20, 21, 23].map(partOfDay)).toEqual([
+      'early morning', 'early morning', 'morning', 'morning', 'afternoon',
+      'afternoon', 'evening', 'evening', 'night', 'night',
+    ]);
   });
 
   it('says it is ready once one is due', () => {

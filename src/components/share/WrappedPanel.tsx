@@ -162,6 +162,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                 : null
             }
             upcoming={span === 'week' ? dueWithin(pending, new Date(), 7) : 0}
+            hasOpen={pending.some((p) => p.status === 'pending')}
             badge={nextBadgeProgress(
               shownStats,
               nextBadges,

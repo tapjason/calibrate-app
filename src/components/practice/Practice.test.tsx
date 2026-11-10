@@ -99,6 +99,19 @@ describe('PracticeQuiz', () => {
     expect(usePracticeStore.getState().answersFor(day)).toMatchObject([{ slot: 0, correct: true }]);
   });
 
+  // Blind playtest 2026-11-09b, finding 16: Next below the fold at 320 × 568.
+  it('asks for Next to be brought into view once an answer is picked', () => {
+    const day = today();
+    const reveal = jest.fn();
+    render(<PracticeQuiz day={day} slot={0} reveal={reveal} />);
+    const layout = (y: number, height: number) => ({ nativeEvent: { layout: { x: 0, y, width: 320, height } } });
+    fireEvent(screen.getByTestId('practice-quiz'), 'layout', layout(20, 600));
+    fireEvent(screen.getByTestId('practice-next-box'), 'layout', layout(540, 50));
+
+    fireEvent.press(screen.getByTestId('practice-option-0'));
+    expect(reveal).toHaveBeenCalledWith(610);
+  });
+
   it('names the last button for what it shows', () => {
     render(<PracticeQuiz day={today()} slot={2} />);
     expect(screen.getByTestId('practice-next')).toHaveTextContent('See answers');

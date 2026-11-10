@@ -129,3 +129,23 @@ export function firstHistoryCopy(
   }
   return { message, action: { kind: 'log', label: 'Log a prediction' } };
 }
+
+/**
+ * Whether a change in the tab navigator's state should drop History's range:
+ * only when a range is set and another tab is now the focused one. A sheet
+ * over History (Log, a prediction) leaves History focused in the tabs, and
+ * dropped the range under it (blind playtest 2026-11-09b, finding 17).
+ * `state` is the navigator's event payload, read defensively: anything not
+ * shaped like a navigator state clears nothing.
+ */
+export function rangeClearsOnTabState(
+  state: unknown,
+  historyKey: string,
+  rangeSet: boolean,
+): boolean {
+  if (!rangeSet || typeof state !== 'object' || state === null) return false;
+  const { index, routes } = state as { index?: unknown; routes?: unknown };
+  if (typeof index !== 'number' || !Array.isArray(routes)) return false;
+  const focused = routes[index] as { key?: unknown } | undefined;
+  return typeof focused?.key === 'string' && focused.key !== historyKey;
+}

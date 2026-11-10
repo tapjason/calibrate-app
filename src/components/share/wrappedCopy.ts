@@ -64,10 +64,16 @@ const VERDICTS = {
 // tester as a contradiction. Both are true, over different spans.
 const WINDOW = { week: 'This week', year: 'This year' } as const;
 
+// "Resolved", not "came due": the week counts Yes and No answers given in it,
+// so "Nothing came due" was false after a Can't tell (record audit, 2026-11-09).
 const EMPTY_NOTE = {
-  week: 'Nothing came due this week. Log a prediction and the story starts.',
+  week: 'Nothing resolved this week. Log a prediction and the story starts.',
   year: 'Nothing resolved this year yet.',
 } as const;
+
+// With one already open, "Log a prediction" read as if it hadn't saved
+// (blind playtest 2026-11-09b, finding 10).
+const EMPTY_NOTE_WITH_OPEN = 'Nothing resolved this week.';
 
 /** The user's all-time progress toward an unlocked rating, from UserStat. */
 export interface OverallProgress {
@@ -99,6 +105,8 @@ export function wrappedStory(
    * the way says what will be there (DESIGN_SYSTEM §7.14), not "nothing".
    */
   upcoming = 0,
+  /** Whether any prediction is open at all, however far off its due date. */
+  hasOpen = false,
 ): WrappedStory {
   const { span, resolved } = summary;
 
@@ -127,7 +135,7 @@ export function wrappedStory(
       allTime: null,
       receipt: null,
       provisionalNote: null,
-      note: EMPTY_NOTE[span],
+      note: span === 'week' && hasOpen ? EMPTY_NOTE_WITH_OPEN : EMPTY_NOTE[span],
     };
   }
 
