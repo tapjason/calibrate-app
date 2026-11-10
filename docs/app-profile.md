@@ -246,6 +246,14 @@ the browser.
 | Marcus, 38 | Eight months sober, predicts "I'll make my meeting"; a miss hurts | Misses said as information, a streak that doesn't shame | "You failed", a red mark on a hard day, cheer after a miss |
 | Rahel, 28 | Eritrean in Germany, Tigrinya first, German second, English third; shares a phone with her sister | Titles nobody else reads by accident, plain words | Her predictions on the lock screen or open to whoever picks the phone up |
 | Conceição, 64 | Retired biostatistician in Porto, Portuguese first, dyslexic, ADHD, follows football and cycling, back after two months away | Statistics that are right and say their limits, a way back in that names what changed | A silent drop in her number, long paragraphs, losing her place after an interruption |
+| Keisha, 37 | Operations manager in Atlanta, nine goals in Strides (Plus), plans her year on Sundays | Her yearly targets somewhere useful, and something back this week | Nothing for months, a goal whose progress she can't show |
+| Piotr, 66 | Retired tram driver in Kraków, Polish first, careful English, six years of Way of Life ticks, right arm in a sling, an old small iPhone | To tick today's walk tonight, targets big enough for one thumb | "Not scored" for a reason he can't follow, retyping the same habit every day |
+| Kiri, 22 | Café worker and part-time student in Wellington, they/them, a 500-day Finch streak, low-energy weeks, te reo Māori words in titles | Warmth after a miss, a few steps on a bad night | A miss said coldly, a streak that guilts them, a long flow |
+| Jonas, 27 | Bike courier in Vienna, German first, lives in Fitness rings, Reminders and Strava, no signal in tunnels | Worth it in one red light, working with no bars | A manual app that gives nothing back, an error when offline |
+| Valentina, 28 | Call-centre agent in Bogotá, Spanish first, dyslexic, dictates titles, needs IELTS band 7 for a visa, prepaid data | Short lines, dictation slips forgiven, something to show her study group | "7 in 10" mixed up with band 7, long paragraphs, a miss said as failure |
+| Carol, 57 | Payroll clerk in Birmingham, Alabama, weekly weigh-ins on a weight-loss programme, low tech confidence, back after five weeks away after a bad weigh-in | To come back without shame, her weight kept private at work | A word about her weight or diet, her weigh-in on the lock screen, a pile that scolds |
+| Farah, 44 | Real-estate agent in Montréal, Arabic and French first, client names in Arabic, an AI coach plans her week, Reduce Motion | To be told what to do differently, and to update a deal as it moves | A number she can't update, Arabic names garbled, a coach behind a wall |
+| Bex, 48 | Engineering manager in Leeds, seven years of Beeminder with money on the line, tritanopia | To know whether being sure has worked for her, an honest place for a miss with a good excuse | A chart she can't read in her colours, a hedge that hides a miss |
 
 **Diversity axes.** A round covers people, not only screens. Each run's persona has a value on
 every axis; a round's cast spreads across them:
@@ -265,6 +273,7 @@ every axis; a round's cast spreads across them:
 | Where they are in the app | first five minutes, first week, daily habit, back after a gap, long-time (months or years) |
 | Context | sitting with time, two-minute break, interrupted mid-task, dark room, on the move |
 | Screen | 320 × 568, 375 × 812, 402 × 874, 440 × 956, landscape; light or dark |
+| What they use now | a habit tracker, a goal planner, a gamified app, a commitment device with money, a forecasting tool, an AI coach, a diet or fitness app, Apple's built-ins, paper, Notes or a spreadsheet, nothing (what each teaches its users: `research/competitors-2026-11.md`) |
 
 **Choosing a round's cast.** Six to eight runs. The focus picks one or two personas who must be
 there (Elena for data leaving the phone, Kofi for accessibility, Dana for inputs and layout, Kai for
