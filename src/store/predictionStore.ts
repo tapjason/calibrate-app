@@ -451,6 +451,21 @@ export function earliestDueFor(createdAt: string | Date, now: Date = new Date())
 }
 
 /**
+ * The soonest open prediction with the same words as `p` (D32's `titleKey`),
+ * other than `p` itself, or null. History's answered details say "Logged
+ * again, due …" instead of offering "Log it again" while one is open (roadmap
+ * D56), so a habit isn't stacked twice from one source.
+ */
+export function openRepeatOf(p: Prediction, pending: readonly Prediction[]): Prediction | null {
+  const key = titleKey(p.title);
+  const same = pending.filter(
+    (o) => o.id !== p.id && o.status === 'pending' && titleKey(o.title) === key,
+  );
+  if (same.length === 0) return null;
+  return same.reduce((a, b) => (Date.parse(b.due_date) < Date.parse(a.due_date) ? b : a));
+}
+
+/**
  * The due date a prediction saved at `now` with `dueIso` will carry: `create`
  * moves anything before tomorrow to tomorrow (D41). Log's Save names this one
  * (roadmap D55), so it never names a date that won't be saved.

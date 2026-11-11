@@ -831,7 +831,19 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
 - **Log it again** (roadmap step 22): after an answer, a secondary capsule under
   Done. It saves any reflection, closes the sheet and opens Log with the title,
   category and lead time carried over, and the confidence empty: a fresh call, never
-  the old number. Not offered inside a run.
+  the old number. Not offered inside a run. **Its label names the date it brings**
+  (D56, step 169): "Log it again, due tomorrow", "…due in a week", "…due in a month",
+  else as Save says it (`logAgainWords`, from the same draft Log opens with).
+  **After a same-day answer** (D41) the line in place of the range's record is advice,
+  "Not scored: you logged it today. Log the next one now, and its answer is scored
+  from tomorrow." ("you changed its words today" after a rewording), and the button
+  sits right under it, above Done: a tester tapped Done under the old line and
+  retyped his walk (blind playtest 2026-11-10, run 2). The same after Yes and No.
+- **The note before Yes and No** for a same-day answer ("You logged this today, so an
+  answer today isn't scored…") isn't repeated when Resolve opens from Answer it now's
+  confirmation, which said it a moment before (D56): the route carries that day's key
+  (`?warned=2026-11-10`, `sameDayWarned`), and every other route, and any later day,
+  shows the note.
 - **A run** (three or more ready; roadmap step 18): Home's primary **Answer all N**
   opens the same sheet with "2 of 5" and a thin brand progress bar above one prompt
   at a time. After an answer the finishing button reads **Next** (**Finish** on the
@@ -1284,7 +1296,11 @@ sheet with the round ×:
   outlined destructive capsule and **Cancel** beneath (§7.20). Synced as a deletion.
 - **Answer it now** (text button, brand): opens Resolve after one line, "It's due
   Fri, Oct 16. Answering early is fine; just answer what you know now." with
-  **Answer now** and **Not yet**. Early answers count like any other.
+  **Answer now** and **Not yet**. Early answers count like any other. **On the day it
+  was logged** the line says the rule once, with what to do (D56, step 169): "It's due
+  Wed, Nov 11. You logged it today, so an answer today isn't scored. From tomorrow it
+  is. For something you do every day, log the next one the evening before." ("You
+  changed its words today, …" after a rewording, without the advice).
 - A prediction that's due skips this sheet and opens Resolve, as before: the evening
   run stays two taps.
 - **Once it's due anyway** (step 133): an edit can move the date to today, and a link
@@ -1298,6 +1314,10 @@ sheet with the round ×:
   to: it happened** (secondary capsule), the category chips (a tap moves it), and
   **Delete** with the usual confirmation. After the day, one line instead: "Answers
   can be changed for a day after they're given. This one is part of your record now."
+  At any time, under the outcome, **Log it again, due tomorrow** (secondary capsule,
+  12 pt below the outcome; D56, step 169), or "Logged again, due Wed, Nov 11." while
+  the same words are open (`openRepeatOf`; "Logged again, ready to answer." once its
+  day has come), so one source doesn't stack. Resolve does the same after an answer.
   Never "Can't tell" here. A skip still opens Resolve (step 39).
 
 ### 7.24 Category icons (D40, 2026-11-03)

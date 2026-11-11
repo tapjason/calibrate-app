@@ -16,7 +16,8 @@ import { usePredictionStore } from '@/store/predictionStore';
  */
 export default function LogScreen() {
   const router = useRouter();
-  // "Log it again" from Resolve (roadmap step 22) arrives as ?again=<id>.
+  // "Log it again" from Resolve (roadmap step 22) or History's answered
+  // details (D56) arrives as ?again=<id>.
   const { again } = useLocalSearchParams<{ again?: string }>();
   const [draft, setDraft] = useState<LogAgainDraft | null>(null);
   const [dirty, setDirty] = useState(false);

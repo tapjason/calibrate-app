@@ -33,7 +33,7 @@
 import { Platform } from 'react-native';
 
 import type { Prediction } from '@/types';
-import { usePredictionStore } from '@/store/predictionStore';
+import { answerNowIsSameDay, usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -160,7 +160,7 @@ const recordedAnswers = new Map<string, 'happened' | 'didnt'>();
 // the cold-start read, or two taps) waits and does not write.
 const actionInFlight = new Map<string, Promise<ActionResult>>();
 
-type ActionResult = 'recorded' | 'unchanged' | 'missing' | 'failed';
+type ActionResult = 'recorded' | 'unchanged' | 'missing' | 'failed' | 'stale';
 
 let storeUnsub: (() => void) | null = null;
 let settingsUnsub: (() => void) | null = null;
@@ -499,6 +499,7 @@ function answerSlug(actionIdentifier: string | undefined): 'happened' | 'didnt' 
 async function recordReminderAnswer(
   predictionId: string,
   outcome: 'resolved_yes' | 'resolved_no',
+  shown: ReminderShown = {},
 ): Promise<ActionResult | 'folded'> {
   const running = actionInFlight.get(predictionId);
   if (running) {
@@ -512,7 +513,7 @@ async function recordReminderAnswer(
   // Set before any await so a second tap can't slip a second write in.
   actionInFlight.set(predictionId, done);
   try {
-    const result = await writeReminderAnswer(predictionId, outcome);
+    const result = await writeReminderAnswer(predictionId, outcome, shown);
     settle(result);
     return result;
   } catch (e) {
@@ -525,14 +526,43 @@ async function recordReminderAnswer(
   }
 }
 
+/** What a delivered reminder showed: the time it was set for. */
+interface ReminderShown {
+  /** `data.fireAt`: the reminder time it was scheduled for. */
+  fireAt?: string;
+}
+
+/**
+ * Whether a reminder's Happened / Didn't would answer something other than
+ * what it showed, or answer it unwarned (record audit 2026-11-10): an answer
+ * now would be same-day (D41; Resolve says so before Yes and No), or the
+ * prediction moved to another date or reminder time since the reminder was
+ * set. A rescheduled reminder is cancelled only while it hasn't fired, so a
+ * delivered one can outlive the edit. New words after it arrived are covered
+ * too: a rewording moves a due date of today to tomorrow at the earliest
+ * (D45), so `fireAt` no longer matches. (Not the delivery time: iOS reports
+ * it in seconds, not milliseconds, record audit round 2.)
+ */
+function staleReminder(before: Prediction, shown: ReminderShown): boolean {
+  if (answerNowIsSameDay(before)) return true;
+  return (
+    shown.fireAt !== undefined &&
+    shown.fireAt !== reminderTimeFor(before.due_date).toISOString()
+  );
+}
+
 async function writeReminderAnswer(
   predictionId: string,
   outcome: 'resolved_yes' | 'resolved_no',
+  shown: ReminderShown = {},
 ): Promise<ActionResult> {
   try {
     const before = await usePredictionStore.getState().getById(predictionId);
     if (!before) return 'missing';
     if (before.status !== 'pending') return 'unchanged';
+    // Opens Resolve on the question instead, with the current words and, for
+    // a same-day answer, the note that says it isn't scored.
+    if (staleReminder(before, shown)) return 'stale';
     // A milestone or checkpoint left from an earlier answer belongs to that
     // answer. Clear both so this one celebrates only what it crossed, the
     // same order as answering on the Resolve screen.
@@ -603,7 +633,10 @@ async function handleResponse(response: NotificationResponseEvent): Promise<void
     let show = recordedAnswers.get(request.identifier) ?? null;
     if (!show) {
       const outcome = slug === 'happened' ? 'resolved_yes' : 'resolved_no';
-      const result = await recordReminderAnswer(predictionId, outcome);
+      const data = request.content.data;
+      const result = await recordReminderAnswer(predictionId, outcome, {
+        fireAt: typeof data?.fireAt === 'string' ? data.fireAt : undefined,
+      });
       // The other delivery is the one that opens the screen.
       if (result === 'folded') return;
       if (result === 'recorded') {

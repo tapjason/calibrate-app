@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PredictionDetails } from '@/components/prediction/PredictionDetails';
 import { useEditDraftGuard } from '@/components/prediction/useLogDraftGuard';
 import { CloseButton } from '@/components/ui/CloseButton';
+import { warnedKey } from '@/components/resolution/sameDayWarned';
 import { space } from '@/constants/theme';
 
 /**
@@ -34,8 +35,20 @@ export default function PredictionScreen() {
         <PredictionDetails
           predictionId={typeof id === 'string' ? id : ''}
           onClose={close}
-          // One sheet at a time (HIG): Resolve takes this one's place.
-          onAnswer={(pid) => router.replace(`/resolve/${pid}` as never)}
+          // One sheet at a time (HIG): Resolve takes this one's place. After
+          // the same-day warning, today's date rides along so Resolve doesn't
+          // repeat it, and only today (roadmap D56): a reloaded or restored
+          // link on a later day shows Resolve's note again.
+          onAnswer={(pid, opts) =>
+            router.replace(
+              (opts?.warned
+                ? `/resolve/${pid}?warned=${warnedKey()}`
+                : `/resolve/${pid}`) as never,
+            )
+          }
+          // "Log it again" from an answered one (roadmap D56): Log takes this
+          // sheet's place, as from Resolve.
+          onPredictAgain={(p) => router.replace(`/log?again=${encodeURIComponent(p.id)}` as never)}
           onDirtyChange={setDirty}
         />
       </ScrollView>

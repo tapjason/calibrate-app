@@ -116,7 +116,7 @@ and item g are done. Next: the owner runs the development build.
      date the store will save (it clamps, `predictionStore` ~245), rebuilt when
      the day turns (~85–94), from one helper shared with step 169's label;
      DESIGN_SYSTEM §7.12 and `app-profile.md` §2 updated.
-   - **Step 169, D56:** the same-day copy (`PredictionDetails` ~176–181,
+   - **Step 169, D56** (done 2026-11-10, on `builder/habit-repeats`): the same-day copy (`PredictionDetails` ~176–181,
      `ResolvePrompt` ~168 and ~619, `AnsweredDetails` ~140) with reworded
      predictions keeping their own wording; Resolve's note hidden only from
      Answer it now's confirmation (`?warned=<local day>`, ignored once the day

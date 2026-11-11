@@ -911,6 +911,18 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
       look where Today's dot sits beside a read that wraps (the row centres it, the
       profile §18 trap, older than this step), and that a read both ways has no dot. On Log at 55% with 5 to 9 answers in 40–60%, the line under the slider ends
       "Too few to read yet." and VoiceOver reads it after the confidence.
+- [ ] **A daily habit (D56, step 169):** log "I walk 30 minutes today" in the morning,
+      open it and tap Answer it now: one warning with the evening-before advice; Answer
+      now opens Resolve with no second note; after Yes (and again after No) the advice
+      line has "Log it again, due tomorrow" right under it, and it opens Log in the
+      sheet's place with the title and "Save, due tomorrow". In History an answered
+      one offers "Log it again, due …", or "Logged again, due …" while the same words
+      are open. At AX5 the button labels wrap centred; VoiceOver reads the advice, then
+      the button.
+- [ ] **A reminder after a rewording (step 169):** let a due-day reminder arrive, then
+      change that prediction's words in the app, then tap Didn't on the reminder: the
+      app opens on the question with the new words and the same-day note, and records
+      nothing until you answer.
 
 ---
 

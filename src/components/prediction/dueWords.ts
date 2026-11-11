@@ -2,10 +2,11 @@
 // (roadmap D55): "tomorrow", a weekday within the week, else the date.
 //
 // Log's Save ("Save, due Sunday") uses it, and "Log it again, due tomorrow"
-// (D56) is meant to share it, so the two never word one date two ways.
+// (D56) builds on it, adding "in a week" and "in a month" as the chips say them.
 
-import { startOfLocalDay } from '@/components/prediction/logAgain';
+import { logAgainDraft, startOfLocalDay } from '@/components/prediction/logAgain';
 import { localDate } from '@/components/ui/dates';
+import type { Prediction } from '@/types';
 
 export interface DueWords {
   /** On screen: "tomorrow", "Sunday", "Tue, Nov 17" (no-break spaces). */
@@ -15,6 +16,10 @@ export interface DueWords {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+function localDaysUntil(dueIso: string, now: Date): number {
+  return Math.round((startOfLocalDay(new Date(dueIso)) - startOfLocalDay(now)) / DAY_MS);
+}
 
 /**
  * How a due date reads from `now`: "tomorrow" for the next day, the weekday
@@ -26,7 +31,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export function dueWords(dueIso: string, now: Date = new Date()): DueWords {
   const due = new Date(dueIso);
-  const days = Math.round((startOfLocalDay(due) - startOfLocalDay(now)) / DAY_MS);
+  const days = localDaysUntil(dueIso, now);
+  if (days === 0) return { text: 'today', spoken: 'today' };
   if (days === 1) return { text: 'tomorrow', spoken: 'tomorrow' };
   if (days >= 2 && days <= 6) {
     const weekday = due.toLocaleDateString(undefined, { weekday: 'long' });
@@ -38,4 +44,35 @@ export function dueWords(dueIso: string, now: Date = new Date()): DueWords {
   // largest text sizes "Mon, Jan 4, 2027" can't fit one line at 320 pt.
   const held = text.replace(/ /g, '\u00A0').replace(',\u00A0', ', ');
   return { text: held, spoken };
+}
+
+/**
+ * A repeat's date (roadmap D56): "in a week" and "in a month" for exactly
+ * those leads, as Log's chips name them; otherwise as Save says it.
+ */
+export function repeatDueWords(dueIso: string, now: Date = new Date()): DueWords {
+  const days = localDaysUntil(dueIso, now);
+  if (days === 7) return { text: 'in a week', spoken: 'in a week' };
+  if (days === 30) return { text: 'in a month', spoken: 'in a month' };
+  return dueWords(dueIso, now);
+}
+
+/**
+ * The date "Log it again" will bring, from the same draft Log opens with
+ * (`logAgainDraft`), so the button and the form name one day: "Log it again,
+ * due tomorrow" (roadmap D56).
+ */
+export function logAgainWords(prediction: Prediction, now: Date = new Date()): DueWords {
+  return repeatDueWords(logAgainDraft(prediction, now).dueIso, now);
+}
+
+/**
+ * "Logged again, due tomorrow." for an open repeat, or "Logged again, ready
+ * to answer." once its day has come (code review 2026-11-10: a repeat due
+ * today read as a bare date).
+ */
+export function loggedAgainLine(repeatDueIso: string, now: Date = new Date()): string {
+  return localDaysUntil(repeatDueIso, now) <= 0
+    ? 'Logged again, ready to answer.'
+    : `Logged again, due ${dueWords(repeatDueIso, now).text}.`;
 }

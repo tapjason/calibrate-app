@@ -19,6 +19,7 @@ import {
   ratingChangeLine,
   ResolvePrompt,
   SAME_DAY_LINE,
+  SAME_DAY_REWORDED_LINE,
 } from './ResolvePrompt';
 
 const USER = 'local-user-v1';
@@ -994,5 +995,106 @@ describe('meaningLine and ratingChangeLine (roadmap D50)', () => {
     expect(ratingChangeLine(91, 89)).toMatch(/^Your rating moved from 91 to 89\. /);
     expect(ratingChangeLine(88, 89)).toMatch(/^Your rating moved from 88 to 89\. /);
     expect(ratingChangeLine(89, 89)).toMatch(/^Your rating stays at 89\. /);
+  });
+});
+
+// Roadmap D56 (blind playtest 2026-11-10, run 2): a daily walk logged in the
+// morning was "not scored" three times per tick, and "Log it again" sat under
+// the after-answer line with nothing tying the two together.
+describe('ResolvePrompt — the same-day rule said once (roadmap D56)', () => {
+  const today = () => new Date().toISOString();
+  const tomorrowNoon = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(12, 0, 0, 0);
+    return d.toISOString();
+  };
+  type Drawn = { type: unknown; props: Record<string, unknown> };
+  /** testIDs in the order they're drawn. */
+  const order = (...ids: string[]) =>
+    screen.UNSAFE_root
+      .findAll((n: Drawn) => typeof n.type === 'string' && ids.includes(n.props.testID as string))
+      .map((n: Drawn) => n.props.testID as string);
+
+  it('skips the note before Yes and No only when Answer it now just said it', async () => {
+    await insertPrediction(samplePending({ created_at: today(), due_date: tomorrowNoon() }));
+    const first = render(<ResolvePrompt predictionId="p1" sameDayWarned />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    expect(screen.queryByTestId('resolve-same-day')).toBeNull();
+    first.unmount();
+
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    expect(screen.getByTestId('resolve-same-day')).toBeTruthy();
+  });
+
+  it.each(['resolve-yes', 'resolve-no'])(
+    'after %s, puts the advice and "Log it again" with its date together, the same either way',
+    async (button) => {
+      await insertPrediction(samplePending({ created_at: today(), due_date: tomorrowNoon() }));
+      render(<ResolvePrompt predictionId="p1" onPredictAgain={jest.fn()} sameDayWarned />);
+      await waitFor(() => expect(screen.getByTestId(button)).toBeTruthy());
+      fireEvent.press(screen.getByTestId(button));
+      await waitFor(() =>
+        expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(SAME_DAY_LINE),
+      );
+      expect(SAME_DAY_LINE).toBe(
+        'Not scored: you logged it today. Log the next one now, and its answer is scored from tomorrow.',
+      );
+      expect(screen.getByTestId('resolve-again')).toHaveTextContent('Log it again, due tomorrow');
+      expect(screen.getByTestId('resolve-again').props.accessibilityLabel).toBe(
+        'Log it again, due tomorrow',
+      );
+      // Right under the advice, above Done.
+      expect(order('resolve-bucket-line', 'resolve-again', 'resolve-done')).toEqual([
+        'resolve-bucket-line',
+        'resolve-again',
+        'resolve-done',
+      ]);
+    },
+  );
+
+  it('keeps "Log it again" under Done after an answer on a later day', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" onPredictAgain={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => expect(screen.getByTestId('resolve-again')).toBeTruthy());
+    expect(order('resolve-again', 'resolve-done')).toEqual(['resolve-done', 'resolve-again']);
+  });
+
+  it('says the words changed today, not that it was logged, after a rewording', async () => {
+    await insertPrediction(
+      samplePending({ title_edited_at: today(), due_date: tomorrowNoon() }),
+    );
+    render(<ResolvePrompt predictionId="p1" onPredictAgain={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() =>
+      expect(screen.getByTestId('resolve-bucket-line')).toHaveTextContent(SAME_DAY_REWORDED_LINE),
+    );
+  });
+});
+
+// Roadmap D56 / CLAUDE.md: with the same words already open, Resolve says so
+// instead of offering a second copy, as History does (code and record review
+// 2026-11-10: a habit could be stacked twice for one day).
+describe('ResolvePrompt — Logged again', () => {
+  it('names the open repeat in place of the button', async () => {
+    await insertPrediction(samplePending());
+    const due = new Date();
+    due.setDate(due.getDate() + 2);
+    due.setHours(12, 0, 0, 0);
+    // In the database too: answering reloads the open list from it.
+    await insertPrediction(
+      samplePending({ id: 'p2', title: 'ship the prototype', due_date: due.toISOString() }),
+    );
+    await usePredictionStore.getState().loadPending();
+    render(<ResolvePrompt predictionId="p1" onPredictAgain={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => expect(screen.getByTestId('resolve-logged-again')).toBeTruthy());
+    expect(screen.getByTestId('resolve-logged-again')).toHaveTextContent(/^Logged again, due \w+\.$/);
+    expect(screen.queryByTestId('resolve-again')).toBeNull();
   });
 });

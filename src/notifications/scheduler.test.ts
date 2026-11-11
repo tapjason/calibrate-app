@@ -64,6 +64,8 @@ interface FakeNotifications extends NotificationsApi {
     predictionId: string,
     actionIdentifier: string,
     identifier?: string,
+    /** What the delivered reminder carried: its data, when it arrived. */
+    extra?: { data?: Record<string, unknown>; date?: number },
   ): Promise<void>;
   /** A tap on a notification carrying `data` (the digest's, the practice reminder's). */
   triggerTapData(data: Record<string, unknown>): Promise<void>;
@@ -87,6 +89,7 @@ function makeFakeNotifications(
   let tapListener: ((event: {
     actionIdentifier?: string;
     notification: {
+      date?: number;
       request: { identifier: string; content: { data?: Record<string, unknown> } };
     };
   }) => void | Promise<void>) | null = null;
@@ -150,15 +153,21 @@ function makeFakeNotifications(
     triggerTap(predictionId: string, identifier = `tap-${predictionId}-${nextId++}`) {
       return fake.triggerAction(predictionId, 'expo.modules.notifications.actions.DEFAULT', identifier);
     },
-    triggerAction(predictionId: string, actionIdentifier: string, identifier = `tap-${actionIdentifier}-${nextId++}`) {
+    triggerAction(
+      predictionId: string,
+      actionIdentifier: string,
+      identifier = `tap-${actionIdentifier}-${nextId++}`,
+      extra: { data?: Record<string, unknown>; date?: number } = {},
+    ) {
       if (!tapListener) throw new Error('no tap listener installed');
       return Promise.resolve(
         tapListener({
           actionIdentifier,
           notification: {
+            date: extra.date,
             request: {
               identifier,
-              content: { data: { predictionId } },
+              content: { data: { predictionId, ...extra.data } },
             },
           },
         }),
@@ -1107,7 +1116,10 @@ describe('scheduler: reminder actions', () => {
     expect(useStatsStore.getState().userStat?.total_resolved ?? 0).toBe(0);
   });
 
-  it('keeps the edited prediction when a stale reminder is answered', async () => {
+  // Record audit 2026-11-10: reworded today it counts as made today (D45), so
+  // a reminder's Happened would be a same-day answer given unwarned. It opens
+  // the question instead, and the edit stays.
+  it('opens the question, keeping the edit, when the prediction was reworded today', async () => {
     const notifications = makeFakeNotifications(true);
     const navigator = makeFakeNavigator();
     __setDepsForTests({ notifications, navigator });
@@ -1123,10 +1135,10 @@ describe('scheduler: reminder actions', () => {
     await notifications.triggerAction(p.id, 'happened');
 
     const row = await getPrediction(p.id);
-    expect(row?.status).toBe('resolved_yes');
+    expect(row?.status).toBe('pending');
     expect(row?.title).toBe('Ship the beta');
     expect(row?.category).toBe('health');
-    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
   });
 
   it('records a cold-start Happened from the launching response', async () => {
@@ -1240,5 +1252,115 @@ describe('scheduler: reminder actions', () => {
     expect((await getPrediction(p.id))?.status).toBe('resolved_no');
     expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=didnt`]);
     warn.mockRestore();
+  });
+});
+
+// Record audit 2026-11-10: a rescheduled reminder is cancelled only while it
+// hasn't fired, so a delivered one could record an answer the person was
+// never warned about, or to words it never showed. Those open the question.
+describe('scheduler: a reminder that no longer matches its prediction', () => {
+  async function pendingEarlier() {
+    return await loggedEarlier(() =>
+      usePredictionStore.getState().create({
+        title: 'Ship the prototype',
+        category: 'work',
+        confidence: 70,
+        due_date: '2099-06-01T12:00:00.000Z',
+      }),
+    );
+  }
+
+  it('records when the reminder was set for the time it still has', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pendingEarlier();
+
+    await notifications.triggerAction(p.id, 'happened', undefined, {
+      data: { fireAt: '2099-06-01T19:00:00.000Z' },
+    });
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_yes');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+  });
+
+  it('opens the question for a reminder set for another date or time', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pendingEarlier();
+
+    await notifications.triggerAction(p.id, 'didnt', undefined, {
+      data: { fireAt: '2099-05-30T19:00:00.000Z' },
+    });
+
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+  });
+
+  it('opens the question when the words changed today, after the reminder came', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pendingEarlier();
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Ship the whole prototype',
+      category: p.category,
+      due_date: p.due_date,
+    });
+
+    await notifications.triggerAction(p.id, 'happened', undefined, {
+      data: { fireAt: '2099-06-01T19:00:00.000Z' },
+    });
+
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+  });
+
+  // Record audit round 2: a check on the delivery time blocked every
+  // prediction ever reworded on iOS (seconds, not ms). A rewording on an
+  // earlier day, with the reminder set for the date it has, still records.
+  it('records for a prediction reworded on an earlier day', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pendingEarlier();
+    await loggedEarlier(() =>
+      usePredictionStore.getState().update(p.id, {
+        title: 'Ship the whole prototype',
+        category: p.category,
+        due_date: p.due_date,
+      }),
+    );
+
+    await notifications.triggerAction(p.id, 'didnt', undefined, {
+      data: { fireAt: '2099-06-01T19:00:00.000Z' },
+      date: Math.floor(Date.now() / 1000), // as iOS reports it
+    });
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=didnt`]);
+  });
+
+  it('opens the question when an answer now would be same-day', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await usePredictionStore.getState().create({
+      title: 'Ship the prototype',
+      category: 'work',
+      confidence: 70,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+
+    await notifications.triggerAction(p.id, 'happened');
+
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
   });
 });

@@ -34,8 +34,14 @@ interface PredictionDetailsProps {
   predictionId: string;
   /** Close the sheet: after a delete, or from the ×. */
   onClose: () => void;
-  /** Answer it now: the route opens Resolve in this sheet's place. */
-  onAnswer: (id: string) => void;
+  /**
+   * Answer it now: the route opens Resolve in this sheet's place. `warned`
+   * when the confirmation just said an answer today isn't scored, so Resolve
+   * doesn't say it again (roadmap D56).
+   */
+  onAnswer: (id: string, opts?: { warned: boolean }) => void;
+  /** "Log it again" from an answered prediction (roadmap D56). */
+  onPredictAgain?: (prediction: Prediction) => void;
   /** Whether Edit holds changes not saved yet, for the sheet's draft guard. */
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -60,6 +66,7 @@ export function PredictionDetails({
   predictionId,
   onClose,
   onAnswer,
+  onPredictAgain,
   onDirtyChange,
 }: PredictionDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
@@ -109,7 +116,14 @@ export function PredictionDetails({
   }
   // An answered one: its own details, open to correction for a day (D34).
   if (prediction && (prediction.status === 'resolved_yes' || prediction.status === 'resolved_no')) {
-    return <AnsweredDetails prediction={prediction} onChanged={setPrediction} onClose={onClose} />;
+    return (
+      <AnsweredDetails
+        prediction={prediction}
+        onChanged={setPrediction}
+        onClose={onClose}
+        onPredictAgain={onPredictAgain}
+      />
+    );
   }
   if (!prediction || prediction.status !== 'pending') {
     return (
@@ -173,13 +187,16 @@ export function PredictionDetails({
   const due = daysLeft <= 0;
   // Reworded since it was logged (D45): it counts as made then.
   const reworded = madeAt(prediction) !== prediction.created_at;
-  const earlyText =
-    `It's due ${shortDate(prediction.due_date)}. Answering early is fine; just answer what you know now.` +
-    (answerNowIsSameDay(prediction)
-      ? reworded
-        ? ' You changed its words today, though, so an answer today isn’t scored. From tomorrow it is.'
-        : ' You logged it today, though, so an answer today isn’t scored. From tomorrow it is.'
-      : '');
+  // Said once, here, with what to do (roadmap D56): a daily walk logged in
+  // the morning was "not scored" three times per tick (blind playtest
+  // 2026-11-10, run 2). Resolve doesn't repeat it when opened from here.
+  const sameDayNow = answerNowIsSameDay(prediction);
+  const dueOn = shortDate(prediction.due_date);
+  const earlyText = !sameDayNow
+    ? `It's due ${dueOn}. Answering early is fine; just answer what you know now.`
+    : reworded
+      ? `It's due ${dueOn}. You changed its words today, so an answer today isn’t scored. From tomorrow it is.`
+      : `It's due ${dueOn}. You logged it today, so an answer today isn’t scored. From tomorrow it is. For something you do every day, log the next one the evening before.`;
   // Deleting a due one hides an outcome that may be known, so it is counted.
   const deleteText = deleteIsCounted(prediction)
     ? 'Delete this prediction? It’s due, so Insights will count it as deleted. This can’t be undone.'
@@ -325,7 +342,7 @@ export function PredictionDetails({
           <Text style={styles.body}>{earlyText}</Text>
           <Button
             label="Answer now"
-            onPress={() => onAnswer(prediction.id)}
+            onPress={() => onAnswer(prediction.id, { warned: sameDayNow })}
             // The warning above, on the button too: a swipe can skip the text
             // (playtest 2026-11-08b, finding 29).
             accessibilityHint={earlyText}

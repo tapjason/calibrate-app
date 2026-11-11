@@ -4,6 +4,7 @@ import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View
 import { localDate } from '@/components/ui/dates';
 import { textLanguage } from '@/components/ui/textLanguage';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
+import { loggedAgainLine, logAgainWords } from '@/components/prediction/dueWords';
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
 import { Button } from '@/components/ui/Button';
 import { naturalFrequencyFor } from '@/components/ui/ConfidenceControl';
@@ -22,6 +23,7 @@ import {
 import {
   answerNowIsSameDay,
   madeAt,
+  openRepeatOf,
   skipAnswerBy,
   usePredictionStore,
 } from '@/store/predictionStore';
@@ -67,6 +69,12 @@ interface ResolvePromptProps {
    * The screen opens on the acknowledgement and does not record again.
    */
   recordedAnswer?: 'resolved_yes' | 'resolved_no';
+  /**
+   * Answer it now's confirmation said, today, that an answer today isn't
+   * scored (roadmap D56): the note before Yes and No isn't repeated. Only
+   * that route sets it; every other way here keeps the note.
+   */
+  sameDayWarned?: boolean;
 }
 
 /**
@@ -164,9 +172,20 @@ function shownRating(): number | null {
  * streak checkpoint. Reads what the resolve just left in the stores, then
  * clears it so a later screen doesn't celebrate the same answer again.
  */
-/** After a same-day answer (roadmap D41), in place of the range's record. */
+/**
+ * After a same-day answer (roadmap D41), in place of the range's record, as
+ * advice beside "Log it again" (D56): the button sat under "Answered the day
+ * you logged it, so it isn't scored" and nothing tied the two together, so a
+ * tester tapped Done and retyped his walk (blind playtest 2026-11-10, run 2).
+ */
 export const SAME_DAY_LINE =
-  'Answered the day you logged it, so it isn’t scored. It stays in History.';
+  'Not scored: you logged it today. Log the next one now, and its answer is scored from tomorrow.';
+/** The same for a prediction whose words changed today (D45). */
+export const SAME_DAY_REWORDED_LINE =
+  'Not scored: you changed its words today. Log the next one now, and its answer is scored from tomorrow.';
+
+const isSameDayLine = (line: string | null) =>
+  line === SAME_DAY_LINE || line === SAME_DAY_REWORDED_LINE;
 
 function readAcknowledgement(
   prediction: Prediction,
@@ -200,7 +219,9 @@ function readAcknowledgement(
   return {
     outcome,
     line: sameDay
-      ? SAME_DAY_LINE
+      ? madeAt(prediction) !== prediction.created_at
+        ? SAME_DAY_REWORDED_LINE
+        : SAME_DAY_LINE
       : first
         ? firstAnswerLine(prediction.confidence)
         : bucket
@@ -243,8 +264,12 @@ export function ResolvePrompt({
   reflectionCollapsed = false,
   onPredictAgain,
   recordedAnswer,
+  sameDayWarned = false,
 }: ResolvePromptProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
+  // An open prediction with the same words: "Logged again" instead of a
+  // second copy (D56, as History's details).
+  const pending = usePredictionStore((s) => s.pending);
   const [loading, setLoading] = useState(true);
   const [reflectionOpen, setReflectionOpen] = useState(!reflectionCollapsed);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -356,14 +381,13 @@ export function ResolvePrompt({
         ...answered,
         outcome,
         // A same-day answer stays one after a correction (D34 keeps its time).
-        line:
-          answered.line === SAME_DAY_LINE
-            ? SAME_DAY_LINE
-            : stats.userStat?.total_resolved === 1
-              ? firstAnswerLine(prediction.confidence)
-              : bucket
-                ? bucketLine(bucket)
-                : null,
+        line: isSameDayLine(answered.line)
+          ? answered.line
+          : stats.userStat?.total_resolved === 1
+            ? firstAnswerLine(prediction.confidence)
+            : bucket
+              ? bucketLine(bucket)
+              : null,
         // No rating line after a correction: both answers' effect on one
         // screen made a false outcome a one-tap comparison (record audit,
         // 2026-11-09). The meaning line still shows while provisional.
@@ -372,7 +396,7 @@ export function ResolvePrompt({
             ? null
             : answerNote(
                 prediction.confidence,
-                answered.line === SAME_DAY_LINE || stats.userStat?.total_resolved === 1,
+                isSameDayLine(answered.line) || stats.userStat?.total_resolved === 1,
                 null,
               ),
         // What the first answer crossed isn't this one's to show.
@@ -425,6 +449,33 @@ export function ResolvePrompt({
   }
 
   if (answered) {
+    // A same-day answer, which the advice line names (D41, D56): the same
+    // whichever way it went, so the offer is identical after Yes and No (R8).
+    const sameDayAnswer = isSameDayLine(answered.line);
+    // "Log it again" names the date it brings, from the draft Log opens with.
+    const again = logAgainWords(prediction);
+    // Under the advice it belongs to it: close to the line, with the room
+    // below it that the line's box usually keeps (D56).
+    const tied = sameDayAnswer && onPredictAgain !== undefined;
+    const repeat = openRepeatOf(prediction, pending);
+    const againButton = repeat ? (
+      <View style={tied ? styles.againTied : styles.again}>
+        <Text style={styles.loggedAgain} testID="resolve-logged-again">
+          {loggedAgainLine(repeat.due_date)}
+        </Text>
+      </View>
+    ) : (
+      <View style={tied ? styles.againTied : styles.again}>
+        <Button
+          label={`Log it again, due ${again.text}`}
+          accessibilityLabel={`Log it again, due ${again.spoken}`}
+          variant="secondary"
+          onPress={() => void finish(() => onPredictAgain?.(prediction))}
+          disabled={submitting}
+          testID="resolve-again"
+        />
+      </View>
+    );
     // Same acknowledgement for Yes and No (rule 0.4): no outcome colour, no
     // celebration — a precise, neutral "recorded".
     return (
@@ -457,7 +508,7 @@ export function ResolvePrompt({
           />
         )}
         {answered.line && (
-          <View style={styles.bucketBox}>
+          <View style={[styles.bucketBox, tied && styles.bucketBoxTied]}>
             <Text style={styles.bucketLine} testID="resolve-bucket-line">
               {holdRanges(answered.line)}
             </Text>
@@ -468,6 +519,8 @@ export function ResolvePrompt({
             )}
           </View>
         )}
+        {/* The advice and its button together (roadmap D56). */}
+        {onPredictAgain && sameDayAnswer && againButton}
 
         {reflectionOpen ? (
           <TextField
@@ -501,17 +554,7 @@ export function ResolvePrompt({
           disabled={submitting}
           testID="resolve-done"
         />
-        {onPredictAgain && (
-          <View style={styles.again}>
-            <Button
-              label="Log it again"
-              variant="secondary"
-              onPress={() => void finish(() => onPredictAgain(prediction))}
-              disabled={submitting}
-              testID="resolve-again"
-            />
-          </View>
-        )}
+        {onPredictAgain && !sameDayAnswer && againButton}
         {/* A mis-tap shouldn't be permanent (HIG: let people undo). */}
         <Pressable
           onPress={() => void changeAnswer()}
@@ -616,7 +659,8 @@ export function ResolvePrompt({
 
       {/* Said before the answer, not only after it (roadmap D41): finding
           out once Yes is tapped read as a trick (blind playtest 2026-11-04). */}
-      {answerNowIsSameDay(prediction) && (
+      {/* Not when Answer it now's confirmation said it a moment ago (D56). */}
+      {answerNowIsSameDay(prediction) && !sameDayWarned && (
         <Text style={styles.sameDayNote} testID="resolve-same-day">
           {madeAt(prediction) !== prediction.created_at
             ? 'You changed its words today, so an answer today isn’t scored. It still keeps your streak, and from tomorrow it counts.'
@@ -754,6 +798,9 @@ const styles = StyleSheet.create({
   bucketNote: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
   changeAnswer: { alignSelf: 'center', marginTop: space.lg, paddingVertical: space.sm },
   again: { marginTop: space.sm },
+  bucketBoxTied: { marginBottom: space.md },
+  loggedAgain: { ...type.subhead, color: colors.textSecondary, textAlign: 'center' },
+  againTied: { marginBottom: space.xxl },
   addReflection: { alignSelf: 'flex-start', marginBottom: space.lg, paddingVertical: space.sm },
   changeAnswerText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   categoryRow: {

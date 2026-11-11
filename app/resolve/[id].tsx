@@ -6,12 +6,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ResolvePrompt } from '@/components/resolution/ResolvePrompt';
 import { useReflectionGuard } from '@/components/resolution/useReflectionGuard';
 import { CloseButton } from '@/components/ui/CloseButton';
+import { sameDayWarned as warnedToday } from '@/components/resolution/sameDayWarned';
 import { colors, space, type } from '@/constants/theme';
 
 export default function ResolveScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; answer?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id: string;
+    answer?: string | string[];
+    warned?: string | string[];
+  }>();
   const id = params.id;
+  // Answer it now's confirmation already said an answer today isn't scored
+  // (roadmap D56), today only: the key is the day it was said.
+  const sameDayWarned = warnedToday(params.warned);
   const answerParam = Array.isArray(params.answer) ? params.answer[0] : params.answer;
   // `answer` is set by a Happened / Didn't action (roadmap D8). The body of
   // the notification opens this screen without it, on the question.
@@ -73,6 +81,7 @@ export default function ResolveScreen() {
           }}
           onDraftChange={setDraft}
           recordedAnswer={recordedAnswer}
+          sameDayWarned={sameDayWarned}
           // Roadmap step 22: a fresh call on Log. Log is a sheet too (D3), so
           // it takes this sheet's place rather than stacking on it (HIG: one
           // sheet at a time), and closes back to the tab underneath.

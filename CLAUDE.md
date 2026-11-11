@@ -524,7 +524,11 @@ Nothing that produces a shareable artifact is ever paywalled.
   the time the person picks in You (D38, 2026-11-01). **Happened** and **Didn't**
   on the reminder record that answer and open the app on the resolved state
   (D8, 2026-11-02); tapping the notification itself still opens the question,
-  and "Can't tell" stays in the app. Web has no actions.
+  and "Can't tell" stays in the app. Web has no actions. A reminder that no longer
+  matches its prediction (set for another date or time, words changed after it
+  arrived) or whose answer now would be same-day (D41) opens the question instead
+  of recording, with the current words and Resolve's note (step 169, 2026-11-10,
+  from the record audit: a delivered reminder outlives a reschedule).
 - **Weekly digest** — fires Sunday at 18:00 local, or on the day and time the person
   picks (D38), and summarizes open and upcoming predictions
 - **Trial ending** — 10:00 local two days before a free trial renews, with the

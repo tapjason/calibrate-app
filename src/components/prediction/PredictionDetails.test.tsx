@@ -180,12 +180,25 @@ describe('PredictionDetails (roadmap D25)', () => {
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-answer'));
+    // Roadmap D56: said once, here, with what to do, and without "answering
+    // early is fine" beside it.
     expect(screen.getByTestId('details-early')).toHaveTextContent(
-      /You logged it today, though, so an answer today isn’t scored\. From tomorrow it is\./,
+      /^It's due .+\. You logged it today, so an answer today isn’t scored\. From tomorrow it is\. For something you do every day, log the next one the evening before\./,
     );
     // Said aloud too: it appears in place of the button (playtest 2026-11-04b, run 2).
-    expect(announce).toHaveBeenCalledWith(expect.stringMatching(/isn’t scored\. From tomorrow it is\.$/));
+    expect(announce).toHaveBeenCalledWith(expect.stringMatching(/log the next one the evening before\.$/));
     announce.mockRestore();
+  });
+
+  // Roadmap D56: Resolve doesn't repeat the warning when opened from here.
+  it('tells Resolve the warning was given, only when it was', async () => {
+    await insertPrediction(open({ created_at: new Date().toISOString() }));
+    const onAnswer = jest.fn();
+    renderDetails({ onAnswer });
+    await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-answer'));
+    fireEvent.press(screen.getByTestId('details-answer-now'));
+    expect(onAnswer).toHaveBeenCalledWith('p1', { warned: true });
   });
 
   it('says it is early before answering, then hands over to Resolve', async () => {
@@ -199,7 +212,7 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(screen.getByTestId('details-early')).not.toHaveTextContent(/isn’t scored/);
     expect(onAnswer).not.toHaveBeenCalled();
     fireEvent.press(screen.getByTestId('details-answer-now'));
-    expect(onAnswer).toHaveBeenCalledWith('p1');
+    expect(onAnswer).toHaveBeenCalledWith('p1', { warned: false });
   });
 
   it('goes straight to Resolve once it is due, as after an edit to today', async () => {
@@ -308,5 +321,107 @@ describe('PredictionDetails, answered, window closed while open', () => {
     rerender(<AnsweredDetails prediction={p} onChanged={jest.fn()} onClose={jest.fn()} />);
     expect(screen.queryByTestId('answered-switch')).toBeNull();
     expect((await getPrediction('p1'))?.status).toBe('resolved_no');
+  });
+});
+
+// Roadmap D56 (blind playtest 2026-11-10, run 2): repeating a daily walk meant
+// retyping it, since "Log it again" was only on Resolve right after an answer.
+describe('PredictionDetails, answered: Log it again (roadmap D56)', () => {
+  const answeredDaysAgo = (days: number, over: Partial<Prediction> = {}) => {
+    const at = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const made = new Date(at.getTime() - 24 * 60 * 60 * 1000);
+    return open({
+      status: 'resolved_yes',
+      created_at: made.toISOString(),
+      due_date: at.toISOString(),
+      resolved_at: at.toISOString(),
+      ...over,
+    });
+  };
+
+  it('offers it at any time, naming its date, and hands the prediction over', async () => {
+    await insertPrediction(answeredDaysAgo(5)); // past the correction window
+    const onPredictAgain = jest.fn();
+    renderDetails({ onPredictAgain });
+    await waitFor(() => expect(screen.getByTestId('answered-locked')).toBeTruthy());
+    // Logged a day before it was due, so it comes back due tomorrow.
+    expect(screen.getByTestId('answered-again')).toHaveTextContent('Log it again, due tomorrow');
+    fireEvent.press(screen.getByTestId('answered-again'));
+    expect(onPredictAgain).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }));
+  });
+
+  it('says it is logged again instead while the same words are open', async () => {
+    await insertPrediction(answeredDaysAgo(1));
+    const later = new Date();
+    later.setDate(later.getDate() + 3);
+    later.setHours(12, 0, 0, 0);
+    usePredictionStore.setState({
+      pending: [open({ id: 'p2', title: 'ship the beta.', due_date: later.toISOString() })],
+      resolved: [],
+    });
+    renderDetails({ onPredictAgain: jest.fn() });
+    await waitFor(() => expect(screen.getByTestId('answered-logged-again')).toBeTruthy());
+    expect(screen.getByTestId('answered-logged-again')).toHaveTextContent(/^Logged again, due \w+\.$/);
+    expect(screen.queryByTestId('answered-again')).toBeNull();
+  });
+
+  it('is not offered where the screen gives no way to log', async () => {
+    await insertPrediction(answeredDaysAgo(1));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-outcome')).toBeTruthy());
+    expect(screen.queryByTestId('answered-again')).toBeNull();
+  });
+
+  it('says the words changed that day for a reworded one answered the same day', async () => {
+    const now = new Date().toISOString();
+    await insertPrediction(
+      open({
+        status: 'resolved_yes',
+        title_edited_at: now,
+        resolved_at: now,
+        due_date: now,
+      }),
+    );
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-same-day')).toBeTruthy());
+    expect(screen.getByTestId('answered-same-day')).toHaveTextContent(
+      'Answered the day its words changed, so it isn’t scored.',
+    );
+  });
+});
+
+describe('PredictionDetails, D56 edges (code review 2026-11-10)', () => {
+  it('says a repeat due today is ready to answer, not a bare date', async () => {
+    const at = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await insertPrediction(
+      open({
+        status: 'resolved_yes',
+        created_at: new Date(at.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+        due_date: at.toISOString(),
+        resolved_at: at.toISOString(),
+      }),
+    );
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    usePredictionStore.setState({
+      pending: [open({ id: 'p2', due_date: noon.toISOString() })],
+      resolved: [],
+    });
+    renderDetails({ onPredictAgain: jest.fn() });
+    await waitFor(() => expect(screen.getByTestId('answered-logged-again')).toBeTruthy());
+    expect(screen.getByTestId('answered-logged-again')).toHaveTextContent(
+      'Logged again, ready to answer.',
+    );
+  });
+
+  it('says the words changed today, without the evening advice, for a reworded one', async () => {
+    await insertPrediction(open({ title_edited_at: new Date().toISOString() }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-answer'));
+    expect(screen.getByTestId('details-early')).toHaveTextContent(
+      /You changed its words today, so an answer today isn’t scored\. From tomorrow it is\./,
+    );
+    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/evening before/);
   });
 });

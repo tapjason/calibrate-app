@@ -4,7 +4,7 @@ import { getUserStat, listCategoryStats } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 
 import { useAuthStore } from './authStore';
-import { usePredictionStore } from './predictionStore';
+import { openRepeatOf, usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
 import { loggedEarlier } from '../../jest/loggedEarlier';
 
@@ -720,5 +720,37 @@ describe('predictionStore with an added category', () => {
       category: 'c-grad123456',
       predictions_resolved: 1,
     });
+  });
+});
+
+// Roadmap D56: History's answered details say "Logged again" while the same
+// words are open, by D32's titleKey.
+describe('openRepeatOf', () => {
+  const p = (id: string, title: string, due: string, status: 'pending' | 'resolved_yes' = 'pending') => ({
+    id,
+    user_id: 'u1',
+    title,
+    category: 'health' as const,
+    confidence: 80,
+    created_at: '2026-11-01T08:00:00.000Z',
+    due_date: due,
+    status,
+    resolved_at: status === 'pending' ? null : '2026-11-02T19:00:00.000Z',
+    reflection: null,
+    integrity_bonus: false,
+  });
+  const source = p('a', 'I walk 30 minutes', '2026-11-02T12:00:00.000Z', 'resolved_yes');
+
+  it('finds the soonest open one with the same words, case and end punctuation aside', () => {
+    const later = p('b', 'i walk 30 minutes.', '2026-11-20T12:00:00.000Z');
+    const sooner = p('c', 'I walk 30 minutes', '2026-11-12T12:00:00.000Z');
+    const other = p('d', 'I swim', '2026-11-11T12:00:00.000Z');
+    expect(openRepeatOf(source, [later, other, sooner])?.id).toBe('c');
+  });
+
+  it('is null with none open, and never the prediction itself', () => {
+    expect(openRepeatOf(source, [p('d', 'I swim', '2026-11-11T12:00:00.000Z')])).toBeNull();
+    const self = { ...source, status: 'pending' as const };
+    expect(openRepeatOf(self, [self])).toBeNull();
   });
 });

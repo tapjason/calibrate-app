@@ -4,12 +4,19 @@ import { StyleSheet, Text, View } from 'react-native';
 import { localDate } from '@/components/ui/dates';
 import { textLanguage } from '@/components/ui/textLanguage';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
+import { loggedAgainLine, logAgainWords } from '@/components/prediction/dueWords';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
-import { correctionWindow, deleteIsCounted, usePredictionStore } from '@/store/predictionStore';
+import {
+  correctionWindow,
+  deleteIsCounted,
+  madeAt,
+  openRepeatOf,
+  usePredictionStore,
+} from '@/store/predictionStore';
 import type { Category, Prediction } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 import { answeredSameDay } from '@/store/statsStore';
@@ -21,6 +28,12 @@ interface AnsweredDetailsProps {
   onClose: () => void;
   /** Read the clock from outside in tests; the screen passes nothing. */
   now?: Date;
+  /**
+   * "Log it again" (roadmap D56): offered here at any time, not only right
+   * after the answer, since a tester repeating his daily walk went to History
+   * and retyped it (blind playtest 2026-11-10, run 2).
+   */
+  onPredictAgain?: (prediction: Prediction) => void;
 }
 
 const shortDate = (iso: string) =>
@@ -40,7 +53,13 @@ function closesAt(until: Date, now: Date): string {
  * answer they couldn't fix; after that it is the record, and this says so.
  * Never "Can't tell": that was how a miss got parked.
  */
-export function AnsweredDetails({ prediction, onChanged, onClose, now }: AnsweredDetailsProps) {
+export function AnsweredDetails({
+  prediction,
+  onChanged,
+  onClose,
+  now,
+  onPredictAgain,
+}: AnsweredDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -51,6 +70,10 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
   const at = now ?? new Date();
   const until = correctionWindow(prediction, at);
   const happened = prediction.status === 'resolved_yes';
+  // The same words already open: say so instead of offering a second copy.
+  const pending = usePredictionStore((s) => s.pending);
+  const repeat = openRepeatOf(prediction, pending);
+  const again = logAgainWords(prediction, at);
 
   const run = async (work: () => Promise<void>, failure: string) => {
     setBusy(true);
@@ -137,9 +160,28 @@ export function AnsweredDetails({ prediction, onChanged, onClose, now }: Answere
       </View>
       {answeredSameDay(prediction) && (
         <Text style={styles.body} testID="answered-same-day">
-          Answered the day it was logged, so it isn’t scored.
+          {madeAt(prediction) !== prediction.created_at
+            ? 'Answered the day its words changed, so it isn’t scored.'
+            : 'Answered the day it was logged, so it isn’t scored.'}
         </Text>
       )}
+      {onPredictAgain &&
+        (repeat ? (
+          <Text style={styles.body} testID="answered-logged-again">
+            {loggedAgainLine(repeat.due_date, at)}
+          </Text>
+        ) : (
+          <View style={styles.again}>
+            <Button
+              label={`Log it again, due ${again.text}`}
+              accessibilityLabel={`Log it again, due ${again.spoken}`}
+              variant="secondary"
+              onPress={() => onPredictAgain(prediction)}
+              disabled={busy}
+              testID="answered-again"
+            />
+          </View>
+        ))}
       {prediction.reflection && (
         <View style={styles.noteRow}>
           <Text style={styles.reflection} testID="answered-reflection">
@@ -238,5 +280,8 @@ const styles = StyleSheet.create({
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginTop: space.lg },
   actions: { gap: space.sm, marginTop: space.lg },
+  // 12 pt below the outcome, and the correction controls keep their own
+  // margin below it, so a thumb aiming for one doesn't land on the other.
+  again: { marginTop: space.md },
   error: { ...type.subhead, color: colors.destructive },
 });
