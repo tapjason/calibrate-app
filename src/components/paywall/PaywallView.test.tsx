@@ -207,6 +207,25 @@ describe('PaywallView', () => {
     expect(screen.getByTestId('paywall-unavailable')).toBeTruthy();
   });
 
+  // Blind playtest 2026-11-10, run 4: with billing but no connection, the
+  // screen said the build had no Plus.
+  it('says the plans need a connection when billing exists but they did not load', () => {
+    seed({ plans: [] });
+    render(<PaywallView />);
+    expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent(
+      "Plus plans couldn't load. Check your connection, then open this again.",
+    );
+  });
+
+  it('keeps "this build" for a build with no billing', () => {
+    seed({ plans: [] });
+    usePaywallStore.setState({ available: false });
+    render(<PaywallView />);
+    expect(screen.getByTestId('paywall-unavailable')).toHaveTextContent(
+      "Plus isn't available on this build yet.",
+    );
+  });
+
   it('shows a spinner while the offering loads', () => {
     seed({ plans: [], loadingPlans: true });
     render(<PaywallView />);

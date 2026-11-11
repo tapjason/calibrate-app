@@ -277,6 +277,21 @@ describe('correctionTable (roadmap step 20)', () => {
     expect(correctionTable(many).rows).toHaveLength(5);
   });
 
+  // Code review 2026-11-10 (step 167): sorted on the gap alone, five small
+  // rows inside luck pushed a 60-answer row that leaned off the table.
+  it('puts rows that lean before rows inside luck, even with a smaller gap', () => {
+    const insideLuck = (['work', 'health', 'finance', 'social', 'personal'] as const).flatMap(
+      (c) => calls(10, 5, 70, c), // 50% against 70%: a 20-point gap, inside luck at 10
+    );
+    const leaning = calls(60, 45, 88, 'work'); // 75% against 88%: 13 points, outside luck
+    const { rows } = correctionTable([...insideLuck, ...leaning]);
+
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toMatchObject({ category: 'work', low: 80, direction: 'overconfident' });
+    expect(rows.slice(1).every((r) => r.direction === 'calibrated')).toBe(true);
+    expect(rows[1].error).toBeGreaterThan(rows[0].error);
+  });
+
   it('ignores skipped predictions', () => {
     const skipped = calls(12, 0, 90, 'work').map((x) => ({ ...x, status: 'skipped' as const }));
     expect(correctionTable(skipped)).toEqual({ rows: [], progress: null });

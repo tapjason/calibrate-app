@@ -154,7 +154,8 @@ function progressHint(
   if (next.needResolved !== null && stat.predictions_resolved < next.needResolved) {
     const remaining = next.needResolved - stat.predictions_resolved;
     const andScore = scoreShort ? ` and a ${scoreClause}` : '';
-    return `${remaining} more scored answers${andScore} to reach ${nextLabel}`;
+    const answers = remaining === 1 ? 'answer' : 'answers';
+    return `${remaining} more scored ${answers}${andScore} to reach ${nextLabel}`;
   }
 
   if (scoreShort) {

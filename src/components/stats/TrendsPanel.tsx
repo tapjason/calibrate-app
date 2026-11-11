@@ -163,7 +163,7 @@ function CategoryRow({ trend }: { trend: CategoryTrend }) {
         {/* A provisional category shows progress toward its threshold, never a
             score — the same rule the headline rating follows. */}
         {trend.provisional
-          ? `${trend.resolved} scored answers, too few for a score`
+          ? `${trend.resolved} scored ${trend.resolved === 1 ? 'answer' : 'answers'}, too few for a score`
           : `${Math.round(trend.score)}, ${trend.direction}`}
       </Text>
     </View>
@@ -187,14 +187,13 @@ function HorizonRow({ stat }: { stat: HorizonStat }) {
       <Text style={styles.rowLabelPlain}>{HORIZON_LABELS[stat.horizon]}</Text>
       <Text style={styles.rowValue}>
         {stat.provisional
-          ? `${stat.resolved} scored answers, too few for a score`
+          ? `${stat.resolved} scored ${stat.resolved === 1 ? 'answer' : 'answers'}, too few for a score`
           : `${Math.round(stat.score)}, ${stat.direction}`}
       </Text>
     </View>
   );
 }
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const percent = (rate: number) => `${Math.round(rate * 100)}%`;
 
 /**
@@ -208,7 +207,10 @@ function Corrections({ trends }: { trends: TrendSummary }) {
   const progress = trends.correction_progress;
   if (rows.length === 0 && !progress) return null;
 
-  const worst = rows[0];
+  // The largest gap that leans (the engine sorts leaning rows first, then by
+  // gap), never a row inside luck: one at the top dropped the lead while a row
+  // below it leaned (the one lean rule, D35; as headlineRange in chartTakeaway).
+  const worst = rows.find((row) => row.direction !== 'calibrated');
   return (
     <Section title="What your confidence means">
       {rows.length === 0 && progress ? (
@@ -219,7 +221,7 @@ function Corrections({ trends }: { trends: TrendSummary }) {
         </Text>
       ) : (
         <>
-          {worst && worst.direction !== 'calibrated' && (
+          {worst && (
             <Text style={styles.delta} testID="trends-corrections-lead">
               In {categoryLabel(worst.category)}, your {band(worst.low, worst.high)} has come true{' '}
               {percent(worst.actual_rate)} of the time.
@@ -246,10 +248,12 @@ function band(low: number, high: number): string {
 function CorrectionLine({ row }: { row: CorrectionRow }) {
   return (
     <View style={styles.row} testID={`trend-correction-${row.category}-${row.low}`}>
-      <Text style={styles.rowLabelPlain}>
-        {capitalize(row.category)} at {band(row.low, row.high)}
+      {/* The person's own name (up to 24 characters) wraps rather than pushing
+          the figure off the row (playtest 2026-11-08, finding 1). */}
+      <Text style={[styles.rowLabelPlain, styles.rowLabelName]}>
+        {categoryTitle(row.category)} at {band(row.low, row.high)}
       </Text>
-      <Text style={styles.rowValue}>
+      <Text style={[styles.rowValue, styles.rowFigure]}>
         {percent(row.actual_rate)}, {row.happened} of {row.resolved}
       </Text>
     </View>
@@ -324,5 +328,7 @@ const styles = StyleSheet.create({
   // For labels that carry a number: textTransform would capitalize "at" too.
   rowLabelPlain: { ...type.subhead, color: colors.textPrimary, fontWeight: '500' },
   rowValue: { ...type.subhead, color: colors.textSecondary },
+  // A short figure ("75%, 45 of 60") keeps to one line; the name beside it wraps.
+  rowFigure: { flexShrink: 0 },
   coverage: { gap: 4, paddingTop: 4 },
 });

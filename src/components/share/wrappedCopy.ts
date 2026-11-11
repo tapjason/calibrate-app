@@ -13,7 +13,12 @@
 // provisional line points at the user's overall progress rather than asking
 // for twenty resolutions inside seven days (DESIGN_SYSTEM §7.14).
 
-import { bothSides, MIN_BUCKET_N_FOR_VERDICT, rangeLabel } from '@/components/stats/chartTakeaway';
+import {
+  bothSides,
+  headlineRange,
+  MIN_BUCKET_N_FOR_VERDICT,
+  rangeLabel,
+} from '@/components/stats/chartTakeaway';
 import { localCount } from '@/components/ui/count';
 import type { WrappedReceipt, WrappedSummary } from '@/engine/wrapped';
 import { MIN_N_OVERALL } from '@/types';
@@ -166,11 +171,12 @@ export function wrappedStory(
 
 /**
  * The window's calibration read, by the same rule as the Stats chart title
- * (chartTakeaway): the worst bucket with enough in it names the direction and
- * the range. Averages alone can cancel — underconfident in the middle and
- * overconfident at the top averages out to "well calibrated" while Stats says
- * "overconfident at 80–100%" — so the averages only speak when every
- * well-evidenced bucket agrees, or when no bucket is big enough to say more.
+ * (chartTakeaway): the largest gap among the buckets with enough in it that
+ * lean names the direction and the range (headlineRange). Averages alone can
+ * cancel — underconfident in the middle and overconfident at the top averages
+ * out to "well calibrated" while Stats says "overconfident at 80–100%" — so
+ * the averages only speak when no well-evidenced bucket leans, or when no
+ * bucket is big enough to say more.
  */
 function verdictLine(
   summary: WrappedSummary,
@@ -205,7 +211,8 @@ function verdictLine(
     return `${w}, you ran too sure at ${rangeLabel(sides.sure)} and too cautious at ${rangeLabel(sides.cautious)}.`;
   }
 
-  const worst = solid.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
+  // A band that leans before any band inside luck (headlineRange, D35).
+  const worst = headlineRange(solid);
   // No band leans on its own. The whole window still can, when every band
   // tilts the same way and only the total has enough answers to show it.
   if (worst.direction === 'calibrated') return pooled();
@@ -235,7 +242,8 @@ function provisionalLine(
   overall: OverallProgress | null | undefined,
 ): string {
   if (summary.span === 'year') {
-    return `${MIN_N_OVERALL - summary.resolved} more scored answers and this year earns a calibration read.`;
+    const toGo = MIN_N_OVERALL - summary.resolved;
+    return `${toGo} more scored ${toGo === 1 ? 'answer' : 'answers'} and this year earns a calibration read.`;
   }
   if (overall?.provisional) {
     return `${overall.resolved} of ${MIN_N_OVERALL} scored answers toward your first calibration score.`;

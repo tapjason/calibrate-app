@@ -55,6 +55,14 @@ that apply here.
   and polls until the page's `<title>` reads "Fairly Sure" (up to three minutes; the first bundle is
   slow). Log `.tooling/expo-web.log`. `CI=1` keeps Expo non-interactive and also stops file
   watching: after an edit, `stop` then `start`, or the browser shows old code.
+- **`stop` can miss the server** (seen 2026-11-10): it checks the pid file with `kill -0`, and
+  the pid Git Bash records for `nohup npx …` isn't the Windows node process, so `stop` says
+  "nothing of ours was running" while the old server keeps serving the old bundle (a reload
+  doesn't help: no file watching), and `start` then reports "already running". Check with
+  `Get-CimInstance Win32_Process -Filter "Name='node.exe'"` (the command line names the port);
+  ending those processes needs the owner's approval in this harness (an agent's `Stop-Process`
+  was refused). Until the script is fixed, `PORT=<free port> bash scripts/web-serve.sh start`
+  gets a fresh build without touching the old one.
 - The web build keeps its data in SQLite (wasm) in the origin private file system, so a reload keeps
   everything. **A fresh install:** navigate to `/favicon.ico` on the same origin first, then remove
   the OPFS entry `expo-sqlite` and clear localStorage (`docs/app-profile.md` §9 has the snippet).

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { holdRanges } from '@/components/ui/holdRanges';
 import { __setFileExportDepsForTests, type FileExportDeps } from '@/export/file';
 import { buildTrendSummary } from '@/engine/trends';
+import { useCategoryStore } from '@/store/categoryStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useStatsStore } from '@/store/statsStore';
@@ -66,6 +67,7 @@ function fileDeps(overrides: Partial<FileExportDeps> = {}): FileExportDeps {
 }
 
 afterEach(() => {
+  useCategoryStore.setState({ defs: [] });
   __setFileExportDepsForTests(null);
   jest.restoreAllMocks();
 });
@@ -162,6 +164,49 @@ describe('TrendsPanel — Plus', () => {
     );
     // Calibrated bands get rows too, but never the lead.
     expect(screen.getByTestId('trend-correction-work-80')).toBeTruthy();
+  });
+
+  // Record audit 2026-11-10: the lead took the top row by gap, so a row inside
+  // luck there dropped the lead while a row below it leaned.
+  it('leads with the largest gap that leans, past a bigger gap inside luck', () => {
+    const at = '2026-09-20T12:00:00.000Z';
+    const work = Array.from({ length: 10 }, (_, i) => p(70, i < 5, at, 'work'));
+    const finance = Array.from({ length: 60 }, (_, i) => p(88, i < 45, at, 'finance'));
+    seed({ resolved: [...work, ...finance] });
+    render(<TrendsPanel />);
+
+    expect(screen.getByTestId('trend-correction-work-60')).toBeTruthy();
+    expect(screen.getByTestId('trends-corrections-lead')).toHaveTextContent(
+      holdRanges('In finance, your 80–100% has come true 75% of the time.'),
+    );
+  });
+
+  // Record audit 2026-11-10: rows capitalised the stored id, so an added
+  // category read "C-side at 80–100%" while the lead above it used its name.
+  it('names an added category by its own name in its row', () => {
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'c-side' as Category,
+          user_id: 'u1',
+          name: 'Side business',
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    const at = '2026-09-20T12:00:00.000Z';
+    seed({
+      resolved: Array.from({ length: 12 }, (_, i) => p(90, i < 6, at, 'c-side' as Category)),
+    });
+    render(<TrendsPanel />);
+
+    expect(screen.getByTestId('trend-correction-c-side-80')).toHaveTextContent(
+      holdRanges('Side business at 80–100%'),
+      { exact: false },
+    );
   });
 
   it('names the closest band while none has enough for a row', () => {

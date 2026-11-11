@@ -1,5 +1,5 @@
 import { openBrowserAsync } from 'expo-web-browser';
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
@@ -20,6 +20,7 @@ import {
   PLUS_FEATURES,
   ctaLabel,
   defaultPlan,
+  noPlansText,
   noticeText,
   monthlyEquivalentLine,
   priceLine,
@@ -50,6 +51,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   const entitlement = useEntitlementStore((s) => s.entitlement);
   const plans = usePaywallStore((s) => s.plans);
   const loadingPlans = usePaywallStore((s) => s.loadingPlans);
+  const billingAvailable = usePaywallStore((s) => s.available);
   const purchasing = usePaywallStore((s) => s.purchasing);
   const restoring = usePaywallStore((s) => s.restoring);
   const notice = usePaywallStore((s) => s.notice);
@@ -57,7 +59,9 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   const purchase = usePaywallStore((s) => s.purchase);
   const restore = usePaywallStore((s) => s.restore);
 
-  useEffect(() => {
+  // Before the first paint: loadPlans marks the plans as loading at once, so
+  // a first open shows the spinner rather than a frame of "couldn't load".
+  useLayoutEffect(() => {
     void loadPlans();
   }, [loadPlans]);
 
@@ -126,7 +130,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
 
       {!loadingPlans && plans.length === 0 && (
         <Text style={styles.muted} testID="paywall-unavailable">
-          {noticeText('unavailable')}
+          {noPlansText(billingAvailable)}
         </Text>
       )}
 

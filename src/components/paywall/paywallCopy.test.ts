@@ -4,6 +4,7 @@ import {
   ctaLabel,
   defaultPlan,
   monthlyEquivalentLine,
+  noPlansText,
   noticeText,
   priceLine,
   sortPlans,
@@ -128,6 +129,20 @@ describe('termsLine', () => {
   // just said Plus is unavailable.
   it('states nothing at all for an empty offering', () => {
     expect(termsLine([])).toBe('');
+  });
+});
+
+// Blind playtest 2026-11-10, run 4: offline, "Plus isn't available on this
+// build yet" read as Plus not existing.
+describe('noPlansText', () => {
+  it('says "this build" only for a build with no billing', () => {
+    expect(noPlansText(false)).toBe("Plus isn't available on this build yet.");
+  });
+
+  it('points at the connection when billing exists but the plans did not load', () => {
+    expect(noPlansText(true)).toBe(
+      "Plus plans couldn't load. Check your connection, then open this again.",
+    );
   });
 });
 

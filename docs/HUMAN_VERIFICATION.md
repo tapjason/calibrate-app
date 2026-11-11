@@ -283,9 +283,13 @@ that populates it is now written — deploying and wiring it is B3.
 
 ## Batch B — Store and billing setup (desk, ~1 hr)
 
-The billing code is done and fails safe: with no products configured, the
-paywall renders its "not available on this build yet" state, which is correct
-behavior rather than a bug.
+The billing code is done and fails safe. A build with no RevenueCat key says
+"Plus isn't available on this build yet."; a build with a key whose offering
+comes back empty (no products attached, no current offering, a product id not
+mapped, or no connection) says "Plus plans couldn't load. Check your
+connection, then open this again." (step 167). During this setup that second
+line usually means the dashboards, not the network. A reviewer who sees it online
+rejects the build under 2.1(b), so see the plans load in sandbox before submitting.
 
 ### B0. Apple prerequisites (do these first, since everything else waits on them)
 

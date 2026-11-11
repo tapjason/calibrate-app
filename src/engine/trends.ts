@@ -131,7 +131,7 @@ export interface TrendSummary {
   delta_recent: number | null;
   /** By how far ahead the call was made, nearest first; empty horizons left out. */
   horizons: HorizonStat[];
-  /** The correction table, worst band first (roadmap step 20). */
+  /** The correction table, bands that lean first, then by gap (roadmap step 20; step 167). */
   corrections: CorrectionRow[];
   /** When `corrections` is empty: the band closest to qualifying, or null. */
   correction_progress: CorrectionProgress | null;
@@ -337,7 +337,8 @@ export function horizonTrends(resolved: readonly Prediction[]): HorizonStat[] {
  * the numbers say ("read your 80% in money as 50%"), and it needs no model.
  *
  * Only bands with at least `minN` resolved appear, so it can never print 0% or
- * 100% off two predictions. Worst calibrated first, at most `limit` rows.
+ * 100% off two predictions. Bands that lean first (the one lean rule, D35),
+ * then the largest gap, at most `limit` rows.
  */
 export function correctionTable(
   resolved: readonly Prediction[],
@@ -373,7 +374,11 @@ export function correctionTable(
     }
   }
 
-  rows.sort((a, b) => b.error - a.error || b.resolved - a.resolved);
+  // Rows that lean first, then by gap (the one lean rule, D35): sorting on the
+  // gap alone let five small rows inside luck push a 60-answer row that leaned
+  // off the table and out of its lead (code review 2026-11-10, step 167).
+  const leans = (r: CorrectionRow) => (r.direction === 'calibrated' ? 0 : 1);
+  rows.sort((a, b) => leans(b) - leans(a) || b.error - a.error || b.resolved - a.resolved);
   return { rows: rows.slice(0, limit), progress: rows.length > 0 ? null : progress };
 }
 

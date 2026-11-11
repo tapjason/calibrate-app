@@ -444,7 +444,9 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    leaning each way (D37, step 142), the title names both: "You're too sure at
    80–100% and too cautious at 60–80%", subtitle "Of 20 things you called 80–100%
    likely, 8 happened. Of 55 at 60–80%, 42 happened." Naming only the worst hid a
-   power user's compression.
+   power user's compression. With one side only, the title names the largest gap
+   among the ranges that lean, never a bigger gap inside luck (`headlineRange`,
+   step 167); the calibrated wording only when no range with ≥ 10 leans.
    **Furthest off** (D37): the first line under Category badges, `subhead` in
    `textPrimary`: "Furthest off: finance. You said about 85%, and 8 of 18 happened.
    About 45% would have matched." Only for a category past `MIN_N_CATEGORY` whose
@@ -984,9 +986,10 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 - **Yearly** follows §7.5 and the Spotify structure: archetype line, one receipt,
   selective colour.
 - **Verdict** (when the window clears min-N) follows the chart title's rule
-  (§7.2, `chartTakeaway`): the worst bucket with ≥ 10 resolved names direction and
-  range ("You ran overconfident at 80–100%."). Averages only speak when every such
-  bucket is calibrated, because over- and underconfidence in different ranges
+  (§7.2, `chartTakeaway`): among the buckets with ≥ 10 scored, the largest gap that
+  leans names direction and range ("You ran overconfident at 80–100%.";
+  `headlineRange`, step 167), never a bigger gap inside luck. Averages only speak
+  when no such bucket leans, because over- and underconfidence in different ranges
   cancel in the mean, and the card must never contradict Stats.
 - **The closing note** (D23, 2026-10-10) is about range, not a band: with a call
   under 40% in the window, "2 calls under 40% this time. The unlikely end keeps your
@@ -1047,9 +1050,10 @@ The long view, in plain rows: label left in `textPrimary`, value right in
 own n, and a row below its threshold shows counts, never a score.
 
 - **What your confidence means** (roadmap step 20): the personal correction table.
-  One row per category and band with ≥ 10 resolved (`MIN_N_BAND`), worst first, at
-  most five: "Finance at 80–100% · 47% · 8 of 17". When the worst band is off, it
-  leads as a sentence ("In finance, your 80–100% has come true 47% of the time.").
+  One row per category and band with ≥ 10 resolved (`MIN_N_BAND`), the ones that lean
+  first and then by gap (step 167), at most five: "Finance at 80–100% · 47% · 8 of
+  17". The largest gap that leans leads as a sentence ("In finance, your 80–100% has
+  come true 47% of the time."); with none leaning, no lead.
   With no qualifying band, one line names the closest one and its count instead.
 - **By how far ahead** (roadmap step 21): rows for *Next day or sooner* (0–1 local
   days from logging to due), *Within a week* (2–7), *Within a month* (8–31) and

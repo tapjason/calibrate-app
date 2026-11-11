@@ -65,6 +65,25 @@ export function bothSides(
 }
 
 /**
+ * The one range a read names when there aren't both sides: the largest gap
+ * among the ranges that lean, and only when none leans the largest gap of
+ * all, which is then inside its luck range. Taking the largest gap first,
+ * whatever its direction, let a 10-answer range inside luck outrank a
+ * 60-answer range that leaned, so the title said "well calibrated" over an
+ * orange dot (record audit 2026-11-10, the one lean rule, D35). Shared with
+ * Wrapped, so no read skips a lean another screen shows; Trends' table sorts
+ * the same way in the engine. Needs at least one range: callers return first
+ * when there are none.
+ */
+export function headlineRange<T extends Pick<BucketStat, 'bucket_error' | 'direction'>>(
+  solid: readonly T[],
+): T {
+  const leaning = solid.filter((b) => b.direction !== 'calibrated');
+  const pool = leaning.length > 0 ? leaning : solid;
+  return pool.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
+}
+
+/**
  * The chart's read when it has one ("You're too sure at 80–100%"), or null
  * while the rating is provisional or no band has enough in it. The week's
  * recap sets its own read beside this one (2026-11-03).
@@ -86,8 +105,9 @@ export function chartVerdict(
     };
   }
 
-  // The biggest miss among the well-evidenced buckets is the story.
-  const worst = solid.reduce((a, b) => (b.bucket_error > a.bucket_error ? b : a));
+  // The biggest lean among the well-evidenced buckets is the story; without
+  // one, the biggest gap, inside its luck range.
+  const worst = headlineRange(solid);
 
   if (worst.direction === 'calibrated') {
     return {

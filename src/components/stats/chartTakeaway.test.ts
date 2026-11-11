@@ -1,6 +1,7 @@
+import { computeCalibrationPoints, type CalibrationPoint } from '@/engine/calibration';
 import type { BucketStat, Direction } from '@/types';
 
-import { chartTakeaway, naturalFrequency } from './chartTakeaway';
+import { chartTakeaway, headlineRange, naturalFrequency } from './chartTakeaway';
 
 function bucket(
   low: number,
@@ -98,5 +99,60 @@ describe('chartTakeaway, both sides', () => {
       title: "You're too sure at 80–100% and too cautious at 60–80%",
       subtitle: 'Of 20 things you called 80–100% likely, 8 happened. Of 55 at 60–80%, 42 happened.',
     });
+  });
+});
+
+// Record audit 2026-11-10: the title took the largest gap among solid ranges
+// whatever its direction, so a 10-answer range inside luck outranked a
+// 60-answer range that leaned and the title said "well calibrated" over an
+// orange dot. Built through the engine, not hand-set directions, so the luck
+// rule (D35) decides what leans.
+describe('chartTakeaway, a lean outranks a bigger gap inside luck', () => {
+  /** `n` answers at `confidence`, the first `yes` of them happened. */
+  const calls = (confidence: number, n: number, yes: number): CalibrationPoint[] =>
+    Array.from({ length: n }, (_, i) => ({ confidence, yes: i < yes }));
+
+  it('names the range that leans, not the bigger gap inside luck', () => {
+    const { buckets } = computeCalibrationPoints([
+      ...calls(70, 10, 5), // 50% against 70%: a 20-point gap, inside luck at 10
+      ...calls(88, 60, 45), // 75% against 88%: 13 points, outside luck at 60
+    ]);
+    const mid = buckets.find((b) => b.low === 60)!;
+    const top = buckets.find((b) => b.low === 80)!;
+    expect(mid.direction).toBe('calibrated');
+    expect(top.direction).toBe('overconfident');
+    expect(mid.bucket_error).toBeGreaterThan(top.bucket_error);
+
+    expect(chartTakeaway(buckets, false)).toEqual({
+      title: "You're overconfident at 80–100%",
+      subtitle: 'Of 60 things you called 80–100% likely, 45 happened.',
+    });
+    expect(headlineRange(buckets.filter((b) => b.total_resolved >= 10))).toBe(top);
+  });
+
+  // The rule itself, over many records: a title that names no lean means no
+  // range with enough answers leans.
+  it('never names no lean while a solid range leans', () => {
+    let seed = 20261110;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const leanWords = /overconfident|underconfident|too sure|too cautious/;
+    for (let trial = 0; trial < 400; trial++) {
+      const points: CalibrationPoint[] = [];
+      for (const low of [0, 20, 40, 60, 80]) {
+        if (rnd() < 0.4) continue;
+        const n = 1 + Math.floor(rnd() * 40);
+        const confidence = Math.min(100, low + Math.floor(rnd() * 20));
+        const rate = rnd();
+        for (let i = 0; i < n; i++) points.push({ confidence, yes: rnd() < rate });
+      }
+      if (points.length === 0) continue;
+      const { buckets } = computeCalibrationPoints(points);
+      const t = chartTakeaway(buckets, false);
+      const solidLeans = buckets.some(
+        (b) => b.total_resolved >= 10 && b.direction !== 'calibrated',
+      );
+      if (solidLeans) expect(t.title).toMatch(leanWords);
+      else expect(t.title).not.toMatch(leanWords);
+    }
   });
 });

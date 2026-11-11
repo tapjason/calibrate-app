@@ -54,6 +54,15 @@ describe('CategoryBadge', () => {
     expect(view.getByText('12 more scored answers to reach Tracker')).toBeTruthy();
   });
 
+  // Web check, blind playtest 2026-11-10: "1 more scored answers".
+  it('counts the last answer in the singular', () => {
+    const next: NextBadgeTarget = { badge: 'tracker', needResolved: 20, needScore: null };
+    const view = render(
+      <CategoryBadge stat={stat({ predictions_resolved: 19 })} next={next} />,
+    );
+    expect(view.getByText('1 more scored answer to reach Tracker')).toBeTruthy();
+  });
+
   it('shows the score target when the next badge gates on score', () => {
     const next: NextBadgeTarget = {
       badge: 'forecaster',

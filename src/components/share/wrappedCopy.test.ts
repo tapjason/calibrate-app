@@ -1,3 +1,4 @@
+import { computeCalibrationPoints } from '@/engine/calibration';
 import type { WrappedSummary } from '@/engine/wrapped';
 import type { BucketStat } from '@/types';
 
@@ -154,6 +155,34 @@ describe('wrappedStory verdict', () => {
     });
     expect(story.verdict).toBe(
       'This year, you ran underconfident — 66% confident on average, and 86% happened.',
+    );
+  });
+
+  // Record audit 2026-11-10: the band with the biggest gap was inside luck,
+  // so the recap fell back to the averages ("no clear lean") while a bigger
+  // band leaned. Engine buckets, so the luck rule (D35) decides what leans.
+  it('names the band that leans before a bigger gap inside luck', () => {
+    const calls = (confidence: number, n: number, yes: number) =>
+      Array.from({ length: n }, (_, i) => ({ confidence, yes: i < yes }));
+    const { buckets } = computeCalibrationPoints([...calls(62, 12, 10), ...calls(88, 30, 22)]);
+    const mid = buckets.find((b) => b.low === 60)!;
+    const top = buckets.find((b) => b.low === 80)!;
+    expect(mid.direction).toBe('calibrated');
+    expect(top.direction).toBe('overconfident');
+    expect(mid.bucket_error).toBeGreaterThan(top.bucket_error);
+
+    expect(wrappedStory(summary(buckets)).verdict).toBe(
+      'This year, you ran overconfident at 80–100%.',
+    );
+  });
+
+  it('counts one more scored answer in the singular', () => {
+    const story = wrappedStory({
+      ...summary([bucket(60, 19, 13, 70)]),
+      score_is_provisional: true,
+    });
+    expect(story.provisionalNote).toBe(
+      '1 more scored answer and this year earns a calibration read.',
     );
   });
 

@@ -99,7 +99,8 @@ and item g are done. Next: the owner runs the development build.
    `docs/design/research/playtest-2026-11-10.md`; JS only, so a reload on the
    phone). The record conditions are `record-auditor`'s pre-build check of the
    same day.
-   - **Step 167, no decision:** the chart's headline picks among ranges that
+   - **Step 167, no decision** (done 2026-11-10, on `builder/headline-fixes`; also
+     Trends' table sorted leaning rows first, and its rows' category names): the chart's headline picks among ranges that
      lean first (`bothSides`, then the largest gap among non-calibrated solid
      ranges, the calibrated wording only when none leans), one selector shared
      by `chartTakeaway.ts` ~90, `wrappedCopy.ts` ~208 (`pooled()` only when no

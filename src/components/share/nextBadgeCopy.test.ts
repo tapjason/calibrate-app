@@ -53,6 +53,12 @@ describe('nextBadgeProgress', () => {
     expect(progressFor([stat('work', 30, 92)])?.text).toBe('Sharp in work: 20 to go');
   });
 
+  it('counts the last answer in the singular', () => {
+    expect(progressFor([stat('work', 49, 80)])?.text).toBe(
+      'To reach Sharp in work: 1 more scored answer and a score above 85 at its low end',
+    );
+  });
+
   it('picks the category closest to its next badge', () => {
     const p = progressFor([
       stat('work', 5, 50),

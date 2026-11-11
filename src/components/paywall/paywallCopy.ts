@@ -179,6 +179,19 @@ export function noticeText(
   }
 }
 
+/**
+ * What the paywall says when it has no plans to show. "This build" only for a
+ * build with no billing at all (web, Expo Go, no API key); a build that has
+ * billing but couldn't load the store's plans is almost always offline, and
+ * "Plus isn't available on this build yet" read as Plus not existing to a
+ * tester with no signal (blind playtest 2026-11-10, run 4).
+ */
+export function noPlansText(billingAvailable: boolean): string {
+  return billingAvailable
+    ? "Plus plans couldn't load. Check your connection, then open this again."
+    : noticeText('unavailable') ?? '';
+}
+
 /** Annual first — it carries the anchor and the trial (GROWTH §4). */
 const PLAN_ORDER: Record<PlanId, number> = { annual: 0, monthly: 1, lifetime: 2 };
 
