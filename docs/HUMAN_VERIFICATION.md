@@ -919,6 +919,17 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
       one offers "Log it again, due …", or "Logged again, due …" while the same words
       are open. At AX5 the button labels wrap centred; VoiceOver reads the advice, then
       the button.
+- [ ] **Today on a small phone (D48, step 159):** from Today, log a prediction "In a
+      month" with several open ones: as the sheet closes, Today scrolls just far enough
+      that the new card sits a little above the tab bar. Again with Reduce Motion on (a
+      jump, no slide), and from Resolve's "Log it again" (Log replaces Resolve, so
+      Today scrolls as Log closes). Log one from History, then open Today: no scroll;
+      the same from a reminder's Resolve opened over You. A fresh install's first
+      prediction (delete and reinstall, so notifications are unasked): "Want a reminder
+      when it's due?" sits under "Your first answer: tomorrow evening", above the card,
+      and both stay in view; again at a larger text size (Settings → Accessibility →
+      Display & Text Size → Larger Text, a few steps up). With nothing ready to answer,
+      the open predictions come before the streak and practice rows.
 - [ ] **Marks you can tell apart (D47, D58, step 158):** in dark mode the chart's grey
       luck bars are easy to see, with a visible outline; the share card's strip reads
       "0%" … "100%" with a ring, ▲ or ▼ per range, legible at thumbnail size in

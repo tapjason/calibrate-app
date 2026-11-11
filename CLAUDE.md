@@ -781,7 +781,8 @@ Four tabs, **Today · Insights · History · You** (decided 2026-10-07, roadmap 
 Log is a sheet opened by a "+" in the title bar of Today, Insights and History
 (D21, 2026-10-09; it floated over the tab bar until then), not a tab, because tabs
 navigate and logging is an action. On Today, what's ready to resolve comes before
-the streak and practice rows (D22).
+the streak and practice rows (D22), and with nothing ready the open predictions
+do (D48, 2026-11-06); after a save, Today scrolls to the new card (D48).
 
 | Screen | Purpose | Tier |
 |---|---|---|

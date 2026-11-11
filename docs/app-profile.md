@@ -50,8 +50,10 @@ Status: filled in 2026-11-08
   Didn't (D8); tapping it opens Resolve: Yes, No or "Can't tell / doesn't apply", and an optional
   reflection. Yes and No get identical feedback. An open prediction not yet due opens its details
   (Edit, Delete, Answer it now, D25).
-- **Today** (tab): ready-to-resolve first (D22), the identity line and rating (or the calibrating
-  state), the streak with today's goal, the practice row, open predictions.
+- **Today** (tab): the identity line and rating (or the calibrating state) and the reminder ask, then
+  ready-to-resolve (D22) with the streak, today's goal and the practice row right after it, then the
+  other open predictions; with nothing ready, the open predictions come before the daily rows (D48).
+  After a save it scrolls to the new card when it isn't all on screen (D48).
 - **Insights** (tab): the rating with its give-or-take, the Brier line, the calibration chart with
   the grey luck bars, the named pattern (D37), categories with badges, the Plus card.
 - **History** (tab): open predictions first, then everything answered, filterable (D26).

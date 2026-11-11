@@ -4,9 +4,11 @@ import type { ComponentProps } from 'react';
 import { Platform } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import { dropsJustSaved } from '@/components/prediction/justSavedMark';
 import { LogButton } from '@/components/prediction/LogButton';
 import { Icon } from '@/components/ui/Icon';
 import { colors, FONT_FAMILY, type } from '@/constants/theme';
+import { usePredictionStore } from '@/store/predictionStore';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -45,6 +47,15 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      // A prediction saved over any tab but Today isn't Today's to scroll to
+      // (roadmap D48): the mark goes as that tab regains focus when the sheet
+      // closes. In one place, so You (a reminder's Resolve, then "Log it
+      // again") and any later tab are covered.
+      screenListeners={({ route }) => ({
+        focus: () => {
+          if (dropsJustSaved(route.name)) usePredictionStore.getState().clearJustSaved();
+        },
+      })}
       screenOptions={{
         headerShown: true,
         // Ink is chrome (D33): selection tint matches the icon and the CTAs.

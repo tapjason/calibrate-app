@@ -66,7 +66,9 @@ that apply here.
 - The web build keeps its data in SQLite (wasm) in the origin private file system, so a reload keeps
   everything. **A fresh install:** navigate to `/favicon.ico` on the same origin first, then remove
   the OPFS entry `expo-sqlite` and clear localStorage (`docs/app-profile.md` §9 has the snippet).
-  Removing it while the app is open fails with "modifications are not allowed".
+  Removing it while the app is open fails with "modifications are not allowed". After a server
+  restart it has sometimes come back empty (twice in five restarts on 2026-11-10, cause not
+  traced): when `/` lands on `/warmup`, finish or skip it and reseed.
 - **One tab at a time:** the browser hands the database to one tab; a second tab runs without it.
 - Demo data: `/dev/seed` → "Load demo data" (testID `dev-seed-load`; the status line is
   `dev-seed-status`). Loading twice says it was already loaded.

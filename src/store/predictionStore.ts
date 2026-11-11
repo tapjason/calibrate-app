@@ -82,6 +82,14 @@ interface PredictionState {
   getById: (id: string) => Promise<Prediction | null>;
   create: (input: CreatePredictionInput) => Promise<Prediction>;
   /**
+   * The prediction this phone's Log saved last, until a screen takes it
+   * (roadmap D48): Today scrolls to it on the focus after the sheet closes;
+   * the other tabs drop it, so a save made there doesn't move Today later.
+   * Only `create` sets it, so a sync pull never does.
+   */
+  justSavedId: string | null;
+  clearJustSaved: () => void;
+  /**
    * Record an answer. A no-op on a row that isn't open, unless
    * `answeringSkip`: then a "Can't tell" still inside its week (D45) takes
    * a Yes or No, reopened and answered in one transaction, so leaving
@@ -191,6 +199,8 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   pending: [],
   resolved: [],
   deletedCount: 0,
+  justSavedId: null,
+  clearJustSaved: () => set({ justSavedId: null }),
   streakCheckpoint: null,
 
   clearStreakCheckpoint: () => set({ streakCheckpoint: null }),
@@ -257,6 +267,8 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // Reload instead of appending: the DB query sorts by due_date, and the
     // newly-inserted row may belong before existing entries.
     await get().loadPending();
+    // For Today, once the sheet closes (D48).
+    set({ justSavedId: prediction.id });
     // After the transaction, never inside it: analytics must not be able to
     // roll back a saved prediction. The confidence value goes, the title does
     // not — it is the number that says whether people use the whole range

@@ -1,7 +1,8 @@
 import { useScrollToTop } from '@react-navigation/native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef } from 'react';
-import { SectionList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, View, type ViewToken } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { PracticeCard } from '@/components/practice/PracticeCard';
 import {
@@ -10,6 +11,7 @@ import {
   isReadyToResolve,
   nextDueLine,
 } from '@/components/prediction/dueGroups';
+import { cardPlacement, locateCard } from '@/components/prediction/locateCard';
 import { PredictionCard, rowPosition } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { WelcomeBackCard } from '@/components/prediction/WelcomeBackCard';
@@ -81,19 +83,110 @@ export default function TodayScreen() {
     // `day` re-reads it when the date turns.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calibrating, resolved, pending, day]);
-  const groups = groupByDue(pending, new Date());
+  // `day` regroups them when the date turns.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const groups = useMemo(() => groupByDue(pending, new Date()), [pending, day]);
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
+
+  // After a save, Today takes you to the new card (roadmap D48): on a small
+  // phone it could land below the fold, and testers couldn't see that it had
+  // been saved. On the focus after Log's sheet closes (Log from "Log it
+  // again" replaces Resolve, so it closes onto Today too), only when the card
+  // isn't already all on screen (owner, 2026-11-10: on Day 0 a scroll would
+  // push "Your first answer: tomorrow evening" off the top), and only as far
+  // as needed (`cardPlacement`).
+  const reduceMotion = useReducedMotion();
+  const fullyVisible = useRef<ReadonlySet<string>>(new Set());
+  const cardHeights = useRef(new Map<string, number>());
+  const viewHeight = useRef<number | null>(null);
+  const retryFor = useRef<string | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollToCard = useCallback(
+    (id: string, retry: boolean) => {
+      const sections = groupsRef.current;
+      const at = locateCard(sections, id);
+      if (!at) return;
+      const order = sections.flatMap((s) => s.data.map((p) => p.id));
+      const firstVisible = order.findIndex((k) => fullyVisible.current.has(k));
+      const placement = cardPlacement({
+        cardPos: order.indexOf(id),
+        firstVisiblePos: firstVisible >= 0 ? firstVisible : null,
+        cardHeight: cardHeights.current.get(id) ?? null,
+        viewHeight: viewHeight.current,
+        margin: space.lg,
+      });
+      // A failure is reported during the call, so the retry is armed only
+      // for its length.
+      retryFor.current = retry ? id : null;
+      listRef.current?.scrollToLocation({
+        ...at,
+        // viewPosition 1 lines the card's bottom up with the list's, and a
+        // negative offset lifts it clear (VirtualizedList.scrollToIndex).
+        ...(placement === 'top'
+          ? { viewPosition: 0, viewOffset: space.lg }
+          : { viewPosition: 1, viewOffset: -space.lg }),
+        animated: !reduceMotion,
+      });
+      retryFor.current = null;
+    },
+    [reduceMotion],
+  );
+  // The card to decide about, and when Today regained focus. The decision
+  // waits for the list's reports of what's on screen to settle: a screen
+  // under a sheet can report nothing (the web build hides it) and only
+  // catches up once shown, about a tenth of a second later; on Day 0 it has
+  // never been laid out at all. A fixed short wait scrolled a card that was
+  // already in full view (web check, 2026-11-10).
+  const target = useRef<{ id: string; since: number } | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const decide = useRef(() => {});
+  decide.current = () => {
+    const t = target.current;
+    target.current = null;
+    if (t && !fullyVisible.current.has(t.id)) scrollToCard(t.id, true);
+  };
+  const settle = useRef(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    const t = target.current;
+    if (!t) return;
+    const wait = Math.max(0, Math.min(SETTLE_MS, t.since + MAX_WAIT_MS - Date.now()));
+    settleTimer.current = setTimeout(() => decide.current(), wait);
+  }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    fullyVisible.current = new Set(viewableItems.map((v) => v.key));
+    // A fresh report restarts the wait, up to MAX_WAIT_MS from focus.
+    settle();
+  }).current;
+  useFocusEffect(
+    useCallback(() => {
+      // Read, not subscribed: the save always lands while Log covers Today.
+      const id = usePredictionStore.getState().justSavedId;
+      if (!id) return undefined;
+      usePredictionStore.getState().clearJustSaved();
+      target.current = { id, since: Date.now() };
+      settle();
+      return () => {
+        target.current = null;
+        for (const t of [settleTimer, retryTimer]) {
+          if (t.current) clearTimeout(t.current);
+          t.current = null;
+        }
+        retryFor.current = null;
+      };
+    }, [settle]),
+  );
   // What's ready to answer comes before the streak and practice rows (D22,
   // 2026-10-09): it's the one thing on Today that asks for a tap, and below
-  // them it sat about a screen down.
+  // them it sat about a screen down. With nothing ready, the open ones still
+  // come first (D48, 2026-11-06): on a small phone the hero, streak and
+  // practice rows filled the screen, and a card just saved couldn't be seen.
   const hasReady = groups.some((g) => g.key === 'ready');
   const daily = (
     <>
       {/* The daily streak (roadmap D2): one logged or answered a day keeps
           it, three is the day's goal (D17). */}
       <StreakLine status={streak} />
-      {/* Asks for notification permission here, in context, not at
-          launch (roadmap step 38). Native only. */}
-      <ReminderPrompt />
       {/* After 30 days on one phone without an account (roadmap D31). */}
       <BackupNudge onSignIn={() => router.push('/account' as never)} />
       {/* A reason to open the app on a day nothing comes due (roadmap
@@ -186,9 +279,39 @@ export default function TodayScreen() {
           {/* Back after a long gap: what changed, before anything else (D51). */}
           <WelcomeBackCard />
           <View style={styles.hero}>{hero}</View>
-          {!hasReady && daily}
+          {/* Asks for notification permission here, in context, not at
+              launch (roadmap step 38). Native only. Under the score whatever
+              is ready, beside the predictions it's about: on Day 0 it's the
+              ask that brings someone back for their first answer (D19), and
+              below the cards it could fall off a small screen (owner,
+              2026-11-10, with D48). */}
+          <ReminderPrompt />
         </>
       }
+      ListFooterComponent={
+        hasReady ? null : (
+          <View style={styles.dailyAfterOpen} testID="home-daily-after-open">
+            {daily}
+          </View>
+        )
+      }
+      onLayout={(e) => {
+        viewHeight.current = e.nativeEvent.layout.height;
+      }}
+      viewabilityConfig={FULLY_VISIBLE}
+      onViewableItemsChanged={onViewableItemsChanged}
+      // Not rendered yet (a long list, no getItemLayout): jump near it so the
+      // list renders that far, then try once more, from the groups as they
+      // are then (RN's documented pattern).
+      onScrollToIndexFailed={(info) => {
+        const id = retryFor.current;
+        retryFor.current = null;
+        if (!id) return;
+        listRef.current
+          ?.getScrollResponder()
+          ?.scrollTo({ y: info.averageItemLength * info.index, animated: false });
+        retryTimer.current = setTimeout(() => scrollToCard(id, false), RETRY_MS);
+      }}
       renderSectionFooter={({ section }) =>
         section.key === 'ready' ? (
           <View style={styles.dailyAfterReady} testID="home-daily-after-ready">
@@ -213,19 +336,27 @@ export default function TodayScreen() {
         </>
       )}
       renderItem={({ item, index, section }) => (
-        <PredictionCard
-          prediction={item}
-          position={rowPosition(index, section.data.length)}
-          // The header already says it (roadmap D33).
-          showReady={section.key !== 'ready'}
-          // A due one opens Resolve; one that isn't due yet opens its details,
-          // where it can be edited, deleted or answered early (roadmap D25).
-          onPress={(id) =>
-            router.push(
-              (isReadyToResolve(item, new Date()) ? `/resolve/${id}` : `/prediction/${id}`) as never,
-            )
-          }
-        />
+        // Measured, so a card taller than the screen is brought in by its
+        // title (D48).
+        <View
+          onLayout={(e) => {
+            cardHeights.current.set(item.id, e.nativeEvent.layout.height);
+          }}
+        >
+          <PredictionCard
+            prediction={item}
+            position={rowPosition(index, section.data.length)}
+            // The header already says it (roadmap D33).
+            showReady={section.key !== 'ready'}
+            // A due one opens Resolve; one that isn't due yet opens its details,
+            // where it can be edited, deleted or answered early (roadmap D25).
+            onPress={(id) =>
+              router.push(
+                (isReadyToResolve(item, new Date()) ? `/resolve/${id}` : `/prediction/${id}`) as never,
+              )
+            }
+          />
+        </View>
       )}
       ListEmptyComponent={
         <EmptyState
@@ -242,11 +373,25 @@ export default function TodayScreen() {
 
 const PREDICTIONS = { one: 'prediction', other: 'predictions' };
 
+/**
+ * After a save (D48): how long the list's reports of what's on screen must be
+ * quiet before Today decides whether to scroll, and the longest it waits.
+ */
+const SETTLE_MS = 120;
+const MAX_WAIT_MS = 600;
+/** Before the one retry, once the list has rendered nearer the card. */
+const RETRY_MS = 150;
+
+/** A card counts as on screen only when all of it is (D48). */
+const FULLY_VISIBLE = { itemVisiblePercentThreshold: 100 };
+
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.canvas },
   content: { padding: space.lg, paddingBottom: space.xxl },
   // The daily rows after the ready ones (D22): spaced like a section.
   dailyAfterReady: { marginTop: space.lg },
+  // And after the open ones, when nothing is ready (D48).
+  dailyAfterOpen: { marginTop: space.lg },
   hero: { marginBottom: space.xxxl, marginTop: space.sm },
   // Left-aligned, like everything below it (roadmap D33).
   rated: { alignItems: 'stretch' },

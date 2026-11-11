@@ -896,8 +896,26 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
 - **Order** (D22, step 115): the score or its progress; then, when anything is
   ready, "Ready to answer" with **Answer all N**; then the streak row, the
   reminder card and today's practice; then "Next 7 days" and "Later". With nothing
-  ready the daily rows follow the score directly. They used to come first and push
-  the one thing on Today that asks for a tap about a screen down.
+  ready the open predictions still come first and the daily rows follow "Later"
+  (D48, step 159): at 320 × 568 the score, streak and practice rows filled the
+  screen and a card just saved couldn't be seen; with nothing open they follow the
+  empty state. The reminder card ("Want a reminder when it's due?") stays right
+  under the score either way, beside what it's about: on Day 0 it's the ask that
+  brings someone back for the first answer (D19; owner, 2026-11-10). The daily rows
+  used to come first and push the one thing on Today that asks for a tap about a
+  screen down.
+- **After a save** (D48, step 159): on the focus after Log's sheet closes, Today
+  scrolls to the new card only when the whole card isn't already on screen, and
+  only as far as needed: its bottom 16pt above the list's bottom edge, or 16pt
+  below the top when it's above what's shown or taller than the screen, so its
+  title shows (owner, 2026-11-10, both: on Day 0 a scroll to the top pushed "Your
+  first answer: tomorrow evening" and the reminder ask off a small phone). It
+  waits for the list's reports of what's on screen to settle (120 ms quiet, 600 ms
+  at most). Without animation under Reduce Motion. Log's save marks the card
+  (`justSavedId`); every other tab drops the mark as it regains focus (the tab
+  layout's `screenListeners`), so a save made over Insights, History or You never
+  moves Today later, and a sync pull never sets it. VoiceOver already hears
+  "Saved.".
 - Resolved (History): outcome as neutral ink glyph + word ("Happened" / "Didn't"), never
   ✓/✗ characters or green/red. Skipped reads "Not scored".
 - Tapping a ready card opens Resolve (§7.10); tapping one that isn't due yet opens

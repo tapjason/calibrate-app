@@ -40,6 +40,10 @@ describe('predictionStore.create', () => {
     // pending list reflects the new prediction
     expect(usePredictionStore.getState().pending).toHaveLength(1);
     expect(usePredictionStore.getState().pending[0].id).toBe(p.id);
+    // For Today to scroll to, once the sheet closes (roadmap D48).
+    expect(usePredictionStore.getState().justSavedId).toBe(p.id);
+    usePredictionStore.getState().clearJustSaved();
+    expect(usePredictionStore.getState().justSavedId).toBeNull();
   });
 
   it('sets integrity_bonus=false when confidence is outside [35, 65]', async () => {

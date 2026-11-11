@@ -1,10 +1,15 @@
 # Handoff
 
-**Branch:** `builder/a11y-marks` (step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/today-small` (step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
 
-Step 158, D47 and D58 (`docs/design/BUILT_LOG.md` row 158). JS only: a reload.
+Step 159, D48 (`docs/design/BUILT_LOG.md` row 159). JS only: a reload.
+- **Order:** with nothing ready, the open predictions come before the streak, backup nudge and practice rows; with something ready, the daily rows follow it as before. The reminder ask stays under the score either way (owner).
+- **After a save,** Today scrolls to the new card only when it isn't all on screen, and only as far as needed (its bottom just above the tab bar; just below the top when above the view or too tall), both the owner's calls. The mark comes from Log's save (`justSavedId`), and every other tab drops it, so a sync pull or a save over another tab never moves Today.
+- **Review:** `code-reviewer` three times, no blockers. Round 1: an explicit save mark instead of a 60 s window, the wrong "Log it again" route in the docs, and the two owner questions (the reminder ask's place, scroll only when out of view). Round 2: the Day-0 scroll with the reminder ask on a real iPhone (owner: just into view), and the mark not dropped over You. All done; round 3 clean.
+
+Below it, step 158, D47 and D58 (`docs/design/BUILT_LOG.md` row 158). JS only: a reload.
 - **The luck bars** are outlined in `textTertiary`, 4.6:1 or better on every chart background, light and dark.
 - **The card's strip** runs between "0%" and "100%" with a ring (on the line), ▲ (came true more often than said), ▼ (less) and a dash (empty), no key; VoiceOver hears it in the card's label.
 - **D58, no lean mark under 10** (owner, during the build): a grey dot on the chart (the Warm-up's too), a small grey dot on the card, ⬜ in the text share; the caption adds "A grey dot has fewer than 10 answers, too few to read yet." while one is drawn; the strip and squares wait until some range has 10.
@@ -47,6 +52,9 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## In progress / broken
 
+- **Seen on web for 159** (320 × 568): Day 0 on a fresh install, no scroll and the hero in view; with the demo record, "In a week" from Today brings the new card to just above the tab bar; a save from History leaves Today at the top; with nothing ready, the cards come before the streak and practice rows. Not seen: the reminder ask, which never shows on web.
+- **A flaky test:** `LogPredictionForm › clamps confidence steppers at 0 and 100` failed once under the full suite's load, then passed alone and on rerun.
+
 - **Seen on web for 158:** the demo record at 375, light and dark: the n=5 and n=8 dots grey, the caption's grey-dot line, the card's strip "grey, grey, ring, ring, ▼" and its label; a fresh Warm-up's result with two grey dots and the line.
 
 - **Seen on web:** the audit's example record at 375 light and 320 dark (the title reads "You're overconfident at 80–100%" where it said "well calibrated"; the chart's label reads "50% is inside that range… 75% is below that range."); a 24-character category in Trends at 320, its name wrapping. Not seen: the one-line style on that row's figure (below).
@@ -58,10 +66,10 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Next step
 
-- **Agent:** step 159 (D48) in `docs/NEXT_STEPS.md`.
+- **Agent:** steps 157–159 are built; `docs/NEXT_STEPS.md` has what's next.
 - **Owner:** deploy the `coach` Edge Function (`supabase functions deploy coach`) so its prompt says 20; until then the phone re-checks at 20 and drops anything the server allowed at 15–19.
 - **Owner:** decide whether `web-serve.sh stop` should be fixed for Windows pids, so it works unattended.
-- **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168 and 158 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label, the card's strip as a PNG and under Color Filters.
+- **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168, 158 and 159 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label, the card's strip as a PNG and under Color Filters.
 - **Owner, before `eas submit`:** the in-app purchases attached to the submission, the Paid Apps Agreement active and RevenueCat's current offering set; otherwise a reviewer sees the empty-plans line (2.1(b)) (`policy-auditor`).
 - **Owner:** republish the privacy policy once GitHub Pages is on (its in-app paths and §7 changed in step 166).
 - **Not traced:** whether due-day and practice reminders already scheduled are cancelled right after an account deletion, before the next launch (flagged in step 166).
@@ -91,5 +99,5 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 164 suites, 1,946 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 167 suites, 1,965 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.
