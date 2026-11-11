@@ -235,9 +235,19 @@ badge in three minutes, and the share card showed nothing of it (blind playtests
 2026-11-01 run 6 and 2026-11-03 run 4). Derived on every read from `created_at` and
 `resolved_at`, never stored. A correction keeps the first answer's time (D34), so
 it can't move an answer to another day. The earliest due date "Pick a date"
-offers is the day after logging; Insights, Resolve and "Answer it now" say when an
-answer isn't scored. It raises the cost of padding, it doesn't end it: a sure
+offers is the day after logging; Insights and History say when an answer isn't
+scored. It raises the cost of padding, it doesn't end it: a sure
 thing due tomorrow and answered tomorrow still counts.
+
+**Said once, with what to do** (decided 2026-11-10, D56; blind playtest
+2026-11-10, run 2: a daily walk was "not scored" three times per tick). Before a
+same-day answer the rule is said once, on "Answer it now": "It's due Wed, Nov 11.
+You logged it today, so an answer today isn't scored. From tomorrow it is. For
+something you do every day, log the next one the evening before." Resolve doesn't
+repeat its note when opened from there, and only while the answer would still be
+same-day; every other route keeps it. After the answer: "Not scored: you logged it
+today. Log the next one now, and its answer is scored from tomorrow." beside "Log
+it again". A prediction reworded that day (D45) says it was reworded, not logged.
 
 ### Minimum-N gating (required)
 Small samples make `actual_rate` meaningless — with two resolved predictions a bucket can
@@ -308,7 +318,8 @@ D18; built 2026-10-08):
   button, "Make a real prediction" (the bridge ends "Make your first one about
   tomorrow.").
 - The first prediction defaults to Tomorrow, with starter ideas that resolve by then,
-  so the first real result lands on Day 1. That first yes/no answer says what the
+  so the first real result lands on Day 1 (since D55, 2026-11-10, every prediction
+  starts on Tomorrow). That first yes/no answer says what the
   number means, the same for Yes and No ("A 70% call should come true about 7 times
   in 10, so one answer can't say much; 20 can.").
 - The Day-0 card shares the counts as an invitation: "5 of 10 right. I was 77% sure.
@@ -323,6 +334,19 @@ The confidence starts **empty** and Save waits for a title and a number (decided
 (decided 2026-10-10, D29): a preset Work filed untouched predictions under Work. A
 starter idea or "Log it again" fills it.
 
+**The due date starts on Tomorrow** (decided 2026-11-10, D55; blind playtest
+2026-11-10, finding 2: "In a week" caught five of eight testers), for every new
+prediction; a starter idea and "Log it again" bring their own. Save names the date
+it will save: "Save, due tomorrow", "Save, due Sunday" (two to six days out), "Save,
+due Tue, Nov 17" (further), so the date is in view when the chips aren't.
+
+**"Log it again"** (step 22) is offered after an answer on Resolve and, since D56
+(2026-11-10), on an answered prediction's details in History at any time. Its label
+names the date it brings ("Log it again, due tomorrow"); when the same words are
+already open it reads "Logged again, due Wed, Nov 11." instead. The title, category
+and lead time (a day at least) carry over; the confidence never does, so the new
+number isn't anchored on the old one.
+
 **This prediction's own record** (decided and built 2026-10-12, D32): when the typed
 title matches predictions already answered (the same words once case, spaces, end
 punctuation and curly quotes are set aside, so "Log it again" always matches), a line
@@ -330,7 +354,11 @@ under the title says how they came out: "Answered 3 times before: happened 1 of 
 Outcomes only, never the earlier confidences, which would anchor the new number; skips
 and open ones don't count. From the first answer on, since it's the person's own
 record and not a score. Free. It sits beside the track record under the confidence
-("Your 60–80% calls in finance: 7 of 12 happened"). Linking past experience to the
+("Of your 12 scored finance calls at 60–80%, 7 happened."): the category's range
+from 10 scored answers, else the overall range from 10, else **the overall range
+from 5**, with "Too few to read yet" (decided 2026-11-10, D57: the track record was
+the one line that moved testers' numbers, and it vanished below 10). Counts only,
+never a lean. Linking past experience to the
 prediction is the one prompt with strong evidence against optimism about one's own
 plans (`docs/design/research/debiasing-2026-10.md` §1); premortems and "list reasons
 you're wrong" are recorded there as not worth building.
@@ -419,6 +447,16 @@ See the authoritative section above.
   within its give-or-take."). The Plus card shows one Coach-style card on the person's own
   numbers as a sample, written by the app and labelled so (Coach itself needs Plus
   and a sign-in).
+- **Plain counts on the chart** (decided 2026-11-10, D57), by the same rule. The
+  title names a range that leans before any range inside luck, and never says
+  there's no lean while a range with 10 or more leans. A range inside luck but 5
+  points or more off what was said reads "No clear lean at 60–80%" (the recaps' rule,
+  one shared helper); "You're well calibrated at 60–80%" only under 5. The subtitle
+  gives the expected count ("Of 21 things you called 60–80% likely, 12 happened;
+  your numbers expected about 14."), and for a range the lean rule names, what would
+  have matched ("You said about 88%; about 65% would have matched.", rounded to 5 as
+  the category line is). Insights shows "No answers were Can't tell." when there are
+  none, once the rating is unlocked.
 - Per-category breakdown with badge levels, and each category's own score once it is
   past `MIN_N_CATEGORY` (D28, 2026-10-10); before that, the count to go and its plain
   counts ("You said about 90% on average, and 7 of 9 happened.", D53, 2026-11-09),

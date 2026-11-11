@@ -95,6 +95,44 @@ and item g are done. Next: the owner runs the development build.
    1.4.11); the share card's dot row labelled and not colour-only.
 5. **Step 159, D48: Today on a small phone.** Scroll to a newly saved card;
    open predictions above the streak and practice rows when nothing is ready.
+   **Steps 167–170, the eleventh round** (decided 2026-11-10 from
+   `docs/design/research/playtest-2026-11-10.md`; JS only, so a reload on the
+   phone). The record conditions are `record-auditor`'s pre-build check of the
+   same day.
+   - **Step 167, no decision:** the chart's headline picks among ranges that
+     lean first (`bothSides`, then the largest gap among non-calibrated solid
+     ranges, the calibrated wording only when none leans), one selector shared
+     by `chartTakeaway.ts` ~90, `wrappedCopy.ts` ~208 (`pooled()` only when no
+     solid range leans) and `TrendsPanel.tsx` ~211; today "You're well
+     calibrated" can sit over an orange 80–100% dot (R4, R11). Tests from real
+     buckets (`computeCalibrationPoints`), not hand-set directions, plus one rule
+     test: a title naming no lean means no solid range leans. With it, the
+     round's other no-decision fixes: "1 more scored answers", the Plus screen
+     offline ("this build" only for builds without billing), the chart's
+     accessibility label saying inside, over or under per range.
+   - **Step 168, D55:** Log starts every prediction on Tomorrow (`LogPredictionForm`
+     ~78 and the reset at ~204; the `firstEver` branch goes); Save names the
+     date the store will save (it clamps, `predictionStore` ~245), rebuilt when
+     the day turns (~85–94), from one helper shared with step 169's label;
+     DESIGN_SYSTEM §7.12 and `app-profile.md` §2 updated.
+   - **Step 169, D56:** the same-day copy (`PredictionDetails` ~176–181,
+     `ResolvePrompt` ~168 and ~619, `AnsweredDetails` ~140) with reworded
+     predictions keeping their own wording; Resolve's note hidden only from
+     Answer it now's confirmation (`?warned=<local day>`, ignored once the day
+     or the same-day state no longer matches), never from Today, History,
+     notifications or runs; "Log it again, due …" on Resolve and on History's
+     answered details, its date and the draft from one call, "Logged again,
+     due …" from the soonest open match by `titleKey`; identical after Yes and
+     No (R8). Check whether an edit reschedules the evening reminder.
+   - **Step 170, D57, after 167:** Log's track record from 5 in the overall
+     range ("Too few to read yet"), from `bucketFor` / `categoryBucketFor`;
+     the chart's "No clear lean" title through one helper with Wrapped's
+     2026-11-04 rule, expected counts from the engine's `expected_yes` through
+     `expectedPhrase`, the same in `coachSample`; "would have matched" only for
+     leaning ranges of 10 or more, rounded as `furthestOffLine`; "No answers
+     were Can't tell." in the unlocked branch; the new lines in the screen
+     reader's chart summary (`chartDescription.ts` reads no lean today).
+     `record-auditor` after; DESIGN_SYSTEM §7.2.1 and §7.12 updated.
 6. **Build day,** once the account is active: B0 → **g** → the runbook →
    Batch C/D on the iPhone → B1/B2 → TestFlight.
    Owner, in order: enroll (as yourself or a company; a company needs a
