@@ -8,7 +8,7 @@ import type { BucketStat } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
 /**
- * "Furthest off: finance. You said about 85%, and 8 of 18 happened. About 45%
+ * "Furthest off: finance. You said about 85%, and 9 of 21 happened. About 45%
  * would have matched." The number that would have matched is what happened,
  * to the nearest 5, said about the past: a power user wanted it plainly with
  * a number to aim for (blind playtest 2026-11-01, run 3).

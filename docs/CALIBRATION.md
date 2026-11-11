@@ -155,7 +155,7 @@ data:
 
 ```
 MIN_N_OVERALL  = 20   // UserStat.rating_is_provisional  = total_resolved < 20
-MIN_N_CATEGORY = 15   // CategoryStat.score_is_provisional = predictions_resolved < 15
+MIN_N_CATEGORY = 20   // CategoryStat.score_is_provisional = predictions_resolved < 20 (D46; 15 until 2026-11-10)
 ```
 
 - `isRatingProvisional(totalResolved)` and `isScoreProvisional(resolvedCount)` are pure
@@ -164,7 +164,7 @@ MIN_N_CATEGORY = 15   // CategoryStat.score_is_provisional = predictions_resolve
   the **UI must not headline it** — it shows progress toward the threshold instead
   ("12 more resolutions until your finance score unlocks").
 - No badge above `tracker` is awarded while provisional; the badge resolution gates
-  (§5) already enforce this, since every gate above tracker requires ≥ 20 > 15 resolved.
+  (§5) already enforce this, since every gate above tracker requires ≥ 20 = MIN_N_CATEGORY resolved.
 
 ---
 

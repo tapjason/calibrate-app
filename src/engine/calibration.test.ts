@@ -1,4 +1,4 @@
-import type { Prediction } from '@/types';
+import { MIN_N_CATEGORY, type Prediction } from '@/types';
 
 import {
   bucketLowFor,
@@ -150,10 +150,18 @@ describe('provisional gating', () => {
     expect(isRatingProvisional(50)).toBe(false);
   });
 
-  it('flags a category score provisional below MIN_N_CATEGORY (15)', () => {
+  // Roadmap D46: 20, the same as a category's first badge (15 until then).
+  it('unlocks a category score with its first badge, never before (D46)', () => {
+    expect(nextBadge(0, 0)).toMatchObject({ badge: 'tracker', needResolved: MIN_N_CATEGORY });
+    expect(evaluateBadge(MIN_N_CATEGORY, 0)).toBe('tracker');
+    expect(isScoreProvisional(MIN_N_CATEGORY)).toBe(false);
+  });
+
+  it('flags a category score provisional below MIN_N_CATEGORY (20)', () => {
     expect(isScoreProvisional(0)).toBe(true);
-    expect(isScoreProvisional(14)).toBe(true);
-    expect(isScoreProvisional(15)).toBe(false);
+    expect(isScoreProvisional(15)).toBe(true);
+    expect(isScoreProvisional(19)).toBe(true);
+    expect(isScoreProvisional(20)).toBe(false);
     expect(isScoreProvisional(40)).toBe(false);
   });
 });

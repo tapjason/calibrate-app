@@ -271,7 +271,7 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > it runs on our server. It is off by default; enable it in You → Coach (AI), then
 > Insights → Get feedback. Coach feedback needs predictions resolved in the
 > past. To see it with data, [DEMO ACCOUNT: email / password, pre-seeded with
-> 145 resolved predictions].
+> 153 resolved predictions].
 >
 > Account deletion: You → Delete account (at the bottom, once signed in).
 >
@@ -280,7 +280,7 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 **Why the demo account matters:** a reviewer on a fresh install has no resolved
 predictions. The Coach then shows "keep logging", and the Stats screen shows
 only progress. Both are correct, and both look like broken features to someone
-with ten minutes. Seed a demo account with `node scripts/seed-demo-sql.mjs <user-uuid>` (145 resolved
+with ten minutes. Seed a demo account with `node scripts/seed-demo-sql.mjs <user-uuid>` (153 resolved
 predictions; paste the output into the Supabase SQL editor, and re-run it shortly
 before submitting, since dates are relative to the run) and put its credentials in
 App Store Connect, **not** in the repo.
@@ -313,7 +313,7 @@ state. `src/db/demoData.ts` is that user; on a development build, `/dev/seed` lo
 it on the device. The same screen's **Preview Plus until reload** turns on the Plus
 surfaces in memory only (nothing is written to the entitlement mirror), for screen
 7 and for the correction table on Insights ("What your confidence means"), which is a
-candidate for a screen of its own: *In finance, your 80–100% came true 47% of the
+candidate for a screen of its own: *In finance, your 80–100% came true 48% of the
 time.* `/dev/celebrations` replays the unlock and tier-up cards.
 
 **How:** final images from a device or simulator build. The web target plus

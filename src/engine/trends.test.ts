@@ -339,18 +339,18 @@ describe('horizonTrends (roadmap step 21)', () => {
   it('scores each horizon on its own, nearest first, leaving out empty ones', () => {
     const rows = horizonTrends([
       ...ahead(20, 16, 40), // 80% said, 80% happened
-      ...ahead(16, 16, 1, 80), // 80% said, all happened: underconfident
+      ...ahead(20, 20, 1, 80), // 80% said, all happened: underconfident
     ]);
     expect(rows.map((r) => r.horizon)).toEqual(['next_day', 'longer']);
-    expect(rows[0]).toMatchObject({ resolved: 16, direction: 'underconfident', provisional: false });
+    expect(rows[0]).toMatchObject({ resolved: 20, direction: 'underconfident', provisional: false });
     expect(rows[1]).toMatchObject({ resolved: 20, direction: 'calibrated', provisional: false });
   });
 
-  // Same rule as a category: under 15 is counts, not a score.
+  // Same rule as a category: under 20 is counts, not a score (D46).
   it('marks a thin horizon provisional', () => {
-    expect(horizonTrends(ahead(14, 7, 5))[0]).toMatchObject({
+    expect(horizonTrends(ahead(19, 9, 5))[0]).toMatchObject({
       horizon: 'week',
-      resolved: 14,
+      resolved: 19,
       provisional: true,
     });
   });

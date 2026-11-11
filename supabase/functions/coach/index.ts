@@ -78,7 +78,8 @@ const TOLERANCE_RATE = 0.005;
 const TOLERANCE_EXACT = 1e-9;
 
 const MIN_N_OVERALL = 20;
-const MIN_N_CATEGORY = 15;
+// The app's MIN_N_CATEGORY (src/types), 20 since roadmap D46 (step 157).
+const MIN_N_CATEGORY = 20;
 
 const CATEGORIES = ['work', 'health', 'finance', 'social', 'personal'];
 const DIRECTIONS = ['overconfident', 'underconfident', 'calibrated'];

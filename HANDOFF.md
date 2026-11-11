@@ -1,10 +1,16 @@
 # Handoff
 
-**Branch:** `builder/habit-repeats` (step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/category-twenty` (step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
 
-Step 169, D56 (`docs/design/BUILT_LOG.md` row 169). JS only: a reload.
+Step 157, D46 (`docs/design/BUILT_LOG.md` row 157). JS only: a reload.
+- **A category's score at 20,** with its first badge (`MIN_N_CATEGORY` 15 → 20); below it, the plain counts. The Coach function's copy says 20 too (pinned by a test), live once deployed.
+- **The demo record** keeps every category unlocked (153 answers; "Sharp in health · Tracker in finance"); the App Review note and the seed screen say 153.
+- **D46–D48** written into `UI_ROADMAP.md` §2 (chosen 2026-11-06, never recorded there).
+- **Review:** `code-reviewer`, no blockers, its fixture and doc items done; `record-auditor` holds.
+
+Below it, step 169, D56 (`docs/design/BUILT_LOG.md` row 169). JS only: a reload.
 - **Said once:** Answer it now on a same-day prediction says the rule with the evening-before advice; Resolve opened from there (`?warned=<today>`) doesn't repeat its note; every other route keeps it.
 - **After the answer:** "Not scored: you logged it today. Log the next one now, and its answer is scored from tomorrow." with "Log it again, due tomorrow" right under it, the same after Yes and No.
 - **Log it again** names its date, and History's answered details offer it at any time; "Logged again, due …" on both screens while the same words are open.
@@ -36,6 +42,7 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 ## In progress / broken
 
 - **Seen on web:** the audit's example record at 375 light and 320 dark (the title reads "You're overconfident at 80–100%" where it said "well calibrated"; the chart's label reads "50% is inside that range… 75% is below that range."); a 24-character category in Trends at 320, its name wrapping. Not seen: the one-line style on that row's figure (below).
+- **Seen on web for 157:** a finance category at 17 answers on Insights at 375: plain counts and "3 more scored answers to reach Tracker", no score; work at 22 keeps its score.
 - **Seen on web for 169:** at 320, a walk logged that morning: Answer it now's one warning, Resolve with no second note, the advice with "Log it again, due tomorrow" under it after Yes and after No, Log opening with the title and "Save, due tomorrow", History's "Logged again, due tomorrow." and "Log it again, due tomorrow".
 - **Seen on web for 170:** Farah's record (21 at 66%, 12 happened) on Insights at 375 ("No clear lean at 60–80%", "your numbers expected about 14", "No answers were Can't tell."), the same read on Today, Log's thin line at 320, and a leaning record in dark at 320 ("You said about 88%; about 60% would have matched.").
 - **Seen on web for 168:** Log at 320, light and dark: a first and a second prediction both on Tomorrow, "Save, due tomorrow", and "Save, due Tue, Nov 17" on one line for In a week.
@@ -43,7 +50,8 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Next step
 
-- **Agent:** steps 157–159 in `docs/NEXT_STEPS.md` (all three eleventh-round steps, 167–170, are built).
+- **Agent:** steps 158 (D47) and 159 (D48) in `docs/NEXT_STEPS.md`.
+- **Owner:** deploy the `coach` Edge Function (`supabase functions deploy coach`) so its prompt says 20; until then the phone re-checks at 20 and drops anything the server allowed at 15–19.
 - **Owner:** decide whether `web-serve.sh stop` should be fixed for Windows pids, so it works unattended.
 - **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label.
 - **Owner, before `eas submit`:** the in-app purchases attached to the submission, the Paid Apps Agreement active and RevenueCat's current offering set; otherwise a reviewer sees the empty-plans line (2.1(b)) (`policy-auditor`).
@@ -66,6 +74,7 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
   - the eighth round's "needs the owner" findings (5, 7 with `expo-localization`, 8–13, 19, 22, 23, 27's note editing, 30–35);
   - the tenth round's findings 7 (rules said after they apply) and 19 (statistical caveats an expert would want);
   - the eleventh round's (`playtest-2026-11-10.md`): findings 3–6, 8, 9, 11, 13–16 and 18–24, and the 90%-plus figure (12). Finding 10's two thresholds is D46 (step 157); the card's dot row in 8 is D47 (step 158);
+  - from step 157's reviews: the "category score unlocked" celebration can no longer fire (the 20th answer is always the step up to Tracker, which wins): remove it, or have the Tracker card also say the score unlocked; a Coach encouragement may quote a category's score below 20 (older, wider now); Trends' correction table can read a band in a category Insights calls too few to read;
   - from step 169's reviews: the same-day advice line inside a run would say "Log the next one now" with no button (runs hold due predictions, so only a synced or time-zone edge reaches it); a sheet left open past midnight names yesterday's "tomorrow" until it re-renders (Log's Save names the true date);
   - from step 170's reviews: a green "on the line" dot beside "No clear lean…" on Today (the words claim less than the colour); "would have matched" rounded to 5 can sit near the number said ("You said about 88%; about 85% would have matched"); deleting a Can't tell isn't counted, so a miss skipped then deleted leaves no trace beside "No answers were Can't tell." (D45's boundary); an added category's own name sits before "calls" on Log's line ("Of your 12 scored Side business calls…");
   - D57's open point, now sharper: dots under 10 answers are coloured by lean while How scoring works says no lean is named below 10, so a leaning dot under 10 can still sit under "You're well calibrated" (`record-auditor`, step 167). Grey below 10, or qualify the title;
@@ -75,5 +84,5 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 163 suites, 1,923 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 164 suites, 1,926 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

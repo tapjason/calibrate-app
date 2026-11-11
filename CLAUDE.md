@@ -255,8 +255,13 @@ only read 0, 0.5, or 1.0. Therefore:
 
 ```
 MIN_N_OVERALL  = 20   // below this, UserStat.rating_is_provisional = true
-MIN_N_CATEGORY = 15   // below this, CategoryStat.score_is_provisional = true
+MIN_N_CATEGORY = 20   // below this, CategoryStat.score_is_provisional = true
 ```
+
+`MIN_N_CATEGORY` is 20, the same as a category's first badge (decided 2026-11-06,
+D46; built 2026-11-10 as step 157; 15 until then): a score at 15 beside "Getting
+started" read as a second number for the same thing (blind playtest 2026-11-10,
+finding 10).
 
 - While provisional, the engine still computes the score (for internal trend use) but the
   UI **must not** present it as a headline number. Show progress toward the threshold
@@ -440,7 +445,7 @@ See the authoritative section above.
 - The Brier score, one quiet line under the rating once it's unlocked (D24, above)
 - **The pattern, named** (decided 2026-11-01, D37), all free and all by the one lean
   rule (D35): the category furthest off, past `MIN_N_CATEGORY` ("Furthest off:
-  finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.");
+  finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.");
   the chart's title naming both sides when there are both ("You're too sure at
   80–100% and too cautious at 60–80%"); and "since last week" under the rating once
   it's unlocked at both ends ("Up 2 since last week, from 6 answers given since then,

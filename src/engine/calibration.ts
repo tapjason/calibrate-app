@@ -279,8 +279,8 @@ export const isScoreProvisional = (resolvedCount: number): boolean =>
  * the line (blind playtest 2026-11-01, run 6).
  *
  * The resolution gates also enforce "no badge above tracker while provisional":
- * every gate above tracker is ≥ 20 > MIN_N_CATEGORY, so a provisional category
- * (< 15 resolved) can only ever be a guesser.
+ * every gate above tracker is ≥ 20 = MIN_N_CATEGORY, so a provisional category
+ * (< 20 resolved) can only ever be a guesser.
  */
 export const evaluateBadge: EvaluateBadge = (
   predictionsResolved,

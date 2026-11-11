@@ -125,7 +125,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 | Id | Rule | Source |
 | --- | --- | --- |
 | R1 | Buckets `[0,20) [20,40) [40,60) [60,80) [80,100]`, lower bound inclusive, top closed; count-weighted mean absolute error; clamped to 0–100. The worked examples are required fixtures. | `CLAUDE.md` Calibration Engine |
-| R2 | Never a number built on noise: below `MIN_N_OVERALL` (20) no headline rating, below `MIN_N_CATEGORY` (15 now, 20 after step 157, D46) no category score; progress toward the gate instead. No badge above Tracker while provisional. | Minimum-N gating |
+| R2 | Never a number built on noise: below `MIN_N_OVERALL` (20) no headline rating, below `MIN_N_CATEGORY` (20, D46, step 157) no category score; progress toward the gate instead. No badge above Tracker while provisional. | Minimum-N gating |
 | R3 | A tier is earned at its low end (score minus its give-or-take clears the bar) and with its resolution minimum (20 / 50 / 100). Today and the share card name only tiers past the count gate (D27). | Badge Levels, D35 |
 | R4 | One lean rule everywhere: over or under only outside the central 80% of luck (`chanceRange`, `LEAN_MASS`) and by at least 5 points. The chart's grey bars show that 80%. | D35 |
 | R5 | Same-day answers aren't scored (`isSameDayAnswer`, `scoredFrom`); the earliest picked due date is the next day. | D41 |
@@ -200,7 +200,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   375 × 812 default; also 320 × 568 (smallest), 390 × 844 and 402 × 874 (iPhone 17); landscape
   568 × 320 once per run.
 - **Dev routes (only when `__DEV__`):** `/dev/seed` with **Load demo data** (`dev-seed-load`: about
-  145 resolved and 7 open predictions over five months; status in `dev-seed-status`), **Preview
+  153 resolved and 7 open predictions over five months; status in `dev-seed-status`), **Preview
   Plus until reload** (`dev-seed-plus`, in memory only), **Go to Today** (`dev-seed-home`);
   `/dev/celebrations` replays the celebration moments.
 - **A fresh install:** navigate to `http://localhost:8097/favicon.ico` (same origin, the app not

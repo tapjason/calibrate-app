@@ -24,9 +24,12 @@ export const MIN_N_OVERALL = 20;
 
 /**
  * Minimum scored answers in a single category before its score stops
- * being provisional and badges above `tracker` may be awarded.
+ * being provisional and badges above `tracker` may be awarded. 20, the same
+ * as its first badge (roadmap D46, step 157; 15 until then): a score at 15
+ * beside "Getting started" read as a second number for the same thing
+ * (blind playtest 2026-11-10, finding 10).
  */
-export const MIN_N_CATEGORY = 15;
+export const MIN_N_CATEGORY = 20;
 
 /**
  * Minimum scored answers in one confidence band before anything is said

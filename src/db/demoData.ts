@@ -10,9 +10,10 @@
 // The shape is chosen to exercise every unlocked surface honestly: real
 // miscalibration rather than a flattering curve. Health is well calibrated
 // with ≥ 50 resolved (Sharp), work is a little overconfident (Forecaster),
-// finance is badly overconfident on 17 resolved (score unlocked, still
-// Guesser), personal runs underconfident, and social is unlocked but young.
-// Together: "Sharp in health · Guesser in finance".
+// finance is badly overconfident on 21 resolved (score unlocked, Tracker),
+// personal runs underconfident, and social is unlocked but young. Every
+// category is past MIN_N_CATEGORY (20 since roadmap D46). Together: "Sharp in
+// health · Tracker in finance", the product's own example.
 
 import type { Category, Prediction } from '@/types';
 
@@ -35,8 +36,8 @@ const PLAN: Record<Category, Cell[]> = {
     { confidence: 95, count: 8, yes: 6 },
   ],
   finance: [
-    { confidence: 80, count: 9, yes: 4 },
-    { confidence: 90, count: 8, yes: 4 },
+    { confidence: 80, count: 11, yes: 5 },
+    { confidence: 90, count: 10, yes: 5 },
   ],
   personal: [
     { confidence: 15, count: 5, yes: 1 },
@@ -46,8 +47,8 @@ const PLAN: Record<Category, Cell[]> = {
     { confidence: 70, count: 16, yes: 14 },
   ],
   social: [
-    { confidence: 50, count: 8, yes: 4 },
-    { confidence: 75, count: 8, yes: 7 },
+    { confidence: 50, count: 10, yes: 5 },
+    { confidence: 75, count: 10, yes: 8 },
   ],
 };
 

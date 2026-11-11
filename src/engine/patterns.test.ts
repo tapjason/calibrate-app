@@ -182,17 +182,23 @@ describe('furthestOffCategory', () => {
 
   it('names the category furthest from what was said, past the count gate', () => {
     const miss = furthestOffCategory([
-      ...calls('finance', 18, 8, 85), // said 85, 44% happened
+      ...calls('finance', 22, 10, 85), // said 85, 45% happened
       ...calls('work', 30, 24, 80), // on the line
       ...calls('social', 5, 0, 95), // far off, but too few to say
     ]);
     expect(miss).toMatchObject({
       category: 'finance',
-      resolved: 18,
-      happened: 8,
+      resolved: 22,
+      happened: 10,
       direction: 'overconfident',
     });
     expect(miss!.mean_stated).toBe(85);
+  });
+
+  // Roadmap D46: past the count gate means 20, not 15.
+  it('waits for 20 in a category', () => {
+    expect(furthestOffCategory([...calls('finance', 19, 8, 85)])).toBeNull();
+    expect(furthestOffCategory([...calls('finance', 20, 8, 85)])?.category).toBe('finance');
   });
 
   it('names nothing when every category is inside what luck gives', () => {

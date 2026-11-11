@@ -37,7 +37,7 @@ export default function DevSeedScreen() {
       <View style={styles.wrap}>
         <Text style={styles.title}>Demo data</Text>
         <Text style={styles.body}>
-          Adds about 145 resolved and 7 open predictions to this device, for
+          Adds about 153 resolved and 7 open predictions to this device, for
           screenshots. Development builds only.
         </Text>
         <Button

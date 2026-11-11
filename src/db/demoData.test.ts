@@ -40,9 +40,11 @@ describe('buildDemoPredictions', () => {
     }
   });
 
-  it('reads "Sharp in health, Guesser in finance", with real miscalibration', () => {
+  // Roadmap D46: a category's score and its first badge both come at 20, so
+  // a finance that runs hot with its score unlocked is a Tracker.
+  it('reads "Sharp in health, Tracker in finance", with real miscalibration', () => {
     expect(profile('health').badge).toBe('sharp');
-    expect(profile('finance').badge).toBe('guesser');
+    expect(profile('finance').badge).toBe('tracker');
     expect(profile('finance').direction).toBe('overconfident');
     expect(profile('finance').score).toBeLessThan(70);
     expect(profile('work').badge).toBe('forecaster');

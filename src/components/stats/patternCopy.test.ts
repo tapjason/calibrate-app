@@ -7,13 +7,13 @@ describe('furthestOffLine (roadmap D37)', () => {
     expect(
       furthestOffLine({
         category: 'finance',
-        resolved: 18,
-        happened: 8,
+        resolved: 21,
+        happened: 9,
         mean_stated: 84.7,
-        actual_rate: 8 / 18,
+        actual_rate: 9 / 21,
         direction: 'overconfident',
       }),
-    ).toBe('Furthest off: Finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.');
+    ).toBe('Furthest off: Finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.');
   });
 });
 

@@ -93,7 +93,7 @@ cheapest safeguard available.
   (numeric tolerance check). Rejected insights are dropped, not shown.
 - Low temperature. System prompt requires "if the data is insufficient, say so" rather
   than filling gaps.
-- **Minimum-N gating:** the Coach does not opine on any category with fewer than ~15
+- **Minimum-N gating:** the Coach does not opine on any category with fewer than 20 (`MIN_N_CATEGORY`, D46)
   resolved predictions, and does not issue an overall verdict below ~20. Below
   threshold it returns "keep logging" — never a confident claim built on noise.
 

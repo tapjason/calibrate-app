@@ -226,8 +226,8 @@ describe('TrendsPanel — Plus', () => {
     const due = '2026-09-20T12:00:00.000Z';
     const made = (daysAhead: number) =>
       new Date(Date.parse(due) - daysAhead * 86_400_000).toISOString();
-    const nextDay = Array.from({ length: 16 }, (_, i) => ({
-      ...p(80, i < 13, due),
+    const nextDay = Array.from({ length: 20 }, (_, i) => ({
+      ...p(80, i < 16, due),
       created_at: made(1),
     }));
     const farOut = Array.from({ length: 3 }, (_, i) => ({

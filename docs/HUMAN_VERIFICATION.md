@@ -919,6 +919,9 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
       one offers "Log it again, due …", or "Logged again, due …" while the same words
       are open. At AX5 the button labels wrap centred; VoiceOver reads the advice, then
       the button.
+- [ ] **A category's score at 20 (D46, step 157):** a category at 19 scored answers
+      shows its plain counts and "1 more scored answer to reach Tracker"; the 20th
+      answer brings its score and Tracker together (the step-up card on Resolve).
 - [ ] **A reminder after a rewording (step 169):** let a due-day reminder arrive, then
       change that prediction's words in the app, then tap Didn't on the reminder: the
       app opens on the question with the new words and the same-day note, and records

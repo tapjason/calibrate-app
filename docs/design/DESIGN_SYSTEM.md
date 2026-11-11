@@ -460,7 +460,7 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    dot of its direction (`lean`), and no dot for a read both ways. Under the
    rating, once it's unlocked, "No answers were Can't tell." when there are none.
    **Furthest off** (D37): the first line under Category badges, `subhead` in
-   `textPrimary`: "Furthest off: finance. You said about 85%, and 8 of 18 happened.
+   `textPrimary`: "Furthest off: finance. You said about 85%, and 9 of 21 happened.
    About 45% would have matched." Only for a category past `MIN_N_CATEGORY` whose
    lean passes the one rule (D35); the matching number is what happened, to the
    nearest 5. **Since last week** (D37): a quiet line under the give-or-take, once the
@@ -564,7 +564,7 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
   presentation only and loses its `emoji` field.
 - **The category's own score** (D28, 2026-10-10): on each Insights badge row, once
-  the category is past `MIN_N_CATEGORY` (15 resolved, `score_is_provisional` false),
+  the category is past `MIN_N_CATEGORY` (20 resolved since D46, `score_is_provisional` false),
   its score in the row's meta line ("Score 84, give or take 5, from 52 scored" since
   D35, step 140), rounded, in `textSecondary` (never a display size; the overall
   rating is the one hero). A tier above Tracker needs the score minus its
@@ -1094,7 +1094,7 @@ own n, and a row below its threshold shows counts, never a score.
   With no qualifying band, one line names the closest one and its count instead.
 - **By how far ahead** (roadmap step 21): rows for *Next day or sooner* (0–1 local
   days from logging to due), *Within a week* (2–7), *Within a month* (8–31) and
-  *Further out*; empty horizons are left out. Score and direction from 15 resolved
+  *Further out*; empty horizons are left out. Score and direction from 20 resolved
   (`MIN_N_CATEGORY`), "N scored answers · too few for a score" below it, like a category.
 - Labels that contain numbers or small words don't use `textTransform:
   'capitalize'` (it produced "Range You Use"); capitalise the string instead.

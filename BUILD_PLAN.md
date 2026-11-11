@@ -146,7 +146,7 @@ runtime code.
 - `WarmupResult` — quiz answers, per-question confidence, computed mini-score.
 - `ShareCard` payload — what a card needs to render and export.
 - `CoachContext` and `CoachOutput` (shapes defined in `COACH_AGENT.md` §4 and §6).
-- Constants: `MIN_N_OVERALL = 20`, `MIN_N_CATEGORY = 15`, bucket boundaries.
+- Constants: `MIN_N_OVERALL = 20`, `MIN_N_CATEGORY = 20` (15 until D46), bucket boundaries.
 - Function-signature contracts for the engine and db helpers.
 
 **Depends on:** Layer 0.

@@ -364,7 +364,7 @@ describe('WrappedPanel', () => {
           predictions_made: 17,
           predictions_resolved: 17,
           calibration_score: 60,
-          score_is_provisional: false,
+          score_is_provisional: true, // under 20 (D46)
           badge_level: 'guesser',
         },
       ],

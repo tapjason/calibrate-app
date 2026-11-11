@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { useCategoryStore } from '@/store/categoryStore';
-import type { BadgeLevel, Category, CategoryStat, UserStat } from '@/types';
+import { MIN_N_CATEGORY, type BadgeLevel, type Category, type CategoryStat, type UserStat } from '@/types';
 
 import { homeIdentity, IdentityLine } from './IdentityLine';
 
@@ -21,7 +21,7 @@ function cat(category: Category, badge: BadgeLevel, resolved = 30, score = 80): 
     predictions_made: resolved,
     predictions_resolved: resolved,
     calibration_score: score,
-    score_is_provisional: resolved < 15,
+    score_is_provisional: resolved < MIN_N_CATEGORY,
     badge_level: badge,
   };
 }

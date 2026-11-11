@@ -166,16 +166,16 @@ describe('CategoryBadge with a give-or-take', () => {
   it('says the give-or-take beside an unlocked score', () => {
     const view = render(
       <CategoryBadge
-        stat={stat({ predictions_resolved: 17, calibration_score: 93.4, score_is_provisional: false })}
-        next={{ badge: 'tracker', needResolved: 20, needScore: null }}
+        stat={stat({ predictions_resolved: 22, calibration_score: 93.4, score_is_provisional: false, badge_level: 'tracker' })}
+        next={{ badge: 'sharp', needResolved: 50, needScore: 85 }}
         giveOrTake={6}
       />,
     );
     expect(view.getByTestId('category-health-score')).toHaveTextContent(
-      'Score 93, give or take 6, from 17 scored',
+      'Score 93, give or take 6, from 22 scored',
     );
     expect(view.getByTestId('category-health').props.accessibilityLabel).toMatch(
-      /score 93 give or take 6 from 17 scored/,
+      /score 93 give or take 6 from 22 scored/,
     );
   });
 

@@ -3,6 +3,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { CalibrationView, deletedLine, sameDayLine, skippedLine } from '@/components/stats/CalibrationView';
 import { holdRanges } from '@/components/ui/holdRanges';
 import type { CalibrationResult, UserStat } from '@/types';
+import { MIN_N_CATEGORY } from '@/types';
 
 const EMPTY_CAL: CalibrationResult = { rating: 0, buckets: [] };
 
@@ -302,7 +303,7 @@ describe('CalibrationView first badge', () => {
     predictions_made: resolved,
     predictions_resolved: resolved,
     calibration_score: 80,
-    score_is_provisional: resolved < 15,
+    score_is_provisional: resolved < MIN_N_CATEGORY,
     badge_level: resolved >= 20 ? ('tracker' as const) : ('guesser' as const),
   });
   const view = (stats: ReturnType<typeof cat>[]) =>
@@ -317,7 +318,7 @@ describe('CalibrationView first badge', () => {
 
   it('says a first badge comes at 20 answered in a category', () => {
     expect(view([]).getByTestId('badges-first')).toHaveTextContent(
-      'A category earns its first badge, Tracker, at 20 answered there.',
+      'A category earns its first badge, Tracker, at 20 scored answers there.',
     );
     expect(view([cat('health', 19)]).getByTestId('badges-first')).toBeTruthy();
   });
@@ -454,17 +455,17 @@ describe('CalibrationView pattern lines', () => {
         ratingRange={{ giveOrTake: 3, low: 84, high: 90 }}
         furthestOff={{
           category: 'finance',
-          resolved: 18,
-          happened: 8,
+          resolved: 21,
+          happened: 9,
           mean_stated: 85,
-          actual_rate: 8 / 18,
+          actual_rate: 9 / 21,
           direction: 'overconfident',
         }}
         weekChange={{ before: 85, now: 87, answered: 6 }}
       />,
     );
     expect(getByTestId('stats-furthest-off')).toHaveTextContent(
-      'Furthest off: Finance. You said about 85%, and 8 of 18 happened. About 45% would have matched.',
+      'Furthest off: Finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.',
     );
     expect(getByTestId('stats-week-change')).toHaveTextContent(
       'Up 2 since last week, from 6 answers given since then, within its give\u2060-\u2060or\u2060-\u2060take.',
