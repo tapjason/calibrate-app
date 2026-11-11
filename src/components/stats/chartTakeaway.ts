@@ -9,7 +9,9 @@
 // Direction comes from the engine (`BucketStat.direction`); this file only
 // picks which bucket to talk about and words it.
 
-import { MIN_N_BAND, type BucketStat } from '@/types';
+import { MIN_N_BAND, type BucketStat, type Direction } from '@/types';
+
+import { expectedPhrase } from './expectedPhrase';
 
 /**
  * Resolutions a single bucket needs before its direction is named. The
@@ -21,19 +23,53 @@ export const MIN_BUCKET_N_FOR_VERDICT = MIN_N_BAND;
 export interface ChartTakeaway {
   title: string;
   subtitle: string | null;
+  /**
+   * What the title reads, for a mark beside it: a direction, 'both' for a
+   * range too sure and one too cautious (no single hue says that), or null
+   * for the fallback title, which reads nothing. Today's dot uses it rather
+   * than guessing from the words, which gave a two-sided read the green
+   * "on the line" dot (code review 2026-11-10).
+   */
+  lean: Direction | 'both' | null;
 }
 
 export function rangeLabel(b: Pick<BucketStat, 'low' | 'high'>): string {
   return `${b.low}–${b.high}%`;
 }
 
-/** "Of 12 things you called 80–100% likely, 7 happened." */
-export function naturalFrequency(b: BucketStat): string {
+/** "Of 12 things you called 80–100% likely, 7 happened", without the stop. */
+function counted(b: BucketStat): string {
   const n = b.total_resolved;
   const things = n === 1 ? 'thing' : 'things';
   const happened = b.resolved_yes === n && n > 1 ? `all ${n}` : `${b.resolved_yes}`;
-  return `Of ${n} ${things} you called ${rangeLabel(b)} likely, ${happened} happened.`;
+  return `Of ${n} ${things} you called ${rangeLabel(b)} likely, ${happened} happened`;
 }
+
+/** "Of 12 things you called 80–100% likely, 7 happened." */
+export function naturalFrequency(b: BucketStat): string {
+  return `${counted(b)}.`;
+}
+
+/**
+ * Whether what happened sits within 5 whole points of what was said: the line
+ * between "well calibrated" and "no clear lean" for a read inside luck. The
+ * recaps' rule since 2026-11-04 ("well calibrated — 66% confident, right 81%"
+ * read as a contradiction), and the chart's since D57, one helper for both.
+ */
+export function closeToSaid(statedPercent: number, happenedPercent: number): boolean {
+  return Math.abs(Math.round(statedPercent) - Math.round(happenedPercent)) < 5;
+}
+
+/**
+ * The number that would have matched: what happened, to the nearest 5, as the
+ * category line says it (roadmap D37, `furthestOffLine`).
+ */
+export function matchedPercent(actualRate: number): number {
+  return Math.round((actualRate * 100) / 5) * 5;
+}
+
+// No-break spaces hold "about" to its number, as expectedPhrase does.
+const matched = (b: BucketStat) => `about\u00A0${matchedPercent(b.actual_rate)}% would have matched`;
 
 function busiest(buckets: readonly BucketStat[]): BucketStat {
   return buckets.reduce((best, b) =>
@@ -99,9 +135,13 @@ export function chartVerdict(
   const sides = bothSides(solid);
   if (sides) {
     const { sure, cautious } = sides;
+    // What would have matched, one figure per side (roadmap D57).
     return {
       title: `You're too sure at ${rangeLabel(sure)} and too cautious at ${rangeLabel(cautious)}`,
-      subtitle: `${naturalFrequency(sure)} Of ${cautious.total_resolved} at ${rangeLabel(cautious)}, ${cautious.resolved_yes} happened.`,
+      lean: 'both',
+      subtitle:
+        `${counted(sure)}; ${matched(sure)}. ` +
+        `Of ${cautious.total_resolved} at ${rangeLabel(cautious)}, ${cautious.resolved_yes} happened; ${matched(cautious)}.`,
     };
   }
 
@@ -110,18 +150,38 @@ export function chartVerdict(
   const worst = headlineRange(solid);
 
   if (worst.direction === 'calibrated') {
+    // Inside luck. "Well calibrated" only within 5 points; a bigger gap luck
+    // still allows is "no clear lean", which claims less (roadmap D57: "well
+    // calibrated" over 12 of 21 at about 66% read as a contradiction, blind
+    // playtest 2026-11-10, runs 6 and 7). The expected count says how far.
+    // Every range, not only the widest raw gap: rounded to whole percents, a
+    // range with a smaller raw gap can still be 5 apart (record audit
+    // 2026-11-10). The subtitle then names the range furthest off in whole
+    // percents, the one that made it "no clear lean".
+    const gap = (b: BucketStat) =>
+      Math.abs(Math.round(b.stated_confidence_mean) - Math.round(b.actual_rate * 100));
+    const close = solid.every((b) => closeToSaid(b.stated_confidence_mean, b.actual_rate * 100));
+    const shown = close ? worst : solid.reduce((a, b) => (gap(b) > gap(a) ? b : a));
+    const one = solid.length === 1;
     return {
-      title:
-        solid.length > 1
-          ? "You're well calibrated"
-          : `You're well calibrated at ${rangeLabel(worst)}`,
-      subtitle: naturalFrequency(worst),
+      title: close
+        ? one
+          ? `You're well calibrated at ${rangeLabel(worst)}`
+          : "You're well calibrated"
+        : one
+          ? `No clear lean at ${rangeLabel(shown)}`
+          : 'No clear lean in any range yet',
+      subtitle: `${counted(shown)}; your numbers expected ${expectedPhrase(shown.expected_yes)}.`,
+      lean: 'calibrated',
     };
   }
 
+  // A lean, and what would have matched (roadmap D57, the category line's
+  // sentence for a range).
   return {
     title: `You're ${worst.direction} at ${rangeLabel(worst)}`,
-    subtitle: naturalFrequency(worst),
+    subtitle: `${naturalFrequency(worst)} You said about\u00A0${Math.round(worst.stated_confidence_mean)}%; ${matched(worst)}.`,
+    lean: worst.direction,
   };
 }
 
@@ -130,12 +190,13 @@ export function chartTakeaway(
   ratingProvisional: boolean,
 ): ChartTakeaway {
   if (buckets.length === 0) {
-    return { title: 'Your calibration curve', subtitle: null };
+    return { title: 'Your calibration curve', subtitle: null, lean: null };
   }
   return (
     chartVerdict(buckets, ratingProvisional) ?? {
       title: 'Your curve so far',
       subtitle: naturalFrequency(busiest(buckets)),
+      lean: null,
     }
   );
 }

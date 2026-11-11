@@ -16,7 +16,7 @@ import { WelcomeBackCard } from '@/components/prediction/WelcomeBackCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { BackupNudge } from '@/components/settings/BackupNudge';
 import { unlockEstimateLine } from '@/components/stats/beforeScoreCopy';
-import { chartTakeaway } from '@/components/stats/chartTakeaway';
+import { chartVerdict } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
@@ -33,12 +33,13 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { unlockEstimateFor, useStatsStore } from '@/store/statsStore';
-import { MIN_N_OVERALL, type Prediction } from '@/types';
+import { MIN_N_OVERALL, type Direction, type Prediction } from '@/types';
 
 /** Warm for over, cool for under, green on the line: the takeaway's own hue. */
-function directionMark(title: string): string {
-  if (title.includes('overconfident')) return colors.overMark;
-  if (title.includes('underconfident')) return colors.underMark;
+/** The hue of a direction, for the dot beside Today's read (rule 0.5). */
+function directionMark(lean: Direction): string {
+  if (lean === 'overconfident') return colors.overMark;
+  if (lean === 'underconfident') return colors.underMark;
   return colors.calibratedMark;
 }
 
@@ -105,9 +106,11 @@ export default function TodayScreen() {
     </>
   );
 
-  // The one-line read, only when a band has enough to say it (chartTakeaway's
-  // own min-N); otherwise the number stands alone.
-  const read = headline && !headline.provisional ? chartTakeaway(buckets, false) : null;
+  // The one-line read, only when a band has enough to say it (chartVerdict's
+  // own min-N); otherwise the number stands alone. A verdict, not the
+  // chart's fallback title: "No clear lean at 60–80%" (roadmap D57) counts,
+  // and "Your curve so far" doesn't.
+  const read = headline && !headline.provisional ? chartVerdict(buckets, false) : null;
   const hero =
     headline && !headline.provisional ? (
       <View style={styles.rated}>
@@ -132,12 +135,15 @@ export default function TodayScreen() {
           <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
           <Text style={styles.ratingLabel}>calibration rating</Text>
         </View>
-        {read?.title.startsWith("You're") && (
+        {read && (
           <View style={styles.takeawayRow}>
             {/* The direction's own hue, beside the words that carry it (rule 0.5). */}
-            <View
-              style={[styles.takeawayDot, { backgroundColor: directionMark(read.title) }]}
-            />
+            {/* No dot for a read both ways: one hue can't say it. */}
+            {read.lean !== null && read.lean !== 'both' && (
+              <View
+                style={[styles.takeawayDot, { backgroundColor: directionMark(read.lean) }]}
+              />
+            )}
             <Text style={styles.takeaway} testID="home-takeaway">
               {holdRanges(read.title)}
             </Text>

@@ -443,10 +443,22 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    frequencies ("Of 12 things you called 80–100% likely, 7 happened"). With a range
    leaning each way (D37, step 142), the title names both: "You're too sure at
    80–100% and too cautious at 60–80%", subtitle "Of 20 things you called 80–100%
-   likely, 8 happened. Of 55 at 60–80%, 42 happened." Naming only the worst hid a
+   likely, 8 happened; about 40% would have matched. Of 55 at 60–80%, 42 happened;
+   about 75% would have matched." (D57). Naming only the worst hid a
    power user's compression. With one side only, the title names the largest gap
    among the ranges that lean, never a bigger gap inside luck (`headlineRange`,
    step 167); the calibrated wording only when no range with ≥ 10 leans.
+   **Inside luck** (D57, step 170): "You're well calibrated at 60–80%" only when every
+   range with ≥ 10 is within 5 whole points of what was said (`closeToSaid`, the
+   recaps' rule); otherwise "No clear lean at 60–80%" ("No clear lean in any range
+   yet" over several, naming the range furthest off in the subtitle), and the
+   subtitle gives the expected count: "Of 21 things you called
+   60–80% likely, 12 happened; your numbers expected about 14." **A lean** adds what
+   would have matched, rounded to 5 as the category line is: "…, 38 happened. You
+   said about 88%; about 65% would have matched."; both sides, one figure each. Today
+   shows any of these titles (`chartVerdict`), never the chart's fallback, with the
+   dot of its direction (`lean`), and no dot for a read both ways. Under the
+   rating, once it's unlocked, "No answers were Can't tell." when there are none.
    **Furthest off** (D37): the first line under Category badges, `subhead` in
    `textPrimary`: "Furthest off: finance. You said about 85%, and 8 of 18 happened.
    About 45% would have matched." Only for a category past `MIN_N_CATEGORY` whose
@@ -921,9 +933,12 @@ the control reads the chosen category.)
   a week" caught five of eight testers who meant tomorrow or a weekday (blind
   playtest 2026-11-10). A starter idea and "Log it again" bring their own date.
 - **Track record** (roadmap step 19): one `footnote` line in `textSecondary` under
-  the confidence control, "Your 60–80% calls in finance: 7 of 12 happened." The
-  category's band first, then all categories, and nothing below 10 resolved (the
-  chart title's threshold). Counts, never advice: it must not say what to pick.
+  the confidence control, "Of your 12 scored finance calls at 60–80%, 7 happened."
+  The category's band from 10 scored, then all categories from 10, then all
+  categories **from 5** with "Too few to read yet" ("Of your 9 scored calls at
+  40–60%, 4 happened. Too few to read yet.", D57, step 170; it was the one line
+  that moved testers' numbers, and it vanished below 10). Nothing below 5
+  (`TRACK_RECORD_MIN_N`). Counts, never advice: it must not say what to pick.
   Free, because this is the core loop.
 - **Its own record** (D32, step 135): when the typed title matches predictions
   already answered, one `footnote` line in `textSecondary` right under the title

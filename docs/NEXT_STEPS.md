@@ -125,7 +125,7 @@ and item g are done. Next: the owner runs the development build.
      answered details, its date and the draft from one call, "Logged again,
      due …" from the soonest open match by `titleKey`; identical after Yes and
      No (R8). Check whether an edit reschedules the evening reminder.
-   - **Step 170, D57, after 167:** Log's track record from 5 in the overall
+   - **Step 170, D57, after 167** (done 2026-11-10, on `builder/plain-counts`): Log's track record from 5 in the overall
      range ("Too few to read yet"), from `bucketFor` / `categoryBucketFor`;
      the chart's "No clear lean" title through one helper with Wrapped's
      2026-11-04 rule, expected counts from the engine's `expected_yes` through

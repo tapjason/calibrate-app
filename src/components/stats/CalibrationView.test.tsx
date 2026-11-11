@@ -135,7 +135,14 @@ describe('CalibrationView chart section', () => {
     expect(getByTestId('chart-takeaway').props.children).toBe(
       "You're overconfident at 80\u2060–\u2060100%",
     );
-    expect(getByText(holdRanges('Of 12 things you called 80–100% likely, 7 happened.'))).toBeTruthy();
+    // Roadmap D57: what would have matched, for a range that leans.
+    expect(
+      getByText(
+        holdRanges(
+          'Of 12 things you called 80–100% likely, 7 happened. You said about 88%; about 60% would have matched.',
+        ),
+      ),
+    ).toBeTruthy();
   });
 
   it('shows coverage, and flags an unused low range', () => {
@@ -336,8 +343,10 @@ describe('CalibrationView skipped answers', () => {
     expect(view(2).getByTestId('stats-skipped')).toHaveTextContent(
       '2 answers were Can’t tell, so they aren’t scored.',
     );
-    expect(view(0).queryByTestId('stats-skipped')).toBeNull();
+    // Roadmap D57: at zero too, so a sceptic needn't count rows.
+    expect(view(0).getByTestId('stats-skipped')).toHaveTextContent('No answers were Can’t tell.');
     expect(view(3, 12).queryByTestId('stats-skipped')).toBeNull();
+    expect(view(0, 12).queryByTestId('stats-skipped')).toBeNull();
   });
 
   it('words one', () => {
@@ -425,8 +434,9 @@ describe('CalibrationView counts', () => {
     );
     fireEvent.press(getByTestId('chart-table-toggle'));
     expect(getByText('Hide the counts')).toBeTruthy();
+    // One phrasing for an expected count, the chart title's (D57): 8.4 is "8 or 9".
     expect(getByTestId('bucket-60-expected')).toHaveTextContent(
-      '10 of 12 happened; your numbers expected about 8.',
+      '10 of 12 happened; your numbers expected 8 or 9.',
     );
     expect(getByTestId('bucket-60-dots', { includeHiddenElements: true })).toBeTruthy();
   });

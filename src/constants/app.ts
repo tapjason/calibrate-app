@@ -98,3 +98,13 @@ export const GUEST_ANALYTICS = false;
  * same-day answer to it as it did before D45.
  */
 export const TITLE_EDIT_SYNC = false;
+
+/**
+ * Scored answers a confidence range needs before Log's track record shows it
+ * with "Too few to read yet" (roadmap D57). From MIN_N_BAND (10) it reads
+ * plainly. Stricter than Insights' counts (D53, from the first answer) because
+ * Log is where a count can move the number being recorded: a perfectly
+ * calibrated 70% caller sees a rate 20 or more points off a third of the time
+ * at 5, and more than half the time at 3.
+ */
+export const TRACK_RECORD_MIN_N = 5;

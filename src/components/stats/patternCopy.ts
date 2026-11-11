@@ -1,6 +1,8 @@
 // The words for naming the pattern on Insights (roadmap D37). Pure, so tests
 // hold the words to the numbers; the numbers come from the engine.
 
+import { matchedPercent } from '@/components/stats/chartTakeaway';
+import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import type { CategoryMiss, WeekChange } from '@/store/statsStore';
 import type { BucketStat } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
@@ -13,7 +15,7 @@ import { categoryTitle } from '@/store/categoryStore';
  */
 export function furthestOffLine(miss: CategoryMiss): string {
   const said = Math.round(miss.mean_stated);
-  const matched = Math.round((miss.actual_rate * 100) / 5) * 5;
+  const matched = matchedPercent(miss.actual_rate);
   return (
     `Furthest off: ${categoryTitle(miss.category)}. You said about ${said}%, and ${miss.happened} of ` +
     `${miss.resolved} happened. About ${matched}% would have matched.`
@@ -45,6 +47,15 @@ export function weekChangeLine(change: WeekChange, giveOrTake: number): string {
 // "give-or-take" held whole with word joiners: at 375pt it broke at a hyphen.
 const GIVE_OR_TAKE = 'give\u2060-\u2060or\u2060-\u2060take';
 
+/**
+ * Whether what happened sits inside the range's grey bar. A range is
+ * "calibrated" there, or within 5 points outside it with many answers
+ * (direction.ts), and only the first is luck (code review 2026-11-10).
+ */
+function insideLuck(b: BucketStat): boolean {
+  return b.actual_rate >= b.chance_low - 1e-9 && b.actual_rate <= b.chance_high + 1e-9;
+}
+
 /** A sample Coach card, written by the app from the person's own record (D37). */
 export interface CoachSample {
   figure: string;
@@ -63,12 +74,16 @@ export function coachSample(buckets: readonly BucketStat[], minN: number): Coach
   if (solid.length === 0) return null;
   const most = solid.reduce((a, b) => (b.total_resolved > a.total_resolved ? b : a));
   const range = `${most.low}–${most.high}%`;
+  // Inside luck, the counts against what the numbers expected, not "about as
+  // often as you said" (roadmap D57: 12 of 21 at about 66% isn't that).
   const how =
     most.direction === 'overconfident'
-      ? 'less often than you said'
+      ? `less often than you said: ${most.resolved_yes} of ${most.total_resolved}`
       : most.direction === 'underconfident'
-        ? 'more often than you said'
-        : 'about as often as you said';
+        ? `more often than you said: ${most.resolved_yes} of ${most.total_resolved}`
+        : `${most.resolved_yes} of ${most.total_resolved}, against ${expectedPhrase(most.expected_yes)} your numbers expected, ${
+            insideLuck(most) ? 'within what luck moves' : 'within 5 points of what you said'
+          }`;
   const so =
     most.direction === 'calibrated'
       ? `It's the range you use most, so it holds your rating up.`
@@ -76,6 +91,6 @@ export function coachSample(buckets: readonly BucketStat[], minN: number): Coach
   return {
     figure: `${Math.round(most.actual_rate * 100)}%`,
     label: `came true at ${range}`,
-    message: `Your ${range} calls came true ${how}: ${most.resolved_yes} of ${most.total_resolved}. ${so}`,
+    message: `Your ${range} calls came true ${how}. ${so}`,
   };
 }

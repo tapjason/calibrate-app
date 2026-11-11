@@ -8,7 +8,7 @@
 // fewer than PRACTICE_MIN_N answers, and compares a day in counts, as Wrapped
 // and a resolve run do, rather than with a hit rate.
 
-import { expectedPhrase } from '@/components/share/wrappedCopy';
+import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { PRACTICE_MIN_N, type PracticeDayTally, type PracticeRecord } from '@/types';
 
 export interface PracticeCardCopy {

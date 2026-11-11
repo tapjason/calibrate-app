@@ -520,12 +520,12 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
 
     raise(3); // 70%
     expect(screen.getByTestId('track-record').props.children).toBe(
-      holdRanges('Your 60–80% calls: 30 of 52 happened.'),
+      holdRanges('Of your 52 scored calls at 60–80%, 30 happened.'),
     );
 
     fireEvent.press(screen.getByTestId('category-finance'));
     expect(screen.getByTestId('track-record').props.children).toBe(
-      holdRanges('Your 60–80% calls in finance: 7 of 12 happened.'),
+      holdRanges('Of your 12 scored finance calls at 60–80%, 7 happened.'),
     );
   });
 

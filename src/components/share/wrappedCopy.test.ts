@@ -176,6 +176,19 @@ describe('wrappedStory verdict', () => {
     );
   });
 
+  // Record audit 2026-11-10 (D57, D42): the averages (77% said, 73%
+  // happened) are close, but 60–80% is 9 points off, so Insights says "No
+  // clear lean in any range yet"; the year card must not say "well calibrated".
+  it('follows Insights when a band is 5 or more points off though the averages are close', () => {
+    const calls = (confidence: number, n: number, yes: number) =>
+      Array.from({ length: n }, (_, i) => ({ confidence, yes: i < yes }));
+    const { buckets } = computeCalibrationPoints([...calls(66, 21, 12), ...calls(88, 20, 18)]);
+    expect(buckets.every((b) => b.direction === 'calibrated')).toBe(true);
+    expect(wrappedStory({ ...summary(buckets), mean_confidence: 76.8 }).verdict).toBe(
+      'This year, no clear lean — 77% confident on average, and 73% happened. On 41 answers, luck often moves it that far.',
+    );
+  });
+
   it('counts one more scored answer in the singular', () => {
     const story = wrappedStory({
       ...summary([bucket(60, 19, 13, 70)]),
@@ -212,6 +225,15 @@ describe('wrappedStory allTime', () => {
       "Across all 148 scored answers, you're too sure at 80–100% and too cautious at 60–80%.",
     );
     expect(wrappedCardSummary(story)).toContain('Across all 148 scored answers');
+  });
+
+  // Roadmap D57: the all-time read can now say there's no clear lean; on a
+  // shared card it reads as one sentence.
+  it('carries a "no clear lean" read too', () => {
+    const story = wrappedStory(week(solidWeek), { ...overall, lean: 'No clear lean in any range yet' });
+    expect(story.allTime).toBe('Across all 148 scored answers, no clear lean in any range yet.');
+    const one = wrappedStory(week(solidWeek), { ...overall, lean: 'No clear lean at 60–80%' });
+    expect(one.allTime).toBe('Across all 148 scored answers, no clear lean at 60–80%.');
   });
 
   it('says nothing more without a week verdict, an all-time read, or on the year', () => {

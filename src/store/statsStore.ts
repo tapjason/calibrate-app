@@ -120,8 +120,8 @@ interface StatsState {
   bucketFor: (confidence: number) => BucketStat | null;
   /**
    * Calibration per category, held in memory like `calibration`. Feeds the
-   * Log screen's track record ("Your 60–80% calls in finance: 7 of 12
-   * happened"), roadmap step 19.
+   * Log screen's track record ("Of your 12 scored finance calls at 60–80%,
+   * 7 happened."), roadmap step 19.
    */
   categoryCalibration: Partial<Record<Category, CalibrationResult>>;
   /**

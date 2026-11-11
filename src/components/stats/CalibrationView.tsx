@@ -6,6 +6,7 @@ import { brierLine } from '@/components/stats/brierLine';
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { CategoryBadge } from '@/components/stats/CategoryBadge';
 import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
+import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { CoverageRow } from '@/components/stats/CoverageRow';
 import { furthestOffLine, weekChangeLine } from '@/components/stats/patternCopy';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
@@ -174,11 +175,11 @@ export function CalibrationView({
                   {brierLine(brier, brierBaseline)}
                 </Text>
               )}
-              {skippedCount > 0 && (
-                <Text style={styles.subtle} testID="stats-skipped">
-                  {skippedLine(skippedCount, userStat.total_resolved)}
-                </Text>
-              )}
+              {/* At zero too (roadmap D57): a sceptic worked out "none" from
+                  155 rows (blind playtest 2026-11-10, run 8). */}
+              <Text style={styles.subtle} testID="stats-skipped">
+                {skippedLine(skippedCount, userStat.total_resolved)}
+              </Text>
             </>
           )}
           {sameDayCount > 0 && (
@@ -269,8 +270,9 @@ export function CalibrationView({
                   testID={`bucket-${b.low}-dots`}
                 />
                 <Text style={styles.bucketExpected} testID={`bucket-${b.low}-expected`}>
-                  {b.resolved_yes} of {b.total_resolved} happened; your numbers expected about{' '}
-                  {Math.round(b.expected_yes)}.
+                  {/* One phrasing for an expected count, the chart title's (D57). */}
+                  {b.resolved_yes} of {b.total_resolved} happened; your numbers expected{' '}
+                  {expectedPhrase(b.expected_yes)}.
                 </Text>
               </View>
             ))}
@@ -348,13 +350,15 @@ const styles = StyleSheet.create({
 });
 
 /**
- * "2 of 163 answers were Can't tell, so they aren't scored." (roadmap D34).
+ * "2 answers were Can't tell, so they aren't scored." (roadmap D34), and
+ * "No answers were Can't tell." at zero (D57).
  * The rating counts Yes and No only, so a habit of parking misses as skips
  * would flatter it unseen; said beside it, it can't.
  */
 export function skippedLine(skipped: number, _scored?: number): string {
   // No "of N": skips plus scored answers left out same-day ones, a total
   // that matched no screen (record audit, 2026-11-09).
+  if (skipped === 0) return 'No answers were Can’t tell.';
   return skipped === 1
     ? '1 answer was Can’t tell, so it isn’t scored.'
     : `${skipped} answers were Can’t tell, so they aren’t scored.`;

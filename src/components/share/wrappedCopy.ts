@@ -15,10 +15,12 @@
 
 import {
   bothSides,
+  closeToSaid,
   headlineRange,
   MIN_BUCKET_N_FOR_VERDICT,
   rangeLabel,
 } from '@/components/stats/chartTakeaway';
+import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { localCount } from '@/components/ui/count';
 import type { WrappedReceipt, WrappedSummary } from '@/engine/wrapped';
 import { MIN_N_OVERALL } from '@/types';
@@ -192,10 +194,10 @@ function verdictLine(
   // lets pass (D35) is "no clear lean", as the Warm-up says: "well
   // calibrated — 66% confident, right 81%" read as a contradiction to three
   // blind testers (2026-11-04, runs 2, 3 and 4).
+  const noLean = () =>
+    `${w}, no clear lean — ${averages} On ${summary.resolved} answers, luck often moves it that far.`;
   const calibrated = () =>
-    Math.abs(stated - hitRate) < 5
-      ? `${w}, ${VERDICTS.calibrated} — ${averages}`
-      : `${w}, no clear lean — ${averages} On ${summary.resolved} answers, luck often moves it that far.`;
+    closeToSaid(stated, hitRate) ? `${w}, ${VERDICTS.calibrated} — ${averages}` : noLean();
   const pooled = () =>
     summary.direction === 'calibrated'
       ? calibrated()
@@ -215,7 +217,15 @@ function verdictLine(
   const worst = headlineRange(solid);
   // No band leans on its own. The whole window still can, when every band
   // tilts the same way and only the total has enough answers to show it.
-  if (worst.direction === 'calibrated') return pooled();
+  if (worst.direction === 'calibrated') {
+    // As Insights (D57): "well calibrated" only when every well-evidenced band
+    // is within 5 whole points; averages close enough could otherwise call a
+    // record "well calibrated" that Insights reads as "no clear lean" (record
+    // audit 2026-11-10).
+    const allClose = solid.every((b) => closeToSaid(b.stated_confidence_mean, b.actual_rate * 100));
+    if (summary.direction === 'calibrated' && !allClose) return noLean();
+    return pooled();
+  }
   return `${w}, ${VERDICTS[worst.direction]} at ${rangeLabel(worst)}.`;
 }
 
@@ -251,22 +261,6 @@ function provisionalLine(
   return 'A week is too short for a verdict. Your all-time score has the full story.';
 }
 
-/**
- * An expected count for reading: "about 2", "2 or 3", "about 14", "less than
- * 1". Below 10 a count near a half says both neighbours, as the confidence
- * readout does ("8 or 9 times in 10"): 2.45 read as "about 2" to one blind
- * tester, and "about 1.5" puzzled another (2026-10-09). From 10, whole numbers.
- * No-break spaces keep the number with its words.
- */
-export function expectedPhrase(expected: number): string {
-  const half = Math.round(expected * 2) / 2;
-  if (half < 1) return 'less than\u00A01';
-  if (expected < 10 && half % 1 !== 0) {
-    const lo = Math.floor(half);
-    return `${lo}\u00A0or\u00A0${lo + 1}`;
-  }
-  return `about\u00A0${Math.round(expected)}`;
-}
 
 /**
  * "6 happened. You expected about 5." The card's second line (roadmap step

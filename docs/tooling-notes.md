@@ -105,6 +105,12 @@ that apply here.
 
 ## Jest and TypeScript
 
+- **No-break spaces stay escaped** (seen 2026-11-10). The code writes them as `'\u00A0'`
+  (`expectedPhrase`, `dueWords`). An agent's edit that carries the escape, through the
+  Edit tool or a shell heredoc alike, can end up writing the literal character instead: tests still pass, but the
+  source then holds an invisible character. After such an edit, scan the changed files
+  for U+00A0 and write the escape from code (`chr(92) + 'u00A0'` in Python), not as typed
+  text.
 - Jest runs with `jest-expo`; `jest.globalSetup.js` pins the time zone to UTC;
   `__setTimeZoneForTests` in `src/engine/localTime.ts` swaps zones in a test.
 - SQLite under Jest is sql.js (`src/db/testing.ts`).

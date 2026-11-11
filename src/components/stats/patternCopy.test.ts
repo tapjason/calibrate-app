@@ -66,4 +66,28 @@ describe('coachSample (roadmap D37)', () => {
   it('has nothing to say without a range that has enough answers', () => {
     expect(coachSample([bucket(60, 9, 6, 'calibrated')], 10)).toBeNull();
   });
+
+  // Roadmap D57 (blind playtest 2026-11-10, run 7): "about as often as you
+  // said" over 12 of 21 at about 66% read as wrong; inside luck, the counts.
+  // Record audit 2026-11-10: a range also counts as calibrated within 5 points
+  // outside its luck range (many answers); that isn't luck.
+  it('says "within 5 points" rather than luck for a range outside its grey bar', () => {
+    const near = {
+      ...bucket(60, 200, 131, 'calibrated'),
+      stated_confidence_mean: 70,
+      expected_yes: 140,
+      chance_low: 0.66,
+      chance_high: 0.74,
+    };
+    expect(coachSample([near], 10)?.message).toBe(
+      "Your 60–80% calls came true 131 of 200, against about\u00A0140 your numbers expected, within 5 points of what you said. It's the range you use most, so it holds your rating up.",
+    );
+  });
+
+  it('sets the counts against what the numbers expected for a range inside luck', () => {
+    const inside = { ...bucket(60, 21, 12, 'calibrated'), stated_confidence_mean: 66, expected_yes: 13.86 };
+    expect(coachSample([inside], 10)?.message).toBe(
+      "Your 60–80% calls came true 12 of 21, against about\u00A014 your numbers expected, within what luck moves. It's the range you use most, so it holds your rating up.",
+    );
+  });
 });

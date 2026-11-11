@@ -1,7 +1,7 @@
 import { computeCalibrationPoints, type CalibrationPoint } from '@/engine/calibration';
 import type { BucketStat, Direction } from '@/types';
 
-import { chartTakeaway, headlineRange, naturalFrequency } from './chartTakeaway';
+import { chartTakeaway, closeToSaid, headlineRange, naturalFrequency } from './chartTakeaway';
 
 function bucket(
   low: number,
@@ -44,6 +44,7 @@ describe('chartTakeaway', () => {
     expect(chartTakeaway([], true)).toEqual({
       title: 'Your calibration curve',
       subtitle: null,
+      lean: null,
     });
   });
 
@@ -73,7 +74,10 @@ describe('chartTakeaway', () => {
       false,
     );
     expect(t.title).toBe("You're overconfident at 80–100%");
-    expect(t.subtitle).toBe('Of 12 things you called 80–100% likely, 7 happened.');
+    // Roadmap D57: what would have matched, as the category line says it.
+    expect(t.subtitle).toBe(
+      'Of 12 things you called 80–100% likely, 7 happened. You said about\u00A090%; about\u00A060% would have matched.',
+    );
   });
 
   it('says calibrated when the worst solid bucket is on the line', () => {
@@ -97,7 +101,10 @@ describe('chartTakeaway, both sides', () => {
     );
     expect(t).toEqual({
       title: "You're too sure at 80–100% and too cautious at 60–80%",
-      subtitle: 'Of 20 things you called 80–100% likely, 8 happened. Of 55 at 60–80%, 42 happened.',
+      subtitle:
+        'Of 20 things you called 80–100% likely, 8 happened; about\u00A040% would have matched. ' +
+        'Of 55 at 60–80%, 42 happened; about\u00A075% would have matched.',
+      lean: 'both',
     });
   });
 });
@@ -125,7 +132,9 @@ describe('chartTakeaway, a lean outranks a bigger gap inside luck', () => {
 
     expect(chartTakeaway(buckets, false)).toEqual({
       title: "You're overconfident at 80–100%",
-      subtitle: 'Of 60 things you called 80–100% likely, 45 happened.',
+      subtitle:
+        'Of 60 things you called 80–100% likely, 45 happened. You said about\u00A088%; about\u00A075% would have matched.',
+      lean: 'overconfident',
     });
     expect(headlineRange(buckets.filter((b) => b.total_resolved >= 10))).toBe(top);
   });
@@ -154,5 +163,66 @@ describe('chartTakeaway, a lean outranks a bigger gap inside luck', () => {
       if (solidLeans) expect(t.title).toMatch(leanWords);
       else expect(t.title).not.toMatch(leanWords);
     }
+  });
+});
+
+// Roadmap D57 (blind playtest 2026-11-10, runs 6 and 7): "You're well
+// calibrated" over 12 of 21 at about 66% read as a contradiction. Inside
+// luck, "well calibrated" only within 5 points, else "no clear lean", and the
+// expected count says how far.
+describe('chartTakeaway, inside luck (roadmap D57)', () => {
+  const calls = (confidence: number, n: number, yes: number): CalibrationPoint[] =>
+    Array.from({ length: n }, (_, i) => ({ confidence, yes: i < yes }));
+  const read = (points: CalibrationPoint[]) =>
+    chartTakeaway(computeCalibrationPoints(points).buckets, false);
+
+  it('says "no clear lean" for a gap luck allows of 5 points or more', () => {
+    const t = read(calls(66, 21, 12)); // 57% against 66%, inside 52–81%
+    expect(t).toEqual({
+      title: 'No clear lean at 60–80%',
+      subtitle: 'Of 21 things you called 60–80% likely, 12 happened; your numbers expected about\u00A014.',
+      lean: 'calibrated',
+    });
+  });
+
+  it('keeps "well calibrated" within 5 points', () => {
+    expect(read(calls(70, 20, 14))).toEqual({
+      title: "You're well calibrated at 60–80%",
+      subtitle: 'Of 20 things you called 60–80% likely, 14 happened; your numbers expected about\u00A014.',
+      lean: 'calibrated',
+    });
+  });
+
+  it('speaks for every range when there are several and none leans', () => {
+    expect(read([...calls(70, 20, 14), ...calls(88, 20, 18)]).title).toBe("You're well calibrated");
+    expect(read([...calls(66, 21, 12), ...calls(88, 20, 18)]).title).toBe(
+      'No clear lean in any range yet',
+    );
+  });
+
+  // Record audit 2026-11-10: judged on the widest raw gap alone, a range a
+  // smaller raw gap away but 5 whole points off still read "well calibrated".
+  it('needs every range within 5 whole points to say "well calibrated"', () => {
+    const mixed = (a: number, na: number, b: number, nb: number, yes: number) => [
+      ...calls(a, na, 0),
+      ...calls(b, nb, 0),
+    ].map((p, i) => ({ ...p, yes: i < yes }));
+    const points = [
+      ...mixed(70, 16, 71, 13, 19), // mean 70.45, 19 of 29 (66%): 4 whole points, raw 4.9
+      ...mixed(80, 25, 81, 25, 38), // mean 80.5, 38 of 50 (76%): 5 whole points, raw 4.5
+    ];
+    const { buckets } = computeCalibrationPoints(points);
+    expect(buckets.every((b) => b.direction === 'calibrated')).toBe(true);
+    expect(chartTakeaway(buckets, false)).toEqual({
+      title: 'No clear lean in any range yet',
+      subtitle: 'Of 50 things you called 80–100% likely, 38 happened; your numbers expected about\u00A040.',
+      lean: 'calibrated',
+    });
+  });
+
+  it('draws the 5-point line on whole percents, as the recaps do', () => {
+    expect(closeToSaid(70, 65.4)).toBe(false); // 70 against 65: 5 apart
+    expect(closeToSaid(70, 65.6)).toBe(true); // 70 against 66
+    expect(closeToSaid(69.6, 65.4)).toBe(false);
   });
 });

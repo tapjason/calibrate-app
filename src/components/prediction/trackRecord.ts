@@ -1,14 +1,18 @@
 // Presentation helper: the track record under the Log screen's confidence
-// control (roadmap step 19). "Your 60–80% calls in finance: 7 of 12 happened."
+// control (roadmap step 19). "Of your 12 scored finance calls at 60–80%, 7
+// happened."
 //
 // It closes the feedback loop at the moment of commitment, which is the app's
-// premise applied where it matters most. The honesty rules are the chart
-// title's (chartTakeaway): nothing until a band has MIN_BUCKET_N_FOR_VERDICT
-// resolved, and counts rather than a verdict, so the line can't tell anyone
-// what to pick. Free: the Log screen is the core loop, which the paywall never
-// touches (CLAUDE.md).
+// premise applied where it matters most, and it was the one line that moved
+// blind testers' numbers (playtest 2026-11-10). Counts rather than a verdict,
+// so the line can't tell anyone what to pick. From MIN_N_BAND scored answers
+// in a range it reads plainly; from TRACK_RECORD_MIN_N, for every category
+// together, it says it's too few to read (roadmap D57). Scored answers only,
+// the chart's own buckets. Free: the Log screen is the core loop, which the
+// paywall never touches (CLAUDE.md).
 
 import { MIN_BUCKET_N_FOR_VERDICT, rangeLabel } from '@/components/stats/chartTakeaway';
+import { TRACK_RECORD_MIN_N } from '@/constants/app';
 import type { BucketStat, Category } from '@/types';
 import { categoryLabel } from '@/store/categoryStore';
 
@@ -21,15 +25,21 @@ export interface TrackRecord {
 function happened(b: BucketStat): string {
   const n = b.total_resolved;
   if (b.resolved_yes === n) return `all ${n} happened`;
-  if (b.resolved_yes === 0) return `none of ${n} happened`;
-  return `${b.resolved_yes} of ${n} happened`;
+  if (b.resolved_yes === 0) return 'none happened';
+  return `${b.resolved_yes} happened`;
+}
+
+/** "Of your 12 scored finance calls at 60–80%, 7 happened." */
+function line(b: BucketStat, category: Category | null): string {
+  const calls = category === null ? 'calls' : `${categoryLabel(category)} calls`;
+  return `Of your ${b.total_resolved} scored ${calls} at ${rangeLabel(b)}, ${happened(b)}.`;
 }
 
 /**
- * The line for a chosen category and confidence, or null when neither the
- * category's band nor the overall band has enough behind it to be worth
- * reading. The category comes first: it's the history that's actually about
- * this kind of call.
+ * The line for a chosen category and confidence, or null when not even every
+ * category together has TRACK_RECORD_MIN_N behind it. The category comes
+ * first: it's the history that's actually about this kind of call. Below
+ * MIN_N_BAND it reads every category, the larger sample, and says so.
  */
 export function trackRecordLine(
   /** Null while none is chosen (roadmap D29): then it reads every category. */
@@ -42,16 +52,13 @@ export function trackRecordLine(
     categoryBucket &&
     categoryBucket.total_resolved >= MIN_BUCKET_N_FOR_VERDICT
   ) {
-    return {
-      scope: 'category',
-      text: `Your ${rangeLabel(categoryBucket)} calls in ${categoryLabel(category)}: ${happened(categoryBucket)}.`,
-    };
+    return { scope: 'category', text: line(categoryBucket, category) };
   }
   if (overallBucket && overallBucket.total_resolved >= MIN_BUCKET_N_FOR_VERDICT) {
-    return {
-      scope: 'overall',
-      text: `Your ${rangeLabel(overallBucket)} calls: ${happened(overallBucket)}.`,
-    };
+    return { scope: 'overall', text: line(overallBucket, null) };
+  }
+  if (overallBucket && overallBucket.total_resolved >= TRACK_RECORD_MIN_N) {
+    return { scope: 'overall', text: `${line(overallBucket, null)} Too few to read yet.` };
   }
   return null;
 }

@@ -905,6 +905,12 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
       this again." with no flash of it first; online, the sandbox plans load.
 - [ ] **Insights' chart to VoiceOver (step 167):** each range ends with where its dot
       sits ("75% is below that range.").
+- [ ] **Plain counts (D57, step 170):** at AX5, Insights' two-sided subtitle ("…; about
+      40% would have matched. Of 55 at 60–80%, …") and a lean's ("You said about 88%;
+      about 60% would have matched.") wrap whole, with "about" kept with its number;
+      look where Today's dot sits beside a read that wraps (the row centres it, the
+      profile §18 trap, older than this step), and that a read both ways has no dot. On Log at 55% with 5 to 9 answers in 40–60%, the line under the slider ends
+      "Too few to read yet." and VoiceOver reads it after the confidence.
 
 ---
 
