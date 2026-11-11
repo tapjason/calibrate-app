@@ -111,7 +111,7 @@ and item g are done. Next: the owner runs the development build.
      round's other no-decision fixes: "1 more scored answers", the Plus screen
      offline ("this build" only for builds without billing), the chart's
      accessibility label saying inside, over or under per range.
-   - **Step 168, D55:** Log starts every prediction on Tomorrow (`LogPredictionForm`
+   - **Step 168, D55** (done 2026-11-10, on `builder/due-date`): Log starts every prediction on Tomorrow (`LogPredictionForm`
      ~78 and the reset at ~204; the `firstEver` branch goes); Save names the
      date the store will save (it clamps, `predictionStore` ~245), rebuilt when
      the day turns (~85–94), from one helper shared with step 169's label;

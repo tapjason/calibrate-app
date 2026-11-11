@@ -102,7 +102,9 @@ const styles = StyleSheet.create({
     borderColor: colors.destructive,
     borderWidth: 1,
   },
-  labelBase: type.headline,
+  // Centred, so a label that wraps at a large text size ("Save, due" over
+  // "Tue, Nov 17", roadmap D55) stays centred in the capsule.
+  labelBase: { ...type.headline, textAlign: 'center' },
   label_primary: { color: colors.onAction },
   label_secondary: { color: colors.textPrimary },
   label_danger: { color: colors.destructive },

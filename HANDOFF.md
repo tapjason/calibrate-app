@@ -1,8 +1,15 @@
 # Handoff
 
-**Branch:** `builder/headline-fixes`, from `builder/playtest-11` (2e5cd71, D55–D57 decided), which is from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/due-date` (step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
+
+Step 168, D55 (`docs/design/BUILT_LOG.md` row 168). JS only: a reload.
+- **Tomorrow:** every new prediction on Log starts on Tomorrow, after a save too; a starter idea and "Log it again" bring their own date.
+- **Save names the date:** "Save, due tomorrow" / "Save, due Sunday" / "Save, due Tue, Nov 17", VoiceOver "Save prediction, due Tuesday, November 17"; the store's clamped date (`dueDateSavedAt`), moving on at midnight; worded by `dueWords`, for step 169 too.
+- **Review:** `code-reviewer`, no blockers; the should-fix (a loose test pattern) and four nits done (the midnight test checks the chips, a long date may break after the weekday's comma, a picked date the calendar catches up with follows the clamp, the wording memoised, one shared day helper). Not re-reviewed: the fixes were small. Not taken: making the spoken label start "Save, due …" for Voice Control (D55 decided "Save prediction, due …"; both start with "Save").
+
+Below it, step 167:
 
 Step 167, the eleventh round's no-decision fixes and a bug `record-auditor` found while checking D55–D57 (`docs/design/BUILT_LOG.md` row 167). JS only: a reload, no new build.
 - **The headline names a lean first.** With one side only, Insights' chart title took the largest gap among ranges with 10 or more answers whatever its direction, so "You're well calibrated" could sit over an orange dot. `headlineRange` (`chartTakeaway.ts`) names the largest gap among the ranges that lean; Wrapped's verdict uses it; Trends' correction table sorts leaning rows first, then by gap, before its cut to five.
@@ -16,13 +23,14 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 ## In progress / broken
 
 - **Seen on web:** the audit's example record at 375 light and 320 dark (the title reads "You're overconfident at 80–100%" where it said "well calibrated"; the chart's label reads "50% is inside that range… 75% is below that range."); a 24-character category in Trends at 320, its name wrapping. Not seen: the one-line style on that row's figure (below).
-- **Two web servers are running.** The one on 8097 dates from this morning and serves code from before this step; `web-serve.sh stop` can't find it (its pid file records a Git Bash pid, `docs/tooling-notes.md`), and ending it was refused to the agent. A fresh one runs on 8098 (`PORT=8098`), started before the last style change. Both are node processes whose command line names the port.
+- **Seen on web for 168:** Log at 320, light and dark: a first and a second prediction both on Tomorrow, "Save, due tomorrow", and "Save, due Tue, Nov 17" on one line for In a week.
+- **The web server** on 8097 was started this session for step 168; the two stale ones were stopped at the owner's word. `web-serve.sh stop` still can't find a server on Windows (`docs/tooling-notes.md`).
 
 ## Next step
 
-- **Agent:** steps 168–170 (D55, D56, D57) in `docs/NEXT_STEPS.md`, with `record-auditor`'s conditions written there; then steps 157–159.
-- **Owner:** stop the two web servers (ports 8097 and 8098), or allow the agent to; and fix `web-serve.sh stop` for Windows pids if you want it to work unattended.
-- **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–167. New in 167: open Plus in airplane mode from a cold start (the spinner, then the connection line, no flash of it first) and online (the sandbox plans load); VoiceOver on Insights' chart.
+- **Agent:** step 170 (D57), then 169 (D56), in `docs/NEXT_STEPS.md`, with `record-auditor`'s conditions written there; then steps 157–159.
+- **Owner:** decide whether `web-serve.sh stop` should be fixed for Windows pids, so it works unattended.
+- **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label.
 - **Owner, before `eas submit`:** the in-app purchases attached to the submission, the Paid Apps Agreement active and RevenueCat's current offering set; otherwise a reviewer sees the empty-plans line (2.1(b)) (`policy-auditor`).
 - **Owner:** republish the privacy policy once GitHub Pages is on (its in-app paths and §7 changed in step 166).
 - **Not traced:** whether due-day and practice reminders already scheduled are cancelled right after an account deletion, before the next launch (flagged in step 166).
@@ -50,5 +58,5 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 160 suites, 1,875 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 161 suites, 1,884 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

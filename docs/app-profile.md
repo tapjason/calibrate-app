@@ -43,8 +43,9 @@ Status: filled in 2026-11-08
   first; the iOS age-range sheet asks once after the first screen is up and fails open (D4 in
   `docs/HUMAN_VERIFICATION.md`).
 - **Log** (a page sheet from the "+" in the title bar of Today, Insights and History, D21): title,
-  confidence (starts empty, D13), category (starts empty, D29), due date. Save waits for a title, a
-  number and a category. Target: under 15 seconds.
+  confidence (starts empty, D13), category (starts empty, D29), due date (starts on Tomorrow, D55).
+  Save waits for a title, a number and a category, and names the date ("Save, due Sunday", D55).
+  Target: under 15 seconds.
 - **Resolve:** on the due day the 19:00 reminder (or the person's time, D38) offers Happened /
   Didn't (D8); tapping it opens Resolve: Yes, No or "Can't tell / doesn't apply", and an optional
   reflection. Yes and No get identical feedback. An open prediction not yet due opens its details

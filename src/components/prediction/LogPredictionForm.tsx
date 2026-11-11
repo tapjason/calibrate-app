@@ -6,6 +6,7 @@ import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
+import { dueWords } from '@/components/prediction/dueWords';
 import { type LogAgainDraft } from '@/components/prediction/logAgain';
 import { pastOutcomesLine } from '@/components/prediction/pastOutcomesLine';
 import { StarterIdeas } from '@/components/prediction/StarterIdeas';
@@ -19,7 +20,7 @@ import { TextField } from '@/components/ui/TextField';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
-import { pastOutcomesFor, usePredictionStore } from '@/store/predictionStore';
+import { dueDateSavedAt, pastOutcomesFor, usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   coverageNudgeNow,
@@ -71,12 +72,12 @@ export function LogPredictionForm({
   // Empty until set (roadmap D13): a preset can't be told apart from a choice,
   // so a save that never touched the control sat at a number nobody chose.
   const [confidence, setConfidence] = useState<number | null>(null);
-  // A first prediction is due tomorrow, so its result lands on Day 1 (D18 (4));
-  // after that, in a week.
+  // Starter ideas only for a first prediction ever (step 40).
   const firstEver = usePredictionStore((s) => s.pending.length + s.resolved.length === 0);
-  const [dueDate, setDueDate] = useState(
-    again?.dueIso ?? presets[firstEver ? 0 : 1].iso,
-  );
+  // Every prediction starts on Tomorrow (roadmap D55; D18 (4) did it for the
+  // first only): "In a week" caught five of eight testers who meant tomorrow
+  // or a weekday (blind playtest 2026-11-10). "Log it again" brings its own.
+  const [dueDate, setDueDate] = useState(again?.dueIso ?? presets[0].iso);
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   // A form left open (the Log tab, before D3; a sheet now) kept yesterday's
@@ -90,6 +91,10 @@ export function LogPredictionForm({
     const chosen = presets.findIndex((p) => p.iso === dueDate);
     setPresets(next);
     if (chosen >= 0) setDueDate(next[chosen].iso);
+    // A picked date the calendar has caught up with moves to the earliest
+    // allowed, as the store would on save, so the sentence under the chips
+    // and Save's label name the same day (D55).
+    else setDueDate(dueDateSavedAt(dueDate));
     setPresetsDay(day);
   }, [day, presetsDay, presets, dueDate]);
   const [error, setError] = useState<string | null>(null);
@@ -201,7 +206,7 @@ export function LogPredictionForm({
       setConfidence(null);
       const next = datePresets();
       setPresets(next);
-      setDueDate(next[1].iso);
+      setDueDate(next[0].iso);
       setPicking(false);
       onSubmitted?.();
     } catch (e) {
@@ -232,6 +237,17 @@ export function LogPredictionForm({
           confidence: confidence !== null,
         })
       : null;
+
+  // Save names the date it will save (roadmap D55), so the date is in view at
+  // the moment of saving even when the chips are scrolled off (at 320 they sat
+  // under this bar). The store's clamp, so it never names a date that won't be
+  // saved; `day` re-renders it when the date turns over.
+  const saveDue = useMemo(
+    () => dueWords(dueDateSavedAt(dueDate), new Date()),
+    // `day` so it moves on at midnight with the chips.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dueDate, day],
+  );
 
   // Save is pinned under the fields (2026-10-09): at the end of the form it sat
   // below the fold on a 667pt phone even after the starter ideas had gone. The
@@ -264,7 +280,7 @@ export function LogPredictionForm({
           }}
           // Short enough to fit at 320pt (checked in Inter, about 6% wider than
           // Instrument Sans, D33), and
-          // dateless: a first prediction starts on Tomorrow, later ones a week.
+          // dateless: the due date has its own chips and starts on Tomorrow.
           placeholder="e.g. I'll finish the draft"
           // Wraps and grows, so a long prediction stays in view (playtest 2026-11-01).
           grows
@@ -370,7 +386,8 @@ export function LogPredictionForm({
           </Text>
         )}
         <Button
-          label={submitting ? 'Saving…' : 'Save prediction'}
+          label={submitting ? 'Saving…' : `Save, due ${saveDue.text}`}
+          accessibilityLabel={submitting ? 'Saving' : `Save prediction, due ${saveDue.spoken}`}
           onPress={onSubmit}
           disabled={!canSave}
           testID="submit-button"

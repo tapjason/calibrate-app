@@ -917,7 +917,9 @@ the control reads the chosen category.)
   the due date its words imply, never confidence. Since D18 (4), step 99, all five
   resolve by tomorrow evening ("I'll get outside for a walk tomorrow"), and the first
   prediction's due date starts on **Tomorrow**, so the first real answer lands on
-  Day 1 at 19:00; from the second prediction on it starts on **In a week**.
+  Day 1 at 19:00. Since D55 (step 168) every prediction starts on **Tomorrow**: "In
+  a week" caught five of eight testers who meant tomorrow or a weekday (blind
+  playtest 2026-11-10). A starter idea and "Log it again" bring their own date.
 - **Track record** (roadmap step 19): one `footnote` line in `textSecondary` under
   the confidence control, "Your 60–80% calls in finance: 7 of 12 happened." The
   category's band first, then all categories, and nothing below 10 resolved (the
@@ -944,6 +946,14 @@ the control reads the chosen category.)
   it is waiting for, in the form's own words: "To save, add a category and a
   confidence." An empty form has none, and Edit's **Save changes** does the same
   (step 138; a greyed-out Save said nothing about why).
+  **Its label names the date it will save** (D55, step 168): "Save, due tomorrow",
+  "Save, due Sunday" (two to six days out), "Save, due Tue, Nov 17" (further, with
+  the year when it isn't this one), the date's spaces no-break so a wrapped label
+  breaks after "due"; VoiceOver hears "Save prediction, due Tuesday, November 17".
+  The date is the store's (`dueDateSavedAt`, after its clamp to tomorrow) and
+  follows the day turning over; `dueWords` words it. At 320 the chips sat under
+  this bar, so the date was out of sight at the moment of saving. Edit's **Save
+  changes** doesn't name one (out of scope).
 - **A new form starts at the top** (roadmap step 75): after a save, and when "Log it
   again" fills it. The tab keeps its scroll offset otherwise, and on a short phone the
   next visit opened on an empty "—%" with the title field out of sight.

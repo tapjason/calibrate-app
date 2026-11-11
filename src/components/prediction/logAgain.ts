@@ -32,7 +32,8 @@ export function noonInDays(days: number, now: Date = new Date()): string {
   return d.toISOString();
 }
 
-function startOfLocalDay(d: Date): number {
+/** Local midnight of `d`'s day, as a timestamp. Shared with dueWords. */
+export function startOfLocalDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 

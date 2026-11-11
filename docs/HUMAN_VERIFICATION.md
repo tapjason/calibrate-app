@@ -891,6 +891,21 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enough):
+
+- [ ] **Log's Save names the date (D55, step 168):** a new prediction starts on
+      Tomorrow, the second one too, and Save reads "Save, due tomorrow"; In a week
+      reads "Save, due Tue, Nov 17" in the phone's own date format. Check the pinned
+      Save at the default text size, the largest non-accessibility size, AX3 and
+      AX5: a long label wraps after "due" or after the weekday's comma, centred,
+      never inside the date, and the footer doesn't push the fields off screen.
+      VoiceOver reads "Save prediction, due Tuesday, November 17".
+- [ ] **Plus with no connection (step 167):** airplane mode, cold start, open Plus:
+      the spinner, then "Plus plans couldn't load. Check your connection, then open
+      this again." with no flash of it first; online, the sandbox plans load.
+- [ ] **Insights' chart to VoiceOver (step 167):** each range ends with where its dot
+      sits ("75% is below that range.").
+
 ---
 
 ## Batch D — Physical device (~45 min)

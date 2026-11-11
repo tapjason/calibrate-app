@@ -719,3 +719,93 @@ describe('LogPredictionForm — starter ideas (roadmap step 40)', () => {
     expect(screen.queryByTestId('starter-ideas')).toBeNull();
   });
 });
+
+// Roadmap D55 (blind playtest 2026-11-10, finding 2): "In a week" caught five
+// of eight testers who meant tomorrow or a weekday, and at 320 the chips sat
+// under the Save bar.
+describe('LogPredictionForm due date (roadmap D55)', () => {
+  const earlier: Prediction = {
+    id: 'p0',
+    user_id: 'u1',
+    title: 'Earlier call',
+    category: 'work',
+    confidence: 70,
+    created_at: '2026-10-01T10:00:00.000Z',
+    due_date: '2099-01-01T12:00:00.000Z',
+    status: 'pending',
+    resolved_at: null,
+    reflection: null,
+    integrity_bonus: false,
+  };
+  const save = () => screen.getByTestId('submit-button');
+
+  it('starts on Tomorrow for someone who has logged before, too', () => {
+    usePredictionStore.setState({ pending: [earlier], resolved: [] });
+    render(<LogPredictionForm />);
+    expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('names the date on Save, in full to VoiceOver', () => {
+    jest.useFakeTimers({ now: new Date(2026, 10, 9, 21, 0, 0) }); // Monday
+    try {
+      render(<LogPredictionForm />);
+      expect(save()).toHaveTextContent('Save, due tomorrow');
+      expect(save().props.accessibilityLabel).toBe('Save prediction, due tomorrow');
+
+      fireEvent.press(screen.getByTestId('due-week'));
+      // The matcher folds the date's no-break spaces into plain ones (dueWords.test checks them).
+      expect(save()).toHaveTextContent(/^Save, due Mon,? (Nov 16|16 Nov)$/);
+      expect(save().props.accessibilityLabel).toMatch(
+        /^Save prediction, due Monday,? (November 16|16 November)$/,
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps naming tomorrow after midnight, as the chips move on', () => {
+    jest.useFakeTimers({ now: new Date(2026, 9, 6, 23, 59, 0) });
+    try {
+      render(<LogPredictionForm />);
+      expect(save()).toHaveTextContent('Save, due tomorrow');
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 7|7 Oct/);
+      act(() => {
+        jest.advanceTimersByTime(61_000);
+      });
+      expect(save()).toHaveTextContent('Save, due tomorrow');
+      // The chips moved on too, not only the store's clamp.
+      expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
+      expect(screen.getByTestId('due-sentence')).toHaveTextContent(/Oct 8|8 Oct/);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('starts the next one on Tomorrow after a save', async () => {
+    usePredictionStore.setState({ pending: [earlier], resolved: [] });
+    render(<LogPredictionForm />);
+    fireEvent.press(screen.getByTestId('due-month'));
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Ship the prototype');
+    fireEvent.press(screen.getByTestId('category-health'));
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    fireEvent.press(save());
+    // Saving reloads the open list from the database, which holds only this one.
+    await waitFor(() => {
+      expect(usePredictionStore.getState().pending.map((x) => x.title)).toContain('Ship the prototype');
+    });
+    expect(screen.getByTestId('due-tomorrow').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('keeps the date "Log it again" brings', () => {
+    const inAWeek = new Date();
+    inAWeek.setDate(inAWeek.getDate() + 7);
+    inAWeek.setHours(12, 0, 0, 0);
+    render(
+      <LogPredictionForm
+        again={{ sourceId: 'a1', title: 'Swim twice', category: 'health', dueIso: inAWeek.toISOString() }}
+      />,
+    );
+    expect(screen.getByTestId('due-week').props.accessibilityState.selected).toBe(true);
+    expect(save()).not.toHaveTextContent('tomorrow');
+  });
+});

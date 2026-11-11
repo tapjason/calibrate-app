@@ -451,6 +451,15 @@ export function earliestDueFor(createdAt: string | Date, now: Date = new Date())
 }
 
 /**
+ * The due date a prediction saved at `now` with `dueIso` will carry: `create`
+ * moves anything before tomorrow to tomorrow (D41). Log's Save names this one
+ * (roadmap D55), so it never names a date that won't be saved.
+ */
+export function dueDateSavedAt(dueIso: string, now: Date = new Date()): string {
+  return clampDueDate(dueIso, now, now);
+}
+
+/**
  * The latest due day the date pickers offer, at local midnight: two years on
  * (playtest 2026-11-08).
  */
