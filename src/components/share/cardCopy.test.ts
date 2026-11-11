@@ -9,6 +9,7 @@ import {
   shareLines,
   shareSubline,
   shareText,
+  stripSummary,
 } from './cardCopy';
 
 function userStat(over: Partial<UserStat> = {}): UserStat {
@@ -186,6 +187,22 @@ describe('shareText', () => {
     );
   });
 
+  // Roadmap D58: a range under 10 answers shows no lean, here as on the card.
+  it('gives a range under 10 answers the white square', () => {
+    const thin = { ...bucket(80, 'overconfident'), total_resolved: 9 };
+    const text = shareText(card(81), [bucket(60, 'calibrated'), thin]);
+    expect(text.split('\n')[2]).toBe('⬜⬜⬜🟩⬜ score 81');
+  });
+
+  // Roadmap D58 (owner, 2026-11-10): all white squares say nothing, so
+  // none until some range has 10; the score stays.
+  it('drops the squares, keeping the score, while every range is under 10', () => {
+    const thin = (low: number) => ({ ...bucket(low, 'overconfident'), total_resolved: 8 });
+    const text = shareText({ ...card(81), give_or_take: 3 }, [thin(60), thin(80)]);
+    expect(text.split('\n')[2]).toBe('Score 81, give or take 3');
+    expect(text).not.toMatch(/⬜/);
+  });
+
   // CLAUDE.md: never publish a verdict built on noise.
   it('drops the squares and score while provisional', () => {
     const text = shareText(card(null), [bucket(80, 'overconfident')]);
@@ -285,7 +302,8 @@ describe('the honest card', () => {
     expect(shareSubline(card)).toBe(
       'Calibration 88/100, give or take 3, from 55 scored answers',
     );
-    expect(shareText(card, [])).toContain('score 88, give or take 3');
+    // No ranges to show (D58), so no squares before it.
+    expect(shareText(card, [])).toContain('Score 88, give or take 3');
   });
 
   it('prints no give-or-take while the rating is provisional, or when it is 0', () => {
@@ -352,5 +370,37 @@ describe('shareLines and shareSubline, the headline that agrees with itself', ()
     // The text share doesn't say the score a second time.
     expect(shareText(c, []).match(/89/g)).toHaveLength(1);
     expect(shareLines(card([['health', 'guesser']], null)).identity).toBe('Calibrating');
+  });
+});
+
+const strip = (low: number, direction: BucketStat['direction'], n = 12): BucketStat => ({
+  low,
+  high: low + 20,
+  total_resolved: n,
+  resolved_yes: Math.round(n / 2),
+  stated_confidence_mean: low + 10,
+  actual_rate: 0.5,
+  bucket_error: 0,
+  direction,
+  chance_low: 0,
+  chance_high: 1,
+  expected_yes: 0,
+});
+
+describe('stripSummary (roadmap D47)', () => {
+  it('names a lean from exactly 10 answers (MIN_N_BAND)', () => {
+    expect(stripSummary([strip(80, 'overconfident', 10)])).toBe('By range, low to high: 80 to 100%, too sure.');
+  });
+
+  it('names no lean for a range under 10 (R4)', () => {
+    expect(stripSummary([strip(80, 'overconfident', 9), strip(60, 'calibrated', 10)])).toBe(
+      'By range, low to high: 60 to 80%, no clear lean; 80 to 100%, too few to read yet.',
+    );
+  });
+
+  it('reads each range low to high, in the chart title’s words', () => {
+    expect(stripSummary([strip(80, 'overconfident'), strip(0, 'underconfident'), strip(40, 'calibrated')])).toBe(
+      'By range, low to high: 0 to 20%, too cautious; 40 to 60%, no clear lean; 80 to 100%, too sure.',
+    );
   });
 });

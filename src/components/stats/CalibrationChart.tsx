@@ -19,7 +19,7 @@ import Svg, {
 
 import { haptics } from '@/components/ui/haptics';
 import { colors, svgFontFamily, type } from '@/constants/theme';
-import type { BucketStat, Direction } from '@/types';
+import { MIN_N_BAND, type BucketStat, type Direction } from '@/types';
 
 import { describeCalibrationCurve } from './chartDescription';
 
@@ -119,7 +119,8 @@ const MARK: Record<Direction, string> = {
  * the region *below* the diagonal is tinted warm and labelled Overconfident,
  * the region above is tinted cool and labelled Underconfident, and each dot is
  * coloured by the side the engine says it's on (`BucketStat.direction`) —
- * position + tint + words. Every dot carries its n, so a lone 100% built on
+ * position + tint + words. A dot under MIN_N_BAND answers is grey: no lean
+ * mark below 10, as no lean word (roadmap D58). Every dot carries its n, so a lone 100% built on
  * two predictions reads as exactly that.
  *
  * Behind each dot, a soft grey capsule (roadmap D4): where a perfectly
@@ -321,6 +322,12 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
                   rx={CHANCE_WIDTH / 2}
                   fill={colors.textSecondary}
                   fillOpacity={0.16}
+                  // The outline carries the contrast (roadmap D47, WCAG 1.4.11):
+                  // the faint fill alone was about 1.2:1, and the caption asks
+                  // you to judge every dot by these. textTertiary clears 4.6:1
+                  // on the canvas and on both region tints, light and dark.
+                  stroke={colors.textTertiary}
+                  strokeWidth={1}
                 />
               );
             })}
@@ -354,7 +361,9 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
                     cx={cx}
                     cy={cy}
                     r={r}
-                    fill={MARK[b.direction]}
+                    // No lean colour under 10 answers (roadmap D58): a range
+                    // that thin is grey, whichever side of its bar it fell.
+                    fill={b.total_resolved < MIN_N_BAND ? colors.textSecondary : MARK[b.direction]}
                     stroke={colors.surface}
                     strokeWidth={1.5}
                   />
@@ -401,6 +410,10 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
         perfectly calibrated.
         {buckets.length > 0 &&
           ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. A dot inside its bar can\'t be told apart from perfect calibration.'}
+        {/* Only when one is drawn (roadmap D58): nothing else says why a dot
+            is grey. Log's track record and the card's label use the same words. */}
+        {buckets.some((b) => b.total_resolved < MIN_N_BAND) &&
+          ' A grey dot has fewer than 10 answers, too few to read yet.'}
         {captionNote ? ` ${captionNote}` : null}
       </Text>
     </View>

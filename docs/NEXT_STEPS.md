@@ -91,7 +91,7 @@ and item g are done. Next: the owner runs the development build.
    owner (`/design`).
 3. **Step 157, D46** (done 2026-11-10, on `builder/category-twenty`): a category's score unlocks at 20 answers, the same as
    its badge (`MIN_N_CATEGORY` 15 → 20).
-4. **Step 158, D47: accessibility.** The chart's luck bars at 3:1 (WCAG
+4. **Step 158, D47: accessibility** (done 2026-11-10, on `builder/a11y-marks`). The chart's luck bars at 3:1 (WCAG
    1.4.11); the share card's dot row labelled and not colour-only.
 5. **Step 159, D48: Today on a small phone.** Scroll to a newly saved card;
    open predictions above the streak and practice rows when nothing is ready.

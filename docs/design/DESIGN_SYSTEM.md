@@ -124,7 +124,7 @@ they were an indigo ramp (`brand50`–`brand950`, Tailwind's indigo exactly).
 | `controlBorder` | `#858993` | 3.50:1 on white, 3.18:1 on canvas (UI ≥ 3:1) |
 | `textPrimary` | `#15171B` | 16.3:1 on canvas |
 | `textSecondary` | `#4B4F58` | 7.46:1 on canvas |
-| `textTertiary` | `#646873` | 5.06:1 canvas · 4.66:1 sunken |
+| `textTertiary` | `#646873` | 5.06:1 canvas · 4.66:1 sunken · the chart's luck-bar outline, ≥ 4.6:1 over its region tints in both appearances (D47) |
 | `destructive` | `#C4271C` | 5.75:1 on white (sign-out, delete only) |
 | `cautionText` / `cautionBackground` | `#7E4600` / `#FBEFD6` | 6.67:1 (account deletion's warning only) |
 
@@ -142,6 +142,7 @@ Cool = underconfident, warm = overconfident, green = on the line.
 | `over` ("runs hot") | `#D55E00` (3.87) | `#B84E00` (5.09) | `#9A3F00` / `#FFF1E6` (6.15) | `#F28A4B` (7.31); mark `#E06B20` |
 | `under` ("runs cool") | `#0084C7` (4.10) | `#006C9E` (5.77) | `#005A85` / `#E6F4FB` (6.68) | `#5CB4EC` (7.90); mark `#2D96D8` |
 | `calibrated` ("on the line") | `#009E73` (3.42) | `#00785A` (5.48) | `#00664C` / `#E3F6EF` (6.22) | `#3CC79A` (8.44); mark `#14A87B` |
+| too few (a range under 10, D58) | `textSecondary` (chart dot); the card theme's `muted` (strip dot) | no lean word | | `muted` |
 | `oracleGold` (emblem hairline only) | `#B7791F` (graphic) | chip `#7A4F0E` / `#FDF6E7` (6.61) | | `#E8B64C` |
 
 Validated with the dataviz palette validator (Machado 2009 CVD simulation): worst
@@ -486,12 +487,20 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    disclosure.
 7. Animate draw-in by animating `strokeDashoffset` on the existing polyline.
 8. **Chance bars and dots** (roadmap D4, built as step 62): behind each dot a grey
-   capsule (`textSecondary` at 16%, 10pt wide, no end caps) spans the central 80% of
+   capsule (`textSecondary` at 16%, 10pt wide, no end caps, outlined 1pt in `textTertiary`,
+   which clears 4.6:1 on the canvas and both region tints, light and dark: WCAG 1.4.11,
+   D47, step 158; the fill alone was about 1.2:1) spans the central 80% of
    the binomial outcomes a perfectly calibrated forecaster would hit at that bucket's
    n (`BucketStat.chance_low/high`; the central half until D35, step 140). It is the
    one lean rule: a dot is coloured as over or under only outside its bar, and by at
-   least 5 points. The caption ("…lands 8 times in 10 with that many predictions.
-   Only a dot outside its bar leans.") and spoken description say what it is. "Show the counts" opens each range's said / happened / chance numbers and an
+   least 5 points, and only from 10 answers (`MIN_N_BAND`): under that it is
+   `textSecondary`, whichever side it fell (D58, step 158: no lean mark under 10, as
+   no lean word). The caption ("Grey bars: where a perfectly calibrated dot lands 8
+   times in 10 with that many predictions. A dot inside its bar can't be told apart
+   from perfect calibration.", and, only while a grey dot is drawn, "A grey dot has
+   fewer than 10 answers, too few to read yet.", owner 2026-11-10) and spoken
+   description say what it is. The Warm-up's chart follows the same rule, so its
+   dots are nearly always grey: its read takes all ten together, and its note says so. "Show the counts" opens each range's said / happened / chance numbers and an
    icon array: a dot per prediction (ink when it happened, hollow when not), an
    upright `textSecondary` bar at the expected count (`expected_yes`), and "40 of 52
    happened; your numbers expected about 36." Above 60 predictions each dot stands
@@ -595,7 +604,12 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   health"; every category at the top tier, two short names at most, else "and N
   more", D54) → contrast line 56 px ("Tracker in money") → one receipt
   36–40 px in natural frequencies ("Right 84% of the time I said 80%") → a mini visual
-  with no axes (5-bucket dot strip), legible at thumbnail size → footer hook **≥ 32 px
+  with no axes (5-bucket strip between "0%" and "100%", each range marked by shape as
+  well as colour: a ring on the line, ▲ came true more often than said, ▼ less, a dash
+  for an empty range and a small dot in the theme's `muted` for one under 10 answers,
+  which shows no lean (D58); no key; the strip waits until some range has 10, as
+  it waits for the rating; D47, step 158; VoiceOver hears it inside the
+  card's one label, with no lean word for a range under 10), legible at thumbnail size → footer hook **≥ 32 px
   at ≥ 4.5:1**, phrased as a question: "What are you sharp at? · calibrate.app". (The
   current footer, `#64748b` on `#0f172a`, is 3.75:1 — the growth hook is the faintest
   text on the card.)
@@ -618,6 +632,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   ⬜🟩🟩🟧🟧  score 81
   calibrate.app
   ```
+  A range under 10 answers gets ⬜, as an empty one does: there's no lean to show
+  there yet (D58). With every range under 10 there are no squares, and the line
+  reads "Score 81, give or take 3".
   The last line is the App Store campaign link (`@/share/link`, built 2026-10-08) once
   `APP_STORE_ID` is set; there's no domain yet, so until then the share ends on the
   score. An image share can't carry a link (the share sheet gets a bare PNG), so the

@@ -89,3 +89,24 @@ describe('ink chrome', () => {
     }
   });
 });
+
+// Roadmap D47 (WCAG 1.4.11): the chart's luck-bar outline against what it is
+// drawn over: the canvas, and the canvas under the 7% over and under region
+// tints (CalibrationChart), light and dark.
+describe('the luck bars against the chart (roadmap D47)', () => {
+  const mix = (base: string, top: string, t: number) => {
+    const ch = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+    return (
+      '#' +
+      [0, 1, 2]
+        .map((i) => Math.round(ch(base, i) * (1 - t) + ch(top, i) * t).toString(16).padStart(2, '0'))
+        .join('')
+    );
+  };
+  it.each(['light', 'dark'] as const)('%s: textTertiary ≥ 3:1 on the canvas and both tints', (mode) => {
+    const p = palettes[mode];
+    for (const bg of [p.canvas, mix(p.canvas, p.overMark, 0.07), mix(p.canvas, p.underMark, 0.07)]) {
+      expect(contrast(p.textTertiary, bg)).toBeGreaterThanOrEqual(3);
+    }
+  });
+});

@@ -79,7 +79,7 @@ describe('WarmupVerdictScreen', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
     expect(screen.getByTestId('chart-caption')).toHaveTextContent(
-      /can't be told apart from perfect calibration. The read above takes all 2 together/,
+      /can't be told apart from perfect calibration. A grey dot has fewer than 10 answers, too few to read yet. The read above takes all 2 together/,
     );
   });
 

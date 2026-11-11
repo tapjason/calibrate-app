@@ -1,10 +1,16 @@
 # Handoff
 
-**Branch:** `builder/category-twenty` (step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/a11y-marks` (step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
 
-Step 157, D46 (`docs/design/BUILT_LOG.md` row 157). JS only: a reload.
+Step 158, D47 and D58 (`docs/design/BUILT_LOG.md` row 158). JS only: a reload.
+- **The luck bars** are outlined in `textTertiary`, 4.6:1 or better on every chart background, light and dark.
+- **The card's strip** runs between "0%" and "100%" with a ring (on the line), ▲ (came true more often than said), ▼ (less) and a dash (empty), no key; VoiceOver hears it in the card's label.
+- **D58, no lean mark under 10** (owner, during the build): a grey dot on the chart (the Warm-up's too), a small grey dot on the card, ⬜ in the text share; the caption adds "A grey dot has fewer than 10 answers, too few to read yet." while one is drawn; the strip and squares wait until some range has 10.
+- **Review:** `code-reviewer` twice (round 1 a blocker, the thin-range ▼; round 2 should-fix only, all done); `record-auditor` twice (round 1 the same blocker, round 2 holds; its test and doc items done). The owner's three answers after round 2 (the Warm-up grey, the caption line, no all-grey strip) are unit-tested and seen on web, not re-reviewed.
+
+Below it, step 157, D46 (`docs/design/BUILT_LOG.md` row 157). JS only: a reload.
 - **A category's score at 20,** with its first badge (`MIN_N_CATEGORY` 15 → 20); below it, the plain counts. The Coach function's copy says 20 too (pinned by a test), live once deployed.
 - **The demo record** keeps every category unlocked (153 answers; "Sharp in health · Tracker in finance"); the App Review note and the seed screen say 153.
 - **D46–D48** written into `UI_ROADMAP.md` §2 (chosen 2026-11-06, never recorded there).
@@ -41,19 +47,21 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## In progress / broken
 
+- **Seen on web for 158:** the demo record at 375, light and dark: the n=5 and n=8 dots grey, the caption's grey-dot line, the card's strip "grey, grey, ring, ring, ▼" and its label; a fresh Warm-up's result with two grey dots and the line.
+
 - **Seen on web:** the audit's example record at 375 light and 320 dark (the title reads "You're overconfident at 80–100%" where it said "well calibrated"; the chart's label reads "50% is inside that range… 75% is below that range."); a 24-character category in Trends at 320, its name wrapping. Not seen: the one-line style on that row's figure (below).
 - **Seen on web for 157:** a finance category at 17 answers on Insights at 375: plain counts and "3 more scored answers to reach Tracker", no score; work at 22 keeps its score.
 - **Seen on web for 169:** at 320, a walk logged that morning: Answer it now's one warning, Resolve with no second note, the advice with "Log it again, due tomorrow" under it after Yes and after No, Log opening with the title and "Save, due tomorrow", History's "Logged again, due tomorrow." and "Log it again, due tomorrow".
 - **Seen on web for 170:** Farah's record (21 at 66%, 12 happened) on Insights at 375 ("No clear lean at 60–80%", "your numbers expected about 14", "No answers were Can't tell."), the same read on Today, Log's thin line at 320, and a leaning record in dark at 320 ("You said about 88%; about 60% would have matched.").
 - **Seen on web for 168:** Log at 320, light and dark: a first and a second prediction both on Tomorrow, "Save, due tomorrow", and "Save, due Tue, Nov 17" on one line for In a week.
-- **The web server** on 8097 was started this session for step 168; the two stale ones were stopped at the owner's word. `web-serve.sh stop` still can't find a server on Windows (`docs/tooling-notes.md`).
+- **The web server** runs on 8099 (8097 may be the owner's other session), restarted after each change; its database empties on a restart, so reseed from `/dev/seed`. `web-serve.sh stop` still can't find a server on Windows (`docs/tooling-notes.md`).
 
 ## Next step
 
-- **Agent:** steps 158 (D47) and 159 (D48) in `docs/NEXT_STEPS.md`.
+- **Agent:** step 159 (D48) in `docs/NEXT_STEPS.md`.
 - **Owner:** deploy the `coach` Edge Function (`supabase functions deploy coach`) so its prompt says 20; until then the phone re-checks at 20 and drops anything the server allowed at 15–19.
 - **Owner:** decide whether `web-serve.sh stop` should be fixed for Windows pids, so it works unattended.
-- **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label.
+- **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168 and 158 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label, the card's strip as a PNG and under Color Filters.
 - **Owner, before `eas submit`:** the in-app purchases attached to the submission, the Paid Apps Agreement active and RevenueCat's current offering set; otherwise a reviewer sees the empty-plans line (2.1(b)) (`policy-auditor`).
 - **Owner:** republish the privacy policy once GitHub Pages is on (its in-app paths and §7 changed in step 166).
 - **Not traced:** whether due-day and practice reminders already scheduled are cancelled right after an account deletion, before the next launch (flagged in step 166).
@@ -73,16 +81,15 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
   - the 2026-11-08 playtest's group 4 (Insights' hierarchy, the recap's lead) and group 6 (sheet headers, vocabulary, formats); finding 17 there (Share above or below the card's settings);
   - the eighth round's "needs the owner" findings (5, 7 with `expo-localization`, 8–13, 19, 22, 23, 27's note editing, 30–35);
   - the tenth round's findings 7 (rules said after they apply) and 19 (statistical caveats an expert would want);
-  - the eleventh round's (`playtest-2026-11-10.md`): findings 3–6, 8, 9, 11, 13–16 and 18–24, and the 90%-plus figure (12). Finding 10's two thresholds is D46 (step 157); the card's dot row in 8 is D47 (step 158);
+  - the eleventh round's (`playtest-2026-11-10.md`): findings 3–6, 8, 9, 11, 13–16 and 18–24, and the 90%-plus figure (12). Finding 10's two thresholds is D46 (step 157); the card's dot row in 8 is D47 (step 158); the chart's own calibrated dot is still told from the under one by colour and position only (a hollow dot there is open, finding 8);
   - from step 157's reviews: the "category score unlocked" celebration can no longer fire (the 20th answer is always the step up to Tracker, which wins): remove it, or have the Tracker card also say the score unlocked; a Coach encouragement may quote a category's score below 20 (older, wider now); Trends' correction table can read a band in a category Insights calls too few to read;
   - from step 169's reviews: the same-day advice line inside a run would say "Log the next one now" with no button (runs hold due predictions, so only a synced or time-zone edge reaches it); a sheet left open past midnight names yesterday's "tomorrow" until it re-renders (Log's Save names the true date);
   - from step 170's reviews: a green "on the line" dot beside "No clear lean…" on Today (the words claim less than the colour); "would have matched" rounded to 5 can sit near the number said ("You said about 88%; about 85% would have matched"); deleting a Can't tell isn't counted, so a miss skipped then deleted leaves no trace beside "No answers were Can't tell." (D45's boundary); an added category's own name sits before "calls" on Log's line ("Of your 12 scored Side business calls…");
-  - D57's open point, now sharper: dots under 10 answers are coloured by lean while How scoring works says no lean is named below 10, so a leaning dot under 10 can still sit under "You're well calibrated" (`record-auditor`, step 167). Grey below 10, or qualify the title;
   - How scoring works doesn't name the 5-point floor (`direction.ts`), so a dot just outside its bar but uncoloured isn't explained;
   - the Plus card's sample and "what your 80% really means" now repeat free lines (D57 (d), P1); the App Store text's "as you set it" line (D57 (a));
   - from `record-auditor` (2026-11-10): History's "happened" counts same-day Yeses, so it isn't the scored count (R11); an open prediction deleted before its due day isn't counted (finding 6, D45's boundary).
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 164 suites, 1,926 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 164 suites, 1,946 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

@@ -6,6 +6,7 @@ import {
   resolveTheme,
 } from './cardThemes';
 import { contrastRatio } from './contrast';
+import { paletteOn } from './theme';
 
 describe('the theme catalogue', () => {
   // CLAUDE.md: nothing that produces a shareable artifact is ever paywalled.
@@ -77,5 +78,17 @@ describe('card theme contrast', () => {
     ),
   )('%s (%s) %s on background ≥ 4.5:1', (_name, _id, _key, fg, bg) => {
     expect(contrastRatio(fg as string, bg as string)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// Roadmap D47 (WCAG 1.4.11): the share card's strip marks (ring, triangles)
+// and its grey marks (D58) against every theme's background, since a Plus
+// theme changes the background under them.
+describe('the card strip on every theme (roadmap D47, D58)', () => {
+  it.each(CARD_THEMES.map((t) => [t.id, t] as const))('%s: every mark at 3:1 or better', (_id, t) => {
+    const p = paletteOn(t.background);
+    for (const mark of [p.overMark, p.underMark, p.calibratedMark, t.muted]) {
+      expect(contrastRatio(mark, t.background)).toBeGreaterThanOrEqual(3);
+    }
   });
 });

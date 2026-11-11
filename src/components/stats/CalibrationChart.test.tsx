@@ -175,6 +175,40 @@ describe('CalibrationChart honesty', () => {
     expect(new Set(fills).size).toBe(3);
   });
 
+  // Roadmap D58: no lean mark under 10 answers, as no lean word.
+  it('greys a dot under 10 answers, whichever side the engine put it on', () => {
+    const view = render(
+      <CalibrationChart
+        buckets={[
+          bucket({ low: 80, high: 100, direction: 'overconfident', total_resolved: 9 }),
+          bucket({ low: 20, direction: 'underconfident', total_resolved: 4 }),
+          bucket({ low: 40, direction: 'calibrated', total_resolved: 3 }),
+          bucket({ low: 60, direction: 'overconfident', total_resolved: 10 }),
+          bucket({ low: 0, direction: 'calibrated', total_resolved: 12 }),
+        ]}
+      />,
+    );
+    layout(view);
+    const fill = (id: string) => view.getByTestId(id).props.fill;
+    expect(fill('point-20')).toEqual(fill('point-80'));
+    expect(fill('point-40')).toEqual(fill('point-80'));
+    // Not a lean colour: exactly 10 keeps its own, and a thin "calibrated"
+    // range isn't green ("on the line") either.
+    expect(fill('point-60')).not.toEqual(fill('point-80'));
+    expect(fill('point-0')).not.toEqual(fill('point-40'));
+  });
+
+  // Roadmap D58 (owner, 2026-11-10): said only when a grey dot is drawn.
+  it('says what a grey dot is, only when one is drawn', () => {
+    const thin = render(<CalibrationChart buckets={[bucket({ low: 60, total_resolved: 9 })]} />);
+    expect(thin.getByTestId('chart-caption')).toHaveTextContent(
+      /A grey dot has fewer than 10 answers, too few to read yet\./,
+    );
+    thin.unmount();
+    const solid = render(<CalibrationChart buckets={[bucket({ low: 60, total_resolved: 10 })]} />);
+    expect(solid.getByTestId('chart-caption')).not.toHaveTextContent(/grey dot/);
+  });
+
   it('labels every dot with its sample size', () => {
     const view = render(<CalibrationChart buckets={[bucket({ low: 60, total_resolved: 7 })]} />);
     layout(view);
@@ -309,6 +343,10 @@ describe('CalibrationChart chance capsules', () => {
     // 20 points of rate on a 306px-tall plot (346 − 12 − 28).
     expect(Number(height)).toBeCloseTo(0.2 * 306);
     expect(Number(y)).toBeLessThan(Number(dot.props.cy));
+    // Roadmap D47: an outline at 3:1 or better, the faint fill alone was ~1.2:1.
+    // (Its colour is textTertiary; its contrast is checked in theme.test.)
+    expect(capsule.props.stroke).toBeTruthy();
+    expect(Number(capsule.props.strokeWidth)).toBeGreaterThanOrEqual(1);
   });
 
   // Roadmap step 68: the key names only what's drawn.

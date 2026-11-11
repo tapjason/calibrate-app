@@ -1,14 +1,15 @@
 import { forwardRef, useState } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import Svg, { Polygon } from 'react-native-svg';
 
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { APP_NAME } from '@/constants/app';
 import { DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
-import type { BucketStat, Direction, ShareCard } from '@/types';
+import { MIN_N_BAND, type BucketStat, type Direction, type ShareCard } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
-import { hiddenLine, identityCardSummary, shareLines, shareSubline } from './cardCopy';
+import { hiddenLine, identityCardSummary, shareLines, shareSubline, showsRanges } from './cardCopy';
 import { CARD_CANVAS_WIDTH, CARD_RADIUS } from './ScaledCanvas';
 
 interface IdentityCardProps {
@@ -70,8 +71,9 @@ function marksFor(background: string): Record<Direction, string> {
  *
  * Hierarchy (DESIGN_SYSTEM §7.5), built to read as a thumbnail in a chat
  * thread: the identity line large ("Sharp in health"), the contrast line
- * beneath it ("Guesser in finance"), one receipt, a five-dot strip with no
- * axes, then the badges and a footer hook phrased as a question.
+ * beneath it ("Guesser in finance"), one receipt, a five-range strip from 0%
+ * to 100% whose marks say each range's lean by shape and colour (D47),
+ * then the badges and a footer hook phrased as a question.
  *
  * Plain Views (and the SVG emblems) so react-native-view-shot rasterises
  * exactly what is on screen. The footer is the growth hook and is never
@@ -83,7 +85,8 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
 ) {
   const { identity, contrast } = shareLines(card);
   const hidden = hiddenLine(card);
-  const showStrip = card.rating !== null && buckets.length > 0;
+  // Not until some range has 10 answers (roadmap D58): all grey says nothing.
+  const showStrip = showsRanges(card, buckets);
   // A long identity line, five badges and a larger text size can still be
   // taller than the canvas. Then the content shrinks as one piece to fit,
   // rather than spilling into the footer.
@@ -105,7 +108,7 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
       // One element for a screen reader, in words (roadmap step 45).
       accessible
       accessibilityRole="image"
-      accessibilityLabel={identityCardSummary(card)}
+      accessibilityLabel={identityCardSummary(card, showStrip ? buckets : [])}
       style={[
         styles.card,
         { backgroundColor: theme.background },
@@ -170,23 +173,66 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
           </Text>
 
           {showStrip && (
+            // Labelled and not colour-only (roadmap D47): the row's ends say
+            // it runs from how unsure to how sure, and each range's shape
+            // says which way it went, as its colour does: a ring on the line,
+            // ▲ came true more often than said, ▼ less often. An empty range
+            // is a dash, so it can't pass for the ring, and one under 10
+            // answers a small grey dot (D58).
             <View style={styles.strip} testID="card-strip">
+              <Text
+                maxFontSizeMultiplier={CARD_MAX_SCALE}
+                style={[styles.stripEnd, { color: theme.foreground }]}
+              >
+                0%
+              </Text>
               {BAND_LOWS.map((low) => {
                 const b = byLow.get(low);
                 const size = b ? 10 + (b.total_resolved / maxN) * 12 : 8;
+                // Under 10 answers a range shows no lean, by shape or colour
+                // (roadmap D58): a small grey dot, there but not read yet.
+                const thin = b !== undefined && b.total_resolved < MIN_N_BAND;
                 return (
-                  <View key={low} style={styles.stripCell}>
-                    <View
-                      style={[
-                        { width: size, height: size, borderRadius: size / 2 },
-                        b
-                          ? { backgroundColor: marks[b.direction] }
-                          : { borderColor: theme.divider, borderWidth: 1.5 },
-                      ]}
-                    />
+                  <View
+                    key={low}
+                    style={styles.stripCell}
+                    testID={`card-strip-${low}-${!b ? 'empty' : thin ? 'thin' : b.direction}`}
+                  >
+                    {!b ? (
+                      <View style={[styles.stripEmpty, { backgroundColor: theme.muted }]} />
+                    ) : thin ? (
+                      <View style={[styles.stripThin, { backgroundColor: theme.muted }]} />
+                    ) : b.direction === 'calibrated' ? (
+                      <View
+                        style={{
+                          width: size,
+                          height: size,
+                          borderRadius: size / 2,
+                          borderWidth: 2.5,
+                          borderColor: marks.calibrated,
+                        }}
+                      />
+                    ) : (
+                      <Svg width={size + 2} height={size + 2}>
+                        <Polygon
+                          points={
+                            b.direction === 'underconfident'
+                              ? `${(size + 2) / 2},1 ${size + 1},${size + 1} 1,${size + 1}`
+                              : `1,1 ${size + 1},1 ${(size + 2) / 2},${size + 1}`
+                          }
+                          fill={marks[b.direction]}
+                        />
+                      </Svg>
+                    )}
                   </View>
                 );
               })}
+              <Text
+                maxFontSizeMultiplier={CARD_MAX_SCALE}
+                style={[styles.stripEnd, { color: theme.foreground }]}
+              >
+                100%
+              </Text>
             </View>
           )}
 
@@ -275,6 +321,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   stripCell: { alignItems: 'center', flex: 1 },
+  stripEnd: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '600' },
+  stripEmpty: { borderRadius: 1, height: 2, width: 10 },
+  stripThin: { borderRadius: 4, height: 8, width: 8 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   chip: {
     alignItems: 'center',

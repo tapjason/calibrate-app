@@ -919,6 +919,17 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
       one offers "Log it again, due …", or "Logged again, due …" while the same words
       are open. At AX5 the button labels wrap centred; VoiceOver reads the advice, then
       the button.
+- [ ] **Marks you can tell apart (D47, D58, step 158):** in dark mode the chart's grey
+      luck bars are easy to see, with a visible outline; the share card's strip reads
+      "0%" … "100%" with a ring, ▲ or ▼ per range, legible at thumbnail size in
+      Messages; with Settings → Accessibility → Display → Color Filters set to
+      Blue/Yellow, the card's marks are still told apart by shape. On the demo data
+      the two low ranges (5 and 8 answers) are a grey dot on the chart and a small
+      grey dot on the card, and VoiceOver on the card says "too few to read yet" for
+      both; the exported PNG and "Share as text" (⬜⬜🟩🟩🟧) match. The chart's
+      caption ends "A grey dot has fewer than 10 answers, too few to read yet.", and
+      in dark mode a small grey dot can be told apart from the grey bar it sits in.
+      A fresh install's Warm-up result shows grey dots with that line.
 - [ ] **A category's score at 20 (D46, step 157):** a category at 19 scored answers
       shows its plain counts and "1 more scored answer to reach Tracker"; the 20th
       answer brings its score and Tracker together (the step-up card on Resolve).

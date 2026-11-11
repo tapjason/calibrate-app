@@ -11,6 +11,7 @@ import { localCount } from '@/components/ui/count';
 import { APP_NAME } from '@/constants/app';
 import { BADGE_META } from '@/constants/badges';
 import {
+  MIN_N_BAND,
   MIN_N_OVERALL,
   type BadgeLevel,
   type BucketStat,
@@ -194,6 +195,16 @@ export function hiddenLine(card: ShareCard): string | null {
   return hiddenCountLine(card.hidden_count ?? 0);
 }
 
+/**
+ * Whether the card draws its strip, the text share its squares and the card's
+ * label their words: once the rating is unlocked and some range has 10
+ * answers (roadmap D58). With every range thinner, they'd be all grey (owner,
+ * 2026-11-10), so they wait, as they do while the rating is provisional.
+ */
+export function showsRanges(card: ShareCard, buckets: readonly BucketStat[]): boolean {
+  return card.rating !== null && buckets.some((b) => b.total_resolved >= MIN_N_BAND);
+}
+
 /** One square per confidence band, Wordle-style. */
 const SQUARE: Record<Direction, string> = {
   calibrated: '🟩',
@@ -224,15 +235,27 @@ export function shareText(
 ): string {
   const lines = [`My calibration · ${APP_NAME}`, shareHeadline(card)];
   if (card.rating !== null) {
-    const byLow = new Map(buckets.map((b) => [b.low, b.direction]));
-    const squares = BAND_LOWS.map((low) => {
-      const d = byLow.get(low);
-      return d ? SQUARE[d] : EMPTY_SQUARE;
-    }).join('');
-    const range = card.give_or_take ? `, give or take ${card.give_or_take}` : '';
+    const byLow = new Map(buckets.map((b) => [b.low, b]));
+    // A range under 10 answers has no lean to show (roadmap D58), so it's
+    // the white square, as an empty one is: nothing to read there yet.
+    // None at all until some range has 10 (showsRanges).
+    const squares = showsRanges(card, buckets)
+      ? BAND_LOWS.map((low) => {
+          const b = byLow.get(low);
+          return b && b.total_resolved >= MIN_N_BAND ? SQUARE[b.direction] : EMPTY_SQUARE;
+        }).join('')
+      : null;
+    const g = card.give_or_take;
     // Not twice when the rating already leads (no badge yet, D54).
     const leads = !card.categories.some((c) => c.badge_level !== 'guesser');
-    lines.push(leads ? `${squares}${card.give_or_take ? ` give or take ${card.give_or_take}` : ''}` : `${squares} score ${card.rating}${range}`);
+    const line = leads
+      ? squares
+        ? `${squares}${g ? ` give or take ${g}` : ''}`
+        : g
+          ? `Give or take ${g}`
+          : null
+      : `${squares ? `${squares} score` : 'Score'} ${card.rating}${g ? `, give or take ${g}` : ''}`;
+    if (line) lines.push(line);
   } else {
     lines.push(`${card.total_resolved} answers scored so far`);
   }
@@ -247,12 +270,40 @@ export function shareText(
  * card is a picture made to be shared, so it's one element, and its chips
  * carry each category's tier by emblem alone: the summary says them in words.
  */
-export function identityCardSummary(card: ShareCard): string {
+export function identityCardSummary(
+  card: ShareCard,
+  /** The dot strip's ranges, when the card draws it (a rating to show). */
+  buckets: readonly BucketStat[] = [],
+): string {
   const { identity, contrast } = shareLines(card);
   const lead = contrast ? `${identity}, ${contrast}` : identity;
   const each = card.categories
     .map((c) => `${BADGE_META[c.badge_level].label} in ${categoryLabel(c.category)}`)
     .join(', ');
   const hidden = hiddenLine(card);
-  return `Share card. ${lead}. ${shareSubline(card)}. By category: ${each}.${hidden ? ` ${hidden}.` : ''}`;
+  const strip = showsRanges(card, buckets) ? ` ${stripSummary(buckets)}` : '';
+  return `Share card. ${lead}. ${shareSubline(card)}.${strip} By category: ${each}.${hidden ? ` ${hidden}.` : ''}`;
+}
+
+const STRIP_WORDS: Record<Direction, string> = {
+  overconfident: 'too sure',
+  underconfident: 'too cautious',
+  calibrated: 'no clear lean',
+};
+
+/**
+ * The card's dot strip in words (roadmap D47): what each range did, low to
+ * high, in the chart title's words (D37). The strip itself shows it by shape
+ * as well as colour; this is for VoiceOver, which sees the card as one image.
+ * A range under MIN_N_BAND gets no lean word (R4: none below 10), as it gets
+ * no lean mark (D58).
+ */
+export function stripSummary(buckets: readonly BucketStat[]): string {
+  const parts = [...buckets]
+    .sort((a, b) => a.low - b.low)
+    .map(
+      (b) =>
+        `${b.low} to ${b.high}%, ${b.total_resolved < MIN_N_BAND ? 'too few to read yet' : STRIP_WORDS[b.direction]}`,
+    );
+  return `By range, low to high: ${parts.join('; ')}.`;
 }

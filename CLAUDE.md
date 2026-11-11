@@ -223,7 +223,12 @@ Over or under is named only when the share that happened falls outside the centr
 chart's dots, its grey bars (the same 80%), month summaries, Wrapped, practice, the
 Warmup and the Coach's context all use it. Until D35 everything but the Warmup called
 a lean at any 5-point gap, so a dot could be "overconfident" on what the Warmup
-called luck.
+called luck. **No lean mark under 10** (decided 2026-11-10, D58): a range with fewer
+than 10 scored answers (`MIN_N_BAND`) gets no lean word and no lean mark either, so
+its chart dot is grey (the Warm-up's too, whose ranges rarely reach 10; the caption
+says what a grey dot is), its mark on the share card a small neutral dot and its
+square in the text share ⬜. The card's strip and the squares wait until some range
+has 10.
 
 ### Same-day answers aren't scored (decided 2026-11-03, D41)
 A Yes or No given on the local day the prediction was logged (`isSameDayAnswer`,
