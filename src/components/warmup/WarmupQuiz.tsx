@@ -40,13 +40,27 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const index = useWarmupStore((s) => s.index);
   const total = useWarmupStore((s) => s.questions.length);
   const answer = useWarmupStore((s) => s.answer);
+  const savePick = useWarmupStore((s) => s.setPick);
 
-  const [selected, setSelected] = useState<0 | 1 | null>(null);
+  // From what was kept, so a reload or an interruption doesn't lose this
+  // question's pick (blind playtest 2026-11-12c, finding 19).
+  const [selected, setSelected] = useState<0 | 1 | null>(
+    () => useWarmupStore.getState().pick?.option ?? null,
+  );
   // Nothing preset (roadmap D13). It used to start at 75%, so tapping straight
   // through produced "75% sure, 50% right" on the first share card: a verdict
   // on our number, not the person's.
-  const [confidence, setConfidence] = useState<number | null>(null);
+  const [confidence, setConfidence] = useState<number | null>(
+    () => useWarmupStore.getState().pick?.confidence ?? null,
+  );
   const [submitting, setSubmitting] = useState(false);
+  const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (pickTimer.current) clearTimeout(pickTimer.current);
+    },
+    [],
+  );
 
   // On the first question at 375 × 667 the intro pushes the confidence control
   // below the fold, and two blind playtests (2026-11-01, 2026-11-03) found it
@@ -66,6 +80,7 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   }, [index]);
   const pick = (choice: 0 | 1) => {
     setSelected(choice);
+    void savePick(choice, confidence);
     const bottom = wrapY.current + confidenceBox.current.y + confidenceBox.current.height;
     const visibleBottom = scrollY.current + viewportHeight.current;
     if (viewportHeight.current > 0 && bottom > visibleBottom) {
@@ -104,6 +119,8 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
     // after it, a frame could show the next question with this one's answer.
     setSelected(null);
     setConfidence(null);
+    // A number still waiting to be kept belongs to this question, now answered.
+    if (pickTimer.current) clearTimeout(pickTimer.current);
     try {
       await answer(choice, sure);
     } finally {
@@ -183,7 +200,12 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
           >
             <ConfidenceControl
               value={confidence}
-              onChange={setConfidence}
+              onChange={(value) => {
+                setConfidence(value);
+                // A drag sends many values: keep the one it settles on.
+                if (pickTimer.current) clearTimeout(pickTimer.current);
+                pickTimer.current = setTimeout(() => void savePick(selected, value), 300);
+              }}
               min={MIN_WARMUP_CONFIDENCE}
               max={MAX_WARMUP_CONFIDENCE}
               label="How sure are you?"

@@ -1,7 +1,8 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 
 import { CalibrationView, deletedLine, sameDayLine, skippedLine } from '@/components/stats/CalibrationView';
 import { holdRanges } from '@/components/ui/holdRanges';
+import { useCategoryStore } from '@/store/categoryStore';
 import type { CalibrationResult, UserStat } from '@/types';
 import { MIN_N_CATEGORY } from '@/types';
 
@@ -470,5 +471,44 @@ describe('CalibrationView pattern lines', () => {
     expect(getByTestId('stats-week-change')).toHaveTextContent(
       'Up 2 since last week, from 6 answers given since then, within its give\u2060-\u2060or\u2060-\u2060take.',
     );
+  });
+
+  // Blind playtest 2026-11-12d, run 2: a rename left the old name here until
+  // something else redrew Insights.
+  it('shows a new name for the furthest-off category at once', () => {
+    const before = useCategoryStore.getState().defs;
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 145, rating_is_provisional: false })}
+        calibration={{ rating: 87, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        furthestOff={{
+          category: 'finance',
+          resolved: 21,
+          happened: 9,
+          mean_stated: 85,
+          actual_rate: 9 / 21,
+          direction: 'overconfident',
+        }}
+      />,
+    );
+    act(() => {
+      useCategoryStore.setState({
+        defs: [
+          {
+            id: 'finance',
+            user_id: 'u1',
+            name: 'Markets',
+            icon: null,
+            hidden: false,
+            position: 0,
+            created_at: '2026-11-01T00:00:00.000Z',
+          },
+        ],
+      });
+    });
+    expect(getByTestId('stats-furthest-off')).toHaveTextContent(/^Furthest off: Markets\./);
+    act(() => useCategoryStore.setState({ defs: before }));
   });
 });

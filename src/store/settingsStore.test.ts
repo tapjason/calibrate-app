@@ -168,6 +168,31 @@ describe('settingsStore: setters persist', () => {
   });
 });
 
+// Blind playtest 2026-11-12b, finding 24: the playtest loader erases, and
+// Erase keeps settings, so one tester's card left-offs reached the next.
+describe('settingsStore: resetToDefaults', () => {
+  it("puts every setting back to a fresh install's and stores that", async () => {
+    const fake = makeFakePersistence({
+      cardHiddenCategories: ['work'],
+      cardFormat: 'story',
+      reminderPromptDismissals: 2,
+      notificationsEnabled: false,
+    });
+    __setPersistenceForTests(fake.persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().cardHiddenCategories).toEqual(['work']);
+
+    await useSettingsStore.getState().resetToDefaults();
+
+    const state = useSettingsStore.getState();
+    expect(state.cardHiddenCategories).toEqual([]);
+    expect(state.cardFormat).toBe('post');
+    expect(state.reminderPromptDismissals).toBe(0);
+    expect(state.notificationsEnabled).toBe(true);
+    expect(fake.saved.at(-1)?.cardHiddenCategories).toEqual([]);
+  });
+});
+
 describe('settingsStore: coverage-nudge cooldown', () => {
   it('defaults to never shown', () => {
     __setPersistenceForTests(makeFakePersistence().persistence);

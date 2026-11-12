@@ -37,6 +37,7 @@ function reset(): void {
     result: null,
     completedAt: null,
     hydrated: false,
+    pick: null,
   });
 }
 
@@ -145,6 +146,44 @@ describe('warmupStore', () => {
 
     await useWarmupStore.getState().answer(1, 60);
     expect(useWarmupStore.getState().result?.answered).toBe(2);
+    expect(await getWarmupProgress()).toBeNull();
+  });
+
+  // Blind playtest 2026-11-12c, finding 19: the earlier answers were kept, the
+  // current question's pick and number weren't.
+  it("keeps the current question's pick and number across a reload", async () => {
+    await useWarmupStore.getState().setPick(1, null);
+    await useWarmupStore.getState().setPick(1, 75);
+    reset();
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().index).toBe(0);
+    expect(useWarmupStore.getState().pick).toEqual({ option: 1, confidence: 75 });
+
+    await useWarmupStore.getState().answer(1, 75);
+    expect(useWarmupStore.getState().pick).toBeNull();
+    reset();
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().index).toBe(1);
+    expect(useWarmupStore.getState().pick).toBeNull();
+
+    await useWarmupStore.getState().setPick(0, null);
+    reset();
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().pick).toEqual({ option: 0, confidence: null });
+  });
+
+  it("drops a kept pick that was for another question, or that's cleared", async () => {
+    await saveWarmupProgress({
+      question_ids: [],
+      answers: [],
+      pick: { question_id: 'q2', option: 0, confidence: 60 },
+    });
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().pick).toBeNull();
+
+    reset();
+    await useWarmupStore.getState().setPick(0, 70);
+    await useWarmupStore.getState().setPick(null, null);
     expect(await getWarmupProgress()).toBeNull();
   });
 

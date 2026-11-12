@@ -857,6 +857,17 @@ export type ClearWarmupRecord = () => Promise<void>;
 export interface WarmupProgress {
   question_ids: string[];
   answers: WarmupAnswer[];
+  /**
+   * What's chosen so far on the question being answered (blind playtest
+   * 2026-11-12c, finding 19: a reload lost it). Absent with nothing chosen.
+   */
+  pick?: WarmupPick;
+}
+/** The current question's option and number, either possibly not yet chosen. */
+export interface WarmupPick {
+  question_id: string;
+  option: 0 | 1 | null;
+  confidence: number | null;
 }
 /** The kept progress, oldest answer first, or null with none. */
 export type GetWarmupProgress = () => Promise<WarmupProgress | null>;

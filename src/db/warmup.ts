@@ -17,6 +17,7 @@ import type {
   SaveWarmupProgress,
   SaveWarmupRecord,
   WarmupAnswer,
+  WarmupPick,
   WarmupRecord,
 } from '@/types';
 
@@ -91,10 +92,11 @@ export const clearWarmupRecord: ClearWarmupRecord = async () => {
  * question 5 started it over). Unparseable JSON reads as none, like the record.
  */
 export const getWarmupProgress: GetWarmupProgress = async () => {
-  const row = await getDb().get<{ answers_json: string; question_ids: string }>(
-    `SELECT answers_json, question_ids FROM warmup_progress WHERE id = ?`,
-    [ROW_ID],
-  );
+  const row = await getDb().get<{
+    answers_json: string;
+    question_ids: string;
+    pick_json: string | null;
+  }>(`SELECT answers_json, question_ids, pick_json FROM warmup_progress WHERE id = ?`, [ROW_ID]);
   if (!row) return null;
   const answers = parseAnswers(row.answers_json);
   let ids: unknown;
@@ -105,22 +107,55 @@ export const getWarmupProgress: GetWarmupProgress = async () => {
   }
   if (!answers || !Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) return null;
   if (ids.length !== answers.length) return null;
-  return { question_ids: ids as string[], answers };
+  const pick = parsePick(row.pick_json);
+  return pick
+    ? { question_ids: ids as string[], answers, pick }
+    : { question_ids: ids as string[], answers };
 };
 
-/** Keep the answers so far, replacing what was kept; none deletes the row. */
-export const saveWarmupProgress: SaveWarmupProgress = async ({ question_ids, answers }) => {
-  if (answers.length === 0) {
+/** Narrow the kept pick (migration 014); anything malformed is no pick. */
+function parsePick(json: string | null): WarmupPick | null {
+  if (!json) return null;
+  let p: unknown;
+  try {
+    p = JSON.parse(json);
+  } catch {
+    return null;
+  }
+  if (typeof p !== 'object' || p === null) return null;
+  const { question_id, option, confidence } = p as Record<string, unknown>;
+  if (typeof question_id !== 'string') return null;
+  if (option !== null && option !== 0 && option !== 1) return null;
+  if (confidence !== null && (typeof confidence !== 'number' || !Number.isFinite(confidence))) {
+    return null;
+  }
+  if (option === null && confidence === null) return null;
+  return { question_id, option, confidence };
+}
+
+/**
+ * Keep the answers so far and the current pick, replacing what was kept;
+ * neither deletes the row.
+ */
+export const saveWarmupProgress: SaveWarmupProgress = async ({ question_ids, answers, pick }) => {
+  if (answers.length === 0 && !pick) {
     await getDb().run(`DELETE FROM warmup_progress WHERE id = ?`, [ROW_ID]);
     return;
   }
   await getDb().run(
-    `INSERT INTO warmup_progress (id, answers_json, question_ids, updated_at)
-     VALUES (?, ?, ?, ?)
+    `INSERT INTO warmup_progress (id, answers_json, question_ids, pick_json, updated_at)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        answers_json = excluded.answers_json,
        question_ids = excluded.question_ids,
+       pick_json = excluded.pick_json,
        updated_at = excluded.updated_at`,
-    [ROW_ID, JSON.stringify(answers), JSON.stringify(question_ids), new Date().toISOString()],
+    [
+      ROW_ID,
+      JSON.stringify(answers),
+      JSON.stringify(question_ids),
+      pick ? JSON.stringify(pick) : null,
+      new Date().toISOString(),
+    ],
   );
 };

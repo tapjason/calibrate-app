@@ -42,8 +42,10 @@ type NextBadges = Partial<Record<Category, NextBadgeTarget | null>>;
  * only for a category whose score is no longer provisional — a score built on
  * noise is never printed (CLAUDE.md min-N rule).
  *
- * Ties break alphabetically by category so the same data always tells the
- * same story.
+ * Ties break by predictions made, most first, so the recap names where the
+ * person actually logs (blind playtest 2026-11-12b finding 19: a farmer with
+ * two Work calls and one Finance was told "Tracker in finance"), then by id so
+ * the same data always tells the same story.
  */
 export function nextBadgeProgress(
   stats: readonly CategoryStat[],
@@ -55,14 +57,16 @@ export function nextBadgeProgress(
   giveOrTake: Partial<Record<Category, number>> = {},
 ): BadgeProgress | null {
   const low = (s: CategoryStat) => s.calibration_score - (giveOrTake[s.category] ?? 0);
-  const byName = [...stats].sort((a, b) => a.category.localeCompare(b.category));
+  const ordered = [...stats].sort(
+    (a, b) => b.predictions_made - a.predictions_made || a.category.localeCompare(b.category),
+  );
 
   let bestCount: {
     stat: CategoryStat;
     next: NextBadgeTarget;
     remaining: number;
   } | null = null;
-  for (const stat of byName) {
+  for (const stat of ordered) {
     const next = nextBadges[stat.category];
     if (!next || next.needResolved === null) continue;
     const remaining = next.needResolved - stat.predictions_resolved;
@@ -97,7 +101,7 @@ export function nextBadgeProgress(
     next: NextBadgeTarget;
     gap: number;
   } | null = null;
-  for (const stat of byName) {
+  for (const stat of ordered) {
     const next = nextBadges[stat.category];
     if (!next || next.needScore === null || stat.score_is_provisional) continue;
     const gap = next.needScore - low(stat);

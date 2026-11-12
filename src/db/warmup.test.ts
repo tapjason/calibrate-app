@@ -128,6 +128,23 @@ describe('warmup db', () => {
       expect(await getWarmupProgress()).toBeNull();
     });
 
+    // Blind playtest 2026-11-12c, finding 19.
+    it("keeps the current question's pick, even before any answer", async () => {
+      const pick = { question_id: 'q1', option: 1 as const, confidence: null };
+      await saveWarmupProgress({ ...progress(0), pick });
+      expect(await getWarmupProgress()).toEqual({ ...progress(0), pick });
+      await saveWarmupProgress(progress(1));
+      expect(await getWarmupProgress()).toEqual(progress(1));
+    });
+
+    it('reads a malformed pick as none', async () => {
+      await saveWarmupProgress(progress(1));
+      await getDb().run(`UPDATE warmup_progress SET pick_json = ?`, ['{"question_id":"q2","option":3}']);
+      expect(await getWarmupProgress()).toEqual(progress(1));
+      await getDb().run(`UPDATE warmup_progress SET pick_json = ?`, ['not json']);
+      expect(await getWarmupProgress()).toEqual(progress(1));
+    });
+
     it('never writes into real stats (R9)', async () => {
       await saveWarmupProgress(progress(2));
       expect(await getUserStat('user-1')).toBeNull();

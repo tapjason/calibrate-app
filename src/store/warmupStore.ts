@@ -9,6 +9,8 @@
 //   • An unfinished quiz keeps its answers after each one (blind playtest
 //     2026-11-09b: a reload at question 5 started it over), and hydrate
 //     reopens it at the next question. The ten are the same for everyone.
+//     The pick on the current question is kept too (blind playtest
+//     2026-11-12c, finding 19: a reload lost it).
 //   • Warmup data is NEVER written to UserStat / CategoryStat. This store has
 //     no path to those tables at all (CLAUDE.md Warmup Module).
 //
@@ -47,11 +49,15 @@ interface WarmupState {
   completedAt: string | null;
   /** True once hydrate() has run (whether or not a record existed). */
   hydrated: boolean;
+  /** What's chosen so far on the current question, or null with nothing. */
+  pick: { option: 0 | 1 | null; confidence: number | null } | null;
 
   /** Load any past Warmup from SQLite and re-derive its verdict, or the answers so far. */
   hydrate: () => Promise<void>;
   /** Answer the current question and advance; scores + persists on the last one. */
   answer: (optionIndex: number, confidence: number) => Promise<void>;
+  /** Keep the current question's option and number as they're chosen. */
+  setPick: (option: 0 | 1 | null, confidence: number | null) => Promise<void>;
   /** Discard progress and start the quiz over (keeps any persisted record). */
   restart: () => void;
   /** Wipe the stored Warmup entirely and reset — "retake" in Settings. */
@@ -62,6 +68,7 @@ const initialProgress = {
   questions: warmupQuestions(PRACTICE_FACTS),
   index: 0,
   answers: [] as WarmupAnswer[],
+  pick: null,
 };
 
 /** Guard against a slider (or a future caller) handing us an out-of-range value. */
@@ -96,11 +103,15 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
         const { questions } = get();
         if (
           sofar &&
-          sofar.answers.length > 0 &&
           sofar.answers.length < questions.length &&
           sofar.question_ids.every((id, i) => questions[i]?.id === id)
         ) {
-          set({ answers: sofar.answers, index: sofar.answers.length });
+          const at = sofar.answers.length;
+          const pick =
+            sofar.pick && sofar.pick.question_id === questions[at]?.id
+              ? { option: sofar.pick.option, confidence: sofar.pick.confidence }
+              : null;
+          set({ answers: sofar.answers, index: at, pick });
         }
       }
     } catch (e) {
@@ -125,7 +136,7 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
         correct: optionIndex === question.correctIndex,
       },
     ];
-    set({ answers: next, index: index + 1 });
+    set({ answers: next, index: index + 1, pick: null });
 
     if (next.length < questions.length) {
       try {
@@ -157,6 +168,25 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[warmup] save failed; result is session-only:', e);
+    }
+  },
+
+  setPick: async (option, confidence) => {
+    const { questions, index, answers } = get();
+    const question = questions[index];
+    if (!question) return;
+    const sure = confidence === null ? null : clampConfidence(confidence);
+    const pick = option === null && sure === null ? null : { option, confidence: sure };
+    set({ pick });
+    try {
+      await saveWarmupProgress({
+        question_ids: questions.slice(0, answers.length).map((q) => q.id),
+        answers,
+        ...(pick ? { pick: { question_id: question.id, ...pick } } : {}),
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[warmup] pick save failed:', e);
     }
   },
 

@@ -7,6 +7,7 @@ import { insertPrediction } from '@/db/predictions';
 import { useAuthStore } from '@/store/authStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 
@@ -18,7 +19,7 @@ const WARMUP_CONFIDENCES = [70, 80, 60, 90, 75, 65, 85, 70, 95, 60];
 
 /**
  * Erases this device's data (as You → Erase all data does, so guest only),
- * finishes the Warm-up, then writes the profile's predictions and categories
+ * puts every setting back to a fresh install's, finishes the Warm-up, then writes the profile's predictions and categories
  * and reloads the stores. Returns how many predictions it wrote. Open ones
  * get their reminders as usual (the scheduler follows the pending list).
  * The erase and the Warm-up are committed first, so a failed write leaves an
@@ -35,6 +36,10 @@ export async function loadPlaytestProfile(id: ProfileId, now = new Date()): Prom
   }
   const erased = await auth.eraseDeviceData();
   if (!erased.ok) throw new Error(erased.error);
+  // Erase keeps settings; a profile starts from a fresh install's (blind
+  // playtest 2026-11-12b, finding 24: one tester's card left-offs reached the
+  // next).
+  await useSettingsStore.getState().resetToDefaults();
 
   const warmup = useWarmupStore.getState();
   await warmup.hydrate();

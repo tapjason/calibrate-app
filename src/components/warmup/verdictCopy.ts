@@ -133,6 +133,8 @@ export function answerKeyRow(
   return {
     answer: right,
     pick,
-    spoken: `${question.prompt} ${right}. ${pick}, ${answer.confidence}% sure. ${question.fact}`,
+    // One full stop after an answer that already ends in one ("Washington,
+    // D.C.", blind playtest 2026-11-12b finding 18).
+    spoken: `${question.prompt} ${right}${/[.!?]$/.test(right) ? '' : '.'} ${pick}, ${answer.confidence}% sure. ${question.fact}`,
   };
 }

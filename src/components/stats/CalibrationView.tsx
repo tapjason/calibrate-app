@@ -18,6 +18,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import type { CategoryMiss, WeekChange } from '@/store/statsStore';
+import { useCategoryStore } from '@/store/categoryStore';
 import {
   MIN_N_OVERALL,
   type CalibrationResult,
@@ -103,6 +104,9 @@ export function CalibrationView({
   categoryCounts = {},
   unlockEstimate = null,
 }: CalibrationViewProps) {
+  // Re-render on a rename (roadmap D39): "Furthest off" kept the old name
+  // until something else redrew Insights (blind playtest 2026-11-12d, run 2).
+  useCategoryStore((s) => s.defs);
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
   // Every badge pill in the list as wide as the widest, so the rows wrap

@@ -10,7 +10,7 @@ import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { CoachInsight } from '@/types';
-import { categoryTitle } from '@/store/categoryStore';
+import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { coachReceipt } from './coachReceipt';
 import { SupportSurface } from './SupportSurface';
@@ -35,6 +35,7 @@ export function CoachPanel({
   /** False when the screen shows one shared Plus teaser instead. */
   upsell?: boolean;
 } = {}) {
+  useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const authStatus = useAuthStore((s) => s.status);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);

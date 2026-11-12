@@ -123,6 +123,13 @@ interface SettingsState extends StoredSettings {
   hydrated: boolean;
   /** Load persisted settings into the store. Safe to call once at startup. */
   hydrate: () => Promise<void>;
+  /**
+   * Every setting back to a fresh install's, stored. For the playtest loader
+   * (src/dev/loadProfile.ts): Erase keeps settings, so one tester's card
+   * left-offs and dismissed prompts reached the next (blind playtest
+   * 2026-11-12b, finding 24).
+   */
+  resetToDefaults: () => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   setRemindersEnabled: (enabled: boolean) => Promise<void>;
   setDigestEnabled: (enabled: boolean) => Promise<void>;
@@ -282,6 +289,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } finally {
       set({ hydrated: true });
     }
+  },
+
+  resetToDefaults: async () => {
+    set({ ...DEFAULTS });
+    await persist(snapshot(get()));
   },
 
   setNotificationsEnabled: async (enabled) => {

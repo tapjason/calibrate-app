@@ -1,7 +1,7 @@
 import { scoreWarmup } from '@/engine/warmup';
 import type { WarmupAnswer } from '@/types';
 
-import { warmupChartNote, warmupVerdict } from './verdictCopy';
+import { answerKeyRow, warmupChartNote, warmupVerdict } from './verdictCopy';
 
 const run = (confidence: number, n: number, correct: number): WarmupAnswer[] =>
   Array.from({ length: n }, (_, i) => ({ confidence, correct: i < correct }));
@@ -105,5 +105,28 @@ describe('warmupChartNote', () => {
       'The read above takes all ten together, which says more than any one band.',
     );
     expect(warmupChartNote(2)).toMatch(/^The read above takes all 2 together/);
+  });
+});
+
+describe('answerKeyRow', () => {
+  const q = {
+    id: 'q',
+    prompt: 'Which is further north?',
+    options: ['Washington, D.C.', 'Lisbon'] as const,
+    correctIndex: 0 as const,
+    fact: 'Lisbon is at 38.7°N.',
+  };
+
+  it('adds no second full stop after an answer that ends in one', () => {
+    expect(answerKeyRow(q, { confidence: 70, correct: true }).spoken).toBe(
+      'Which is further north? Washington, D.C. You got it, 70% sure. Lisbon is at 38.7°N.',
+    );
+  });
+
+  it('ends a plain answer with one', () => {
+    const lisbon = { ...q, correctIndex: 1 as const };
+    expect(answerKeyRow(lisbon, { confidence: 60, correct: false }).spoken).toBe(
+      'Which is further north? Lisbon. You picked “Washington, D.C.”, 60% sure. Lisbon is at 38.7°N.',
+    );
   });
 });

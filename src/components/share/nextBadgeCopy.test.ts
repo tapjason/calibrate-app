@@ -69,10 +69,18 @@ describe('nextBadgeProgress', () => {
     expect(p?.text).toBe('Tracker in health: 2 to go');
   });
 
-  it('breaks ties alphabetically so the story is stable', () => {
+  it('breaks ties by predictions made, then by id so the story is stable', () => {
     expect(progressFor([stat('work', 10, 50), stat('health', 10, 50)])?.category).toBe(
       'health',
     );
+    // Blind playtest 2026-11-12b finding 19: two Work calls, one Finance, none
+    // answered; the recap named finance.
+    expect(
+      progressFor([
+        { ...stat('finance', 0, 0), predictions_made: 1 },
+        { ...stat('work', 0, 0), predictions_made: 2 },
+      ])?.category,
+    ).toBe('work');
   });
 
   it('prefers a resolution countdown over a score gate', () => {
