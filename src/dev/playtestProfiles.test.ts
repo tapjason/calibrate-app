@@ -53,6 +53,17 @@ describe.each(ids)('profile %s', (id: ProfileId) => {
   });
 });
 
+describe('a repeated title keeps one category', () => {
+  // Except the stress profile, which mixes them on purpose.
+  it.each(ids.filter((id) => id !== 'stress'))('%s', (id) => {
+    const seen = new Map<string, string>();
+    for (const p of buildProfile(id, 'local-guest', NOW).predictions) {
+      expect(seen.get(p.title) ?? p.category).toBe(p.category);
+      seen.set(p.title, p.category);
+    }
+  });
+});
+
 describe('what each profile is for', () => {
   const get = (id: ProfileId) => buildProfile(id, 'local-guest', NOW);
 

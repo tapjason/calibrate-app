@@ -370,21 +370,23 @@ function stress(tag: string, userId: string, now: Date): ProfileData {
 
 function years(tag: string, userId: string, now: Date): ProfileData {
   const rnd = seeded(7);
-  const cats: Category[] = ['work', 'health', 'finance', 'social', 'personal'];
   const confs = [15, 30, 50, 65, 75, 85, 95];
-  const titles = [
-    'I tick off today’s walk',
-    'The 7:40 tram is on time',
-    'I finish the crossword before lunch',
-    'My daughter calls on Sunday',
-    'I stay under the weekly shopping budget',
+  // Each habit keeps its own category, as a person files it (playtest
+  // 2026-11-12, run 7: cycling the two lists in step filed every walk
+  // under Work).
+  const habits: Array<[string, Category]> = [
+    ['I tick off today’s walk', 'health'],
+    ['The 7:40 tram is on time', 'personal'],
+    ['I finish the crossword before lunch', 'personal'],
+    ['My daughter calls on Sunday', 'social'],
+    ['I stay under the weekly shopping budget', 'finance'],
   ];
   const list: Row[] = [];
   for (let d = 1000; d >= 1; d--) {
     const confidence = confs[d % confs.length];
     list.push({
-      title: titles[d % titles.length],
-      category: cats[d % cats.length],
+      title: habits[d % habits.length][0],
+      category: habits[d % habits.length][1],
       confidence,
       made: d + 1,
       due: d,
