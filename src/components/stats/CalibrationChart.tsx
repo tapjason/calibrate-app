@@ -540,6 +540,13 @@ export function placeDotLabels(
         fits: width === undefined || d.cx + d.r + 4 + w <= width - 2,
       },
       { spot: { x: d.cx - d.r - 4, y: besideY, anchor: 'end' }, fits: d.cx - d.r - 4 - w >= 0 },
+      // Then further up, a line at a time: a dot at 0% under "Overconfident"
+      // has the region label above it and the axis below (blind playtest
+      // 2026-11-12d, run 5).
+      ...[1, 2, 3].map((k) => {
+        const y = d.cy - d.r - 4 - k * (TICK_FONT + 2);
+        return { spot: { ...across, y }, fits: y - TICK_FONT >= top };
+      }),
     ];
     const inside = candidates.filter((c) => c.fits);
     const pick =

@@ -344,6 +344,23 @@ describe('placeDotLabels', () => {
     expect(spot).toEqual({ x: 292, y: BOTTOM, anchor: 'end' });
   });
 
+  // The same, as the chart draws it: "Overconfident" sits 10 px above the
+  // axis, so beside the dot is taken too, and the label goes above the word.
+  it('goes above the region label when everything near the dot is taken', () => {
+    const right = 331;
+    const over = 'Overconfident'.length * 12 * 0.65;
+    const region = { x0: right - 8 - over, x1: right - 8, y0: BOTTOM - 22, y1: BOTTOM - 10 };
+    const [spot] = placeDotLabels(
+      [{ cx: 275, cy: BOTTOM, r: 10, text: 'n=1' }],
+      TOP,
+      BOTTOM,
+      [region],
+      343,
+    );
+    expect(spot.y).toBeLessThanOrEqual(region.y0);
+    expect(spot.anchor).toBe('middle');
+  });
+
   it('keeps off other dots', () => {
     const [, second] = placeDotLabels(
       [
