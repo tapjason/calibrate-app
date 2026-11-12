@@ -43,4 +43,13 @@ describe('layering (BUILD_PLAN invariants)', () => {
     );
     expect(offenders).toEqual([]);
   });
+
+  // Playtest profiles and their loader (app-profile §4): development only,
+  // reached from /dev/seed and nowhere else.
+  it('keeps the development tools inside the dev routes', () => {
+    const offenders = valueImportsFrom('@/dev').filter(
+      (file) => !file.split(sep).join('/').startsWith('app/dev/'),
+    );
+    expect(offenders).toEqual([]);
+  });
 });

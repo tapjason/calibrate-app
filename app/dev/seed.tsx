@@ -79,7 +79,7 @@ export default function DevSeedScreen() {
           screenshots. Development builds only.
         </Text>
         <Button
-          label={busy ? 'Loading…' : 'Load demo data'}
+          label={busy && loading === null ? 'Loading…' : 'Load demo data'}
           onPress={() => void load()}
           disabled={busy}
           testID="dev-seed-load"

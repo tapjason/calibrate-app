@@ -8,6 +8,7 @@
 // on the iPhone and on the web build from the same record.
 
 import { buildDemoPredictions } from '@/db/demoData';
+import { localMidnight, localParts } from '@/engine/localTime';
 import type { Category, CategoryDef, Prediction } from '@/types';
 
 export type ProfileId =
@@ -90,13 +91,19 @@ export const PLAYTEST_PROFILES: readonly PlaytestProfile[] = [
   },
 ];
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** A clock time on the day `daysAgo` before `now`, in the device's zone. */
+/**
+ * A clock time on the calendar day `daysAgo` before `now`, in the device's
+ * zone. Counted in calendar days, not 24-hour blocks: across an autumn clock
+ * change a block lands an hour early, and loaded late in the evening that put
+ * a row logged the day before onto its due day (pre-push review, 2026-11-12).
+ */
 function at(now: Date, daysAgo: number, hour: number, minute = 0): string {
-  const d = new Date(now.getTime() - daysAgo * DAY_MS);
-  d.setHours(hour, minute, 0, 0);
-  return d.toISOString();
+  // Through the engine's calendar, so a test can set the zone. Midnight plus
+  // the time is an hour off on the clock-change day itself, but never on
+  // another day, which is what the same-day rule (D41) reads.
+  const { year, month, day } = localParts(now);
+  const midnight = localMidnight(year, month, day - daysAgo);
+  return new Date(midnight.getTime() + (hour * 60 + minute) * 60_000).toISOString();
 }
 
 /** A small seeded generator, so a profile is the same on every load. */
@@ -131,7 +138,9 @@ function rows(tag: string, userId: string, now: Date, list: Row[]): Prediction[]
       title: r.title,
       category: r.category,
       confidence: r.confidence,
-      created_at: at(now, r.made, 8, 30),
+      // Logged the evening before when it's due the next day (a habit's
+      // "log the next one the evening before", D56), else in the morning.
+      created_at: at(now, r.made, !r.sameDay && r.made - r.due === 1 ? 20 : 8, 30),
       due_date: at(now, r.due, 12),
       status: r.status,
       resolved_at:
@@ -256,7 +265,8 @@ function returning(tag: string, userId: string, now: Date): ProfileData {
 
 function threshold(tag: string, userId: string, now: Date): ProfileData {
   const list: Row[] = [];
-  // 19 scored in health: 14 at 60–80%, 5 at 80–100%; two thin ranges below.
+  // 19 scored in health: 11 at 70%, 5 at 90%, and three lower down (two thin
+  // ranges).
   const plan: Array<[number, boolean]> = [
     ...Array.from({ length: 11 }, (_, i): [number, boolean] => [70, i < 8]),
     ...Array.from({ length: 5 }, (_, i): [number, boolean] => [90, i < 3]),

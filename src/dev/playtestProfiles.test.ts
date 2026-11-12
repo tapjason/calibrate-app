@@ -1,3 +1,4 @@
+import { __setTimeZoneForTests } from '@/engine/localTime';
 import { isSameDayAnswer } from '@/engine/sameDay';
 import { CATEGORY_NAME_MAX } from '@/store/categoryStore';
 import { isCategory, MIN_N_CATEGORY, MIN_N_OVERALL, type Prediction } from '@/types';
@@ -62,6 +63,26 @@ describe('a repeated title keeps one category', () => {
       seen.set(p.title, p.category);
     }
   });
+});
+
+// The days must be calendar days wherever the phone is: loaded at 23:55 a
+// week after an autumn clock change, 24-hour blocks put a walk logged the
+// evening before onto its due day, so it read "not scored" (pre-push review,
+// 2026-11-12).
+describe('across a clock change, late in the evening', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  // first-week and threshold hold one same-day answer on purpose.
+  it.each(ids.filter((id) => id !== 'first-week' && id !== 'threshold'))(
+    '%s has no answer on the day it was logged',
+    (id) => {
+      __setTimeZoneForTests('America/Chicago');
+      // 23:55 on Thu, Nov 12 in Chicago (CST, UTC−6); the clocks went back on Nov 1.
+      const lateEvening = new Date('2026-11-13T05:55:00.000Z');
+      const rows = buildProfile(id, 'local-guest', lateEvening).predictions;
+      expect(rows.filter(isSameDayAnswer)).toEqual([]);
+    },
+  );
 });
 
 describe('what each profile is for', () => {
