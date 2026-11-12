@@ -10,22 +10,12 @@ describe('keepsPinned', () => {
     expect(keepsPinned(222, 812, true)).toBe(false);
   });
 
-  it('pins again only under a fifth, so it cannot flicker', () => {
-    expect(keepsPinned(130, 568, false)).toBe(false);
-    expect(keepsPinned(113, 568, false)).toBe(true);
+  // Code review 2026-11-12: "Still needed…" coming and going moved Save.
+  it('once let go, stays in the scroll while the screen is open', () => {
+    expect(keepsPinned(60, 568, false)).toBe(false);
   });
 
-  it('keeps what it had before anything is measured', () => {
+  it('stays pinned before anything is measured', () => {
     expect(keepsPinned(0, 568, true)).toBe(true);
-    expect(keepsPinned(0, 568, false)).toBe(false);
-  });
-});
-
-// Code review 2026-11-12: the measured part is the buttons; the bar's fixed
-// padding is added, so "Still needed…" coming and going can't move Save.
-describe('usePinnedFooter extra', () => {
-  it('counts the padding with the buttons', () => {
-    expect(keepsPinned(120 + 28, 568, true)).toBe(false);
-    expect(keepsPinned(100 + 28, 568, true)).toBe(true);
   });
 });

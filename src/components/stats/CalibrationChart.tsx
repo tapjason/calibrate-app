@@ -99,9 +99,11 @@ export function regionLabelBoxes(
   const charW = TICK_FONT * 0.65;
   const over = 'Overconfident'.length * charW;
   const under = 'Underconfident'.length * charW;
+  // A little air above and below, so an n= label doesn't sit on the word
+  // (round 16 health check: "n=1" touching "Overconfident").
   return [
-    { x0: right - 8 - over, x1: right - 8, y0: bottom - 10 - TICK_FONT, y1: bottom - 10 },
-    { x0: left + 8, x1: left + 8 + under, y0: top + 18 - TICK_FONT, y1: top + 18 },
+    { x0: right - 8 - over, x1: right - 8, y0: bottom - 12 - TICK_FONT, y1: bottom - 8 },
+    { x0: left + 8, x1: left + 8 + under, y0: top + 16 - TICK_FONT, y1: top + 20 },
   ];
 }
 

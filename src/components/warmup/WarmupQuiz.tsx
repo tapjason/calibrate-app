@@ -41,8 +41,7 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const index = useWarmupStore((s) => s.index);
   const total = useWarmupStore((s) => s.questions.length);
   const answer = useWarmupStore((s) => s.answer);
-  // The bar's padding, top and bottom, beside the buttons measured.
-  const { pinned, onFooterLayout } = usePinnedFooter(space.md + space.sm);
+  const { pinned, onFooterLayout } = usePinnedFooter();
   const savePick = useWarmupStore((s) => s.setPick);
 
   // From what was kept, so a reload or an interruption doesn't lose this
@@ -140,8 +139,8 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   // Pinned under the question unless that would take over a quarter of the
   // screen (large text on a small phone): then it ends the scroll.
   const footer = (
-    <View style={[styles.footer, !pinned && styles.footerInline]}>
-      <View style={styles.footerButtons} onLayout={onFooterLayout}>
+    <View style={[styles.footer, !pinned && styles.footerInline]} onLayout={onFooterLayout}>
+      <View style={styles.footerButtons}>
         <Button
           label={index + 1 === total ? 'See my result' : 'Next'}
           testID="warmup-next"
