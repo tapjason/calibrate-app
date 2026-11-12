@@ -1,10 +1,21 @@
 # Handoff
 
-**Branch:** `builder/playtest-setup` (playtest profiles and personas, 2026-11-12), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/playtest-fixes` (step 171, the playtest rounds 12–15 fixes, 2026-11-12), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
 
-Step 159, D48 (`docs/design/BUILT_LOG.md` row 159). JS only: a reload.
+Step 171, the no-decision fixes A1–A10 from `docs/design/research/aggregate-2026-11-12.md` (`docs/design/BUILT_LOG.md` row 171). JS plus SQLite migration 014 (`warmup_progress.pick_json`): a reload, no new build.
+- **Record and words:** a renamed category shows at once in Furthest off and the Coach cards; "D.C." gets one full stop; the recap's next badge breaks ties by predictions made; History's "not scored" says why (How scoring works' reason) and the evening-before advice.
+- **Layout:** the Warm-up's and Log's pinned bars end the scroll once they'd take over a quarter of the window (`usePinnedFooter`); "Saved, due …" over any tab but Today after a save (`SavedNotice`); the chart's n= labels kept off dots, region labels and thin ranges' bars; a sticky × bar on Resolve and the details (`SheetCloseBar`); Log keeps the track-record line's room; gaps between touching targets; Categories' switch row; grouped counts in History; reflections clamped in History's list; Voice Control names "+5" / "−5" / "Sun".
+- **Kept state:** the Warm-up keeps the current pick across a reload; the playtest loader resets every setting.
+- **Traced, no bug:** round 12's rating lines (finding 4). Every screen reads one stored rating; an earlier answer, or a correction or delete (no line, by design), accounts for the moves.
+- **Review:** `code-reviewer` no blockers, five should-fix done (a stale pick from the debounce, a double announcement, no sign on You, the × bar able to cover content, Save jumping with "Still needed"); `record-auditor` one blocker (the not-scored reason overclaimed: an answer just past midnight is scored), fixed. Fixes not re-reviewed.
+- **Needs the owner:** History's rows stay flush (DESIGN_SYSTEM §7.11, D33); Save's spoken name stays "Save prediction, due …" (D55); the B list in the aggregate.
+- **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-12 (step 171…)".
+
+Below it, the playtest setup and rounds 12–15 (`builder/playtest-setup`, under "In progress" below).
+
+Below that, Step 159, D48 (`docs/design/BUILT_LOG.md` row 159). JS only: a reload.
 - **Order:** with nothing ready, the open predictions come before the streak, backup nudge and practice rows; with something ready, the daily rows follow it as before. The reminder ask stays under the score either way (owner).
 - **After a save,** Today scrolls to the new card only when it isn't all on screen, and only as far as needed (its bottom just above the tab bar; just below the top when above the view or too tall), both the owner's calls. The mark comes from Log's save (`justSavedId`), and every other tab drops it, so a sync pull or a save over another tab never moves Today.
 - **Review:** `code-reviewer` three times, no blockers. Round 1: an explicit save mark instead of a 60 s window, the wrong "Log it again" route in the docs, and the two owner questions (the reminder ask's place, scroll only when out of view). Round 2: the Day-0 scroll with the reminder ask on a real iPhone (owner: just into view), and the mark not dropped over You. All done; round 3 clean.

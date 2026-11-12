@@ -891,6 +891,31 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-12 (step 171, the playtest rounds 12–15 fixes; web-verified, a reload is enough):
+
+- [ ] **Saved sign:** save from the "+" on Insights, then on History: "Saved, due
+      tomorrow." sits just above the tab bar and goes after about 3 seconds. With
+      VoiceOver on, it's heard once, after the sheet has closed. Also after a
+      reminder's Resolve over You, then "Log it again" and Save.
+- [ ] **Pinned bars at large text:** at AX5, the Warm-up (fresh install) and Log
+      at 375 or smaller: Next / Skip and Save move to the end of the scroll instead
+      of covering a third of the screen. On Log, fill the form: Save doesn't jump
+      in and out of the scroll as "Still needed…" comes and goes. At the default
+      size both stay pinned.
+- [ ] **Warm-up pick kept:** pick an answer and a number on question 1, swipe the
+      app away, reopen: both are still chosen.
+- [ ] **The × bar:** on Resolve and an open prediction's details, at both sheet
+      heights, light and dark: nothing at the top is hidden under the × at rest;
+      scrolled, text passes under a canvas strip with a hairline.
+- [ ] **Voice Control:** "Tap plus 5" on Log and the Warm-up; "Tap Sun" on You's
+      digest days.
+- [ ] **Categories at 320, 390 and 440** with the native switch: the switch stays
+      inside the card with a gap from Rename; a long name wraps.
+- [ ] **Digest days at 320 and with large text:** four and three on two rows, 8 pt
+      apart.
+- [ ] **Chart at a few answers:** a first-week record: no "n=" over
+      "Overconfident" or on a dot.
+
 Added 2026-11-12 (owner's report from the iPhone 17; a reload is enough):
 
 - [x] **Log's title row clear of the Dynamic Island** (owner, iPhone 17, 2026-11-12: "The island is properly avoided now"): open Log every way in: the

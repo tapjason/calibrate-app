@@ -54,6 +54,12 @@ Each is a bug, a layout slip or a consistency fix within decided behaviour.
 After them: `code-reviewer`, `/check`, a web pass, `/device-check` for the
 layout ones.
 
+**Status (2026-11-12): all ten done** on `builder/playtest-fixes`, step 171
+(`BUILT_LOG.md`), reviewed and record-audited; the iPhone checks are in
+`HUMAN_VERIFICATION.md` Batch C. Left for the owner: History's rows stay
+flush (§7.11 groups them), and Save's spoken name stays "Save prediction, due
+…" (D55). Round 12's finding 4 was traced and no bug found.
+
 ## B. Decisions for the owner, ranked
 
 Each with the evidence and the options. Ranked by the appeal kit's order:
