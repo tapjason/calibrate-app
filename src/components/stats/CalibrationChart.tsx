@@ -148,6 +148,13 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
 
   const xOf = (conf: number) => PAD_LEFT + (conf / 100) * innerW;
   const yOf = (rate: number) => PAD_TOP + (1 - rate) * innerH;
+  /** A bucket's chance capsule: its left edge, top and height. */
+  const chanceBox = (b: { stated_confidence_mean: number; chance_low: number; chance_high: number }) => {
+    const y0 = yOf(b.chance_high);
+    const y1 = yOf(b.chance_low);
+    const h = Math.max(CHANCE_WIDTH, y1 - y0);
+    return { x: xOf(b.stated_confidence_mean) - CHANCE_WIDTH / 2, y: (y0 + y1) / 2 - h / 2, h };
+  };
 
   const points = [...buckets].sort(
     (a, b) => a.stated_confidence_mean - b.stated_confidence_mean,
@@ -178,7 +185,7 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
   const right = xOf(100);
   const top = yOf(1);
   const bottom = yOf(0);
-  const labelYs = placeDotLabels(
+  const labelSpots = placeDotLabels(
     points.map((p) => ({
       cx: xOf(p.stated_confidence_mean),
       cy: yOf(p.actual_rate),
@@ -190,6 +197,12 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
     // "n=52" printed on "Underconfident" (playtest 2026-11-08, finding 4).
     regionLabelBoxes(left, right, top, bottom),
     width,
+    // The long bars of the thin ranges (blind playtest 2026-11-12d, run 3):
+    // a label stays off them where it can.
+    points
+      .filter((p) => p.total_resolved < MIN_N_BAND)
+      .map((p) => chanceBox(p))
+      .map(({ x, y, h }) => ({ x0: x, x1: x + CHANCE_WIDTH, y0: y, y1: y + h })),
   );
   const tickGapX = (right - left) / (TICKS.length - 1);
   const tickGapY = (bottom - top) / (TICKS.length - 1);
@@ -307,16 +320,13 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
 
             {/* Chance capsules, under the line and the dots: context, not data. */}
             {points.map((b) => {
-              const y0 = yOf(b.chance_high);
-              const y1 = yOf(b.chance_low);
-              const h = Math.max(CHANCE_WIDTH, y1 - y0);
-              const mid = (y0 + y1) / 2;
+              const { x, y, h } = chanceBox(b);
               return (
                 <Rect
                   key={`chance-${b.low}`}
                   testID={`chance-${b.low}`}
-                  x={xOf(b.stated_confidence_mean) - CHANCE_WIDTH / 2}
-                  y={mid - h / 2}
+                  x={x}
+                  y={y}
                   width={CHANCE_WIDTH}
                   height={h}
                   rx={CHANCE_WIDTH / 2}
@@ -352,8 +362,8 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
               const cx = xOf(b.stated_confidence_mean);
               const cy = yOf(b.actual_rate);
               const r = radiusOf(b.total_resolved);
-              const labelY = labelYs[i];
-              const label = labelAt(cx, `n=${b.total_resolved}`, width);
+              const label = labelSpots[i];
+              const labelY = label.y;
               return (
                 <DotGroup key={b.low} animate={animate} delay={DRAW_MS + i * DOT_STAGGER_MS}>
                   <Circle
@@ -469,12 +479,23 @@ export function labelAt(
   return cx + half > edge ? { x: edge, anchor: 'end' } : { x: cx, anchor: 'middle' };
 }
 
+/** Where a dot's "n=…" label is drawn: its baseline and its anchor across. */
+export interface LabelSpot {
+  x: number;
+  y: number;
+  anchor: 'start' | 'middle' | 'end';
+}
+
 /**
- * Baseline y for each dot's "n=…" label. Above the dot by default; below it
- * when above would leave the plot or would overprint a label already placed
- * (two buckets either side of 80% can sit a few pixels apart, and "n=5n=5"
- * reads as nothing). Widths are estimated, which is enough to keep apart
- * labels this short. Exported for tests.
+ * Where each dot's "n=…" label goes. Above the dot by default; below it when
+ * above would leave the plot or overprint something already there (two
+ * buckets either side of 80% can sit a few pixels apart, and "n=5n=5" reads
+ * as nothing); beside it, right then left, when both do. Kept off the region
+ * labels, the other labels and every dot (blind playtest 2026-11-12d, run 5:
+ * "Ove n=2 confident", and a label's halo covering half of a dot at 100%),
+ * and, where it can be, off the bars in `soft` (the long bars of thin ranges:
+ * "n=1" sat on its own bar). Widths are estimated, which is enough to keep
+ * apart labels this short. Exported for tests.
  */
 export function placeDotLabels(
   dots: DotLabelInput[],
@@ -482,33 +503,52 @@ export function placeDotLabels(
   bottom: number,
   reserved: readonly LabelBox[] = [],
   width?: number,
-): number[] {
-  // Boxes already taken: the region labels, then each label as it's placed.
-  const placed: LabelBox[] = [...reserved];
+  soft: readonly LabelBox[] = [],
+): LabelSpot[] {
+  const dotBox = (d: DotLabelInput): LabelBox => ({
+    x0: d.cx - d.r,
+    x1: d.cx + d.r,
+    y0: d.cy - d.r,
+    y1: d.cy + d.r,
+  });
+  // Boxes already taken: the region labels and the dots, then each label as
+  // it's placed.
+  const placed: LabelBox[] = [...reserved, ...dots.map(dotBox)];
   // Where the label is drawn, not only where its dot is: the right-most one
   // ends at the chart's edge, and measured as centred it was never checked
   // against its neighbour ("n=277" crowding "n=300" at 320 wide; playtest
   // 2026-11-08b, finding 16). A little air either side, too.
-  const boxAt = (d: DotLabelInput, y: number) => {
+  const boxAt = (d: DotLabelInput, spot: LabelSpot): LabelBox => {
     const w = d.text.length * LABEL_CHAR_W;
-    const at = width === undefined ? { x: d.cx, anchor: 'middle' as const } : labelAt(d.cx, d.text, width);
-    const x0 = at.anchor === 'end' ? at.x - w : at.x - w / 2;
-    return { x0: x0 - LABEL_AIR, x1: x0 + w + LABEL_AIR, y0: y - TICK_FONT, y1: y };
+    const x0 = spot.anchor === 'end' ? spot.x - w : spot.anchor === 'start' ? spot.x : spot.x - w / 2;
+    return { x0: x0 - LABEL_AIR, x1: x0 + w + LABEL_AIR, y0: spot.y - TICK_FONT, y1: spot.y };
   };
-  const clashes = (box: (typeof placed)[number]) =>
-    placed.some((o) => box.x0 < o.x1 && o.x0 < box.x1 && box.y0 < o.y1 && o.y0 < box.y1);
+  const hits = (box: LabelBox, others: readonly LabelBox[]) =>
+    others.some((o) => box.x0 < o.x1 && o.x0 < box.x1 && box.y0 < o.y1 && o.y0 < box.y1);
 
   return dots.map((d) => {
-    const above = d.cy - d.r - 4;
-    const below = d.cy + d.r + TICK_FONT;
-    const aboveFits = above - TICK_FONT >= top;
-    const belowFits = below <= bottom;
-    const options = aboveFits ? [above, below] : [below, above];
-    const y =
-      options.find((o) => (o === above ? aboveFits : belowFits) && !clashes(boxAt(d, o))) ??
-      options[0];
-    placed.push(boxAt(d, y));
-    return y;
+    const across =
+      width === undefined ? { x: d.cx, anchor: 'middle' as const } : labelAt(d.cx, d.text, width);
+    const w = d.text.length * LABEL_CHAR_W;
+    // Level with the dot, but inside the plot: under it are the axis's ticks.
+    const besideY = Math.min(bottom, Math.max(top + TICK_FONT, d.cy + TICK_FONT / 2 - 1));
+    const candidates: { spot: LabelSpot; fits: boolean }[] = [
+      { spot: { ...across, y: d.cy - d.r - 4 }, fits: d.cy - d.r - 4 - TICK_FONT >= top },
+      { spot: { ...across, y: d.cy + d.r + 4 + TICK_FONT }, fits: d.cy + d.r + 4 + TICK_FONT <= bottom },
+      {
+        spot: { x: d.cx + d.r + 4, y: besideY, anchor: 'start' },
+        fits: width === undefined || d.cx + d.r + 4 + w <= width - 2,
+      },
+      { spot: { x: d.cx - d.r - 4, y: besideY, anchor: 'end' }, fits: d.cx - d.r - 4 - w >= 0 },
+    ];
+    const inside = candidates.filter((c) => c.fits);
+    const pick =
+      inside.find((c) => !hits(boxAt(d, c.spot), placed) && !hits(boxAt(d, c.spot), soft)) ??
+      inside.find((c) => !hits(boxAt(d, c.spot), placed)) ??
+      inside[0] ??
+      candidates[0];
+    placed.push(boxAt(d, pick.spot));
+    return pick.spot;
   });
 }
 

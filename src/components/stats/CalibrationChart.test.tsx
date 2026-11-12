@@ -287,7 +287,7 @@ describe('placeDotLabels', () => {
       ],
       TOP,
       BOTTOM,
-    );
+    ).map((s) => s.y);
     expect(ys).toEqual([190, 90]);
   });
 
@@ -301,7 +301,7 @@ describe('placeDotLabels', () => {
       ],
       TOP,
       BOTTOM,
-    );
+    ).map((s) => s.y);
     expect(first).toBeLessThan(150);
     expect(second).toBeGreaterThan(150);
   });
@@ -314,16 +314,57 @@ describe('placeDotLabels', () => {
       { cx: 230, cy: 150, r: 8, text: 'n=277' },
       { cx: 275, cy: 150, r: 8, text: 'n=300' },
     ];
-    const [, centred] = placeDotLabels(dots, TOP, BOTTOM);
+    const [, centred] = placeDotLabels(dots, TOP, BOTTOM).map((s) => s.y);
     expect(centred).toBeLessThan(150);
-    const [first, second] = placeDotLabels(dots, TOP, BOTTOM, [], 290);
+    const [first, second] = placeDotLabels(dots, TOP, BOTTOM, [], 290).map((s) => s.y);
     expect(first).toBeLessThan(150);
     expect(second).toBeGreaterThan(150);
   });
 
   it('keeps a label inside the plot at the top edge', () => {
-    const [y] = placeDotLabels([{ cx: 100, cy: 14, r: 6, text: 'n=2' }], TOP, BOTTOM);
-    expect(y).toBeGreaterThan(14);
+    const [{ y }] = placeDotLabels([{ cx: 100, cy: 14, r: 6, text: 'n=2' }], TOP, BOTTOM);
+    // Below the dot with a gap, so its halo doesn't cover half of it (blind
+    // playtest 2026-11-12d, run 3).
+    expect(y - 12).toBeGreaterThanOrEqual(14 + 6 + 4);
+  });
+
+  // Blind playtest 2026-11-12d, run 5: a dot at 0% by "Overconfident" printed
+  // "Ove n=2 confident".
+  it('goes beside the dot when above and below are both taken', () => {
+    // "Overconfident" ends 8 px in from the right and 10 px up from the axis.
+    const region = { x0: 200, x1: 300, y0: 266, y1: 278 };
+    const [spot] = placeDotLabels(
+      [{ cx: 304, cy: BOTTOM, r: 8, text: 'n=2' }],
+      TOP,
+      BOTTOM,
+      [region],
+      320,
+    );
+    // Left of the dot: above is the region label, below and right are off the chart.
+    expect(spot).toEqual({ x: 292, y: BOTTOM, anchor: 'end' });
+  });
+
+  it('keeps off other dots', () => {
+    const [, second] = placeDotLabels(
+      [
+        { cx: 100, cy: 100, r: 8, text: 'n=4' },
+        { cx: 100, cy: 130, r: 8, text: 'n=3' },
+      ],
+      TOP,
+      BOTTOM,
+      [],
+      320,
+    );
+    // Above the second dot is the first dot; below is free.
+    expect(second.y).toBeGreaterThan(130);
+  });
+
+  // Blind playtest 2026-11-12d, run 3: "n=1" sat on its own long bar.
+  it("keeps off a thin range's bar where it can", () => {
+    const bar = { x0: 95, x1: 105, y0: TOP, y1: BOTTOM };
+    const [spot] = placeDotLabels([{ cx: 100, cy: 14, r: 5, text: 'n=1' }], TOP, BOTTOM, [], 320, [bar]);
+    expect(spot.anchor).toBe('start');
+    expect(spot.x).toBeGreaterThan(105);
   });
 });
 
