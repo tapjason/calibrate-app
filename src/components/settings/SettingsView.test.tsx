@@ -326,6 +326,9 @@ describe('SettingsView — reminder and digest times', () => {
     fireEvent.press(screen.getByTestId('digest-day-3'));
     await waitFor(() => expect(useSettingsStore.getState().digestDay).toBe(3));
     expect(screen.getByTestId('digest-day-3').props.accessibilityState).toMatchObject({ selected: true });
+    // Named as shown, for Voice Control (blind playtest 2026-11-12, finding 2).
+    expect(screen.getByTestId('digest-day-3').props.accessibilityLabel).toBe('Wed');
+    expect(screen.getByTestId('digest-day-3').props.accessibilityHint).toBe('Weekly digest on Wednesday');
     expect(screen.getByTestId('toggle-digest-row').props.accessibilityHint).toMatch(/Wednesday at/);
   });
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { chosenProps } from '@/components/ui/chosen';
@@ -14,6 +15,23 @@ export const DAY_NAMES = [
   'Saturday',
 ] as const;
 
+/** The space between chips (blind playtest 2026-11-12, finding 10). */
+const GAP = space.sm;
+
+/**
+ * How wide each chip is in a row `rowWidth` wide, or undefined for seven
+ * sharing one row. When seven don't fit, the rows are balanced, four and
+ * three: shared out by flex, Saturday wrapped alone and stretched across the
+ * row (playtest 2026-11-03), which an 8pt gap brought back at 320 wide.
+ */
+export function dayChipWidth(rowWidth: number, minWidth: number): number | undefined {
+  const days = DAY_NAMES.length;
+  if (rowWidth <= 0 || days * minWidth + (days - 1) * GAP <= rowWidth) return undefined;
+  const fits = Math.max(1, Math.floor((rowWidth + GAP) / (minWidth + GAP)));
+  const perRow = Math.ceil(days / Math.ceil(days / fits));
+  return Math.floor((rowWidth - (perRow - 1) * GAP) / perRow);
+}
+
 interface DayChipsProps {
   /** 0 = Sunday … 6 = Saturday. */
   value: number;
@@ -23,7 +41,10 @@ interface DayChipsProps {
 
 /**
  * The weekly digest's day (roadmap D38): seven short chips in one radio
- * group, selected in ink with a bolder label (D33), each spoken in full.
+ * group, selected in ink with a bolder label (D33). Each is named with its
+ * visible three letters, the full day in the hint: Voice Control users say
+ * what they see ("Tap Sun"), which "Sunday" didn't answer to (blind playtest
+ * 2026-11-12, finding 2).
  */
 export function DayChips({ value, onChange, testID }: DayChipsProps) {
   // Each chip is at least wide enough for its three letters at the current
@@ -31,9 +52,12 @@ export function DayChips({ value, onChange, testID }: DayChipsProps) {
   // running together ("SuMorTueWe", playtest 2026-11-08, finding 9).
   const { fontScale } = useWindowDimensions();
   const minWidth = Math.ceil(31 * Math.max(fontScale, 1));
+  const [rowWidth, setRowWidth] = useState(0);
+  const width = dayChipWidth(rowWidth, minWidth);
   return (
     <View
       style={styles.row}
+      onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}
       accessibilityRole="radiogroup"
       accessibilityLabel="Digest day"
       testID={testID}
@@ -45,10 +69,16 @@ export function DayChips({ value, onChange, testID }: DayChipsProps) {
             key={name}
             onPress={() => onChange(day)}
             accessibilityRole="radio"
-            accessibilityLabel={name}
+            accessibilityLabel={name.slice(0, 3)}
+            accessibilityHint={`Weekly digest on ${name}`}
             {...chosenProps('radio', on)}
             hitSlop={{ top: 4, bottom: 4 }}
-            style={[styles.chip, { minWidth }, on && styles.chipOn]}
+            style={[
+              styles.chip,
+              { minWidth },
+              width !== undefined && { flexBasis: width, flexGrow: 0, width },
+              on && styles.chipOn,
+            ]}
             testID={`${testID}-${day}`}
           >
             <Text style={[styles.text, on && styles.textOn]} numberOfLines={1}>
@@ -62,9 +92,11 @@ export function DayChips({ value, onChange, testID }: DayChipsProps) {
 }
 
 const styles = StyleSheet.create({
-  // space.xs between chips: at xxs two selected-looking borders all but
-  // touched (1 px apart, playtest 2026-11-08, finding 9).
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.sm },
+  // space.sm between chips: at xxs two selected-looking borders all but
+  // touched (1 px apart, playtest 2026-11-08, finding 9), and at xs they were
+  // still about 3 px apart, too close for a tremor or a stylus (blind
+  // playtest 2026-11-12, finding 10).
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, marginTop: space.sm },
   chip: {
     alignItems: 'center',
     backgroundColor: colors.surface,

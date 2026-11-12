@@ -5,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResolvePrompt } from '@/components/resolution/ResolvePrompt';
 import { useReflectionGuard } from '@/components/resolution/useReflectionGuard';
-import { CloseButton } from '@/components/ui/CloseButton';
 import { sameDayWarned as warnedToday } from '@/components/resolution/sameDayWarned';
-import { colors, space, type } from '@/constants/theme';
+import { SheetCloseBar } from '@/components/ui/SheetCloseBar';
+import { colors, type } from '@/constants/theme';
 
 export default function ResolveScreen() {
   const router = useRouter();
@@ -32,6 +32,9 @@ export default function ResolveScreen() {
   const [draft, setDraft] = useState('');
   // Asks before a swipe-down discards a typed reflection.
   const guard = useReflectionGuard(typeof id === 'string' ? id : '', draft);
+  // The × sits on a bar the result scrolls under (blind playtest 2026-11-12,
+  // finding 21); a hairline sets it off once scrolled.
+  const [scrolled, setScrolled] = useState(false);
 
   // This route has no nav header (the root Stack is headerShown: false) and is
   // reached via push/notification deep-link, so it must inset its own top edge
@@ -53,15 +56,14 @@ export default function ResolveScreen() {
           were the only ones, and on web there was none but the browser's
           Back. Not an answer: the prediction stays open. After an answer it
           closes like Done, through the reflection guard. */}
-      <View style={styles.top}>
-        <CloseButton
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace('/' as never);
-          }}
-          testID="resolve-close"
-        />
-      </View>
+      <SheetCloseBar
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/' as never);
+        }}
+        testID="resolve-close"
+        scrolled={scrolled}
+      />
       {/* Scrolls, and moves clear of the keyboard: on a small phone the
           reflection box, a milestone card and Done don't all fit above it. */}
       <ScrollView
@@ -69,6 +71,8 @@ export default function ResolveScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
+        onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 0)}
+        scrollEventThrottle={16}
       >
         <ResolvePrompt
           predictionId={id}
@@ -97,7 +101,6 @@ export default function ResolveScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  top: { alignItems: 'flex-end', paddingHorizontal: space.lg, paddingTop: space.md },
   // flexGrow so the prompt's centred loading / not-found states still centre.
   scroll: { flexGrow: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

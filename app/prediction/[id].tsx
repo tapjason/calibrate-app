@@ -1,13 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PredictionDetails } from '@/components/prediction/PredictionDetails';
 import { useEditDraftGuard } from '@/components/prediction/useLogDraftGuard';
-import { CloseButton } from '@/components/ui/CloseButton';
+import { SheetCloseBar } from '@/components/ui/SheetCloseBar';
 import { warnedKey } from '@/components/resolution/sameDayWarned';
-import { space } from '@/constants/theme';
 
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23),
@@ -21,6 +20,9 @@ export default function PredictionScreen() {
   // does (playtest 2026-11-08b, finding 20).
   const [dirty, setDirty] = useState(false);
   useEditDraftGuard(dirty);
+  // The × sits on a bar the content scrolls under (blind playtest 2026-11-12,
+  // finding 21); a hairline sets it off once scrolled.
+  const [scrolled, setScrolled] = useState(false);
   const close = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/' as never);
@@ -28,10 +30,13 @@ export default function PredictionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.top}>
-        <CloseButton onPress={close} testID="details-close" />
-      </View>
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <SheetCloseBar onPress={close} testID="details-close" scrolled={scrolled} />
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 0)}
+        scrollEventThrottle={16}
+      >
         <PredictionDetails
           predictionId={typeof id === 'string' ? id : ''}
           onClose={close}
@@ -58,5 +63,4 @@ export default function PredictionScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  top: { alignItems: 'flex-end', paddingHorizontal: space.lg, paddingTop: space.md },
 });

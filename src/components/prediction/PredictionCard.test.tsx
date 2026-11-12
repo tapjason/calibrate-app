@@ -129,6 +129,12 @@ describe('PredictionCard — reflections', () => {
     );
   });
 
+  // Blind playtest 2026-11-12, finding 20: a long note filled the list row.
+  it('clamps the note to three lines in the list', () => {
+    render(<PredictionCard prediction={{ ...prediction, reflection: 'A long note. '.repeat(40) }} />);
+    expect(screen.getByTestId('prediction-card-reflection').props.numberOfLines).toBe(3);
+  });
+
   it('shows nothing for a blank reflection, or on an open prediction', () => {
     const { rerender } = render(<PredictionCard prediction={{ ...prediction, reflection: '   ' }} />);
     expect(screen.queryByTestId('prediction-card-reflection')).toBeNull();

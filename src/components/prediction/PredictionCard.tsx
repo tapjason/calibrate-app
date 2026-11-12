@@ -129,8 +129,11 @@ export function PredictionCard({
         <Text style={styles.title} numberOfLines={fontScale > LARGE_TEXT_SCALE ? 6 : 3}>
           {prediction.title}
         </Text>
+        {/* Three lines and an ellipsis in a list: at four a long note still
+            made a row about 200 px tall mid-list (blind playtest 2026-11-12,
+            finding 20). The details sheet shows it whole. */}
         {reflection && (
-          <Text style={styles.reflection} numberOfLines={4} testID="prediction-card-reflection">
+          <Text style={styles.reflection} numberOfLines={3} testID="prediction-card-reflection">
             “{reflection}”
           </Text>
         )}

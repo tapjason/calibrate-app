@@ -391,7 +391,9 @@ const styles = StyleSheet.create({
   note: { ...type.footnote, color: colors.textSecondary, marginBottom: space.sm },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginTop: space.md },
   spaced: { marginTop: space.lg },
-  actions: { gap: space.xs, marginTop: space.xl },
+  // space.sm between Edit and Answer it now, and Save changes and Cancel: at
+  // xs they were about 4 px apart (blind playtest 2026-11-12, finding 10).
+  actions: { gap: space.sm, marginTop: space.xl },
   confirm: { gap: space.sm, marginTop: space.xl },
   apart: { marginTop: space.lg },
   error: { ...type.subhead, color: colors.destructive },

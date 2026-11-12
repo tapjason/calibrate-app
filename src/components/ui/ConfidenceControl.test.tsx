@@ -71,6 +71,18 @@ describe('ConfidenceControl', () => {
     expect(screen.queryByTestId('integrity-zone', { includeHiddenElements: true })).toBeNull();
   });
 
+  // Blind playtest 2026-11-12, finding 2: Voice Control users say what they
+  // see, so the steppers are named "+5" and "−5", the wording in the hint.
+  it('names the steppers with their visible text', () => {
+    render(<ConfidenceControl value={50} onChange={jest.fn()} />);
+    const up = screen.getByTestId('confidence-increment');
+    const down = screen.getByTestId('confidence-decrement');
+    expect(up.props.accessibilityLabel).toBe('+5');
+    expect(down.props.accessibilityLabel).toBe('−5');
+    expect(up.props.accessibilityHint).toBe('Raises the confidence by 5');
+    expect(down.props.accessibilityHint).toBe('Lowers the confidence by 5');
+  });
+
   it('stays one adjustable element for VoiceOver', () => {
     render(<ConfidenceControl value={40} onChange={jest.fn()} />);
     const control = screen.getByTestId('confidence-adjustable');

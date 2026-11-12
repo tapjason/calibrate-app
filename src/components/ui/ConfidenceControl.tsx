@@ -112,18 +112,24 @@ export function ConfidenceControl({
   // 2026-11-08b, finding 25).
   const step = (delta: number) => set((latest.current ?? middle) + delta);
 
+  // Named with the visible characters, the longer wording as the hint: a
+  // Voice Control user says what they see ("Tap plus 5"), and "Raise
+  // confidence by 5" answered to nothing on screen (blind playtest
+  // 2026-11-12, finding 2).
   const steppers = (
     <View style={[styles.steppers, !inlineSteppers && styles.steppersBelow]}>
       <Button
         label="−5"
-        accessibilityLabel="Lower confidence by 5"
+        accessibilityLabel="−5"
+        accessibilityHint="Lowers the confidence by 5"
         variant="secondary"
         onPress={() => step(-STEP)}
         testID={`${idPrefix}-decrement`}
       />
       <Button
         label="+5"
-        accessibilityLabel="Raise confidence by 5"
+        accessibilityLabel="+5"
+        accessibilityHint="Raises the confidence by 5"
         variant="secondary"
         onPress={() => step(STEP)}
         testID={`${idPrefix}-increment`}

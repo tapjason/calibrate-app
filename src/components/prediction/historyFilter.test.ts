@@ -210,6 +210,14 @@ describe('historySummary', () => {
   it('leaves out "not scored" when nothing was skipped', () => {
     expect(historySummary([prediction({ status: 'resolved_no' })])).toBe('1 answered, 0 happened');
   });
+
+  // Blind playtest 2026-11-12, finding 17: "1001 answered" beside "1,001 scored".
+  it('groups a count past a thousand, as the rest of the app does', () => {
+    const rows = Array.from({ length: 1001 }, () => prediction({ status: 'resolved_no' }));
+    const summary = historySummary(rows);
+    expect(summary).toMatch(/^1\D?001 answered, 0 happened$/);
+    expect(summary).not.toContain('1001');
+  });
 });
 
 // Blind playtest 2026-11-09b, finding 17: the range dropped under the Log sheet.

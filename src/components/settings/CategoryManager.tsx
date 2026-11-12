@@ -296,7 +296,8 @@ const styles = StyleSheet.create({
   // Rename and the switch wrap under a name they'd cut (playtest 2026-11-03,
   // run 3; 2026-11-08b, finding 17). 4pt gaps and a 12pt edge keep a short
   // name on one line with them at 320 wide, beside the iOS 26 switch (63pt;
-  // the web's is 40).
+  // the web's is 40), with 8pt between Rename and the switch (blind playtest
+  // 2026-11-12, finding 11).
   row: {
     alignItems: 'center',
     columnGap: space.xs,
@@ -335,11 +336,20 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   name: { ...type.callout, color: colors.textPrimary, flexShrink: 1 },
+  // space.sm between Rename and the switch: at xs they crowded each other
+  // (blind playtest 2026-11-12, finding 11). The pair never shrinks beside the
+  // name: it wraps under it (the row's flexWrap), and only on a line of its
+  // own, at a text size where even the pair is wider than the row, does the
+  // switch drop under Rename instead of running off the card's edge.
   controls: {
     alignItems: 'center',
-    columnGap: space.xs,
+    columnGap: space.sm,
     flexDirection: 'row',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
     marginLeft: 'auto',
+    maxWidth: '100%',
   },
   nameHidden: { color: colors.textTertiary },
   dimmed: { opacity: 0.45 },

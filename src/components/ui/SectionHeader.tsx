@@ -2,6 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, space, tabularNums, type } from '@/constants/theme';
 
+import { localCount } from './count';
+
 interface SectionHeaderProps {
   title: string;
   /** How many the section holds, set apart on the right rather than joined with a dot. */
@@ -20,8 +22,11 @@ interface SectionHeaderProps {
 export function SectionHeader({ title, count, unit, testID }: SectionHeaderProps) {
   // A bare number after the title said nothing of what it counted (playtest
   // 2026-11-08b, finding 29).
+  // Grouped like every other count, "1,001" (blind playtest 2026-11-12,
+  // finding 17).
+  const shown = count === undefined ? '' : localCount(count);
   const counted =
-    count === undefined ? '' : `, ${count}${unit ? ` ${count === 1 ? unit.one : unit.other}` : ''}`;
+    count === undefined ? '' : `, ${shown}${unit ? ` ${count === 1 ? unit.one : unit.other}` : ''}`;
   return (
     <View
       style={styles.row}
@@ -31,7 +36,7 @@ export function SectionHeader({ title, count, unit, testID }: SectionHeaderProps
       testID={testID}
     >
       <Text style={styles.title}>{title}</Text>
-      {count !== undefined && <Text style={styles.count}>{count}</Text>}
+      {count !== undefined && <Text style={styles.count}>{shown}</Text>}
     </View>
   );
 }

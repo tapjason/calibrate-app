@@ -3,6 +3,7 @@
 // engine's convention, handed in as `rangeLow` (via statsStore) so this file
 // never learns where the edges are.
 
+import { localCount } from '@/components/ui/count';
 import type { Category, Prediction } from '@/types';
 import { categoryLabel } from '@/store/categoryStore';
 import { answeredSameDay } from '@/store/statsStore';
@@ -73,10 +74,12 @@ export function historySummary(rows: readonly Prediction[]): string {
   const yes = rows.filter((p) => p.status === 'resolved_yes').length;
   const no = rows.filter((p) => p.status === 'resolved_no').length;
   const skipped = rows.length - yes - no + rows.filter(answeredSameDay).length;
+  // Grouped, "1,001 answered", as "1,001 scored" is elsewhere (blind
+  // playtest 2026-11-12, finding 17).
   return [
-    `${rows.length} answered`,
-    `${yes} happened`,
-    skipped > 0 ? `${skipped} not scored` : null,
+    `${localCount(rows.length)} answered`,
+    `${localCount(yes)} happened`,
+    skipped > 0 ? `${localCount(skipped)} not scored` : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -121,7 +124,7 @@ export function firstHistoryCopy(
   // A run from the same count as Home's, so one state never offers two
   // flows; below it, the soonest opens on its own, as a tap on Home would.
   if (ready.length >= RUN_THRESHOLD) {
-    return { message, action: { kind: 'run', label: `Answer all ${ready.length}` } };
+    return { message, action: { kind: 'run', label: `Answer all ${localCount(ready.length)}` } };
   }
   if (ready.length > 0) {
     const label = ready.length === 1 ? 'Answer it now' : 'Answer the first one';

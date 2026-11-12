@@ -18,6 +18,13 @@ describe('SectionHeader', () => {
     expect(header.props.accessibilityLabel).toBe('Open, 3');
   });
 
+  // Blind playtest 2026-11-12, finding 17: "1001" beside "1,001" elsewhere.
+  it('groups a count past a thousand, shown and spoken', () => {
+    render(<SectionHeader title="Answered" count={1001} testID="h" />);
+    expect(screen.queryByText('1001')).toBeNull();
+    expect(screen.getByTestId('h').props.accessibilityLabel).toMatch(/^Answered, 1\D?001$/);
+  });
+
   it('can stand without a count', () => {
     render(<SectionHeader title="Category badges" testID="h" />);
     expect(screen.getByTestId('h').props.accessibilityLabel).toBe('Category badges');
