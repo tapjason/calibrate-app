@@ -118,6 +118,7 @@ describe('answerKeyRow', () => {
   };
 
   it('adds no second full stop after an answer that ends in one', () => {
+    expect(answerKeyRow(q, { confidence: 70, correct: true }).sentence).toBe('Washington, D.C.');
     expect(answerKeyRow(q, { confidence: 70, correct: true }).spoken).toBe(
       'Which is further north? Washington, D.C. You got it, 70% sure. Lisbon is at 38.7°N.',
     );

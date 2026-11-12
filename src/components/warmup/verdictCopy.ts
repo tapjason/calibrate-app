@@ -126,15 +126,17 @@ export function warmupVerdict(
 export function answerKeyRow(
   question: WarmupQuestion,
   answer: WarmupAnswer,
-): { answer: string; pick: string; spoken: string } {
+): { answer: string; sentence: string; pick: string; spoken: string } {
   const right = question.options[question.correctIndex];
   const picked = answer.correct ? right : question.options[question.correctIndex === 0 ? 1 : 0];
   const pick = answer.correct ? 'You got it' : `You picked \u201C${picked}\u201D`;
+  // One full stop after an answer that already ends in one ("Washington,
+  // D.C.", blind playtests 2026-11-12b finding 18 and -12e run 2).
+  const sentence = /[.!?]$/.test(right) ? right : `${right}.`;
   return {
     answer: right,
+    sentence,
     pick,
-    // One full stop after an answer that already ends in one ("Washington,
-    // D.C.", blind playtest 2026-11-12b finding 18).
-    spoken: `${question.prompt} ${right}${/[.!?]$/.test(right) ? '' : '.'} ${pick}, ${answer.confidence}% sure. ${question.fact}`,
+    spoken: `${question.prompt} ${sentence} ${pick}, ${answer.confidence}% sure. ${question.fact}`,
   };
 }
