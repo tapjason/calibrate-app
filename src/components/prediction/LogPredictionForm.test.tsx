@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { holdRanges } from '@/components/ui/holdRanges';
 import { setDbForTests } from '@/db/client';
@@ -533,6 +534,23 @@ describe('LogPredictionForm track record (roadmap step 19)', () => {
     render(<LogPredictionForm />);
     raise(4);
     expect(screen.queryByTestId('track-record')).toBeNull();
+    expect(screen.queryByTestId('track-record-room')).toBeNull();
+  });
+
+  // Blind playtest 2026-11-12, finding 9: the line appeared at the first
+  // number and pushed the date chips down under the finger.
+  it("keeps the line's room once some range could show it", () => {
+    useStatsStore.setState({
+      calibration: { rating: 80, buckets: [band(52, 30)] },
+      categoryCalibration: {},
+    });
+    render(<LogPredictionForm />);
+    const room = screen.getByTestId('track-record-room');
+    const height = StyleSheet.flatten(room.props.style).minHeight;
+    expect(height).toBeGreaterThan(0);
+    raise(4); // 70%: the line takes the room
+    expect(screen.queryByTestId('track-record-room')).toBeNull();
+    expect(StyleSheet.flatten(screen.getByTestId('track-record').props.style).minHeight).toBe(height);
   });
 });
 

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
@@ -19,7 +27,7 @@ import { holdRanges } from '@/components/ui/holdRanges';
 import { TextField } from '@/components/ui/TextField';
 import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
 import { useLocalDay } from '@/components/ui/useLocalDay';
-import { REFINE_ENABLED } from '@/constants/app';
+import { REFINE_ENABLED, TRACK_RECORD_MIN_N } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { dueDateSavedAt, pastOutcomesFor, usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -123,7 +131,7 @@ export function LogPredictionForm({
   // Track record for the chosen category and confidence (roadmap step 19).
   // Subscribing to both calibrations re-renders when a resolution moves them;
   // the bucket lookup itself stays in the store.
-  useStatsStore((s) => s.calibration);
+  const calibration = useStatsStore((s) => s.calibration);
   useStatsStore((s) => s.categoryCalibration);
   const { bucketFor, categoryBucketFor } = useStatsStore.getState();
   const record =
@@ -134,6 +142,14 @@ export function LogPredictionForm({
           category === null ? null : categoryBucketFor(category, confidence),
           bucketFor(confidence),
         );
+  // Room kept for the line once some range could show it, so it doesn't push
+  // the date chips down as it appears at the first number (blind playtest
+  // 2026-11-12, finding 9: about 46 px under the finger). Two lines, at the
+  // text size in use.
+  const { fontScale } = useWindowDimensions();
+  const recordRoom = calibration.buckets.some((b) => b.total_resolved >= TRACK_RECORD_MIN_N)
+    ? Math.ceil(2 * styles.record.lineHeight * fontScale)
+    : 0;
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   // This prediction's own record (roadmap D32): when the title matches ones
@@ -380,11 +396,13 @@ export function LogPredictionForm({
           {/* No band and no chip for any number (roadmap D23, 2026-10-10): the
               integrity bonus paid for 35–65%, which pushes reports toward it. */}
           <ConfidenceControl value={confidence} onChange={setConfidence} />
-          {record && (
-            <Text style={styles.record} testID="track-record">
+          {record ? (
+            <Text style={[styles.record, { minHeight: recordRoom }]} testID="track-record">
               {holdRanges(record.text)}
             </Text>
-          )}
+          ) : recordRoom > 0 ? (
+            <View style={[styles.recordRoom, { minHeight: recordRoom }]} testID="track-record-room" />
+          ) : null}
         </View>
 
         <View style={styles.block}>
@@ -426,6 +444,7 @@ const styles = StyleSheet.create({
   // Counts in plain ink: information, not a verdict or a nudge. The track
   // record under the slider and the past outcomes under the title alike.
   record: { ...type.footnote, color: colors.textSecondary, marginTop: space.sm },
+  recordRoom: { marginTop: space.sm },
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   // Plain ink, like the counts: a direction, not an error.
   needs: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
