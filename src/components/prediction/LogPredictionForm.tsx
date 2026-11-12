@@ -17,6 +17,7 @@ import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { TextField } from '@/components/ui/TextField';
+import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -60,6 +61,7 @@ export function LogPredictionForm({
   again,
   header,
 }: LogPredictionFormProps) {
+  const { pinned, onFooterLayout } = usePinnedFooter();
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
@@ -249,6 +251,26 @@ export function LogPredictionForm({
     [dueDate, day],
   );
 
+  // Past a quarter of the screen (large text on a small phone), Save ends the
+  // scroll instead (usePinnedFooter): the pinned bar hid the due date.
+  const footer = (
+    <View style={[styles.footer, !pinned && styles.footerInline]} onLayout={onFooterLayout}>
+      {error && <Text style={styles.error} testID="log-error">{error}</Text>}
+      {needs && (
+        <Text style={styles.needs} testID="log-needs">
+          {needs}
+        </Text>
+      )}
+      <Button
+        label={submitting ? 'Saving…' : `Save, due ${saveDue.text}`}
+        accessibilityLabel={submitting ? 'Saving' : `Save prediction, due ${saveDue.spoken}`}
+        onPress={onSubmit}
+        disabled={!canSave}
+        testID="submit-button"
+      />
+    </View>
+  );
+
   // Save is pinned under the fields (2026-10-09): at the end of the form it sat
   // below the fold on a 667pt phone even after the starter ideas had gone. The
   // fields scroll; the one action stays put. With the keyboard up it sits
@@ -376,23 +398,10 @@ export function LogPredictionForm({
           />
         </View>
 
+        {!pinned && footer}
       </ScrollView>
 
-      <View style={styles.footer}>
-        {error && <Text style={styles.error} testID="log-error">{error}</Text>}
-        {needs && (
-          <Text style={styles.needs} testID="log-needs">
-            {needs}
-          </Text>
-        )}
-        <Button
-          label={submitting ? 'Saving…' : `Save, due ${saveDue.text}`}
-          accessibilityLabel={submitting ? 'Saving' : `Save prediction, due ${saveDue.spoken}`}
-          onPress={onSubmit}
-          disabled={!canSave}
-          testID="submit-button"
-        />
-      </View>
+      {pinned && footer}
     </View>
   );
 }
@@ -409,6 +418,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.md,
   },
+  // In the scroll: the same width as pinned (out through the fields'
+  // padding), so its height, which decides where it goes, doesn't change.
+  footerInline: { marginHorizontal: -space.lg, marginBottom: -space.md },
   block: { marginBottom: space.xl },
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary, marginBottom: space.sm },
   // Counts in plain ink: information, not a verdict or a nudge. The track

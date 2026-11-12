@@ -76,3 +76,14 @@ export function loggedAgainLine(repeatDueIso: string, now: Date = new Date()): s
     ? 'Logged again, ready to answer.'
     : `Logged again, due ${dueWords(repeatDueIso, now).text}.`;
 }
+
+/**
+ * The sign under a closed Log over Insights or History (blind playtests
+ * 2026-11-12c runs 6, 7 and 2026-11-12d runs 1, 5: the sheet closed back to an
+ * unchanged screen, with no sign the save worked): "Saved, due tomorrow."
+ */
+export function savedLine(dueIso: string, now: Date = new Date()): string {
+  return localDaysUntil(dueIso, now) <= 0
+    ? 'Saved, ready to answer.'
+    : `Saved, due ${dueWords(dueIso, now).text}.`;
+}

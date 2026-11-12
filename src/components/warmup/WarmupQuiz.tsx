@@ -5,6 +5,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
 import { ChoiceList } from '@/components/ui/ChoiceList';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
+import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
 import { colors, space, type } from '@/constants/theme';
 import {
   MAX_WARMUP_CONFIDENCE,
@@ -40,6 +41,7 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const index = useWarmupStore((s) => s.index);
   const total = useWarmupStore((s) => s.questions.length);
   const answer = useWarmupStore((s) => s.answer);
+  const { pinned, onFooterLayout } = usePinnedFooter();
   const savePick = useWarmupStore((s) => s.setPick);
 
   // From what was kept, so a reload or an interruption doesn't lose this
@@ -128,6 +130,35 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
     }
   };
 
+  // Pinned under the question unless that would take over a quarter of the
+  // screen (large text on a small phone): then it ends the scroll.
+  const footer = (
+    <View style={[styles.footer, !pinned && styles.footerInline]} onLayout={onFooterLayout}>
+      <Button
+        label={index + 1 === total ? 'See my result' : 'Next'}
+        testID="warmup-next"
+        disabled={selected === null || confidence === null || submitting}
+        onPress={onNext}
+      />
+      {/* An escape hatch, because this route replaces the stack: without it
+          the only way out is answering all ten. A text button, so it doesn't
+          compete with Next (DESIGN_SYSTEM §7.20). */}
+      {onSkip && (
+        <Pressable
+          onPress={onSkip}
+          accessibilityRole="button"
+          // Not upward: Skip's reach went into Next (blind playtest
+          // 2026-11-12, finding 10).
+          hitSlop={{ top: 0, bottom: 8, left: 8, right: 8 }}
+          style={styles.skip}
+          testID="warmup-skip"
+        >
+          <Text style={styles.skipText}>Skip for now</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -215,30 +246,10 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
           </View>
 
         </View>
+        {!pinned && footer}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Button
-          label={index + 1 === total ? 'See my result' : 'Next'}
-          testID="warmup-next"
-          disabled={selected === null || confidence === null || submitting}
-          onPress={onNext}
-        />
-        {/* An escape hatch, because this route replaces the stack: without it
-            the only way out is answering all ten. A text button, so it doesn't
-            compete with Next (DESIGN_SYSTEM §7.20). */}
-        {onSkip && (
-          <Pressable
-            onPress={onSkip}
-            accessibilityRole="button"
-            hitSlop={8}
-            style={styles.skip}
-            testID="warmup-skip"
-          >
-            <Text style={styles.skipText}>Skip for now</Text>
-          </Pressable>
-        )}
-      </View>
+      {pinned && footer}
     </View>
   );
 }
@@ -250,10 +261,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     borderTopColor: colors.hairline,
     borderTopWidth: StyleSheet.hairlineWidth,
+    // Next and Skip touched (blind playtest 2026-11-12, finding 10).
+    gap: space.sm,
     paddingBottom: space.sm,
     paddingHorizontal: 20,
     paddingTop: space.md,
   },
+  // In the scroll: the same width as pinned (out through the scroll's
+  // padding), so its height, which decides where it goes, doesn't change.
+  footerInline: { marginHorizontal: -20, marginBottom: -space.lg },
   skip: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   skipText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   wrap: { gap: 16 },

@@ -385,7 +385,20 @@ describe('PredictionDetails, answered: Log it again (roadmap D56)', () => {
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('answered-same-day')).toBeTruthy());
     expect(screen.getByTestId('answered-same-day')).toHaveTextContent(
-      'Answered the day its words changed, so it isn’t scored.',
+      'Answered the day its words changed, so it isn’t scored: new words count as a new prediction, and only answers from the next day on are scored, so nothing already known goes into your record.',
+    );
+  });
+
+  // Blind playtest 2026-11-12c, finding 17: the what without the why.
+  it('says why a same-day answer is not scored, and what to do', async () => {
+    const now = new Date().toISOString();
+    await insertPrediction(
+      open({ status: 'resolved_yes', created_at: now, resolved_at: now, due_date: now }),
+    );
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-same-day')).toBeTruthy());
+    expect(screen.getByTestId('answered-same-day')).toHaveTextContent(
+      'Answered the day it was logged, so it isn’t scored: only answers from the next day on are scored, so nothing already known goes into your record. For something you do every day, log the next one the evening before.',
     );
   });
 });

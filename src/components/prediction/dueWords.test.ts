@@ -1,4 +1,4 @@
-import { dueWords, loggedAgainLine, logAgainWords, repeatDueWords } from './dueWords';
+import { dueWords, loggedAgainLine, savedLine, logAgainWords, repeatDueWords } from './dueWords';
 
 // Roadmap D55: Save names the date ("Save, due Sunday").
 describe('dueWords', () => {
@@ -78,5 +78,16 @@ describe('loggedAgainLine', () => {
     expect(loggedAgainLine(noon(2026, 10, 9), now)).toBe('Logged again, ready to answer.');
     expect(loggedAgainLine(noon(2026, 10, 7), now)).toBe('Logged again, ready to answer.');
     expect(dueWords(noon(2026, 10, 9), now).text).toBe('today');
+  });
+});
+
+describe('savedLine', () => {
+  const now = new Date(2026, 10, 9, 21, 0, 0);
+  const noon = (y: number, m: number, d: number) => new Date(y, m, d, 12).toISOString();
+
+  it('says the save worked and when it comes due', () => {
+    expect(savedLine(noon(2026, 10, 10), now)).toBe('Saved, due tomorrow.');
+    expect(savedLine(noon(2026, 10, 12), now)).toMatch(/^Saved, due Thursday\.$/);
+    expect(savedLine(noon(2026, 10, 9), now)).toBe('Saved, ready to answer.');
   });
 });
