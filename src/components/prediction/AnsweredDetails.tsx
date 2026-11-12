@@ -160,11 +160,11 @@ export function AnsweredDetails({
       </View>
       {answeredSameDay(prediction) && (
         <Text style={styles.body} testID="answered-same-day">
-          {/* The why and what to do, as D56 says them before an answer (blind
+          {/* The why (How scoring works' reason, D41) and what to do (D56) (blind
               playtest 2026-11-12c, finding 17: only the what was here). */}
           {madeAt(prediction) !== prediction.created_at
-            ? 'Answered the day its words changed, so it isn’t scored: new words count as a new prediction, and only answers from the next day on are scored, so nothing already known goes into your record.'
-            : 'Answered the day it was logged, so it isn’t scored: only answers from the next day on are scored, so nothing already known goes into your record. For something you do every day, log the next one the evening before.'}
+            ? 'Answered the day its words changed, so it isn’t scored: new words count as a new prediction, and a call made and settled in one day says little.'
+            : 'Answered the day it was logged, so it isn’t scored: a call made and settled in one day says little. From the next day, an answer is scored. For something you do every day, log the next one the evening before.'}
         </Text>
       )}
       {onPredictAgain &&
