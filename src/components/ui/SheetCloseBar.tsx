@@ -12,11 +12,11 @@ interface SheetCloseBarProps {
 }
 
 /**
- * The round × at the top of a sheet, on a canvas strip drawn over the
- * content: scrolled text ran up to the × with nothing behind it (blind
- * playtest 2026-11-12, finding 21), and on iOS a formSheet can lay its scroll
- * view over a header beside it (docs/app-profile.md §18), where the strip,
- * drawn above, still hides it. A hairline under it once the content has
+ * The round × at the top of a sheet, on a canvas strip: scrolled text ran up
+ * to the × with nothing behind it (blind playtest 2026-11-12, finding 21).
+ * Render it as a ScrollView's first child with `stickyHeaderIndices={[0]}`:
+ * pinned, and never over the content, even where iOS lays a formSheet's
+ * scroll view over a header beside it (docs/app-profile.md §18). A hairline under it once the content has
  * scrolled, as an iOS bar does at its scroll edge; the line is always there,
  * clear at rest, so nothing moves when it shows.
  */

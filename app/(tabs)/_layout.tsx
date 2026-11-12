@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { savedLine } from '@/components/prediction/dueWords';
-import { dropsJustSaved, showsSavedNotice } from '@/components/prediction/justSavedMark';
+import { dropsJustSaved } from '@/components/prediction/justSavedMark';
 import { LogButton } from '@/components/prediction/LogButton';
 import { SavedNotice } from '@/components/prediction/SavedNotice';
 import { Icon } from '@/components/ui/Icon';
@@ -47,9 +47,10 @@ export default function TabsLayout() {
   const router = useRouter();
   // Not on You: nothing there is a prediction.
   const logButton = () => <LogButton onPress={() => router.push('/log' as never)} />;
-  // "Saved, due …" over Insights or History after a save there (blind
-  // playtests 2026-11-12c, -12d); Today scrolls to the card instead.
-  const [saved, setSaved] = useState<string | null>(null);
+  // "Saved, due …" over any tab but Today after a save closes onto it (blind
+  // playtests 2026-11-12c, -12d); Today scrolls to the card instead. A count
+  // in the key, so a second save with the same words starts afresh.
+  const [saved, setSaved] = useState<{ text: string; n: number } | null>(null);
   const clearSaved = useCallback(() => setSaved(null), []);
   const insets = useSafeAreaInsets();
   const tabBarHeight = (Platform.OS === 'web' ? 58 : 49) + insets.bottom;
@@ -67,7 +68,7 @@ export default function TabsLayout() {
             const { justSavedId, pending, clearJustSaved } = usePredictionStore.getState();
             clearJustSaved();
             const due = pending.find((p) => p.id === justSavedId)?.due_date;
-            if (due && showsSavedNotice(route.name)) setSaved(savedLine(due));
+            if (due) setSaved((prev) => ({ text: savedLine(due), n: (prev?.n ?? 0) + 1 }));
           },
         })}
         screenOptions={{
@@ -127,7 +128,12 @@ export default function TabsLayout() {
         />
       </Tabs>
       {saved && (
-        <SavedNotice key={saved} text={saved} bottom={tabBarHeight + space.md} onDone={clearSaved} />
+        <SavedNotice
+          key={saved.n}
+          text={saved.text}
+          bottom={tabBarHeight + space.md}
+          onDone={clearSaved}
+        />
       )}
     </View>
   );

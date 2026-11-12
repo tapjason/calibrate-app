@@ -69,7 +69,8 @@ export function LogPredictionForm({
   again,
   header,
 }: LogPredictionFormProps) {
-  const { pinned, onFooterLayout } = usePinnedFooter();
+  // The bar's padding, top and bottom, beside the Save measured.
+  const { pinned, onFooterLayout } = usePinnedFooter(space.md + space.lg);
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
@@ -270,20 +271,22 @@ export function LogPredictionForm({
   // Past a quarter of the screen (large text on a small phone), Save ends the
   // scroll instead (usePinnedFooter): the pinned bar hid the due date.
   const footer = (
-    <View style={[styles.footer, !pinned && styles.footerInline]} onLayout={onFooterLayout}>
+    <View style={[styles.footer, !pinned && styles.footerInline]}>
       {error && <Text style={styles.error} testID="log-error">{error}</Text>}
       {needs && (
         <Text style={styles.needs} testID="log-needs">
           {needs}
         </Text>
       )}
-      <Button
-        label={submitting ? 'Saving…' : `Save, due ${saveDue.text}`}
-        accessibilityLabel={submitting ? 'Saving' : `Save prediction, due ${saveDue.spoken}`}
-        onPress={onSubmit}
-        disabled={!canSave}
-        testID="submit-button"
-      />
+      <View onLayout={onFooterLayout}>
+        <Button
+          label={submitting ? 'Saving…' : `Save, due ${saveDue.text}`}
+          accessibilityLabel={submitting ? 'Saving' : `Save prediction, due ${saveDue.spoken}`}
+          onPress={onSubmit}
+          disabled={!canSave}
+          testID="submit-button"
+        />
+      </View>
     </View>
   );
 

@@ -1,4 +1,4 @@
-import { dropsJustSaved, showsSavedNotice } from './justSavedMark';
+import { dropsJustSaved } from './justSavedMark';
 
 // Roadmap D48: only Today keeps the mark; You included, since a reminder's
 // Resolve can open over it and "Log it again" closes onto it.
@@ -9,13 +9,3 @@ describe('dropsJustSaved', () => {
   });
 });
 
-// Blind playtests 2026-11-12c and -12d: a save from Insights or History gave no
-// sign it worked.
-describe('showsSavedNotice', () => {
-  it('shows on the two other tabs with a "+", not Today or You', () => {
-    expect(showsSavedNotice('insights')).toBe(true);
-    expect(showsSavedNotice('history')).toBe(true);
-    expect(showsSavedNotice('index')).toBe(false);
-    expect(showsSavedNotice('you')).toBe(false);
-  });
-});

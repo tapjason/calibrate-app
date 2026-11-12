@@ -52,48 +52,54 @@ export default function ResolveScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* A way out before answering (roadmap step 79): the grabber and a swipe
-          were the only ones, and on web there was none but the browser's
-          Back. Not an answer: the prediction stays open. After an answer it
-          closes like Done, through the reflection guard. */}
-      <SheetCloseBar
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace('/' as never);
-        }}
-        testID="resolve-close"
-        scrolled={scrolled}
-      />
       {/* Scrolls, and moves clear of the keyboard: on a small phone the
           reflection box, a milestone card and Done don't all fit above it. */}
+      {/* The × bar is the scroll's sticky first child: pinned, and never
+          over the content, wherever iOS lays the scroll view (code review
+          2026-11-12). */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
+        stickyHeaderIndices={[0]}
         onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 0)}
         scrollEventThrottle={16}
       >
-        <ResolvePrompt
-          predictionId={id}
-          // A sheet closes back to wherever it opened from; a cold start from a
-          // notification has nowhere to go back to, so it lands on Home.
-          onResolved={() => {
-            guard.markLeaving();
+        {/* A way out before answering (roadmap step 79): the grabber and a swipe
+            were the only ones, and on web there was none but the browser's
+            Back. Not an answer: the prediction stays open. After an answer it
+            closes like Done, through the reflection guard. */}
+        <SheetCloseBar
+          onPress={() => {
             if (router.canGoBack()) router.back();
             else router.replace('/' as never);
           }}
-          onDraftChange={setDraft}
-          recordedAnswer={recordedAnswer}
-          sameDayWarned={sameDayWarned}
-          // Roadmap step 22: a fresh call on Log. Log is a sheet too (D3), so
-          // it takes this sheet's place rather than stacking on it (HIG: one
-          // sheet at a time), and closes back to the tab underneath.
-          onPredictAgain={(prediction) => {
-            guard.markLeaving();
-            router.replace(`/log?again=${encodeURIComponent(prediction.id)}` as never);
-          }}
+          testID="resolve-close"
+          scrolled={scrolled}
         />
+        <View style={styles.content}>
+          <ResolvePrompt
+            predictionId={id}
+            // A sheet closes back to wherever it opened from; a cold start from a
+            // notification has nowhere to go back to, so it lands on Home.
+            onResolved={() => {
+              guard.markLeaving();
+              if (router.canGoBack()) router.back();
+              else router.replace('/' as never);
+            }}
+            onDraftChange={setDraft}
+            recordedAnswer={recordedAnswer}
+            sameDayWarned={sameDayWarned}
+            // Roadmap step 22: a fresh call on Log. Log is a sheet too (D3), so
+            // it takes this sheet's place rather than stacking on it (HIG: one
+            // sheet at a time), and closes back to the tab underneath.
+            onPredictAgain={(prediction) => {
+              guard.markLeaving();
+              router.replace(`/log?again=${encodeURIComponent(prediction.id)}` as never);
+            }}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -103,6 +109,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   // flexGrow so the prompt's centred loading / not-found states still centre.
   scroll: { flexGrow: 1 },
+  content: { flexGrow: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   title: { ...type.headline, marginBottom: 8 },
   body: { color: colors.textSecondary },

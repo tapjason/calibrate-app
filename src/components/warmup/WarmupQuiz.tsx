@@ -41,7 +41,8 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   const index = useWarmupStore((s) => s.index);
   const total = useWarmupStore((s) => s.questions.length);
   const answer = useWarmupStore((s) => s.answer);
-  const { pinned, onFooterLayout } = usePinnedFooter();
+  // The bar's padding, top and bottom, beside the buttons measured.
+  const { pinned, onFooterLayout } = usePinnedFooter(space.md + space.sm);
   const savePick = useWarmupStore((s) => s.setPick);
 
   // From what was kept, so a reload or an interruption doesn't lose this
@@ -57,6 +58,11 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   );
   const [submitting, setSubmitting] = useState(false);
   const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The latest option and number, for the delayed save: a value captured at
+  // the drag could overwrite an option tapped after it (code review
+  // 2026-11-12).
+  const latest = useRef({ selected, confidence });
+  latest.current = { selected, confidence };
   useEffect(
     () => () => {
       if (pickTimer.current) clearTimeout(pickTimer.current);
@@ -82,7 +88,8 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   }, [index]);
   const pick = (choice: 0 | 1) => {
     setSelected(choice);
-    void savePick(choice, confidence);
+    if (pickTimer.current) clearTimeout(pickTimer.current);
+    void savePick(choice, latest.current.confidence);
     const bottom = wrapY.current + confidenceBox.current.y + confidenceBox.current.height;
     const visibleBottom = scrollY.current + viewportHeight.current;
     if (viewportHeight.current > 0 && bottom > visibleBottom) {
@@ -133,29 +140,31 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   // Pinned under the question unless that would take over a quarter of the
   // screen (large text on a small phone): then it ends the scroll.
   const footer = (
-    <View style={[styles.footer, !pinned && styles.footerInline]} onLayout={onFooterLayout}>
-      <Button
-        label={index + 1 === total ? 'See my result' : 'Next'}
-        testID="warmup-next"
-        disabled={selected === null || confidence === null || submitting}
-        onPress={onNext}
-      />
-      {/* An escape hatch, because this route replaces the stack: without it
-          the only way out is answering all ten. A text button, so it doesn't
-          compete with Next (DESIGN_SYSTEM §7.20). */}
-      {onSkip && (
-        <Pressable
-          onPress={onSkip}
-          accessibilityRole="button"
-          // Not upward: Skip's reach went into Next (blind playtest
-          // 2026-11-12, finding 10).
-          hitSlop={{ top: 0, bottom: 8, left: 8, right: 8 }}
-          style={styles.skip}
-          testID="warmup-skip"
-        >
-          <Text style={styles.skipText}>Skip for now</Text>
-        </Pressable>
-      )}
+    <View style={[styles.footer, !pinned && styles.footerInline]}>
+      <View style={styles.footerButtons} onLayout={onFooterLayout}>
+        <Button
+          label={index + 1 === total ? 'See my result' : 'Next'}
+          testID="warmup-next"
+          disabled={selected === null || confidence === null || submitting}
+          onPress={onNext}
+        />
+        {/* An escape hatch, because this route replaces the stack: without it
+            the only way out is answering all ten. A text button, so it doesn't
+            compete with Next (DESIGN_SYSTEM §7.20). */}
+        {onSkip && (
+          <Pressable
+            onPress={onSkip}
+            accessibilityRole="button"
+            // Not upward: Skip's reach went into Next (blind playtest
+            // 2026-11-12, finding 10).
+            hitSlop={{ top: 0, bottom: 8, left: 8, right: 8 }}
+            style={styles.skip}
+            testID="warmup-skip"
+          >
+            <Text style={styles.skipText}>Skip for now</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 
@@ -235,7 +244,10 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
                 setConfidence(value);
                 // A drag sends many values: keep the one it settles on.
                 if (pickTimer.current) clearTimeout(pickTimer.current);
-                pickTimer.current = setTimeout(() => void savePick(selected, value), 300);
+                pickTimer.current = setTimeout(
+                  () => void savePick(latest.current.selected, latest.current.confidence),
+                  300,
+                );
               }}
               min={MIN_WARMUP_CONFIDENCE}
               max={MAX_WARMUP_CONFIDENCE}
@@ -261,14 +273,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     borderTopColor: colors.hairline,
     borderTopWidth: StyleSheet.hairlineWidth,
-    // Next and Skip touched (blind playtest 2026-11-12, finding 10).
-    gap: space.sm,
     paddingBottom: space.sm,
     paddingHorizontal: 20,
     paddingTop: space.md,
   },
   // In the scroll: the same width as pinned (out through the scroll's
   // padding), so its height, which decides where it goes, doesn't change.
+  // Next and Skip touched (blind playtest 2026-11-12, finding 10).
+  footerButtons: { gap: space.sm },
   footerInline: { marginHorizontal: -20, marginBottom: -space.lg },
   skip: { alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   skipText: { ...type.subhead, color: colors.actionText, fontWeight: '600' },

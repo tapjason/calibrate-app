@@ -30,13 +30,16 @@ export default function PredictionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SheetCloseBar onPress={close} testID="details-close" scrolled={scrolled} />
+      {/* Sticky first child: pinned, never over the content (code review
+          2026-11-12). */}
       <ScrollView
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        stickyHeaderIndices={[0]}
         onScroll={(e) => setScrolled(e.nativeEvent.contentOffset.y > 0)}
         scrollEventThrottle={16}
       >
+        <SheetCloseBar onPress={close} testID="details-close" scrolled={scrolled} />
         <PredictionDetails
           predictionId={typeof id === 'string' ? id : ''}
           onClose={close}

@@ -5,10 +5,16 @@ import { colors, elevation, radius, space, type } from '@/constants/theme';
 
 /** How long the sign stays, in ms: long enough to read twice. */
 export const SAVED_NOTICE_MS = 3500;
+/**
+ * When VoiceOver hears it: after the sheet has finished closing, so Log's own
+ * "Saved." and the screen change don't cut it off (code review 2026-11-12).
+ */
+export const SAVED_NOTICE_ANNOUNCE_MS = 700;
 
 /**
  * "Saved, due tomorrow." over the tab a Log sheet closed back to, when that
- * tab isn't Today (Today scrolls to the new card instead, D48). Blind
+ * tab isn't Today (Insights and History from their "+", You after a
+ * reminder's Resolve and "Log it again") (Today scrolls to the new card instead, D48). Blind
  * playtests 2026-11-12c and -12d: a save from Insights or History closed to an
  * unchanged screen, and four testers didn't know whether it had worked.
  * Not pressable and not in the way: it sits above the tab bar and goes by
@@ -25,9 +31,15 @@ export function SavedNotice({
   onDone: () => void;
 }) {
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility(text);
+    const said = setTimeout(
+      () => AccessibilityInfo.announceForAccessibility(text),
+      SAVED_NOTICE_ANNOUNCE_MS,
+    );
     const t = setTimeout(onDone, SAVED_NOTICE_MS);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(said);
+      clearTimeout(t);
+    };
   }, [text, onDone]);
 
   return (

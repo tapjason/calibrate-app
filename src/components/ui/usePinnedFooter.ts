@@ -24,8 +24,15 @@ export function keepsPinned(footerHeight: number, screenHeight: number, pinned: 
  * to the end of the scrolling content instead. The footer is measured where
  * it is; render it at the same width in both places, so its height doesn't
  * change with the move.
+ *
+ * Measure only what's always there (the buttons), and pass the bar's fixed
+ * padding as `extra`: a line that comes and goes ("Still needed…") would
+ * otherwise move Save in and out of the scroll as the form fills in (code
+ * review 2026-11-12). The height compared is the window's; inside a page sheet
+ * (Log) that's the whole screen, so a quarter of it is a little more of the
+ * sheet.
  */
-export function usePinnedFooter(): {
+export function usePinnedFooter(extra = 0): {
   pinned: boolean;
   onFooterLayout: (e: LayoutChangeEvent) => void;
 } {
@@ -34,13 +41,13 @@ export function usePinnedFooter(): {
   const pinnedRef = useRef(true);
   const onFooterLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      const next = keepsPinned(e.nativeEvent.layout.height, height, pinnedRef.current);
+      const next = keepsPinned(e.nativeEvent.layout.height + extra, height, pinnedRef.current);
       if (next !== pinnedRef.current) {
         pinnedRef.current = next;
         setPinned(next);
       }
     },
-    [height],
+    [height, extra],
   );
   return { pinned, onFooterLayout };
 }
