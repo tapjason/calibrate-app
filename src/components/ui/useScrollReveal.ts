@@ -127,8 +127,12 @@ export function useScrollReveal({ nested = false }: { nested?: boolean } = {}): 
       reset: () => {
         scrollY.current = 0;
         pending.current = null;
+        // The last keyed scroll's positions aren't this one's (code review
+        // 2026-11-12).
+        box.current = null;
+        parentY.current = nested ? null : 0;
       },
     }),
-    [attempt],
+    [attempt, nested],
   );
 }

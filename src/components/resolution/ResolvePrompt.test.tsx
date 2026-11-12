@@ -741,6 +741,15 @@ describe('ResolvePrompt milestones', () => {
     expect(useStatsStore.getState().milestone).toBeNull();
     // The unlock may earn a rating ask, on Today after the sheet closes (D15).
     expect(useRatingStore.getState().moment).toBe(true);
+
+    // A correction keeps the line: it says nothing about the outcome (code
+    // review 2026-11-12).
+    fireEvent.press(screen.getByTestId('resolve-change'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(
+        meaningLine(samplePending().confidence)!,
+      );
+    });
   });
 
   it('shows no celebration for an ordinary answer', async () => {

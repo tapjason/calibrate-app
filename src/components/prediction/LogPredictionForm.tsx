@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AccessibilityInfo,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -405,6 +406,10 @@ export function LogPredictionForm({
             value={category}
             onChange={(c) => {
               setCategory(c);
+              // The keyboard down first: its height isn't taken off the view,
+              // so a slider under it read as visible (code review 2026-11-12).
+              // A confidence is next, and setting one needs it down anyway.
+              Keyboard.dismiss();
               // Checked again for a moment: the line under Save can change.
               reveal.reveal();
             }}

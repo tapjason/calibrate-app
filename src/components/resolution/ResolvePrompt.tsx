@@ -199,6 +199,7 @@ function readAcknowledgement(
   ratingBefore: number | null;
   milestone: Milestone | null;
   checkpoint: { days: number; next: number } | null;
+  unlocked: boolean;
 } {
   const stats = useStatsStore.getState();
   const bucket = stats.bucketFor(prediction.confidence);
@@ -227,9 +228,15 @@ function readAcknowledgement(
         : bucket
           ? bucketLine(bucket)
           : null,
-    note: answerNote(prediction.confidence, sameDay || first, ratingBefore),
+    note: answerNote(
+      prediction.confidence,
+      sameDay || first,
+      ratingBefore,
+      milestone?.kind === 'rating_unlocked',
+    ),
     ratingBefore,
     milestone,
+    unlocked: milestone?.kind === 'rating_unlocked',
     checkpoint: days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
   };
 }
@@ -239,15 +246,23 @@ function readAcknowledgement(
  * unlocked, what the number means before then. Nothing after a same-day answer
  * (it moves nothing) or the first answer (its line already says it).
  */
-function answerNote(confidence: number, skip: boolean, ratingBefore: number | null): string | null {
+function answerNote(
+  confidence: number,
+  skip: boolean,
+  ratingBefore: number | null,
+  unlocked = false,
+): string | null {
   if (skip) return null;
   const after = shownRating();
-  // The answer that unlocks the rating was given while it was provisional:
-  // it keeps what the number means, as D50 says until the unlock. It had
-  // neither line, so a miss there read as a cross and a bare score (blind
-  // playtest 2026-11-12e, run 5).
-  if (after !== null && ratingBefore !== null) return ratingChangeLine(ratingBefore, after);
-  return meaningLine(confidence);
+  if (after === null) return meaningLine(confidence);
+  if (ratingBefore !== null) return ratingChangeLine(ratingBefore, after);
+  // The answer that unlocked the rating (its milestone says so, not a
+  // missing "before", which can also mean unknown: a reminder's answer on a
+  // cold start) was given while it was provisional, so it keeps what the
+  // number means, as D50 says until the unlock. It had neither line, so a
+  // miss there read as a cross and a bare score (blind playtest 2026-11-12e,
+  // run 5; code review 2026-11-12).
+  return unlocked ? meaningLine(confidence) : null;
 }
 
 /**
@@ -296,6 +311,8 @@ export function ResolvePrompt({
     milestone: Milestone | null;
     /** A streak checkpoint this answer reached (7, 30, 100…), and the next one. */
     checkpoint: { days: number; next: number } | null;
+    /** This answer unlocked the rating: its meaning line survives a correction. */
+    unlocked: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -395,8 +412,11 @@ export function ResolvePrompt({
         // No rating line after a correction: both answers' effect on one
         // screen made a false outcome a one-tap comparison (record audit,
         // 2026-11-09). The meaning line still shows while provisional.
-        note:
-          ratingBefore !== null || shownRating() !== null
+        // The unlocking answer's meaning line stays: it says nothing about the
+        // outcome (code review 2026-11-12).
+        note: answered.unlocked
+          ? answered.note
+          : ratingBefore !== null || shownRating() !== null
             ? null
             : answerNote(
                 prediction.confidence,
