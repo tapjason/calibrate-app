@@ -303,6 +303,25 @@ the browser.
 | Yusuf, 30 | Night-shift baker in Birmingham, UK, logs at 23:50 and answers just after midnight | To know which day a prediction belongs to, and why an answer counts or doesn't | A same-day rule that flips at midnight without saying so, a streak day lost to the clock |
 | Aisling, 20 | Care assistant in Dublin, dyslexic, a tremor while her broken wrist heals, walks daily for rehab, shares the phone with her younger sister, a step challenge where friends each put in €5 | To keep her daily walk going without reading much, nothing her sister can stumble on | Long paragraphs, a mis-tap she can't undo, "failed" in front of her sister |
 
+**Added for appeal rounds (2026-11-12).** Twelve people chosen to differ in tech literacy (L1–L5,
+below), age, life stage, region, money, taste and how they found the app, so an appeal round
+(`docs/playtest-appeal.md`) can say where they part ways. Each names their level and arrival.
+
+| Persona | Who | What would win them | What would lose them |
+| --- | --- | --- | --- |
+| Bernard, 68 | Retired bus mechanic in Glasgow, **L1**: calls, texts and the camera; his son put the app on and showed him once. Scottish English, thinks in "nine times out of ten", does the football pools and likes a horse-racing tip | Something he gets without help, plain words, a wee bit of fun | Being made to feel daft, small print, anything he has to set up |
+| Linda, 74 | Retired primary-school teacher in Dayton, Ohio, **L2**: FaceTime, Facebook and Wordle with her granddaughter, who installed this for her. Loves quizzes and puzzles, reads every word | A daily quiz she looks forward to, warmth, something to talk about with her granddaughter | Jargon, tiny text, nothing new to do most days |
+| Dale, 61 | Corn and soybean farmer in Iowa, **L2**: weather, markets and Facebook; heard about forecasting on an ag podcast. Sceptical of apps, trusts his own read of the sky and the markets | Respect for his judgement, plain talk, a reason it beats the notebook in the truck | Cutesy badges, a self-help "trust your gut" tone, a city-office idea of what's worth predicting |
+| Ramón, 52 | Owns a taquería in Phoenix, Spanish first, **L3**: WhatsApp, Instagram for the shop, Square; his daughter recommended it. Guesses busy nights, deliveries, staff showing up | Something that helps the business, quick between rushes | Abstract talk, nothing about work like his, English that takes two reads |
+| Amara, 34 | Runs a tailoring side business and two kids' school runs in Nairobi, Kenyan English and Swahili, **L3**: M-Pesa, WhatsApp, an older iPhone on capped data. A friend's card arrived in her women's business WhatsApp group | Something that respects her time and data, warmth, examples that fit her life | Data-hungry screens, US-only examples, being lectured |
+| Sophie, 41 | HR manager in Lyon, French first, **L3**: Headspace, Calm, Apple Health; found it browsing the App Store's Productivity charts. Likes calm, pretty, gentle apps | Gentle feedback, a calm look, insight that feels kind | Clinical statistics, guilt, a cold or busy screen |
+| Ruth, 46 | CBT therapist in Melbourne, **L3**; a colleague suggested it for anxious clients who catastrophise. Judges every line as a client would hear it | Language that normalises uncertainty, no grades, nothing that shames a miss | A score that reads as a verdict, streak guilt, anything a fragile client could take as proof they're failing |
+| Zara, 17 | Sixth-former in Leeds, **L4**, lives on Instagram and TikTok; a friend's card in her story ("what's yours? 😏"). No money of her own, her parents' Apple ID | A result about her she'd post, a card that looks good in a story, fast | Homework vibes, a bank-app look, being asked to pay or sign up |
+| Bia, 23 | Marketing intern in São Paulo, Portuguese first, **L4**, Co-Star and 16Personalities fan; found it in a TikTok about being overconfident | A "type" that feels like her, something to compare with friends, mystique | Dry numbers with no story, nothing to share, waiting weeks for anything |
+| Dev, 28 | IT support in Bengaluru, Indian English, **L4**, fantasy cricket and a dozen WhatsApp groups; price-sensitive (₹); a YouTube short asked "are you overconfident?" | Bragging rights, beating his friends, something he can show the group | No way to compare, prices that feel like dollars, slow payoff |
+| Victoria, 44 | Partner at a consulting firm in London, **L4**, pays for premium apps (Superhuman, Oura), ten minutes between meetings; read about forecasting in The Economist | Sharp, credible, worth the money, an executive summary of her judgement | Cutesy, slow, unclear value, anything that looks free-to-play |
+| Ji-woo, 31 | Product designer in Seoul, Korean first, **L5**: judges craft against Toss and Things, notices spacing, motion and conventions; found it on a design newsletter's "apps we liked" | Restraint, polish, an idea new to them, details that respect iOS | Web-like feel, inconsistent spacing, English-only copy that reads as an afterthought |
+
 **Diversity axes.** A round covers people, not only screens. Each run's persona has a value on
 every axis; a round's cast spreads across them:
 
@@ -316,8 +335,13 @@ every axis; a round's cast spreads across them:
 | What they predict | work, health, money, sport (and betting), family, exams, recovery and habits |
 | Stakes | curiosity, self-improvement, a miss that hurts |
 | Device and network | a new phone, a Pro Max in one hand, an old small slow phone, a phone on a stand, slow or capped data, offline mid-flow, a shared phone |
-| Tech confidence | low, everyday, expert |
-| Mindset | curious, competitive, sceptical, anxious, social, privacy-minded |
+| Tech literacy | **L1** calls, texts and the camera, needs someone to install apps; **L2** a few familiar apps (WhatsApp, Facebook, YouTube), follows what's on screen, avoids settings; **L3** everyday: installs and tries apps, changes settings now and then; **L4** power user: many apps, widgets, notices polish; **L5** builds or designs software, judges craft and conventions. (Older rounds' "low" is L1–L2, "everyday" L3, "expert" L4–L5.) |
+| Life stage | in school, student, early career, parent of young children, mid-career, caregiver, self-employed, retired |
+| Region and culture | US, UK and Ireland, Western Europe, East Asia, South Asia, Sub-Saharan Africa, Latin America, the Middle East; bragging welcome or frowned on; feedback direct or indirect |
+| Money | none of their own, prepaid and tight, careful, comfortable, pays for premium |
+| How they found it | App Store search, a friend's card, a short video, a family member installed it, a professional suggested it, an article or podcast |
+| Taste | plain is fine, warm and friendly, playful, minimal and crafted, premium |
+| Mindset | curious, practical, playful, competitive, sceptical, anxious, social, privacy-minded |
 | Where they are in the app | first five minutes, first week, daily habit, back after a gap, long-time (months or years) |
 | Context | sitting with time, two-minute break, interrupted mid-task, impatient (double taps, swipes away), dark room, on the move, around midnight, crossing time zones |
 | Screen | 320 × 568, 375 × 812, 390 × 844, 402 × 874, 440 × 956 (portrait only); light or dark |
@@ -343,6 +367,25 @@ the record). Fill the rest so that:
 - prefer personas never cast before. When the axes leave a gap nobody in the table covers, write a
   new persona row here first, in the same commit as the round.
 
+**Choosing an appeal round's cast** (`/playtest appeal`, `docs/playtest-appeal.md`). The same
+six to eight runs, cast for where appeal parts ways rather than for edges:
+- tech literacy across at least four of the five levels, with at least two runs at L1–L2 and one
+  at L5;
+- at least four age bands, with one under 20 and one over 65;
+- at least three runs from outside the US, UK and Ireland, in at least two regions, and one from a
+  culture where bragging is frowned on (it changes the card);
+- at least three ways of finding it, including a friend's card (the growth loop) and a family
+  member installing it;
+- money: one with little or none, one who pays for premium apps;
+- taste: one design-literate judge (L5, or minimal and crafted) and one who likes playful apps;
+- stage: at least half in the first five minutes or first week (appeal is decided early), one
+  long-time user (does it stay appealing), one back after a gap;
+- motivation: at least three of curious, practical, social, competitive, sceptical;
+- each on the phone they'd own (402 × 874 an iPhone 17, 375 × 812 an older one, 440 × 956 a Pro
+  Max, 320 × 568 an SE), in the appearance they'd use; stress stand-ins only where the person
+  needs them;
+- the wildcard and "prefer personas never cast" as for any round.
+
 The round's file lists each run's axis values, so gaps show across rounds.
 
 **Usability method.** Tasks are goals in the persona's words ("make sure you'll hear about it
@@ -367,6 +410,7 @@ demo data stand in. Numbers an agent reasons to without them are labelled **esti
 | Logging | Under 15 s; Save names what it still needs | Log Module |
 | Resolving | One tap from the reminder; Yes and No identical | D8, R8 |
 | Honest numbers | Nothing provisional shown as a headline; every lean has its counts beside it | R2, R4 |
+| First impression | Every run can say what the app is for after five seconds on the first screen; no L1–L2 run leaves before the Warm-up's result (appeal rounds) | `docs/playtest-appeal.md` |
 | Largest text | Every screen readable and operable at the stand-in large text on 375 wide; nothing clipped or overlapping | DESIGN_SYSTEM §8 |
 | Small phone | Every screen works at 320 × 568 in both appearances | UI_ROADMAP §1 |
 | Share card | One the persona would post; says what it leaves off; legible at story size | D42, DESIGN_SYSTEM §7.5 |
