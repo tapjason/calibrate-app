@@ -12,6 +12,7 @@ Step 171, the no-decision fixes A1–A10 from `docs/design/research/aggregate-20
 - **Review:** `code-reviewer` no blockers, five should-fix done (a stale pick from the debounce, a double announcement, no sign on You, the × bar able to cover content, Save jumping with "Still needed"); `record-auditor` one blocker (the not-scored reason overclaimed: an answer just past midnight is scored), fixed. Fixes not re-reviewed.
 - **Needs the owner:** History's rows stay flush (DESIGN_SYSTEM §7.11, D33); Save's spoken name stays "Save prediction, due …" (D55); the B list in the aggregate.
 - **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-12 (step 171…)".
+- **Round 16 (2026-11-12), did the fixes land:** `docs/design/research/playtest-2026-11-12e.md`. Eight returners, every score up (median 7, was 6), seven keep; Mei 9 (voice logging works), Gloria 8. All ten fixes landed (A2 after a mid-round fix to the visible answer-key rows; Log's pin latch after the health check). New no-decision items: How scoring works' × out of reach when opened at Badges (P1), the unlocking miss gets neither D50 line, Log's slider under Save at 320 after a category, the Warm-up's restored pick under the bar, "first badge, Tracker" untrue when Forecaster comes at 20, "20 to go" of what, the answer key at large text, a button at the Warm-up result's end, "4 months on file", identity-line capitals.
 
 Below it, the playtest setup and rounds 12–15 (`builder/playtest-setup`, under "In progress" below).
 
