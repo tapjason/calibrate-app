@@ -202,8 +202,9 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   server can be killed when memory runs low; `status` says so.
 - **Browser:** the Playwright MCP server `playwright` (configured in the owner's Claude Code
   settings, `npx @playwright/mcp@latest --isolated`; tools `mcp__playwright__*`). Phone sizes:
-  375 × 812 default; also 320 × 568 (smallest), 390 × 844 and 402 × 874 (iPhone 17); landscape
-  568 × 320 once per run.
+  375 × 812 default; also 320 × 568 (smallest), 390 × 844, 402 × 874 (iPhone 17) and 440 × 956
+  (Pro Max). **No landscape:** the app is portrait only on iOS (`app.json` `orientation`), so a
+  landscape viewport shows what no iPhone can (found 2026-11-12).
 - **Dev routes (only when `__DEV__`):** `/dev/seed` with **Load demo data** (`dev-seed-load`: about
   153 resolved and 7 open predictions over five months; status in `dev-seed-status`), **Preview
   Plus until reload** (`dev-seed-plus`, in memory only), **Go to Today** (`dev-seed-home`);
@@ -263,7 +264,7 @@ the browser.
 | Rosa, 24 | Social-media manager, shares everything, jokey emoji categories | A card she would post, her own categories | A card that advertises her worst area, a long name breaking a screen |
 | Elena, 52 | Data-protection lawyer, reads every privacy line and the network log | Exactly what leaves the phone, said plainly | Anything sent that the copy didn't say |
 | Kofi, 45 | Blind, accessibility consultant, keyboard and screen reader | Every control named, announcements, order | Unnamed buttons, silent state changes |
-| Dana, 31 | QA engineer, breaks inputs for a living, 320 wide and landscape | Limits that are stated and hold | Silent truncation, dates in the year 9999 |
+| Dana, 31 | QA engineer, breaks inputs for a living, 320 wide | Limits that are stated and hold | Silent truncation, dates in the year 9999 |
 | Grace, 58 | Runs a small bakery, phone mostly for WhatsApp, low tech confidence, reads every word slowly | To know it saved and what to do next, without fear of breaking something | Icons without words, anything that vanishes, "did it save?" |
 | Mateus, 29 | Brazilian in Lisbon, English is his third language, 24-hour clock, day-month dates | Plain words and familiar formats | Idioms, US-only formats, sentences he has to read twice |
 | Jun, 19 | Student, ADHD, logs ten things in a burst, forgets to answer, back after three weeks away | A way back in that doesn't scold, a pile he can clear fast | A wall of overdue items, a lost streak said as a loss |
@@ -293,13 +294,14 @@ the browser.
 | Bex, 48 | Engineering manager in Leeds, seven years of Beeminder with money on the line, tritanopia | To know whether being sure has worked for her, an honest place for a miss with a good excuse | A chart she can't read in her colours, a hedge that hides a miss |
 | Olu, 39 | Dispatcher in Houston, an iPhone Pro Max (440 × 956) in one hand on a crowded bus, thumbs only, taps fast | Everything he needs within his thumb's reach, a way out of any sheet without stretching to the top corner | A close button only at the very top, a sheet that can't be swiped away, two targets side by side |
 | Inès, 33 | ER triage nurse in Marseille, French first, impatient: double-taps, swipes sheets away mid-save, leaves the app mid-flow | A save that happens once and says so, a half-typed prediction still there when she's back | A double entry, a lost draft, a sheet that closes without asking when she typed something |
-| Lin, 52 | Bookkeeper in Vancouver, rheumatoid arthritis, phone on a stand in landscape, taps with a stylus | Every screen usable sideways, no drag she must hold | A sheet cut off in landscape, a control only a drag can set, tiny targets |
+| Lin, 52 | Bookkeeper in Vancouver, rheumatoid arthritis, phone upright on a stand on her desk (the app is portrait only), taps with a stylus | Every control reachable with a tap, no drag she must hold | A control only a drag or swipe can set, tiny targets, a sheet that closes only by swiping |
 | Viktor, 45 | Project manager in Rotterdam, Dutch first, 30-odd open predictions across eight categories of his own, triages on Monday mornings | To sort and clear a crowded list fast, his categories told apart at a glance | A list he can't scan, long names cut so two look the same, one-at-a-time flows for thirty items |
 | Mei, 50 | Architect in Singapore, spinal cord injury, uses Voice Control ("tap Save", "scroll down") and Switch Control | Every control named by the words on it, nothing that needs a gesture alone | A button whose spoken name differs from its label, swipe-only actions, an unnamed icon |
 | Gloria, 69 | Retired seamstress in San Antonio, Spanish first, cataracts, Bold Text, Increase Contrast and Smart Invert at night | Text and lines that stay visible at high contrast and inverted | Grey-on-grey text, meaning carried by a faint tint, a chart that vanishes inverted |
 | Tunde, 24 | Delivery rider in Lagos, an old iPhone SE (320 wide) with a worn battery, Low Power Mode, almost no storage, prepaid data | It opens fast and keeps up on an old phone, nothing heavy to download | A long freeze on launch, lag while typing, a list that stutters |
 | Sofia, 36 | Flight attendant based in Madrid, crosses time zones every week, logs before flights | Due days and reminders that make sense wherever she lands | A prediction due "yesterday" after a flight, a reminder at 4 am, "not scored" she can't explain |
 | Yusuf, 30 | Night-shift baker in Birmingham, UK, logs at 23:50 and answers just after midnight | To know which day a prediction belongs to, and why an answer counts or doesn't | A same-day rule that flips at midnight without saying so, a streak day lost to the clock |
+| Aisling, 20 | Care assistant in Dublin, dyslexic, a tremor while her broken wrist heals, walks daily for rehab, shares the phone with her younger sister, a step challenge where friends each put in €5 | To keep her daily walk going without reading much, nothing her sister can stumble on | Long paragraphs, a mis-tap she can't undo, "failed" in front of her sister |
 
 **Diversity axes.** A round covers people, not only screens. Each run's persona has a value on
 every axis; a round's cast spreads across them:
@@ -313,12 +315,12 @@ every axis; a round's cast spreads across them:
 | Access need | none, low vision (zoom), Bold Text and Increase Contrast, motor (tremor, one hand, stylus), Voice Control and Switch Control, colour vision, screen reader and keyboard, attention (ADHD), Reduce Motion, dyslexia and dictation, fatigue and brain fog |
 | What they predict | work, health, money, sport (and betting), family, exams, recovery and habits |
 | Stakes | curiosity, self-improvement, a miss that hurts |
-| Device and network | a new phone, a Pro Max in one hand, an old small slow phone, a phone on a stand in landscape, slow or capped data, offline mid-flow, a shared phone |
+| Device and network | a new phone, a Pro Max in one hand, an old small slow phone, a phone on a stand, slow or capped data, offline mid-flow, a shared phone |
 | Tech confidence | low, everyday, expert |
 | Mindset | curious, competitive, sceptical, anxious, social, privacy-minded |
 | Where they are in the app | first five minutes, first week, daily habit, back after a gap, long-time (months or years) |
 | Context | sitting with time, two-minute break, interrupted mid-task, impatient (double taps, swipes away), dark room, on the move, around midnight, crossing time zones |
-| Screen | 320 × 568, 375 × 812, 402 × 874, 440 × 956, landscape; light or dark |
+| Screen | 320 × 568, 375 × 812, 390 × 844, 402 × 874, 440 × 956 (portrait only); light or dark |
 | What they use now | a habit tracker, a goal planner, a gamified app, a commitment device with money, a forecasting tool, an AI coach, a diet or fitness app, Apple's built-ins, paper, Notes or a spreadsheet, nothing (what each teaches its users: `research/competitors-2026-11.md`) |
 
 **Choosing a round's cast.** Six to eight runs. The focus picks one or two personas who must be
