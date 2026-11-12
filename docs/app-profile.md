@@ -95,6 +95,9 @@ Layers, lowest first (`BUILD_PLAN.md`; an import arrow only points downward; L6 
   strings and feature flags `REFINE_ENABLED`, `CUSTOM_CATEGORY_SYNC`, `GUEST_ANALYTICS`,
   `TITLE_EDIT_SYNC`, `APP_STORE_ID`; `badges.ts`, `cardThemes.ts`, `categoryIcons.ts`,
   `practiceFacts.ts`, `contrast.ts`, `fonts.ts`).
+- **Development only:** `src/dev/` (playtest profiles and their loader, §9): an L4 peer that
+  stitches stores and `src/db/` helpers together for `/dev/seed`, the way Erase all data does.
+  Nothing outside `app/dev/` imports it.
 - **L1 types:** `src/types/index.ts` only (`Prediction`, `UserStat`, `CategoryStat`, `Entitlement`,
   `MIN_N_OVERALL`, `MIN_N_CATEGORY`, the Coach types).
 - **L2 data:** `src/db/` (expo-sqlite; sql.js under Jest via `src/db/testing.ts`); migrations
@@ -204,7 +207,28 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 - **Dev routes (only when `__DEV__`):** `/dev/seed` with **Load demo data** (`dev-seed-load`: about
   153 resolved and 7 open predictions over five months; status in `dev-seed-status`), **Preview
   Plus until reload** (`dev-seed-plus`, in memory only), **Go to Today** (`dev-seed-home`);
-  `/dev/celebrations` replays the celebration moments.
+  `/dev/celebrations` replays the celebration moments. A development build opened on `/dev/…`
+  skips the first-run redirect to the Warm-up, and You has a "Test data and playtest profiles"
+  row (`you-dev-seed`, development builds only), the way in on the iPhone.
+- **Playtest profiles** (`src/dev/playtestProfiles.ts`, on `/dev/seed`, added 2026-11-12): named
+  start states, each replacing everything on the device (as Erase all data does, guest only),
+  finishing the Warm-up, then writing its record. Two taps (`dev-seed-profile-<id>`, the first
+  arms it); `dev-seed-profile-status`, under it, then reads `Profile "<id>" loaded: <n> predictions.` The same
+  profile on the web build and the iPhone gives the same record, relative to today; ids are new on
+  each load. Open ones get reminders as usual. **Erase all data before signing in with a real
+  account:** signing in moves a guest's predictions into the account and uploads them. Prefer these over one-off scripts in `.playwright-mcp/`; a state
+  a round needs and no profile gives becomes a new profile, with its test, in the round's commit.
+
+  | Profile | The record | Suits |
+  | --- | --- | --- |
+  | `day1` | Warm-up done; the first prediction due tonight, one more next week | Maya, Grace, Destiny, Olu |
+  | `first-week` | Six days in: three answered (a Can't tell, a same-day one not scored), two open, one due today; Social renamed "Running club" | Mateus, Hiroshi, Rahel, Lucía, Yusuf |
+  | `habit` | Three weeks of the same walk, logged each evening for the next day; a streak through yesterday; 16 of 21 at 90%; Personal renamed "Recovery" | Marcus, Piotr, Kiri, Hannah, Sofia |
+  | `return` | Six weeks in bursts, then nothing for 22 days; six came due while away | Jun, Carol, Conceição, Bea |
+  | `threshold` | 19 scored, all in health: the next scored answer (due today) unlocks the rating and health together; two thin ranges | Tomás, Ravi, Kai, Noor |
+  | `long-time` | The demo data (about 153 answered, 7 open, every category unlocked) | Priya, Bex, Keisha, Seun, Mei, Gloria |
+  | `stress` | 36 open (12 overdue, 6 due today); 200-character titles, Arabic, Japanese, Ge'ez and Hindi titles, an unbroken word, a pasted link, emoji only; 8 added categories with emoji at the 24-character limit, Finance hidden; 500-character notes; 0% and 100% | Dana, Rosa, Amira, Farah, Viktor, Inès, Lin, Tunde |
+  | `years` | A 1,000-day streak, one a day answered the next evening: four-digit counts | Piotr, Keisha, Tomás, Tunde |
 - **A fresh install:** navigate to `http://localhost:8097/favicon.ico` (same origin, the app not
   running), then `browser_evaluate`:
   `async () => { const r = await navigator.storage.getDirectory(); await r.removeEntry('expo-sqlite', { recursive: true }).catch(() => {}); localStorage.clear(); return 'cleared'; }`.
@@ -213,6 +237,16 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 - **Stand-ins:** dark mode through `browser_emulate_media` (`colorScheme: 'dark'`); large text
   through CSS `zoom` 2 and 1.5 (harsher than Dynamic Type: it also halves the layout width);
   Reduce Motion through `reducedMotion: 'reduce'`; VoiceOver through the accessibility snapshot.
+  Through `browser_run_code_unsafe` (the main session sets these before a run; a blind agent
+  can't): Increase Contrast `page.emulateMedia({ contrast: 'more' })`, and `forcedColors:
+  'active'` as the nearest thing to Smart Invert; colour vision
+  `(await page.context().newCDPSession(page)).send('Emulation.setEmulatedVisionDeficiency', { type: 'deuteranopia' })`
+  (or `protanopia`, `tritanopia`, `achromatopsia`); an old slow phone, the same session's
+  `Emulation.setCPUThrottlingRate` `{ rate: 4 }`; another time zone, `Emulation.setTimezoneOverride`
+  `{ timezoneId: 'Asia/Tokyo' }` before the page loads; a clock near midnight,
+  `page.clock.install({ time: new Date('<date>T23:55:00') })` before the page loads; offline,
+  `page.context().setOffline(true)`. Voice Control's stand-in is the accessibility snapshot: every
+  control's name must contain its visible words, so "tap Save" works.
 - **What web can't show (always under Not verified):** everything in §18.
 
 ## §10 Personas
@@ -257,6 +291,15 @@ the browser.
 | Carol, 57 | Payroll clerk in Birmingham, Alabama, weekly weigh-ins on a weight-loss programme, low tech confidence, back after five weeks away after a bad weigh-in | To come back without shame, her weight kept private at work | A word about her weight or diet, her weigh-in on the lock screen, a pile that scolds |
 | Farah, 44 | Real-estate agent in Montréal, Arabic and French first, client names in Arabic, an AI coach plans her week, Reduce Motion | To be told what to do differently, and to update a deal as it moves | A number she can't update, Arabic names garbled, a coach behind a wall |
 | Bex, 48 | Engineering manager in Leeds, seven years of Beeminder with money on the line, tritanopia | To know whether being sure has worked for her, an honest place for a miss with a good excuse | A chart she can't read in her colours, a hedge that hides a miss |
+| Olu, 39 | Dispatcher in Houston, an iPhone Pro Max (440 × 956) in one hand on a crowded bus, thumbs only, taps fast | Everything he needs within his thumb's reach, a way out of any sheet without stretching to the top corner | A close button only at the very top, a sheet that can't be swiped away, two targets side by side |
+| Inès, 33 | ER triage nurse in Marseille, French first, impatient: double-taps, swipes sheets away mid-save, leaves the app mid-flow | A save that happens once and says so, a half-typed prediction still there when she's back | A double entry, a lost draft, a sheet that closes without asking when she typed something |
+| Lin, 52 | Bookkeeper in Vancouver, rheumatoid arthritis, phone on a stand in landscape, taps with a stylus | Every screen usable sideways, no drag she must hold | A sheet cut off in landscape, a control only a drag can set, tiny targets |
+| Viktor, 45 | Project manager in Rotterdam, Dutch first, 30-odd open predictions across eight categories of his own, triages on Monday mornings | To sort and clear a crowded list fast, his categories told apart at a glance | A list he can't scan, long names cut so two look the same, one-at-a-time flows for thirty items |
+| Mei, 50 | Architect in Singapore, spinal cord injury, uses Voice Control ("tap Save", "scroll down") and Switch Control | Every control named by the words on it, nothing that needs a gesture alone | A button whose spoken name differs from its label, swipe-only actions, an unnamed icon |
+| Gloria, 69 | Retired seamstress in San Antonio, Spanish first, cataracts, Bold Text, Increase Contrast and Smart Invert at night | Text and lines that stay visible at high contrast and inverted | Grey-on-grey text, meaning carried by a faint tint, a chart that vanishes inverted |
+| Tunde, 24 | Delivery rider in Lagos, an old iPhone SE (320 wide) with a worn battery, Low Power Mode, almost no storage, prepaid data | It opens fast and keeps up on an old phone, nothing heavy to download | A long freeze on launch, lag while typing, a list that stutters |
+| Sofia, 36 | Flight attendant based in Madrid, crosses time zones every week, logs before flights | Due days and reminders that make sense wherever she lands | A prediction due "yesterday" after a flight, a reminder at 4 am, "not scored" she can't explain |
+| Yusuf, 30 | Night-shift baker in Birmingham, UK, logs at 23:50 and answers just after midnight | To know which day a prediction belongs to, and why an answer counts or doesn't | A same-day rule that flips at midnight without saying so, a streak day lost to the clock |
 
 **Diversity axes.** A round covers people, not only screens. Each run's persona has a value on
 every axis; a round's cast spreads across them:
@@ -267,14 +310,14 @@ every axis; a round's cast spreads across them:
 | Language | native English, fluent second language, careful third language, plain-language reader, dyslexic reader |
 | Locale conventions | US (12-hour, M/D), 24-hour and D/M, right-to-left text in titles, other scripts in titles (Japanese, Ge'ez), Spanish or Portuguese first |
 | Numeracy | at ease with percentages, thinks in "7 in 10", a statistics expert |
-| Access need | none, low vision (zoom), motor (tremor, one hand), colour vision, screen reader and keyboard, attention (ADHD), Reduce Motion, dyslexia and dictation, fatigue and brain fog |
+| Access need | none, low vision (zoom), Bold Text and Increase Contrast, motor (tremor, one hand, stylus), Voice Control and Switch Control, colour vision, screen reader and keyboard, attention (ADHD), Reduce Motion, dyslexia and dictation, fatigue and brain fog |
 | What they predict | work, health, money, sport (and betting), family, exams, recovery and habits |
 | Stakes | curiosity, self-improvement, a miss that hurts |
-| Device and network | a new phone, an old small phone, slow or capped data, offline mid-flow, a shared phone |
+| Device and network | a new phone, a Pro Max in one hand, an old small slow phone, a phone on a stand in landscape, slow or capped data, offline mid-flow, a shared phone |
 | Tech confidence | low, everyday, expert |
 | Mindset | curious, competitive, sceptical, anxious, social, privacy-minded |
 | Where they are in the app | first five minutes, first week, daily habit, back after a gap, long-time (months or years) |
-| Context | sitting with time, two-minute break, interrupted mid-task, dark room, on the move |
+| Context | sitting with time, two-minute break, interrupted mid-task, impatient (double taps, swipes away), dark room, on the move, around midnight, crossing time zones |
 | Screen | 320 × 568, 375 × 812, 402 × 874, 440 × 956, landscape; light or dark |
 | What they use now | a habit tracker, a goal planner, a gamified app, a commitment device with money, a forecasting tool, an AI coach, a diet or fitness app, Apple's built-ins, paper, Notes or a spreadsheet, nothing (what each teaches its users: `research/competitors-2026-11.md`) |
 
@@ -288,6 +331,7 @@ the record). Fill the rest so that:
 - no two runs predicting about the same part of life, and at least one whose stakes hurt (a miss
   that matters to them);
 - one run with a device or network stand-in (an old small phone, slow data or offline mid-flow);
+- each run starts from a §9 playtest profile where one fits, named in the cast table;
 - one **edge of the audience** (a teenager, a bettor, a shared phone): someone the app wasn't
   designed around but will meet, to check it treats them responsibly;
 - no two runs share both screen size and appearance, and at least one run is at 320 wide;

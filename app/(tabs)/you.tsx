@@ -1,9 +1,11 @@
 import { useScrollToTop } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useRef } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { SettingsView } from '@/components/settings/SettingsView';
+import { Button } from '@/components/ui/Button';
+import { space } from '@/constants/theme';
 
 /**
  * You (roadmap D3): what was the Settings tab, with your card one row away.
@@ -26,6 +28,22 @@ export default function YouScreen() {
         onOpenScoring={() => router.push('/scoring' as never)}
         onOpenCategories={() => router.push('/categories' as never)}
       />
+      {/* Development builds only: the way to /dev/seed's demo data and
+          playtest profiles on the iPhone, which has no address bar. */}
+      {__DEV__ && (
+        <View style={styles.dev}>
+          <Button
+            label="Test data and playtest profiles (development only)"
+            variant="secondary"
+            onPress={() => router.push('/dev/seed' as never)}
+            testID="you-dev-seed"
+          />
+        </View>
+      )}
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  dev: { paddingBottom: space.xl, paddingHorizontal: space.lg },
+});

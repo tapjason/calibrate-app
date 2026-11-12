@@ -893,7 +893,7 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
 
 Added 2026-11-12 (owner's report from the iPhone 17; a reload is enough):
 
-- [ ] **Log's title row clear of the Dynamic Island:** open Log every way in: the
+- [x] **Log's title row clear of the Dynamic Island** (owner, iPhone 17, 2026-11-12: "The island is properly avoided now"): open Log every way in: the
       "+" on Today, Insights and History, the Warm-up's "Make a real prediction"
       (fresh install), "Log it again" from Resolve and from an answered prediction
       in History. Each time "New prediction" and its × sit fully below the island

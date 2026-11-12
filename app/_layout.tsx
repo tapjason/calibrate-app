@@ -1,5 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
-import { Stack, useRootNavigationState, useRouter } from 'expo-router';
+import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
@@ -68,6 +68,10 @@ export default function RootLayout() {
   // router.push throws ("navigate before mounting the Root Layout").
   const navState = useRootNavigationState();
   const router = useRouter();
+  // Where the app opened, for the first-run redirect below: read once, there.
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const launchRouted = useRef(false);
 
   useEffect(() => {
@@ -159,7 +163,10 @@ export default function RootLayout() {
       // is not a first run, whatever the Warmup table says.
       const { pending, resolved } = usePredictionStore.getState();
       const isFirstRun = pending.length === 0 && resolved.length === 0;
-      if (isFirstRun && !selectHasCompletedWarmup(useWarmupStore.getState())) {
+      // A development build opened on /dev (the playtest profiles) stays
+      // there: a profile is how an empty device gets its start state.
+      const onDevRoute = __DEV__ && pathnameRef.current.startsWith('/dev');
+      if (isFirstRun && !onDevRoute && !selectHasCompletedWarmup(useWarmupStore.getState())) {
         router.replace('/warmup' as never);
       }
       setLaunched(true);
