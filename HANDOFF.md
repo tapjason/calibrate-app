@@ -1,6 +1,6 @@
 # Handoff
 
-**Branch:** `builder/today-small` (step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/log-safe-top` (Log's top inset, 2026-11-12), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
 
@@ -51,6 +51,8 @@ Step 167, the eleventh round's no-decision fixes and a bug `record-auditor` foun
 The branch below, `builder/playtest-11`, holds the eleventh round: the competitor research, its plan, the playtest (`docs/design/research/playtest-2026-11-10.md`) and the owner's D55–D57.
 
 ## In progress / broken
+
+- **Log under the Dynamic Island (owner, iPhone 17, 2026-11-12):** "sometimes" the title row and its × sat under the island, so leaving a new Log was hard. Log was the one sheet without a top inset; it now has `SafeAreaView edges={['top']}` like Resolve, Scoring and Share (zero inside the page sheet). The cause isn't pinned: a page sheet starts below the status bar, so some way in must show Log full screen. The check in `HUMAN_VERIFICATION.md` (Added 2026-11-12) asks which way, if any, still does.
 
 - **Seen on web for 159** (320 × 568): Day 0 on a fresh install, no scroll and the hero in view; with the demo record, "In a week" from Today brings the new card to just above the tab bar; a save from History leaves Today at the top; with nothing ready, the cards come before the streak and practice rows. Not seen: the reminder ask, which never shows on web.
 - **A flaky test:** `LogPredictionForm › clamps confidence steppers at 0 and 100` failed once under the full suite's load, then passed alone and on rerun.

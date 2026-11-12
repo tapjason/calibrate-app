@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { logAgainDraft, type LogAgainDraft } from '@/components/prediction/logAgain';
 import { LogPredictionForm } from '@/components/prediction/LogPredictionForm';
@@ -43,8 +44,12 @@ export default function LogScreen() {
     else router.replace('/' as never);
   };
 
+  // The top edge inset, as every other sheet's (Resolve, Scoring, Share): zero
+  // inside the page sheet, which starts below the status bar, but whenever Log
+  // ends up full screen it keeps the title row and its × out from under the
+  // Dynamic Island (owner, iPhone 17, 2026-11-12: "sometimes" hidden there).
   return (
-    <View style={styles.sheet}>
+    <SafeAreaView style={styles.sheet} edges={['top']}>
       {/* The form scrolls its own fields and pins Save beneath them. A new key
           per repeated prediction, so the form starts from it. The title row
           rides inside the scroll view (see LogPredictionForm's `header`). */}
@@ -67,7 +72,7 @@ export default function LogScreen() {
           close();
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
