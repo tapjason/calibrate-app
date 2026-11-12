@@ -92,8 +92,10 @@ export function nextBadgeProgress(
           // to be Sharp in work (blind playtest 2026-11-05, run 5).
           `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'} and a score above ${next.needScore} at its low end`
         : // "of what" (blind playtest 2026-11-12e, run 3: with two guesses
-          // logged, "20 to go" read as if they hadn't been counted).
-          `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} scored ${remaining === 1 ? 'answer' : 'answers'} to go`,
+          // logged, "20 to go" read as if they hadn't been counted), and "To
+          // reach" as the score-short line has it: on a shared card a line
+          // led by the tier reads as a claim to it (record audit 2026-11-12).
+          `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'}`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
   }
