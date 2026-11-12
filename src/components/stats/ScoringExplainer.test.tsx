@@ -109,17 +109,17 @@ describe('scoringCopy (roadmap step 29)', () => {
 });
 
 describe('ScoringExplainer', () => {
-  it('renders every section, the badge legend, and a way out', () => {
-    const onClose = jest.fn();
-    render(<ScoringExplainer onClose={onClose} />);
+  // The way out is ScoringSheet's pinned bar (blind playtest 2026-11-12e,
+  // finding 1), tested there.
+  it('renders every section and the badge legend, with no × in the scroll', () => {
+    render(<ScoringExplainer />);
     for (const section of scoringSections()) {
       expect(screen.getByText(section.title)).toBeTruthy();
     }
     expect(screen.getByTestId('scoring-badge-oracle').props.accessibilityLabel).toBe(
       'Oracle: Above 90 at its low end, with 100 or more scored answers',
     );
-    fireEvent.press(screen.getByTestId('scoring-close'));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('scoring-close')).toBeNull();
   });
 
   // Roadmap D27: from Today's identity line the sheet opens at Badges.

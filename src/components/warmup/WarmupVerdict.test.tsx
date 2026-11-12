@@ -89,7 +89,7 @@ describe('WarmupVerdictScreen', () => {
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
     expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/thesis in 34 days took 56/);
     expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/first one about tomorrow/);
-    expect(screen.getByText('Make a real prediction')).toBeTruthy();
+    expect(screen.getByTestId('warmup-continue')).toHaveTextContent('Make a real prediction');
   });
 
   // CLAUDE.md: the Warmup delivers the aha, but it is not the user's real
@@ -134,6 +134,33 @@ describe('WarmupVerdictScreen', () => {
 
     fireEvent.press(screen.getByTestId('warmup-continue'));
     expect(onContinue).toHaveBeenCalled();
+  });
+
+  // Blind playtest 2026-11-12e, finding 14: after the ten answers, the way on
+  // was a long scroll back up. The same button ends the result too.
+  it('offers the way on again after the answer key', () => {
+    seed(ANSWERS);
+    const onContinue = jest.fn();
+    render(<WarmupVerdictScreen onContinue={onContinue} />);
+
+    expect(screen.getAllByText('Make a real prediction')).toHaveLength(2);
+    const end = screen.getByTestId('warmup-continue-end');
+    expect(end).toHaveTextContent('Make a real prediction');
+    // It comes after the last row of the key, and the first one stays on top.
+    const ids: string[] = [];
+    const walk = (node: ReturnType<typeof screen.getByTestId> | string) => {
+      if (typeof node === 'string') return;
+      if (typeof node.props.testID === 'string') ids.push(node.props.testID);
+      node.children.forEach(walk);
+    };
+    walk(screen.root);
+    expect(ids).toEqual(
+      expect.arrayContaining(['warmup-continue', 'warmup-key-q2', 'warmup-continue-end']),
+    );
+    expect(ids.indexOf('warmup-continue')).toBeLessThan(ids.indexOf('warmup-key-q1'));
+    expect(ids.indexOf('warmup-key-q2')).toBeLessThan(ids.indexOf('warmup-continue-end'));
+    fireEvent.press(end);
+    expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
   // The Warmup produces the first shareable card (CLAUDE.md, Warmup module).

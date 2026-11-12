@@ -319,7 +319,7 @@ describe('CalibrationView first badge', () => {
 
   it('says a first badge comes at 20 answered in a category', () => {
     expect(view([]).getByTestId('badges-first')).toHaveTextContent(
-      'A category earns its first badge, Tracker, at 20 scored answers there.',
+      'A category earns its first badge at 20 scored answers there: Tracker, or higher if its score is already high enough.',
     );
     expect(view([cat('health', 19)]).getByTestId('badges-first')).toBeTruthy();
   });

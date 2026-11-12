@@ -91,7 +91,9 @@ export function nextBadgeProgress(
         ? // "To reach": on a shared card "Sharp in work: …" read as a claim
           // to be Sharp in work (blind playtest 2026-11-05, run 5).
           `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'} and a score above ${next.needScore} at its low end`
-        : `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} to go`,
+        : // "of what" (blind playtest 2026-11-12e, run 3: with two guesses
+          // logged, "20 to go" read as if they hadn't been counted).
+          `${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} scored ${remaining === 1 ? 'answer' : 'answers'} to go`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
   }

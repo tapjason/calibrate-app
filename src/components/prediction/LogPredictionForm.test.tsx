@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { holdRanges } from '@/components/ui/holdRanges';
+import { space } from '@/constants/theme';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
@@ -825,5 +826,58 @@ describe('LogPredictionForm due date (roadmap D55)', () => {
     );
     expect(screen.getByTestId('due-week').props.accessibilityState.selected).toBe(true);
     expect(save()).not.toHaveTextContent('tomorrow');
+  });
+});
+
+// Blind playtest 2026-11-12e, finding 3: at 320 the slider sat under the
+// pinned Save after a category was picked; only "—% not set yet" showed.
+describe('bringing the confidence control into view after a category', () => {
+  const layOut = (viewport: number) => {
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    const scrollTo = jest.fn();
+    scroll.instance.scrollTo = scrollTo;
+    fireEvent(scroll, 'layout', { nativeEvent: { layout: { height: viewport } } });
+    fireEvent(screen.getByTestId('log-confidence-block'), 'layout', {
+      nativeEvent: { layout: { y: 400, height: 150 } },
+    });
+    return scrollTo;
+  };
+
+  it('scrolls just far enough when it is under Save', () => {
+    render(<LogPredictionForm />);
+    const scrollTo = layOut(450);
+    expect(scrollTo).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('category-health'));
+    // Its bottom is at 550; a 450-high view shows 0–450.
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ y: 550 - 450 + space.lg }));
+  });
+
+  it('checks again when the room changes just after', () => {
+    render(<LogPredictionForm />);
+    const scrollTo = layOut(600);
+    fireEvent.press(screen.getByTestId('category-health'));
+    expect(scrollTo).not.toHaveBeenCalled();
+    // The still-needed line grows the pinned bar and shortens the view.
+    fireEvent(screen.UNSAFE_getByType(ScrollView), 'layout', {
+      nativeEvent: { layout: { height: 520 } },
+    });
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ y: 550 - 520 + space.lg }));
+  });
+
+  it('leaves the scroll alone when it already shows', () => {
+    render(<LogPredictionForm />);
+    const scrollTo = layOut(700);
+    fireEvent.press(screen.getByTestId('category-health'));
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('leaves it alone when the person scrolled further down already', () => {
+    render(<LogPredictionForm />);
+    const scrollTo = layOut(450);
+    fireEvent.scroll(screen.UNSAFE_getByType(ScrollView), {
+      nativeEvent: { contentOffset: { y: 200 } },
+    });
+    fireEvent.press(screen.getByTestId('category-health'));
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });

@@ -39,7 +39,7 @@ describe('nextBadgeProgress', () => {
       category: 'health',
       badge: 'tracker',
       badgeLabel: 'Tracker',
-      text: 'Tracker in health: 3 to go',
+      text: 'Tracker in health: 3 scored answers to go',
       progress: 17 / 20,
     });
   });
@@ -50,7 +50,7 @@ describe('nextBadgeProgress', () => {
     expect(progressFor([stat('work', 30, 80)])?.text).toBe(
       'To reach Sharp in work: 20 more scored answers and a score above 85 at its low end',
     );
-    expect(progressFor([stat('work', 30, 92)])?.text).toBe('Sharp in work: 20 to go');
+    expect(progressFor([stat('work', 30, 92)])?.text).toBe('Sharp in work: 20 scored answers to go');
   });
 
   it('counts the last answer in the singular', () => {
@@ -66,7 +66,7 @@ describe('nextBadgeProgress', () => {
       stat('finance', 2, 50),
     ]);
     expect(p?.category).toBe('health');
-    expect(p?.text).toBe('Tracker in health: 2 to go');
+    expect(p?.text).toBe('Tracker in health: 2 scored answers to go');
   });
 
   it('breaks ties by predictions made, then by id so the story is stable', () => {
@@ -86,7 +86,7 @@ describe('nextBadgeProgress', () => {
   it('prefers a resolution countdown over a score gate', () => {
     // work is a Tracker needing score > 70 for Forecaster; social needs 4 more.
     const p = progressFor([stat('work', 25, 65), stat('social', 16, 50)]);
-    expect(p?.text).toBe('Tracker in social: 4 to go');
+    expect(p?.text).toBe('Tracker in social: 4 scored answers to go');
   });
 
   it('names the score gate when no category is short on resolutions', () => {

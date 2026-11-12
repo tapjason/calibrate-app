@@ -2,8 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
-import { Icon } from '@/components/ui/Icon';
-import { answerKeyRow } from '@/components/warmup/verdictCopy';
+import { AnswerKeyRow } from '@/components/warmup/AnswerKeyRow';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePracticeStore } from '@/store/practiceStore';
 
@@ -41,35 +40,16 @@ export function PracticeResult({ day, children }: PracticeResultProps) {
       </View>
 
       <View style={styles.key}>
-        {answers.map((a) => {
-          const row = answerKeyRow(a.question, { confidence: a.confidence, correct: a.correct });
-          // One stop per question; the glyph is shape, not colour (§2.4).
-          return (
-            <View
-              key={a.slot}
-              style={styles.keyRow}
-              testID={`practice-key-${a.slot}`}
-              accessible
-              accessibilityRole="text"
-              accessibilityLabel={row.spoken}
-            >
-              <Icon
-                sf={a.correct ? 'checkmark.circle.fill' : 'xmark.circle'}
-                fallback={a.correct ? 'checkmark-circle' : 'close-circle-outline'}
-                size={18}
-                color={colors.textPrimary}
-              />
-              <View style={styles.keyBody}>
-                <Text style={styles.keyPrompt}>{a.question.prompt}</Text>
-                <Text style={styles.keyAnswer}>
-                  {row.sentence} <Text style={styles.keyPick}>{row.pick}</Text>
-                </Text>
-                <Text style={styles.keyFact}>{a.question.fact}</Text>
-              </View>
-              <Text style={styles.keyConfidence}>{a.confidence}%</Text>
-            </View>
-          );
-        })}
+        {/* The Warm-up's rows, stacking at large text alike (blind playtest
+            2026-11-12e, finding 12). */}
+        {answers.map((a) => (
+          <AnswerKeyRow
+            key={a.slot}
+            question={a.question}
+            answer={{ confidence: a.confidence, correct: a.correct }}
+            testID={`practice-key-${a.slot}`}
+          />
+        ))}
       </View>
 
       <Text style={styles.tomorrow} testID="practice-tomorrow">
@@ -109,13 +89,6 @@ const styles = StyleSheet.create({
     gap: space.lg,
     padding: space.lg,
   },
-  keyRow: { flexDirection: 'row', gap: 10 },
-  keyBody: { flex: 1, gap: space.xxs },
-  keyPrompt: { ...type.subhead, color: colors.textSecondary },
-  keyAnswer: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },
-  keyPick: { fontWeight: '400' },
-  keyFact: { ...type.footnote, color: colors.textSecondary },
-  keyConfidence: { ...type.footnote, color: colors.textTertiary },
   tomorrow: { ...type.subhead, color: colors.textSecondary },
   record: { gap: space.sm },
   eyebrow: { ...type.eyebrow, color: colors.textSecondary },

@@ -2,12 +2,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CalibrationChart } from '@/components/stats/CalibrationChart';
 import { Button } from '@/components/ui/Button';
-import { Icon } from '@/components/ui/Icon';
-import { colors, type } from '@/constants/theme';
+import { colors, space, type } from '@/constants/theme';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_OVERALL } from '@/types';
 
-import { answerKeyRow, warmupChartNote, warmupVerdict } from './verdictCopy';
+import { AnswerKeyRow } from './AnswerKeyRow';
+import { warmupChartNote, warmupVerdict } from './verdictCopy';
 
 interface WarmupVerdictScreenProps {
   /** Continue into the app. The screen owns the navigation. */
@@ -106,37 +106,21 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         {questions.map((q, i) => {
           const answered = answers[i];
           if (!answered) return null;
-          const row = answerKeyRow(q, answered);
-          // One stop per question for a screen reader, in words; the glyph is
-          // shape, not colour: filled for right, hollow for a miss (§2.4).
           return (
-            <View
-              key={q.id}
-              style={styles.keyRow}
-              testID={`warmup-key-${q.id}`}
-              accessible
-              accessibilityRole="text"
-              accessibilityLabel={row.spoken}
-            >
-              <Icon
-                sf={answered.correct ? 'checkmark.circle.fill' : 'xmark.circle'}
-                fallback={answered.correct ? 'checkmark-circle' : 'close-circle-outline'}
-                size={18}
-                color={colors.textPrimary}
-              />
-              <View style={styles.keyBody}>
-                <Text style={styles.keyPrompt}>{q.prompt}</Text>
-                <Text style={styles.keyAnswer} testID={`warmup-key-${q.id}-answer`}>
-                  {row.sentence} <Text style={styles.keyPick}>{row.pick}</Text>
-                </Text>
-                <Text style={styles.keyFact}>{q.fact}</Text>
-              </View>
-              <Text style={styles.keyConfidence}>{answered.confidence}%</Text>
-            </View>
+            <AnswerKeyRow key={q.id} question={q} answer={answered} testID={`warmup-key-${q.id}`} />
           );
         })}
       </View>
 
+      {/* The way on again at the end: after the ten answers, the button was
+          a long scroll back up (blind playtest 2026-11-12e, finding 14). */}
+      <View style={styles.endAction}>
+        <Button
+          label="Make a real prediction"
+          testID="warmup-continue-end"
+          onPress={onContinue}
+        />
+      </View>
     </View>
   );
 }
@@ -158,11 +142,5 @@ const styles = StyleSheet.create({
   actions: { gap: 10 },
   key: { gap: 12, marginTop: 4 },
   keyTitle: { ...type.headline, color: colors.textPrimary },
-  keyRow: { flexDirection: 'row', gap: 10 },
-  keyBody: { flex: 1, gap: 2 },
-  keyPrompt: { ...type.subhead, color: colors.textSecondary },
-  keyAnswer: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },
-  keyPick: { fontWeight: '400' },
-  keyFact: { ...type.footnote, color: colors.textSecondary },
-  keyConfidence: { ...type.footnote, color: colors.textTertiary },
+  endAction: { marginTop: space.sm },
 });

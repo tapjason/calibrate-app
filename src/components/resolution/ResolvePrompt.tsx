@@ -242,7 +242,11 @@ function readAcknowledgement(
 function answerNote(confidence: number, skip: boolean, ratingBefore: number | null): string | null {
   if (skip) return null;
   const after = shownRating();
-  if (after !== null) return ratingBefore === null ? null : ratingChangeLine(ratingBefore, after);
+  // The answer that unlocks the rating was given while it was provisional:
+  // it keeps what the number means, as D50 says until the unlock. It had
+  // neither line, so a miss there read as a cross and a bare score (blind
+  // playtest 2026-11-12e, run 5).
+  if (after !== null && ratingBefore !== null) return ratingChangeLine(ratingBefore, after);
   return meaningLine(confidence);
 }
 

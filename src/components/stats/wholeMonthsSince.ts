@@ -15,3 +15,22 @@ export function wholeMonthsSince(iso: string | null, now: Date): number {
   if (now.getDate() < from.getDate()) months -= 1;
   return Math.max(0, months);
 }
+
+/**
+ * The months on file in words: "3 months", or "nearly 5 months" once the
+ * month under way is more than half done, or null under a whole month. Four
+ * months and three weeks read "4 months on file" to a farmer logging since
+ * June (blind playtest 2026-11-12e, run 4; 2026-11-12 run 5 too).
+ */
+export function monthsOnFileWords(iso: string | null, now: Date): string | null {
+  const whole = wholeMonthsSince(iso, now);
+  if (whole === 0 || iso === null) return null;
+  const from = new Date(iso);
+  const mark = new Date(from);
+  mark.setMonth(from.getMonth() + whole);
+  const next = new Date(from);
+  next.setMonth(from.getMonth() + whole + 1);
+  const pastHalf = now.getTime() - mark.getTime() > (next.getTime() - mark.getTime()) / 2;
+  if (pastHalf) return `nearly ${whole + 1} months`;
+  return `${whole} ${whole === 1 ? 'month' : 'months'}`;
+}

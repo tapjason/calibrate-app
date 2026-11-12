@@ -10,7 +10,7 @@ import { CoachPanel } from '@/components/stats/CoachPanel';
 import { coachSample } from '@/components/stats/patternCopy';
 import { PlusTeaser } from '@/components/stats/PlusTeaser';
 import { TrendsPanel } from '@/components/stats/TrendsPanel';
-import { wholeMonthsSince } from '@/components/stats/wholeMonthsSince';
+import { monthsOnFileWords } from '@/components/stats/wholeMonthsSince';
 import { Button } from '@/components/ui/Button';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { space } from '@/constants/theme';
@@ -73,7 +73,7 @@ export default function InsightsScreen() {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   // Time since the first answer, not the calendar months with one in them.
   const firstResolvedAt = useStatsStore((s) => s.trends.first_resolved_at);
-  const monthsOnFile = wholeMonthsSince(firstResolvedAt, new Date());
+  const monthsOnFile = monthsOnFileWords(firstResolvedAt, new Date());
 
   return (
     <ScrollView ref={scroll}>

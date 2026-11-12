@@ -297,7 +297,10 @@ export function CalibrationView({
           name and nothing about when another could arrive. */}
       {categoryStats.every((c) => c.predictions_resolved < FIRST_BADGE_AT) && (
         <Text style={styles.empty} testID="badges-first">
-          A category earns its first badge, Tracker, at {FIRST_BADGE_AT} scored answers there.
+          {/* Tracker, or higher: Forecaster needs 20 too (blind playtest
+              2026-11-12e, run 5 went from Getting started to Forecaster). */}
+          A category earns its first badge at {FIRST_BADGE_AT} scored answers there: Tracker, or
+          higher if its score is already high enough.
         </Text>
       )}
       {categoryStats.length === 0 ? null : (

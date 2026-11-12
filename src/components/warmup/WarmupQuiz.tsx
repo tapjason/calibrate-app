@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/Button';
 import { ChoiceList } from '@/components/ui/ChoiceList';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
+import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { colors, space, type } from '@/constants/theme';
 import {
   MAX_WARMUP_CONFIDENCE,
@@ -73,30 +73,33 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
   // below the fold, and two blind playtests (2026-11-01, 2026-11-03) found it
   // only by scrolling. Once an answer is picked, bring the control into view if
   // it's out of sight, no further than needed, without motion under Reduce
-  // Motion. Positions are kept from layout and scroll events, not measured.
-  const reduceMotion = useReducedMotion();
-  const scrollRef = useRef<ScrollView>(null);
-  const viewportHeight = useRef(0);
-  const scrollY = useRef(0);
-  const wrapY = useRef(0);
-  const confidenceBox = useRef({ y: 0, height: 0 });
+  // Motion. Positions are kept from layout and scroll events, not measured
+  // (useScrollReveal). The block sits inside the quiz's wrap, hence nested.
+  const reveal = useScrollReveal({ nested: true });
   // The ScrollView is keyed by question, so each one opens at the top: forget
   // the last question's offset, or a needed scroll could be skipped.
+  const shownIndex = useRef(index);
+  const resetReveal = reveal.reset;
   useEffect(() => {
-    scrollY.current = 0;
-  }, [index]);
+    if (shownIndex.current === index) return;
+    shownIndex.current = index;
+    resetReveal();
+  }, [index, resetReveal]);
+  // A question that opens with a kept pick shows it: after a reload the kept
+  // number sat under Next and Skip, and read as lost again (blind playtest
+  // 2026-11-12e, finding 4). Once, as soon as the layout is known.
+  const restored = useRef(selected !== null || confidence !== null);
+  const revealRestored = reveal.reveal;
+  useEffect(() => {
+    if (!restored.current) return;
+    restored.current = false;
+    revealRestored();
+  }, [revealRestored]);
   const pick = (choice: 0 | 1) => {
     setSelected(choice);
     if (pickTimer.current) clearTimeout(pickTimer.current);
     void savePick(choice, latest.current.confidence);
-    const bottom = wrapY.current + confidenceBox.current.y + confidenceBox.current.height;
-    const visibleBottom = scrollY.current + viewportHeight.current;
-    if (viewportHeight.current > 0 && bottom > visibleBottom) {
-      scrollRef.current?.scrollTo({
-        y: bottom - viewportHeight.current + space.lg,
-        animated: !reduceMotion,
-      });
-    }
+    reveal.reveal();
   };
 
   // Next swaps the question in place while focus stays on the button, so a
@@ -171,23 +174,18 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
     <View style={styles.screen}>
       <ScrollView
         key={index}
-        ref={scrollRef}
+        ref={reveal.scrollRef}
         contentContainerStyle={styles.scroll}
-        onLayout={(e) => {
-          viewportHeight.current = e.nativeEvent.layout.height;
-        }}
-        onScroll={(e) => {
-          scrollY.current = e.nativeEvent.contentOffset.y;
-        }}
+        onLayout={reveal.onViewportLayout}
+        onScroll={reveal.onScroll}
+        onScrollBeginDrag={reveal.onScrollBeginDrag}
         scrollEventThrottle={32}
       >
         {index === 0 && intro}
         <View
           style={styles.wrap}
           testID="warmup-quiz"
-          onLayout={(e) => {
-            wrapY.current = e.nativeEvent.layout.y;
-          }}
+          onLayout={reveal.onParentLayout}
         >
           {/* Said as part of the question heading below, so not twice. */}
           <Text style={styles.progress} aria-hidden accessibilityElementsHidden>
@@ -232,10 +230,7 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
           <View
             style={styles.block}
             testID="warmup-confidence-block"
-            onLayout={(e) => {
-              const { y, height } = e.nativeEvent.layout;
-              confidenceBox.current = { y, height };
-            }}
+            onLayout={reveal.onTargetLayout}
           >
             <ConfidenceControl
               value={confidence}

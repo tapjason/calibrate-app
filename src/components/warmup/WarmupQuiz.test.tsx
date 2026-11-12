@@ -35,6 +35,8 @@ beforeEach(async () => {
     result: null,
     completedAt: null,
     hydrated: true,
+    // A pick kept by an earlier test would open the next one as restored.
+    pick: null,
   });
 });
 
@@ -117,6 +119,59 @@ describe('WarmupQuiz', () => {
       const scrollTo = layOut(800);
       fireEvent.press(screen.getByTestId('warmup-option-0'));
       expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    // Blind playtest 2026-11-12e, finding 4: after a reload the kept 60% sat
+    // under Next and Skip, and read as lost.
+    describe('when the question opens with a kept pick', () => {
+      const layOutWatched = (viewport: number) => {
+        const scroll = screen.UNSAFE_getByType(ScrollView);
+        const scrollTo = jest.fn();
+        scroll.instance.scrollTo = scrollTo;
+        fireEvent(scroll, 'layout', { nativeEvent: { layout: { height: viewport } } });
+        fireEvent(screen.getByTestId('warmup-quiz'), 'layout', {
+          nativeEvent: { layout: { y: 300 } },
+        });
+        fireEvent(screen.getByTestId('warmup-confidence-block'), 'layout', {
+          nativeEvent: { layout: { y: 200, height: 120 } },
+        });
+        return scrollTo;
+      };
+
+      it('brings it into view once the layout is known, and only once', () => {
+        useWarmupStore.setState({ pick: { option: 1, confidence: 60 } });
+        render(<WarmupQuiz />);
+        expect(screen.getByTestId('warmup-confidence-readout')).toHaveTextContent('60%');
+        const scrollTo = layOutWatched(500);
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+        expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ y: 620 - 500 + space.lg }));
+        // Long after, a layout change leaves the reader's scroll alone.
+        const now = Date.now();
+        const clock = jest.spyOn(Date, 'now').mockReturnValue(now + 60_000);
+        fireEvent(screen.UNSAFE_getByType(ScrollView), 'layout', {
+          nativeEvent: { layout: { height: 400 } },
+        });
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+        clock.mockRestore();
+      });
+
+      it('brings in a kept number with no option picked too', () => {
+        useWarmupStore.setState({ pick: { option: null, confidence: 70 } });
+        render(<WarmupQuiz />);
+        expect(layOutWatched(500)).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves a fresh question at its top', () => {
+        render(<WarmupQuiz />);
+        expect(layOutWatched(500)).not.toHaveBeenCalled();
+      });
+
+      it("stops if the person scrolls first", () => {
+        useWarmupStore.setState({ pick: { option: 1, confidence: 60 } });
+        render(<WarmupQuiz />);
+        fireEvent(screen.UNSAFE_getByType(ScrollView), 'scrollBeginDrag');
+        expect(layOutWatched(500)).not.toHaveBeenCalled();
+      });
     });
   });
 

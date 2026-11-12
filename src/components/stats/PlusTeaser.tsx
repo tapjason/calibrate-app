@@ -9,10 +9,11 @@ import { colors, FONT_FAMILY, radius, space, tabularNums, type } from '@/constan
 interface PlusTeaserProps {
   onUpgrade: () => void;
   /**
-   * Whole months since the first answer (wholeMonthsSince), so the Trends
-   * hook gets more concrete; 0 under a month, which names no number.
+   * The months since the first answer in words (monthsOnFileWords: "3
+   * months", "nearly 5 months"), so the Trends hook gets more concrete; null
+   * under a month, which names no number.
    */
-  monthsOnFile?: number;
+  monthsOnFile?: string | null;
   /**
    * One Coach card written by the app from the person's own record (roadmap
    * D37), shown as a sample of what Coach does, or null.
@@ -28,10 +29,10 @@ interface PlusTeaserProps {
  * One card, one button, two benefits in a line each, the way the paywall
  * itself will read.
  */
-export function PlusTeaser({ onUpgrade, monthsOnFile = 0, sample = null }: PlusTeaserProps) {
+export function PlusTeaser({ onUpgrade, monthsOnFile = null, sample = null }: PlusTeaserProps) {
   const trendsLine =
-    monthsOnFile > 0
-      ? `Trends: your ${monthsOnFile} ${monthsOnFile === 1 ? 'month' : 'months'} on file, and what your 80% really means.`
+    monthsOnFile
+      ? `Trends: your ${monthsOnFile} on file, and what your 80% really means.`
       : 'Trends: your calibration month by month, and what your 80% really means.';
 
   return (

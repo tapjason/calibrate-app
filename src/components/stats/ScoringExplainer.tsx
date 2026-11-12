@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CloseButton } from '@/components/ui/CloseButton';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -14,10 +13,8 @@ import { badgeRows, scoringSections } from './scoringCopy';
  * who wants to check it. Calibrated trust, not maximum trust.
  */
 export function ScoringExplainer({
-  onClose,
   onBadgesLayout,
 }: {
-  onClose?: () => void;
   /**
    * Where the Badges section starts, so the sheet can open there when it's
    * reached from Today's identity line (roadmap D27).
@@ -27,14 +24,12 @@ export function ScoringExplainer({
   const sections = scoringSections();
   return (
     <View style={styles.wrap} testID="scoring-explainer">
-      {/* The way out sits at the top, where a sheet's is looked for (roadmap
-          step 79); a reader at the end swipes down, as with any sheet. */}
-      <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">
-          How scoring works
-        </Text>
-        {onClose && <CloseButton onPress={onClose} testID="scoring-close" />}
-      </View>
+      {/* The way out is the sheet's, on a bar pinned above this (ScoringSheet):
+          inside the scroll it was six screens up when the sheet opened at
+          Badges (blind playtest 2026-11-12e, finding 1). */}
+      <Text style={styles.title} accessibilityRole="header">
+        How scoring works
+      </Text>
       {sections.map((section) => (
         <View
           key={section.title}
@@ -81,8 +76,7 @@ export function ScoringExplainer({
 
 const styles = StyleSheet.create({
   wrap: { gap: space.xl, padding: space.lg, paddingBottom: space.xxxl },
-  header: { alignItems: 'flex-start', flexDirection: 'row', gap: space.md },
-  title: { ...type.title1, color: colors.textPrimary, flex: 1 },
+  title: { ...type.title1, color: colors.textPrimary },
   section: { gap: space.sm },
   heading: { ...type.headline, color: colors.textPrimary },
   body: { ...type.body, color: colors.textSecondary },

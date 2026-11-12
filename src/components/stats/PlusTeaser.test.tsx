@@ -22,7 +22,7 @@ describe('PlusTeaser', () => {
   });
 
   it('makes the Trends line concrete once there is history', () => {
-    render(<PlusTeaser onUpgrade={jest.fn()} monthsOnFile={3} />);
+    render(<PlusTeaser onUpgrade={jest.fn()} monthsOnFile="3 months" />);
     expect(screen.getByText(/your 3 months on file/)).toBeTruthy();
   });
 });

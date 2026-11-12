@@ -732,6 +732,11 @@ describe('ResolvePrompt milestones', () => {
     await waitFor(() => {
       expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy();
     });
+    // Answered while provisional, so it keeps what the number means (blind
+    // playtest 2026-11-12e, run 5: a miss here had neither D50 line).
+    expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(
+      meaningLine(samplePending().confidence)!,
+    );
     // Consumed: nothing left for the next screen to replay.
     expect(useStatsStore.getState().milestone).toBeNull();
     // The unlock may earn a rating ask, on Today after the sheet closes (D15).

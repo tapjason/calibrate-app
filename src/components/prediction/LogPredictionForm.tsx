@@ -26,6 +26,7 @@ import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { TextField } from '@/components/ui/TextField';
 import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
+import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED, TRACK_RECORD_MIN_N } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -70,6 +71,10 @@ export function LogPredictionForm({
   header,
 }: LogPredictionFormProps) {
   const { pinned, onFooterLayout } = usePinnedFooter();
+  // After a category is picked, the confidence control comes into view if it
+  // isn't: at 320 it sat under the pinned Save, with only "—% not set yet"
+  // showing (blind playtest 2026-11-12e, finding 3). As the Warm-up's pick.
+  const reveal = useScrollReveal();
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
@@ -297,10 +302,15 @@ export function LogPredictionForm({
   return (
     <View style={styles.form}>
       <ScrollView
+        ref={reveal.scrollRef}
         contentContainerStyle={styles.fields}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
+        onLayout={reveal.onViewportLayout}
+        onScroll={reveal.onScroll}
+        onScrollBeginDrag={reveal.onScrollBeginDrag}
+        scrollEventThrottle={32}
       >
         {header}
         {nudge && !nudgeDismissed && (
@@ -391,10 +401,17 @@ export function LogPredictionForm({
           <Text style={styles.label}>Category</Text>
           {/* Nothing chosen to start (roadmap D29): a preset Work filed
               untouched predictions under Work. */}
-          <CategoryChips value={category} onChange={setCategory} />
+          <CategoryChips
+            value={category}
+            onChange={(c) => {
+              setCategory(c);
+              // Checked again for a moment: the line under Save can change.
+              reveal.reveal();
+            }}
+          />
         </View>
 
-        <View style={styles.block}>
+        <View style={styles.block} onLayout={reveal.onTargetLayout} testID="log-confidence-block">
           {/* No band and no chip for any number (roadmap D23, 2026-10-10): the
               integrity bonus paid for 35–65%, which pushes reports toward it. */}
           <ConfidenceControl value={confidence} onChange={setConfidence} />
