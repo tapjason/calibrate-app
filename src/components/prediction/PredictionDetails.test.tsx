@@ -165,7 +165,7 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(screen.queryByTestId('details-late-move')).toBeNull();
     fireEvent.press(screen.getByTestId('due-week'));
     expect(screen.getByTestId('details-late-move')).toHaveTextContent(
-      'It’s due tomorrow, so moving it later is counted on Insights: the outcome may already be known.',
+      'It’s due tomorrow, so moving it later is counted on Insights: the outcome may already be known. It doesn’t change your score.',
     );
   });
 

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -10,6 +10,12 @@ import { streakCopy } from './streakCopy';
 interface StreakLineProps {
   status: StreakStatus;
   testID?: string;
+  /**
+   * What the streak is and how to hide it (How scoring works, at Your
+   * streak): two streak-wary testers tapped the row first and nothing
+   * happened (blind playtest 2026-11-13, runs 4 and 7).
+   */
+  onPress?: () => void;
 }
 
 /**
@@ -26,18 +32,25 @@ interface StreakLineProps {
  * A third, quieter line carries the rest days (roadmap step 87): what's saved,
  * the day one covered, or when the next one comes.
  */
-export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) {
+export function StreakLine({ status, testID = 'streak-line', onPress }: StreakLineProps) {
   const copy = streakCopy(status);
   // Off in You (step 173): the row, its goal dots and its rest days go.
   const shown = useSettingsStore((s) => s.streakShown);
   if (!copy || !shown) return null;
 
   return (
-    <View
-      style={[styles.row, copy.checkpoint && styles.rowCheckpoint]}
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [
+        styles.row,
+        copy.checkpoint && styles.rowCheckpoint,
+        pressed && styles.pressed,
+      ]}
       accessible
-      accessibilityRole="text"
+      accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={copy.spoken}
+      accessibilityHint={onPress ? 'Explains the streak, and how to hide it' : undefined}
       testID={testID}
     >
       <Icon sf="flame.fill" fallback="flame" size={18} color={colors.action} />
@@ -72,13 +85,15 @@ export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) 
           />
         ))}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const PIP = 10;
 
+
 const styles = StyleSheet.create({
+  pressed: { opacity: 0.6 },
   row: {
     alignItems: 'center',
     backgroundColor: colors.surface,

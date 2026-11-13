@@ -28,7 +28,7 @@ export default function ScoringScreen() {
           if (router.canGoBack()) router.back();
           else router.replace('/insights' as never);
         }}
-        openAtBadges={section === 'badges'}
+        openAt={section === 'badges' ? 'Badges' : section === 'streak' ? 'Your streak' : null}
         ratingLine={ratingLine}
       />
     </SafeAreaView>

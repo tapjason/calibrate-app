@@ -39,7 +39,7 @@ describe('nextBadgeProgress', () => {
       category: 'health',
       badge: 'tracker',
       badgeLabel: 'Tracker',
-      text: 'To reach Tracker in health: 3 more scored answers',
+      text: 'To reach Tracker or higher in health: 3 more scored answers',
       progress: 17 / 20,
     });
   });
@@ -66,7 +66,7 @@ describe('nextBadgeProgress', () => {
       stat('finance', 2, 50),
     ]);
     expect(p?.category).toBe('health');
-    expect(p?.text).toBe('To reach Tracker in health: 2 more scored answers');
+    expect(p?.text).toBe('To reach Tracker or higher in health: 2 more scored answers');
   });
 
   it('breaks ties by predictions made, then by id so the story is stable', () => {
@@ -86,7 +86,7 @@ describe('nextBadgeProgress', () => {
   it('prefers a resolution countdown over a score gate', () => {
     // work is a Tracker needing score > 70 for Forecaster; social needs 4 more.
     const p = progressFor([stat('work', 25, 65), stat('social', 16, 50)]);
-    expect(p?.text).toBe('To reach Tracker in social: 4 more scored answers');
+    expect(p?.text).toBe('To reach Tracker or higher in social: 4 more scored answers');
   });
 
   it('names the score gate when no category is short on resolutions', () => {

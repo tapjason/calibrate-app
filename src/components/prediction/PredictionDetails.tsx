@@ -54,7 +54,10 @@ const shortDate = (iso: string) =>
 
 
 /** What VoiceOver hears as Edit's notes appear (step 173). */
-const LATE_MOVE_SPOKEN = 'Moving it later is counted on Insights: the outcome may already be known.';
+// "Doesn't change your score": a competitive tester had to save to find out
+// (blind playtest 2026-11-13, run 2).
+const LATE_MOVE_SPOKEN =
+  'Moving it later is counted on Insights: the outcome may already be known. It doesn’t change your score.';
 const REWORD_SPOKEN =
   'Changing the words makes this a new prediction from today: an answer today isn’t scored.';
 
@@ -319,7 +322,8 @@ export function PredictionDetails({
         {lateMove && (
           <Text style={styles.note} testID="details-late-move" accessibilityLiveRegion="polite">
             {daysLeft >= 1 ? 'It’s due tomorrow' : daysLeft === 0 ? 'It’s due today' : 'It’s past its due day'},
-            so moving it later is counted on Insights: the outcome may already be known.
+            so moving it later is counted on Insights: the outcome may already be known. It
+            doesn’t change your score.
           </Text>
         )}
         {error && <Text style={styles.error}>{error}</Text>}

@@ -32,7 +32,7 @@ describe('ScoringSheet', () => {
   // Roadmap D27: from Today's identity line it opens at Badges, the heading
   // just under the pinned bar.
   it('opens at Badges, once, when asked', () => {
-    render(<ScoringSheet onClose={jest.fn()} openAtBadges />);
+    render(<ScoringSheet onClose={jest.fn()} openAt="Badges" />);
     const scroll = screen.UNSAFE_getByProps({ testID: 'scoring-scroll' });
     const scrollTo = jest.fn();
     scroll.instance.scrollTo = scrollTo;

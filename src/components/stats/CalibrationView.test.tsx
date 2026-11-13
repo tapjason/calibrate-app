@@ -163,7 +163,9 @@ describe('CalibrationView chart section', () => {
       />,
     );
     expect(getByTestId('coverage-0')).toBeTruthy();
-    expect(getByTestId('coverage-note')).toBeTruthy();
+    expect(getByTestId('coverage-note')).toHaveTextContent(
+      /^None of your scored answers is from a call under 40% yet/,
+    );
   });
 
   // Roadmap step 51: a range with predictions in it opens them in History.

@@ -42,7 +42,7 @@ describe('NextBadgeLine', () => {
     const onPress = jest.fn();
     render(<NextBadgeLine onPress={onPress} />);
     expect(screen.getByTestId('home-next-badge')).toHaveTextContent(
-      'To reach Tracker in health: 3 more scored answers.',
+      'To reach Tracker or higher in health: 3 more scored answers.',
     );
     fireEvent.press(screen.getByTestId('home-next-badge'));
     expect(onPress).toHaveBeenCalled();

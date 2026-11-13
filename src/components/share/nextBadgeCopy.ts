@@ -95,7 +95,11 @@ export function nextBadgeProgress(
           // logged, "20 to go" read as if they hadn't been counted), and "To
           // reach" as the score-short line has it: on a shared card a line
           // led by the tier reads as a claim to it (record audit 2026-11-12).
-          `To reach ${badgeLabel} in ${categoryLabel(stat.category)}: ${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'}`,
+          // "or higher" for the first badge: at 20 a category whose score
+          // already clears 70 at its low end goes straight to Forecaster, and
+          // "Tracker, 1 more" then read as a broken promise (blind playtest
+          // 2026-11-13, run 8; Insights says it since step 172).
+          `To reach ${badgeLabel}${next.badge === 'tracker' ? ' or higher' : ''} in ${categoryLabel(stat.category)}: ${remaining} more scored ${remaining === 1 ? 'answer' : 'answers'}`,
       progress: stat.predictions_resolved / (next.needResolved as number),
     };
   }

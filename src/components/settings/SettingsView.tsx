@@ -152,7 +152,13 @@ export function SettingsView({
           <>
             <ToggleRow
               label="Due-day reminders"
-              description={`On the day each prediction comes due, at ${reminderTimeLabel(dueReminderTime)}.`}
+              // The time only while it's on: off, a time read as still coming
+              // (blind playtest 2026-11-13, run 7).
+              description={
+                remindersEnabled
+                  ? `On the day each prediction comes due, at ${reminderTimeLabel(dueReminderTime)}.`
+                  : 'On the day each prediction comes due.'
+              }
               value={remindersEnabled}
               onValueChange={(v) => void setRemindersEnabled(v)}
               testID="toggle-reminders"
@@ -170,7 +176,11 @@ export function SettingsView({
             )}
             <ToggleRow
               label="Weekly digest"
-              description={`What's open and coming up, ${DAY_NAMES[digestDay]} at ${reminderTimeLabel(digestTime)}.`}
+              description={
+                digestEnabled
+                  ? `What's open and coming up, ${DAY_NAMES[digestDay]} at ${reminderTimeLabel(digestTime)}.`
+                  : "What's open and coming up, once a week."
+              }
               value={digestEnabled}
               onValueChange={(v) => void setDigestEnabled(v)}
               testID="toggle-digest"

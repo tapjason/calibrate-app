@@ -13,13 +13,13 @@ import { badgeRows, scoringSections } from './scoringCopy';
  * who wants to check it. Calibrated trust, not maximum trust.
  */
 export function ScoringExplainer({
-  onBadgesLayout,
+  onSectionLayout,
 }: {
   /**
-   * Where the Badges section starts, so the sheet can open there when it's
-   * reached from Today's identity line (roadmap D27).
+   * Where each section starts, so the sheet can open at one: Badges from
+   * Today's identity line (roadmap D27), Your streak from the streak row.
    */
-  onBadgesLayout?: (y: number) => void;
+  onSectionLayout?: (title: string, y: number) => void;
 }) {
   const sections = scoringSections();
   return (
@@ -35,8 +35,8 @@ export function ScoringExplainer({
           key={section.title}
           style={styles.section}
           onLayout={
-            section.title === 'Badges' && onBadgesLayout
-              ? (e) => onBadgesLayout(e.nativeEvent.layout.y)
+            onSectionLayout
+              ? (e) => onSectionLayout(section.title, e.nativeEvent.layout.y)
               : undefined
           }
           testID={section.title === 'Badges' ? 'scoring-section-badges' : undefined}

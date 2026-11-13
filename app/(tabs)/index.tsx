@@ -187,7 +187,10 @@ export default function TodayScreen() {
     <>
       {/* The daily streak (roadmap D2): one logged or answered a day keeps
           it, three is the day's goal (D17). */}
-      <StreakLine status={streak} />
+      <StreakLine
+        status={streak}
+        onPress={() => router.push('/scoring?section=streak' as never)}
+      />
       {/* After 30 days on one phone without an account (roadmap D31). */}
       <BackupNudge onSignIn={() => router.push('/account' as never)} />
       {/* A reason to open the app on a day nothing comes due (roadmap

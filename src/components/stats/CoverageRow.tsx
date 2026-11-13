@@ -104,8 +104,10 @@ export function CoverageRow({ buckets, onSelectRange }: CoverageRowProps) {
       )}
       {buckets.length > 0 && !lowUsed && (
         <Text style={styles.note} testID="coverage-note">
-          You haven&apos;t logged anything under 40% yet, so your score only covers the
-          confident half of your range.
+          {/* "Scored", not "logged": it counts answers, and a 30% call logged a
+              minute earlier read as lost (blind playtest 2026-11-13, runs 3 and 5). */}
+          None of your scored answers is from a call under 40% yet, so your score only
+          covers the confident half of your range.
         </Text>
       )}
     </View>

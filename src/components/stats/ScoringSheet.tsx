@@ -8,8 +8,13 @@ import { ScoringExplainer } from './ScoringExplainer';
 
 interface ScoringSheetProps {
   onClose: () => void;
-  /** Open at the Badges section (from Today's identity line, roadmap D27). */
-  openAtBadges?: boolean;
+  /**
+   * The section to open at: Badges from Today's identity line (roadmap D27),
+   * Your streak from the streak row (blind playtest 2026-11-13, runs 4 and 7:
+   * the streak was the first thing a streak-wary person tapped, and nothing
+   * happened).
+   */
+  openAt?: string | null;
   /**
    * The person's own rating in words, above the explainer, when it's opened
    * from Today's rating (step 173): "is 86 good?" was answered nowhere.
@@ -23,7 +28,7 @@ interface ScoringSheetProps {
  * with no tab bar to fall back on (blind playtest 2026-11-12e, finding 1), so
  * it is the scroll's sticky first child, as on details and Resolve.
  */
-export function ScoringSheet({ onClose, openAtBadges = false, ratingLine = null }: ScoringSheetProps) {
+export function ScoringSheet({ onClose, openAt = null, ratingLine = null }: ScoringSheetProps) {
   const scroll = useRef<ScrollView>(null);
   const jumped = useRef(false);
   // A hairline sets the bar off once the text has scrolled under it.
@@ -43,9 +48,10 @@ export function ScoringSheet({ onClose, openAtBadges = false, ratingLine = null 
         </View>
       )}
       <ScoringExplainer
-        onBadgesLayout={
-          openAtBadges
-            ? (y) => {
+        onSectionLayout={
+          openAt
+            ? (title, y) => {
+                if (title !== openAt) return;
                 // Once: a later layout pass mustn't pull the reader back.
                 if (jumped.current) return;
                 jumped.current = true;

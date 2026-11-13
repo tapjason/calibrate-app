@@ -124,12 +124,12 @@ describe('ScoringExplainer', () => {
 
   // Roadmap D27: from Today's identity line the sheet opens at Badges.
   it('reports where the Badges section starts', () => {
-    const onBadgesLayout = jest.fn();
-    render(<ScoringExplainer onBadgesLayout={onBadgesLayout} />);
+    const onSectionLayout = jest.fn();
+    render(<ScoringExplainer onSectionLayout={onSectionLayout} />);
     fireEvent(screen.getByTestId('scoring-section-badges'), 'layout', {
       nativeEvent: { layout: { x: 0, y: 840, width: 375, height: 300 } },
     });
-    expect(onBadgesLayout).toHaveBeenCalledWith(840);
+    expect(onSectionLayout).toHaveBeenCalledWith('Badges', 840);
   });
 
   // At 320 and 375pt the list of bands broke "0–" / "20%" (DESIGN_SYSTEM §7.9).

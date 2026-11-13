@@ -331,6 +331,16 @@ describe('SettingsView — reminder and digest times', () => {
       /^What's open and coming up, Sunday at 6:00.PM.$/,
     );
     expect(screen.getByTestId('settings-reminder-time')).toBeTruthy();
+    // Off, no day or time that reads as still coming (blind playtest
+    // 2026-11-13, run 7).
+    fireEvent.press(screen.getByTestId('toggle-digest-row'));
+    await waitFor(() =>
+      expect(screen.getByTestId('toggle-digest-row').props.accessibilityHint).toBe(
+        "What's open and coming up, once a week.",
+      ),
+    );
+    fireEvent.press(screen.getByTestId('toggle-digest-row'));
+    await waitFor(() => expect(useSettingsStore.getState().digestEnabled).toBe(true));
 
     fireEvent.press(screen.getByTestId('digest-day-3'));
     await waitFor(() => expect(useSettingsStore.getState().digestDay).toBe(3));

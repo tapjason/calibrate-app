@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { colors } from '@/constants/theme';
@@ -77,5 +77,19 @@ describe('StreakLine switched off', () => {
     useSettingsStore.setState({ streakShown: false });
     render(<StreakLine status={{ streak: 5, today: 1, todayCounts: true, checkpoint: null, nextCheckpoint: 7, ...NO_REST }} />);
     expect(screen.queryByTestId('streak-line')).toBeNull();
+  });
+});
+
+// Blind playtest 2026-11-13, runs 4 and 7: tapping the row explains the streak.
+describe('StreakLine tapped', () => {
+  it('is a button when it can explain, and a plain line otherwise', () => {
+    const status = { streak: 5, today: 1, todayCounts: true, checkpoint: null, nextCheckpoint: 7, ...NO_REST };
+    const onPress = jest.fn();
+    const view = render(<StreakLine status={status} onPress={onPress} />);
+    expect(screen.getByTestId('streak-line').props.accessibilityRole).toBe('button');
+    fireEvent.press(screen.getByTestId('streak-line'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+    view.rerender(<StreakLine status={status} />);
+    expect(screen.getByTestId('streak-line').props.accessibilityRole).toBe('text');
   });
 });
