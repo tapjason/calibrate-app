@@ -88,7 +88,7 @@ export function scoringSections(): ScoringSection[] {
         `So your rating stays "calibrating" until ${MIN_N_OVERALL} answers are scored, a category's score until ${MIN_N_CATEGORY} have in that category, and the app doesn't say which way a band leans until it holds ${MIN_N_BAND}.`,
         // One word for it (roadmap D54): "answered" everywhere, said once here.
         "Scored answers are the Yes and No ones that count toward your numbers. A Can't tell, or an answer given the day the prediction was logged, is answered but not scored.",
-        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands 8 times in 10 with that many predictions, and the app calls a lean only for a dot outside it. And your rating comes with a "give or take": how far it could move on the same habits with different luck, 8 times in 10. Both narrow as you answer more.',
+        'Even then, every number has some luck in it. The grey bar behind each dot on the chart is where a perfectly calibrated forecaster\'s dot lands 8 times in 10 with that many predictions, and the app calls a lean only for a dot outside it. And your rating comes with a "give or take": how far it could move on the same habits with different luck, 8 times in 10. It comes from rescoring your own answers drawn again at random, hundreds of times: half the spread of the middle 80% of those scores, either side of your rating. A category’s give-or-take is worked out the same way from its own answers. Both narrow as you answer more.',
       ],
     },
     {

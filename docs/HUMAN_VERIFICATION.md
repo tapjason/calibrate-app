@@ -891,6 +891,25 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-12 (step 172, round 16's fixes; a reload is enough):
+
+- [ ] **How scoring works from Today's badge line** (a record with a badge,
+      e.g. `/dev/seed` → Load demo data): it opens at Badges with the × pinned
+      at the top, at the default size and at AX3. VoiceOver: the first swipe
+      after the × doesn't jump back to the top.
+- [ ] **Log, keyboard up:** type a title, then tap a category with the keyboard
+      still showing. The keyboard goes down, and the slider and ±5 come into
+      view at 320 (an SE in Display Zoom, or the smallest size you have).
+- [ ] **Warm-up restored pick:** pick an answer and a number, swipe the app
+      away, reopen: the slider is in view, not under Next / Skip. Again with
+      Reduce Motion on (no slide).
+- [ ] **Answer keys at large text:** at AX2 and AX5, the Warm-up's and
+      practice's answer rows put the ✓/✗ and the percent on a line above the
+      text, with the text at full width. At the default size, unchanged.
+- [ ] **The unlocking miss:** on the 20th answer (the `threshold` profile), answer
+      No: under the unlock card, "A 70% call should come true about 7 times
+      in 10…". Change answer: the line stays.
+
 Added 2026-11-12 (step 171, the playtest rounds 12–15 fixes; web-verified, a reload is enough):
 
 - [ ] **Saved sign:** save from the "+" on Insights, then on History: "Saved, due
