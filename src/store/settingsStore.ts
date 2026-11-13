@@ -50,7 +50,9 @@ export interface StoredSettings {
   streakShown: boolean;
   /**
    * Whether a due-day reminder shows the prediction's words (roadmap D60 (b)).
-   * On by default. Off, it says only the day it was made and the number, so
+   * Off by default (owner, 2026-11-13: HIG and Guideline 4.5.4 discourage
+   * sensitive content in notifications). Off, it says only the day it was made
+   * and the number, with no Happened / Didn't, so
    * nothing written shows on a lock screen (four testers over rounds 18–19
    * asked; one turned reminders off "just in case").
    */
@@ -198,7 +200,7 @@ const DEFAULTS: StoredSettings = {
   coachEnabled: false,
   analyticsEnabled: true,
   streakShown: true,
-  reminderWords: true,
+  reminderWords: false,
   cardThemeId: DEFAULT_THEME.id,
   cardFormat: 'post',
   cardHiddenCategories: [],

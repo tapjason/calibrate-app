@@ -100,7 +100,7 @@ describe('SettingsView', () => {
         coachEnabled: false,
         analyticsEnabled: true,
         streakShown: true,
-        reminderWords: true,
+        reminderWords: false,
         cardThemeId: 'midnight',
         cardFormat: 'post',
         cardHiddenCategories: [],

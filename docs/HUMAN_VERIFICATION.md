@@ -894,7 +894,7 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
 Added 2026-11-13 (step 176, D60, the owner's picks after round 19; a reload is enough):
 
 - [ ] **Reminders without the words:** You → Due-day reminders → "Show the words in reminders"
-      off. Log one due tomorrow (or move the reminder time a few minutes ahead and set a due-today
+      is off by default. Log one due tomorrow (or move the reminder time a few minutes ahead and set a due-today
       one from yesterday's demo data). On the lock screen it reads "Your prediction from … · You
       said N%", no title, and no Happened / Didn't (a tap opens the question). Back on, the next
       one shows the title and the buttons. Flip the switch quickly a few times: one reminder each.

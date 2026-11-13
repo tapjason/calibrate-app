@@ -131,10 +131,9 @@ personal data, and we don't share it for advertising.
 ## 5. Notifications
 
 Reminders are scheduled **on your device**. We don't collect a push token and
-we don't send notifications from a server. A due-day reminder shows the
-prediction's words and the confidence you gave it, unless you turn off **You →
-Show the words in reminders**; then it shows only the day you made it and the
-number. The weekly digest shows only how many predictions are open.
+we don't send notifications from a server. A due-day reminder shows only
+the day you made the prediction and the confidence you gave it. Its words appear
+only if you turn on **You → Show the words in reminders**. The weekly digest shows only how many predictions are open.
 
 ## 6. How long we keep it
 

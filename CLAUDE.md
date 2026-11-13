@@ -575,7 +575,7 @@ Nothing that produces a shareable artifact is ever paywalled.
   on the reminder record that answer and open the app on the resolved state
   (D8, 2026-11-02); tapping the notification itself still opens the question,
   and "Can't tell" stays in the app. Web has no actions. **The words can be kept off**
-  (D60): "Show the words in reminders" in You, on by default; off, a reminder reads
+  (D60): "Show the words in reminders" in You, off by default (owner); off, a reminder reads
   "Your prediction from Nov 6 · You said 70%", so nothing written is on the lock screen,
   and has no Happened / Didn't: two alike could take the wrong answer. A reminder that no longer
   matches its prediction (set for another date or time, words changed after it
