@@ -88,7 +88,9 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
       : null,
   ]
     .filter((part): part is string => Boolean(part))
-    .map((part) => ` ${part.replace(/[.s]+$/, '')}.`)
+    // Full stops and spaces only: `[.s]` also ate a final "s" ("20 more
+    // scored answer.", blind playtest 2026-11-12f, run 8).
+    .map((part) => ` ${part.replace(/[.\s]+$/, '')}.`)
     .join('');
   // The number that climbs every day (roadmap D2) travels with the recap.
   const streak = streakLine(overall);

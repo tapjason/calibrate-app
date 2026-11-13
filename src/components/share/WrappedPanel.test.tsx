@@ -374,6 +374,10 @@ describe('WrappedPanel', () => {
 
     expect(screen.getByTestId('wrapped-next-badge')).toBeTruthy();
     expect(screen.getByText('To reach Tracker in health: 3 more scored answers')).toBeTruthy();
+    // The spoken label keeps the final "s" (blind playtest 2026-11-12f, run 8).
+    expect(screen.getByTestId('wrapped-card').props.accessibilityLabel).toContain(
+      'To reach Tracker in health: 3 more scored answers.',
+    );
     expect(screen.getByTestId('lens-tracker-progress', { includeHiddenElements: true })).toBeTruthy();
   });
 

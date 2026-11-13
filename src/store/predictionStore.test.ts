@@ -757,4 +757,11 @@ describe('openRepeatOf', () => {
     const self = { ...source, status: 'pending' as const };
     expect(openRepeatOf(self, [self])).toBeNull();
   });
+
+  // Blind playtest 2026-11-12f, run 7: the same words under another category
+  // read as "Logged again".
+  it('only counts the same category', () => {
+    const elsewhere = { ...p('e', 'I walk 30 minutes', '2026-11-12T12:00:00.000Z'), category: 'work' as const };
+    expect(openRepeatOf(source, [elsewhere])).toBeNull();
+  });
 });
