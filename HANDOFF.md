@@ -1,8 +1,21 @@
 # Handoff
 
-**Branch:** `builder/playtest-fixes` (steps 171–172, the playtest rounds 12–16 fixes, and rounds 16–17, 2026-11-12), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/step-173-owner-picks` (step 173, the owner's picks after round 17, D59, 2026-11-12; not pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
+
+Step 173 (`docs/design/BUILT_LOG.md` row 173, roadmap D59): the owner approved every recommendation after round 17 and the rounds 12–15 aggregate. JS plus SQLite migrations 015 (`prediction_postponements`) and 016 (`warmup_results.question_ids_json`): a reload.
+- **Today:** no 70 / 85 / 90 under the rating; the rating opens How scoring works with the person's own line in points; the closest badge while none is earned.
+- **Insights:** the rating in points; Can't tell from the first answer; why no badge when spread thin; Furthest off tied to the badge; the Brier line checked against luck (`brierEdge`); late due-date moves counted, Edit warns; "See your week".
+- **Warm-up:** expected-and-got under the verdict; a place or a year first (old results keep their order); US units in the key.
+- **Share:** keys under the text squares and the card strip (reverses D58's no-key).
+- **Log:** "Save and log another" (in the footer, not on the save notice: a timed button fails VoiceOver); a draft kept a day (reverses D52 (1)), cleared by save, Start over, Discard, Erase, account deletion and leaving an account; starter ideas until the title is left.
+- **You:** "Streak and daily goal" switch.
+- **Reviews:** designs record-audited first (three wordings corrected); the build record-audited (holds, four should-fix done) and code-reviewed (round 1 blocker: finished Warm-ups' keys misaligned by the reorder, fixed with 016). Round 2 of the review: see "In progress".
+- **Needs the owner:** deletes on the eve aren't counted while moves are (`deletionCounts` from the due day); late rewording that keeps its date isn't counted; US units read the language tag, not the Region setting, until `expo-localization` (new build); whether the chart can say "no clear lean" while a category leans.
+- **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-12 (step 173…)".
+
+Below it, step 172:
 
 Step 172 (`docs/design/BUILT_LOG.md` row 172): round 16's no-decision fixes and two bugs from round 17. JS only: a reload. The scoring sheet's sticky ×; Log's and the Warm-up's scroll-into-view (`useScrollReveal`); stacked answer keys at large text (`AnswerKeyRow`); a second "Make a real prediction"; the unlocking answer's meaning line; the first-badge, recap and months wording; the give-or-take's method on How scoring works; the recap card's spoken "s"; "Logged again" only in the same category. Reviewed (no blockers) and record-audited (holds).
 
