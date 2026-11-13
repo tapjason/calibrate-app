@@ -62,11 +62,15 @@ const ADVICE = {
 function noLeanAdvice(expected: number, right: number, n: number): string {
   const word = NUMBER_WORDS[n] ?? String(n);
   const Word = word.charAt(0).toUpperCase() + word.slice(1);
-  const counts = `You expected about ${expected} right and got ${right}`;
+  // "Your numbers expected", as Insights says it (D57): "You expected about 6
+  // right" put a count in the mouth of someone who never said one, and "it
+  // says nothing either way" read as taking her 7 of 10 away; "lean" is said
+  // in plain words beside it (blind playtest 2026-11-13c, finding 2).
+  const counts = `Your numbers expected about ${expected} right, and you got ${right}`;
   if (expected === right) {
-    return `${counts}: just what you said. ${Word} answers can't prove that, so your own predictions are the real test.`;
+    return `${counts}: just what they said. ${Word} answers can't prove that, so your own predictions are the real test.`;
   }
-  return `${counts}. On ${word} answers luck often moves it that far, so it says nothing either way yet. Your own predictions are the real test.`;
+  return `${counts}. On ${word} answers luck often moves it that far, so it can't tell yet whether you run too sure, too cautious or about right. Your own predictions are the real test.`;
 }
 
 const SAME_NUMBER_NOTE =

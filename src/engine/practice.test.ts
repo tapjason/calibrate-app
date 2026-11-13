@@ -280,6 +280,30 @@ describe('warmupQuestions', () => {
     expect(['north', 'east', 'first', 'born']).toContain(warmupQuestions(PRACTICE_FACTS)[0]!.kind);
   });
 
+  // Blind playtest 2026-11-13c, finding 1: every place and year before the
+  // school kinds, and the same ten ids, so a finished Warm-up's stored ids
+  // still find their questions.
+  it('asks every place and year before the school kinds, keeping the ids', () => {
+    const everyday = new Set(['north', 'east', 'first', 'born']);
+    const kinds = warmupQuestions(PRACTICE_FACTS).map((q) => everyday.has(q.kind));
+    expect(kinds.indexOf(false)).toBeGreaterThan(kinds.lastIndexOf(true));
+    // The ten ids step 173 gave them, pinned: a finished Warm-up stores
+    // these, and an id that changed would pair its answer key wrongly
+    // (code review, step 177).
+    expect(warmupQuestions(PRACTICE_FACTS).map((q) => q.id).sort()).toEqual([
+      'area:Romania|Niger',
+      'born:Bill Gates|Anne Frank',
+      'east:Barcelona|Edinburgh',
+      'east:Cairo|Johannesburg',
+      'element:Cobalt|Silver',
+      'first:The Mona Lisa is stolen from the Louvre|The California Gold Rush begins',
+      'height:Aconcagua|Kilimanjaro',
+      'north:Vancouver|Houston',
+      'size:Enceladus (Saturn’s moon)|Venus',
+      'size:Jupiter|Uranus',
+    ]);
+  });
+
   it('is ten distinct two-way questions, the same every time', () => {
     const qs = warmupQuestions(PRACTICE_FACTS);
     expect(qs).toHaveLength(10);

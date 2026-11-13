@@ -213,7 +213,9 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
                 maxFontSizeMultiplier={CARD_MAX_SCALE}
                 style={[styles.chipCount, { color: theme.muted }]}
               >
-                {c.resolved}
+                {/* "Social 20 · Health 55": scores or counts? (blind
+                    playtest 2026-11-13c, finding 12). */}
+                {c.resolved} scored
               </Text>
             </View>
           ))}

@@ -32,11 +32,22 @@ export function brierLine(
   // 2026-11-12f, finding 5). "Could be", since inside the middle 80% doesn't
   // prove luck (record audit 2026-11-12).
   // Under a hundredth: the two print alike, so no comparison and no luck.
-  if (edge.edge === 'alike') return `${lead} about the same,\u00A0${base}.`;
+  if (edge.edge === 'alike') return `${lead} about the same,\u00A0${base}. ${BRIER_MEANS}`;
   if (edge.edge === 'about_same') {
-    return `${lead} about the same,\u00A0${base}; with ${localCount(edge.scored)} answers a gap this small could be luck.`;
+    return `${lead} about the same,\u00A0${base}; with ${localCount(edge.scored)} answers a gap this small could be luck. ${BRIER_MEANS}`;
   }
   return edge.edge === 'better'
     ? `${lead}\u00A0${base}, so your numbers said more than your base rate.`
-    : `${lead}\u00A0${base}, so your numbers said less than your base rate would have.`;
+    : `${lead}\u00A0${base}, so your numbers said less than your base rate would have. ${BRIER_MEANS}`;
 }
+
+/**
+ * What the comparison means, after a tie or a loss: "about the same as a
+ * flat 64%" under an 87 read as "my judgement adds nothing" and "a parrot
+ * does as well as me", with nothing said about why (blind playtest
+ * 2026-11-13c, finding 9). The rating is calibration; the Brier score also
+ * counts resolution, how far the numbers set what happened apart from what
+ * didn't (Brier = reliability \u2212 resolution + p(1 \u2212 p)).
+ */
+export const BRIER_MEANS =
+  'Your score above asks whether your numbers match what happened; this one also asks whether they set apart the calls that happen from the ones that don\u2019t.';

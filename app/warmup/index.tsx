@@ -61,12 +61,16 @@ export default function WarmupScreen() {
           intro={
             <View style={styles.intro}>
               <Text style={styles.brand}>A 60-second warm-up</Text>
+              {/* What the app is for, before question 1, in plain words: "a
+                  geography quiz, not the family thing I searched for", and
+                  "too many 'know'" (blind playtest 2026-11-13c, finding 1). */}
               <Text style={styles.title} accessibilityRole="header">
-                How well do you know what you know?
+                How sure are you, really?
               </Text>
-              <Text style={styles.body}>
-                Pick an answer, then say how sure you are. Knowing how sure to be
-                is the skill.
+              <Text style={styles.body} testID="warmup-intro-body">
+                This app checks how sure you say you are against what really
+                happens. First, ten quick questions: pick an answer, then say how
+                sure you are. After that, your own predictions.
               </Text>
             </View>
           }

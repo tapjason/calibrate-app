@@ -4,6 +4,29 @@
 
 ## What this PR did
 
+**Step 177 (2026-11-13), round 20's fixes and the calls after it** (roadmap D61, BUILT_LOG row 177; owner: "go with your educated, informed, smart decisions on anything relying on me unless it is fundamentally breaking"). Branch `builder/step-177-round20`, from `802838e`. JS only: a reload.
+- **Fixes (no decision):** findings 16–21, 23, 24 of `playtest-2026-11-13c.md`.
+- **Decided and built (D61, the agent's calls, open to overturn):**
+  - the Warm-up's intro and order, and its no-lean line in plain words;
+  - the Warm-up card kept in Share, and a friend's squares explained;
+  - "Hide the words on Today and History" in You (off by default);
+  - the Brier line's meaning after a tie or a loss;
+  - "+ New category" in Log and Edit;
+  - "N scored" on the recap's chips;
+  - open deletes counted from the eve, and not on the day made.
+- **Kept:** the 20-answer gates; D50 (no rating line after Change answer); D45 (new words on any spelling change); the number as the record.
+- **Not now, needs the owner:**
+  - head-to-head with a friend;
+  - a Face ID lock (a native package);
+  - regional pricing and a Trends preview;
+  - `APP_STORE_PROVIDER_TOKEN`;
+  - Insights' footnotes folded;
+  - a note kept or added after an answer;
+  - Day 0's streak and goal.
+- **Reviews:** check passes (2,171 tests). `code-reviewer` no blockers, should-fix done; `record-auditor` no blockers, wording tightened, the eve delete closed; `policy-auditor` PASS. Fixes not re-reviewed.
+- **Open from the reviews:** a hidden card still shows a category the person named ("Divorce"); `docs/APP_PRIVACY.md` drift from before this step (the Coach's "fixed category enum" evidence, an on-device note for category names and icons); a Warm-up half-done under the old order starts over.
+- **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-13 (step 177…)".
+
 **Step 176 (2026-11-13), the owner's picks after round 19** (roadmap D60, BUILT_LOG row 176; owner: "go with your recommendations for open decisions"). JS only: a reload.
 - **Built:**
   - a badge that falls is said on the answer that moved it, never after Change answer;

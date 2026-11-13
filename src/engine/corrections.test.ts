@@ -99,12 +99,31 @@ describe('which deletions are counted (roadmap D45)', () => {
     expect(deletionCounts(answered({ status: 'skipped' }), now)).toBe(false);
   });
 
-  it('counts an open one from its due day on, not before', () => {
+  // D61 (record audit 2026-11-13): from the eve, as a counted due-date move.
+  it('counts an open one from the day before its due day, not earlier', () => {
     const open = (day: number) =>
-      answered({ status: 'pending', resolved_at: null, due_date: local(day, 12).toISOString() });
-    expect(deletionCounts(open(6), now)).toBe(false);
+      answered({
+        status: 'pending',
+        resolved_at: null,
+        created_at: local(1, 9).toISOString(),
+        due_date: local(day, 12).toISOString(),
+      });
+    expect(deletionCounts(open(7), now)).toBe(false);
+    expect(deletionCounts(open(6), now)).toBe(true);
     expect(deletionCounts(open(5), now)).toBe(true);
     expect(deletionCounts(open(2), now)).toBe(true);
+  });
+
+  it("doesn't count one deleted on the eve the day it was made, or reworded", () => {
+    const fresh = answered({
+      status: 'pending',
+      resolved_at: null,
+      created_at: local(5, 9).toISOString(),
+      due_date: local(6, 12).toISOString(),
+    });
+    expect(deletionCounts(fresh, now)).toBe(false);
+    const reworded = { ...fresh, created_at: local(1, 9).toISOString(), title_edited_at: local(5, 10).toISOString() };
+    expect(deletionCounts(reworded, now)).toBe(false);
   });
 });
 

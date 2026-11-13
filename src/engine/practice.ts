@@ -393,12 +393,22 @@ export function warmupQuestions(
   // untouched, the same ten for everyone, none picked to be tricky (D18).
   const lead = questions.findIndex((q) => EVERYDAY_KINDS.has(q.kind));
   if (everydayFirst && lead > 0) questions.unshift(...questions.splice(lead, 1));
-  return questions.map((q, i) => {
+  const placed = questions.map((q, i) => {
     const want = WARMUP_CORRECT_AT[i % WARMUP_CORRECT_AT.length]!;
     if (q.correctIndex === want) return q;
     const options: [string, string] = [q.options[1], q.options[0]];
     return { ...q, id: `${q.kind}:${options[0]}|${options[1]}`, options, correctIndex: want };
   });
+  if (!everydayFirst) return placed;
+  // Every place and year before the school kinds (atomic numbers, diameters):
+  // atomic numbers at question 2 nearly lost a flower seller whose son set
+  // the app up for her (blind playtest 2026-11-13c, finding 1). Moved after
+  // the answers are placed, so each question's id, which a finished Warm-up
+  // stores, is the one step 173 gave it. Order only, as above.
+  return [
+    ...placed.filter((q) => EVERYDAY_KINDS.has(q.kind)),
+    ...placed.filter((q) => !EVERYDAY_KINDS.has(q.kind)),
+  ];
 }
 
 /** One day's answers in counts. */

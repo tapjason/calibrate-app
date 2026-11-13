@@ -207,7 +207,7 @@ The calibration score alone ignores sharpness: someone who logs only coin-flips 
 rewards being both calibrated and decisive, so it keeps the rating honest. It is
 **secondary and quiet**: computed by the engine (`computeBrier`), never stored in
 `UserStat`, never on Today or a share card, and shown only as one plain line under
-the rating on Insights and one paragraph in How scoring works, and only once the
+the rating on Insights (with one more sentence after a tie or a loss, D61) and one paragraph in How scoring works, and only once the
 rating itself is unlocked (`MIN_N_OVERALL`). It is free.
 
 **Its yardstick is the person's own base rate** (decided 2026-11-01, D35): the line
@@ -216,7 +216,9 @@ came true, would score 0.23." (`computeBrierBaseline`). Since D59 (2026-11-12) t
 who wins only beyond luck (`brierEdge`): a paired bootstrap of Brier minus p(1 − p),
 the give-or-take's seed and middle 80%; when that holds 0, or the gap is under 0.01,
 it reads "…would score about the same, 0.23; with 20 answers a gap this small could
-be luck." It used to say "always saying
+be luck." After a tie or a loss it adds what it measures (D61): "Your score above
+asks whether your numbers match what happened; this one also asks whether they set
+apart the calls that happen from the ones that don't." It used to say "always saying
 50% scores 0.25", which flatters anyone whose calls mostly happen: an analyst beat it
 while showing no skill over saying his own 64% every time.
 
@@ -325,8 +327,9 @@ D18; built 2026-10-08):
   78% on average. 6 of 10 were right." under "On these ten, you were overconfident".
   A lean is named only outside the central 80% of what luck gives at ten answers
   (`WARMUP_LEAN_MASS`); otherwise "On these ten, no clear lean", with what did happen
-  in plain counts (D36: "You expected about 8 right and got 9. On ten answers luck
-  often moves it that far, so it says nothing either way yet."). The result also
+  in plain counts (D36, worded by D61: "Your numbers expected about 8 right, and you
+  got 9. On ten answers luck often moves it that far, so it can't tell yet whether you
+  run too sure, too cautious or about right."). The result also
   carries "It isn't about being right. A 60% call that doesn't happen isn't a
   mistake: about 4 in 10 of them shouldn't." A bare ±5 rule (the
   rest of the app's until D35 made this one rule everywhere) called a lean on 47–73% of perfectly calibrated people
@@ -334,7 +337,10 @@ D18; built 2026-10-08):
   Since D59 (2026-11-12) the expected-and-got line sits straight under the verdict,
   before the bridge and the buttons; the ten open on a place or a year (order only,
   the draw unchanged); and a US-region phone sees feet and miles beside the metric
-  units in the answer key.
+  units in the answer key. Since D61 (2026-11-13) the first screen says what the app
+  is for ("How sure are you, really?"), every place and year comes before the school
+  kinds, and the no-lean line reads "Your numbers expected about 7 right, and you got
+  6… so it can't tell yet whether you run too sure, too cautious or about right".
 - A bridge to the person's own plans (the planning-fallacy line) sits above the
   button, "Make a real prediction" (the bridge ends "Make your first one about
   tomorrow.").
@@ -383,6 +389,9 @@ never a lean. Linking past experience to the
 prediction is the one prompt with strong evidence against optimism about one's own
 plans (`docs/design/research/debiasing-2026-10.md` §1); premortems and "list reasons
 you're wrong" are recorded there as not worth building.
+
+**"+ New category"** (D61) on Log's and Edit's category chips adds one in place and
+chooses it, through the same rules as You → Categories.
 
 **"Save and log another"** (D59, 2026-11-12) saves and keeps the sheet open, the form
 started over under "Saved, due tomorrow."; it appears once there's something to save.
@@ -439,7 +448,7 @@ were "Can't tell" beside the rating, which leaves them out.
   phone that made the edit.
 - **Deleted calls are counted.** Tombstones are kept after the push, marked
   `counted` when the deletion hid something: a scored Yes or No (inside its
-  24-hour window), or an open prediction deleted on or after its due day
+  24-hour window), or an open prediction deleted from the day before its due day (D61; on or after its due day until then, and not on the day it was made)
   (`deletionCounts`). Insights says how many, and that only this phone keeps the
   count. The delete confirmation says so first.
 - **Late due-date moves are counted** (D59, 2026-11-12). Moving an open
@@ -528,6 +537,10 @@ See the authoritative section above.
   change raised day-14 retention 3.3% and new users on a streak 19%
   (`docs/design/research/retention-2026-10.md` §2.1). Practice doesn't count
   toward either.
+- **The words can be hidden** (D61, 2026-11-13): "Hide the words on Today and
+  History" in You, off by default. On, a card shows "Words hidden. Open it to see
+  them.", its category, number and date, and no note; opening it shows the words. For a
+  phone someone else picks up (reminders have their own switch, D60).
 - **The streak can be hidden** (D59, 2026-11-12): a switch in You, "Streak and daily
   goal", on by default. Off hides the streak row and its goal, the checkpoints, the
   streak on the recap and Insights and in the welcome back; the streak is still
@@ -560,6 +573,8 @@ See the authoritative section above.
   predictions"), and a card with categories left off says so ("2 categories not
   shown"), in the image and the text share alike. The recaps leave the same
   categories off and say so too (2026-11-04).
+- Once there's a category card, Share keeps the Warm-up card one tap away ("Show my
+  warm-up card"), with a friend's squares explained under it (D61).
 - Exports a PNG the OS share sheet accepts.
 - A text share ends on the App Store link with a campaign token (`ct=share-card-text`)
   once `APP_STORE_ID` is set (decided 2026-10-08, `GROWTH_AND_MONETIZATION.md` §0

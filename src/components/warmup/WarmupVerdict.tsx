@@ -39,7 +39,7 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       <Text style={styles.eyebrow}>Your warm-up</Text>
       <Text style={styles.title}>{verdict.title}</Text>
       <Text style={styles.detail}>{verdict.detail}</Text>
-      {/* What the verdict means in counts ("You expected about 7 right and got
+      {/* What the verdict means in counts ("Your numbers expected about 7 right, and you got
           7"), straight under it: below the chart it sat three screens down at
           large text, and a screen reader heard both buttons first (blind
           playtest 2026-11-12f, finding 2; step 173). */}

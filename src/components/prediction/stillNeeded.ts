@@ -8,7 +8,10 @@ export function stillNeeded(has: {
   title: boolean;
   category?: boolean;
   confidence?: boolean;
+  /** A new category's name typed and not added yet (D61). */
+  categoryPending?: boolean;
 }): string | null {
+  if (has.categoryPending) return 'To save, add the new category or cancel it.';
   const parts = [
     has.title ? null : 'the prediction',
     has.category === false ? 'a category' : null,

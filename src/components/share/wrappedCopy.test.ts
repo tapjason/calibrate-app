@@ -185,7 +185,7 @@ describe('wrappedStory verdict', () => {
     const { buckets } = computeCalibrationPoints([...calls(66, 21, 12), ...calls(88, 20, 18)]);
     expect(buckets.every((b) => b.direction === 'calibrated')).toBe(true);
     expect(wrappedStory({ ...summary(buckets), mean_confidence: 76.8 }).verdict).toBe(
-      'This year, no clear lean — 77% confident on average, and 73% happened. Some ranges sit further off, but on 41 answers luck often moves them that far.',
+      'This year, no clear lean — 77% confident on average, and 73% happened. One range sits further off, but not by enough to call a lean.',
     );
   });
 

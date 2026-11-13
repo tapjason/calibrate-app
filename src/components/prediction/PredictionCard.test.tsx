@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react-native';
 
 import { localDate } from '@/components/ui/dates';
+import { useSettingsStore } from '@/store/settingsStore';
 import type { Prediction } from '@/types';
 
-import { PredictionCard, rowPosition } from './PredictionCard';
+import { HIDDEN_TITLE, PredictionCard, rowPosition } from './PredictionCard';
 
 const prediction: Prediction = {
   id: 'p1',
@@ -171,5 +172,28 @@ describe('PredictionCard — as a row in a group', () => {
     // Hidden from screen readers, which hear it in the row's own label.
     expect(screen.getByText('70%', { includeHiddenElements: true })).toBeTruthy();
     expect(screen.getByTestId('confidence-scale-p1', { includeHiddenElements: true })).toBeTruthy();
+  });
+});
+
+// D61 (blind playtest 2026-11-13c, finding 7): on a phone someone else picks
+// up, the words wait for a tap; the category and the number stay.
+describe('PredictionCard with the words hidden', () => {
+  afterEach(() => useSettingsStore.setState({ hideTitles: false }));
+
+  it('shows neither the words nor the note, and says so', () => {
+    useSettingsStore.setState({ hideTitles: true });
+    const noted = { ...prediction, reflection: 'Blood pressure was fine' };
+    render(<PredictionCard prediction={noted} onPress={jest.fn()} />);
+    expect(screen.getByTestId('prediction-card-title')).toHaveTextContent(HIDDEN_TITLE);
+    expect(screen.queryByText(/I ship the report/)).toBeNull();
+    expect(screen.queryByTestId('prediction-card-reflection')).toBeNull();
+    const label = screen.getByRole('button').props.accessibilityLabel as string;
+    expect(label.startsWith(`${HIDDEN_TITLE} Work, 70% confident`)).toBe(true);
+    expect(label).not.toMatch(/report|Blood/);
+  });
+
+  it('shows the words when it is off', () => {
+    render(<PredictionCard prediction={prediction} />);
+    expect(screen.getByTestId('prediction-card-title')).toHaveTextContent('I ship the report by Friday');
   });
 });

@@ -58,6 +58,14 @@ export interface StoredSettings {
    */
   reminderWords: boolean;
   /**
+   * Whether Today and History show each prediction's words (D61). Off by
+   * default; on, a card shows its category and number until it's opened, for
+   * a phone someone else picks up: a health prediction sat word for word at
+   * the top of Today, and two testers took to writing in code (blind
+   * playtest 2026-11-13c, finding 7).
+   */
+  hideTitles: boolean;
+  /**
    * Chosen share-card theme id (src/constants/cardThemes.ts). Cosmetic only —
    * an id the user is not entitled to resolves back to the free theme at
    * render time, so a lapsed subscriber keeps every card, in the free look.
@@ -158,6 +166,7 @@ interface SettingsState extends StoredSettings {
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
   setStreakShown: (shown: boolean) => Promise<void>;
   setReminderWords: (shown: boolean) => Promise<void>;
+  setHideTitles: (hidden: boolean) => Promise<void>;
   setCardThemeId: (id: string) => Promise<void>;
   setCardFormat: (format: CardShape) => Promise<void>;
   setCardHiddenCategories: (hidden: readonly Category[]) => Promise<void>;
@@ -201,6 +210,7 @@ const DEFAULTS: StoredSettings = {
   analyticsEnabled: true,
   streakShown: true,
   reminderWords: false,
+  hideTitles: false,
   cardThemeId: DEFAULT_THEME.id,
   cardFormat: 'post',
   cardHiddenCategories: [],
@@ -284,6 +294,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             typeof stored.reminderWords === 'boolean'
               ? stored.reminderWords
               : DEFAULTS.reminderWords,
+          hideTitles:
+            typeof stored.hideTitles === 'boolean' ? stored.hideTitles : DEFAULTS.hideTitles,
           cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
           cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
           cardHiddenCategories:
@@ -360,6 +372,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setReminderWords: async (shown) => {
     set({ reminderWords: shown });
+    await persist(snapshot(get()));
+  },
+
+  setHideTitles: async (hidden) => {
+    set({ hideTitles: hidden });
     await persist(snapshot(get()));
   },
 
@@ -489,6 +506,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     analyticsEnabled: state.analyticsEnabled,
     streakShown: state.streakShown,
     reminderWords: state.reminderWords,
+    hideTitles: state.hideTitles,
     cardThemeId: state.cardThemeId,
     cardFormat: state.cardFormat,
     cardHiddenCategories: state.cardHiddenCategories,

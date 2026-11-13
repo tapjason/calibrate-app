@@ -38,8 +38,7 @@ import {
   type CoverageNudgeDecision,
 } from '@/engine/coverageNudge';
 import { detectMilestone, detectTierDrop } from '@/engine/milestones';
-import { localDayNumber } from '@/engine/localTime';
-import { isSameDayAnswer, sameDayCount, scoredFrom, scoredOnly } from '@/engine/sameDay';
+import { isSameDayAnswer, readyScoredCount, sameDayCount, scoredOnly } from '@/engine/sameDay';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import { categoriesIn } from '@/engine/categories';
@@ -517,17 +516,7 @@ export function unlockEstimateFor(
   // (blind playtest 2026-11-13c, finding 19). Ready means due today or
   // earlier, and scored if answered now (not logged or reworded today, D41).
   const toGo = MIN_N_OVERALL - scored.length;
-  if (toGo > 0) {
-    const today = localDayNumber(now);
-    const readyScored = pending.filter((p) => {
-      if (p.status !== 'pending') return false;
-      const due = new Date(p.due_date);
-      const made = new Date(scoredFrom(p));
-      if (Number.isNaN(due.getTime()) || Number.isNaN(made.getTime())) return false;
-      return localDayNumber(due) <= today && localDayNumber(made) !== today;
-    }).length;
-    if (readyScored >= toGo) return null;
-  }
+  if (toGo > 0 && readyScoredCount(pending, now) >= toGo) return null;
   return unlockEstimate(scored, MIN_N_OVERALL, now, first);
 }
 

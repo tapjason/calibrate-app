@@ -10,7 +10,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { EDIT_NUMBER_NOTE, PredictionDetails } from './PredictionDetails';
+import { EDIT_NUMBER_FIX, EDIT_NUMBER_NOTE, PredictionDetails } from './PredictionDetails';
 
 const USER = 'local-user-v1';
 
@@ -73,9 +73,10 @@ describe('PredictionDetails (roadmap D25)', () => {
     fireEvent.press(screen.getByTestId('details-edit-button'));
 
     expect(screen.queryByTestId('confidence-readout')).toBeNull();
-    // It says what to do instead (blind playtest 2026-11-13c, finding 24).
+    // Made days ago: the number is the record, and nothing points at
+    // swapping it (record audit 2026-11-13).
     expect(screen.getByText(EDIT_NUMBER_NOTE)).toBeTruthy();
-    expect(EDIT_NUMBER_NOTE).toMatch(/delete this one and log it again/);
+    expect(screen.queryByText(new RegExp(EDIT_NUMBER_FIX.slice(0, 20)))).toBeNull();
     fireEvent.changeText(screen.getByTestId('details-title-field'), 'Ship the beta to ten people');
     fireEvent.press(screen.getByTestId('category-personal'));
     fireEvent.press(screen.getByTestId('details-save'));
@@ -84,6 +85,16 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(screen.getByTestId('details-title')).toHaveTextContent('Ship the beta to ten people');
     const saved = await getPrediction('p1');
     expect(saved).toMatchObject({ category: 'personal', confidence: 70 });
+  });
+
+  // Blind playtest 2026-11-13c, finding 24: on the day it was made, Edit
+  // says how to use another number.
+  it('says how to use another number on the day it was made', async () => {
+    await insertPrediction(open({ created_at: new Date().toISOString() }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.getByText(`${EDIT_NUMBER_NOTE} ${EDIT_NUMBER_FIX}`)).toBeTruthy();
   });
 
   // Playtest 2026-11-08b, finding 20: the sheet's draft guard needs to know.

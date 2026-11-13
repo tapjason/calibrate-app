@@ -36,10 +36,10 @@ describe('warmupVerdict', () => {
     expect(v?.title).toBe('On these ten, no clear lean');
     // Roadmap D36: what did happen, plainly, then why it's no verdict.
     expect(v?.advice).toBe(
-      'You expected about 7 right and got 6. On ten answers luck often moves it that far, so it says nothing either way yet. Your own predictions are the real test.',
+      "Your numbers expected about 7 right, and you got 6. On ten answers luck often moves it that far, so it can't tell yet whether you run too sure, too cautious or about right. Your own predictions are the real test.",
     );
     expect(warmupVerdict(scoreWarmup(run(70, 10, 7)))?.advice).toBe(
-      "You expected about 7 right and got 7: just what you said. Ten answers can't prove that, so your own predictions are the real test.",
+      "Your numbers expected about 7 right, and you got 7: just what they said. Ten answers can't prove that, so your own predictions are the real test.",
     );
     expect(warmupVerdict(scoreWarmup(TWO))?.title).toBe('On these 2, no clear lean');
   });

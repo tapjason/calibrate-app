@@ -415,7 +415,7 @@ describe('CalibrationView deleted predictions', () => {
 
   it('says how many, and that only this phone keeps the count, before the rating unlocks too', () => {
     expect(view(2, 161).getByTestId('stats-deleted')).toHaveTextContent(
-      '2 predictions were deleted after they were answered or due. Only this phone keeps this count.',
+      '2 predictions were deleted after they were answered, or within a day of their due day. Only this phone keeps this count.',
     );
     expect(view(1, 4).getByTestId('stats-deleted')).toBeTruthy();
     expect(view(0, 161).queryByTestId('stats-deleted')).toBeNull();
@@ -423,7 +423,7 @@ describe('CalibrationView deleted predictions', () => {
 
   it('words one', () => {
     expect(deletedLine(1)).toBe(
-      '1 prediction was deleted after it was answered or due. Only this phone keeps this count.',
+      '1 prediction was deleted after it was answered, or within a day of its due day. Only this phone keeps this count.',
     );
   });
 });

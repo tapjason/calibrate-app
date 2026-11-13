@@ -109,3 +109,20 @@ export function clampDueDate(dueIso: string, createdAt: Date, now: Date): string
     12,
   ).toISOString();
 }
+
+/**
+ * Open predictions that are due today or earlier and would be scored if
+ * answered now: not logged or reworded today (D41, D45). Today's unlock
+ * estimate is dropped when these alone would unlock the rating (blind
+ * playtest 2026-11-13c, finding 19). Local days, as every rule here.
+ */
+export function readyScoredCount(pending: readonly Prediction[], now: Date): number {
+  const today = localDayNumber(now);
+  return pending.filter((p) => {
+    if (p.status !== 'pending') return false;
+    const due = new Date(p.due_date);
+    const made = new Date(scoredFrom(p));
+    if (Number.isNaN(due.getTime()) || Number.isNaN(made.getTime())) return false;
+    return localDayNumber(due) <= today && localDayNumber(made) !== today;
+  }).length;
+}

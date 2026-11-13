@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { useCategoryStore } from '@/store/categoryStore';
 import type { Category, CategoryDef } from '@/types';
@@ -57,5 +57,103 @@ describe('CategoryChips with many categories', () => {
     render(<CategoryChips value={null} onChange={jest.fn()} />);
     expect(screen.queryByTestId('category-more')).toBeNull();
     expect(screen.queryByTestId('category-fewer')).toBeNull();
+  });
+});
+
+// Blind playtest 2026-11-13c, finding 10: football, family and the flower
+// market went under Work or Personal; adding one meant leaving Log.
+describe('CategoryChips — a new category from here', () => {
+  it('adds one and chooses it', async () => {
+    const add = jest.fn(async () => 'c-new' as Category);
+    useCategoryStore.setState({ add });
+    const onChange = jest.fn();
+    render(<CategoryChips value={null} onChange={onChange} canAdd />);
+
+    fireEvent.press(screen.getByTestId('category-add'));
+    expect(screen.queryByTestId('category-add')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('category-add-field'), 'Football ⚽');
+    fireEvent.press(screen.getByTestId('category-add-save'));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('c-new'));
+    expect(add).toHaveBeenCalledWith('Football ⚽');
+    expect(screen.queryByTestId('category-add-box')).toBeNull();
+  });
+
+  it("says what's wrong with a name and chooses nothing", async () => {
+    useCategoryStore.setState({
+      add: jest.fn(async () => {
+        throw new Error('Another category already has that name.');
+      }),
+    });
+    const onChange = jest.fn();
+    render(<CategoryChips value={null} onChange={onChange} canAdd />);
+
+    fireEvent.press(screen.getByTestId('category-add'));
+    fireEvent.changeText(screen.getByTestId('category-add-field'), 'Work');
+    fireEvent.press(screen.getByTestId('category-add-save'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('category-add-problem')).toHaveTextContent(
+        'Another category already has that name.',
+      ),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('category-add-cancel'));
+    expect(screen.queryByTestId('category-add-box')).toBeNull();
+  });
+
+  it('is offered only where asked for', () => {
+    render(<CategoryChips value={null} onChange={jest.fn()} />);
+    expect(screen.queryByTestId('category-add')).toBeNull();
+  });
+});
+
+describe('CategoryChips — a name hidden from these choices', () => {
+  // Code review, step 177: "Another category already has that name" for one
+  // the person can't see here was a dead end.
+  it('shows the hidden one again and chooses it', async () => {
+    const setHidden = jest.fn(async () => {});
+    const add = jest.fn(async () => 'c-new' as Category);
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'c-foot' as Category,
+          user_id: 'u1',
+          name: 'Football',
+          icon: null,
+          hidden: true,
+          position: 1,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+      setHidden,
+      add,
+    });
+    const onChange = jest.fn();
+    render(<CategoryChips value={null} onChange={onChange} canAdd />);
+    fireEvent.press(screen.getByTestId('category-add'));
+    fireEvent.changeText(screen.getByTestId('category-add-field'), 'football');
+    fireEvent.press(screen.getByTestId('category-add-save'));
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('c-foot'));
+    expect(setHidden).toHaveBeenCalledWith('c-foot', false);
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it('adds once on a double tap', async () => {
+    let finish: (id: Category) => void = () => {};
+    const add = jest.fn(() => new Promise<Category>((resolve) => (finish = resolve)));
+    useCategoryStore.setState({ defs: [], add });
+    render(<CategoryChips value={null} onChange={jest.fn()} canAdd />);
+    fireEvent.press(screen.getByTestId('category-add'));
+    fireEvent.changeText(screen.getByTestId('category-add-field'), 'Family');
+    fireEvent.press(screen.getByTestId('category-add-save'));
+    fireEvent.press(screen.getByTestId('category-add-save'));
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    finish('c-fam' as Category);
+    // Slow under the full suite's load, as the drop-line test (step 176).
+    await waitFor(() => expect(screen.queryByTestId('category-add-box')).toBeNull(), {
+      timeout: 5000,
+    });
+    expect(add).toHaveBeenCalledTimes(1);
   });
 });

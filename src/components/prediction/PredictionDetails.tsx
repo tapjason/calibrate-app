@@ -62,12 +62,14 @@ const REWORD_SPOKEN =
   'Changing the words makes this a new prediction from today: an answer today isn’t scored.';
 
 /**
- * Edit's line under the number. The number can't change, and it says what to
- * do instead: a tester who set 90 for 70 found only delete-and-retype by
- * guessing (blind playtest 2026-11-13c, finding 24). Exported for tests.
+ * Edit's line under the number. The number can't change. On the day it was
+ * made, it also says what to do instead: a tester who set 90 for 70 found
+ * only delete-and-retype by guessing (blind playtest 2026-11-13c, finding
+ * 24). Only then, so it never points at swapping a number once the outcome
+ * may be known (record audit 2026-11-13). Exported for tests.
  */
-export const EDIT_NUMBER_NOTE =
-  "The number you said stays as it is: it's the record. To use another number, delete this one and log it again.";
+export const EDIT_NUMBER_NOTE = "The number you said stays as it is: it's the record.";
+export const EDIT_NUMBER_FIX = 'Made it today? To use another number, delete this one and log it again.';
 
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23):
@@ -92,6 +94,8 @@ export function PredictionDetails({
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode>('view');
   const [busy, setBusy] = useState(false);
+  // A new category typed and not added holds Save changes (D61).
+  const [categoryPending, setCategoryPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const remindersOn = useSettingsStore((s) => s.notificationsEnabled && s.remindersEnabled);
   // The person's own time since D38, not always "that evening".
@@ -229,8 +233,9 @@ export function PredictionDetails({
       ? `It's due ${dueOn}. You changed its words today, so an answer today isn’t scored. From tomorrow it is.`
       : `It's due ${dueOn}. You logged it today, so an answer today isn’t scored. From tomorrow it is. For something you do every day, log the next one the evening before.`;
   // Deleting a due one hides an outcome that may be known, so it is counted.
+  // Counted from the eve, as a due-date move is (D61).
   const deleteText = deleteIsCounted(prediction)
-    ? 'Delete this prediction? It’s due, so Insights will count it as deleted. This can’t be undone.'
+    ? `Delete this prediction? It’s due${daysLeft === 1 ? ' tomorrow' : ''}, so Insights will count it as deleted. This can’t be undone.`
     : "Delete this prediction? It won't count anywhere, and it can't be undone.";
   const answerEarly = () => {
     setMode('early');
@@ -282,11 +287,15 @@ export function PredictionDetails({
   );
 
   if (mode === 'edit') {
-    const canSave = title.trim().length > 0 && category !== null && !busy;
+    const canSave = title.trim().length > 0 && category !== null && !busy && !categoryPending;
     // What Save changes is waiting for, as on Log (blind playtest 2026-11-01).
     const needs = busy
       ? null
-      : stillNeeded({ title: title.trim().length > 0, category: category !== null });
+      : stillNeeded({
+          title: title.trim().length > 0,
+          category: category !== null,
+          categoryPending,
+        });
     // New words are a new prediction from today (D45), said before Save.
     const changingWords = title.trim().length > 0 && rewords(prediction.title, title);
     // A due date moved later on its eve or after is counted (step 173), said
@@ -300,6 +309,7 @@ export function PredictionDetails({
         </Text>
         <Text style={styles.note}>
           {EDIT_NUMBER_NOTE}
+          {answerNowIsSameDay(prediction) ? ` ${EDIT_NUMBER_FIX}` : ''}
         </Text>
         <TextField
           label="Prediction"
@@ -317,7 +327,12 @@ export function PredictionDetails({
           </Text>
         )}
         <Text style={styles.label}>Category</Text>
-        <CategoryChips value={category} onChange={setCategory} />
+        <CategoryChips
+          value={category}
+          onChange={setCategory}
+          canAdd
+          onAddPendingChange={setCategoryPending}
+        />
         <Text style={[styles.label, styles.spaced]}>Due date</Text>
         <DueDateChips
           presets={presets}

@@ -1,11 +1,14 @@
 import type { Prediction } from '@/types';
 
+import { __setTimeZoneForTests } from './localTime';
+
 import {
   clampDueDate,
   earliestDueDay,
   isSameDayAnswer,
   latestDueDay,
   MAX_DUE_YEARS,
+  readyScoredCount,
   sameDayCount,
   scoredFrom,
   scoredOnly,
@@ -127,5 +130,30 @@ describe('a reworded prediction (roadmap D45)', () => {
     expect(isSameDayAnswer(prediction({ title_edited_at: at(4, 8) }))).toBe(true);
     // Reworded the day before the answer: scored, like a prediction logged then.
     expect(isSameDayAnswer(prediction({ title_edited_at: at(3, 20) }))).toBe(false);
+  });
+});
+
+// Blind playtest 2026-11-13c, finding 19 (moved here from the store, code
+// review step 177): what's ready now and scored if answered now, by local day.
+describe('readyScoredCount', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  it('counts by the local day, across the end of daylight time', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    // Sun Nov 1, 20:30 PST, the evening daylight time ended; Nov 2 in UTC.
+    const now = new Date('2026-11-02T04:30:00.000Z');
+    const open = (created: string, due: string) =>
+      prediction({ status: 'pending', resolved_at: null, created_at: created, due_date: due });
+    const ready = open('2026-10-30T16:00:00.000Z', '2026-11-01T20:00:00.000Z');
+    // Logged this morning, Los Angeles time: an answer now isn't scored.
+    const loggedToday = open('2026-11-01T17:00:00.000Z', '2026-11-01T20:00:00.000Z');
+    // Due Mon Nov 2 at 04:00 PST: tomorrow there, today in UTC.
+    const tomorrow = open('2026-10-30T16:00:00.000Z', '2026-11-02T12:00:00.000Z');
+    expect(readyScoredCount([ready, loggedToday, tomorrow], now)).toBe(1);
+    // Reworded today counts as made today (D45).
+    const reworded = { ...ready, title_edited_at: '2026-11-01T18:00:00.000Z' };
+    expect(readyScoredCount([reworded], now)).toBe(0);
+    // Answered or skipped: not open, not counted.
+    expect(readyScoredCount([{ ...ready, status: 'skipped' }], now)).toBe(0);
   });
 });

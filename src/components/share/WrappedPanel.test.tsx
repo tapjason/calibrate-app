@@ -155,7 +155,10 @@ describe('WrappedPanel', () => {
     seed(run(4, 3));
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText('4 scored')).toBeTruthy();
+    expect(screen.getByTestId('wrapped-stat')).toHaveTextContent(/4 scored/);
+    // The category chip says what its number is, too (blind playtest
+    // 2026-11-13c, finding 12): "Social 20" read as a score.
+    expect(screen.getAllByText('4 scored')).toHaveLength(2);
     // Four at 80% expect 3.2; three happened (roadmap step 48).
     expect(screen.getByTestId('wrapped-expected')).toHaveTextContent(
       '3 happened. You expected about\u00A03.',

@@ -17,6 +17,13 @@ describe('stillNeeded', () => {
     expect(stillNeeded({ title: true, category: true, confidence: true })).toBeNull();
   });
 
+  // D61 (code review, step 177): a new category typed and not added.
+  it('asks to add or cancel a new category first', () => {
+    expect(stillNeeded({ title: true, category: true, confidence: true, categoryPending: true })).toBe(
+      'To save, add the new category or cancel it.',
+    );
+  });
+
   // Edit has a title and a category, and no confidence to set.
   it('asks only about the fields a form has', () => {
     expect(stillNeeded({ title: false, category: true })).toBe('To save, add the prediction.');

@@ -34,6 +34,10 @@ interface TextFieldProps {
   keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
   autoComplete?: TextInputProps['autoComplete'];
+  /** Focus on mount: a field that appears on a tap, where the tap was. */
+  autoFocus?: boolean;
+  /** Return submits (one-line fields only): its key reads Done. */
+  onSubmit?: () => void;
   /**
    * A line under the input, inside the field's spacing so it reads as the
    * field's own (Log's past outcomes, roadmap D32).
@@ -55,6 +59,8 @@ export function TextField({
   keyboardType,
   autoCapitalize,
   autoComplete,
+  autoFocus,
+  onSubmit,
   children,
 }: TextFieldProps) {
   const input = useRef<TextInput>(null);
@@ -97,8 +103,9 @@ export function TextField({
         // build by blurOnSubmit, which keeps the break only with a handler.
         submitBehavior={grows ? 'blurAndSubmit' : undefined}
         blurOnSubmit={grows ? true : undefined}
-        onSubmitEditing={grows ? () => {} : undefined}
-        returnKeyType={grows ? 'done' : undefined}
+        onSubmitEditing={grows ? () => {} : onSubmit}
+        returnKeyType={grows || onSubmit ? 'done' : undefined}
+        autoFocus={autoFocus}
         scrollEnabled={grows ? false : undefined}
         onLayout={sized ? fit : undefined}
         // react-native-web's textarea starts at two rows; one, like the

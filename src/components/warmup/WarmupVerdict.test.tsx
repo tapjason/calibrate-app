@@ -66,7 +66,7 @@ describe('WarmupVerdictScreen', () => {
     const expected = ids.indexOf('warmup-expected');
     expect(expected).toBeGreaterThan(-1);
     expect(expected).toBeLessThan(ids.indexOf('warmup-continue'));
-    expect(screen.getByTestId('warmup-expected')).toHaveTextContent(/You expected about/);
+    expect(screen.getByTestId('warmup-expected')).toHaveTextContent(/Your numbers expected about/);
   });
 
   // Roadmap D36: the line that answers 'so was I good?' is on the result.

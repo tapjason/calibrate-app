@@ -91,6 +91,8 @@ export function SettingsView({
   const setAnalyticsEnabled = useSettingsStore((s) => s.setAnalyticsEnabled);
   const streakShown = useSettingsStore((s) => s.streakShown);
   const setStreakShown = useSettingsStore((s) => s.setStreakShown);
+  const hideTitles = useSettingsStore((s) => s.hideTitles);
+  const setHideTitles = useSettingsStore((s) => s.setHideTitles);
 
   return (
     <View style={styles.wrap}>
@@ -137,6 +139,16 @@ export function SettingsView({
           value={streakShown}
           onValueChange={(v) => void setStreakShown(v)}
           testID="toggle-streak"
+        />
+        {/* D61: a phone someone else picks up showed a health prediction word
+            for word at the top of Today (blind playtest 2026-11-13c,
+            finding 7). Reminders are covered below; this covers the screens. */}
+        <ToggleRow
+          label="Hide the words on Today and History"
+          description="Each prediction shows its category, number and date, not its words or note, until you open it: for a phone someone else picks up. Reminders have their own switch under Notifications."
+          value={hideTitles}
+          onValueChange={(v) => void setHideTitles(v)}
+          testID="toggle-hide-titles"
         />
       </Group>
 

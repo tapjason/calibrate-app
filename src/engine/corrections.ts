@@ -7,7 +7,7 @@
 import type { Prediction } from '@/types';
 
 import { localDayNumber, localMidnight, localParts } from './localTime';
-import { isSameDayAnswer } from './sameDay';
+import { isSameDayAnswer, scoredFrom } from './sameDay';
 
 /**
  * For this long after a Yes or No, its details can change the answer, move it
@@ -78,16 +78,25 @@ export function canAnswerSkip(p: Prediction, now: Date): boolean {
 /**
  * Whether deleting this prediction now is counted on Insights (roadmap D45):
  * a scored Yes or No (which can only be deleted inside the correction
- * window), or an open one deleted on or after its due day, when the outcome
- * may be known. Not a skip, a same-day answer or an open one not yet due:
- * none of those was scored, so deleting them hides nothing.
+ * window), or an open one deleted from the day before its due day, when the
+ * outcome may be known: the same window as a counted due-date move (D61,
+ * record audit 2026-11-13; it was from the due day, so a likely miss deleted
+ * on the eve went uncounted while moving its date counted). Not on the day
+ * it was made, when nothing has happened since it was logged: a slip fixed
+ * by deleting and logging again isn't a hidden outcome. Not a skip, a
+ * same-day answer or an open one further off: none of those was scored.
  */
 export function deletionCounts(p: Prediction, now: Date): boolean {
   if (p.status === 'resolved_yes' || p.status === 'resolved_no') return !isSameDayAnswer(p);
   if (p.status !== 'pending') return false;
   const due = new Date(p.due_date);
   if (Number.isNaN(due.getTime())) return false;
-  return localDayNumber(now) >= localDayNumber(due);
+  const today = localDayNumber(now);
+  const dueDay = localDayNumber(due);
+  if (today >= dueDay) return true;
+  if (today !== dueDay - 1) return false;
+  const made = new Date(scoredFrom(p));
+  return Number.isNaN(made.getTime()) || localDayNumber(made) < today;
 }
 
 /**

@@ -103,6 +103,9 @@ export function LogPredictionForm({
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
+  // A new category typed and not added holds Save (D61): Save then filed the
+  // prediction under the chip still chosen and dropped the new name.
+  const [categoryPending, setCategoryPending] = useState(false);
   const [title, setTitle] = useState(again?.title ?? restored?.title ?? '');
   const dirty = title.trim().length > 0;
   useEffect(() => {
@@ -352,16 +355,22 @@ export function LogPredictionForm({
   // roadmap D13 and D29), as iOS's own Add buttons do, instead of answering a
   // tap with an error far below the field.
   const canSave =
-    title.trim().length > 0 && category !== null && confidence !== null && !submitting;
+    title.trim().length > 0 &&
+    category !== null &&
+    confidence !== null &&
+    !submitting &&
+    !categoryPending;
   // What Save is waiting for, once the form is started (blind playtest
   // 2026-11-01): an empty form needs no list, and a started one did.
-  const started = title.trim().length > 0 || category !== null || confidence !== null;
+  const started =
+    title.trim().length > 0 || category !== null || confidence !== null || categoryPending;
   const needs =
     started && !submitting
       ? stillNeeded({
           title: title.trim().length > 0,
           category: category !== null,
           confidence: confidence !== null,
+          categoryPending,
         })
       : null;
 
@@ -545,6 +554,8 @@ export function LogPredictionForm({
               untouched predictions under Work. */}
           <CategoryChips
             value={category}
+            canAdd
+            onAddPendingChange={setCategoryPending}
             onChange={(c) => {
               setCategory(c);
               // After the tap has landed, never as it lands.

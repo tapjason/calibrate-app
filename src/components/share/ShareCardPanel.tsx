@@ -25,11 +25,20 @@ import {
   cardHiddenCategories,
   shareText as cardText,
   showsRanges,
+  SQUARES_KEY,
 } from './cardCopy';
 import { WarmupCard } from './WarmupCard';
 import { warmupCardCopy } from './warmupCardCopy';
 
 const LAST_ON_NOTE = 'One category stays on the card.';
+
+/**
+ * Under the Warm-up card, for someone who came from a friend's card: what
+ * its squares mean, before they have any of their own. A friend's message
+ * was explained only at the bottom of How scoring works (blind playtest
+ * 2026-11-13c, finding 6).
+ */
+export const FRIEND_SQUARES = `A friend's card shared as text shows a row of squares, one per range of how sure, ${SQUARES_KEY.charAt(0).toLowerCase()}${SQUARES_KEY.slice(1)}. Yours come once your rating unlocks and a range has ${MIN_N_BAND} scored answers.`;
 
 export const SQUARES_LATER =
   `Shared as text, your card gets a row of coloured squares once your rating unlocks and a band has ${MIN_N_BAND} scored answers. How scoring works says what they mean.`;
@@ -61,6 +70,10 @@ export function ShareCardPanel({
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // The Warm-up card stays one tap away once the category card takes over:
+  // it was the round's most shared thing, and gone after the first answer
+  // (blind playtest 2026-11-13c, finding 3).
+  const [showWarmup, setShowWarmup] = useState(false);
   // The shape and the categories left off are kept between visits, like the
   // theme: both reset each time Share opened (blind playtest 2026-11-01).
   const format: CardFormat = useSettingsStore((s) => s.cardFormat);
@@ -90,7 +103,10 @@ export function ShareCardPanel({
   const theme = resolveTheme(cardThemeId, isPlus);
   // Before any real prediction resolves, the Warmup verdict is the card
   // (DESIGN_SYSTEM rule 0.10: Share is never empty).
-  const warmup = card ? null : warmupCardCopy(warmupResult);
+  const warmupCopy = warmupCardCopy(warmupResult);
+  const warmup = card && !showWarmup ? null : warmupCopy;
+  // Which card the preview and Share my card are about.
+  const sharingCard = warmup ? null : card;
 
   if (!card && !warmup) {
     return (
@@ -114,7 +130,7 @@ export function ShareCardPanel({
       // pays for itself (GROWTH §7-8). Only a card that actually reached the
       // share sheet counts.
       if (outcome === 'shared') {
-        void track('share_completed', { surface: card ? 'card' : 'warmup' });
+        void track('share_completed', { surface: sharingCard ? 'card' : 'warmup' });
       }
     } finally {
       setSharing(false);
@@ -122,11 +138,11 @@ export function ShareCardPanel({
   };
 
   const onShareText = async () => {
-    if (!card) return;
+    if (!sharingCard) return;
     setMessage(null);
     // The text share can carry the App Store link; the image can't (GROWTH §0).
     const link = appStoreLink(shareCampaign('card', 'text'));
-    const outcome = await shareText(cardText(card, buckets, link));
+    const outcome = await shareText(cardText(sharingCard, buckets, link));
     setMessage(outcome === 'shared' ? null : MESSAGES[outcome]);
     if (outcome === 'shared') void track('share_completed', { surface: 'card' });
   };
@@ -134,15 +150,18 @@ export function ShareCardPanel({
   return (
     <View style={styles.wrap} testID="share-panel">
       {/* Every card on the 360pt canvas, scaled to the screen (steps 53, 57). */}
-      {card ? (
+      {/* Keyed, so switching cards remounts the canvas and it measures again
+          unseen (code review, step 177). */}
+      {sharingCard ? (
         <ScaledCanvas
+          key="identity"
           height={CARD_CANVAS_HEIGHT[format]}
           radius={CARD_RADIUS.identity}
           testID="card-preview"
         >
           <IdentityCard
             ref={cardRef}
-            card={card}
+            card={sharingCard}
             theme={theme}
             buckets={buckets}
             format={format}
@@ -150,7 +169,7 @@ export function ShareCardPanel({
         </ScaledCanvas>
       ) : (
         warmup && (
-          <ScaledCanvas radius={CARD_RADIUS.warmup} testID="card-preview">
+          <ScaledCanvas key="warmup" radius={CARD_RADIUS.warmup} testID="card-preview">
             <WarmupCard ref={cardRef} copy={warmup} theme={theme} />
           </ScaledCanvas>
         )
@@ -165,7 +184,7 @@ export function ShareCardPanel({
         disabled={sharing}
         onPress={onShare}
       />
-      {card && (
+      {sharingCard && (
         <Button
           label="Share as text"
           variant="secondary"
@@ -175,9 +194,31 @@ export function ShareCardPanel({
         />
       )}
 
+      {/* Both cards one tap apart once there's a category card. */}
+      {card && warmupCopy && (
+        <Button
+          label={warmup ? 'Show my category card' : 'Show my warm-up card'}
+          variant="secondary"
+          testID="share-switch-card"
+          disabled={sharing}
+          onPress={() => {
+            setMessage(null);
+            setShowWarmup((on) => !on);
+          }}
+        />
+      )}
+
+      {/* Only before a category card: once there's one, the squares are
+          the person's own (or SQUARES_LATER says when they come). */}
+      {warmup && !card && (
+        <Text style={styles.message} testID="share-friend-squares">
+          {FRIEND_SQUARES}
+        </Text>
+      )}
+
       {/* Before the squares, when they come and where they're explained
           (roadmap D60 (c); blind playtest 2026-11-13b, run 5). */}
-      {card && !showsRanges(card, buckets) && (
+      {sharingCard && !showsRanges(sharingCard, buckets) && (
         <Text style={styles.message} testID="share-squares-later">
           {SQUARES_LATER}
         </Text>
@@ -189,7 +230,7 @@ export function ShareCardPanel({
         </Text>
       )}
 
-      {card && (
+      {sharingCard && (
         <View style={styles.controls}>
           <Text style={styles.controlLabel}>Shape</Text>
           <View style={styles.segmented} accessibilityRole="radiogroup">

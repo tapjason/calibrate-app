@@ -194,12 +194,18 @@ function verdictLine(
   // lets pass (D35) is "no clear lean", as the Warm-up says: "well
   // calibrated — 66% confident, right 81%" read as a contradiction to three
   // blind testers (2026-11-04, runs 2, 3 and 4).
-  // When the averages agree, the gap luck explains is a range's, not theirs:
-  // "70% and 70% happened… luck often moves it that far" pointed at a gap of
-  // nothing (blind playtest 2026-11-13c, finding 18).
+  // When the averages agree, the gap is a range's, not theirs: "70% and 70%
+  // happened… luck often moves it that far" pointed at a gap of nothing
+  // (blind playtest 2026-11-13c, finding 18). Not "luck" there: a range can
+  // miss a lean by the 5-point floor, not by luck (record audit 2026-11-13).
+  const offRanges = summary.buckets.filter(
+    (b) =>
+      b.total_resolved >= MIN_BUCKET_N_FOR_VERDICT &&
+      !closeToSaid(b.stated_confidence_mean, b.actual_rate * 100),
+  ).length;
   const noLean = () =>
     closeToSaid(stated, hitRate)
-      ? `${w}, no clear lean — ${averages} Some ranges sit further off, but on ${summary.resolved} answers luck often moves them that far.`
+      ? `${w}, no clear lean — ${averages} ${offRanges === 1 ? 'One range sits' : 'Some ranges sit'} further off, but not by enough to call a lean.`
       : `${w}, no clear lean — ${averages} On ${summary.resolved} answers, luck often moves it that far.`;
   const calibrated = () =>
     closeToSaid(stated, hitRate) ? `${w}, ${VERDICTS.calibrated} — ${averages}` : noLean();

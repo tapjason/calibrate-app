@@ -114,6 +114,23 @@ describe('LogPredictionForm', () => {
     expect(onSubmitted).toHaveBeenCalledTimes(1);
   });
 
+  // D61 (code review, step 177): Save with a new category's name typed and
+  // not added filed the prediction under the chip still chosen.
+  it('holds Save while a new category is typed and not added', () => {
+    render(<LogPredictionForm />);
+    const save = () => screen.getByTestId('submit-button');
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Raja win the derby');
+    fireEvent.press(screen.getByTestId('category-personal'));
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    expect(save().props.accessibilityState).toMatchObject({ disabled: false });
+    fireEvent.press(screen.getByTestId('category-add'));
+    fireEvent.changeText(screen.getByTestId('category-add-field'), 'Football');
+    expect(save().props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.getByTestId('log-needs')).toHaveTextContent('To save, add the new category or cancel it.');
+    fireEvent.press(screen.getByTestId('category-add-cancel'));
+    expect(save().props.accessibilityState).toMatchObject({ disabled: false });
+  });
+
   // Roadmap step 46: the web build answered an empty Save with "title is
   // required" in red, far below the field. Save now waits for a title, and
   // (D13) for a confidence, which starts empty.

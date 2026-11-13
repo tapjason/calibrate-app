@@ -6,6 +6,7 @@ import { spokenExcerpt } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { answeredSameDay } from '@/store/statsStore';
 
 import { isReadyToResolve } from './dueGroups';
@@ -15,6 +16,13 @@ import { isReadyToResolve } from './dueGroups';
  * with hairlines between them, instead of each being its own card.
  */
 export type RowPosition = 'single' | 'first' | 'middle' | 'last';
+
+/**
+ * A card's words while You → "Hide the words on Today and History" is on
+ * (D61): the category and the number stay, the words wait for a tap
+ * (blind playtest 2026-11-13c, finding 7). Exported for tests.
+ */
+export const HIDDEN_TITLE = 'Words hidden. Open it to see them.';
 
 /** Above this text scale a title may take more lines (as ConfidenceControl's steppers wrap). */
 const LARGE_TEXT_SCALE = 1.15;
@@ -99,8 +107,13 @@ export function PredictionCard({
         : null;
   // Resolve asks "What surprised you?"; History is where the answer is read
   // back (roadmap step 31). Only on a resolved row, and only if written.
+  const hideTitles = useSettingsStore((s) => s.hideTitles);
+  const title = hideTitles ? HIDDEN_TITLE : prediction.title;
+  // A note is the person's words too.
   const reflection =
-    prediction.status !== 'pending' ? prediction.reflection?.trim() || null : null;
+    prediction.status !== 'pending' && !hideTitles
+      ? prediction.reflection?.trim() || null
+      : null;
   // "Open" is the default state and the list's group header already says
   // when it's due; "Ready to answer" is dropped under a header saying so.
   const showStatus = status !== 'Open' && (showReady || status !== 'Ready to answer');
@@ -113,7 +126,7 @@ export function PredictionCard({
       accessibilityRole={onPress ? 'button' : undefined}
       // One sentence instead of fragments read in layout order.
       accessibilityLabel={
-        `${prediction.title}. ${categoryTitle(prediction.category)}, ${prediction.confidence}% confident, ` +
+        `${hideTitles ? HIDDEN_TITLE : `${prediction.title}.`} ${categoryTitle(prediction.category)}, ${prediction.confidence}% confident, ` +
         `${when}. ${status}.` +
         // The start of the note, not all of it: a long one made the row's
         // label about 1,000 characters (playtest 2026-11-08, finding 40). The
@@ -126,8 +139,12 @@ export function PredictionCard({
         {/* Three lines, more at a larger text size, where the same title
             takes more lines: at 135% a 53-character one lost its last word,
             the day it was due (blind playtest 2026-11-04, third round). */}
-        <Text style={styles.title} numberOfLines={fontScale > LARGE_TEXT_SCALE ? 6 : 3}>
-          {prediction.title}
+        <Text
+          style={[styles.title, hideTitles && styles.titleHidden]}
+          numberOfLines={fontScale > LARGE_TEXT_SCALE ? 6 : 3}
+          testID="prediction-card-title"
+        >
+          {title}
         </Text>
         {/* Three lines and an ellipsis in a list: at four a long note still
             made a row about 200 px tall mid-list (blind playtest 2026-11-12,
@@ -197,6 +214,7 @@ const styles = StyleSheet.create({
   // squeezing them to a few letters a line (playtest 2026-11-03, run 3).
   main: { flexBasis: 140, flexGrow: 1, flexShrink: 1, gap: space.xs, minWidth: 0 },
   title: { ...type.body, color: colors.textPrimary },
+  titleHidden: { color: colors.textSecondary },
   // The user's own words, quoted and quieter than the prediction they're about.
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
   metaRow: {

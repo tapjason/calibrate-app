@@ -76,6 +76,16 @@ describe('SettingsView', () => {
     await waitFor(() => expect(useSettingsStore.getState().streakShown).toBe(false));
   });
 
+  // D61 (blind playtest 2026-11-13c, finding 7): off by default, one tap on.
+  it('hides the words on Today and History when asked', async () => {
+    __setPersistenceForTests({ load: async () => null, save: async () => {} });
+    useSettingsStore.setState({ hideTitles: false });
+    render(<SettingsView />);
+    fireEvent.press(screen.getByTestId('toggle-hide-titles-row'));
+    await waitFor(() => expect(useSettingsStore.getState().hideTitles).toBe(true));
+    useSettingsStore.setState({ hideTitles: false });
+  });
+
   it('persists the change through the store setter', async () => {
     const saved: unknown[] = [];
     __setPersistenceForTests({
@@ -101,6 +111,7 @@ describe('SettingsView', () => {
         analyticsEnabled: true,
         streakShown: true,
         reminderWords: false,
+        hideTitles: false,
         cardThemeId: 'midnight',
         cardFormat: 'post',
         cardHiddenCategories: [],

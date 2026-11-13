@@ -891,6 +891,27 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-13 (step 177, D61 and round 20's fixes; a reload is enough):
+
+- [ ] **Hide the words:** You → "Hide the words on Today and History" (off by default). On:
+      every card on Today and History reads "Words hidden. Open it to see them." with its
+      category, number and date, and no note; tapping one shows the words in its details or Resolve.
+      VoiceOver reads the hidden line, never the title. Off again: the words are back.
+- [ ] **A new category from Log:** Log → "+ New category" → type "⚽ Football" → "Add and
+      choose it": the chip appears chosen with ⚽ as its icon and "Football" as its name; the keyboard doesn't cover the
+      field or the buttons; Save still says the date. A name already taken says so and chooses
+      nothing. The same from an open prediction's Edit.
+- [ ] **Warm-up, fresh install:** the first screen reads "How sure are you, really?" and what the
+      app is for; the first questions are places and years, the atomic-number one later. A no-lean
+      result reads "Your numbers expected about … right, and you got …".
+- [ ] **Share keeps the Warm-up card:** with the demo data after a Warm-up, Share → "Show my
+      warm-up card" shows it and shares it as an image; "Show my category card" goes back; under
+      the Warm-up card, a friend's squares are explained.
+- [ ] **Small fixes:** an answer run's "Can't tell" says "Last one recorded: can't tell." on the
+      next card; You's wordless-reminder example is in the phone's date order; Edit says to delete
+      and log again for another number; the chart's "Overconfident" sits over a grey bar, not under
+      it; one answer from unlocking, Today shows no "At your recent pace" line.
+
 Added 2026-11-13 (step 176, D60, the owner's picks after round 19; a reload is enough):
 
 - [ ] **Reminders without the words:** You → Due-day reminders → "Show the words in reminders"

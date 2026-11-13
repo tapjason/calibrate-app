@@ -7,7 +7,7 @@ import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { CategoryStat, UserStat, WarmupResult } from '@/types';
 
-import { ShareCardPanel, SQUARES_LATER } from './ShareCardPanel';
+import { FRIEND_SQUARES, ShareCardPanel, SQUARES_LATER } from './ShareCardPanel';
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -219,6 +219,45 @@ describe('ShareCardPanel — Day 0', () => {
 
     expect(screen.getByTestId('identity-card')).toBeTruthy();
     expect(screen.queryByTestId('warmup-card')).toBeNull();
+  });
+
+  // Blind playtest 2026-11-13c, finding 3: the Warm-up card was the most
+  // shared thing, and gone after the first answer. It stays one tap away.
+  it('keeps the warm-up card one tap away once the category card is there', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    useWarmupStore.setState({ result: WARMUP });
+    render(<ShareCardPanel />);
+
+    fireEvent.press(screen.getByTestId('share-switch-card'));
+    expect(screen.getByTestId('warmup-card')).toBeTruthy();
+    expect(screen.queryByTestId('identity-card')).toBeNull();
+    // The text share is the category card's; it goes while the warm-up shows.
+    expect(screen.queryByTestId('share-text-button')).toBeNull();
+    expect(screen.getByTestId('share-switch-card')).toHaveTextContent('Show my category card');
+    // Their own squares exist or are coming: no "yours come once…" here.
+    expect(screen.queryByTestId('share-friend-squares')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('share-switch-card'));
+    expect(screen.getByTestId('identity-card')).toBeTruthy();
+    expect(screen.queryByTestId('share-friend-squares')).toBeNull();
+  });
+
+  it('offers no switch without a warm-up', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+    expect(screen.queryByTestId('share-switch-card')).toBeNull();
+  });
+
+  // Blind playtest 2026-11-13c, finding 6: a friend's squares, explained
+  // where someone who came from one first looks.
+  it("explains a friend's squares under the warm-up card", () => {
+    seedStats(null);
+    useWarmupStore.setState({ result: WARMUP });
+    render(<ShareCardPanel />);
+    expect(screen.getByTestId('share-friend-squares')).toHaveTextContent(FRIEND_SQUARES);
+    expect(FRIEND_SQUARES).toBe(
+      "A friend's card shared as text shows a row of squares, one per range of how sure, low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers. Yours come once your rating unlocks and a range has 10 scored answers.",
+    );
   });
 
   it('offers the warm-up when there is nothing at all', () => {

@@ -94,7 +94,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: 'Badges',
       paragraphs: [
-        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above Tracker, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. That makes it hard for luck alone to carry a category over a line. A badge follows the record both ways: if later answers take the low end back under a bar, the badge goes back a tier too.',
+        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above Tracker, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. That makes it hard for luck alone to carry a category over a line. A badge follows the record both ways: if the low end falls back under a bar, or the count under a minimum, the badge goes back to the highest one it still clears.',
       ],
     },
     {
@@ -132,7 +132,7 @@ export function scoringSections(): ScoringSection[] {
         '"Can\'t tell / doesn\'t apply" answers, which stay out of the score, the streak and your recaps. If you can tell later, you can answer one until a week after its due day, or until the end of the day after you chose Can\'t tell, if that\'s later; after that it stays Can\'t tell. An answer you give it then can be changed for a day, like any other. And the Warmup and the daily practice, which are practice and kept apart from your real record.',
         "An answer given the same day the prediction was logged. It stays in History and keeps your streak, but it isn't scored: a call made and settled in one day says little, and it made the score easy to pad. So the earliest due date is tomorrow.",
         "Changing a prediction's words makes it a new prediction from that day, with the same number: an answer that day isn't scored, and its due date is tomorrow at the earliest. Otherwise a call could be turned into its opposite once the outcome was known. Fixing case or a full stop doesn't count.",
-        "A deleted prediction leaves the score. If it was already answered, or was due, Insights says how many were, so a miss can't disappear without a trace. Only this phone keeps that count.",
+        "A deleted prediction leaves the score. If it was already answered, or was due that day or the next, Insights says how many were, so a miss can't disappear without a trace. Only this phone keeps that count.",
       ],
     },
   ];
