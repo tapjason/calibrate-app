@@ -991,12 +991,19 @@ describe('LogPredictionForm — the kept draft', () => {
 
 // Step 173 (blind playtest 2026-11-12f, finding 13): the starter ideas stay
 // while the first words are typed, so the chips don't jump under the thumb.
-describe('LogPredictionForm — starter ideas step aside on leaving the title', () => {
-  it('keeps them while typing and drops them when the field is left with words', () => {
+describe('LogPredictionForm — starter ideas step aside after a category is chosen', () => {
+  it('keeps them while typing and on leaving the title, and the category tap takes', () => {
     render(<LogPredictionForm />);
     fireEvent.changeText(screen.getByTestId('title-field'), 'I');
     expect(screen.getByTestId('starter-ideas')).toBeTruthy();
+    // Blind playtest 2026-11-13, run 3: leaving the title is the category
+    // tap itself, and the jump as they went swallowed it.
     fireEvent(screen.getByTestId('title-field'), 'blur');
+    expect(screen.getByTestId('starter-ideas')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('category-health'));
+    expect(screen.getByTestId('category-health').props.accessibilityState).toEqual({
+      selected: true,
+    });
     expect(screen.queryByTestId('starter-ideas')).toBeNull();
   });
 });

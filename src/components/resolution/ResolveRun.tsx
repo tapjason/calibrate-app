@@ -39,6 +39,13 @@ interface ResolveRunProps {
   onDraftChange?: (predictionId: string, draft: string) => void;
   /** The × beside the progress (roadmap step 79): leave mid-run. */
   onDismiss?: () => void;
+  /**
+   * The run moved on to the next card or to "All caught up", so the screen
+   * can start it at the top: the scroll kept the last card's position, and
+   * "All caught up" opened with its heading above the screen (blind playtest
+   * 2026-11-13, run 1).
+   */
+  onStep?: () => void;
 }
 
 /**
@@ -54,7 +61,7 @@ interface ResolveRunProps {
  * The queue is a snapshot taken when the run opens, so a sync landing midway
  * can't reshuffle it; a card resolved elsewhere in the meantime is passed over.
  */
-export function ResolveRun({ onClose, onDraftChange, onDismiss }: ResolveRunProps) {
+export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: ResolveRunProps) {
   const [queue] = useState<string[]>(() => {
     const now = new Date();
     return usePredictionStore
@@ -91,6 +98,7 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss }: ResolveRunProp
     let next = index + 1;
     while (next < queue.length && !stillOpen.has(queue[next])) next += 1;
     setIndex(next);
+    onStep?.();
   };
 
   if (index >= queue.length) {

@@ -67,7 +67,9 @@ describe('ResolveRun (roadmap step 18)', () => {
   it('steps through the ready predictions in due order, then closes', async () => {
     await seed();
     const onClose = jest.fn();
-    render(<ResolveRun onClose={onClose} />);
+    // Blind playtest 2026-11-13, run 1: each step starts at the top.
+    const onStep = jest.fn();
+    render(<ResolveRun onClose={onClose} onStep={onStep} />);
 
     await waitFor(() => expect(screen.getByText('First due')).toBeTruthy());
     expect(screen.getByText('1 of 3')).toBeTruthy();
@@ -85,6 +87,7 @@ describe('ResolveRun (roadmap step 18)', () => {
     fireEvent.press(screen.getByText('Finish'));
 
     await waitFor(() => expect(screen.getByTestId('resolve-run-done')).toBeTruthy());
+    expect(onStep).toHaveBeenCalledTimes(3);
     // Roadmap step 65: what the run came to, and the day it made count.
     expect(screen.getByTestId('resolve-run-summary')).toHaveTextContent(
       '3 answered. 2 happened. You expected 2\u00A0or\u00A03.',

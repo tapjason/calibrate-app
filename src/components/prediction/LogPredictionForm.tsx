@@ -115,9 +115,13 @@ export function LogPredictionForm({
   const [confidence, setConfidence] = useState<number | null>(restored?.confidence ?? null);
   // Starter ideas only for a first prediction ever (step 40).
   const firstEver = usePredictionStore((s) => s.pending.length + s.resolved.length === 0);
-  // They step aside once one is picked or the title field is left with words
-  // in it, not at the first letter: going then moved the chips up about 300 px
-  // under the thumb (blind playtest 2026-11-12f, finding 13; step 173).
+  // They step aside once one is picked, or once a category is chosen after
+  // typing, not at the first letter: going then moved the chips up about 300 px
+  // under the thumb (blind playtest 2026-11-12f, finding 13; step 173). Not on
+  // leaving the title either: the tap on a category is what leaves it, and the
+  // jump as they went swallowed that tap (blind playtest 2026-11-13, run 3).
+  // On a category, the form brings the slider into view anyway (useScrollReveal),
+  // so the shift is absorbed by a move the person expects.
   const [ideasGone, setIdeasGone] = useState(false);
   // Every prediction starts on Tomorrow (roadmap D55; D18 (4) did it for the
   // first only): "In a week" caught five of eight testers who meant tomorrow
@@ -457,9 +461,6 @@ export function LogPredictionForm({
           grows
           maxLength={TITLE_MAX_LENGTH}
           testID="title-field"
-          onBlur={() => {
-            if (title.trim().length > 0) setIdeasGone(true);
-          }}
         >
           {past !== null && (
             <Text style={styles.record} testID="past-outcomes">
@@ -530,6 +531,8 @@ export function LogPredictionForm({
             value={category}
             onChange={(c) => {
               setCategory(c);
+              // After the tap has landed, never as it lands.
+              if (title.trim().length > 0) setIdeasGone(true);
               // The keyboard down first: its height isn't taken off the view,
               // so a slider under it read as visible (code review 2026-11-12).
               // A confidence is next, and setting one needs it down anyway.
