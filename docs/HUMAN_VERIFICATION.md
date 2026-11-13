@@ -891,6 +891,19 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-13 (step 174, round 18's fixes; a reload is enough):
+
+- [ ] **Log, first prediction ever** (fresh install): type a title, tap a category with the
+      keyboard up: the category takes on the first tap, and the starter ideas go only then.
+- [ ] **Answer all** with three or more due: after a long reflection on one card, the next card
+      and "All caught up" start at the top.
+- [ ] **Today's streak row:** tap it: How scoring works opens at "Your streak", × pinned.
+      VoiceOver: "button", hint "Explains the streak, and how to hide it".
+- [ ] **Lock screen** (round 18 question): what a due-day reminder shows there, and whether it
+      still fires at 7 pm local after changing the phone's time zone.
+- [ ] **Arabic phone** (round 18 question): with the iPhone's language set to Arabic, do Today's
+      due dates read in Arabic inside the English text?
+
 Added 2026-11-12 (step 173, the owner's picks after round 17; a reload is enough,
 SQLite migration 015 runs on launch):
 

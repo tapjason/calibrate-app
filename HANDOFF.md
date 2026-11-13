@@ -1,8 +1,24 @@
 # Handoff
 
-**Branch:** `builder/step-173-owner-picks` (step 173, the owner's picks after round 17, D59, 2026-11-12; not pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/step-173-owner-picks` (step 173, D59, 2026-11-12, pushed; round 18 and step 174, 2026-11-13, not pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
+
+**Round 18 (2026-11-13), days not minutes:** `docs/design/research/playtest-2026-11-13.md` (plan `round18-plan-2026-11-13.md`).
+- **Method:** a diary over three sittings with the clock moved; a traveller from Kathmandu to New York; Arabic, British, NZ and US locales; a dropped connection.
+- **Results:**
+  - scores median 7, seven keep;
+  - UMUX-Lite 72.9 (about 70 SUS);
+  - trust in the numbers 4 everywhere, acting on it 3;
+  - comprehension 80% sure, 96% right.
+- **Step 174** fixed what needed no decision (BUILT_LOG row 174): step 173's swallowed category tap, the run's scroll, the coverage note's "logged", "Tracker or higher", switched-off reminder rows, the streak row's tap, the late-move note.
+- **Needs the owner, in order:**
+  1. privacy on a shared phone (titles, the lock screen; D52 (3) re-raised);
+  2. the privacy policy 404 (Pages);
+  3. the card at large text;
+  4. corrections that raise the score with no trace;
+  5. early deletes free while moves are counted;
+  6. then "is it good" and the Brier line, tier words beside a sensitive category, reminders (time, whose clock, before the event), Today's verdict on every open, nothing to share before 20, the jumpy unlock estimate, US units first, Arabic numerals mixed in, Voice Control naming, categories (B4), answered categories locked.
 
 Step 173 (`docs/design/BUILT_LOG.md` row 173, roadmap D59): the owner approved every recommendation after round 17 and the rounds 12–15 aggregate. JS plus SQLite migrations 015 (`prediction_postponements`) and 016 (`warmup_results.question_ids_json`): a reload.
 - **Today:** no 70 / 85 / 90 under the rating; the rating opens How scoring works with the person's own line in points; the closest badge while none is earned.

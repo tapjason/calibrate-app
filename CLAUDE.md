@@ -511,8 +511,9 @@ See the authoritative section above.
   there (the stored id stays `guesser`): "Guesser" stung after one prediction.
   Until a category has a badge, Insights says the first comes at 20 answered there, or,
   once the total would have earned one, that the answers are spread over N categories
-  (D59), and Today names the closest badge ("To reach Tracker in finance: 13 more scored
-  answers."). Tapping the identity line on Today explains the tiers (How
+  (D59), and Today names the closest badge ("To reach Tracker or higher in finance: 13 more
+  scored answers.": at 20 a category can go straight to Forecaster).
+  Tapping the streak row on Today opens How scoring works at Your streak (2026-11-13). Tapping the identity line on Today explains the tiers (How
   scoring works, at Badges) rather than opening Share.
 - Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**
   (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Today
