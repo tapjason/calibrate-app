@@ -559,6 +559,11 @@ export interface ShareCard {
 export interface WarmupRecord {
   completed_at: string; // ISO timestamp
   answers: WarmupAnswer[];
+  /**
+   * The questions answered, in order (step 173). Absent for a result saved
+   * before the ten were reordered: it reads in the order asked then.
+   */
+  question_ids?: string[];
 }
 
 /**

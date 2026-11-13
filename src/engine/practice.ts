@@ -365,7 +365,11 @@ const EVERYDAY_KINDS: ReadonlySet<PracticeKind> = new Set(['north', 'east', 'fir
  * a kind may appear twice, each time with a different pair. The same ten for everyone,
  * which lets the answer key be re-derived without storing the questions.
  */
-export function warmupQuestions(facts: PracticeFacts): PracticeQuestion[] {
+export function warmupQuestions(
+  facts: PracticeFacts,
+  /** False for the order asked before step 173, for results saved then. */
+  everydayFirst = true,
+): PracticeQuestion[] {
   // No place, mountain or person twice: two blind testers met Aconcagua in
   // two questions, and the second gave the first away (2026-10-09). Each half
   // draws further days until it has five that share no option with the rest.
@@ -388,7 +392,7 @@ export function warmupQuestions(facts: PracticeFacts): PracticeQuestion[] {
   // "my chem teacher at 1 am" (rounds 13–14). Order only: the draw is
   // untouched, the same ten for everyone, none picked to be tricky (D18).
   const lead = questions.findIndex((q) => EVERYDAY_KINDS.has(q.kind));
-  if (lead > 0) questions.unshift(...questions.splice(lead, 1));
+  if (everydayFirst && lead > 0) questions.unshift(...questions.splice(lead, 1));
   return questions.map((q, i) => {
     const want = WARMUP_CORRECT_AT[i % WARMUP_CORRECT_AT.length]!;
     if (q.correctIndex === want) return q;

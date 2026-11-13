@@ -941,6 +941,23 @@ describe('LogPredictionForm — the kept draft', () => {
     }
   });
 
+  // Code review 2026-11-12: a write at mount wiped a kept draft, or replaced
+  // it with "Log it again"'s words.
+  it('writes nothing until something is changed', async () => {
+    jest.useFakeTimers();
+    try {
+      draftStored = kept;
+      useLogDraftStore.setState({ draft: kept });
+      render(<LogPredictionForm again={{ sourceId: 'p0', title: 'Walk 30 minutes', category: 'health', dueIso: kept.dueIso }} />);
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(draftStored).toEqual(kept);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('restores it whole, says so, and Start over clears it', async () => {
     render(<LogPredictionForm kept={kept} />);
     expect(screen.getByTestId('title-field').props.value).toBe('Rain by Friday');

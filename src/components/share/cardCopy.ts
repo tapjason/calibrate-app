@@ -215,19 +215,28 @@ const EMPTY_SQUARE = '⬜';
 const BAND_LOWS = [0, 20, 40, 60, 80] as const;
 
 /**
+ * The card strip's key, one line under it (step 173; D58 had left the strip
+ * without one, reversed by the owner on 2026-11-12). ▲ came true more often
+ * than said, so too cautious; ▼ too sure. No-break spaces inside each entry,
+ * so a wrap at the card's width never splits one (code review 2026-11-12).
+ */
+export const STRIP_KEY = [
+  '○ no clear lean',
+  '▲ too cautious',
+  '▼ too sure',
+  '• under 10 answers',
+  '– none',
+]
+  .map((entry) => entry.replace(/ /g, '\u00A0'))
+  .join(' · ');
+
+/**
  * What the squares mean, under them (step 173): to a red-green colour-blind
  * reader 🟩 and 🟧 look alike, and nobody had a key (blind playtest
  * 2026-11-12f, finding 3; 2026-11-05 run 6). In the strip's own words
  * (STRIP_WORDS): a green square is inside luck, not "about right" (D57). The
  * squares have no 0% and 100% ends, so the order is said.
  */
-/**
- * The card strip's key, one line under it (step 173; D58 had left the strip
- * without one, reversed by the owner on 2026-11-12). ▲ came true more often
- * than said, so too cautious; ▼ too sure.
- */
-export const STRIP_KEY = '○ no clear lean · ▲ too cautious · ▼ too sure · • under 10 answers · – none';
-
 export const SQUARES_KEY =
   'Low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers';
 

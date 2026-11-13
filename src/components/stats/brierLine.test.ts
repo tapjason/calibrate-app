@@ -18,6 +18,12 @@ describe('brierLine with its luck check', () => {
       'Brier score 0.22, lower is better. Saying 64% every time, how often your calls came true, would score about the same, 0.23; with 20 answers a gap this small could be luck.',
     );
   });
+  it('says only that they are about the same when they print alike', () => {
+    expect(brierLine(0.2283, base, { edge: 'alike', scored: 500 })).toBe(
+      'Brier score 0.23, lower is better. Saying 64% every time, how often your calls came true, would score about the same, 0.23.',
+    );
+  });
+
   it('says which way when the gap is more than luck', () => {
     expect(brierLine(0.15, base, { edge: 'better', scored: 150 })).toMatch(
       /would score 0\.23, so your numbers said more than your base rate\.$/,

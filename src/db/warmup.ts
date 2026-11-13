@@ -29,6 +29,20 @@ const ROW_ID = 'me';
 interface WarmupRow {
   completed_at: string;
   answers_json: string;
+  question_ids_json: string | null;
+}
+
+/** A stored list of question ids, or undefined when absent or unreadable. */
+function parseIds(json: string | null): string[] | undefined {
+  if (!json) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')
+      ? (parsed as string[])
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -57,7 +71,7 @@ function parseAnswers(json: string): WarmupAnswer[] | null {
 
 export const getWarmupRecord: GetWarmupRecord = async () => {
   const row = await getDb().get<WarmupRow>(
-    `SELECT completed_at, answers_json FROM warmup_results WHERE id = ?`,
+    `SELECT completed_at, answers_json, question_ids_json FROM warmup_results WHERE id = ?`,
     [ROW_ID],
   );
   if (!row) return null;
@@ -65,17 +79,26 @@ export const getWarmupRecord: GetWarmupRecord = async () => {
   const answers = parseAnswers(row.answers_json);
   if (!answers) return null;
 
-  return { completed_at: row.completed_at, answers };
+  const ids = parseIds(row.question_ids_json);
+  return ids
+    ? { completed_at: row.completed_at, answers, question_ids: ids }
+    : { completed_at: row.completed_at, answers };
 };
 
 export const saveWarmupRecord: SaveWarmupRecord = async (record: WarmupRecord) => {
   await getDb().run(
-    `INSERT INTO warmup_results (id, completed_at, answers_json)
-     VALUES (?, ?, ?)
+    `INSERT INTO warmup_results (id, completed_at, answers_json, question_ids_json)
+     VALUES (?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        completed_at = excluded.completed_at,
-       answers_json = excluded.answers_json`,
-    [ROW_ID, record.completed_at, JSON.stringify(record.answers)],
+       answers_json = excluded.answers_json,
+       question_ids_json = excluded.question_ids_json`,
+    [
+      ROW_ID,
+      record.completed_at,
+      JSON.stringify(record.answers),
+      record.question_ids ? JSON.stringify(record.question_ids) : null,
+    ],
   );
   // Finished: the answers so far are now the record.
   await getDb().run(`DELETE FROM warmup_progress WHERE id = ?`, [ROW_ID]);

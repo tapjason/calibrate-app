@@ -341,7 +341,9 @@ const styles = StyleSheet.create({
   },
   stripCell: { alignItems: 'center', flex: 1 },
   stripEnd: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '600' },
-  stripKey: { fontFamily: FONT_FAMILY, fontSize: 11, lineHeight: 14, marginTop: 2, opacity: 0.8 },
+  // 12, the strip's ends' size, at full ink: smaller, and the fit-to-canvas
+  // shrink took it under 11 in the PNG (code review 2026-11-12).
+  stripKey: { fontFamily: FONT_FAMILY, fontSize: 12, lineHeight: 15, marginTop: 2 },
   stripEmpty: { borderRadius: 1, height: 2, width: 10 },
   stripThin: { borderRadius: 4, height: 8, width: 8 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },

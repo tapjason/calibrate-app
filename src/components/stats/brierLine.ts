@@ -23,18 +23,20 @@ export function brierLine(
 ): string {
   const rate = Math.round(baseline.rate * 100);
   const lead =
-    `Brier score ${brier.toFixed(2)}, lower is better. ` +
-    `Saying ${rate}% every time, how often your calls came true, would score`;
+    `Brier score\u00A0${brier.toFixed(2)}, lower is better. ` +
+    `Saying ${rate}%\u00A0every time, how often your calls came true, would score`;
   const base = baseline.score.toFixed(2);
-  if (!edge) return `${lead} ${base}.`;
+  if (!edge) return `${lead}\u00A0${base}.`;
   // A small gap on a short record reads as a verdict it can't carry: on
   // unlock day 0.22 against 0.23 read as "a parrot beats me" (blind playtest
   // 2026-11-12f, finding 5). "Could be", since inside the middle 80% doesn't
   // prove luck (record audit 2026-11-12).
+  // Under a hundredth: the two print alike, so no comparison and no luck.
+  if (edge.edge === 'alike') return `${lead} about the same,\u00A0${base}.`;
   if (edge.edge === 'about_same') {
-    return `${lead} about the same, ${base}; with ${localCount(edge.scored)} answers a gap this small could be luck.`;
+    return `${lead} about the same,\u00A0${base}; with ${localCount(edge.scored)} answers a gap this small could be luck.`;
   }
   return edge.edge === 'better'
-    ? `${lead} ${base}, so your numbers said more than your base rate.`
-    : `${lead} ${base}, so your numbers said less than your base rate would have.`;
+    ? `${lead}\u00A0${base}, so your numbers said more than your base rate.`
+    : `${lead}\u00A0${base}, so your numbers said less than your base rate would have.`;
 }

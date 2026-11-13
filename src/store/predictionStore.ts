@@ -394,7 +394,9 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const due_date = clampDueDate(edit.due_date, new Date(from), now);
     // A late move later is counted on Insights (step 173), held here so a
     // deep link or a typed date is caught as the picker is.
-    const late = postponementCounts(current.due_date, due_date, now);
+    // Only an open one: an answer landing meanwhile leaves the row unchanged
+    // (the UPDATE is for pending rows), so nothing to count (code review).
+    const late = current.status === 'pending' && postponementCounts(current.due_date, due_date, now);
     await withTransaction(async () => {
       await updatePrediction(id, { ...edit, title, due_date }, { rewordedAt });
       if (late) await recordPostponement(id, userId, current.due_date, due_date);
@@ -584,6 +586,18 @@ async function requireCorrectable(
  * counted on Insights (step 173), for Edit to say so before Save. The rule is
  * the engine's; the store's `update` records it.
  */
-export function moveIsCounted(p: Prediction, newDueIso: string, now: Date = new Date()): boolean {
-  return p.status === 'pending' && postponementCounts(p.due_date, newDueIso, now);
+export function moveIsCounted(
+  p: Prediction,
+  newDueIso: string,
+  /** The words as edited: new words move the floor to tomorrow (D45). */
+  title: string = p.title,
+  now: Date = new Date(),
+): boolean {
+  if (p.status !== 'pending') return false;
+  // The date Save will keep, clamped as `update` clamps it, so a rewording on
+  // the due day that pushes the date on is warned about too (record audit
+  // 2026-11-12).
+  const from = rewords(p.title, title.trim()) ? now.toISOString() : scoredFrom(p);
+  const saved = clampDueDate(newDueIso, new Date(from), now);
+  return postponementCounts(p.due_date, saved, now);
 }

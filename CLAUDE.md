@@ -212,7 +212,11 @@ rating itself is unlocked (`MIN_N_OVERALL`). It is free.
 
 **Its yardstick is the person's own base rate** (decided 2026-11-01, D35): the line
 reads "Brier score 0.22, lower is better. Saying 64% every time, how often your calls
-came true, would score 0.23." (`computeBrierBaseline`). It used to say "always saying
+came true, would score 0.23." (`computeBrierBaseline`). Since D59 (2026-11-12) the line says
+who wins only beyond luck (`brierEdge`): a paired bootstrap of Brier minus p(1 − p),
+the give-or-take's seed and middle 80%; when that holds 0, or the gap is under 0.01,
+it reads "…would score about the same, 0.23; with 20 answers a gap this small could
+be luck." It used to say "always saying
 50% scores 0.25", which flatters anyone whose calls mostly happen: an analyst beat it
 while showing no skill over saying his own 64% every time.
 
@@ -228,7 +232,10 @@ than 10 scored answers (`MIN_N_BAND`) gets no lean word and no lean mark either,
 its chart dot is grey (the Warm-up's too, whose ranges rarely reach 10; the caption
 says what a grey dot is), its mark on the share card a small neutral dot and its
 square in the text share ⬜. The card's strip and the squares wait until some range
-has 10.
+has 10. Each carries a one-line key in the strip's words (D59, 2026-11-12, reversing
+D58's no-key): "Low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under
+10 answers" under the squares, "○ no clear lean · ▲ too cautious · ▼ too sure · • under
+10 answers · – none" under the strip.
 
 ### Same-day answers aren't scored (decided 2026-11-03, D41)
 A Yes or No given on the local day the prediction was logged (`isSameDayAnswer`,
@@ -324,6 +331,10 @@ D18; built 2026-10-08):
   mistake: about 4 in 10 of them shouldn't." A bare ±5 rule (the
   rest of the app's until D35 made this one rule everywhere) called a lean on 47–73% of perfectly calibrated people
   (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20, 2026-10-09).
+  Since D59 (2026-11-12) the expected-and-got line sits straight under the verdict,
+  before the bridge and the buttons; the ten open on a place or a year (order only,
+  the draw unchanged); and a US-region phone sees feet and miles beside the metric
+  units in the answer key.
 - A bridge to the person's own plans (the planning-fallacy line) sits above the
   button, "Make a real prediction" (the bridge ends "Make your first one about
   tomorrow.").
@@ -372,6 +383,13 @@ never a lean. Linking past experience to the
 prediction is the one prompt with strong evidence against optimism about one's own
 plans (`docs/design/research/debiasing-2026-10.md` §1); premortems and "list reasons
 you're wrong" are recorded there as not worth building.
+
+**"Save and log another"** (D59, 2026-11-12) saves and keeps the sheet open, the form
+started over under "Saved, due tomorrow."; it appears once there's something to save.
+**A draft is kept for a day** (D59, reversing D52 (1)): title, category, the person's own
+number and date, device-local, offered back on a plain open of Log ("Kept from before you
+left." with Start over), cleared by a save, Start over, Discard, Erase and account
+deletion.
 
 An optional AI refine button is specced but **deferred** (see AI § A). Nothing
 about the save flow depends on it — which is why cutting it cost nothing.
@@ -423,6 +441,11 @@ were "Can't tell" beside the rating, which leaves them out.
   24-hour window), or an open prediction deleted on or after its due day
   (`deletionCounts`). Insights says how many, and that only this phone keeps the
   count. The delete confirmation says so first.
+- **Late due-date moves are counted** (D59, 2026-11-12). Moving an open
+  prediction's due date later on or after the day before its due day
+  (`postponementCounts`) is counted on Insights, once per prediction, on this phone
+  only (`prediction_postponements`, SQLite migration 015, never synced), and the count
+  survives a delete; Edit says so before Save. Counting discloses, it doesn't block.
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
   after its due day, and never less than the correction window after the skip, so
   a mis-tap can still be undone. After that it stays "Can't tell". A Yes or No
@@ -446,11 +469,17 @@ See the authoritative section above.
 - Overall calibration rating (0–100), or provisional-progress state. Until the first
   answer, the progress state leads with when it comes ("Your first answer: tomorrow
   evening", D30, 2026-10-10)
+- What the rating means in points (D59): "Range by range, what you said averaged about
+  14 points away from how often those things happened…", 100 minus the rounded rating;
+  Today's rating opens How scoring works with the same line on top. Today's bar carries
+  no 70 / 85 / 90 marks (Insights keeps them, with D54's caption)
 - Calibration curve chart (stated vs. actual per bucket)
 - The Brier score, one quiet line under the rating once it's unlocked (D24, above)
 - **The pattern, named** (decided 2026-11-01, D37), all free and all by the one lean
   rule (D35): the category furthest off, past `MIN_N_CATEGORY` ("Furthest off:
-  finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.");
+  finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.",
+  and since D59 how it fits that category's badge: "That gap is already in its score, 80,
+  which still clears Forecaster's 70 at its low end.");
   the chart's title naming both sides when there are both ("You're too sure at
   80–100% and too cautious at 60–80%"); and "since last week" under the rating once
   it's unlocked at both ends ("Up 2 since last week, from 6 answers given since then,
@@ -465,8 +494,8 @@ See the authoritative section above.
   gives the expected count ("Of 21 things you called 60–80% likely, 12 happened;
   your numbers expected about 14."), and for a range the lean rule names, what would
   have matched ("You said about 88%; about 65% would have matched.", rounded to 5 as
-  the category line is). Insights shows "No answers were Can't tell." when there are
-  none, once the rating is unlocked.
+  the category line is). Insights shows "No answers are Can't tell." when there are
+  none, from the first answer (D59; once unlocked until then).
 - Per-category breakdown with badge levels, and each category's own score once it is
   past `MIN_N_CATEGORY` (D28, 2026-10-10); before that, the count to go and its plain
   counts ("You said about 90% on average, and 7 of 9 happened.", D53, 2026-11-09),
@@ -480,7 +509,10 @@ See the authoritative section above.
   finance" after five months); it stays on Insights' badge rows, where the count to
   go sits beside it, and since D36 (2026-11-01) it is named **"Getting started"**
   there (the stored id stays `guesser`): "Guesser" stung after one prediction.
-  Until a category has a badge, Insights says the first comes at 20 answered there. Tapping the identity line on Today explains the tiers (How
+  Until a category has a badge, Insights says the first comes at 20 answered there, or,
+  once the total would have earned one, that the answers are spread over N categories
+  (D59), and Today names the closest badge ("To reach Tracker in finance: 13 more scored
+  answers."). Tapping the identity line on Today explains the tiers (How
   scoring works, at Badges) rather than opening Share.
 - Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**
   (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Today
@@ -494,6 +526,10 @@ See the authoritative section above.
   change raised day-14 retention 3.3% and new users on a streak 19%
   (`docs/design/research/retention-2026-10.md` §2.1). Practice doesn't count
   toward either.
+- **The streak can be hidden** (D59, 2026-11-12): a switch in You, "Streak and daily
+  goal", on by default. Off hides the streak row and its goal, the checkpoints, the
+  streak on the recap and Insights and in the welcome back; the streak is still
+  derived, so nothing in the record depends on it.
 - **Rest days** (decided 2026-10-07, at the owner's request for retention
   features): every 7 counted days save a rest day, up to 2. A past day that
   didn't count spends one automatically, and the streak carries on *without*

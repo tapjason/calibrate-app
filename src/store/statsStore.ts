@@ -314,7 +314,9 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
     ratingRange: computeRatingRange(resolved),
     brier: computeBrier(resolved),
     brierBaseline: computeBrierBaseline(resolved),
-    brierEdge: brierEdge(resolved),
+    // Shown only once the rating unlocks, so not bootstrapped before
+    // (code review 2026-11-12).
+    brierEdge: userStat.rating_is_provisional ? null : brierEdge(resolved),
     coverageGap: computeCoverageGap(all),
   };
 }
@@ -393,7 +395,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       ratingRange: computeRatingRange(resolved),
       brier: computeBrier(resolved),
       brierBaseline: computeBrierBaseline(resolved),
-      brierEdge: brierEdge(resolved),
+      // No user stat here, so no Brier line to word.
+      brierEdge: null,
       coverageGap: computeCoverageGap([...pending, ...answered]),
     });
   },

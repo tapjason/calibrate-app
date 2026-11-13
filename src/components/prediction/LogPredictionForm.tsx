@@ -126,8 +126,21 @@ export function LogPredictionForm({
   // Said once at the top while the form still holds the kept draft.
   const [keptShown, setKeptShown] = useState(restored !== null);
   // The draft is kept as it's typed, a moment after each change (step 173),
-  // so a kill or a reload loses at most that moment.
+  // so a kill or a reload loses at most that moment. Only once the person has
+  // changed something here: at mount it would clear a kept draft, or replace
+  // it with "Log it again"'s words (code review 2026-11-12).
+  const touched = useRef(false);
+  const firstRender = useRef(true);
   useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return undefined;
+    }
+    touched.current = true;
+    return undefined;
+  }, [title, category, confidence, dueDate]);
+  useEffect(() => {
+    if (!touched.current) return undefined;
     const t = setTimeout(() => {
       void useLogDraftStore.getState().save({ title, category, confidence, dueIso: dueDate });
     }, LOG_DRAFT_WRITE_MS);
@@ -272,7 +285,11 @@ export function LogPredictionForm({
       const note = savedLine(dueDateSavedAt(dueDate));
       // The sheet closes on save; a screen reader hears that it worked
       // (blind playtest 2026-11-04, second round, run 2).
-      AccessibilityInfo.announceForAccessibility(another ? note : 'Saved.');
+      // After "Save and log another" the focused button goes as the form
+      // resets, and the focus move cut a same-moment announcement off (code
+      // review 2026-11-12): said a moment later.
+      if (another) setTimeout(() => AccessibilityInfo.announceForAccessibility(note), 600);
+      else AccessibilityInfo.announceForAccessibility('Saved.');
       setTitle('');
       setCategory(null);
       setConfidence(null);

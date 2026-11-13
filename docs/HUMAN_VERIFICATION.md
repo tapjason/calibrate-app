@@ -891,6 +891,37 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-12 (step 173, the owner's picks after round 17; a reload is enough,
+SQLite migration 015 runs on launch):
+
+- [ ] **Today's rating:** no 70 / 85 / 90 under the bar. Tap the number, then the
+      bar: How scoring works opens with "Your rating is 88. Band by band…" in a
+      panel at the top, × pinned. VoiceOver: the bar and number are one stop,
+      "Calibration rating, 88 out of 100", hint "Explains what it means".
+- [ ] **No badge yet** (the `stress` profile): Today shows "To reach Tracker in …:
+      N more scored answers." above the bar; tapping it opens How scoring works at
+      Badges.
+- [ ] **Share card key** (`long-time`): the line under the strip fits in Post and
+      Story, light and dark themes, and is legible in a Messages thumbnail. Share as
+      text: the key line follows the squares.
+- [ ] **Log, Save and log another:** it appears under Save once the form is
+      complete; tapping it keeps the sheet open, "Saved, due tomorrow." at the top,
+      the form empty, and VoiceOver says the saved line. At 320 and AX3, Save stays
+      put as it appears.
+- [ ] **Log draft:** type a title, pick a category and a number, swipe the app away
+      (kill it), reopen and tap "+": everything is back under "Kept from before you
+      left." Close Log with the × and choose "Discard prediction": the next open is
+      empty.
+- [ ] **Streak switch:** You → "Streak and daily goal" off: Today's streak row, the
+      checkpoint card on an answer, the streak on Insights' count line and the
+      recap all go. On again, they're back.
+- [ ] **A late due-date move:** open a prediction due tomorrow, Edit, In a week: the
+      note "It's due tomorrow, so moving it later is counted on Insights…"; Save;
+      Insights shows "1 prediction had its due date moved later…".
+- [ ] **US units:** with the phone's region set to United States, the Warm-up's and
+      practice's answer key shows feet and miles in brackets; set back to your
+      region, metric only.
+
 Added 2026-11-12 (step 172, round 16's fixes; a reload is enough):
 
 - [ ] **How scoring works from Today's badge line** (a record with a badge,

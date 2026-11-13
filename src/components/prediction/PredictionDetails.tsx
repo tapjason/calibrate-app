@@ -52,6 +52,12 @@ type Mode = 'view' | 'edit' | 'delete' | 'early';
 const shortDate = (iso: string) =>
   localDate(new Date(iso), { weekday: 'short', month: 'short', day: 'numeric' });
 
+
+/** What VoiceOver hears as Edit's notes appear (step 173). */
+const LATE_MOVE_SPOKEN = 'Moving it later is counted on Insights: the outcome may already be known.';
+const REWORD_SPOKEN =
+  'Changing the words makes this a new prediction from today: an answer today isn’t scored.';
+
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23):
  * what you said and when, the due date, then Edit (title, category and due
@@ -107,6 +113,19 @@ export function PredictionDetails({
       }
     })();
   }, [predictionId]);
+
+  // Edit's two notes before Save, said aloud as they appear: iOS ignores a
+  // live region, so VoiceOver users never heard them (code review
+  // 2026-11-12). The late move is step 173's; the rewording D45's.
+  const editing = mode === 'edit' && prediction !== null;
+  const lateMoveNow = editing && moveIsCounted(prediction, dueDate, title);
+  const rewordNow = editing && title.trim().length > 0 && rewords(prediction.title, title);
+  useEffect(() => {
+    if (lateMoveNow) AccessibilityInfo.announceForAccessibility(LATE_MOVE_SPOKEN);
+  }, [lateMoveNow]);
+  useEffect(() => {
+    if (rewordNow) AccessibilityInfo.announceForAccessibility(REWORD_SPOKEN);
+  }, [rewordNow]);
 
   if (loading) {
     return (
@@ -261,7 +280,7 @@ export function PredictionDetails({
     const changingWords = title.trim().length > 0 && rewords(prediction.title, title);
     // A due date moved later on its eve or after is counted (step 173), said
     // before Save as a counted delete is.
-    const lateMove = moveIsCounted(prediction, dueDate);
+    const lateMove = moveIsCounted(prediction, dueDate, title);
     const daysLeft = daysUntilDue(prediction, new Date());
     return (
       <View style={styles.wrap} testID="details-edit">

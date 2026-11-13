@@ -244,7 +244,7 @@ export function computeBrierBaseline(
 }
 
 /** How the Brier score stands against the base-rate yardstick (step 173). */
-export type BrierEdge = 'about_same' | 'better' | 'worse';
+export type BrierEdge = 'alike' | 'about_same' | 'better' | 'worse';
 
 /** Under this gap the two print alike to two decimals: never called different. */
 export const BRIER_EDGE_MIN = 0.01;
@@ -256,8 +256,10 @@ export const BRIER_EDGE_MIN = 0.01;
  * A paired bootstrap of D = Brier − p̂(1 − p̂), p̂ recomputed in each resample,
  * with the give-or-take's seed, resamples and middle 80% (`bootstrapRange`),
  * so all three luck measures share one method; "about the same" when that
- * middle 80% holds 0, or when |D| is under BRIER_EDGE_MIN (the lean rule's
- * two-part test, record audit 2026-11-12). Null with nothing scored.
+ * middle 80% holds 0; "alike" when |D| is under BRIER_EDGE_MIN, so the two
+ * print the same and aren't called different whatever the count (the lean
+ * rule's two-part test; kept apart so the line doesn't call a gap on 500
+ * answers luck, record audit 2026-11-12). Null with nothing scored.
  */
 export function brierEdge(resolved: readonly Prediction[]): BrierEdge | null {
   const points = resolved
@@ -275,7 +277,7 @@ export function brierEdge(resolved: readonly Prediction[]): BrierEdge | null {
     return sq / sample.length - rate * (1 - rate);
   };
   const d = gap(points);
-  if (Math.abs(d) < BRIER_EDGE_MIN) return 'about_same';
+  if (Math.abs(d) < BRIER_EDGE_MIN) return 'alike';
   const range = bootstrapRange(points, gap);
   if (!range || (range.low <= 0 && range.high >= 0)) return 'about_same';
   return d < 0 ? 'better' : 'worse';

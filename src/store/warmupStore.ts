@@ -71,6 +71,23 @@ const initialProgress = {
   pick: null,
 };
 
+/**
+ * The ten in the order a finished Warm-up's answers belong to: by the ids
+ * stored with it, else the pre-step-173 order (record audit 2026-11-12).
+ */
+function questionsFor(ids: readonly string[] | undefined): readonly WarmupQuestion[] {
+  const current = warmupQuestions(PRACTICE_FACTS);
+  if (!ids) return warmupQuestions(PRACTICE_FACTS, false);
+  const byId = new Map<string, WarmupQuestion>(current.map((q) => [q.id, q]));
+  const ordered: WarmupQuestion[] = [];
+  for (const id of ids) {
+    const q = byId.get(id);
+    if (!q) return current;
+    ordered.push(q);
+  }
+  return ordered;
+}
+
 /** Guard against a slider (or a future caller) handing us an out-of-range value. */
 function clampConfidence(confidence: number): number {
   if (!Number.isFinite(confidence)) return MIN_WARMUP_CONFIDENCE;
@@ -91,6 +108,10 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
       const record = await getWarmupRecord();
       if (record) {
         set({
+          // The questions in the order these answers were given (step 173):
+          // by their stored ids, or, for a result saved before the ten were
+          // reordered, the order asked then.
+          questions: questionsFor(record.question_ids),
           answers: record.answers,
           completedAt: record.completed_at,
           result: scoreWarmup(record.answers),
@@ -164,7 +185,11 @@ export const useWarmupStore = create<WarmupState>((set, get) => ({
       question_count: next.length,
     });
     try {
-      await saveWarmupRecord({ completed_at: completedAt, answers: next });
+      await saveWarmupRecord({
+        completed_at: completedAt,
+        answers: next,
+        question_ids: questions.map((q) => q.id),
+      });
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[warmup] save failed; result is session-only:', e);

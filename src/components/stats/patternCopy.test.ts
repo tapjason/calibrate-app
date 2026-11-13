@@ -113,7 +113,7 @@ describe('furthestOffLine with the badge it sits beside', () => {
       / Its score, 64, give or take 6, isn't above 70 at its low end yet, so it's Tracker, which counts answers only\.$/,
     );
     expect(furthestOffLine(miss, { level: 'tracker', score: 64, giveOrTake: 0 })).toMatch(
-      / Its score, 64 isn't above 70/,
+      / Its score, 64, isn't above 70/,
     );
   });
 });

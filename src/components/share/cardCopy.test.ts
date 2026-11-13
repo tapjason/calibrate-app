@@ -199,9 +199,11 @@ describe('shareText', () => {
     const thin = (low: number) => ({ ...bucket(low, 'overconfident'), total_resolved: 8 });
     expect(shareText(card(81), [thin(60), thin(80)])).not.toContain(SQUARES_KEY);
     expect(shareText(card(null), [bucket(80, 'overconfident')])).not.toContain(SQUARES_KEY);
-    expect(STRIP_KEY).toBe(
+    expect(STRIP_KEY.replace(/ /g, ' ')).toBe(
       '○ no clear lean · ▲ too cautious · ▼ too sure · • under 10 answers · – none',
     );
+    // Each entry held whole: only the separators break.
+    expect(STRIP_KEY.split(' · ').every((e) => !e.includes(' '))).toBe(true);
   });
 
   // Roadmap D58: a range under 10 answers shows no lean, here as on the card.

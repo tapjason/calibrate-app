@@ -46,7 +46,7 @@ function badgeClause({ level, score, giveOrTake }: FurthestOffBadge): string {
     return `That gap is already in its score, ${score}, which still clears ${BADGE_META[level].label}'s ${bar} at its low end.`;
   }
   const next = BADGE_SCORE_BAR.forecaster;
-  const spread = giveOrTake > 0 ? `, give or take ${giveOrTake},` : '';
+  const spread = giveOrTake > 0 ? `, give or take ${giveOrTake},` : ',';
   return `Its score, ${score}${spread} isn't above ${next} at its low end yet, so it's ${BADGE_META.tracker.label}, which counts answers only.`;
 }
 

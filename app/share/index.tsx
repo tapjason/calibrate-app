@@ -29,7 +29,7 @@ const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
  */
 export default function ShareScreen() {
   const router = useRouter();
-  // Insights' "Your week" opens on the recap (step 173): it was found only by
+  // Insights' "See your week" opens on the recap (step 173): it was found only by
   // luck under "Share my card", three rounds running (blind playtest
   // 2026-11-12f, finding 10).
   const params = useLocalSearchParams<{ tab?: string }>();

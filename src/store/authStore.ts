@@ -194,6 +194,12 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
   // Only reload stores if the user actually changed. Token refresh events
   // also fire onAuthStateChange but keep the same userId.
   if (prevUserId !== next.userId) {
+    // Leaving an account (sign-out, or another account): its half-typed Log
+    // draft is that person's words, not the next one's (step 173; code review
+    // 2026-11-12). A guest signing in keeps it, as their predictions go along.
+    if (prevUserId && prevUserId !== LOCAL_GUEST_USER_ID) {
+      await useLogDraftStore.getState().clear();
+    }
     try {
       await reloadForUser(next.userId);
     } catch (e) {

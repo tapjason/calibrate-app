@@ -343,17 +343,17 @@ describe('brierEdge', () => {
     expect(brierEdge([p({ status: 'skipped' })])).toBeNull();
   });
 
-  it('calls a gap under a hundredth about the same, whatever the count', () => {
+  it('calls a gap under a hundredth alike, whatever the count', () => {
     // 50% every time scores exactly the base rate's 0.25 at a 50% rate.
     expect(BRIER_EDGE_MIN).toBe(0.01);
-    expect(brierEdge(bucketPreds(50, 200, 100))).toBe('about_same');
+    expect(brierEdge(bucketPreds(50, 200, 100))).toBe('alike');
+    // −0.00999…: just under the floor.
+    expect(brierEdge([...bucketPreds(80, 10, 8), ...bucketPreds(60, 10, 6)])).toBe('alike');
   });
 
-  it('calls a small gap on 20 answers about the same: it could be luck', () => {
-    // 20 at 70% with 14 yes: Brier 0.21, base rate 70% scores 0.21 too, but
-    // mixed with a few sharper calls the gap stays inside luck.
-    const few = [...bucketPreds(80, 10, 8), ...bucketPreds(60, 10, 6)];
-    expect(brierEdge(few)).toBe('about_same');
+  it('calls a gap past a hundredth on 20 answers about the same when luck could give it', () => {
+    // D = −0.0175: past the floor, so this rests on the bootstrap.
+    expect(brierEdge([...bucketPreds(75, 10, 9), ...bucketPreds(65, 10, 5)])).toBe('about_same');
   });
 
   it('calls a large, steady gap better or worse', () => {

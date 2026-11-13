@@ -1,7 +1,9 @@
 import { setDbForTests } from '@/db/client';
 import { listCategoryStats, getUserStat } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
-import { getWarmupProgress, getWarmupRecord, saveWarmupProgress } from '@/db/warmup';
+import { PRACTICE_FACTS } from '@/constants/practiceFacts';
+import { getWarmupProgress, getWarmupRecord, saveWarmupProgress, saveWarmupRecord } from '@/db/warmup';
+import { warmupQuestions } from '@/engine/practice';
 import type { WarmupQuestion } from '@/types';
 
 import {
@@ -256,5 +258,32 @@ describe('warmupStore', () => {
 
     expect(await getUserStat('user-1')).toBeNull();
     expect(await listCategoryStats('user-1')).toEqual([]);
+  });
+});
+
+// Step 173 (record audit and code review 2026-11-12): finished Warm-ups store
+// answers by position, so the ten are read back in the order they were asked.
+describe('warmupStore — a finished Warm-up keeps its questions’ order', () => {
+  const answers = Array.from({ length: 10 }, (_, i) => ({ confidence: 70, correct: i % 2 === 0 }));
+
+  it('reads a result saved before the reorder in the old order', async () => {
+    await saveWarmupRecord({ completed_at: '2026-11-01T10:00:00.000Z', answers });
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().questions.map((q) => q.id)).toEqual(
+      warmupQuestions(PRACTICE_FACTS, false).map((q) => q.id),
+    );
+  });
+
+  it('reads one saved with its ids in that order, and saves the ids it was asked in', async () => {
+    const ids = warmupQuestions(PRACTICE_FACTS).map((q) => q.id).reverse();
+    await saveWarmupRecord({ completed_at: '2026-11-12T10:00:00.000Z', answers, question_ids: ids });
+    await useWarmupStore.getState().hydrate();
+    expect(useWarmupStore.getState().questions.map((q) => q.id)).toEqual(ids);
+
+    // Finishing stores the order asked.
+    useWarmupStore.setState({ questions: QUESTIONS, index: 0, answers: [], result: null, completedAt: null });
+    await useWarmupStore.getState().answer(0, 70);
+    await useWarmupStore.getState().answer(1, 80);
+    expect((await getWarmupRecord())?.question_ids).toEqual(['q1', 'q2']);
   });
 });
