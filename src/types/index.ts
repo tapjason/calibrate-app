@@ -153,6 +153,14 @@ export interface StreakStatus {
   restEarnedToday: boolean;
   /** The streak length that saves the next rest day, or null while the reserve is full. */
   nextRestAt: number | null;
+  /**
+   * A streak of 2 days or more that ended in the last week, while none runs
+   * (roadmap D60 (e)): its length, and the local day it ended, the first day
+   * that neither counted nor had a rest day to cover it (local midnight), and
+   * how many days ago that was (1 = yesterday).
+   * Null or absent otherwise.
+   */
+  ended?: { days: number; on: string; ago: number } | null;
 }
 
 /** The five categories every install starts with. */
@@ -459,6 +467,16 @@ export type Milestone =
   /** `from` is the tier before, so the tier-up can flip from it (a jump can skip a rung). */
   | { kind: 'tier_up'; category: Category; badge: BadgeLevel; from: BadgeLevel }
   | { kind: 'category_unlocked'; category: Category; score: number };
+
+/**
+ * A category whose badge fell with the last recompute (roadmap D60 (a); blind
+ * playtest 2026-11-13b, run 7). Said, never celebrated.
+ */
+export interface TierDrop {
+  category: Category;
+  from: BadgeLevel;
+  to: BadgeLevel;
+}
 
 /** Aggregate result of running the calibration engine on a set of predictions. */
 export interface CalibrationResult {

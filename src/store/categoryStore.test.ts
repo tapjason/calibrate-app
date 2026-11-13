@@ -12,6 +12,7 @@ import {
   categoryOptions,
   categoryTitle,
   isCategoryHidden,
+  leadingEmoji,
   useCategoryStore,
 } from './categoryStore';
 
@@ -163,5 +164,23 @@ describe('category icons', () => {
     expect(categoryEmojiProblem('🎓📚')).toBe('Use just one emoji.');
     expect(categoryEmojiProblem('A')).toBe('Use an emoji, not a letter.');
     expect(categoryEmojiProblem('🎓 x')).toBe('Use just one emoji.');
+  });
+});
+
+// Roadmap D60 (i): "🍸 Nights out" shouldn't show the emoji twice (blind
+// playtest 2026-11-13b, run 5).
+describe('a leading emoji in a new name', () => {
+  it('becomes the icon, and the rest the name', async () => {
+    const id = await useCategoryStore.getState().add('🍸 Nights out');
+    expect(categoryLabel(id)).toBe('Nights out');
+    expect(categoryIcon(id)).toEqual({ kind: 'emoji', emoji: '🍸' });
+  });
+
+  it('leaves a name without one, or only one, as typed', () => {
+    expect(leadingEmoji('Nights out')).toBeNull();
+    expect(leadingEmoji('🍸')).toBeNull();
+    expect(leadingEmoji('🍸Nights out')).toBeNull();
+    expect(leadingEmoji('A1 grades')).toBeNull();
+    expect(leadingEmoji('👨‍👩‍👧 Family time')).toEqual({ emoji: '👨‍👩‍👧', rest: 'Family time' });
   });
 });

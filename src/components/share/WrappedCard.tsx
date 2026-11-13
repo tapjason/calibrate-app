@@ -31,7 +31,7 @@ interface WrappedCardProps {
   theme?: CardTheme;
   /**
    * Put prediction titles on the card. Off by default: a card leaves the
-   * phone, and "Surest thing that didn't" names something the user may not
+   * phone, and "Surest call that didn't happen" names something the user may not
    * want in a group chat (DESIGN_SYSTEM §7.5, show/hide before sharing).
    */
   showTitles?: boolean;
@@ -81,10 +81,10 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
       : null,
     hiddenText,
     summary.boldest_hit
-      ? `Boldest call that landed: ${summary.boldest_hit.confidence}%${titleOf(summary.boldest_hit)}`
+      ? `Surest call that happened: ${summary.boldest_hit.confidence}%${titleOf(summary.boldest_hit)}`
       : null,
     summary.biggest_miss
-      ? `Surest thing that didn’t: ${summary.biggest_miss.confidence}%${titleOf(summary.biggest_miss)}`
+      ? `Surest call that didn’t happen: ${summary.biggest_miss.confidence}%${titleOf(summary.biggest_miss)}`
       : null,
   ]
     .filter((part): part is string => Boolean(part))
@@ -236,7 +236,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           style={[styles.line, { color: theme.muted }]}
           testID="wrapped-boldest-hit"
         >
-          Boldest call that landed: {summary.boldest_hit.confidence}%
+          Surest call that happened: {summary.boldest_hit.confidence}%
           {titleOf(summary.boldest_hit)}
         </Text>
       )}
@@ -246,7 +246,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
           style={[styles.line, { color: theme.muted }]}
           testID="wrapped-biggest-miss"
         >
-          Surest thing that didn&apos;t: {summary.biggest_miss.confidence}%
+          Surest call that didn&apos;t happen: {summary.biggest_miss.confidence}%
           {titleOf(summary.biggest_miss)}
         </Text>
       )}

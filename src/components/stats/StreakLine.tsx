@@ -23,7 +23,9 @@ interface StreakLineProps {
  * or answered (D17; it was three), and the number climbs every day it does.
  * One quiet row, the day count in ink with a flame, the day's goal of three
  * as pips, and a line saying what today adds. Never red, never animated when it ends (DESIGN_SYSTEM
- * §6.2): an ended streak simply isn't shown until the next one starts.
+ * §6.2). For a week after a streak of 2 days or more ends, while none runs,
+ * the row says so plainly, with no dots (roadmap D60 (e)); after that it
+ * isn't shown until the next one starts.
  *
  * On a checkpoint day (7, 30, 100, 365…) the row takes the milestone tint and
  * names it for the rest of the day. Static for now: the celebration motion for
@@ -70,7 +72,8 @@ export function StreakLine({ status, testID = 'streak-line', onPress }: StreakLi
         )}
       </View>
       {/* The day's goal of three, filled as they're done. Shape, not colour alone:
-          filled vs hollow. */}
+          filled vs hollow. Not beside a streak that ended (D60 (e)). */}
+      {!copy.ended && (
       <View
         style={styles.pips}
         aria-hidden
@@ -85,6 +88,7 @@ export function StreakLine({ status, testID = 'streak-line', onPress }: StreakLi
           />
         ))}
       </View>
+      )}
     </Pressable>
   );
 }

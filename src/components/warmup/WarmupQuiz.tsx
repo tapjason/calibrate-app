@@ -14,6 +14,10 @@ import {
   useWarmupStore,
 } from '@/store/warmupStore';
 
+/** Said on the first questions only (roadmap D60 (g)). */
+export const WARMUP_TAP_TIP = 'Tap anywhere on the bar to jump to a number.';
+const WARMUP_TAP_TIP_QUESTIONS = 3;
+
 /**
  * The Warmup quiz: one binary question at a time with a stated confidence.
  *
@@ -246,7 +250,14 @@ export function WarmupQuiz({ intro, onSkip }: WarmupQuizProps = {}) {
               min={MIN_WARMUP_CONFIDENCE}
               max={MAX_WARMUP_CONFIDENCE}
               label="How sure are you?"
-              hint="50% is a coin flip: there are only two options."
+              // The first three say a tap on the bar sets any number: with ±5
+              // alone a question cost 7–9 taps, and a stylus user gave up at
+              // question 3 (blind playtest 2026-11-13b, runs 4 and 8; D60).
+              hint={
+                index < WARMUP_TAP_TIP_QUESTIONS
+                  ? `50% is a coin flip: there are only two options. ${WARMUP_TAP_TIP}`
+                  : '50% is a coin flip: there are only two options.'
+              }
               idPrefix="warmup-confidence"
             />
           </View>

@@ -50,7 +50,9 @@ export function DeleteAccountView({
         <Text style={styles.body}>
           {wasSignedIn
             ? 'Your predictions and account are gone from our servers and this phone.'
-            : `Everything ${APP_NAME} stored on this phone is gone.`}
+            : // What Erase removes, as the confirmation says: settings stay,
+              // and so does an account's copy (roadmap D60).
+              'What you made on this phone without an account is gone.'}
         </Text>
         <Button label="Done" onPress={onDone} testID="delete-done" />
       </View>
@@ -75,7 +77,7 @@ export function DeleteAccountView({
   return (
     <View style={styles.wrap} testID="delete-confirm">
       <Text accessibilityRole="header" style={styles.title}>
-        {wasSignedIn ? 'Delete your account?' : 'Erase all data on this phone?'}
+        {wasSignedIn ? 'Delete your account?' : 'Erase your data on this phone?'}
       </Text>
       <Text style={styles.body}>
         {wasSignedIn

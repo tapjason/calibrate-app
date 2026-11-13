@@ -61,6 +61,20 @@ export function reminderBody(title: string, confidence: number): string {
   return head + suffix;
 }
 
+/**
+ * The reminder's body with the words left out (roadmap D60 (b)): "Your
+ * prediction from Nov 6 · You said 70%". The day it was made and the number
+ * are enough to tell which one it is, and nothing written shows on the lock
+ * screen.
+ */
+export function reminderBodyWithoutWords(createdIso: string, confidence: number): string {
+  const made = new Date(createdIso);
+  const day = Number.isNaN(made.getTime())
+    ? null
+    : made.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${day ? `Your prediction from ${day}` : 'Your prediction'} · You said ${confidence}%`;
+}
+
 /** The Sunday digest. A leisure read — sent at the passive level. */
 export function digestBody(pendingCount: number): string {
   if (pendingCount === 0) {

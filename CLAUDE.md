@@ -423,7 +423,8 @@ to open. For **24 hours** after an answer (`CORRECTION_WINDOW_HOURS`, from the f
 answer, which a correction keeps), its details (a tap in History) can switch the
 answer, move it to another category or delete it; after that it is the record.
 A Yes or No never becomes "Can't tell": that was how a miss could be parked and
-answered later. A skip can still be answered later. Insights says how many answers
+answered later. Can't tell's own note names the last day it could still be answered
+(D60). A skip can still be answered later. Insights says how many answers
 were "Can't tell" beside the rating, which leaves them out.
 
 **The score holes, closed** (decided 2026-11-06, D45; blind playtests 2026-11-04 and
@@ -537,7 +538,7 @@ See the authoritative section above.
   adding that day; with none saved, the streak ends and the reserve goes with
   it. Derived from the predictions on every read, never stored, so every device
   agrees. Today says what's saved, the day one covered ("Yesterday was a rest
-  day"), or when the next one comes, and once none are left says so ("None saved now", step 175). Evidence: `docs/design/research/retention-2026-10.md` §2.2.
+  day"), or when the next one comes, and once none are left says so ("None saved now", step 175). For a week after a streak of 2 days or more ends, while none runs, the streak row says so: "Your 151-day streak ended on Thursday", "No rest day was left to cover it. One prediction today starts a new one" (D60). Evidence: `docs/design/research/retention-2026-10.md` §2.2.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)
@@ -551,7 +552,9 @@ See the authoritative section above.
   both ("This year, you ran too sure at 80–100% and too cautious at 60–80%."), and
   the week's card sets the whole record's read beside its own ("Across all 148
   scored answers, you're too sure at 80–100%."), so the two spans don't read as a
-  contradiction.
+  contradiction. Its two calls are the surest at 60% or more each way, "Surest call that
+  happened" and "Surest call that didn't happen" (D60): a 40% walk was named "Surest
+  thing that didn't".
 - **The card is honest about itself** (decided 2026-11-03, D42): the rating carries
   its give-or-take ("Calibration 87/100, give or take 3, from 148 resolved
   predictions"), and a card with categories left off says so ("2 categories not
@@ -571,7 +574,10 @@ Nothing that produces a shareable artifact is ever paywalled.
   the time the person picks in You (D38, 2026-11-01). **Happened** and **Didn't**
   on the reminder record that answer and open the app on the resolved state
   (D8, 2026-11-02); tapping the notification itself still opens the question,
-  and "Can't tell" stays in the app. Web has no actions. A reminder that no longer
+  and "Can't tell" stays in the app. Web has no actions. **The words can be kept off**
+  (D60): "Show the words in reminders" in You, on by default; off, a reminder reads
+  "Your prediction from Nov 6 · You said 70%", so nothing written is on the lock screen,
+  and has no Happened / Didn't: two alike could take the wrong answer. A reminder that no longer
   matches its prediction (set for another date or time, words changed after it
   arrived) or whose answer now would be same-day (D41) opens the question instead
   of recording, with the current words and Resolve's note (step 169, 2026-11-10,
@@ -779,6 +785,12 @@ so a score that only luck put over the line doesn't earn the tier. Insights show
 each unlocked category score with its give-or-take. Not adopted: discounting 95–100%
 calls or repeated titles, since a sure thing that happens is a calibrated call and
 "Log it again" exists for real repeats.
+
+**A badge that falls is said** (D60, 2026-11-13): badges follow the record both ways,
+and the answer that takes one back says so under the range's box, the same after Yes and
+No ("Back to Tracker in health: after this answer its score's low end is no longer
+above Forecaster's 70. A badge follows the record both ways."), never after "Change answer"
+(D50's reason). No hysteresis.
 
 Badges are per-category. A user can be Sharp in health and Guesser in finance
 simultaneously — this specificity is the key insight and the core shareable artifact.

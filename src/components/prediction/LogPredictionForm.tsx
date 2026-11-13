@@ -316,7 +316,11 @@ export function LogPredictionForm({
       }
       else AccessibilityInfo.announceForAccessibility('Saved.');
       setTitle('');
-      setCategory(null);
+      // "Save and log another" keeps the category just chosen: a batch of
+      // exercise predictions wanted Health each time (blind playtest
+      // 2026-11-13b, run 8; roadmap D60 (h)). D29's empty start is for a
+      // category nobody picked; this one was picked a moment ago, in view.
+      if (!another) setCategory(null);
       setConfidence(null);
       const next = datePresets();
       setPresets(next);

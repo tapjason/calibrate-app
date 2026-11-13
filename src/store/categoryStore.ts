@@ -9,7 +9,7 @@
 import { create } from 'zustand';
 
 import { listCategoryDefs, upsertCategoryDef } from '@/db/categories';
-import { graphemeLength } from '@/engine/graphemes';
+import { graphemeLength, splitGraphemes } from '@/engine/graphemes';
 import {
   CATEGORIES,
   isBuiltInCategory,
@@ -88,7 +88,10 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 
   add: async (name) => {
     const userId = requireUserId();
-    const clean = tidy(name);
+    // "🍸 Nights out": the emoji becomes the icon and the rest the name, so it
+    // isn't shown twice (roadmap D60 (i); blind playtest 2026-11-13b, run 5).
+    const lead = leadingEmoji(tidy(name));
+    const clean = lead ? lead.rest : tidy(name);
     const problem = categoryNameProblem(clean);
     if (problem) throw new Error(problem);
     const added = get().defs.filter((d) => !isBuiltInCategory(d.id));
@@ -96,7 +99,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
       id: newCategoryId(),
       user_id: userId,
       name: clean,
-      icon: null,
+      icon: lead ? { kind: 'emoji', emoji: lead.emoji } : null,
       hidden: false,
       position: added.reduce((max, d) => Math.max(max, d.position), 0) + 1,
       created_at: new Date().toISOString(),
@@ -226,6 +229,20 @@ const PICTOGRAPHIC: RegExp | null = (() => {
     return null;
   }
 })();
+
+/**
+ * A new category's name that starts with one emoji and a space, then words:
+ * the emoji and the words, or null (roadmap D60 (i)). A name that is only an
+ * emoji, or has none in front, stays as typed.
+ */
+export function leadingEmoji(name: string): { emoji: string; rest: string } | null {
+  const space = name.indexOf(' ');
+  if (space <= 0) return null;
+  const head = name.slice(0, space);
+  const rest = name.slice(space + 1).trim();
+  if (rest.length === 0 || splitGraphemes(head).length !== 1) return null;
+  return categoryEmojiProblem(head) === null ? { emoji: head, rest } : null;
+}
 
 /**
  * What's wrong with an emoji for an icon (D40), as a sentence, or null: it

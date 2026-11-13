@@ -49,6 +49,13 @@ export interface StoredSettings {
    */
   streakShown: boolean;
   /**
+   * Whether a due-day reminder shows the prediction's words (roadmap D60 (b)).
+   * On by default. Off, it says only the day it was made and the number, so
+   * nothing written shows on a lock screen (four testers over rounds 18–19
+   * asked; one turned reminders off "just in case").
+   */
+  reminderWords: boolean;
+  /**
    * Chosen share-card theme id (src/constants/cardThemes.ts). Cosmetic only —
    * an id the user is not entitled to resolves back to the free theme at
    * render time, so a lapsed subscriber keeps every card, in the free look.
@@ -148,6 +155,7 @@ interface SettingsState extends StoredSettings {
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
   setStreakShown: (shown: boolean) => Promise<void>;
+  setReminderWords: (shown: boolean) => Promise<void>;
   setCardThemeId: (id: string) => Promise<void>;
   setCardFormat: (format: CardShape) => Promise<void>;
   setCardHiddenCategories: (hidden: readonly Category[]) => Promise<void>;
@@ -190,6 +198,7 @@ const DEFAULTS: StoredSettings = {
   coachEnabled: false,
   analyticsEnabled: true,
   streakShown: true,
+  reminderWords: true,
   cardThemeId: DEFAULT_THEME.id,
   cardFormat: 'post',
   cardHiddenCategories: [],
@@ -269,6 +278,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
           streakShown:
             typeof stored.streakShown === 'boolean' ? stored.streakShown : DEFAULTS.streakShown,
+          reminderWords:
+            typeof stored.reminderWords === 'boolean'
+              ? stored.reminderWords
+              : DEFAULTS.reminderWords,
           cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
           cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
           cardHiddenCategories:
@@ -340,6 +353,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setStreakShown: async (shown) => {
     set({ streakShown: shown });
+    await persist(snapshot(get()));
+  },
+
+  setReminderWords: async (shown) => {
+    set({ reminderWords: shown });
     await persist(snapshot(get()));
   },
 
@@ -468,6 +486,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,
     streakShown: state.streakShown,
+    reminderWords: state.reminderWords,
     cardThemeId: state.cardThemeId,
     cardFormat: state.cardFormat,
     cardHiddenCategories: state.cardHiddenCategories,

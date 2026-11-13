@@ -78,6 +78,8 @@ export function SettingsView({
   // Their times (roadmap D38).
   const dueReminderTime = useSettingsStore((s) => s.dueReminderTime);
   const setDueReminderTime = useSettingsStore((s) => s.setDueReminderTime);
+  const reminderWords = useSettingsStore((s) => s.reminderWords);
+  const setReminderWords = useSettingsStore((s) => s.setReminderWords);
   const digestDay = useSettingsStore((s) => s.digestDay);
   const setDigestDay = useSettingsStore((s) => s.setDigestDay);
   const digestTime = useSettingsStore((s) => s.digestTime);
@@ -174,12 +176,24 @@ export function SettingsView({
                 />
               </View>
             )}
+            {/* What a reminder shows, and a way to keep the words off it
+                (roadmap D60 (b)): four testers over rounds 18–19 asked what
+                the lock screen would show, and nothing said. */}
+            {remindersEnabled && (
+              <ToggleRow
+                label="Show the words in reminders"
+                description={reminderWordsLine(reminderWords)}
+                value={reminderWords}
+                onValueChange={(v) => void setReminderWords(v)}
+                testID="toggle-reminder-words"
+              />
+            )}
             <ToggleRow
               label="Weekly digest"
               description={
                 digestEnabled
-                  ? `What's open and coming up, ${DAY_NAMES[digestDay]} at ${reminderTimeLabel(digestTime)}.`
-                  : "What's open and coming up, once a week."
+                  ? `How many are open, never their words, ${DAY_NAMES[digestDay]} at ${reminderTimeLabel(digestTime)}.`
+                  : 'How many are open, never their words, once a week.'
               }
               value={digestEnabled}
               onValueChange={(v) => void setDigestEnabled(v)}
@@ -259,6 +273,16 @@ export function SettingsView({
 }
 
 /** One inset card of rows, with an optional footer explaining them. */
+/**
+ * What a due-day reminder shows, with its words on or off (roadmap D60 (b)).
+ * Exported for tests.
+ */
+export function reminderWordsLine(on: boolean): string {
+  return on
+    ? "Each shows the prediction's words and your number, with Happened and Didn't to answer from it. On a locked iPhone the words stay hidden until it recognises you, unless Show Previews is set to Always (Settings → Notifications → Show Previews)."
+    : 'Each shows only the day you made it and your number, like “Your prediction from Nov 6 · You said 70%”. Tap it to answer.';
+}
+
 function Group({ children, footer }: { children: ReactNode; footer?: string }) {
   return (
     <View style={styles.group}>
@@ -517,7 +541,7 @@ function DeleteGroup({ onOpenDelete }: { onOpenDelete: () => void }) {
   return (
     <Group>
       <NavRow
-        label={status === 'authenticated' ? 'Delete account' : 'Erase all data on this device'}
+        label={status === 'authenticated' ? 'Delete account' : 'Erase your data on this phone'}
         onPress={onOpenDelete}
         chevron={false}
         tone="destructive"

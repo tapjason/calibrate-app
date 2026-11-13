@@ -7,7 +7,7 @@ import { createTestDb } from '@/db/testing';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { WarmupQuestion } from '@/types';
 
-import { WarmupQuiz } from './WarmupQuiz';
+import { WARMUP_TAP_TIP, WarmupQuiz } from './WarmupQuiz';
 
 const QUESTIONS: readonly WarmupQuestion[] = [
   {
@@ -53,6 +53,22 @@ describe('WarmupQuiz', () => {
     expect(screen.getByTestId('warmup-prompt').props.accessibilityLabel).toBe(
       'Question 1 of 2. Which is longer?',
     );
+  });
+
+  // Roadmap D60 (g): with ±5 alone a question cost 7–9 taps (blind playtest
+  // 2026-11-13b, runs 4 and 8). The first questions say a tap sets any number.
+  it('says on the first questions that a tap on the bar sets any number, then stops', () => {
+    const tip = new RegExp(WARMUP_TAP_TIP.replace(/\./g, '\\.'));
+    const first = render(<WarmupQuiz />);
+    expect(screen.getByText(tip)).toBeTruthy();
+    first.unmount();
+    useWarmupStore.setState({
+      questions: [...QUESTIONS, ...QUESTIONS].map((q, i) => ({ ...q, id: `q${i}` })),
+      index: 3,
+    });
+    render(<WarmupQuiz />);
+    expect(screen.getByText('Which is deeper?')).toBeTruthy();
+    expect(screen.queryByText(tip)).toBeNull();
   });
 
   // Roadmap step 44: Next swaps the question while focus stays on the button.

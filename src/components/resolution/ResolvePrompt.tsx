@@ -4,8 +4,11 @@ import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View
 import { localDate } from '@/components/ui/dates';
 import { textLanguage } from '@/components/ui/textLanguage';
 import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
+import { daysUntilDue } from '@/components/prediction/dueGroups';
 import { loggedAgainLine, logAgainWords } from '@/components/prediction/dueWords';
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
+import { BADGE_LADDER } from '@/components/stats/scoringCopy';
+import { BADGE_META, BADGE_SCORE_BAR } from '@/constants/badges';
 import { Button } from '@/components/ui/Button';
 import { naturalFrequencyFor } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
@@ -36,8 +39,9 @@ import {
   type Milestone,
   type Prediction,
   type ResolvedStatus,
+  type TierDrop,
 } from '@/types';
-import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { MilestoneCard } from './MilestoneCard';
 import { StreakCheckpointCard } from './StreakCheckpointCard';
@@ -217,6 +221,7 @@ function readAcknowledgement(
   note: string | null;
   ratingBefore: number | null;
   milestone: Milestone | null;
+  tierDrop: TierDrop | null;
   checkpoint: { days: number; next: number } | null;
   unlocked: boolean;
 } {
@@ -225,6 +230,9 @@ function readAcknowledgement(
   const predictions = usePredictionStore.getState();
   const days = predictions.streakCheckpoint;
   const milestone = stats.milestone;
+  // Only a drop in this prediction's category is this answer's: a sync in
+  // between could have dropped another (code review, step 176).
+  const tierDrop = stats.tierDrop?.category === prediction.category ? stats.tierDrop : null;
   if (milestone?.kind === 'rating_unlocked') useRatingStore.getState().noteMoment();
   stats.clearMilestone();
   predictions.clearStreakCheckpoint();
@@ -256,9 +264,30 @@ function readAcknowledgement(
     ),
     ratingBefore,
     milestone,
+    tierDrop,
     unlocked: milestone?.kind === 'rating_unlocked',
     checkpoint: days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
   };
+}
+
+/**
+ * When an answer takes a badge back (roadmap D60 (a)): said plainly, the same
+ * after Yes and No, never as a loss. A tester's 20th health answer named
+ * "Forecaster in health" and the next one took it away without a word: "If
+ * I'd screenshotted that banner for my guys, I'd have been posting a lie"
+ * (blind playtest 2026-11-13b, run 7). Exported for tests.
+ */
+export function tierDropLine(drop: TierDrop): string {
+  // The bar of the tier just above where it landed: after a fall of two, the
+  // one it now misses by the least (code review, step 176).
+  const above = BADGE_LADDER[BADGE_LADDER.indexOf(drop.to) + 1] ?? drop.from;
+  const bar = BADGE_SCORE_BAR[above];
+  const to = BADGE_META[drop.to].label;
+  const why =
+    bar === undefined
+      ? 'after this answer it no longer clears the bar'
+      : `after this answer its score's low end is no longer above ${BADGE_META[above].label}'s ${bar}`;
+  return `Back to ${to} in ${categoryLabel(drop.category)}: ${why}. A badge follows the record both ways.`;
 }
 
 /**
@@ -334,6 +363,8 @@ export function ResolvePrompt({
     /** The rating before the first answer, kept for a correction's line. */
     ratingBefore: number | null;
     milestone: Milestone | null;
+    /** A badge this answer took back (D60 (a)), said under the range's record. */
+    tierDrop: TierDrop | null;
     /** A streak checkpoint this answer reached (7, 30, 100…), and the next one. */
     checkpoint: { days: number; next: number } | null;
     /** This answer unlocked the rating: its meaning line survives a correction. */
@@ -450,8 +481,11 @@ export function ResolvePrompt({
                 isSameDayLine(answered.line) || stats.userStat?.total_resolved === 1,
                 null,
               ),
-        // What the first answer crossed isn't this one's to show.
+        // What the first answer crossed isn't this one's to show, and a
+        // badge's fall under the other answer would make it a one-tap
+        // comparison, as the rating's move would (D50).
         milestone: null,
+        tierDrop: null,
       });
       AccessibilityInfo.announceForAccessibility(
         outcome === 'resolved_yes' ? 'Changed to: it happened.' : 'Changed to: it didn’t happen.',
@@ -527,6 +561,11 @@ export function ResolvePrompt({
         />
       </View>
     );
+    const dropLine = answered.tierDrop && (
+      <Text style={styles.bucketNote} testID="resolve-tier-drop">
+        {tierDropLine(answered.tierDrop)}
+      </Text>
+    );
     // Same acknowledgement for Yes and No (rule 0.4): no outcome colour, no
     // celebration — a precise, neutral "recorded".
     return (
@@ -568,8 +607,10 @@ export function ResolvePrompt({
                 {answered.note}
               </Text>
             )}
+            {answered.tierDrop && dropLine}
           </View>
         )}
+        {answered.tierDrop && !answered.line && dropLine}
         {/* The advice and its button together (roadmap D56). */}
         {onPredictAgain && sameDayAnswer && againButton}
 
@@ -678,6 +719,18 @@ export function ResolvePrompt({
       />
     );
   }
+  // Can't tell isn't final for a while (D45), and the line said only that it
+  // won't count, which read as final (blind playtest 2026-11-13b, runs 2 and
+  // 4; roadmap D60): the last day it could still be answered, as if chosen now.
+  const skipBy = skipAnswerBy({
+    ...prediction,
+    status: 'skipped',
+    resolved_at: new Date().toISOString(),
+  });
+  const skipNote = skipBy
+    ? `It won't count toward your score. You can still answer it until the end of ${formatDay(skipBy)}.`
+    : "It won't count toward your score.";
+
   if (prediction.status !== 'pending' && prediction.status !== 'skipped') {
     return (
       <View style={styles.center}>
@@ -695,6 +748,12 @@ export function ResolvePrompt({
       <Text style={styles.stated} testID="resolve-stated">
         On {formatLogged(prediction.created_at)} you said{' '}
         <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
+        {/* Answered after its due day, the day it was about: "today" in a
+            title three weeks old read as this morning (blind playtest
+            2026-11-13b, run 7; roadmap D60). */}
+        {daysUntilDue(prediction, new Date()) < 0
+          ? `. It was due ${formatLogged(prediction.due_date)}.`
+          : ''}
       </Text>
       <View style={styles.categoryRow}>
         <CategoryIcon category={prediction.category} size={14} color={colors.textSecondary} />
@@ -775,13 +834,15 @@ export function ResolvePrompt({
           accessibilityRole="button"
           // The note in the label, not only the hint, which screen readers can
           // skip (playtest 2026-11-08, finding 39).
-          accessibilityLabel="Can't tell / doesn't apply. It won't count toward your score."
+          accessibilityLabel={`Can't tell / doesn't apply. ${skipNote}`}
           hitSlop={8}
           style={styles.skip}
           testID="resolve-skip"
         >
           <Text style={styles.skipText}>Can't tell / doesn't apply</Text>
-          <Text style={styles.skipNote}>It won't count toward your score.</Text>
+          <Text style={styles.skipNote} testID="resolve-skip-note">
+            {skipNote}
+          </Text>
         </Pressable>
       )}
     </View>

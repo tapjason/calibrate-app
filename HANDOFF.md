@@ -1,8 +1,27 @@
 # Handoff
 
-**Branch:** `builder/step-173-owner-picks` (step 173, D59, 2026-11-12; rounds 18–19 and steps 174–175, 2026-11-13; all pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/step-173-owner-picks` (step 173, D59, 2026-11-12; rounds 18–19 and steps 174–175, 2026-11-13, pushed; step 176, D60, committed, not pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
+
+**Step 176 (2026-11-13), the owner's picks after round 19** (roadmap D60, BUILT_LOG row 176; owner: "go with your recommendations for open decisions"). JS only: a reload.
+- **Built:**
+  - a badge that falls is said on the answer that moved it, never after Change answer;
+  - "Show the words in reminders" in You (off: "Your prediction from Nov 6 · You said 70%");
+  - the squares explained in How scoring works, and Share says when they come;
+  - the recap's surest calls from 60% only, renamed;
+  - an ended streak said on Today for a week;
+  - Can't tell names its last day; a late answer says when it was due;
+  - the Warm-up's tap tip on its first three questions;
+  - "Save and log another" keeps the category;
+  - a leading emoji in a new category's name becomes its icon;
+  - the guest Erase screen retitled.
+- **Kept as built:** D50's "why" on the first move in a run; guest Erase scope.
+- **Not now** (reasons in D60): the midnight day, the empty middle, weekday chips, the goal's "of 3", and the rest of round 19's P2–P3 list.
+- **Reviews:** check passes (2,149 tests). `code-reviewer` no blockers; should-fix done (reschedules one at a time and a re-set cancels the earlier request; the stored `words` read loosely; the drop line only for the answer's category, naming the bar above where it landed; a store-level drop test; a DST case). `record-auditor` holds; its wording tightened ("no longer above", "until the end of", "was left", the strip's last two marks). `policy-auditor` no fail; wordless reminders lose Happened / Didn't (two alike could take the wrong answer), the line says what a locked iPhone shows, the Erase row is "Erase your data on this phone", policy §5 says what a reminder shows (effective date now Nov 13). Fixes not re-reviewed.
+- **Needs the owner (from the reviews):** a correction after the drop line leaves no trace (count corrections on Insights?); a badge that falls by a correction, a re-file or a sync is said nowhere; whether "Show the words in reminders" should start off (HIG and Guideline 4.5.4; iPhone's default hides previews until Face ID).
+- **Owner actions, unchanged:** publish the privacy policy (GitHub Pages; still a 404); RevenueCat's launch call stays (named in the policy).
+- **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-13 (step 176…)".
 
 **Round 19 (2026-11-13), a fortnight in the app:** `docs/design/research/playtest-2026-11-13b.md` (plan `round19-plan-2026-11-13.md`).
 - **Method:** four diaries on four rhythms (16 days away, across midnight, weekly, low energy with Reduce Motion), with `Tomorrow 0–10` per sitting; four single sittings, each starting with three minutes and no task (sharing before 20, privacy, a slow phone on prepaid data, a dyslexic teenager with a stylus).

@@ -45,6 +45,7 @@ import {
   REMINDER_PLACEHOLDER,
   REMINDER_TITLE,
   reminderBody,
+  reminderBodyWithoutWords,
 } from './copy';
 
 // Injected dependencies (the platform Notifications module and the navigator).
@@ -308,18 +309,32 @@ async function schedule(p: Prediction): Promise<void> {
   // what a launch-time backfill of overdue predictions would otherwise do.
   // They're on Home's "Ready to answer" list already.
   if (fireDate.getTime() <= Date.now()) return;
+  const words = useSettingsStore.getState().reminderWords;
   try {
     const id = await deps.notifications.scheduleNotificationAsync({
       content: {
         title: REMINDER_TITLE,
-        body: reminderBody(p.title, p.confidence),
+        // The day Resolve's "On Nov 6 you said 70%" names.
+        body: words
+          ? reminderBody(p.title, p.confidence)
+          : reminderBodyWithoutWords(p.created_at, p.confidence),
         // fireAt lets the launch reconcile spot a reminder set for another
-        // time (one from before D9 fired at noon) and set it again.
-        data: { predictionId: p.id, fireAt: fireDate.toISOString() },
-        categoryIdentifier: REMINDER_CATEGORY,
+        // time (one from before D9 fired at noon) and set it again; `words`
+        // one set before the words were switched off or on (D60 (b)).
+        data: { predictionId: p.id, fireAt: fireDate.toISOString(), words },
+        // Without the words, no Happened / Didn't: two made the same day at
+        // the same number would read alike, and a one-tap answer could land
+        // on the wrong one (policy audit, step 176). A tap opens the question,
+        // words and all, behind the lock.
+        ...(words ? { categoryIdentifier: REMINDER_CATEGORY } : {}),
       },
       trigger: { type: 'date', date: fireDate },
     });
+    // One set meanwhile for the same prediction would be left with iOS.
+    const earlier = scheduledByPredictionId.get(p.id);
+    if (earlier !== undefined && earlier !== id) {
+      await deps.notifications.cancelScheduledNotificationAsync(earlier).catch(() => {});
+    }
     scheduledByPredictionId.set(p.id, id);
   } catch (e) {
     // Never let scheduling failures bubble — the store transaction has
@@ -351,6 +366,11 @@ async function cancel(predictionId: string): Promise<void> {
  * time, or reminders turned off). Then any open prediction without a reminder
  * gets one. Requests without a predictionId (the weekly digest) are left alone.
  */
+/** A stored reminder's `words`: on unless false or 0 (set before D60, it showed them). */
+function shownWords(stored: unknown): boolean {
+  return stored !== false && stored !== 0;
+}
+
 async function reconcile(): Promise<void> {
   if (!deps || !deps.notifications) return;
   const api = deps.notifications;
@@ -374,7 +394,10 @@ async function reconcile(): Promise<void> {
       notificationsEnabled &&
       prediction !== undefined &&
       !scheduledByPredictionId.has(predictionId) &&
-      request.content.data?.fireAt === reminderTimeFor(prediction.due_date).toISOString();
+      request.content.data?.fireAt === reminderTimeFor(prediction.due_date).toISOString() &&
+      // One from before D60 has no `words`: it showed them.
+      // Read loosely: iOS may hand a stored boolean back as 1 or 0.
+      shownWords(request.content.data?.words) === useSettingsStore.getState().reminderWords;
     if (keep) {
       scheduledByPredictionId.set(predictionId, request.identifier);
       continue;
@@ -419,13 +442,22 @@ async function applyEnabled(enabled: boolean): Promise<void> {
   }
 }
 
-/** Move every reminder to the chosen time (roadmap D38): cancel, then set again. */
-async function rescheduleAll(): Promise<void> {
-  if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled) return;
-  for (const predictionId of [...scheduledByPredictionId.keys()]) {
-    await cancel(predictionId);
-  }
-  for (const p of usePredictionStore.getState().pending) await schedule(p);
+/**
+ * Move every reminder to the chosen time (roadmap D38), or set them again with
+ * or without the words (D60 (b)): cancel, then set again. One run at a time:
+ * two quick flips of a switch ran two at once, and the loser's requests were
+ * left with iOS, never cancelled (code review, step 176).
+ */
+let rescheduling: Promise<void> = Promise.resolve();
+function rescheduleAll(): Promise<void> {
+  rescheduling = rescheduling.then(async () => {
+    if (!deps || !deps.notifications || !permissionGranted || !notificationsEnabled) return;
+    for (const predictionId of [...scheduledByPredictionId.keys()]) {
+      await cancel(predictionId);
+    }
+    for (const p of usePredictionStore.getState().pending) await schedule(p);
+  });
+  return rescheduling;
 }
 
 function handleStoreUpdate(pending: Prediction[]): void {
@@ -822,8 +854,15 @@ async function activate(): Promise<void> {
       void applyEnabled(next);
       return;
     }
-    // A new time (roadmap D38): every reminder moves to it.
-    if (state.dueReminderTime !== prev.dueReminderTime && next) void rescheduleAll();
+    // A new time (roadmap D38): every reminder moves to it. Words on or off
+    // (D60 (b)): every reminder is set again with or without them.
+    if (
+      next &&
+      (state.dueReminderTime !== prev.dueReminderTime ||
+        state.reminderWords !== prev.reminderWords)
+    ) {
+      void rescheduleAll();
+    }
   });
 
   // Match the OS to the store before watching for changes, then take the

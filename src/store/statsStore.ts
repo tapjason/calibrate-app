@@ -37,7 +37,7 @@ import {
   type CoverageGap,
   type CoverageNudgeDecision,
 } from '@/engine/coverageNudge';
-import { detectMilestone } from '@/engine/milestones';
+import { detectMilestone, detectTierDrop } from '@/engine/milestones';
 import { isSameDayAnswer, sameDayCount, scoredOnly } from '@/engine/sameDay';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
@@ -60,6 +60,7 @@ import {
   type CategoryCounts,
   type CategoryStat,
   type Milestone,
+  type TierDrop,
   type NextBadgeTarget,
   type Prediction,
   type RatingRange,
@@ -153,6 +154,12 @@ interface StatsState {
    */
   milestone: Milestone | null;
   clearMilestone: () => void;
+  /**
+   * The badge the last recompute took back, or null (roadmap D60 (a)): said
+   * on the answer that moved it, never celebrated. Unlike a milestone it isn't
+   * kept for later: a drop from a sync or a correction belongs to no answer.
+   */
+  tierDrop: TierDrop | null;
   /**
    * The rating as Today showed it just before a reminder's Happened or
    * Didn't recorded an answer, for Resolve's "moved from…" line (roadmap
@@ -337,8 +344,9 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   brierEdge: null,
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
+  tierDrop: null,
 
-  clearMilestone: () => set({ milestone: null }),
+  clearMilestone: () => set({ milestone: null, tierDrop: null }),
 
   ratingBeforeAnswer: null,
   noteRatingBefore: (predictionId) => {
@@ -411,7 +419,11 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       next.categoryStats,
     );
     // Keep an uncelebrated milestone rather than overwrite it with null.
-    set({ ...next, milestone: milestone ?? prev.milestone });
+    set({
+      ...next,
+      milestone: milestone ?? prev.milestone,
+      tierDrop: detectTierDrop(prev.categoryStats, next.categoryStats),
+    });
   },
 }));
 

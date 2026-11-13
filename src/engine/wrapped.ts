@@ -73,7 +73,7 @@ export interface WrappedSummary {
 
   /** Categories active in the window, strongest calibration first. */
   categories: WrappedCategory[];
-  /** Highest-confidence call that came in, and the one that didn't. */
+  /** The surest call (60% or more) that happened, and the surest that didn't (D60 (d)). */
   boldest_hit: Prediction | null;
   biggest_miss: Prediction | null;
   /** The busiest bucket's counts, or null for an empty window. */
@@ -174,14 +174,26 @@ function rollUpCategories(preds: readonly Prediction[]): WrappedCategory[] {
 }
 
 /**
- * Highest-confidence prediction with the given outcome. Ties break toward the
- * more recent one, so a repeated bold call reads as the current story.
+ * The lowest confidence the recap's "surest" calls may have (roadmap D60
+ * (d)). Below it a call wasn't sure of anything: a 40% walk that didn't
+ * happen was named "Surest thing that didn't" and undid what "isn't a
+ * mistake" had done for an ill tester (blind playtest 2026-11-13b, run 4;
+ * six runs over rounds 18–19).
+ */
+export const SUREST_MIN_CONFIDENCE = 60;
+
+/**
+ * Highest-confidence prediction with the given outcome, at
+ * SUREST_MIN_CONFIDENCE or more. Ties break toward the more recent one, so a
+ * repeated sure call reads as the current story.
  */
 function boldest(
   preds: readonly Prediction[],
   status: 'resolved_yes' | 'resolved_no',
 ): Prediction | null {
-  const matching = preds.filter((p) => p.status === status);
+  const matching = preds.filter(
+    (p) => p.status === status && p.confidence >= SUREST_MIN_CONFIDENCE,
+  );
   if (matching.length === 0) return null;
   return matching.reduce((best, p) => {
     if (p.confidence !== best.confidence) {

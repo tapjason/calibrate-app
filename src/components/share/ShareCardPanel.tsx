@@ -14,17 +14,25 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
-import type { Category } from '@/types';
+import { MIN_N_BAND, type Category } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
 import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
 import { ThemePicker } from './ThemePicker';
-import { buildShareCard, cardHiddenCategories, shareText as cardText } from './cardCopy';
+import {
+  buildShareCard,
+  cardHiddenCategories,
+  shareText as cardText,
+  showsRanges,
+} from './cardCopy';
 import { WarmupCard } from './WarmupCard';
 import { warmupCardCopy } from './warmupCardCopy';
 
 const LAST_ON_NOTE = 'One category stays on the card.';
+
+export const SQUARES_LATER =
+  `Shared as text, your card gets a row of coloured squares once your rating unlocks and a band has ${MIN_N_BAND} scored answers. How scoring works says what they mean.`;
 
 const MESSAGES: Record<Exclude<ShareOutcome, 'shared'>, string> = {
   unavailable: "Sharing isn't available on this device — screenshot it instead.",
@@ -165,6 +173,14 @@ export function ShareCardPanel({
           disabled={sharing}
           onPress={() => void onShareText()}
         />
+      )}
+
+      {/* Before the squares, when they come and where they're explained
+          (roadmap D60 (c); blind playtest 2026-11-13b, run 5). */}
+      {card && !showsRanges(card, buckets) && (
+        <Text style={styles.message} testID="share-squares-later">
+          {SQUARES_LATER}
+        </Text>
       )}
 
       {message && (

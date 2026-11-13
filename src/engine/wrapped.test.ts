@@ -1,7 +1,14 @@
 import { MIN_N_OVERALL, type Category, type Prediction } from '@/types';
 
 import { __setTimeZoneForTests } from './localTime';
-import { buildWrapped, inWindow, tallyAnswers, weekWindow, yearWindow } from './wrapped';
+import {
+  buildWrapped,
+  inWindow,
+  SUREST_MIN_CONFIDENCE,
+  tallyAnswers,
+  weekWindow,
+  yearWindow,
+} from './wrapped';
 
 const NOW = new Date('2026-08-29T12:00:00.000Z');
 
@@ -241,6 +248,29 @@ describe('buildWrapped', () => {
     );
     expect(w.boldest_hit?.confidence).toBe(95);
     expect(w.biggest_miss?.confidence).toBe(90);
+  });
+
+  // Roadmap D60 (d): a 40% walk that didn't happen was the recap's "surest
+  // thing that didn't" (blind playtest 2026-11-13b, run 4).
+  it('names no call under 60% as the surest either way', () => {
+    const w = buildWrapped(
+      [
+        prediction({ confidence: 40, status: 'resolved_no' }),
+        prediction({ confidence: 55, status: 'resolved_no' }),
+        prediction({ confidence: 50, status: 'resolved_yes' }),
+      ],
+      'week',
+      NOW,
+    );
+    expect(SUREST_MIN_CONFIDENCE).toBe(60);
+    expect(w.boldest_hit).toBeNull();
+    expect(w.biggest_miss).toBeNull();
+    const at60 = buildWrapped(
+      [prediction({ confidence: 60, status: 'resolved_no' })],
+      'week',
+      NOW,
+    );
+    expect(at60.biggest_miss?.confidence).toBe(60);
   });
 
   it('breaks a confidence tie toward the more recent call', () => {

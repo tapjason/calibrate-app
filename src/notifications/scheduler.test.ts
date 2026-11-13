@@ -30,6 +30,7 @@ import {
   type NotificationsApi,
   type Navigator,
 } from './scheduler';
+import { reminderBodyWithoutWords } from './copy';
 import { loggedEarlier } from '../../jest/loggedEarlier';
 
 /** Let fire-and-forget schedule/cancel work settle. */
@@ -41,6 +42,7 @@ interface ScheduledRecord {
   body: string;
   data: Record<string, unknown> | undefined;
   date: Date;
+  categoryIdentifier?: string;
 }
 
 interface FakeNotifications extends NotificationsApi {
@@ -125,6 +127,7 @@ function makeFakeNotifications(
         body: req.content.body,
         data: req.content.data,
         date: req.trigger.date,
+        categoryIdentifier: req.content.categoryIdentifier,
       });
       return id;
     },
@@ -224,6 +227,7 @@ beforeEach(async () => {
     remindersEnabled: true,
     digestEnabled: true,
     dueReminderTime: { hour: 19, minute: 0 },
+    reminderWords: true,
     digestDay: 0,
     digestTime: { hour: 18, minute: 0 },
     aiRefineEnabled: true,
@@ -258,7 +262,7 @@ describe('scheduler: schedule on create', () => {
     expect(rec.title).toBe('Did it happen');
     expect(rec.body).toBe('Ship the prototype · You said 50%');
     // Roadmap D9: the evening of the due day, not the stored noon (Jest runs in UTC).
-    expect(rec.data).toEqual({ predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' });
+    expect(rec.data).toEqual({ predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true });
     expect(rec.date.toISOString()).toBe('2099-06-01T19:00:00.000Z');
   });
 
@@ -860,7 +864,7 @@ describe('scheduler: launch-time reconcile', () => {
     await initNotifications();
     const scheduled = Array.from(notifications.scheduled.values());
     expect(scheduled.map((r) => r.data)).toEqual([
-      { predictionId: future.id, fireAt: '2099-06-01T19:00:00.000Z' },
+      { predictionId: future.id, fireAt: '2099-06-01T19:00:00.000Z', words: true },
     ]);
   });
 
@@ -916,7 +920,7 @@ describe('scheduler: permission in context', () => {
     expect(await requestReminderPermission()).toBe('granted');
     expect(notifications.requestCalls).toBe(1);
     expect(Array.from(notifications.scheduled.values()).map((r) => r.data)).toEqual([
-      { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' },
+      { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true },
     ]);
 
     // And from then on it watches the store as usual.
@@ -968,6 +972,83 @@ describe('scheduler: a chosen reminder time', () => {
     expect(notifications.scheduled.size).toBe(1);
     [rec] = Array.from(notifications.scheduled.values());
     expect([rec.date.getHours(), rec.date.getMinutes()]).toEqual([20, 30]);
+  });
+});
+
+// Roadmap D60 (b): a reminder can leave the words off the lock screen (four
+// testers over rounds 18–19 asked what it would show).
+describe('scheduler: reminders without the words', () => {
+  it('says only the day it was made and the number, and is set again when switched', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const p = await usePredictionStore.getState().create({
+      title: 'Finger exercises on Saturday',
+      category: 'health',
+      confidence: 70,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    await flush();
+    let [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.body).toBe('Finger exercises on Saturday · You said 70%');
+
+    useSettingsStore.setState({ reminderWords: false });
+    await flush();
+    expect(notifications.scheduled.size).toBe(1);
+    [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.body).toBe(reminderBodyWithoutWords(p.created_at, 70));
+    expect(rec.body).not.toContain('Finger');
+    expect(rec.data).toMatchObject({ predictionId: p.id, words: false });
+    // No one-tap answer on a reminder that does not say which one it is.
+    expect(rec.categoryIdentifier).toBeUndefined();
+  });
+
+  it('leaves one reminder per prediction after quick flips', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    for (const title of ['A', 'B']) {
+      await usePredictionStore.getState().create({
+        title,
+        category: 'work',
+        confidence: 50,
+        due_date: '2099-06-01T12:00:00.000Z',
+      });
+    }
+    await flush();
+    // Off, on, off, with no time to settle between.
+    useSettingsStore.setState({ reminderWords: false });
+    useSettingsStore.setState({ reminderWords: true });
+    useSettingsStore.setState({ reminderWords: false });
+    for (let i = 0; i < 20; i += 1) await flush();
+    const left = Array.from(notifications.scheduled.values());
+    expect(left).toHaveLength(2);
+    expect(left.every((r) => r.data?.words === false)).toBe(true);
+  });
+
+  it('replaces at launch a reminder set with the other choice', async () => {
+    useSettingsStore.setState({ reminderWords: false });
+    const notifications = makeFakeNotifications(true);
+    const p = await usePredictionStore.getState().create({
+      title: 'A',
+      category: 'work',
+      confidence: 50,
+      due_date: '2099-06-01T12:00:00.000Z',
+    });
+    // Set before D60, so with no `words`: it showed them.
+    notifications.scheduled.set('os-old', {
+      id: 'os-old',
+      title: 'Did it happen',
+      body: 'A · You said 50%',
+      data: { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z' },
+      date: new Date('2099-06-01T19:00:00.000Z'),
+    } as never);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const kept = Array.from(notifications.scheduled.entries());
+    expect(kept).toHaveLength(1);
+    expect(kept[0][0]).not.toBe('os-old');
+    expect(kept[0][1].data).toMatchObject({ words: false });
   });
 });
 

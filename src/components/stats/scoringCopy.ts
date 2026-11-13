@@ -98,6 +98,17 @@ export function scoringSections(): ScoringSection[] {
       ],
     },
     {
+      // What a shared card's squares and strip mean (roadmap D60 (c)): a
+      // tester who came from a friend's 🟩🟧 read them as Wordle, green right
+      // and orange wrong, and nothing in the app said otherwise (blind
+      // playtest 2026-11-13b, run 5).
+      title: 'The squares on a shared card',
+      paragraphs: [
+        `Shared as text, your card carries five squares, one for each band, low to high: 🟩 no clear lean, 🟧 too sure, 🟦 too cautious, and ⬜ a band with fewer than ${MIN_N_BAND} scored answers. The image shows the same as a strip: ○ no clear lean, ▼ too sure, ▲ too cautious, • under ${MIN_N_BAND} answers, – none.`,
+        `They aren't right and wrong. A band is 🟩 when its calls came true about as often as you said, or near enough that luck could explain the gap, misses and all. The squares come once your rating unlocks and a band holds ${MIN_N_BAND} scored answers.`,
+      ],
+    },
+    {
       // The integrity bonus section went with D23 (2026-10-10): it paid for a
       // stated number, which pushes reports toward it.
       title: 'Use the whole range',

@@ -169,3 +169,38 @@ describe('streakCopy — rest days', () => {
     expect(copy?.detail).toMatch(/Next milestone: 1\D095 days/);
   });
 });
+
+// Roadmap D60 (e): an ended streak is said for a week while none runs, as a
+// fresh start (blind playtest 2026-11-13b, run 3).
+describe('streakCopy — a streak that ended', () => {
+  it('says it ended yesterday, with no rest day to cover it, and no goal dots', () => {
+    const copy = streakCopy(
+      status({
+        streak: 0,
+        today: 0,
+        todayCounts: false,
+        ended: { days: 151, on: '2026-11-12T00:00:00', ago: 1 },
+      }),
+    );
+    expect(copy).toMatchObject({
+      headline: 'Your 151-day streak ended yesterday',
+      detail: 'No rest day was left to cover it. One prediction today starts a new one',
+      filled: 0,
+      ended: true,
+      rest: null,
+    });
+    expect(copy?.spoken).toBe(
+      'Your 151-day streak ended yesterday. No rest day was left to cover it. One prediction today starts a new one.',
+    );
+  });
+
+  it('names the weekday further back', () => {
+    const on = new Date(2026, 10, 12); // a Thursday
+    const copy = streakCopy(
+      status({ streak: 0, today: 0, todayCounts: false, ended: { days: 9, on: on.toISOString(), ago: 3 } }),
+    );
+    expect(copy?.headline).toBe(
+      `Your 9-day streak ended on ${on.toLocaleDateString(undefined, { weekday: 'long' })}`,
+    );
+  });
+});

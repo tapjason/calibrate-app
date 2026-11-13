@@ -7,7 +7,7 @@ import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { CategoryStat, UserStat, WarmupResult } from '@/types';
 
-import { ShareCardPanel } from './ShareCardPanel';
+import { ShareCardPanel, SQUARES_LATER } from './ShareCardPanel';
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -318,5 +318,37 @@ describe('ShareCardPanel — shape and contents', () => {
     useSettingsStore.setState({ cardHiddenCategories: onFile });
     render(<ShareCardPanel />);
     expect(screen.getAllByTestId(/^card-badge-/).length).toBeGreaterThan(1);
+  });
+});
+
+// Roadmap D60 (c): before the squares exist, when they come and where they're
+// explained (blind playtest 2026-11-13b, run 5).
+describe('ShareCardPanel — the squares, before they come', () => {
+  it('says when the text share gets its squares while no range has 10', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+    expect(screen.getByTestId('share-squares-later')).toHaveTextContent(SQUARES_LATER);
+  });
+
+  it('says nothing once a range has 10', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    useStatsStore.setState({
+      calibration: {
+        rating: 88,
+        buckets: [
+          {
+            low: 60,
+            high: 80,
+            total_resolved: 12,
+            resolved_yes: 8,
+            stated_confidence_mean: 70,
+            actual_rate: 8 / 12,
+            direction: 'calibrated',
+          } as never,
+        ],
+      },
+    });
+    render(<ShareCardPanel />);
+    expect(screen.queryByTestId('share-squares-later')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import type { CategoryStat, UserStat } from '@/types';
 
-import { detectMilestone } from './milestones';
+import { detectMilestone, detectTierDrop } from './milestones';
 
 const user = (over: Partial<UserStat> = {}): UserStat => ({
   user_id: 'u1',
@@ -107,5 +107,33 @@ describe('detectMilestone', () => {
       [cat({ category: 'health', badge_level: 'forecaster' })],
     );
     expect(m).toMatchObject({ kind: 'tier_up', badge: 'forecaster', from: 'guesser' });
+  });
+});
+
+// Roadmap D60 (a): a badge that falls is said, never celebrated (blind
+// playtest 2026-11-13b, run 7).
+describe('detectTierDrop', () => {
+  it('names the category, the tier lost and the one it went back to', () => {
+    expect(
+      detectTierDrop(
+        [cat({ badge_level: 'forecaster' }), cat({ category: 'work', badge_level: 'tracker' })],
+        [cat({ badge_level: 'tracker' }), cat({ category: 'work', badge_level: 'tracker' })],
+      ),
+    ).toEqual({ category: 'health', from: 'forecaster', to: 'tracker' });
+  });
+
+  it('takes the highest tier lost first', () => {
+    expect(
+      detectTierDrop(
+        [cat({ badge_level: 'forecaster' }), cat({ category: 'work', badge_level: 'sharp' })],
+        [cat({ badge_level: 'tracker' }), cat({ category: 'work', badge_level: 'forecaster' })],
+      ),
+    ).toMatchObject({ category: 'work', from: 'sharp' });
+  });
+
+  it('says nothing for a rise, no change, or a category gone from the next snapshot', () => {
+    expect(detectTierDrop([cat({ badge_level: 'tracker' })], [cat({ badge_level: 'forecaster' })])).toBeNull();
+    expect(detectTierDrop([cat({ badge_level: 'sharp' })], [cat({ badge_level: 'sharp' })])).toBeNull();
+    expect(detectTierDrop([cat({ badge_level: 'sharp' })], [])).toBeNull();
   });
 });

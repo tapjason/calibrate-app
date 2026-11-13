@@ -9,7 +9,7 @@
 //
 // Layer rule: imports only from @/types.
 
-import type { BadgeLevel, CategoryStat, Milestone, UserStat } from '@/types';
+import type { BadgeLevel, CategoryStat, Milestone, TierDrop, UserStat } from '@/types';
 
 const LADDER: readonly BadgeLevel[] = [
   'guesser',
@@ -72,4 +72,28 @@ export function detectMilestone(
   }
 
   return null;
+}
+
+/**
+ * The category whose badge fell between two snapshots, or null: the highest
+ * tier lost first. Never celebrated, only said (roadmap D60 (a)): a tier named
+ * on one answer and silently gone on the next read as a lie the tester had
+ * nearly posted. Badges follow the record both ways (CLAUDE.md, Badge
+ * Levels); this only says so when it happens.
+ */
+export function detectTierDrop(
+  prevCategories: readonly CategoryStat[],
+  nextCategories: readonly CategoryStat[],
+): TierDrop | null {
+  const nextByCategory = new Map(nextCategories.map((c) => [c.category, c]));
+  const drops = prevCategories
+    .map((prev) => ({ prev, next: nextByCategory.get(prev.category) }))
+    .filter(
+      (d): d is { prev: CategoryStat; next: CategoryStat } =>
+        d.next !== undefined && rank(d.next.badge_level) < rank(d.prev.badge_level),
+    )
+    .sort((a, b) => rank(b.prev.badge_level) - rank(a.prev.badge_level));
+  if (drops.length === 0) return null;
+  const { prev, next } = drops[0];
+  return { category: prev.category, from: prev.badge_level, to: next.badge_level };
 }

@@ -139,4 +139,14 @@ describe('ScoringExplainer', () => {
       screen.getByText(holdRanges('0–20%, 20–40%, 40–60%, 60–80% and 80–100%'), { exact: false }),
     ).toBeTruthy();
   });
+
+  // Roadmap D60 (c): a tester from a friend's 🟩🟧 read them as Wordle (blind
+  // playtest 2026-11-13b, run 5). Their meaning, in the key's own words.
+  it('says what the shared squares and the strip mean, and when they come', () => {
+    const squares = scoringSections().find((s) => s.title === 'The squares on a shared card');
+    const text = squares?.paragraphs.join(' ') ?? '';
+    for (const part of ['🟩 no clear lean', '🟧 too sure', '🟦 too cautious', `⬜ a band with fewer than ${MIN_N_BAND}`, "They aren't right and wrong", '▼ too sure', '▲ too cautious']) {
+      expect(text).toContain(part);
+    }
+  });
 });

@@ -20,6 +20,7 @@ import {
   ResolvePrompt,
   SAME_DAY_LINE,
   SAME_DAY_REWORDED_LINE,
+  tierDropLine,
 } from './ResolvePrompt';
 
 const USER = 'local-user-v1';
@@ -229,8 +230,8 @@ describe('ResolvePrompt announcements', () => {
     await insertPrediction(samplePending());
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => expect(screen.getByTestId('resolve-skip')).toBeTruthy());
-    expect(screen.getByTestId('resolve-skip').props.accessibilityLabel).toBe(
-      "Can't tell / doesn't apply. It won't count toward your score.",
+    expect(screen.getByTestId('resolve-skip').props.accessibilityLabel).toMatch(
+      /^Can't tell \/ doesn't apply\. It won't count toward your score\. You can still answer it until the end of \w{3}, \w{3} \d{1,2}\.$/,
     );
   });
 });
@@ -514,7 +515,10 @@ describe('ResolvePrompt acknowledgement', () => {
     await waitFor(() => {
       expect(screen.getByText("Can't tell / doesn't apply")).toBeTruthy();
     });
-    expect(screen.getByText("It won't count toward your score.")).toBeTruthy();
+    // And that it isn't final (D60 (f)): the last day it could be answered.
+    expect(screen.getByTestId('resolve-skip-note').props.children).toMatch(
+      /^It won't count toward your score\. You can still answer it until /,
+    );
   });
 });
 
@@ -1116,5 +1120,62 @@ describe('ResolvePrompt — Logged again', () => {
     await waitFor(() => expect(screen.getByTestId('resolve-logged-again')).toBeTruthy());
     expect(screen.getByTestId('resolve-logged-again')).toHaveTextContent(/^Logged again, due \w+\.$/);
     expect(screen.queryByTestId('resolve-again')).toBeNull();
+  });
+});
+
+// Roadmap D60 (a): an answer that takes a badge back says so, the same after
+// Yes and No (blind playtest 2026-11-13b, run 7).
+describe('ResolvePrompt — a badge taken back', () => {
+  const drop = { category: 'health' as const, from: 'forecaster' as const, to: 'tracker' as const };
+
+  it('words the drop by the bar its low end fell under', () => {
+    expect(tierDropLine(drop)).toBe(
+      "Back to Tracker in health: after this answer its score's low end is no longer above Forecaster's 70. A badge follows the record both ways.",
+    );
+  });
+
+  it.each(['resolve-yes', 'resolve-no'])('shows it after %s, and not after a correction', async (button) => {
+    await insertPrediction(samplePending({ category: 'health' }));
+    const real = useStatsStore.getState().recomputeForUser;
+    useStatsStore.setState({
+      recomputeForUser: async (userId: string) => {
+        await real(userId);
+        useStatsStore.setState({ tierDrop: drop });
+      },
+    });
+    try {
+      render(<ResolvePrompt predictionId="p1" />);
+      await waitFor(() => expect(screen.getByTestId(button)).toBeTruthy());
+      fireEvent.press(screen.getByTestId(button));
+      await waitFor(() => expect(screen.getByTestId('resolve-tier-drop')).toBeTruthy());
+      expect(screen.getByTestId('resolve-tier-drop')).toHaveTextContent(tierDropLine(drop));
+      // The other answer's effect on one screen would be a one-tap comparison.
+      fireEvent.press(screen.getByTestId('resolve-change'));
+      await waitFor(() => expect(screen.queryByTestId('resolve-tier-drop')).toBeNull(), {
+        timeout: 5000,
+      });
+    } finally {
+      useStatsStore.setState({ recomputeForUser: real, tierDrop: null });
+    }
+  });
+});
+
+// Roadmap D60 (f): answered after its due day, the day it was about (blind
+// playtest 2026-11-13b, run 7).
+describe('ResolvePrompt — answered late', () => {
+  it('says when it was due once that day has passed', async () => {
+    await insertPrediction(samplePending());
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-stated')).toBeTruthy());
+    expect(screen.getByTestId('resolve-stated')).toHaveTextContent(/you said 80%\. It was due /);
+  });
+
+  it('says nothing more on the due day itself', async () => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    await insertPrediction(samplePending({ due_date: today.toISOString() }));
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-stated')).toBeTruthy());
+    expect(screen.getByTestId('resolve-stated')).not.toHaveTextContent(/was due/);
   });
 });

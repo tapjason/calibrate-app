@@ -891,6 +891,27 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-13 (step 176, D60, the owner's picks after round 19; a reload is enough):
+
+- [ ] **Reminders without the words:** You → Due-day reminders → "Show the words in reminders"
+      off. Log one due tomorrow (or move the reminder time a few minutes ahead and set a due-today
+      one from yesterday's demo data). On the lock screen it reads "Your prediction from … · You
+      said N%", no title, and no Happened / Didn't (a tap opens the question). Back on, the next
+      one shows the title and the buttons. Flip the switch quickly a few times: one reminder each.
+      With iPhone's Settings → Notifications → Show Previews at "When Unlocked", the locked screen
+      shows "A prediction is ready to answer".
+- [ ] **A badge that falls:** in the demo data, answer a high-confidence No in a category just
+      over a badge bar (Insights shows its low end): under the range's box, "Back to … in …: after
+      this answer its score's low end is under …". Change answer: the line goes.
+- [ ] **An ended streak:** on a spare install, let a short streak lapse (or move the phone's
+      date): Today's streak row says "Your N-day streak ended …", no dots; VoiceOver reads both
+      lines. Log one: the row is a 1-day streak again.
+- [ ] **Can't tell:** its note names a date ("You can still answer it until …"), and VoiceOver
+      reads it in the button's label.
+- [ ] **Warm-up, first question:** the hint ends "Tap anywhere on the bar to jump to a number.",
+      and a tap on the slider's track does jump there; gone from question 4.
+- [ ] **Categories:** add "🍸 Nights out": the row shows 🍸 as its icon and "Nights out".
+
 Added 2026-11-13 (step 175, round 19's fixes; a reload is enough):
 
 - [ ] **Log, Pick a date** on an iPhone SE-sized screen if you can borrow one, else the 17 at

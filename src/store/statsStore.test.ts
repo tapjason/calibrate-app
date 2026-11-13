@@ -341,3 +341,38 @@ describe('statsStore before the score', () => {
     expect(useStatsStore.getState().categoryCounts.health).toEqual({ resolved: 1, happened: 1, mean_stated: 80 });
   });
 });
+
+// Roadmap D60 (a): the drop the answer's recompute leaves, for Resolve to say;
+// never kept past the next recompute (code review, step 176).
+describe('statsStore.tierDrop', () => {
+  const answer = async (id: string, confidence: number, yes: boolean) => {
+    await insertPrediction(p({ id, category: 'health', confidence }));
+    await resolvePrediction(id, yes ? 'resolved_yes' : 'resolved_no');
+  };
+
+  it('is set by the recompute that took a badge back, then cleared by the next', async () => {
+    for (let i = 0; i < 20; i += 1) await answer(`h${i}`, 60, i < 12);
+    await useStatsStore.getState().recomputeForUser(USER);
+    const health = () => useStatsStore.getState().categoryStats.find((c) => c.category === 'health');
+    expect(health()?.badge_level).toBe('forecaster');
+    expect(useStatsStore.getState().tierDrop).toBeNull();
+
+    for (let i = 0; i < 10; i += 1) await answer(`m${i}`, 95, false);
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(health()?.badge_level).toBe('tracker');
+    expect(useStatsStore.getState().tierDrop).toEqual({
+      category: 'health',
+      from: 'forecaster',
+      to: 'tracker',
+    });
+
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().tierDrop).toBeNull();
+  });
+
+  it('is cleared with the milestone', () => {
+    useStatsStore.setState({ tierDrop: { category: 'health', from: 'sharp', to: 'forecaster' } });
+    useStatsStore.getState().clearMilestone();
+    expect(useStatsStore.getState().tierDrop).toBeNull();
+  });
+});

@@ -115,7 +115,7 @@ describe('DeleteAccountView — guest', () => {
     eraseDeviceData.mockResolvedValue({ ok: true });
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
 
-    expect(screen.getByText('Erase all data on this phone?')).toBeTruthy();
+    expect(screen.getByText('Erase your data on this phone?')).toBeTruthy();
     fireEvent.press(screen.getByTestId('delete-confirm-button'));
 
     await waitFor(() => expect(eraseDeviceData).toHaveBeenCalled());

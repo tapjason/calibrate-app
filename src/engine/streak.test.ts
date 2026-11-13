@@ -197,6 +197,7 @@ describe('streakStatus — where today stands', () => {
       restUsed: 0,
       restEarnedToday: false,
       nextRestAt: 7,
+      ended: null,
     });
   });
 
@@ -212,6 +213,7 @@ describe('streakStatus — where today stands', () => {
       restUsed: 0,
       restEarnedToday: false,
       nextRestAt: 7,
+      ended: null,
     });
   });
 
@@ -226,6 +228,7 @@ describe('streakStatus — where today stands', () => {
       restUsed: 0,
       restEarnedToday: false,
       nextRestAt: 7,
+      ended: null,
     });
     expect(streakStatus([], now)).toMatchObject({ streak: 0, today: 0, todayCounts: false });
   });
@@ -413,5 +416,57 @@ describe('returnAfterGap', () => {
   it("counts a Can't tell as having been there", () => {
     const skip = answered(day(12), 1, 'skipped');
     expect(returnAfterGap([...tenDays(), ...skip], new Date(day(24)))).toBeNull();
+  });
+});
+
+// Roadmap D60 (e): a streak that ended lately is said while none runs (blind
+// playtest 2026-11-13b, run 3: a 151-day streak ended without a word).
+describe('a streak that ended lately', () => {
+  const days = (start: number, count: number) =>
+    Array.from({ length: count }, (_, i) =>
+      logged(`2026-05-${String(start + i).padStart(2, '0')}T08:00:00.000Z`),
+    ).flat();
+  const at = (day: number) => new Date(`2026-05-${String(day).padStart(2, '0')}T15:00:00.000Z`);
+
+  it('names its length and the day that ended it, with none running', () => {
+    // 1–3 counted (no rest day yet), the 4th didn't: ended on the 4th.
+    const status = streakStatus(days(1, 3), at(5));
+    expect(status.streak).toBe(0);
+    expect(status.ended).toMatchObject({ days: 3, ago: 1 });
+    expect(new Date(status.ended!.on).getDate()).toBe(4);
+  });
+
+  it('counts the rest days spent before it ended, not after', () => {
+    // 1–14 counted saves two; 15 and 16 spend them; 17 ends it at 14 days.
+    const status = streakStatus(days(1, 14), at(20));
+    expect(status.ended).toMatchObject({ days: 14, ago: 3 });
+  });
+
+  it('is said for a week, then not', () => {
+    expect(streakStatus(days(1, 3), at(10))?.ended).toMatchObject({ ago: 6 });
+    expect(streakStatus(days(1, 3), at(11)).ended).toBeNull();
+  });
+
+  it('is not said once a new one runs, or for a single day', () => {
+    expect(streakStatus([...days(1, 3), ...days(5, 1)], at(5)).ended).toBeNull();
+    expect(streakStatus([...days(1, 3), ...days(5, 1)], at(6)).ended).toBeNull();
+    expect(streakStatus(days(1, 1), at(3)).ended).toBeNull();
+  });
+});
+
+// Code review, step 176: the ended day and its "ago" agree across a DST change.
+describe('a streak that ended, across the clocks going back', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  it('names the local day that ended it in Los Angeles', () => {
+    __setTimeZoneForTests('America/Los_Angeles');
+    // Logged at 23:30 local on Oct 29, 30 and 31 (UTC the next day); Nov 1
+    // (the change) didn't count; seen on Nov 3 at 10:00 local.
+    const preds = ['2026-10-30T06:30:00.000Z', '2026-10-31T06:30:00.000Z', '2026-11-01T06:30:00.000Z']
+      .flatMap((iso) => logged(iso));
+    const status = streakStatus(preds, new Date('2026-11-03T18:00:00.000Z'));
+    expect(status.ended).toMatchObject({ days: 3, ago: 2 });
+    // Local midnight starting Nov 1 in Los Angeles is 07:00 UTC (still PDT).
+    expect(status.ended?.on).toBe('2026-11-01T07:00:00.000Z');
   });
 });

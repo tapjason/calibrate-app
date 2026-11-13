@@ -5,7 +5,7 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import { FREE_ENTITLEMENT } from '@/types';
 
-import { SettingsView } from './SettingsView';
+import { reminderWordsLine, SettingsView } from './SettingsView';
 
 // Refine is CUT from the release (`REFINE_ENABLED = false`), so these tests
 // force the flag on. The behavior stays covered while the feature is dormant,
@@ -100,6 +100,7 @@ describe('SettingsView', () => {
         coachEnabled: false,
         analyticsEnabled: true,
         streakShown: true,
+        reminderWords: true,
         cardThemeId: 'midnight',
         cardFormat: 'post',
         cardHiddenCategories: [],
@@ -287,7 +288,7 @@ describe('SettingsView — delete', () => {
     useAuthStore.setState({ status: 'guest', accountsAvailable: false });
     render(<SettingsView onOpenDelete={jest.fn()} />);
 
-    expect(screen.getByText('Erase all data on this device')).toBeTruthy();
+    expect(screen.getByText('Erase your data on this phone')).toBeTruthy();
   });
 });
 
@@ -311,6 +312,30 @@ describe('SettingsView — notification switches', () => {
   });
 });
 
+// Roadmap D60 (b): what a reminder shows, and the words kept off it.
+describe('SettingsView — the words in reminders', () => {
+  it('says what a reminder shows, and switches the words off', async () => {
+    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: true, reminderWords: true });
+    render(<SettingsView />);
+    expect(screen.getByTestId('toggle-reminder-words-row').props.accessibilityHint).toBe(
+      reminderWordsLine(true),
+    );
+    expect(reminderWordsLine(true)).toMatch(/locked iPhone/);
+    expect(reminderWordsLine(false)).toMatch(/Tap it to answer/);
+    fireEvent.press(screen.getByTestId('toggle-reminder-words-row'));
+    await waitFor(() => expect(useSettingsStore.getState().reminderWords).toBe(false));
+    expect(screen.getByTestId('toggle-reminder-words-row').props.accessibilityHint).toBe(
+      reminderWordsLine(false),
+    );
+  });
+
+  it('is offered only while due-day reminders are on', () => {
+    useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: false });
+    render(<SettingsView />);
+    expect(screen.queryByTestId('toggle-reminder-words-row')).toBeNull();
+  });
+});
+
 // Roadmap D38: due-day reminders and the weekly digest at the person's times.
 describe('SettingsView — reminder and digest times', () => {
   it('says each time, and offers it under its switch', async () => {
@@ -328,7 +353,7 @@ describe('SettingsView — reminder and digest times', () => {
     );
     expect(screen.getByTestId('toggle-digest-row').props.accessibilityLabel).toBe('Weekly digest');
     expect(screen.getByTestId('toggle-digest-row').props.accessibilityHint).toMatch(
-      /^What's open and coming up, Sunday at 6:00.PM.$/,
+      /^How many are open, never their words, Sunday at 6:00.PM.$/,
     );
     expect(screen.getByTestId('settings-reminder-time')).toBeTruthy();
     // Off, no day or time that reads as still coming (blind playtest
@@ -336,7 +361,7 @@ describe('SettingsView — reminder and digest times', () => {
     fireEvent.press(screen.getByTestId('toggle-digest-row'));
     await waitFor(() =>
       expect(screen.getByTestId('toggle-digest-row').props.accessibilityHint).toBe(
-        "What's open and coming up, once a week.",
+        'How many are open, never their words, once a week.',
       ),
     );
     fireEvent.press(screen.getByTestId('toggle-digest-row'));

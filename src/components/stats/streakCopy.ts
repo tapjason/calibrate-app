@@ -17,6 +17,7 @@
 // never as something missed.
 
 import { localCount } from '@/components/ui/count';
+import { localDate } from '@/components/ui/dates';
 import { DAILY_GOAL, type StreakStatus } from '@/types';
 
 export interface StreakCopy {
@@ -32,6 +33,8 @@ export interface StreakCopy {
   checkpoint: boolean;
   /** The rest-day line, or null with no streak running. */
   rest: string | null;
+  /** A streak that ended lately, said with no streak running (D60 (e)): no goal dots. */
+  ended?: boolean;
 }
 
 const YEAR_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -106,13 +109,37 @@ function restLine(status: StreakStatus): string | null {
 }
 
 /**
+ * A streak that ended in the last week, said once there's none running
+ * (roadmap D60 (e)): plainly and as a fresh start, the welcome back's words
+ * (D51), never as a loss. A 151-day streak ended without a word, and on the
+ * next visit the row had simply gone (blind playtest 2026-11-13b, run 3).
+ */
+function endedCopy(ended: NonNullable<StreakStatus['ended']>): StreakCopy {
+  const when =
+    ended.ago === 1
+      ? 'yesterday'
+      : `on ${localDate(new Date(ended.on), { weekday: 'long' })}`;
+  const headline = `Your ${localCount(ended.days)}-day streak ended ${when}`;
+  const detail = 'No rest day was left to cover it. One prediction today starts a new one';
+  return {
+    headline,
+    detail,
+    filled: 0,
+    spoken: `${headline}. ${detail}.`,
+    checkpoint: false,
+    rest: null,
+    ended: true,
+  };
+}
+
+/**
  * Null when there is nothing yet: no streak and nothing done today. Since D17
  * one prediction starts or extends a streak, so anything done today means a
  * streak of at least one; the old "2 more today starts a streak" is gone.
  */
 export function streakCopy(status: StreakStatus): StreakCopy | null {
   const { streak, today, todayCounts, checkpoint, nextCheckpoint } = status;
-  if (streak === 0) return null;
+  if (streak === 0) return status.ended ? endedCopy(status.ended) : null;
 
   // The dots are the day's goal (D17), not the streak's price.
   const filled = Math.min(today, DAILY_GOAL);

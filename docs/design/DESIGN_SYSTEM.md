@@ -425,7 +425,10 @@ as the new ones.
 - **Streak** (roadmap D2, step 61): a row on Home under the rating: a flame, "12-day
   streak", what today adds ("1 more today makes it 13", or "Today counts") and three
   pips for today. A day counts with 3 predictions logged or answered. Gain framing
-  only; an ended streak simply isn't shown until the next one starts.
+  only. Since D60 (2026-11-13), for a week after a streak of 2 days or more ends,
+  while none runs, the row says so plainly with no pips ("Your 151-day streak ended
+  on Thursday" / "No rest day was left to cover it. One prediction today starts a
+  new one"); after that it isn't shown until the next one starts.
 - **Streak checkpoints** (step 64; 7, 30, 100, 365, then yearly): once today counts,
   the row names the next one ("Today counts. Next milestone: 30 days"). The day before
   one says so as a gain ("1 more today makes it 7: a full week"; "Today counts.

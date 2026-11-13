@@ -49,7 +49,7 @@ import {
   type StreakStatus,
 } from '@/types';
 
-import { localDayNumber } from './localTime';
+import { localDayNumber, localMidnight, localParts } from './localTime';
 
 export { REST_DAY_EVERY, REST_DAYS_MAX, STREAK_CHECKPOINTS, STREAK_DAY_MIN };
 
@@ -110,6 +110,8 @@ interface Walk {
   covered: Set<number>;
   /** The last day in that run that saved a rest day, or null. */
   earnedOn: number | null;
+  /** The last run that ended: its length and the day that ended it, or null. */
+  lastEnded: { days: number; on: number } | null;
 }
 
 /**
@@ -122,7 +124,8 @@ function walk(counted: ReadonlySet<number>, through: number): Walk {
   let restDays = 0;
   let covered = new Set<number>();
   let earnedOn: number | null = null;
-  if (counted.size === 0) return { streak, restDays, covered, earnedOn };
+  let lastEnded: Walk['lastEnded'] = null;
+  if (counted.size === 0) return { streak, restDays, covered, earnedOn, lastEnded };
   for (let day = Math.min(...counted); day <= through; day += 1) {
     if (counted.has(day)) {
       streak += 1;
@@ -134,14 +137,23 @@ function walk(counted: ReadonlySet<number>, through: number): Walk {
       restDays -= 1;
       covered.add(day);
     } else {
+      if (streak > 0) lastEnded = { days: streak, on: day };
       streak = 0;
       restDays = 0;
       covered = new Set();
       earnedOn = null;
     }
   }
-  return { streak, restDays, covered, earnedOn };
+  return { streak, restDays, covered, earnedOn, lastEnded };
 }
+
+/**
+ * Days after a streak ends that Today still says so (roadmap D60 (e)): a
+ * 151-day streak ended without a word, and the row was simply gone on the
+ * next visit (blind playtest 2026-11-13b, run 3). A week, so a weekly visit
+ * still hears it; a return after RETURN_GAP_DAYS has the welcome back.
+ */
+export const STREAK_ENDED_DAYS = 7;
 
 /** The streak length that saves the next rest day, or null while the reserve is full. */
 function nextRestAt(streak: number, restDays: number): number | null {
@@ -171,7 +183,23 @@ export function streakStatus(predictions: readonly Prediction[], now: Date): Str
     restUsed,
     restEarnedToday: todayCounts && run.earnedOn === today,
     nextRestAt: nextRestAt(streak, restDays),
+    ended: endedLately(run, streak, today, now),
   };
+}
+
+/** The run that ended in the last STREAK_ENDED_DAYS, while none is running. */
+function endedLately(
+  run: Walk,
+  streak: number,
+  today: number,
+  now: Date,
+): { days: number; on: string; ago: number } | null {
+  const ended = run.lastEnded;
+  if (streak > 0 || !ended || ended.days < 2) return null;
+  const ago = today - ended.on;
+  if (ago < 0 || ago >= STREAK_ENDED_DAYS) return null;
+  const d = localParts(now);
+  return { days: ended.days, on: localMidnight(d.year, d.month, d.day - ago).toISOString(), ago };
 }
 
 export const computeStreak: ComputeStreak = (predictions, opts) => {

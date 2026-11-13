@@ -11,7 +11,7 @@ If the app's name changes, update it here. Not legal advice.
 
 # Fairly Sure Privacy Policy
 
-**Effective:** November 4, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 13, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
@@ -131,7 +131,10 @@ personal data, and we don't share it for advertising.
 ## 5. Notifications
 
 Reminders are scheduled **on your device**. We don't collect a push token and
-we don't send notifications from a server.
+we don't send notifications from a server. A due-day reminder shows the
+prediction's words and the confidence you gave it, unless you turn off **You →
+Show the words in reminders**; then it shows only the day you made it and the
+number. The weekly digest shows only how many predictions are open.
 
 ## 6. How long we keep it
 
@@ -154,7 +157,7 @@ If you signed in with Apple, we also revoke the app's access to your Apple ID.
 it, so cancel it first in Settings → [your name] → Subscriptions, or the app
 will point you there.
 
-Without an account, **You → Erase all data on this device** removes
+Without an account, **You → Erase your data on this phone** removes
 everything made on this device without an account. Your settings (switches and
 reminder times) stay, and hold nothing you wrote; so does the data of any account
 that signed out on this device, until that account is deleted.

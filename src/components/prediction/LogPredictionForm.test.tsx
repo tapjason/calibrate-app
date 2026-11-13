@@ -915,6 +915,28 @@ describe('LogPredictionForm — Save and log another', () => {
     );
     expect(screen.queryByTestId('submit-another')).toBeNull();
   });
+
+  // Roadmap D60 (h): a batch of exercise predictions wanted Health each time
+  // (blind playtest 2026-11-13b, run 8).
+  it('keeps the category just chosen, and saves the next one under it', async () => {
+    render(<LogPredictionForm />);
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Gym tonight');
+    fireEvent.press(screen.getByTestId('category-health'));
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    fireEvent.press(screen.getByTestId('submit-another'));
+    await waitFor(() => expect(usePredictionStore.getState().pending).toHaveLength(1));
+    expect(screen.getByTestId('category-health').props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Stretch in the morning');
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    fireEvent.press(screen.getByTestId('submit-another'));
+    await waitFor(() => expect(usePredictionStore.getState().pending).toHaveLength(2));
+    expect(usePredictionStore.getState().pending.map((p) => p.category)).toEqual([
+      'health',
+      'health',
+    ]);
+  });
 });
 
 // Step 173 (aggregate B11): a half-typed prediction survives an interruption.
