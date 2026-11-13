@@ -83,9 +83,17 @@ export function DeleteAccountView({
             'your calibration history and your Warmup and practice answers, from our ' +
             'servers and from this phone. ' +
             "It happens immediately and can't be undone."
-          : 'This permanently erases every prediction, reflection and your Warmup ' +
-            "result from this phone. You aren't signed in, so there is no other copy. " +
-            "It can't be undone."}
+          : // Everything wipeLocalUserData and eraseDeviceData remove, named
+            // (blind playtest 2026-11-13b, run 6: the old line left out
+            // categories, practice and the usage queue), and what stays.
+            // Guest rows only: an account signed out on this phone keeps its own
+            // (record audit 2026-11-13), hence "made here without an account".
+            'This permanently erases what was made on this phone without an account: ' +
+            'every prediction and reflection, ' +
+            'your categories and their icons, your Warmup and practice answers, a ' +
+            'prediction you were still typing, your age range and usage stats not yet ' +
+            'sent. Settings, like reminder times, stay. ' +
+            "You aren't signed in, so there is no other copy. It can't be undone."}
       </Text>
 
       {renewing && (

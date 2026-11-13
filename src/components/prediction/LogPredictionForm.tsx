@@ -576,8 +576,14 @@ export function LogPredictionForm({
             picking={picking}
             onChange={setDueDate}
             onPickingChange={(open) => {
+              // Armed only when the box is about to appear: with it already
+              // showing (a second tap, or a picked date carried in) no size
+              // change comes, and a flag left on would scroll the form away
+              // from the title on the next unrelated one (code review
+              // 2026-11-13).
+              const shown = picking || !presets.some((p) => p.iso === dueDate);
+              if (open && !shown) revealDate.current = true;
               setPicking(open);
-              if (open) revealDate.current = true;
             }}
           />
         </View>

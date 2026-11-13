@@ -96,7 +96,7 @@ function restLine(status: StreakStatus): string | null {
     // 2026-11-13b, run 3).
     return nextRestAt === null
       ? `${spent}. None saved now`
-      : `${spent}. None saved now; the next comes with day ${localCount(nextRestAt)}`;
+      : `${spent}. None saved now; the next comes with day\u00A0${localCount(nextRestAt)}`;
   }
   if (restEarnedToday) {
     return restDays > 1 ? 'Today saved a second rest day' : 'Today saved a rest day';

@@ -891,6 +891,21 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-13 (step 175, round 19's fixes; a reload is enough):
+
+- [ ] **Log, Pick a date** on an iPhone SE-sized screen if you can borrow one, else the 17 at
+      AX3: opening it brings "Due …" and the picker above the Save bar.
+- [ ] **Warm-up ±5 with a finger or stylus:** step from 70% to 80%. The −5 / +5 stay put when
+      the line under the number wraps.
+- [ ] **Answer all** with three due once the rating is unlocked: "One answer nudges it either
+      way…" appears under the first card's rating line only.
+- [ ] **Erase all data** (guest, on a spare install): the confirmation lists predictions and
+      reflections, categories and icons, Warm-up and practice answers, unsent usage stats, and
+      says settings stay. After erasing, the reminder time you set is still there.
+- [ ] **Round 19 questions for the phone:** what a due-day reminder and the digest show on the
+      lock screen (four testers asked); how long a cold start takes on the oldest iPhone you can
+      find (the web dev bundle took 10–17 s at 4× CPU).
+
 Added 2026-11-13 (step 174, round 18's fixes; a reload is enough):
 
 - [ ] **Log, first prediction ever** (fresh install): type a title, tap a category with the

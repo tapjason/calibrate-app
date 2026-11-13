@@ -65,6 +65,12 @@ interface ResolvePromptProps {
    */
   ratingExplained?: boolean;
   /**
+   * Called when this card's note said why the rating moves little, so the run
+   * stops repeating it. Only then: a skip, a same-day answer or the unlocking
+   * answer says nothing about it (code review 2026-11-13).
+   */
+  onRatingExplained?: () => void;
+  /**
    * "Log it again" (roadmap step 22): offered after Yes or No when set. The
    * reflection is saved first, as with Done. Left unset inside a run, where
    * leaving for the Log screen would end the run.
@@ -153,6 +159,9 @@ export function meaningLine(confidence: number): string | null {
   return `${callOften(confidence)}: one that doesn't isn't a mistake, and one that does isn't proof.`;
 }
 
+/** Why one answer only nudges the rating: said once per answer run. */
+export const RATING_WHY = 'One answer nudges it either way; the pattern over many is what counts.';
+
 /**
  * Once the rating is unlocked, what this answer did to it, the same for Yes
  * and No (roadmap D50): it moved on Today with nothing said, and two testers
@@ -165,7 +174,7 @@ export function ratingChangeLine(before: number, after: number, explain = true):
       : `Your rating moved from ${before} to ${after}.`;
   // Once a run has said why, the move alone: three in a row read as wallpaper
   // (blind playtest 2026-11-13b, run 3).
-  return explain ? `${move} One answer nudges it either way; the pattern over many is what counts.` : move;
+  return explain ? `${move} ${RATING_WHY}` : move;
 }
 
 /** The rating as Today shows it, or null while it's provisional. */
@@ -294,6 +303,7 @@ export function ResolvePrompt({
   advanceLabel = 'Done',
   reflectionCollapsed = false,
   ratingExplained = false,
+  onRatingExplained,
   onPredictAgain,
   recordedAnswer,
   sameDayWarned = false,
@@ -388,7 +398,9 @@ export function ResolvePrompt({
       }
       // The row as it now stands: an answered skip's time is this answer's,
       // not the skip's.
-      setAnswered(readAcknowledgement(landed, outcome, ratingBefore, ratingExplained));
+      const ack = readAcknowledgement(landed, outcome, ratingBefore, ratingExplained);
+      setAnswered(ack);
+      if (ack.note?.endsWith(RATING_WHY)) onRatingExplained?.();
       // Said, as Log's "Saved." is: the screen changed under the finger and
       // nothing was announced (playtest 2026-11-08, finding 38).
       AccessibilityInfo.announceForAccessibility(recordedText(outcome));

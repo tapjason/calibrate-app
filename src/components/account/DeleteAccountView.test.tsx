@@ -122,4 +122,13 @@ describe('DeleteAccountView — guest', () => {
     expect(deleteAccount).not.toHaveBeenCalled();
     expect(await screen.findByText('Your data has been erased')).toBeTruthy();
   });
+
+  it('names what Erase removes and what stays (playtest 2026-11-13b, run 6)', () => {
+    seed({ signedIn: false });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    const body = screen.getByText(/permanently erases/).props.children as string;
+    for (const part of ['without an account', 'prediction and reflection', 'categories and their icons', 'practice answers', 'still typing', 'age range', 'usage stats not yet sent', 'Settings, like reminder times, stay']) {
+      expect(body).toContain(part);
+    }
+  });
 });

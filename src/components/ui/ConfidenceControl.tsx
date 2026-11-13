@@ -165,7 +165,20 @@ export function ConfidenceControl({
           </Text>
           <Text style={styles.frequency}>{unset ? 'not set yet' : naturalFrequencyFor(value)}</Text>
         </View>
-        {inlineSteppers && steppers}
+        {/* Held level with the number's first line, so the frequency wrapping
+            under it doesn't move them: a stylus user's +5 dropped about 10 px
+            mid-tap (blind playtest 2026-11-13b, run 8). */}
+        {inlineSteppers && (
+          <View
+            style={[
+              styles.steppersInline,
+              // The number's first line, as iOS scales it (up to its cap).
+              { minHeight: type.readout.lineHeight * Math.min(fontScale, DISPLAY_MAX_SCALE) },
+            ]}
+          >
+            {steppers}
+          </View>
+        )}
       </View>
       {hint && <Text style={styles.hint}>{hint}</Text>}
 
@@ -196,7 +209,7 @@ export function ConfidenceControl({
 const styles = StyleSheet.create({
   label: { ...type.footnote, fontWeight: '500', color: colors.textSecondary },
   readoutRow: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
     gap: space.sm,
     marginBottom: space.xs,
@@ -220,5 +233,6 @@ const styles = StyleSheet.create({
   hint: { ...type.footnote, color: colors.textSecondary, marginBottom: space.xs },
   slider: { height: 40, width: '100%' },
   steppers: { flexDirection: 'row', gap: space.sm },
+  steppersInline: { justifyContent: 'center' },
   steppersBelow: { marginTop: space.sm },
 });

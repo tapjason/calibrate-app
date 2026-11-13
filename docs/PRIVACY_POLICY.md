@@ -155,7 +155,9 @@ it, so cancel it first in Settings → [your name] → Subscriptions, or the app
 will point you there.
 
 Without an account, **You → Erase all data on this device** removes
-everything the app stored.
+everything made on this device without an account. Your settings (switches and
+reminder times) stay, and hold nothing you wrote; so does the data of any account
+that signed out on this device, until that account is deleted.
 
 You can also email tapjason-dev@gmail.com to request deletion or a copy of your data.
 

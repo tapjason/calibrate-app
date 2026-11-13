@@ -9,6 +9,7 @@ import { useRatingStore } from '@/store/ratingStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
+import { RATING_WHY } from './ResolvePrompt';
 import { ResolveRun, runSummary } from './ResolveRun';
 
 const USER = 'local-user-v1';
@@ -106,6 +107,39 @@ describe('ResolveRun (roadmap step 18)', () => {
     expect((await getPrediction('b'))?.status).toBe('resolved_no');
     // Not due yet, so never part of the run.
     expect((await getPrediction('z'))?.status).toBe('pending');
+  });
+
+  it('says why the rating moves little once a run, on the first card that shows a move (code review 2026-11-13)', async () => {
+    // 24 scored answers already, so the rating is unlocked.
+    for (let i = 0; i < 24; i += 1) {
+      await insertPrediction(
+        pending({
+          id: `r${i}`,
+          confidence: 60,
+          status: i % 2 === 0 ? 'resolved_yes' : 'resolved_no',
+          created_at: '2026-04-01T08:00:00.000Z',
+          due_date: '2026-04-05T12:00:00.000Z',
+          resolved_at: '2026-04-06T08:00:00.000Z',
+        }),
+      );
+    }
+    await seed();
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().userStat?.rating_is_provisional).toBe(false);
+    render(<ResolveRun onClose={jest.fn()} />);
+
+    // A skip first says nothing about the rating, so it mustn't use up the why.
+    await waitFor(() => expect(screen.getByTestId('resolve-skip')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-skip'));
+    await waitFor(() => expect(screen.getByText('Second due')).toBeTruthy());
+    await answer('resolve-no');
+    expect(screen.getByText(new RegExp(RATING_WHY.replace(/[.;]/g, '.')))).toBeTruthy();
+    fireEvent.press(screen.getByText('Next'));
+
+    await waitFor(() => expect(screen.getByText('Third due')).toBeTruthy());
+    await answer('resolve-yes');
+    expect(screen.getByText(/Your rating (moved|stays)/)).toBeTruthy();
+    expect(screen.queryByText(new RegExp(RATING_WHY.replace(/[.;]/g, '.')))).toBeNull();
   });
 
   it('moves straight on after a skip', async () => {

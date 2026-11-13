@@ -1024,4 +1024,19 @@ describe('bringing the due line into view when Pick a date opens', () => {
     fireEvent(scroll, 'contentSizeChange', 375, 1010);
     expect(scrollToEnd).toHaveBeenCalledTimes(1);
   });
+
+  it("isn't left armed by a tap while the box is already showing (code review 2026-11-13)", () => {
+    render(<LogPredictionForm />);
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    const scrollToEnd = jest.fn();
+    scroll.instance.scrollToEnd = scrollToEnd;
+    fireEvent.press(screen.getByTestId('due-pick'));
+    fireEvent(scroll, 'contentSizeChange', 375, 1000);
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+    // A second tap with the box open changes no size; a later, unrelated
+    // change (the title growing) mustn't scroll the form to the end.
+    fireEvent.press(screen.getByTestId('due-pick'));
+    fireEvent(scroll, 'contentSizeChange', 375, 1030);
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+  });
 });

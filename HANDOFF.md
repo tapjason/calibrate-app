@@ -1,8 +1,29 @@
 # Handoff
 
-**Branch:** `builder/step-173-owner-picks` (step 173, D59, 2026-11-12, pushed; round 18 and step 174, 2026-11-13, not pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/step-173-owner-picks` (step 173, D59, 2026-11-12; rounds 18–19 and steps 174–175, 2026-11-13; all pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
+
+**Round 19 (2026-11-13), a fortnight in the app:** `docs/design/research/playtest-2026-11-13b.md` (plan `round19-plan-2026-11-13.md`).
+- **Method:** four diaries on four rhythms (16 days away, across midnight, weekly, low energy with Reduce Motion), with `Tomorrow 0–10` per sitting; four single sittings, each starting with three minutes and no task (sharing before 20, privacy, a slow phone on prepaid data, a dyslexic teenager with a stylus).
+- **Results:**
+  - scores median 6, three keep, five unsure (round 18: 7, seven keep);
+  - UMUX-Lite 63.5 (ease held, "meets my requirements" fell);
+  - trust in the numbers 3.9, acting on it 2.6;
+  - comprehension 76% sure, 22 of 24 right;
+  - three of four diaries' Tomorrow fell by the third sitting (Grace 7→6→4, Yusuf 6→6→5, Priya 4→5→3; Hannah 7→6→8).
+- **Step 175** fixed what needed no decision (BUILT_LOG row 175): the Due line into view, "about it", the rating line once per run, "None saved now", Erase's list, the ±5 held level.
+  - Code-reviewed (two should-fix, three nits, fixed) and record-audited (holds). The audit asks two things of the owner:
+    - D50: the run now says the rating's "why" once, on the first card that shows a move; later drops show bare "moved from X to Y". Should it be the first card showing a *drop* instead?
+    - A guest's Erase deletes only what was made without an account. An account that signed out on this phone keeps its rows. The confirmation and the policy now say so. Widen Erase instead? (`policy-auditor` before the policy is published.)
+- **Needs the owner, in order:**
+  1. a badge named on one answer and silently gone on the next (announce at the run's end, say when it drops, or hysteresis);
+  2. the day ending at midnight for night workers ("ready" hours early; streak and practice split mid-shift);
+  3. privacy: the policy 404 (Pages, third run) and nothing saying what a reminder shows on the lock screen (four runs over rounds 18–19);
+  4. the squares never shown before 20 (the round's only wrong answer);
+  5. the recap's "Surest thing that didn't" (six runs over two rounds);
+  6. a streak ending without a word;
+  7. then the empty middle (B3), Can't tell and "not yet", weekday chips, the goal's "of 3", Today's taps opening the rules, "am I getting better", a hit worth posting, the comeback week, data and battery, the Brier line, usage stats default, categories from Log, emoji names as icons, the Warm-up without dragging, How scoring works for a dyslexic reader, habits on day one.
 
 **Round 18 (2026-11-13), days not minutes:** `docs/design/research/playtest-2026-11-13.md` (plan `round18-plan-2026-11-13.md`).
 - **Method:** a diary over three sittings with the clock moved; a traveller from Kathmandu to New York; Arabic, British, NZ and US locales; a dropped connection.

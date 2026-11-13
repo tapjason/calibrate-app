@@ -74,6 +74,10 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
   // The cards answered here, as against the queue: one answered elsewhere and
   // passed over isn't part of what this run came to.
   const [answeredHere, setAnsweredHere] = useState<string[]>([]);
+  // Whether a card in this run has said why one answer only nudges the
+  // rating. Set by the card that said it, not by any answer: a skip or a
+  // same-day answer first would otherwise leave the run never saying it.
+  const [ratingExplained, setRatingExplained] = useState(false);
 
   // Stable per card, so ResolvePrompt's draft effect doesn't re-fire on
   // every render of the run.
@@ -164,7 +168,8 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
         advanceLabel={last ? 'Finish' : 'Next'}
         reflectionCollapsed
         // Said once a run (blind playtest 2026-11-13b, run 3).
-        ratingExplained={answeredHere.length > 0}
+        ratingExplained={ratingExplained}
+        onRatingExplained={() => setRatingExplained(true)}
         onResolved={advance}
         onDraftChange={reportDraft}
       />

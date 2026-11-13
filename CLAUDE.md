@@ -412,7 +412,7 @@ same for both. Under the range's record, until the rating unlocks, what the numb
 means ("A 70% call should come true about 7 times in 10: one that doesn't isn't a
 mistake, and one that does isn't proof."); once it's unlocked, what the answer did to
 it ("Your rating moved from 91 to 89. One answer nudges it either way; the pattern
-over many is what counts."), including after a reminder's Happened or Didn't, but
+over many is what counts."; in an answer run the second sentence comes once, step 175), including after a reminder's Happened or Didn't, but
 not after "Change answer", where it would make a false answer a one-tap comparison.
 The reflection asks "Anything to remember about this
 one?", and the coverage nudge stays quiet for 30 minutes after any answer.
@@ -537,7 +537,7 @@ See the authoritative section above.
   adding that day; with none saved, the streak ends and the reserve goes with
   it. Derived from the predictions on every read, never stored, so every device
   agrees. Today says what's saved, the day one covered ("Yesterday was a rest
-  day"), or when the next one comes. Evidence: `docs/design/research/retention-2026-10.md` §2.2.
+  day"), or when the next one comes, and once none are left says so ("None saved now", step 175). Evidence: `docs/design/research/retention-2026-10.md` §2.2.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)

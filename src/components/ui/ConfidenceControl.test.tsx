@@ -159,4 +159,24 @@ describe('ConfidenceControl', () => {
       expect(onChange).not.toHaveBeenCalled();
     });
   });
+
+  it('keeps the inline ±5 level with the number when the frequency wraps (playtest 2026-11-13b, run 8)', () => {
+    // A 390pt phone at normal text, where the steppers share the number's row.
+    const dims = jest
+      .spyOn(require('react-native/Libraries/Utilities/useWindowDimensions'), 'default')
+      .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 });
+    render(<ConfidenceControl value={80} onChange={jest.fn()} />);
+    dims.mockRestore();
+    // Walk up from +5 to the holder that pins it to the readout's first line.
+    type Node = { props: { style?: unknown }; parent: Node | null };
+    let node = screen.getByTestId('confidence-increment') as unknown as Node | null;
+    let pinned = false;
+    while (node) {
+      const flat = [node.props.style].flat(Infinity) as Array<Record<string, unknown> | undefined>;
+      const merged = Object.assign({}, ...flat.filter(Boolean)) as Record<string, unknown>;
+      if (merged.minHeight === 56 && merged.justifyContent === 'center') pinned = true;
+      node = node.parent;
+    }
+    expect(pinned).toBe(true);
+  });
 });
