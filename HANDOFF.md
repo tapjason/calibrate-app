@@ -4,6 +4,35 @@
 
 ## What this PR did
 
+**Round 21 (2026-11-13), appeal on step 177 with a shuffled cast:** `docs/design/research/playtest-2026-11-13d.md` (plan `round21-plan-2026-11-13.md`), on master `2c3444b`.
+- **Results:**
+  - median 6.5; seven keep (three for now), one unsure; all eight would be somewhat disappointed;
+  - fresh installs keep at 3 of 4 (round 20: 1 of 4);
+  - 24 of 24 end answers right; nobody gave up.
+- **Step 177:**
+  - Worked: "+ New category" (six own categories made in place), the Warm-up's intro, hiding the words (found in seconds).
+  - Half-worked: the Warm-up's no-lean line (the counts landed, "lean" didn't), the kept Warm-up card (findable but tucked away), the Brier line (it still stings).
+- **No decision needed, not built:**
+  - #2: a due-date move on the day the prediction was made isn't counted, matching D61 (i);
+  - #7: ±5 announces the new value;
+  - #8: "New badge:" on the tile;
+  - #11: drop the Warm-up card's "Real predictions next." once there's a category card;
+  - #14: clear the can't-tell notice when the next card's answer lands;
+  - #15: "Nothing under 40% answered";
+  - #16: "shouldn't happen";
+  - #17: no-break spaces, the dangling comma, the card-sheet tabs;
+  - #18: chart caption colours, "Hide the words".
+- **Needs the owner:**
+  - #1 (P1 record, simulated): a perfectly calibrated person scores about 85 at 20 answers, so the rating is biased low at small counts and the app reads the gap as the person's;
+  - #3: a one-tap "log it again with another number" on the day made;
+  - #4: weeks before anything real;
+  - #5: a lock, and hiding added category names;
+  - #6: the Brier line's words;
+  - #9: one vocabulary pass;
+  - #10: defaults for teenagers and worries;
+  - #12, #13: the friend's-squares line, and recaps that tell the person's own story;
+  - #19, #20: the Warm-up result after an interruption, and the preselected trial.
+
 **Step 177 (2026-11-13), round 20's fixes and the calls after it** (roadmap D61, BUILT_LOG row 177; owner: "go with your educated, informed, smart decisions on anything relying on me unless it is fundamentally breaking"). Branch `builder/step-177-round20`, from `802838e`. JS only: a reload.
 - **Fixes (no decision):** findings 16–21, 23, 24 of `playtest-2026-11-13c.md`.
 - **Decided and built (D61, the agent's calls, open to overturn):**
