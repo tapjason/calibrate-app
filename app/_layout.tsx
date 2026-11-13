@@ -18,6 +18,7 @@ import {
   initNotifications,
   routeFromLaunchNotification,
 } from '@/notifications/scheduler';
+import { useLogDraftStore } from '@/store/logDraftStore';
 import { usePracticeStore } from '@/store/practiceStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { syncForUser, useAuthStore } from '@/store/authStore';
@@ -111,6 +112,8 @@ export default function RootLayout() {
         await Promise.all([
           useWarmupStore.getState().hydrate(),
           usePracticeStore.getState().hydrate(),
+          // Log's kept draft (step 173).
+          useLogDraftStore.getState().hydrate(),
         ]);
         // Fire-and-forget: notifications are a retention enhancer, not a
         // critical-path dependency. A failure here (denied permission,

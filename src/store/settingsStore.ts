@@ -41,6 +41,14 @@ export interface StoredSettings {
    */
   analyticsEnabled: boolean;
   /**
+   * The streak and the daily goal, shown or not (step 173, aggregate B5). On
+   * by default. Off hides the streak row and its goal dots, the checkpoints
+   * on an answer and the streak on the recap and Insights; the streak is still
+   * derived, so turning it back on shows where it stands. Several testers
+   * would have left over the pressure (rounds 13–15).
+   */
+  streakShown: boolean;
+  /**
    * Chosen share-card theme id (src/constants/cardThemes.ts). Cosmetic only —
    * an id the user is not entitled to resolves back to the free theme at
    * render time, so a lapsed subscriber keeps every card, in the free look.
@@ -139,6 +147,7 @@ interface SettingsState extends StoredSettings {
   setAiRefineEnabled: (enabled: boolean) => Promise<void>;
   setCoachEnabled: (enabled: boolean) => Promise<void>;
   setAnalyticsEnabled: (enabled: boolean) => Promise<void>;
+  setStreakShown: (shown: boolean) => Promise<void>;
   setCardThemeId: (id: string) => Promise<void>;
   setCardFormat: (format: CardShape) => Promise<void>;
   setCardHiddenCategories: (hidden: readonly Category[]) => Promise<void>;
@@ -180,6 +189,7 @@ const DEFAULTS: StoredSettings = {
   aiRefineEnabled: true,
   coachEnabled: false,
   analyticsEnabled: true,
+  streakShown: true,
   cardThemeId: DEFAULT_THEME.id,
   cardFormat: 'post',
   cardHiddenCategories: [],
@@ -257,6 +267,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
           analyticsEnabled:
             stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
+          streakShown:
+            typeof stored.streakShown === 'boolean' ? stored.streakShown : DEFAULTS.streakShown,
           cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
           cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
           cardHiddenCategories:
@@ -323,6 +335,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setDigestTime: async (time) => {
     set({ digestTime: validTime(time) ?? DEFAULTS.digestTime });
+    await persist(snapshot(get()));
+  },
+
+  setStreakShown: async (shown) => {
+    set({ streakShown: shown });
     await persist(snapshot(get()));
   },
 
@@ -450,6 +467,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     aiRefineEnabled: state.aiRefineEnabled,
     coachEnabled: state.coachEnabled,
     analyticsEnabled: state.analyticsEnabled,
+    streakShown: state.streakShown,
     cardThemeId: state.cardThemeId,
     cardFormat: state.cardFormat,
     cardHiddenCategories: state.cardHiddenCategories,

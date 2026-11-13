@@ -39,6 +39,8 @@ interface TextFieldProps {
    * field's own (Log's past outcomes, roadmap D32).
    */
   children?: ReactNode;
+  /** When the field loses focus (Log's starter ideas step aside then, step 173). */
+  onBlur?: () => void;
 }
 
 export function TextField({
@@ -56,6 +58,7 @@ export function TextField({
   autoCapitalize,
   autoComplete,
   children,
+  onBlur,
 }: TextFieldProps) {
   const input = useRef<TextInput>(null);
   // The limit counts characters as a person sees them, and the cut never
@@ -90,6 +93,7 @@ export function TextField({
         accessibilityLabel={accessibilityLabel ?? label}
         value={value}
         onChangeText={change}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor={colors.textTertiary}
         multiline={multiline || grows}

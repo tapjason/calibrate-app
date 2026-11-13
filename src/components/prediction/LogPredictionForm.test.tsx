@@ -11,6 +11,7 @@ import {
   __setPersistenceForTests,
   useSettingsStore,
 } from '@/store/settingsStore';
+import { __setLogDraftPersistenceForTests, useLogDraftStore, type LogDraft } from '@/store/logDraftStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { CoverageGap } from '@/engine/coverageNudge';
 import type { Prediction } from '@/types';
@@ -37,6 +38,8 @@ const { refinePrediction } = require('@/ai/refine') as {
 };
 
 /** A user with no history — never eligible for the coverage nudge. */
+let draftStored: LogDraft | null = null;
+
 const NO_GAP: CoverageGap = { logged: 0, buckets_used: 0, low_end_empty: true };
 
 /** A user clustered high for long enough to be nudged. */
@@ -69,6 +72,14 @@ beforeEach(async () => {
     coverageNudgeLastShownAt: null,
     hydrated: false,
   });
+  // Step 173: Log keeps a draft; in memory here.
+  draftStored = null;
+  __setLogDraftPersistenceForTests({
+    load: async () => draftStored,
+    save: async (d) => {
+      draftStored = d;
+    },
+  });
   await useAuthStore.getState().initialize();
   refinePrediction.mockReset();
   refinePrediction.mockResolvedValue(null);
@@ -77,6 +88,7 @@ beforeEach(async () => {
 afterEach(() => {
   setDbForTests(null);
   __setPersistenceForTests(null);
+  __setLogDraftPersistenceForTests(null);
 });
 
 describe('LogPredictionForm', () => {
@@ -879,5 +891,95 @@ describe('bringing the confidence control into view after a category', () => {
     });
     fireEvent.press(screen.getByTestId('category-health'));
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+
+// Step 173 (blind playtest 2026-11-12f, finding 12): a batch stays in the sheet.
+describe('LogPredictionForm — Save and log another', () => {
+  it('saves, stays open, says so at the top and starts the form over', async () => {
+    const onSubmitted = jest.fn();
+    render(<LogPredictionForm onSubmitted={onSubmitted} />);
+    // Not offered until there's something to save.
+    expect(screen.queryByTestId('submit-another')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Gym tonight');
+    fireEvent.press(screen.getByTestId('category-health'));
+    fireEvent.press(screen.getByTestId('confidence-increment'));
+    fireEvent.press(screen.getByTestId('submit-another'));
+    await waitFor(() => expect(usePredictionStore.getState().pending).toHaveLength(1));
+    expect(onSubmitted).not.toHaveBeenCalled();
+    expect(screen.getByTestId('log-saved-note')).toHaveTextContent('Saved, due tomorrow.');
+    expect(screen.getByTestId('title-field').props.value).toBe('');
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.text).toBe(
+      'not set',
+    );
+    expect(screen.queryByTestId('submit-another')).toBeNull();
+  });
+});
+
+// Step 173 (aggregate B11): a half-typed prediction survives an interruption.
+describe('LogPredictionForm — the kept draft', () => {
+  const kept: LogDraft = {
+    title: 'Rain by Friday',
+    category: 'work',
+    confidence: 60,
+    dueIso: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+    savedAt: new Date().toISOString(),
+  };
+
+  it('keeps what is typed, a moment later', async () => {
+    jest.useFakeTimers();
+    try {
+      render(<LogPredictionForm />);
+      fireEvent.changeText(screen.getByTestId('title-field'), 'Call Mum');
+      await act(async () => {
+        jest.advanceTimersByTime(400);
+      });
+      expect(useLogDraftStore.getState().draft?.title).toBe('Call Mum');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('restores it whole, says so, and Start over clears it', async () => {
+    render(<LogPredictionForm kept={kept} />);
+    expect(screen.getByTestId('title-field').props.value).toBe('Rain by Friday');
+    expect(screen.getByTestId('category-work').props.accessibilityState).toEqual({
+      selected: true,
+    });
+    expect(screen.getByTestId('confidence-adjustable').props.accessibilityValue.now).toBe(60);
+    expect(screen.getByTestId('log-kept')).toHaveTextContent(/^Kept from before you left./);
+    fireEvent.press(screen.getByTestId('log-kept-clear'));
+    expect(screen.getByTestId('title-field').props.value).toBe('');
+    expect(screen.queryByTestId('log-kept')).toBeNull();
+    await waitFor(() => expect(draftStored).toBeNull());
+  });
+
+  it('clears it on save', async () => {
+    const onSubmitted = jest.fn();
+    render(<LogPredictionForm kept={kept} onSubmitted={onSubmitted} />);
+    fireEvent.press(screen.getByTestId('submit-button'));
+    await waitFor(() => expect(onSubmitted).toHaveBeenCalled());
+    expect(useLogDraftStore.getState().draft).toBeNull();
+  });
+
+  it('drops a category that can no longer be chosen', () => {
+    render(<LogPredictionForm kept={{ ...kept, category: 'c-gone' }} />);
+    expect(screen.getByTestId('title-field').props.value).toBe('Rain by Friday');
+    expect(screen.getByTestId('category-work').props.accessibilityState).toEqual({
+      selected: false,
+    });
+  });
+});
+
+// Step 173 (blind playtest 2026-11-12f, finding 13): the starter ideas stay
+// while the first words are typed, so the chips don't jump under the thumb.
+describe('LogPredictionForm — starter ideas step aside on leaving the title', () => {
+  it('keeps them while typing and drops them when the field is left with words', () => {
+    render(<LogPredictionForm />);
+    fireEvent.changeText(screen.getByTestId('title-field'), 'I');
+    expect(screen.getByTestId('starter-ideas')).toBeTruthy();
+    fireEvent(screen.getByTestId('title-field'), 'blur');
+    expect(screen.queryByTestId('starter-ideas')).toBeNull();
   });
 });

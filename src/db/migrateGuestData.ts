@@ -76,6 +76,12 @@ export async function migrateGuestDataToUser(
       [newUserId, new Date().toISOString(), LOCAL_GUEST_USER_ID],
     );
 
+    // Late due-date moves too (step 173), so the account's Insights counts them.
+    await db.run(
+      `UPDATE OR IGNORE prediction_postponements SET user_id = ? WHERE user_id = ?`,
+      [newUserId, LOCAL_GUEST_USER_ID],
+    );
+
     // The guest's own categories (roadmap D39) move with the predictions
     // filed under them; one the account already has keeps the account's.
     await db.run(

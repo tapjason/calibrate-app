@@ -355,6 +355,9 @@ const WARMUP_DRAW_LIMIT = 20;
  */
 const WARMUP_CORRECT_AT = [0, 1, 1, 0, 0, 1, 0, 1, 1, 0] as const;
 
+/** Kinds anyone can have a go at: places and years (step 173). */
+const EVERYDAY_KINDS: ReadonlySet<PracticeKind> = new Set(['north', 'east', 'first', 'born']);
+
 /**
  * The Warmup's ten (roadmap D18 (1)): drawn from the practice tables like a
  * day's practice, not picked to be tricky. Two draws of five, one inside the
@@ -380,6 +383,12 @@ export function warmupQuestions(facts: PracticeFacts): PracticeQuestion[] {
       }
     }
   });
+  // An everyday kind first (step 173, aggregate B2): the first screen opened
+  // on atomic numbers or a country's area, and "isnae for the likes of me" /
+  // "my chem teacher at 1 am" (rounds 13–14). Order only: the draw is
+  // untouched, the same ten for everyone, none picked to be tricky (D18).
+  const lead = questions.findIndex((q) => EVERYDAY_KINDS.has(q.kind));
+  if (lead > 0) questions.unshift(...questions.splice(lead, 1));
   return questions.map((q, i) => {
     const want = WARMUP_CORRECT_AT[i % WARMUP_CORRECT_AT.length]!;
     if (q.correctIndex === want) return q;

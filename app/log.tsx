@@ -8,6 +8,7 @@ import { LogPredictionForm } from '@/components/prediction/LogPredictionForm';
 import { useLogDraftGuard } from '@/components/prediction/useLogDraftGuard';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, space, type } from '@/constants/theme';
+import { useLogDraftStore } from '@/store/logDraftStore';
 import { usePredictionStore } from '@/store/predictionStore';
 
 /**
@@ -22,7 +23,14 @@ export default function LogScreen() {
   const { again } = useLocalSearchParams<{ again?: string }>();
   const [draft, setDraft] = useState<LogAgainDraft | null>(null);
   const [dirty, setDirty] = useState(false);
-  const guard = useLogDraftGuard(dirty);
+  // "Discard prediction" throws the kept draft away too (step 173).
+  const guard = useLogDraftGuard(dirty, () => void useLogDraftStore.getState().clear());
+  // A draft kept from an interrupted Log, offered back on a plain open (step
+  // 173): read once, at mount, so the form's own saves don't remount it.
+  // "Log it again" starts from its own prediction instead.
+  const [kept] = useState(() =>
+    typeof again === 'string' && again.length > 0 ? null : useLogDraftStore.getState().draft,
+  );
 
   useEffect(() => {
     if (typeof again !== 'string' || again.length === 0) return;
@@ -56,6 +64,7 @@ export default function LogScreen() {
       <LogPredictionForm
         key={draft?.sourceId ?? 'blank'}
         again={draft}
+        kept={draft ? null : kept}
         header={
           // The way out before anything is saved (roadmap step 79), besides
           // the swipe; a typed draft asks first.

@@ -240,6 +240,33 @@ export const updatePrediction: UpdatePrediction = async (id, edit, opts) => {
 };
 
 /**
+ * Record a late due-date move (step 173): once per prediction, the first move
+ * kept. Device-local, never synced. No transaction of its own: the store
+ * calls it beside the update.
+ */
+export async function recordPostponement(
+  predictionId: string,
+  userId: string,
+  fromDue: string,
+  toDue: string,
+): Promise<void> {
+  await getDb().run(
+    `INSERT OR IGNORE INTO prediction_postponements (prediction_id, user_id, moved_at, from_due, to_due)
+       VALUES (?, ?, ?, ?, ?)`,
+    [predictionId, userId, nowIso(), fromDue, toDue],
+  );
+}
+
+/** How many predictions had a late due-date move on this phone (step 173). */
+export async function countPostponements(userId: string): Promise<number> {
+  const row = await getDb().get<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM prediction_postponements WHERE user_id = ?`,
+    [userId],
+  );
+  return row?.n ?? 0;
+}
+
+/**
  * Delete a prediction and leave a tombstone (roadmap D25), so sync can delete
  * it on the server and pull won't bring it back. The tombstone stays after
  * the push, with whether Insights counts it (D45). Two statements and no

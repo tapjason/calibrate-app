@@ -54,6 +54,21 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.queryByText(/out of 100/)).toBeNull();
   });
 
+  // Step 173 (blind playtest 2026-11-12f, finding 2): the expected-and-got
+  // line straight under the verdict, before the buttons, where a screen reader
+  // reaches it first too.
+  it('says what it expected and got before the buttons', () => {
+    seed(ANSWERS);
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    const ids = screen
+      .UNSAFE_root.findAll((n: { props: { testID?: unknown } }) => typeof n.props.testID === 'string')
+      .map((n: { props: { testID?: unknown } }) => n.props.testID as string);
+    const expected = ids.indexOf('warmup-expected');
+    expect(expected).toBeGreaterThan(-1);
+    expect(expected).toBeLessThan(ids.indexOf('warmup-continue'));
+    expect(screen.getByTestId('warmup-expected')).toHaveTextContent(/You expected about/);
+  });
+
   // Roadmap D36: the line that answers 'so was I good?' is on the result.
   it('says it is not about being right', () => {
     seed(ANSWERS);

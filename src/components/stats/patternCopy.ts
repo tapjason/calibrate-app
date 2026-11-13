@@ -4,7 +4,8 @@
 import { matchedPercent } from '@/components/stats/chartTakeaway';
 import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import type { CategoryMiss, WeekChange } from '@/store/statsStore';
-import type { BucketStat } from '@/types';
+import { BADGE_META, BADGE_SCORE_BAR } from '@/constants/badges';
+import type { BadgeLevel, BucketStat } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
 /**
@@ -13,13 +14,40 @@ import { categoryTitle } from '@/store/categoryStore';
  * to the nearest 5, said about the past: a power user wanted it plainly with
  * a number to aim for (blind playtest 2026-11-01, run 3).
  */
-export function furthestOffLine(miss: CategoryMiss): string {
+export function furthestOffLine(miss: CategoryMiss, badge?: FurthestOffBadge | null): string {
   const said = Math.round(miss.mean_stated);
   const matched = matchedPercent(miss.actual_rate);
-  return (
+  const line =
     `Furthest off: ${categoryTitle(miss.category)}. You said about ${said}%, and ${miss.happened} of ` +
-    `${miss.resolved} happened. About ${matched}% would have matched.`
-  );
+    `${miss.resolved} happened. About ${matched}% would have matched.`;
+  return badge ? `${line} ${badgeClause(badge)}` : line;
+}
+
+/** The category's badge and score, as its badge row prints them. */
+export interface FurthestOffBadge {
+  level: BadgeLevel;
+  /** The category score, rounded as the badge row rounds it. */
+  score: number;
+  giveOrTake: number;
+}
+
+/**
+ * How the miss and the category's badge fit together (step 173): Insights
+ * said "Forecaster in health" and "Furthest off: health" about the same 22
+ * walks, and read as contradicting itself (blind playtest 2026-11-12f,
+ * finding 5). The pooled gap is already inside the score, which checks each
+ * range and is never kinder than pooling (record audit 2026-11-12); the badge
+ * only asks the score's low end to clear its bar. Every category here has 20
+ * scored answers, so it holds Tracker at least.
+ */
+function badgeClause({ level, score, giveOrTake }: FurthestOffBadge): string {
+  const bar = BADGE_SCORE_BAR[level];
+  if (bar !== undefined) {
+    return `That gap is already in its score, ${score}, which still clears ${BADGE_META[level].label}'s ${bar} at its low end.`;
+  }
+  const next = BADGE_SCORE_BAR.forecaster;
+  const spread = giveOrTake > 0 ? `, give or take ${giveOrTake},` : '';
+  return `Its score, ${score}${spread} isn't above ${next} at its low end yet, so it's ${BADGE_META.tracker.label}, which counts answers only.`;
 }
 
 /**

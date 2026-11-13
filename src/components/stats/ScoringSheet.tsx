@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SheetCloseBar } from '@/components/ui/SheetCloseBar';
-import { space } from '@/constants/theme';
+import { colors, radius, space, type } from '@/constants/theme';
 
 import { ScoringExplainer } from './ScoringExplainer';
 
@@ -10,6 +10,11 @@ interface ScoringSheetProps {
   onClose: () => void;
   /** Open at the Badges section (from Today's identity line, roadmap D27). */
   openAtBadges?: boolean;
+  /**
+   * The person's own rating in words, above the explainer, when it's opened
+   * from Today's rating (step 173): "is 86 good?" was answered nowhere.
+   */
+  ratingLine?: string | null;
 }
 
 /**
@@ -18,7 +23,7 @@ interface ScoringSheetProps {
  * with no tab bar to fall back on (blind playtest 2026-11-12e, finding 1), so
  * it is the scroll's sticky first child, as on details and Resolve.
  */
-export function ScoringSheet({ onClose, openAtBadges = false }: ScoringSheetProps) {
+export function ScoringSheet({ onClose, openAtBadges = false, ratingLine = null }: ScoringSheetProps) {
   const scroll = useRef<ScrollView>(null);
   const jumped = useRef(false);
   // A hairline sets the bar off once the text has scrolled under it.
@@ -32,6 +37,11 @@ export function ScoringSheet({ onClose, openAtBadges = false }: ScoringSheetProp
       testID="scoring-scroll"
     >
       <SheetCloseBar onPress={onClose} testID="scoring-close" scrolled={scrolled} />
+      {ratingLine && (
+        <View style={styles.yours} testID="scoring-rating-line">
+          <Text style={styles.yoursText}>{ratingLine}</Text>
+        </View>
+      )}
       <ScoringExplainer
         onBadgesLayout={
           openAtBadges
@@ -52,3 +62,15 @@ export function ScoringSheet({ onClose, openAtBadges = false }: ScoringSheetProp
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  // A sunken panel, no hue (the welcome-back card's shape, roadmap D33).
+  yours: {
+    backgroundColor: colors.surfaceSunken,
+    borderRadius: radius.md,
+    marginHorizontal: space.lg,
+    marginTop: space.sm,
+    padding: space.lg,
+  },
+  yoursText: { ...type.body, color: colors.textPrimary },
+});

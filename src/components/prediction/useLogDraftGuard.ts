@@ -31,8 +31,8 @@ const EDIT_WORDS: GuardWords = { options: EDIT_GUARD_OPTIONS, title: 'Discard th
  * Call `markLeaving()` before closing on purpose (after Save), so the guard
  * lets that exit through.
  */
-export function useLogDraftGuard(unsaved: boolean) {
-  return useDraftGuard(unsaved, LOG_WORDS);
+export function useLogDraftGuard(unsaved: boolean, onDiscard?: () => void) {
+  return useDraftGuard(unsaved, LOG_WORDS, onDiscard);
 }
 
 /**
@@ -43,12 +43,18 @@ export function useEditDraftGuard(unsaved: boolean) {
   return useDraftGuard(unsaved, EDIT_WORDS);
 }
 
-function useDraftGuard(unsaved: boolean, words: GuardWords) {
+function useDraftGuard(unsaved: boolean, words: GuardWords, onDiscard?: () => void) {
   const navigation = useNavigation();
   const leaving = useRef(false);
 
   usePreventRemove(unsaved, ({ data }) => {
     const leave = () => navigation.dispatch(data.action);
+    // "Discard" chosen on purpose: the kept draft goes too (step 173). A close
+    // that wasn't asked about (the web build, or after Save) keeps it.
+    const discard = () => {
+      onDiscard?.();
+      leave();
+    };
     if (leaving.current || Platform.OS === 'web') {
       leave();
       return;
@@ -57,14 +63,14 @@ function useDraftGuard(unsaved: boolean, words: GuardWords) {
       ActionSheetIOS.showActionSheetWithOptions(
         { options: [...words.options], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
         (index) => {
-          if (index === 0) leave();
+          if (index === 0) discard();
         },
       );
       return;
     }
     Alert.alert(words.title, undefined, [
       { text: words.options[1], style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: leave },
+      { text: 'Discard', style: 'destructive', onPress: discard },
     ]);
   });
 

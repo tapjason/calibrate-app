@@ -243,6 +243,44 @@ export function computeBrierBaseline(
   return { rate, score: rate * (1 - rate) };
 }
 
+/** How the Brier score stands against the base-rate yardstick (step 173). */
+export type BrierEdge = 'about_same' | 'better' | 'worse';
+
+/** Under this gap the two print alike to two decimals: never called different. */
+export const BRIER_EDGE_MIN = 0.01;
+
+/**
+ * Whether the Brier score beats saying the base rate every time by more than
+ * luck (step 173): on the day the rating unlocked, 0.22 against 0.23 read as
+ * "a parrot saying 65% would beat me" (blind playtest 2026-11-12f, finding 5).
+ * A paired bootstrap of D = Brier − p̂(1 − p̂), p̂ recomputed in each resample,
+ * with the give-or-take's seed, resamples and middle 80% (`bootstrapRange`),
+ * so all three luck measures share one method; "about the same" when that
+ * middle 80% holds 0, or when |D| is under BRIER_EDGE_MIN (the lean rule's
+ * two-part test, record audit 2026-11-12). Null with nothing scored.
+ */
+export function brierEdge(resolved: readonly Prediction[]): BrierEdge | null {
+  const points = resolved
+    .filter(isCalibratable)
+    .map((p) => ({ c: p.confidence / 100, o: p.status === 'resolved_yes' ? 1 : 0 }));
+  if (points.length === 0) return null;
+  const gap = (sample: readonly { c: number; o: number }[]) => {
+    let sq = 0;
+    let yes = 0;
+    for (const { c, o } of sample) {
+      sq += (c - o) * (c - o);
+      yes += o;
+    }
+    const rate = yes / sample.length;
+    return sq / sample.length - rate * (1 - rate);
+  };
+  const d = gap(points);
+  if (Math.abs(d) < BRIER_EDGE_MIN) return 'about_same';
+  const range = bootstrapRange(points, gap);
+  if (!range || (range.low <= 0 && range.high >= 0)) return 'about_same';
+  return d < 0 ? 'better' : 'worse';
+}
+
 /**
  * Overall rating is provisional (must not be shown as a headline number) until
  * the user has at least MIN_N_OVERALL scored answers. Below that, a

@@ -13,6 +13,13 @@ interface ScoreBarProps {
   range?: { low: number; high: number } | null;
   /** Say what the marks are beneath the bar: on Insights, not Today's hero (D54). */
   caption?: boolean;
+  /**
+   * The 70 / 85 / 90 marks. Off on Today (step 173): they are a category's
+   * badge bars, and under the overall rating, which has no tiers, four of
+   * eight testers read an 88 as "past Sharp" or 85 as a pass mark (blind
+   * playtest 2026-11-12f, finding 1). Insights keeps them, with the caption.
+   */
+  marks?: boolean;
   testID?: string;
 }
 
@@ -46,7 +53,7 @@ export const SCORE_MARKS_CAPTION = `The marks are a category's badge bars: ${TIC
   (t) => `${BADGE_META[t.badge].label} above ${t.at}`,
 ).join(', ')}, at its score's low end.`;
 
-export function ScoreBar({ score, range, caption = false, testID }: ScoreBarProps) {
+export function ScoreBar({ score, range, caption = false, marks = true, testID }: ScoreBarProps) {
   const clamped = Math.max(0, Math.min(100, score));
   const low = range ? Math.max(0, range.low) : 0;
   const high = range ? Math.min(100, range.high) : 0;
@@ -72,11 +79,11 @@ export function ScoreBar({ score, range, caption = false, testID }: ScoreBarProp
             style={[styles.range, { left: `${band.left}%`, width: `${band.width}%` }]}
           />
         )}
-        {TICKS.map((t) => (
-          <View key={t.at} style={[styles.tick, { left: `${t.at}%` }]} />
-        ))}
+        {marks &&
+          TICKS.map((t) => <View key={t.at} style={[styles.tick, { left: `${t.at}%` }]} />)}
         <View style={[styles.needle, { left: `${clamped}%` }]} testID={testID ? `${testID}-needle` : undefined} />
       </View>
+      {marks && (
       <View style={[styles.labels, { height: Math.ceil(LABELS_HEIGHT * scale) }]}>
         {TICKS.map((t) => (
           <Text
@@ -96,9 +103,10 @@ export function ScoreBar({ score, range, caption = false, testID }: ScoreBarProp
           </Text>
         ))}
       </View>
+      )}
     </View>
       {/* What the marks are, on screen and to a screen reader (roadmap D54). */}
-      {caption && (
+      {caption && marks && (
         <Text style={styles.caption} testID={testID ? `${testID}-caption` : undefined}>
           {SCORE_MARKS_CAPTION}
         </Text>

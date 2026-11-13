@@ -78,7 +78,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: 'The Brier score',
       paragraphs: [
-        "Once your score unlocks, Insights also shows a Brier score: the average of the squared gap between how sure you said you were and what happened. It rewards being decisive as well as calibrated, so calling everything 50% can't flatter it. Lower is better, and beside it is what you'd score by saying the same number every time, that number being how often your calls came true. Beat it clearly and your numbers say more than your base rate does; a gap of a hundredth or two can be luck.",
+        "Once your score unlocks, Insights also shows a Brier score: the average of the squared gap between how sure you said you were and what happened. It rewards being decisive as well as calibrated, so calling everything 50% can't flatter it. Lower is better, and beside it is what you'd score by saying the same number every time, that number being how often your calls came true. Beat it by more than luck could give, checked the way the give-or-take is, and your numbers say more than your base rate does; when the gap is that small, Insights says it's about the same.",
       ],
     },
     {
@@ -112,7 +112,7 @@ export function scoringSections(): ScoringSection[] {
         `${dailyGoal()} a day is the daily goal. It fills today's dots, and it's there for the habit: the streak doesn't need it.`,
         `Every ${REST_DAY_EVERY} days that count save a rest day, up to ${REST_DAYS_MAX}. A day that doesn't count uses one, and the streak carries on without adding that day; with none saved, it ends.`,
         `The milestones are ${checkpointList()} days, then every year after that. Today names the day you reach one.`,
-        "The streak is about the habit, not the score: it doesn't change your calibration, and nothing is lost when it ends.",
+        "The streak is about the habit, not the score: it doesn't change your calibration, and nothing is lost when it ends. If it feels like pressure, you can hide it and the daily goal in You.",
       ],
     },
     {

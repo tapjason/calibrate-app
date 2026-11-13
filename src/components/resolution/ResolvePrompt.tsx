@@ -28,6 +28,7 @@ import {
   usePredictionStore,
 } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { answeredSameDay, useStatsStore } from '@/store/statsStore';
 import {
   MIN_N_OVERALL,
@@ -290,6 +291,8 @@ export function ResolvePrompt({
   // second copy (D56, as History's details).
   const pending = usePredictionStore((s) => s.pending);
   const [loading, setLoading] = useState(true);
+  // A checkpoint card only while the streak is shown (step 173).
+  const streakShown = useSettingsStore((s) => s.streakShown);
   const [reflectionOpen, setReflectionOpen] = useState(!reflectionCollapsed);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [reflection, setReflection] = useState('');
@@ -525,7 +528,7 @@ export function ResolvePrompt({
         {answered.milestone && <MilestoneCard milestone={answered.milestone} />}
         {/* CLAUDE.md names a checkpoint on the answer that earned it, so it
             shows even beside a score or badge milestone, after it. */}
-        {answered.checkpoint && (
+        {answered.checkpoint && streakShown && (
           <StreakCheckpointCard
             days={answered.checkpoint.days}
             next={answered.checkpoint.next}
@@ -686,9 +689,13 @@ export function ResolvePrompt({
       {/* Not when Answer it now's confirmation said it a moment ago (D56). */}
       {answerNowIsSameDay(prediction) && !sameDayWarned && (
         <Text style={styles.sameDayNote} testID="resolve-same-day">
-          {madeAt(prediction) !== prediction.created_at
-            ? 'You changed its words today, so an answer today isn’t scored. It still keeps your streak, and from tomorrow it counts.'
-            : 'You logged this today, so an answer today isn’t scored. It still keeps your streak, and from tomorrow it counts.'}
+          {(madeAt(prediction) !== prediction.created_at
+            ? 'You changed its words today, so an answer today isn’t scored. '
+            : 'You logged this today, so an answer today isn’t scored. ') +
+            // No word of the streak while it's off in You (step 173).
+            (streakShown
+              ? 'It still keeps your streak, and from tomorrow it counts.'
+              : 'From tomorrow it counts.')}
         </Text>
       )}
 

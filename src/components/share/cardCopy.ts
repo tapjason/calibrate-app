@@ -215,6 +215,23 @@ const EMPTY_SQUARE = '⬜';
 const BAND_LOWS = [0, 20, 40, 60, 80] as const;
 
 /**
+ * What the squares mean, under them (step 173): to a red-green colour-blind
+ * reader 🟩 and 🟧 look alike, and nobody had a key (blind playtest
+ * 2026-11-12f, finding 3; 2026-11-05 run 6). In the strip's own words
+ * (STRIP_WORDS): a green square is inside luck, not "about right" (D57). The
+ * squares have no 0% and 100% ends, so the order is said.
+ */
+/**
+ * The card strip's key, one line under it (step 173; D58 had left the strip
+ * without one, reversed by the owner on 2026-11-12). ▲ came true more often
+ * than said, so too cautious; ▼ too sure.
+ */
+export const STRIP_KEY = '○ no clear lean · ▲ too cautious · ▼ too sure · • under 10 answers · – none';
+
+export const SQUARES_KEY =
+  'Low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers';
+
+/**
  * The plain-text share (DESIGN_SYSTEM §7.5): spoiler-free, pasteable
  * anywhere, and never containing a prediction title. The squares and the
  * score appear only once the rating is unlocked — a row of verdicts built on
@@ -256,6 +273,7 @@ export function shareText(
           : null
       : `${squares ? `${squares} score` : 'Score'} ${card.rating}${g ? `, give or take ${g}` : ''}`;
     if (line) lines.push(line);
+    if (squares) lines.push(SQUARES_KEY);
   } else {
     lines.push(`${card.total_resolved} answers scored so far`);
   }

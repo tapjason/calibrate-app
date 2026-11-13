@@ -91,6 +91,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const pending = usePredictionStore((s) => s.pending);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
+  const streakShown = useSettingsStore((s) => s.streakShown);
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
@@ -155,7 +156,8 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                 ? {
                     resolved: userStat.total_resolved,
                     provisional: userStat.rating_is_provisional,
-                    streak: userStat.current_streak,
+                    // None on the recap while it's off in You (step 173).
+                    streak: streakShown ? userStat.current_streak : 0,
                     // Insights' read, for the week's card to set beside its own.
                     lean: chartVerdict(buckets, userStat.rating_is_provisional)?.title ?? null,
                   }

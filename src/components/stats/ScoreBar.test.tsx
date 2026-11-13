@@ -73,3 +73,14 @@ describe('ScoreBar range', () => {
     expect(screen.queryByTestId('bar-caption')).toBeNull();
   });
 });
+
+// Step 173 (blind playtest 2026-11-12f, finding 1): Today's bar has no badge
+// marks, which belong to a category's score, not the overall rating.
+describe('ScoreBar without marks', () => {
+  it('draws no ticks, labels or caption', () => {
+    render(<ScoreBar score={88} marks={false} caption testID="bar" />);
+    expect(screen.queryByTestId('score-bar-label-70', { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByTestId('bar-caption')).toBeNull();
+    expect(screen.getByTestId('bar-needle', { includeHiddenElements: true })).toBeTruthy();
+  });
+});

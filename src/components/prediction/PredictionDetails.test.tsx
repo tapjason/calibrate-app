@@ -155,6 +155,20 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect((await getPrediction('p1'))?.title_edited_at).toBeTruthy();
   });
 
+  // Step 173 (aggregate B1): a move later on the eve or after is counted.
+  it('says a move later is counted when it is due tomorrow, and not when far off', async () => {
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    await insertPrediction(open({ due_date: tomorrow }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.queryByTestId('details-late-move')).toBeNull();
+    fireEvent.press(screen.getByTestId('due-week'));
+    expect(screen.getByTestId('details-late-move')).toHaveTextContent(
+      'It’s due tomorrow, so moving it later is counted on Insights: the outcome may already be known.',
+    );
+  });
+
   it('says a delete is counted once the prediction is due', async () => {
     await insertPrediction(open({ due_date: new Date().toISOString() }));
     renderDetails();

@@ -9,7 +9,7 @@ import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
 import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { CoverageRow } from '@/components/stats/CoverageRow';
 import { furthestOffLine, weekChangeLine } from '@/components/stats/patternCopy';
-import { ratingHeadline } from '@/components/stats/ratingHeadline';
+import { ratingHeadline, ratingMeaningLine, spreadThinLine } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { CountUp } from '@/components/ui/CountUp';
@@ -17,8 +17,9 @@ import { localCount } from '@/components/ui/count';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
-import type { CategoryMiss, WeekChange } from '@/store/statsStore';
+import type { BrierEdge, CategoryMiss, WeekChange } from '@/store/statsStore';
 import { useCategoryStore } from '@/store/categoryStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import {
   MIN_N_OVERALL,
   type CalibrationResult,
@@ -49,11 +50,20 @@ interface CalibrationViewProps {
   brier?: number | null;
   /** What saying the base rate every time would score, the Brier line's yardstick (D35). */
   brierBaseline?: { rate: number; score: number } | null;
+  /** Whether the Brier gap is more than luck (step 173). */
+  brierEdge?: BrierEdge | null;
   /**
    * Answers marked "Can't tell", which the rating leaves out (roadmap D34):
    * said beside it, so a record with the misses parked as skips shows it.
    */
   skippedCount?: number;
+  /**
+   * Every answer given, Can't tell and same-day ones included, so the Can't
+   * tell line shows from the first answer (step 173).
+   */
+  answeredCount?: number;
+  /** Due dates moved later on the eve or after, on this phone (step 173). */
+  postponedCount?: number;
   /**
    * Answers given the day they were logged, which aren't scored (roadmap
    * D41): said beside the rating, before it unlocks too, so a count that
@@ -95,7 +105,10 @@ export function CalibrationView({
   ratingRange = null,
   brier = null,
   brierBaseline = null,
+  brierEdge = null,
   skippedCount = 0,
+  answeredCount = 0,
+  postponedCount = 0,
   sameDayCount = 0,
   deletedCount = 0,
   categoryRanges = {},
@@ -107,6 +120,8 @@ export function CalibrationView({
   // Re-render on a rename (roadmap D39): "Furthest off" kept the old name
   // until something else redrew Insights (blind playtest 2026-11-12d, run 2).
   useCategoryStore((s) => s.defs);
+  // The streak beside the count only while it's shown (step 173).
+  const streakShown = useSettingsStore((s) => s.streakShown);
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
   // Every badge pill in the list as wide as the widest, so the rows wrap
@@ -131,6 +146,25 @@ export function CalibrationView({
     [fontScale],
   );
   const takeaway = chartTakeaway(calibration.buckets, headline?.provisional ?? true);
+  // The furthest-off category's badge and score, as its row prints them.
+  const furthestStat = furthestOff
+    ? categoryStats.find((c) => c.category === furthestOff.category)
+    : undefined;
+  const furthestBadge =
+    furthestStat && furthestStat.badge_level !== 'guesser' && !furthestStat.score_is_provisional
+    ? {
+        level: furthestStat.badge_level,
+        score: Math.round(furthestStat.calibration_score),
+        giveOrTake: categoryRanges?.[furthestStat.category]?.giveOrTake ?? 0,
+      }
+    : null;
+  const spread = userStat
+    ? spreadThinLine(
+        userStat.total_resolved,
+        categoryStats.map((c) => c.predictions_resolved),
+        FIRST_BADGE_AT,
+      )
+    : null;
 
   return (
     <View style={styles.wrap}>
@@ -160,6 +194,10 @@ export function CalibrationView({
                 <Text style={styles.ratingLabel}>calibration rating</Text>
               </View>
               <ScoreBar score={headline.rating} range={ratingRange} caption testID="stats-score-bar" />
+              {/* What the number means, in points (step 173). */}
+              <Text style={styles.subtle} testID="stats-rating-meaning">
+                {ratingMeaningLine(headline.rating)}
+              </Text>
               {ratingRange && ratingRange.giveOrTake > 0 && (
                 <Text style={styles.subtle} testID="stats-rating-range">
                   Give or take {ratingRange.giveOrTake}{' '}
@@ -176,15 +214,23 @@ export function CalibrationView({
                   for those who look, and stays out of everyone else's way. */}
               {brier !== null && brierBaseline !== null && (
                 <Text style={styles.subtle} testID="stats-brier">
-                  {brierLine(brier, brierBaseline)}
+                  {brierLine(
+                    brier,
+                    brierBaseline,
+                    brierEdge ? { edge: brierEdge, scored: userStat.total_resolved } : null,
+                  )}
                 </Text>
               )}
-              {/* At zero too (roadmap D57): a sceptic worked out "none" from
-                  155 rows (blind playtest 2026-11-10, run 8). */}
-              <Text style={styles.subtle} testID="stats-skipped">
-                {skippedLine(skippedCount, userStat.total_resolved)}
-              </Text>
             </>
+          )}
+          {/* At zero too (roadmap D57): a sceptic worked out "none" from 155
+              rows (blind playtest 2026-11-10, run 8). From the first answer,
+              not only once unlocked (step 173): skipping every miss while
+              the rating calibrates showed nowhere (aggregate B1). */}
+          {answeredCount > 0 && (
+            <Text style={styles.subtle} testID="stats-skipped">
+              {skippedLine(skippedCount)}
+            </Text>
           )}
           {sameDayCount > 0 && (
             <Text style={styles.subtle} testID="stats-same-day">
@@ -196,11 +242,16 @@ export function CalibrationView({
               {deletedLine(deletedCount)}
             </Text>
           )}
+          {postponedCount > 0 && (
+            <Text style={styles.subtle} testID="stats-postponed">
+              {postponedLine(postponedCount)}
+            </Text>
+          )}
           {/* The progress bar already counts resolutions while provisional. */}
           {!headline.provisional && (
             <Text style={styles.subtle}>
               {localCount(userStat.total_resolved)} scored
-              {userStat.current_streak > 0
+              {userStat.current_streak > 0 && streakShown
                 ? `, ${localCount(userStat.current_streak)}-day streak`
                 : ''}
             </Text>
@@ -290,12 +341,18 @@ export function CalibrationView({
           her finance pattern only through History's filters. */}
       {furthestOff && (
         <Text style={styles.pattern} testID="stats-furthest-off">
-          {furthestOffLine(furthestOff)}
+          {furthestOffLine(furthestOff, furthestBadge)}
         </Text>
       )}
       {/* When a first badge can come (roadmap D36): a first-timer saw a tier
           name and nothing about when another could arrive. */}
-      {categoryStats.every((c) => c.predictions_resolved < FIRST_BADGE_AT) && (
+      {/* Spread thin: why no badge yet (step 173). */}
+      {spread !== null && (
+        <Text style={styles.empty} testID="badges-spread">
+          {spread}
+        </Text>
+      )}
+      {spread === null && categoryStats.every((c) => c.predictions_resolved < FIRST_BADGE_AT) && (
         <Text style={styles.empty} testID="badges-first">
           {/* Tracker, or higher: Forecaster needs 20 too (blind playtest
               2026-11-12e, run 5 went from Getting started to Forecaster). */}
@@ -365,10 +422,13 @@ const styles = StyleSheet.create({
 export function skippedLine(skipped: number, _scored?: number): string {
   // No "of N": skips plus scored answers left out same-day ones, a total
   // that matched no screen (record audit, 2026-11-09).
-  if (skipped === 0) return 'No answers were Can’t tell.';
+  // Present tense: a Can't tell can still be answered for a week
+  // (SKIP_ANSWER_DAYS), so the count can still go down (record audit
+  // 2026-11-12).
+  if (skipped === 0) return 'No answers are Can’t tell.';
   return skipped === 1
-    ? '1 answer was Can’t tell, so it isn’t scored.'
-    : `${skipped} answers were Can’t tell, so they aren’t scored.`;
+    ? '1 answer is Can’t tell, so it isn’t scored.'
+    : `${skipped} answers are Can’t tell, so they aren’t scored.`;
 }
 
 /**
@@ -381,6 +441,17 @@ export function deletedLine(count: number): string {
   return count === 1
     ? '1 prediction was deleted after it was answered or due. Only this phone keeps this count.'
     : `${count} predictions were deleted after they were answered or due. Only this phone keeps this count.`;
+}
+
+/**
+ * "1 prediction had its due date moved later the day before it or after."
+ * (step 173, aggregate B1). A known miss could be moved past its due day and
+ * answered later; counted as a late delete is (D45), on this phone only.
+ */
+export function postponedLine(count: number): string {
+  return count === 1
+    ? '1 prediction had its due date moved later the day before it or after. Only this phone keeps this count.'
+    : `${count} predictions had their due dates moved later the day before them or after. Only this phone keeps this count.`;
 }
 
 /**

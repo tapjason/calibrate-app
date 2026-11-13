@@ -1,6 +1,8 @@
 import { MIN_N_CATEGORY, type Prediction } from '@/types';
 
 import {
+  brierEdge,
+  BRIER_EDGE_MIN,
   bucketLowFor,
   computeBrier,
   computeBrierBaseline,
@@ -331,5 +333,40 @@ describe('computeBrierBaseline', () => {
 
   it('is null with nothing answered', () => {
     expect(computeBrierBaseline([p({ status: 'skipped' })])).toBeNull();
+  });
+});
+
+// Step 173: whether the Brier score beats the base rate by more than luck.
+describe('brierEdge', () => {
+  it('is null with nothing scored', () => {
+    expect(brierEdge([])).toBeNull();
+    expect(brierEdge([p({ status: 'skipped' })])).toBeNull();
+  });
+
+  it('calls a gap under a hundredth about the same, whatever the count', () => {
+    // 50% every time scores exactly the base rate's 0.25 at a 50% rate.
+    expect(BRIER_EDGE_MIN).toBe(0.01);
+    expect(brierEdge(bucketPreds(50, 200, 100))).toBe('about_same');
+  });
+
+  it('calls a small gap on 20 answers about the same: it could be luck', () => {
+    // 20 at 70% with 14 yes: Brier 0.21, base rate 70% scores 0.21 too, but
+    // mixed with a few sharper calls the gap stays inside luck.
+    const few = [...bucketPreds(80, 10, 8), ...bucketPreds(60, 10, 6)];
+    expect(brierEdge(few)).toBe('about_same');
+  });
+
+  it('calls a large, steady gap better or worse', () => {
+    // Decisive and right: 90% calls that happen, 10% calls that don't.
+    const sharp = [...bucketPreds(90, 50, 46), ...bucketPreds(10, 50, 4)];
+    expect(brierEdge(sharp)).toBe('better');
+    // Sure and wrong both ways.
+    const wild = [...bucketPreds(90, 50, 10), ...bucketPreds(10, 50, 40)];
+    expect(brierEdge(wild)).toBe('worse');
+  });
+
+  it('is the same every time (seeded)', () => {
+    const mixed = [...bucketPreds(85, 30, 22), ...bucketPreds(55, 20, 9)];
+    expect(brierEdge(mixed)).toBe(brierEdge(mixed));
   });
 });

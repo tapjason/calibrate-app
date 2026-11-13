@@ -19,6 +19,8 @@ import {
   bucketLowFor,
   computeCalibration,
   computeBrier,
+  brierEdge,
+  type BrierEdge,
   computeBrierBaseline,
   computeRatingRange,
   evaluateBadge,
@@ -26,6 +28,9 @@ import {
   isScoreProvisional,
   nextBadge,
 } from '@/engine/calibration';
+
+/** For the Brier line's words (step 173), so components needn't reach the engine. */
+export type { BrierEdge };
 import {
   coverageGap as computeCoverageGap,
   evaluateCoverageNudge,
@@ -106,6 +111,8 @@ interface StatsState {
    * line's yardstick. Derived with it; null with nothing resolved.
    */
   brierBaseline: { rate: number; score: number } | null;
+  /** Whether the Brier score beats the base rate by more than luck (step 173). */
+  brierEdge: BrierEdge | null;
   /**
    * The confidence range this user's recent logs occupy — pending included,
    * because what it measures is the logging habit, not resolved outcomes.
@@ -224,6 +231,7 @@ type DerivedStats = Pick<
   | 'ratingRange'
   | 'brier'
   | 'brierBaseline'
+  | 'brierEdge'
   | 'coverageGap'
 > & { userStat: UserStat };
 
@@ -306,6 +314,7 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
     ratingRange: computeRatingRange(resolved),
     brier: computeBrier(resolved),
     brierBaseline: computeBrierBaseline(resolved),
+    brierEdge: brierEdge(resolved),
     coverageGap: computeCoverageGap(all),
   };
 }
@@ -323,6 +332,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   ratingRange: null,
   brier: null,
   brierBaseline: null,
+  brierEdge: null,
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
 
@@ -383,6 +393,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       ratingRange: computeRatingRange(resolved),
       brier: computeBrier(resolved),
       brierBaseline: computeBrierBaseline(resolved),
+      brierEdge: brierEdge(resolved),
       coverageGap: computeCoverageGap([...pending, ...answered]),
     });
   },

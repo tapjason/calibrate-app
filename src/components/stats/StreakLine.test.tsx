@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { colors } from '@/constants/theme';
+import { useSettingsStore } from '@/store/settingsStore';
 import type { StreakStatus } from '@/types';
 
 import { StreakLine } from './StreakLine';
@@ -66,5 +67,15 @@ describe('StreakLine (roadmap D2)', () => {
   it('leaves the rest line out when there is nothing to say', () => {
     render(<StreakLine status={{ streak: 4, today: 1, todayCounts: false, checkpoint: null, nextCheckpoint: 7, ...NO_REST }} />);
     expect(screen.queryByTestId('streak-line-rest')).toBeNull();
+  });
+});
+
+// Step 173 (aggregate B5): the streak and goal can be switched off in You.
+describe('StreakLine switched off', () => {
+  afterEach(() => useSettingsStore.setState({ streakShown: true }));
+  it('draws nothing while the streak is hidden', () => {
+    useSettingsStore.setState({ streakShown: false });
+    render(<StreakLine status={{ streak: 5, today: 1, todayCounts: true, checkpoint: null, nextCheckpoint: 7, ...NO_REST }} />);
+    expect(screen.queryByTestId('streak-line')).toBeNull();
   });
 });

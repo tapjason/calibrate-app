@@ -58,3 +58,13 @@ describe('ScoringSheet', () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 });
+
+// Step 173: opened from Today's rating, the person's own number first.
+describe('ScoringSheet with the rating line', () => {
+  it('shows it above the explainer, and nothing without it', () => {
+    const view = render(<ScoringSheet onClose={jest.fn()} ratingLine="Your rating is 86. Band by band…" />);
+    expect(screen.getByTestId('scoring-rating-line')).toHaveTextContent('Your rating is 86. Band by band…');
+    view.rerender(<ScoringSheet onClose={jest.fn()} />);
+    expect(screen.queryByTestId('scoring-rating-line')).toBeNull();
+  });
+});

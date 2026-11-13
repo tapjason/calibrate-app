@@ -96,3 +96,14 @@ export const BADGE_META: Record<BadgeLevel, BadgeMeta> = {
     tagline: 'Above 90 at its low end, with 100 or more scored answers',
   },
 };
+
+/**
+ * The score a tier's low end must be above (CLAUDE.md badge table; the
+ * engine's BADGE_REQUIREMENTS, which a test holds this to). Tracker counts
+ * answers only.
+ */
+export const BADGE_SCORE_BAR: Partial<Record<BadgeLevel, number>> = {
+  forecaster: 70,
+  sharp: 85,
+  oracle: 90,
+};

@@ -19,6 +19,7 @@ import {
   deleteIsCounted,
   earliestDueForEdit,
   madeAt,
+  moveIsCounted,
   rewords,
   usePredictionStore,
 } from '@/store/predictionStore';
@@ -258,6 +259,10 @@ export function PredictionDetails({
       : stillNeeded({ title: title.trim().length > 0, category: category !== null });
     // New words are a new prediction from today (D45), said before Save.
     const changingWords = title.trim().length > 0 && rewords(prediction.title, title);
+    // A due date moved later on its eve or after is counted (step 173), said
+    // before Save as a counted delete is.
+    const lateMove = moveIsCounted(prediction, dueDate);
+    const daysLeft = daysUntilDue(prediction, new Date());
     return (
       <View style={styles.wrap} testID="details-edit">
         <Text style={styles.stated}>
@@ -292,6 +297,12 @@ export function PredictionDetails({
           onPickingChange={setPicking}
           earliest={earliestDueForEdit(prediction, title)}
         />
+        {lateMove && (
+          <Text style={styles.note} testID="details-late-move" accessibilityLiveRegion="polite">
+            {daysLeft >= 1 ? 'It’s due tomorrow' : daysLeft === 0 ? 'It’s due today' : 'It’s past its due day'},
+            so moving it later is counted on Insights: the outcome may already be known.
+          </Text>
+        )}
         {error && <Text style={styles.error}>{error}</Text>}
         {needs && (
           <Text style={styles.needs} testID="details-needs">

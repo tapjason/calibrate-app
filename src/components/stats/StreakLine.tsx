@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/ui/Icon';
 import { colors, radius, space, type } from '@/constants/theme';
+import { useSettingsStore } from '@/store/settingsStore';
 import { DAILY_GOAL, type StreakStatus } from '@/types';
 
 import { streakCopy } from './streakCopy';
@@ -27,7 +28,9 @@ interface StreakLineProps {
  */
 export function StreakLine({ status, testID = 'streak-line' }: StreakLineProps) {
   const copy = streakCopy(status);
-  if (!copy) return null;
+  // Off in You (step 173): the row, its goal dots and its rest days go.
+  const shown = useSettingsStore((s) => s.streakShown);
+  if (!copy || !shown) return null;
 
   return (
     <View

@@ -12,7 +12,13 @@ beforeEach(async () => {
   setDbForTests(await createTestDb());
   // Reset every Zustand singleton to a clean state.
   useAuthStore.getState().reset();
-  usePredictionStore.setState({ pending: [], resolved: [], deletedCount: 0, streakCheckpoint: null });
+  usePredictionStore.setState({
+    pending: [],
+    resolved: [],
+    deletedCount: 0,
+    postponedCount: 0,
+    streakCheckpoint: null,
+  });
   useStatsStore.setState({
     userStat: null,
     categoryStats: [],
@@ -763,5 +769,54 @@ describe('openRepeatOf', () => {
   it('only counts the same category', () => {
     const elsewhere = { ...p('e', 'I walk 30 minutes', '2026-11-12T12:00:00.000Z'), category: 'work' as const };
     expect(openRepeatOf(source, [elsewhere])).toBeNull();
+  });
+});
+
+
+// Step 173 (aggregate B1; record audit 2026-11-12): a due date moved later the
+// day before it or after is counted on Insights, once per prediction, and the
+// count outlives a delete.
+describe('late due-date moves', () => {
+  const DAY = 86_400_000;
+  const create = (dueInDays: number, title = 'Rain by Friday') =>
+    usePredictionStore.getState().create({
+      title,
+      category: 'work',
+      confidence: 70,
+      due_date: new Date(Date.now() + dueInDays * DAY).toISOString(),
+    });
+
+  it('counts a move later on the eve, once, and keeps it after a delete', async () => {
+    const p = await create(1);
+    const move = (days: number) =>
+      usePredictionStore.getState().update(p.id, {
+        title: p.title,
+        category: 'work',
+        due_date: new Date(Date.now() + days * DAY).toISOString(),
+      });
+    await move(5);
+    expect(usePredictionStore.getState().postponedCount).toBe(1);
+    await move(9);
+    expect(usePredictionStore.getState().postponedCount).toBe(1);
+    await usePredictionStore.getState().remove(p.id);
+    await usePredictionStore.getState().loadResolved();
+    expect(usePredictionStore.getState().postponedCount).toBe(1);
+  });
+
+  it('leaves an early move, and a move earlier, uncounted', async () => {
+    const early = await create(6, 'Early one');
+    await usePredictionStore.getState().update(early.id, {
+      title: early.title,
+      category: 'work',
+      due_date: new Date(Date.now() + 10 * DAY).toISOString(),
+    });
+    const eve = await create(1, 'Eve one');
+    await usePredictionStore.getState().update(eve.id, {
+      title: eve.title,
+      category: 'work',
+      due_date: new Date(Date.now() + 1 * DAY).toISOString(),
+    });
+    await usePredictionStore.getState().loadResolved();
+    expect(usePredictionStore.getState().postponedCount).toBe(0);
   });
 });

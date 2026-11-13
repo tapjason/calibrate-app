@@ -87,6 +87,8 @@ export function SettingsView({
   const setCoachEnabled = useSettingsStore((s) => s.setCoachEnabled);
   const analyticsEnabled = useSettingsStore((s) => s.analyticsEnabled);
   const setAnalyticsEnabled = useSettingsStore((s) => s.setAnalyticsEnabled);
+  const streakShown = useSettingsStore((s) => s.streakShown);
+  const setStreakShown = useSettingsStore((s) => s.setStreakShown);
 
   return (
     <View style={styles.wrap}>
@@ -123,6 +125,18 @@ export function SettingsView({
           <NavRow label="Categories" onPress={onOpenCategories} testID="settings-categories" />
         </Group>
       )}
+
+      {/* A way out of the streak's pressure (step 173, aggregate B5): several
+          testers would have left over it. Nothing in the record depends on it. */}
+      <Group>
+        <ToggleRow
+          label="Streak and daily goal"
+          description="Days in a row with a prediction logged or answered, and the goal of three a day. Off hides them; your predictions and scores are the same either way."
+          value={streakShown}
+          onValueChange={(v) => void setStreakShown(v)}
+          testID="toggle-streak"
+        />
+      </Group>
 
       <Group>
         <ToggleRow

@@ -39,6 +39,7 @@ import {
 import { syncNow } from '@/supabase/sync';
 
 import { useCategoryStore } from './categoryStore';
+import { useLogDraftStore } from './logDraftStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
@@ -317,6 +318,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // policy promises this phone's copy is gone (owner, 2026-11-09).
         await useWarmupStore.getState().retake();
         await usePracticeStore.getState().clear();
+        await useLogDraftStore.getState().clear();
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[auth] local wipe after account deletion failed:', e);
@@ -342,6 +344,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await useWarmupStore.getState().retake();
         // Practice, like the Warmup, belongs to the device (roadmap step 88).
         await usePracticeStore.getState().clear();
+        // Log's kept draft is the person's own words (step 173).
+        await useLogDraftStore.getState().clear();
         await reloadForUser(LOCAL_GUEST_USER_ID);
         return { ok: true };
       } catch (e) {

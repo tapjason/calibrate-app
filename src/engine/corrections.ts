@@ -89,3 +89,18 @@ export function deletionCounts(p: Prediction, now: Date): boolean {
   if (Number.isNaN(due.getTime())) return false;
   return localDayNumber(now) >= localDayNumber(due);
 }
+
+/**
+ * Whether moving an open prediction's due date counts on Insights (step 173,
+ * aggregate B1; record audit 2026-11-12): moved later, on or after the day
+ * before its old due day. By then the outcome may be known, and a known miss
+ * moved on and answered later read as a hit. "On or after the due day" alone
+ * counted almost nothing, since from its due day a prediction opens on
+ * Resolve, which has no Edit. Moving earlier is never counted. Days by the
+ * phone's clock, as for the other rules (D45).
+ */
+export function postponementCounts(oldDueIso: string, newDueIso: string, now: Date): boolean {
+  const oldDay = localDayNumber(new Date(oldDueIso));
+  const newDay = localDayNumber(new Date(newDueIso));
+  return newDay > oldDay && localDayNumber(now) >= oldDay - 1;
+}

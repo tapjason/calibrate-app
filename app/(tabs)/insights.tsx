@@ -38,6 +38,7 @@ export default function InsightsScreen() {
   const ratingRange = useStatsStore((s) => s.ratingRange);
   const brier = useStatsStore((s) => s.brier);
   const brierBaseline = useStatsStore((s) => s.brierBaseline);
+  const brierEdge = useStatsStore((s) => s.brierEdge);
   const categoryRanges = useStatsStore((s) => s.categoryRanges);
   const furthestOff = useStatsStore((s) => s.furthestOff);
   const categoryCounts = useStatsStore((s) => s.categoryCounts);
@@ -70,6 +71,8 @@ export default function InsightsScreen() {
   const sameDayCount = usePredictionStore((s) => sameDayAnswerCount(s.resolved));
   // Deleted after their answer or due day, on this phone (roadmap D45).
   const deletedCount = usePredictionStore((s) => s.deletedCount);
+  // Due dates moved later on the eve or after (step 173).
+  const postponedCount = usePredictionStore((s) => s.postponedCount);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   // Time since the first answer, not the calendar months with one in them.
   const firstResolvedAt = useStatsStore((s) => s.trends.first_resolved_at);
@@ -92,9 +95,12 @@ export default function InsightsScreen() {
         ratingRange={ratingRange}
         brier={brier}
         brierBaseline={brierBaseline}
+        brierEdge={brierEdge}
         skippedCount={skippedCount}
+        answeredCount={resolved.length}
         sameDayCount={sameDayCount}
         deletedCount={deletedCount}
+        postponedCount={postponedCount}
         categoryRanges={categoryRanges}
         furthestOff={furthestOff}
         weekChange={weekChange}
@@ -119,6 +125,15 @@ export default function InsightsScreen() {
         onUpgrade={() => router.push('/paywall?from=stats_trends' as never)}
       />
       <View style={styles.actions}>
+        {/* The weekly recap gets its own way in (step 173): under "Share my
+            card" it was found only by luck (blind playtest 2026-11-12f,
+            finding 10). */}
+        <Button
+          label="See your week"
+          variant="secondary"
+          testID="stats-week"
+          onPress={() => router.push('/share?tab=week' as never)}
+        />
         <Button
           label="Share my card"
           testID="stats-share"
@@ -130,5 +145,5 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
-  actions: { padding: 16, paddingTop: 0, paddingBottom: space.xxl },
+  actions: { gap: space.sm, padding: 16, paddingTop: 0, paddingBottom: space.xxl },
 });

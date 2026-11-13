@@ -1,6 +1,6 @@
 import type { UserStat } from '@/types';
 
-import { ratingHeadline } from './ratingHeadline';
+import { ratingHeadline, ratingMeaningLine, spreadThinLine } from './ratingHeadline';
 
 const userStat = (overrides: Partial<UserStat> = {}): UserStat => ({
   user_id: 'u1',
@@ -41,5 +41,36 @@ describe('ratingHeadline', () => {
         }),
       ),
     ).toEqual({ provisional: false, rating: 83 });
+  });
+});
+
+// Step 173: "is 86 good?", in points. 100 − rating is the count-weighted
+// average gap, range by range (CLAUDE.md's formula).
+describe('ratingMeaningLine', () => {
+  it('says the average gap from the rounded rating, so the two add to 100', () => {
+    expect(ratingMeaningLine(86)).toBe(
+      'Range by range, what you said averaged about 14 points away from how often those things happened, each range counting by how many answers it holds.',
+    );
+    expect(ratingMeaningLine(85.5)).toMatch(/about 14 points/);
+    expect(ratingMeaningLine(99, 'band')).toBe(
+      'Band by band, what you said averaged about 1 point away from how often those things happened, each band counting by how many answers it holds.',
+    );
+    expect(ratingMeaningLine(100)).toBe(
+      'Range by range, what you said matched how often those things happened.',
+    );
+  });
+});
+
+// Step 173: why no badge, when the answers are spread thin.
+describe('spreadThinLine', () => {
+  it('says so when the total would have earned one in a single category', () => {
+    expect(spreadThinLine(73, [7, 6, 5, 6, 7, 5, 6, 5, 6, 5, 5, 5, 5, 0], 20)).toBe(
+      'Badges are per category, at 20 scored answers in one. Your 73 scored answers are spread over 13 categories, so none has 20 yet.',
+    );
+  });
+  it('says nothing under 20 in all, with one category, or once one has 20', () => {
+    expect(spreadThinLine(15, [8, 7], 20)).toBeNull();
+    expect(spreadThinLine(19, [19], 20)).toBeNull();
+    expect(spreadThinLine(30, [20, 10], 20)).toBeNull();
   });
 });

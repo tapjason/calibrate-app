@@ -68,6 +68,14 @@ describe('SettingsView', () => {
     });
   });
 
+  // Step 173 (aggregate B5): the streak and daily goal can be hidden.
+  it('switches the streak and daily goal off', async () => {
+    __setPersistenceForTests({ load: async () => null, save: async () => {} });
+    render(<SettingsView />);
+    fireEvent.press(screen.getByTestId('toggle-streak-row'));
+    await waitFor(() => expect(useSettingsStore.getState().streakShown).toBe(false));
+  });
+
   it('persists the change through the store setter', async () => {
     const saved: unknown[] = [];
     __setPersistenceForTests({
@@ -91,6 +99,7 @@ describe('SettingsView', () => {
         aiRefineEnabled: true,
         coachEnabled: false,
         analyticsEnabled: true,
+        streakShown: true,
         cardThemeId: 'midnight',
         cardFormat: 'post',
         cardHiddenCategories: [],

@@ -22,6 +22,7 @@ export function WelcomeBackCard() {
   // Subscribed so the card follows each answer.
   usePredictionStore((s) => s.resolved.length);
   const dismissedFor = useSettingsStore((s) => s.welcomeBackDismissedFor);
+  const streakShown = useSettingsStore((s) => s.streakShown);
   const rated = useStatsStore((s) => s.userStat !== null && !s.userStat.rating_is_provisional);
   // Practising counts as being here (review, 2026-11-09).
   const practice = usePracticeStore((s) => s.answers);
@@ -39,7 +40,8 @@ export function WelcomeBackCard() {
   }
 
   const lines = welcomeBackLines({
-    gap,
+    // No word of the streak when it's switched off in You (step 173).
+    gap: streakShown ? gap : { ...gap, endedStreak: 0 },
     ready: pending.filter((p) => isReadyToResolve(p, now)).length,
     todayCounts: store.streakNow(now).todayCounts,
     rated,

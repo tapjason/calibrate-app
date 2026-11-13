@@ -39,6 +39,13 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
       <Text style={styles.eyebrow}>Your warm-up</Text>
       <Text style={styles.title}>{verdict.title}</Text>
       <Text style={styles.detail}>{verdict.detail}</Text>
+      {/* What the verdict means in counts ("You expected about 7 right and got
+          7"), straight under it: below the chart it sat three screens down at
+          large text, and a screen reader heard both buttons first (blind
+          playtest 2026-11-12f, finding 2; step 173). */}
+      <Text style={styles.advice} testID="warmup-expected">
+        {verdict.advice}
+      </Text>
 
       {/* The bridge (roadmap D18 (3)): trivia is the warm-up, plans are where
           overconfidence lives (Buehler, Griffin & Ross 1994: 33.9 days
@@ -89,7 +96,6 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         captionNote={warmupChartNote(result.answered)}
       />
 
-      <Text style={styles.advice}>{verdict.advice}</Text>
       {verdict.sameNumber && (
         <Text style={styles.advice} testID="warmup-same-number">
           {verdict.sameNumber}

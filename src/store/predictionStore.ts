@@ -15,6 +15,7 @@ import {
   canCorrect,
   correctableUntil,
   deletionCounts,
+  postponementCounts,
   skipLastDay,
 } from '@/engine/corrections';
 import { pastOutcomes, titleKey } from '@/engine/pastOutcomes';
@@ -29,12 +30,14 @@ import { checkpointReached, returnAfterGap, streakStatus } from '@/engine/streak
 import { tallyAnswers } from '@/engine/wrapped';
 import {
   correctPredictionOutcome,
+  countPostponements,
   deletePrediction,
   getPrediction,
   insertPrediction,
   listDeletions,
   listPendingPredictions,
   listResolvedPredictions,
+  recordPostponement,
   resolvePrediction,
   refilePrediction,
   unskipPrediction,
@@ -71,6 +74,11 @@ interface PredictionState {
    * resolved list.
    */
   deletedCount: number;
+  /**
+   * Predictions whose due date was moved later the day before it or after,
+   * on this phone (step 173).
+   */
+  postponedCount: number;
   loadPending: () => Promise<void>;
   loadResolved: () => Promise<void>;
   /**
@@ -199,6 +207,7 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   pending: [],
   resolved: [],
   deletedCount: 0,
+  postponedCount: 0,
   justSavedId: null,
   clearJustSaved: () => set({ justSavedId: null }),
   streakCheckpoint: null,
@@ -212,11 +221,16 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   loadResolved: async () => {
     const userId = requireUserId();
-    const [resolved, deletions] = await Promise.all([
+    const [resolved, deletions, postponed] = await Promise.all([
       listResolvedPredictions(userId),
       listDeletions(userId),
+      countPostponements(userId),
     ]);
-    set({ resolved, deletedCount: deletions.filter((d) => d.counted).length });
+    set({
+      resolved,
+      deletedCount: deletions.filter((d) => d.counted).length,
+      postponedCount: postponed,
+    });
   },
 
   getById: async (id) => {
@@ -378,11 +392,16 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const from = rewordedAt ?? scoredFrom(current);
     // The picker's floor, held here too: a typed date can get past it.
     const due_date = clampDueDate(edit.due_date, new Date(from), now);
+    // A late move later is counted on Insights (step 173), held here so a
+    // deep link or a typed date is caught as the picker is.
+    const late = postponementCounts(current.due_date, due_date, now);
     await withTransaction(async () => {
       await updatePrediction(id, { ...edit, title, due_date }, { rewordedAt });
+      if (late) await recordPostponement(id, userId, current.due_date, due_date);
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await get().loadPending();
+    if (late) set({ postponedCount: await countPostponements(userId) });
   },
 
   remove: async (id) => {
@@ -558,4 +577,13 @@ async function requireCorrectable(
   if (!p) throw new Error('Prediction not found');
   if (!canCorrect(p, new Date())) throw new Error(PAST_WINDOW);
   return p;
+}
+
+/**
+ * Whether moving an open prediction's due date to `newDueIso` now would be
+ * counted on Insights (step 173), for Edit to say so before Save. The rule is
+ * the engine's; the store's `update` records it.
+ */
+export function moveIsCounted(p: Prediction, newDueIso: string, now: Date = new Date()): boolean {
+  return p.status === 'pending' && postponementCounts(p.due_date, newDueIso, now);
 }

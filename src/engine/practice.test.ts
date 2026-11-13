@@ -275,6 +275,11 @@ describe('scorePractice', () => {
 });
 
 describe('warmupQuestions', () => {
+  // Step 173 (aggregate B2): an everyday kind first, places or years.
+  it('opens on a place or a year', () => {
+    expect(['north', 'east', 'first', 'born']).toContain(warmupQuestions(PRACTICE_FACTS)[0]!.kind);
+  });
+
   it('is ten distinct two-way questions, the same every time', () => {
     const qs = warmupQuestions(PRACTICE_FACTS);
     expect(qs).toHaveLength(10);

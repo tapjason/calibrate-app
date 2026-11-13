@@ -91,3 +91,29 @@ describe('coachSample (roadmap D37)', () => {
     );
   });
 });
+
+// Step 173: the miss and the category's badge, together, so Insights doesn't
+// read as contradicting itself (blind playtest 2026-11-12f, finding 5).
+describe('furthestOffLine with the badge it sits beside', () => {
+  const miss = {
+    category: 'health' as const,
+    resolved: 22,
+    happened: 15,
+    mean_stated: 88,
+    actual_rate: 15 / 22,
+    direction: 'overconfident' as const,
+  };
+  it('says the gap is already in the score, which still clears the tier', () => {
+    expect(furthestOffLine(miss, { level: 'forecaster', score: 80, giveOrTake: 6 })).toBe(
+      'Furthest off: Health. You said about 88%, and 15 of 22 happened. About 70% would have matched. That gap is already in its score, 80, which still clears Forecaster\'s 70 at its low end.',
+    );
+  });
+  it('says why it is only Tracker', () => {
+    expect(furthestOffLine(miss, { level: 'tracker', score: 64, giveOrTake: 6 })).toMatch(
+      / Its score, 64, give or take 6, isn't above 70 at its low end yet, so it's Tracker, which counts answers only\.$/,
+    );
+    expect(furthestOffLine(miss, { level: 'tracker', score: 64, giveOrTake: 0 })).toMatch(
+      / Its score, 64 isn't above 70/,
+    );
+  });
+});

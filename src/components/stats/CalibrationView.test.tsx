@@ -1,9 +1,15 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 
-import { CalibrationView, deletedLine, sameDayLine, skippedLine } from '@/components/stats/CalibrationView';
+import {
+  CalibrationView,
+  deletedLine,
+  postponedLine,
+  sameDayLine,
+  skippedLine,
+} from '@/components/stats/CalibrationView';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { useCategoryStore } from '@/store/categoryStore';
-import type { CalibrationResult, UserStat } from '@/types';
+import type { CalibrationResult, Category, CategoryStat, UserStat } from '@/types';
 import { MIN_N_CATEGORY } from '@/types';
 
 const EMPTY_CAL: CalibrationResult = { rating: 0, buckets: [] };
@@ -332,7 +338,7 @@ describe('CalibrationView first badge', () => {
 // Roadmap D34: the Can't tell answers the rating leaves out, said beside it.
 describe('CalibrationView skipped answers', () => {
   it("says how many answers were Can't tell, once the rating unlocks", () => {
-    const view = (skippedCount: number, total = 161) =>
+    const view = (skippedCount: number, total = 161, answered = total + skippedCount) =>
       render(
         <CalibrationView
           userStat={userStat({ total_resolved: total, rating_is_provisional: total < 20 })}
@@ -340,19 +346,29 @@ describe('CalibrationView skipped answers', () => {
           categoryStats={[]}
           nextBadges={{}}
           skippedCount={skippedCount}
+          answeredCount={answered}
         />,
       );
     expect(view(2).getByTestId('stats-skipped')).toHaveTextContent(
-      '2 answers were Can’t tell, so they aren’t scored.',
+      '2 answers are Can’t tell, so they aren’t scored.',
     );
     // Roadmap D57: at zero too, so a sceptic needn't count rows.
-    expect(view(0).getByTestId('stats-skipped')).toHaveTextContent('No answers were Can’t tell.');
-    expect(view(3, 12).queryByTestId('stats-skipped')).toBeNull();
-    expect(view(0, 12).queryByTestId('stats-skipped')).toBeNull();
+    expect(view(0).getByTestId('stats-skipped')).toHaveTextContent('No answers are Can’t tell.');
+    // Step 173: from the first answer, not only once unlocked, so skipping
+    // every miss while it calibrates shows.
+    expect(view(3, 12).getByTestId('stats-skipped')).toHaveTextContent(
+      '3 answers are Can’t tell, so they aren’t scored.',
+    );
+    // A skip alone counts as an answer.
+    expect(view(1, 0, 1).getByTestId('stats-skipped')).toHaveTextContent(
+      '1 answer is Can’t tell, so it isn’t scored.',
+    );
+    // Nothing answered yet: no line.
+    expect(view(0, 0, 0).queryByTestId('stats-skipped')).toBeNull();
   });
 
   it('words one', () => {
-    expect(skippedLine(1, 40)).toBe('1 answer was Can’t tell, so it isn’t scored.');
+    expect(skippedLine(1)).toBe('1 answer is Can’t tell, so it isn’t scored.');
   });
 });
 
@@ -510,5 +526,75 @@ describe('CalibrationView pattern lines', () => {
     });
     expect(getByTestId('stats-furthest-off')).toHaveTextContent(/^Furthest off: Markets\./);
     act(() => useCategoryStore.setState({ defs: before }));
+  });
+});
+
+
+// Step 173: Insights' additions.
+describe('CalibrationView step 173', () => {
+  const cat = (category: Category, resolved: number, over: Partial<CategoryStat> = {}): CategoryStat => ({
+    user_id: 'u1',
+    category,
+    predictions_made: resolved,
+    predictions_resolved: resolved,
+    calibration_score: 80,
+    score_is_provisional: resolved < MIN_N_CATEGORY,
+    badge_level: resolved >= 20 ? 'forecaster' : 'guesser',
+    ...over,
+  });
+  const unlocked = userStat({ total_resolved: 73, rating_is_provisional: false, calibration_rating: 86 });
+
+  it('says what the rating means in points', () => {
+    const { getByTestId } = render(
+      <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,
+    );
+    expect(getByTestId('stats-rating-meaning')).toHaveTextContent(/^Range by range, what you said averaged about 14 points away/);
+  });
+
+  it('says why there is no badge when the answers are spread thin', () => {
+    const spread = (['work', 'health', 'finance', 'social', 'personal'] as Category[]).map((c) => cat(c, c === 'work' ? 33 - 19 : 14 + (c === 'health' ? 1 : 0)));
+    const total = spread.reduce((n, c) => n + c.predictions_resolved, 0);
+    const { getByTestId, queryByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: total, rating_is_provisional: false, calibration_rating: 86 })}
+        calibration={{ rating: 86, buckets: [] }}
+        categoryStats={spread}
+        nextBadges={{}}
+      />,
+    );
+    expect(getByTestId('badges-spread')).toHaveTextContent(
+      `Badges are per category, at 20 scored answers in one. Your ${total} scored answers are spread over 5 categories, so none has 20 yet.`,
+    );
+    expect(queryByTestId('badges-first')).toBeNull();
+  });
+
+  it('counts late due-date moves on this phone', () => {
+    expect(postponedLine(1)).toBe(
+      '1 prediction had its due date moved later the day before it or after. Only this phone keeps this count.',
+    );
+    const view = render(
+      <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} postponedCount={2} />,
+    );
+    expect(view.getByTestId('stats-postponed')).toHaveTextContent(/^2 predictions had their due dates moved later/);
+    view.rerender(
+      <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,
+    );
+    expect(view.queryByTestId('stats-postponed')).toBeNull();
+  });
+
+  it('ties the furthest-off line to that category’s badge', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={unlocked}
+        calibration={{ rating: 86, buckets: [] }}
+        categoryStats={[cat('health', 22, { calibration_score: 80.4 })]}
+        nextBadges={{}}
+        categoryRanges={{ health: { giveOrTake: 6, low: 74, high: 86 } }}
+        furthestOff={{ category: 'health', resolved: 22, happened: 15, mean_stated: 88, actual_rate: 15 / 22, direction: 'overconfident' }}
+      />,
+    );
+    expect(getByTestId('stats-furthest-off')).toHaveTextContent(
+      /That gap is already in its score, 80, which still clears Forecaster's 70 at its low end\.$/,
+    );
   });
 });

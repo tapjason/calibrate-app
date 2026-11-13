@@ -9,6 +9,8 @@ import {
   shareLines,
   shareSubline,
   shareText,
+  SQUARES_KEY,
+  STRIP_KEY,
   stripSummary,
 } from './cardCopy';
 
@@ -183,7 +185,22 @@ describe('shareText', () => {
       bucket(80, 'underconfident'),
     ]);
     expect(text).toBe(
-      'My calibration · Fairly Sure\nSharp in health · Tracker in finance\n⬜🟩🟩🟧🟦 score 81',
+      'My calibration · Fairly Sure\nSharp in health · Tracker in finance\n⬜🟩🟩🟧🟦 score 81\n' +
+        SQUARES_KEY,
+    );
+  });
+
+  // Step 173: a key under the squares, in the strip's words (🟩 is "no clear
+  // lean", D57), so colour doesn't carry them alone; none without squares.
+  it('says what the squares mean under them, and only with them', () => {
+    expect(SQUARES_KEY).toBe(
+      'Low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers',
+    );
+    const thin = (low: number) => ({ ...bucket(low, 'overconfident'), total_resolved: 8 });
+    expect(shareText(card(81), [thin(60), thin(80)])).not.toContain(SQUARES_KEY);
+    expect(shareText(card(null), [bucket(80, 'overconfident')])).not.toContain(SQUARES_KEY);
+    expect(STRIP_KEY).toBe(
+      '○ no clear lean · ▲ too cautious · ▼ too sure · • under 10 answers · – none',
     );
   });
 

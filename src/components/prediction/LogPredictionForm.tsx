@@ -15,7 +15,7 @@ import { track } from '@/analytics/track';
 import { CoverageNudge } from '@/components/prediction/CoverageNudge';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
 import { datePresets, DueDateChips } from '@/components/prediction/DueDateChips';
-import { dueWords } from '@/components/prediction/dueWords';
+import { dueWords, savedLine } from '@/components/prediction/dueWords';
 import { type LogAgainDraft } from '@/components/prediction/logAgain';
 import { pastOutcomesLine } from '@/components/prediction/pastOutcomesLine';
 import { StarterIdeas } from '@/components/prediction/StarterIdeas';
@@ -25,12 +25,15 @@ import { Button } from '@/components/ui/Button';
 import { ConfidenceControl } from '@/components/ui/ConfidenceControl';
 import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
+import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
 import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
 import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED, TRACK_RECORD_MIN_N } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
+import { categoryOptions } from '@/store/categoryStore';
+import { useLogDraftStore, type LogDraft } from '@/store/logDraftStore';
 import { dueDateSavedAt, pastOutcomesFor, usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
@@ -41,6 +44,8 @@ import {
 import { type Category } from '@/types';
 
 const TITLE_MAX_LENGTH = 200;
+/** How long after a change the draft is written, in ms (step 173). */
+export const LOG_DRAFT_WRITE_MS = 300;
 
 interface LogPredictionFormProps {
   /** Called after a successful create. Used by the screen to navigate away. */
@@ -58,6 +63,11 @@ interface LogPredictionFormProps {
    */
   again?: LogAgainDraft | null;
   /**
+   * A draft kept from an interrupted Log (step 173), restored whole: title,
+   * category, the person's own number and the date. Read at mount.
+   */
+  kept?: LogDraft | null;
+  /**
    * The sheet's title row, drawn as the first thing inside the scroll view.
    * As a sibling above it, the first device run (iOS 26, 2026-11-07) drew the
    * scroll view from the top of the sheet, over the title and the ×.
@@ -69,8 +79,21 @@ export function LogPredictionForm({
   onSubmitted,
   onDirtyChange,
   again,
+  kept,
   header,
 }: LogPredictionFormProps) {
+  // A kept draft's category only if it can still be chosen (renamed is fine;
+  // hidden or gone, it waits for a new pick), and its date only if Save would
+  // still keep it (a date the calendar caught up with moves on, as on save).
+  const [restored] = useState(() =>
+    kept
+      ? {
+          ...kept,
+          category: categoryOptions().includes(kept.category as Category) ? kept.category : null,
+          dueIso: dueDateSavedAt(kept.dueIso),
+        }
+      : null,
+  );
   const { pinned, onFooterLayout } = usePinnedFooter();
   // After a category is picked, the confidence control comes into view if it
   // isn't: at 320 it sat under the pinned Save, with only "—% not set yet"
@@ -79,21 +102,37 @@ export function LogPredictionForm({
   // Presets are frozen at mount: regenerating them every render would change
   // the ISO strings each tick and break chip-selection comparison below.
   const [presets, setPresets] = useState(datePresets);
-  const [title, setTitle] = useState(again?.title ?? '');
+  const [title, setTitle] = useState(again?.title ?? restored?.title ?? '');
   const dirty = title.trim().length > 0;
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
-  const [category, setCategory] = useState<Category | null>(again?.category ?? null);
+  const [category, setCategory] = useState<Category | null>(
+    again?.category ?? restored?.category ?? null,
+  );
   // Empty until set (roadmap D13): a preset can't be told apart from a choice,
   // so a save that never touched the control sat at a number nobody chose.
-  const [confidence, setConfidence] = useState<number | null>(null);
+  const [confidence, setConfidence] = useState<number | null>(restored?.confidence ?? null);
   // Starter ideas only for a first prediction ever (step 40).
   const firstEver = usePredictionStore((s) => s.pending.length + s.resolved.length === 0);
+  // They step aside once one is picked or the title field is left with words
+  // in it, not at the first letter: going then moved the chips up about 300 px
+  // under the thumb (blind playtest 2026-11-12f, finding 13; step 173).
+  const [ideasGone, setIdeasGone] = useState(false);
   // Every prediction starts on Tomorrow (roadmap D55; D18 (4) did it for the
   // first only): "In a week" caught five of eight testers who meant tomorrow
   // or a weekday (blind playtest 2026-11-10). "Log it again" brings its own.
-  const [dueDate, setDueDate] = useState(again?.dueIso ?? presets[0].iso);
+  const [dueDate, setDueDate] = useState(again?.dueIso ?? restored?.dueIso ?? presets[0].iso);
+  // Said once at the top while the form still holds the kept draft.
+  const [keptShown, setKeptShown] = useState(restored !== null);
+  // The draft is kept as it's typed, a moment after each change (step 173),
+  // so a kill or a reload loses at most that moment.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      void useLogDraftStore.getState().save({ title, category, confidence, dueIso: dueDate });
+    }, LOG_DRAFT_WRITE_MS);
+    return () => clearTimeout(t);
+  }, [title, category, confidence, dueDate]);
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   // A form left open (the Log tab, before D3; a sheet now) kept yesterday's
@@ -209,7 +248,11 @@ export function LogPredictionForm({
     }
   };
 
-  const onSubmit = async () => {
+  // "Saved, due Sunday." at the top of a form kept open by "Save and log
+  // another" (step 173).
+  const [savedNote, setSavedNote] = useState<{ text: string; n: number } | null>(null);
+
+  const onSubmit = async (another = false) => {
     if (confidence === null || category === null || submittingRef.current) return;
     submittingRef.current = true;
     setError(null);
@@ -222,9 +265,14 @@ export function LogPredictionForm({
         due_date: dueDate,
       });
       haptics.commit();
+      // Saved, so nothing to keep: cleared now, not by the blank form's
+      // write, which the sheet closing would cancel.
+      void useLogDraftStore.getState().clear();
+      setKeptShown(false);
+      const note = savedLine(dueDateSavedAt(dueDate));
       // The sheet closes on save; a screen reader hears that it worked
       // (blind playtest 2026-11-04, second round, run 2).
-      AccessibilityInfo.announceForAccessibility('Saved.');
+      AccessibilityInfo.announceForAccessibility(another ? note : 'Saved.');
       setTitle('');
       setCategory(null);
       setConfidence(null);
@@ -232,7 +280,16 @@ export function LogPredictionForm({
       setPresets(next);
       setDueDate(next[0].iso);
       setPicking(false);
-      onSubmitted?.();
+      if (another) {
+        // A batch stays in the sheet: every save went back to Today, and four
+        // quick ones took three extra trips (blind playtest 2026-11-12f,
+        // finding 12). The form starts over at the top, the save said there.
+        setSavedNote((prev) => ({ text: note, n: (prev?.n ?? 0) + 1 }));
+        reveal.reset();
+        reveal.scrollRef.current?.scrollTo({ y: 0, animated: false });
+      } else {
+        onSubmitted?.();
+      }
     } catch (e) {
       // The store's messages are for developers ("confidence must be an
       // integer…"). Say what happened in words, keep the detail in the log.
@@ -287,11 +344,20 @@ export function LogPredictionForm({
         <Button
           label={submitting ? 'Saving…' : `Save, due ${saveDue.text}`}
           accessibilityLabel={submitting ? 'Saving' : `Save prediction, due ${saveDue.spoken}`}
-          onPress={onSubmit}
+          onPress={() => void onSubmit()}
           disabled={!canSave}
           testID="submit-button"
         />
       </View>
+      {/* For a batch (step 173), once there's something to save: it takes the
+          place of the "still needed" line, so the bar barely grows. */}
+      {canSave && (
+        <TextButton
+          label="Save and log another"
+          onPress={() => void onSubmit(true)}
+          testID="submit-another"
+        />
+      )}
     </View>
   );
 
@@ -314,6 +380,29 @@ export function LogPredictionForm({
         scrollEventThrottle={32}
       >
         {header}
+        {keptShown && (
+          <View style={styles.keptRow} testID="log-kept">
+            <Text style={styles.keptText}>Kept from before you left.</Text>
+            <TextButton
+              label="Start over"
+              onPress={() => {
+                setKeptShown(false);
+                setTitle('');
+                setCategory(null);
+                setConfidence(null);
+                setDueDate(presets[0].iso);
+                setPicking(false);
+                void useLogDraftStore.getState().clear();
+              }}
+              testID="log-kept-clear"
+            />
+          </View>
+        )}
+        {savedNote && (
+          <Text key={savedNote.n} style={styles.savedNote} testID="log-saved-note">
+            {savedNote.text}
+          </Text>
+        )}
         {nudge && !nudgeDismissed && (
           <CoverageNudge
             suggestedConfidence={nudge.suggested_confidence}
@@ -337,6 +426,9 @@ export function LogPredictionForm({
           grows
           maxLength={TITLE_MAX_LENGTH}
           testID="title-field"
+          onBlur={() => {
+            if (title.trim().length > 0) setIdeasGone(true);
+          }}
         >
           {past !== null && (
             <Text style={styles.record} testID="past-outcomes">
@@ -345,9 +437,10 @@ export function LogPredictionForm({
           )}
         </TextField>
 
-        {firstEver && title.trim().length === 0 && (
+        {firstEver && !ideasGone && (
           <StarterIdeas
             onPick={(idea) => {
+              setIdeasGone(true);
               setTitle(idea.title);
               setCategory(idea.category);
               const preset = presets.find((p) => p.id === idea.due);
@@ -472,6 +565,15 @@ const styles = StyleSheet.create({
   error: { ...type.subhead, color: colors.destructive, marginBottom: space.md },
   // Plain ink, like the counts: a direction, not an error.
   needs: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
+  savedNote: { ...type.subhead, color: colors.textSecondary, marginBottom: space.md },
+  keptRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: space.md,
+    marginBottom: space.sm,
+  },
+  keptText: { ...type.subhead, color: colors.textSecondary },
   refineRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
   refineButton: {
     paddingHorizontal: 12,

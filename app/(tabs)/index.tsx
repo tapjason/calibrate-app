@@ -1,7 +1,7 @@
 import { useScrollToTop } from '@react-navigation/native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef } from 'react';
-import { SectionList, StyleSheet, Text, View, type ViewToken } from 'react-native';
+import { Pressable, SectionList, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { PracticeCard } from '@/components/practice/PracticeCard';
@@ -20,6 +20,7 @@ import { BackupNudge } from '@/components/settings/BackupNudge';
 import { unlockEstimateLine } from '@/components/stats/beforeScoreCopy';
 import { chartVerdict } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
+import { NextBadgeLine } from '@/components/stats/NextBadgeLine';
 import { ratingHeadline } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -216,18 +217,27 @@ export default function TodayScreen() {
           // What the tiers mean, not the share card (roadmap D27).
           onPress={() => router.push('/scoring?section=badges' as never)}
         />
-        <ScoreBar score={headline.rating} testID="home-score-bar" />
-        {/* Number and label as one stop for a screen reader (roadmap step 43). */}
-        <View
-          style={styles.receipt}
-          accessible
-          accessibilityRole="text"
+        {/* With no badge yet, the closest one (step 173). */}
+        <NextBadgeLine onPress={() => router.push('/scoring?section=badges' as never)} />
+        {/* The bar and the number open what the number means (step 173):
+            testers tapped the 88 and the bar to find out whether it was good,
+            and nothing happened (blind playtest 2026-11-12f, finding 1). No
+            badge marks here: they're a category's bars, not the rating's. */}
+        <Pressable
+          onPress={() => router.push('/scoring?section=rating' as never)}
+          accessibilityRole="button"
           accessibilityLabel={`Calibration rating, ${headline.rating} out of 100.`}
+          accessibilityHint="Explains what it means"
+          style={({ pressed }) => [styles.ratingTap, pressed && styles.pressed]}
           testID="home-rating-group"
         >
-          <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
-          <Text style={styles.ratingLabel}>calibration rating</Text>
-        </View>
+          <ScoreBar score={headline.rating} marks={false} testID="home-score-bar" />
+          {/* Number and label as one stop for a screen reader (roadmap step 43). */}
+          <View style={styles.receipt}>
+            <CountUp value={headline.rating} style={styles.ratingNumber} testID="home-rating" />
+            <Text style={styles.ratingLabel}>calibration rating</Text>
+          </View>
+        </Pressable>
         {read && (
           <View style={styles.takeawayRow}>
             {/* The direction's own hue, beside the words that carry it (rule 0.5). */}
@@ -395,6 +405,8 @@ const styles = StyleSheet.create({
   hero: { marginBottom: space.xxxl, marginTop: space.sm },
   // Left-aligned, like everything below it (roadmap D33).
   rated: { alignItems: 'stretch' },
+  ratingTap: { alignSelf: 'stretch' },
+  pressed: { opacity: 0.6 },
   receipt: { alignItems: 'baseline', flexDirection: 'row', gap: space.md, marginTop: space.md },
   // The hero numeral is always ink (DESIGN_SYSTEM §2.4).
   ratingNumber: { ...type.readout, ...tabularNums, color: colors.textPrimary },

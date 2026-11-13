@@ -6,6 +6,7 @@ import { colors, space, type } from '@/constants/theme';
 import type { WarmupAnswer, WarmupQuestion } from '@/types';
 
 import { ANSWER_KEY_GAP, ANSWER_KEY_ICON, answerKeyStacks } from './answerKeyLayout';
+import { prefersUsUnits, withUsUnits } from './answerKeyUnits';
 import { answerKeyRow } from './verdictCopy';
 
 interface AnswerKeyRowProps {
@@ -14,6 +15,9 @@ interface AnswerKeyRowProps {
   /** The row's; its answer line gets `${testID}-answer`. */
   testID: string;
 }
+
+// Read once: the phone's region doesn't change mid-session in practice.
+const US_UNITS = prefersUsUnits();
 
 /**
  * One row of an answer key, the Warm-up's and practice's alike: the tick, the
@@ -43,7 +47,7 @@ export function AnswerKeyRow({ question, answer, testID }: AnswerKeyRowProps) {
       <Text style={styles.answer} testID={`${testID}-answer`}>
         {row.sentence} <Text style={styles.pick}>{row.pick}</Text>
       </Text>
-      <Text style={styles.fact}>{question.fact}</Text>
+      <Text style={styles.fact}>{US_UNITS ? withUsUnits(question.fact) : question.fact}</Text>
     </View>
   );
   // One stop per question for a screen reader, in words.
@@ -53,7 +57,7 @@ export function AnswerKeyRow({ question, answer, testID }: AnswerKeyRowProps) {
       testID={testID}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={row.spoken}
+      accessibilityLabel={US_UNITS ? row.spoken.replace(question.fact, withUsUnits(question.fact)) : row.spoken}
       // The row's width comes from its parent, not its content, so stacking
       // can't change it and flip the layout back.
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}

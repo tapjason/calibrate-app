@@ -6,6 +6,7 @@ import {
   correctableUntil,
   CORRECTION_WINDOW_HOURS,
   deletionCounts,
+  postponementCounts,
   SKIP_ANSWER_DAYS,
   skipLastDay,
 } from './corrections';
@@ -104,5 +105,21 @@ describe('which deletions are counted (roadmap D45)', () => {
     expect(deletionCounts(open(6), now)).toBe(false);
     expect(deletionCounts(open(5), now)).toBe(true);
     expect(deletionCounts(open(2), now)).toBe(true);
+  });
+});
+
+// Step 173 (aggregate B1): a due date moved later once the outcome may be known.
+describe('postponementCounts', () => {
+  const at = (d: string) => new Date(`${d}T12:00:00`);
+  const iso = (d: string) => at(d).toISOString();
+  it('counts a move later made the day before the due day or after', () => {
+    expect(postponementCounts(iso('2026-11-14'), iso('2026-11-20'), at('2026-11-13'))).toBe(true);
+    expect(postponementCounts(iso('2026-11-14'), iso('2026-11-15'), at('2026-11-14'))).toBe(true);
+    expect(postponementCounts(iso('2026-11-14'), iso('2026-11-20'), at('2026-11-16'))).toBe(true);
+  });
+  it('leaves an early move alone, and a move earlier at any time', () => {
+    expect(postponementCounts(iso('2026-11-14'), iso('2026-11-20'), at('2026-11-12'))).toBe(false);
+    expect(postponementCounts(iso('2026-11-14'), iso('2026-11-13'), at('2026-11-13'))).toBe(false);
+    expect(postponementCounts(iso('2026-11-14'), iso('2026-11-14'), at('2026-11-14'))).toBe(false);
   });
 });

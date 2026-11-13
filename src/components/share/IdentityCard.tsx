@@ -9,7 +9,14 @@ import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import { MIN_N_BAND, type BucketStat, type Direction, type ShareCard } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
-import { hiddenLine, identityCardSummary, shareLines, shareSubline, showsRanges } from './cardCopy';
+import {
+  hiddenLine,
+  identityCardSummary,
+  shareLines,
+  shareSubline,
+  showsRanges,
+  STRIP_KEY,
+} from './cardCopy';
 import { CARD_CANVAS_WIDTH, CARD_RADIUS } from './ScaledCanvas';
 
 interface IdentityCardProps {
@@ -235,6 +242,18 @@ export const IdentityCard = forwardRef<View, IdentityCardProps>(function Identit
               </Text>
             </View>
           )}
+          {showStrip && (
+            // What the marks mean, in the strip's own words (step 173): Sam,
+            // colour blind, decoded ▼ only because the chart had told him
+            // (blind playtest 2026-11-12f, finding 4).
+            <Text
+              maxFontSizeMultiplier={CARD_MAX_SCALE}
+              style={[styles.stripKey, { color: theme.foreground }]}
+              testID="card-strip-key"
+            >
+              {STRIP_KEY}
+            </Text>
+          )}
 
           <View style={styles.badges}>
             {card.categories.map((c) => (
@@ -322,6 +341,7 @@ const styles = StyleSheet.create({
   },
   stripCell: { alignItems: 'center', flex: 1 },
   stripEnd: { fontFamily: FONT_FAMILY, fontSize: 12, fontWeight: '600' },
+  stripKey: { fontFamily: FONT_FAMILY, fontSize: 11, lineHeight: 14, marginTop: 2, opacity: 0.8 },
   stripEmpty: { borderRadius: 1, height: 2, width: 10 },
   stripThin: { borderRadius: 4, height: 8, width: 8 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
