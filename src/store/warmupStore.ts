@@ -82,6 +82,9 @@ function questionsFor(ids: readonly string[] | undefined): readonly WarmupQuesti
   const ordered: WarmupQuestion[] = [];
   for (const id of ids) {
     const q = byId.get(id);
+    // A question the tables no longer hold: the current order is the best
+    // left, and could pair a key wrongly; the counts and verdict, from the
+    // stored answers, stay right either way.
     if (!q) return current;
     ordered.push(q);
   }

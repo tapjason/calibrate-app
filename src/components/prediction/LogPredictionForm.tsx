@@ -264,6 +264,14 @@ export function LogPredictionForm({
   // "Saved, due Sunday." at the top of a form kept open by "Save and log
   // another" (step 173).
   const [savedNote, setSavedNote] = useState<{ text: string; n: number } | null>(null);
+  // Cancelled if the sheet closes first, so it isn't said over the next screen.
+  const announceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (announceTimer.current) clearTimeout(announceTimer.current);
+    },
+    [],
+  );
 
   const onSubmit = async (another = false) => {
     if (confidence === null || category === null || submittingRef.current) return;
@@ -288,7 +296,13 @@ export function LogPredictionForm({
       // After "Save and log another" the focused button goes as the form
       // resets, and the focus move cut a same-moment announcement off (code
       // review 2026-11-12): said a moment later.
-      if (another) setTimeout(() => AccessibilityInfo.announceForAccessibility(note), 600);
+      if (another) {
+        if (announceTimer.current) clearTimeout(announceTimer.current);
+        announceTimer.current = setTimeout(
+          () => AccessibilityInfo.announceForAccessibility(note),
+          600,
+        );
+      }
       else AccessibilityInfo.announceForAccessibility('Saved.');
       setTitle('');
       setCategory(null);
