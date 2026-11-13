@@ -23,6 +23,24 @@
 - **Owner actions, unchanged:** publish the privacy policy (GitHub Pages; still a 404); RevenueCat's launch call stays (named in the policy).
 - **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-13 (step 176…)".
 
+**Round 20 (2026-11-13), appeal with a randomized cast:** `docs/design/research/playtest-2026-11-13c.md` (plan `round20-plan-2026-11-13.md`), on `7135744`.
+- **Method:** eight people never cast before (new §10 rows, Nadia to Katrin); five drawn at random across every axis, three cast for the friend's card, a family install at L1 and a premium payer; each with its own locale and time zone.
+- **Results:** median 6.5, four keep, four unsure; nineteen of 24 end answers right, five partly. With a record, three of four keep; fresh installs, one of four. L1–L2 nobody keeps.
+- **No decision needed:** #16 (Badges says a badge can fall), #17 ("1 answers"), #18 (the year card's "that far" with no gap), #19 (the pace line beside "one is ready now"), #20 (the reminder example's US date), #21 (a visible "Recorded" for Can't tell in a run), #23 (the chart's 100% dot and label), #24 (Edit says how to change a number). Not built yet.
+- **Needs the owner:**
+  - the Warm-up's content and its "no clear lean" read for L1 and short-video arrivals (#1, #2);
+  - keeping the Warm-up result findable (#3);
+  - something to compare with a friend (#5);
+  - a lock or hidden titles on a shared phone (#7);
+  - regional pricing and a Trends preview (#8);
+  - the Brier line's sting (#9);
+  - adding a category from Log (#10);
+  - Insights' footnotes (#11);
+  - recaps that lead with what was missed (#12);
+  - corrections that feel like being caught (#13);
+  - a note lost on leaving (#14);
+  - the provider token (#27).
+
 **Round 19 (2026-11-13), a fortnight in the app:** `docs/design/research/playtest-2026-11-13b.md` (plan `round19-plan-2026-11-13.md`).
 - **Method:** four diaries on four rhythms (16 days away, across midnight, weekly, low energy with Reduce Motion), with `Tomorrow 0–10` per sitting; four single sittings, each starting with three minutes and no task (sharing before 20, privacy, a slow phone on prepaid data, a dyslexic teenager with a stylus).
 - **Results:**
