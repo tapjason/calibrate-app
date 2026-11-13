@@ -60,6 +60,11 @@ interface ResolvePromptProps {
    */
   reflectionCollapsed?: boolean;
   /**
+   * An earlier answer in this run already said why one answer only nudges the
+   * rating, so this one gives the move alone (Answer all).
+   */
+  ratingExplained?: boolean;
+  /**
    * "Log it again" (roadmap step 22): offered after Yes or No when set. The
    * reflection is saved first, as with Done. Left unset inside a run, where
    * leaving for the Log screen would end the run.
@@ -153,12 +158,14 @@ export function meaningLine(confidence: number): string | null {
  * and No (roadmap D50): it moved on Today with nothing said, and two testers
  * read the drop as a grade (blind playtest 2026-11-09b, findings 4 and 6).
  */
-export function ratingChangeLine(before: number, after: number): string {
+export function ratingChangeLine(before: number, after: number, explain = true): string {
   const move =
     before === after
       ? `Your rating stays at ${after}.`
       : `Your rating moved from ${before} to ${after}.`;
-  return `${move} One answer nudges it either way; the pattern over many is what counts.`;
+  // Once a run has said why, the move alone: three in a row read as wallpaper
+  // (blind playtest 2026-11-13b, run 3).
+  return explain ? `${move} One answer nudges it either way; the pattern over many is what counts.` : move;
 }
 
 /** The rating as Today shows it, or null while it's provisional. */
@@ -193,6 +200,8 @@ function readAcknowledgement(
   outcome: 'resolved_yes' | 'resolved_no',
   /** The rating before this answer, or null if it was provisional or unknown. */
   ratingBefore: number | null = null,
+  /** The run already said why one answer only nudges it. */
+  ratingExplained = false,
 ): {
   outcome: 'resolved_yes' | 'resolved_no';
   line: string | null;
@@ -234,6 +243,7 @@ function readAcknowledgement(
       sameDay || first,
       ratingBefore,
       milestone?.kind === 'rating_unlocked',
+      ratingExplained,
     ),
     ratingBefore,
     milestone,
@@ -252,11 +262,12 @@ function answerNote(
   skip: boolean,
   ratingBefore: number | null,
   unlocked = false,
+  ratingExplained = false,
 ): string | null {
   if (skip) return null;
   const after = shownRating();
   if (after === null) return meaningLine(confidence);
-  if (ratingBefore !== null) return ratingChangeLine(ratingBefore, after);
+  if (ratingBefore !== null) return ratingChangeLine(ratingBefore, after, !ratingExplained);
   // The answer that unlocked the rating (its milestone says so, not a
   // missing "before", which can also mean unknown: a reminder's answer on a
   // cold start) was given while it was provisional, so it keeps what the
@@ -282,6 +293,7 @@ export function ResolvePrompt({
   onDraftChange,
   advanceLabel = 'Done',
   reflectionCollapsed = false,
+  ratingExplained = false,
   onPredictAgain,
   recordedAnswer,
   sameDayWarned = false,
@@ -376,7 +388,7 @@ export function ResolvePrompt({
       }
       // The row as it now stands: an answered skip's time is this answer's,
       // not the skip's.
-      setAnswered(readAcknowledgement(landed, outcome, ratingBefore));
+      setAnswered(readAcknowledgement(landed, outcome, ratingBefore, ratingExplained));
       // Said, as Log's "Saved." is: the screen changed under the finger and
       // nothing was announced (playtest 2026-11-08, finding 38).
       AccessibilityInfo.announceForAccessibility(recordedText(outcome));

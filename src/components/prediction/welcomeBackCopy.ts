@@ -48,7 +48,8 @@ export function welcomeBackLines({
   if (ready > 0) {
     const what = ready === 1 ? 'One prediction is' : `${localCount(ready)} predictions are`;
     lines.push(
-      `${what} ready to answer. Answer what you remember about each.`,
+      // "about it" for one (blind playtest 2026-11-13b, run 1: "each, of one?").
+      `${what} ready to answer. Answer what you remember about ${ready === 1 ? 'it' : 'each'}.`,
     );
     if (rated) lines.push('Your rating moves as you answer them.');
   }

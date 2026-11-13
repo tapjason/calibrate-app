@@ -1010,6 +1010,12 @@ describe('meaningLine and ratingChangeLine (roadmap D50)', () => {
     expect(ratingChangeLine(88, 89)).toMatch(/^Your rating moved from 88 to 89\. /);
     expect(ratingChangeLine(89, 89)).toMatch(/^Your rating stays at 89\. /);
   });
+
+  // Blind playtest 2026-11-13b, run 3: in Answer all the why came three times.
+  it('gives the move alone once a run has said why', () => {
+    expect(ratingChangeLine(87, 88, false)).toBe('Your rating moved from 87 to 88.');
+    expect(ratingChangeLine(88, 88, false)).toBe('Your rating stays at 88.');
+  });
 });
 
 // Roadmap D56 (blind playtest 2026-11-10, run 2): a daily walk logged in the

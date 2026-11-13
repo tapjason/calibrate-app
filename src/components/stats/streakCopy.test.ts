@@ -139,9 +139,14 @@ describe('streakCopy — rest days', () => {
   });
 
   it('says a spent one first, as a relief', () => {
-    expect(running({ restUsed: 1, nextRestAt: 14 })?.rest).toBe('Yesterday was a rest day');
+    // Blind playtest 2026-11-13b, run 3: an empty reserve is said.
+    expect(running({ restUsed: 1, nextRestAt: 14 })?.rest).toBe(
+      'Yesterday was a rest day. None saved now; the next comes with day 14',
+    );
     expect(running({ restUsed: 1, restDays: 1 })?.rest).toBe('Yesterday was a rest day. 1 more saved');
-    expect(running({ restUsed: 2, nextRestAt: 14 })?.rest).toBe('The last 2 days were rest days');
+    expect(running({ restUsed: 2, nextRestAt: 14 })?.rest).toBe(
+      'The last 2 days were rest days. None saved now; the next comes with day 14',
+    );
   });
 
   it('says nothing before a streak starts', () => {

@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { refinePrediction } from '@/ai/refine';
 import { track } from '@/analytics/track';
@@ -152,6 +153,12 @@ export function LogPredictionForm({
   }, [title, category, confidence, dueDate]);
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
+  // Opening "Pick a date" adds the date box at the end of the form and pushed
+  // the "Due Wednesday 9 Dec" line out of view behind Save; the form now
+  // scrolls to it once the box is laid out (blind playtests 2026-11-13,
+  // run 5, and 2026-11-13b, run 1).
+  const revealDate = useRef(false);
+  const reduceMotionDate = useReducedMotion();
   // A form left open (the Log tab, before D3; a sheet now) kept yesterday's
   // presets after midnight, and "Tomorrow" meant today. When the day turns, rebuild them and
   // keep the chosen chip chosen; a picked date stays as picked.
@@ -412,6 +419,11 @@ export function LogPredictionForm({
         onLayout={reveal.onViewportLayout}
         onScroll={reveal.onScroll}
         onScrollBeginDrag={reveal.onScrollBeginDrag}
+        onContentSizeChange={() => {
+          if (!revealDate.current) return;
+          revealDate.current = false;
+          reveal.scrollRef.current?.scrollToEnd({ animated: !reduceMotionDate });
+        }}
         scrollEventThrottle={32}
       >
         {header}
@@ -563,7 +575,10 @@ export function LogPredictionForm({
             value={dueDate}
             picking={picking}
             onChange={setDueDate}
-            onPickingChange={setPicking}
+            onPickingChange={(open) => {
+              setPicking(open);
+              if (open) revealDate.current = true;
+            }}
           />
         </View>
 

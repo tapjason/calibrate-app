@@ -35,7 +35,7 @@ describe('welcomeBackLines', () => {
 
   it('says a new streak has started once today counts', () => {
     const lines = welcomeBackLines({ gap, ready: 1, todayCounts: true, rated: false });
-    expect(lines[1]).toMatch(/^One prediction is ready to answer\./);
+    expect(lines[1]).toBe('One prediction is ready to answer. Answer what you remember about it.');
     expect(lines.at(-1)).toMatch(/Today started a new one\.$/);
     expect(lines.join(' ')).not.toMatch(/rating/);
   });

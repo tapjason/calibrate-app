@@ -163,6 +163,8 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
         predictionId={id}
         advanceLabel={last ? 'Finish' : 'Next'}
         reflectionCollapsed
+        // Said once a run (blind playtest 2026-11-13b, run 3).
+        ratingExplained={answeredHere.length > 0}
         onResolved={advance}
         onDraftChange={reportDraft}
       />

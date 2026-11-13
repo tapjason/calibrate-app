@@ -90,7 +90,13 @@ function restLine(status: StreakStatus): string | null {
   if (restUsed > 0) {
     const spent =
       restUsed === 1 ? 'Yesterday was a rest day' : `The last ${restUsed} days were rest days`;
-    return restDays > 0 ? `${spent}. ${restDays} more saved` : spent;
+    if (restDays > 0) return `${spent}. ${restDays} more saved`;
+    // Say the reserve is empty, plainly: two were spent without a word and a
+    // five-month streak had no cushion left, unsaid (blind playtest
+    // 2026-11-13b, run 3).
+    return nextRestAt === null
+      ? `${spent}. None saved now`
+      : `${spent}. None saved now; the next comes with day ${localCount(nextRestAt)}`;
   }
   if (restEarnedToday) {
     return restDays > 1 ? 'Today saved a second rest day' : 'Today saved a rest day';

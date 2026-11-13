@@ -1007,3 +1007,21 @@ describe('LogPredictionForm — starter ideas step aside after a category is cho
     expect(screen.queryByTestId('starter-ideas')).toBeNull();
   });
 });
+
+// Blind playtests 2026-11-13 run 5 and 2026-11-13b run 1: opening "Pick a
+// date" pushed the "Due …" line out of view behind Save.
+describe('bringing the due line into view when Pick a date opens', () => {
+  it('scrolls to the end once the date box is laid out, and only then', () => {
+    render(<LogPredictionForm />);
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    const scrollToEnd = jest.fn();
+    scroll.instance.scrollToEnd = scrollToEnd;
+    fireEvent(scroll, 'contentSizeChange', 375, 900);
+    expect(scrollToEnd).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('due-pick'));
+    fireEvent(scroll, 'contentSizeChange', 375, 1000);
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+    fireEvent(scroll, 'contentSizeChange', 375, 1010);
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+  });
+});
