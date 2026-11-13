@@ -229,6 +229,12 @@ describe('shareText', () => {
     expect(text).toContain('40 answers scored so far');
   });
 
+  // Playtest 2026-11-13c, finding 17: "1 answers scored so far".
+  it('says one answer in the singular', () => {
+    const text = shareText({ ...card(null), total_resolved: 1 }, []);
+    expect(text).toContain('\n1 answer scored so far');
+  });
+
   it('never carries a prediction title', () => {
     const text = shareText(card(81), []);
     expect(text.split('\n')).toHaveLength(3);

@@ -286,28 +286,6 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
               </G>
             ))}
 
-            <SvgText
-              x={right - 8}
-              y={bottom - 10}
-              fontSize={TICK_FONT}
-              fontFamily={svgFontFamily}
-              fontWeight="600"
-              fill={colors.overText}
-              textAnchor="end"
-            >
-              Overconfident
-            </SvgText>
-            <SvgText
-              x={left + 8}
-              y={top + 18}
-              fontSize={TICK_FONT}
-              fontFamily={svgFontFamily}
-              fontWeight="600"
-              fill={colors.underText}
-              textAnchor="start"
-            >
-              Underconfident
-            </SvgText>
 
             {/* Perfect calibration. */}
             <Line
@@ -343,6 +321,34 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
                 />
               );
             })}
+
+            {/* The region labels over the luck bars, not under them: a bar
+                at 60–80% ran through "Overconfident" (blind playtest
+                2026-11-13c, finding 23). The dots still go on top. */}
+            <SvgText
+              x={right - 8}
+              y={bottom - 10}
+              fontSize={TICK_FONT}
+              fontFamily={svgFontFamily}
+              fontWeight="600"
+              fill={colors.overText}
+              textAnchor="end"
+              testID="region-label-over"
+            >
+              Overconfident
+            </SvgText>
+            <SvgText
+              x={left + 8}
+              y={top + 18}
+              fontSize={TICK_FONT}
+              fontFamily={svgFontFamily}
+              fontWeight="600"
+              fill={colors.underText}
+              textAnchor="start"
+              testID="region-label-under"
+            >
+              Underconfident
+            </SvgText>
 
             {/* Connecting line: neutral and thin — five buckets are not a
                 function, the dots are the data. */}

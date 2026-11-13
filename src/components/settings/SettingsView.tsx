@@ -272,17 +272,24 @@ export function SettingsView({
   );
 }
 
-/** One inset card of rows, with an optional footer explaining them. */
 /**
  * What a due-day reminder shows, with its words on or off (roadmap D60 (b)).
- * Exported for tests.
+ * The example's date is written as the reminder writes it, in the phone's
+ * order: a fixed "Nov 6" beside "13 Nov" everywhere else (blind playtest
+ * 2026-11-13c, finding 20). Exported for tests.
  */
 export function reminderWordsLine(on: boolean): string {
-  return on
-    ? "Each shows the prediction's words and your number, with Happened and Didn't to answer from it. On a locked iPhone the words stay hidden until it recognises you, unless Show Previews is set to Always (Settings → Notifications → Show Previews)."
-    : 'Each shows only the day you made it and your number, like “Your prediction from Nov 6 · You said 70%”. Tap it to answer.';
+  if (on) {
+    return "Each shows the prediction's words and your number, with Happened and Didn't to answer from it. On a locked iPhone the words stay hidden until it recognises you, unless Show Previews is set to Always (Settings → Notifications → Show Previews).";
+  }
+  const example = new Date(2026, 10, 6, 12).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+  return `Each shows only the day you made it and your number, like “Your prediction from ${example} · You said 70%”. Tap it to answer.`;
 }
 
+/** One inset card of rows, with an optional footer explaining them. */
 function Group({ children, footer }: { children: ReactNode; footer?: string }) {
   return (
     <View style={styles.group}>

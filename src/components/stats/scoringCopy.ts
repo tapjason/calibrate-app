@@ -94,7 +94,7 @@ export function scoringSections(): ScoringSection[] {
     {
       title: 'Badges',
       paragraphs: [
-        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above Tracker, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. That makes it hard for luck alone to carry a category over a line.',
+        'Each category earns its own badge, so you can be Sharp in one and just getting started in another. A badge needs both the score and the count: a high score on three lucky calls earns nothing. Above Tracker, the score has to clear the bar at its low end, which is the score minus its give-or-take: a score of 89, give or take 10, is 79 at its low end. That makes it hard for luck alone to carry a category over a line. A badge follows the record both ways: if later answers take the low end back under a bar, the badge goes back a tier too.',
       ],
     },
     {

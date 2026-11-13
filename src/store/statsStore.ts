@@ -38,7 +38,8 @@ import {
   type CoverageNudgeDecision,
 } from '@/engine/coverageNudge';
 import { detectMilestone, detectTierDrop } from '@/engine/milestones';
-import { isSameDayAnswer, sameDayCount, scoredOnly } from '@/engine/sameDay';
+import { localDayNumber } from '@/engine/localTime';
+import { isSameDayAnswer, sameDayCount, scoredFrom, scoredOnly } from '@/engine/sameDay';
 import { computeStreak } from '@/engine/streak';
 import { buildTrendSummary, type TrendSummary } from '@/engine/trends';
 import { categoriesIn } from '@/engine/categories';
@@ -510,7 +511,24 @@ export function unlockEstimateFor(
   for (const p of [...resolved, ...pending]) {
     if (first === null || Date.parse(p.created_at) < Date.parse(first)) first = p.created_at;
   }
-  return unlockEstimate(scoredOnly(resolved).filter(isYesNo), MIN_N_OVERALL, now, first);
+  const scored = scoredOnly(resolved).filter(isYesNo);
+  // No forecast when what's ready now would unlock it: "One is ready to
+  // answer now" beside "about 2 days" read as two answers to one question
+  // (blind playtest 2026-11-13c, finding 19). Ready means due today or
+  // earlier, and scored if answered now (not logged or reworded today, D41).
+  const toGo = MIN_N_OVERALL - scored.length;
+  if (toGo > 0) {
+    const today = localDayNumber(now);
+    const readyScored = pending.filter((p) => {
+      if (p.status !== 'pending') return false;
+      const due = new Date(p.due_date);
+      const made = new Date(scoredFrom(p));
+      if (Number.isNaN(due.getTime()) || Number.isNaN(made.getTime())) return false;
+      return localDayNumber(due) <= today && localDayNumber(made) !== today;
+    }).length;
+    if (readyScored >= toGo) return null;
+  }
+  return unlockEstimate(scored, MIN_N_OVERALL, now, first);
 }
 
 export type { CategoryMiss, WeekChange };

@@ -30,6 +30,12 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(text).toContain(`until it holds ${MIN_N_BAND}`);
   });
 
+  // Roadmap D60: badges follow the record both ways, and the page says so
+  // (blind playtest 2026-11-13c, finding 16: two testers had to guess).
+  it('says a badge can go back', () => {
+    expect(allText()).toContain('A badge follows the record both ways');
+  });
+
   // Roadmap D2 and D17: what makes a day count, and the day's goal, from the
   // engine's own constants.
   it('says what a streak day takes, and the goal beside it', () => {

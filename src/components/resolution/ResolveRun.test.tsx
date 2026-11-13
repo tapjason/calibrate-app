@@ -149,6 +149,10 @@ describe('ResolveRun (roadmap step 18)', () => {
     fireEvent.press(screen.getByTestId('resolve-skip'));
     await waitFor(() => expect(screen.getByText('Second due')).toBeTruthy());
     expect((await getPrediction('a'))?.status).toBe('skipped');
+    // Said on screen, as Yes and No are (blind playtest 2026-11-13c, 21).
+    expect(screen.getByTestId('resolve-run-skip-notice')).toHaveTextContent(
+      'Last one recorded: can’t tell.',
+    );
   });
 
   it('keeps the reflection one tap away instead of in the way', async () => {

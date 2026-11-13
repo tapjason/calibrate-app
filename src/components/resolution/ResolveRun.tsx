@@ -78,6 +78,9 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
   // rating. Set by the card that said it, not by any answer: a skip or a
   // same-day answer first would otherwise leave the run never saying it.
   const [ratingExplained, setRatingExplained] = useState(false);
+  // Yes and No say "Recorded" on their card; Can't tell moves straight on,
+  // so the next card says it landed (blind playtest 2026-11-13c, finding 21).
+  const [skipNotice, setSkipNotice] = useState(false);
 
   // Stable per card, so ResolvePrompt's draft effect doesn't re-fire on
   // every render of the run.
@@ -96,7 +99,8 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
     if (finishedWithAnswers) useRatingStore.getState().noteMoment();
   }, [finishedWithAnswers]);
 
-  const advance = () => {
+  const advance = (outcome?: 'skipped') => {
+    setSkipNotice(outcome === 'skipped');
     setAnsweredHere((ids) => [...ids, queue[index]]);
     const stillOpen = new Set(usePredictionStore.getState().pending.map((p) => p.id));
     let next = index + 1;
@@ -160,6 +164,11 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
         </View>
         {onDismiss && <CloseButton onPress={onDismiss} testID="resolve-run-dismiss" />}
       </View>
+      {skipNotice && (
+        <Text style={styles.notice} testID="resolve-run-skip-notice">
+          Last one recorded: can’t tell.
+        </Text>
+      )}
       {/* A new key per card: each one starts fresh, with its own answer and
           reflection state. */}
       <ResolvePrompt
@@ -188,6 +197,12 @@ const styles = StyleSheet.create({
   },
   progress: { flex: 1, gap: space.xs },
   count: { ...type.eyebrow, color: colors.textSecondary },
+  notice: {
+    ...type.footnote,
+    color: colors.textSecondary,
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
+  },
   track: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: radius.pill,

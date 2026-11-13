@@ -49,8 +49,11 @@ import { StreakCheckpointCard } from './StreakCheckpointCard';
 interface ResolvePromptProps {
   /** Prediction id read from the URL or notification payload. */
   predictionId: string;
-  /** Called when the user is finished here (after answering, or skipping). */
-  onResolved?: () => void;
+  /**
+   * Called when the user is finished here (after answering, or skipping).
+   * 'skipped' when Can't tell moved straight on, so a run can say it landed.
+   */
+  onResolved?: (outcome?: 'skipped') => void;
   /**
    * The reflection typed so far and not yet saved ('' when there is none), so
    * the screen can ask before a swipe-down throws it away.
@@ -424,7 +427,7 @@ export function ResolvePrompt({
       haptics.resolve();
       if (outcome === 'skipped') {
         AccessibilityInfo.announceForAccessibility('Recorded: can’t tell.');
-        onResolved?.();
+        onResolved?.('skipped');
         return;
       }
       // The row as it now stands: an answered skip's time is this answer's,

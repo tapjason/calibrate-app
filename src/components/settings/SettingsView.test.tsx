@@ -322,6 +322,12 @@ describe('SettingsView — the words in reminders', () => {
     );
     expect(reminderWordsLine(true)).toMatch(/locked iPhone/);
     expect(reminderWordsLine(false)).toMatch(/Tap it to answer/);
+    // The example's date is in the phone's order, as the reminder writes it.
+    const example = new Date(2026, 10, 6, 12).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
+    expect(reminderWordsLine(false)).toContain(`from ${example} · You said 70%`);
     fireEvent.press(screen.getByTestId('toggle-reminder-words-row'));
     await waitFor(() => expect(useSettingsStore.getState().reminderWords).toBe(false));
     expect(screen.getByTestId('toggle-reminder-words-row').props.accessibilityHint).toBe(

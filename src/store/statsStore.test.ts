@@ -326,6 +326,20 @@ describe('statsStore before the score', () => {
     expect(unlockEstimateFor(scored, [old], NOW)?.days).toBe(114);
   });
 
+  // Blind playtest 2026-11-13c, finding 19: "One is ready to answer now"
+  // beside "about 2 days".
+  it('gives no estimate when the answers ready now would unlock it', () => {
+    const scored = Array.from({ length: 19 }, (_, i) => answered(`s${i}`, i + 1));
+    const ready = p({ id: 'r', created_at: daysAgo(2), due_date: daysAgo(0) });
+    expect(unlockEstimateFor(scored, [ready], NOW)).toBeNull();
+    // Logged today, an answer today isn't scored (D41): the estimate stays.
+    const loggedToday = p({ id: 't', created_at: NOW.toISOString(), due_date: NOW.toISOString() });
+    expect(unlockEstimateFor(scored, [loggedToday], NOW)).not.toBeNull();
+    // Due later: the estimate stays.
+    const later = p({ id: 'l', created_at: daysAgo(2), due_date: daysAgo(-3) });
+    expect(unlockEstimateFor(scored, [later], NOW)).not.toBeNull();
+  });
+
   it('keeps same-day answers out of the category counts, on both paths', async () => {
     await insertPrediction(p({ id: 'a', category: 'health', confidence: 80, created_at: '2026-01-01T09:00:00.000Z' }));
     await resolvePrediction('a', 'resolved_yes');

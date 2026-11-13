@@ -284,7 +284,8 @@ export function shareText(
     if (line) lines.push(line);
     if (squares) lines.push(SQUARES_KEY);
   } else {
-    lines.push(`${card.total_resolved} answers scored so far`);
+    const n = card.total_resolved;
+    lines.push(`${n} ${n === 1 ? 'answer' : 'answers'} scored so far`);
   }
   const hidden = hiddenLine(card);
   if (hidden) lines.push(hidden);

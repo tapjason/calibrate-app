@@ -10,7 +10,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { PredictionDetails } from './PredictionDetails';
+import { EDIT_NUMBER_NOTE, PredictionDetails } from './PredictionDetails';
 
 const USER = 'local-user-v1';
 
@@ -73,6 +73,9 @@ describe('PredictionDetails (roadmap D25)', () => {
     fireEvent.press(screen.getByTestId('details-edit-button'));
 
     expect(screen.queryByTestId('confidence-readout')).toBeNull();
+    // It says what to do instead (blind playtest 2026-11-13c, finding 24).
+    expect(screen.getByText(EDIT_NUMBER_NOTE)).toBeTruthy();
+    expect(EDIT_NUMBER_NOTE).toMatch(/delete this one and log it again/);
     fireEvent.changeText(screen.getByTestId('details-title-field'), 'Ship the beta to ten people');
     fireEvent.press(screen.getByTestId('category-personal'));
     fireEvent.press(screen.getByTestId('details-save'));

@@ -407,6 +407,21 @@ describe('CalibrationChart chance capsules', () => {
     expect(Number(capsule.props.strokeWidth)).toBeGreaterThanOrEqual(1);
   });
 
+  // Blind playtest 2026-11-13c, finding 23: a bar at 60–80% ran through
+  // "Overconfident". The labels paint after the bars, the dots after both.
+  it('paint under the region labels, and the dots over everything', () => {
+    const view = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
+    fireEvent(view.getByTestId('calibration-chart'), 'layout', {
+      nativeEvent: { layout: { width: 346, height: 346 } },
+    });
+    const tree = JSON.stringify(view.toJSON());
+    const at = (id: string) => tree.indexOf(`"testID":"${id}"`);
+    expect(at('chance-60')).toBeGreaterThan(-1);
+    expect(at('region-label-over')).toBeGreaterThan(at('chance-60'));
+    expect(at('region-label-under')).toBeGreaterThan(at('chance-60'));
+    expect(at('point-60')).toBeGreaterThan(at('region-label-over'));
+  });
+
   // Roadmap step 68: the key names only what's drawn.
   it('are explained in the key only when there are some', () => {
     const empty = render(<CalibrationChart buckets={[]} />);

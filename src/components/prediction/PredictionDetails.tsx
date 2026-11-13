@@ -62,6 +62,14 @@ const REWORD_SPOKEN =
   'Changing the words makes this a new prediction from today: an answer today isn’t scored.';
 
 /**
+ * Edit's line under the number. The number can't change, and it says what to
+ * do instead: a tester who set 90 for 70 found only delete-and-retype by
+ * guessing (blind playtest 2026-11-13c, finding 24). Exported for tests.
+ */
+export const EDIT_NUMBER_NOTE =
+  "The number you said stays as it is: it's the record. To use another number, delete this one and log it again.";
+
+/**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23):
  * what you said and when, the due date, then Edit (title, category and due
  * date, never the confidence: it's the record), Answer it now (early, after
@@ -291,7 +299,7 @@ export function PredictionDetails({
           You said <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
         </Text>
         <Text style={styles.note}>
-          The number you said stays as it is: it's the record.
+          {EDIT_NUMBER_NOTE}
         </Text>
         <TextField
           label="Prediction"
