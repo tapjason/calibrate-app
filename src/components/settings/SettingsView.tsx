@@ -144,8 +144,9 @@ export function SettingsView({
             for word at the top of Today (blind playtest 2026-11-13c,
             finding 7). Reminders are covered below; this covers the screens. */}
         <ToggleRow
-          label="Hide the words on Today and History"
-          description="Each prediction shows its category, number and date, not its words or note, until you open it: for a phone someone else picks up. Reminders have their own switch under Notifications."
+          // Short enough to keep its switch beside it at 375 (D62).
+          label="Hide the words"
+          description="On Today and History, each prediction shows its number and date, not its words, its note or a category you named, until you open it: for a phone someone else picks up. Reminders have their own switch under Notifications."
           value={hideTitles}
           onValueChange={(v) => void setHideTitles(v)}
           testID="toggle-hide-titles"

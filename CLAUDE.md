@@ -206,9 +206,10 @@ The calibration score alone ignores sharpness: someone who logs only coin-flips 
 50%, or only sure things at 95%, can score well while saying little. The Brier score
 rewards being both calibrated and decisive, so it keeps the rating honest. It is
 **secondary and quiet**: computed by the engine (`computeBrier`), never stored in
-`UserStat`, never on Today or a share card, and shown only as one plain line under
-the rating on Insights (with one more sentence after a tie or a loss, D61) and one paragraph in How scoring works, and only once the
-rating itself is unlocked (`MIN_N_OVERALL`). It is free.
+`UserStat`, never on Today or a share card, and shown only as one plain line in
+Insights' fine print, "More about your record" (with one more sentence after a tie or a loss, D61), and one paragraph in How scoring works, and only from
+50 scored answers (`BRIER_MIN_N`, D62; it waited for `MIN_N_OVERALL` until then: at 20
+both numbers are mostly luck, and its losing line read as a put-down). It is free.
 
 **Its yardstick is the person's own base rate** (decided 2026-11-01, D35): the line
 reads "Brier score 0.22, lower is better. Saying 64% every time, how often your calls
@@ -216,9 +217,11 @@ came true, would score 0.23." (`computeBrierBaseline`). Since D59 (2026-11-12) t
 who wins only beyond luck (`brierEdge`): a paired bootstrap of Brier minus p(1 − p),
 the give-or-take's seed and middle 80%; when that holds 0, or the gap is under 0.01,
 it reads "…would score about the same, 0.23; with 20 answers a gap this small could
-be luck." After a tie or a loss it adds what it measures (D61): "Your score above
-asks whether your numbers match what happened; this one also asks whether they set
-apart the calls that happen from the ones that don't." It used to say "always saying
+be luck." Beyond luck it reads "…would score 0.23, so yours does better." or "…would
+score 0.21, better than yours so far." (flat words since D62). After a tie or a loss it
+adds what it measures (D61, shortened by D62): "Your rating asks whether your numbers
+match what happens. This one also asks whether they tell apart what will happen from
+what won't." It used to say "always saying
 50% scores 0.25", which flatters anyone whose calls mostly happen: an analyst beat it
 while showing no skill over saying his own 64% every time.
 
@@ -257,7 +260,9 @@ thing due tomorrow and answered tomorrow still counts.
 2026-11-10, run 2: a daily walk was "not scored" three times per tick). Before a
 same-day answer the rule is said once, on "Answer it now": "It's due Wed, Nov 11.
 You logged it today, so an answer today isn't scored. From tomorrow it is. For
-something you do every day, log the next one the evening before." Resolve doesn't
+something you do every day, log the next one the evening before." (that last sentence
+only when the same words were answered before, D62: it reached a one-off maths test).
+Resolve doesn't
 repeat its note when opened from there, and only while the answer would still be
 same-day; every other route keeps it. After the answer: "Not scored: you logged it
 today. Log the next one now, and its answer is scored from tomorrow." beside "Log
@@ -331,7 +336,7 @@ D18; built 2026-10-08):
   got 9. On ten answers luck often moves it that far, so it can't tell yet whether you
   run too sure, too cautious or about right."). The result also
   carries "It isn't about being right. A 60% call that doesn't happen isn't a
-  mistake: about 4 in 10 of them shouldn't." A bare ±5 rule (the
+  mistake: about 4 in 10 of them shouldn't happen." A bare ±5 rule (the
   rest of the app's until D35 made this one rule everywhere) called a lean on 47–73% of perfectly calibrated people
   (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20, 2026-10-09).
   Since D59 (2026-11-12) the expected-and-got line sits straight under the verdict,
@@ -390,6 +395,13 @@ prediction is the one prompt with strong evidence against optimism about one's o
 plans (`docs/design/research/debiasing-2026-10.md` §1); premortems and "list reasons
 you're wrong" are recorded there as not worth building.
 
+**"Use another number"** (D62) on Edit, only on the day an open prediction was logged
+(by `created_at`, `canRenumber`; not one logged earlier and reworded today, which would
+move its streak day): Log opens as "Another number" with its words, category and date and
+the number empty, and saving replaces it (saved and deleted in one transaction, the
+delete uncounted by the day-made exemption). From the next day the number is the record.
+Deleting and retyping took three testers 13 to 19 taps (blind playtest 2026-11-13d).
+
 **"+ New category"** (D61) on Log's and Edit's category chips adds one in place and
 chooses it, through the same rules as You → Categories.
 
@@ -426,6 +438,9 @@ not after "Change answer", where it would make a false answer a one-tap comparis
 The reflection asks "Anything to remember about this
 one?", and the coverage nudge stays quiet for 30 minutes after any answer.
 
+**A note after an answer** (D62): an answered prediction's details offer "Add a note",
+"Change note" and "Remove note" at any time; a note changes no number.
+
 **Correcting an answer** (decided 2026-11-01, D34): "Change answer" right after a
 Yes or No switches it to the other in place; it no longer puts the prediction back
 to open. For **24 hours** after an answer (`CORRECTION_WINDOW_HOURS`, from the first
@@ -434,7 +449,7 @@ answer, move it to another category or delete it; after that it is the record.
 A Yes or No never becomes "Can't tell": that was how a miss could be parked and
 answered later. Can't tell's own note names the last day it could still be answered
 (D60). A skip can still be answered later. Insights says how many answers
-were "Can't tell" beside the rating, which leaves them out.
+were "Can't tell", which the rating leaves out, under "More about your record" (D62).
 
 **The score holes, closed** (decided 2026-11-06, D45; blind playtests 2026-11-04 and
 2026-11-05, three runs each):
@@ -456,6 +471,12 @@ were "Can't tell" beside the rating, which leaves them out.
   (`postponementCounts`) is counted on Insights, once per prediction, on this phone
   only (`prediction_postponements`, SQLite migration 015, never synced), and the count
   survives a delete; Edit says so before Save. Counting discloses, it doesn't block.
+  Not on the day the prediction was made (D62, as for a delete). **New words on the
+  eve of the due day or after** are counted beside them (`rewordingCounts`, D62): the
+  date stays, so a call whose outcome was in sight could be rewritten and answered,
+  scored, the next day. Insights: "…had its due date moved later, or its words changed,
+  within a day of its due day." Corrections aren't counted: the 24-hour window is
+  their limit.
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
   after its due day, and never less than the correction window after the skip, so
   a mis-tap can still be undone. After that it stays "Can't tell". A Yes or No
@@ -483,8 +504,25 @@ See the authoritative section above.
   14 points away from how often those things happened…", 100 minus the rounded rating;
   Today's rating opens How scoring works with the same line on top. Today's bar carries
   no 70 / 85 / 90 marks (Insights keeps them, with D54's caption)
+- **What perfect calibration scores on the same answers** (D62), under that line:
+  "Even perfectly calibrated, 20 answers like yours would typically score about 86,
+  since luck alone moves each range. At this count, your score can't be told apart from
+  perfect calibration." The verdict is about the score and never contradicts the
+  chart's lean read: inside the middle 80% while the chart names a lean, "Your score is
+  within what luck gives, though the chart shows a range that leans."; below it, "Your
+  score is further off than luck alone explains." only when the chart names a lean too,
+  else the figure alone; above it, "Your score is above that, which luck can do too". `perfectReference` simulates the
+  same confidences coming true as often as they say: absolute error over few answers a
+  range keeps even perfect calibration near 85–88 at 20 answers, 92 at 50, 95 at 100
+  (blind playtest 2026-11-13d, finding 1). The formula and the badge bars don't change
+- **A first look before 20** (D62): from 10 scored answers until the rating unlocks,
+  Today and Insights add "First look: you said about 75% on average, and 6 of your 12
+  scored predictions happened. Too few to rate yet." Counts, never a lean
+- **The fine print, folded** (D62): the Brier line, the Can't tell count (D57's line at
+  zero too) and the same-day, deleted and moved counts sit under "More about your
+  record" on Insights, one tap away
 - Calibration curve chart (stated vs. actual per bucket)
-- The Brier score, one quiet line under the rating once it's unlocked (D24, above)
+- The Brier score, one quiet line in the fine print from 50 scored answers (D24, D62, above)
 - **The pattern, named** (decided 2026-11-01, D37), all free and all by the one lean
   rule (D35): the category furthest off, past `MIN_N_CATEGORY` ("Furthest off:
   finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.",
@@ -537,10 +575,12 @@ See the authoritative section above.
   change raised day-14 retention 3.3% and new users on a streak 19%
   (`docs/design/research/retention-2026-10.md` §2.1). Practice doesn't count
   toward either.
-- **The words can be hidden** (D61, 2026-11-13): "Hide the words on Today and
-  History" in You, off by default. On, a card shows "Words hidden. Open it to see
-  them.", its category, number and date, and no note; opening it shows the words. For a
-  phone someone else picks up (reminders have their own switch, D60).
+- **The words can be hidden** (D61, 2026-11-13): "Hide the words" in You, off by
+  default. On, a card shows "Words hidden. Open it to see them.", its number and date,
+  and no note; a category the person named or gave an icon (added, or a built-in
+  renamed) reads "Your own category" (D62), and Today's identity and next-badge lines
+  name only built-ins. Opening a card shows everything. For a phone someone else picks
+  up (reminders have their own switch, D60). A Face ID lock is the native batch's.
 - **The streak can be hidden** (D59, 2026-11-12): a switch in You, "Streak and daily
   goal", on by default. Off hides the streak row and its goal, the checkpoints, the
   streak on the recap and Insights and in the welcome back; the streak is still
@@ -574,7 +614,13 @@ See the authoritative section above.
   shown"), in the image and the text share alike. The recaps leave the same
   categories off and say so too (2026-11-04).
 - Once there's a category card, Share keeps the Warm-up card one tap away ("Show my
-  warm-up card"), with a friend's squares explained under it (D61).
+  warm-up card", without its "Real predictions next." then, D62), with a friend's squares
+  explained under it behind "Got a friend's card?" (D61, folded by D62).
+- **The recaps lead with the person's own badge news** (D62): a badge gained or lost
+  over the span ("New this week: Forecaster in health." / "Back to Tracker in health
+  this week. A badge follows the record both ways.", `badgeChangesSince`) takes the
+  next badge's place, never "Back to Getting started" (D27); the year card carries the
+  rating ("All time: calibration 87/100, give or take 3, from 148 scored answers.").
 - Exports a PNG the OS share sheet accepts.
 - A text share ends on the App Store link with a campaign token (`ct=share-card-text`)
   once `APP_STORE_ID` is set (decided 2026-10-08, `GROWTH_AND_MONETIZATION.md` §0
@@ -644,7 +690,8 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   You expected about 2." The practice record says which way it leans only from 20
   answers (the same floor as the rating), and draws its chart from there.
 - On Today as one row under the streak, from the first logged prediction on (not on
-  Day 0, where the next thing is the first real prediction). Erase clears it.
+  Day 0, where the next thing is the first real prediction). Before the first answer
+  it reads "While you wait: today's practice" (D62). Erase clears it.
 
 ---
 
@@ -805,7 +852,15 @@ calls or repeated titles, since a sure thing that happens is a calibrated call a
 and the answer that takes one back says so under the range's box, the same after Yes and
 No ("Back to Tracker in health: after this answer its score's low end is no longer
 above Forecaster's 70. A badge follows the record both ways."), never after "Change answer"
-(D50's reason). No hysteresis.
+(D50's reason). No hysteresis. A badge earned says "New badge: Forecaster in health",
+with "Badges follow how well your numbers match what happens, not how often you're
+right." after Yes and No alike (D62; one earned on a No read as a mistake).
+
+**How hard the bars are** (simulated for D62, one category, a perfectly calibrated
+forecaster on a typical 55–95% mix): Forecaster about 9 times in 10 at 20 answers,
+Sharp about 6 in 10 at 50, Oracle about 5 in 10 at 100 (about 8 in 10 at 150). The
+low-end rule and a small count both cost points even with perfect numbers. Left as
+decided, for the owner to revisit.
 
 Badges are per-category. A user can be Sharp in health and Guesser in finance
 simultaneously — this specificity is the key insight and the core shareable artifact.

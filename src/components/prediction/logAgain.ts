@@ -16,6 +16,12 @@ export interface LogAgainDraft {
   category: Category;
   /** ISO due date: noon local, `leadDays` from today. */
   dueIso: string;
+  /**
+   * "Use another number" (D62): the open prediction, made today, that saving
+   * this draft replaces. The words, category and date carry over as they are;
+   * the number starts empty, as always.
+   */
+  replaces?: string;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -54,5 +60,22 @@ export function logAgainDraft(prediction: Prediction, now: Date = new Date()): L
     title: prediction.title,
     category: prediction.category,
     dueIso: noonInDays(leadDays(prediction), now),
+  };
+}
+
+/**
+ * "Use another number" (D62, blind playtest 2026-11-13d, runs 1, 4 and 8): on
+ * the day an open prediction was made, Log starts from it with its words,
+ * category and own due date, and saving replaces it. The number starts empty:
+ * the point is a new one. A delete on the day it was made isn't counted (D61),
+ * so nothing hides; from the next day the number is the record.
+ */
+export function renumberDraft(prediction: Prediction): LogAgainDraft {
+  return {
+    sourceId: `renumber:${prediction.id}`,
+    title: prediction.title,
+    category: prediction.category,
+    dueIso: prediction.due_date,
+    replaces: prediction.id,
   };
 }

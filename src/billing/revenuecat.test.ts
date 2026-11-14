@@ -322,6 +322,36 @@ describe('plansFromOfferings', () => {
   });
 });
 
+// D62, policy audit: Apple allows one introductory offer per subscription
+// group, so a lapsed subscriber must not be shown "1 month free".
+describe('fetchPlans and trial eligibility', () => {
+  const annualTrial = async () =>
+    (await fetchPlans()).find((p) => p.plan === 'annual')?.trialDays ?? null;
+
+  it('shows the trial only to a customer who can still take it', async () => {
+    const ask = jest.fn(async (ids: string[]) => new Set(ids));
+    __setBillingDepsForTests(fakeDeps({ introEligibleProducts: ask }));
+    await configureBilling('u1');
+    expect(await annualTrial()).toBe(21);
+    expect(ask).toHaveBeenCalledWith([PRODUCT_IDS.annual]);
+  });
+
+  it('drops the trial when the customer has had one, or the check fails', async () => {
+    __setBillingDepsForTests(fakeDeps({ introEligibleProducts: async () => new Set<string>() }));
+    await configureBilling('u1');
+    expect(await annualTrial()).toBeNull();
+    __setBillingDepsForTests(
+      fakeDeps({
+        introEligibleProducts: async () => {
+          throw new Error('no group info');
+        },
+      }),
+    );
+    await configureBilling('u1');
+    expect(await annualTrial()).toBeNull();
+  });
+});
+
 describe('availability', () => {
   it('is false without an API key, even with the SDK present', () => {
     delete process.env[KEY_VAR];

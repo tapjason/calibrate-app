@@ -88,6 +88,17 @@ export function canAnswerSkip(p: Prediction, now: Date): boolean {
  */
 export function deletionCounts(p: Prediction, now: Date): boolean {
   if (p.status === 'resolved_yes' || p.status === 'resolved_no') return !isSameDayAnswer(p);
+  return lateForOpen(p, now);
+}
+
+/**
+ * Whether an open prediction is late now: on or after its due day, or on the
+ * eve of it unless it was made (or reworded) today. The window shared by a
+ * counted delete (D61), a counted due-date move and a counted rewording
+ * (D62): by then the outcome may be known, while a change on the day it was
+ * made is a slip fixed, not a hidden outcome.
+ */
+function lateForOpen(p: Prediction, now: Date): boolean {
   if (p.status !== 'pending') return false;
   const due = new Date(p.due_date);
   if (Number.isNaN(due.getTime())) return false;
@@ -105,11 +116,39 @@ export function deletionCounts(p: Prediction, now: Date): boolean {
  * before its old due day. By then the outcome may be known, and a known miss
  * moved on and answered later read as a hit. "On or after the due day" alone
  * counted almost nothing, since from its due day a prediction opens on
- * Resolve, which has no Edit. Moving earlier is never counted. Days by the
- * phone's clock, as for the other rules (D45).
+ * Resolve, which has no Edit. Moving earlier is never counted. Not on the
+ * day it was made (D62, blind playtest 2026-11-13d, run 5: a date fixed two
+ * minutes after logging read as "being called a cheat"), the same exemption
+ * as a delete (D61); `madeIso` is when it counts as made before this edit
+ * (`scoredFrom`), so a rewording on the due day still counts its move. Days
+ * by the phone's clock, as for the other rules (D45).
  */
-export function postponementCounts(oldDueIso: string, newDueIso: string, now: Date): boolean {
+export function postponementCounts(
+  oldDueIso: string,
+  newDueIso: string,
+  now: Date,
+  madeIso?: string,
+): boolean {
   const oldDay = localDayNumber(new Date(oldDueIso));
   const newDay = localDayNumber(new Date(newDueIso));
-  return newDay > oldDay && localDayNumber(now) >= oldDay - 1;
+  if (newDay <= oldDay) return false;
+  const today = localDayNumber(now);
+  if (today < oldDay - 1) return false;
+  if (madeIso === undefined) return true;
+  const made = new Date(madeIso);
+  return Number.isNaN(made.getTime()) || localDayNumber(made) !== today;
+}
+
+/**
+ * Whether changing an open prediction's words now counts on Insights (D62,
+ * record audit of step 173): new words on the eve of its due day keep that
+ * date, since tomorrow is a reworded prediction's earliest due date (D45), so
+ * a call whose outcome was in sight could be rewritten into one that will
+ * happen and answered, scored, the next day. Counted in the same window as a
+ * late move or delete, once per prediction, beside them. On the due day new
+ * words push the date to tomorrow, and that move is counted already. The
+ * caller decides whether the words are new (D32's `titleKey`).
+ */
+export function rewordingCounts(p: Prediction, now: Date): boolean {
+  return lateForOpen(p, now);
 }

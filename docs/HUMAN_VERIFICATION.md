@@ -891,6 +891,40 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
+
+- [ ] **What perfect calibration scores:** with the demo data, Insights under the rating reads
+      "Even perfectly calibrated, N answers like yours would typically score about …" and where
+      the rating sits; Today's rating opens How scoring works with the same line on top.
+- [ ] **Another number:** log one, open it, Edit: "You made it today, so you can still use another
+      number." and "Use another number"; it opens "Another number" with the words, category and date,
+      and the number empty. Save: Today shows one card, with the new number; Insights counts no
+      delete. With unsaved changes in Edit, the sheet asks first. A day later the button is gone.
+- [ ] **Before 20:** at 10–19 scored answers, Today and Insights show "First look: you said
+      about …% on average, and … of your … scored predictions happened. Too few to rate yet." Before
+      the first answer, the practice row reads "While you wait: today's practice".
+- [ ] **Hide the words:** You → "Hide the words" sits on one line with its switch at 375. On, a card
+      in an added or renamed category reads "Your own category" with a plain folder symbol,
+      Today's identity line and History's filter chips name no such category; VoiceOver says
+      "Your own category".
+- [ ] **Trial only when eligible (Batch D, sandbox):** with a sandbox tester who has had the free
+      month (buy, cancel, let it lapse), reopen Plus: the button reads "Subscribe for … a year", no
+      "1 month free" anywhere, and Apple's sheet agrees. A fresh tester still sees the trial.
+- [ ] **Late changes:** move a date the day it was logged: no warning, nothing counted. On the eve,
+      change a prediction's words: Edit says it's counted; Insights → More about your record says
+      "…moved later, or its words changed, within a day of its due day".
+- [ ] **Insights fine print:** "More about your record" opens the Can't tell line and any counts;
+      the Brier line appears there only from 50 scored answers.
+- [ ] **Recaps:** answer the 20th in a category: the week's recap leads "New this week: … in …"
+      with its emblem; the year card shows "Calibration …/100, give or take …".
+- [ ] **Small things:** a badge earned says "New badge:" and "Badges follow how well your numbers
+      match what happens…", after Yes and No alike; ±5 with
+      VoiceOver speaks "75%, about 3 times in 4"; in an answer run the "Can't tell" notice goes once
+      the next card is answered; a fresh install interrupted on the Warm-up result finds "Your
+      warm-up: … right. See your result" on Today; the paywall button reads "Start 1 month free,
+      then … a year"; an answered prediction's details offer "Add a note"; Share's three tabs stay
+      on one row at AX5; the chart caption says what orange, blue and green mean.
+
 Added 2026-11-13 (step 177, D61 and round 20's fixes; a reload is enough):
 
 - [ ] **Hide the words:** You → "Hide the words on Today and History" (off by default). On:

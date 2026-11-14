@@ -26,17 +26,17 @@ describe('brierLine with its luck check', () => {
 
   it('says which way when the gap is more than luck', () => {
     expect(brierLine(0.15, base, { edge: 'better', scored: 150 })).toMatch(
-      /would score 0\.23, so your numbers said more than your base rate\.$/,
+      /would score 0\.23, so yours does better\.$/,
     );
     expect(brierLine(0.3, base, { edge: 'worse', scored: 150 })).toMatch(
-      /so your numbers said less than your base rate would have\. Your score above asks/,
+      /0\.23, better than yours so far\. Your rating asks/,
     );
   });
 
   // Blind playtest 2026-11-13c, finding 9: after a tie or a loss it says
   // what the comparison measures; after a win it needs nothing more.
   it('says what it measures after a tie or a loss, not after a win', () => {
-    expect(BRIER_MEANS).toMatch(/set apart the calls that happen from the ones that don’t\.$/);
+    expect(BRIER_MEANS).toMatch(/tell apart what will happen from what won’t\.$/);
     expect(brierLine(0.15, base, { edge: 'better', scored: 150 })).not.toContain(BRIER_MEANS);
     expect(brierLine(0.3, base, { edge: 'worse', scored: 150 }).endsWith(BRIER_MEANS)).toBe(true);
   });

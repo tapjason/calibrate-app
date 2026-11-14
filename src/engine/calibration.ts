@@ -9,6 +9,7 @@
 import {
   MIN_N_CATEGORY,
   MIN_N_OVERALL,
+  type BadgeChange,
   type BadgeLevel,
   type BucketStat,
   type CalibrationResult,
@@ -16,11 +17,12 @@ import {
   type EvaluateBadge,
   type NextBadge,
   type NextBadgeTarget,
+  type PerfectReference,
   type Prediction,
   type RatingRange,
 } from '@/types';
 
-import { bootstrapRange, chanceRange } from './chance';
+import { bootstrapRange, chanceRange, simulatedRange } from './chance';
 import { classifyDirection } from './direction';
 
 // 5 buckets of 20% each: [0,20) [20,40) [40,60) [60,80) [80,100]
@@ -184,6 +186,121 @@ export function computeRatingRange(resolved: readonly Prediction[]): RatingRange
     low: Math.max(0, rating - giveOrTake),
     high: Math.min(100, rating + giveOrTake),
   };
+}
+
+/**
+ * What a perfectly calibrated person would score on these answers (D62,
+ * blind playtest 2026-11-13d, finding 1): the same confidences, each coming
+ * true exactly as often as it says, simulated many times and scored by the
+ * same formula. The score is an absolute error over few answers per range, so
+ * luck alone keeps even perfect calibration under 100: about 85–88 at 20
+ * answers, 92 at 50, 95 at 100 on a typical mix. Without this the app read
+ * that whole gap as the person's ("about 15 points away"). The middle of the
+ * simulated scores and their middle 80%, whole points; null with nothing
+ * scored. Not used by the badge bars, which stay as decided.
+ */
+export function perfectReference(resolved: readonly Prediction[]): PerfectReference | null {
+  const confidences = resolved.filter(isCalibratable).map((p) => p.confidence);
+  // It reads the confidences only, never the outcomes, so a recompute that
+  // changed no confidence (most writes) reuses the last answer (code review
+  // of step 178: 400 simulations ran inside every write's transaction).
+  const key = confidences.join(',');
+  if (perfectCache && perfectCache.key === key) return perfectCache.value;
+  // One points array, its outcomes rewritten per simulation.
+  const points = confidences.map((confidence) => ({ confidence, yes: false }));
+  const range = simulatedRange(
+    confidences.map((c) => c / 100),
+    (outcomes) => {
+      for (let i = 0; i < points.length; i++) points[i]!.yes = outcomes[i]!;
+      return ratingOf(points);
+    },
+  );
+  const value = range
+    ? {
+        typical: Math.round(range.median),
+        low: Math.round(range.low),
+        high: Math.round(range.high),
+      }
+    : null;
+  perfectCache = { key, value };
+  return value;
+}
+
+let perfectCache: { key: string; value: PerfectReference | null } | null = null;
+
+/** Each category's badge over these answers, worked out as the stats store does. */
+function badgesByCategory(resolved: readonly Prediction[]): Map<Prediction['category'], BadgeLevel> {
+  const groups = new Map<Prediction['category'], Prediction[]>();
+  for (const p of resolved) {
+    if (!isCalibratable(p)) continue;
+    const list = groups.get(p.category) ?? [];
+    list.push(p);
+    groups.set(p.category, list);
+  }
+  const out = new Map<Prediction['category'], BadgeLevel>();
+  for (const [category, list] of groups) {
+    const calc = computeCalibration(list);
+    const range = computeRatingRange(list);
+    out.set(category, evaluateBadge(list.length, calc.rating, range?.giveOrTake ?? 0));
+  }
+  return out;
+}
+
+const BADGE_RANK: Record<BadgeLevel, number> = {
+  guesser: 0,
+  tracker: 1,
+  forecaster: 2,
+  sharp: 3,
+  oracle: 4,
+};
+
+/**
+ * The badges gained or lost since `sinceIso` (D62, blind playtest
+ * 2026-11-13d, finding 13: the recaps led with the next badge in a category
+ * barely used and left out one earned that week). Each category's badge over
+ * the answers given before then against its badge now, by the same rule the
+ * stats store uses (evaluateBadge, at the low end). Gains first, highest new
+ * tier first; then losses, highest tier lost first.
+ */
+export function badgeChangesSince(
+  resolved: readonly Prediction[],
+  sinceIso: string,
+  /**
+   * Each category's badge now, as the stats store holds it, so the recap
+   * matches Insights and nothing is bootstrapped twice. Worked out here when
+   * left out.
+   */
+  current?: ReadonlyMap<Prediction['category'], BadgeLevel>,
+): BadgeChange[] {
+  const since = new Date(sinceIso).getTime();
+  if (Number.isNaN(since)) return [];
+  const answeredAt = (p: Prediction) => (p.resolved_at ? new Date(p.resolved_at).getTime() : NaN);
+  // Only a category with an answer since then can have moved (code review of
+  // step 178: every category was bootstrapped twice on each Share open).
+  const touched = new Set(
+    resolved.filter((p) => isCalibratable(p) && answeredAt(p) >= since).map((p) => p.category),
+  );
+  if (touched.size === 0) return [];
+  const inTouched = resolved.filter((p) => touched.has(p.category));
+  const before = inTouched.filter((p) => {
+    const at = answeredAt(p);
+    return !Number.isNaN(at) && at < since;
+  });
+  const was = badgesByCategory(before);
+  const now = current ?? badgesByCategory(inTouched);
+  const changes: BadgeChange[] = [];
+  for (const category of touched) {
+    const to = now.get(category) ?? 'guesser';
+    const from = was.get(category) ?? 'guesser';
+    if (from !== to) changes.push({ category, from, to });
+  }
+  const gained = changes
+    .filter((c) => BADGE_RANK[c.to] > BADGE_RANK[c.from])
+    .sort((a, b) => BADGE_RANK[b.to] - BADGE_RANK[a.to]);
+  const lost = changes
+    .filter((c) => BADGE_RANK[c.to] < BADGE_RANK[c.from])
+    .sort((a, b) => BADGE_RANK[b.from] - BADGE_RANK[a.from]);
+  return [...gained, ...lost];
 }
 
 /**

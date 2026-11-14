@@ -430,8 +430,12 @@ describe('CalibrationChart chance capsules', () => {
     const drawn = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
     expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/Grey bars: where a perfectly calibrated dot lands/);
     // Inside the bar is "can't be told apart", not "as close as luck allows"
-    // (blind playtest 2026-11-05, run 3), and Insights adds nothing after it.
-    expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/can't be told apart from perfect calibration.$/);
+    // (blind playtest 2026-11-05, run 3).
+    expect(drawn.getByTestId('chart-caption')).toHaveTextContent(/can't be told apart from perfect calibration\. /);
+    // What the colours mean, once a dot has 10 (D62).
+    expect(drawn.getByTestId('chart-caption')).toHaveTextContent(
+      /Orange, below the line: too sure\. Blue, above it: too cautious\. Green: no clear lean, within luck or under 5 points off\./,
+    );
   });
 });
 

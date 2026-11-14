@@ -240,8 +240,8 @@ export const updatePrediction: UpdatePrediction = async (id, edit, opts) => {
 };
 
 /**
- * Record a late due-date move (step 173): once per prediction, the first move
- * kept. Device-local, never synced. No transaction of its own: the store
+ * Record a late due-date move (step 173), or late new words (D62, with
+ * `fromDue` equal to `toDue`): once per prediction, the first kept. Device-local, never synced. No transaction of its own: the store
  * calls it beside the update.
  */
 export async function recordPostponement(

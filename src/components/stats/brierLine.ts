@@ -36,9 +36,11 @@ export function brierLine(
   if (edge.edge === 'about_same') {
     return `${lead} about the same,\u00A0${base}; with ${localCount(edge.scored)} answers a gap this small could be luck. ${BRIER_MEANS}`;
   }
+  // Flat words for both (D62): "your numbers said less than your base rate
+  // would have" read as a put-down (blind playtest 2026-11-13d, run 3).
   return edge.edge === 'better'
-    ? `${lead}\u00A0${base}, so your numbers said more than your base rate.`
-    : `${lead}\u00A0${base}, so your numbers said less than your base rate would have. ${BRIER_MEANS}`;
+    ? `${lead}\u00A0${base}, so yours does better.`
+    : `${lead}\u00A0${base}, better than yours so far. ${BRIER_MEANS}`;
 }
 
 /**
@@ -50,4 +52,4 @@ export function brierLine(
  * didn't (Brier = reliability \u2212 resolution + p(1 \u2212 p)).
  */
 export const BRIER_MEANS =
-  'Your score above asks whether your numbers match what happened; this one also asks whether they set apart the calls that happen from the ones that don\u2019t.';
+  'Your rating asks whether your numbers match what happens. This one also asks whether they tell apart what will happen from what won\u2019t.';

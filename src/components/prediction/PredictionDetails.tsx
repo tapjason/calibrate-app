@@ -15,11 +15,14 @@ import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
 import {
+  answeredBefore,
   answerNowIsSameDay,
+  canRenumber,
   deleteIsCounted,
   earliestDueForEdit,
   madeAt,
   moveIsCounted,
+  rewordIsCounted,
   rewords,
   usePredictionStore,
 } from '@/store/predictionStore';
@@ -43,6 +46,8 @@ interface PredictionDetailsProps {
   onAnswer: (id: string, opts?: { warned: boolean }) => void;
   /** "Log it again" from an answered prediction (roadmap D56). */
   onPredictAgain?: (prediction: Prediction) => void;
+  /** "Use another number" on the day an open one was made (D62). */
+  onRenumber?: (prediction: Prediction) => void;
   /** Whether Edit holds changes not saved yet, for the sheet's draft guard. */
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -60,6 +65,13 @@ const LATE_MOVE_SPOKEN =
   'Moving it later is counted on Insights: the outcome may already be known. It doesn’t change your score.';
 const REWORD_SPOKEN =
   'Changing the words makes this a new prediction from today: an answer today isn’t scored.';
+/**
+ * New words on the eve or after are counted (D62), said before Save as a late
+ * move is: the date stays, so a call whose outcome was in sight could be
+ * rewritten.
+ */
+export const REWORD_COUNTED =
+  'It’s due soon, so changing its words is counted on Insights, as moving it later would be. It doesn’t change your score.';
 
 /**
  * Edit's line under the number. The number can't change. On the day it was
@@ -69,7 +81,12 @@ const REWORD_SPOKEN =
  * may be known (record audit 2026-11-13). Exported for tests.
  */
 export const EDIT_NUMBER_NOTE = "The number you said stays as it is: it's the record.";
-export const EDIT_NUMBER_FIX = 'Made it today? To use another number, delete this one and log it again.';
+/**
+ * On the day it was made (D62): the way to another number, one tap away. It
+ * was "delete this one and log it again", 13 to 19 taps that three testers
+ * took (blind playtest 2026-11-13d, runs 1, 4 and 8).
+ */
+export const EDIT_NUMBER_FIX = 'You made it today, so you can still use another number.';
 
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23):
@@ -87,6 +104,7 @@ export function PredictionDetails({
   onClose,
   onAnswer,
   onPredictAgain,
+  onRenumber,
   onDirtyChange,
 }: PredictionDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
@@ -98,6 +116,8 @@ export function PredictionDetails({
   const [categoryPending, setCategoryPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const remindersOn = useSettingsStore((s) => s.notificationsEnabled && s.remindersEnabled);
+  // For D56's habit tip, only on a repeat (D62).
+  const resolvedList = usePredictionStore((s) => s.resolved);
   // The person's own time since D38, not always "that evening".
   const reminderAt = useSettingsStore((s) => s.dueReminderTime);
 
@@ -115,9 +135,11 @@ export function PredictionDetails({
     (title !== prediction.title ||
       category !== prediction.category ||
       dueDate !== prediction.due_date);
+  // An answered one's typed note counts too (D62).
+  const [noteDirty, setNoteDirty] = useState(false);
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(dirty || noteDirty);
+  }, [dirty, noteDirty, onDirtyChange]);
 
   useEffect(() => {
     (async () => {
@@ -135,12 +157,17 @@ export function PredictionDetails({
   const editing = mode === 'edit' && prediction !== null;
   const lateMoveNow = editing && moveIsCounted(prediction, dueDate, title);
   const rewordNow = editing && title.trim().length > 0 && rewords(prediction.title, title);
+  const rewordCountedNow = editing && rewordIsCounted(prediction, title);
   useEffect(() => {
     if (lateMoveNow) AccessibilityInfo.announceForAccessibility(LATE_MOVE_SPOKEN);
   }, [lateMoveNow]);
   useEffect(() => {
-    if (rewordNow) AccessibilityInfo.announceForAccessibility(REWORD_SPOKEN);
-  }, [rewordNow]);
+    if (rewordNow) {
+      AccessibilityInfo.announceForAccessibility(
+        rewordCountedNow && !lateMoveNow ? `${REWORD_SPOKEN} ${REWORD_COUNTED}` : REWORD_SPOKEN,
+      );
+    }
+  }, [rewordNow, rewordCountedNow, lateMoveNow]);
 
   if (loading) {
     return (
@@ -157,6 +184,7 @@ export function PredictionDetails({
         onChanged={setPrediction}
         onClose={onClose}
         onPredictAgain={onPredictAgain}
+        onDirtyChange={setNoteDirty}
       />
     );
   }
@@ -231,7 +259,11 @@ export function PredictionDetails({
     ? `It's due ${dueOn}. Answering early is fine; just answer what you know now.`
     : reworded
       ? `It's due ${dueOn}. You changed its words today, so an answer today isn’t scored. From tomorrow it is.`
-      : `It's due ${dueOn}. You logged it today, so an answer today isn’t scored. From tomorrow it is. For something you do every day, log the next one the evening before.`;
+      : `It's due ${dueOn}. You logged it today, so an answer today isn’t scored. From tomorrow it is.${
+          answeredBefore(prediction, resolvedList)
+            ? ' For something you do every day, log the next one the evening before.'
+            : ''
+        }`;
   // Deleting a due one hides an outcome that may be known, so it is counted.
   // Counted from the eve, as a due-date move is (D61).
   const deleteText = deleteIsCounted(prediction)
@@ -309,8 +341,15 @@ export function PredictionDetails({
         </Text>
         <Text style={styles.note}>
           {EDIT_NUMBER_NOTE}
-          {answerNowIsSameDay(prediction) ? ` ${EDIT_NUMBER_FIX}` : ''}
+          {canRenumber(prediction) && onRenumber ? ` ${EDIT_NUMBER_FIX}` : ''}
         </Text>
+        {canRenumber(prediction) && onRenumber && (
+          <TextButton
+            label="Use another number"
+            onPress={() => onRenumber(prediction)}
+            testID="details-renumber"
+          />
+        )}
         <TextField
           label="Prediction"
           value={title}
@@ -324,6 +363,8 @@ export function PredictionDetails({
           <Text style={styles.note} testID="details-reword-note" accessibilityLiveRegion="polite">
             Changing the words makes this a new prediction from today: an answer today
             isn’t scored, and the earliest due date is tomorrow.
+            {/* Not when the move line below says it already (due today). */}
+            {rewordIsCounted(prediction, title) && !lateMove ? ` ${REWORD_COUNTED}` : ''}
           </Text>
         )}
         <Text style={styles.label}>Category</Text>

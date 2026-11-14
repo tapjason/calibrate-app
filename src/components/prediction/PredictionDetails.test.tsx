@@ -10,7 +10,12 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
-import { EDIT_NUMBER_FIX, EDIT_NUMBER_NOTE, PredictionDetails } from './PredictionDetails';
+import {
+  EDIT_NUMBER_FIX,
+  EDIT_NUMBER_NOTE,
+  PredictionDetails,
+  REWORD_COUNTED,
+} from './PredictionDetails';
 
 const USER = 'local-user-v1';
 
@@ -89,12 +94,24 @@ describe('PredictionDetails (roadmap D25)', () => {
 
   // Blind playtest 2026-11-13c, finding 24: on the day it was made, Edit
   // says how to use another number.
-  it('says how to use another number on the day it was made', async () => {
+  it('offers another number on the day it was made (D62)', async () => {
     await insertPrediction(open({ created_at: new Date().toISOString() }));
-    renderDetails();
+    const onRenumber = jest.fn();
+    renderDetails({ onRenumber });
     await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-edit-button'));
     expect(screen.getByText(`${EDIT_NUMBER_NOTE} ${EDIT_NUMBER_FIX}`)).toBeTruthy();
+    fireEvent.press(screen.getByTestId('details-renumber'));
+    expect(onRenumber).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }));
+  });
+
+  it('keeps the number as the record from the next day', async () => {
+    await insertPrediction(open());
+    renderDetails({ onRenumber: jest.fn() });
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    expect(screen.getByText(EDIT_NUMBER_NOTE)).toBeTruthy();
+    expect(screen.queryByTestId('details-renumber')).toBeNull();
   });
 
   // Playtest 2026-11-08b, finding 20: the sheet's draft guard needs to know.
@@ -211,11 +228,28 @@ describe('PredictionDetails (roadmap D25)', () => {
     // Roadmap D56: said once, here, with what to do, and without "answering
     // early is fine" beside it.
     expect(screen.getByTestId('details-early')).toHaveTextContent(
-      /^It's due .+\. You logged it today, so an answer today isn’t scored\. From tomorrow it is\. For something you do every day, log the next one the evening before\./,
+      /^It's due .+\. You logged it today, so an answer today isn’t scored\. From tomorrow it is\./,
     );
+    // The habit tip only on a repeat (D62): this one is a one-off.
+    expect(screen.getByTestId('details-early')).not.toHaveTextContent(/evening before/);
     // Said aloud too: it appears in place of the button (playtest 2026-11-04b, run 2).
-    expect(announce).toHaveBeenCalledWith(expect.stringMatching(/log the next one the evening before\.$/));
+    expect(announce).toHaveBeenCalledWith(expect.stringMatching(/From tomorrow it is\.$/));
     announce.mockRestore();
+  });
+
+  it('gives the habit tip when the same words were answered before (D62)', async () => {
+    await insertPrediction(open({ created_at: new Date().toISOString() }));
+    usePredictionStore.setState({
+      resolved: [
+        open({ id: 'old', status: 'resolved_yes', resolved_at: '2026-10-05T18:00:00.000Z' }),
+      ],
+    });
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-answer')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-answer'));
+    expect(screen.getByTestId('details-early')).toHaveTextContent(
+      /For something you do every day, log the next one the evening before\./,
+    );
   });
 
   // Roadmap D56: Resolve doesn't repeat the warning when opened from here.
@@ -425,8 +459,26 @@ describe('PredictionDetails, answered: Log it again (roadmap D56)', () => {
     );
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('answered-same-day')).toBeTruthy());
+    // A one-off: no habit tip (D62).
     expect(screen.getByTestId('answered-same-day')).toHaveTextContent(
-      'Answered the day it was logged, so it isn’t scored: a call made and settled in one day says little. From the next day, an answer is scored. For something you do every day, log the next one the evening before.',
+      'Answered the day it was logged, so it isn’t scored: a call made and settled in one day says little. From the next day, an answer is scored.',
+    );
+  });
+
+  it('adds the habit tip to a same-day answer when the words repeat (D62)', async () => {
+    const now = new Date().toISOString();
+    await insertPrediction(
+      open({ status: 'resolved_yes', created_at: now, resolved_at: now, due_date: now }),
+    );
+    usePredictionStore.setState({
+      resolved: [
+        open({ id: 'old', status: 'resolved_no', resolved_at: '2026-10-05T18:00:00.000Z' }),
+      ],
+    });
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-same-day')).toBeTruthy());
+    expect(screen.getByTestId('answered-same-day')).toHaveTextContent(
+      /log the next one the evening before\.$/,
     );
   });
 });
@@ -464,5 +516,37 @@ describe('PredictionDetails, D56 edges (code review 2026-11-10)', () => {
       /You changed its words today, so an answer today isn’t scored\. From tomorrow it is\./,
     );
     expect(screen.getByTestId('details-early')).not.toHaveTextContent(/evening before/);
+  });
+});
+
+// D62: a note added or changed after the answer; new words on the eve counted.
+describe('PredictionDetails, D62', () => {
+  it('adds a note to an answered prediction', async () => {
+    await insertPrediction(
+      open({ status: 'resolved_no', resolved_at: '2026-10-05T18:00:00.000Z', due_date: '2026-10-05T12:00:00.000Z' }),
+    );
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-add-note')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('answered-add-note'));
+    fireEvent.changeText(screen.getByTestId('answered-note-field'), 'Rain came early');
+    fireEvent.press(screen.getByTestId('answered-note-save'));
+    await waitFor(() => expect(screen.getByTestId('answered-reflection')).toHaveTextContent(/Rain came early/));
+    expect((await getPrediction('p1'))?.reflection).toBe('Rain came early');
+  });
+
+  it('says new words on the eve are counted', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    await insertPrediction(
+      open({
+        created_at: new Date(Date.now() - day).toISOString(),
+        due_date: new Date(Date.now() + day).toISOString(),
+      }),
+    );
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    fireEvent.changeText(screen.getByTestId('details-title-field'), 'Not ship the beta');
+    expect(screen.getByTestId('details-reword-note')).toHaveTextContent(/changing its words is counted on Insights/);
+    expect(REWORD_COUNTED).toMatch(/as moving it later would be/);
   });
 });

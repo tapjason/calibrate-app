@@ -102,7 +102,7 @@ describe('warmupVerdict', () => {
 describe('warmupChartNote', () => {
   it('names the count the headline reads together', () => {
     expect(warmupChartNote(10)).toBe(
-      'The read above takes all ten together, which says more than any one band.',
+      'The read above takes all ten together, which says more than any one range.',
     );
     expect(warmupChartNote(2)).toMatch(/^The read above takes all 2 together/);
   });

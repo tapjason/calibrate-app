@@ -9,7 +9,14 @@ import { chartTakeaway, rangeLabel } from '@/components/stats/chartTakeaway';
 import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { CoverageRow } from '@/components/stats/CoverageRow';
 import { furthestOffLine, weekChangeLine } from '@/components/stats/patternCopy';
-import { ratingHeadline, ratingMeaningLine, spreadThinLine } from '@/components/stats/ratingHeadline';
+import { firstLookLine } from '@/components/stats/beforeScoreCopy';
+import {
+  chartNamesLean,
+  perfectLine,
+  ratingHeadline,
+  ratingMeaningLine,
+  spreadThinLine,
+} from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
 import { CountUp } from '@/components/ui/CountUp';
@@ -21,6 +28,7 @@ import type { BrierEdge, CategoryMiss, WeekChange } from '@/store/statsStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
+  BRIER_MIN_N,
   MIN_N_OVERALL,
   type CalibrationResult,
   type Category,
@@ -29,6 +37,7 @@ import {
   type NextBadgeTarget,
   type RatingRange,
   type UserStat,
+  type PerfectReference,
 } from '@/types';
 
 interface CalibrationViewProps {
@@ -52,6 +61,8 @@ interface CalibrationViewProps {
   brierBaseline?: { rate: number; score: number } | null;
   /** Whether the Brier gap is more than luck (step 173). */
   brierEdge?: BrierEdge | null;
+  /** What perfect calibration would score on the same answers (D62). */
+  perfect?: PerfectReference | null;
   /**
    * Answers marked "Can't tell", which the rating leaves out (roadmap D34):
    * said beside it, so a record with the misses parked as skips shows it.
@@ -85,6 +96,8 @@ interface CalibrationViewProps {
   categoryCounts?: Partial<Record<Category, CategoryCounts>>;
   /** When the rating could unlock at the recent pace (roadmap D53), or null. */
   unlockEstimate?: string | null;
+  /** Plain counts over every category, for the first look at 10 (D62). */
+  overallCounts?: CategoryCounts | null;
 }
 
 /**
@@ -106,6 +119,7 @@ export function CalibrationView({
   brier = null,
   brierBaseline = null,
   brierEdge = null,
+  perfect = null,
   skippedCount = 0,
   answeredCount = 0,
   postponedCount = 0,
@@ -116,6 +130,7 @@ export function CalibrationView({
   weekChange = null,
   categoryCounts = {},
   unlockEstimate = null,
+  overallCounts = null,
 }: CalibrationViewProps) {
   // Re-render on a rename (roadmap D39): "Furthest off" kept the old name
   // until something else redrew Insights (blind playtest 2026-11-12d, run 2).
@@ -124,6 +139,35 @@ export function CalibrationView({
   const streakShown = useSettingsStore((s) => s.streakShown);
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
+  const [showFine, setShowFine] = useState(false);
+  // The lines under the rating that only some people want (D62), in their
+  // old order: the Brier line (secondary and quiet, D24; from BRIER_MIN_N,
+  // D62), then what the record leaves out or counted.
+  const finePrint: { id: string; text: string }[] = [];
+  if (
+    userStat &&
+    headline &&
+    !headline.provisional &&
+    brier !== null &&
+    brierBaseline !== null &&
+    userStat.total_resolved >= BRIER_MIN_N
+  ) {
+    finePrint.push({
+      id: 'stats-brier',
+      text: brierLine(
+        brier,
+        brierBaseline,
+        brierEdge ? { edge: brierEdge, scored: userStat.total_resolved } : null,
+      ),
+    });
+  }
+  // At zero too (roadmap D57), from the first answer (step 173).
+  if (answeredCount > 0) finePrint.push({ id: 'stats-skipped', text: skippedLine(skippedCount) });
+  if (sameDayCount > 0) finePrint.push({ id: 'stats-same-day', text: sameDayLine(sameDayCount) });
+  if (deletedCount > 0) finePrint.push({ id: 'stats-deleted', text: deletedLine(deletedCount) });
+  if (postponedCount > 0) {
+    finePrint.push({ id: 'stats-postponed', text: postponedLine(postponedCount) });
+  }
   // Every badge pill in the list as wide as the widest, so the rows wrap
   // their pill under the words all together or not at all (playtest
   // 2026-11-08b, finding 18: at 320 some kept it on the right, others
@@ -179,6 +223,7 @@ export function CalibrationView({
               total={MIN_N_OVERALL}
               nextDue={nextDue}
               estimate={unlockEstimate}
+              firstLook={firstLookLine(overallCounts)}
             />
           ) : (
             <>
@@ -198,6 +243,17 @@ export function CalibrationView({
               <Text style={styles.subtle} testID="stats-rating-meaning">
                 {ratingMeaningLine(headline.rating)}
               </Text>
+              {/* How much of that gap luck alone gives (D62). */}
+              {perfect && (
+                <Text style={styles.subtle} testID="stats-perfect">
+                  {perfectLine(
+                    headline.rating,
+                    perfect,
+                    userStat.total_resolved,
+                    chartNamesLean(takeaway.lean),
+                  )}
+                </Text>
+              )}
               {ratingRange && ratingRange.giveOrTake > 0 && (
                 <Text style={styles.subtle} testID="stats-rating-range">
                   Give or take {ratingRange.giveOrTake}{' '}
@@ -210,43 +266,11 @@ export function CalibrationView({
                   {weekChangeLine(weekChange, ratingRange?.giveOrTake ?? 0)}
                 </Text>
               )}
-              {/* Secondary and quiet (roadmap D24): it keeps the rating honest
-                  for those who look, and stays out of everyone else's way. */}
-              {brier !== null && brierBaseline !== null && (
-                <Text style={styles.subtle} testID="stats-brier">
-                  {brierLine(
-                    brier,
-                    brierBaseline,
-                    brierEdge ? { edge: brierEdge, scored: userStat.total_resolved } : null,
-                  )}
-                </Text>
-              )}
             </>
           )}
-          {/* At zero too (roadmap D57): a sceptic worked out "none" from 155
-              rows (blind playtest 2026-11-10, run 8). From the first answer,
-              not only once unlocked (step 173): skipping every miss while
-              the rating calibrates showed nowhere (aggregate B1). */}
-          {answeredCount > 0 && (
-            <Text style={styles.subtle} testID="stats-skipped">
-              {skippedLine(skippedCount)}
-            </Text>
-          )}
-          {sameDayCount > 0 && (
-            <Text style={styles.subtle} testID="stats-same-day">
-              {sameDayLine(sameDayCount)}
-            </Text>
-          )}
-          {deletedCount > 0 && (
-            <Text style={styles.subtle} testID="stats-deleted">
-              {deletedLine(deletedCount)}
-            </Text>
-          )}
-          {postponedCount > 0 && (
-            <Text style={styles.subtle} testID="stats-postponed">
-              {postponedLine(postponedCount)}
-            </Text>
-          )}
+          {/* The fine print, folded under one line (D62; blind playtest
+              2026-11-13c, finding 11: the lines under the rating read as a
+              wall). One tap shows them all, and each is the line it was. */}
           {/* The progress bar already counts resolutions while provisional. */}
           {!headline.provisional && (
             <Text style={styles.subtle}>
@@ -256,6 +280,28 @@ export function CalibrationView({
                 : ''}
             </Text>
           )}
+          {/* After the count, so it doesn't read as the count's heading. */}
+          {finePrint.length > 0 && (
+            <Pressable
+              onPress={() => setShowFine((v) => !v)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showFine }}
+              aria-expanded={showFine}
+              hitSlop={8}
+              style={styles.tableToggle}
+              testID="stats-fine-toggle"
+            >
+              <Text style={styles.tableToggleText}>
+                {showFine ? 'Hide the fine print' : 'More about your record'}
+              </Text>
+            </Pressable>
+          )}
+          {showFine &&
+            finePrint.map((line) => (
+              <Text key={line.id} style={styles.subtle} testID={line.id}>
+                {line.text}
+              </Text>
+            ))}
           {/* The math on demand, one tap from the number it explains. */}
           {onExplain && (
             <Pressable
@@ -357,7 +403,8 @@ export function CalibrationView({
           {/* Tracker, or higher: Forecaster needs 20 too (blind playtest
               2026-11-12e, run 5 went from Getting started to Forecaster). */}
           A category earns its first badge at {FIRST_BADGE_AT} scored answers there: Tracker, or
-          higher if its score is already high enough.
+          higher if its score is already high enough. Until then it shows Getting started, which
+          means fewer than {FIRST_BADGE_AT} scored there.
         </Text>
       )}
       {categoryStats.length === 0 ? null : (
@@ -444,14 +491,15 @@ export function deletedLine(count: number): string {
 }
 
 /**
- * "1 prediction had its due date moved later the day before it or after."
- * (step 173, aggregate B1). A known miss could be moved past its due day and
+ * "1 prediction had its due date moved later, or its words changed, within a
+ * day of its due day." (step 173, aggregate B1; rewording added by D62). A
+ * known miss could be moved past its due day, or rewritten on its eve, and
  * answered later; counted as a late delete is (D45), on this phone only.
  */
 export function postponedLine(count: number): string {
   return count === 1
-    ? '1 prediction had its due date moved later the day before it or after. Only this phone keeps this count.'
-    : `${count} predictions had their due dates moved later the day before them or after. Only this phone keeps this count.`;
+    ? '1 prediction had its due date moved later, or its words changed, within a day of its due day. Only this phone keeps this count.'
+    : `${count} predictions had their due dates moved later, or their words changed, within a day of their due day. Only this phone keeps this count.`;
 }
 
 /**

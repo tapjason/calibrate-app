@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { localDate } from '@/components/ui/dates';
@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/Button';
 import { haptics } from '@/components/ui/haptics';
 import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { TextButton } from '@/components/ui/TextButton';
+import { TextField } from '@/components/ui/TextField';
 import { colors, FONT_FAMILY, space, tabularNums, type } from '@/constants/theme';
 import {
+  answeredBefore,
   correctionWindow,
   deleteIsCounted,
   madeAt,
@@ -34,6 +36,8 @@ interface AnsweredDetailsProps {
    * and retyped it (blind playtest 2026-11-10, run 2).
    */
   onPredictAgain?: (prediction: Prediction) => void;
+  /** Whether a typed note waits unsaved, for the sheet's draft guard (D62). */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const shortDate = (iso: string) =>
@@ -59,10 +63,19 @@ export function AnsweredDetails({
   onClose,
   now,
   onPredictAgain,
+  onDirtyChange,
 }: AnsweredDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // A note added or changed after the answer (D62): it changes no number,
+  // and leaving Resolve lost one (blind playtest 2026-11-13c, finding 14).
+  const [noteDraft, setNoteDraft] = useState<string | null>(null);
+  const noteDirty =
+    noteDraft !== null && noteDraft.trim() !== (prediction.reflection ?? '').trim();
+  useEffect(() => {
+    onDirtyChange?.(noteDirty);
+  }, [noteDirty, onDirtyChange]);
   const [error, setError] = useState<string | null>(null);
   // Bumped when the store refuses a change, so a window that closed while the
   // sheet was open is read again and the controls go.
@@ -72,6 +85,7 @@ export function AnsweredDetails({
   const happened = prediction.status === 'resolved_yes';
   // The same words already open: say so instead of offering a second copy.
   const pending = usePredictionStore((s) => s.pending);
+  const resolvedList = usePredictionStore((s) => s.resolved);
   const repeat = openRepeatOf(prediction, pending);
   const again = logAgainWords(prediction, at);
 
@@ -124,6 +138,13 @@ export function AnsweredDetails({
       await reload();
     }, "Couldn't remove that. Try again.");
 
+  const saveNote = () =>
+    run(async () => {
+      await usePredictionStore.getState().reflect(prediction.id, noteDraft ?? '');
+      setNoteDraft(null);
+      await reload();
+    }, "Couldn't save that. Try again.");
+
   const remove = () =>
     run(async () => {
       await usePredictionStore.getState().remove(prediction.id);
@@ -164,7 +185,12 @@ export function AnsweredDetails({
               playtest 2026-11-12c, finding 17: only the what was here). */}
           {madeAt(prediction) !== prediction.created_at
             ? 'Answered the day its words changed, so it isn’t scored: new words count as a new prediction, and a call made and settled in one day says little.'
-            : 'Answered the day it was logged, so it isn’t scored: a call made and settled in one day says little. From the next day, an answer is scored. For something you do every day, log the next one the evening before.'}
+            : `Answered the day it was logged, so it isn’t scored: a call made and settled in one day says little. From the next day, an answer is scored.${
+                // The habit tip only on a repeat (D62).
+                answeredBefore(prediction, resolvedList)
+                  ? ' For something you do every day, log the next one the evening before.'
+                  : ''
+              }`}
         </Text>
       )}
       {onPredictAgain &&
@@ -184,17 +210,54 @@ export function AnsweredDetails({
             />
           </View>
         ))}
-      {prediction.reflection && (
+      {noteDraft !== null ? (
+        <View style={styles.noteRow} testID="answered-note-edit">
+          <TextField
+            label="Note"
+            value={noteDraft}
+            onChangeText={setNoteDraft}
+            placeholder="Anything to remember about this one?"
+            multiline
+            maxLength={500}
+            autoFocus
+            testID="answered-note-field"
+          />
+          <Button
+            label={busy ? 'Saving…' : 'Save note'}
+            onPress={() => void saveNote()}
+            disabled={busy}
+            testID="answered-note-save"
+          />
+          <TextButton
+            label="Cancel"
+            onPress={() => {
+              if (!busy) setNoteDraft(null);
+            }}
+            testID="answered-note-cancel"
+          />
+        </View>
+      ) : prediction.reflection ? (
         <View style={styles.noteRow}>
           <Text style={styles.reflection} testID="answered-reflection">
             “{prediction.reflection}”
           </Text>
+          <TextButton
+            label="Change note"
+            onPress={() => setNoteDraft(prediction.reflection ?? '')}
+            testID="answered-change-note"
+          />
           <TextButton
             label="Remove note"
             onPress={() => void removeNote()}
             testID="answered-remove-note"
           />
         </View>
+      ) : (
+        <TextButton
+          label="Add a note"
+          onPress={() => setNoteDraft('')}
+          testID="answered-add-note"
+        />
       )}
 
       {until === null && error && <Text style={styles.error}>{error}</Text>}

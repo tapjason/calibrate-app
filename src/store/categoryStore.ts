@@ -198,6 +198,19 @@ export function categoryOptions(
   );
 }
 
+/**
+ * Whether a category carries something the person wrote or chose (D62): an
+ * added one, or a built-in renamed or given an icon. "Hide the words" hides
+ * these too: "✈️ Family & travel" told the story the hidden words didn't
+ * (blind playtest 2026-11-13d, runs 2 and 4). A built-in under its own word
+ * and symbol is the app's, not the person's.
+ */
+export function isOwnCategory(id: Category): boolean {
+  if (!isBuiltInCategory(id)) return true;
+  const def = useCategoryStore.getState().defs.find((d) => d.id === id);
+  return Boolean(def?.name || def?.icon);
+}
+
 /** Whether a category is hidden from Log's choices. */
 export function isCategoryHidden(id: Category): boolean {
   return useCategoryStore.getState().defs.some((d) => d.id === id && d.hidden);

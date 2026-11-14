@@ -211,7 +211,9 @@ export function defaultPlan(plans: readonly PlusPlan[]): PlusPlan | null {
  */
 export function ctaLabel(plan: PlusPlan): string {
   const trial = trialLabel(plan);
-  if (trial) return `Start ${trial} free`;
+  // What follows, on the button itself (D62): "A free month that turns into
+  // a bill is the frightening kind" (blind playtest 2026-11-13d, run 7).
+  if (trial) return `Start ${trial} free, then ${pricePerPeriod(plan)}`;
   if (plan.plan === 'lifetime') return `Buy once for ${plan.priceString}`;
   return `Subscribe for ${plan.priceString} ${PERIOD[plan.plan]}`;
 }

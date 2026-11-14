@@ -22,15 +22,26 @@ export interface PracticeCardCopy {
 }
 
 /** Today's row: what's waiting, how far it got, or what it came to. */
-export function practiceCardCopy(tally: PracticeDayTally, total: number): PracticeCardCopy {
+export function practiceCardCopy(
+  tally: PracticeDayTally,
+  total: number,
+  /**
+   * Nothing real answered yet (D62): the row says it's something with answers
+   * today, while the first prediction waits for its day (blind playtest
+   * 2026-11-13d, finding 4).
+   */
+  beforeFirstAnswer = false,
+): PracticeCardCopy {
   if (tally.answered >= total) {
     const title = 'Practice done';
     const detail = `${tally.correct} of ${total} right. New ones tomorrow`;
     return { title, detail, action: 'See answers', spoken: `${title}. ${detail}.`, done: true };
   }
-  const title = 'Today’s practice';
-  const detail =
-    tally.answered === 0
+  const waiting = beforeFirstAnswer && tally.answered === 0;
+  const title = waiting ? 'While you wait: today’s practice' : 'Today’s practice';
+  const detail = waiting
+    ? `${total} questions, answers today, about 30\u00A0seconds`
+    : tally.answered === 0
       ? `${total} questions, about 30\u00A0seconds`
       : `${tally.answered} of ${total} answered`;
   const action = tally.answered === 0 ? 'Start' : 'Continue';

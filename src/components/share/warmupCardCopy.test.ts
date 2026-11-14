@@ -38,3 +38,10 @@ describe('warmupCardCopy', () => {
     expect(warmupCardCopy(result())?.eyebrow).toMatch(/warm-up/);
   });
 });
+
+describe('warmupCardCopy later on (D62)', () => {
+  it('drops "Real predictions next." once there is a category card', () => {
+    expect(warmupCardCopy(result())?.context).toBe('10 questions. Real predictions next.');
+    expect(warmupCardCopy(result(), true)?.context).toBe('10 questions.');
+  });
+});

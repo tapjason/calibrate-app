@@ -22,11 +22,14 @@ export interface StarterIdea {
  * what to want.
  */
 export const STARTER_IDEAS: readonly StarterIdea[] = [
-  { title: "I'll finish my most important task tomorrow", category: 'work', due: 'tomorrow' },
+  // For school and home as much as an office (D62): teenagers and a
+  // counsellor's referral met "my most important task" and "won't buy
+  // anything unplanned" (blind playtest 2026-11-13d, runs 4 and 5).
+  { title: "I'll finish what I most need to do tomorrow", category: 'work', due: 'tomorrow' },
   { title: "I'll get outside for a walk tomorrow", category: 'health', due: 'tomorrow' },
-  { title: "I won't buy anything unplanned tomorrow", category: 'finance', due: 'tomorrow' },
+  { title: "I'll spend nothing I didn't plan to tomorrow", category: 'finance', due: 'tomorrow' },
   { title: 'A friend I message today replies the same day', category: 'social', due: 'tomorrow' },
-  { title: "I'll read before bed tomorrow night", category: 'personal', due: 'tomorrow' },
+  { title: 'It rains here tomorrow', category: 'personal', due: 'tomorrow' },
 ];
 
 interface StarterIdeasProps {

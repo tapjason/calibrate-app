@@ -787,7 +787,8 @@ describe('late due-date moves', () => {
     });
 
   it('counts a move later on the eve, once, and keeps it after a delete', async () => {
-    const p = await create(1);
+    // Logged yesterday, due tomorrow: today is its eve.
+    const p = await loggedEarlier(() => create(2));
     const move = (days: number) =>
       usePredictionStore.getState().update(p.id, {
         title: p.title,
@@ -818,5 +819,94 @@ describe('late due-date moves', () => {
     });
     await usePredictionStore.getState().loadResolved();
     expect(usePredictionStore.getState().postponedCount).toBe(0);
+  });
+});
+
+describe('changes on the day made, and late rewording (D62)', () => {
+  const DAY = 86_400_000;
+  const create = (dueInDays: number, title = 'Rain by Friday') =>
+    usePredictionStore.getState().create({
+      title,
+      category: 'work',
+      confidence: 70,
+      due_date: new Date(Date.now() + dueInDays * DAY).toISOString(),
+    });
+
+  it('leaves a move on the day it was made uncounted', async () => {
+    const p = await create(1);
+    await usePredictionStore.getState().update(p.id, {
+      title: p.title,
+      category: 'work',
+      due_date: new Date(Date.now() + 4 * DAY).toISOString(),
+    });
+    expect(usePredictionStore.getState().postponedCount).toBe(0);
+  });
+
+  it('counts new words on the eve, which keep the date', async () => {
+    const p = await loggedEarlier(() => create(2));
+    await usePredictionStore.getState().update(p.id, {
+      title: 'No rain by Friday',
+      category: 'work',
+      due_date: p.due_date,
+    });
+    expect(usePredictionStore.getState().postponedCount).toBe(1);
+    const after = await usePredictionStore.getState().getById(p.id);
+    expect(after?.due_date).toBe(p.due_date);
+  });
+
+  it('leaves a typo fixed on the eve uncounted', async () => {
+    const p = await loggedEarlier(() => create(2));
+    await usePredictionStore.getState().update(p.id, {
+      title: 'rain by friday.',
+      category: 'work',
+      due_date: p.due_date,
+    });
+    expect(usePredictionStore.getState().postponedCount).toBe(0);
+  });
+
+  it('replaces one made today with another number, uncounted', async () => {
+    const p = await create(1);
+    const next = await usePredictionStore.getState().renumber(p.id, {
+      title: p.title,
+      category: 'work',
+      confidence: 85,
+      due_date: p.due_date,
+    });
+    expect(next.confidence).toBe(85);
+    expect(await usePredictionStore.getState().getById(p.id)).toBeNull();
+    await usePredictionStore.getState().loadResolved();
+    expect(usePredictionStore.getState().deletedCount).toBe(0);
+    expect(usePredictionStore.getState().pending.map((x) => x.id)).toEqual([next.id]);
+  });
+
+  it('refuses one logged earlier and only reworded today (code review)', async () => {
+    const p = await loggedEarlier(() => create(3));
+    await usePredictionStore.getState().update(p.id, {
+      title: 'The parcel comes late',
+      category: 'work',
+      due_date: p.due_date,
+    });
+    await expect(
+      usePredictionStore.getState().renumber(p.id, {
+        title: 'The parcel comes late',
+        category: 'work',
+        confidence: 40,
+        due_date: p.due_date,
+      }),
+    ).rejects.toThrow('part of the record');
+  });
+
+  it('refuses to replace one made before today', async () => {
+    const p = await loggedEarlier(() => create(3));
+    await expect(
+      usePredictionStore.getState().renumber(p.id, {
+        title: p.title,
+        category: 'work',
+        confidence: 85,
+        due_date: p.due_date,
+      }),
+    ).rejects.toThrow('part of the record');
+    expect(await usePredictionStore.getState().getById(p.id)).not.toBeNull();
+    expect(usePredictionStore.getState().pending).toHaveLength(1);
   });
 });

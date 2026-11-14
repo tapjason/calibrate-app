@@ -12,6 +12,7 @@ import {
   categoryOptions,
   categoryTitle,
   isCategoryHidden,
+  isOwnCategory,
   leadingEmoji,
   useCategoryStore,
 } from './categoryStore';
@@ -40,6 +41,14 @@ describe('categoryStore', () => {
     expect(categoryLabel(id)).toBe('Grad school');
     const second = await useCategoryStore.getState().add('Family');
     expect(categoryOptions().slice(5)).toEqual([id, second]);
+  });
+
+  it('knows which categories carry the person’s own words (D62)', async () => {
+    expect(isOwnCategory('health')).toBe(false);
+    const id = await useCategoryStore.getState().add('Divorce');
+    expect(isOwnCategory(id)).toBe(true);
+    await useCategoryStore.getState().rename('finance', 'Debts');
+    expect(isOwnCategory('finance')).toBe(true);
   });
 
   it('renames a built-in, and back', async () => {

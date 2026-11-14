@@ -979,21 +979,21 @@ describe('ResolvePrompt reflection draft', () => {
 describe('firstAnswerLine', () => {
   it('says what the stated number means in tens', () => {
     expect(firstAnswerLine(70)).toBe(
-      "That's your first. A 70% call should come true about 7 times in 10, so one answer can't say much; 20 can.",
+      "That's your first. A 70% call should come true about 7 times in\u00A010, so one answer can't say much; 20 can.",
     );
-    expect(firstAnswerLine(10)).toMatch(/about 1 time in 10/);
+    expect(firstAnswerLine(10)).toMatch(/about 1 time in\s10/);
   });
 
   it('handles the ends of the scale', () => {
     expect(firstAnswerLine(100)).toMatch(/A 100% call should always come true/);
     expect(firstAnswerLine(0)).toMatch(/A 0% call should never come true/);
     expect(firstAnswerLine(97)).toMatch(/almost every time/);
-    expect(firstAnswerLine(3)).toMatch(/less than once in 10/);
+    expect(firstAnswerLine(3)).toMatch(/less than once in\s10/);
     // The slider's words, and the article said aloud (playtest 2026-11-04, third round).
-    expect(firstAnswerLine(85)).toMatch(/^That's your first\. An 85% call should come true 8 or 9 times in 10,/);
+    expect(firstAnswerLine(85)).toMatch(/^That's your first\. An 85% call should come true 8 or 9 times in\s10,/);
     expect(firstAnswerLine(8)).toMatch(/An 8% call/);
     expect(firstAnswerLine(18)).toMatch(/An 18% call/);
-    expect(firstAnswerLine(80)).toMatch(/An 80% call should come true about 8 times in 10/);
+    expect(firstAnswerLine(80)).toMatch(/An 80% call should come true about 8 times in\s10/);
     expect(firstAnswerLine(70)).toMatch(/A 70% call/);
     expect(firstAnswerLine(50)).toMatch(/A 50% call should come true half the time/);
   });
@@ -1002,7 +1002,7 @@ describe('firstAnswerLine', () => {
 describe('meaningLine and ratingChangeLine (roadmap D50)', () => {
   it('says what the number means, both ways at once', () => {
     expect(meaningLine(70)).toBe(
-      "A 70% call should come true about 7 times in 10: one that doesn't isn't a mistake, and one that does isn't proof.",
+      "A 70% call should come true about 7 times in\u00A010: one that doesn't isn't a mistake, and one that does isn't proof.",
     );
     expect(meaningLine(80)).toMatch(/^An 80% call/);
     expect(meaningLine(100)).toBeNull();

@@ -97,3 +97,38 @@ describe('IdentityLine', () => {
     expect(screen.queryByTestId('home-identity')).toBeNull();
   });
 });
+
+// D62: while the words are hidden, Today doesn't name a category the person named.
+describe('IdentityLine with the words hidden', () => {
+  it('names only categories under the app’s own words', () => {
+    const { useSettingsStore } = jest.requireActual('@/store/settingsStore') as typeof import('@/store/settingsStore');
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'c-divorce',
+          user_id: 'u1',
+          name: 'Divorce',
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    useSettingsStore.setState({ hideTitles: true });
+    try {
+      render(
+        <IdentityLine
+          userStat={USER}
+          categoryStats={[cat('c-divorce', 'sharp', 60, 96), cat('health', 'tracker')]}
+          onPress={jest.fn()}
+        />,
+      );
+      expect(screen.queryByText(/Divorce/)).toBeNull();
+      expect(screen.getByTestId('home-identity')).toHaveTextContent(/health/);
+    } finally {
+      useSettingsStore.setState({ hideTitles: false });
+      useCategoryStore.setState({ defs: [] });
+    }
+  });
+});

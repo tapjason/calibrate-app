@@ -85,7 +85,7 @@ describe('chartTakeaway', () => {
       [bucket(60, 12, 8, 'calibrated', 0.03), bucket(80, 10, 9, 'calibrated', 0.02)],
       false,
     );
-    expect(t.title).toBe("You're well calibrated");
+    expect(t.title).toBe("You're well calibrated overall");
   });
 });
 
@@ -194,9 +194,9 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
   });
 
   it('speaks for every range when there are several and none leans', () => {
-    expect(read([...calls(70, 20, 14), ...calls(88, 20, 18)]).title).toBe("You're well calibrated");
+    expect(read([...calls(70, 20, 14), ...calls(88, 20, 18)]).title).toBe("You're well calibrated overall");
     expect(read([...calls(66, 21, 12), ...calls(88, 20, 18)]).title).toBe(
-      'No clear lean in any range yet',
+      'No clear lean overall yet',
     );
   });
 
@@ -214,7 +214,7 @@ describe('chartTakeaway, inside luck (roadmap D57)', () => {
     const { buckets } = computeCalibrationPoints(points);
     expect(buckets.every((b) => b.direction === 'calibrated')).toBe(true);
     expect(chartTakeaway(buckets, false)).toEqual({
-      title: 'No clear lean in any range yet',
+      title: 'No clear lean overall yet',
       subtitle: 'Of 50 things you called 80–100% likely, 38 happened; your numbers expected about\u00A040.',
       lean: 'calibrated',
     });

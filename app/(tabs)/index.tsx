@@ -17,7 +17,7 @@ import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { WelcomeBackCard } from '@/components/prediction/WelcomeBackCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { BackupNudge } from '@/components/settings/BackupNudge';
-import { unlockEstimateLine } from '@/components/stats/beforeScoreCopy';
+import { firstLookLine, unlockEstimateLine } from '@/components/stats/beforeScoreCopy';
 import { chartVerdict } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
 import { NextBadgeLine } from '@/components/stats/NextBadgeLine';
@@ -31,10 +31,11 @@ import { CountUp } from '@/components/ui/CountUp';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { useLocalDay } from '@/components/ui/useLocalDay';
-import { colors, space, tabularNums, type } from '@/constants/theme';
+import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useWarmupStore } from '@/store/warmupStore';
 import { unlockEstimateFor, useStatsStore } from '@/store/statsStore';
 import { MIN_N_OVERALL, type Direction, type Prediction } from '@/types';
 
@@ -66,8 +67,11 @@ export default function TodayScreen() {
   // Subscribed so the streak line and the estimate follow each answer.
   const resolved = usePredictionStore((s) => s.resolved);
   const resolvedCount = resolved.length;
+  const warmupResult = useWarmupStore((s) => s.result);
+  const warmupRight = warmupResult ? Math.round(warmupResult.accuracy * warmupResult.answered) : 0;
   const streak = usePredictionStore.getState().streakNow();
   const userStat = useStatsStore((s) => s.userStat);
+  const overall = useStatsStore((s) => s.overallCounts);
   // The first answer's part of the day follows the reminder's time (D38).
   const reminderAt = useSettingsStore((s) => s.dueReminderTime);
   const categoryStats = useStatsStore((s) => s.categoryStats);
@@ -198,7 +202,10 @@ export default function TodayScreen() {
           has just asked ten questions, and the next thing is the first
           real one. */}
       {pending.length + resolvedCount > 0 && (
-        <PracticeCard onOpen={() => router.push('/practice' as never)} />
+        <PracticeCard
+          onOpen={() => router.push('/practice' as never)}
+          beforeFirstAnswer={resolvedCount === 0}
+        />
       )}
     </>
   );
@@ -276,6 +283,8 @@ export default function TodayScreen() {
         }
         // When it could unlock at the recent pace (roadmap D53).
         estimate={estimate}
+        // Plain counts from 10 scored answers (D62).
+        firstLook={firstLookLine(overall)}
       />
     );
 
@@ -372,13 +381,33 @@ export default function TodayScreen() {
         </View>
       )}
       ListEmptyComponent={
-        <EmptyState
-          testID="home-empty"
-          symbol={{ sf: 'calendar.badge.plus', fallback: 'calendar-outline' }}
-          message="Nothing open. What do you think will happen this week?"
-          actionLabel="Log a prediction"
-          onAction={() => router.push('/log' as never)}
-        />
+        <View>
+          {/* The Warm-up's result stays one tap away until the first real
+              prediction is saved (D62): interrupted on it, a tester came back
+              to Today with the result and its share button gone (blind
+              playtest 2026-11-13d, run 7). */}
+          {warmupResult && resolvedCount === 0 && (
+            <Pressable
+              onPress={() => router.push('/warmup' as never)}
+              accessibilityRole="button"
+              accessibilityLabel={`Your warm-up: ${warmupRight} of ${warmupResult.answered} right. See your result.`}
+              style={({ pressed }) => [styles.warmupRow, pressed && styles.pressed]}
+              testID="home-warmup-result"
+            >
+              <Text style={styles.warmupText}>
+                Your warm-up: {warmupRight} of {warmupResult.answered} right.
+              </Text>
+              <Text style={styles.warmupAction}>See your result</Text>
+            </Pressable>
+          )}
+          <EmptyState
+            testID="home-empty"
+            symbol={{ sf: 'calendar.badge.plus', fallback: 'calendar-outline' }}
+            message="Nothing open. What do you think will happen this week?"
+            actionLabel="Log a prediction"
+            onAction={() => router.push('/log' as never)}
+          />
+        </View>
       }
     />
   );
@@ -410,6 +439,18 @@ const styles = StyleSheet.create({
   rated: { alignItems: 'stretch' },
   ratingTap: { alignSelf: 'stretch' },
   pressed: { opacity: 0.6 },
+  warmupRow: {
+    backgroundColor: colors.surface,
+    borderColor: colors.hairline,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: space.xs,
+    marginBottom: space.lg,
+    minHeight: 44,
+    padding: space.md,
+  },
+  warmupText: { ...type.subhead, color: colors.textPrimary },
+  warmupAction: { ...type.subhead, color: colors.actionText, fontWeight: '600' },
   receipt: { alignItems: 'baseline', flexDirection: 'row', gap: space.md, marginTop: space.md },
   // The hero numeral is always ink (DESIGN_SYSTEM §2.4).
   ratingNumber: { ...type.readout, ...tabularNums, color: colors.textPrimary },

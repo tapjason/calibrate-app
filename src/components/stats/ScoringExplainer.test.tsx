@@ -83,9 +83,9 @@ describe('scoringCopy (roadmap step 29)', () => {
     const text = allText();
     expect(text).toContain('a 40-point miss, and a score of 60');
     expect(text).toContain(
-      'misses of 5, 20 and 35 points in bands of 20, 10 and 20 calls, the average miss is 20, so the score is 80',
+      'misses of 5, 20 and 35 points in ranges of 20, 10 and 20 calls, the average miss is 20, so the score is 80',
     );
-    expect(text).toContain('with each band counting in proportion to the calls in it');
+    expect(text).toContain('with each range counting in proportion to the calls in it');
   });
 
   // Roadmap D24: one paragraph on the Brier score, with what good looks like.
@@ -151,7 +151,7 @@ describe('ScoringExplainer', () => {
   it('says what the shared squares and the strip mean, and when they come', () => {
     const squares = scoringSections().find((s) => s.title === 'The squares on a shared card');
     const text = squares?.paragraphs.join(' ') ?? '';
-    for (const part of ['🟩 no clear lean', '🟧 too sure', '🟦 too cautious', `⬜ a band with fewer than ${MIN_N_BAND}`, "They aren't right and wrong", '▼ too sure', '▲ too cautious']) {
+    for (const part of ['🟩 no clear lean', '🟧 too sure', '🟦 too cautious', `⬜ a range with fewer than ${MIN_N_BAND}`, "They aren't right and wrong", '▼ too sure', '▲ too cautious']) {
       expect(text).toContain(part);
     }
   });

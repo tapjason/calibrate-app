@@ -26,7 +26,8 @@ const rank = (b: BadgeLevel) => LADDER.indexOf(b);
  * confetti bursts at once would be none.
  *
  * Priority: the overall rating unlocking, then a badge tier-up (highest new
- * tier first), then a category score unlocking.
+ * tier first). A category's score unlocks with its first badge, at 20 (D46),
+ * so the tier-up says it (D62 removed a card for it that never fired).
  */
 export function detectMilestone(
   prevUser: UserStat | null,
@@ -56,18 +57,6 @@ export function detectMilestone(
       category: next.category,
       badge: next.badge_level,
       from: prev?.badge_level ?? 'guesser',
-    };
-  }
-
-  const unlocked = nextCategories.find((next) => {
-    const prev = prevByCategory.get(next.category);
-    return (prev?.score_is_provisional ?? true) && !next.score_is_provisional;
-  });
-  if (unlocked) {
-    return {
-      kind: 'category_unlocked',
-      category: unlocked.category,
-      score: Math.round(unlocked.calibration_score),
     };
   }
 

@@ -180,6 +180,7 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
         ratingExplained={ratingExplained}
         onRatingExplained={() => setRatingExplained(true)}
         onResolved={advance}
+        onAnswered={() => setSkipNotice(false)}
         onDraftChange={reportDraft}
       />
     </View>

@@ -3,6 +3,7 @@ import type { WrappedSummary } from '@/engine/wrapped';
 import type { BucketStat } from '@/types';
 
 import {
+  badgeNewsLine,
   expectedLine,
   receiptLine,
   streakLine,
@@ -282,7 +283,7 @@ describe('wrappedStory note', () => {
 
   it('asks for one when there were none, and never mentions a bonus', () => {
     const story = wrappedStory(summary([bucket(40, 3, 2, 50), bucket(80, 20, 18, 88)]));
-    expect(story.note).toBe("Nothing under 40% this year. Log something you think won't happen.");
+    expect(story.note).toBe("Nothing under 40% answered this year. Log something you think won't happen.");
     expect(story.note).not.toMatch(/coin-flip|honest-uncertainty|35/);
   });
 });
@@ -298,5 +299,24 @@ describe('streakLine', () => {
     expect(streakLine({ resolved: 40, provisional: false, streak: 1 })).toBeNull();
     expect(streakLine({ resolved: 40, provisional: false })).toBeNull();
     expect(streakLine(null)).toBeNull();
+  });
+});
+
+describe('the recap leads with its own badge news (D62)', () => {
+  it('says a badge gained or lost over the span', () => {
+    expect(badgeNewsLine({ category: 'health', from: 'tracker', to: 'forecaster' }, 'week')).toBe(
+      'New this week: Forecaster in health.',
+    );
+    expect(badgeNewsLine({ category: 'health', from: 'forecaster', to: 'tracker' }, 'year')).toBe(
+      'Back to Tracker in health this year. A badge follows the record both ways.',
+    );
+  });
+
+  it('puts the rating on the year card once it is unlocked', () => {
+    const s = summary([bucket(60, 20, 14, 70), bucket(80, 20, 18, 88)]);
+    expect(
+      wrappedStory(s, { resolved: 148, provisional: false, rating: 87.4, giveOrTake: 3 }).allTime,
+    ).toBe('All time: calibration 87/100, give or take 3, from 148 scored answers.');
+    expect(wrappedStory(s, { resolved: 12, provisional: true, rating: 80 }).allTime).toBeNull();
   });
 });

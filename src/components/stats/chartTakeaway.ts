@@ -163,14 +163,17 @@ export function chartVerdict(
     const close = solid.every((b) => closeToSaid(b.stated_confidence_mean, b.actual_rate * 100));
     const shown = close ? worst : solid.reduce((a, b) => (gap(b) > gap(a) ? b : a));
     const one = solid.length === 1;
+    // "Overall" (D62): beside Furthest off naming a category that leans, a
+    // bare "no clear lean" read as a contradiction (record audit of step
+    // 173). The chart is every category together; a category can still lean.
     return {
       title: close
         ? one
           ? `You're well calibrated at ${rangeLabel(worst)}`
-          : "You're well calibrated"
+          : "You're well calibrated overall"
         : one
           ? `No clear lean at ${rangeLabel(shown)}`
-          : 'No clear lean in any range yet',
+          : 'No clear lean overall yet',
       subtitle: `${counted(shown)}; your numbers expected ${expectedPhrase(shown.expected_yes)}.`,
       lean: 'calibrated',
     };

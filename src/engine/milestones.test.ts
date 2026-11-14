@@ -61,14 +61,15 @@ describe('detectMilestone', () => {
     expect(m?.kind).toBe('rating_unlocked');
   });
 
-  it('announces a category score unlocking', () => {
+  it('has no card of its own for a category score unlocking (D62)', () => {
+    // The 20th answer brings the score and Tracker together; Tracker says it.
     const m = detectMilestone(
       user({ rating_is_provisional: false }),
       [cat({ score_is_provisional: true })],
       user({ rating_is_provisional: false }),
       [cat({ score_is_provisional: false })],
     );
-    expect(m).toEqual({ kind: 'category_unlocked', category: 'health', score: 81 });
+    expect(m).toBeNull();
   });
 
   // DESIGN_SYSTEM §6.2: never announce a demotion.

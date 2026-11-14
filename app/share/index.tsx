@@ -12,6 +12,9 @@ import { colors, type } from '@/constants/theme';
 
 type Tab = 'card' | 'week' | 'year';
 
+/** Past this the three tabs can't hold a word each at 320 pt. */
+const TAB_MAX_SCALE = 1.6;
+
 const TABS: ReadonlyArray<{ key: Tab; label: string }> = [
   { key: 'card', label: 'Card' },
   { key: 'week', label: 'This week' },
@@ -80,6 +83,9 @@ export default function ShareScreen() {
             >
               <Text
                 style={[styles.tabLabel, tab === t.key && styles.tabLabelActive]}
+                // Three tabs in one row at every size (D62): capped so "This
+                // week" wraps between words, never inside one (code review).
+                maxFontSizeMultiplier={TAB_MAX_SCALE}
               >
                 {t.label}
               </Text>
@@ -112,16 +118,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSunken,
     borderRadius: 10,
     flexDirection: 'row',
-    // Three equal tabs; when there's no room for three, they stack rather
-    // than break their words (playtest 2026-11-03, run 3).
-    flexWrap: 'wrap',
+    // Three equal tabs in one row at every size (D62): stacked two and one at
+    // a large text size, they read as two controls (blind playtest
+    // 2026-11-13d, run 7). A long label wraps inside its tab, between words.
     gap: 4,
     padding: 4,
   },
   tab: {
     alignItems: 'center',
     borderRadius: 8,
-    flexBasis: 80,
+    flexBasis: 0,
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 4,

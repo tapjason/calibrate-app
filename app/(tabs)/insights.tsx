@@ -39,6 +39,8 @@ export default function InsightsScreen() {
   const brier = useStatsStore((s) => s.brier);
   const brierBaseline = useStatsStore((s) => s.brierBaseline);
   const brierEdge = useStatsStore((s) => s.brierEdge);
+  const perfect = useStatsStore((s) => s.perfect);
+  const overallCounts = useStatsStore((s) => s.overallCounts);
   const categoryRanges = useStatsStore((s) => s.categoryRanges);
   const furthestOff = useStatsStore((s) => s.furthestOff);
   const categoryCounts = useStatsStore((s) => s.categoryCounts);
@@ -96,6 +98,7 @@ export default function InsightsScreen() {
         brier={brier}
         brierBaseline={brierBaseline}
         brierEdge={brierEdge}
+        perfect={perfect}
         skippedCount={skippedCount}
         answeredCount={resolved.length}
         sameDayCount={sameDayCount}
@@ -106,6 +109,7 @@ export default function InsightsScreen() {
         weekChange={weekChange}
         categoryCounts={categoryCounts}
         unlockEstimate={estimate}
+        overallCounts={overallCounts}
       />
       {/* Free users get one Plus teaser, not a grey upsell per panel. */}
       {!isPlus && (

@@ -2,7 +2,7 @@
 // tests hold the words to the numbers; the numbers come from the engine.
 
 import { localDate } from '@/components/ui/dates';
-import type { CategoryCounts, UnlockEstimate } from '@/types';
+import { MIN_N_BAND, MIN_N_OVERALL, type CategoryCounts, type UnlockEstimate } from '@/types';
 
 /**
  * "You said about 85% on average, and 7 of the 9 scored predictions happened.
@@ -24,6 +24,23 @@ export function plainCountsLine(counts: CategoryCounts): string | null {
   return (
     `You said about ${said}% on average, and ${counts.happened} of the ` +
     `${counts.resolved} scored predictions happened. Too few to read yet.`
+  );
+}
+
+/**
+ * "First look: you said about 75% on average, and 6 of your 12 scored
+ * predictions happened. Too few to rate yet." (D62, blind playtest
+ * 2026-11-13d, finding 4: twenty answers with the first a week out left the
+ * competitive and the curious nothing for weeks). From MIN_N_BAND scored
+ * answers, the floor where Log's track record shows a range's counts, until
+ * the rating unlocks. Counts only, never a lean (D35), as a category's plain
+ * counts are. Null outside that span.
+ */
+export function firstLookLine(counts: CategoryCounts | null): string | null {
+  if (!counts || counts.resolved < MIN_N_BAND || counts.resolved >= MIN_N_OVERALL) return null;
+  return (
+    `First look: you said about ${Math.round(counts.mean_stated)}% on average, and ` +
+    `${counts.happened} of your ${counts.resolved} scored predictions happened. Too few to rate yet.`
   );
 }
 

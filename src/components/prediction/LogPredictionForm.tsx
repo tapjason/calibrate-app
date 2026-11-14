@@ -35,7 +35,12 @@ import { REFINE_ENABLED, TRACK_RECORD_MIN_N } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
 import { categoryOptions } from '@/store/categoryStore';
 import { useLogDraftStore, type LogDraft } from '@/store/logDraftStore';
-import { dueDateSavedAt, pastOutcomesFor, usePredictionStore } from '@/store/predictionStore';
+import {
+  canRenumber,
+  dueDateSavedAt,
+  pastOutcomesFor,
+  usePredictionStore,
+} from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   coverageNudgeNow,
@@ -148,12 +153,15 @@ export function LogPredictionForm({
     return undefined;
   }, [title, category, confidence, dueDate]);
   useEffect(() => {
-    if (!touched.current) return undefined;
+    // Not for "Use another number" (D62): restored later as a plain draft, it
+    // would save a second prediction beside the one it was to replace (code
+    // review of step 178).
+    if (!touched.current || again?.replaces) return undefined;
     const t = setTimeout(() => {
       void useLogDraftStore.getState().save({ title, category, confidence, dueIso: dueDate });
     }, LOG_DRAFT_WRITE_MS);
     return () => clearTimeout(t);
-  }, [title, category, confidence, dueDate]);
+  }, [title, category, confidence, dueDate, again?.replaces]);
   // Showing the inline picker (iOS compact / web date input).
   const [picking, setPicking] = useState(false);
   // Opening "Pick a date" adds the date box at the end of the form and pushed
@@ -293,12 +301,10 @@ export function LogPredictionForm({
     setError(null);
     setSubmitting(true);
     try {
-      await usePredictionStore.getState().create({
-        title,
-        category,
-        confidence,
-        due_date: dueDate,
-      });
+      const input = { title, category, confidence, due_date: dueDate };
+      // "Use another number" (D62) replaces the one made today.
+      if (again?.replaces) await usePredictionStore.getState().renumber(again.replaces, input);
+      else await usePredictionStore.getState().create(input);
       haptics.commit();
       // Saved, so nothing to keep: cleared now, not by the blank form's
       // write, which the sheet closing would cancel.
@@ -344,7 +350,21 @@ export function LogPredictionForm({
       // integer…"). Say what happened in words, keep the detail in the log.
       // eslint-disable-next-line no-console
       console.warn('[log] save failed:', e);
-      setError("Couldn't save that. Try again.");
+      // Past midnight the one it replaces is the record: say so (D62).
+      let closed = false;
+      if (again?.replaces) {
+        try {
+          const source = await usePredictionStore.getState().getById(again.replaces);
+          closed = source !== null && !canRenumber(source);
+        } catch {
+          closed = false;
+        }
+      }
+      setError(
+        closed
+          ? 'The one this replaces was made before today now, so its number stays as it is.'
+          : "Couldn't save that. Try again.",
+      );
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -406,7 +426,7 @@ export function LogPredictionForm({
       </View>
       {/* For a batch (step 173), once there's something to save: it takes the
           place of the "still needed" line, so the bar barely grows. */}
-      {canSave && (
+      {canSave && !again?.replaces && (
         <TextButton
           label="Save and log another"
           onPress={() => void onSubmit(true)}

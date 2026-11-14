@@ -5,7 +5,7 @@ import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { spokenExcerpt } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
-import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { categoryTitle, isOwnCategory, useCategoryStore } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { answeredSameDay } from '@/store/statsStore';
 
@@ -18,11 +18,13 @@ import { isReadyToResolve } from './dueGroups';
 export type RowPosition = 'single' | 'first' | 'middle' | 'last';
 
 /**
- * A card's words while You → "Hide the words on Today and History" is on
+ * A card's words while You → "Hide the words" is on
  * (D61): the category and the number stay, the words wait for a tap
  * (blind playtest 2026-11-13c, finding 7). Exported for tests.
  */
 export const HIDDEN_TITLE = 'Words hidden. Open it to see them.';
+/** A category the person named or gave an icon, while the words are hidden (D62). */
+export const HIDDEN_CATEGORY = 'Your own category';
 
 /** Above this text scale a title may take more lines (as ConfidenceControl's steppers wrap). */
 const LARGE_TEXT_SCALE = 1.15;
@@ -109,6 +111,9 @@ export function PredictionCard({
   // back (roadmap step 31). Only on a resolved row, and only if written.
   const hideTitles = useSettingsStore((s) => s.hideTitles);
   const title = hideTitles ? HIDDEN_TITLE : prediction.title;
+  // A name or icon the person chose is their words too (D62).
+  const categoryHidden = hideTitles && isOwnCategory(prediction.category);
+  const categoryName = categoryHidden ? HIDDEN_CATEGORY : categoryTitle(prediction.category);
   // A note is the person's words too.
   const reflection =
     prediction.status !== 'pending' && !hideTitles
@@ -126,7 +131,7 @@ export function PredictionCard({
       accessibilityRole={onPress ? 'button' : undefined}
       // One sentence instead of fragments read in layout order.
       accessibilityLabel={
-        `${hideTitles ? HIDDEN_TITLE : `${prediction.title}.`} ${categoryTitle(prediction.category)}, ${prediction.confidence}% confident, ` +
+        `${hideTitles ? HIDDEN_TITLE : `${prediction.title}.`} ${categoryName}, ${prediction.confidence}% confident, ` +
         `${when}. ${status}.` +
         // The start of the note, not all of it: a long one made the row's
         // label about 1,000 characters (playtest 2026-11-08, finding 40). The
@@ -161,9 +166,16 @@ export function PredictionCard({
               together, the date moves under them, so neither is lost; icon
               and name stay together as one item. */}
           <View style={styles.metaName}>
-            <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
-            <Text style={styles.meta} numberOfLines={1}>
-              {categoryTitle(prediction.category)},
+            {categoryHidden ? (
+              <Icon sf="folder" fallback="folder-outline" size={13} color={colors.textSecondary} />
+            ) : (
+              <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
+            )}
+            {/* No comma (D62): when the date moved under the name, "Weather,"
+                ended its line on it (blind playtest 2026-11-13d, run 7). The
+                spoken label keeps it. */}
+            <Text style={styles.meta} numberOfLines={1} testID="prediction-card-category">
+              {categoryName}
             </Text>
           </View>
           <Text style={styles.meta}>{when}</Text>
@@ -219,7 +231,7 @@ const styles = StyleSheet.create({
   reflection: { ...type.footnote, color: colors.textSecondary, fontStyle: 'italic' },
   metaRow: {
     alignItems: 'center',
-    columnGap: space.xs,
+    columnGap: space.md,
     flexDirection: 'row',
     flexWrap: 'wrap',
     rowGap: 0,

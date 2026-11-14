@@ -22,8 +22,10 @@ import {
 } from '@/components/stats/chartTakeaway';
 import { expectedPhrase } from '@/components/stats/expectedPhrase';
 import { localCount } from '@/components/ui/count';
+import { BADGE_META } from '@/constants/badges';
 import type { WrappedReceipt, WrappedSummary } from '@/engine/wrapped';
-import { MIN_N_OVERALL } from '@/types';
+import { categoryLabel } from '@/store/categoryStore';
+import { MIN_N_OVERALL, type BadgeChange } from '@/types';
 
 export interface WrappedStory {
   title: string;
@@ -93,6 +95,43 @@ export interface OverallProgress {
    * or null while it has none (chartVerdict).
    */
   lean?: string | null;
+  /** The rating and its give-or-take, for the year's card (D62). */
+  rating?: number | null;
+  giveOrTake?: number;
+}
+
+/**
+ * The recap's lead badge news (D62): "New this week: Forecaster in health."
+ * or "Back to Tracker in health this week. A badge follows the record both
+ * ways." The recaps led with the next badge in a category barely used and
+ * left out one earned that week (blind playtest 2026-11-13d, finding 13).
+ */
+export function badgeNewsLine(change: BadgeChange, span: keyof typeof WINDOW): string {
+  const when = span === 'week' ? 'this week' : 'this year';
+  const name = `${BADGE_META[change.to].label} in ${categoryLabel(change.category)}`;
+  const gained =
+    BADGE_ORDER.indexOf(change.to) > BADGE_ORDER.indexOf(change.from);
+  return gained
+    ? `New ${when}: ${name}.`
+    : `Back to ${name} ${when}. A badge follows the record both ways.`;
+}
+
+const BADGE_ORDER = ['guesser', 'tracker', 'forecaster', 'sharp', 'oracle'] as const;
+
+/**
+ * The rating on the year's card (D62): the year card left it out (blind
+ * playtest 2026-11-13d, finding 13). "All time: calibration 87/100, give or
+ * take 3, from 148 scored answers.", the share card's words, said as all-time
+ * beside the year's own count (record audit). Null while provisional.
+ */
+function yearRatingLine(overall: OverallProgress | null | undefined): string | null {
+  if (!overall || overall.provisional || overall.rating == null) return null;
+  const take = overall.giveOrTake ?? 0;
+  return (
+    `All time: calibration ${Math.round(overall.rating)}/100` +
+    (take > 0 ? `, give or take ${take}` : '') +
+    `, from ${localCount(overall.resolved)} scored answers.`
+  );
 }
 
 /** A streak this long or more goes on the card: one day isn't a run yet. */
@@ -162,7 +201,8 @@ export function wrappedStory(
     statCount: `${localCount(resolved)} scored`,
     statRate: expected,
     verdict,
-    allTime: span === 'week' && verdict ? allTimeLine(overall) : null,
+    allTime:
+      span === 'week' ? (verdict ? allTimeLine(overall) : null) : yearRatingLine(overall),
     receipt: summary.receipt ? receiptLine(summary.receipt) : null,
     provisionalNote: summary.score_is_provisional
       ? provisionalLine(summary, overall)
@@ -329,7 +369,9 @@ function rangeNote(summary: WrappedSummary): string {
     .filter((b) => b.low < UNLIKELY_BELOW)
     .reduce((sum, b) => sum + b.total_resolved, 0);
   if (n === 0) {
-    return `Nothing under 40% ${when}. Log something you think won't happen.`;
+    // "Answered" (D62): an open 30% call logged an hour before made "nothing
+    // under 40%" read as wrong (blind playtest 2026-11-13d, run 1).
+    return `Nothing under 40% answered ${when}. Log something you think won't happen.`;
   }
   const plural = n === 1 ? 'call' : 'calls';
   return `${n} ${plural} under 40% ${when}. The unlikely end keeps your score honest.`;

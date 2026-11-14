@@ -454,8 +454,9 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    step 167); the calibrated wording only when no range with ≥ 10 leans.
    **Inside luck** (D57, step 170): "You're well calibrated at 60–80%" only when every
    range with ≥ 10 is within 5 whole points of what was said (`closeToSaid`, the
-   recaps' rule); otherwise "No clear lean at 60–80%" ("No clear lean in any range
-   yet" over several, naming the range furthest off in the subtitle), and the
+   recaps' rule); otherwise "No clear lean at 60–80%" ("No clear lean overall
+   yet" over several, and "You're well calibrated overall", since D62, naming the range
+   furthest off in the subtitle), and the
    subtitle gives the expected count: "Of 21 things you called
    60–80% likely, 12 happened; your numbers expected about 14." **A lean** adds what
    would have matched, rounded to 5 as the category line is: "…, 38 happened. You
@@ -694,8 +695,11 @@ third row) → **honest timeline** → **one** CTA.
   starts; cancel at least 24 hours before. The middle step shows only while
   notifications are on, since only then does the app send it (roadmap D16, built
   2026-10-07; §7.15).
-- The CTA label follows the selected plan ("Start free month" / "Subscribe for
-  $4.99/mo").
+- The CTA label follows the selected plan and says what follows a trial ("Start 1
+  month free, then $34.99 a year" / "Subscribe for $4.99 a month" / "Buy once for
+  $79.99", D62), in the store's own price and units. A trial shows only to a customer
+  RevenueCat says can still take it (one introductory offer per subscription group);
+  unknown reads as no trial.
 - **No trial toggle** — Apple rejects them under 3.1.2 since January 2026.
 - **A sample before paying** (D37, step 142): once the rating is unlocked, Insights'
   Plus card shows one card in the Coach card's shape, on `surfaceSunken` inside it:
@@ -1183,7 +1187,7 @@ scrolling question, with **Skip for now** as a text button (step 117). It opens 
   (`research/day0-2026-10.md` §2.)
 - **"It isn't about being right"** (D36, step 141): under the two buttons, before the
   chart, the How scoring works line "It isn't about being right. A 60% call that
-  doesn't happen isn't a mistake: about 4 in 10 of them shouldn't."
+  doesn't happen isn't a mistake: about 4 in 10 of them shouldn't happen."
 - **No 0–100 number** (D20, step 105). Ten answers can't carry one; the counts lead
   and the chart shows them. It used to count up in `title1` beside "Warm-up
   calibration".

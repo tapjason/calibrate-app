@@ -3,13 +3,13 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { logAgainDraft, type LogAgainDraft } from '@/components/prediction/logAgain';
+import { logAgainDraft, renumberDraft, type LogAgainDraft } from '@/components/prediction/logAgain';
 import { LogPredictionForm } from '@/components/prediction/LogPredictionForm';
 import { useLogDraftGuard } from '@/components/prediction/useLogDraftGuard';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, space, type } from '@/constants/theme';
 import { useLogDraftStore } from '@/store/logDraftStore';
-import { usePredictionStore } from '@/store/predictionStore';
+import { canRenumber, usePredictionStore } from '@/store/predictionStore';
 
 /**
  * Log, as a full-height sheet over whichever tab opened it (roadmap D3): an
@@ -20,16 +20,24 @@ export default function LogScreen() {
   const router = useRouter();
   // "Log it again" from Resolve (roadmap step 22) or History's answered
   // details (D56) arrives as ?again=<id>.
-  const { again } = useLocalSearchParams<{ again?: string }>();
+  // "Use another number" from an open prediction's Edit (D62) as
+  // ?renumber=<id>.
+  const { again, renumber } = useLocalSearchParams<{ again?: string; renumber?: string }>();
   const [draft, setDraft] = useState<LogAgainDraft | null>(null);
   const [dirty, setDirty] = useState(false);
   // "Discard prediction" throws the kept draft away too (step 173).
-  const guard = useLogDraftGuard(dirty, () => void useLogDraftStore.getState().clear());
+  // Not while replacing a number (D62): the kept draft is another prediction's.
+  const guard = useLogDraftGuard(dirty, () => {
+    if (!draft?.replaces) void useLogDraftStore.getState().clear();
+  });
   // A draft kept from an interrupted Log, offered back on a plain open (step
   // 173): read once, at mount, so the form's own saves don't remount it.
   // "Log it again" starts from its own prediction instead.
   const [kept] = useState(() =>
-    typeof again === 'string' && again.length > 0 ? null : useLogDraftStore.getState().draft,
+    (typeof again === 'string' && again.length > 0) ||
+    (typeof renumber === 'string' && renumber.length > 0)
+      ? null
+      : useLogDraftStore.getState().draft,
   );
 
   useEffect(() => {
@@ -44,6 +52,18 @@ export default function LogScreen() {
       router.setParams({ again: undefined });
     })();
   }, [again, router]);
+
+  useEffect(() => {
+    if (typeof renumber !== 'string' || renumber.length === 0) return;
+    (async () => {
+      const source = await usePredictionStore.getState().getById(renumber);
+      // Only an open one made today; otherwise a plain Log.
+      if (source && canRenumber(source)) {
+        setDraft(renumberDraft(source));
+      }
+      router.setParams({ renumber: undefined });
+    })();
+  }, [renumber, router]);
 
   // A sheet closes back to the tab it opened over; reached directly (the
   // Warmup's last step, a cold link) it has nothing behind it, so Today.
@@ -69,9 +89,17 @@ export default function LogScreen() {
           // The way out before anything is saved (roadmap step 79), besides
           // the swipe; a typed draft asks first.
           <View style={styles.header}>
-            <Text style={styles.title} accessibilityRole="header">
-              New prediction
-            </Text>
+            <View style={styles.titleBlock}>
+              <Text style={styles.title} accessibilityRole="header">
+                {draft?.replaces ? 'Another number' : 'New prediction'}
+              </Text>
+              {draft?.replaces && (
+                <Text style={styles.subtitle} testID="log-renumber-note">
+                  Saving replaces the one you made today. A change on the day it was made isn’t
+                  counted.
+                </Text>
+              )}
+            </View>
             <CloseButton onPress={close} testID="log-close" />
           </View>
         }
@@ -89,10 +117,13 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: colors.canvas, flex: 1 },
   // Inside the form's padded scroll content, so no padding of its own.
   header: {
-    alignItems: 'center',
+    // The × at the top, not centred on a title with a two-line note (profile §18).
+    alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: space.md,
   },
   title: { ...type.title2, color: colors.textPrimary },
+  titleBlock: { flex: 1, gap: space.xs, marginRight: space.sm },
+  subtitle: { ...type.footnote, color: colors.textSecondary },
 });

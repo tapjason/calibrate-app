@@ -55,6 +55,12 @@ interface ResolvePromptProps {
    */
   onResolved?: (outcome?: 'skipped') => void;
   /**
+   * Called as a Yes or No lands, before "Next" (D62): a run clears its "Last
+   * one recorded: can't tell." then, so two "recorded" lines never show at
+   * once (blind playtest 2026-11-13d, run 3).
+   */
+  onAnswered?: () => void;
+  /**
    * The reflection typed so far and not yet saved ('' when there is none), so
    * the screen can ask before a swipe-down throws it away.
    */
@@ -331,6 +337,7 @@ function answerNote(
 export function ResolvePrompt({
   predictionId,
   onResolved,
+  onAnswered,
   onDraftChange,
   advanceLabel = 'Done',
   reflectionCollapsed = false,
@@ -434,6 +441,7 @@ export function ResolvePrompt({
       // not the skip's.
       const ack = readAcknowledgement(landed, outcome, ratingBefore, ratingExplained);
       setAnswered(ack);
+      onAnswered?.();
       if (ack.note?.endsWith(RATING_WHY)) onRatingExplained?.();
       // Said, as Log's "Saved." is: the screen changed under the finger and
       // nothing was announced (playtest 2026-11-08, finding 38).
@@ -719,6 +727,8 @@ export function ResolvePrompt({
         prediction={prediction}
         onChanged={setPrediction}
         onClose={() => onResolved?.()}
+        // A typed note asks before a swipe, as the reflection does (D62).
+        onDirtyChange={(d) => onDraftChange?.(d ? 'note' : '')}
       />
     );
   }

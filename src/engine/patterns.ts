@@ -219,3 +219,22 @@ export function categoryCounts(resolved: readonly Prediction[]): Partial<Record<
   }
   return out;
 }
+
+/**
+ * The same plain counts over every category (D62): what was said on average
+ * and how many happened, for the first look at 10 scored answers while the
+ * rating calibrates. Counts only, never a lean. Null with nothing scored.
+ */
+export function overallCounts(resolved: readonly Prediction[]): CategoryCounts | null {
+  let n = 0;
+  let happened = 0;
+  let stated = 0;
+  for (const p of resolved) {
+    if (!isYesNo(p)) continue;
+    n += 1;
+    stated += p.confidence;
+    if (p.status === 'resolved_yes') happened += 1;
+  }
+  return n === 0 ? null : { resolved: n, happened, mean_stated: stated / n };
+}
+

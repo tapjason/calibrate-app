@@ -1,6 +1,12 @@
 import type { UserStat } from '@/types';
 
-import { ratingHeadline, ratingMeaningLine, spreadThinLine } from './ratingHeadline';
+import {
+  chartNamesLean,
+  perfectLine,
+  ratingHeadline,
+  ratingMeaningLine,
+  spreadThinLine,
+} from './ratingHeadline';
 
 const userStat = (overrides: Partial<UserStat> = {}): UserStat => ({
   user_id: 'u1',
@@ -52,8 +58,8 @@ describe('ratingMeaningLine', () => {
       'Range by range, what you said averaged about 14 points away from how often those things happened, each range counting by how many answers it holds.',
     );
     expect(ratingMeaningLine(85.5)).toMatch(/about 14 points/);
-    expect(ratingMeaningLine(99, 'band')).toBe(
-      'Band by band, what you said averaged about 1 point away from how often those things happened, each band counting by how many answers it holds.',
+    expect(ratingMeaningLine(99)).toBe(
+      'Range by range, what you said averaged about 1 point away from how often those things happened, each range counting by how many answers it holds.',
     );
     expect(ratingMeaningLine(100)).toBe(
       'Range by range, what you said matched how often those things happened.',
@@ -72,5 +78,27 @@ describe('spreadThinLine', () => {
     expect(spreadThinLine(15, [8, 7], 20)).toBeNull();
     expect(spreadThinLine(19, [19], 20)).toBeNull();
     expect(spreadThinLine(30, [20, 10], 20)).toBeNull();
+  });
+});
+
+describe('perfectLine (D62)', () => {
+  const ref = { typical: 86, low: 80, high: 91 };
+  it('says what perfect calibration scores on the same answers, and where the rating sits', () => {
+    expect(perfectLine(85, ref, 20)).toBe(
+      'Even perfectly calibrated, 20 answers like yours would typically score about 86, since luck alone moves each range. At this count, your score can’t be told apart from perfect calibration.',
+    );
+    expect(perfectLine(72, ref, 20, true)).toMatch(/Your score is further off than luck alone explains\.$/);
+    expect(perfectLine(95, ref, 20)).toMatch(/Your score is above that, which luck can do too\.$/);
+  });
+
+  // Record audit of step 178: never "can't be told apart" over a chart that
+  // names a lean, nor "further off than luck" over "no clear lean".
+  it('never contradicts the chart', () => {
+    expect(perfectLine(85, ref, 20, true)).toMatch(/though the chart shows a range that leans\.$/);
+    expect(perfectLine(85, ref, 20, true)).not.toMatch(/told apart/);
+    expect(perfectLine(72, ref, 20, false)).toMatch(/each range\.$/);
+    expect(chartNamesLean('both')).toBe(true);
+    expect(chartNamesLean('calibrated')).toBe(false);
+    expect(chartNamesLean(null)).toBe(false);
   });
 });

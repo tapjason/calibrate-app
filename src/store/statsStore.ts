@@ -27,6 +27,8 @@ import {
   isRatingProvisional,
   isScoreProvisional,
   nextBadge,
+  perfectReference,
+  badgeChangesSince,
 } from '@/engine/calibration';
 
 /** For the Brier line's words (step 173), so components needn't reach the engine. */
@@ -45,14 +47,23 @@ import { categoriesIn } from '@/engine/categories';
 import { unlockEstimate } from '@/engine/pace';
 import {
   categoryCounts,
+  overallCounts,
   furthestOffCategory,
   weekChange,
   type CategoryMiss,
   type WeekChange,
 } from '@/engine/patterns';
-import { buildWrapped, type WrappedSpan, type WrappedSummary } from '@/engine/wrapped';
 import {
+  buildWrapped,
+  weekWindow,
+  yearWindow,
+  type WrappedSpan,
+  type WrappedSummary,
+} from '@/engine/wrapped';
+import {
+  BRIER_MIN_N,
   CATEGORIES,
+  type BadgeChange,
   MIN_N_OVERALL,
   type BucketStat,
   type CalibrationResult,
@@ -62,6 +73,7 @@ import {
   type Milestone,
   type TierDrop,
   type NextBadgeTarget,
+  type PerfectReference,
   type Prediction,
   type RatingRange,
   type UnlockEstimate,
@@ -115,6 +127,11 @@ interface StatsState {
   /** Whether the Brier score beats the base rate by more than luck (step 173). */
   brierEdge: BrierEdge | null;
   /**
+   * What a perfectly calibrated person would score on the same answers (D62),
+   * beside the rating once it's unlocked; null before.
+   */
+  perfect: PerfectReference | null;
+  /**
    * The confidence range this user's recent logs occupy — pending included,
    * because what it measures is the logging habit, not resolved outcomes.
    * Feeds the Log screen's range-coverage nudge via `coverageNudgeNow()`.
@@ -145,6 +162,8 @@ interface StatsState {
   furthestOff: CategoryMiss | null;
   /** Each category's plain counts over scored answers (roadmap D53). */
   categoryCounts: Partial<Record<Category, CategoryCounts>>;
+  /** The same over every category (D62), for the first look at 10. */
+  overallCounts: CategoryCounts | null;
   /** The category's bucket a stated confidence falls in, or null. */
   categoryBucketFor: (category: Category, confidence: number) => BucketStat | null;
   /**
@@ -234,11 +253,13 @@ type DerivedStats = Pick<
   | 'categoryRanges'
   | 'furthestOff'
   | 'categoryCounts'
+  | 'overallCounts'
   | 'trends'
   | 'ratingRange'
   | 'brier'
   | 'brierBaseline'
   | 'brierEdge'
+  | 'perfect'
   | 'coverageGap'
 > & { userStat: UserStat };
 
@@ -317,13 +338,16 @@ async function rebuildStats(userId: string): Promise<DerivedStats> {
     categoryRanges,
     furthestOff: furthestOffCategory(resolved),
     categoryCounts: categoryCounts(resolved),
+    overallCounts: overallCounts(resolved),
     trends: buildTrendSummary(resolved),
     ratingRange: computeRatingRange(resolved),
     brier: computeBrier(resolved),
     brierBaseline: computeBrierBaseline(resolved),
-    // Shown only once the rating unlocks, so not bootstrapped before
-    // (code review 2026-11-12).
-    brierEdge: userStat.rating_is_provisional ? null : brierEdge(resolved),
+    // Shown only from BRIER_MIN_N scored answers (D62), so not
+    // bootstrapped before (code review 2026-11-12).
+    brierEdge: userStat.total_resolved < BRIER_MIN_N ? null : brierEdge(resolved),
+    // Beside the rating only, so only once it's unlocked (D62).
+    perfect: userStat.rating_is_provisional ? null : perfectReference(resolved),
     coverageGap: computeCoverageGap(all),
   };
 }
@@ -337,11 +361,13 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   categoryRanges: {},
   furthestOff: null,
   categoryCounts: {},
+  overallCounts: null,
   trends: EMPTY_TRENDS,
   ratingRange: null,
   brier: null,
   brierBaseline: null,
   brierEdge: null,
+  perfect: null,
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
   tierDrop: null,
@@ -399,12 +425,14 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       categoryRanges: ranges,
       furthestOff: furthestOffCategory(resolved),
       categoryCounts: categoryCounts(resolved),
+      overallCounts: overallCounts(resolved),
       trends: buildTrendSummary(resolved),
       ratingRange: computeRatingRange(resolved),
       brier: computeBrier(resolved),
       brierBaseline: computeBrierBaseline(resolved),
       // No user stat here, so no Brier line to word.
       brierEdge: null,
+      perfect: null,
       coverageGap: computeCoverageGap([...pending, ...answered]),
     });
   },
@@ -465,6 +493,27 @@ export function wrappedSummary(
   now: Date = new Date(),
 ): WrappedSummary {
   return buildWrapped(scoredOnly(resolved), span, now);
+}
+
+/**
+ * The badges gained or lost over a recap's span (D62), from the scored
+ * answers, for the recap to lead with. Called through here so Share never
+ * imports the engine.
+ */
+export function wrappedBadgeChanges(
+  resolved: readonly Prediction[],
+  span: WrappedSpan,
+  now: Date = new Date(),
+): BadgeChange[] {
+  const { start } = span === 'week' ? weekWindow(now) : yearWindow(now);
+  // "Now" is the badge Insights shows. Never "Back to Getting started": that
+  // tier stays off anything shared (D27).
+  const current = new Map(
+    useStatsStore.getState().categoryStats.map((c) => [c.category, c.badge_level] as const),
+  );
+  return badgeChangesSince(scoredOnly(resolved), start, current).filter(
+    (c) => c.to !== 'guesser',
+  );
 }
 
 /**

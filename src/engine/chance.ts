@@ -110,3 +110,34 @@ export function bootstrapRange<T>(
     high: quantile(values, (1 + mass) / 2),
   };
 }
+
+/**
+ * The median and middle `mass` of a statistic over simulated outcomes: each
+ * item comes true with its own probability, `resamples` times over (D62).
+ * Seeded, so the same data gives the same answer. Null for no items.
+ */
+export function simulatedRange(
+  probabilities: readonly number[],
+  statistic: (outcomes: readonly boolean[]) => number,
+  opts: { resamples?: number; mass?: number; seed?: number } = {},
+): { median: number; low: number; high: number } | null {
+  if (probabilities.length === 0) return null;
+  const resamples = opts.resamples ?? RATING_RESAMPLES;
+  const mass = opts.mass ?? RATING_RANGE_MASS;
+  const random = seeded(opts.seed ?? 0x85ebca6b);
+  const values: number[] = [];
+  const outcomes: boolean[] = new Array(probabilities.length);
+  for (let r = 0; r < resamples; r++) {
+    for (let i = 0; i < probabilities.length; i++) {
+      outcomes[i] = random() < probabilities[i]!;
+    }
+    values.push(statistic(outcomes));
+  }
+  values.sort((a, b) => a - b);
+  return {
+    median: quantile(values, 0.5),
+    low: quantile(values, (1 - mass) / 2),
+    high: quantile(values, (1 + mass) / 2),
+  };
+}
+

@@ -7,13 +7,19 @@ import { APP_NAME } from '@/constants/app';
 import { WRAPPED_DEFAULT_THEME, type CardTheme } from '@/constants/cardThemes';
 import { CARD_MAX_SCALE, FONT_FAMILY, paletteOn } from '@/constants/theme';
 import type { WrappedSummary } from '@/engine/wrapped';
-import type { Category, Prediction } from '@/types';
+import type { BadgeChange, Category, Prediction } from '@/types';
 import { categoryTitle } from '@/store/categoryStore';
 
 import { hiddenCountLine } from './cardCopy';
 import type { BadgeProgress } from './nextBadgeCopy';
 import { CARD_RADIUS } from './ScaledCanvas';
-import { streakLine, wrappedCardSummary, wrappedStory, type OverallProgress } from './wrappedCopy';
+import {
+  badgeNewsLine,
+  streakLine,
+  wrappedCardSummary,
+  wrappedStory,
+  type OverallProgress,
+} from './wrappedCopy';
 
 const NONE_HIDDEN: ReadonlySet<Category> = new Set();
 
@@ -27,6 +33,11 @@ interface WrappedCardProps {
   hasOpen?: boolean;
   /** The badge closest to hand, from nextBadgeProgress(); null hides the row. */
   badge?: BadgeProgress | null;
+  /**
+   * A badge gained or lost over the span (D62): it leads, in the next badge's
+   * place, since it's the person's own news.
+   */
+  badgeNews?: BadgeChange | null;
   /** Cosmetic only (Plus); the free theme is the default. */
   theme?: CardTheme;
   /**
@@ -60,6 +71,7 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
     upcoming = 0,
     hasOpen = false,
     badge,
+    badgeNews = null,
     theme = WRAPPED_DEFAULT_THEME,
     showTitles = false,
     hidden = NONE_HIDDEN,
@@ -74,8 +86,9 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
   // Everything else the card shows, for a screen reader: the badge line,
   // the categories and the two calls (blind playtest 2026-11-04, second
   // round, run 2, heard the card without its badge line).
+  const newsText = badgeNews ? badgeNewsLine(badgeNews, summary.span) : null;
   const spokenRest = [
-    badge?.text ?? null,
+    newsText ?? badge?.text ?? null,
     shown.length > 0
       ? `By category: ${shown.map((c) => `${categoryTitle(c.category)}, ${c.resolved} scored`).join('; ')}`
       : null,
@@ -176,7 +189,24 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
         </Text>
       )}
 
-      {badge && (
+      {badgeNews && newsText && (
+        <View style={styles.badgeRow} testID="wrapped-badge-news">
+          <LensEmblem
+            tier={badgeNews.to}
+            size={44}
+            inkColor={theme.accent}
+            progressColor={theme.foreground}
+            palette={paletteOn(theme.background)}
+          />
+          <Text
+            maxFontSizeMultiplier={CARD_MAX_SCALE}
+            style={[styles.badgeText, { color: theme.foreground }]}
+          >
+            {newsText}
+          </Text>
+        </View>
+      )}
+      {!badgeNews && badge && (
         <View style={styles.badgeRow} testID="wrapped-next-badge">
           <LensEmblem
             tier={badge.badge}

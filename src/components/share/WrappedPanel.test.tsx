@@ -328,7 +328,7 @@ describe('WrappedPanel', () => {
     seed(run(3, 2));
     render(<WrappedPanel span="week" />);
 
-    expect(screen.getByText(/Nothing under 40% this week/)).toBeTruthy();
+    expect(screen.getByText(/Nothing under 40% answered this week/)).toBeTruthy();
   });
 
   it('captures the recap and opens the share sheet', async () => {

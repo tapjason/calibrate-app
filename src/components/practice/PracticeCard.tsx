@@ -8,6 +8,8 @@ import { practiceCardCopy } from './practiceCopy';
 
 interface PracticeCardProps {
   onOpen: () => void;
+  /** Nothing real answered yet (D62): "While you wait". */
+  beforeFirstAnswer?: boolean;
   testID?: string;
 }
 
@@ -18,7 +20,11 @@ interface PracticeCardProps {
  * row). Real predictions resolve when they come due, which the person doesn't
  * choose, so this is the reason to open the app on a day when nothing is due.
  */
-export function PracticeCard({ onOpen, testID = 'practice-card' }: PracticeCardProps) {
+export function PracticeCard({
+  onOpen,
+  beforeFirstAnswer = false,
+  testID = 'practice-card',
+}: PracticeCardProps) {
   // Subscribed so the row follows each answer; the day is read at render, and
   // Today re-renders when the day turns (useLocalDay).
   usePracticeStore((s) => s.answers);
@@ -26,7 +32,7 @@ export function PracticeCard({ onOpen, testID = 'practice-card' }: PracticeCardP
   const day = store.today();
   const total = store.questionsFor(day).length;
   if (total === 0) return null;
-  const copy = practiceCardCopy(store.dayTally(day), total);
+  const copy = practiceCardCopy(store.dayTally(day), total, beforeFirstAnswer);
 
   return (
     <Pressable

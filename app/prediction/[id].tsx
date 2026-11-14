@@ -57,6 +57,10 @@ export default function PredictionScreen() {
           // "Log it again" from an answered one (roadmap D56): Log takes this
           // sheet's place, as from Resolve.
           onPredictAgain={(p) => router.replace(`/log?again=${encodeURIComponent(p.id)}` as never)}
+          // "Use another number" on the day it was made (D62): Log takes this
+          // sheet's place, starting from the saved prediction; unsaved edits
+          // still ask first.
+          onRenumber={(p) => router.replace(`/log?renumber=${encodeURIComponent(p.id)}` as never)}
           onDirtyChange={setDirty}
         />
       </ScrollView>

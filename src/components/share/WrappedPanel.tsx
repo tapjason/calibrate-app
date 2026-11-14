@@ -20,7 +20,12 @@ import { shareCard, type ShareOutcome } from '@/share/export';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePredictionStore } from '@/store/predictionStore';
-import { useStatsStore, wrappedSummary, type WrappedSpan } from '@/store/statsStore';
+import {
+  useStatsStore,
+  wrappedBadgeChanges,
+  wrappedSummary,
+  type WrappedSpan,
+} from '@/store/statsStore';
 import { useCategoryStore } from '@/store/categoryStore';
 
 import { cardHiddenCategories } from './cardCopy';
@@ -115,6 +120,14 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     () => wrappedSummary(resolved, span, new Date()),
     [resolved, span],
   );
+  // The span's own badge news leads (D62), among the categories on the card.
+  // Memoized on the answers alone: it bootstraps each category twice.
+  const badgeChanges = useMemo(
+    () => wrappedBadgeChanges(resolved, span, new Date()),
+    [resolved, span],
+  );
+  const badgeNews = badgeChanges.find((c) => !hidden.has(c.category)) ?? null;
+  const ratingRange = useStatsStore((s) => s.ratingRange);
   const hasTitles = summary.boldest_hit !== null || summary.biggest_miss !== null;
   const revealStyle = useWeeklyReveal(
     new Date(summary.end).toDateString(),
@@ -160,6 +173,9 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                     streak: streakShown ? userStat.current_streak : 0,
                     // Insights' read, for the week's card to set beside its own.
                     lean: chartVerdict(buckets, userStat.rating_is_provisional)?.title ?? null,
+                    // The year's card carries the rating (D62).
+                    rating: userStat.calibration_rating,
+                    giveOrTake: ratingRange?.giveOrTake ?? 0,
                   }
                 : null
             }
@@ -172,6 +188,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                 Object.entries(categoryRanges).map(([c, r]) => [c, r?.giveOrTake ?? 0]),
               ),
             )}
+            badgeNews={badgeNews}
             theme={theme}
             showTitles={showTitles}
             hidden={hidden}

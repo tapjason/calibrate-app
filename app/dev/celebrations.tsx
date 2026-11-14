@@ -22,10 +22,6 @@ const SAMPLES: { label: string; milestone: Milestone }[] = [
     milestone: { kind: 'tier_up', category: 'work', badge: 'oracle', from: 'sharp' },
   },
   { label: 'Score unlock', milestone: { kind: 'rating_unlocked', rating: 78 } },
-  {
-    label: 'Category unlock',
-    milestone: { kind: 'category_unlocked', category: 'finance', score: 64 },
-  },
 ];
 
 // Nothing done yet today: since D17 one prediction counts, so a day with one

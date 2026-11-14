@@ -215,7 +215,7 @@ export function CategoryChips({
               setName(next);
               setProblem(null);
             }}
-            placeholder="⚽ Football, Family, the market"
+            placeholder="⚽ Football, School, Family"
             maxLength={CATEGORY_NAME_MAX}
             autoFocus
             onSubmit={() => {

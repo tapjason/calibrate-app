@@ -52,7 +52,7 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
           predicted, 55.5 taken). */}
       <Text style={styles.advice} testID="warmup-bridge">
         Trivia is the warm-up. People are most overconfident about their own plans:
-        students who expected to finish their thesis in 34 days took 56. Make your
+        students who expected to finish a big school project in 34 days took 56. Make your
         first one about tomorrow.
       </Text>
 
@@ -83,8 +83,10 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
           (blind playtest 2026-11-01, run 1); the result is where it's needed
           first (roadmap D36). */}
       <Text style={styles.advice} testID="warmup-not-right">
+        {/* "Shouldn't happen": the verb was missing (blind playtest 2026-11-13d,
+            run 7, an English teacher). */}
         It isn’t about being right. A 60% call that doesn’t happen isn’t a mistake: about 4 in
-        10 of them shouldn’t.
+        10 of them shouldn’t happen.
       </Text>
 
       {/* The headline reads all ten together; a band of two or eight says

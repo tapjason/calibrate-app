@@ -41,7 +41,7 @@ const NUMBER_WORDS: Record<number, string> = { 10: 'ten' };
  * (blind playtests 2026-11-04 and 11-05).
  */
 export function warmupChartNote(answered: number): string {
-  return `The read above takes all ${NUMBER_WORDS[answered] ?? answered} together, which says more than any one band.`;
+  return `The read above takes all ${NUMBER_WORDS[answered] ?? answered} together, which says more than any one range.`;
 }
 
 const ADVICE = {

@@ -190,7 +190,8 @@ describe('plan selector copy', () => {
   });
 
   it('labels the one button by what the tap does', () => {
-    expect(ctaLabel(annual)).toBe('Start 1 month free');
+    // What follows, on the button (D62).
+    expect(ctaLabel(annual)).toMatch(/^Start 1 month free, then \$29\.99\sa\syear$/);
     expect(ctaLabel(monthly)).toBe('Subscribe for $4.99 a month');
     expect(ctaLabel({ ...annual, trialDays: null, trialPeriod: null })).toBe(
       'Subscribe for $29.99 a year',

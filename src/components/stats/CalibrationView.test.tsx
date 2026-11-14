@@ -24,6 +24,13 @@ const userStat = (overrides: Partial<UserStat> = {}): UserStat => ({
   ...overrides,
 });
 
+/** Opens "More about your record", where the fine print lives (D62). */
+function fine<T extends ReturnType<typeof render>>(view: T): T {
+  const toggle = view.queryByTestId('stats-fine-toggle');
+  if (toggle) fireEvent.press(toggle);
+  return view;
+}
+
 describe('CalibrationView headline', () => {
   it('shows progress-to-unlock, not a number, while provisional', () => {
     const { queryByTestId, getByTestId, getByText } = render(
@@ -274,8 +281,8 @@ describe('CalibrationView rating range', () => {
 
 // Roadmap D24: the Brier score, one quiet line, only once the rating unlocks.
 describe('CalibrationView Brier score', () => {
-  it('shows one line under the rating', () => {
-    const { getByTestId } = render(
+  it('shows one line under the rating, in the fine print', () => {
+    const { getByTestId, queryByTestId } = fine(render(
       <CalibrationView
         userStat={userStat({ total_resolved: 145, rating_is_provisional: false })}
         calibration={{ rating: 92, buckets: [] }}
@@ -284,10 +291,25 @@ describe('CalibrationView Brier score', () => {
         brier={0.1423}
         brierBaseline={{ rate: 0.64, score: 0.2304 }}
       />,
-    );
+    ));
+    expect(queryByTestId('stats-fine-toggle')).toHaveTextContent('Hide the fine print');
     expect(getByTestId('stats-brier')).toHaveTextContent(
       'Brier score\u00A00.14, lower is better. Saying 64%\u00A0every time, how often your calls came true, would score\u00A00.23.',
     );
+  });
+
+  it('waits for 50 scored answers (D62)', () => {
+    const { queryByTestId } = fine(render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 49, rating_is_provisional: false })}
+        calibration={{ rating: 88, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        brier={0.2}
+        brierBaseline={{ rate: 0.64, score: 0.2304 }}
+      />,
+    ));
+    expect(queryByTestId('stats-brier')).toBeNull();
   });
 
   it('stays out of sight while calibrating', () => {
@@ -327,7 +349,7 @@ describe('CalibrationView first badge', () => {
 
   it('says a first badge comes at 20 answered in a category', () => {
     expect(view([]).getByTestId('badges-first')).toHaveTextContent(
-      'A category earns its first badge at 20 scored answers there: Tracker, or higher if its score is already high enough.',
+      'A category earns its first badge at 20 scored answers there: Tracker, or higher if its score is already high enough. Until then it shows Getting started, which means fewer than 20 scored there.',
     );
     expect(view([cat('health', 19)]).getByTestId('badges-first')).toBeTruthy();
   });
@@ -341,7 +363,7 @@ describe('CalibrationView first badge', () => {
 describe('CalibrationView skipped answers', () => {
   it("says how many answers were Can't tell, once the rating unlocks", () => {
     const view = (skippedCount: number, total = 161, answered = total + skippedCount) =>
-      render(
+      fine(render(
         <CalibrationView
           userStat={userStat({ total_resolved: total, rating_is_provisional: total < 20 })}
           calibration={{ rating: 87, buckets: [] }}
@@ -350,7 +372,7 @@ describe('CalibrationView skipped answers', () => {
           skippedCount={skippedCount}
           answeredCount={answered}
         />,
-      );
+      ));
     expect(view(2).getByTestId('stats-skipped')).toHaveTextContent(
       '2 answers are Can’t tell, so they aren’t scored.',
     );
@@ -377,7 +399,7 @@ describe('CalibrationView skipped answers', () => {
 // Roadmap D41: answers given the day they were logged, said beside the rating.
 describe('CalibrationView same-day answers', () => {
   const view = (sameDayCount: number, total: number) =>
-    render(
+    fine(render(
       <CalibrationView
         userStat={userStat({ total_resolved: total, rating_is_provisional: total < 20 })}
         calibration={{ rating: 87, buckets: [] }}
@@ -385,7 +407,7 @@ describe('CalibrationView same-day answers', () => {
         nextBadges={{}}
         sameDayCount={sameDayCount}
       />,
-    );
+    ));
 
   it('says how many, before the rating unlocks too', () => {
     expect(view(3, 161).getByTestId('stats-same-day')).toHaveTextContent(
@@ -403,7 +425,7 @@ describe('CalibrationView same-day answers', () => {
 // Roadmap D45: deletions after an answer or the due day, said beside the rating.
 describe('CalibrationView deleted predictions', () => {
   const view = (deletedCount: number, total: number) =>
-    render(
+    fine(render(
       <CalibrationView
         userStat={userStat({ total_resolved: total, rating_is_provisional: total < 20 })}
         calibration={{ rating: 87, buckets: [] }}
@@ -411,7 +433,7 @@ describe('CalibrationView deleted predictions', () => {
         nextBadges={{}}
         deletedCount={deletedCount}
       />,
-    );
+    ));
 
   it('says how many, and that only this phone keeps the count, before the rating unlocks too', () => {
     expect(view(2, 161).getByTestId('stats-deleted')).toHaveTextContent(
@@ -572,11 +594,11 @@ describe('CalibrationView step 173', () => {
 
   it('counts late due-date moves on this phone', () => {
     expect(postponedLine(1)).toBe(
-      '1 prediction had its due date moved later the day before it or after. Only this phone keeps this count.',
+      '1 prediction had its due date moved later, or its words changed, within a day of its due day. Only this phone keeps this count.',
     );
-    const view = render(
+    const view = fine(render(
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} postponedCount={2} />,
-    );
+    ));
     expect(view.getByTestId('stats-postponed')).toHaveTextContent(/^2 predictions had their due dates moved later/);
     view.rerender(
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,
@@ -597,6 +619,39 @@ describe('CalibrationView step 173', () => {
     );
     expect(getByTestId('stats-furthest-off')).toHaveTextContent(
       /That gap is already in its score, 80, which still clears Forecaster's 70 at its low end\.$/,
+    );
+  });
+});
+
+// D62 (blind playtest 2026-11-13d, findings 1 and 4).
+describe('CalibrationView, what luck alone gives', () => {
+  it('sets the rating beside what perfect calibration scores on the same answers', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 20, rating_is_provisional: false, calibration_rating: 85 })}
+        calibration={{ rating: 85, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        perfect={{ typical: 86, low: 80, high: 91 }}
+      />,
+    );
+    expect(getByTestId('stats-perfect')).toHaveTextContent(
+      /^Even perfectly calibrated, 20 answers like yours would typically score about 86/,
+    );
+  });
+
+  it('gives a first look in plain counts from 10 scored answers', () => {
+    const { getByTestId } = render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12 })}
+        calibration={EMPTY_CAL}
+        categoryStats={[]}
+        nextBadges={{}}
+        overallCounts={{ resolved: 12, happened: 6, mean_stated: 75 }}
+      />,
+    );
+    expect(getByTestId('rating-provisional-first-look')).toHaveTextContent(
+      'First look: you said about 75% on average, and 6 of your 12 scored predictions happened. Too few to rate yet.',
     );
   });
 });

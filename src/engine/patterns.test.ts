@@ -7,6 +7,7 @@ import {
   classifyDirection,
   dayOfWeekAccuracy,
   furthestOffCategory,
+  overallCounts,
   weakestDayOfWeek,
   weekChange,
 } from './patterns';
@@ -238,5 +239,17 @@ describe('categoryCounts', () => {
     expect(got.health).toEqual({ resolved: 2, happened: 1, mean_stated: 85 });
     expect(got.work).toEqual({ resolved: 1, happened: 0, mean_stated: 60 });
     expect(got.finance).toBeUndefined();
+  });
+});
+
+describe('overallCounts (D62)', () => {
+  it('counts every scored yes or no across categories', () => {
+    const counts = overallCounts([
+      p({ category: 'work', confidence: 60, status: 'resolved_yes' }),
+      p({ category: 'health', confidence: 80, status: 'resolved_no' }),
+      p({ category: 'health', confidence: 90, status: 'skipped' }),
+    ]);
+    expect(counts).toEqual({ resolved: 2, happened: 1, mean_stated: 70 });
+    expect(overallCounts([])).toBeNull();
   });
 });

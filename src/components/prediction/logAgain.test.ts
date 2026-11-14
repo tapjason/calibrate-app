@@ -1,6 +1,6 @@
 import type { Prediction } from '@/types';
 
-import { leadDays, logAgainDraft, noonInDays } from './logAgain';
+import { leadDays, logAgainDraft, noonInDays, renumberDraft } from './logAgain';
 
 const resolved = (created: string, due: string): Prediction => ({
   id: 'p1',
@@ -43,5 +43,18 @@ describe('logAgain (roadmap step 22)', () => {
   it('lands on local noon, the same instant as the Log date chips', () => {
     const due = new Date(noonInDays(7, new Date('2026-10-04T22:00:00')));
     expect([due.getDate(), due.getHours(), due.getMinutes()]).toEqual([11, 12, 0]);
+  });
+});
+
+describe('renumberDraft (D62)', () => {
+  it('starts from the words, category and own due date, replacing the original', () => {
+    const p = { ...resolved('2026-11-13T09:00:00', '2026-11-16T12:00:00'), status: 'pending' as const };
+    expect(renumberDraft(p)).toEqual({
+      sourceId: 'renumber:p1',
+      title: p.title,
+      category: p.category,
+      dueIso: p.due_date,
+      replaces: 'p1',
+    });
   });
 });

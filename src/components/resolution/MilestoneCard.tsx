@@ -29,20 +29,27 @@ export function milestoneCopy(m: Milestone): { title: string; body: string } {
     case 'rating_unlocked':
       return {
         title: 'Your calibration score is unlocked',
-        body: `${MIN_N_OVERALL} scored answers. From here the number means something.`,
+        // Not "means something" (D62): at 20 it's give or take several
+        // points, and perfect calibration itself scores about 85–88.
+        body: `${MIN_N_OVERALL} scored answers. Your rating starts here, give or take several points, and settles as you answer more.`,
       };
     case 'tier_up':
       return {
-        title: `${BADGE_META[m.badge].label} in ${categoryLabel(m.category)}`,
+        // Said as new (D62): a big tile right after "No, I didn't sleep"
+        // read as a mistake (blind playtest 2026-11-13d, run 3).
+        title: `New badge: ${BADGE_META[m.badge].label} in ${categoryLabel(m.category)}`,
         body: BADGE_META[m.badge].tagline,
-      };
-    case 'category_unlocked':
-      return {
-        title: `Your ${categoryLabel(m.category)} score is unlocked`,
-        body: 'Enough scored answers in this category for its score to count.',
       };
   }
 }
+
+/**
+ * Under a badge earned (D62): one earned on a miss read as an error (blind
+ * playtest 2026-11-13d, run 3). The same after Yes and No, which get
+ * identical feedback (CLAUDE.md), so it doesn't name the No.
+ */
+export const BADGE_FOLLOWS =
+  'Badges follow how well your numbers match what happens, not how often you’re right.';
 
 const EMBLEM_SIZE = 64;
 
@@ -80,7 +87,9 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
     transform: reduceMotion ? [] : [{ scale: 0.9 + 0.1 * shown.value }],
   }));
 
-  const copy = milestoneCopy(milestone);
+  const base = milestoneCopy(milestone);
+  const copy =
+    milestone.kind === 'tier_up' ? { ...base, body: `${base.body} ${BADGE_FOLLOWS}` } : base;
 
   return (
     <Animated.View
@@ -102,7 +111,7 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
         </View>
       ) : (
         <Text style={styles.number} maxFontSizeMultiplier={DISPLAY_MAX_SCALE}>
-          {milestone.kind === 'rating_unlocked' ? milestone.rating : milestone.score}
+          {milestone.rating}
         </Text>
       )}
       <View style={styles.text}>

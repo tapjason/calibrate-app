@@ -86,3 +86,16 @@ describe('practiceRecordCopy', () => {
     for (const line of lines) expect(line).not.toMatch(/improve|score|rating|better/i);
   });
 });
+
+describe('practiceCardCopy before the first answer (D62)', () => {
+  it('says it has answers today while the first prediction waits', () => {
+    expect(practiceCardCopy({ answered: 0, correct: 0, expected: 0 }, 3, true)).toMatchObject({
+      title: 'While you wait: today’s practice',
+      detail: '3 questions, answers today, about 30\u00A0seconds',
+    });
+    // Started: the usual words.
+    expect(practiceCardCopy({ answered: 1, correct: 1, expected: 0.8 }, 3, true).title).toBe(
+      'Today’s practice',
+    );
+  });
+});

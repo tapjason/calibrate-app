@@ -25,7 +25,13 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { confidenceRangeLow } from '@/store/statsStore';
-import { categoryOptions, categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import {
+  categoryOptions,
+  categoryTitle,
+  isOwnCategory,
+  useCategoryStore,
+} from '@/store/categoryStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import type { Category, Prediction } from '@/types';
 
 
@@ -42,10 +48,19 @@ export default function HistoryScreen() {
   // ran about 4,000 pt, most of them empty (playtest 2026-11-08b, finding 21).
   useCategoryStore((s) => s.defs);
   const used = new Set([...resolved, ...pending].map((p) => p.category));
+  // While the words are hidden, no chip names a category the person named
+  // (D62, policy audit: "All · Work · Divorce" said what the cards didn't).
+  const hideTitles = useSettingsStore((s) => s.hideTitles);
   const filters: (Category | 'all')[] = [
     'all',
-    ...categoryOptions({ includeHidden: true }).filter((c) => used.has(c) || c === filter),
+    ...categoryOptions({ includeHidden: true }).filter(
+      (c) => (used.has(c) || c === filter) && !(hideTitles && isOwnCategory(c)),
+    ),
   ];
+  // A filter on one of them goes back to All when the switch goes on.
+  useEffect(() => {
+    if (hideTitles && filter !== 'all' && isOwnCategory(filter)) setFilter('all');
+  }, [hideTitles, filter]);
   // A confidence range arrives from a tap on Stats' coverage row (roadmap
   // step 51): the predictions behind one dot on the chart.
   const range = parseRangeParam(useLocalSearchParams<{ range?: string }>().range);

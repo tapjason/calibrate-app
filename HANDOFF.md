@@ -1,8 +1,36 @@
 # Handoff
 
-**Branch:** `builder/step-173-owner-picks` (step 173, D59, 2026-11-12; rounds 18–19 and steps 174–176, 2026-11-13; all pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/step-178-owner-picks` (step 178, D62, 2026-11-13), from `builder/step-177-round20` (step 177 and rounds 20–21; master is at step 177), from `builder/step-173-owner-picks` (step 173, D59, 2026-11-12; rounds 18–19 and steps 174–176, 2026-11-13; all pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
+
+**Step 178 (2026-11-13), the calls after round 21** (roadmap D62, BUILT_LOG row 178; owner: "Go with your recommendations for all open decisions, and start the building"). Branch `builder/step-178-owner-picks`, from `c366ff9`. JS only: a reload.
+- **The record:**
+  - a due-date move on the day the prediction was made isn't counted (round 21 #2);
+  - new words on the eve of the due day or after are counted beside late moves, and Edit says so (`rewordingCounts`);
+  - beside the rating, what perfect calibration would score on the same answers (`perfectReference`, about 85–88 at 20 answers), on Insights and How scoring works; the unlock card no longer says "the number means something";
+  - the Brier line from 50 scored answers, with flat words, in the fine print.
+- **Log:** "Use another number" in Edit on the day a prediction was made: Log as "Another number", the original replaced on save, uncounted.
+- **Before 20:** "First look: you said about 75%… 6 of your 12 scored predictions happened. Too few to rate yet." from 10; "While you wait: today's practice" before the first answer; the Warm-up result one tap away on Today until the first save.
+- **Privacy:** "Hide the words" also hides a category the person named, on the cards and Today's lines.
+- **Insights:** the fine print (Brier, Can't tell, same-day, deleted, moved) under "More about your record"; "overall" in the multi-range chart titles; the caption says what orange, blue and green mean; "range" everywhere.
+- **Recaps:** lead with a badge gained or lost over the span; the year card shows the rating.
+- **Smaller:** "New badge:" and "A No can earn one…"; school-and-home starter ideas; D56's habit tip only on a repeat; "Got a friend's card?"; the trial button names the renewal price; notes after an answer; the dead category-unlock card removed; round 21's nine no-decision fixes.
+- **Checked on web (8097):** Insights' perfect line and fold (long-time profile), the first look on Today (threshold profile), "Use another number" end to end (one card left, at the new number).
+- **Simulated:** the badge bars for a perfect forecaster (D62 (a)), left as decided.
+- **Reviews:** check passes (2,211 tests).
+  - `code-reviewer`: no blockers; should-fix done (renumber in one transaction, only for one logged today, no kept draft in that mode, a guarded error path; the friend fold said aloud; a typed note asks before a swipe; `perfectReference` cached on the confidences; badge news only for categories answered since, "now" from the store; Share's tab labels capped; the × top-aligned on Log).
+  - `record-auditor`: two blockers fixed (the perfect line could say "can't be told apart" over a chart naming a lean; the caption's green left out the 5-point floor); also the year card's "All time:", the badge line the same after Yes and No, no "Back to Getting started" on a recap.
+  - `policy-auditor`: FAIL on an older gap, fixed: a trial showed to anyone, so a lapsed subscriber would be charged at once; now only when RevenueCat says eligible. History's filter chips no longer name own categories while hidden.
+  - Fixes not re-reviewed.
+- **Needs the owner (from the reviews):**
+  - `docs/app-profile.md` §1 says "Audience: adults"; D62 tuned defaults for teenagers. Keep, or widen (and the crisis pre-filter runs only before a Coach call)?
+  - Re-filing inside the 24-hour window isn't counted, and badge news now shows its result more.
+  - "You're well calibrated overall" leaves out ranges under 10.
+  - Today names a lower tier than the share card while "Hide the words" is on, without saying so.
+  - Whether RevenueCat's eligibility check returns "eligible" on the Test Store and sandbox; "unknown" would hide the trial from new users too.
+- **Not verified on the iPhone:** Edit handing over to Log by `router.replace` (and the Discard sheet); the keyboard over the note field; Share's tabs and the long paywall button at AX5; the back stack after Today's warm-up row.
+- **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-13 (step 178…)".
 
 **Round 21 (2026-11-13), appeal on step 177 with a shuffled cast:** `docs/design/research/playtest-2026-11-13d.md` (plan `round21-plan-2026-11-13.md`), on master `2c3444b`.
 - **Results:**
@@ -230,7 +258,7 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Next step
 
-- **Agent:** steps 157–159 are built; `docs/NEXT_STEPS.md` has what's next.
+- **Agent:** step 179, the native batch (a Face ID lock, `expo-localization`), installed with `npx expo install`, then a new development build the owner runs; after that, a playtest round on step 178.
 - **Owner:** deploy the `coach` Edge Function (`supabase functions deploy coach`) so its prompt says 20; until then the phone re-checks at 20 and drops anything the server allowed at 15–19.
 - **Owner:** decide whether `web-serve.sh stop` should be fixed for Windows pids, so it works unattended.
 - **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168, 158 and 159 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label, the card's strip as a PNG and under Color Filters.
@@ -244,25 +272,22 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Open decisions
 
-- **Owner:**
-  - pricing (P1);
-  - EU trader status;
-  - Pages;
-  - the domain;
-  - email confirmation for strangers;
-  - the 2026-11-08 playtest's group 4 (Insights' hierarchy, the recap's lead) and group 6 (sheet headers, vocabulary, formats); finding 17 there (Share above or below the card's settings);
-  - the eighth round's "needs the owner" findings (5, 7 with `expo-localization`, 8–13, 19, 22, 23, 27's note editing, 30–35);
-  - the tenth round's findings 7 (rules said after they apply) and 19 (statistical caveats an expert would want);
-  - the eleventh round's (`playtest-2026-11-10.md`): findings 3–6, 8, 9, 11, 13–16 and 18–24, and the 90%-plus figure (12). Finding 10's two thresholds is D46 (step 157); the card's dot row in 8 is D47 (step 158); the chart's own calibrated dot is still told from the under one by colour and position only (a hollow dot there is open, finding 8);
-  - from step 157's reviews: the "category score unlocked" celebration can no longer fire (the 20th answer is always the step up to Tracker, which wins): remove it, or have the Tracker card also say the score unlocked; a Coach encouragement may quote a category's score below 20 (older, wider now); Trends' correction table can read a band in a category Insights calls too few to read;
-  - from step 169's reviews: the same-day advice line inside a run would say "Log the next one now" with no button (runs hold due predictions, so only a synced or time-zone edge reaches it); a sheet left open past midnight names yesterday's "tomorrow" until it re-renders (Log's Save names the true date);
-  - from step 170's reviews: a green "on the line" dot beside "No clear lean…" on Today (the words claim less than the colour); "would have matched" rounded to 5 can sit near the number said ("You said about 88%; about 85% would have matched"); deleting a Can't tell isn't counted, so a miss skipped then deleted leaves no trace beside "No answers were Can't tell." (D45's boundary); an added category's own name sits before "calls" on Log's line ("Of your 12 scored Side business calls…");
-  - How scoring works doesn't name the 5-point floor (`direction.ts`), so a dot just outside its bar but uncoloured isn't explained;
-  - the Plus card's sample and "what your 80% really means" now repeat free lines (D57 (d), P1); the App Store text's "as you set it" line (D57 (a));
-  - the twelfth round's (`playtest-2026-11-12.md`): 1 (pin the × on Log, Share and Scoring), 3 (say a changed answer where the eye is; Resolve's "Recorded:" lead), 5 (a plain "am I good", Today's unlabelled 70 / 85 / 90, the Brier line), 6 (a category's own read), 7 (a shared phone), 8 (Increase Contrast, Bold Text), 9's starter ideas and delete layout, 11's "Hidden" word, 12 (Answer all), 13 (rest days after a long streak), 14 (keep a Log draft), 15 (Erase's place), 18 (History's chips), 22 (the card's default categories), 23 (a monthly look);
-  - from `record-auditor` (2026-11-10): History's "happened" counts same-day Yeses, so it isn't the scored count (R11); an open prediction deleted before its due day isn't counted (finding 6, D45's boundary).
+The owner said "go with your recommendations for all open decisions" (2026-11-13); D62
+records the calls. The long list from rounds 8–12 and the step 157–170 reviews is closed
+with it: much of it was settled by steps 171–178 (the pinned ×, a kept Log draft, Today's
+70 / 85 / 90, categories from Log, a shared phone, the category-unlock card), and the rest
+comes back only if a new round finds it again. Left with the owner:
+
+- **Outside the code:**
+  - GitHub Pages for the privacy policy (a 404 for several rounds; submission needs the URL);
+  - prices, P1 (recommended: $34.99 a year, $79.99 lifetime, $4.99 a month; Apple's automatic prices elsewhere);
+  - EU trader status (recommended: launch outside the EU first);
+  - deploy `coach`; email confirmation on, with a custom sender before launch; the domain (not needed for v1); `APP_STORE_PROVIDER_TOKEN`.
+- **The native batch (step 179), approved in principle by the same go:** a Face ID lock (`expo-local-authentication`) and `expo-localization` (US units by Region), then one new development build.
+- **To revisit if wanted:** how strict the badge bars are (D62 (a): a perfect forecaster earns Sharp about 6 times in 10 at 50 answers, Oracle about 5 in 10 at 100).
+- **Not now:** head-to-head with a friend; a then-and-now card; a Trends preview; the day-one streak and goal.
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 167 suites, 1,965 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 179 suites, 2,207 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

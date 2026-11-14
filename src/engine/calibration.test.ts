@@ -10,7 +10,9 @@ import {
   evaluateBadge,
   isRatingProvisional,
   isScoreProvisional,
+  badgeChangesSince,
   nextBadge,
+  perfectReference,
 } from './calibration';
 
 const p = (overrides: Partial<Prediction> = {}): Prediction => ({
@@ -368,5 +370,56 @@ describe('brierEdge', () => {
   it('is the same every time (seeded)', () => {
     const mixed = [...bucketPreds(85, 30, 22), ...bucketPreds(55, 20, 9)];
     expect(brierEdge(mixed)).toBe(brierEdge(mixed));
+  });
+});
+
+describe('perfectReference (D62)', () => {
+  it('puts perfect calibration well under 100 at 20 answers', () => {
+    // Round 21, run 6's mix: 2 at 30%, 1 at 50%, 12 at 70%, 5 at 90%.
+    const mix = [
+      ...bucketPreds(30, 2, 1),
+      ...bucketPreds(50, 1, 1),
+      ...bucketPreds(70, 12, 8),
+      ...bucketPreds(90, 5, 4),
+    ];
+    const ref = perfectReference(mix)!;
+    expect(ref.typical).toBeGreaterThanOrEqual(82);
+    expect(ref.typical).toBeLessThanOrEqual(88);
+    expect(ref.low).toBeLessThan(ref.typical);
+    expect(ref.high).toBeGreaterThan(ref.typical);
+    expect(ref.high).toBeLessThanOrEqual(100);
+  });
+
+  it('climbs toward 100 as answers grow, and ignores the outcomes', () => {
+    const small = perfectReference([...bucketPreds(70, 10, 7), ...bucketPreds(90, 10, 9)])!;
+    const large = perfectReference([...bucketPreds(70, 100, 0), ...bucketPreds(90, 100, 0)])!;
+    expect(large.typical).toBeGreaterThan(small.typical);
+    expect(large.typical).toBeGreaterThanOrEqual(94);
+  });
+
+  it('is the same for the same answers, and null with none scored', () => {
+    const mix = [...bucketPreds(60, 15, 9), ...bucketPreds(85, 10, 8)];
+    expect(perfectReference(mix)).toEqual(perfectReference(mix));
+    expect(perfectReference([])).toBeNull();
+    expect(perfectReference([p({ status: 'skipped' })])).toBeNull();
+  });
+});
+
+describe('badgeChangesSince (D62)', () => {
+  const at = (iso: string) => ({ resolved_at: iso });
+  it('names a badge gained since the span began, by the stats store rule', () => {
+    // 19 answered before the week, the 20th inside it: Tracker or higher now.
+    const before = bucketPreds(70, 19, 13).map((x) => ({ ...x, ...at('2026-11-01T12:00:00.000Z') }));
+    const inside = { ...bucketPreds(70, 1, 1)[0]!, id: 'new', ...at('2026-11-12T12:00:00.000Z') };
+    const changes = badgeChangesSince([...before, inside], '2026-11-06T00:00:00.000Z');
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({ category: 'work', from: 'guesser' });
+    expect(changes[0]!.to).not.toBe('guesser');
+  });
+
+  it('names a badge lost, after any gains, and nothing when nothing changed', () => {
+    const before = bucketPreds(70, 20, 14).map((x) => ({ ...x, ...at('2026-11-01T12:00:00.000Z') }));
+    expect(badgeChangesSince(before, '2026-11-06T00:00:00.000Z')).toEqual([]);
+    expect(badgeChangesSince(before, 'not a date')).toEqual([]);
   });
 });

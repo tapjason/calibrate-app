@@ -3,10 +3,11 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { nextBadgeProgress } from '@/components/share/nextBadgeCopy';
 import { colors, space, type } from '@/constants/theme';
 import { categoryOptions, useCategoryStore } from '@/store/categoryStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Category } from '@/types';
 
-import { homeIdentity } from './IdentityLine';
+import { homeIdentity, namedOnToday } from './IdentityLine';
 
 interface NextBadgeLineProps {
   /** What a badge takes (How scoring works, at Badges), as the identity line does. */
@@ -27,7 +28,9 @@ export function NextBadgeLine({ onPress }: NextBadgeLineProps) {
   // A rename re-renders the line (the identity line's reason).
   useCategoryStore((s) => s.defs);
   const userStat = useStatsStore((s) => s.userStat);
-  const categoryStats = useStatsStore((s) => s.categoryStats);
+  const hideTitles = useSettingsStore((s) => s.hideTitles);
+  // Not a name the person chose while the words are hidden (D62).
+  const categoryStats = namedOnToday(useStatsStore((s) => s.categoryStats), hideTitles);
   const nextBadges = useStatsStore((s) => s.nextBadges);
   const categoryRanges = useStatsStore((s) => s.categoryRanges);
   if (homeIdentity(userStat, categoryStats)) return null;

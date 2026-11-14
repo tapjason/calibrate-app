@@ -430,6 +430,11 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
           ' Grey bars: where a perfectly calibrated dot lands 8 times in 10 with that many predictions. A dot inside its bar can\'t be told apart from perfect calibration.'}
         {/* Only when one is drawn (roadmap D58): nothing else says why a dot
             is grey. Log's track record and the card's label use the same words. */}
+        {/* What the colours mean (D62): the caption named grey only (blind
+            playtest 2026-11-13d, run 6). Position and the region words carry
+            it too, never colour alone. */}
+        {buckets.some((b) => b.total_resolved >= MIN_N_BAND) &&
+          ' Orange, below the line: too sure. Blue, above it: too cautious. Green: no clear lean, within luck or under 5 points off.'}
         {buckets.some((b) => b.total_resolved < MIN_N_BAND) &&
           ' A grey dot has fewer than 10 answers, too few to read yet.'}
         {captionNote ? ` ${captionNote}` : null}

@@ -14,8 +14,15 @@ export interface WarmupCardCopy {
   context: string;
 }
 
-/** Null when there is nothing honest to show — no answers, no card. */
-export function warmupCardCopy(result: WarmupResult | null): WarmupCardCopy | null {
+/**
+ * Null when there is nothing honest to show — no answers, no card.
+ * `laterOn`: there's a category card now, so "Real predictions next." would
+ * read oddly weeks or months on (D62, blind playtest 2026-11-13d, finding 11).
+ */
+export function warmupCardCopy(
+  result: WarmupResult | null,
+  laterOn = false,
+): WarmupCardCopy | null {
   if (!result || result.answered === 0) return null;
   const stated = Math.round(result.mean_confidence);
   const n = result.answered;
@@ -25,6 +32,6 @@ export function warmupCardCopy(result: WarmupResult | null): WarmupCardCopy | nu
     // The counts as an invitation, not a personality (roadmap D18 (5)).
     headline: `${right} of ${n} right`,
     receipt: `I was ${stated}% sure. How sure are you?`,
-    context: `${n} ${n === 1 ? 'question' : 'questions'}. Real predictions next.`,
+    context: `${n} ${n === 1 ? 'question' : 'questions'}.${laterOn ? '' : ' Real predictions next.'}`,
   };
 }

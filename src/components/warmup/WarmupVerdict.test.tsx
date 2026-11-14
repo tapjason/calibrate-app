@@ -102,7 +102,7 @@ describe('WarmupVerdictScreen', () => {
   it('bridges to the person\'s own plans', () => {
     seed(ANSWERS);
     render(<WarmupVerdictScreen onContinue={jest.fn()} />);
-    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/thesis in 34 days took 56/);
+    expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/big school project in 34 days took 56/);
     expect(screen.getByTestId('warmup-bridge')).toHaveTextContent(/first one about tomorrow/);
     expect(screen.getByTestId('warmup-continue')).toHaveTextContent('Make a real prediction');
   });

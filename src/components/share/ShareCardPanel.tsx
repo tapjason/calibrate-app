@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { TextButton } from '@/components/ui/TextButton';
 import { chosenProps } from '@/components/ui/chosen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
@@ -41,7 +42,7 @@ const LAST_ON_NOTE = 'One category stays on the card.';
 export const FRIEND_SQUARES = `A friend's card shared as text shows a row of squares, one per range of how sure, ${SQUARES_KEY.charAt(0).toLowerCase()}${SQUARES_KEY.slice(1)}. Yours come once your rating unlocks and a range has ${MIN_N_BAND} scored answers.`;
 
 export const SQUARES_LATER =
-  `Shared as text, your card gets a row of coloured squares once your rating unlocks and a band has ${MIN_N_BAND} scored answers. How scoring works says what they mean.`;
+  `Shared as text, your card gets a row of coloured squares once your rating unlocks and a range has ${MIN_N_BAND} scored answers. How scoring works says what they mean.`;
 
 const MESSAGES: Record<Exclude<ShareOutcome, 'shared'>, string> = {
   unavailable: "Sharing isn't available on this device — screenshot it instead.",
@@ -74,6 +75,9 @@ export function ShareCardPanel({
   // it was the round's most shared thing, and gone after the first answer
   // (blind playtest 2026-11-13c, finding 3).
   const [showWarmup, setShowWarmup] = useState(false);
+  // Folded (D62): noise for anyone who didn't come from a friend's card
+  // (blind playtest 2026-11-13d, run 7).
+  const [friendOpen, setFriendOpen] = useState(false);
   // The shape and the categories left off are kept between visits, like the
   // theme: both reset each time Share opened (blind playtest 2026-11-01).
   const format: CardFormat = useSettingsStore((s) => s.cardFormat);
@@ -103,7 +107,7 @@ export function ShareCardPanel({
   const theme = resolveTheme(cardThemeId, isPlus);
   // Before any real prediction resolves, the Warmup verdict is the card
   // (DESIGN_SYSTEM rule 0.10: Share is never empty).
-  const warmupCopy = warmupCardCopy(warmupResult);
+  const warmupCopy = warmupCardCopy(warmupResult, card !== null);
   const warmup = card && !showWarmup ? null : warmupCopy;
   // Which card the preview and Share my card are about.
   const sharingCard = warmup ? null : card;
@@ -210,8 +214,24 @@ export function ShareCardPanel({
 
       {/* Only before a category card: once there's one, the squares are
           the person's own (or SQUARES_LATER says when they come). */}
-      {warmup && !card && (
-        <Text style={styles.message} testID="share-friend-squares">
+      {warmup && !card && !friendOpen && (
+        <TextButton
+          label="Got a friend's card?"
+          onPress={() => {
+            setFriendOpen(true);
+            // The button goes as the line comes; VoiceOver hears the line
+            // (iOS ignores a live region; code review of step 178).
+            AccessibilityInfo.announceForAccessibility(FRIEND_SQUARES);
+          }}
+          testID="share-friend-open"
+        />
+      )}
+      {warmup && !card && friendOpen && (
+        <Text
+          style={styles.message}
+          testID="share-friend-squares"
+          accessibilityLiveRegion="polite"
+        >
           {FRIEND_SQUARES}
         </Text>
       )}

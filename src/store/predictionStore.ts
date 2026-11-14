@@ -16,8 +16,10 @@ import {
   correctableUntil,
   deletionCounts,
   postponementCounts,
+  rewordingCounts,
   skipLastDay,
 } from '@/engine/corrections';
+import { localDayNumber } from '@/engine/localTime';
 import { pastOutcomes, titleKey } from '@/engine/pastOutcomes';
 import {
   clampDueDate,
@@ -75,8 +77,8 @@ interface PredictionState {
    */
   deletedCount: number;
   /**
-   * Predictions whose due date was moved later the day before it or after,
-   * on this phone (step 173).
+   * Predictions whose due date was moved later, or whose words changed, the
+   * day before it or after, on this phone (step 173, D62).
    */
   postponedCount: number;
   loadPending: () => Promise<void>;
@@ -135,6 +137,15 @@ interface PredictionState {
   refile: (id: string, category: Category) => Promise<void>;
   /** Attach (or clear, with an empty string) a reflection after resolving. */
   reflect: (id: string, reflection: string) => Promise<void>;
+  /**
+   * "Use another number" (D62): save `input` as a new prediction and delete
+   * the open one it replaces, which must have been made today (by
+   * `scoredFrom`, so a rewording today counts). The new one is saved first,
+   * so a failure leaves the original, and the streak never sees a gap. The
+   * delete isn't counted (D61's day-made exemption). Throws once the day has
+   * passed: from then the number is the record.
+   */
+  renumber: (id: string, input: CreatePredictionInput) => Promise<Prediction>;
   /**
    * Screenshots and demos only: add the demo predictions (src/db/demoData.ts)
    * for the current user. The one caller, `app/dev/seed`, is __DEV__-gated.
@@ -242,36 +253,7 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   create: async (input) => {
     const userId = requireUserId();
-
-    // Validation — defense in depth. The DB has matching CHECK constraints,
-    // but failing fast here gives the UI a clean error message.
-    if (
-      !Number.isInteger(input.confidence) ||
-      input.confidence < 0 ||
-      input.confidence > 100
-    ) {
-      throw new Error('confidence must be an integer between 0 and 100');
-    }
-    const trimmedTitle = input.title.trim();
-    if (trimmedTitle.length === 0) {
-      throw new Error('title is required');
-    }
-
-    const createdAt = nowIso();
-    const prediction: Prediction = {
-      id: newId(),
-      user_id: userId,
-      title: trimmedTitle,
-      category: input.category,
-      confidence: input.confidence,
-      created_at: createdAt,
-      // Never today or earlier (D41): an answer today wouldn't be scored.
-      due_date: clampDueDate(input.due_date, new Date(createdAt), new Date()),
-      status: 'pending',
-      resolved_at: null,
-      reflection: null,
-      integrity_bonus: isIntegrityBonus(input.confidence),
-    };
+    const prediction = newPredictionRow(input, userId);
     // Atomic: insert + stats recompute go together so total_predictions and
     // per-category predictions_made never lag behind the prediction list.
     await withTransaction(async () => {
@@ -378,6 +360,26 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     await get().loadResolved();
   },
 
+  renumber: async (id, input) => {
+    const userId = requireUserId();
+    const now = new Date();
+    const current = await get().getById(id);
+    if (!current || !canRenumber(current, now)) throw new Error(RENUMBER_CLOSED);
+    const prediction = newPredictionRow(input, userId, now);
+    // One transaction and one clock (code review of step 178): saved and
+    // deleted together, so a failure or a kill leaves exactly one, and the
+    // delete is uncounted by the rule just checked, not re-read past midnight.
+    await withTransaction(async () => {
+      await insertPrediction(prediction);
+      await deletePrediction(id, { counted: false });
+      await useStatsStore.getState().recomputeForUser(userId);
+    });
+    await get().loadPending();
+    set({ justSavedId: prediction.id });
+    // No `prediction_logged`: the same prediction, at another number.
+    return prediction;
+  },
+
   update: async (id, edit) => {
     const userId = requireUserId();
     const title = edit.title.trim();
@@ -396,7 +398,12 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // deep link or a typed date is caught as the picker is.
     // Only an open one: an answer landing meanwhile leaves the row unchanged
     // (the UPDATE is for pending rows), so nothing to count (code review).
-    const late = current.status === 'pending' && postponementCounts(current.due_date, due_date, now);
+    // New words on the eve are counted too (D62): the date stays, so a call
+    // whose outcome was in sight could be rewritten and answered tomorrow.
+    const late =
+      current.status === 'pending' &&
+      (postponementCounts(current.due_date, due_date, now, scoredFrom(current)) ||
+        (rewordedAt !== undefined && rewordingCounts(current, now)));
     await withTransaction(async () => {
       await updatePrediction(id, { ...edit, title, due_date }, { rewordedAt });
       if (late) await recordPostponement(id, userId, current.due_date, due_date);
@@ -528,6 +535,22 @@ export function answerNowIsSameDay(p: Prediction, now: Date = new Date()): boole
 }
 
 /**
+ * Whether the same words were answered before (D32's `titleKey`), on another
+ * prediction: a habit being repeated. D56's "log the next one the evening
+ * before" is said only then (D62): it reached a one-off maths test (blind
+ * playtest 2026-11-13d, run 5).
+ */
+export function answeredBefore(p: Prediction, resolved: readonly Prediction[]): boolean {
+  const key = titleKey(p.title);
+  return resolved.some(
+    (o) =>
+      o.id !== p.id &&
+      (o.status === 'resolved_yes' || o.status === 'resolved_no') &&
+      titleKey(o.title) === key,
+  );
+}
+
+/**
  * Whether changing `before` to `after` counts as new words (roadmap D45): not
  * a change of case, spacing, end punctuation or quote style. Edit warns
  * before saving one.
@@ -563,6 +586,53 @@ export function deleteIsCounted(p: Prediction, now: Date = new Date()): boolean 
   return deletionCounts(p, now);
 }
 
+/**
+ * A new open prediction from Log's input, validated (defense in depth: the
+ * DB has matching CHECK constraints, but failing fast gives the UI a clean
+ * error message). Never due today or earlier (D41).
+ */
+function newPredictionRow(
+  input: CreatePredictionInput,
+  userId: string,
+  now: Date = new Date(),
+): Prediction {
+  if (!Number.isInteger(input.confidence) || input.confidence < 0 || input.confidence > 100) {
+    throw new Error('confidence must be an integer between 0 and 100');
+  }
+  const trimmedTitle = input.title.trim();
+  if (trimmedTitle.length === 0) {
+    throw new Error('title is required');
+  }
+  const createdAt = now.toISOString();
+  return {
+    id: newId(),
+    user_id: userId,
+    title: trimmedTitle,
+    category: input.category,
+    confidence: input.confidence,
+    created_at: createdAt,
+    due_date: clampDueDate(input.due_date, new Date(createdAt), now),
+    status: 'pending',
+    resolved_at: null,
+    reflection: null,
+    integrity_bonus: isIntegrityBonus(input.confidence),
+  };
+}
+
+/**
+ * Whether "Use another number" is open (D62): an open prediction logged
+ * today, by its `created_at`. Not one logged earlier and only reworded
+ * today: replacing it would move its streak day (D45 keeps `created_at` for
+ * that) and give an old call a new number (code review of step 178).
+ */
+export function canRenumber(p: Prediction, now: Date = new Date()): boolean {
+  if (p.status !== 'pending') return false;
+  const made = new Date(p.created_at);
+  return !Number.isNaN(made.getTime()) && localDayNumber(made) === localDayNumber(now);
+}
+
+const RENUMBER_CLOSED =
+  'It was made before today, so its number is part of the record and stays as it is.';
 const PAST_WINDOW = 'This answer is part of the record now and can no longer be changed.';
 const SKIP_CLOSED =
   'It’s more than a week past its due day, so it stays Can’t tell and can no longer be answered.';
@@ -599,5 +669,16 @@ export function moveIsCounted(
   // 2026-11-12).
   const from = rewords(p.title, title.trim()) ? now.toISOString() : scoredFrom(p);
   const saved = clampDueDate(newDueIso, new Date(from), now);
-  return postponementCounts(p.due_date, saved, now);
+  return postponementCounts(p.due_date, saved, now, scoredFrom(p));
+}
+
+/**
+ * Whether changing an open prediction's words to `title` now would be counted
+ * on Insights (D62), for Edit to say so before Save: new words on the eve of
+ * its due day or after. The rule is the engine's; `update` records it.
+ */
+export function rewordIsCounted(p: Prediction, title: string, now: Date = new Date()): boolean {
+  if (p.status !== 'pending') return false;
+  const next = title.trim();
+  return next.length > 0 && rewords(p.title, next) && rewordingCounts(p, now);
 }

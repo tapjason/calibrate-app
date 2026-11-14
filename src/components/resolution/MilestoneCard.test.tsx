@@ -78,7 +78,14 @@ describe('MilestoneCard — tier-up (DESIGN_SYSTEM §6.1 tierUp)', () => {
   it('says it all in words for screen readers', () => {
     render(<MilestoneCard milestone={TIER_UP} />);
     expect(screen.getByTestId('milestone-tier_up').props.accessibilityLabel).toMatch(
-      /^Forecaster in health\./,
+      /^New badge: Forecaster in health\./,
+    );
+  });
+
+  it('says what badges follow, the same after Yes and No (D62)', () => {
+    render(<MilestoneCard milestone={TIER_UP} />);
+    expect(screen.getByTestId('milestone-tier_up').props.accessibilityLabel).toMatch(
+      /Badges follow how well your numbers match what happens, not how often you’re right\.$/,
     );
   });
 });

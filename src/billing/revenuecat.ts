@@ -197,6 +197,12 @@ export interface BillingDeps {
   restorePurchases(): Promise<RcCustomerInfo>;
   /** True when the thrown error is the user dismissing the store sheet. */
   isCancelledError(e: unknown): boolean;
+  /**
+   * The product ids this customer may still take the free trial on (Apple:
+   * one introductory offer per subscription group). Optional so a test fake
+   * can leave it out; the real SDK always has it.
+   */
+  introEligibleProducts?(productIds: string[]): Promise<ReadonlySet<string>>;
 }
 
 let deps: BillingDeps | null = null;
@@ -249,6 +255,15 @@ function defaultDeps(): BillingDeps | null {
     },
     async restorePurchases() {
       return (await Purchases.restorePurchases()) as unknown as RcCustomerInfo;
+    },
+    async introEligibleProducts(productIds) {
+      const result = await Purchases.checkTrialOrIntroductoryPriceEligibility(productIds);
+      const eligible = Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE;
+      return new Set(
+        Object.entries(result)
+          .filter(([, e]) => e?.status === eligible)
+          .map(([id]) => id),
+      );
     },
     isCancelledError(e) {
       return Boolean(
@@ -368,8 +383,30 @@ function trialDaysFor(period: TrialPeriod | null): number | null {
   return period.count * DAYS_PER_UNIT[period.unit];
 }
 
-/** Normalize an offerings payload into our plan list, in PLAN_ORDER. */
-export function plansFromOfferings(offerings: unknown): PlusPlan[] {
+/**
+ * The product ids in an offering that carry a free trial, for the
+ * eligibility check: only those need asking about.
+ */
+export function trialProductIds(offerings: unknown): string[] {
+  const packages = (offerings as RcOfferings | null)?.current?.availablePackages;
+  if (!Array.isArray(packages)) return [];
+  return packages
+    .filter((pkg) => planForProduct(pkg?.product?.identifier) && trialPeriodFor(pkg))
+    .map((pkg) => pkg.product.identifier);
+}
+
+/**
+ * Normalize an offerings payload into our plan list, in PLAN_ORDER.
+ * `eligible`: the products this customer may still take the free trial on
+ * (D62, policy audit: a lapsed subscriber saw "Start 1 month free" and would
+ * have been charged at once; Apple allows one introductory offer per
+ * subscription group, guideline 3.1.2(a)). A trial shows only for those.
+ * Left out, every trial shows (the store's product-level offer, as before).
+ */
+export function plansFromOfferings(
+  offerings: unknown,
+  eligible?: ReadonlySet<string> | null,
+): PlusPlan[] {
   const packages = (offerings as RcOfferings | null)?.current?.availablePackages;
   if (!Array.isArray(packages)) return [];
 
@@ -382,12 +419,13 @@ export function plansFromOfferings(offerings: unknown): PlusPlan[] {
     // cannot describe.
     if (!plan) continue;
     if (typeof pkg.product.priceString !== 'string') continue;
+    const trial = eligible && !eligible.has(productId) ? null : trialPeriodFor(pkg);
     plans.push({
       packageId: pkg.identifier,
       plan,
       priceString: pkg.product.priceString,
-      trialDays: trialDaysFor(trialPeriodFor(pkg)),
-      trialPeriod: trialPeriodFor(pkg),
+      trialDays: trialDaysFor(trial),
+      trialPeriod: trial,
       pricePerMonthString:
         typeof pkg.product.pricePerMonthString === 'string'
           ? pkg.product.pricePerMonthString
@@ -496,12 +534,35 @@ export async function fetchTrialStatus(): Promise<TrialStatus | null | undefined
   }
 }
 
+/**
+ * Which trial products this customer may still use (D62). Unknown or an error
+ * reads as none: RevenueCat's advice for an unknown status is the price
+ * without the offer, so the screen never promises a trial the store won't
+ * give. Undefined only when the SDK seam has no check (a test fake).
+ */
+async function trialEligibility(
+  d: BillingDeps,
+  offerings: unknown,
+): Promise<ReadonlySet<string> | undefined> {
+  if (!d.introEligibleProducts) return undefined;
+  const ids = trialProductIds(offerings);
+  if (ids.length === 0) return new Set();
+  try {
+    return await d.introEligibleProducts(ids);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[billing] trial eligibility failed:', e);
+    return new Set();
+  }
+}
+
 /** The purchasable plans. Empty when billing is unavailable or offerings fail. */
 export async function fetchPlans(): Promise<PlusPlan[]> {
   const d = getDeps();
   if (!d || !apiKeyForPlatform()) return [];
   try {
-    return plansFromOfferings(await d.getOfferings());
+    const offerings = await d.getOfferings();
+    return plansFromOfferings(offerings, await trialEligibility(d, offerings));
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[billing] offerings failed:', e);

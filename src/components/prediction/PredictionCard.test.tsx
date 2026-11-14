@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react-native';
 
 import { localDate } from '@/components/ui/dates';
+import { useCategoryStore } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Prediction } from '@/types';
 
-import { HIDDEN_TITLE, PredictionCard, rowPosition } from './PredictionCard';
+import { HIDDEN_CATEGORY, HIDDEN_TITLE, PredictionCard, rowPosition } from './PredictionCard';
 
 const prediction: Prediction = {
   id: 'p1',
@@ -190,6 +191,32 @@ describe('PredictionCard with the words hidden', () => {
     const label = screen.getByRole('button').props.accessibilityLabel as string;
     expect(label.startsWith(`${HIDDEN_TITLE} Work, 70% confident`)).toBe(true);
     expect(label).not.toMatch(/report|Blood/);
+  });
+
+  it('hides a category the person named, and keeps a built-in one (D62)', () => {
+    useSettingsStore.setState({ hideTitles: true });
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'c-trips',
+          user_id: 'u1',
+          name: '✈️ Family & travel',
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    try {
+      const view = render(<PredictionCard prediction={{ ...prediction, category: 'c-trips' }} />);
+      expect(view.getByTestId('prediction-card-category')).toHaveTextContent(HIDDEN_CATEGORY);
+      expect(view.queryByText(/Family/)).toBeNull();
+      view.rerender(<PredictionCard prediction={prediction} />);
+      expect(view.getByTestId('prediction-card-category')).toHaveTextContent('Work');
+    } finally {
+      useCategoryStore.setState({ defs: [] });
+    }
   });
 
   it('shows the words when it is off', () => {

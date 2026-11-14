@@ -1,4 +1,4 @@
-import { paceSpan, plainCountsLine, unlockEstimateLine } from './beforeScoreCopy';
+import { firstLookLine, paceSpan, plainCountsLine, unlockEstimateLine } from './beforeScoreCopy';
 
 // Roadmap D53 (blind playtest 2026-11-09b, finding 2).
 describe('plainCountsLine', () => {
@@ -27,5 +27,17 @@ describe('unlockEstimateLine', () => {
       'At your recent pace, more than a year.',
     );
     expect(line).toMatch(/^At your recent pace, about 3 weeks \(around (Nov\u00A029|29\u00A0Nov)\)\.$/);
+  });
+});
+
+// D62 (blind playtest 2026-11-13d, finding 4).
+describe('firstLookLine', () => {
+  it('gives plain counts from 10 scored answers until the rating unlocks', () => {
+    expect(firstLookLine({ resolved: 12, happened: 6, mean_stated: 74.6 })).toBe(
+      'First look: you said about 75% on average, and 6 of your 12 scored predictions happened. Too few to rate yet.',
+    );
+    expect(firstLookLine({ resolved: 9, happened: 6, mean_stated: 70 })).toBeNull();
+    expect(firstLookLine({ resolved: 20, happened: 14, mean_stated: 70 })).toBeNull();
+    expect(firstLookLine(null)).toBeNull();
   });
 });

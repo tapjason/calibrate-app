@@ -153,6 +153,9 @@ describe('ResolveRun (roadmap step 18)', () => {
     expect(screen.getByTestId('resolve-run-skip-notice')).toHaveTextContent(
       'Last one recorded: can’t tell.',
     );
+    // Gone once the next answer lands (D62): two "recorded" lines showed.
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => expect(screen.queryByTestId('resolve-run-skip-notice')).toBeNull());
   });
 
   it('keeps the reflection one tap away instead of in the way', async () => {

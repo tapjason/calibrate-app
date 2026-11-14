@@ -254,6 +254,9 @@ describe('ShareCardPanel — Day 0', () => {
     seedStats(null);
     useWarmupStore.setState({ result: WARMUP });
     render(<ShareCardPanel />);
+    // Folded behind "Got a friend's card?" (D62).
+    expect(screen.queryByTestId('share-friend-squares')).toBeNull();
+    fireEvent.press(screen.getByTestId('share-friend-open'));
     expect(screen.getByTestId('share-friend-squares')).toHaveTextContent(FRIEND_SQUARES);
     expect(FRIEND_SQUARES).toBe(
       "A friend's card shared as text shows a row of squares, one per range of how sure, low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers. Yours come once your rating unlocks and a range has 10 scored answers.",

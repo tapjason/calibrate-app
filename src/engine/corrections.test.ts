@@ -7,6 +7,7 @@ import {
   CORRECTION_WINDOW_HOURS,
   deletionCounts,
   postponementCounts,
+  rewordingCounts,
   SKIP_ANSWER_DAYS,
   skipLastDay,
 } from './corrections';
@@ -140,5 +141,46 @@ describe('postponementCounts', () => {
     expect(postponementCounts(iso('2026-11-14'), iso('2026-11-20'), at('2026-11-12'))).toBe(false);
     expect(postponementCounts(iso('2026-11-14'), iso('2026-11-13'), at('2026-11-13'))).toBe(false);
     expect(postponementCounts(iso('2026-11-14'), iso('2026-11-14'), at('2026-11-14'))).toBe(false);
+  });
+  it('leaves a move on the day it was made alone (D62)', () => {
+    // Logged due tomorrow, moved to Monday two minutes later (round 21, run 5).
+    const made = new Date('2026-11-13T22:20:00').toISOString();
+    expect(
+      postponementCounts(iso('2026-11-14'), iso('2026-11-16'), new Date('2026-11-13T22:22:00'), made),
+    ).toBe(false);
+    // Made the day before: counted as before.
+    expect(
+      postponementCounts(iso('2026-11-14'), iso('2026-11-16'), at('2026-11-13'), iso('2026-11-12')),
+    ).toBe(true);
+    // An unreadable made time doesn't exempt it.
+    expect(postponementCounts(iso('2026-11-14'), iso('2026-11-16'), at('2026-11-13'), 'nope')).toBe(
+      true,
+    );
+  });
+});
+
+describe('rewordingCounts (D62)', () => {
+  const open = (over: Partial<Prediction> = {}): Prediction => ({
+    ...answered(),
+    status: 'pending',
+    resolved_at: null,
+    created_at: new Date('2026-11-10T09:00:00').toISOString(),
+    due_date: new Date('2026-11-14T12:00:00').toISOString(),
+    ...over,
+  });
+  it('counts new words on the eve of the due day or after', () => {
+    expect(rewordingCounts(open(), new Date('2026-11-13T20:00:00'))).toBe(true);
+    expect(rewordingCounts(open(), new Date('2026-11-14T08:00:00'))).toBe(true);
+  });
+  it('leaves earlier rewording alone, and the day it was made', () => {
+    expect(rewordingCounts(open(), new Date('2026-11-12T20:00:00'))).toBe(false);
+    const madeOnEve = open({ created_at: new Date('2026-11-13T09:00:00').toISOString() });
+    expect(rewordingCounts(madeOnEve, new Date('2026-11-13T20:00:00'))).toBe(false);
+    // Reworded earlier today counts as made today (D45).
+    const rewordedToday = open({ title_edited_at: new Date('2026-11-13T10:00:00').toISOString() });
+    expect(rewordingCounts(rewordedToday, new Date('2026-11-13T20:00:00'))).toBe(false);
+  });
+  it('never counts an answered one', () => {
+    expect(rewordingCounts(answered(), new Date('2026-11-01T20:00:00'))).toBe(false);
   });
 });

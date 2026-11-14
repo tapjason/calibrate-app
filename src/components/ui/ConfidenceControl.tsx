@@ -1,6 +1,6 @@
 import Slider from '@react-native-community/slider';
 import { useRef } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { adjustableProps } from '@/components/ui/adjustable';
 import { Button } from '@/components/ui/Button';
@@ -42,22 +42,24 @@ export function naturalFrequencyFor(percent: number): string {
   if (percent === 0) return 'never';
   if (percent === 100) return 'every time';
   if (percent === 50) return 'a coin flip';
-  if (percent === 25) return 'about 1 time in 4';
-  if (percent === 75) return 'about 3 times in 4';
+  if (percent === 25) return 'about 1 time in\u00A04';
+  if (percent === 75) return 'about 3 times in\u00A04';
   // Not "1 in 10" (Math.round(0.5) is 1) or "almost every time" (record
   // audit, 2026-11-09).
-  if (percent === 5) return 'about 1 time in 20';
-  if (percent === 95) return 'about 19 times in 20';
+  if (percent === 5) return 'about 1 time in\u00A020';
+  if (percent === 95) return 'about 19 times in\u00A020';
   // Halfway steps say both neighbours rather than rounding up: 85% is "8 or
   // 9 times in 10", not a flat 9 that overstates it.
   if (percent % 10 === 5 && percent > 5 && percent < 95) {
     const lo = Math.floor(percent / 10);
-    return `${lo} or ${lo + 1} times in 10`;
+    return `${lo} or ${lo + 1} times in\u00A010`;
   }
   const inTen = Math.round(percent / 10);
-  if (inTen === 0) return 'less than once in 10';
+  if (inTen === 0) return 'less than once in\u00A010';
   if (inTen === 10) return 'almost every time';
-  return `about ${inTen} ${inTen === 1 ? 'time' : 'times'} in 10`;
+  // No-break spaces (D62): "about 9 times in" ended a line and "10" began
+  // the next (blind playtest 2026-11-13d, run 1).
+  return `about ${inTen} ${inTen === 1 ? 'time' : 'times'} in\u00A010`;
 }
 
 /**
@@ -110,7 +112,18 @@ export function ConfidenceControl({
   // From the latest value, not the one this render drew: two taps landing
   // before the next render both stepped from it, and moved once (playtest
   // 2026-11-08b, finding 25).
-  const step = (delta: number) => set((latest.current ?? middle) + delta);
+  const step = (delta: number) => {
+    const before = latest.current;
+    set((latest.current ?? middle) + delta);
+    // Said aloud (D62): a screen reader heard nothing after each ±5, so the
+    // number changed silently (blind playtest 2026-11-13d, run 5, on the web
+    // build). On iOS VoiceOver reaches the number through the adjustable,
+    // which says its value; this covers anyone tapping the buttons.
+    const now = latest.current;
+    if (now !== null && now !== before) {
+      AccessibilityInfo.announceForAccessibility(`${now}%, ${naturalFrequencyFor(now)}`);
+    }
+  };
 
   // Named with the visible characters, the longer wording as the hint: a
   // Voice Control user says what they see ("Tap plus 5"), and "Raise

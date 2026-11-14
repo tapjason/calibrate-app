@@ -213,7 +213,7 @@ function Corrections({ trends }: { trends: TrendSummary }) {
     <Section title="What your confidence means">
       {rows.length === 0 && progress ? (
         <Text style={styles.muted} testID="trends-corrections-progress">
-          A band needs {MIN_N_BAND} calls in one category before it gets a row.
+          A range needs {MIN_N_BAND} calls in one category before it gets a row.
           Closest: {categoryTitle(progress.category)} at {band(progress.low, progress.high)}, with{' '}
           {progress.resolved}.
         </Text>
@@ -226,7 +226,7 @@ function Corrections({ trends }: { trends: TrendSummary }) {
             </Text>
           )}
           <Text style={styles.muted}>
-            How often each band came true, where you&apos;ve used it at least {MIN_N_BAND}{' '}
+            How often each range came true, where you&apos;ve used it at least {MIN_N_BAND}{' '}
             times in one category.
           </Text>
           {rows.map((row) => (
@@ -265,7 +265,7 @@ function CoverageLine({ trends }: { trends: TrendSummary }) {
       {/* Plain, not rowLabel: its textTransform read "Range You Use". */}
       <Text style={styles.rowLabelPlain}>Range you use</Text>
       <Text style={styles.muted}>
-        {buckets_used} of 5 confidence bands.{' '}
+        {buckets_used} of 5 ranges of how sure.{' '}
         {empty_buckets.length > 0
           ? holdRanges(
               `Nothing yet in ${empty_buckets.map((b) => `${b}–${b + 20}%`).join(', ')} — a score only covers the range you actually use.`,

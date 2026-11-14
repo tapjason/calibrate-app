@@ -2,7 +2,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ratingHeadline, ratingMeaningLine } from '@/components/stats/ratingHeadline';
+import { chartVerdict } from '@/components/stats/chartTakeaway';
+import {
+  chartNamesLean,
+  perfectLine,
+  ratingHeadline,
+  ratingMeaningLine,
+} from '@/components/stats/ratingHeadline';
 import { ScoringSheet } from '@/components/stats/ScoringSheet';
 import { useStatsStore } from '@/store/statsStore';
 
@@ -16,10 +22,22 @@ export default function ScoringScreen() {
   const router = useRouter();
   const { section } = useLocalSearchParams<{ section?: string }>();
   // From Today's rating (step 173): the person's own number first, in words.
-  const headline = ratingHeadline(useStatsStore((s) => s.userStat));
+  const userStat = useStatsStore((s) => s.userStat);
+  const perfect = useStatsStore((s) => s.perfect);
+  const buckets = useStatsStore((s) => s.calibration.buckets);
+  const headline = ratingHeadline(userStat);
+  // With what perfect calibration would score on the same answers (D62).
   const ratingLine =
     section === 'rating' && headline && !headline.provisional
-      ? `Your rating is ${headline.rating}. ${ratingMeaningLine(headline.rating, 'band')}`
+      ? `Your rating is ${headline.rating}. ${ratingMeaningLine(headline.rating)}` +
+        (perfect && userStat
+          ? ` ${perfectLine(
+              headline.rating,
+              perfect,
+              userStat.total_resolved,
+              chartNamesLean(chartVerdict(buckets, false)?.lean),
+            )}`
+          : '')
       : null;
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

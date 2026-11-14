@@ -40,6 +40,14 @@ export const MIN_N_CATEGORY = 20;
 export const MIN_N_BAND = 10;
 
 /**
+ * The Brier line waits for this many scored answers (D62), not the rating's
+ * 20: at 20 both numbers are mostly luck (perfect calibration itself scores
+ * about 85–88 there), and its loss branch read as a put-down to three
+ * testers (blind playtest 2026-11-13d, finding 6).
+ */
+export const BRIER_MIN_N = 50;
+
+/**
  * Predictions logged or answered yes/no in one local day for it to count
  * toward the streak. Three when the streak was decided (2026-10-05, UI_ROADMAP
  * D2); one since D17 (2026-10-07): Duolingo's A/B test of letting a single
@@ -465,14 +473,25 @@ export interface BucketStat {
 export type Milestone =
   | { kind: 'rating_unlocked'; rating: number }
   /** `from` is the tier before, so the tier-up can flip from it (a jump can skip a rung). */
-  | { kind: 'tier_up'; category: Category; badge: BadgeLevel; from: BadgeLevel }
-  | { kind: 'category_unlocked'; category: Category; score: number };
+  | { kind: 'tier_up'; category: Category; badge: BadgeLevel; from: BadgeLevel };
+// A category score unlocking had its own kind until D62: the 20th answer in a
+// category is always its step up to Tracker, which won, so it never fired.
 
 /**
  * A category whose badge fell with the last recompute (roadmap D60 (a); blind
  * playtest 2026-11-13b, run 7). Said, never celebrated.
  */
 export interface TierDrop {
+  category: Category;
+  from: BadgeLevel;
+  to: BadgeLevel;
+}
+
+/**
+ * A category's badge then and now, over a recap's span (D62): gained, or
+ * lost, since the span began. Derived from the scored answers on each read.
+ */
+export interface BadgeChange {
   category: Category;
   from: BadgeLevel;
   to: BadgeLevel;
@@ -492,6 +511,20 @@ export interface CalibrationResult {
 export interface RatingRange {
   /** "give or take" this many points. */
   giveOrTake: number;
+  low: number;
+  high: number;
+}
+
+/**
+ * What a perfectly calibrated person would score on the same answers (D62):
+ * the same confidences, each coming true exactly as often as it says, many
+ * times over. With few answers luck alone keeps that well under 100 (about
+ * 85–88 at 20), so the rating's gap isn't all the person's. Whole points.
+ */
+export interface PerfectReference {
+  /** The middle of the simulated scores: "would typically score about 87". */
+  typical: number;
+  /** The middle 80% of them, the same mass as the give-or-take. */
   low: number;
   high: number;
 }

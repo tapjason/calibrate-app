@@ -18,6 +18,8 @@ interface UnlockProgressProps {
   lead?: string | null;
   /** When it could unlock at the recent pace (roadmap D53), or null. */
   estimate?: string | null;
+  /** The first look's plain counts from 10 scored answers (D62), or null. */
+  firstLook?: string | null;
   testID?: string;
 }
 
@@ -42,6 +44,7 @@ export function UnlockProgress({
   nextDue,
   lead = null,
   estimate = null,
+  firstLook = null,
   testID,
 }: UnlockProgressProps) {
   const done = Math.min(resolved, total);
@@ -61,7 +64,7 @@ export function UnlockProgress({
       testID={testID}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Calibrating. ${lead ? `${lead}. ` : ''}${summary}.${estimate ? ` ${estimate}` : ''}`}
+      accessibilityLabel={`Calibrating. ${lead ? `${lead}. ` : ''}${summary}.${firstLook ? ` ${firstLook}` : ''}${estimate ? ` ${estimate}` : ''}`}
       accessibilityValue={{ min: 0, max: total, now: done }}
     >
       <Text style={styles.title}>Calibrating</Text>
@@ -86,6 +89,11 @@ export function UnlockProgress({
         {toGo} more scored {toGo === 1 ? 'answer' : 'answers'} and your score unlocks.
         {nextDue ? ` ${nextDue}` : ''}
       </Text>
+      {firstLook && (
+        <Text style={styles.firstLook} testID={testID ? `${testID}-first-look` : undefined}>
+          {firstLook}
+        </Text>
+      )}
       {estimate && (
         <Text style={styles.caption} testID={testID ? `${testID}-estimate` : undefined}>
           {estimate}
@@ -117,4 +125,5 @@ const styles = StyleSheet.create({
   toGo: { backgroundColor: colors.surface, borderColor: colors.controlBorder },
   summary: { ...type.subhead, color: colors.textSecondary },
   caption: { ...type.footnote, color: colors.textTertiary },
+  firstLook: { ...type.subhead, color: colors.textSecondary },
 });

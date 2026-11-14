@@ -164,7 +164,7 @@ describe('PaywallView', () => {
     seed();
     render(<PaywallView />);
     expect(screen.getByTestId('plan-annual').props.accessibilityState.selected).toBe(true);
-    expect(screen.getByTestId('paywall-cta')).toHaveTextContent('Start 1 month free');
+    expect(screen.getByTestId('paywall-cta')).toHaveTextContent(/^Start 1 month free, then /);
     expect(screen.getAllByTestId('paywall-cta')).toHaveLength(1);
   });
 

@@ -138,7 +138,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 | R7 | Corrections: Yes ↔ No within 24 hours of the first answer (`CORRECTION_WINDOW_HOURS`); a Yes or No never becomes "Can't tell"; the confidence is never editable. | D34, D25 |
 | R8 | Reward calibration, not correctness: Yes and No look, move and buzz the same; green means calibrated, never correct; red never marks an outcome; nothing rewards a particular confidence (D23). | DESIGN_SYSTEM §0.4 |
 | R9 | Warmup and practice never touch `UserStat`, `CategoryStat`, the streak, badges or Wrapped. | Warmup Module, Daily practice |
-| R10 | The Brier line is quiet: Insights and How scoring works only, only once the rating unlocks, against the person's own base rate. | D24, D35 |
+| R10 | The Brier line is quiet: Insights' fine print and How scoring works only, only from 50 scored answers (`BRIER_MIN_N`), against the person's own base rate. | D24, D35, D62 |
 | R11 | Every figure reconciles across Today, Insights, History, Resolve, Wrapped and the card (same counts, same exclusions); a card or recap says what it leaves off and carries the give-or-take. | D42 |
 | R12 | The Coach states only what the input proves: every insight cites an `evidence` number the validator checks, no verdicts on provisional data. | `COACH_AGENT.md` |
 
