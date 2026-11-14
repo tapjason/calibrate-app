@@ -4,6 +4,33 @@
 
 ## What this PR did
 
+**Round 22 (2026-11-13), appeal on step 178 with a diversified cast:** `docs/design/research/playtest-2026-11-13e.md` (plan `round22-plan-2026-11-13.md`), on `cc1235d`.
+- **Results:**
+  - median 7 (mean 6.6); five keep, three unsure, nobody leaves;
+  - the first "very disappointed" of any appeal round (Jaylen, five months in); one "not disappointed" (Wanjiru, fresh);
+  - with a record four of four keep; fresh installs one of three; both L1–L2 unsure;
+  - 23 of 24 end answers right, one partly (no trial on web); one gave up (hiding her own category).
+- **Step 178:** worked: the perfect line (all four understood it), "Use another number", the Warm-up result on Today, the first look, notes after an answer, badge news on the recap. Half: Hide the words (own names still on Insights, Log's chips, the card; a tap shows all), the friend fold (squares, not the score), the badge line's missing full stop.
+- **No decision needed, not built:**
+  - #1 (part): hide own category names on Insights, the share card and the recaps, and the recap's titles switch, while hiding;
+  - #2: "Use another number" keeps the words typed in Edit;
+  - #3: the unlocking answer names the badge that came with it;
+  - #9: the friend fold explains the score and the ranges;
+  - #10: Edit's number note and Log's "isn't counted" in plain words;
+  - #12: "Show less" for the fold;
+  - #13: the badge card's full stop;
+  - #14: no double full stop after a Spanish date or time;
+  - #15: a heading for How scoring works' personal paragraph;
+  - #16: an answer run keeps its count and summary across a reload.
+- **Needs the owner:**
+  - #1 (part): Log's chips, the hidden card's wording, built-in names, the lock (step 179, documented);
+  - #4: the perfect line beside "give or take" (wording);
+  - #5: a run's badge changes once, at its end;
+  - #6: what it's good for, in the newcomer's world (bettors, a friend's score);
+  - #7: localisation and shorter lead lines;
+  - #8: the reminder time for evening and morning events;
+  - #11, #17–#22: walls of text, badge history, recap labels, ±5 taps, the Warm-up row, the week's backlog, shared phones.
+
 **Step 178 (2026-11-13), the calls after round 21** (roadmap D62, BUILT_LOG row 178; owner: "Go with your recommendations for all open decisions, and start the building"). Branch `builder/step-178-owner-picks`, from `c366ff9`. JS only: a reload.
 - **The record:**
   - a due-date move on the day the prediction was made isn't counted (round 21 #2);
