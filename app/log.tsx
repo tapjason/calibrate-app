@@ -15,7 +15,7 @@ import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, space, type } from '@/constants/theme';
 import { useLogDraftStore } from '@/store/logDraftStore';
 import { categoryOptions } from '@/store/categoryStore';
-import { canRenumber, usePredictionStore } from '@/store/predictionStore';
+import { canRenumber, deleteIsCounted, usePredictionStore } from '@/store/predictionStore';
 import { useRenumberStore } from '@/store/renumberStore';
 
 /**
@@ -38,6 +38,9 @@ export default function LogScreen() {
   // midnight with Edit open): Log keeps what Edit held as a new prediction,
   // and says so (code review, step 179).
   const [renumberClosed, setRenumberClosed] = useState(false);
+  // Whether the replaced one's delete counts (a time zone can make it due
+  // today, record audit of step 179): the note says only what's true.
+  const [renumberCounted, setRenumberCounted] = useState(false);
   const [dirty, setDirty] = useState(false);
   // "Discard prediction" throws the kept draft away too (step 173).
   // Not while replacing a number (D62): the kept draft is another prediction's.
@@ -82,7 +85,10 @@ export default function LogScreen() {
           category: edits?.category && offered.includes(edits.category) ? edits.category : null,
           dueIso: edits?.dueIso ?? null,
         });
-        if (canRenumber(source)) setDraft(next);
+        if (canRenumber(source)) {
+          setDraft(next);
+          setRenumberCounted(deleteIsCounted(source));
+        }
         else if (edits) {
           // Too late to replace it: what was typed stays, as a new one.
           setDraft(lateRenumberDraft(next));
@@ -123,8 +129,9 @@ export default function LogScreen() {
               </Text>
               {draft?.replaces && (
                 <Text style={styles.subtitle} testID="log-renumber-note">
-                  Saving replaces the one you made today. On the day it was made that’s
-                  fixing a slip, so Insights doesn’t count it.
+                  {renumberCounted
+                    ? 'Saving replaces the one you made today. It’s due today, so Insights counts it as deleted.'
+                    : 'Saving replaces the one you made today. On the day it was made that’s fixing a slip, so Insights doesn’t count it.'}
                 </Text>
               )}
               {renumberClosed && !draft?.replaces && (
