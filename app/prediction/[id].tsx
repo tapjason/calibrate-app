@@ -7,6 +7,7 @@ import { PredictionDetails } from '@/components/prediction/PredictionDetails';
 import { useEditDraftGuard } from '@/components/prediction/useLogDraftGuard';
 import { SheetCloseBar } from '@/components/ui/SheetCloseBar';
 import { warnedKey } from '@/components/resolution/sameDayWarned';
+import { useRenumberStore } from '@/store/renumberStore';
 
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23),
@@ -19,7 +20,7 @@ export default function PredictionScreen() {
   // A changed, unsaved edit asks before the sheet is swiped away, as Log
   // does (playtest 2026-11-08b, finding 20).
   const [dirty, setDirty] = useState(false);
-  useEditDraftGuard(dirty);
+  const guard = useEditDraftGuard(dirty);
   // The × sits on a bar the content scrolls under (blind playtest 2026-11-12,
   // finding 21); a hairline sets it off once scrolled.
   const [scrolled, setScrolled] = useState(false);
@@ -58,9 +59,13 @@ export default function PredictionScreen() {
           // sheet's place, as from Resolve.
           onPredictAgain={(p) => router.replace(`/log?again=${encodeURIComponent(p.id)}` as never)}
           // "Use another number" on the day it was made (D62): Log takes this
-          // sheet's place, starting from the saved prediction; unsaved edits
-          // still ask first.
-          onRenumber={(p) => router.replace(`/log?renumber=${encodeURIComponent(p.id)}` as never)}
+          // sheet's place with what Edit holds, so nothing typed is lost and
+          // there's nothing to ask about (blind playtest 2026-11-13e, run 2).
+          onRenumber={(p, edits) => {
+            guard.markLeaving();
+            useRenumberStore.getState().hand(p.id, edits);
+            router.replace(`/log?renumber=${encodeURIComponent(p.id)}` as never);
+          }}
           onDirtyChange={setDirty}
         />
       </ScrollView>

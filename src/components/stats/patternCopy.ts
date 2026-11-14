@@ -14,11 +14,16 @@ import { categoryTitle } from '@/store/categoryStore';
  * to the nearest 5, said about the past: a power user wanted it plainly with
  * a number to aim for (blind playtest 2026-11-01, run 3).
  */
-export function furthestOffLine(miss: CategoryMiss, badge?: FurthestOffBadge | null): string {
+export function furthestOffLine(
+  miss: CategoryMiss,
+  badge?: FurthestOffBadge | null,
+  /** The name to show, when a screen hides it (D62); else its title. */
+  name: string = categoryTitle(miss.category),
+): string {
   const said = Math.round(miss.mean_stated);
   const matched = matchedPercent(miss.actual_rate);
   const line =
-    `Furthest off: ${categoryTitle(miss.category)}. You said about ${said}%, and ${miss.happened} of ` +
+    `Furthest off: ${name}. You said about ${said}%, and ${miss.happened} of ` +
     `${miss.resolved} happened. About ${matched}% would have matched.`;
   return badge ? `${line} ${badgeClause(badge)}` : line;
 }

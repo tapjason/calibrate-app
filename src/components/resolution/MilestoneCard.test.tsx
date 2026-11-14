@@ -4,7 +4,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { haptics } from '@/components/ui/haptics';
 import { FLIP_MS } from '@/components/ui/TierFlip';
 
-import { MilestoneCard } from './MilestoneCard';
+import { MilestoneCard, milestoneCopy } from './MilestoneCard';
 
 // Reduce Motion is a system setting; mock only that hook. The default export
 // (Animated) has to be carried over by hand, since spreading a module object
@@ -98,5 +98,21 @@ describe('MilestoneCard — score unlock', () => {
     expect(screen.queryByTestId('tier-flip', HIDDEN)).toBeNull();
     jest.advanceTimersByTime(0);
     expect(haptics.unlock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('milestoneCopy (step 179)', () => {
+  it('names the badge that came with the unlock, and ends each sentence', () => {
+    const unlocked = milestoneCopy({
+      kind: 'rating_unlocked',
+      rating: 86,
+      badge: { category: 'health', badge: 'forecaster' },
+    });
+    expect(unlocked.body).toMatch(/New badge, too: Forecaster in health\. Badges follow/);
+    expect(milestoneCopy({ kind: 'rating_unlocked', rating: 86 }).body).not.toMatch(/New badge/);
+    render(<MilestoneCard milestone={TIER_UP} />);
+    expect(screen.getByTestId('milestone-tier_up').props.accessibilityLabel).toMatch(
+      /scored answers\. Badges follow/,
+    );
   });
 });

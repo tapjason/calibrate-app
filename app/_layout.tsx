@@ -19,6 +19,7 @@ import {
   routeFromLaunchNotification,
 } from '@/notifications/scheduler';
 import { useLogDraftStore } from '@/store/logDraftStore';
+import { useResolveRunStore } from '@/store/resolveRunStore';
 import { usePracticeStore } from '@/store/practiceStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { syncForUser, useAuthStore } from '@/store/authStore';
@@ -114,6 +115,8 @@ export default function RootLayout() {
           usePracticeStore.getState().hydrate(),
           // Log's kept draft (step 173).
           useLogDraftStore.getState().hydrate(),
+          // An answer run left mid-way by a reload (step 179).
+          useResolveRunStore.getState().hydrate(),
         ]);
         // Fire-and-forget: notifications are a retention enhancer, not a
         // critical-path dependency. A failure here (denied permission,

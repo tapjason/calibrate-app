@@ -40,6 +40,7 @@ import { syncNow } from '@/supabase/sync';
 
 import { useCategoryStore } from './categoryStore';
 import { useLogDraftStore } from './logDraftStore';
+import { useResolveRunStore } from './resolveRunStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
@@ -199,6 +200,7 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
     // 2026-11-12). A guest signing in keeps it, as their predictions go along.
     if (prevUserId && prevUserId !== LOCAL_GUEST_USER_ID) {
       await useLogDraftStore.getState().clear();
+      useResolveRunStore.getState().clear();
     }
     try {
       await reloadForUser(next.userId);
@@ -325,6 +327,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await useWarmupStore.getState().retake();
         await usePracticeStore.getState().clear();
         await useLogDraftStore.getState().clear();
+        useResolveRunStore.getState().clear();
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[auth] local wipe after account deletion failed:', e);
@@ -352,6 +355,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await usePracticeStore.getState().clear();
         // Log's kept draft is the person's own words (step 173).
         await useLogDraftStore.getState().clear();
+        useResolveRunStore.getState().clear();
         await reloadForUser(LOCAL_GUEST_USER_ID);
         return { ok: true };
       } catch (e) {

@@ -295,3 +295,34 @@ describe('TrendsPanel — Plus', () => {
     );
   });
 });
+
+// Code review of step 179: a name the person gave stays off Trends while the
+// words are hidden, as on the rest of Insights.
+describe('TrendsPanel with the words hidden', () => {
+  it('reads "Your own category" for a renamed one', () => {
+    const { useSettingsStore } = jest.requireActual('@/store/settingsStore') as typeof import('@/store/settingsStore');
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'work' as Category,
+          user_id: 'u1',
+          name: 'Recovery',
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    useSettingsStore.setState({ hideTitles: true });
+    try {
+      seed();
+      render(<TrendsPanel />);
+      expect(screen.getByTestId('trend-category-work')).toHaveTextContent(/Your own category/);
+      expect(screen.queryByText(/Recovery/)).toBeNull();
+    } finally {
+      useSettingsStore.setState({ hideTitles: false });
+      useCategoryStore.setState({ defs: [] });
+    }
+  });
+});

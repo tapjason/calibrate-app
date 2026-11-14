@@ -44,6 +44,11 @@ export function ScoringSheet({ onClose, openAt = null, ratingLine = null }: Scor
       <SheetCloseBar onPress={onClose} testID="scoring-close" scrolled={scrolled} />
       {ratingLine && (
         <View style={styles.yours} testID="scoring-rating-line">
+          {/* A heading of its own, so a heading jump reaches it (blind
+              playtest 2026-11-13e, run 6: it sat above the first heading). */}
+          <Text style={styles.yoursHeading} accessibilityRole="header">
+            Your rating
+          </Text>
           <Text style={styles.yoursText}>{ratingLine}</Text>
         </View>
       )}
@@ -78,5 +83,6 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
     padding: space.lg,
   },
+  yoursHeading: { ...type.headline, color: colors.textPrimary, marginBottom: space.xs },
   yoursText: { ...type.body, color: colors.textPrimary },
 });

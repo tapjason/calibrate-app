@@ -471,7 +471,12 @@ export interface BucketStat {
  * celebrations (DESIGN_SYSTEM §6.2). Upward crossings only.
  */
 export type Milestone =
-  | { kind: 'rating_unlocked'; rating: number }
+  /**
+   * `badge`: a badge earned on the same answer (D62 follow-up): the 20th
+   * answer in a category often unlocks the rating too, and only one card
+   * shows, so the unlock names it (blind playtest 2026-11-13e, run 3).
+   */
+  | { kind: 'rating_unlocked'; rating: number; badge?: { category: Category; badge: BadgeLevel } }
   /** `from` is the tier before, so the tier-up can flip from it (a jump can skip a rung). */
   | { kind: 'tier_up'; category: Category; badge: BadgeLevel; from: BadgeLevel };
 // A category score unlocking had its own kind until D62: the 20th answer in a

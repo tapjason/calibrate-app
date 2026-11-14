@@ -1,6 +1,12 @@
 import type { Prediction } from '@/types';
 
-import { leadDays, logAgainDraft, noonInDays, renumberDraft } from './logAgain';
+import {
+  lateRenumberDraft,
+  leadDays,
+  logAgainDraft,
+  noonInDays,
+  renumberDraft,
+} from './logAgain';
 
 const resolved = (created: string, due: string): Prediction => ({
   id: 'p1',
@@ -56,5 +62,36 @@ describe('renumberDraft (D62)', () => {
       dueIso: p.due_date,
       replaces: 'p1',
     });
+  });
+});
+
+describe('renumberDraft with what Edit held (step 179)', () => {
+  it('keeps typed words, category and date, and falls back when blank', () => {
+    const p = { ...resolved('2026-11-13T09:00:00', '2026-11-16T12:00:00'), status: 'pending' as const };
+    const due = new Date('2026-11-18T12:00:00').toISOString();
+    expect(renumberDraft(p, { title: 'Swim three times', category: 'personal', dueIso: due })).toMatchObject({
+      title: 'Swim three times',
+      category: 'personal',
+      dueIso: due,
+      replaces: 'p1',
+    });
+    expect(renumberDraft(p, { title: '  ', category: null, dueIso: 'nope' })).toMatchObject({
+      title: p.title,
+      category: p.category,
+      dueIso: p.due_date,
+    });
+  });
+});
+
+describe('lateRenumberDraft (code review, step 179)', () => {
+  it('keeps what Edit held as a new one, due tomorrow at the earliest', () => {
+    const now = new Date('2026-11-14T00:05:00');
+    const p = { ...resolved('2026-11-13T09:00:00', '2026-11-14T12:00:00'), status: 'pending' as const };
+    const late = lateRenumberDraft(renumberDraft(p, { title: 'Swim three times' }), now);
+    expect(late.replaces).toBeUndefined();
+    expect(late.title).toBe('Swim three times');
+    expect(late.dueIso).toBe(noonInDays(1, now));
+    const later = new Date('2026-11-20T12:00:00').toISOString();
+    expect(lateRenumberDraft(renumberDraft(p, { dueIso: later }), now).dueIso).toBe(later);
   });
 });

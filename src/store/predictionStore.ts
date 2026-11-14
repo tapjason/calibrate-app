@@ -371,7 +371,9 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // delete is uncounted by the rule just checked, not re-read past midnight.
     await withTransaction(async () => {
       await insertPrediction(prediction);
-      await deletePrediction(id, { counted: false });
+      // deletionCounts is false for an open one on the day it was made
+      // (D61), which canRenumber just checked: the one rule, not a literal.
+      await deletePrediction(id, { counted: deletionCounts(current, now) });
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await get().loadPending();

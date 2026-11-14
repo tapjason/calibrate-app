@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import { MIN_N_BAND, type Category } from '@/types';
-import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { categoryTitle, isNamedCategory, useCategoryStore } from '@/store/categoryStore';
 
 import { CARD_CANVAS_HEIGHT, IdentityCard, type CardFormat } from './IdentityCard';
 import { CARD_RADIUS, ScaledCanvas } from './ScaledCanvas';
@@ -39,7 +39,10 @@ const LAST_ON_NOTE = 'One category stays on the card.';
  * was explained only at the bottom of How scoring works (blind playtest
  * 2026-11-13c, finding 6).
  */
-export const FRIEND_SQUARES = `A friend's card shared as text shows a row of squares, one per range of how sure, ${SQUARES_KEY.charAt(0).toLowerCase()}${SQUARES_KEY.slice(1)}. Yours come once your rating unlocks and a range has ${MIN_N_BAND} scored answers.`;
+export const FRIEND_SQUARES =
+  `A friend's score is out of 100: 100 minus how far, range by range and on average, what they said was from how often it happened. "Give or take" is how far luck could move it. ` +
+  `The squares are their five ranges of how sure, 0–20% up to 80–100%, ${SQUARES_KEY.charAt(0).toLowerCase()}${SQUARES_KEY.slice(1)}. ` +
+  `Yours come once your rating unlocks and a range has ${MIN_N_BAND} scored answers.`;
 
 export const SQUARES_LATER =
   `Shared as text, your card gets a row of coloured squares once your rating unlocks and a range has ${MIN_N_BAND} scored answers. How scoring works says what they mean.`;
@@ -88,18 +91,30 @@ export function ShareCardPanel({
   const allOnFile = categoryStats.filter((c) => c.predictions_resolved > 0);
   // Categories the user chose to leave off the card (Any Distance-style
   // show/hide, DESIGN_SYSTEM §7.5). The recaps leave them off too.
-  const hidden = cardHiddenCategories(categoryStats, storedHidden);
+  // While the words are hidden, the categories the person named stay off
+  // the card and the recaps (D62), whatever was chosen.
+  const hideTitles = useSettingsStore((s) => s.hideTitles);
+  const ownOff = hideTitles ? isNamedCategory : undefined;
+  const hidden = cardHiddenCategories(categoryStats, storedHidden, ownOff);
+  const userHidden = cardHiddenCategories(categoryStats, storedHidden);
+  // Only what's shown. With nothing left, the card has no categories and
+  // says how many are off; nothing unticked comes back (code review, step 179).
   const shown = categoryStats.filter((c) => !hidden.has(c.category));
-  const card = buildShareCard(
-    userStat,
-    shown.some((c) => c.predictions_resolved > 0) ? shown : categoryStats,
-    { giveOrTake: ratingRange?.giveOrTake, hiddenCount: hidden.size },
-  );
-  const lastOn = allOnFile.length - hidden.size === 1;
+  const card = buildShareCard(userStat, shown, {
+    giveOrTake: ratingRange?.giveOrTake,
+    hiddenCount: hidden.size,
+  });
+  // The toggles: the categories that can be on the card now.
+  const choosable = allOnFile.filter((c) => !ownOff?.(c.category));
+  const keptOff = allOnFile.length - choosable.length;
+  const onCount = choosable.filter((c) => !hidden.has(c.category)).length;
+  const lastOn = onCount === 1;
+  // From the person's own choice only: a category kept off while hiding
+  // isn't stored as unticked, so it comes back when the switch goes off.
   const toggleCategory = (c: Category) => {
-    const next = new Set(hidden);
+    const next = new Set(userHidden);
     if (next.has(c)) next.delete(c);
-    else if (allOnFile.length - next.size > 1) next.add(c);
+    else if (onCount > 1) next.add(c);
     void setStoredHidden([...next]);
   };
   // resolveTheme, not a raw lookup: a Plus theme held by someone who has
@@ -270,11 +285,18 @@ export function ShareCardPanel({
             ))}
           </View>
 
-          {allOnFile.length > 1 && (
+          {keptOff > 0 && (
+            <Text style={styles.message} testID="share-own-kept-off">
+              Categories you named stay off the card while “Hide the words” is on.
+            </Text>
+          )}
+          {/* One choosable category shows too when it's off, so it can come
+              back on (code review, step 179). */}
+          {(choosable.length > 1 || onCount < choosable.length) && (
             <>
               <Text style={styles.controlLabel}>On the card</Text>
               <View style={styles.chips}>
-                {allOnFile.map((c) => {
+                {choosable.map((c) => {
                   const on = !hidden.has(c.category);
                   // The last one on stays on: a card needs a category.
                   const locked = on && lastOn;

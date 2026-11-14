@@ -8,6 +8,7 @@
 // Days are the device's local calendar days, like the streak engine: "due
 // today" means the user's today.
 
+import { endSentence } from '@/components/ui/sentence';
 import { localDate } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
 
@@ -106,7 +107,7 @@ export function nextDueLine(
   }, now);
   // No-break spaces hold the date together: "Oct" ended one line and "13."
   // began the next.
-  return `The ${first ? 'first' : 'next'} one comes due ${day.replace(/ /g, '\u00A0')}.`;
+  return endSentence(`The ${first ? 'first' : 'next'} one comes due ${day.replace(/ /g, '\u00A0')}`);
 }
 
 /**

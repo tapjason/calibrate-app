@@ -70,12 +70,37 @@ export function logAgainDraft(prediction: Prediction, now: Date = new Date()): L
  * the point is a new one. A delete on the day it was made isn't counted (D61),
  * so nothing hides; from the next day the number is the record.
  */
-export function renumberDraft(prediction: Prediction): LogAgainDraft {
+/**
+ * "Use another number" tapped once the prediction can't be replaced (past
+ * midnight with Edit open, or answered on another phone meanwhile): what Edit
+ * held, as a new prediction, due tomorrow at the earliest (code review, step
+ * 179). The old one keeps its number.
+ */
+export function lateRenumberDraft(draft: LogAgainDraft, now: Date = new Date()): LogAgainDraft {
+  const earliest = noonInDays(1, now);
+  return {
+    ...draft,
+    replaces: undefined,
+    dueIso: Date.parse(draft.dueIso) < Date.parse(earliest) ? earliest : draft.dueIso,
+  };
+}
+
+export function renumberDraft(
+  prediction: Prediction,
+  /**
+   * What Edit held when "Use another number" was tapped, so words typed there
+   * aren't lost (blind playtest 2026-11-13e, run 2: Log reopened on the old
+   * words at midnight). Anything missing or blank keeps the prediction's own.
+   */
+  edits: { title?: string | null; category?: Category | null; dueIso?: string | null } = {},
+): LogAgainDraft {
+  const title = edits.title?.trim() ? edits.title : prediction.title;
+  const due = edits.dueIso && !Number.isNaN(Date.parse(edits.dueIso)) ? edits.dueIso : null;
   return {
     sourceId: `renumber:${prediction.id}`,
-    title: prediction.title,
-    category: prediction.category,
-    dueIso: prediction.due_date,
+    title,
+    category: edits.category ?? prediction.category,
+    dueIso: due ?? prediction.due_date,
     replaces: prediction.id,
   };
 }

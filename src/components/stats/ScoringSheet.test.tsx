@@ -63,7 +63,9 @@ describe('ScoringSheet', () => {
 describe('ScoringSheet with the rating line', () => {
   it('shows it above the explainer, and nothing without it', () => {
     const view = render(<ScoringSheet onClose={jest.fn()} ratingLine="Your rating is 86. Band by band…" />);
-    expect(screen.getByTestId('scoring-rating-line')).toHaveTextContent('Your rating is 86. Band by band…');
+    expect(screen.getByTestId('scoring-rating-line')).toHaveTextContent(/Your rating is 86\. Band by band…/);
+    // Its own heading, so a heading jump reaches it (step 179).
+    expect(screen.getByRole('header', { name: 'Your rating' })).toBeTruthy();
     view.rerender(<ScoringSheet onClose={jest.fn()} />);
     expect(screen.queryByTestId('scoring-rating-line')).toBeNull();
   });

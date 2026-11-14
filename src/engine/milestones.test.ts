@@ -61,6 +61,19 @@ describe('detectMilestone', () => {
     expect(m?.kind).toBe('rating_unlocked');
   });
 
+  it('names a badge earned on the unlocking answer (step 179)', () => {
+    const m = detectMilestone(
+      user({ rating_is_provisional: true }),
+      [cat({ badge_level: 'guesser', score_is_provisional: true })],
+      user({ rating_is_provisional: false }),
+      [cat({ badge_level: 'forecaster', score_is_provisional: false })],
+    );
+    expect(m).toMatchObject({
+      kind: 'rating_unlocked',
+      badge: { category: 'health', badge: 'forecaster' },
+    });
+  });
+
   it('has no card of its own for a category score unlocking (D62)', () => {
     // The 20th answer brings the score and Tracker together; Tracker says it.
     const m = detectMilestone(

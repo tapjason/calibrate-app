@@ -9,6 +9,7 @@ import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, radius, space, type } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
+import { useResolveRunStore } from '@/store/resolveRunStore';
 import type { AnswerTally } from '@/types';
 
 import { ResolvePrompt } from './ResolvePrompt';
@@ -62,18 +63,44 @@ interface ResolveRunProps {
  * can't reshuffle it; a card resolved elsewhere in the meantime is passed over.
  */
 export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: ResolveRunProps) {
-  const [queue] = useState<string[]>(() => {
+  // The run as it opened, or as it stood before a reload (step 179; blind
+  // playtest 2026-11-13e, run 2: it came back as "1 of 3" and its summary
+  // left out the answers before the reload).
+  const [opening] = useState(() => {
     const now = new Date();
-    return usePredictionStore
-      .getState()
-      .pending.filter((p) => isReadyToResolve(p, now))
+    const pending = usePredictionStore.getState().pending;
+    const ready = pending
+      .filter((p) => isReadyToResolve(p, now))
       .sort((a, b) => (Date.parse(a.due_date) || 0) - (Date.parse(b.due_date) || 0))
       .map((p) => p.id);
+    const kept = useResolveRunStore.getState().run;
+    // Resumed only when nothing new came due since, and it had begun.
+    if (kept && kept.answered.length > 0 && ready.every((id) => kept.queue.includes(id))) {
+      const open = new Set(pending.map((p) => p.id));
+      const at = kept.queue.findIndex((id) => !kept.answered.includes(id) && open.has(id));
+      return {
+        queue: kept.queue,
+        answered: kept.answered,
+        index: at === -1 ? kept.queue.length : at,
+        resumed: true,
+      };
+    }
+    return { queue: ready, answered: [] as string[], index: 0, resumed: false };
   });
-  const [index, setIndex] = useState(0);
+  const queue = opening.queue;
+  const [index, setIndex] = useState(opening.index);
   // The cards answered here, as against the queue: one answered elsewhere and
   // passed over isn't part of what this run came to.
-  const [answeredHere, setAnsweredHere] = useState<string[]>([]);
+  const [answeredHere, setAnsweredHere] = useState<string[]>(opening.answered);
+  // Kept for a kill or a reload from the start. Any way of leaving the run
+  // on screen (the ×, a swipe, Done) unmounts it, and the next run starts
+  // fresh; a kill runs no JavaScript, so only that resumes (code review,
+  // step 179). Written on every mount, so a development double-mount puts
+  // it back.
+  useEffect(() => {
+    useResolveRunStore.getState().start(opening.queue, new Date(), opening.answered);
+    return () => useResolveRunStore.getState().clear();
+  }, [opening]);
   // Whether a card in this run has said why one answer only nudges the
   // rating. Set by the card that said it, not by any answer: a skip or a
   // same-day answer first would otherwise leave the run never saying it.
@@ -98,10 +125,17 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
   useEffect(() => {
     if (finishedWithAnswers) useRatingStore.getState().noteMoment();
   }, [finishedWithAnswers]);
+  // Over: nothing to resume after a reload now.
+  const over = index >= queue.length;
+  useEffect(() => {
+    if (over) useResolveRunStore.getState().clear();
+  }, [over]);
 
   const advance = (outcome?: 'skipped') => {
     setSkipNotice(outcome === 'skipped');
-    setAnsweredHere((ids) => [...ids, queue[index]]);
+    const done = queue[index];
+    setAnsweredHere((ids) => (ids.includes(done) ? ids : [...ids, done]));
+    useResolveRunStore.getState().markAnswered(done);
     const stillOpen = new Set(usePredictionStore.getState().pending.map((p) => p.id));
     let next = index + 1;
     while (next < queue.length && !stillOpen.has(queue[next])) next += 1;
@@ -162,7 +196,9 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
             <View style={[styles.fill, { width: `${progress * 100}%` }]} />
           </View>
         </View>
-        {onDismiss && <CloseButton onPress={onDismiss} testID="resolve-run-dismiss" />}
+        {onDismiss && (
+          <CloseButton onPress={onDismiss} testID="resolve-run-dismiss" />
+        )}
       </View>
       {skipNotice && (
         <Text style={styles.notice} testID="resolve-run-skip-notice">
@@ -180,7 +216,12 @@ export function ResolveRun({ onClose, onDraftChange, onDismiss, onStep }: Resolv
         ratingExplained={ratingExplained}
         onRatingExplained={() => setRatingExplained(true)}
         onResolved={advance}
-        onAnswered={() => setSkipNotice(false)}
+        onAnswered={() => {
+          setSkipNotice(false);
+          // Kept as the answer lands, not on Next: a kill while the card's
+          // acknowledgement is up would leave it out of the summary.
+          useResolveRunStore.getState().markAnswered(id);
+        }}
         onDraftChange={reportDraft}
       />
     </View>

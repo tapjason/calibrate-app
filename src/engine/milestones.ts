@@ -38,10 +38,6 @@ export function detectMilestone(
   // Without a previous snapshot there is no "crossing", only a first load.
   if (!prevUser) return null;
 
-  if (prevUser.rating_is_provisional && !nextUser.rating_is_provisional) {
-    return { kind: 'rating_unlocked', rating: Math.round(nextUser.calibration_rating) };
-  }
-
   const prevByCategory = new Map(prevCategories.map((c) => [c.category, c]));
 
   const tierUps = nextCategories
@@ -50,6 +46,18 @@ export function detectMilestone(
       ({ next, prev }) => rank(next.badge_level) > rank(prev?.badge_level ?? 'guesser'),
     )
     .sort((a, b) => rank(b.next.badge_level) - rank(a.next.badge_level));
+
+  if (prevUser.rating_is_provisional && !nextUser.rating_is_provisional) {
+    // A badge earned on the same answer rides along (blind playtest
+    // 2026-11-13e, run 3: it was said nowhere on Resolve).
+    const top = tierUps[0];
+    return {
+      kind: 'rating_unlocked',
+      rating: Math.round(nextUser.calibration_rating),
+      ...(top ? { badge: { category: top.next.category, badge: top.next.badge_level } } : {}),
+    };
+  }
+
   if (tierUps.length > 0) {
     const { next, prev } = tierUps[0];
     return {

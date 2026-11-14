@@ -292,7 +292,7 @@ describe('CalibrationView Brier score', () => {
         brierBaseline={{ rate: 0.64, score: 0.2304 }}
       />,
     ));
-    expect(queryByTestId('stats-fine-toggle')).toHaveTextContent('Hide the fine print');
+    expect(queryByTestId('stats-fine-toggle')).toHaveTextContent('Show less');
     expect(getByTestId('stats-brier')).toHaveTextContent(
       'Brier score\u00A00.14, lower is better. Saying 64%\u00A0every time, how often your calls came true, would score\u00A00.23.',
     );
@@ -653,5 +653,52 @@ describe('CalibrationView, what luck alone gives', () => {
     expect(getByTestId('rating-provisional-first-look')).toHaveTextContent(
       'First look: you said about 75% on average, and 6 of your 12 scored predictions happened. Too few to rate yet.',
     );
+  });
+});
+
+// Step 179 (blind playtest 2026-11-13e, runs 1 and 4): Insights' rows don't
+// name a category the person named while the words are hidden.
+describe('CalibrationView with the words hidden', () => {
+  it('reads "Your own category" on its badge row', () => {
+    const { useSettingsStore } = jest.requireActual('@/store/settingsStore') as typeof import('@/store/settingsStore');
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'c-divorce' as Category,
+          user_id: 'u1',
+          name: 'Divorce',
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    useSettingsStore.setState({ hideTitles: true });
+    try {
+      const view = render(
+        <CalibrationView
+          userStat={userStat({ total_resolved: 3 })}
+          calibration={EMPTY_CAL}
+          categoryStats={[
+            {
+              user_id: 'u1',
+              category: 'c-divorce' as Category,
+              predictions_made: 3,
+              predictions_resolved: 3,
+              calibration_score: 80,
+              score_is_provisional: true,
+              badge_level: 'guesser',
+            },
+          ]}
+          nextBadges={{}}
+        />,
+      );
+      expect(view.queryByText(/Divorce/)).toBeNull();
+      expect(view.getAllByText(/Your own category/).length).toBeGreaterThan(0);
+    } finally {
+      useSettingsStore.setState({ hideTitles: false });
+      useCategoryStore.setState({ defs: [] });
+    }
   });
 });

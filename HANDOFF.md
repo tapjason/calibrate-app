@@ -1,8 +1,18 @@
 # Handoff
 
-**Branch:** `builder/step-178-owner-picks` (step 178, D62, 2026-11-13), from `builder/step-177-round20` (step 177 and rounds 20–21; master is at step 177), from `builder/step-173-owner-picks` (step 173, D59, 2026-11-12; rounds 18–19 and steps 174–176, 2026-11-13; all pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
+**Branch:** `builder/step-179-round22` (step 179, 2026-11-14), from `builder/step-178-owner-picks` (step 178, D62, and round 22, 2026-11-13), from `builder/step-177-round20` (step 177 and rounds 20–21; master is at step 177), from `builder/step-173-owner-picks` (step 173, D59, 2026-11-12; rounds 18–19 and steps 174–176, 2026-11-13; all pushed), from `builder/playtest-fixes` (steps 171–172 and rounds 16–17, pushed), from `builder/playtest-setup` (04accf4, playtest profiles, personas and rounds 12–15), from `builder/log-safe-top` (1851d9d, Log's top inset), from `builder/today-small` (1c6d0ae, step 159), from `builder/a11y-marks` (b72a941, step 158), from `builder/category-twenty` (8511b77, step 157), from `builder/habit-repeats` (34d3055, step 169), from `builder/plain-counts` (9597296, step 170), from `builder/due-date` (6b603fb, step 168), from `builder/headline-fixes` (5f7dbce, step 167), from `builder/playtest-11` (2e5cd71, D55–D57 decided), from `builder/reopen-and-erase` (step 166). Nothing pushed; the earlier `builder/` branches and `master` are still local only.
 
 ## What this PR did
+
+**Step 179 (2026-11-14), round 22's ten fixes** (BUILT_LOG row 179; owner: "Build the ten fixes please"). Branch `builder/step-179-round22`, from `6061582`. JS only: a reload. No decisions: findings 1 (the read-only half), 2, 3, 9, 10 and 12–16 of `playtest-2026-11-13e.md`.
+- **Hide the words** now covers Insights' badge rows and furthest-off line, the share card (own categories left off, said so, not stored as unticked) and the recaps (no titles switch).
+- **"Use another number"** carries Edit's typed words, category and date.
+- **The unlock card** names a badge earned on the same answer.
+- **Words:** the friend fold explains the score and ranges; Edit's number note says one thing; Log's "nothing is counted against you"; "Show less"; the badge card's full stop; one full stop after a Spanish date or time; a "Your rating" heading.
+- **An answer run** resumes after a kill (`resolveRunStore`, two hours), with its count and summary whole; closing it on screen starts the next one fresh.
+- **Review fixes** (code review and record audit, round 1): the card is built only from what's shown, and with every category off it keeps the rating and "N categories not shown" (it had put back a category the person unticked, or vanished); the cards key on a name the person gave, not an icon; Trends and Coach cards hide names too; each answer is kept as it lands; Edit's values reach Log in memory, not the URL; after midnight they're kept as a new prediction; Erase and sign-out forget the run. Round 2: Today's identity line leaves off the same categories as the card (an icon-only built-in stays on both); the no-category card's VoiceOver label has no empty list; the recaps' "not shown" counts only categories answered in their span.
+- **Calls made without asking** (the reviews' "Needs you", each from a rule already decided): with every category kept off, a card with no categories (D42's honest shape) rather than the Warm-up card; a built-in with only an icon stays on the cards (D40: they draw no icons); a run closed with × or a swipe starts fresh, only a kill resumes.
+- **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-14 (step 179…)".
 
 **Round 22 (2026-11-13), appeal on step 178 with a diversified cast:** `docs/design/research/playtest-2026-11-13e.md` (plan `round22-plan-2026-11-13.md`), on `cc1235d`.
 - **Results:**
@@ -23,7 +33,7 @@
   - #15: a heading for How scoring works' personal paragraph;
   - #16: an answer run keeps its count and summary across a reload.
 - **Needs the owner:**
-  - #1 (part): Log's chips, the hidden card's wording, built-in names, the lock (step 179, documented);
+  - #1 (part): Log's chips, the hidden card's wording, built-in names, the lock (step 180, documented);
   - #4: the perfect line beside "give or take" (wording);
   - #5: a run's badge changes once, at its end;
   - #6: what it's good for, in the newcomer's world (bettors, a friend's score);
@@ -285,7 +295,7 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Next step
 
-- **Agent:** step 179, the native batch (a Face ID lock, `expo-localization`), installed with `npx expo install`, then a new development build the owner runs; after that, a playtest round on step 178.
+- **Agent:** step 180, the native batch (a Face ID lock, `expo-localization`), installed with `npx expo install`, then a new development build the owner runs; after that, a playtest round on step 178.
 - **Owner:** deploy the `coach` Edge Function (`supabase functions deploy coach`) so its prompt says 20; until then the phone re-checks at 20 and drops anything the server allowed at 15–19.
 - **Owner:** decide whether `web-serve.sh stop` should be fixed for Windows pids, so it works unattended.
 - **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168, 158 and 159 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label, the card's strip as a PNG and under Color Filters.
@@ -310,11 +320,11 @@ comes back only if a new round finds it again. Left with the owner:
   - prices, P1 (recommended: $34.99 a year, $79.99 lifetime, $4.99 a month; Apple's automatic prices elsewhere);
   - EU trader status (recommended: launch outside the EU first);
   - deploy `coach`; email confirmation on, with a custom sender before launch; the domain (not needed for v1); `APP_STORE_PROVIDER_TOKEN`.
-- **The native batch (step 179), approved in principle by the same go:** a Face ID lock (`expo-local-authentication`) and `expo-localization` (US units by Region), then one new development build.
+- **The native batch (step 180), approved in principle by the same go:** a Face ID lock (`expo-local-authentication`) and `expo-localization` (US units by Region), then one new development build.
 - **To revisit if wanted:** how strict the badge bars are (D62 (a): a perfect forecaster earns Sharp about 6 times in 10 at 50 answers, Oracle about 5 in 10 at 100).
 - **Not now:** head-to-head with a friend; a then-and-now card; a Trends preview; the day-one streak and goal.
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 179 suites, 2,207 tests. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 182 suites, 2,238 tests. One flake seen twice under full-run load and not reproduced in three more runs: `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone); rerun before chasing it. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

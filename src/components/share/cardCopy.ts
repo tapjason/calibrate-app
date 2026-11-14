@@ -55,7 +55,10 @@ export function buildShareCard(
   if (!userStat) return null;
 
   const withData = categoryStats.filter((c) => c.predictions_resolved > 0);
-  if (withData.length === 0) return null;
+  // Every category left off (the person's own, while the words are hidden):
+  // the card keeps the rating and says how many aren't shown, rather than
+  // vanishing or putting one back (code review, step 179).
+  if (withData.length === 0 && !((extras.hiddenCount ?? 0) > 0)) return null;
 
   const ordered = [...withData].sort((a, b) => {
     const byBadge = rankOf(b.badge_level) - rankOf(a.badge_level);
@@ -101,7 +104,6 @@ export const UNGATED_IDENTITY = 'Calibrating';
  * arrive strongest first (buildShareCard).
  */
 export function shareLines(card: ShareCard): { identity: string; contrast: string | null } {
-  if (card.categories.length === 0) return { identity: '', contrast: null };
   const gated = card.categories.filter((c) => c.badge_level !== 'guesser');
   const [best] = gated;
   // With no badge yet but the rating unlocked, the rating leads: "Calibrating"
@@ -174,10 +176,18 @@ export function shareSubline(card: ShareCard): string {
 export function cardHiddenCategories(
   categoryStats: readonly CategoryStat[],
   stored: readonly Category[],
+  /**
+   * Categories kept off whatever was chosen: the ones the person named,
+   * while "Hide the words" is on (D62; blind playtest 2026-11-13e, runs 1 and
+   * 4). These may leave no category on the card at all.
+   */
+  alsoOff?: (category: Category) => boolean,
 ): ReadonlySet<Category> {
   const onFile = categoryStats.filter((c) => c.predictions_resolved > 0);
   const hidden = onFile.map((c) => c.category).filter((c) => stored.includes(c));
-  return new Set(hidden.length < onFile.length ? hidden : []);
+  const chosen = hidden.length < onFile.length ? hidden : [];
+  if (!alsoOff) return new Set(chosen);
+  return new Set([...chosen, ...onFile.map((c) => c.category).filter(alsoOff)]);
 }
 
 /** "2 categories not shown", or null for none. */
@@ -310,7 +320,10 @@ export function identityCardSummary(
     .join(', ');
   const hidden = hiddenLine(card);
   const strip = showsRanges(card, buckets) ? ` ${stripSummary(buckets)}` : '';
-  return `Share card. ${lead}. ${shareSubline(card)}.${strip} By category: ${each}.${hidden ? ` ${hidden}.` : ''}`;
+  // No empty list on a card with every category left off (code review,
+  // step 179).
+  const byCategory = each ? ` By category: ${each}.` : '';
+  return `Share card. ${lead}. ${shareSubline(card)}.${strip}${byCategory}${hidden ? ` ${hidden}.` : ''}`;
 }
 
 const STRIP_WORDS: Record<Direction, string> = {

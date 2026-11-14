@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 import { AppState, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import { endSentence } from '@/components/ui/sentence';
 import { Icon } from '@/components/ui/Icon';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
@@ -171,7 +172,7 @@ export function SettingsView({
               // (blind playtest 2026-11-13, run 7).
               description={
                 remindersEnabled
-                  ? `On the day each prediction comes due, at ${reminderTimeLabel(dueReminderTime)}.`
+                  ? endSentence(`On the day each prediction comes due, at ${reminderTimeLabel(dueReminderTime)}`)
                   : 'On the day each prediction comes due.'
               }
               value={remindersEnabled}
@@ -205,7 +206,9 @@ export function SettingsView({
               label="Weekly digest"
               description={
                 digestEnabled
-                  ? `How many are open, never their words, ${DAY_NAMES[digestDay]} at ${reminderTimeLabel(digestTime)}.`
+                  ? endSentence(
+                      `How many are open, never their words, ${DAY_NAMES[digestDay]} at ${reminderTimeLabel(digestTime)}`,
+                    )
                   : 'How many are open, never their words, once a week.'
               }
               value={digestEnabled}

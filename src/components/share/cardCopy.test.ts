@@ -3,6 +3,7 @@ import type { BucketStat, CategoryStat, ShareCard, UserStat } from '@/types';
 
 import {
   buildShareCard,
+  cardHiddenCategories,
   hiddenLine,
   identityCardSummary,
   shareHeadline,
@@ -427,5 +428,82 @@ describe('stripSummary (roadmap D47)', () => {
     expect(stripSummary([strip(80, 'overconfident'), strip(0, 'underconfident'), strip(40, 'calibrated')])).toBe(
       'By range, low to high: 0 to 20%, too cautious; 40 to 60%, no clear lean; 80 to 100%, too sure.',
     );
+  });
+});
+
+describe('cardHiddenCategories while hiding (step 179)', () => {
+  it('keeps the named ones off, even all of them', () => {
+    const stat = (category: string, n: number) =>
+      ({
+        user_id: 'u1',
+        category,
+        predictions_made: n,
+        predictions_resolved: n,
+        calibration_score: 80,
+        score_is_provisional: n < 20,
+        badge_level: 'guesser',
+      }) as never;
+    const stats = [stat('work', 3), stat('c-divorce', 2)];
+    expect([...cardHiddenCategories(stats, [])]).toEqual([]);
+    expect([...cardHiddenCategories(stats, [], (c) => c === 'c-divorce')]).toEqual(['c-divorce']);
+    expect([...cardHiddenCategories(stats, ['work'], (c) => c === 'c-divorce')].sort()).toEqual([
+      'c-divorce',
+      'work',
+    ]);
+  });
+});
+
+describe('buildShareCard with every category left off (code review, step 179)', () => {
+  const stat = (category: string) =>
+    ({
+      user_id: 'u1',
+      category,
+      predictions_made: 25,
+      predictions_resolved: 25,
+      calibration_score: 85,
+      score_is_provisional: false,
+      badge_level: 'forecaster',
+    }) as never;
+  const user = (provisional: boolean) =>
+    ({
+      user_id: 'u1',
+      calibration_rating: 86.6,
+      total_predictions: 25,
+      total_resolved: provisional ? 12 : 25,
+      current_streak: 1,
+      rating_is_provisional: provisional,
+    }) as never;
+
+  it('keeps the rating and how many are off', () => {
+    const card = buildShareCard(user(false), [], { hiddenCount: 2 })!;
+    expect(card.categories).toEqual([]);
+    expect(shareLines(card)).toEqual({ identity: 'Calibration 87/100', contrast: null });
+    expect(hiddenLine(card)).toBe('2 categories not shown');
+    expect(shareLines(buildShareCard(user(true), [], { hiddenCount: 1 })!).identity).toBe('Calibrating');
+  });
+
+  it('is still nothing with no answers at all', () => {
+    expect(buildShareCard(user(false), [])).toBeNull();
+    expect(buildShareCard(user(false), [stat('work')], { hiddenCount: 1 })!.categories).toHaveLength(1);
+  });
+});
+
+describe('identityCardSummary with no categories (code review, step 179)', () => {
+  it('says no empty list', () => {
+    const card = buildShareCard(
+      {
+        user_id: 'u1',
+        calibration_rating: 86.6,
+        total_predictions: 25,
+        total_resolved: 25,
+        current_streak: 1,
+        rating_is_provisional: false,
+      },
+      [],
+      { hiddenCount: 2 },
+    )!;
+    const said = identityCardSummary(card);
+    expect(said).not.toMatch(/By category/);
+    expect(said).toMatch(/Calibration 87\/100.*2 categories not shown\.$/);
   });
 });

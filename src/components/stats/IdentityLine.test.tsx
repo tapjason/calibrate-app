@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useCategoryStore } from '@/store/categoryStore';
 import { MIN_N_CATEGORY, type BadgeLevel, type Category, type CategoryStat, type UserStat } from '@/types';
 
-import { homeIdentity, IdentityLine } from './IdentityLine';
+import { homeIdentity, IdentityLine, namedOnToday } from './IdentityLine';
 
 const USER: UserStat = {
   user_id: 'u1',
@@ -128,6 +128,52 @@ describe('IdentityLine with the words hidden', () => {
       expect(screen.getByTestId('home-identity')).toHaveTextContent(/health/);
     } finally {
       useSettingsStore.setState({ hideTitles: false });
+      useCategoryStore.setState({ defs: [] });
+    }
+  });
+});
+
+// Code review of step 179: Today leaves off what the share card does.
+describe('namedOnToday', () => {
+  const stat = (category: 'health' | 'work') =>
+    ({
+      user_id: 'u1',
+      category,
+      predictions_made: 25,
+      predictions_resolved: 25,
+      calibration_score: 85,
+      score_is_provisional: false,
+      badge_level: 'forecaster',
+    }) as const;
+
+  it('keeps a built-in given only an icon, and drops a renamed one', () => {
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'health',
+          user_id: 'u1',
+          name: null,
+          icon: { kind: 'emoji', emoji: '❤️' },
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+        {
+          id: 'work',
+          user_id: 'u1',
+          name: 'Recovery',
+          icon: null,
+          hidden: false,
+          position: 1,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    try {
+      const stats = [stat('health'), stat('work')];
+      expect(namedOnToday(stats, true).map((c) => c.category)).toEqual(['health']);
+      expect(namedOnToday(stats, false)).toHaveLength(2);
+    } finally {
       useCategoryStore.setState({ defs: [] });
     }
   });

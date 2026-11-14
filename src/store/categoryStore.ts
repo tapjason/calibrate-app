@@ -211,6 +211,34 @@ export function isOwnCategory(id: Category): boolean {
   return Boolean(def?.name || def?.icon);
 }
 
+/**
+ * Whether a category carries a name the person gave: one they added, or a
+ * built-in they renamed. The share card and the recaps leave these off while
+ * "Hide the words" is on. They never draw an icon (D40), so a built-in given
+ * only an icon stays on them (code review, step 179).
+ */
+export function isNamedCategory(id: Category): boolean {
+  if (!isBuiltInCategory(id)) return true;
+  return Boolean(useCategoryStore.getState().defs.find((d) => d.id === id)?.name);
+}
+
+/** What a category the person named reads as while "Hide the words" is on (D62). */
+export const OWN_CATEGORY_HIDDEN = 'Your own category';
+
+/**
+ * A category's title as a read-only screen shows it: "Your own category" for
+ * one the person named or gave an icon while the words are hidden (D62 (d),
+ * applied off the cards too after blind playtest 2026-11-13e, runs 1 and 4).
+ */
+export function visibleCategoryTitle(id: Category, hideTitles: boolean): string {
+  return hideTitles && isOwnCategory(id) ? OWN_CATEGORY_HIDDEN : categoryTitle(id);
+}
+
+/** The same in the middle of a sentence: "your own category", or categoryLabel. */
+export function visibleCategoryLabel(id: Category, hideTitles: boolean): string {
+  return hideTitles && isOwnCategory(id) ? OWN_CATEGORY_HIDDEN.toLowerCase() : categoryLabel(id);
+}
+
 /** Whether a category is hidden from Log's choices. */
 export function isCategoryHidden(id: Category): boolean {
   return useCategoryStore.getState().defs.some((d) => d.id === id && d.hidden);

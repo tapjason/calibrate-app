@@ -1,13 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CategoryIcon } from '@/components/ui/Icon';
+import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { localCount } from '@/components/ui/count';
 import { holdTarget } from '@/components/ui/holdRanges';
 import { LensEmblem } from '@/components/ui/LensEmblem';
 import { BADGE_META } from '@/constants/badges';
 import { colors, type } from '@/constants/theme';
 import type { CategoryCounts, CategoryStat, NextBadgeTarget } from '@/types';
-import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
+import { isOwnCategory, useCategoryStore, visibleCategoryTitle } from '@/store/categoryStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 import { plainCountsLine } from './beforeScoreCopy';
 
@@ -48,7 +49,10 @@ export function CategoryBadge({
   // One sentence for a screen reader (roadmap step 43) instead of the name,
   // the hint with its arrow read aloud, and the badge word as three stops.
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
-  const name = categoryTitle(stat.category);
+  // Not a name the person chose while the words are hidden (D62).
+  const hideTitles = useSettingsStore((s) => s.hideTitles);
+  const nameHidden = hideTitles && isOwnCategory(stat.category);
+  const name = visibleCategoryTitle(stat.category, hideTitles);
   const category = name;
   // The category's own score once it's past MIN_N_CATEGORY (roadmap D28):
   // "how am I doing in money" had no number. Never while provisional, which
@@ -75,7 +79,11 @@ export function CategoryBadge({
     >
       <View style={styles.left}>
         <View style={styles.categoryRow}>
-          <CategoryIcon category={stat.category} size={16} color={colors.textSecondary} />
+          {nameHidden ? (
+            <Icon sf="folder" fallback="folder-outline" size={16} color={colors.textSecondary} />
+          ) : (
+            <CategoryIcon category={stat.category} size={16} color={colors.textSecondary} />
+          )}
           <Text style={styles.category} numberOfLines={1}>
             {name}
           </Text>

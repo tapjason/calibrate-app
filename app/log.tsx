@@ -3,13 +3,20 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { logAgainDraft, renumberDraft, type LogAgainDraft } from '@/components/prediction/logAgain';
+import {
+  lateRenumberDraft,
+  logAgainDraft,
+  renumberDraft,
+  type LogAgainDraft,
+} from '@/components/prediction/logAgain';
 import { LogPredictionForm } from '@/components/prediction/LogPredictionForm';
 import { useLogDraftGuard } from '@/components/prediction/useLogDraftGuard';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, space, type } from '@/constants/theme';
 import { useLogDraftStore } from '@/store/logDraftStore';
+import { categoryOptions } from '@/store/categoryStore';
 import { canRenumber, usePredictionStore } from '@/store/predictionStore';
+import { useRenumberStore } from '@/store/renumberStore';
 
 /**
  * Log, as a full-height sheet over whichever tab opened it (roadmap D3): an
@@ -22,8 +29,15 @@ export default function LogScreen() {
   // details (D56) arrives as ?again=<id>.
   // "Use another number" from an open prediction's Edit (D62) as
   // ?renumber=<id>.
-  const { again, renumber } = useLocalSearchParams<{ again?: string; renumber?: string }>();
+  const { again, renumber } = useLocalSearchParams<{
+    again?: string;
+    renumber?: string;
+  }>();
   const [draft, setDraft] = useState<LogAgainDraft | null>(null);
+  // "Use another number" tapped after the day it was made ended (past
+  // midnight with Edit open): Log keeps what Edit held as a new prediction,
+  // and says so (code review, step 179).
+  const [renumberClosed, setRenumberClosed] = useState(false);
   const [dirty, setDirty] = useState(false);
   // "Discard prediction" throws the kept draft away too (step 173).
   // Not while replacing a number (D62): the kept draft is another prediction's.
@@ -55,11 +69,25 @@ export default function LogScreen() {
 
   useEffect(() => {
     if (typeof renumber !== 'string' || renumber.length === 0) return;
+    // Edit's words, category and date, handed over in memory (none after a
+    // reload, when the prediction's own carry over).
+    const edits = useRenumberStore.getState().take(renumber);
     (async () => {
       const source = await usePredictionStore.getState().getById(renumber);
-      // Only an open one made today; otherwise a plain Log.
-      if (source && canRenumber(source)) {
-        setDraft(renumberDraft(source));
+      if (source) {
+        // A category no longer offered falls back to the prediction's own.
+        const offered = categoryOptions({ includeHidden: true });
+        const next = renumberDraft(source, {
+          title: edits?.title ?? null,
+          category: edits?.category && offered.includes(edits.category) ? edits.category : null,
+          dueIso: edits?.dueIso ?? null,
+        });
+        if (canRenumber(source)) setDraft(next);
+        else if (edits) {
+          // Too late to replace it: what was typed stays, as a new one.
+          setDraft(lateRenumberDraft(next));
+          setRenumberClosed(true);
+        }
       }
       router.setParams({ renumber: undefined });
     })();
@@ -95,8 +123,14 @@ export default function LogScreen() {
               </Text>
               {draft?.replaces && (
                 <Text style={styles.subtitle} testID="log-renumber-note">
-                  Saving replaces the one you made today. A change on the day it was made isn’t
-                  counted.
+                  Saving replaces the one you made today. On the day it was made that’s
+                  fixing a slip, so Insights doesn’t count it.
+                </Text>
+              )}
+              {renumberClosed && !draft?.replaces && (
+                <Text style={styles.subtitle} testID="log-renumber-closed">
+                  It can’t be replaced now, so its number is the record. This saves a new
+                  prediction beside it.
                 </Text>
               )}
             </View>

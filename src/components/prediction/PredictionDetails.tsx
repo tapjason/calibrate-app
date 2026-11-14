@@ -46,8 +46,14 @@ interface PredictionDetailsProps {
   onAnswer: (id: string, opts?: { warned: boolean }) => void;
   /** "Log it again" from an answered prediction (roadmap D56). */
   onPredictAgain?: (prediction: Prediction) => void;
-  /** "Use another number" on the day an open one was made (D62). */
-  onRenumber?: (prediction: Prediction) => void;
+  /**
+   * "Use another number" on the day an open one was made (D62), with what
+   * Edit holds now, so typed words carry over.
+   */
+  onRenumber?: (
+    prediction: Prediction,
+    edits: { title: string; category: Category | null; dueIso: string },
+  ) => void;
   /** Whether Edit holds changes not saved yet, for the sheet's draft guard. */
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -86,7 +92,8 @@ export const EDIT_NUMBER_NOTE = "The number you said stays as it is: it's the re
  * was "delete this one and log it again", 13 to 19 taps that three testers
  * took (blind playtest 2026-11-13d, runs 1, 4 and 8).
  */
-export const EDIT_NUMBER_FIX = 'You made it today, so you can still use another number.';
+export const EDIT_NUMBER_FIX =
+  'You made it today, so you can still change the number. From tomorrow it’s the record.';
 
 /**
  * An open prediction that isn't due yet (roadmap D25, DESIGN_SYSTEM §7.23):
@@ -339,14 +346,15 @@ export function PredictionDetails({
         <Text style={styles.stated}>
           You said <Text style={styles.statedNumber}>{prediction.confidence}%</Text>
         </Text>
-        <Text style={styles.note}>
-          {EDIT_NUMBER_NOTE}
-          {canRenumber(prediction) && onRenumber ? ` ${EDIT_NUMBER_FIX}` : ''}
+        {/* One message, not a no and a yes (blind playtest 2026-11-13e, runs
+            1, 4 and 8): the record's rule, or on its day how to change it. */}
+        <Text style={styles.note} testID="details-number-note">
+          {canRenumber(prediction) && onRenumber ? EDIT_NUMBER_FIX : EDIT_NUMBER_NOTE}
         </Text>
         {canRenumber(prediction) && onRenumber && (
           <TextButton
             label="Use another number"
-            onPress={() => onRenumber(prediction)}
+            onPress={() => onRenumber(prediction, { title, category, dueIso: dueDate })}
             testID="details-renumber"
           />
         )}

@@ -397,7 +397,8 @@ you're wrong" are recorded there as not worth building.
 
 **"Use another number"** (D62) on Edit, only on the day an open prediction was logged
 (by `created_at`, `canRenumber`; not one logged earlier and reworded today, which would
-move its streak day): Log opens as "Another number" with its words, category and date and
+move its streak day): Log opens as "Another number" with the words, category and date Edit
+holds (typed changes included, step 179; tapped after midnight, kept as a new prediction) and
 the number empty, and saving replaces it (saved and deleted in one transaction, the
 delete uncounted by the day-made exemption). From the next day the number is the record.
 Deleting and retyping took three testers 13 to 19 taps (blind playtest 2026-11-13d).
@@ -520,7 +521,7 @@ See the authoritative section above.
   scored predictions happened. Too few to rate yet." Counts, never a lean
 - **The fine print, folded** (D62): the Brier line, the Can't tell count (D57's line at
   zero too) and the same-day, deleted and moved counts sit under "More about your
-  record" on Insights, one tap away
+  record" on Insights, one tap away ("Show less" folds it again)
 - Calibration curve chart (stated vs. actual per bucket)
 - The Brier score, one quiet line in the fine print from 50 scored answers (D24, D62, above)
 - **The pattern, named** (decided 2026-11-01, D37), all free and all by the one lean
@@ -579,7 +580,11 @@ See the authoritative section above.
   default. On, a card shows "Words hidden. Open it to see them.", its number and date,
   and no note; a category the person named or gave an icon (added, or a built-in
   renamed) reads "Your own category" (D62), and Today's identity and next-badge lines
-  name only built-ins. Opening a card shows everything. For a phone someone else picks
+  name only built-ins. Since step 179 the same goes off the cards: Insights' badge rows,
+  furthest-off line, Trends and Coach cards read "Your own category", and the share card and
+  the recaps leave off a category with a name the person gave (an icon alone stays: they draw
+  none), Share says so, and the recaps have no titles switch. With every category off, the
+  card keeps the rating (or "Calibrating") and "N categories not shown". Opening a card shows everything. For a phone someone else picks
   up (reminders have their own switch, D60). A Face ID lock is the native batch's.
 - **The streak can be hidden** (D59, 2026-11-12): a switch in You, "Streak and daily
   goal", on by default. Off hides the streak row and its goal, the checkpoints, the
@@ -854,7 +859,9 @@ No ("Back to Tracker in health: after this answer its score's low end is no long
 above Forecaster's 70. A badge follows the record both ways."), never after "Change answer"
 (D50's reason). No hysteresis. A badge earned says "New badge: Forecaster in health",
 with "Badges follow how well your numbers match what happens, not how often you're
-right." after Yes and No alike (D62; one earned on a No read as a mistake).
+right." after Yes and No alike (D62; one earned on a No read as a mistake). One card
+shows per answer; when the rating unlocks on the same answer, its card names the badge too
+("New badge, too: Forecaster in health.", step 179).
 
 **How hard the bars are** (simulated for D62, one category, a perfectly calibrated
 forecaster on a typical 55–95% mix): Forecaster about 9 times in 10 at 20 answers,

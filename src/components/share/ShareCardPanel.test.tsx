@@ -259,7 +259,7 @@ describe('ShareCardPanel — Day 0', () => {
     fireEvent.press(screen.getByTestId('share-friend-open'));
     expect(screen.getByTestId('share-friend-squares')).toHaveTextContent(FRIEND_SQUARES);
     expect(FRIEND_SQUARES).toBe(
-      "A friend's card shared as text shows a row of squares, one per range of how sure, low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers. Yours come once your rating unlocks and a range has 10 scored answers.",
+      'A friend' + "'" + 's score is out of 100: 100 minus how far, range by range and on average, what they said was from how often it happened. "Give or take" is how far luck could move it. The squares are their five ranges of how sure, 0–20% up to 80–100%, low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers. Yours come once your rating unlocks and a range has 10 scored answers.',
     );
   });
 
@@ -312,6 +312,93 @@ describe('ShareCardPanel — shape and contents', () => {
     const canvas = StyleSheet.flatten(screen.getByTestId('card-preview-canvas').props.style);
     expect(canvas.transform).toEqual([{ scale: 343 / 360 }]);
     expect(canvas.transformOrigin).toBe('top left');
+  });
+
+  // Step 179 (blind playtest 2026-11-13e, runs 1 and 4).
+  it('keeps a category the person named off the card while the words are hidden', () => {
+    const { useCategoryStore } = jest.requireActual('@/store/categoryStore') as typeof import('@/store/categoryStore');
+    seedStats(USER_STAT, CATEGORY_STATS);
+    const named = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0)[0]!.category;
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: named,
+          user_id: 'u1',
+          name: 'Divorce',
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    useSettingsStore.setState({ hideTitles: true });
+    try {
+      render(<ShareCardPanel />);
+      expect(screen.queryByText(/Divorce/)).toBeNull();
+      expect(screen.queryByTestId(`share-toggle-${named}`)).toBeNull();
+      expect(screen.getByTestId('share-own-kept-off')).toBeTruthy();
+      // Not stored as unticked: it comes back when the switch goes off.
+      expect(useSettingsStore.getState().cardHiddenCategories).toEqual([]);
+    } finally {
+      useSettingsStore.setState({ hideTitles: false });
+      useCategoryStore.setState({ defs: [] });
+    }
+  });
+
+  // Code review of step 179: nothing comes back, and the card doesn't vanish.
+  describe('with the words hidden', () => {
+    const { useCategoryStore } = jest.requireActual('@/store/categoryStore') as typeof import('@/store/categoryStore');
+    const def = (id: 'health' | 'finance', over: { name?: string | null; icon?: { kind: 'emoji'; emoji: string } | null }) => ({
+      id,
+      user_id: 'u1',
+      name: over.name ?? null,
+      icon: over.icon ?? null,
+      hidden: false,
+      position: 0,
+      created_at: '2026-11-01T00:00:00.000Z',
+    });
+    afterEach(() => {
+      useSettingsStore.setState({ hideTitles: false, cardHiddenCategories: [] });
+      useCategoryStore.setState({ defs: [] });
+    });
+
+    it('keeps the category card when every category is the person\'s own', () => {
+      seedStats(USER_STAT, CATEGORY_STATS);
+      useCategoryStore.setState({
+        defs: [def('health', { name: 'Divorce' }), def('finance', { name: 'Rent' })],
+      });
+      useSettingsStore.setState({ hideTitles: true });
+      render(<ShareCardPanel />);
+      expect(screen.getByTestId('card-identity')).toHaveTextContent('Calibration 88/100');
+      expect(screen.getByText('2 categories not shown')).toBeTruthy();
+      expect(screen.queryByText(/Divorce|Rent/)).toBeNull();
+      expect(screen.getByTestId('share-own-kept-off')).toBeTruthy();
+      expect(screen.queryByTestId('share-empty')).toBeNull();
+    });
+
+    it('never puts back a category the person unticked', () => {
+      seedStats(USER_STAT, CATEGORY_STATS);
+      useCategoryStore.setState({ defs: [def('health', { name: 'Divorce' })] });
+      useSettingsStore.setState({ hideTitles: true, cardHiddenCategories: ['finance'] });
+      render(<ShareCardPanel />);
+      expect(screen.queryByText(/finance/)).toBeNull();
+      expect(screen.getByText('2 categories not shown')).toBeTruthy();
+      // Its chip stays, so it can come back on.
+      const finance = screen.getByTestId('share-toggle-finance');
+      expect(finance.props.accessibilityState).toMatchObject({ checked: false });
+      fireEvent.press(finance);
+      expect(useSettingsStore.getState().cardHiddenCategories).toEqual([]);
+    });
+
+    it('keeps a built-in that has only an icon: the card draws none', () => {
+      seedStats(USER_STAT, CATEGORY_STATS);
+      useCategoryStore.setState({ defs: [def('health', { icon: { kind: 'emoji', emoji: '🏃' } })] });
+      useSettingsStore.setState({ hideTitles: true });
+      render(<ShareCardPanel />);
+      expect(screen.getByTestId('card-identity')).toHaveTextContent('Sharp in health');
+      expect(screen.queryByTestId('share-own-kept-off')).toBeNull();
+    });
   });
 
   it('leaves a category off the card, but never all of them', () => {

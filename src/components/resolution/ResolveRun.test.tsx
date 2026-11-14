@@ -6,6 +6,11 @@ import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
+import {
+  __setResolveRunPersistenceForTests,
+  type KeptRun,
+  useResolveRunStore,
+} from '@/store/resolveRunStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
@@ -48,6 +53,18 @@ async function answer(testID: 'resolve-yes' | 'resolve-no'): Promise<void> {
   fireEvent.press(screen.getByTestId(testID));
   await waitFor(() => expect(screen.getByTestId('resolve-recorded')).toBeTruthy());
 }
+
+// Each test starts with no kept run, in memory (step 179).
+let storedRun: KeptRun | null = null;
+beforeEach(() => {
+  storedRun = null;
+  __setResolveRunPersistenceForTests({
+    load: async () => storedRun,
+    save: async (run) => {
+      storedRun = run;
+    },
+  });
+});
 
 beforeEach(async () => {
   setDbForTests(await createTestDb());
@@ -229,5 +246,74 @@ describe('runSummary (roadmap step 65)', () => {
   it('leaves one answer to the line its card already showed, and nothing to nothing', () => {
     expect(runSummary(tally(1, 1, 0.7))).toBe('1 answered.');
     expect(runSummary(tally(0, 0, 0))).toBeNull();
+  });
+});
+
+// Step 179 (blind playtest 2026-11-13e, run 2): a reload mid-run.
+describe('ResolveRun across a reload', () => {
+  it('comes back where it was, and its summary counts the answers before', async () => {
+    await seed();
+    const first = render(<ResolveRun onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText('First due')).toBeTruthy());
+    await answer('resolve-yes');
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => expect(screen.getByText('Second due')).toBeTruthy());
+    expect(useResolveRunStore.getState().run?.answered).toEqual(['a']);
+    // The app is killed and reopened: a kill runs no cleanup, so what was
+    // stored stays, and the store comes back from it.
+    const killed = storedRun;
+    first.unmount();
+    storedRun = killed;
+    useResolveRunStore.setState({ run: null, hydrated: false });
+    await useResolveRunStore.getState().hydrate();
+
+    render(<ResolveRun onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText('Second due')).toBeTruthy());
+    expect(screen.getByText('2 of 3')).toBeTruthy();
+    await answer('resolve-no');
+    fireEvent.press(screen.getByText('Next'));
+    await waitFor(() => expect(screen.getByText('Third due')).toBeTruthy());
+    await answer('resolve-yes');
+    fireEvent.press(screen.getByText('Finish'));
+    await waitFor(() => expect(screen.getByTestId('resolve-run-done')).toBeTruthy());
+    expect(screen.getByTestId('resolve-run-summary')).toHaveTextContent(/^3 answered\. 2 happened\./);
+    // Over: nothing left to resume.
+    await waitFor(() => expect(useResolveRunStore.getState().run).toBeNull());
+  });
+
+  it('starts fresh when something new came due since', async () => {
+    await seed();
+    useResolveRunStore.setState({
+      run: { queue: ['b'], answered: ['b'], startedAt: new Date().toISOString() },
+    });
+    render(<ResolveRun onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText('First due')).toBeTruthy());
+    expect(screen.getByText('1 of 3')).toBeTruthy();
+  });
+});
+
+// Code review of step 179.
+describe('ResolveRun, kept and not kept', () => {
+  it('keeps an answer as it lands, before Next', async () => {
+    await seed();
+    render(<ResolveRun onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText('First due')).toBeTruthy());
+    await answer('resolve-yes');
+    expect(storedRun?.answered).toEqual(['a']);
+  });
+
+  it('starts fresh after a close on screen, × or swipe alike', async () => {
+    await seed();
+    const onDismiss = jest.fn();
+    const view = render(<ResolveRun onClose={jest.fn()} onDismiss={onDismiss} />);
+    await waitFor(() => expect(screen.getByText('First due')).toBeTruthy());
+    await answer('resolve-yes');
+    fireEvent.press(screen.getByTestId('resolve-run-dismiss'));
+    expect(onDismiss).toHaveBeenCalled();
+    // The × only asks; the sheet going away (or a swipe) unmounts the run.
+    expect(storedRun?.answered).toEqual(['a']);
+    view.unmount();
+    expect(useResolveRunStore.getState().run).toBeNull();
+    await waitFor(() => expect(storedRun).toBeNull());
   });
 });

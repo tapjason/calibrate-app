@@ -891,6 +891,26 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
+
+- [ ] **Hide the words, everywhere read-only:** with a category you named (or renamed) and the
+      switch on, Insights' badge row and "Furthest off" read "Your own category"; Share leaves it
+      off the card with "Categories you named stay off the card…"; the week recap has no "Show
+      prediction titles" switch. Switch off: it's all back, nothing unticked. Rename every
+      category you've answered in: the card still shows, with your rating and "N categories not
+      shown". A built-in given only an emoji stays on the card.
+- [ ] **Another number keeps your edit:** Edit a prediction made today, change its words, tap
+      "Use another number": Log opens with the new words, no "Discard changes?" sheet.
+- [ ] **The unlock names its badge:** at 19 scored answers all in one category, answer the 20th:
+      the unlock card ends "New badge, too: … in …".
+- [ ] **An answer run across a kill:** with 5 ready, Answer all, answer 2, force-quit the app,
+      reopen, Answer all 3: "3 of 5", and the end summary counts all 5. Closing a run with × or a
+      swipe and opening it again starts fresh.
+- [ ] **Words:** the friend fold explains the score and the ranges; Edit says one thing on the
+      day it was made; Insights' fold reads "Show less" once open; a badge card's two sentences
+      end with a full stop; on a phone set to Spanish, Insights' "comes due sáb, 14 nov." has one
+      full stop; How scoring works opened from Today has a "Your rating" heading for VoiceOver.
+
 Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
 
 - [ ] **What perfect calibration scores:** with the demo data, Insights under the rating reads

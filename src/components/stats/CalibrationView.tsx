@@ -25,7 +25,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, tabularNums, type } from '@/constants/theme';
 import type { BrierEdge, CategoryMiss, WeekChange } from '@/store/statsStore';
-import { useCategoryStore } from '@/store/categoryStore';
+import { useCategoryStore, visibleCategoryTitle } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   BRIER_MIN_N,
@@ -137,6 +137,8 @@ export function CalibrationView({
   useCategoryStore((s) => s.defs);
   // The streak beside the count only while it's shown (step 173).
   const streakShown = useSettingsStore((s) => s.streakShown);
+  // Names the person chose stay out of view while the words are hidden (D62).
+  const hideTitles = useSettingsStore((s) => s.hideTitles);
   const headline = ratingHeadline(userStat);
   const [showTable, setShowTable] = useState(false);
   const [showFine, setShowFine] = useState(false);
@@ -292,7 +294,9 @@ export function CalibrationView({
               testID="stats-fine-toggle"
             >
               <Text style={styles.tableToggleText}>
-                {showFine ? 'Hide the fine print' : 'More about your record'}
+                {/* One name and its undo (blind playtest 2026-11-13e: "fine
+                    print" read as something hidden). */}
+                {showFine ? 'Show less' : 'More about your record'}
               </Text>
             </Pressable>
           )}
@@ -387,7 +391,11 @@ export function CalibrationView({
           her finance pattern only through History's filters. */}
       {furthestOff && (
         <Text style={styles.pattern} testID="stats-furthest-off">
-          {furthestOffLine(furthestOff, furthestBadge)}
+          {furthestOffLine(
+            furthestOff,
+            furthestBadge,
+            visibleCategoryTitle(furthestOff.category, hideTitles),
+          )}
         </Text>
       )}
       {/* When a first badge can come (roadmap D36): a first-timer saw a tier

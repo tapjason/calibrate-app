@@ -82,7 +82,9 @@ export const WrappedCard = forwardRef<View, WrappedCardProps>(function WrappedCa
   const shown = summary.categories.filter((c) => !hidden.has(c.category));
   const titleOf = (p: Prediction) =>
     showTitles && !hidden.has(p.category) ? `, ${p.title}` : '';
-  const hiddenText = hiddenCountLine(hidden.size);
+  // Only categories answered in the span: one left off with nothing in it
+  // isn't hidden from this card (code review, step 179).
+  const hiddenText = hiddenCountLine(summary.categories.filter((c) => hidden.has(c.category)).length);
   // Everything else the card shows, for a screen reader: the badge line,
   // the categories and the two calls (blind playtest 2026-11-04, second
   // round, run 2, heard the card without its badge line).

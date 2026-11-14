@@ -100,9 +100,16 @@ describe('PredictionDetails (roadmap D25)', () => {
     renderDetails({ onRenumber });
     await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-edit-button'));
-    expect(screen.getByText(`${EDIT_NUMBER_NOTE} ${EDIT_NUMBER_FIX}`)).toBeTruthy();
+    // One message on the day it was made (step 179), not a no and a yes.
+    expect(screen.getByTestId('details-number-note')).toHaveTextContent(EDIT_NUMBER_FIX);
+    expect(screen.queryByText(EDIT_NUMBER_NOTE)).toBeNull();
+    // Words typed in Edit go with it (step 179; blind playtest 2026-11-13e, run 2).
+    fireEvent.changeText(screen.getByTestId('details-title-field'), 'Ship the beta to ten people');
     fireEvent.press(screen.getByTestId('details-renumber'));
-    expect(onRenumber).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }));
+    expect(onRenumber).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1' }),
+      expect.objectContaining({ title: 'Ship the beta to ten people', category: 'work' }),
+    );
   });
 
   it('keeps the number as the record from the next day', async () => {

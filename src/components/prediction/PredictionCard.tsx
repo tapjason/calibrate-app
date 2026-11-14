@@ -5,7 +5,12 @@ import { CategoryIcon, Icon } from '@/components/ui/Icon';
 import { spokenExcerpt } from '@/components/ui/textLanguage';
 import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
-import { categoryTitle, isOwnCategory, useCategoryStore } from '@/store/categoryStore';
+import {
+  categoryTitle,
+  isOwnCategory,
+  OWN_CATEGORY_HIDDEN,
+  useCategoryStore,
+} from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { answeredSameDay } from '@/store/statsStore';
 
@@ -24,7 +29,7 @@ export type RowPosition = 'single' | 'first' | 'middle' | 'last';
  */
 export const HIDDEN_TITLE = 'Words hidden. Open it to see them.';
 /** A category the person named or gave an icon, while the words are hidden (D62). */
-export const HIDDEN_CATEGORY = 'Your own category';
+export const HIDDEN_CATEGORY = OWN_CATEGORY_HIDDEN;
 
 /** Above this text scale a title may take more lines (as ConfidenceControl's steppers wrap). */
 const LARGE_TEXT_SCALE = 1.15;

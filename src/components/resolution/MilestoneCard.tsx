@@ -26,13 +26,20 @@ import { categoryLabel } from '@/store/categoryStore';
 /** The words for a milestone. Exported for tests. */
 export function milestoneCopy(m: Milestone): { title: string; body: string } {
   switch (m.kind) {
-    case 'rating_unlocked':
+    case 'rating_unlocked': {
+      // Not "means something" (D62): at 20 it's give or take several
+      // points, and perfect calibration itself scores about 85–88.
+      const unlocked = `${MIN_N_OVERALL} scored answers. Your rating starts here, give or take several points, and settles as you answer more.`;
       return {
         title: 'Your calibration score is unlocked',
-        // Not "means something" (D62): at 20 it's give or take several
-        // points, and perfect calibration itself scores about 85–88.
-        body: `${MIN_N_OVERALL} scored answers. Your rating starts here, give or take several points, and settles as you answer more.`,
+        // With the badge this answer also earned: only one card shows, and
+        // the unlock's won, so the badge was said nowhere (blind playtest
+        // 2026-11-13e, run 3).
+        body: m.badge
+          ? `${unlocked} New badge, too: ${BADGE_META[m.badge.badge].label} in ${categoryLabel(m.badge.category)}. ${BADGE_FOLLOWS}`
+          : unlocked,
       };
+    }
     case 'tier_up':
       return {
         // Said as new (D62): a big tile right after "No, I didn't sleep"
@@ -89,7 +96,7 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
 
   const base = milestoneCopy(milestone);
   const copy =
-    milestone.kind === 'tier_up' ? { ...base, body: `${base.body} ${BADGE_FOLLOWS}` } : base;
+    milestone.kind === 'tier_up' ? { ...base, body: `${base.body}. ${BADGE_FOLLOWS}` } : base;
 
   return (
     <Animated.View

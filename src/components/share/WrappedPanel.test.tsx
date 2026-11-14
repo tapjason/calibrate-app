@@ -270,6 +270,20 @@ describe('WrappedPanel', () => {
     expect(screen.getByText(/Close the deal/)).toBeTruthy();
   });
 
+  // Step 179 (blind playtest 2026-11-13e, run 4): titles can't go on the card
+  // while the words are hidden.
+  it('offers no titles while the words are hidden', () => {
+    seed([prediction({ confidence: 95, status: 'resolved_yes', title: 'Ship the beta' })]);
+    useSettingsStore.setState({ hideTitles: true });
+    try {
+      render(<WrappedPanel span="week" />);
+      expect(screen.queryByTestId('wrapped-titles-toggle')).toBeNull();
+      expect(screen.queryByText(/Ship the beta/)).toBeNull();
+    } finally {
+      useSettingsStore.setState({ hideTitles: false });
+    }
+  });
+
   // Blind playtest 2026-11-04, run 3: Finance left off the card came back
   // on both recaps, with its next badge and, with titles on, its title.
   it("leaves off what the person left off their card, and says so", () => {
