@@ -1,6 +1,6 @@
 # Fairly Sure — TestFlight plan
 
-**As of:** 2026-11-15 · `master` holds everything through step 181 (pushed). This plan follows
+**As of:** 2026-11-15 · `master` holds everything through step 182 (pushed). This plan follows
 `docs/SHIP_READINESS.md`, which says why the next evidence has to come from real people.
 The step-by-step store setup stays in `docs/HUMAN_VERIFICATION.md` (Batches B0 to B2 and E);
 this file says what TestFlight is for, who tests, in what order, what gets measured and what
