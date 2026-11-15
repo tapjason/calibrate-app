@@ -349,7 +349,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // What's already on the lock screen was about the account that's gone.
       // Last and not awaited: the wipe and the sign-out never wait on the lock
       // screen, and it never throws (code review, 2026-11-15).
-      void dismissDeliveredNotifications();
+      void dismissDeliveredNotifications().catch(() => {});
       return { ok: true };
     }),
 
@@ -372,7 +372,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // And what's already on the lock screen was about it too. After the
         // reload, which cancels the reminders still to come, and not awaited:
         // Erase never waits on the lock screen (code review, 2026-11-15).
-        void dismissDeliveredNotifications();
+        void dismissDeliveredNotifications().catch(() => {});
         return { ok: true };
       } catch (e) {
         // eslint-disable-next-line no-console

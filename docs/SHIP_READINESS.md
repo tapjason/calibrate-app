@@ -85,8 +85,11 @@ Each is coded around: the app works either way.
 (built as step 180, roadmap D64); 3, guest usage counts (the owner applies migration 007, then
 the agent turns `GUEST_ANALYTICS` on); 4, the recommended prices ($34.99 a year, $79.99
 lifetime, $4.99 a month); 6, a custom mail sender; 11, `expo-auth-session` uninstalled. The
-Paid Applications Agreement is submitted and GitHub Pages is on (owner, the same day). Still
-open: 2, 5, 7 to 10, 12 and 13.
+Paid Applications Agreement is submitted and GitHub Pages is on (owner, the same day).
+**The agent's calls, later that day** (owner: "iterate through them yourself, using best
+app developer judgement"): 7, "habit" dropped from the keywords and "goal" kept, as
+recommended (step 183); 10, moves between categories counted on this phone (step 184).
+Still open: 2 (a legal call, the owner's), 5, 8, 9, 12 (waits on the mail sender) and 13.
 
 1. **The native batch (step 180): yes or no.** Installing packages needs your go (the
    machine's permission rule held it back):

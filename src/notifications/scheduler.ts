@@ -351,7 +351,9 @@ async function schedule(p: Prediction): Promise<void> {
         // fireAt lets the launch reconcile spot a reminder set for another
         // time (one from before D9 fired at noon) and set it again; `words`
         // one set before the words were switched off or on (D60 (b)).
-        data: { predictionId: p.id, fireAt: fireDate.toISOString(), words },
+        // `answerable` likewise: one set before the app lock was turned on or
+        // off (D64), if setting them all again didn't finish.
+        data: { predictionId: p.id, fireAt: fireDate.toISOString(), words, answerable },
         // Without the words, no Happened / Didn't: two made the same day at
         // the same number would read alike, and a one-tap answer could land
         // on the wrong one (policy audit, step 176). A tap opens the question,
@@ -403,6 +405,16 @@ function shownWords(stored: unknown): boolean {
   return stored !== false && stored !== 0;
 }
 
+/**
+ * Whether a stored reminder carries Happened / Didn't. One set before step
+ * 183 has no `answerable`: it had them if it showed its words.
+ */
+function shownAnswerable(data: Record<string, unknown> | null | undefined): boolean {
+  const stored = data?.answerable;
+  if (stored === undefined || stored === null) return shownWords(data?.words);
+  return stored !== false && stored !== 0;
+}
+
 async function reconcile(): Promise<void> {
   if (!deps || !deps.notifications) return;
   const api = deps.notifications;
@@ -429,7 +441,10 @@ async function reconcile(): Promise<void> {
       request.content.data?.fireAt === reminderTimeFor(prediction.due_date).toISOString() &&
       // One from before D60 has no `words`: it showed them.
       // Read loosely: iOS may hand a stored boolean back as 1 or 0.
-      shownWords(request.content.data?.words) === useSettingsStore.getState().reminderWords;
+      shownWords(request.content.data?.words) === useSettingsStore.getState().reminderWords &&
+      // And one whose buttons no longer match the app lock (D64).
+      shownAnswerable(request.content.data) ===
+        (useSettingsStore.getState().reminderWords && !appLockOn());
     if (keep) {
       scheduledByPredictionId.set(predictionId, request.identifier);
       continue;

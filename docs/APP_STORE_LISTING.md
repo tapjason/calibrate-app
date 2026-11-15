@@ -133,7 +133,7 @@ the Expo slug `calibrate` (the EAS project is linked to it), and the repo name
 
 **Keywords** [100 bytes, comma-separated, no spaces, no words already in the name]
 
-> forecast,prediction,confidence,journal,decision,habit,goal,self,insight,bias,overconfidence,tracker
+> forecast,prediction,confidence,journal,decision,goal,self,insight,bias,overconfidence,tracker
 
 Since prediction markets went mainstream in 2026, "prediction" brings betting
 traffic too (`GROWTH_AND_MONETIZATION.md` §2.6). Keep it, since it's what people

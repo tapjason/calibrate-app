@@ -263,7 +263,7 @@ describe('scheduler: schedule on create', () => {
     expect(rec.title).toBe('Did it happen');
     expect(rec.body).toBe('Ship the prototype · You said 50%');
     // Roadmap D9: the evening of the due day, not the stored noon (Jest runs in UTC).
-    expect(rec.data).toEqual({ predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true });
+    expect(rec.data).toEqual({ predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true });
     expect(rec.date.toISOString()).toBe('2099-06-01T19:00:00.000Z');
   });
 
@@ -970,7 +970,7 @@ describe('scheduler: launch-time reconcile', () => {
     await initNotifications();
     const scheduled = Array.from(notifications.scheduled.values());
     expect(scheduled.map((r) => r.data)).toEqual([
-      { predictionId: future.id, fireAt: '2099-06-01T19:00:00.000Z', words: true },
+      { predictionId: future.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true },
     ]);
   });
 
@@ -1026,7 +1026,7 @@ describe('scheduler: permission in context', () => {
     expect(await requestReminderPermission()).toBe('granted');
     expect(notifications.requestCalls).toBe(1);
     expect(Array.from(notifications.scheduled.values()).map((r) => r.data)).toEqual([
-      { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true },
+      { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true },
     ]);
 
     // And from then on it watches the store as usual.
@@ -1626,5 +1626,45 @@ describe('scheduler: reminders while the app lock is on', () => {
 
     expect((await getPrediction(p.id))?.status).toBe('pending');
     expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+  });
+
+  // Step 183: a reminder left with its buttons (setting them all again didn't
+  // finish before the app closed) is replaced at the next launch.
+  it('replaces at launch a reminder whose buttons no longer match the lock', async () => {
+    const p = await create();
+    useSettingsStore.setState({ appLock: true });
+    const notifications = makeFakeNotifications(true);
+    notifications.scheduled.set('os-old', {
+      id: 'os-old',
+      title: 'Did it happen',
+      body: 'Ship the prototype · You said 70%',
+      data: { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true, answerable: true },
+      date: new Date('2099-06-01T19:00:00.000Z'),
+      categoryIdentifier: 'calibrate-reminder',
+    } as never);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const kept = Array.from(notifications.scheduled.entries());
+    expect(kept).toHaveLength(1);
+    expect(kept[0][0]).not.toBe('os-old');
+    expect(kept[0][1].data).toMatchObject({ words: true, answerable: false });
+    expect(kept[0][1].categoryIdentifier).toBeUndefined();
+  });
+
+  // One from before step 183 has no `answerable`: with the lock off and its
+  // words shown it had the buttons, which is still right, so it stays.
+  it('keeps at launch an older reminder that still matches', async () => {
+    const p = await create();
+    const notifications = makeFakeNotifications(true);
+    notifications.scheduled.set('os-old', {
+      id: 'os-old',
+      title: 'Did it happen',
+      body: 'Ship the prototype · You said 70%',
+      data: { predictionId: p.id, fireAt: '2099-06-01T19:00:00.000Z', words: true },
+      date: new Date('2099-06-01T19:00:00.000Z'),
+    } as never);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    expect(Array.from(notifications.scheduled.keys())).toEqual(['os-old']);
   });
 });
