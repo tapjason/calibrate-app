@@ -1145,9 +1145,14 @@ describe('ResolvePrompt — a badge taken back', () => {
     });
     try {
       render(<ResolvePrompt predictionId="p1" />);
-      await waitFor(() => expect(screen.getByTestId(button)).toBeTruthy());
+      // Generous waits: the real recompute bootstraps the record, and under
+      // the full suite's load it ran past the 1 s default (a flake noted in
+      // HANDOFF since step 179; it failed twice running in round 23's check).
+      await waitFor(() => expect(screen.getByTestId(button)).toBeTruthy(), { timeout: 5000 });
       fireEvent.press(screen.getByTestId(button));
-      await waitFor(() => expect(screen.getByTestId('resolve-tier-drop')).toBeTruthy());
+      await waitFor(() => expect(screen.getByTestId('resolve-tier-drop')).toBeTruthy(), {
+        timeout: 5000,
+      });
       expect(screen.getByTestId('resolve-tier-drop')).toHaveTextContent(tierDropLine(drop));
       // The other answer's effect on one screen would be a one-tap comparison.
       fireEvent.press(screen.getByTestId('resolve-change'));
@@ -1157,7 +1162,7 @@ describe('ResolvePrompt — a badge taken back', () => {
     } finally {
       useStatsStore.setState({ recomputeForUser: real, tierDrop: null });
     }
-  });
+  }, 20000);
 });
 
 // Roadmap D60 (f): answered after its due day, the day it was about (blind

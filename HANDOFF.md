@@ -339,5 +339,5 @@ comes back only if a new round finds it again. Left with the owner:
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 182 suites, 2,248 tests. One flake seen twice under full-run load and not reproduced in three more runs: `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone); rerun before chasing it. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 182 suites, 2,256 tests. The flake in `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone, past the 1 s default wait under full-run load; it failed twice running during round 23 and slipped into that round's commit, `5aa553c`) now waits up to 5 s per step, 20 s in all. Commit only after `check.sh` itself exits 0: piping it through `tail` hid that failure. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.
