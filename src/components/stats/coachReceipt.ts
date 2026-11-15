@@ -38,7 +38,11 @@ export function coachReceipt(
     case 'resolved':
       return { figure: String(round), label: `scored in ${scope}` };
     case 'calibration_score':
-      return { figure: String(round), label: `your ${scope} score` };
+      // "your own category score", not "your your own…" (code review, 2026-11-14).
+      return {
+        figure: String(round),
+        label: `${scope.startsWith('your ') ? scope : `your ${scope}`} score`,
+      };
     case 'mean_stated_confidence':
       return { figure: `${round}%`, label: `average confidence in ${scope}` };
     case 'actual_rate':

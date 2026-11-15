@@ -65,5 +65,8 @@ describe('coachReceipt with a label of its own (code review, 2026-11-14)', () =>
     expect(
       coachReceipt({ field: 'calibration_rating', scope: 'overall', value: 80 }, hidden)?.label,
     ).toBe('your calibration rating');
+    expect(
+      coachReceipt({ field: 'calibration_score', scope: 'finance', value: 80 }, hidden)?.label,
+    ).toBe('your own category score');
   });
 });

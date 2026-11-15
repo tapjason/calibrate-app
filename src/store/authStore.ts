@@ -321,6 +321,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // user's request has been carried out, and "try again" would hit a
       // deleted account. A local step that fails is logged and passed over.
       try {
+        // The categories left off the card were about the erased record:
+        // any can be left off now, so a kept choice could empty a new card
+        // (code review, 2026-11-14). First, so a later failure can't keep it.
+        await useSettingsStore.getState().setCardHiddenCategories([]);
         await wipeLocalUserData(userId);
         // The Warmup's rows went with the wipe; its store forgets them too.
         // Practice belongs to the device like the Warmup, and the privacy
@@ -329,10 +333,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await usePracticeStore.getState().clear();
         await useLogDraftStore.getState().clear();
         useResolveRunStore.getState().clear();
-        // The categories left off the card were about the erased record:
-        // any can be left off now, so a kept choice could empty a new card
-        // (code review, 2026-11-14).
-        await useSettingsStore.getState().setCardHiddenCategories([]);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[auth] local wipe after account deletion failed:', e);

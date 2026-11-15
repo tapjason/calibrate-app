@@ -306,7 +306,7 @@ export function ShareCardPanel({
                       testID={`share-toggle-${c.category}`}
                       // 36pt tall: the slop takes the target to 44 (as
                       // History's chips; code review, 2026-11-14).
-                      hitSlop={{ top: 4, bottom: 4 }}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                       style={[styles.chip, on && styles.chipOn]}
                     >
                       {on && (
