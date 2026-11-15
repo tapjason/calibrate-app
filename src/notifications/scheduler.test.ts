@@ -315,6 +315,30 @@ describe('scheduler: dismissDeliveredNotifications', () => {
     expect(dismiss.mock.calls.map(([id]) => id)).toEqual(['r1', 'd1', 'q1', 'x1']);
   });
 
+  // Code review, 2026-11-15: one try around the loop left the rest in place.
+  it("keeps going when one of them won't go", async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const dismiss = jest.fn(async (id: string) => {
+      if (id === 'r1') throw new Error('gone already');
+    });
+    __setDepsForTests({
+      notifications: {
+        ...makeFakeNotifications(true),
+        getPresentedNotificationsAsync: async () => [
+          delivered('r1', { predictionId: 'p1' }),
+          delivered('r2', { predictionId: 'p2' }),
+          delivered('d1', { kind: 'digest' }),
+        ],
+        dismissNotificationAsync: dismiss,
+      },
+      navigator: makeFakeNavigator(),
+    });
+    await expect(dismissDeliveredNotifications()).resolves.toBeUndefined();
+    expect(dismiss.mock.calls.map(([id]) => id)).toEqual(['r1', 'r2', 'd1']);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
   it('survives the OS failing, and does nothing where it offers no way to', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     __setDepsForTests({

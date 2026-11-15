@@ -139,7 +139,11 @@ cheapest safeguard available.
   localize per region). As built (step 182): on a phone whose locale's region is US, or
   unreadable, the US line and then "Outside the US: search for a crisis line in your
   country, or call your local emergency number."; on any other phone that sentence
-  alone. No number per country (a wrong one costs more than a missing one) and no named
+  alone. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988 line the same
+  way on the self-harm and distress topics, since SAMHSA says anyone in a US territory
+  can reach 988 (policy audit, 2026-11-15); the other two lines aren't confirmed there, so
+  those topics show that sentence alone until the owner decides
+  (`docs/SHIP_READINESS.md`). No number per country (a wrong one costs more than a missing one) and no named
   directory: Find A Helpline's terms need written permission for commercial use, which
   is the owner's to ask for (`docs/SHIP_READINESS.md`).
 - The agent never attempts to counsel, assess risk, or diagnose. It steps back and

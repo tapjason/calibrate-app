@@ -138,6 +138,29 @@ Added 2026-11-15 (step 182 and its audits):
     and a redirect configured in Supabase first (decision 6). **Recommendation:** build it
     after TestFlight stage 1, once mail works; until then the support page is the route.
 
+Added 2026-11-15 (the second review of step 182 and its policy check):
+
+13. **Helplines on a phone set to a US territory.** A phone whose region is Puerto Rico,
+    Guam, the US Virgin Islands, American Samoa or the Northern Mariana Islands was told
+    "Outside the US: search for a crisis line in your country" and shown no number. Built:
+    on the self-harm and distress topics it now gets the 988 line, as a US phone does
+    (SAMHSA's 988 FAQ: "anyone located in a U.S. state, territory or tribal land"). Not
+    built, because it isn't confirmed for all five: the domestic-violence line (government
+    sources name Puerto Rico, the US Virgin Islands and Guam; the hotline's own site states
+    no service area, and nothing confirms the number connects from a territory) and the
+    eating-disorders line (confirmed for none of the five; its
+    staffed hours are US Eastern business hours). On those two topics a territory phone
+    still sees "Outside the US…", which is the wrong frame for it. Three things are yours:
+    - ask the National Domestic Violence Hotline and the National Alliance for Eating
+      Disorders whether they serve the five territories, then say which lines to show;
+    - until they answer, whether those two topics should show 988 on a territory phone
+      rather than no number (a referral call, not an engineering one);
+    - the words "(US)" and "Outside the US:" for someone in a territory, who may read "the
+      US" as the states.
+    **Recommendation:** send the two emails; keep today's build as it is for TestFlight
+    (the Coach needs Plus and a sign-in, so few testers reach this surface). Settle it
+    before the public release: the hold shouldn't ship by default.
+
 ## What stands between here and the store
 
 In order. "Agent" steps need only your word; the rest are yours.
@@ -176,7 +199,8 @@ In order. "Agent" steps need only your word; the rest are yours.
 13. Fill in App Store Connect: listing (`docs/APP_STORE_LISTING.md`), the 2026 age-rating
     questions (the policy audit's draft is in HANDOFF), App Privacy labels
     (`docs/APP_PRIVACY.md`), screenshots from the device, review notes with a seeded demo
-    account that already has Plus.
+    account that already has Plus. Before this: decision 13 (helplines on a phone set to a
+    US territory) settled.
 14. Submit. English-language storefronts, no paid installs. Read the gates at six weeks or
     1,000 downloads (GROWTH §7).
 

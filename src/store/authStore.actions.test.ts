@@ -130,9 +130,13 @@ describe('authStore.deleteAccount', () => {
 
     const { dismissDeliveredNotifications } = jest.requireMock('@/notifications/scheduler');
     (dismissDeliveredNotifications as jest.Mock).mockClear();
+    (dismissDeliveredNotifications as jest.Mock).mockImplementationOnce(async () => {
+      order.push('dismiss');
+    });
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
-    expect(order).toEqual(['server', 'wipe', 'warmup', 'practice', 'signOut']);
-    // Reminders already on the lock screen were about the account that's gone.
+    // Reminders already on the lock screen were about the account that's gone;
+    // clearing them comes last, after the data and the session.
+    expect(order).toEqual(['server', 'wipe', 'warmup', 'practice', 'signOut', 'dismiss']);
     expect(dismissDeliveredNotifications).toHaveBeenCalledTimes(1);
     expect(wipe).toHaveBeenCalledWith('user-1');
     // Not an Apple account: no re-auth sheet.
@@ -192,6 +196,40 @@ describe('authStore.deleteAccount', () => {
     await expect(useAuthStore.getState().deleteAccount()).resolves.toMatchObject({ ok: false });
     expect(server.deleteAccountOnServer).not.toHaveBeenCalled();
   });
+
+  // Code review, 2026-11-15: the wipe and the sign-out waited on the lock
+  // screen, so a native call that never settled would have kept the data.
+  it("finishes even if clearing the lock screen never settles, and when the wipe fails", async () => {
+    signedIn('email');
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    const { dismissDeliveredNotifications } = jest.requireMock('@/notifications/scheduler');
+    (dismissDeliveredNotifications as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    expect(wipe).toHaveBeenCalledWith('user-1');
+    expect(mocked.signOutLocal).toHaveBeenCalled();
+    expect(useAuthStore.getState().pending).toBe(false);
+
+    // A failed wipe still clears the lock screen: it sits outside that try.
+    (dismissDeliveredNotifications as jest.Mock).mockClear();
+    signedIn('email');
+    wipe.mockRejectedValue(new Error('disk'));
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    expect(dismissDeliveredNotifications).toHaveBeenCalledTimes(1);
+  });
+});
+
+// The account still exists after a sign-out, so what it was reminded of stays.
+describe('authStore.signOut', () => {
+  it('leaves delivered reminders on the lock screen', async () => {
+    useAuthStore.setState({ userId: 'user-1', status: 'authenticated', provider: 'email' });
+    mocked.signOut.mockResolvedValue({ ok: true });
+    const { dismissDeliveredNotifications } = jest.requireMock('@/notifications/scheduler');
+    (dismissDeliveredNotifications as jest.Mock).mockClear();
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
+    expect(dismissDeliveredNotifications).not.toHaveBeenCalled();
+  });
 });
 
 describe('authStore.eraseDeviceData', () => {
@@ -248,11 +286,21 @@ describe('authStore.eraseDeviceData', () => {
     useWarmupStore.setState({ retake: jest.fn(async () => {}) });
     usePracticeStore.setState({ clear: jest.fn(async () => {}) });
     usePredictionStore.setState({ loadPending: jest.fn(async () => {}), loadResolved: jest.fn(async () => {}) });
-    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    const order: string[] = [];
+    useStatsStore.setState({ loadForUser: jest.fn(async () => { order.push('reload'); }) });
     useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    // After the reload, which cancels the reminders still to come, and never
+    // waited on: one that doesn't settle can't hold Erase (code review,
+    // 2026-11-15).
+    (dismissDeliveredNotifications as jest.Mock).mockImplementationOnce(() => {
+      order.push('dismiss');
+      return new Promise(() => {});
+    });
 
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
     expect(dismissDeliveredNotifications).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['reload', 'dismiss']);
+    expect(useAuthStore.getState().pending).toBe(false);
   });
 
   // A signed-in account's data also lives on the server; erasing only the

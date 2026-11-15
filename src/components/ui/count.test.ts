@@ -7,7 +7,8 @@ describe('localCount', () => {
   });
 
   it('groups thousands', () => {
-    expect(localCount(1001)).toMatch(/^1\D?001$/);
-    expect(localCount(1001)).not.toBe('1001');
+    // A comma on every phone (D63): countLocale is plain English.
+    expect(localCount(1001)).toBe('1,001');
+    expect(localCount(1234567)).toBe('1,234,567');
   });
 });

@@ -326,8 +326,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // any can be left off now, so a kept choice could empty a new card
         // (code review, 2026-11-14). First, so a later failure can't keep it.
         await useSettingsStore.getState().setCardHiddenCategories([]);
-        // What's already on the lock screen was about the account that's gone.
-        await dismissDeliveredNotifications();
         await wipeLocalUserData(userId);
         // The Warmup's rows went with the wipe; its store forgets them too.
         // Practice belongs to the device like the Warmup, and the privacy
@@ -348,6 +346,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // eslint-disable-next-line no-console
         console.warn('[auth] local sign-out after account deletion failed:', signedOut.error);
       }
+      // What's already on the lock screen was about the account that's gone.
+      // Last and not awaited: the wipe and the sign-out never wait on the lock
+      // screen, and it never throws (code review, 2026-11-15).
+      void dismissDeliveredNotifications();
       return { ok: true };
     }),
 
@@ -366,9 +368,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         useResolveRunStore.getState().clear();
         // As after account deletion: the choice was about the erased record.
         await useSettingsStore.getState().setCardHiddenCategories([]);
-        // And what's already on the lock screen was about it too.
-        await dismissDeliveredNotifications();
         await reloadForUser(LOCAL_GUEST_USER_ID);
+        // And what's already on the lock screen was about it too. After the
+        // reload, which cancels the reminders still to come, and not awaited:
+        // Erase never waits on the lock screen (code review, 2026-11-15).
+        void dismissDeliveredNotifications();
         return { ok: true };
       } catch (e) {
         // eslint-disable-next-line no-console

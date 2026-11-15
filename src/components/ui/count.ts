@@ -1,7 +1,7 @@
 import { countLocale } from '@/constants/locale';
 
 /**
- * A whole number grouped in the person's locale: "1,001-day streak", not
+ * A whole number grouped the English way on every phone: "1,001-day streak", not
  * "1001-day streak" (playtest 2026-11-08b, finding 11). Below 1,000 it is
  * the plain digits.
  */

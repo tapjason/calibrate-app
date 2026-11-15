@@ -124,10 +124,29 @@ const RESOURCES: Record<CrisisTopic, SupportResource> = {
 };
 
 /**
+ * The US territories a phone names as its own region: Puerto Rico, Guam, the
+ * US Virgin Islands, American Samoa and the Northern Mariana Islands. Until
+ * 2026-11-15 they got the line for elsewhere alone, "in your country", and no
+ * number (code review of step 182).
+ */
+const US_TERRITORIES: ReadonlySet<string> = new Set(['PR', 'GU', 'VI', 'AS', 'MP']);
+
+/**
+ * The topics whose line is 988, the one line confirmed for the territories:
+ * SAMHSA's 988 FAQ says anyone in "a U.S. state, territory or tribal land" can
+ * call, chat or text it (policy audit, 2026-11-15). The other two lines aren't
+ * confirmed there (the eating-disorders line for none of the five, the
+ * domestic-violence line for some), so a territory phone keeps the line for
+ * elsewhere on those topics until the owner decides (`docs/SHIP_READINESS.md`).
+ */
+const LIFELINE_TOPICS: ReadonlySet<CrisisTopic> = new Set<CrisisTopic>(['self_harm', 'distress']);
+
+/**
  * The support content for a scan result, or null when the scan was clean.
  * The contact follows the phone's region: on a US phone, or when the region
  * can't be read, the US line and then the line for elsewhere (someone with a
- * US phone may be abroad); on any other phone, the line for elsewhere alone.
+ * US phone may be abroad); on a US territory's phone the same, for the 988
+ * topics only; on any other phone, the line for elsewhere alone.
  */
 export function supportResource(
   scan: CrisisScan,
@@ -135,11 +154,12 @@ export function supportResource(
 ): SupportResource | null {
   if (!scan.topic) return null;
   const us = RESOURCES[scan.topic];
+  const showUsLine =
+    region === 'US' ||
+    region === null ||
+    (US_TERRITORIES.has(region) && LIFELINE_TOPICS.has(scan.topic));
   return {
     ...us,
-    contact:
-      region === 'US' || region === null
-        ? `${us.contact}\n${INTERNATIONAL_CONTACT}`
-        : INTERNATIONAL_CONTACT,
+    contact: showUsLine ? `${us.contact}\n${INTERNATIONAL_CONTACT}` : INTERNATIONAL_CONTACT,
   };
 }

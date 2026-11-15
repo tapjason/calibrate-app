@@ -910,14 +910,18 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       off in You: the sentence goes, the link stays.
 - [ ] **Erase clears the lock screen (step 182):** with "Show the words in reminders" on, let a
       due-day reminder arrive and leave it in Notification Center; then You → Erase your data
-      on this phone. The reminder is gone from Notification Center.
+      on this phone. The reminder is gone from Notification Center. Once more, locking the
+      phone the moment Erase finishes: the clear is no longer waited on (review of
+      2026-11-15), so check it still goes.
 - [ ] **Account deletion clears the lock screen too (step 182):** the same as the Erase check,
       signed in, with You → Delete account. A "your free month ends…" notice, if one is
       there, stays: the subscription isn't cancelled by deleting the account.
 - [ ] **The phone's clock in another language (step 182):** with the iPhone in Español (EE. UU.)
       and Settings → General → Date & Time → 24-Hour Time on, the reminder times in You and
       "Until … today" on an answered prediction read as 24-hour ("19:00"); with it off,
-      "7:00 PM".
+      "7:00 PM". If you can, once with the iPhone in فارسی (Persian), which writes its own
+      digits: the times are in Latin digits and follow the 24-Hour Time switch (tested
+      under Node only).
 - [ ] **A move says what follows (step 182):** inside 24 hours of an answer, with the rating
       unlocked, move it to another category in its details: "Each category's score and badge
       now follow where this is filed…" shows, and VoiceOver says "Moved to …" with it.

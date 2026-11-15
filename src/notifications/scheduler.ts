@@ -822,14 +822,23 @@ export async function initNotifications(): Promise<void> {
 export async function dismissDeliveredNotifications(): Promise<void> {
   const api = deps?.notifications;
   if (!api?.getPresentedNotificationsAsync || !api.dismissNotificationAsync) return;
+  let presented: Awaited<ReturnType<typeof api.getPresentedNotificationsAsync>>;
   try {
-    for (const delivered of await api.getPresentedNotificationsAsync()) {
-      if (delivered.content.data?.kind === 'trial') continue;
-      await api.dismissNotificationAsync(delivered.identifier);
-    }
+    presented = await api.getPresentedNotificationsAsync();
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[notifications] could not clear delivered reminders:', e);
+    console.warn('[notifications] could not read delivered reminders:', e);
+    return;
+  }
+  for (const delivered of presented) {
+    if (delivered.content.data?.kind === 'trial') continue;
+    try {
+      await api.dismissNotificationAsync(delivered.identifier);
+    } catch (e) {
+      // One that won't go doesn't keep the rest on the lock screen.
+      // eslint-disable-next-line no-console
+      console.warn('[notifications] could not clear a delivered reminder:', e);
+    }
   }
 }
 

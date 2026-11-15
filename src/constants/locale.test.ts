@@ -146,4 +146,19 @@ describe('countLocale and the 24-hour clock', () => {
       expect(localTime(late, { hour: 'numeric', minute: '2-digit' })).toMatch(/^0?0:30$/);
     }
   });
+
+  // Code review, 2026-11-15: a locale that writes its own digits prints no
+  // "13" for 13:00 either way, so the clock is read from the formatter's own
+  // word there. Before that, a 24-hour phone in Persian read as 12-hour.
+  it("reads the clock of a phone that writes its own digits", () => {
+    const evening = new Date(2026, 10, 15, 19, 0);
+    const time = (tag: string) => {
+      __setDeviceLocaleForTests(tag);
+      // Narrow no-break spaces before "PM" read as plain ones here.
+      return localTime(evening, { hour: 'numeric', minute: '2-digit' }).replace(/\s/g, ' ');
+    };
+    expect(time('fa-IR')).toBe('19:00');
+    // "pm" or "PM" by the English the region's order picked.
+    expect(time('ar-EG')).toMatch(/^7:00 pm$/i);
+  });
 });

@@ -820,7 +820,9 @@ Hard constraints carried here for visibility:
   routed to a support surface, never to the model. The surface shows US helplines on a
   US phone, and for anywhere else a line that names no number and no website (alone on a
   phone set to another region; after the US lines on a US phone or when the region can't
-  be read) (step 182).
+  be read) (step 182). A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988
+  line on the self-harm and distress topics, the one line confirmed there; the other
+  two topics show the line for elsewhere until the owner decides (2026-11-15).
 
 ### Backend Proxy Architecture
 API keys never live in the client. All AI calls go through Supabase Edge Functions, and
