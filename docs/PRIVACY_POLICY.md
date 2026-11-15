@@ -11,7 +11,7 @@ If the app's name changes, update it here. Not legal advice.
 
 # Fairly Sure Privacy Policy
 
-**Effective:** November 13, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 15, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
@@ -184,6 +184,12 @@ Data is encrypted in transit (HTTPS). Server-side, each account can read only
 its own rows. The database enforces that, not just the app. No system is
 perfectly secure, but we collect as little as we can, partly so there's less
 to protect.
+
+If you turn on the app's lock (**You → Lock with Face ID**, named for how your
+iPhone unlocks), your iPhone does the checking, with Face ID, Touch ID or your
+passcode. Fairly Sure learns only whether the check passed and which of these
+your iPhone has set up. It never sees your face, your fingerprint or your
+passcode, and nothing about the check is sent to us.
 
 ## 11. Changes
 

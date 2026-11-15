@@ -1,6 +1,15 @@
 import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
-import { AppState, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  AppState,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { dateLocale } from '@/constants/locale';
@@ -22,6 +31,13 @@ import { MomentChips } from '@/components/practice/MomentChips';
 import { DAY_NAMES, DayChips } from '@/components/settings/DayChips';
 import { TimeSetting } from '@/components/settings/TimeSetting';
 import { useCsvExport } from '@/components/settings/useCsvExport';
+import {
+  lockMethod,
+  lockSupport,
+  passcodeSettingsPage,
+  type LockMethod,
+  type LockSupport,
+} from '@/lock/appLock';
 import { openPracticeTimeDialog, PracticeTimePicker } from '@/components/practice/PracticeTimePicker';
 import {
   askForReminders,
@@ -31,6 +47,7 @@ import {
 import { choosePracticeReminder, reminderTimeLabel } from '@/notifications/practiceReminder';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
+import { useLockStore } from '@/store/lockStore';
 import { useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
 
 /**
@@ -97,6 +114,8 @@ export function SettingsView({
   const setStreakShown = useSettingsStore((s) => s.setStreakShown);
   const hideTitles = useSettingsStore((s) => s.hideTitles);
   const setHideTitles = useSettingsStore((s) => s.setHideTitles);
+  // Whether reminders carry Happened / Didn't follows the app lock (D64).
+  const appLock = useSettingsStore((s) => s.appLock);
 
   return (
     <View style={styles.wrap}>
@@ -155,6 +174,7 @@ export function SettingsView({
           onValueChange={(v) => void setHideTitles(v)}
           testID="toggle-hide-titles"
         />
+        <AppLockRow />
       </Group>
 
       <Group>
@@ -199,7 +219,7 @@ export function SettingsView({
             {remindersEnabled && (
               <ToggleRow
                 label="Show the words in reminders"
-                description={reminderWordsLine(reminderWords)}
+                description={reminderWordsLine(reminderWords, appLock)}
                 value={reminderWords}
                 onValueChange={(v) => void setReminderWords(v)}
                 testID="toggle-reminder-words"
@@ -297,15 +317,120 @@ export function SettingsView({
  * order: a fixed "Nov 6" beside "13 Nov" everywhere else (blind playtest
  * 2026-11-13c, finding 20). Exported for tests.
  */
-export function reminderWordsLine(on: boolean): string {
+export function reminderWordsLine(on: boolean, appLock = false): string {
   if (on) {
-    return "Each shows the prediction's words and your number, with Happened and Didn't to answer from it. On a locked iPhone the words stay hidden until it recognises you, unless Show Previews is set to Always (Settings → Notifications → Show Previews).";
+    // With the app lock on a reminder can't answer for you (D64): the answer
+    // would be recorded without the lock being opened.
+    const actions = appLock
+      ? ', and a tap opens the question behind the app lock'
+      : ", with Happened and Didn't to answer from it";
+    return `Each shows the prediction's words and your number${actions}. On a locked iPhone the words stay hidden until it recognises you, unless Show Previews is set to Always (Settings → Notifications → Show Previews).`;
   }
   const example = new Date(2026, 10, 6, 12).toLocaleDateString(dateLocale(), {
     month: 'short',
     day: 'numeric',
   });
   return `Each shows only the day you made it and your number, like “Your prediction from ${example} · You said 70%”. Tap it to answer.`;
+}
+
+/**
+ * The lock switch's name: only a way of unlocking this phone has, and has in
+ * use (HIG). "iPhone passcode", so it can't read as a code of the app's own.
+ */
+export function appLockLabel(method: LockMethod): string {
+  return method === 'your passcode' ? 'Lock with iPhone passcode' : `Lock with ${method}`;
+}
+
+/** Said under the switch, and aloud, when a check didn't pass. */
+export const APP_LOCK_FAILED = 'That didn’t go through, so nothing changed.';
+
+/**
+ * What the lock switch says under its name. It says what the lock leaves out,
+ * as "Hide the words" does: a reminder is on the lock screen, outside the app
+ * (policy audit of step 180). Exported for tests.
+ */
+export function appLockLine(
+  support: LockSupport,
+  method: LockMethod,
+  failed: boolean,
+  /** The passcode page's name in iOS Settings, which follows the phone's hardware. */
+  page = 'Face ID & Passcode',
+): string {
+  if (support === 'no_passcode') {
+    return `This iPhone has no passcode, so there is nothing to lock with. Set one in Settings → ${page}, then turn this on.`;
+  }
+  const check =
+    method === 'your passcode' ? 'your iPhone passcode' : `${method}, or your iPhone passcode,`;
+  const line = `Asks for ${check} each time ${APP_NAME} opens or comes back to the front, and covers it in the app switcher. For a phone someone else picks up. Reminders aren’t covered: while this is on they have no Happened or Didn’t, and their words have their own switch under Notifications.`;
+  return failed ? `${APP_LOCK_FAILED} ${line}` : line;
+}
+
+/**
+ * The app lock (roadmap D64, step 180): "Hide the words" is a curtain, since
+ * one tap opens a card (blind playtests 2026-11-13e and 2026-11-14, the top
+ * privacy finding of both). The iPhone checks before the switch moves either
+ * way, so the person who turns it on can open it, and nobody else turns it
+ * off. Nothing on a build or platform that can't lock; rechecked on return
+ * to the app, since a passcode is set in iOS Settings.
+ */
+function AppLockRow() {
+  const appLock = useSettingsStore((s) => s.appLock);
+  const setEnabled = useLockStore((s) => s.setEnabled);
+  const [support, setSupport] = useState<LockSupport | null>(null);
+  const [method, setMethod] = useState<LockMethod>('your passcode');
+  const [page, setPage] = useState('Face ID & Passcode');
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    const refresh = async () => {
+      const [nextSupport, nextMethod, nextPage] = await Promise.all([
+        lockSupport(),
+        lockMethod(),
+        passcodeSettingsPage(),
+      ]);
+      if (!live) return;
+      setSupport(nextSupport);
+      setMethod(nextMethod);
+      setPage(nextPage);
+    };
+    void refresh();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refresh();
+    });
+    return () => {
+      live = false;
+      sub.remove();
+    };
+  }, []);
+
+  if (support === null || support === 'unsupported') return null;
+
+  const change = async (on: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await setEnabled(on);
+      setFailed(result === 'failed');
+      // The row's hint alone isn't read out when it changes.
+      if (result === 'failed') AccessibilityInfo.announceForAccessibility(APP_LOCK_FAILED);
+      // The phone may have lost its passcode since this row was drawn.
+      if (result === 'no_passcode') setSupport('no_passcode');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <ToggleRow
+      label={appLockLabel(method)}
+      description={appLockLine(support, method, failed, page)}
+      value={appLock}
+      onValueChange={(v) => void change(v)}
+      testID="toggle-app-lock"
+    />
+  );
 }
 
 /** One inset card of rows, with an optional footer explaining them. */

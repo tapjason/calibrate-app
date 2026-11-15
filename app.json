@@ -67,7 +67,14 @@
           ]
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-localization",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Fairly Sure uses Face ID to unlock the app when you turn on its lock."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

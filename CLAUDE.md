@@ -598,7 +598,17 @@ See the authoritative section above.
   gave, Share says so, and the recaps have no titles switch (their next badge names only a
   category the card could show). With every category off, the
   card keeps the rating (or "Calibrating") and "N categories not shown". Opening a card shows everything. For a phone someone else picks
-  up (reminders have their own switch, D60). A Face ID lock is the native batch's.
+  up (reminders have their own switch, D60).
+- **The app can be locked** (D64, 2026-11-15, step 180): a switch in You under "Hide the words",
+  off by default, named for what the phone has ("Lock with Face ID"). On, the iPhone checks
+  Face ID, or the passcode as the way in, at launch and each time the app comes back from the
+  background, and the app is covered by its name in the app switcher. The phone checks before
+  the switch moves either way. A check that fails keeps it locked; only a phone with no passcode
+  left opens, saying so and turning the lock off. Nothing locks on a build that can't
+  (`src/lock/appLock.ts` is the only module that talks to `expo-local-authentication`, loaded
+  lazily). Reminders aren't covered, and the switch says so: their words keep their own
+  switch, and while the lock is on a reminder has no Happened / Didn't (one delivered earlier
+  opens the question behind the lock and records nothing).
 - **The streak can be hidden** (D59, 2026-11-12): a switch in You, "Streak and daily
   goal", on by default. Off hides the streak row and its goal, the checkpoints, the
   streak on the recap and Insights and in the welcome back; the streak is still
@@ -662,7 +672,7 @@ Nothing that produces a shareable artifact is ever paywalled.
   and "Can't tell" stays in the app. Web has no actions. **The words can be kept off**
   (D60): "Show the words in reminders" in You, off by default (owner); off, a reminder reads
   "Your prediction from Nov 6 · You said 70%", so nothing written is on the lock screen,
-  and has no Happened / Didn't: two alike could take the wrong answer. A reminder that no longer
+  and has no Happened / Didn't: two alike could take the wrong answer. Nor does any reminder while the app lock is on (D64): the answer would be recorded without the lock being opened. A reminder that no longer
   matches its prediction (set for another date or time, words changed after it
   arrived) or whose answer now would be same-day (D41) opens the question instead
   of recording, with the current words and Resolve's note (step 169, 2026-11-10,
@@ -946,7 +956,7 @@ do (D48, 2026-11-06); after a save, Today scrolls to the new card (D48).
 | Share / Wrapped (sheet) | Identity card + weekly/yearly recap, export & share | Free |
 | History (tab) | Open predictions first, then the full list of past ones, filterable (D26) | Free |
 | Paywall | Plus plans, trial, restore purchases | — |
-| You (tab) | Your card, Plus, categories (D39), notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
+| You (tab) | Your card, Plus, categories (D39), the streak, hide-the-words and app-lock switches (D59, D61, D64), notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
 | Categories (sheet, from You) | Rename, add or hide categories (D39); an emoji or picture for any of them (D40) | Free |
 
 ---

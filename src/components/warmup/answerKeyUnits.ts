@@ -4,11 +4,65 @@
 // feet, miles or square miles in brackets, for a phone set to a region that
 // measures that way. Pure, so a test holds the arithmetic.
 
+import { requireOptionalNativeModule } from 'expo';
+import { Platform } from 'react-native';
+
 /** Regions that measure in feet and miles. */
 const US_UNIT_REGIONS = new Set(['US', 'LR', 'MM']);
 
-/** Whether the phone's region measures in feet and miles. */
-export function prefersUsUnits(locale?: string): boolean {
+/** What expo-localization says about the phone, as far as units go. */
+export interface PhoneUnits {
+  /** 'us', 'uk' or 'metric' from the phone's Region setting; null where unknown (web). */
+  measurementSystem: string | null;
+  /** The Region setting ("US"), not the language's region. */
+  regionCode: string | null;
+}
+
+/**
+ * The phone's Region setting (step 180). Until then the region came from the
+ * language tag, so English (US) on a phone set to Germany read as feet and
+ * miles. Null on a build without the module (the import itself throws there),
+ * and the language tag is read instead.
+ */
+export function phoneUnits(): PhoneUnits | null {
+  try {
+    // On a phone, ask for the native module the way that answers null before
+    // loading the package, which asks the way that throws: Metro reports that
+    // throw as fatal when the `require` runs outside module load, before any
+    // catch here sees it (code review of step 180). The web build has its own
+    // entry and needs no native module.
+    if (Platform.OS !== 'web' && !requireOptionalNativeModule('ExpoLocalization')) return null;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('expo-localization') as {
+      getLocales?: () => ReadonlyArray<Partial<PhoneUnits>> | undefined;
+    };
+    return unitsOf(mod.getLocales?.()?.[0]);
+  } catch {
+    return null;
+  }
+}
+
+/** The two fields this file reads, from whatever the module handed back. */
+export function unitsOf(first: unknown): PhoneUnits | null {
+  if (typeof first !== 'object' || first === null) return null;
+  const { measurementSystem, regionCode } = first as Record<string, unknown>;
+  return {
+    measurementSystem: typeof measurementSystem === 'string' ? measurementSystem : null,
+    regionCode: typeof regionCode === 'string' ? regionCode : null,
+  };
+}
+
+/**
+ * Whether the phone measures in feet and miles: by its measurement system
+ * where the phone says it, else by its Region setting, else (no module, or
+ * neither known) by the region in its language tag, as before. 'uk' stays
+ * metric here: the key gives heights and areas, which Britain reads in metres.
+ */
+export function prefersUsUnits(locale?: string, phone: PhoneUnits | null = phoneUnits()): boolean {
+  if (locale === undefined && phone) {
+    if (phone.measurementSystem) return phone.measurementSystem === 'us';
+    if (phone.regionCode) return US_UNIT_REGIONS.has(phone.regionCode.toUpperCase());
+  }
   try {
     const tag = locale ?? new Intl.NumberFormat().resolvedOptions().locale;
     const region = tag.split(/[-_]/).find((part, i) => i > 0 && /^[A-Z]{2}$/.test(part));

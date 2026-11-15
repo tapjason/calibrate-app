@@ -38,6 +38,18 @@ period or trial ends.
 
 **Keep a copy of my predictions.** You → Export predictions (CSV).
 
+**The lock won't open.** The lock (You → Lock with Face ID, named for how your
+iPhone unlocks) uses your iPhone's own
+Face ID, Touch ID and passcode. Fairly Sure has no code of its own and can't open
+or reset it for you. If Face ID doesn't recognise you, tap Unlock and use your
+iPhone passcode when iOS offers it. If it still won't open, restart the iPhone and
+try again, then email us. If you never signed in, don't delete the app: your
+predictions are only on this phone.
+
+**What the lock doesn't cover.** Reminders, which sit on the lock screen. While the
+lock is on they can't record an answer, and they show your prediction's words only
+if You → Notifications → Show the words in reminders is on.
+
 **Delete my data.** Signed in: You → Delete account removes it from our servers
 and your phone. Not signed in: You → Erase your data on this phone. Deleting an
 account doesn't cancel a subscription; cancel it first.

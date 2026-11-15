@@ -6,6 +6,7 @@ import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-nativ
 import { ensureAgeBucket } from '@/age/ageRange';
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
+import { AppLockGate } from '@/components/launch/AppLockGate';
 import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
 import { useAppearance } from '@/components/ui/useAppearance';
 import { loadFonts } from '@/constants/fonts';
@@ -18,6 +19,7 @@ import {
   initNotifications,
   routeFromLaunchNotification,
 } from '@/notifications/scheduler';
+import { useLockStore } from '@/store/lockStore';
 import { useLogDraftStore } from '@/store/logDraftStore';
 import { useResolveRunStore } from '@/store/resolveRunStore';
 import { usePracticeStore } from '@/store/practiceStore';
@@ -98,6 +100,10 @@ export default function RootLayout() {
         // and digest seed the correct enabled state. hydrate() swallows its
         // own errors and always resolves, so it can't block the gate.
         await useSettingsStore.getState().hydrate();
+        // The app lock (D64), if the person chose one: armed here, before the
+        // gate opens, so no screen is drawn ahead of it. Synchronous, and a
+        // build without the module never locks.
+        useLockStore.getState().arm();
         // Entitlement mirror + RevenueCat. Awaited only as far as the local
         // SQLite read inside initBilling — the network half of it swallows its
         // own errors, and a user who can't be reached by RevenueCat is a free
@@ -182,14 +188,17 @@ export default function RootLayout() {
   // Age assurance, once the first screen is up. Not part of the ready gate:
   // Apple's sheet needs a view controller, and a missing API, a decline, or
   // a throw must not hold the splash. One attempt per launch; a stored band
-  // means it is not asked again. The promise never rejects.
+  // means it is not asked again. The promise never rejects. It waits for the
+  // app lock (D64): Apple's sheet shouldn't open under the lock screen. This
+  // runs again on each unlock, and `ensureAgeBucket` still asks once per launch.
+  const locked = useLockStore((s) => s.locked);
   useEffect(() => {
-    if (!launched) return;
+    if (!launched || locked) return;
     void ensureAgeBucket().catch((e) => {
       // eslint-disable-next-line no-console
       console.warn('[age] check failed:', e);
     });
-  }, [launched]);
+  }, [launched, locked]);
 
   // Foreground sync. Sign-in already triggers one sweep via authStore; this
   // catches every subsequent return to the app so other devices' writes
@@ -316,6 +325,8 @@ export default function RootLayout() {
         />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
+      {/* The app lock and its app-switcher cover (D64), over every screen and sheet. */}
+      <AppLockGate />
     </ThemeProvider>
   );
 }

@@ -1551,3 +1551,80 @@ describe('scheduler: a reminder that no longer matches its prediction', () => {
     expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
   });
 });
+
+// Roadmap D64 (policy audit of step 180): with the app lock on, a reminder
+// can't answer for the person, since the answer would be recorded without the
+// lock being opened. jest-expo's mock stands in for the native module, so the
+// lock reads as supported here.
+describe('scheduler: reminders while the app lock is on', () => {
+  afterEach(() => useSettingsStore.setState({ appLock: false }));
+
+  const create = (title = 'Ship the prototype') =>
+    loggedEarlier(() =>
+      usePredictionStore.getState().create({
+        title,
+        category: 'work',
+        confidence: 70,
+        due_date: '2099-06-01T12:00:00.000Z',
+      }),
+    );
+
+  it('sets a reminder with its words and no Happened / Didn’t, and again when the lock changes', async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const p = await create();
+    await flush();
+    let [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.categoryIdentifier).toBeDefined();
+
+    useSettingsStore.setState({ appLock: true });
+    for (let i = 0; i < 10; i += 1) await flush();
+    expect(notifications.scheduled.size).toBe(1);
+    [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.body).toBe('Ship the prototype · You said 70%');
+    expect(rec.data).toMatchObject({ predictionId: p.id, words: true });
+    expect(rec.categoryIdentifier).toBeUndefined();
+
+    useSettingsStore.setState({ appLock: false });
+    for (let i = 0; i < 10; i += 1) await flush();
+    [rec] = Array.from(notifications.scheduled.values());
+    expect(rec.categoryIdentifier).toBeDefined();
+  });
+
+  // One delivered before the lock was turned on still shows the buttons.
+  it('opens the question and records nothing when Happened is tapped', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await create();
+    useSettingsStore.setState({ appLock: true });
+    for (let i = 0; i < 10; i += 1) await flush();
+
+    await notifications.triggerAction(p.id, 'happened');
+    await flush();
+
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+  });
+
+  // A cold start: the launching response is read as well as heard.
+  it('routes a cold-start Happened to the question once, and records nothing', async () => {
+    const p = await create();
+    useSettingsStore.setState({ appLock: true });
+    const notifications = makeFakeNotifications(true, {
+      launchPredictionId: p.id,
+      launchAction: 'happened',
+    });
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    await routeFromLaunchNotification();
+    await routeFromLaunchNotification();
+    await flush();
+
+    expect((await getPrediction(p.id))?.status).toBe('pending');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+  });
+});

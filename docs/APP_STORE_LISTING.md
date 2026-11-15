@@ -223,7 +223,8 @@ leaves that judgement to the developer), so getting it right first time matters.
 >
 > **PRIVATE BY DEFAULT**
 > The whole free app works offline, without an account. Sign in only if you
-> want a backup or the Coach. No ads, no tracking.
+> want a backup or the Coach. No ads, no tracking. Lock the app with Face ID or
+> your passcode if you share your phone.
 >
 > **FAIRLY SURE PLUS**
 > Optional, for going deeper:
@@ -290,6 +291,16 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 >
 > The app shows Apple's age-range sheet once after the first screen. Declining
 > changes nothing.
+>
+> Optional app lock: You → Lock with Face ID (off by default; named Lock with
+> Touch ID or Lock with iPhone passcode on other iPhones). It uses
+> LocalAuthentication with LAPolicy.deviceOwnerAuthentication, so the device
+> passcode is always offered as the alternative to Face ID. The app never
+> receives biometric data or the passcode: only whether the check passed, and
+> which methods the phone has set up, to name the switch. This is the app's
+> only use of Face ID. It is not account sign-in, and nothing requires it. On a
+> device with no passcode the switch explains that one must be set and does
+> not turn on.
 >
 > If a user's own prediction text signals distress, the Coach gives no
 > feedback and the app shows helpline information instead. That check runs on

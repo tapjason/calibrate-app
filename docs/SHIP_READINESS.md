@@ -81,6 +81,13 @@ real users decide.
 
 Each is coded around: the app works either way.
 
+**Answered 2026-11-15** (owner: "Yes for all answers"): 1, the native batch, in this build
+(built as step 180, roadmap D64); 3, guest usage counts (the owner applies migration 007, then
+the agent turns `GUEST_ANALYTICS` on); 4, the recommended prices ($34.99 a year, $79.99
+lifetime, $4.99 a month); 6, a custom mail sender; 11, `expo-auth-session` uninstalled. The
+Paid Applications Agreement is submitted and GitHub Pages is on (owner, the same day). Still
+open: 2, 5, 7 to 10, 12 and 13.
+
 1. **The native batch (step 180): yes or no.** Installing packages needs your go (the
    machine's permission rule held it back):
    `npx expo install expo-local-authentication@~55.0.18 expo-localization@~55.0.19`.

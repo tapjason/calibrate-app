@@ -110,7 +110,8 @@ Layers, lowest first (`BUILD_PLAN.md`; an import arrow only points downward; L6 
 - **L4 state:** `src/store/*Store.ts` (Zustand; state and actions, no business math; every
   mutation and its stats recompute in one `withTransaction`).
 - **L5 services:** `src/supabase/`, `src/notifications/`, `src/ai/`, `src/billing/`,
-  `src/analytics/`, `src/share/`, `src/export/`, `src/review/`, `src/age/`, `src/media/`. Every one
+  `src/analytics/`, `src/share/`, `src/export/`, `src/review/`, `src/age/`, `src/media/`,
+  `src/lock/` (the app lock, D64). Every one
   fails silently; Log → Resolve → Stats works with all of them broken.
 - **L6 presentation:** `app/` (expo-router: `(tabs)/` index = Today, insights, history, you;
   `log`, `resolve/[id]`, `resolve/run`, `prediction/[id]`, `share/`, `warmup/`, `practice`,
@@ -562,7 +563,8 @@ behaviour is checked by the owner on that phone, and an agent says so in every r
   pickers; local notifications, their permission dialog and the Happened / Didn't actions; Sign in
   with Apple; the Declared Age Range sheet; the OS share sheet and PNG export (view-shot); the
   rating prompt; RevenueCat purchases and restore; real Dynamic Type; VoiceOver; cold start;
-  keyboard avoidance.
+  keyboard avoidance; the app lock (Face ID and the passcode, the lock screen's overlay over sheets,
+  the cover in the app switcher) and the phone's Region setting (`expo-localization`).
 - **Known iOS-vs-web traps** (from the first device run, 2026-11-07 and 08):
   - react-native-screens on the New Architecture can resize a `formSheet`'s scroll view over its
     header; Log is a page sheet with its header inside the scroll view (`app/_layout.tsx`).

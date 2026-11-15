@@ -38,6 +38,7 @@ import type { Prediction } from '@/types';
 import { answerNowIsSameDay, usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
+import { lockSupported } from '@/lock/appLock';
 
 import {
   REMINDER_ACTION_DIDNT,
@@ -49,6 +50,15 @@ import {
   reminderBody,
   reminderBodyWithoutWords,
 } from './copy';
+
+/**
+ * Whether the app lock is on and this build can keep it (D64). A reminder
+ * then carries no Happened / Didn't, and one that still has them opens the
+ * question instead of recording.
+ */
+function appLockOn(): boolean {
+  return useSettingsStore.getState().appLock && lockSupported();
+}
 
 // Injected dependencies (the platform Notifications module and the navigator).
 // Pulled to the top so tests can swap them in via __setDepsForTests without
@@ -329,6 +339,7 @@ async function schedule(p: Prediction): Promise<void> {
   // They're on Home's "Ready to answer" list already.
   if (fireDate.getTime() <= Date.now()) return;
   const words = useSettingsStore.getState().reminderWords;
+  const answerable = words && !appLockOn();
   try {
     const id = await deps.notifications.scheduleNotificationAsync({
       content: {
@@ -344,8 +355,10 @@ async function schedule(p: Prediction): Promise<void> {
         // Without the words, no Happened / Didn't: two made the same day at
         // the same number would read alike, and a one-tap answer could land
         // on the wrong one (policy audit, step 176). A tap opens the question,
-        // words and all, behind the lock.
-        ...(words ? { categoryIdentifier: REMINDER_CATEGORY } : {}),
+        // words and all, behind the lock. With the app lock on (D64), none
+        // either: an answer from the lock screen would be recorded without
+        // the app's lock being opened (policy audit of step 180).
+        ...(answerable ? { categoryIdentifier: REMINDER_CATEGORY } : {}),
       },
       trigger: { type: 'date', date: fireDate },
     });
@@ -674,7 +687,10 @@ async function handleResponse(response: NotificationResponseEvent): Promise<void
 
   const slug = answerSlug(response.actionIdentifier);
   const predictionId = predictionIdOf(request.content.data);
-  if (!slug || !predictionId) {
+  // With the app lock on, Happened / Didn't on a reminder delivered before
+  // the lock was turned on opens the question, behind the lock, and records
+  // nothing (D64).
+  if (!slug || !predictionId || appLockOn()) {
     routeToResolve(request);
     return;
   }
@@ -909,11 +925,13 @@ async function activate(): Promise<void> {
       return;
     }
     // A new time (roadmap D38): every reminder moves to it. Words on or off
-    // (D60 (b)): every reminder is set again with or without them.
+    // (D60 (b)), or the app lock on or off (D64): every reminder is set
+    // again, with or without its words and its Happened / Didn't.
     if (
       next &&
       (state.dueReminderTime !== prev.dueReminderTime ||
-        state.reminderWords !== prev.reminderWords)
+        state.reminderWords !== prev.reminderWords ||
+        state.appLock !== prev.appLock)
     ) {
       void rescheduleAll();
     }

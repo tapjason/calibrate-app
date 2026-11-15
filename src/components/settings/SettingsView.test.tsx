@@ -112,6 +112,7 @@ describe('SettingsView', () => {
         streakShown: true,
         reminderWords: false,
         hideTitles: false,
+        appLock: false,
         cardThemeId: 'midnight',
         cardFormat: 'post',
         cardHiddenCategories: [],

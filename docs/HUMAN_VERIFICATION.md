@@ -96,6 +96,12 @@ detailed procedures; this section is the order to do them in.
 
 ### Tier 1: free, with a phone you already own
 
+> **Superseded 2026-11-15.** This tier was written before the Apple Developer account.
+> Its Expo Go and Android items never applied, and the web run-through was done by the
+> playtest agents. The first tier of checks on a phone is now Stage 1 of
+> [`TESTFLIGHT_PLAN.md`](./TESTFLIGHT_PLAN.md) ("you alone"), which runs Batches C and D
+> below on the TestFlight build.
+
 **Test Store purchases cost nothing.** RevenueCat simulates them; no card is
 involved and no store account is needed. So the whole billing path, from
 paywall to purchase to webhook to `entitlements` row, can be proven without an
@@ -929,6 +935,63 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       today (the unlock card shows), then tap "Change to: …": the card goes and the line
       under the answer ends "Your rating and badges now follow this answer, so they may
       have moved." VoiceOver says the same after "Changed to: …".
+- [ ] **The app lock, turning it on (step 180; needs the new build):** You → "Lock with Face
+      ID" is off. Tap it: iOS asks once whether Fairly Sure may use Face ID, then checks your
+      face; the switch turns on. Tap it again and cancel the prompt: it stays on, with no
+      message. Tap it and pass: it turns off. Turn it back on for the checks below.
+- [ ] **The app lock, at launch and on return (step 180):** close the app from the switcher and
+      open it: "Fairly Sure" and "Locked…" show, Face ID runs by itself, and the app opens on
+      Today. Go to the Home Screen and back: the same. Cancel the prompt: the lock screen stays
+      with **Unlock**, no prompt reopens by itself, and tapping Unlock asks again (this is the
+      check that the button takes a tap inside the overlay). Pull Notification Center down and
+      let it go: the app's name covers the screen and it does **not** ask for Face ID.
+- [ ] **The app lock, in the app switcher (step 180):** with a prediction's words on Today,
+      swipe up to the app switcher: Fairly Sure's picture shows its name, not Today. Open Log
+      (or a prediction's details), type a few words, and swipe up again: the picture still
+      shows the name, not the sheet. Note which of the two fails, if either.
+- [ ] **The app lock, with a sheet open (step 180):** open Log, go to the Home Screen and come
+      back: the lock screen is over the sheet, and after Face ID the sheet is as you left it,
+      words included, with no keyboard over the lock.
+- [ ] **The app lock, the passcode as the way in (step 180):** cover the camera so Face ID
+      fails: iOS offers "Enter Passcode", and the passcode opens the app **once, with no
+      second prompt** (this is the one check that shows whether the passcode screen sends the
+      app to the background; report it either way). Then Settings →
+      Fairly Sure → Face ID off: opening the app still asks (for the passcode), and it does
+      **not** open without one. Turn Face ID back on.
+- [ ] **The app lock, VoiceOver (step 180):** with VoiceOver on and the app locked, swiping
+      reads "Fairly Sure", the locked line and Unlock, and nothing from the screen behind.
+- [ ] **The app lock and a reminder (step 180):** with the lock on, tap a due-day reminder: the
+      lock screen first, then the question; do it once with the app killed first. With "Show
+      the words in reminders" on and the lock on, a new reminder has no Happened / Didn't. Turn
+      the lock off, let a reminder with the buttons arrive, turn the lock on, then tap Happened:
+      the app asks for Face ID and then shows the question, with nothing recorded.
+- [ ] **The app lock at the largest text (step 180):** Settings → Accessibility → Display &
+      Text Size → Larger Text, all the way up. Lock the app and cancel the prompt: the screen
+      scrolls, and Unlock can be reached and tapped. In dark appearance too.
+- [ ] **The app lock, "Don't Allow" (step 180):** on a fresh install, turn the lock on and
+      answer Don't Allow to iOS's Face ID question: iOS asks for the passcode instead and the
+      switch turns on, or stays off with "That didn't go through". Note which. Then the row
+      should read "Lock with iPhone passcode".
+- [ ] **The app lock and iOS's own sheets (step 180):** with the lock on, open Sign in with
+      Apple, start a purchase, and restore: while each sheet is up the app's name may show
+      behind it, the sheet works, and nothing asks for Face ID in the middle.
+- [ ] **The app lock over the paywall and an alert (step 180):** open Fairly Sure Plus, go to
+      the Home Screen and come back: the lock is over the paywall. Then open Log, type a word,
+      swipe it down so iOS asks about discarding, and go Home and back with that question up:
+      note whether the question shows over the lock.
+- [ ] **The app lock and the side button (step 180):** with the app in front, press the side
+      button, then unlock the iPhone: the app asks again.
+- [ ] **The app lock, no passcode (step 180; optional, it means removing your passcode):** not
+      run unless you choose to. With the lock on, remove the iPhone's passcode and open the app:
+      "This iPhone has no passcode now…" and Continue, the app opens, and the switch is off.
+      Untested if skipped.
+- [ ] **Before these checks:** if you have turned on iOS's own Require Face ID for Fairly Sure
+      (touch and hold the icon), turn it off, or every return asks twice.
+- [ ] **The app lock off (step 180):** with the switch off, nothing covers the app in the
+      switcher and nothing asks for Face ID.
+- [ ] **Feet and miles by Region (step 180):** Settings → General → Language & Region → Region
+      United States: the Warm-up's answer key shows feet and miles beside the metric figures.
+      Region Germany with the language still English (US): metric only.
 - [ ] **Help and version (TestFlight prep):** You → Help and support opens the support page,
       and "Fairly Sure 1.0.0" sits under those links.
 - [ ] **Dates in English (step 181):** set the iPhone's language to Dutch or Spanish (Settings →

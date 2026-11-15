@@ -1,4 +1,4 @@
-import { prefersUsUnits, withUsUnits } from './answerKeyUnits';
+import { phoneUnits, prefersUsUnits, unitsOf, withUsUnits } from './answerKeyUnits';
 
 // Step 173 (aggregate B2): feet and miles beside metres for a US phone.
 describe('prefersUsUnits', () => {
@@ -8,6 +8,54 @@ describe('prefersUsUnits', () => {
     expect(prefersUsUnits('en-GB')).toBe(false);
     expect(prefersUsUnits('ja-JP')).toBe(false);
     expect(prefersUsUnits('en')).toBe(false);
+  });
+
+  // Step 180: the phone's Region setting, where the build can read it.
+  it("goes by the phone's measurement system, then its Region, before the language", () => {
+    const phone = (measurementSystem: string | null, regionCode: string | null) => ({
+      measurementSystem,
+      regionCode,
+    });
+    expect(prefersUsUnits(undefined, phone('us', 'US'))).toBe(true);
+    // English (US) on a phone set to Germany: metric.
+    expect(prefersUsUnits(undefined, phone('metric', 'DE'))).toBe(false);
+    // Britain reads heights and areas in metres.
+    expect(prefersUsUnits(undefined, phone('uk', 'GB'))).toBe(false);
+    // No system given: the Region decides.
+    expect(prefersUsUnits(undefined, phone(null, 'US'))).toBe(true);
+    expect(prefersUsUnits(undefined, phone(null, 'lr'))).toBe(true);
+    expect(prefersUsUnits(undefined, phone(null, 'FR'))).toBe(false);
+  });
+
+  it('reads a tag passed in as given, whatever the phone says', () => {
+    expect(prefersUsUnits('en-GB', { measurementSystem: 'us', regionCode: 'US' })).toBe(false);
+    expect(prefersUsUnits('en-US', { measurementSystem: 'metric', regionCode: 'DE' })).toBe(true);
+  });
+
+  // No native module under Jest, as on a build made before the package was
+  // added: nothing is read from the phone and the language tag decides.
+  it('reads nothing from the phone on a build without the module', () => {
+    expect(phoneUnits()).toBeNull();
+    const tag = new Intl.NumberFormat().resolvedOptions().locale;
+    expect(prefersUsUnits()).toBe(prefersUsUnits(tag));
+  });
+});
+
+describe('unitsOf', () => {
+  it('keeps the two fields it reads, and only as strings', () => {
+    expect(unitsOf({ measurementSystem: 'us', regionCode: 'US', languageTag: 'en-US' })).toEqual({
+      measurementSystem: 'us',
+      regionCode: 'US',
+    });
+    expect(unitsOf({ measurementSystem: null, regionCode: 42 })).toEqual({
+      measurementSystem: null,
+      regionCode: null,
+    });
+  });
+  it('is nothing for nothing', () => {
+    expect(unitsOf(undefined)).toBeNull();
+    expect(unitsOf(null)).toBeNull();
+    expect(unitsOf('en-US')).toBeNull();
   });
 });
 

@@ -112,6 +112,7 @@ describe('settingsStore: setters persist', () => {
       streakShown: true,
       reminderWords: false,
       hideTitles: false,
+      appLock: false,
       cardThemeId: 'midnight',
       cardFormat: 'post',
       cardHiddenCategories: [],
@@ -146,6 +147,7 @@ describe('settingsStore: setters persist', () => {
       streakShown: true,
       reminderWords: false,
       hideTitles: false,
+      appLock: false,
       cardThemeId: 'midnight',
       cardFormat: 'post',
       cardHiddenCategories: [],
@@ -326,5 +328,38 @@ describe('settingsStore: share card choices', () => {
     await useSettingsStore.getState().hydrate();
     expect(useSettingsStore.getState().cardFormat).toBe('story');
     expect(useSettingsStore.getState().cardHiddenCategories).toEqual([]);
+  });
+});
+
+// Roadmap D64 (step 180): the app lock's choice.
+describe('settingsStore: the app lock', () => {
+  it('is off by default, and off for anything stored that is not true or false', async () => {
+    __setPersistenceForTests(
+      makeFakePersistence({ appLock: 'yes' } as unknown as Partial<StoredSettings>).persistence,
+    );
+    expect(useSettingsStore.getState().appLock).toBe(false);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().appLock).toBe(false);
+  });
+
+  it('comes back on after a restart, and is saved when changed', async () => {
+    const { persistence, saved } = makeFakePersistence({ appLock: true });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().appLock).toBe(true);
+    await useSettingsStore.getState().setAppLock(false);
+    expect(saved[saved.length - 1].appLock).toBe(false);
+    await useSettingsStore.getState().setAppLock(true);
+    expect(saved[saved.length - 1].appLock).toBe(true);
+  });
+
+  // A lock nobody chose must not appear because storage failed, and a failed
+  // read must not strand a person behind one: it reads as off.
+  it('reads as off when the stored settings cannot be read', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    __setPersistenceForTests(makeFakePersistence({ appLock: true }, { loadThrows: true }).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().appLock).toBe(false);
+    jest.restoreAllMocks();
   });
 });

@@ -1391,6 +1391,28 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
 
 ---
 
+### 7.25 The app lock (D64, 2026-11-15; built as roadmap step 180)
+
+- **The switch** is one more row in You's group with "Streak and daily goal" and "Hide the
+  words" (§7.21), named for what the phone has in use: "Lock with Face ID", "Lock with Touch
+  ID" or "Lock with iPhone passcode". It never names a method the phone lacks or isn't using,
+  and it is hidden on a build that can't lock. Its line ends by saying reminders aren't covered.
+- **The lock screen and the cover** are one layout on `canvas`, centred: the app's name in
+  `title1`, and when locked a line in `body` / `textSecondary` and a primary **Unlock** button.
+  The cover (the app not in front while the lock is on) is the name alone, in the same column. No glyph: Apple's Face ID symbol isn't drawn by the app, and iOS's own
+  prompt carries it.
+- **It sits in front of every screen and sheet** on the iPhone (`FullWindowOverlay`: a view in
+  the app's window, kept in front of whatever is presented after it), with VoiceOver kept
+  inside it. The keyboard and a system alert have windows of their own and can sit above it;
+  the keyboard is dismissed while it is up. No motion in or out: a lock that fades shows
+  what's behind it.
+- **It scrolls**, padded by the safe area, and only the name is capped (`DISPLAY_MAX_SCALE`):
+  at the largest text sizes the lines and the button are taller than the screen, and the
+  button is the way in.
+- **Words:** "Locked. Unlock with Face ID or your iPhone passcode to see your predictions."
+  A closed prompt says nothing more; a failed check adds "That didn’t unlock it. Try again.",
+  spoken as well as shown.
+
 ## 8. Accessibility checklist (per change)
 
 - [ ] Both appearances (D7): the web build with dark emulated, at phone width; every

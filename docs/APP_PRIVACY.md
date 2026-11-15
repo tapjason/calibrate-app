@@ -1,6 +1,6 @@
 # Fairly Sure — App Privacy declarations
 
-**As of:** 2026-11-14 (policy audit; first written 2026-09-24) · Derived from the code, not from intent.
+**As of:** 2026-11-15 (policy audit of step 180; first written 2026-09-24) · Derived from the code, not from intent.
 
 This is the answer sheet for App Store Connect → App Privacy, and the source
 for the privacy policy text. Every row cites the file that proves it. If a
@@ -159,6 +159,22 @@ feature reads it. Erase and account deletion delete the row. Apple enforces a
 revoked consent by refusing to launch the app, so there is no server-side
 rescind path.
 
+## 4b. The app lock and the Region setting — on the device only
+
+The optional lock (roadmap D64, `expo-local-authentication`) asks iOS to check
+Face ID, Touch ID or the device passcode (`LAPolicy.deviceOwnerAuthentication`).
+The app receives a pass or a failure with its reason (cancelled, no passcode
+set), and reads which of these the phone has set up, to name the switch. No
+face or fingerprint data, no passcode. Whether the lock is on is one device-local setting, not
+synced and not sent to analytics. Info.plist carries
+`NSFaceIDUsageDescription` ("Fairly Sure uses Face ID to unlock the app when
+you turn on its lock."), set by the package's config plugin in `app.json`.
+Nothing to declare on the App Privacy form for it.
+
+`expo-localization` reads the phone's measurement system and Region setting to
+choose feet and miles in the Warm-up's answer key. Read on the phone, sent
+nowhere, stored nowhere.
+
 ## 5. Policy text this implies
 
 The privacy policy URL App Store Connect requires must at minimum say:
@@ -200,7 +216,11 @@ policy's §3.
 
 Expo SDK 55 modules and `react-native-purchases` ship their own
 `PrivacyInfo.xcprivacy` declarations for the required-reason APIs they use
-(AsyncStorage → UserDefaults, file timestamps). Fairly Sure adds no native code of
+(AsyncStorage → UserDefaults, file timestamps; `expo-localization` declares
+UserDefaults, reason CA92.1; `expo-local-authentication` ships no manifest and
+needs none: LocalAuthentication is not among Apple's required-reason API types,
+which are file timestamps, system boot time, disk space, active keyboards and
+UserDefaults; policy audit, 2026-11-15). Fairly Sure adds no native code of
 its own, so it declares none directly. Confirm the generated build carries them
 when the first `eas build` runs — a missing manifest surfaces as an App Store
 Connect email after upload, not as a build failure.

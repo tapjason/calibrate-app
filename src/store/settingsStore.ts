@@ -66,6 +66,14 @@ export interface StoredSettings {
    */
   hideTitles: boolean;
   /**
+   * Whether the app asks for Face ID or the passcode when it opens (roadmap
+   * D64, step 180). Off by default. "Hide the words" is a curtain: one tap
+   * opens a card (the top privacy finding of blind playtests 2026-11-13e and
+   * 2026-11-14). The choice is kept here; whether the app is locked right now
+   * is `lockStore`'s, and never stored.
+   */
+  appLock: boolean;
+  /**
    * Chosen share-card theme id (src/constants/cardThemes.ts). Cosmetic only —
    * an id the user is not entitled to resolves back to the free theme at
    * render time, so a lapsed subscriber keeps every card, in the free look.
@@ -167,6 +175,8 @@ interface SettingsState extends StoredSettings {
   setStreakShown: (shown: boolean) => Promise<void>;
   setReminderWords: (shown: boolean) => Promise<void>;
   setHideTitles: (hidden: boolean) => Promise<void>;
+  /** Store the lock choice. The check that allows it is `lockStore`'s. */
+  setAppLock: (on: boolean) => Promise<void>;
   setCardThemeId: (id: string) => Promise<void>;
   setCardFormat: (format: CardShape) => Promise<void>;
   setCardHiddenCategories: (hidden: readonly Category[]) => Promise<void>;
@@ -211,6 +221,7 @@ const DEFAULTS: StoredSettings = {
   streakShown: true,
   reminderWords: false,
   hideTitles: false,
+  appLock: false,
   cardThemeId: DEFAULT_THEME.id,
   cardFormat: 'post',
   cardHiddenCategories: [],
@@ -296,6 +307,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
               : DEFAULTS.reminderWords,
           hideTitles:
             typeof stored.hideTitles === 'boolean' ? stored.hideTitles : DEFAULTS.hideTitles,
+          appLock: typeof stored.appLock === 'boolean' ? stored.appLock : DEFAULTS.appLock,
           cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
           cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
           cardHiddenCategories:
@@ -377,6 +389,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setHideTitles: async (hidden) => {
     set({ hideTitles: hidden });
+    await persist(snapshot(get()));
+  },
+
+  setAppLock: async (on) => {
+    set({ appLock: on });
     await persist(snapshot(get()));
   },
 
@@ -507,6 +524,7 @@ function snapshot(state: StoredSettings): StoredSettings {
     streakShown: state.streakShown,
     reminderWords: state.reminderWords,
     hideTitles: state.hideTitles,
+    appLock: state.appLock,
     cardThemeId: state.cardThemeId,
     cardFormat: state.cardFormat,
     cardHiddenCategories: state.cardHiddenCategories,
