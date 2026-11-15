@@ -31,7 +31,6 @@ import {
 import { WarmupCard } from './WarmupCard';
 import { warmupCardCopy } from './warmupCardCopy';
 
-const LAST_ON_NOTE = 'One category stays on the card.';
 
 /**
  * Under the Warm-up card, for someone who came from a friend's card: what
@@ -107,14 +106,14 @@ export function ShareCardPanel({
   // The toggles: the categories that can be on the card now.
   const choosable = allOnFile.filter((c) => !ownOff?.(c.category));
   const keptOff = allOnFile.length - choosable.length;
-  const onCount = choosable.filter((c) => !hidden.has(c.category)).length;
-  const lastOn = onCount === 1;
   // From the person's own choice only: a category kept off while hiding
   // isn't stored as unticked, so it comes back when the switch goes off.
+  // Every one can come off (owner, 2026-11-14): the card keeps the rating
+  // and says how many aren't shown.
   const toggleCategory = (c: Category) => {
     const next = new Set(userHidden);
     if (next.has(c)) next.delete(c);
-    else if (onCount > 1) next.add(c);
+    else next.add(c);
     void setStoredHidden([...next]);
   };
   // resolveTheme, not a raw lookup: a Plus theme held by someone who has
@@ -290,25 +289,24 @@ export function ShareCardPanel({
               Categories you named stay off the card while “Hide the words” is on.
             </Text>
           )}
-          {/* One choosable category shows too when it's off, so it can come
-              back on (code review, step 179). */}
-          {(choosable.length > 1 || onCount < choosable.length) && (
+          {/* Even one: it can come off, and back on (owner, 2026-11-14). */}
+          {choosable.length > 0 && (
             <>
               <Text style={styles.controlLabel}>On the card</Text>
               <View style={styles.chips}>
                 {choosable.map((c) => {
                   const on = !hidden.has(c.category);
-                  // The last one on stays on: a card needs a category.
-                  const locked = on && lastOn;
                   return (
                     <Pressable
                       key={c.category}
                       onPress={() => toggleCategory(c.category)}
                       accessibilityRole="checkbox"
                       {...chosenProps('checkbox', on)}
-                      accessibilityHint={locked ? LAST_ON_NOTE : undefined}
                       accessibilityLabel={`Show ${categoryTitle(c.category)} on the card`}
                       testID={`share-toggle-${c.category}`}
+                      // 36pt tall: the slop takes the target to 44 (as
+                      // History's chips; code review, 2026-11-14).
+                      hitSlop={{ top: 4, bottom: 4 }}
                       style={[styles.chip, on && styles.chipOn]}
                     >
                       {on && (
@@ -329,13 +327,6 @@ export function ShareCardPanel({
                   );
                 })}
               </View>
-              {/* Said, not silent: the last chip refused to untick with no
-                  reason given (playtest 2026-11-08, finding 21). */}
-              {lastOn && (
-                <Text style={styles.lockNote} testID="share-last-on">
-                  {LAST_ON_NOTE}
-                </Text>
-              )}
             </>
           )}
         </View>
@@ -352,7 +343,6 @@ const styles = StyleSheet.create({
   message: { ...type.footnote, color: colors.textSecondary, textAlign: 'center' },
   controls: { gap: 8 },
   controlLabel: { ...type.footnote, color: colors.textSecondary, fontWeight: '600' },
-  lockNote: { ...type.footnote, color: colors.textSecondary },
   segmented: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: 999,

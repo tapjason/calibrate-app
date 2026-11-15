@@ -114,7 +114,16 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
     storedHidden,
     hideTitles ? isNamedCategory : undefined,
   );
-  const shownStats = categoryStats.filter((c) => !hidden.has(c.category));
+  // The recap's categories are the card's: answered, not left off, and not
+  // named by the person while hiding. A category with open predictions only
+  // was never on the card, so its next badge named it ("…in Trips") on a
+  // shareable image (record audit and code review, 2026-11-14).
+  const shownStats = categoryStats.filter(
+    (c) =>
+      c.predictions_resolved > 0 &&
+      !hidden.has(c.category) &&
+      !(hideTitles && isNamedCategory(c.category)),
+  );
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

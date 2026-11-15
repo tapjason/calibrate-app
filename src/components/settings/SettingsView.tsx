@@ -147,7 +147,7 @@ export function SettingsView({
         <ToggleRow
           // Short enough to keep its switch beside it at 375 (D62).
           label="Hide the words"
-          description="On Today and History, each prediction shows its number and date, not its words, its note or a category you named, until you open it: for a phone someone else picks up. Reminders have their own switch under Notifications."
+          description="Each prediction shows its number and date, not its words or its note, until you open it, and a category you named stays off Insights and your card: for a phone someone else picks up. Reminders have their own switch under Notifications."
           value={hideTitles}
           onValueChange={(v) => void setHideTitles(v)}
           testID="toggle-hide-titles"

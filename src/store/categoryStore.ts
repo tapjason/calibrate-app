@@ -201,9 +201,10 @@ export function categoryOptions(
 /**
  * Whether a category carries something the person wrote or chose (D62): an
  * added one, or a built-in renamed or given an icon. "Hide the words" hides
- * these too: "✈️ Family & travel" told the story the hidden words didn't
- * (blind playtest 2026-11-13d, runs 2 and 4). A built-in under its own word
- * and symbol is the app's, not the person's.
+ * what they chose: "✈️ Family & travel" told the story the hidden words
+ * didn't (blind playtest 2026-11-13d, runs 2 and 4). A built-in under its own
+ * word and symbol is the app's, not the person's. Lists draw the default
+ * symbol for these while hiding; the name goes only for isNamedCategory.
  */
 export function isOwnCategory(id: Category): boolean {
   if (!isBuiltInCategory(id)) return true;
@@ -213,9 +214,11 @@ export function isOwnCategory(id: Category): boolean {
 
 /**
  * Whether a category carries a name the person gave: one they added, or a
- * built-in they renamed. The share card and the recaps leave these off while
- * "Hide the words" is on. They never draw an icon (D40), so a built-in given
- * only an icon stays on them (code review, step 179).
+ * built-in they renamed. While "Hide the words" is on these read "Your own
+ * category" and the share card and the recaps leave them off. A built-in
+ * given only an icon keeps its own word everywhere, with its default symbol
+ * where an icon is drawn (owner, 2026-11-14: Insights called it "Your own
+ * category" while Today and the card named it).
  */
 export function isNamedCategory(id: Category): boolean {
   if (!isBuiltInCategory(id)) return true;
@@ -227,16 +230,17 @@ export const OWN_CATEGORY_HIDDEN = 'Your own category';
 
 /**
  * A category's title as a read-only screen shows it: "Your own category" for
- * one the person named or gave an icon while the words are hidden (D62 (d),
- * applied off the cards too after blind playtest 2026-11-13e, runs 1 and 4).
+ * one the person named while the words are hidden (D62 (d), applied off the
+ * cards too after blind playtest 2026-11-13e, runs 1 and 4). A built-in
+ * given only an icon keeps its word (owner, 2026-11-14).
  */
 export function visibleCategoryTitle(id: Category, hideTitles: boolean): string {
-  return hideTitles && isOwnCategory(id) ? OWN_CATEGORY_HIDDEN : categoryTitle(id);
+  return hideTitles && isNamedCategory(id) ? OWN_CATEGORY_HIDDEN : categoryTitle(id);
 }
 
 /** The same in the middle of a sentence: "your own category", or categoryLabel. */
 export function visibleCategoryLabel(id: Category, hideTitles: boolean): string {
-  return hideTitles && isOwnCategory(id) ? OWN_CATEGORY_HIDDEN.toLowerCase() : categoryLabel(id);
+  return hideTitles && isNamedCategory(id) ? OWN_CATEGORY_HIDDEN.toLowerCase() : categoryLabel(id);
 }
 
 /** Whether a category is hidden from Log's choices. */

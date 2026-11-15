@@ -97,7 +97,8 @@ show one emoji (a suggested grid or any emoji typed in) or a picture from the ph
 library, cropped square and shrunk to 120 px (`src/media/iconImage.ts`), instead of
 its symbol. "Use the default" goes back. Stored in the same `categories` row (SQLite
 migration 010, `icon_emoji` / `icon_image`): on this phone only, not synced, cleared
-by Erase. Shown in full colour wherever the app shows a category's icon; **never on a
+by Erase. Shown in full colour wherever the app shows a category's icon (lists draw the
+default symbol instead while "Hide the words" is on, D62); **never on a
 share card or Wrapped**, which keep their fixed design, so a photo can't leave the
 phone in a shared image.
 
@@ -578,12 +579,14 @@ See the authoritative section above.
   toward either.
 - **The words can be hidden** (D61, 2026-11-13): "Hide the words" in You, off by
   default. On, a card shows "Words hidden. Open it to see them.", its number and date,
-  and no note; a category the person named or gave an icon (added, or a built-in
-  renamed) reads "Your own category" (D62), and Today's identity and next-badge lines
-  name only built-ins. Since step 179 the same goes off the cards: Insights' badge rows,
-  furthest-off line, Trends and Coach cards read "Your own category", and the share card and
-  the recaps leave off a category with a name the person gave (an icon alone stays: they draw
-  none), Share says so, and the recaps have no titles switch. With every category off, the
+  and no note; a category the person named (added, or a built-in renamed) reads "Your own
+  category" with a plain folder (D62), an icon the person chose gives way to the default
+  symbol (a built-in given only an icon keeps its word, owner 2026-11-14), and Today's
+  identity and next-badge lines name only categories under the app's own words. Since step 179 the same goes off the
+  cards: Insights' badge rows, furthest-off line, Trends and Coach cards read "Your own
+  category", and the share card and the recaps leave off a category with a name the person
+  gave, Share says so, and the recaps have no titles switch (their next badge names only a
+  category the card could show). With every category off, the
   card keeps the rating (or "Calibrating") and "N categories not shown". Opening a card shows everything. For a phone someone else picks
   up (reminders have their own switch, D60). A Face ID lock is the native batch's.
 - **The streak can be hidden** (D59, 2026-11-12): a switch in You, "Streak and daily
@@ -616,7 +619,8 @@ See the authoritative section above.
 - **The card is honest about itself** (decided 2026-11-03, D42): the rating carries
   its give-or-take ("Calibration 87/100, give or take 3, from 148 resolved
   predictions"), and a card with categories left off says so ("2 categories not
-  shown"), in the image and the text share alike. The recaps leave the same
+  shown"), in the image and the text share alike. Any of them can be left off, the last
+  one too (owner, 2026-11-14): the card then keeps the rating and the count. The recaps leave the same
   categories off and say so too (2026-11-04).
 - Once there's a category card, Share keeps the Warm-up card one tap away ("Show my
   warm-up card", without its "Real predictions next." then, D62), with a friend's squares

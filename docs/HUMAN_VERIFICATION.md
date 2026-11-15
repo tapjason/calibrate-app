@@ -898,7 +898,9 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       off the card with "Categories you named stay off the card…"; the week recap has no "Show
       prediction titles" switch. Switch off: it's all back, nothing unticked. Rename every
       category you've answered in: the card still shows, with your rating and "N categories not
-      shown". A built-in given only an emoji stays on the card.
+      shown". A built-in given only an emoji stays on the card, and on Insights and Today it
+      keeps its name with its usual symbol, not the emoji. Untick every category on Share: the
+      card keeps your rating and "N categories not shown"; tick one back.
 - [ ] **Another number keeps your edit:** Edit a prediction made today, change its words, tap
       "Use another number": Log opens with the new words, no "Discard changes?" sheet.
 - [ ] **The unlock names its badge:** at 19 scored answers all in one category, answer the 20th:

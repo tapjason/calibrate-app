@@ -7,6 +7,7 @@ import { colors, radius, space, tabularNums, type } from '@/constants/theme';
 import type { Prediction } from '@/types';
 import {
   categoryTitle,
+  isNamedCategory,
   isOwnCategory,
   OWN_CATEGORY_HIDDEN,
   useCategoryStore,
@@ -28,7 +29,7 @@ export type RowPosition = 'single' | 'first' | 'middle' | 'last';
  * (blind playtest 2026-11-13c, finding 7). Exported for tests.
  */
 export const HIDDEN_TITLE = 'Words hidden. Open it to see them.';
-/** A category the person named or gave an icon, while the words are hidden (D62). */
+/** A category the person named, while the words are hidden (D62). */
 export const HIDDEN_CATEGORY = OWN_CATEGORY_HIDDEN;
 
 /** Above this text scale a title may take more lines (as ConfidenceControl's steppers wrap). */
@@ -116,8 +117,11 @@ export function PredictionCard({
   // back (roadmap step 31). Only on a resolved row, and only if written.
   const hideTitles = useSettingsStore((s) => s.hideTitles);
   const title = hideTitles ? HIDDEN_TITLE : prediction.title;
-  // A name or icon the person chose is their words too (D62).
-  const categoryHidden = hideTitles && isOwnCategory(prediction.category);
+  // A name the person chose is their words too (D62); an icon they chose
+  // gives way to the default symbol, and a built-in keeps its word (owner,
+  // 2026-11-14).
+  const categoryHidden = hideTitles && isNamedCategory(prediction.category);
+  const iconPlain = hideTitles && isOwnCategory(prediction.category);
   const categoryName = categoryHidden ? HIDDEN_CATEGORY : categoryTitle(prediction.category);
   // A note is the person's words too.
   const reflection =
@@ -174,7 +178,12 @@ export function PredictionCard({
             {categoryHidden ? (
               <Icon sf="folder" fallback="folder-outline" size={13} color={colors.textSecondary} />
             ) : (
-              <CategoryIcon category={prediction.category} size={13} color={colors.textSecondary} />
+              <CategoryIcon
+                category={prediction.category}
+                size={13}
+                color={colors.textSecondary}
+                plain={iconPlain}
+              />
             )}
             {/* No comma (D62): when the date moved under the name, "Weather,"
                 ended its line on it (blind playtest 2026-11-13d, run 7). The

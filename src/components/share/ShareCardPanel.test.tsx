@@ -391,6 +391,20 @@ describe('ShareCardPanel — shape and contents', () => {
       expect(useSettingsStore.getState().cardHiddenCategories).toEqual([]);
     });
 
+    it('lets the one category left come off as well (owner, 2026-11-14)', () => {
+      seedStats(USER_STAT, CATEGORY_STATS);
+      const onFile = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0).map((c) => c.category);
+      const [left, ...named] = onFile;
+      useCategoryStore.setState({
+        defs: named.map((id) => def(id as 'health' | 'finance', { name: `Mine ${id}` })),
+      });
+      useSettingsStore.setState({ hideTitles: true });
+      render(<ShareCardPanel />);
+      fireEvent.press(screen.getByTestId(`share-toggle-${left}`));
+      expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
+      expect(useSettingsStore.getState().cardHiddenCategories).toEqual([left]);
+    });
+
     it('keeps a built-in that has only an icon: the card draws none', () => {
       seedStats(USER_STAT, CATEGORY_STATS);
       useCategoryStore.setState({ defs: [def('health', { icon: { kind: 'emoji', emoji: '🏃' } })] });
@@ -401,7 +415,8 @@ describe('ShareCardPanel — shape and contents', () => {
     });
   });
 
-  it('leaves a category off the card, but never all of them', () => {
+  // Every one can come off (owner, 2026-11-14): the card keeps the rating.
+  it('leaves categories off the card, the last one too', () => {
     seedStats(USER_STAT, CATEGORY_STATS);
     render(<ShareCardPanel />);
     const categories = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0).map(
@@ -416,7 +431,25 @@ describe('ShareCardPanel — shape and contents', () => {
     expect(screen.getByTestId('card-hidden')).toHaveTextContent('1 category not shown');
 
     for (const c of rest) fireEvent.press(screen.getByTestId(`share-toggle-${c}`));
-    // The last one standing can't be switched off.
+    expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
+    expect(screen.getByTestId('card-identity')).toHaveTextContent('Calibration 88/100');
+    expect(screen.getByTestId('card-hidden')).toHaveTextContent(
+      `${categories.length} categories not shown`,
+    );
+    // Each chip stays, so any can come back on.
+    fireEvent.press(screen.getByTestId(`share-toggle-${first}`));
+    expect(screen.getByTestId(`card-badge-${first}`)).toBeTruthy();
+  });
+
+  it('lets a single category come off and back on', () => {
+    const only = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0).slice(0, 1);
+    seedStats(USER_STAT, only);
+    render(<ShareCardPanel />);
+    const chip = screen.getByTestId(`share-toggle-${only[0].category}`);
+    fireEvent.press(chip);
+    expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
+    expect(screen.getByTestId('card-hidden')).toHaveTextContent('1 category not shown');
+    fireEvent.press(screen.getByTestId(`share-toggle-${only[0].category}`));
     expect(screen.getAllByTestId(/^card-badge-/)).toHaveLength(1);
   });
 
@@ -439,14 +472,15 @@ describe('ShareCardPanel — shape and contents', () => {
     });
   });
 
-  // The card never hides every category on file, whatever was kept: here a
-  // choice that would leave nothing (after an erase and new answers, say).
-  it('shows every category when what was kept would hide them all', () => {
+  // A kept choice that leaves every category off is kept (owner,
+  // 2026-11-14): it used to put them all back.
+  it('keeps every category off when that was the choice', () => {
     seedStats(USER_STAT, CATEGORY_STATS);
     const onFile = CATEGORY_STATS.filter((c) => c.predictions_resolved > 0).map((c) => c.category);
     useSettingsStore.setState({ cardHiddenCategories: onFile });
     render(<ShareCardPanel />);
-    expect(screen.getAllByTestId(/^card-badge-/).length).toBeGreaterThan(1);
+    expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
+    expect(screen.getByTestId('card-hidden')).toHaveTextContent(`${onFile.length} categories not shown`);
   });
 });
 

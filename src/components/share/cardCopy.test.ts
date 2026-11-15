@@ -507,3 +507,13 @@ describe('identityCardSummary with no categories (code review, step 179)', () =>
     expect(said).toMatch(/Calibration 87\/100.*2 categories not shown\.$/);
   });
 });
+
+describe('cardHiddenCategories, every one off (owner, 2026-11-14)', () => {
+  const stat = (category: string, resolved = 5) =>
+    ({ category, predictions_resolved: resolved }) as never;
+  it('keeps a choice that leaves none on', () => {
+    const stats = [stat('work'), stat('health'), stat('social', 0)];
+    expect([...cardHiddenCategories(stats, ['work', 'health'])].sort()).toEqual(['health', 'work']);
+    expect([...cardHiddenCategories(stats, ['social'])]).toEqual([]);
+  });
+});

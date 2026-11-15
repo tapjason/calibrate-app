@@ -25,6 +25,7 @@ import { useCategoryStore } from './categoryStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
+import { useSettingsStore } from './settingsStore';
 import { useWarmupStore } from './warmupStore';
 
 const mocked = auth as jest.Mocked<typeof auth>;
@@ -202,6 +203,23 @@ describe('authStore.eraseDeviceData', () => {
     expect(loadForUser).toHaveBeenCalledWith(LOCAL_GUEST_USER_ID);
     // The erased categories (roadmap D39) are read again too.
     expect(loadCategories).toHaveBeenCalled();
+  });
+
+  // Code review, 2026-11-14: any category can be left off now, so a choice
+  // about the erased record could empty the next card.
+  it('forgets which categories were left off the card', async () => {
+    useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', provider: null });
+    wipe.mockResolvedValue(undefined);
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    usePredictionStore.setState({ loadPending: jest.fn(async () => {}), loadResolved: jest.fn(async () => {}) });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    const setHidden = jest.fn(async () => {});
+    useSettingsStore.setState({ cardHiddenCategories: ['work'], setCardHiddenCategories: setHidden });
+
+    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
+    expect(setHidden).toHaveBeenCalledWith([]);
   });
 
   // A signed-in account's data also lives on the server; erasing only the

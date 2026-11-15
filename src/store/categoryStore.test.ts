@@ -15,6 +15,8 @@ import {
   isOwnCategory,
   leadingEmoji,
   useCategoryStore,
+  visibleCategoryLabel,
+  visibleCategoryTitle,
 } from './categoryStore';
 
 beforeEach(async () => {
@@ -191,5 +193,29 @@ describe('a leading emoji in a new name', () => {
     expect(leadingEmoji('🍸Nights out')).toBeNull();
     expect(leadingEmoji('A1 grades')).toBeNull();
     expect(leadingEmoji('👨‍👩‍👧 Family time')).toEqual({ emoji: '👨‍👩‍👧', rest: 'Family time' });
+  });
+});
+
+describe('visibleCategoryTitle (owner, 2026-11-14)', () => {
+  afterEach(() => useCategoryStore.setState({ defs: [] }));
+  const def = (id: 'health' | 'finance', over: { name?: string | null; icon?: { kind: 'emoji'; emoji: string } | null }) => ({
+    id,
+    user_id: 'u1',
+    name: over.name ?? null,
+    icon: over.icon ?? null,
+    hidden: false,
+    position: 0,
+    created_at: '2026-11-01T00:00:00.000Z',
+  });
+
+  it('keeps a built-in given only an icon under its word, and hides a name', () => {
+    useCategoryStore.setState({
+      defs: [def('health', { icon: { kind: 'emoji', emoji: '🏃' } }), def('finance', { name: 'Rent' })],
+    });
+    expect(visibleCategoryTitle('health', true)).toBe('Health');
+    expect(visibleCategoryLabel('health', true)).toBe('health');
+    expect(visibleCategoryTitle('finance', true)).toBe('Your own category');
+    expect(visibleCategoryLabel('finance', true)).toBe('your own category');
+    expect(visibleCategoryTitle('finance', false)).toBe('Rent');
   });
 });

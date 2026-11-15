@@ -168,10 +168,11 @@ export function shareSubline(card: ShareCard): string {
 
 /**
  * The categories the person left off their cards (roadmap D42), among those
- * on file. Never all of them: the last one stays, so a stored choice that
- * would hide every category on file now (after an erase, say) hides none.
- * The share card and both recaps read it, so a category hidden on one
- * doesn't come back on another (blind playtest 2026-11-04, run 3).
+ * on file. All of them may be: the card then keeps the rating and "N
+ * categories not shown" (owner, 2026-11-14; until then the last one stayed
+ * on, and a choice that would hide every one hid none). The share card and
+ * both recaps read it, so a category hidden on one doesn't come back on
+ * another (blind playtest 2026-11-04, run 3).
  */
 export function cardHiddenCategories(
   categoryStats: readonly CategoryStat[],
@@ -179,13 +180,12 @@ export function cardHiddenCategories(
   /**
    * Categories kept off whatever was chosen: the ones the person named,
    * while "Hide the words" is on (D62; blind playtest 2026-11-13e, runs 1 and
-   * 4). These may leave no category on the card at all.
+   * 4).
    */
   alsoOff?: (category: Category) => boolean,
 ): ReadonlySet<Category> {
   const onFile = categoryStats.filter((c) => c.predictions_resolved > 0);
-  const hidden = onFile.map((c) => c.category).filter((c) => stored.includes(c));
-  const chosen = hidden.length < onFile.length ? hidden : [];
+  const chosen = onFile.map((c) => c.category).filter((c) => stored.includes(c));
   if (!alsoOff) return new Set(chosen);
   return new Set([...chosen, ...onFile.map((c) => c.category).filter(alsoOff)]);
 }

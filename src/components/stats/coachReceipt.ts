@@ -1,5 +1,5 @@
 import { categoryLabel } from '@/store/categoryStore';
-import type { CoachEvidenceSource } from '@/types';
+import type { Category, CoachEvidenceSource } from '@/types';
 
 export interface CoachReceipt {
   /** The figure, formatted as the user sees it elsewhere ("62%", "24"). */
@@ -17,10 +17,18 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
  * rounding of it. Null for a figure it can't describe — the card then just
  * leaves the receipt off.
  */
-export function coachReceipt(source: CoachEvidenceSource): CoachReceipt | null {
+export function coachReceipt(
+  source: CoachEvidenceSource,
+  /**
+   * How a category reads mid-sentence: the card's own, so "Your own
+   * category" in the header isn't named in the receipt under it while the
+   * words are hidden (code review, 2026-11-14).
+   */
+  label: (category: Category) => string = categoryLabel,
+): CoachReceipt | null {
   const { field, value, kind } = source;
   // A built-in under the name the person gave it (roadmap D39).
-  const scope = source.scope === 'overall' ? 'overall' : categoryLabel(source.scope);
+  const scope = source.scope === 'overall' ? 'overall' : label(source.scope);
   const round = Math.round(value);
   switch (field) {
     case 'calibration_rating':

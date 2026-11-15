@@ -41,6 +41,7 @@ import { syncNow } from '@/supabase/sync';
 import { useCategoryStore } from './categoryStore';
 import { useLogDraftStore } from './logDraftStore';
 import { useResolveRunStore } from './resolveRunStore';
+import { useSettingsStore } from './settingsStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
@@ -328,6 +329,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await usePracticeStore.getState().clear();
         await useLogDraftStore.getState().clear();
         useResolveRunStore.getState().clear();
+        // The categories left off the card were about the erased record:
+        // any can be left off now, so a kept choice could empty a new card
+        // (code review, 2026-11-14).
+        await useSettingsStore.getState().setCardHiddenCategories([]);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[auth] local wipe after account deletion failed:', e);
@@ -356,6 +361,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Log's kept draft is the person's own words (step 173).
         await useLogDraftStore.getState().clear();
         useResolveRunStore.getState().clear();
+        // As after account deletion: the choice was about the erased record.
+        await useSettingsStore.getState().setCardHiddenCategories([]);
         await reloadForUser(LOCAL_GUEST_USER_ID);
         return { ok: true };
       } catch (e) {

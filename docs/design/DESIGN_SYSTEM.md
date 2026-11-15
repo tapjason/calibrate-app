@@ -672,8 +672,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   lock, not a ✦.
 - Offer per-category show/hide before sharing (Any Distance's eye toggles).
 - **The shape and the categories left off are kept** between visits, like the theme
-  (step 138; both reset each time Share opened). Whatever was kept, the card never
-  hides every category on file: if it would, it shows them all.
+  (step 138; both reset each time Share opened). Any category can come off, the last
+  one too (owner, 2026-11-14): the card then keeps the rating (or "Calibrating") and
+  "N categories not shown". Erase and account deletion forget the choice.
 
 ### 7.6 Paywall
 

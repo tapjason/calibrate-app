@@ -54,3 +54,16 @@ describe('coachReceipt', () => {
     ).toBe(null);
   });
 });
+
+describe('coachReceipt with a label of its own (code review, 2026-11-14)', () => {
+  it('names the category as the card does', () => {
+    const hidden = () => 'your own category';
+    expect(coachReceipt({ field: 'actual_rate', scope: 'finance', value: 0.5 }, hidden)).toEqual({
+      figure: '50%',
+      label: 'came true in your own category',
+    });
+    expect(
+      coachReceipt({ field: 'calibration_rating', scope: 'overall', value: 80 }, hidden)?.label,
+    ).toBe('your calibration rating');
+  });
+});

@@ -219,6 +219,33 @@ describe('PredictionCard with the words hidden', () => {
     }
   });
 
+  it('keeps a built-in given only an icon under its word, with its own symbol (owner, 2026-11-14)', () => {
+    useSettingsStore.setState({ hideTitles: true });
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'work',
+          user_id: 'u1',
+          name: null,
+          icon: { kind: 'emoji', emoji: '🏃' },
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    try {
+      const view = render(<PredictionCard prediction={prediction} />);
+      expect(view.getByTestId('prediction-card-category')).toHaveTextContent('Work');
+      expect(view.queryByTestId('category-icon-emoji', { includeHiddenElements: true })).toBeNull();
+      useSettingsStore.setState({ hideTitles: false });
+      view.rerender(<PredictionCard prediction={{ ...prediction }} />);
+      expect(view.getByTestId('category-icon-emoji', { includeHiddenElements: true })).toBeTruthy();
+    } finally {
+      useCategoryStore.setState({ defs: [] });
+    }
+  });
+
   it('shows the words when it is off', () => {
     render(<PredictionCard prediction={prediction} />);
     expect(screen.getByTestId('prediction-card-title')).toHaveTextContent('I ship the report by Friday');

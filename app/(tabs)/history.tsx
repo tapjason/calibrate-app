@@ -28,7 +28,7 @@ import { confidenceRangeLow } from '@/store/statsStore';
 import {
   categoryOptions,
   categoryTitle,
-  isOwnCategory,
+  isNamedCategory,
   useCategoryStore,
 } from '@/store/categoryStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -46,21 +46,23 @@ export default function HistoryScreen() {
   // The person's own categories (roadmap D39) that have something to find,
   // hidden or not, plus the one chosen: with every category listed, 52 chips
   // ran about 4,000 pt, most of them empty (playtest 2026-11-08b, finding 21).
-  useCategoryStore((s) => s.defs);
+  const defs = useCategoryStore((s) => s.defs);
   const used = new Set([...resolved, ...pending].map((p) => p.category));
   // While the words are hidden, no chip names a category the person named
   // (D62, policy audit: "All · Work · Divorce" said what the cards didn't).
+  // The chips draw no icon, so a built-in given only one stays.
   const hideTitles = useSettingsStore((s) => s.hideTitles);
   const filters: (Category | 'all')[] = [
     'all',
     ...categoryOptions({ includeHidden: true }).filter(
-      (c) => (used.has(c) || c === filter) && !(hideTitles && isOwnCategory(c)),
+      (c) => (used.has(c) || c === filter) && !(hideTitles && isNamedCategory(c)),
     ),
   ];
-  // A filter on one of them goes back to All when the switch goes on.
+  // A filter on one of them goes back to All when the switch goes on, or
+  // when the filtered one is renamed while it's on (code review, 2026-11-14).
   useEffect(() => {
-    if (hideTitles && filter !== 'all' && isOwnCategory(filter)) setFilter('all');
-  }, [hideTitles, filter]);
+    if (hideTitles && filter !== 'all' && isNamedCategory(filter)) setFilter('all');
+  }, [hideTitles, filter, defs]);
   // A confidence range arrives from a tap on Stats' coverage row (roadmap
   // step 51): the predictions behind one dot on the chart.
   const range = parseRangeParam(useLocalSearchParams<{ range?: string }>().range);

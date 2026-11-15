@@ -330,6 +330,62 @@ describe('WrappedPanel', () => {
     useSettingsStore.setState({ cardHiddenCategories: [] });
   });
 
+  // Record audit and code review, 2026-11-14: a category with open
+  // predictions only was never on the card, but its next badge reached the
+  // recap, named, with the words hidden and every answered category off.
+  it("names no category the card couldn't show in its next badge", () => {
+    /* eslint-disable @typescript-eslint/no-var-requires */
+    const { useCategoryStore } = require("@/store/categoryStore") as typeof import("@/store/categoryStore");
+    /* eslint-enable @typescript-eslint/no-var-requires */
+    const stat = (category: CategoryStat["category"], n: number): CategoryStat => ({
+      user_id: "u1",
+      category,
+      predictions_made: n || 3,
+      predictions_resolved: n,
+      calibration_score: 80,
+      score_is_provisional: n < 20,
+      badge_level: n >= 20 ? "tracker" : "guesser",
+    });
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: "c-trips",
+          user_id: "u1",
+          name: "Trips",
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: "2026-11-01T00:00:00.000Z",
+        },
+      ],
+    });
+    useStatsStore.setState({
+      categoryStats: [stat("work", 25), stat("c-trips", 0), stat("social", 0)],
+      nextBadges: {
+        work: { badge: "forecaster", needResolved: 0, needScore: 72 },
+        "c-trips": { badge: "tracker", needResolved: 20, needScore: null },
+        social: { badge: "tracker", needResolved: 20, needScore: null },
+      },
+    });
+    seed(run(4, 3));
+    try {
+      useSettingsStore.setState({ hideTitles: true });
+      const view = render(<WrappedPanel span="week" />);
+      const spoken = () => screen.getByTestId("wrapped-card").props.accessibilityLabel as string;
+      expect(screen.queryByText(/Trips|social/)).toBeNull();
+      expect(spoken()).not.toMatch(/Trips|social/);
+
+      // Every answered category off: nothing left for the row to name.
+      useSettingsStore.setState({ cardHiddenCategories: ["work"] });
+      view.rerender(<WrappedPanel span="week" />);
+      expect(screen.queryByTestId("wrapped-next-badge")).toBeNull();
+      expect(spoken()).not.toMatch(/Trips|social/);
+    } finally {
+      useSettingsStore.setState({ hideTitles: false, cardHiddenCategories: [] });
+      useCategoryStore.setState({ defs: [] });
+    }
+  });
+
   // Roadmap D23: the note counts calls under 40%, not a 35–65% bonus.
   it('credits calls at the unlikely end', () => {
     seed([prediction({ confidence: 20 }), prediction({ confidence: 30 })]);
