@@ -17,6 +17,7 @@ beforeEach(async () => {
     resolved: [],
     deletedCount: 0,
     postponedCount: 0,
+    refiledCount: 0,
     streakCheckpoint: null,
   });
   useStatsStore.setState({
@@ -645,6 +646,43 @@ describe('predictionStore.correct, refile and remove within the window', () => {
     const stats = await listCategoryStats(p.user_id);
     expect(stats.find((c) => c.category === 'health')?.predictions_resolved).toBe(1);
     expect(stats.find((c) => c.category === 'work')).toBeUndefined();
+  });
+
+  // Step 184 (D65): each category's score follows where an answer is filed,
+  // so a scored answer left somewhere else is counted on Insights.
+  it('counts a scored answer left in another category, once', async () => {
+    const p = await answer();
+    await usePredictionStore.getState().refile(p.id, 'health');
+    expect(usePredictionStore.getState().refiledCount).toBe(1);
+    await usePredictionStore.getState().refile(p.id, 'finance');
+    expect(usePredictionStore.getState().refiledCount).toBe(1);
+  });
+
+  it('takes an answer moved back off the count', async () => {
+    const p = await answer();
+    await usePredictionStore.getState().refile(p.id, 'health');
+    await usePredictionStore.getState().refile(p.id, 'work');
+    expect(usePredictionStore.getState().refiledCount).toBe(0);
+  });
+
+  it('counts a moved answer that is then deleted as a deletion only', async () => {
+    const p = await answer();
+    await usePredictionStore.getState().refile(p.id, 'health');
+    await usePredictionStore.getState().remove(p.id);
+    expect(usePredictionStore.getState().refiledCount).toBe(0);
+    expect(usePredictionStore.getState().deletedCount).toBe(1);
+  });
+
+  it("doesn't count a same-day answer that is moved: it was never scored", async () => {
+    const made = await usePredictionStore.getState().create({
+      title: 'Same day',
+      category: 'work',
+      confidence: 70,
+      due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    await usePredictionStore.getState().resolve(made.id, 'resolved_no');
+    await usePredictionStore.getState().refile(made.id, 'health');
+    expect(usePredictionStore.getState().refiledCount).toBe(0);
   });
 
   it('deletes an answer inside the window', async () => {

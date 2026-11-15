@@ -4,6 +4,7 @@ import {
   CalibrationView,
   deletedLine,
   postponedLine,
+  refiledLine,
   sameDayLine,
   skippedLine,
 } from '@/components/stats/CalibrationView';
@@ -604,6 +605,23 @@ describe('CalibrationView step 173', () => {
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,
     );
     expect(view.queryByTestId('stats-postponed')).toBeNull();
+  });
+
+  // Step 184 (D65).
+  it('counts scored answers moved to another category on this phone', () => {
+    expect(refiledLine(1)).toBe(
+      '1 scored answer was moved to another category after it was answered. Only this phone keeps this count.',
+    );
+    const view = fine(render(
+      <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} refiledCount={3} />,
+    ));
+    expect(view.getByTestId('stats-refiled')).toHaveTextContent(
+      '3 scored answers were moved to another category after they were answered. Only this phone keeps this count.',
+    );
+    view.rerender(
+      <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,
+    );
+    expect(view.queryByTestId('stats-refiled')).toBeNull();
   });
 
   it('ties the furthest-off line to that category’s badge', () => {

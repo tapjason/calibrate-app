@@ -2,11 +2,13 @@ import type { Prediction } from '@/types';
 
 import { getDb, setDbForTests } from './client';
 import {
+  countRefiles,
   deletePrediction,
   getPrediction,
   insertPrediction,
   listPendingPredictions,
   listResolvedPredictions,
+  noteRefile,
   resolvePrediction,
 } from './predictions';
 import { createTestDb } from './testing';
@@ -107,5 +109,40 @@ describe('db transactions', () => {
       }),
     ).rejects.toThrow('boom');
     expect(await getPrediction('tx3')).toBeNull();
+  });
+});
+
+// Step 184 (D65): answers left in another category than they were answered in.
+describe('prediction_refiles', () => {
+  it('counts a move once, however many categories it passes through', async () => {
+    await noteRefile('p1', 'u1', 'work', 'health');
+    expect(await countRefiles('u1')).toBe(1);
+    await noteRefile('p1', 'u1', 'health', 'finance');
+    expect(await countRefiles('u1')).toBe(1);
+    await noteRefile('p2', 'u1', 'work', 'social');
+    expect(await countRefiles('u1')).toBe(2);
+    expect(await countRefiles('someone-else')).toBe(0);
+  });
+
+  it('takes a move back to where it started off the count', async () => {
+    await noteRefile('p1', 'u1', 'work', 'health');
+    await noteRefile('p1', 'u1', 'health', 'finance');
+    await noteRefile('p1', 'u1', 'finance', 'work');
+    expect(await countRefiles('u1')).toBe(0);
+    // And it can be counted again after that.
+    await noteRefile('p1', 'u1', 'work', 'health');
+    expect(await countRefiles('u1')).toBe(1);
+  });
+
+  it('writes nothing for a move to the same category', async () => {
+    await noteRefile('p1', 'u1', 'work', 'work');
+    expect(await countRefiles('u1')).toBe(0);
+  });
+
+  it('drops the row when the prediction is deleted: that is counted as a deletion', async () => {
+    await insertPrediction(samplePrediction());
+    await noteRefile('p1', 'u1', 'work', 'health');
+    await deletePrediction('p1', { counted: true });
+    expect(await countRefiles('u1')).toBe(0);
   });
 });

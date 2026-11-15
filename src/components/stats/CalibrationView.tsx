@@ -75,6 +75,8 @@ interface CalibrationViewProps {
   answeredCount?: number;
   /** Due dates moved later on the eve or after, on this phone (step 173). */
   postponedCount?: number;
+  /** Scored answers now filed in another category than they were answered in (step 184). */
+  refiledCount?: number;
   /**
    * Answers given the day they were logged, which aren't scored (roadmap
    * D41): said beside the rating, before it unlocks too, so a count that
@@ -123,6 +125,7 @@ export function CalibrationView({
   skippedCount = 0,
   answeredCount = 0,
   postponedCount = 0,
+  refiledCount = 0,
   sameDayCount = 0,
   deletedCount = 0,
   categoryRanges = {},
@@ -170,6 +173,7 @@ export function CalibrationView({
   if (postponedCount > 0) {
     finePrint.push({ id: 'stats-postponed', text: postponedLine(postponedCount) });
   }
+  if (refiledCount > 0) finePrint.push({ id: 'stats-refiled', text: refiledLine(refiledCount) });
   // Every badge pill in the list as wide as the widest, so the rows wrap
   // their pill under the words all together or not at all (playtest
   // 2026-11-08b, finding 18: at 320 some kept it on the right, others
@@ -508,6 +512,18 @@ export function postponedLine(count: number): string {
   return count === 1
     ? '1 prediction had its due date moved later, or its words changed, within a day of its due day. Only this phone keeps this count.'
     : `${count} predictions had their due dates moved later, or their words changed, within a day of their due day. Only this phone keeps this count.`;
+}
+
+/**
+ * "1 scored answer was moved to another category after it was answered."
+ * (step 184, D65). A category's score follows where an answer is filed, so a
+ * miss moved out leaves it; counted as a late delete and a late move are, on
+ * this phone only. One moved back isn't counted.
+ */
+export function refiledLine(count: number): string {
+  return count === 1
+    ? '1 scored answer was moved to another category after it was answered. Only this phone keeps this count.'
+    : `${count} scored answers were moved to another category after they were answered. Only this phone keeps this count.`;
 }
 
 /**

@@ -267,6 +267,53 @@ export async function countPostponements(userId: string): Promise<number> {
 }
 
 /**
+ * Note that a scored answer moved to another category (step 184, D65). One
+ * row per prediction, holding where it was when first moved: a later move
+ * elsewhere keeps that origin, and a move back to it removes the row, so the
+ * count is of answers now filed somewhere other than where they were
+ * answered. Device-local, never synced. No transaction of its own: the store
+ * calls it beside the update.
+ */
+export async function noteRefile(
+  predictionId: string,
+  userId: string,
+  fromCategory: string,
+  toCategory: string,
+): Promise<void> {
+  const db = getDb();
+  const row = await db.get<{ from_category: string }>(
+    `SELECT from_category FROM prediction_refiles WHERE prediction_id = ?`,
+    [predictionId],
+  );
+  if (!row) {
+    if (fromCategory === toCategory) return;
+    await db.run(
+      `INSERT INTO prediction_refiles (prediction_id, user_id, moved_at, from_category, to_category)
+         VALUES (?, ?, ?, ?, ?)`,
+      [predictionId, userId, nowIso(), fromCategory, toCategory],
+    );
+    return;
+  }
+  if (row.from_category === toCategory) {
+    await db.run(`DELETE FROM prediction_refiles WHERE prediction_id = ?`, [predictionId]);
+    return;
+  }
+  await db.run(
+    `UPDATE prediction_refiles SET to_category = ?, moved_at = ? WHERE prediction_id = ?`,
+    [toCategory, nowIso(), predictionId],
+  );
+}
+
+/** How many scored answers sit in another category than they were answered in (step 184). */
+export async function countRefiles(userId: string): Promise<number> {
+  const row = await getDb().get<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM prediction_refiles WHERE user_id = ?`,
+    [userId],
+  );
+  return row?.n ?? 0;
+}
+
+/**
  * Delete a prediction and leave a tombstone (roadmap D25), so sync can delete
  * it on the server and pull won't bring it back. The tombstone stays after
  * the push, with whether Insights counts it (D45). Two statements and no
@@ -281,6 +328,8 @@ export const deletePrediction: DeletePrediction = async (id, opts) => {
   );
   if (!row) return;
   await db.run(`DELETE FROM predictions WHERE id = ?`, [id]);
+  // A moved answer that is then deleted is counted once, as a deletion.
+  await db.run(`DELETE FROM prediction_refiles WHERE prediction_id = ?`, [id]);
   await db.run(
     `INSERT OR REPLACE INTO prediction_deletions (id, user_id, deleted_at, pushed_at, counted)
        VALUES (?, ?, ?, NULL, ?)`,

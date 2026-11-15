@@ -141,6 +141,9 @@ Added 2026-11-15 (step 182 and its audits):
     leave its score (not the overall rating), which could carry a badge it hasn't earned.
     **Recommendation:** count moves on this phone, as deletions are, before the card is
     shared outside TestFlight; the line is enough for the beta.
+    **Built 2026-11-15 (step 184, roadmap D65), the agent's call:** Insights counts a scored
+    answer left in a different category from the one it was answered in, on this phone only;
+    one moved back isn't counted; the details say so before a move.
 11. **Uninstall `expo-auth-session`.** Unused since the Google sign-in code went. A package
     change, so it needs your yes: `npm uninstall expo-auth-session`, then the check.
 12. **A password reset.** There is none: someone who signs up by email and forgets the

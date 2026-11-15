@@ -69,7 +69,8 @@ Status: filled in 2026-11-08
 - **The device owns:** predictions, resolutions and reflections, the stats derived from them
   (recomputed in the same transaction as every change), the streak and rest days (derived on every
   read, never stored), practice and Warmup answers (never synced), categories, names and icons (not
-  synced, D39, D40), settings, the age band, the entitlement mirror, deletion tombstones. All in
+  synced, D39, D40), settings, the age band, the entitlement mirror, deletion tombstones, the counts of late moves
+  and of answers moved between categories (never synced). All in
   SQLite (`calibrate.db`); the app is complete offline with no account.
 - **Supabase owns (after sign-in):** Auth (email; Sign in with Apple through `signInWithIdToken`),
   the synced copy of predictions (last-write-wins, deletions as tombstones), entitlements written by
@@ -135,7 +136,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 | R3 | A tier is earned at its low end (score minus its give-or-take clears the bar) and with its resolution minimum (20 / 50 / 100). Today and the share card name only tiers past the count gate (D27). | Badge Levels, D35 |
 | R4 | One lean rule everywhere: over or under only outside the central 80% of luck (`chanceRange`, `LEAN_MASS`) and by at least 5 points; no lean word or mark for a range under 10 (`MIN_N_BAND`, D58). The chart's grey bars show that 80%. | D35, D58 |
 | R5 | Same-day answers aren't scored (`isSameDayAnswer`, `scoredFrom`); the earliest picked due date is the next day. | D41 |
-| R6 | The score holes stay closed: new words are a new prediction (`title_edited_at`); deleted calls are counted (`deletionCounts`); a "Can't tell" can be answered until 7 days after its due day (`SKIP_ANSWER_DAYS`), or to the end of the day after the skip if that's later (`skipLastDay`). | D45 |
+| R6 | The score holes stay closed: new words are a new prediction (`title_edited_at`); deleted calls are counted (`deletionCounts`); a scored answer moved to another category is counted (`refileCounts`, D65); a "Can't tell" can be answered until 7 days after its due day (`SKIP_ANSWER_DAYS`), or to the end of the day after the skip if that's later (`skipLastDay`). | D45 |
 | R7 | Corrections: Yes ↔ No within 24 hours of the first answer (`CORRECTION_WINDOW_HOURS`); a Yes or No never becomes "Can't tell"; the confidence is never editable. | D34, D25 |
 | R8 | Reward calibration, not correctness: Yes and No look, move and buzz the same; green means calibrated, never correct; red never marks an outcome; nothing rewards a particular confidence (D23). | DESIGN_SYSTEM §0.4 |
 | R9 | Warmup and practice never touch `UserStat`, `CategoryStat`, the streak, badges or Wrapped. | Warmup Module, Daily practice |

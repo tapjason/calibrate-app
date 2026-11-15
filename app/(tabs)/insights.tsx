@@ -75,6 +75,8 @@ export default function InsightsScreen() {
   const deletedCount = usePredictionStore((s) => s.deletedCount);
   // Due dates moved later on the eve or after (step 173).
   const postponedCount = usePredictionStore((s) => s.postponedCount);
+  // Scored answers moved to another category (step 184).
+  const refiledCount = usePredictionStore((s) => s.refiledCount);
   const isPlus = useEntitlementStore((s) => s.isPlus);
   // Time since the first answer, not the calendar months with one in them.
   const firstResolvedAt = useStatsStore((s) => s.trends.first_resolved_at);
@@ -104,6 +106,7 @@ export default function InsightsScreen() {
         sameDayCount={sameDayCount}
         deletedCount={deletedCount}
         postponedCount={postponedCount}
+        refiledCount={refiledCount}
         categoryRanges={categoryRanges}
         furthestOff={furthestOff}
         weekChange={weekChange}

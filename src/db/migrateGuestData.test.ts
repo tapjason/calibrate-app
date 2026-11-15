@@ -13,6 +13,7 @@ import {
   listPendingDeletions,
   listPendingPredictions,
 } from './predictions';
+import { countRefiles, noteRefile } from './predictions';
 import { upsertUserStat, getUserStat, upsertCategoryStat } from './stats';
 import { createTestDb } from './testing';
 
@@ -171,5 +172,14 @@ describe('migrateGuestDataToUser', () => {
     // The prediction must still belong to the guest — UPDATE was rolled back.
     const guestList = await listPendingPredictions(LOCAL_GUEST_USER_ID);
     expect(guestList).toHaveLength(1);
+  });
+
+  // Step 184: the count of answers moved between categories follows them.
+  it("moves the guest's count of moved answers", async () => {
+    await insertPrediction(p({ id: 'moved' }));
+    await noteRefile('moved', LOCAL_GUEST_USER_ID, 'work', 'health');
+    await migrateGuestDataToUser('real-user');
+    expect(await countRefiles('real-user')).toBe(1);
+    expect(await countRefiles(LOCAL_GUEST_USER_ID)).toBe(0);
   });
 });

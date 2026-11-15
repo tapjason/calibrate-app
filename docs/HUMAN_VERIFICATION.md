@@ -992,6 +992,11 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
 - [ ] **Feet and miles by Region (step 180):** Settings → General → Language & Region → Region
       United States: the Warm-up's answer key shows feet and miles beside the metric figures.
       Region Germany with the language still English (US): metric only.
+- [ ] **A moved answer is counted (step 184):** answer a prediction logged on an earlier day,
+      open it in History and look under Category: "Insights counts a scored answer left in a
+      different category from the one it was answered in." Move it to another category, then
+      Insights → More about your record: "1 scored answer was moved to another category after
+      it was answered. Only this phone keeps this count." Move it back: the line is gone.
 - [ ] **Help and version (TestFlight prep):** You → Help and support opens the support page,
       and "Fairly Sure 1.0.0" sits under those links.
 - [ ] **Dates in English (step 181):** set the iPhone's language to Dutch or Spanish (Settings →

@@ -4,7 +4,7 @@ import { wipeLocalUserData } from './account';
 import { getAgeBucket, saveAgeBucket } from './ageBucket';
 import { enqueueEvent, listUnsyncedEvents } from './analytics';
 import { getDb, setDbForTests } from './client';
-import { insertPrediction, listPendingPredictions } from './predictions';
+import { countRefiles, insertPrediction, listPendingPredictions, noteRefile } from './predictions';
 import { getUserStat, listCategoryStats, upsertCategoryStat, upsertUserStat } from './stats';
 import { createTestDb } from './testing';
 import { getWarmupProgress, getWarmupRecord, saveWarmupProgress, saveWarmupRecord } from './warmup';
@@ -111,5 +111,14 @@ describe('wipeLocalUserData', () => {
 
     // The predictions delete ran first and was rolled back with the rest.
     await expect(listPendingPredictions('me')).resolves.toHaveLength(1);
+  });
+
+  // Step 184: the count of answers moved between categories goes too.
+  it('removes the count of moved answers, and only this account’s', async () => {
+    await noteRefile('me-a', 'me', 'work', 'health');
+    await noteRefile('them-a', 'them', 'work', 'health');
+    await wipeLocalUserData('me');
+    expect(await countRefiles('me')).toBe(0);
+    expect(await countRefiles('them')).toBe(1);
   });
 });

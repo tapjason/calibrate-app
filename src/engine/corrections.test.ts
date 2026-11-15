@@ -7,6 +7,7 @@ import {
   CORRECTION_WINDOW_HOURS,
   deletionCounts,
   postponementCounts,
+  refileCounts,
   rewordingCounts,
   SKIP_ANSWER_DAYS,
   skipLastDay,
@@ -196,5 +197,22 @@ describe('rewordingCounts (D62)', () => {
   });
   it('never counts an answered one', () => {
     expect(rewordingCounts(answered(), new Date('2026-11-01T20:00:00'))).toBe(false);
+  });
+});
+
+// Step 184 (D65): a scored answer moved to another category is counted.
+describe('refileCounts', () => {
+  it('counts a scored Yes or No', () => {
+    expect(refileCounts(answered())).toBe(true);
+    expect(refileCounts(answered({ status: 'resolved_yes' }))).toBe(true);
+  });
+  it('leaves a same-day answer, a skip and an open one alone: none was scored', () => {
+    const sameDay = answered({
+      created_at: new Date('2026-11-01T09:00:00').toISOString(),
+      resolved_at: new Date('2026-11-01T19:00:00').toISOString(),
+    });
+    expect(refileCounts(sameDay)).toBe(false);
+    expect(refileCounts(answered({ status: 'skipped' }))).toBe(false);
+    expect(refileCounts(answered({ status: 'pending', resolved_at: null }))).toBe(false);
   });
 });

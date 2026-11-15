@@ -219,6 +219,8 @@ describe('PredictionDetails (roadmap D25)', () => {
     try {
       renderDetails();
       await waitFor(() => expect(screen.getByTestId('answered-same-day')).toBeTruthy());
+      // Moving one that was never scored isn't counted (step 184).
+      expect(screen.queryByTestId('answered-refile-hint')).toBeNull();
       fireEvent.press(screen.getByTestId('answered-switch'));
       await waitFor(() =>
         expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It happened/),
@@ -258,10 +260,13 @@ describe('PredictionDetails (roadmap D25)', () => {
       renderDetails();
       await waitFor(() => expect(screen.getByTestId('answered-window')).toBeTruthy());
       expect(screen.queryByTestId('answered-refiled')).toBeNull();
+      // Said before the move (step 184, D65), and still there after it.
+      expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent('Insights counts a scored answer left in a different category from the one it was answered in.');
       fireEvent.press(screen.getByTestId('category-health'));
       await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
       await waitFor(() => expect(screen.getByTestId('answered-refiled')).toHaveTextContent(moved));
       expect(announce).toHaveBeenCalledWith(`Moved to Health. ${moved}`);
+      expect(screen.getByTestId('answered-refile-hint')).toBeTruthy();
       // A move isn't a change of answer.
       expect(screen.queryByTestId('answered-corrected')).toBeNull();
     } finally {

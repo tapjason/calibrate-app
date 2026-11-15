@@ -483,8 +483,18 @@ were "Can't tell", which the rating leaves out, under "More about your record" (
   eve of the due day or after** are counted beside them (`rewordingCounts`, D62): the
   date stays, so a call whose outcome was in sight could be rewritten and answered,
   scored, the next day. Insights: "…had its due date moved later, or its words changed,
-  within a day of its due day." Corrections aren't counted: the 24-hour window is
-  their limit.
+  within a day of its due day." A switched answer isn't counted: the 24-hour window is
+  its limit.
+- **Answers moved to another category are counted** (D65, 2026-11-15, step 184).
+  Inside its 24-hour window a scored Yes or No can be moved, and each category's score
+  follows where it is filed, so a category's misses could be moved out one by one. A
+  scored answer left in a different category from the one it was answered in
+  (`refileCounts`) is counted on Insights under "More about your record" ("1 scored
+  answer was moved to another category after it was answered. Only this phone keeps
+  this count."), on this phone only (`prediction_refiles`, SQLite migration 017, never
+  synced). One moved back isn't counted, and one deleted after a move is counted once,
+  as a deletion. The answer's details say so under the category chips, before a move.
+  A same-day answer or a "Can't tell" isn't counted: neither was scored.
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
   after its due day, and never less than the correction window after the skip, so
   a mis-tap can still be undone. After that it stays "Can't tell". A Yes or No

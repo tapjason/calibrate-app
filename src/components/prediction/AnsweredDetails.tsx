@@ -16,6 +16,7 @@ import {
   answeredBefore,
   correctionWindow,
   deleteIsCounted,
+  refileIsCounted,
   rewordedLater,
   openRepeatOf,
   usePredictionStore,
@@ -65,10 +66,19 @@ export const CORRECTED_NOTE =
  * After moving an answer to another category inside its window: each
  * category's score and badge follow where it's filed. The one way left to
  * take a scored miss out of a category's score with no word (record audit,
- * round 2); it isn't counted on Insights, which stays the owner's call.
+ * round 2). Since step 184 (D65) Insights counts it: `REFILE_COUNTED_HINT`.
  */
 export const REFILED_NOTE =
   'Each category’s score and badge now follow where this is filed, so they may have moved.';
+
+/**
+ * Under the category chips of a scored answer (step 184, D65), before a move
+ * and after: a count nobody was told about reads as being caught, so it is
+ * said first, as a delete's is. True whichever way the answer was last
+ * moved, since one moved back is off the count.
+ */
+export const REFILE_COUNTED_HINT =
+  'Insights counts a scored answer left in a different category from the one it was answered in.';
 
 /** Whether switching this answer can move a rating or a badge on screen. */
 export function correctionMoves(prediction: Prediction): boolean {
@@ -361,6 +371,11 @@ export function AnsweredDetails({
               </View>
               <Text style={styles.label}>Category</Text>
               <CategoryChips value={prediction.category} onChange={refile} />
+              {refileIsCounted(prediction) && (
+                <Text style={styles.body} testID="answered-refile-hint">
+                  {REFILE_COUNTED_HINT}
+                </Text>
+              )}
               <View style={styles.actions}>
                 <TextButton
                   label="Delete"

@@ -16,6 +16,7 @@ import {
   correctableUntil,
   deletionCounts,
   postponementCounts,
+  refileCounts,
   rewordingCounts,
   skipLastDay,
 } from '@/engine/corrections';
@@ -33,12 +34,14 @@ import { tallyAnswers } from '@/engine/wrapped';
 import {
   correctPredictionOutcome,
   countPostponements,
+  countRefiles,
   deletePrediction,
   getPrediction,
   insertPrediction,
   listDeletions,
   listPendingPredictions,
   listResolvedPredictions,
+  noteRefile,
   recordPostponement,
   resolvePrediction,
   refilePrediction,
@@ -81,6 +84,11 @@ interface PredictionState {
    * day before it or after, on this phone (step 173, D62).
    */
   postponedCount: number;
+  /**
+   * Scored answers now filed in another category than they were answered in,
+   * on this phone (step 184, D65).
+   */
+  refiledCount: number;
   loadPending: () => Promise<void>;
   loadResolved: () => Promise<void>;
   /**
@@ -219,6 +227,7 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   resolved: [],
   deletedCount: 0,
   postponedCount: 0,
+  refiledCount: 0,
   justSavedId: null,
   clearJustSaved: () => set({ justSavedId: null }),
   streakCheckpoint: null,
@@ -232,15 +241,17 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   loadResolved: async () => {
     const userId = requireUserId();
-    const [resolved, deletions, postponed] = await Promise.all([
+    const [resolved, deletions, postponed, refiled] = await Promise.all([
       listResolvedPredictions(userId),
       listDeletions(userId),
       countPostponements(userId),
+      countRefiles(userId),
     ]);
     set({
       resolved,
       deletedCount: deletions.filter((d) => d.counted).length,
       postponedCount: postponed,
+      refiledCount: refiled,
     });
   },
 
@@ -343,9 +354,12 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   refile: async (id, category) => {
     const userId = requireUserId();
-    await requireCorrectable(get().getById, id);
+    const current = await requireCorrectable(get().getById, id);
     await withTransaction(async () => {
       await refilePrediction(id, category);
+      // Counted on Insights when a score follows it (step 184, D65): beside
+      // the move, so the count and the category can't part.
+      if (refileCounts(current)) await noteRefile(id, userId, current.category, category);
       await useStatsStore.getState().recomputeForUser(userId);
     });
     useStatsStore.getState().clearMilestone();
@@ -626,6 +640,11 @@ export function skipAnswerBy(p: Prediction, now: Date = new Date()): Date | null
 /** Whether deleting this one now would be counted on Insights (D45). */
 export function deleteIsCounted(p: Prediction, now: Date = new Date()): boolean {
   return deletionCounts(p, now);
+}
+
+/** Whether moving this answer to another category is counted on Insights (D65). */
+export function refileIsCounted(p: Prediction): boolean {
+  return refileCounts(p);
 }
 
 /**

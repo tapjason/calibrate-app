@@ -33,6 +33,7 @@ import { MIGRATION_013 } from './013_warmup_progress';
 import { MIGRATION_014 } from './014_warmup_pick';
 import { MIGRATION_015 } from './015_postponements';
 import { MIGRATION_016 } from './016_warmup_result_order';
+import { MIGRATION_017 } from './017_refiles';
 
 export interface Migration {
   id: string;
@@ -57,6 +58,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: '014_warmup_pick', sql: MIGRATION_014 },
   { id: '015_postponements', sql: MIGRATION_015 },
   { id: '016_warmup_result_order', sql: MIGRATION_016 },
+  { id: '017_refiles', sql: MIGRATION_017 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();

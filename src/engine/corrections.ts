@@ -92,6 +92,18 @@ export function deletionCounts(p: Prediction, now: Date): boolean {
 }
 
 /**
+ * Whether moving this answered prediction to another category counts on
+ * Insights (step 184, D65): a scored Yes or No. Each category's score follows
+ * where an answer is filed, so a scored miss moved out leaves that category's
+ * score. Not a "Can't tell" or a same-day answer: neither was scored, so
+ * moving one hides nothing. The same test as a counted delete of an answered
+ * prediction (D45).
+ */
+export function refileCounts(p: Prediction): boolean {
+  return (p.status === 'resolved_yes' || p.status === 'resolved_no') && !isSameDayAnswer(p);
+}
+
+/**
  * Whether an open prediction is late now: on or after its due day, or on the
  * eve of it unless it was made (or reworded) today. The window shared by a
  * counted delete (D61), a counted due-date move and a counted rewording

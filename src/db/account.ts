@@ -39,6 +39,8 @@ export async function wipeLocalUserData(userId: string): Promise<void> {
     await db.run(`DELETE FROM prediction_deletions WHERE user_id = ?`, [userId]);
     // And the late due-date moves counted beside them (step 173).
     await db.run(`DELETE FROM prediction_postponements WHERE user_id = ?`, [userId]);
+    // And the answers moved between categories (step 184).
+    await db.run(`DELETE FROM prediction_refiles WHERE user_id = ?`, [userId]);
     // The person's own categories (roadmap D39) go with the predictions in them.
     await db.run(`DELETE FROM categories WHERE user_id = ?`, [userId]);
     await clearAgeBucket();
