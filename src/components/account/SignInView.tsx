@@ -1,14 +1,22 @@
+import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
+import { PRIVACY_POLICY_URL } from '@/constants/app';
 import { colors, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
+import { useSettingsStore } from '@/store/settingsStore';
 
 import { AppleSignInButton } from './AppleSignInButton';
 
 type Mode = 'signIn' | 'signUp';
+
+/** What signing in sends besides the predictions, in You's own words for it. */
+export const USAGE_NOTE =
+  'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers and yes/no values, never the words of your predictions or notes. You can turn that off in You, under Usage stats.';
 
 /**
  * Sign in or create an account (docs/ACCOUNT_SPEC.md §1).
@@ -28,6 +36,10 @@ export function SignInView({ onDone }: { onDone: () => void }) {
   const signUpWithEmail = useAuthStore((s) => s.signUpWithEmail);
   const signInWithApple = useAuthStore((s) => s.signInWithApple);
 
+  // Usage stats are on unless the person turned them off, and from sign-in
+  // they go up with the account: said here, before the account exists
+  // (guideline 5.1.1(ii); policy audit, 2026-11-14).
+  const usageStatsOn = useSettingsStore((s) => s.analyticsEnabled);
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -81,6 +93,23 @@ export function SignInView({ onDone }: { onDone: () => void }) {
         moves into your account, notes included, so another phone can restore it.
         We don't read or share it.
       </Text>
+      {usageStatsOn && (
+        <Text style={styles.lede} testID="account-usage-note">
+          {USAGE_NOTE}
+        </Text>
+      )}
+      {PRIVACY_POLICY_URL && (
+        <TextButton
+          label="Privacy policy"
+          onPress={() => {
+            openBrowserAsync(PRIVACY_POLICY_URL as string).catch((e: unknown) => {
+              // eslint-disable-next-line no-console
+              console.warn('[account] could not open link:', e);
+            });
+          }}
+          testID="account-privacy-link"
+        />
+      )}
 
       <AppleSignInButton onPress={() => void onApple()} disabled={pending} />
 

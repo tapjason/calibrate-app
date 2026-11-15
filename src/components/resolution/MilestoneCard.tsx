@@ -104,7 +104,13 @@ export function MilestoneCard({ milestone }: { milestone: Milestone }) {
       testID={`milestone-${milestone.kind}`}
       accessible
       accessibilityRole="summary"
-      accessibilityLabel={`${copy.title}. ${copy.body}`}
+      // The unlock's rating is drawn as a figure, not written in the title:
+      // VoiceOver heard the card without its number (record audit, round 2).
+      accessibilityLabel={
+        milestone.kind === 'rating_unlocked'
+          ? `${copy.title}: ${milestone.rating} out of 100. ${copy.body}`
+          : `${copy.title}. ${copy.body}`
+      }
       accessibilityLiveRegion="polite"
     >
       {milestone.kind === 'tier_up' ? (

@@ -14,6 +14,9 @@ jest.mock('@/supabase/auth', () => ({
 }));
 jest.mock('@/supabase/account', () => ({ deleteAccountOnServer: jest.fn() }));
 jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn() }));
+jest.mock('@/notifications/scheduler', () => ({
+  dismissDeliveredNotifications: jest.fn(async () => {}),
+}));
 
 import * as localAccount from '@/db/account';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
@@ -88,6 +91,12 @@ describe('authStore account actions', () => {
 });
 
 describe('authStore.deleteAccount', () => {
+  beforeEach(() => {
+    (
+      jest.requireMock('@/notifications/scheduler').dismissDeliveredNotifications as jest.Mock
+    ).mockClear();
+  });
+
   const signedIn = (provider: string) =>
     useAuthStore.setState({
       userId: 'user-1',
@@ -119,8 +128,12 @@ describe('authStore.deleteAccount', () => {
       return { ok: true };
     });
 
+    const { dismissDeliveredNotifications } = jest.requireMock('@/notifications/scheduler');
+    (dismissDeliveredNotifications as jest.Mock).mockClear();
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
     expect(order).toEqual(['server', 'wipe', 'warmup', 'practice', 'signOut']);
+    // Reminders already on the lock screen were about the account that's gone.
+    expect(dismissDeliveredNotifications).toHaveBeenCalledTimes(1);
     expect(wipe).toHaveBeenCalledWith('user-1');
     // Not an Apple account: no re-auth sheet.
     expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
@@ -138,6 +151,9 @@ describe('authStore.deleteAccount', () => {
     });
     expect(wipe).not.toHaveBeenCalled();
     expect(mocked.signOutLocal).not.toHaveBeenCalled();
+    expect(
+      jest.requireMock('@/notifications/scheduler').dismissDeliveredNotifications,
+    ).not.toHaveBeenCalled();
   });
 
   it('re-authenticates an Apple account and forwards the code for revocation', async () => {
@@ -220,6 +236,23 @@ describe('authStore.eraseDeviceData', () => {
 
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
     expect(setHidden).toHaveBeenCalledWith([]);
+  });
+
+  // Code review of step 182: a reminder already on the lock screen stayed
+  // after Erase, with the prediction's words when those are shown.
+  it('clears reminders already delivered', async () => {
+    const { dismissDeliveredNotifications } = jest.requireMock('@/notifications/scheduler');
+    (dismissDeliveredNotifications as jest.Mock).mockClear();
+    useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', provider: null });
+    wipe.mockResolvedValue(undefined);
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    usePredictionStore.setState({ loadPending: jest.fn(async () => {}), loadResolved: jest.fn(async () => {}) });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+
+    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
+    expect(dismissDeliveredNotifications).toHaveBeenCalledTimes(1);
   });
 
   // A signed-in account's data also lives on the server; erasing only the

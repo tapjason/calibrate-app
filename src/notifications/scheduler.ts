@@ -1,7 +1,9 @@
 // Resolution-reminder scheduler. Sits in L5 — it observes the L4
-// predictionStore via Zustand's subscribe API and reacts. The store has zero
-// knowledge that notifications exist; that one-way dependency keeps the
-// offline core loop functional even when this module is absent or broken.
+// predictionStore via Zustand's subscribe API and reacts. The prediction store
+// has zero knowledge that notifications exist; that one-way dependency keeps
+// the offline core loop functional even when this module is absent or broken.
+// (authStore calls one function here, dismissDeliveredNotifications, after a
+// wipe; nothing at this module's top level reads a store.)
 //
 // Lifecycle:
 //   1. initNotifications() is called once at app start (after auth init).
@@ -80,6 +82,13 @@ export interface NotificationsApi {
    * reconcile. Optional: without it, reconciling just backfills.
    */
   getAllScheduledNotificationsAsync?(): Promise<ScheduledRequest[]>;
+  /**
+   * What this app has already delivered to Notification Center and the lock
+   * screen, and a way to take one off. Optional: without them, delivered
+   * ones stay.
+   */
+  getPresentedNotificationsAsync?(): Promise<ScheduledRequest[]>;
+  dismissNotificationAsync?(identifier: string): Promise<void>;
   /**
    * Registers a notification category. Optional: on iOS it carries the
    * hidden-preview placeholder; elsewhere (and in tests) it may be absent.
@@ -216,6 +225,16 @@ function defaultNotificationsApi(): NotificationsApi | null {
         identifier: r.identifier,
         content: { data: r.content.data as Record<string, unknown> | null },
       }));
+    },
+    async getPresentedNotificationsAsync() {
+      const presented = await Notifications.getPresentedNotificationsAsync();
+      return presented.map((n) => ({
+        identifier: n.request.identifier,
+        content: { data: n.request.content.data as Record<string, unknown> | null },
+      }));
+    },
+    async dismissNotificationAsync(id) {
+      await Notifications.dismissNotificationAsync(id);
     },
     async setNotificationCategoryAsync(identifier, actions, options) {
       return await Notifications.setNotificationCategoryAsync(
@@ -786,6 +805,32 @@ export async function initNotifications(): Promise<void> {
   }
   if (!granted) return;
   await activate();
+}
+
+/**
+ * Take the app's delivered notifications off the lock screen and Notification
+ * Center. For Erase and account deletion: the scheduler cancels what is still
+ * to come when the open list empties, but a reminder already delivered stayed,
+ * with the prediction's words on it when "Show the words in reminders" is on
+ * (code review of step 182).
+ *
+ * Everything goes but a trial-ending notice (`kind: 'trial'`, D16): the Apple
+ * subscription outlives Erase and account deletion, so the word that a free
+ * month is about to renew must stay. Never throws: neither wipe may fail or
+ * stop for it.
+ */
+export async function dismissDeliveredNotifications(): Promise<void> {
+  const api = deps?.notifications;
+  if (!api?.getPresentedNotificationsAsync || !api.dismissNotificationAsync) return;
+  try {
+    for (const delivered of await api.getPresentedNotificationsAsync()) {
+      if (delivered.content.data?.kind === 'trial') continue;
+      await api.dismissNotificationAsync(delivered.identifier);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[notifications] could not clear delivered reminders:', e);
+  }
 }
 
 /**

@@ -297,7 +297,7 @@ describe('ShareCardPanel — Day 0', () => {
     );
     // The card that travels first, and who was nearer their word (step 181).
     expect(FRIEND_WARMUP).toBe(
-      'A friend' + "'" + 's warm-up card sets what they got beside what they said: "8 of 10 right. I was 90% sure." means they expected about 9 of 10 and got 8. The closer the two, the better their numbers fit, whoever got more right.',
+      'A friend' + "'" + 's warm-up card sets what they got beside what they said: "8 of 10 right. I was 90% sure." means they expected about 9 of 10 and got 8. The closer the two, the better their numbers fit, whoever got more right, though ten answers can' + "'" + 't tell close results apart.',
     );
     expect(FRIEND_SQUARES).toBe(
       'A friend' + "'" + 's score is out of 100: 100 minus how far, range by range and on average, what they said was from how often it happened. "Give or take" is how far luck could move it. The squares are their five ranges of how sure, 0–20% up to 80–100%, low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers. Yours come once your rating unlocks and a range has 10 scored answers.',

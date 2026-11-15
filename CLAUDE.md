@@ -471,7 +471,7 @@ were "Can't tell", which the rating leaves out, under "More about your record" (
   phone that made the edit.
 - **Deleted calls are counted.** Tombstones are kept after the push, marked
   `counted` when the deletion hid something: a scored Yes or No (inside its
-  24-hour window), or an open prediction deleted from the day before its due day (D61; on or after its due day until then, and not on the day it was made)
+  24-hour window), or an open prediction deleted from the day before its due day (D61; on or after its due day until then, and not on the day it was made while it isn't due yet: one made today and already due is counted)
   (`deletionCounts`). Insights says how many, and that only this phone keeps the
   count. The delete confirmation says so first.
 - **Late due-date moves are counted** (D59, 2026-11-12). Moving an open
@@ -817,7 +817,10 @@ Hard constraints carried here for visibility:
   diet or exercise targets.
 - Freetext (titles, reflections) is **not** sent by default.
 - Distress-signalling freetext is caught by a pre-filter *before* any coaching call and
-  routed to a support surface, never to the model.
+  routed to a support surface, never to the model. The surface shows US helplines on a
+  US phone, and for anywhere else a line that names no number and no website (alone on a
+  phone set to another region; after the US lines on a US phone or when the region can't
+  be read) (step 182).
 
 ### Backend Proxy Architecture
 API keys never live in the client. All AI calls go through Supabase Edge Functions, and
@@ -1007,6 +1010,9 @@ for, and validate that people actually share before betting on the free tier.
   in `src/engine/calibration.ts`.
 - Entitlement gating reads from `useEntitlementStore`; no component checks billing SDKs
   directly.
+- A RevenueCat Test Store key (`test_…`) never reaches the SDK in a release build:
+  the SDK ends the app on purpose there, TestFlight included (step 182).
+  `apiKeyForPlatform` treats it as no key, so billing reads as unavailable.
 
 ### Components & screens
 - Components are `PascalCase.tsx`, one component per file.
@@ -1078,7 +1084,7 @@ record rules R1–R12, the test bridge, personas, budgets, human-only actions, t
 |---|---|
 | `bash scripts/check.sh` | Types, then every test. Must end in `CHECK PASSED` before a task is done. |
 | `bash scripts/check.sh --quick` | Incremental types only; runs automatically after every edit of a `.ts`/`.tsx` file under `app/`, `src/` or `supabase/` (hook). |
-| `bash scripts/check.sh --release` | The full check plus `expo config`, `expo-doctor`, dependency drift and the iOS export (sizes in `.tooling/export`). |
+| `bash scripts/check.sh --release` | The full check plus `expo config`, `expo-doctor`, dependency drift, the iOS export (sizes in `.tooling/export`) and that the privacy and support pages load (`SKIP_URL_CHECK=1` skips that last step). |
 | `bash scripts/web-serve.sh start\|status\|stop` | The web build on http://localhost:8097 for the playtest agents. Never port 8081: that is the iPhone dev server. |
 | `bash scripts/check-harness.sh` | The harness is well-formed. |
 | `npx expo start --dev-client --tunnel` | Serves JS to the development build on the owner's iPhone (port 8081). |

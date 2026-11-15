@@ -20,7 +20,7 @@ model and iOS version if something isn't working.
 **My reminders don't arrive.** Check iOS Settings → Notifications → Fairly Sure,
 then the switches under You → Notifications in the app.
 
-**Why can't I see my score yet?** It appears after 20 answered predictions.
+**Why can't I see my score yet?** It appears after 20 scored answers.
 Before that, a few answers can't say much, so the app shows how many are left.
 
 **An answer says "not scored".** Answers given the same day you logged the

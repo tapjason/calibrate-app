@@ -1,7 +1,14 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 
-import { __setDeviceLocaleForTests, dateLocale, englishFor, localTime } from './locale';
+import {
+  __setDeviceLocaleForTests,
+  dateLocale,
+  deviceRegion,
+  englishFor,
+  localTime,
+  regionOf,
+} from './locale';
 
 describe('englishFor', () => {
   it('keeps an English phone on its own locale', () => {
@@ -21,6 +28,32 @@ describe('englishFor', () => {
     expect(englishFor('ja')).toBe('en');
     expect(englishFor('')).toBeUndefined();
     expect(englishFor('??')).toBeUndefined();
+  });
+});
+
+describe('regionOf and deviceRegion', () => {
+  afterEach(() => __setDeviceLocaleForTests(null));
+
+  it('reads a two-letter region, whatever the language or script', () => {
+    expect(regionOf('en-US')).toBe('US');
+    expect(regionOf('en_GB')).toBe('GB');
+    expect(regionOf('zh-Hant-TW')).toBe('TW');
+    expect(regionOf('pt-br')).toBe('BR');
+  });
+
+  it('is null with no region, or one that is not a country', () => {
+    expect(regionOf('ja')).toBeNull();
+    expect(regionOf('es-419')).toBeNull();
+    expect(regionOf('')).toBeNull();
+  });
+
+  it("is the phone's, for an English phone too", () => {
+    __setDeviceLocaleForTests('en-GB');
+    expect(deviceRegion()).toBe('GB');
+    __setDeviceLocaleForTests('nl-BE');
+    expect(deviceRegion()).toBe('BE');
+    __setDeviceLocaleForTests('ja');
+    expect(deviceRegion()).toBeNull();
   });
 });
 
@@ -85,5 +118,32 @@ describe('every date and time is written through dateLocale', () => {
       );
     });
     expect(offenders).toEqual([]);
+  });
+});
+
+// Record audit and code review, round 2.
+describe('countLocale and the 24-hour clock', () => {
+  /* eslint-disable @typescript-eslint/no-var-requires */
+  const { countLocale } = require('./locale') as typeof import('./locale');
+  /* eslint-enable @typescript-eslint/no-var-requires */
+  afterEach(() => __setDeviceLocaleForTests(null));
+
+  it('groups counts in plain English on every phone, an English one in Germany too', () => {
+    for (const tag of ['nl-BE', 'de-DE', 'pt-BR', 'ja', 'en-DE', 'en-CH', 'en-GB', 'en-US']) {
+      __setDeviceLocaleForTests(tag);
+      expect(countLocale()).toBe('en');
+      expect(new Intl.NumberFormat(countLocale(), { maximumFractionDigits: 0 }).format(1234)).toBe(
+        '1,234',
+      );
+    }
+  });
+
+  it('writes half past midnight with hour 0 on a 24-hour phone, never 24:30', () => {
+    const late = new Date(2026, 10, 15, 0, 30);
+    for (const tag of ['zh-CN', 'pt-BR', 'nl-BE']) {
+      __setDeviceLocaleForTests(tag);
+      // "0:30" or "00:30" by the region's habit; the hour is never 24.
+      expect(localTime(late, { hour: 'numeric', minute: '2-digit' })).toMatch(/^0?0:30$/);
+    }
   });
 });

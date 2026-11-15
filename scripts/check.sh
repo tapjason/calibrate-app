@@ -4,8 +4,9 @@
 #
 #   bash scripts/check.sh            types, then every test
 #   bash scripts/check.sh --quick    incremental types only (the edit hook, .claude/hooks/check-ts-edit.sh)
-#   bash scripts/check.sh --release  the full check, then app config, expo-doctor, dependency drift
-#                                    and the iOS export to .tooling/export (sizes for the release-auditor)
+#   bash scripts/check.sh --release  the full check, then app config, expo-doctor, dependency drift,
+#                                    the iOS export to .tooling/export (sizes for the release-auditor)
+#                                    and that the privacy and support pages load (SKIP_URL_CHECK=1 to skip)
 
 set -euo pipefail
 
@@ -70,6 +71,33 @@ const js = files.filter((f) => f.endsWith(".hbc") || f.endsWith(".js")).map((f) 
 console.log("export total:", (total / 1048576).toFixed(2), "MB in", files.length, "files");
 for (const [f, s] of js) console.log("  bundle:", path.relative(".tooling/export", f), (s / 1048576).toFixed(2), "MB");
 '
+
+	# The pages the app and the store listing link to. Both were 404 for weeks while the app
+	# linked to them (release and policy audits, 2026-11-14): App Review rejects a dead privacy
+	# or support URL. Last, so the measurements above still print. SKIP_URL_CHECK=1 when offline.
+	if [ "${SKIP_URL_CHECK:-0}" != "1" ]; then
+		echo "== Public pages (privacy policy, support)"
+		urls="$(node -e '
+const src = require("fs").readFileSync("src/constants/app.ts", "utf8");
+for (const name of ["PRIVACY_POLICY_URL", "SUPPORT_URL"]) {
+  const m = new RegExp("export const " + name + "[^=]*=\\s*\x27([^\x27]+)\x27").exec(src);
+  if (!m) { console.error("check.sh: " + name + " not found in src/constants/app.ts"); process.exit(1); }
+  console.log(m[1]);
+}
+')"
+		dead=0
+		for url in $urls; do
+			code="$(curl -s -o /dev/null -L -m 20 -w '%{http_code}' "$url" || true)"
+			echo "  $code $url"
+			if [ "$code" = "000" ]; then echo "  (no response: offline? SKIP_URL_CHECK=1 skips this step)"; fi
+			if [ "$code" != "200" ]; then dead=1; fi
+		done
+		if [ "$dead" = "1" ]; then
+			echo "A public page does not load. Turn GitHub Pages on (docs/HUMAN_VERIFICATION.md, Batch E),"
+			echo "or re-run with SKIP_URL_CHECK=1 to measure without it."
+			exit 1
+		fi
+	fi
 fi
 
 echo "CHECK PASSED"

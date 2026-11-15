@@ -4,6 +4,18 @@
 
 ## What this PR did
 
+**Step 182 (2026-11-15), TestFlight hardening** (BUILT_LOG row 182). On `builder/testflight-prep`. Owner: "Leave Face ID open for now, and continue building everything that is not blocked by it."
+- **A Test Store key can't crash the TestFlight build.** RevenueCat's SDK ends the app at launch when given a `test_` key in a release build (verified with `platform-api-checker`, 2026-11-15), and only the EAS `development` environment has a key, a `test_` one. The app now ignores such a key when `__DEV__` is false. The owner still has to set the `appl_` key for `production` (`docs/TESTFLIGHT_PLAN.md`).
+- **Sign-in** says a record of which features are used goes with the account (what's already on the phone included) and links the privacy policy (5.1.1(ii)).
+- **Support resources by region:** US lines on a US phone, and for elsewhere a line that names no number and no website. The policy audit verified the three US numbers and found that Find A Helpline's terms forbid naming it in a commercial app without written permission, so it isn't named; asking ThroughLine is the owner's (`docs/SHIP_READINESS.md`).
+- **Removed** the unreachable Google sign-in function. `expo-auth-session` is now unused; uninstalling a package is the owner's yes.
+- **`check.sh --release`** now fails while the privacy or support page is dead (both still 404: Pages is the owner's switch). `SKIP_URL_CHECK=1` measures without it.
+- **Reminders after Erase, sign-out and account deletion:** those still to come are cancelled as soon as the open list empties (traced, with a test; that closes "Not traced" below), and Erase and account deletion now also clear the ones already delivered (`dismissDeliveredNotifications`), all but a trial-ending notice: the subscription outlives both. Sign-out leaves delivered ones: the account still exists.
+- **Step 181's second review round** (`code-reviewer` and `record-auditor`, both on the committed range): one gap, the same in both, fixed here: correcting the answer that unlocked the rating said nothing. Also fixed: the spoken badge line dropped when the answer changes or the card goes; the unlock speaks its number; a move to another category says what follows; counts grouped in plain English on non-English phones; tests for the round-1 fixes that had none.
+- **Reviews of step 182:** `policy-auditor` (the helpline directory can't be named without ThroughLine's permission, so it isn't; "confidentially" and "available any time" removed from the support words; the sign-in sentence made exact; Google remnants cleared from the docs) and `code-reviewer` (see the commit message for what it found).
+- **Still open, coded around** (`docs/SHIP_READINESS.md`, decisions 1 to 12): the Face ID lock (step 180), under-13 handling, guest usage counts (`GUEST_ANALYTICS` stays off until migration 007 is applied), prices, the EU, email sign-up, the keyword "habit", naming a helpline directory, a consent switch at sign-in, counting re-files, uninstalling `expo-auth-session`, a password reset.
+
+
 **TestFlight prep (2026-11-15).** Branch `builder/testflight-prep`, from `master` at `ce3f2d0` (steps 178 to 181 merged by fast-forward and pushed that day, at the owner's word).
 - **`docs/TESTFLIGHT_PLAN.md`:** three stages (the owner alone, an inner circle of 5 to 8, an open beta of 20 to 50 for 14 days), what to do before the first build and in what order, how it's measured, exit criteria, ready-to-use beta text, invitation and survey questions, a timeline of about a month. Apple's TestFlight rules were checked the same day (`platform-api-checker`); what Apple doesn't document is listed at the end of the plan.
 - **In the app (JS only):** You has "Help and support" (the support page, `SUPPORT_URL`) and shows the version under its links (`APP_VERSION`, from the app config). Not reviewed by `code-reviewer`; two rows and a footnote, with a test.
@@ -326,13 +338,15 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 
 ## Next step
 
-- **Agent:** step 180, the native batch (a Face ID lock, `expo-localization`), installed with `npx expo install`, then a new development build the owner runs; after that, a playtest round on step 178.
-- **Owner:** deploy the `coach` Edge Function (`supabase functions deploy coach`) so its prompt says 20; until then the phone re-checks at 20 and drops anything the server allowed at 15–19.
-- **Owner:** decide whether `web-serve.sh stop` should be fixed for Windows pids, so it works unattended.
-- **Owner, on the iPhone:** `/device-check` can write the list from BUILT_LOG rows 162–168; the new checks for 167–168, 158 and 159 are in `HUMAN_VERIFICATION.md` Batch C (2026-11-10): Save's label at large text sizes and VoiceOver, Plus in airplane mode, the chart's VoiceOver label, the card's strip as a PNG and under Color Filters.
-- **Owner, before `eas submit`:** the in-app purchases attached to the submission, the Paid Apps Agreement active and RevenueCat's current offering set; otherwise a reviewer sees the empty-plans line (2.1(b)) (`policy-auditor`).
-- **Owner:** republish the privacy policy once GitHub Pages is on (its in-app paths and §7 changed in step 166).
-- **Not traced:** whether due-day and practice reminders already scheduled are cancelled right after an account deletion, before the next launch (flagged in step 166).
+Start from `docs/TESTFLIGHT_PLAN.md` (the stages and the order of the desk work) and `docs/SHIP_READINESS.md` (the twelve open decisions, each with a recommendation). AI playtests are finished; the next evidence is real people on TestFlight.
+
+- **State of the branches (2026-11-15):** `master` is pushed through step 181 (`ce3f2d0`). `builder/testflight-prep` is local only and holds the TestFlight plan, "Help and support" and the version in You, and step 182. Merging it to `master` and pushing is the owner's word.
+- **Owner, first (both have waits):** the Paid Applications Agreement with bank and tax; GitHub Pages on (`master`, `/docs`). `/privacy/` and `/support/` are 404 until then, and `check.sh --release` now fails on that.
+- **Owner, then:** the decisions in `SHIP_READINESS.md`; the products, RevenueCat and the three EAS `production` variables with the `appl_` key (`TESTFLIGHT_PLAN.md`); `supabase functions deploy coach` (its prompt now says Fairly Sure and 20); the Apple provider and the mail sender in Supabase.
+- **Agent, on the owner's yes:** step 180 (the Face ID lock: `npx expo install expo-local-authentication@~55.0.18 expo-localization@~55.0.19`, left open on 2026-11-15); `GUEST_ANALYTICS` on once migration 007 is applied; `npm uninstall expo-auth-session`; the under-13 local-only rule; counting re-files; a password reset once mail works.
+- **Agent, after each TestFlight stage:** the owner's device results turned into fixes (`/device-check`). The step 181 and 182 device checks are in `docs/HUMAN_VERIFICATION.md` Batch C.
+- **Not re-reviewed:** the last small fixes after the final reviews (the trial notice kept on Erase, the 24-hour probe order, `countLocale` always `en`, an engine test, doc lines). Each has a test; the next `code-reviewer` pass should include them.
+- **One file not opened:** `.env.example` may still list a Google client id variable (the code reviewer says line 11). Agents don't open `.env` files; it is the owner's to delete.
 
 ## Read first
 
@@ -357,5 +371,5 @@ comes back only if a new round finds it again. Left with the owner:
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 183 suites, 2,279 tests. The flake in `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone, past the 1 s default wait under full-run load; it failed twice running during round 23 and slipped into that round's commit, `5aa553c`) now waits up to 5 s per step, 20 s in all. Commit only after `check.sh` itself exits 0: piping it through `tail` hid that failure. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 183 suites, 2,310 tests. The flake in `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone, past the 1 s default wait under full-run load; it failed twice running during round 23 and slipped into that round's commit, `5aa553c`) now waits up to 5 s per step, 20 s in all. Commit only after `check.sh` itself exits 0: piping it through `tail` hid that failure. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

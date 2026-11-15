@@ -40,7 +40,7 @@ import { warmupCardCopy } from './warmupCardCopy';
  */
 export const FRIEND_WARMUP =
   `A friend's warm-up card sets what they got beside what they said: "8 of 10 right. I was 90% sure." means they expected about 9 of 10 and got 8. ` +
-  `The closer the two, the better their numbers fit, whoever got more right.`;
+  `The closer the two, the better their numbers fit, whoever got more right, though ten answers can't tell close results apart.`;
 
 /**
  * Under the Warm-up card, for someone who came from a friend's card: what

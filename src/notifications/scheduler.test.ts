@@ -21,6 +21,7 @@ import { useStatsStore } from '@/store/statsStore';
 
 import {
   __setDepsForTests,
+  dismissDeliveredNotifications,
   initNotifications,
   REMINDER_HOUR,
   reminderTimeFor,
@@ -285,7 +286,88 @@ describe('scheduler: schedule on create', () => {
   });
 });
 
+// Code review of step 182: delivered reminders stayed after Erase and account
+// deletion.
+describe('scheduler: dismissDeliveredNotifications', () => {
+  const delivered = (identifier: string, data: Record<string, unknown> | null) => ({
+    identifier,
+    content: { data },
+  });
+
+  it('clears what was delivered, but leaves a trial-ending notice', async () => {
+    const dismiss = jest.fn(async (_id: string) => {});
+    __setDepsForTests({
+      notifications: {
+        ...makeFakeNotifications(true),
+        getPresentedNotificationsAsync: async () => [
+          delivered('r1', { predictionId: 'p1', words: true }),
+          delivered('d1', { kind: 'digest' }),
+          delivered('t1', { kind: 'trial' }),
+          delivered('q1', { kind: 'practice' }),
+          delivered('x1', null),
+        ],
+        dismissNotificationAsync: dismiss,
+      },
+      navigator: makeFakeNavigator(),
+    });
+    await dismissDeliveredNotifications();
+    // The subscription outlives Erase and deletion: its renewal notice stays.
+    expect(dismiss.mock.calls.map(([id]) => id)).toEqual(['r1', 'd1', 'q1', 'x1']);
+  });
+
+  it('survives the OS failing, and does nothing where it offers no way to', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    __setDepsForTests({
+      notifications: {
+        ...makeFakeNotifications(true),
+        getPresentedNotificationsAsync: async () => {
+          throw new Error('no module');
+        },
+        dismissNotificationAsync: async () => {},
+      },
+      navigator: makeFakeNavigator(),
+    });
+    await expect(dismissDeliveredNotifications()).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+
+    __setDepsForTests({ notifications: makeFakeNotifications(true), navigator: makeFakeNavigator() });
+    await expect(dismissDeliveredNotifications()).resolves.toBeUndefined();
+    __setDepsForTests(null);
+    await expect(dismissDeliveredNotifications()).resolves.toBeUndefined();
+  });
+});
+
 describe('scheduler: cancel on transition out of pending', () => {
+  // Traced 2026-11-15 (open since step 166): Erase, sign-out and account
+  // deletion each reload the open list, which comes back empty, and the
+  // scheduler follows the list. So nothing about a deleted account's
+  // predictions can still fire.
+  it('cancels every reminder when the open list empties (Erase, sign-out, deletion)', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+
+    for (const title of ['Ship it', 'Walk 30 minutes', 'Call the bank']) {
+      await usePredictionStore.getState().create({
+        title,
+        category: 'work',
+        confidence: 60,
+        due_date: '2099-06-01T12:00:00.000Z',
+      });
+    }
+    expect(notifications.scheduled.size).toBe(3);
+    const ids = Array.from(notifications.scheduled.keys());
+
+    // What reloadForUser leaves after a wipe: an empty list, a new array.
+    usePredictionStore.setState({ pending: [] });
+    await new Promise((r) => setImmediate(r));
+
+    for (const id of ids) expect(notifications.cancelled).toContain(id);
+    expect(notifications.scheduled.size).toBe(0);
+  });
+
   it('cancels the notification when a prediction is resolved', async () => {
     const notifications = makeFakeNotifications(true);
     const navigator = makeFakeNavigator();

@@ -14,6 +14,8 @@
 // order, and the clock is passed explicitly (code review, step 181).
 
 interface Resolved {
+  /** The region in the phone's locale ("US", "GB"), or null when it names none. */
+  region: string | null;
   /** The tag to format with, or undefined for the phone's own locale. */
   tag: string | undefined;
   /** The phone's clock, when the tag above can't be trusted to carry it. */
@@ -21,6 +23,9 @@ interface Resolved {
 }
 
 let cached: Resolved | null = null;
+
+/** A language, an optional script, an optional region (two letters or three digits). */
+const TAG = /^([a-z]{2,3})(?:[-_][a-z]{4})?(?:[-_]([a-z]{2}|\d{3}))?(?:[-_]|$)/i;
 
 /** Whether dates in `locale` put the day before the month, or null if unknown. */
 function dayFirst(locale: string | undefined): boolean | null {
@@ -39,8 +44,14 @@ function dayFirst(locale: string | undefined): boolean | null {
 /** Whether times in `locale` use a 12-hour clock, or null if unknown. */
 function twelveHour(locale: string | undefined): boolean | null {
   try {
+    // By formatting 13:00: what comes out carries the phone's own 24-hour
+    // switch, which a formatter's declared options may not. A locale that
+    // writes its own digits ("۱۳") shows no "13" either way, so there the
+    // formatter's own word is used.
     const said = new Date(2000, 0, 1, 13).toLocaleTimeString(locale, { hour: 'numeric' });
-    return !said.includes('13');
+    if (/[0-9]/.test(said)) return !said.includes('13');
+    const resolved = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions().hour12;
+    return typeof resolved === 'boolean' ? resolved : null;
   } catch {
     return null;
   }
@@ -52,10 +63,16 @@ function twelveHour(locale: string | undefined): boolean | null {
  * in English already or the tag can't be read.
  */
 export function englishFor(tag: string): string | undefined {
-  const m = /^([a-z]{2,3})(?:-[a-z]{4})?(?:-([a-z]{2}|\d{3}))?(?:-|$)/i.exec(tag.trim());
+  const m = TAG.exec(tag.trim());
   if (!m) return undefined;
   if (m[1].toLowerCase() === 'en') return undefined;
   return m[2] ? `en-${m[2].toUpperCase()}` : 'en';
+}
+
+/** The two-letter region in a locale tag ("en-GB" gives "GB"), or null. */
+export function regionOf(tag: string): string | null {
+  const m = TAG.exec(tag.trim());
+  return m && m[2] && /^[a-z]{2}$/i.test(m[2]) ? m[2].toUpperCase() : null;
 }
 
 /**
@@ -64,8 +81,9 @@ export function englishFor(tag: string): string | undefined {
  * otherwise, which carries the 24-hour switch in Settings.
  */
 function resolve(tag: string, clockFrom: string | undefined): Resolved {
+  const region = regionOf(tag);
   const english = englishFor(tag);
-  if (english === undefined) return { tag: undefined, hour12: undefined };
+  if (english === undefined) return { region, tag: undefined, hour12: undefined };
   const phoneDayFirst = dayFirst(tag);
   // The region's own English when it keeps the phone's order; else British
   // or US English, whichever does.
@@ -76,22 +94,42 @@ function resolve(tag: string, clockFrom: string | undefined): Resolved {
         ? 'en-GB'
         : 'en-US';
   const phoneTwelve = twelveHour(clockFrom);
-  return { tag: candidate, hour12: phoneTwelve === null ? undefined : phoneTwelve };
+  return { region, tag: candidate, hour12: phoneTwelve === null ? undefined : phoneTwelve };
 }
 
 function current(): Resolved {
   if (cached !== null) return cached;
   try {
-    cached = resolve(Intl.DateTimeFormat().resolvedOptions().locale, undefined);
+    cached = resolve(new Intl.DateTimeFormat().resolvedOptions().locale, undefined);
   } catch {
-    cached = { tag: undefined, hour12: undefined };
+    cached = { region: null, tag: undefined, hour12: undefined };
   }
   return cached;
 }
 
-/** The locale for every date and count the app writes; read once per launch. */
+/** The locale for every date the app writes; read once per launch. */
 export function dateLocale(): string | undefined {
   return current().tag;
+}
+
+/**
+ * The locale for a grouped count: plain English, "1,234", on every phone. A
+ * region's English can group the way its language does ("1.234" under en-BE
+ * or en-DE, "1'234" under en-CH), on an English-language phone too, and that
+ * reads as a decimal in an English sentence on a card that leaves the phone
+ * (record audit, rounds 2 and 3).
+ */
+export function countLocale(): string {
+  return 'en';
+}
+
+/**
+ * The region of the phone's locale ("US", "GB"), or null when the locale
+ * names none. It is the region of the phone's language setting, read on the
+ * phone and sent nowhere.
+ */
+export function deviceRegion(): string | null {
+  return current().region;
 }
 
 /**
@@ -100,7 +138,14 @@ export function dateLocale(): string | undefined {
  */
 export function localTime(date: Date, options: Intl.DateTimeFormatOptions): string {
   const { tag, hour12 } = current();
-  return date.toLocaleTimeString(tag, hour12 === undefined ? options : { ...options, hour12 });
+  if (hour12 === undefined) return date.toLocaleTimeString(tag, options);
+  // The phone's clock decides: a caller's own hour12 would beat hourCycle.
+  const { hour12: _ignored, hourCycle: _alsoIgnored, ...rest } = options;
+  void _ignored;
+  void _alsoIgnored;
+  // A 24-hour clock as h23, never "24:30": `hour12: false` on a tag whose own
+  // default is 12-hour resolved to h24 under the older rule (code review, round 2).
+  return date.toLocaleTimeString(tag, hour12 ? { ...rest, hour12: true } : { ...rest, hourCycle: 'h23' });
 }
 
 /** Test-only: forget the locale read at launch, or set the phone's. */

@@ -136,7 +136,12 @@ cheapest safeguard available.
   is suppressed and the app surfaces a gentle, non-clinical support message pointing to
   region-appropriate professional resources (US example: 988 Suicide & Crisis Lifeline;
   for eating-disorder signals, the National Alliance for Eating Disorders helpline —
-  localize per region).
+  localize per region). As built (step 182): on a phone whose locale's region is US, or
+  unreadable, the US line and then "Outside the US: search for a crisis line in your
+  country, or call your local emergency number."; on any other phone that sentence
+  alone. No number per country (a wrong one costs more than a missing one) and no named
+  directory: Find A Helpline's terms need written permission for commercial use, which
+  is the owner's to ask for (`docs/SHIP_READINESS.md`).
 - The agent never attempts to counsel, assess risk, or diagnose. It steps back and
   points to humans. The support surface makes no categorical promises about
   confidentiality or outcomes.

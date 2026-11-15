@@ -201,3 +201,34 @@ describe('WarmupVerdictScreen', () => {
     expect(screen.queryByTestId('warmup-verdict')).toBeNull();
   });
 });
+
+// Code review of step 181: the Warm-up's ten answers never fill a range, so
+// the chart's own rule would never name the zones; its verdict decides.
+describe('WarmupVerdictScreen: the chart names its zones by the verdict', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+  const ten = (confidence: number, right: number): WarmupAnswer[] =>
+    Array.from({ length: 10 }, (_, i) => ({ confidence, correct: i < right }));
+  const layout = () =>
+    fireEvent(screen.getByTestId('calibration-chart'), 'layout', {
+      nativeEvent: { layout: { width: 300, height: 300, x: 0, y: 0 } },
+    });
+
+  it('names them under a verdict that names a lean', () => {
+    seed(ten(95, 3));
+    expect(useWarmupStore.getState().result?.direction).toBe('overconfident');
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    layout();
+    expect(screen.getByTestId('region-label-over')).toBeTruthy();
+    expect(screen.getByTestId('region-label-under')).toBeTruthy();
+  });
+
+  it('leaves them off under "no clear lean"', () => {
+    seed(ten(70, 7));
+    expect(useWarmupStore.getState().result?.direction).toBe('calibrated');
+    render(<WarmupVerdictScreen onContinue={jest.fn()} />);
+    layout();
+    expect(screen.queryByTestId('region-label-over')).toBeNull();
+    expect(screen.queryByTestId('region-label-under')).toBeNull();
+  });
+});

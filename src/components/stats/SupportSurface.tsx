@@ -27,7 +27,8 @@ export function SupportSurface({ topic }: SupportSurfaceProps) {
     <View style={styles.card} testID="coach-support-surface">
       <Text style={styles.title}>{resource.title}</Text>
       <Text style={styles.body}>{resource.body}</Text>
-      <Text style={styles.contact} testID="support-contact">
+      {/* Selectable: a number or a line someone may want to copy. */}
+      <Text style={styles.contact} selectable testID="support-contact">
         {resource.contact}
       </Text>
     </View>

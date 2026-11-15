@@ -1125,3 +1125,38 @@ describe('LogPredictionForm — the same words already open', () => {
     expect(screen.queryByTestId('log-open-twin')).toBeNull();
   });
 });
+
+// Step 182: iOS ignores live regions, so the open-twin line is in Save's hint.
+describe('LogPredictionForm — the open twin, spoken', () => {
+  afterEach(() => usePredictionStore.setState({ pending: [], resolved: [] }));
+
+  it('puts it in the Save button’s hint', () => {
+    const due = new Date();
+    due.setDate(due.getDate() + 1);
+    due.setHours(12, 0, 0, 0);
+    usePredictionStore.setState({
+      pending: [
+        {
+          id: 'o1',
+          user_id: 'u1',
+          title: 'Dani is late',
+          category: 'social',
+          confidence: 80,
+          created_at: new Date().toISOString(),
+          due_date: due.toISOString(),
+          status: 'pending',
+          resolved_at: null,
+          reflection: null,
+          integrity_bonus: false,
+        },
+      ],
+      resolved: [],
+    });
+    render(<LogPredictionForm />);
+    expect(screen.getByTestId('submit-button').props.accessibilityHint).toBeUndefined();
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Dani is late');
+    expect(screen.getByTestId('submit-button').props.accessibilityHint).toBe(
+      'You already have this one open, due tomorrow.',
+    );
+  });
+});

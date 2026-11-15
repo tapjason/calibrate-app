@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { __setDeviceLocaleForTests } from '@/constants/locale';
 import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -64,6 +65,8 @@ function seed({
     lastRequestFailed: false,
   });
 }
+
+afterEach(() => __setDeviceLocaleForTests(null));
 
 describe('CoachPanel — gating', () => {
   it('shows an upsell and no ask button for a free user', () => {
@@ -228,6 +231,8 @@ describe('CoachPanel — crisis path', () => {
 
   it('points at the resource matching the topic', () => {
     seed();
+    // A US phone, whatever the machine running the tests is set to.
+    __setDeviceLocaleForTests('en-US');
     useCoachStore.setState({ crisisTopic: 'eating_disorder' });
     render(<CoachPanel />);
 

@@ -115,6 +115,20 @@ describe('which deletions are counted (roadmap D45)', () => {
     expect(deletionCounts(open(2), now)).toBe(true);
   });
 
+  // Record audit, 2026-11-15: the day-made exemption is for the eve only. One
+  // made today and already due (a clock or time-zone change, a synced row)
+  // is counted, on a delete and on new words; Edit's rewording note relies on it.
+  it('counts one made today that is already due today', () => {
+    const dueToday = answered({
+      status: 'pending',
+      resolved_at: null,
+      created_at: local(5, 9).toISOString(),
+      due_date: local(5, 12).toISOString(),
+    });
+    expect(deletionCounts(dueToday, now)).toBe(true);
+    expect(rewordingCounts(dueToday, now)).toBe(true);
+  });
+
   it("doesn't count one deleted on the eve the day it was made, or reworded", () => {
     const fresh = answered({
       status: 'pending',

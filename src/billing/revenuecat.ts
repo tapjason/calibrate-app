@@ -208,14 +208,40 @@ export interface BillingDeps {
 let deps: BillingDeps | null = null;
 let configured = false;
 
+/** How a RevenueCat Test Store key starts (an App Store key starts "appl_"). */
+const TEST_STORE_PREFIX = 'test_';
+let warnedTestStoreKey = false;
+
 /**
  * Public SDK keys, safe to bundle: they authorize reads and purchases for one
  * app, and receipt validation happens on RevenueCat's servers.
+ *
+ * **Never a Test Store key in a release build.** RevenueCat's SDK ends the app
+ * on purpose when it is configured with one outside a debug build, TestFlight
+ * included: a native alert, then a fatal error at launch that no try/catch
+ * here can stop (RevenueCat's Test Store docs; purchases-ios PR 5755; checked
+ * 2026-11-15). The development environment holds exactly such a key, so a
+ * production build made with the wrong variables would crash for every
+ * tester and for App Review. With the key treated as absent, every function
+ * below fails to "free" and the paywall says Plus isn't available on this
+ * build, which the first TestFlight check will show.
  */
 function apiKeyForPlatform(): string {
   const ios = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
   const android = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '';
-  return Platform.OS === 'android' ? android : ios;
+  const key = (Platform.OS === 'android' ? android : ios).trim();
+  if (!__DEV__ && key.startsWith(TEST_STORE_PREFIX)) {
+    if (!warnedTestStoreKey) {
+      warnedTestStoreKey = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[billing] a RevenueCat Test Store key in a release build: billing is off. ' +
+          'Give this build environment the App Store ("appl_") key.',
+      );
+    }
+    return '';
+  }
+  return key;
 }
 
 type PurchasesModule = typeof import('react-native-purchases').default;

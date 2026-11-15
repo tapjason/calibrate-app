@@ -157,9 +157,14 @@ the reason:
 | Medical or wellness topics | None | "Health" is only a label the user puts on their own predictions. The app gives no medical or wellness information, and the Coach is forbidden from medical advice and numeric diet or exercise targets (`COACH_AGENT.md`). |
 | AI assistant / chatbot | Count the Coach in. Its output carries no sensitive content: insights are schema-validated, cite numbers from the input or are dropped, and distress-signalling text never reaches the model. | Apple asks for AI features to be included when judging how often sensitive content appears. |
 | User-generated content, messaging, chat | No | No user-to-user interaction. Shared cards go out through the OS share sheet, which Apple doesn't count as in-app user-generated content. |
-| Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms). |
+| Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms, the support page). |
+| Mature or suggestive themes | None | The app shows no such content. The Coach's support surface (a helpline pointer when someone's own text signals distress) isn't a depiction of trauma or abuse; if Apple's wording counts it, "infrequent" is 9+: the owner's call on the day. |
 | Advertising | No | There are no ads. |
-| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once (`src/age/ageRange.ts`). Nothing in the app is gated on the result. |
+| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once (`src/age/ageRange.ts`). Nothing in the app is gated on the result. Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services"; the build asks and gates nothing, so read the question as worded on the day (policy audit, 2026-11-14; the under-13 decision in `SHIP_READINESS.md` would settle it). |
+| Social media; social media disabled under 13 (asked since July 2026, required from September) | No | No feed, profiles, followers or posts. |
+| Shared location; dating and relationships (descriptors from 2026-11-16, all apps by 2027-01-12) | No | The app reads no location and matches nobody. |
+| Gambling; simulated gambling; contests; loot boxes (asked one by one) | None | No stakes, odds, currency, prizes or chance mechanics. Nobody competes: a friend comparison, if ever built, would change the contests answer. |
+| Medical or treatment information | None | The Coach's support surface points to a helpline when someone's own text signals distress. That is a referral, not treatment information. If Apple's wording counts it, "infrequent" is 13+: the owner's call on the day. |
 
 Read the questions as App Store Connect words them on the day; if one doesn't
 map onto this table, ask rather than guess. A rating that's later found to be
@@ -276,6 +281,28 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > Account deletion: You → Delete account (at the bottom, once signed in).
 >
 > Notifications are local reminders only; no push server is involved.
+>
+> The Coach sends only computed statistics (counts and percentages), never the
+> user's text, to OpenAI through our server, and only after the user turns it
+> on in You → Coach (AI), where OpenAI is named. It needs an account because
+> our server checks the subscription per account; Sign in with Apple asks for
+> the email only.
+>
+> The app shows Apple's age-range sheet once after the first screen. Declining
+> changes nothing.
+>
+> If a user's own prediction text signals distress, the Coach gives no
+> feedback and the app shows helpline information instead. That check runs on
+> the device; the text is not sent anywhere.
+>
+> There is no gambling, no stakes and no currency. Predictions are private
+> notes about the user's own life ("I'll finish the report by Friday").
+
+**Give the demo account Plus before review** (the policy audit, 2026-11-14): right
+after a sandbox purchase the server may not have the entitlement yet, and the
+reviewer would see "Coach is unavailable right now." Seed the account, grant it
+Plus in RevenueCat (a promotional entitlement), and tell the reviewer to look at
+the purchase flow signed out.
 
 **Why the demo account matters:** a reviewer on a fresh install has no resolved
 predictions. The Coach then shows "keep logging", and the Stats screen shows

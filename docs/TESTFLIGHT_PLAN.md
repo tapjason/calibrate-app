@@ -67,7 +67,13 @@ In this order, because the first two have waits:
    products to `plus`, set the `default` offering, copy the `appl_` key. RevenueCat needs no
    extra setup for TestFlight: it treats TestFlight purchases as sandbox. Turn on "View
    Sandbox Data" in its dashboard to see them.
-6. **EAS production variables.** Only `development` has them. Run each with your own values:
+6. **EAS production variables.** Only `development` has them, and its RevenueCat key is a Test Store key
+   (`test_…`). RevenueCat's SDK ends the app at launch, on purpose, when a Test Store
+   key reaches a release build, TestFlight included. Since step 182 the app ignores
+   such a key in a release build, so the worst case is a paywall that says "Plus isn't
+   available on this build yet" (the same line a missing key gives). If you see that
+   line in the TestFlight build, the production key is missing or is the test one.
+   Run each with your own values:
    ```
    npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value <…>
    npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <…>
@@ -247,7 +253,10 @@ and another week.
 ## What the agent does, and when
 
 - **Now, no decision needed (done on `builder/testflight-prep`):** a "Help and support" link
-  and the app's version in You, so a bug report can say which version.
+  and the app's version in You, so a bug report can say which version; and step 182, the
+  hardening pass (BUILT_LOG row 182): the Test Store key guard, the sign-in screen saying
+  what signing in sends, support resources by region, and `check.sh --release` failing
+  while the privacy or support page is dead.
 - **On your word:** the Face ID lock (step 180); turning `GUEST_ANALYTICS` on once 007 is
   applied; the under-13 local-only rule if you adopt it.
 - **After each stage:** your device results, TestFlight feedback and survey answers turned

@@ -122,8 +122,7 @@ second build that can't test billing.
       Warmup, with no age sheet and no feature locked.
 - [ ] ~~**Expo Go run-through: Batch C, minus billing.**~~ **Not possible on
       SDK 55 (2026-10-04).** Do Batch C on the iOS dev build instead (Tier 2),
-      signing in with **email** (Apple sign-in needs the paid account too;
-      Google isn't configured).
+      signing in with **email** (Apple sign-in needs the paid account too).
 - [ ] ~~**If you have (or can borrow) an Android phone:**~~ **Not applicable: iPhone only.**
       A real Test Store purchase therefore waits on the $99 Apple account
       (Tier 2) and an iOS dev build. Kept for reference: an EAS Android dev
@@ -901,6 +900,33 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       shown". A built-in given only an emoji stays on the card, and on Insights and Today it
       keeps its name with its usual symbol, not the emoji. Untick every category on Share: the
       card keeps your rating and "N categories not shown"; tick one back.
+- [ ] **The TestFlight build's paywall (step 182):** You → Fairly Sure Plus lists the three
+      plans with the store's prices. If it reads "Plus isn't available on this build yet",
+      the build has no RevenueCat key or has the Test Store one (`test_…`): set the `appl_`
+      key in the EAS production environment and build again. It never crashes on it.
+- [ ] **Sign-in says what it sends (step 182):** You → Sign in shows "Once you're signed in,
+      a record of which features you use, including what's already on this phone, is sent
+      with your account…" and a Privacy policy link that opens the policy. Turn Usage stats
+      off in You: the sentence goes, the link stays.
+- [ ] **Erase clears the lock screen (step 182):** with "Show the words in reminders" on, let a
+      due-day reminder arrive and leave it in Notification Center; then You → Erase your data
+      on this phone. The reminder is gone from Notification Center.
+- [ ] **Account deletion clears the lock screen too (step 182):** the same as the Erase check,
+      signed in, with You → Delete account. A "your free month ends…" notice, if one is
+      there, stays: the subscription isn't cancelled by deleting the account.
+- [ ] **The phone's clock in another language (step 182):** with the iPhone in Español (EE. UU.)
+      and Settings → General → Date & Time → 24-Hour Time on, the reminder times in You and
+      "Until … today" on an answered prediction read as 24-hour ("19:00"); with it off,
+      "7:00 PM".
+- [ ] **A move says what follows (step 182):** inside 24 hours of an answer, with the rating
+      unlocked, move it to another category in its details: "Each category's score and badge
+      now follow where this is filed…" shows, and VoiceOver says "Moved to …" with it.
+- [ ] **A correction on the unlocking answer (step 182):** on `threshold`, answer the one due
+      today (the unlock card shows), then tap "Change to: …": the card goes and the line
+      under the answer ends "Your rating and badges now follow this answer, so they may
+      have moved." VoiceOver says the same after "Changed to: …".
+- [ ] **Help and version (TestFlight prep):** You → Help and support opens the support page,
+      and "Fairly Sure 1.0.0" sits under those links.
 - [ ] **Dates in English (step 181):** set the iPhone's language to Dutch or Spanish (Settings →
       General → Language & Region) and open the app: every date reads in English in the
       order that language uses ("Sun 15 Nov"), and times on the phone's own clock (24-hour

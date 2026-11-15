@@ -521,3 +521,42 @@ describe('restorePurchases', () => {
     await expect(restorePurchases()).resolves.toEqual({ status: 'failed' });
   });
 });
+
+// RevenueCat's SDK ends the app on purpose when a Test Store key reaches a
+// release build, TestFlight included (checked 2026-11-15). The development
+// environment's key is one, so the first production build is where it bites.
+describe('a Test Store key outside development', () => {
+  const g = globalThis as unknown as { __DEV__: boolean };
+  const dev = g.__DEV__;
+  afterEach(() => {
+    g.__DEV__ = dev;
+  });
+
+  it('is never handed to the SDK in a release build: billing reads as unavailable', async () => {
+    const deps = fakeDeps();
+    __setBillingDepsForTests(deps);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    process.env[KEY_VAR] = 'test_AbCdEf123';
+    g.__DEV__ = false;
+
+    expect(isBillingAvailable()).toBe(false);
+    await expect(configureBilling('user-1')).resolves.toBe(false);
+    expect(deps.configure).not.toHaveBeenCalled();
+    await expect(fetchPlans()).resolves.toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Test Store key in a release build'));
+  });
+
+  it('still works in a development build, and an App Store key works in both', async () => {
+    const deps = fakeDeps();
+    __setBillingDepsForTests(deps);
+    process.env[KEY_VAR] = 'test_AbCdEf123';
+    g.__DEV__ = true;
+    expect(isBillingAvailable()).toBe(true);
+
+    process.env[KEY_VAR] = 'appl_AbCdEf123';
+    g.__DEV__ = false;
+    expect(isBillingAvailable()).toBe(true);
+    await expect(configureBilling('user-1')).resolves.toBe(true);
+    expect(deps.configure).toHaveBeenCalledWith('appl_AbCdEf123', 'user-1');
+  });
+});

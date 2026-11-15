@@ -428,6 +428,11 @@ export function LogPredictionForm({
         <Button
           label={submitting ? 'Saving…' : `Save, due ${saveDue.text}`}
           accessibilityLabel={submitting ? 'Saving' : `Save prediction, due ${saveDue.spoken}`}
+          accessibilityHint={
+            twin !== null && !submitting
+              ? `You already have this one open, due ${dueWords(twin.due_date, new Date()).spoken}.`
+              : undefined
+          }
           onPress={() => void onSubmit()}
           disabled={!canSave}
           testID="submit-button"

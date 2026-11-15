@@ -459,7 +459,12 @@ export function ResolvePrompt({
       // iOS ignores the cards' live regions, so VoiceOver heard neither, and
       // the web build spoke the gain only (blind playtest 2026-11-14, run 6).
       const badgeNews = [
-        ack.milestone ? `${milestoneCopy(ack.milestone).title}.` : null,
+        ack.milestone
+          ? // The unlock's number is drawn on its card, not written in its title.
+            ack.milestone.kind === 'rating_unlocked'
+            ? `${milestoneCopy(ack.milestone).title}: ${ack.milestone.rating} out of 100.`
+            : `${milestoneCopy(ack.milestone).title}.`
+          : null,
         // The unlock's card carries a badge earned with it in its body.
         ack.milestone?.kind === 'rating_unlocked' && ack.milestone.badge
           ? `New badge, too: ${BADGE_META[ack.milestone.badge.badge].label} in ${categoryLabel(ack.milestone.badge.category)}.`
@@ -499,6 +504,18 @@ export function ResolvePrompt({
       const outcome = answered.outcome === 'resolved_yes' ? 'resolved_no' : 'resolved_yes';
       const { ratingBefore } = answered;
       await usePredictionStore.getState().correct(prediction.id, outcome);
+      // Badge news still waiting to be spoken was the first answer's: the
+      // correction may just have taken it back (code review, round 2). After
+      // the change, so a failed one leaves it to be said.
+      if (announceTimer.current) {
+        clearTimeout(announceTimer.current);
+        announceTimer.current = null;
+      }
+      // Whether the switch can move a rating or badge on screen: a scored
+      // answer, with a rating shown before it, by it (the unlock) or now.
+      const moves =
+        !isSameDayLine(answered.line) &&
+        (answered.unlocked || ratingBefore !== null || shownRating() !== null);
       const stats = useStatsStore.getState();
       const bucket = stats.bucketFor(prediction.confidence);
       setAnswered({
@@ -518,13 +535,18 @@ export function ResolvePrompt({
         // The unlocking answer's meaning line stays: it says nothing about the
         // outcome (code review 2026-11-12).
         note: answered.unlocked
-          ? answered.note
+          ? // The unlocking answer keeps its meaning line, and says the
+            // rating follows the answer: its card, with the rating and any
+            // badge, has just gone (D63; record audit and code review, round 2).
+            moves
+            ? withCorrected(answered.note)
+            : answered.note
           : ratingBefore !== null || shownRating() !== null
             ? // No figures (D50), but no longer silence (D63): a badge with
               // confetti earned on a mis-tap went back with no word here.
-              isSameDayLine(answered.line)
-              ? null
-              : CORRECTED_NOTE
+              moves
+              ? CORRECTED_NOTE
+              : null
             : answerNote(
                 prediction.confidence,
                 isSameDayLine(answered.line) || stats.userStat?.total_resolved === 1,
@@ -538,12 +560,8 @@ export function ResolvePrompt({
       });
       const changed =
         outcome === 'resolved_yes' ? 'Changed to: it happened.' : 'Changed to: it didn’t happen.';
-      const follows =
-        !answered.unlocked &&
-        (ratingBefore !== null || shownRating() !== null) &&
-        !isSameDayLine(answered.line);
       AccessibilityInfo.announceForAccessibility(
-        follows ? `${changed} ${CORRECTED_NOTE}` : changed,
+        moves ? `${changed} ${CORRECTED_NOTE}` : changed,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -909,6 +927,12 @@ export function ResolvePrompt({
 /** What Resolve says it recorded, on screen and to VoiceOver. */
 function recordedText(outcome: 'resolved_yes' | 'resolved_no'): string {
   return outcome === 'resolved_yes' ? 'Recorded: it happened' : 'Recorded: it didn’t happen';
+}
+
+/** The note with the correction's line after it, once. */
+function withCorrected(note: string | null): string {
+  if (!note) return CORRECTED_NOTE;
+  return note.endsWith(CORRECTED_NOTE) ? note : `${note} ${CORRECTED_NOTE}`;
 }
 
 /** "3 Sep" in the user's locale. */

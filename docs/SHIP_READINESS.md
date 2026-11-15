@@ -21,8 +21,10 @@ Why:
 - **What's still uncertain can't be answered by agents.** Would a real newcomer finish the
   Warm-up, log something of their own, come back on day 1, share a card? Those are the
   gates in GROWTH §7, and they are read from App Store Connect and the app's own counts.
-- **The code is healthy.** `bash scripts/check.sh --release` passes: 2,278 tests,
-  `expo-doctor` 20 of 20, no dependency drift, a 6.9 MB iOS bundle (the first baseline).
+- **The code is healthy.** `bash scripts/check.sh --release` passed on 2026-11-14: 2,278
+  tests, `expo-doctor` 20 of 20, no dependency drift, a 6.9 MB iOS bundle (the first
+  baseline). Since step 182 its last step also fails while the privacy or support page
+  doesn't load, so it will fail there until GitHub Pages is on.
   The policy audit found the app's own behaviour in order on subscriptions, notifications,
   account deletion, Sign in with Apple and AI consent.
 - **What blocks the store is outside the code.** Two dead URLs, no products or prices in
@@ -108,6 +110,33 @@ Each is coded around: the app works either way.
 7. **The keyword "habit".** The policy audit reads it as a 2.3.7 risk (the app isn't a
    habit tracker); the competitor research says habit-app users are who arrives. Low risk
    either way. Recommended: keep "goal", drop "habit".
+
+Added 2026-11-15 (step 182 and its audits):
+
+8. **A helpline directory outside the US.** The Coach's support message now shows US
+   helplines on a US phone and, for anywhere else, "search for a crisis line in your
+   country, or call your local emergency number". Naming findahelpline.com would be more
+   useful, but its terms require written permission for commercial use.
+   **Recommendation:** email ThroughLine (the contact is on findahelpline.com/terms) and
+   name it once they agree. Until then the app names nothing.
+9. **Usage stats at sign-in: notice, or a switch.** The sign-in screen now says what is
+   sent and how to turn it off (notice and opt-out). Guideline 5.1.1(ii) says "secure user
+   consent"; the policy audit reads the notice as enough for App Review and can't settle it
+   for the Irish storefront. **Recommendation:** keep the notice for TestFlight; add a
+   switch on that screen before an EU launch.
+10. **Moving an answer to another category isn't counted.** Inside its 24-hour window it
+    takes a scored miss out of one category's score. The app now says so after a move; it
+    doesn't count moves on Insights, as it counts deletions. Nothing records a move today, so
+    TestFlight can't show whether anyone does it. Moved out one by one, a category's misses
+    leave its score (not the overall rating), which could carry a badge it hasn't earned.
+    **Recommendation:** count moves on this phone, as deletions are, before the card is
+    shared outside TestFlight; the line is enough for the beta.
+11. **Uninstall `expo-auth-session`.** Unused since the Google sign-in code went. A package
+    change, so it needs your yes: `npm uninstall expo-auth-session`, then the check.
+12. **A password reset.** There is none: someone who signs up by email and forgets the
+    password keeps their phone's data but can't sign in again. It needs the mail sender
+    and a redirect configured in Supabase first (decision 6). **Recommendation:** build it
+    after TestFlight stage 1, once mail works; until then the support page is the route.
 
 ## What stands between here and the store
 

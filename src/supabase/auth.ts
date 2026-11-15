@@ -1,11 +1,11 @@
-// Auth flows: Apple, Google, email/password, signout. Each wrapper:
+// Auth flows: Apple, email/password, signout. Each wrapper:
 //   • Calls the Supabase SDK with the right shape for that provider.
 //   • Returns a normalized AuthOutcome so callers (mostly authStore) don't
 //     branch on provider-specific errors.
 //   • Throws never — surfaces failures as { ok: false, error } so the UI
 //     can render them without try/catch dancing.
 //
-// The provider SDKs (Apple, expo-auth-session) are lazy-required at call
+// The provider SDK (Apple) is lazy-required at call
 // time so unit tests for the email/password path don't have to mock the
 // native modules.
 
@@ -86,49 +86,6 @@ export async function signInWithApple(): Promise<AuthOutcome> {
     const msg = errMessage(e);
     if (msg.includes('CANCELED')) return { ok: false, error: 'Sign-in cancelled.' };
     return { ok: false, error: msg };
-  }
-}
-
-/**
- * Google OAuth via expo-auth-session. Opens the system browser, returns
- * when Supabase has the session.
- */
-export async function signInWithGoogle(): Promise<AuthOutcome> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const AuthSession = require('expo-auth-session') as typeof import('expo-auth-session');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser');
-
-    const redirectTo = AuthSession.makeRedirectUri({ scheme: 'fairlysure' });
-
-    const { data, error } = await getSupabaseClient().auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
-    });
-    if (error) return { ok: false, error: authErrorText(error.message) };
-    if (!data?.url) return { ok: false, error: 'Supabase did not return an auth URL.' };
-
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (result.type !== 'success') {
-      return { ok: false, error: 'Sign-in cancelled.' };
-    }
-
-    // result.url contains the redirect with the code; Supabase needs us to
-    // exchange it for a session. PKCE flow stores the verifier in storage,
-    // so exchangeCodeForSession reads everything it needs.
-    const url = new URL(result.url);
-    const code = url.searchParams.get('code');
-    if (!code) return { ok: false, error: 'Google redirect missing auth code.' };
-
-    const { error: exchangeError } = await getSupabaseClient().auth.exchangeCodeForSession(code);
-    if (exchangeError) return { ok: false, error: authErrorText(exchangeError.message) };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: errMessage(e) };
   }
 }
 

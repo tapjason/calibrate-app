@@ -192,6 +192,84 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(screen.queryByTestId('details-reworded')).toBeNull();
   });
 
+  // Record audit, round 2: an answer given the day it was logged isn't scored,
+  // so switching it moves nothing, rating unlocked or not.
+  it('says nothing about ratings after switching a same-day answer', async () => {
+    const at = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await insertPrediction(
+      open({ created_at: at, status: 'resolved_no', resolved_at: at, due_date: at }),
+    );
+    const real = useStatsStore.getState().recomputeForUser;
+    const unlocked = {
+      user_id: USER,
+      calibration_rating: 88,
+      total_predictions: 30,
+      total_resolved: 30,
+      current_streak: 1,
+      rating_is_provisional: false,
+    };
+    useStatsStore.setState({
+      userStat: unlocked,
+      recomputeForUser: async (userId: string) => {
+        await real(userId);
+        useStatsStore.setState({ userStat: unlocked });
+      },
+    });
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    try {
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('answered-same-day')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('answered-switch'));
+      await waitFor(() =>
+        expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It happened/),
+      );
+      await waitFor(() => expect(announce).toHaveBeenCalledWith('Changed to: it happened.'));
+      expect(screen.queryByTestId('answered-corrected')).toBeNull();
+    } finally {
+      announce.mockRestore();
+      useStatsStore.setState({ recomputeForUser: real, userStat: null });
+    }
+  });
+
+  // Record audit, round 2: moving a scored answer to another category takes
+  // it out of one score and into another, and said nothing.
+  it('says each category follows where an answer is filed, after a move', async () => {
+    const at = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await insertPrediction(open({ status: 'resolved_no', resolved_at: at, due_date: at }));
+    const real = useStatsStore.getState().recomputeForUser;
+    const unlocked = {
+      user_id: USER,
+      calibration_rating: 88,
+      total_predictions: 30,
+      total_resolved: 30,
+      current_streak: 1,
+      rating_is_provisional: false,
+    };
+    useStatsStore.setState({
+      userStat: unlocked,
+      recomputeForUser: async (userId: string) => {
+        await real(userId);
+        useStatsStore.setState({ userStat: unlocked });
+      },
+    });
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    const moved = 'Each category’s score and badge now follow where this is filed, so they may have moved.';
+    try {
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('answered-window')).toBeTruthy());
+      expect(screen.queryByTestId('answered-refiled')).toBeNull();
+      fireEvent.press(screen.getByTestId('category-health'));
+      await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
+      await waitFor(() => expect(screen.getByTestId('answered-refiled')).toHaveTextContent(moved));
+      expect(announce).toHaveBeenCalledWith(`Moved to Health. ${moved}`);
+      // A move isn't a change of answer.
+      expect(screen.queryByTestId('answered-corrected')).toBeNull();
+    } finally {
+      announce.mockRestore();
+      useStatsStore.setState({ recomputeForUser: real, userStat: null });
+    }
+  });
+
   // Record audit of step 181: before the rating unlocks nothing on screen can
   // move, so the line isn't shown or spoken.
   it('says nothing about ratings after a switch while the rating is locked', async () => {

@@ -202,7 +202,7 @@ export function hiddenCountLine(n: number): string | null {
 }
 
 /**
- * "2 categories not shown", when the person left some off the card, or null.
+ * "2 categories not shown (still counted)", when the person left some off the card, or null.
  * Hiding one can change the headline, and a blind tester's curated card read
  * as the whole record (playtest 2026-11-03, run 4).
  */

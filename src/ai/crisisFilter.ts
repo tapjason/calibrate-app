@@ -17,6 +17,8 @@
 // phrase-shaped rather than keyword-shaped: "kill" alone would fire on "I'll
 // kill this presentation", which is both useless and alarming.
 
+import { deviceRegion } from '@/constants/locale';
+
 /** Which support resource the surface should point at. */
 export type CrisisTopic = 'self_harm' | 'eating_disorder' | 'abuse' | 'distress';
 
@@ -78,17 +80,30 @@ export function scanForCrisis(
 export interface SupportResource {
   title: string;
   body: string;
-  /** What to show as the contact line. Region-specific; US defaults for now. */
+  /** What to show as the contact line: by the phone's region (below). */
   contact: string;
 }
 
+/**
+ * Outside the US. The lines below are US numbers, and the app is sold in
+ * other English-language storefronts, where a US number can't be called
+ * (policy audit, 2026-11-14; §5.5 asks for region-appropriate resources).
+ * No number per country: a wrong one costs more than a missing one. And no
+ * named directory: Find A Helpline's terms require written permission for
+ * commercial use, which a paid feature is (policy audit of step 182,
+ * 2026-11-15; guideline 5.2.2). Naming it waits on that permission.
+ */
+export const INTERNATIONAL_CONTACT =
+  'Outside the US: search for a crisis line in your country, or call your local emergency number.';
+
 // Deliberately non-clinical, and makes no categorical promise about
-// confidentiality or outcome (§5.5). These are US resources — localizing them
-// is an open item, tracked in COACH_AGENT.md §10.
+// confidentiality, hours or outcome (§5.5): the words sit above services the
+// app can't vouch for. These are US resources; a phone set to another region
+// gets the line above.
 const RESOURCES: Record<CrisisTopic, SupportResource> = {
   self_harm: {
     title: 'Support is available',
-    body: 'If you are going through something heavy, talking to someone can help. Trained people are available any time.',
+    body: 'If you are going through something heavy, talking to someone can help. Trained people are there to listen.',
     contact: '988 Suicide & Crisis Lifeline — call or text 988 (US)',
   },
   eating_disorder: {
@@ -98,7 +113,7 @@ const RESOURCES: Record<CrisisTopic, SupportResource> = {
   },
   abuse: {
     title: 'Support is available',
-    body: 'If someone is hurting you or you feel unsafe, you can talk to someone confidentially.',
+    body: 'If someone is hurting you or you feel unsafe, there are people you can talk to.',
     contact: 'National Domestic Violence Hotline — 1-800-799-7233 (US)',
   },
   distress: {
@@ -108,7 +123,23 @@ const RESOURCES: Record<CrisisTopic, SupportResource> = {
   },
 };
 
-/** The support content for a scan result, or null when the scan was clean. */
-export function supportResource(scan: CrisisScan): SupportResource | null {
-  return scan.topic ? RESOURCES[scan.topic] : null;
+/**
+ * The support content for a scan result, or null when the scan was clean.
+ * The contact follows the phone's region: on a US phone, or when the region
+ * can't be read, the US line and then the line for elsewhere (someone with a
+ * US phone may be abroad); on any other phone, the line for elsewhere alone.
+ */
+export function supportResource(
+  scan: CrisisScan,
+  region: string | null = deviceRegion(),
+): SupportResource | null {
+  if (!scan.topic) return null;
+  const us = RESOURCES[scan.topic];
+  return {
+    ...us,
+    contact:
+      region === 'US' || region === null
+        ? `${us.contact}\n${INTERNATIONAL_CONTACT}`
+        : INTERNATIONAL_CONTACT,
+  };
 }

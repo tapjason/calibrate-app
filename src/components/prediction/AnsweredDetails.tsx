@@ -61,6 +61,15 @@ function closesAt(until: Date, now: Date): string {
 export const CORRECTED_NOTE =
   'Your rating and badges now follow this answer, so they may have moved.';
 
+/**
+ * After moving an answer to another category inside its window: each
+ * category's score and badge follow where it's filed. The one way left to
+ * take a scored miss out of a category's score with no word (record audit,
+ * round 2); it isn't counted on Insights, which stays the owner's call.
+ */
+export const REFILED_NOTE =
+  'Each category’s score and badge now follow where this is filed, so they may have moved.';
+
 /** Whether switching this answer can move a rating or a badge on screen. */
 export function correctionMoves(prediction: Prediction): boolean {
   if (answeredSameDay(prediction)) return false;
@@ -87,6 +96,7 @@ export function AnsweredDetails({
   const [busy, setBusy] = useState(false);
   // The answer was switched here: say what follows it (step 181).
   const [switched, setSwitched] = useState(false);
+  const [refiled, setRefiled] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   // A note added or changed after the answer (D62): it changes no number,
   // and leaving Resolve lost one (blind playtest 2026-11-13c, finding 14).
@@ -154,6 +164,11 @@ export function AnsweredDetails({
       await usePredictionStore.getState().refile(prediction.id, category);
       haptics.commit();
       await reload();
+      setRefiled(true);
+      const moved = `Moved to ${categoryTitle(category)}.`;
+      AccessibilityInfo.announceForAccessibility(
+        correctionMoves(prediction) ? `${moved} ${REFILED_NOTE}` : moved,
+      );
     }, "Couldn't move that. Try again.");
   };
 
@@ -210,6 +225,11 @@ export function AnsweredDetails({
       {switched && correctionMoves(prediction) && (
         <Text style={styles.body} testID="answered-corrected">
           {CORRECTED_NOTE}
+        </Text>
+      )}
+      {refiled && correctionMoves(prediction) && (
+        <Text style={styles.body} testID="answered-refiled">
+          {REFILED_NOTE}
         </Text>
       )}
       {answeredSameDay(prediction) && (

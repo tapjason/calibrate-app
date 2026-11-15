@@ -1,4 +1,6 @@
-import { scanForCrisis, supportResource } from './crisisFilter';
+import { __setDeviceLocaleForTests } from '@/constants/locale';
+
+import { INTERNATIONAL_CONTACT, scanForCrisis, supportResource } from './crisisFilter';
 
 describe('scanForCrisis', () => {
   it('passes ordinary prediction text through', () => {
@@ -70,6 +72,10 @@ describe('scanForCrisis', () => {
 });
 
 describe('supportResource', () => {
+  // A US phone, whatever the machine running the tests is set to.
+  beforeEach(() => __setDeviceLocaleForTests('en-US'));
+  afterEach(() => __setDeviceLocaleForTests(null));
+
   it('returns nothing for a clean scan', () => {
     expect(supportResource({ safe: true, topic: null })).toBeNull();
   });
@@ -90,6 +96,59 @@ describe('supportResource', () => {
       const r = supportResource({ safe: false, topic })!;
       const text = `${r.title} ${r.body}`;
       expect(text).not.toMatch(/diagnos|disorder you|treatment|guarantee|will fix/i);
+    }
+  });
+});
+
+// Policy audits, 2026-11-14 and 11-15: the lines were US numbers on every
+// phone; and no third-party site is named without its permission.
+describe('supportResource by region', () => {
+  afterEach(() => __setDeviceLocaleForTests(null));
+  const elsewhere =
+    'Outside the US: search for a crisis line in your country, or call your local emergency number.';
+
+  it('says where to turn outside the US, naming no website', () => {
+    expect(INTERNATIONAL_CONTACT).toBe(elsewhere);
+    expect(INTERNATIONAL_CONTACT).not.toMatch(/\.com|\.org|https?:|www\./i);
+  });
+
+  it('gives the US line and the line for elsewhere on a US phone', () => {
+    const r = supportResource({ safe: false, topic: 'self_harm' }, 'US')!;
+    expect(r.contact).toBe(`988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`);
+  });
+
+  it.each(['GB', 'CA', 'AU', 'IN', 'BR'])('gives no US number in %s', (region) => {
+    for (const topic of ['self_harm', 'eating_disorder', 'abuse', 'distress'] as const) {
+      const r = supportResource({ safe: false, topic }, region)!;
+      expect(r.contact).toBe(elsewhere);
+      expect(r.contact).not.toMatch(/\(US\)|988|1-8/);
+      // The words above the contact are the same everywhere.
+      expect(r.body).toBe(supportResource({ safe: false, topic }, 'US')!.body);
+    }
+  });
+
+  it('gives both when the region cannot be read', () => {
+    const r = supportResource({ safe: false, topic: 'abuse' }, null)!;
+    expect(r.contact).toBe(`National Domestic Violence Hotline — 1-800-799-7233 (US)\n${elsewhere}`);
+  });
+
+  it('reads the region from the phone when none is passed', () => {
+    __setDeviceLocaleForTests('en-GB');
+    expect(supportResource({ safe: false, topic: 'distress' })!.contact).toBe(elsewhere);
+    __setDeviceLocaleForTests('es-US');
+    expect(supportResource({ safe: false, topic: 'distress' })!.contact).toMatch(/988[^]*Outside the US/);
+    __setDeviceLocaleForTests('ja');
+    expect(supportResource({ safe: false, topic: 'distress' })!.contact).toMatch(/988[^]*Outside the US/);
+  });
+
+  // COACH_AGENT.md §5.5: no categorical promise about confidentiality, hours
+  // or outcome, on any topic.
+  it('promises nothing about confidentiality or hours', () => {
+    for (const topic of ['self_harm', 'eating_disorder', 'abuse', 'distress'] as const) {
+      for (const region of ['US', 'GB', null]) {
+        const r = supportResource({ safe: false, topic }, region)!;
+        expect(`${r.title} ${r.body}`).not.toMatch(/confidential|any time|24\/7|always|guarantee/i);
+      }
     }
   });
 });

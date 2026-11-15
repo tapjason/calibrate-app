@@ -41,8 +41,8 @@ stores call services, and nothing in the core loop waits on any of it.
 - **Email:** one form with a Sign in / Create account toggle, email and
   password fields (the existing ≥8-character rule), and inline error text taken
   from `AuthOutcome.error`.
-- **Google:** hidden unless `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` is set. It isn't
-  configured today, and a button that errors is worse than no button.
+- **Google:** not offered. The unreachable code path was removed in step 182
+  (2026-11-15); Apple and email are the two ways in.
 - On `{ ok: true }`: `router.back()`. `authStore`'s `onAuthStateChange` already
   migrates guest data, reloads the stores and starts a sync, so the screen does
   nothing else.

@@ -727,6 +727,7 @@ describe('ResolvePrompt milestones', () => {
     const userId = useAuthStore.getState().userId!;
     await useStatsStore.getState().recomputeForUser(userId);
 
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => {
       expect(screen.getByTestId('resolve-yes')).toBeTruthy();
@@ -736,6 +737,18 @@ describe('ResolvePrompt milestones', () => {
     await waitFor(() => {
       expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy();
     });
+    // The unlock is spoken with its number, a moment after "Recorded" (the
+    // number is drawn on the card, not written in its title).
+    await waitFor(() =>
+      expect(announce).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^Recorded: it happened\. Your calibration score is unlocked: \d+ out of 100\./,
+        ),
+      ),
+    );
+    expect(screen.getByTestId('milestone-rating_unlocked').props.accessibilityLabel).toMatch(
+      /^Your calibration score is unlocked: \d+ out of 100\. 20 scored answers\./,
+    );
     // Answered while provisional, so it keeps what the number means (blind
     // playtest 2026-11-12e, run 5: a miss here had neither D50 line).
     expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(
@@ -747,13 +760,55 @@ describe('ResolvePrompt milestones', () => {
     expect(useRatingStore.getState().moment).toBe(true);
 
     // A correction keeps the line: it says nothing about the outcome (code
-    // review 2026-11-12).
+    // review 2026-11-12). And it says the rating follows the answer: the
+    // card, with the rating on it, has just gone (D63; both round-2 reviews).
+    await waitFor(() => expect(screen.getByTestId('resolve-change')).toBeEnabled());
     fireEvent.press(screen.getByTestId('resolve-change'));
+    const corrected = 'Your rating and badges now follow this answer, so they may have moved.';
     await waitFor(() => {
       expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(
-        meaningLine(samplePending().confidence)!,
+        `${meaningLine(samplePending().confidence)!} ${corrected}`,
       );
     });
+    expect(screen.queryByTestId('milestone-rating_unlocked')).toBeNull();
+    expect(announce).toHaveBeenCalledWith(`Changed to: it didn’t happen. ${corrected}`);
+
+    // Switched back, the line is there once, not twice.
+    await waitFor(() => expect(screen.getByTestId('resolve-change')).toBeEnabled());
+    fireEvent.press(screen.getByTestId('resolve-change'));
+    await waitFor(() =>
+      expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent('Recorded: it happened'),
+    );
+    expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(
+      `${meaningLine(samplePending().confidence)!} ${corrected}`,
+    );
+    announce.mockRestore();
+  });
+
+  // Code review, round 2: the badge news is spoken 600 ms after the answer.
+  // Leaving the card first (Next in a run, the sheet closing) must drop it.
+  it('does not speak badge news after the card has gone', async () => {
+    for (let i = 0; i < 19; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 2 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await insertPrediction(samplePending());
+    await useStatsStore.getState().recomputeForUser(useAuthStore.getState().userId!);
+
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    const view = render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy());
+    view.unmount();
+    await new Promise((r) => setTimeout(r, 800));
+    expect(announce).not.toHaveBeenCalledWith(expect.stringContaining('is unlocked'));
+    announce.mockRestore();
   });
 
   it('shows no celebration for an ordinary answer', async () => {

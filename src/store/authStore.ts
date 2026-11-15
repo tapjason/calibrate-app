@@ -11,8 +11,8 @@
 //      SQLite over to the new user_id and trigger a stats recompute.
 //      Without this, users would lose their pre-signin data.
 //
-// Layer rule: L4 (state). May import from L2 (db) and L5 (services). The
-// inverse — L5 importing L4 — is what stores must avoid.
+// Layer rule: L4 (state). May import from L2 (db) and L5 (services): the
+// Supabase client, and one function of the reminder scheduler after a wipe.
 //
 // Tests inject a fake Supabase client via setSupabaseClientForTests, then
 // call initialize() and exercise the onAuthStateChange callback directly.
@@ -29,6 +29,7 @@ import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
 } from '@/db/migrateGuestData';
+import { dismissDeliveredNotifications } from '@/notifications/scheduler';
 import { deleteAccountOnServer } from '@/supabase/account';
 import * as auth from '@/supabase/auth';
 import type { AuthOutcome, SignUpOutcome } from '@/supabase/auth';
@@ -58,7 +59,7 @@ interface AuthState {
   email: string | null;
   status: AuthStatus;
   /**
-   * How the signed-in account signs in ('email', 'apple', 'google'), from
+   * How the signed-in account signs in ('email' or 'apple'), from
    * the session's app_metadata. Null for a guest. Deletion needs it: an Apple
    * account's Sign in with Apple grant has to be revoked too.
    */
@@ -325,6 +326,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // any can be left off now, so a kept choice could empty a new card
         // (code review, 2026-11-14). First, so a later failure can't keep it.
         await useSettingsStore.getState().setCardHiddenCategories([]);
+        // What's already on the lock screen was about the account that's gone.
+        await dismissDeliveredNotifications();
         await wipeLocalUserData(userId);
         // The Warmup's rows went with the wipe; its store forgets them too.
         // Practice belongs to the device like the Warmup, and the privacy
@@ -363,6 +366,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         useResolveRunStore.getState().clear();
         // As after account deletion: the choice was about the erased record.
         await useSettingsStore.getState().setCardHiddenCategories([]);
+        // And what's already on the lock screen was about it too.
+        await dismissDeliveredNotifications();
         await reloadForUser(LOCAL_GUEST_USER_ID);
         return { ok: true };
       } catch (e) {
