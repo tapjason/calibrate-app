@@ -9,10 +9,12 @@ import { Icon } from '@/components/ui/Icon';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
   APP_NAME,
+  APP_VERSION,
   GUEST_ANALYTICS,
   PLUS_NAME,
   PRIVACY_POLICY_URL,
   REFINE_ENABLED,
+  SUPPORT_URL,
   TERMS_OF_USE_URL,
 } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
@@ -419,7 +421,8 @@ function AboutGroup({ onOpenScoring }: { onOpenScoring?: () => void }) {
     });
   };
   return (
-    <Group>
+    // The version under the links: what a bug report quotes.
+    <Group footer={APP_VERSION ? `${APP_NAME} ${APP_VERSION}` : undefined}>
       {onOpenScoring && (
         <NavRow label="How scoring works" onPress={onOpenScoring} testID="settings-scoring" />
       )}
@@ -439,6 +442,12 @@ function AboutGroup({ onOpenScoring }: { onOpenScoring?: () => void }) {
         label="Terms of use"
         onPress={() => open(TERMS_OF_USE_URL)}
         testID="settings-terms-link"
+      />
+      {/* A way to reach the developer from inside the app (guideline 1.5). */}
+      <NavRow
+        label="Help and support"
+        onPress={() => open(SUPPORT_URL)}
+        testID="settings-support-link"
       />
     </Group>
   );

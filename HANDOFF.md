@@ -4,6 +4,13 @@
 
 ## What this PR did
 
+**TestFlight prep (2026-11-15).** Branch `builder/testflight-prep`, from `master` at `ce3f2d0` (steps 178 to 181 merged by fast-forward and pushed that day, at the owner's word).
+- **`docs/TESTFLIGHT_PLAN.md`:** three stages (the owner alone, an inner circle of 5 to 8, an open beta of 20 to 50 for 14 days), what to do before the first build and in what order, how it's measured, exit criteria, ready-to-use beta text, invitation and survey questions, a timeline of about a month. Apple's TestFlight rules were checked the same day (`platform-api-checker`); what Apple doesn't document is listed at the end of the plan.
+- **In the app (JS only):** You has "Help and support" (the support page, `SUPPORT_URL`) and shows the version under its links (`APP_VERSION`, from the app config). Not reviewed by `code-reviewer`; two rows and a footnote, with a test.
+- **Still 404 after the push:** `/privacy/` and `/support/`. GitHub Pages is the owner's switch.
+- **Waiting on the owner:** the decisions in `docs/SHIP_READINESS.md` (Face ID lock, under-13, guest counts, prices, EU, email sign-up, the keyword "habit").
+
+
 **Step 181 (2026-11-14), the release candidate** (BUILT_LOG row 181; D63). Branch `builder/step-181-release-candidate`, from `be37e54`. JS only: a reload. Owner: "Evaluate what the next steps should be… you are free to make an educated judgement call."
 - **The call: AI playtests stop here; the next step is TestFlight.** `docs/SHIP_READINESS.md` has the reasoning, the market read, the open decisions and the ordered path to the store.
 - **Built from round 23:** Share leads with the Warm-up card until the rating unlocks and the friend fold explains it; Today's pace line only within three weeks; the chart's zone words wait for 10; "(still counted)" on not-shown lines; a correction says the rating and badges follow it; a badge gained or lost is spoken; Log names an open twin; no rewording notes on the day logged; dates, times and counts in English on a phone in another language.
@@ -350,5 +357,5 @@ comes back only if a new round finds it again. Left with the owner:
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 183 suites, 2,278 tests. The flake in `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone, past the 1 s default wait under full-run load; it failed twice running during round 23 and slipped into that round's commit, `5aa553c`) now waits up to 5 s per step, 20 s in all. Commit only after `check.sh` itself exits 0: piping it through `tail` hid that failure. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 183 suites, 2,279 tests. The flake in `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone, past the 1 s default wait under full-run load; it failed twice running during round 23 and slipped into that round's commit, `5aa553c`) now waits up to 5 s per step, 20 s in all. Commit only after `check.sh` itself exits 0: piping it through `tail` hid that failure. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

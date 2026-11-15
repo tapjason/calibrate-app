@@ -1,3 +1,5 @@
+import Constants from 'expo-constants';
+
 /**
  * The name people see (chosen for now 2026-11-03, `docs/APP_STORE_LISTING.md` §0).
  * Internal ids (the database, storage keys, notification ids, product ids,
@@ -8,6 +10,12 @@
 export const APP_NAME = 'Fairly Sure';
 /** "Fairly Sure Plus": the paid tier's name. */
 export const PLUS_NAME = `${APP_NAME} Plus`;
+
+/**
+ * The app's version ("1.0.0"), for the line under You's links: what a tester
+ * quotes in a bug report. Null where the config isn't readable.
+ */
+export const APP_VERSION: string | null = Constants.expoConfig?.version ?? null;
 
 /**
  * Whether the ✨ Refine button is part of the product.
@@ -51,6 +59,14 @@ export const TERMS_OF_USE_URL =
  * until that switch is flipped (`docs/HUMAN_VERIFICATION.md`).
  */
 export const PRIVACY_POLICY_URL = 'https://tapjason.github.io/calibrate-app/privacy/';
+
+/**
+ * Public URL of `docs/SUPPORT.md`, the App Store listing's Support URL, on
+ * the same Pages site. You links to it (TestFlight prep, 2026-11-15): a way
+ * to reach the developer from inside the app (guideline 1.5), and where a
+ * tester's bug report goes when it isn't TestFlight's own feedback.
+ */
+export const SUPPORT_URL = 'https://tapjason.github.io/calibrate-app/support/';
 
 /**
  * The app's numeric App Store id, from App Store Connect → App Information →

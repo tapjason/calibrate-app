@@ -11,6 +11,8 @@ import { SettingsView } from './SettingsView';
 jest.mock('@/constants/app', () => ({
   ...jest.requireActual('@/constants/app'),
   PRIVACY_POLICY_URL: 'https://example.github.io/calibrate/PRIVACY_POLICY',
+  // Jest has no app config to read the version from.
+  APP_VERSION: '1.0.0',
 }));
 
 jest.mock('expo-web-browser', () => ({
@@ -38,5 +40,18 @@ describe('SettingsView — legal links (Guideline 5.1.1(i))', () => {
     expect(openBrowserAsync).toHaveBeenLastCalledWith(
       'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
     );
+  });
+
+  // TestFlight prep, 2026-11-15: a way to reach the developer, and the
+  // version a bug report quotes.
+  it('opens the support page and shows the version', () => {
+    const { openBrowserAsync } = jest.requireMock('expo-web-browser');
+    render(<SettingsView />);
+
+    fireEvent.press(screen.getByTestId('settings-support-link'));
+    expect(openBrowserAsync).toHaveBeenLastCalledWith(
+      'https://tapjason.github.io/calibrate-app/support/',
+    );
+    expect(screen.getByText(/^Fairly Sure \d+\.\d+\.\d+$/)).toBeTruthy();
   });
 });
