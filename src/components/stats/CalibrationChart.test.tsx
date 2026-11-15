@@ -422,6 +422,33 @@ describe('CalibrationChart chance capsules', () => {
     expect(at('point-60')).toBeGreaterThan(at('region-label-over'));
   });
 
+  // Step 181 (blind playtest 2026-11-14, finding 11): "Overconfident" over
+  // one late bus read as a verdict. The words wait for a range with 10, as
+  // the dots' colours do (D58); the empty chart keeps them, as its frame.
+  it('names the zones only once a range has 10 answers, or on the empty chart', () => {
+    const thin = render(
+      <CalibrationChart buckets={[bucket({ low: 80, high: 100, total_resolved: 2 })]} />,
+    );
+    layout(thin);
+    expect(thin.queryByTestId('region-label-over')).toBeNull();
+    expect(thin.queryByTestId('region-label-under')).toBeNull();
+    thin.unmount();
+
+    const solid = render(
+      <CalibrationChart
+        buckets={[bucket({ low: 60, total_resolved: 3 }), bucket({ low: 80, high: 100 })]}
+      />,
+    );
+    layout(solid);
+    expect(solid.getByTestId('region-label-over')).toBeTruthy();
+    expect(solid.getByTestId('region-label-under')).toBeTruthy();
+    solid.unmount();
+
+    const empty = render(<CalibrationChart buckets={[]} />);
+    layout(empty);
+    expect(empty.getByTestId('region-label-over')).toBeTruthy();
+  });
+
   // Roadmap step 68: the key names only what's drawn.
   it('are explained in the key only when there are some', () => {
     const empty = render(<CalibrationChart buckets={[]} />);

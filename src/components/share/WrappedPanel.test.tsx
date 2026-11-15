@@ -313,13 +313,13 @@ describe('WrappedPanel', () => {
 
     expect(screen.getByTestId("wrapped-category-work")).toBeTruthy();
     expect(screen.queryByTestId("wrapped-category-finance")).toBeNull();
-    expect(screen.getByTestId("wrapped-hidden")).toHaveTextContent("1 category not shown");
+    expect(screen.getByTestId("wrapped-hidden")).toHaveTextContent("1 category not shown (still counted)");
     expect(screen.getByTestId("wrapped-next-badge")).toHaveTextContent(/^To reach Tracker or higher in work/);
     // A screen reader hears the same card (playtest 2026-11-04b, run 2).
     const spoken = () => screen.getByTestId("wrapped-card").props.accessibilityLabel as string;
     expect(spoken()).toMatch(/Tracker or higher in work/);
     expect(spoken()).toContain("By category: Work, 2 scored.");
-    expect(spoken()).toContain("1 category not shown.");
+    expect(spoken()).toContain("1 category not shown (still counted).");
     expect(spoken()).not.toMatch(/Finance/);
 
     fireEvent.press(screen.getByTestId("wrapped-titles-toggle"));

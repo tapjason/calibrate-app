@@ -190,10 +190,15 @@ export function cardHiddenCategories(
   return new Set([...chosen, ...onFile.map((c) => c.category).filter(alsoOff)]);
 }
 
-/** "2 categories not shown", or null for none. */
+/**
+ * "2 categories not shown (still counted)", or null for none. The rating and
+ * a recap's totals always cover the whole record, so a card can't be curated
+ * into a better number; it says so since a recap's rows added up to 78 under
+ * "156 scored" (blind playtest 2026-11-14, finding 3).
+ */
 export function hiddenCountLine(n: number): string | null {
   if (n <= 0) return null;
-  return `${n} ${n === 1 ? 'category' : 'categories'} not shown`;
+  return `${n} ${n === 1 ? 'category' : 'categories'} not shown (still counted)`;
 }
 
 /**

@@ -38,6 +38,7 @@ import { useLogDraftStore, type LogDraft } from '@/store/logDraftStore';
 import {
   canRenumber,
   dueDateSavedAt,
+  openTwinFor,
   pastOutcomesFor,
   usePredictionStore,
 } from '@/store/predictionStore';
@@ -239,6 +240,14 @@ export function LogPredictionForm({
   const past = useMemo(
     () => pastOutcomesLine(pastOutcomesFor(resolved, title)),
     [resolved, title],
+  );
+
+  // The same words already open for the day this would save on (step 181).
+  // Not while replacing one ("Use another number").
+  const pendingList = usePredictionStore((s) => s.pending);
+  const twin = useMemo(
+    () => openTwinFor(title, dueDateSavedAt(dueDate), pendingList, again?.replaces),
+    [title, dueDate, pendingList, again?.replaces],
   );
 
   useEffect(() => {
@@ -510,6 +519,11 @@ export function LogPredictionForm({
           {past !== null && (
             <Text style={styles.record} testID="past-outcomes">
               {past}
+            </Text>
+          )}
+          {twin !== null && !submitting && (
+            <Text style={styles.record} testID="log-open-twin" accessibilityLiveRegion="polite">
+              You already have this one open, due {dueWords(twin.due_date, new Date()).text}.
             </Text>
           )}
         </TextField>

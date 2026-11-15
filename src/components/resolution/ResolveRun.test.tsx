@@ -171,6 +171,9 @@ describe('ResolveRun (roadmap step 18)', () => {
       'Last one recorded: can’t tell.',
     );
     // Gone once the next answer lands (D62): two "recorded" lines showed.
+    // Once the next card's buttons take a press: one pressed while the card
+    // was still loading was ignored, under the full suite's load (2026-11-14).
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
     fireEvent.press(screen.getByTestId('resolve-yes'));
     await waitFor(() => expect(screen.queryByTestId('resolve-run-skip-notice')).toBeNull());
   });

@@ -1,3 +1,5 @@
+import { dateLocale } from '@/constants/locale';
+
 /**
  * A date in the person's locale, with the year added whenever it isn't this
  * year's. Without it a prediction due in 9999 read "Fri, Dec 31" everywhere,
@@ -11,5 +13,5 @@ export function localDate(
 ): string {
   const withYear =
     date.getFullYear() !== now.getFullYear() ? { ...options, year: 'numeric' as const } : options;
-  return date.toLocaleDateString(undefined, withYear);
+  return date.toLocaleDateString(dateLocale(), withYear);
 }

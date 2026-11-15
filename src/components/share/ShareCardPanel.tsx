@@ -33,6 +33,16 @@ import { warmupCardCopy } from './warmupCardCopy';
 
 
 /**
+ * A friend's Warm-up card, the one that travels first: every week-one tester
+ * shared it, and the fold explained only the score card (blind playtest
+ * 2026-11-14, runs 1, 2, 7, 8). It says who was nearer their word, which the
+ * count of right answers doesn't.
+ */
+export const FRIEND_WARMUP =
+  `A friend's warm-up card sets what they got beside what they said: "8 of 10 right. I was 90% sure." means they expected about 9 of 10 and got 8. ` +
+  `The closer the two, the better their numbers fit, whoever got more right.`;
+
+/**
  * Under the Warm-up card, for someone who came from a friend's card: what
  * its squares mean, before they have any of their own. A friend's message
  * was explained only at the bottom of How scoring works (blind playtest
@@ -76,7 +86,11 @@ export function ShareCardPanel({
   // The Warm-up card stays one tap away once the category card takes over:
   // it was the round's most shared thing, and gone after the first answer
   // (blind playtest 2026-11-13c, finding 3).
-  const [showWarmup, setShowWarmup] = useState(false);
+  // Until the rating unlocks the Warm-up card leads (step 181): the category
+  // card then reads "Calibrating" with nothing on it, and all four week-one
+  // testers chose the Warm-up card to share (blind playtest 2026-11-14,
+  // finding 4). Null until the person switches.
+  const [chosenCard, setChosenCard] = useState<'category' | 'warmup' | null>(null);
   // Folded (D62): noise for anyone who didn't come from a friend's card
   // (blind playtest 2026-11-13d, run 7).
   const [friendOpen, setFriendOpen] = useState(false);
@@ -122,7 +136,10 @@ export function ShareCardPanel({
   // Before any real prediction resolves, the Warmup verdict is the card
   // (DESIGN_SYSTEM rule 0.10: Share is never empty).
   const warmupCopy = warmupCardCopy(warmupResult, card !== null);
+  const showWarmup = chosenCard ? chosenCard === 'warmup' : card !== null && card.rating === null;
   const warmup = card && !showWarmup ? null : warmupCopy;
+  // A friend's card explained while the person has no rated card of their own.
+  const friendFold = warmup !== null && (card === null || card.rating === null);
   // Which card the preview and Share my card are about.
   const sharingCard = warmup ? null : card;
 
@@ -221,32 +238,32 @@ export function ShareCardPanel({
           disabled={sharing}
           onPress={() => {
             setMessage(null);
-            setShowWarmup((on) => !on);
+            setChosenCard(warmup ? 'category' : 'warmup');
           }}
         />
       )}
 
-      {/* Only before a category card: once there's one, the squares are
+      {/* Only while there's no rated card: once there's one, the squares are
           the person's own (or SQUARES_LATER says when they come). */}
-      {warmup && !card && !friendOpen && (
+      {friendFold && !friendOpen && (
         <TextButton
           label="Got a friend's card?"
           onPress={() => {
             setFriendOpen(true);
             // The button goes as the line comes; VoiceOver hears the line
             // (iOS ignores a live region; code review of step 178).
-            AccessibilityInfo.announceForAccessibility(FRIEND_SQUARES);
+            AccessibilityInfo.announceForAccessibility(`${FRIEND_WARMUP} ${FRIEND_SQUARES}`);
           }}
           testID="share-friend-open"
         />
       )}
-      {warmup && !card && friendOpen && (
+      {friendFold && friendOpen && (
         <Text
           style={styles.message}
           testID="share-friend-squares"
           accessibilityLiveRegion="polite"
         >
-          {FRIEND_SQUARES}
+          {FRIEND_WARMUP} {FRIEND_SQUARES}
         </Text>
       )}
 
@@ -267,7 +284,7 @@ export function ShareCardPanel({
       {sharingCard && (
         <View style={styles.controls}>
           <Text style={styles.controlLabel}>Shape</Text>
-          <View style={styles.segmented} accessibilityRole="radiogroup">
+          <View style={styles.segmented} accessibilityRole="radiogroup" accessibilityLabel="Shape">
             {(['post', 'story'] as const).map((f) => (
               <Pressable
                 key={f}

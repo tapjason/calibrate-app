@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 import { AppState, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import { dateLocale } from '@/constants/locale';
 import { endSentence } from '@/components/ui/sentence';
 import { Icon } from '@/components/ui/Icon';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -298,7 +299,7 @@ export function reminderWordsLine(on: boolean): string {
   if (on) {
     return "Each shows the prediction's words and your number, with Happened and Didn't to answer from it. On a locked iPhone the words stay hidden until it recognises you, unless Show Previews is set to Always (Settings → Notifications → Show Previews).";
   }
-  const example = new Date(2026, 10, 6, 12).toLocaleDateString(undefined, {
+  const example = new Date(2026, 10, 6, 12).toLocaleDateString(dateLocale(), {
     month: 'short',
     day: 'numeric',
   });
@@ -627,7 +628,10 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
  */
 function describeAccount(email: string | null): string {
   if (!email) return 'Signed in.';
-  if (email.endsWith('@privaterelay.appleid.com')) return 'Signed in with Apple.';
+  // New relay addresses are on private.icloud.com (Apple, 2026-08-24).
+  if (/@(privaterelay\.appleid\.com|private\.icloud\.com)$/i.test(email)) {
+    return 'Signed in with Apple.';
+  }
   return `Signed in as ${email}.`;
 }
 

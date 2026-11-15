@@ -901,6 +901,23 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       shown". A built-in given only an emoji stays on the card, and on Insights and Today it
       keeps its name with its usual symbol, not the emoji. Untick every category on Share: the
       card keeps your rating and "N categories not shown"; tick one back.
+- [ ] **Dates in English (step 181):** set the iPhone's language to Dutch or Spanish (Settings →
+      General → Language & Region) and open the app: every date reads in English in the
+      order that language uses ("Sun 15 Nov"), and times on the phone's own clock (24-hour
+      if the phone shows 24-hour), on Today, Log's Save button, Resolve, History, You's
+      reminder times and a due-day reminder. Back in English (US): "Sun, Nov 15" and
+      "7:00 PM", as before. Whether the iPhone already gave an English-only app English
+      dates is unknown (the finding came from the web build): either way the result should
+      be English, so note any screen where it isn't.
+- [ ] **A badge gained or lost is spoken (step 181):** with VoiceOver on, answer the prediction
+      that unlocks a badge (the `threshold` profile): after "Recorded: it happened" it says
+      the badge. On the `return` profile a badge can fall on the next answer: it says "Back to
+      Tracker in health…".
+- [ ] **Share in the first week (step 181):** on `first-week`, Share opens on the Warm-up card
+      with "Show my category card" under it; "Got a friend's card?" explains a friend's
+      warm-up card first. On `long-time`, Share opens on the category card as before.
+- [ ] **The chart with one or two answers (step 181):** on `first-week`, Insights' chart shows
+      no "Overconfident" or "Underconfident" words; on `long-time` it does.
 - [ ] **Another number keeps your edit:** Edit a prediction made today, change its words, tap
       "Use another number": Log opens with the new words, no "Discard changes?" sheet.
 - [ ] **The unlock names its badge:** at 19 scored answers all in one category, answer the 20th:

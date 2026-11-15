@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
+import { localTime } from '@/constants/locale';
 import { localDate } from '@/components/ui/dates';
 import { textLanguage } from '@/components/ui/textLanguage';
 import { CategoryChips } from '@/components/prediction/CategoryChips';
@@ -15,13 +16,13 @@ import {
   answeredBefore,
   correctionWindow,
   deleteIsCounted,
-  madeAt,
+  rewordedLater,
   openRepeatOf,
   usePredictionStore,
 } from '@/store/predictionStore';
 import type { Category, Prediction } from '@/types';
 import { categoryTitle, useCategoryStore } from '@/store/categoryStore';
-import { answeredSameDay } from '@/store/statsStore';
+import { answeredSameDay, useStatsStore } from '@/store/statsStore';
 
 interface AnsweredDetailsProps {
   prediction: Prediction;
@@ -45,9 +46,26 @@ const shortDate = (iso: string) =>
 
 /** "6:00 PM today" or "6:00 PM tomorrow": when the window closes. */
 function closesAt(until: Date, now: Date): string {
-  const time = until.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const time = localTime(until, { hour: 'numeric', minute: '2-digit' });
   const day = until.toDateString() === now.toDateString() ? 'today' : 'tomorrow';
   return `${time}\u00A0${day}`;
+}
+
+/**
+ * After a correction: the rating and any badge now follow the answer as it
+ * stands. No figures, so the other answer's effect isn't a one-tap comparison
+ * (D50), but no longer silence: a badge earned on a mis-tap went back to
+ * Tracker, and 88 to 86, with no word (blind playtest 2026-11-14, run 5; D60's
+ * open item).
+ */
+export const CORRECTED_NOTE =
+  'Your rating and badges now follow this answer, so they may have moved.';
+
+/** Whether switching this answer can move a rating or a badge on screen. */
+export function correctionMoves(prediction: Prediction): boolean {
+  if (answeredSameDay(prediction)) return false;
+  const userStat = useStatsStore.getState().userStat;
+  return userStat !== null && !userStat.rating_is_provisional;
 }
 
 /**
@@ -67,6 +85,8 @@ export function AnsweredDetails({
 }: AnsweredDetailsProps) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const [busy, setBusy] = useState(false);
+  // The answer was switched here: say what follows it (step 181).
+  const [switched, setSwitched] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   // A note added or changed after the answer (D62): it changes no number,
   // and leaving Resolve lost one (blind playtest 2026-11-13c, finding 14).
@@ -118,6 +138,14 @@ export function AnsweredDetails({
         .correct(prediction.id, happened ? 'resolved_no' : 'resolved_yes');
       haptics.commit();
       await reload();
+      setSwitched(true);
+      // The line only where something can move: a scored answer, with the
+      // rating unlocked (no badge moves under 20 either). Seen and spoken
+      // alike (record audit of step 181).
+      const changed = `Changed to: ${happened ? 'it didn’t happen' : 'it happened'}.`;
+      AccessibilityInfo.announceForAccessibility(
+        correctionMoves(prediction) ? `${changed} ${CORRECTED_NOTE}` : changed,
+      );
     }, "Couldn't change that. Try again.");
 
   const refile = (category: Category) => {
@@ -179,11 +207,16 @@ export function AnsweredDetails({
           {prediction.resolved_at ? `, answered ${shortDate(prediction.resolved_at)}` : ''}
         </Text>
       </View>
+      {switched && correctionMoves(prediction) && (
+        <Text style={styles.body} testID="answered-corrected">
+          {CORRECTED_NOTE}
+        </Text>
+      )}
       {answeredSameDay(prediction) && (
         <Text style={styles.body} testID="answered-same-day">
           {/* The why (How scoring works' reason, D41) and what to do (D56) (blind
               playtest 2026-11-12c, finding 17: only the what was here). */}
-          {madeAt(prediction) !== prediction.created_at
+          {rewordedLater(prediction)
             ? 'Answered the day its words changed, so it isn’t scored: new words count as a new prediction, and a call made and settled in one day says little.'
             : `Answered the day it was logged, so it isn’t scored: a call made and settled in one day says little. From the next day, an answer is scored.${
                 // The habit tip only on a repeat (D62).

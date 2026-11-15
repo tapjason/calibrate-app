@@ -39,7 +39,7 @@ period or trial ends.
 **Keep a copy of my predictions.** You → Export predictions (CSV).
 
 **Delete my data.** Signed in: You → Delete account removes it from our servers
-and your phone. Not signed in: You → Erase all data on this device. Deleting an
+and your phone. Not signed in: You → Erase your data on this phone. Deleting an
 account doesn't cancel a subscription; cancel it first.
 
 [Privacy policy](../privacy/)

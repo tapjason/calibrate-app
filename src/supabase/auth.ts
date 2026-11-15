@@ -65,10 +65,9 @@ export async function signInWithApple(): Promise<AuthOutcome> {
     const AppleAuthentication = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
 
     const credential = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
+      // The email only: nothing uses a name, and asking for one is data the
+      // task doesn't need (5.1.1(iii); policy audit, 2026-11-14).
+      requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL],
     });
 
     if (!credential.identityToken) {

@@ -21,6 +21,7 @@
 
 import { AppState, Platform } from 'react-native';
 
+import { localTime } from '@/constants/locale';
 import { track } from '@/analytics/track';
 import { usePracticeStore } from '@/store/practiceStore';
 import { useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
@@ -54,7 +55,7 @@ const MAX_BODY = 90;
 
 /** "8:00 AM", in the phone's own clock style. */
 export function reminderTimeLabel(time: PracticeReminderTime): string {
-  return new Date(2000, 0, 1, time.hour, time.minute).toLocaleTimeString(undefined, {
+  return localTime(new Date(2000, 0, 1, time.hour, time.minute), {
     hour: 'numeric',
     minute: '2-digit',
   });

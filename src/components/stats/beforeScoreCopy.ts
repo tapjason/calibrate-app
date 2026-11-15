@@ -55,6 +55,19 @@ export function paceSpan(days: number): string {
   return 'more than a year';
 }
 
+/** How far off the unlock can be for Today to say when: three weeks. */
+export const TODAY_PACE_MAX_DAYS = 21;
+
+/**
+ * The pace line on Today, only when the unlock is near (step 181): "about 6
+ * weeks (around Dec 22)" right after a first-week answer was the round's
+ * lowest mood, twice (blind playtest 2026-11-14, runs 7 and 8). Insights
+ * always says when.
+ */
+export function todayEstimateLine(estimate: UnlockEstimate, now: Date): string | null {
+  return estimate.days > TODAY_PACE_MAX_DAYS ? null : unlockEstimateLine(estimate, now);
+}
+
 /**
  * "At your recent pace, about 3 weeks (around Nov 30)." When the rating
  * could unlock (roadmap D53): a tester asked "how many days at my pace?"

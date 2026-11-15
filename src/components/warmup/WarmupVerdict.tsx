@@ -96,6 +96,12 @@ export function WarmupVerdictScreen({ onContinue, onShare }: WarmupVerdictScreen
         buckets={result.buckets}
         animateIn
         captionNote={warmupChartNote(result.answered)}
+        // Its ten answers never fill a range, so the chart's own rule (a
+        // range with 10) would never name the zones. They're named when the
+        // headline names a lean, and not over "no clear lean", where two dots
+        // in the "Underconfident" corner contradicted it (blind playtest
+        // 2026-11-14, run 1; code review of step 181).
+        zoneWords={result.direction !== 'calibrated'}
       />
 
       {verdict.sameNumber && (

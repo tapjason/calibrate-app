@@ -17,7 +17,7 @@ import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
 import { WelcomeBackCard } from '@/components/prediction/WelcomeBackCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { BackupNudge } from '@/components/settings/BackupNudge';
-import { firstLookLine, unlockEstimateLine } from '@/components/stats/beforeScoreCopy';
+import { firstLookLine, todayEstimateLine } from '@/components/stats/beforeScoreCopy';
 import { chartVerdict } from '@/components/stats/chartTakeaway';
 import { IdentityLine } from '@/components/stats/IdentityLine';
 import { NextBadgeLine } from '@/components/stats/NextBadgeLine';
@@ -84,7 +84,7 @@ export default function TodayScreen() {
     if (!calibrating) return null;
     const now = new Date();
     const e = unlockEstimateFor(resolved, pending, now);
-    return e ? unlockEstimateLine(e, now) : null;
+    return e ? todayEstimateLine(e, now) : null;
     // `day` re-reads it when the date turns.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calibrating, resolved, pending, day]);

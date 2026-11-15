@@ -4,6 +4,7 @@
 // Log's Save ("Save, due Sunday") uses it, and "Log it again, due tomorrow"
 // (D56) builds on it, adding "in a week" and "in a month" as the chips say them.
 
+import { dateLocale } from '@/constants/locale';
 import { logAgainDraft, startOfLocalDay } from '@/components/prediction/logAgain';
 import { localDate } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
@@ -35,7 +36,7 @@ export function dueWords(dueIso: string, now: Date = new Date()): DueWords {
   if (days === 0) return { text: 'today', spoken: 'today' };
   if (days === 1) return { text: 'tomorrow', spoken: 'tomorrow' };
   if (days >= 2 && days <= 6) {
-    const weekday = due.toLocaleDateString(undefined, { weekday: 'long' });
+    const weekday = due.toLocaleDateString(dateLocale(), { weekday: 'long' });
     return { text: weekday, spoken: weekday };
   }
   const text = localDate(due, { weekday: 'short', day: 'numeric', month: 'short' }, now);

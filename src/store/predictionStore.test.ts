@@ -4,7 +4,7 @@ import { getUserStat, listCategoryStats } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 
 import { useAuthStore } from './authStore';
-import { openRepeatOf, usePredictionStore } from './predictionStore';
+import { openRepeatOf, openTwinFor, rewordedLater, usePredictionStore } from './predictionStore';
 import { useStatsStore } from './statsStore';
 import { loggedEarlier } from '../../jest/loggedEarlier';
 
@@ -908,5 +908,66 @@ describe('changes on the day made, and late rewording (D62)', () => {
     ).rejects.toThrow('part of the record');
     expect(await usePredictionStore.getState().getById(p.id)).not.toBeNull();
     expect(usePredictionStore.getState().pending).toHaveLength(1);
+  });
+});
+
+// Step 181 (blind playtest 2026-11-14, finding 16): "Save and log another"
+// twice read alike, and one was logged twice.
+describe('openTwinFor', () => {
+  const p = (id: string, title: string, due: string, status: 'pending' | 'resolved_yes' = 'pending') => ({
+    id,
+    user_id: 'u1',
+    title,
+    category: 'health' as const,
+    confidence: 80,
+    created_at: '2026-11-01T08:00:00.000Z',
+    due_date: due,
+    status,
+    resolved_at: status === 'pending' ? null : '2026-11-02T19:00:00.000Z',
+    reflection: null,
+    integrity_bonus: false,
+  });
+  const due = new Date(2026, 10, 13, 12).toISOString();
+  const sameDayLater = new Date(2026, 10, 13, 20).toISOString();
+  const nextDay = new Date(2026, 10, 14, 12).toISOString();
+
+  it('finds the same words open for the same day, whatever the category', () => {
+    const open = [p('a', 'Dani is late.', sameDayLater), p('b', 'Maya comes', due)];
+    expect(openTwinFor('  dani is late ', due, open)?.id).toBe('a');
+    expect(openTwinFor('Dani is late', nextDay, open)).toBeNull();
+    expect(openTwinFor('Someone else is late', due, open)).toBeNull();
+    expect(openTwinFor('', due, open)).toBeNull();
+  });
+
+  it('leaves out an answered one and the one being replaced', () => {
+    expect(openTwinFor('Dani is late', due, [p('a', 'Dani is late', due, 'resolved_yes')])).toBeNull();
+    expect(openTwinFor('Dani is late', due, [p('a', 'Dani is late', due)], 'a')).toBeNull();
+  });
+});
+
+// Step 181 (blind playtest 2026-11-14, finding 15).
+describe('rewordedLater', () => {
+  const base = {
+    id: 'a',
+    user_id: 'u1',
+    title: 'It rains',
+    category: 'personal' as const,
+    confidence: 70,
+    due_date: new Date(2026, 10, 16, 12).toISOString(),
+    status: 'pending' as const,
+    resolved_at: null,
+    reflection: null,
+    integrity_bonus: false,
+  };
+  const logged = new Date(2026, 10, 14, 8).toISOString();
+
+  it('is only for words changed on a later day than it was logged', () => {
+    expect(rewordedLater({ ...base, created_at: logged })).toBe(false);
+    expect(
+      rewordedLater({ ...base, created_at: logged, title_edited_at: new Date(2026, 10, 14, 21).toISOString() }),
+    ).toBe(false);
+    expect(
+      rewordedLater({ ...base, created_at: logged, title_edited_at: new Date(2026, 10, 15, 7).toISOString() }),
+    ).toBe(true);
   });
 });

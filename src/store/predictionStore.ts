@@ -537,6 +537,46 @@ export function answerNowIsSameDay(p: Prediction, now: Date = new Date()): boole
 }
 
 /**
+ * An open prediction with the same words (D32's `titleKey`) due the same
+ * local day as `dueIso`, or null. Log says so before a second one is saved:
+ * "Save and log another" answers "Saved, due tomorrow." every time, and a
+ * tester logged one twice (blind playtest 2026-11-14, finding 16).
+ */
+export function openTwinFor(
+  title: string,
+  dueIso: string,
+  pending: readonly Prediction[],
+  exceptId?: string,
+): Prediction | null {
+  const key = titleKey(title);
+  if (!key) return null;
+  const due = new Date(dueIso);
+  if (Number.isNaN(due.getTime())) return null;
+  const day = localDayNumber(due);
+  return (
+    pending.find(
+      (o) =>
+        o.id !== exceptId &&
+        o.status === 'pending' &&
+        titleKey(o.title) === key &&
+        localDayNumber(new Date(o.due_date)) === day,
+    ) ?? null
+  );
+}
+
+/**
+ * Whether the words were changed on a later day than the prediction was
+ * logged. On the day itself new words change nothing it could be told: it
+ * already counts as made today (blind playtest 2026-11-14, finding 15).
+ */
+export function rewordedLater(p: Prediction): boolean {
+  const made = new Date(scoredFrom(p));
+  const logged = new Date(p.created_at);
+  if (Number.isNaN(made.getTime()) || Number.isNaN(logged.getTime())) return false;
+  return localDayNumber(made) !== localDayNumber(logged);
+}
+
+/**
  * Whether the same words were answered before (D32's `titleKey`), on another
  * prediction: a habit being repeated. D56's "log the next one the evening
  * before" is said only then (D62): it reached a one-off maths test (blind

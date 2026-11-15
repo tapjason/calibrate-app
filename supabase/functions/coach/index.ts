@@ -326,7 +326,7 @@ function validateOutput(raw: unknown, context: CoachContext): {
 // ---------------------------------------------------------------------------
 
 const SYSTEM_PROMPT = [
-  'You are Calibrate Coach. You interpret a user\'s forecasting-calibration statistics',
+  'You are the Fairly Sure Coach. You interpret a user\'s forecasting-calibration statistics',
   'and return 0-3 short, specific observations. You may reference ONLY numbers in the',
   'provided data; never compute or invent figures. Frame everything around the data,',
   'not the person. Reward calibration, not correctness - never treat a wrong outcome',
@@ -431,7 +431,7 @@ Deno.serve(async (req: Request) => {
     const expired =
       ent?.expires_at != null && Date.parse(ent.expires_at) <= Date.now();
     if (ent?.is_plus !== true || expired) {
-      return json({ error: 'Coach requires Calibrate Plus' }, 403);
+      return json({ error: 'Coach requires Fairly Sure Plus' }, 403);
     }
   }
 

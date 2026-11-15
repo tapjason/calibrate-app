@@ -176,6 +176,39 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(await listPendingDeletions(USER)).toEqual(['p1']);
   });
 
+  // Step 181 (blind playtest 2026-11-14, finding 15): on the day it was logged
+  // new words change nothing it could be told, and the note read as a mistake.
+  it('says nothing about new words on the day it was logged', async () => {
+    await insertPrediction(open({ created_at: new Date().toISOString() }));
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('details-edit-button'));
+    fireEvent.changeText(screen.getByTestId('details-title-field'), "Don't ship the beta");
+    expect(screen.queryByTestId('details-reword-note')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('details-save'));
+    await waitFor(() => expect(screen.getByText("Don't ship the beta")).toBeTruthy());
+    expect((await getPrediction('p1'))?.title_edited_at).toBeTruthy();
+    expect(screen.queryByTestId('details-reworded')).toBeNull();
+  });
+
+  // Record audit of step 181: before the rating unlocks nothing on screen can
+  // move, so the line isn't shown or spoken.
+  it('says nothing about ratings after a switch while the rating is locked', async () => {
+    const at = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await insertPrediction(open({ status: 'resolved_no', resolved_at: at, due_date: at }));
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    renderDetails();
+    await waitFor(() => expect(screen.getByTestId('answered-switch')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('answered-switch'));
+    await waitFor(() =>
+      expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It happened/),
+    );
+    await waitFor(() => expect(announce).toHaveBeenCalledWith('Changed to: it happened.'));
+    expect(screen.queryByTestId('answered-corrected')).toBeNull();
+    announce.mockRestore();
+  });
+
   // Roadmap D45: new words make a new prediction from today, said before Save.
   it('warns that new words make it a new prediction, not a fixed full stop', async () => {
     await insertPrediction(open());
@@ -322,14 +355,44 @@ describe('PredictionDetails, answered (roadmap D34)', () => {
   it('switches the answer, moves it and keeps when it was answered', async () => {
     const p = answered(1);
     await insertPrediction(p);
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    // With a rating on screen, there is something for the answer to move.
+    const real = useStatsStore.getState().recomputeForUser;
+    const unlocked = {
+      user_id: USER,
+      calibration_rating: 88,
+      total_predictions: 30,
+      total_resolved: 30,
+      current_streak: 1,
+      rating_is_provisional: false,
+    };
+    useStatsStore.setState({
+      userStat: unlocked,
+      recomputeForUser: async (userId: string) => {
+        await real(userId);
+        useStatsStore.setState({ userStat: unlocked });
+      },
+    });
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('answered-window')).toBeTruthy());
     expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It didn’t happen/);
+    expect(screen.queryByTestId('answered-corrected')).toBeNull();
 
     fireEvent.press(screen.getByTestId('answered-switch'));
     await waitFor(() =>
       expect(screen.getByTestId('answered-outcome')).toHaveTextContent(/^It happened/),
     );
+    // Step 181: what follows a correction is said, with no figures (D50).
+    await waitFor(() =>
+      expect(screen.getByTestId('answered-corrected')).toHaveTextContent(
+        'Your rating and badges now follow this answer, so they may have moved.',
+      ),
+    );
+    expect(announce).toHaveBeenCalledWith(
+      'Changed to: it happened. Your rating and badges now follow this answer, so they may have moved.',
+    );
+    announce.mockRestore();
+    useStatsStore.setState({ recomputeForUser: real, userStat: null });
     fireEvent.press(screen.getByTestId('category-health'));
     await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
 

@@ -7,7 +7,7 @@ import { useStatsStore } from '@/store/statsStore';
 import { useWarmupStore } from '@/store/warmupStore';
 import type { CategoryStat, UserStat, WarmupResult } from '@/types';
 
-import { FRIEND_SQUARES, ShareCardPanel, SQUARES_LATER } from './ShareCardPanel';
+import { FRIEND_SQUARES, FRIEND_WARMUP, ShareCardPanel, SQUARES_LATER } from './ShareCardPanel';
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -242,6 +242,41 @@ describe('ShareCardPanel — Day 0', () => {
     expect(screen.queryByTestId('share-friend-squares')).toBeNull();
   });
 
+  // Step 181 (blind playtest 2026-11-14, finding 4): in week one the category
+  // card is "Calibrating" with nothing on it, and every early tester shared
+  // the Warm-up card instead.
+  it('leads with the warm-up card until the rating unlocks', () => {
+    seedStats({ ...USER_STAT, rating_is_provisional: true, total_resolved: 3 }, CATEGORY_STATS);
+    useWarmupStore.setState({ result: WARMUP });
+    render(<ShareCardPanel />);
+
+    expect(screen.getByTestId('warmup-card')).toBeTruthy();
+    expect(screen.queryByTestId('identity-card')).toBeNull();
+    // A friend's card is explained while there's no rated card of one's own.
+    expect(screen.getByTestId('share-friend-open')).toBeTruthy();
+    expect(screen.getByTestId('share-switch-card')).toHaveTextContent('Show my category card');
+
+    fireEvent.press(screen.getByTestId('share-switch-card'));
+    expect(screen.getByTestId('identity-card')).toBeTruthy();
+    expect(screen.getByText('17 more scored answers until my calibration unlocks')).toBeTruthy();
+    expect(screen.queryByTestId('share-friend-open')).toBeNull();
+    fireEvent.press(screen.getByTestId('share-switch-card'));
+    expect(screen.getByTestId('warmup-card')).toBeTruthy();
+  });
+
+  it('shows the category card before the rating when there was no warm-up', () => {
+    seedStats({ ...USER_STAT, rating_is_provisional: true, total_resolved: 3 }, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+    expect(screen.getByTestId('identity-card')).toBeTruthy();
+    expect(screen.queryByTestId('share-switch-card')).toBeNull();
+  });
+
+  it('names its Shape choice for a screen reader', () => {
+    seedStats(USER_STAT, CATEGORY_STATS);
+    render(<ShareCardPanel />);
+    expect(screen.getByLabelText('Shape').props.accessibilityRole).toBe('radiogroup');
+  });
+
   it('offers no switch without a warm-up', () => {
     seedStats(USER_STAT, CATEGORY_STATS);
     render(<ShareCardPanel />);
@@ -257,7 +292,13 @@ describe('ShareCardPanel — Day 0', () => {
     // Folded behind "Got a friend's card?" (D62).
     expect(screen.queryByTestId('share-friend-squares')).toBeNull();
     fireEvent.press(screen.getByTestId('share-friend-open'));
-    expect(screen.getByTestId('share-friend-squares')).toHaveTextContent(FRIEND_SQUARES);
+    expect(screen.getByTestId('share-friend-squares')).toHaveTextContent(
+      `${FRIEND_WARMUP} ${FRIEND_SQUARES}`,
+    );
+    // The card that travels first, and who was nearer their word (step 181).
+    expect(FRIEND_WARMUP).toBe(
+      'A friend' + "'" + 's warm-up card sets what they got beside what they said: "8 of 10 right. I was 90% sure." means they expected about 9 of 10 and got 8. The closer the two, the better their numbers fit, whoever got more right.',
+    );
     expect(FRIEND_SQUARES).toBe(
       'A friend' + "'" + 's score is out of 100: 100 minus how far, range by range and on average, what they said was from how often it happened. "Give or take" is how far luck could move it. The squares are their five ranges of how sure, 0–20% up to 80–100%, low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers. Yours come once your rating unlocks and a range has 10 scored answers.',
     );
@@ -371,7 +412,7 @@ describe('ShareCardPanel — shape and contents', () => {
       useSettingsStore.setState({ hideTitles: true });
       render(<ShareCardPanel />);
       expect(screen.getByTestId('card-identity')).toHaveTextContent('Calibration 88/100');
-      expect(screen.getByText('2 categories not shown')).toBeTruthy();
+      expect(screen.getByText('2 categories not shown (still counted)')).toBeTruthy();
       expect(screen.queryByText(/Divorce|Rent/)).toBeNull();
       expect(screen.getByTestId('share-own-kept-off')).toBeTruthy();
       expect(screen.queryByTestId('share-empty')).toBeNull();
@@ -383,7 +424,7 @@ describe('ShareCardPanel — shape and contents', () => {
       useSettingsStore.setState({ hideTitles: true, cardHiddenCategories: ['finance'] });
       render(<ShareCardPanel />);
       expect(screen.queryByText(/finance/)).toBeNull();
-      expect(screen.getByText('2 categories not shown')).toBeTruthy();
+      expect(screen.getByText('2 categories not shown (still counted)')).toBeTruthy();
       // Its chip stays, so it can come back on.
       const finance = screen.getByTestId('share-toggle-finance');
       expect(finance.props.accessibilityState).toMatchObject({ checked: false });
@@ -428,13 +469,13 @@ describe('ShareCardPanel — shape and contents', () => {
     fireEvent.press(screen.getByTestId(`share-toggle-${first}`));
     expect(screen.queryByTestId(`card-badge-${first}`)).toBeNull();
     // Said on the card (decided 2026-11-03): a curated card isn't the record.
-    expect(screen.getByTestId('card-hidden')).toHaveTextContent('1 category not shown');
+    expect(screen.getByTestId('card-hidden')).toHaveTextContent('1 category not shown (still counted)');
 
     for (const c of rest) fireEvent.press(screen.getByTestId(`share-toggle-${c}`));
     expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
     expect(screen.getByTestId('card-identity')).toHaveTextContent('Calibration 88/100');
     expect(screen.getByTestId('card-hidden')).toHaveTextContent(
-      `${categories.length} categories not shown`,
+      `${categories.length} categories not shown (still counted)`,
     );
     // Each chip stays, so any can come back on.
     fireEvent.press(screen.getByTestId(`share-toggle-${first}`));
@@ -448,7 +489,7 @@ describe('ShareCardPanel — shape and contents', () => {
     const chip = screen.getByTestId(`share-toggle-${only[0].category}`);
     fireEvent.press(chip);
     expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
-    expect(screen.getByTestId('card-hidden')).toHaveTextContent('1 category not shown');
+    expect(screen.getByTestId('card-hidden')).toHaveTextContent('1 category not shown (still counted)');
     fireEvent.press(screen.getByTestId(`share-toggle-${only[0].category}`));
     expect(screen.getAllByTestId(/^card-badge-/)).toHaveLength(1);
   });
@@ -480,7 +521,7 @@ describe('ShareCardPanel — shape and contents', () => {
     useSettingsStore.setState({ cardHiddenCategories: onFile });
     render(<ShareCardPanel />);
     expect(screen.queryAllByTestId(/^card-badge-/)).toHaveLength(0);
-    expect(screen.getByTestId('card-hidden')).toHaveTextContent(`${onFile.length} categories not shown`);
+    expect(screen.getByTestId('card-hidden')).toHaveTextContent(`${onFile.length} categories not shown (still counted)`);
   });
 });
 

@@ -34,6 +34,13 @@ interface CalibrationChartProps {
   animateIn?: boolean;
   /** A sentence after the key, for a chart whose headline reads the dots together (the Warmup). */
   captionNote?: string;
+  /**
+   * Whether the zones are named "Overconfident" and "Underconfident". Left
+   * out, they are on the empty chart and once a range has 10 answers (D63).
+   * The Warm-up sets it: its ten answers never fill a range, and its own
+   * rule names a lean or doesn't.
+   */
+  zoneWords?: boolean;
 }
 
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
@@ -121,7 +128,9 @@ const MARK: Record<Direction, string> = {
  * the region *below* the diagonal is tinted warm and labelled Overconfident,
  * the region above is tinted cool and labelled Underconfident, and each dot is
  * coloured by the side the engine says it's on (`BucketStat.direction`) —
- * position + tint + words. A dot under MIN_N_BAND answers is grey: no lean
+ * position + tint + words. The two words show on the empty chart and once
+ * some range has MIN_N_BAND answers (D63); until then the tints are the
+ * frame, not a lean mark. A dot under MIN_N_BAND answers is grey: no lean
  * mark below 10, as no lean word (roadmap D58). Every dot carries its n, so a lone 100% built on
  * two predictions reads as exactly that.
  *
@@ -138,7 +147,12 @@ const MARK: Record<Direction, string> = {
  *
  * react-native-svg, so it draws identically on web and native.
  */
-export function CalibrationChart({ buckets, animateIn = false, captionNote }: CalibrationChartProps) {
+export function CalibrationChart({
+  buckets,
+  animateIn = false,
+  captionNote,
+  zoneWords,
+}: CalibrationChartProps) {
   const reduceMotion = useReducedMotion();
   const animate = animateIn && !reduceMotion;
   const [width, setWidth] = useState(0);
@@ -187,6 +201,12 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
   const right = xOf(100);
   const top = yOf(1);
   const bottom = yOf(0);
+  // The zone words wait for a range the lean rule can name (D58's 10), as
+  // the dots' colours and the caption's key do: "Overconfident" over one late
+  // bus read as a verdict, believed 3 of 7 against 6 for the plain counts
+  // (blind playtest 2026-11-14, finding 11). The tints and the line stay.
+  const namesZones =
+    zoneWords ?? (points.length === 0 || points.some((p) => p.total_resolved >= MIN_N_BAND));
   const labelSpots = placeDotLabels(
     points.map((p) => ({
       cx: xOf(p.stated_confidence_mean),
@@ -197,7 +217,7 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
     top,
     bottom,
     // "n=52" printed on "Underconfident" (playtest 2026-11-08, finding 4).
-    regionLabelBoxes(left, right, top, bottom),
+    namesZones ? regionLabelBoxes(left, right, top, bottom) : [],
     width,
     // The long bars of the thin ranges (blind playtest 2026-11-12d, run 3):
     // a label stays off them where it can.
@@ -325,6 +345,7 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
             {/* The region labels over the luck bars, not under them: a bar
                 at 60–80% ran through "Overconfident" (blind playtest
                 2026-11-13c, finding 23). The dots still go on top. */}
+            {namesZones && (
             <SvgText
               x={right - 8}
               y={bottom - 10}
@@ -337,6 +358,8 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
             >
               Overconfident
             </SvgText>
+            )}
+            {namesZones && (
             <SvgText
               x={left + 8}
               y={top + 18}
@@ -349,6 +372,7 @@ export function CalibrationChart({ buckets, animateIn = false, captionNote }: Ca
             >
               Underconfident
             </SvgText>
+            )}
 
             {/* Connecting line: neutral and thin — five buckets are not a
                 function, the dots are the data. */}

@@ -262,17 +262,17 @@ describe('SettingsView — account', () => {
   });
 
   // An Apple private relay address is one the user has usually never seen.
-  it('names Sign in with Apple instead of a relay address', () => {
-    useAuthStore.setState({
-      accountsAvailable: true,
-      status: 'authenticated',
-      email: 'x7k2@privaterelay.appleid.com',
-    });
-    render(<SettingsView />);
+  // The second domain is Apple's newer one (2026-08-24).
+  it.each(['x7k2@privaterelay.appleid.com', 'x7k2@private.icloud.com'])(
+    'names Sign in with Apple instead of a relay address (%s)',
+    (email) => {
+      useAuthStore.setState({ accountsAvailable: true, status: 'authenticated', email });
+      render(<SettingsView />);
 
-    expect(screen.getByText(/Signed in with Apple\./)).toBeTruthy();
-    expect(screen.queryByText(/privaterelay/)).toBeNull();
-  });
+      expect(screen.getByText(/Signed in with Apple\./)).toBeTruthy();
+      expect(screen.queryByText(/privaterelay|private\.icloud/)).toBeNull();
+    },
+  );
 
   it('shows no account row on a build where accounts cannot exist', () => {
     useAuthStore.setState({ accountsAvailable: false, status: 'guest' });

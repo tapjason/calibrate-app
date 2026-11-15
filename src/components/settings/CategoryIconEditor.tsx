@@ -191,6 +191,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.textPrimary,
     flex: 1,
+    minWidth: 0,
     paddingHorizontal: space.md,
     paddingVertical: 10,
   },

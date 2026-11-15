@@ -1,4 +1,11 @@
-import { firstLookLine, paceSpan, plainCountsLine, unlockEstimateLine } from './beforeScoreCopy';
+import {
+  firstLookLine,
+  paceSpan,
+  plainCountsLine,
+  TODAY_PACE_MAX_DAYS,
+  todayEstimateLine,
+  unlockEstimateLine,
+} from './beforeScoreCopy';
 
 // Roadmap D53 (blind playtest 2026-11-09b, finding 2).
 describe('plainCountsLine', () => {
@@ -27,6 +34,25 @@ describe('unlockEstimateLine', () => {
       'At your recent pace, more than a year.',
     );
     expect(line).toMatch(/^At your recent pace, about 3 weeks \(around (Nov\u00A029|29\u00A0Nov)\)\.$/);
+  });
+});
+
+// Step 181 (blind playtest 2026-11-14, finding 5): "about 6 weeks" on Today,
+// right after a first-week answer, was the round's lowest mood twice.
+describe('todayEstimateLine', () => {
+  const now = new Date(2026, 10, 9, 12);
+  const days = (n: number) => ({
+    remaining: 10,
+    days: n,
+    at: new Date(now.getTime() + n * 24 * 60 * 60 * 1000),
+  });
+
+  it('says when only while the unlock is three weeks off or nearer', () => {
+    expect(TODAY_PACE_MAX_DAYS).toBe(21);
+    expect(todayEstimateLine(days(21), now)).toBe(unlockEstimateLine(days(21), now));
+    expect(todayEstimateLine(days(3), now)).toMatch(/^At your recent pace, about 3 days/);
+    expect(todayEstimateLine(days(22), now)).toBeNull();
+    expect(todayEstimateLine(days(42), now)).toBeNull();
   });
 });
 

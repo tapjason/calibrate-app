@@ -946,7 +946,12 @@ describe('ResolvePrompt change answer', () => {
     await waitFor(() => {
       expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent('Recorded: it happened');
     });
-    expect(screen.queryByTestId('resolve-answer-note')).toBeNull();
+    // No rating figures after a correction (D50), only that they follow it
+    // (D63: a badge earned on a mis-tap went back with no word).
+    expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(
+      'Your rating and badges now follow this answer, so they may have moved.',
+    );
+    expect(screen.getByTestId('resolve-answer-note')).not.toHaveTextContent(/moved from/);
   });
 });
 
@@ -1144,6 +1149,7 @@ describe('ResolvePrompt — a badge taken back', () => {
       },
     });
     try {
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
       render(<ResolvePrompt predictionId="p1" />);
       // Generous waits: the real recompute bootstraps the record, and under
       // the full suite's load it ran past the 1 s default (a flake noted in
@@ -1154,7 +1160,20 @@ describe('ResolvePrompt — a badge taken back', () => {
         timeout: 5000,
       });
       expect(screen.getByTestId('resolve-tier-drop')).toHaveTextContent(tierDropLine(drop));
+      // Spoken with "Recorded", as a badge gained is (step 181): iOS ignores
+      // live regions, so VoiceOver heard neither.
+      // A moment after the answer, once the focus has moved.
+      await waitFor(() =>
+        expect(announce).toHaveBeenCalledWith(
+          expect.stringMatching(/^Recorded: it (happened|didn’t happen)\. Back to Tracker in health: /),
+        ),
+      );
+      announce.mockRestore();
       // The other answer's effect on one screen would be a one-tap comparison.
+      // Once the button takes a press: it's disabled until the answer has
+      // finished saving, and a press before that was ignored under the full
+      // suite's load, which is what made this test fail one run in five.
+      await waitFor(() => expect(screen.getByTestId('resolve-change')).toBeEnabled());
       fireEvent.press(screen.getByTestId('resolve-change'));
       await waitFor(() => expect(screen.queryByTestId('resolve-tier-drop')).toBeNull(), {
         timeout: 5000,

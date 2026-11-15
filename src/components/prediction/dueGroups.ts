@@ -8,6 +8,7 @@
 // Days are the device's local calendar days, like the streak engine: "due
 // today" means the user's today.
 
+import { dateLocale } from '@/constants/locale';
 import { endSentence } from '@/components/ui/sentence';
 import { localDate } from '@/components/ui/dates';
 import type { Prediction } from '@/types';
@@ -144,7 +145,7 @@ export function firstAnswerLead(
   const part = partOfDay(reminderHour);
   if (days === 1) return `Your first answer: tomorrow ${part}`;
   if (days < 7) {
-    return `Your first answer: ${due.toLocaleDateString(undefined, { weekday: 'long' })} ${part}`;
+    return `Your first answer: ${due.toLocaleDateString(dateLocale(), { weekday: 'long' })} ${part}`;
   }
   const day = localDate(due, { weekday: 'short', day: 'numeric', month: 'short' }, now);
   return `Your first answer: ${day.replace(/ /g, '\u00A0')}`;

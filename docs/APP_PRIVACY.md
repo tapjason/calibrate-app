@@ -1,6 +1,6 @@
 # Fairly Sure — App Privacy declarations
 
-**As of:** 2026-09-24 · Derived from the code, not from intent.
+**As of:** 2026-11-14 (policy audit; first written 2026-09-24) · Derived from the code, not from intent.
 
 This is the answer sheet for App Store Connect → App Privacy, and the source
 for the privacy policy text. Every row cites the file that proves it. If a
@@ -29,11 +29,11 @@ The short version:
 
 | Apple data type | Collected | Linked to identity | Tracking | Purpose | Evidence |
 |---|---|---|---|---|---|
-| Contact Info → **Email address** | Yes | Yes | No | App Functionality (account + sync) | `src/supabase/auth.ts` — email/password, Apple, Google |
+| Contact Info → **Email address** | Yes | Yes | No | App Functionality (account + sync) | `src/supabase/auth.ts` — email/password and Sign in with Apple (the email scope only; no Google button ships) |
 | User Content → **Other User Content** (prediction titles, reflections) | Yes | Yes | No | App Functionality | `PredictionWireRow`, `src/types/index.ts:167`; `src/supabase/sync.ts` |
 | Identifiers → **User ID** | Yes | Yes | No | App Functionality, Analytics | Supabase auth user id; passed to RevenueCat as `appUserID`, `src/billing/revenuecat.ts:174` |
-| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics | `src/analytics/events.ts` — closed catalogue, numeric properties only. A guest's funnel events carry no id (D43), but Apple asks per data type, and a signed-in person's are linked, so answer **linked** |
-| Purchases → **Purchase History** | Yes | Yes | No | App Functionality | Apple IAP via RevenueCat; `supabase/functions/revenuecat-webhook/` |
+| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics, App Functionality (the Coach's per-account request count, `supabase/migrations/002_coach_usage.sql`) | `src/analytics/events.ts` — closed catalogue, numeric properties only. A guest's funnel events carry no id (D43), but Apple asks per data type, and a signed-in person's are linked, so answer **linked** |
+| Purchases → **Purchase History** | Yes | Yes | No | App Functionality, Analytics (`purchase_completed` carries the plan and trial flags, `src/analytics/events.ts`; RevenueCat's guidance says both) | Apple IAP via RevenueCat; `supabase/functions/revenuecat-webhook/` |
 | Identifiers → Device ID / Advertising | **No** | — | — | — | no ad or attribution SDK in `package.json` |
 | Diagnostics (crash, performance) | **No** | — | — | — | no crash reporter in `package.json` |
 | Health, Financial Info, Location, Contacts, Browsing History, Sensitive Info | **No** | — | — | — | never requested, never collected |

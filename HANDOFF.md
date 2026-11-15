@@ -4,6 +4,17 @@
 
 ## What this PR did
 
+**Step 181 (2026-11-14), the release candidate** (BUILT_LOG row 181; D63). Branch `builder/step-181-release-candidate`, from `be37e54`. JS only: a reload. Owner: "Evaluate what the next steps should be… you are free to make an educated judgement call."
+- **The call: AI playtests stop here; the next step is TestFlight.** `docs/SHIP_READINESS.md` has the reasoning, the market read, the open decisions and the ordered path to the store.
+- **Built from round 23:** Share leads with the Warm-up card until the rating unlocks and the friend fold explains it; Today's pace line only within three weeks; the chart's zone words wait for 10; "(still counted)" on not-shown lines; a correction says the rating and badges follow it; a badge gained or lost is spoken; Log names an open twin; no rewording notes on the day logged; dates, times and counts in English on a phone in another language.
+- **Reviews:** `code-reviewer` (should-fix only) and `record-auditor` (two blockers in the new code: a spoken line the screen hid, and a counted rewording that went unsaid when due the day it was logged), all fixed; not re-run after the fixes.
+- **Release audit** (`release-auditor`): the code passes every measure (`check.sh --release`, expo-doctor 20/20, no drift, a 6.92 MB bundle as the first baseline). Not ready for TestFlight or review on owner steps only: the privacy and support URLs are 404, no products or prices, the EAS `production` environment is probably empty, 205 device checks unticked.
+- **Policy audit** (`policy-auditor`, release mode): the app's behaviour passes on subscriptions, notifications, Sign in with Apple, deletion and AI consent. Fixed in this step: the unused full-name scope, Apple's `private.icloud.com` relay addresses, "Calibrate" in the Coach's prompt, `APP_PRIVACY.md` (two purposes, no Google), `SUPPORT.md`, four listing claims. Left for the owner: under-13 handling, the policy's guest-counts paragraph against `GUEST_ANALYTICS` off, the 2026 age-rating questions (Social Media, Shared Location, Dating; all "No"), the Coach's data in the privacy label (depends on OpenAI's retention), crisis numbers that are US-only, the review notes and demo account.
+- **Step 180 (the native batch) is not built:** the package install was held back by the machine's permission rule and needs the owner's yes (`SHIP_READINESS.md`, decision 1).
+- **Tests:** 5 s waits for the whole suite (`jest/setupWaits.js`); the one-in-five full-run failures were two Resolve tests pressing a button before it was enabled.
+- **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, the four "(step 181)" items.
+
+
 **Step 179 (2026-11-14), round 22's ten fixes** (BUILT_LOG row 179; owner: "Build the ten fixes please"). Branch `builder/step-179-round22`, from `6061582`. JS only: a reload. No decisions: findings 1 (the read-only half), 2, 3, 9, 10 and 12–16 of `playtest-2026-11-13e.md`.
 - **Hide the words** now covers Insights' badge rows and furthest-off line, the share card (own categories left off, said so, not stored as unticked) and the recaps (no titles switch).
 - **"Use another number"** carries Edit's typed words, category and date.
@@ -339,5 +350,5 @@ comes back only if a new round finds it again. Left with the owner:
 
 ## Checks
 
-- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 182 suites, 2,256 tests. The flake in `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone, past the 1 s default wait under full-run load; it failed twice running during round 23 and slipped into that round's commit, `5aa553c`) now waits up to 5 s per step, 20 s in all. Commit only after `check.sh` itself exits 0: piping it through `tail` hid that failure. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
+- `bash scripts/check.sh` must end in `CHECK PASSED`. It does: 183 suites, 2,278 tests. The flake in `ResolvePrompt.test.tsx` › "a badge taken back" (about 1.3 s alone, past the 1 s default wait under full-run load; it failed twice running during round 23 and slipped into that round's commit, `5aa553c`) now waits up to 5 s per step, 20 s in all. Commit only after `check.sh` itself exits 0: piping it through `tail` hid that failure. If `tsc` reports three typed-route errors, the generated route types are a stub; restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED`. It does.

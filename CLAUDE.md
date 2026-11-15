@@ -409,6 +409,8 @@ chooses it, through the same rules as You → Categories.
 
 **"Save and log another"** (D59, 2026-11-12) saves and keeps the sheet open, the form
 started over under "Saved, due tomorrow."; it appears once there's something to save.
+When the typed words are already open for the day being saved, Log says so ("You already
+have this one open, due tomorrow.", D63) and still saves.
 **A draft is kept for a day** (D59, reversing D52 (1)): title, category, the person's own
 number and date, device-local, offered back on a plain open of Log ("Kept from before you
 left." with Start over), cleared by a save, Start over, Discard, Erase and account
@@ -448,6 +450,9 @@ Yes or No switches it to the other in place; it no longer puts the prediction ba
 to open. For **24 hours** after an answer (`CORRECTION_WINDOW_HOURS`, from the first
 answer, which a correction keeps), its details (a tap in History) can switch the
 answer, move it to another category or delete it; after that it is the record.
+After a switch there or on Resolve, one line says the rating and badges now follow the
+answer, with no figures and only where a rating can move (D63: a badge earned on a mis-tap
+went back in silence).
 A Yes or No never becomes "Can't tell": that was how a miss could be parked and
 answered later. Can't tell's own note names the last day it could still be answered
 (D60). A skip can still be answered later. Insights says how many answers
@@ -460,7 +465,8 @@ were "Can't tell", which the rating leaves out, under "More about your record" (
   `titleKey`) sets `title_edited_at`, and the prediction counts as made then
   (`scoredFrom`): an answer that day isn't scored (D41) and the due date is the
   next day at the earliest. `created_at` stays, so the streak's days don't move.
-  Edit says so before Save. Supabase migration 008 adds the column; until it is
+  Edit says so before Save, except on the day the prediction was logged while it isn't
+  due yet, when new words change nothing it could be told (D63). Supabase migration 008 adds the column; until it is
   applied to the live project `TITLE_EDIT_SYNC` is off and the date stays on the
   phone that made the edit.
 - **Deleted calls are counted.** Tombstones are kept after the push, marked
@@ -523,7 +529,10 @@ See the authoritative section above.
 - **The fine print, folded** (D62): the Brier line, the Can't tell count (D57's line at
   zero too) and the same-day, deleted and moved counts sit under "More about your
   record" on Insights, one tap away ("Show less" folds it again)
-- Calibration curve chart (stated vs. actual per bucket)
+- Calibration curve chart (stated vs. actual per bucket). Its zone words,
+  "Overconfident" and "Underconfident", show on the empty chart and once some range
+  has 10 answers, as the dots' colours do (D63: over one late bus they read as a verdict);
+  the Warm-up's chart names them when its verdict names a lean
 - The Brier score, one quiet line in the fine print from 50 scored answers (D24, D62, above)
 - **The pattern, named** (decided 2026-11-01, D37), all free and all by the one lean
   rule (D35): the category furthest off, past `MIN_N_CATEGORY` ("Furthest off:
@@ -551,7 +560,8 @@ See the authoritative section above.
   counts ("You said about 90% on average, and 7 of 9 happened.", D53, 2026-11-09),
   never a lean
 - While the rating is calibrating, when it could unlock at the recent pace ("At your
-  recent pace, about 3 weeks (around Nov 30).", D53): scored answers over the last 28
+  recent pace, about 3 weeks (around Nov 30).", D53; on Today only when it's three weeks
+  off or nearer, D63, on Insights always): scored answers over the last 28
   days (or since the first prediction, a week at least), no estimate with fewer than 3
 - **The identity line** (D27, 2026-10-10): on Today and the share card, a tier is
   named only for a category past the count gate (20 resolved, so Tracker or above).
@@ -619,12 +629,17 @@ See the authoritative section above.
 - **The card is honest about itself** (decided 2026-11-03, D42): the rating carries
   its give-or-take ("Calibration 87/100, give or take 3, from 148 resolved
   predictions"), and a card with categories left off says so ("2 categories not
-  shown"), in the image and the text share alike. Any of them can be left off, the last
+  shown (still counted)": the rating and a recap's totals always cover the whole record,
+  D63), in the image and the text share alike. Any of them can be left off, the last
   one too (owner, 2026-11-14): the card then keeps the rating and the count. The recaps leave the same
   categories off and say so too (2026-11-04).
-- Once there's a category card, Share keeps the Warm-up card one tap away ("Show my
-  warm-up card", without its "Real predictions next." then, D62), with a friend's squares
-  explained under it behind "Got a friend's card?" (D61, folded by D62).
+- **Until the rating unlocks, the Warm-up card leads on Share** (D63; the category card,
+  still "Calibrating", is one tap away), and from then on the category card leads with the
+  Warm-up card one tap away ("Show my warm-up card", without its "Real predictions next."
+  once there's a category card, D62). While there's no rated card, "Got a friend's card?"
+  explains a friend's Warm-up card ("8 of 10 right. I was 90% sure." means they expected
+  about 9 and got 8: the closer the two, the better, whoever got more right) and a
+  friend's score and squares (D61, D62, D63).
 - **The recaps lead with the person's own badge news** (D62): a badge gained or lost
   over the span ("New this week: Forecaster in health." / "Back to Tracker in health
   this week. A badge follows the record both ways.", `badgeChangesSince`) takes the
@@ -1007,6 +1022,11 @@ for, and validate that people actually share before betting on the free tier.
   text style sets a colour token; share cards keep their own fixed palettes.
 - Type is Instrument Sans (decided 2026-11-01, roadmap D33; Inter until then): use
   the `type` tokens, which carry the family.
+- Dates, times and counts are written through `dateLocale()` and `localTime()`
+  (`src/constants/locale.ts`, D63): English names in the phone's own day-and-month order
+  and 12- or 24-hour clock, since the app's words are English only ("Due zondag 15 nov" on
+  a Dutch phone until then). Never `toLocaleDateString(undefined, …)` or
+  `toLocaleTimeString`; a test scans for both.
 - The brand has no hue (D33): actions and selection are ink (`action`, `onAction`),
   and the only colours on screen mean over, under or on the line. The one exception
   is a category icon the person chose (D40): their emoji or picture, in its own colours. A new hue needs a
@@ -1039,6 +1059,8 @@ for, and validate that people actually share before betting on the free tier.
 - Component-test the critical Warmup, Log, and Resolve flows.
 - Coach requires the adversarial fixtures in `COACH_AGENT.md` §9 before shipping.
 - Run with `npm test`.
+- Waits are 5 s (`jest/setupWaits.js`), and a test waits for a button to be enabled
+  before pressing it: a press during a save is ignored, which failed one full run in five.
 
 ---
 

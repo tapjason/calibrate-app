@@ -78,7 +78,8 @@
       "^@expo/vector-icons/(.*)$": "<rootDir>/jest/vectorIconMock.js"
     },
     "setupFilesAfterEnv": [
-      "<rootDir>/jest/setupReanimated.js"
+      "<rootDir>/jest/setupReanimated.js",
+      "<rootDir>/jest/setupWaits.js"
     ]
   }
 }

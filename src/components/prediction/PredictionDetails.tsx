@@ -22,6 +22,7 @@ import {
   earliestDueForEdit,
   madeAt,
   moveIsCounted,
+  rewordedLater,
   rewordIsCounted,
   rewords,
   usePredictionStore,
@@ -163,7 +164,15 @@ export function PredictionDetails({
   // 2026-11-12). The late move is step 173's; the rewording D45's.
   const editing = mode === 'edit' && prediction !== null;
   const lateMoveNow = editing && moveIsCounted(prediction, dueDate, title);
-  const rewordNow = editing && title.trim().length > 0 && rewords(prediction.title, title);
+  // Quiet on the day it was logged while it isn't due yet (D63): it already
+  // counts as made today, its date can't be before tomorrow, and the
+  // rewording isn't counted. Due today (a clock or time-zone change, a
+  // synced row) the rewording is counted and moves the date, so it's said
+  // (record audit of step 181).
+  const rewordQuiet =
+    prediction !== null && canRenumber(prediction) && daysUntilDue(prediction, new Date()) >= 1;
+  const rewordNow =
+    editing && !rewordQuiet && title.trim().length > 0 && rewords(prediction.title, title);
   const rewordCountedNow = editing && rewordIsCounted(prediction, title);
   useEffect(() => {
     if (lateMoveNow) AccessibilityInfo.announceForAccessibility(LATE_MOVE_SPOKEN);
@@ -256,7 +265,9 @@ export function PredictionDetails({
   const daysLeft = daysUntilDue(prediction, new Date());
   const due = daysLeft <= 0;
   // Reworded since it was logged (D45): it counts as made then.
-  const reworded = madeAt(prediction) !== prediction.created_at;
+  // Only when the words changed on a later day than it was logged: on the
+  // day itself it counts as made today either way (step 181).
+  const reworded = rewordedLater(prediction);
   // Said once, here, with what to do (roadmap D56): a daily walk logged in
   // the morning was "not scored" three times per tick (blind playtest
   // 2026-11-10, run 2). Resolve doesn't repeat it when opened from here.
@@ -367,7 +378,10 @@ export function PredictionDetails({
           maxLength={TITLE_MAX_LENGTH}
           testID="details-title-field"
         />
-        {changingWords && (
+        {/* Not on the day it was logged, while it isn't due yet: it's already
+            today's, and the note made a first-day fix look like a mistake
+            (blind playtest 2026-11-14, run 1). */}
+        {changingWords && !rewordQuiet && (
           <Text style={styles.note} testID="details-reword-note" accessibilityLiveRegion="polite">
             Changing the words makes this a new prediction from today: an answer today
             isn’t scored, and the earliest due date is tomorrow.

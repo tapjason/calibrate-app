@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { localDate } from '@/components/ui/dates';
+import { endSentence } from '@/components/ui/sentence';
 import { textLanguage } from '@/components/ui/textLanguage';
-import { AnsweredDetails } from '@/components/prediction/AnsweredDetails';
+import { AnsweredDetails, CORRECTED_NOTE } from '@/components/prediction/AnsweredDetails';
 import { daysUntilDue } from '@/components/prediction/dueGroups';
 import { loggedAgainLine, logAgainWords } from '@/components/prediction/dueWords';
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
@@ -25,7 +26,7 @@ import {
 } from '@/constants/theme';
 import {
   answerNowIsSameDay,
-  madeAt,
+  rewordedLater,
   openRepeatOf,
   skipAnswerBy,
   usePredictionStore,
@@ -43,7 +44,7 @@ import {
 } from '@/types';
 import { categoryLabel, categoryTitle, useCategoryStore } from '@/store/categoryStore';
 
-import { MilestoneCard } from './MilestoneCard';
+import { MilestoneCard, milestoneCopy } from './MilestoneCard';
 import { StreakCheckpointCard } from './StreakCheckpointCard';
 
 interface ResolvePromptProps {
@@ -256,7 +257,7 @@ function readAcknowledgement(
   return {
     outcome,
     line: sameDay
-      ? madeAt(prediction) !== prediction.created_at
+      ? rewordedLater(prediction)
         ? SAME_DAY_REWORDED_LINE
         : SAME_DAY_LINE
       : first
@@ -411,6 +412,15 @@ export function ResolvePrompt({
     onDraftChange?.(answered ? reflection : '');
   }, [answered, reflection, onDraftChange]);
 
+  // The spoken badge news, said a moment after the answer (below).
+  const announceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (announceTimer.current) clearTimeout(announceTimer.current);
+    },
+    [],
+  );
+
   const submit = async (outcome: ResolvedStatus) => {
     if (!prediction) return;
     setError(null);
@@ -445,7 +455,31 @@ export function ResolvePrompt({
       if (ack.note?.endsWith(RATING_WHY)) onRatingExplained?.();
       // Said, as Log's "Saved." is: the screen changed under the finger and
       // nothing was announced (playtest 2026-11-08, finding 38).
-      AccessibilityInfo.announceForAccessibility(recordedText(outcome));
+      // With the badge it brought or took back, the same both ways (D60):
+      // iOS ignores the cards' live regions, so VoiceOver heard neither, and
+      // the web build spoke the gain only (blind playtest 2026-11-14, run 6).
+      const badgeNews = [
+        ack.milestone ? `${milestoneCopy(ack.milestone).title}.` : null,
+        // The unlock's card carries a badge earned with it in its body.
+        ack.milestone?.kind === 'rating_unlocked' && ack.milestone.badge
+          ? `New badge, too: ${BADGE_META[ack.milestone.badge.badge].label} in ${categoryLabel(ack.milestone.badge.category)}.`
+          : null,
+        ack.tierDrop ? tierDropLine(ack.tierDrop) : null,
+      ].filter(Boolean);
+      const said =
+        badgeNews.length > 0
+          ? `${recordedText(outcome)}. ${badgeNews.join(' ')}`
+          : recordedText(outcome);
+      // With badge news, a moment later: the focused Yes or No button goes as
+      // the screen changes, and the focus move cut a same-moment announcement
+      // off on Log (code review 2026-11-12); the short one alone is as it was.
+      if (badgeNews.length > 0) {
+        if (announceTimer.current) clearTimeout(announceTimer.current);
+        announceTimer.current = setTimeout(
+          () => AccessibilityInfo.announceForAccessibility(said),
+          600,
+        );
+      } else AccessibilityInfo.announceForAccessibility(said);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -486,7 +520,11 @@ export function ResolvePrompt({
         note: answered.unlocked
           ? answered.note
           : ratingBefore !== null || shownRating() !== null
-            ? null
+            ? // No figures (D50), but no longer silence (D63): a badge with
+              // confetti earned on a mis-tap went back with no word here.
+              isSameDayLine(answered.line)
+              ? null
+              : CORRECTED_NOTE
             : answerNote(
                 prediction.confidence,
                 isSameDayLine(answered.line) || stats.userStat?.total_resolved === 1,
@@ -498,8 +536,14 @@ export function ResolvePrompt({
         milestone: null,
         tierDrop: null,
       });
+      const changed =
+        outcome === 'resolved_yes' ? 'Changed to: it happened.' : 'Changed to: it didn’t happen.';
+      const follows =
+        !answered.unlocked &&
+        (ratingBefore !== null || shownRating() !== null) &&
+        !isSameDayLine(answered.line);
       AccessibilityInfo.announceForAccessibility(
-        outcome === 'resolved_yes' ? 'Changed to: it happened.' : 'Changed to: it didn’t happen.',
+        follows ? `${changed} ${CORRECTED_NOTE}` : changed,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -691,7 +735,7 @@ export function ResolvePrompt({
           <Text style={[styles.notFoundBody, styles.skippedBody]} testID="resolve-skip-open">
             You marked “{prediction.title}” as can’t tell. If you can tell now, answer it
             and it counts like any other. You can answer it until the end of{' '}
-            {formatDay(answerBy)}.
+            {endSentence(formatDay(answerBy))}
           </Text>
         ) : (
           <Text style={[styles.notFoundBody, styles.skippedBody]} testID="resolve-skip-closed">
@@ -741,7 +785,7 @@ export function ResolvePrompt({
     resolved_at: new Date().toISOString(),
   });
   const skipNote = skipBy
-    ? `It won't count toward your score. You can still answer it until the end of ${formatDay(skipBy)}.`
+    ? `It won't count toward your score. ${endSentence(`You can still answer it until the end of ${formatDay(skipBy)}`)}`
     : "It won't count toward your score.";
 
   if (prediction.status !== 'pending' && prediction.status !== 'skipped') {
@@ -765,7 +809,7 @@ export function ResolvePrompt({
             title three weeks old read as this morning (blind playtest
             2026-11-13b, run 7; roadmap D60). */}
         {daysUntilDue(prediction, new Date()) < 0
-          ? `. It was due ${formatLogged(prediction.due_date)}.`
+          ? `. ${endSentence(`It was due ${formatLogged(prediction.due_date)}`)}`
           : ''}
       </Text>
       <View style={styles.categoryRow}>
@@ -785,7 +829,7 @@ export function ResolvePrompt({
       {/* Not when Answer it now's confirmation said it a moment ago (D56). */}
       {answerNowIsSameDay(prediction) && !sameDayWarned && (
         <Text style={styles.sameDayNote} testID="resolve-same-day">
-          {(madeAt(prediction) !== prediction.created_at
+          {(rewordedLater(prediction)
             ? 'You changed its words today, so an answer today isn’t scored. '
             : 'You logged this today, so an answer today isn’t scored. ') +
             // No word of the streak while it's off in You (step 173).

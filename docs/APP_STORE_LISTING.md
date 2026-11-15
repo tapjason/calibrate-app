@@ -199,17 +199,17 @@ leaves that judgement to the developer), so getting it right first time matters.
 > Calibration isn't one number. Fairly Sure scores you separately for work,
 > health, finance, social life, personal goals and any category you add, and
 > each earns a badge from Tracker to Oracle. Badges need a real track record, so
-> a lucky streak won't earn one.
+> a lucky run is unlikely to earn one.
 >
 > **HONEST BY DESIGN**
 > • Fairly Sure rewards calibration, not correctness. A miss at 60% confidence is
 > exactly what 60% means.
 > • Your score stays hidden until you have enough resolved predictions for it to
 > mean something.
-> • A second measure, the Brier score, rewards being decisive as well as
-> calibrated, so playing it safe doesn't flatter you.
+> • A second measure, the Brier score, shows once you have 50 answers whether
+> your numbers also tell apart what will happen from what won't.
 > • An answer given the day you logged the prediction isn't scored, so the
-> score can't be padded with sure things.
+> score is harder to pad with sure things.
 > • No money, no odds, no betting. Just your own track record.
 >
 > **SHARE YOUR RESULTS**
@@ -217,8 +217,8 @@ leaves that judgement to the developer), so getting it right first time matters.
 > of your forecasting. Sharing is always free.
 >
 > **PRIVATE BY DEFAULT**
-> Everything works offline, without an account. Sign in only if you want a
-> backup. No ads, no tracking.
+> The whole free app works offline, without an account. Sign in only if you
+> want a backup or the Coach. No ads, no tracking.
 >
 > **FAIRLY SURE PLUS**
 > Optional, for going deeper:

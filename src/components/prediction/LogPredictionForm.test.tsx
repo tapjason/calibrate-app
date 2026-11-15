@@ -1079,3 +1079,49 @@ describe('bringing the due line into view when Pick a date opens', () => {
     expect(scrollToEnd).toHaveBeenCalledTimes(1);
   });
 });
+
+// Step 181 (blind playtest 2026-11-14, finding 16).
+describe('LogPredictionForm — the same words already open', () => {
+  const tomorrowNoon = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(12, 0, 0, 0);
+    return d.toISOString();
+  };
+  const openOne = (title: string, due: string): Prediction => ({
+    id: 'o1',
+    user_id: 'u1',
+    title,
+    category: 'social',
+    confidence: 80,
+    created_at: new Date().toISOString(),
+    due_date: due,
+    status: 'pending',
+    resolved_at: null,
+    reflection: null,
+    integrity_bonus: false,
+  });
+  afterEach(() => usePredictionStore.setState({ pending: [], resolved: [] }));
+
+  it('says so for the day it would save on, and still lets it save', () => {
+    usePredictionStore.setState({ pending: [openOne('Dani is late', tomorrowNoon())], resolved: [] });
+    render(<LogPredictionForm />);
+    expect(screen.queryByTestId('log-open-twin')).toBeNull();
+    fireEvent.changeText(screen.getByTestId('title-field'), 'dani is late.');
+    expect(screen.getByTestId('log-open-twin')).toHaveTextContent(
+      'You already have this one open, due tomorrow.',
+    );
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Dani is on time');
+    expect(screen.queryByTestId('log-open-twin')).toBeNull();
+  });
+
+  it('says nothing when the open one is due another day', () => {
+    const later = new Date();
+    later.setDate(later.getDate() + 5);
+    later.setHours(12, 0, 0, 0);
+    usePredictionStore.setState({ pending: [openOne('Dani is late', later.toISOString())], resolved: [] });
+    render(<LogPredictionForm />);
+    fireEvent.changeText(screen.getByTestId('title-field'), 'Dani is late');
+    expect(screen.queryByTestId('log-open-twin')).toBeNull();
+  });
+});

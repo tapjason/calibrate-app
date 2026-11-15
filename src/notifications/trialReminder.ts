@@ -14,6 +14,7 @@
 
 import { Platform } from 'react-native';
 
+import { dateLocale } from '@/constants/locale';
 import {
   fetchPlans,
   fetchTrialStatus,
@@ -73,7 +74,7 @@ export function trialReminderCopy(
   status: TrialStatus,
   plans: readonly PlusPlan[],
 ): { title: string; body: string } {
-  const day = new Date(status.endsAt).toLocaleDateString(undefined, { weekday: 'long' });
+  const day = new Date(status.endsAt).toLocaleDateString(dateLocale(), { weekday: 'long' });
   const plan = status.plan ? plans.find((p) => p.plan === status.plan) : undefined;
   const period = status.plan ? PERIOD_WORDS[status.plan] : undefined;
   const body =

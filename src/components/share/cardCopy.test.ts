@@ -345,11 +345,11 @@ describe('the honest card', () => {
 
   it('says how many categories were left off', () => {
     const one = buildShareCard(userStat(), [categoryStat()], { hiddenCount: 1 })!;
-    expect(hiddenLine(one)).toBe('1 category not shown');
+    expect(hiddenLine(one)).toBe('1 category not shown (still counted)');
     const two = buildShareCard(userStat(), [categoryStat()], { hiddenCount: 2 })!;
-    expect(hiddenLine(two)).toBe('2 categories not shown');
-    expect(shareText(two, []).split('\n')).toContain('2 categories not shown');
-    expect(identityCardSummary(two)).toMatch(/2 categories not shown\.$/);
+    expect(hiddenLine(two)).toBe('2 categories not shown (still counted)');
+    expect(shareText(two, []).split('\n')).toContain('2 categories not shown (still counted)');
+    expect(identityCardSummary(two)).toMatch(/2 categories not shown \(still counted\)\.$/);
     expect(hiddenLine(buildShareCard(userStat(), [categoryStat()])!)).toBeNull();
   });
 });
@@ -478,7 +478,7 @@ describe('buildShareCard with every category left off (code review, step 179)', 
     const card = buildShareCard(user(false), [], { hiddenCount: 2 })!;
     expect(card.categories).toEqual([]);
     expect(shareLines(card)).toEqual({ identity: 'Calibration 87/100', contrast: null });
-    expect(hiddenLine(card)).toBe('2 categories not shown');
+    expect(hiddenLine(card)).toBe('2 categories not shown (still counted)');
     expect(shareLines(buildShareCard(user(true), [], { hiddenCount: 1 })!).identity).toBe('Calibrating');
   });
 
@@ -504,7 +504,7 @@ describe('identityCardSummary with no categories (code review, step 179)', () =>
     )!;
     const said = identityCardSummary(card);
     expect(said).not.toMatch(/By category/);
-    expect(said).toMatch(/Calibration 87\/100.*2 categories not shown\.$/);
+    expect(said).toMatch(/Calibration 87\/100.*2 categories not shown \(still counted\)\.$/);
   });
 });
 

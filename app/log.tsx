@@ -131,7 +131,7 @@ export default function LogScreen() {
                 <Text style={styles.subtitle} testID="log-renumber-note">
                   {renumberCounted
                     ? 'Saving replaces the one you made today. It’s due today, so Insights counts it as deleted.'
-                    : 'Saving replaces the one you made today. On the day it was made that’s fixing a slip, so Insights doesn’t count it.'}
+                    : 'Saving replaces the one you made today. On the day it was made that’s fixing a slip, so Insights doesn’t count it as a deletion.'}
                 </Text>
               )}
               {renumberClosed && !draft?.replaces && (

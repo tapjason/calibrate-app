@@ -135,7 +135,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
       )}
 
       {ordered.length > 0 && (
-        <View style={styles.plans} accessibilityRole="radiogroup">
+        <View style={styles.plans} accessibilityRole="radiogroup" accessibilityLabel="Plan">
           {ordered.map((plan) => (
             <PlanOption
               key={plan.packageId}

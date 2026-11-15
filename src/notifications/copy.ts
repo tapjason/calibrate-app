@@ -9,6 +9,8 @@
 // - never the streak: it counts resolutions, and a notification that nags
 //   about it is the guilt the design avoids.
 
+import { dateLocale } from '@/constants/locale';
+
 /** Registered once at init so iOS can show the placeholder for hidden previews. */
 export const REMINDER_CATEGORY = 'calibrate-resolution-reminder';
 export const DIGEST_CATEGORY = 'calibrate-weekly-digest';
@@ -71,7 +73,7 @@ export function reminderBodyWithoutWords(createdIso: string, confidence: number)
   const made = new Date(createdIso);
   const day = Number.isNaN(made.getTime())
     ? null
-    : made.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    : made.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' });
   return `${day ? `Your prediction from ${day}` : 'Your prediction'} · You said ${confidence}%`;
 }
 
