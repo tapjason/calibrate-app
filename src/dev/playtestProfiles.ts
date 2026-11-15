@@ -14,6 +14,8 @@ import type { Category, CategoryDef, Prediction } from '@/types';
 export type ProfileId =
   | 'day1'
   | 'first-week'
+  | 'first-week-school'
+  | 'first-week-retired'
   | 'habit'
   | 'return'
   | 'threshold'
@@ -49,6 +51,23 @@ export const PLAYTEST_PROFILES: readonly PlaytestProfile[] = [
     summary:
       'Six days in: three answered (one Can’t tell, one same-day and not scored), two open, one due today; Social renamed.',
     personas: ['Mateus', 'Hiroshi', 'Rahel', 'Lucía'],
+  },
+  // The same week in other lives (round 23, 2026-11-14): an office runner's
+  // record on a teenager's or a retiree's phone made testers talk about
+  // someone else's week (blind playtest 2026-11-13e, runs 4 and 6).
+  {
+    id: 'first-week-school',
+    label: 'First week, at school',
+    summary:
+      'The first week in a secondary-school pupil’s life: the same shape, with quizzes, the bus and volleyball; Work renamed School.',
+    personas: ['Lucía', 'Nusrat', 'Nafisa', 'Kalani'],
+  },
+  {
+    id: 'first-week-retired',
+    label: 'First week, retired',
+    summary:
+      'The first week in a retiree’s life: the same shape, with blood sugar, the pension and a walking group; Social renamed Walking group.',
+    personas: ['Hiroshi', 'Piotr', 'Prakash'],
   },
   {
     id: 'habit',
@@ -180,18 +199,85 @@ function day1(tag: string, userId: string, now: Date): ProfileData {
   };
 }
 
-function firstWeek(tag: string, userId: string, now: Date): ProfileData {
+/**
+ * The first week's shape, the same in every life: a No, a Yes, a Can't tell,
+ * a same-day Yes that isn't scored, one due today and one ahead.
+ */
+function firstWeekOf(
+  tag: string,
+  userId: string,
+  now: Date,
+  titles: readonly [string, string, string, string, string, string],
+  categories: readonly [Category, Category, Category, Category, Category, Category],
+  renamed: CategoryDef,
+): ProfileData {
+  const [c0, c1, c2, c3, c4, c5] = categories;
+  const [t0, t1, t2, t3, t4, t5] = titles;
   return {
     predictions: rows(tag, userId, now, [
-      { title: 'The 08:12 tram is on time', category: 'personal', confidence: 80, made: 5, due: 4, status: 'resolved_no' },
-      { title: 'I run 10 km under 55 minutes on Sunday', category: 'health', confidence: 60, made: 5, due: 3, status: 'resolved_yes' },
-      { title: 'The sprint review moves to Thursday', category: 'work', confidence: 70, made: 4, due: 2, status: 'skipped' },
-      { title: 'At least eight people come to the club run', category: 'social', confidence: 75, made: 3, due: 1, status: 'resolved_yes', sameDay: true },
-      { title: 'The release ships before Friday', category: 'work', confidence: 85, made: 2, due: 0, status: 'pending' },
-      { title: 'It rains during Saturday’s long run', category: 'health', confidence: 40, made: 1, due: -2, status: 'pending' },
+      { title: t0, category: c0, confidence: 80, made: 5, due: 4, status: 'resolved_no' },
+      { title: t1, category: c1, confidence: 60, made: 5, due: 3, status: 'resolved_yes' },
+      { title: t2, category: c2, confidence: 70, made: 4, due: 2, status: 'skipped' },
+      { title: t3, category: c3, confidence: 75, made: 3, due: 1, status: 'resolved_yes', sameDay: true },
+      { title: t4, category: c4, confidence: 85, made: 2, due: 0, status: 'pending' },
+      { title: t5, category: c5, confidence: 40, made: 1, due: -2, status: 'pending' },
     ]),
-    categories: [def(userId, now, 'social', 'Running club')],
+    categories: [renamed],
   };
+}
+
+function firstWeek(tag: string, userId: string, now: Date): ProfileData {
+  return firstWeekOf(
+    tag,
+    userId,
+    now,
+    [
+      'The 08:12 tram is on time',
+      'I run 10 km under 55 minutes on Sunday',
+      'The sprint review moves to Thursday',
+      'At least eight people come to the club run',
+      'The release ships before Friday',
+      'It rains during Saturday’s long run',
+    ],
+    ['personal', 'health', 'work', 'social', 'work', 'health'],
+    def(userId, now, 'social', 'Running club'),
+  );
+}
+
+function firstWeekSchool(tag: string, userId: string, now: Date): ProfileData {
+  return firstWeekOf(
+    tag,
+    userId,
+    now,
+    [
+      'The school bus comes before 7:15',
+      'I make the starting six at volleyball on Saturday',
+      'The bio quiz gets moved to Monday',
+      'At least five friends come to the beach on Sunday',
+      'I get a B or better on the history essay',
+      'It rains during Saturday’s volleyball game',
+    ],
+    ['personal', 'health', 'work', 'social', 'work', 'health'],
+    def(userId, now, 'work', 'School'),
+  );
+}
+
+function firstWeekRetired(tag: string, userId: string, now: Date): ProfileData {
+  return firstWeekOf(
+    tag,
+    userId,
+    now,
+    [
+      'The 7:30 bus to the market is on time',
+      'My fasting sugar is under 130 on Sunday',
+      'The pension office answers my letter this week',
+      'At least eight people come to the walking group',
+      'The electricity bill comes in under 2,000',
+      'It rains during Saturday’s morning walk',
+    ],
+    ['personal', 'health', 'finance', 'social', 'finance', 'health'],
+    def(userId, now, 'social', 'Walking group'),
+  );
 }
 
 function habit(tag: string, userId: string, now: Date): ProfileData {
@@ -425,6 +511,10 @@ export function buildProfile(
       return day1(tag, userId, now);
     case 'first-week':
       return firstWeek(tag, userId, now);
+    case 'first-week-school':
+      return firstWeekSchool(tag, userId, now);
+    case 'first-week-retired':
+      return firstWeekRetired(tag, userId, now);
     case 'habit':
       return habit(tag, userId, now);
     case 'return':

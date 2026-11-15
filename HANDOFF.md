@@ -16,6 +16,17 @@
 - **Calls made without asking** (the reviews' "Needs you", each from a rule already decided): the recaps' next badge stops pointing at a category with no answers (it reads the card's categories only); Erase forgets the card's left-off categories, as it forgets the categories themselves; with every category kept off, a card with no categories (D42's honest shape) rather than the Warm-up card; a built-in with only an icon stays on the cards (D40: they draw no icons); a run closed with × or a swipe starts fresh, only a kill resumes.
 - **iPhone:** `docs/HUMAN_VERIFICATION.md` Batch C, "Added 2026-11-14 (step 179…)".
 
+**Round 23 (2026-11-14), appeal in matched pairs on step 179:** `docs/design/research/playtest-2026-11-14.md` (plan `round23-plan-2026-11-14.md`), on `36a4b75`. Owner: "Fix the issues, and run another set of playtests. Make sure the criteria and combination factors differ slightly."
+- **What differed:** four matched pairs (L1 against L5 from a friend's card; modest against bragging at five months; anxious against curious, killed mid-run; 15 against 66 on a shared phone), the wildcard in pair C; block B kept word for word plus B2 (sure before and managed after, taps to the first thing worth having, belief, thinking and frustration); two new profiles, `first-week-school` and `first-week-retired`; eight new personas (§10).
+- **Results:**
+  - median 7 (mean 6.9); five keep, three unsure, nobody leaves; two "very disappointed" (both long-time), one "not disappointed" (the 15-year-old);
+  - with a record four of four keep; the first five minutes and first week one of four;
+  - 24 of 24 end answers right; nobody gave up; the cast said 66% before tasks and managed 88% alone;
+  - frustration 2–3, thinking 3–5; "Too technical" from seven of eight.
+- **Step 179:** the run across a kill and "Use another number" with typed words worked for everyone who met them; hiding the words worked as built but reads as a lock and isn't.
+- **No decision needed, not built:** #2 (part) speak a badge's rise and fall after an answer; #12 the double full stop after a Portuguese date on Resolve; #14 "doesn't count it as a deletion"; #15 no rewording note on the day it was logged; #18 the ±5 buttons' names; #19 the unnamed radio groups; #20 hints on Today's rating and identity line; #22 grey text at more contrast (a device check); #24 the ±5 buttons not shifting; #25 the chart's colliding labels.
+- **Needs the owner:** #1 hiding (the Face ID lock in step 180; hide category names or one category); #2 a badge taken back by a correction; #3 "they still count in the totals"; #4 Share on the Warm-up card in week one, and the fold explaining it; #5 "about 6 weeks" on Today; #6 a plain line atop Insights; #7 the Brier line; #8 a plain card and a headline choice; #9 the perfect line; #10 the backlog recap; #11 region words under 10; #13 English dates (with `expo-localization`); #16 the same words open for the same day; #21 hearing the text share; #23 Resolve's reach; #26 earlier open calls.
+
 **Round 22 (2026-11-13), appeal on step 178 with a diversified cast:** `docs/design/research/playtest-2026-11-13e.md` (plan `round22-plan-2026-11-13.md`), on `cc1235d`.
 - **Results:**
   - median 7 (mean 6.6); five keep, three unsure, nobody leaves;

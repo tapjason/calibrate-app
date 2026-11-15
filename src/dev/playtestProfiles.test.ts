@@ -72,8 +72,8 @@ describe('a repeated title keeps one category', () => {
 describe('across a clock change, late in the evening', () => {
   afterEach(() => __setTimeZoneForTests(null));
 
-  // first-week and threshold hold one same-day answer on purpose.
-  it.each(ids.filter((id) => id !== 'first-week' && id !== 'threshold'))(
+  // The first weeks and threshold hold one same-day answer on purpose.
+  it.each(ids.filter((id) => !id.startsWith('first-week') && id !== 'threshold'))(
     '%s has no answer on the day it was logged',
     (id) => {
       __setTimeZoneForTests('America/Chicago');
@@ -101,6 +101,22 @@ describe('what each profile is for', () => {
     expect(predictions.filter((p) => p.status === 'skipped')).toHaveLength(1);
     expect(predictions.filter(isSameDayAnswer)).toHaveLength(1);
     expect(categories[0]).toMatchObject({ id: 'social', name: 'Running club' });
+  });
+
+  // Round 23: the same week in a pupil's and a retiree's life.
+  it.each([
+    ['first-week-school', 'work', 'School'],
+    ['first-week-retired', 'social', 'Walking group'],
+  ] as const)('%s: the first week’s shape, in its own words', (id, renamed, name) => {
+    const week = get('first-week').predictions;
+    const { predictions, categories } = get(id);
+    expect(predictions.map((p) => [p.status, p.confidence, p.due_date, p.created_at])).toEqual(
+      week.map((p) => [p.status, p.confidence, p.due_date, p.created_at]),
+    );
+    expect(predictions.filter(isSameDayAnswer)).toHaveLength(1);
+    expect(predictions.some((p) => week.some((w) => w.title === p.title))).toBe(false);
+    expect(categories).toEqual([expect.objectContaining({ id: renamed, name })]);
+    expect(predictions.some((p) => p.category === renamed)).toBe(true);
   });
 
   it('habit: every daily answer is scored, logged the evening before, with misses at 90%', () => {
