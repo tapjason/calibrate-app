@@ -30,6 +30,16 @@ that apply here.
 - The phone's JS comes from `npx expo start --dev-client --tunnel` on the PC, on **port 8081**.
   Never start anything else on 8081 or kill what's on it: that cuts the phone off. The web server
   uses 8097.
+- **The tunnel needs `@expo/ngrok` in the project** (a devDependency since 2026-11-15). Expo's CLI
+  can't find a global copy on this machine: it looks in `%LOCALAPPDATA%\npm`, npm on Windows
+  installs to `%APPDATA%\npm`, and its fallback (`npm.cmd config get prefix` through `spawnSync`)
+  fails with `EINVAL` on Node 24. So "install it globally? yes" succeeds and the next line is
+  still "Install @expo/ngrok@^4.1.0 and try again". Don't remove the devDependency as unused: no
+  code imports it. Without it, `$env:NODE_PATH = "$env:APPDATA\npm\node_modules"` before the
+  command also works.
+- **Without the tunnel the phone doesn't find the server on this PC** (seen 2026-11-15): Windows
+  Firewall has two inbound Block rules for "Node.js JavaScript Runtime", and NordVPN adds
+  addresses beside the LAN one. The owner's settings; the tunnel avoids both.
 - After a JS fix the phone needs a reload (shake → Reload, or `r` in the Expo terminal). A screenshot
   that still shows the old behaviour is usually a stale bundle: reload, or restart with `--clear`.
 - `npx expo install <pkg>` always, never `npm i <pkg>`, for anything Expo pins (CLAUDE.md asks the
