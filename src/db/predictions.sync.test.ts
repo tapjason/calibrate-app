@@ -205,13 +205,17 @@ describe('getPredictionUpdatedAt', () => {
 describe('title_edited_at across sync', () => {
   const EDITED = '2026-05-10T09:00:00.000Z';
 
-  it('goes up only once the live schema has it (TITLE_EDIT_SYNC)', async () => {
+  it('goes up now that the live schema has it (TITLE_EDIT_SYNC)', async () => {
     await insertPrediction(samplePrediction({ title_edited_at: EDITED }));
     const [row] = await listDirtyPredictions('u1');
     expect(row.title_edited_at).toBe(EDITED);
-    // The flag is off until migration 008 is applied to the live project.
-    expect('title_edited_at' in forTheServer(row)).toBe(false);
-    expect(forTheServer(row)).toMatchObject({ id: 'p1', title: 'Ship the prototype' });
+    // The flag is on since migration 008 was applied to the live project
+    // (2026-11-16, step 186).
+    expect(forTheServer(row)).toMatchObject({
+      id: 'p1',
+      title: 'Ship the prototype',
+      title_edited_at: EDITED,
+    });
   });
 
   it('is never cleared by a pull from a server without it', async () => {

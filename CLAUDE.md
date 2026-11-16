@@ -64,7 +64,7 @@ is a personality-test result with receipts. The math is the engine, never the pi
                                  // synced for schema compatibility, never shown or rewarded
                                  // (the integrity bonus was dropped 2026-10-10, D23)
   title_edited_at?: string | null // when the words last changed (D45); the prediction
-                                 // counts as made then. Synced behind TITLE_EDIT_SYNC
+                                 // counts as made then. Synced (TITLE_EDIT_SYNC, on)
 }
 ```
 
@@ -466,9 +466,9 @@ were "Can't tell", which the rating leaves out, under "More about your record" (
   (`scoredFrom`): an answer that day isn't scored (D41) and the due date is the
   next day at the earliest. `created_at` stays, so the streak's days don't move.
   Edit says so before Save, except on the day the prediction was logged while it isn't
-  due yet, when new words change nothing it could be told (D63). Supabase migration 008 adds the column; until it is
-  applied to the live project `TITLE_EDIT_SYNC` is off and the date stays on the
-  phone that made the edit.
+  due yet, when new words change nothing it could be told (D63). Supabase migration 008 adds the column; it was
+  applied to the live project on 2026-11-16 and `TITLE_EDIT_SYNC` is on (step 186), so
+  the date syncs with the prediction.
 - **Deleted calls are counted.** Tombstones are kept after the push, marked
   `counted` when the deletion hid something: a scored Yes or No (inside its
   24-hour window), or an open prediction deleted from the day before its due day (D61; on or after its due day until then, and not on the day it was made while it isn't due yet: one made today and already due is counted)

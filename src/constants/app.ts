@@ -101,9 +101,11 @@ export const CUSTOM_CATEGORY_SYNC = true;
  * decided 2026-11-03), so the funnel counts people who never sign in. It
  * needs `supabase/migrations/007_guest_analytics_events.sql` on the live
  * project: before it, every push would fail. With this off a guest's events
- * wait on the phone as before and go up with an account.
+ * wait on the phone as before and go up with an account. On since 2026-11-16
+ * (step 186): the owner applied 007 that day, checked with
+ * `supabase migration list --remote`.
  */
-export const GUEST_ANALYTICS = false;
+export const GUEST_ANALYTICS = true;
 
 /**
  * Whether the date a prediction was reworded goes up to Supabase (roadmap
@@ -111,9 +113,10 @@ export const GUEST_ANALYTICS = false;
  * on the live project: before it, an upsert naming the column fails on every
  * sync. With this off, the rest of the row syncs as before and the date
  * stays on the phone that made the edit, so another phone scores a
- * same-day answer to it as it did before D45.
+ * same-day answer to it as it did before D45. On since 2026-11-16 (step 186):
+ * the owner applied 008 that day, with 007.
  */
-export const TITLE_EDIT_SYNC = false;
+export const TITLE_EDIT_SYNC = true;
 
 /**
  * Scored answers a confidence range needs before Log's track record shows it

@@ -186,8 +186,8 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   the analytics event names.
 - **App identity, never changed after the first build:** everything in §1 "Identity values".
 - **Sync flags:** a column the live schema lacks stays out of the wire row behind its flag
-  (`TITLE_EDIT_SYNC` until migration 008 is applied, `GUEST_ANALYTICS` until 007); the owner
-  applies the migration, then the flag flips.
+  (`TITLE_EDIT_SYNC` for migration 008, `GUEST_ANALYTICS` for 007; both applied and both on
+  since 2026-11-16, step 186); the owner applies the migration, then the flag flips.
 - **NO-GO checks against the last submitted tag (`/release-gate`):** an edited SQLite or Supabase
   migration; a changed id above; a changed identity value; a dropped column without a moving
   migration; an analytics property that can carry free text (`EVENT_PROPS` is closed: enum and

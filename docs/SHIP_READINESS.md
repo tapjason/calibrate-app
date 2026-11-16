@@ -112,6 +112,8 @@ Still open: 2 (a legal call, the owner's), 5, 8, 9, 12 (waits on the mail sender
    migration 007 is applied). One of them has to change before the policy is published.
    **Recommendation:** apply 007 and turn the flag on. The day-0 gates in GROWTH §7 are
    blind without it.
+   **Done 2026-11-16 (step 186):** the owner applied 007 and 008; `GUEST_ANALYTICS` and
+   `TITLE_EDIT_SYNC` are on, so the build matches the policy.
 4. **Prices (P1).** Recommended $34.99 a year, $79.99 lifetime, $4.99 a month.
 5. **EU.** Declare trader status (an individual's address and phone are published), or
    launch outside the EU first. Recommended: outside the EU first.

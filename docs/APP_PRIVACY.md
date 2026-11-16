@@ -17,9 +17,9 @@ The short version:
   The whole core loop — log, resolve, stats, share — runs offline against local
   SQLite, and sync has nothing to sync. Since D43 (2026-11-03) eight funnel
   events go up to `guest_analytics_events` with no user, install or device id
-  (`src/analytics/flush.ts`, `GUEST_EVENT_NAMES`), once migration 007 is
-  applied and `GUEST_ANALYTICS` is on. Until then nothing leaves a guest's
-  phone.
+  (`src/analytics/flush.ts`, `GUEST_EVENT_NAMES`). Migration 007 is applied
+  and `GUEST_ANALYTICS` is on since 2026-11-16 (step 186); before that
+  nothing left a guest's phone.
 - **Freetext never reaches the AI.** The one feature that would have sent it,
   Refine, is cut from v1 (2026-09-24). The Coach sends numbers only.
 

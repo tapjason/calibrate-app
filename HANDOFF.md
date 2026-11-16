@@ -4,6 +4,12 @@
 
 ## What this PR did
 
+**Step 186 (2026-11-16), the two flags that waited on the owner's migrations** (BUILT_LOG row 186). On `builder/step-185-phone-clock`, after step 185. JS only.
+- The owner applied Supabase migrations 007 and 008 (`npx supabase db push --remote`; CLI 3.1 targets a local stack unless given `--remote`). Read back with `migration list --remote`: 001 to 008 on both sides.
+- `GUEST_ANALYTICS` and `TITLE_EDIT_SYNC` are on. The build now matches the privacy policy on guest counts (`SHIP_READINESS.md` decision 3).
+- **Not seen from a phone against the live project:** a guest row in `guest_analytics_events`, and a reworded prediction syncing its date. **Not reviewed.**
+
+
 **Step 185 (2026-11-16), the phone's 24-Hour Time switch** (BUILT_LOG row 185). JS only: a reload.
 - **Found in a screenshot from the owner's iPhone:** US English with 24-Hour Time on. The status bar and the reminder-time picker read 19:00; the app's sentences read "7:00 PM". The engine's own formatter doesn't carry the switch, and an English phone was the one case `localTime` left to it.
 - **Fix:** `src/constants/locale.ts` reads the switch from `expo-localization` (`getCalendars()[0].uses24hourClock`) once per launch and passes the clock explicitly. Where it can't be read (web, tests, a build without the module), nothing changes.
@@ -372,8 +378,8 @@ The branch below, `builder/playtest-11`, holds the eleventh round: the competito
 Start from `docs/TESTFLIGHT_PLAN.md` (the stages and the order of the desk work) and `docs/SHIP_READINESS.md` (the twelve open decisions, each with a recommendation). AI playtests are finished; the next evidence is real people on TestFlight.
 
 - **State of the branches (2026-11-15):** `master` is pushed through step 180. `builder/pre-testflight-steps` holds steps 183 and 184 on top of it, local only: merge to `master` and push at the owner's word, before the production build so TestFlight carries them.
-- **Nothing is left for the agent before the first build** except what waits on the owner: `GUEST_ANALYTICS` on once Supabase migration 007 is applied; a password reset once the custom mail sender works; the under-13 local-only rule if he decides it (a legal call, not the agent's). Decisions 5, 8, 9 and 13 in `SHIP_READINESS.md` stay open and block nothing in the code.
-- **Unreviewed, for the owner's next review call:** step 180's round-2 fixes, step 183, step 184, step 185.
+- **Nothing is left for the agent before the first build** except what waits on the owner (`GUEST_ANALYTICS` went on with step 186): a password reset once the custom mail sender works; the under-13 local-only rule if he decides it (a legal call, not the agent's). Decisions 5, 8, 9 and 13 in `SHIP_READINESS.md` stay open and block nothing in the code.
+- **Unreviewed, for the owner's next review call:** step 180's round-2 fixes, steps 183 to 186.
 - **On the iPhone (owner, 2026-11-15, the new development build):** "The face ID lock works now." No item-by-item results yet: the fifteen "(step 180)" boxes in `docs/HUMAN_VERIFICATION.md` stay unticked until he reports them, the passcode check first (after the passcode, does the app open once, with no second prompt). The tunnel is how the phone reaches the dev server on this PC (`docs/tooling-notes.md`).
 - **The owner asked why the lock is needed** (the same day). Told: it is optional and off by default; it came from the AI playtests' top privacy finding, not from real users; iOS's own Require Face ID for an app does much of the same. Kept because it is built and works; TestFlight feedback is the evidence for keeping or cutting it.
 - **Reviews are the owner's call** (2026-11-15): no reviewer agents after each feature; he asks for them after several. `CLAUDE.md`'s harness section and the `/step` skill still say to review every task; changing them is his yes.
