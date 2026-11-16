@@ -3,6 +3,7 @@ import { join } from 'path';
 
 import {
   __setDeviceLocaleForTests,
+  __setPhoneClockForTests,
   dateLocale,
   deviceRegion,
   englishFor,
@@ -160,5 +161,34 @@ describe('countLocale and the 24-hour clock', () => {
     expect(time('fa-IR')).toBe('19:00');
     // "pm" or "PM" by the English the region's order picked.
     expect(time('ar-EG')).toMatch(/^7:00 pm$/i);
+  });
+});
+
+// Step 185 (the owner's iPhone, 2026-11-16): in US English with 24-Hour Time
+// on, the app wrote "7:00 PM" beside a status bar and a picker reading 19:00.
+describe("the phone's 24-Hour Time switch", () => {
+  const evening = new Date(2026, 10, 15, 19, 0);
+  const time = () =>
+    localTime(evening, { hour: 'numeric', minute: '2-digit' }).replace(/\s/g, ' ');
+  afterEach(() => __setPhoneClockForTests(undefined));
+
+  it('writes 19:00 on an English phone set to a 24-hour clock', () => {
+    __setPhoneClockForTests(false);
+    expect(time()).toBe('19:00');
+    expect(localTime(new Date(2026, 10, 15, 0, 30), { hour: 'numeric', minute: '2-digit' })).toMatch(
+      /^0?0:30$/,
+    );
+    // The date's locale is still the phone's own.
+    expect(dateLocale()).toBeUndefined();
+  });
+
+  it('writes 7:00 PM on one set to a 12-hour clock', () => {
+    __setPhoneClockForTests(true);
+    expect(time()).toBe('7:00 PM');
+  });
+
+  it("falls back to the formatter's own clock where the switch can't be read", () => {
+    __setPhoneClockForTests(null);
+    expect(time()).toBe('7:00 PM');
   });
 });

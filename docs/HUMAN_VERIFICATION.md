@@ -997,6 +997,12 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       different category from the one it was answered in." Move it to another category, then
       Insights → More about your record: "1 scored answer was moved to another category after
       it was answered. Only this phone keeps this count." Move it back: the line is gone.
+- [ ] **The 24-hour clock (step 185):** with 24-Hour Time on (Settings → General → Date & Time),
+      You reads "at 19:00" under Due-day reminders and "Sunday at 18:00" under Weekly digest,
+      and the practice moments read "8:00", "12:30", "20:30". With it off: "7:00 PM". (The app
+      reads the switch at launch: close and reopen it after changing the setting.)
+- [ ] **Red lines around the switches:** in You, is there a thin red rectangle around each
+      switch (seen in a development-build screenshot, 2026-11-16)? On the TestFlight build too?
 - [ ] **Help and version (TestFlight prep):** You → Help and support opens the support page,
       and "Fairly Sure 1.0.0" sits under those links.
 - [ ] **Dates in English (step 181):** set the iPhone's language to Dutch or Spanish (Settings →

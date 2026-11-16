@@ -13,6 +13,9 @@
 // "7:00 PM"), British or US English stands in, whichever matches the phone's
 // order, and the clock is passed explicitly (code review, step 181).
 
+import { requireOptionalNativeModule } from 'expo';
+import { Platform } from 'react-native';
+
 interface Resolved {
   /** The region in the phone's locale ("US", "GB"), or null when it names none. */
   region: string | null;
@@ -97,10 +100,41 @@ function resolve(tag: string, clockFrom: string | undefined): Resolved {
   return { region, tag: candidate, hour12: phoneTwelve === null ? undefined : phoneTwelve };
 }
 
+/**
+ * The phone's own 24-Hour Time switch: true for a 12-hour clock, false for a
+ * 24-hour one, null where it can't be read (web, tests, a build from before
+ * expo-localization). On the owner's iPhone, in US English with 24-Hour Time
+ * on, the status bar and the time picker read "19:00" while every sentence
+ * the app wrote read "7:00 PM" (2026-11-16): the JavaScript engine's own
+ * formatter follows the language's habit, not the switch. The native module is
+ * asked for the way that answers null before the package is loaded, as in
+ * `answerKeyUnits.ts`.
+ */
+function phoneTwelveHour(): boolean | null {
+  try {
+    if (Platform.OS === 'web') return null;
+    if (!requireOptionalNativeModule('ExpoLocalization')) return null;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('expo-localization') as {
+      getCalendars?: () => ReadonlyArray<{ uses24hourClock?: boolean | null }> | undefined;
+    };
+    const uses24 = mod.getCalendars?.()?.[0]?.uses24hourClock;
+    return typeof uses24 === 'boolean' ? !uses24 : null;
+  } catch {
+    return null;
+  }
+}
+
+let readPhoneClock: () => boolean | null = phoneTwelveHour;
+
 function current(): Resolved {
   if (cached !== null) return cached;
   try {
-    cached = resolve(new Intl.DateTimeFormat().resolvedOptions().locale, undefined);
+    const base = resolve(new Intl.DateTimeFormat().resolvedOptions().locale, undefined);
+    // The phone's switch wins over what the formatter would have written,
+    // on a phone in English too (step 185).
+    const phone = readPhoneClock();
+    cached = phone === null ? base : { ...base, hour12: phone };
   } catch {
     cached = { region: null, tag: undefined, hour12: undefined };
   }
@@ -154,4 +188,16 @@ export function __setDeviceLocaleForTests(tag: string | null): void {
     throw new Error('__setDeviceLocaleForTests is only allowed when NODE_ENV=test');
   }
   cached = tag === null ? null : resolve(tag, tag);
+}
+
+/**
+ * Test-only: what the phone's 24-Hour Time switch says (true for a 12-hour
+ * clock), or null to read it the real way again. Forgets the cached locale.
+ */
+export function __setPhoneClockForTests(twelveHourClock: boolean | null | undefined): void {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('__setPhoneClockForTests is only allowed when NODE_ENV=test');
+  }
+  readPhoneClock = twelveHourClock === undefined ? phoneTwelveHour : () => twelveHourClock;
+  cached = null;
 }
