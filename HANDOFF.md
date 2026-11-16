@@ -4,6 +4,15 @@
 
 ## What this PR did
 
+**Step 187 (2026-11-16), the launch page** (BUILT_LOG row 187; roadmap D66). Branch `builder/step-187-launch-page`, from `builder/post-merge-notes` (two docs commits on top of `master` at `47a0ffb`). JS only. **The first TestFlight build (1.0.0, build 2) is on the owner's phone**; this needs a second build to reach it.
+- **The owner's request from that build:** a loading page instead of the splash cutting straight to "How sure are you, really?", and the same page when unlocking with Face ID or the passcode.
+- **Built:** `LaunchPage` (the splash's ink, the mark where the native splash draws it, the name), held about a second at launch by `LaunchScreen` and drawn by `AppLockGate` as the lock screen and the app-switcher cover. DESIGN_SYSTEM §7.19 and §7.25.
+- **Also fixed from his screenshots:** the paywall's title sat under the clock (`SafeAreaView` measured no top inset inside the full-screen modal on the phone; the route now pads by `useSafeAreaInsets`).
+- **For the owner, in App Store Connect:** the paywall showed "1 month free" on **Monthly** and none on Annual. The introductory offer belongs on `calibrate_plus_annual` only (D-decided 2026-09-25); it is set on the monthly product.
+- **Confirmed on the phone by those screenshots:** step 185's 24-hour clock; the three plans load at $34.99, $4.99 and $79.99.
+- **Seen on web:** the launch page at 390 × 844. **Not seen:** the lock screen, the splash hand-over, the paywall's top on the phone. **Not reviewed.**
+
+
 **Step 186 (2026-11-16), the two flags that waited on the owner's migrations** (BUILT_LOG row 186). On `builder/step-185-phone-clock`, after step 185. JS only.
 - The owner applied Supabase migrations 007 and 008 (`npx supabase db push --remote`; CLI 3.1 targets a local stack unless given `--remote`). Read back with `migration list --remote`: 001 to 008 on both sides.
 - `GUEST_ANALYTICS` and `TITLE_EDIT_SYNC` are on. The build now matches the privacy policy on guest counts (`SHIP_READINESS.md` decision 3).
@@ -379,7 +388,7 @@ Start from `docs/TESTFLIGHT_PLAN.md` (the stages and the order of the desk work)
 
 - **State of the branches (2026-11-15):** `master` is pushed through step 180. `builder/pre-testflight-steps` holds steps 183 and 184 on top of it, local only: merge to `master` and push at the owner's word, before the production build so TestFlight carries them.
 - **Nothing is left for the agent before the first build** except what waits on the owner (`GUEST_ANALYTICS` went on with step 186): a password reset once the custom mail sender works; the under-13 local-only rule if he decides it (a legal call, not the agent's). Decisions 5, 8, 9 and 13 in `SHIP_READINESS.md` stay open and block nothing in the code.
-- **Unreviewed, for the owner's next review call:** step 180's round-2 fixes, steps 183 to 186.
+- **Unreviewed, for the owner's next review call:** step 180's round-2 fixes, steps 183 to 187.
 - **On the iPhone (owner, 2026-11-15, the new development build):** "The face ID lock works now." No item-by-item results yet: the fifteen "(step 180)" boxes in `docs/HUMAN_VERIFICATION.md` stay unticked until he reports them, the passcode check first (after the passcode, does the app open once, with no second prompt). The tunnel is how the phone reaches the dev server on this PC (`docs/tooling-notes.md`).
 - **The owner asked why the lock is needed** (the same day). Told: it is optional and off by default; it came from the AI playtests' top privacy finding, not from real users; iOS's own Require Face ID for an app does much of the same. Kept because it is built and works; TestFlight feedback is the evidence for keeping or cutting it.
 - **Reviews are the owner's call** (2026-11-15): no reviewer agents after each feature; he asks for them after several. `CLAUDE.md`'s harness section and the `/step` skill still say to review every task; changing them is his yes.

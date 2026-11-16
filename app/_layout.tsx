@@ -1,12 +1,14 @@
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, Text, View } from 'react-native';
 
 import { ensureAgeBucket } from '@/age/ageRange';
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
 import { AppLockGate } from '@/components/launch/AppLockGate';
+import { LaunchPage } from '@/components/launch/LaunchPage';
+import { LaunchScreen } from '@/components/launch/LaunchScreen';
 import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
 import { useAppearance } from '@/components/ui/useAppearance';
 import { loadFonts } from '@/constants/fonts';
@@ -229,13 +231,10 @@ export default function RootLayout() {
       </View>
     );
   }
-  if (!ready) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.action} />
-      </View>
-    );
-  }
+  // Behind the native splash on a phone; what web shows while the database
+  // opens. The launch page as the splash draws it (step 187), so what follows
+  // it moves nothing.
+  if (!ready) return <LaunchPage markOnly />;
 
   // Scoped tasks open as sheets with a grabber (DESIGN_SYSTEM §7.7): Resolve
   // at a tall detent so the prompt and the Today list behind it both stay in
@@ -325,6 +324,8 @@ export default function RootLayout() {
         />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
+      {/* The launch page, held a moment over the first screen (step 187). */}
+      <LaunchScreen started={launched} />
       {/* The app lock and its app-switcher cover (D64), over every screen and sheet. */}
       <AppLockGate />
     </ThemeProvider>
@@ -332,7 +333,7 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  // Behind the splash on a phone; what web shows while the database opens.
+  // The screen for a launch that failed.
   center: {
     alignItems: 'center',
     backgroundColor: colors.canvas,

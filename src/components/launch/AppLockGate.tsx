@@ -1,20 +1,8 @@
-import { useContext, useEffect, type ReactNode } from 'react';
-import {
-  AccessibilityInfo,
-  AppState,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
-import { FullWindowOverlay } from 'react-native-screens';
+import { useEffect } from 'react';
+import { AccessibilityInfo, AppState, Keyboard, StyleSheet, View } from 'react-native';
 
-import { Button } from '@/components/ui/Button';
-import { APP_NAME } from '@/constants/app';
-import { colors, DISPLAY_MAX_SCALE, space, type } from '@/constants/theme';
+import { InFront, LaunchButton, LaunchLine, LaunchPage } from '@/components/launch/LaunchPage';
+import { space } from '@/constants/theme';
 import { useLockStore } from '@/store/lockStore';
 
 export const NO_PASSCODE_LINE =
@@ -39,6 +27,10 @@ export const FAILED_LINE = 'That didn’t unlock it. Try again.';
  *
  * It scrolls: at the largest text sizes the lines and the button are taller
  * than the screen, and the button is the way in (code review of step 180).
+ *
+ * Since step 187 it is the launch page (`LaunchPage`): the mark and the name
+ * on the splash's ink, with the lock's line and button under them, so
+ * opening the app and unlocking it look like one thing.
  */
 export function AppLockGate() {
   const locked = useLockStore((s) => s.locked);
@@ -48,9 +40,6 @@ export function AppLockGate() {
   const method = useLockStore((s) => s.method);
   const unlock = useLockStore((s) => s.unlock);
   const continueWithoutLock = useLockStore((s) => s.continueWithoutLock);
-  // Zero where nothing provides them (tests); the router provides them in the app.
-  const insets = useContext(SafeAreaInsetsContext);
-
   // The store follows the app in and out of the foreground from here, so it
   // needs nothing from react-native itself. The first call covers a launch:
   // a lock armed before this mounted gets its one prompt once the app is active.
@@ -83,35 +72,14 @@ export function AppLockGate() {
   if (!locked && !covered) return null;
 
   return (
-    <Overlay>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={[
-          styles.fill,
-          {
-            paddingTop: space.xxl + (insets?.top ?? 0),
-            paddingBottom: space.xxl + (insets?.bottom ?? 0),
-          },
-        ]}
-        alwaysBounceVertical={false}
-        keyboardShouldPersistTaps="handled"
-        testID={locked ? 'app-lock' : 'app-lock-cover'}
-      >
-        <Text
-          style={styles.name}
-          accessibilityRole="header"
-          maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
-        >
-          {APP_NAME}
-        </Text>
+    <InFront modal>
+      <LaunchPage testID={locked ? 'app-lock' : 'app-lock-cover'}>
         {locked && (
           <View style={styles.body}>
             {notice === 'no_passcode' ? (
               <>
-                <Text style={styles.line} testID="app-lock-no-passcode">
-                  {NO_PASSCODE_LINE}
-                </Text>
-                <Button
+                <LaunchLine testID="app-lock-no-passcode">{NO_PASSCODE_LINE}</LaunchLine>
+                <LaunchButton
                   label="Continue"
                   onPress={() => void continueWithoutLock()}
                   testID="app-lock-continue"
@@ -119,13 +87,11 @@ export function AppLockGate() {
               </>
             ) : (
               <>
-                <Text style={styles.line}>{lockedLine(method)}</Text>
+                <LaunchLine>{lockedLine(method)}</LaunchLine>
                 {notice === 'failed' && (
-                  <Text style={styles.line} testID="app-lock-failed">
-                    {FAILED_LINE}
-                  </Text>
+                  <LaunchLine testID="app-lock-failed">{FAILED_LINE}</LaunchLine>
                 )}
-                <Button
+                <LaunchButton
                   label="Unlock"
                   onPress={() => void unlock()}
                   disabled={checking}
@@ -135,8 +101,8 @@ export function AppLockGate() {
             )}
           </View>
         )}
-      </ScrollView>
-    </Overlay>
+      </LaunchPage>
+    </InFront>
   );
 }
 
@@ -151,26 +117,6 @@ export function lockedLine(method: 'Face ID' | 'Touch ID' | 'your passcode' | nu
   return 'Locked. Unlock to see your predictions.';
 }
 
-/** In front of every sheet on the iPhone; an absolute layer where there are none. */
-function Overlay({ children }: { children: ReactNode }) {
-  if (Platform.OS === 'ios') {
-    return (
-      <FullWindowOverlay unstable_accessibilityContainerViewIsModal>{children}</FullWindowOverlay>
-    );
-  }
-  return <View style={StyleSheet.absoluteFill}>{children}</View>;
-}
-
 const styles = StyleSheet.create({
-  screen: { backgroundColor: colors.canvas, flex: 1 },
-  fill: {
-    alignItems: 'center',
-    flexGrow: 1,
-    gap: space.xl,
-    justifyContent: 'center',
-    paddingHorizontal: space.xxl,
-  },
-  name: { ...type.title1, color: colors.textPrimary, textAlign: 'center' },
-  body: { alignSelf: 'stretch', gap: space.lg },
-  line: { ...type.body, color: colors.textSecondary, textAlign: 'center' },
+  body: { alignSelf: 'stretch', gap: space.lg, marginTop: space.xl },
 });

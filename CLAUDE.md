@@ -612,7 +612,7 @@ See the authoritative section above.
 - **The app can be locked** (D64, 2026-11-15, step 180): a switch in You under "Hide the words",
   off by default, named for what the phone has ("Lock with Face ID"). On, the iPhone checks
   Face ID, or the passcode as the way in, at launch and each time the app comes back from the
-  background, and the app is covered by its name in the app switcher. The phone checks before
+  background, and the app is covered by the launch page (its mark and name, D66) in the app switcher. The phone checks before
   the switch moves either way. A check that fails keeps it locked; only a phone with no passcode
   left opens, saying so and turning the lock off. Nothing locks on a build that can't
   (`src/lock/appLock.ts` is the only module that talks to `expo-local-authentication`, loaded

@@ -1001,6 +1001,16 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       You reads "at 19:00" under Due-day reminders and "Sunday at 18:00" under Weekly digest,
       and the practice moments read "8:00", "12:30", "20:30". With it off: "7:00 PM". (The app
       reads the switch at launch: close and reopen it after changing the setting.)
+- [ ] **The launch page (step 187):** swipe the app away and open it: the dark splash with
+      the mark stays, "Fairly Sure" fades in under the mark without the mark moving, and
+      after about a second it fades to Today (or the Warm-up on a fresh install). Coming back
+      from the Home Screen without swiping it away shows no launch page.
+- [ ] **The lock is the launch page (step 187):** with the app lock on, open the app: the same
+      dark page with the mark and the name, "Locked. Unlock with Face ID…" and a light Unlock
+      button under them, readable in the light and the dark appearance; the app switcher shows
+      the mark and the name only.
+- [ ] **The paywall's top (step 187):** You → Fairly Sure Plus: the title and the × sit below
+      the clock and the Dynamic Island, not under them.
 - [ ] **Help and version (TestFlight prep):** You → Help and support opens the support page,
       and "Fairly Sure 1.0.0" sits under those links.
 - [ ] **Dates in English (step 181):** set the iPhone's language to Dutch or Spanish (Settings →

@@ -575,5 +575,9 @@ behaviour is checked by the owner on that phone, and an agent says so in every r
     put the switch on the label's line (`ToggleRow`, `ToggleSwitch`).
   - iOS asks before a Log draft is discarded (`useLogDraftGuard`); web has no action sheet.
   - Web shows times as "07:00 PM", the device as the system's locale ("19:00").
+  - The JavaScript formatter doesn't carry the phone's 24-Hour Time switch on an English phone;
+    `locale.ts` reads it from `expo-localization` (step 185).
+  - `SafeAreaView` measured no top inset inside the `fullScreenModal` paywall (the first
+    TestFlight build, 2026-11-16); the route pads by `useSafeAreaInsets` (step 187).
 - **Where device results go:** the owner reports; the main session records them in `HANDOFF.md`
   and ticks `docs/HUMAN_VERIFICATION.md` (Batch C, D). `/device-check` writes the list to check.

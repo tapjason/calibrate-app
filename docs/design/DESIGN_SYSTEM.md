@@ -1217,8 +1217,21 @@ decided, then fades out over 250 ms (roadmap step 59): the database is open, the
 stores are loaded, and a first run has been sent to the Warmup. It used to hide on
 the first React frame, so a cold start cut from the splash to a white screen with a grey
 spinner, and a first run showed Home for a moment before the Warmup replaced it. It
-never holds longer than 4 s. The loading view behind it is `canvas` with an `action`
-spinner, which is what the web build shows.
+never holds longer than 4 s.
+
+**The launch page** (D66, 2026-11-16, the owner's request on the first TestFlight build:
+the splash cut straight to the Warm-up's first question). One page, `LaunchPage`: the
+splash's ink in both appearances (`#15171B`, dark `#0E0F12`), the mark where the native
+splash draws it (200 pt wide, centred on the screen), and the app's name under it in
+`title1`. What sits on the ink uses the dark palette's values in both appearances, as a
+share card keeps its own. It is used three times, so the three read as one:
+- **At launch** (`LaunchScreen`): the native splash fades to the same picture, so nothing
+  moves; the name fades in (350 ms), the page holds 1.1 s from the moment the app is ready,
+  then fades to the first screen (300 ms). Once per cold start, never on a return from the
+  background. Under Reduce Motion nothing fades: the name is there and the page is cut.
+  Hidden from VoiceOver, which starts on the screen underneath.
+- **The app lock and its cover** (§7.25).
+- **Before the database opens:** the mark alone, which is what the web build shows first.
 
 ### 7.20 Choosing an element
 
@@ -1397,10 +1410,12 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
   words" (§7.21), named for what the phone has in use: "Lock with Face ID", "Lock with Touch
   ID" or "Lock with iPhone passcode". It never names a method the phone lacks or isn't using,
   and it is hidden on a build that can't lock. Its line ends by saying reminders aren't covered.
-- **The lock screen and the cover** are one layout on `canvas`, centred: the app's name in
-  `title1`, and when locked a line in `body` / `textSecondary` and a primary **Unlock** button.
-  The cover (the app not in front while the lock is on) is the name alone, in the same column. No glyph: Apple's Face ID symbol isn't drawn by the app, and iOS's own
-  prompt carries it.
+- **The lock screen and the cover** are the launch page (§7.19, since D66; plain `canvas`
+  with the name until then): the mark and the app's name, and when locked a line and an
+  **Unlock** button under them, in the page's fixed colours (the app's own primary is ink in
+  the light appearance and would vanish on it). The cover (the app not in front while the
+  lock is on) is the mark and the name alone. No Face ID glyph: Apple's symbol isn't drawn by
+  the app, and iOS's own prompt carries it.
 - **It sits in front of every screen and sheet** on the iPhone (`FullWindowOverlay`: a view in
   the app's window, kept in front of whatever is presented after it), with VoiceOver kept
   inside it. The keyboard and a system alert have windows of their own and can sit above it;
