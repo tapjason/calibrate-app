@@ -11,7 +11,7 @@ You read the live data of the iPhone app described in `docs/app-profile.md` and 
 Read first:
 
 - `docs/app-profile.md` §1, §5, §12 and §14 (the signals and where they come from).
-- `GROWTH_AND_MONETIZATION.md` (§0 and §7: the go-to-market gates), `BUILD_PLAN.md` "Validation Checkpoints", and `docs/design/research/retention-2026-10.md`.
+- `GROWTH_AND_MONETIZATION.md` (§0, and §7: the gates, their metrics and what each failure means) and `docs/design/research/retention-2026-10.md`.
 - `CLAUDE.md` Key Design Principles: a fix that trades one away (rewarding a confidence, a leaderboard, paywalling a card, a number built on noise) is never proposed.
 - The last playtest round in `docs/design/research/playtest-*.md`.
 - Only the data the brief gives you: pasted text, or files under `docs/live/`. If there's none, stop and say what to export (§14).

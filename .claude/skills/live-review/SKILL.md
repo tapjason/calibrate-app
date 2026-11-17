@@ -11,7 +11,7 @@ Review the live app's data. $ARGUMENTS
 2. **Analyse.** Delegate to `live-ops-analyst` with the data (paths or the pasted text) and the dates it covers.
 3. **Route.** For each issue in its table:
    - a design question: a proposed row for `docs/design/UI_ROADMAP.md` §2 (marked open, for `/design`);
-   - a bug: a step in `docs/NEXT_STEPS.md` that points to the evidence;
+   - a bug: an item in `docs/SHIP_READINESS.md` "Open work" that points to the evidence;
    - an owner action: an item in `docs/HUMAN_VERIFICATION.md` with the exact steps.
 4. **Record** a dated file `docs/live/review-<yyyy-mm-dd>.md` with the issues, the watch list and what was routed where.
 5. Reply with the top three issues, what you routed, and the owner's list.

@@ -14,7 +14,7 @@ Prepare the decision for: $ARGUMENTS
 5. **Record.**
    - The decision as a row in `docs/design/UI_ROADMAP.md` §2, in its style: the next D number, "Decided <date> (owner, <evidence>)", what was decided, and why it needed sign-off. A dropped idea is recorded too ("Not adopted: …").
    - If it changes product behaviour, the matching section of `CLAUDE.md` (it is the spec), and `docs/app-profile.md` if a §5 rule, a §12 bar or a §13 budget changed.
-   - If it's to be built, its step in `docs/NEXT_STEPS.md` "Suggested order".
+   - If it's to be built, an item in `docs/SHIP_READINESS.md` "Open work".
 6. **Stop** after recording. Building is `/step` (or a direct request), not this skill.
 
 Never edit `app/` or `src/` here, and never record a decision the owner didn't make.

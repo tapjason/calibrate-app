@@ -69,7 +69,7 @@ for n in $(seq 1 18); do
 done
 
 echo "== Docs the agents read"
-for f in CLAUDE.md HANDOFF.md BUILD_PLAN.md COACH_AGENT.md GROWTH_AND_MONETIZATION.md docs/agent-harness.md docs/app-profile.md docs/tooling-notes.md docs/NEXT_STEPS.md docs/HUMAN_VERIFICATION.md docs/APP_STORE_LISTING.md docs/APP_PRIVACY.md docs/design/DESIGN_SYSTEM.md docs/design/UI_ROADMAP.md docs/design/BUILT_LOG.md docs/design/FUTURE_UI.md; do
+for f in CLAUDE.md HANDOFF.md BUILD_PLAN.md COACH_AGENT.md GROWTH_AND_MONETIZATION.md docs/agent-harness.md docs/app-profile.md docs/tooling-notes.md docs/HUMAN_VERIFICATION.md docs/APP_STORE_LISTING.md docs/APP_PRIVACY.md docs/design/DESIGN_SYSTEM.md docs/design/UI_ROADMAP.md docs/design/BUILT_LOG.md docs/design/FUTURE_UI.md; do
 	[ -f "$f" ] || fail "$f is missing"
 done
 

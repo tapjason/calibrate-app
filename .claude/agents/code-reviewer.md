@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Independent reviewer for TypeScript, React Native, Expo and Supabase changes in Fairly Sure, judged by what breaks on a real iPhone. Use proactively after finishing any task that changes app/, src/, supabase/ or app config, again after fixing its findings (up to three rounds), and in release mode at every /release-gate. Reviews with fresh eyes; it does not edit files.
+description: Independent reviewer for TypeScript, React Native, Expo and Supabase changes in Fairly Sure, judged by what breaks on a real iPhone. Use only when the owner calls for a review of changes to app/, src/, supabase/ or app config (he calls one after several features at once, not after every task), again after fixing its findings inside that review (up to three rounds), and in release mode at every /release-gate. Spawned on Opus at xhigh effort. Reviews with fresh eyes; it does not edit files.
 tools: Read, Grep, Glob, Bash
 model: inherit
 color: orange

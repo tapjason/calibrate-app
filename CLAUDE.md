@@ -3,20 +3,21 @@
 **Read `HANDOFF.md` first.** It is the shared state for this branch and is overwritten each PR.
 The agent harness (subagents, skills, the check hook) is described under "Agent harness" below.
 
-**Canonical spec.** This file and `BUILD_PLAN.md` are the two always-current build
-documents. `GROWTH_AND_MONETIZATION.md` and `COACH_AGENT.md` are rationale/reference —
-read them for the *why*, but this file governs *what gets built*. If they ever conflict,
-this file wins. Visual and interaction design lives in `docs/design/DESIGN_SYSTEM.md`.
-Read `HANDOFF.md` at the repo root first when picking up a branch.
+**Canonical spec.** This file governs *what gets built*; `BUILD_PLAN.md` holds the layer
+rules and invariants. `GROWTH_AND_MONETIZATION.md` and `COACH_AGENT.md` are
+rationale/reference — read them for the *why*. If they ever conflict, this file wins.
+Visual and interaction design lives in `docs/design/DESIGN_SYSTEM.md`. Each rule's history
+(when it was decided, the playtest behind it, what it replaced) is in its D row in
+`docs/design/UI_ROADMAP.md` §2 and in `docs/design/BUILT_LOG.md`.
 
 ## Project Overview
 
-**Fairly Sure** (working name since 2026-11-03, `APP_STORE_LISTING.md` §0; the
-repo, the internal ids and older docs still say Calibrate) is a mobile app that helps users track personal predictions with confidence
-levels, then measures how accurately their confidence matches real outcomes over time. The
-core insight: most people are systematically overconfident or underconfident in specific
-life domains. This app surfaces that pattern so users can learn where to trust their own
-judgment.
+**Fairly Sure** (the working name, `APP_STORE_LISTING.md` §0; the repo, the internal ids
+and older docs still say Calibrate) is a mobile app that helps users track personal
+predictions with confidence levels, then measures how accurately their confidence matches
+real outcomes over time. The core insight: most people are systematically overconfident or
+underconfident in specific life domains. This app surfaces that pattern so users can learn
+where to trust their own judgment.
 
 The two primary goals:
 1. **Goal tracking** — Did you do what you said you'd do?
@@ -64,11 +65,11 @@ is a personality-test result with receipts. The math is the engine, never the pi
                                  // synced for schema compatibility, never shown or rewarded
                                  // (the integrity bonus was dropped 2026-10-10, D23)
   title_edited_at?: string | null // when the words last changed (D45); the prediction
-                                 // counts as made then. Synced (TITLE_EDIT_SYNC, on)
+                                 // counts as made then. Synced.
 }
 ```
 
-### CategoryDef (decided 2026-11-01, D39)
+### CategoryDef (D39)
 ```ts
 {
   id: Category                   // a built-in or an added 'c-' id
@@ -82,25 +83,21 @@ is a personality-test result with receipts. The math is the engine, never the pi
 }
 ```
 The person renames any category, adds their own and hides one from Log's choices
-(You → Categories). A built-in has a row only once renamed, hidden or given an icon. Device-local in
-the `categories` SQLite table, like the settings: not synced yet. Predictions carry
-only the id, so a rename changes no prediction and no name leaves the phone. Every
-category is shown through `categoryLabel`. **Predictions filed under an added category
-sync** since `supabase/migrations/006_custom_categories.sql` was applied to the live
-project (2026-11-03, `CUSTOM_CATEGORY_SYNC` true); only the id goes up, so another
-phone shows "Other" until it's named there. With the flag off they stay on the phone
-and the Categories screen says so to a signed-in person. An added category never
-reaches the Coach: its name is the person's own text.
+(You → Categories). A built-in has a row only once renamed, hidden or given an icon.
+Device-local in the `categories` SQLite table, like the settings: not synced yet.
+Predictions carry only the id, so a rename changes no prediction and no name leaves the
+phone. Every category is shown through `categoryLabel`. Predictions filed under an added
+category sync; only the id goes up, so another phone shows "Other" until it's named there.
+An added category never reaches the Coach: its name is the person's own text.
 
-**Category icons** (decided 2026-11-03, D40): any category, a built-in included, can
-show one emoji (a suggested grid or any emoji typed in) or a picture from the photo
-library, cropped square and shrunk to 120 px (`src/media/iconImage.ts`), instead of
-its symbol. "Use the default" goes back. Stored in the same `categories` row (SQLite
-migration 010, `icon_emoji` / `icon_image`): on this phone only, not synced, cleared
-by Erase. Shown in full colour wherever the app shows a category's icon (lists draw the
-default symbol instead while "Hide the words" is on, D62); **never on a
-share card or Wrapped**, which keep their fixed design, so a photo can't leave the
-phone in a shared image.
+**Category icons** (D40): any category, a built-in included, can show one emoji (a
+suggested grid or any emoji typed in) or a picture from the photo library, cropped square
+and shrunk to 120 px (`src/media/iconImage.ts`), instead of its symbol. "Use the default"
+goes back. Stored in the same `categories` row (SQLite migration 010, `icon_emoji` /
+`icon_image`): on this phone only, not synced, cleared by Erase. Shown in full colour
+wherever the app shows a category's icon (lists draw the default symbol instead while
+"Hide the words" is on, D62); **never on a share card or Wrapped**, which keep their fixed
+design, so a photo can't leave the phone in a shared image.
 
 ### UserStat
 ```ts
@@ -316,45 +313,37 @@ where users decide whether the app is worth keeping. The Warmup delivers the cor
 on Day 0, teaches the mechanic, and produces the first shareable card. Warmup results are
 stored separately and **never** mixed into real `UserStat` / `CategoryStat` data.
 
-Decided 2026-10-05 (`docs/design/UI_ROADMAP.md` D13): the confidence slider
-starts **empty** and Next waits for a number, so tapping through can't produce a
-verdict about a preset. Since D49 (2026-11-09) the resting thumb sits at the coin
-flip, 50%, on every screen, and the first ±5 steps from it (50% or 55% here, 45% or
-55% on Log), as VoiceOver's first swipe does. From D36 it rested mid-range, 75% on
-the two-choice scales, which made 70% one tap and a coin flip five.
+The confidence slider starts **empty** and Next waits for a number, so tapping through
+can't produce a verdict about a preset (D13). The resting thumb sits at the coin flip,
+50%, on every screen, and the first ±5 steps from it (50% or 55% here, 45% or 55% on Log),
+as VoiceOver's first swipe does (D49).
 
-**Day 0 is for calibration, not an identity verdict** (decided 2026-10-07, UI_ROADMAP
-D18; built 2026-10-08):
+**Day 0 is for calibration, not an identity verdict** (D18):
+- The first screen says what the app is for ("How sure are you, really?", D61).
 - The ten are drawn from the practice tables (`warmupQuestions`, the same ten for
   everyone, right answers five first and five second), not picked to be tricky:
-  five inside the practice's closeness band, five from the whole class (refined
-  2026-10-09; the band alone tilts toward overconfidence).
+  five inside the practice's closeness band, five from the whole class (the band alone
+  tilts toward overconfidence). They open on a place or a year, and every place and year
+  comes before the school kinds (order only, the draw unchanged; D59, D61).
 - The result leads with counts and reads these questions, not the person: "You said
   78% on average. 6 of 10 were right." under "On these ten, you were overconfident".
   A lean is named only outside the central 80% of what luck gives at ten answers
   (`WARMUP_LEAN_MASS`); otherwise "On these ten, no clear lean", with what did happen
-  in plain counts (D36, worded by D61: "Your numbers expected about 8 right, and you
-  got 9. On ten answers luck often moves it that far, so it can't tell yet whether you
-  run too sure, too cautious or about right."). The result also
-  carries "It isn't about being right. A 60% call that doesn't happen isn't a
-  mistake: about 4 in 10 of them shouldn't happen." A bare ±5 rule (the
-  rest of the app's until D35 made this one rule everywhere) called a lean on 47–73% of perfectly calibrated people
-  (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20, 2026-10-09).
-  Since D59 (2026-11-12) the expected-and-got line sits straight under the verdict,
-  before the bridge and the buttons; the ten open on a place or a year (order only,
-  the draw unchanged); and a US-region phone sees feet and miles beside the metric
-  units in the answer key. Since D61 (2026-11-13) the first screen says what the app
-  is for ("How sure are you, really?"), every place and year comes before the school
-  kinds, and the no-lean line reads "Your numbers expected about 7 right, and you got
-  6… so it can't tell yet whether you run too sure, too cautious or about right".
+  in plain counts (D36, D61): "Your numbers expected about 8 right, and you got 9. On ten
+  answers luck often moves it that far, so it can't tell yet whether you run too sure, too
+  cautious or about right." That expected-and-got line sits straight under the verdict,
+  before the bridge and the buttons (D59). The result also carries "It isn't about being
+  right. A 60% call that doesn't happen isn't a mistake: about 4 in 10 of them shouldn't
+  happen." A bare ±5 rule called a lean on 47–73% of perfectly calibrated people
+  (`docs/design/research/day0-2026-10.md`). No 0–100 warm-up score (D20).
+- A US-region phone sees feet and miles beside the metric units in the answer key (D59).
 - A bridge to the person's own plans (the planning-fallacy line) sits above the
   button, "Make a real prediction" (the bridge ends "Make your first one about
   tomorrow.").
-- The first prediction defaults to Tomorrow, with starter ideas that resolve by then,
-  so the first real result lands on Day 1 (since D55, 2026-11-10, every prediction
-  starts on Tomorrow). That first yes/no answer says what the
-  number means, the same for Yes and No ("A 70% call should come true about 7 times
-  in 10, so one answer can't say much; 20 can.").
+- The first prediction is due Tomorrow, as every new one is (D55), with starter ideas that
+  resolve by then, so the first real result lands on Day 1. That first yes/no answer says
+  what the number means, the same for Yes and No ("A 70% call should come true about 7
+  times in 10, so one answer can't say much; 20 can.").
 - The Day-0 card shares the counts as an invitation: "5 of 10 right. I was 77% sure.
   How sure are you?"
 
@@ -362,151 +351,132 @@ D18; built 2026-10-08):
 Entry point for creating a prediction. Fields: title, confidence slider (0–100), due date,
 category. Minimal friction — completable in under 15 seconds.
 
-The confidence starts **empty** and Save waits for a title and a number (decided
-2026-10-05, UI_ROADMAP D13). The category starts **empty** too, and Save waits for one
-(decided 2026-10-10, D29): a preset Work filed untouched predictions under Work. A
-starter idea or "Log it again" fills it.
+The confidence starts **empty** and Save waits for a title and a number (D13). The
+category starts **empty** too, and Save waits for one (D29), so untouched predictions
+aren't filed under a preset. A starter idea or "Log it again" fills it.
 
-**The due date starts on Tomorrow** (decided 2026-11-10, D55; blind playtest
-2026-11-10, finding 2: "In a week" caught five of eight testers), for every new
-prediction; a starter idea and "Log it again" bring their own. Save names the date
-it will save: "Save, due tomorrow", "Save, due Sunday" (two to six days out), "Save,
-due Tue, Nov 17" (further), so the date is in view when the chips aren't.
+**The due date starts on Tomorrow** (D55) for every new prediction; a starter idea and
+"Log it again" bring their own. Save names the date it will save: "Save, due tomorrow",
+"Save, due Sunday" (two to six days out), "Save, due Tue, Nov 17" (further), so the date is
+in view when the chips aren't.
 
-**"Log it again"** (step 22) is offered after an answer on Resolve and, since D56
-(2026-11-10), on an answered prediction's details in History at any time. Its label
-names the date it brings ("Log it again, due tomorrow"); when the same words are
-already open it reads "Logged again, due Wed, Nov 11." instead. The title, category
-and lead time (a day at least) carry over; the confidence never does, so the new
-number isn't anchored on the old one.
+**"Log it again"** (step 22; on History's details too, D56) is offered after an answer on Resolve and on an answered
+prediction's details in History at any time. Its label names the date it brings ("Log it
+again, due tomorrow"); when the same words are already open it reads "Logged again, due
+Wed, Nov 11." instead. The title, category and lead time (a day at least) carry over; the
+confidence never does, so the new number isn't anchored on the old one.
 
-**This prediction's own record** (decided and built 2026-10-12, D32): when the typed
-title matches predictions already answered (the same words once case, spaces, end
-punctuation and curly quotes are set aside, so "Log it again" always matches), a line
-under the title says how they came out: "Answered 3 times before: happened 1 of 3."
-Outcomes only, never the earlier confidences, which would anchor the new number; skips
-and open ones don't count. From the first answer on, since it's the person's own
-record and not a score. Free. It sits beside the track record under the confidence
-("Of your 12 scored finance calls at 60–80%, 7 happened."): the category's range
-from 10 scored answers, else the overall range from 10, else **the overall range
-from 5**, with "Too few to read yet" (decided 2026-11-10, D57: the track record was
-the one line that moved testers' numbers, and it vanished below 10). Counts only,
-never a lean. Linking past experience to the
-prediction is the one prompt with strong evidence against optimism about one's own
-plans (`docs/design/research/debiasing-2026-10.md` §1); premortems and "list reasons
-you're wrong" are recorded there as not worth building.
+**This prediction's own record** (D32): when the typed title matches predictions already
+answered (the same words once case, spaces, end punctuation and curly quotes are set aside,
+so "Log it again" always matches), a line under the title says how they came out:
+"Answered 3 times before: happened 1 of 3." Outcomes only, never the earlier confidences,
+which would anchor the new number; skips and open ones don't count. From the first answer
+on, since it's the person's own record and not a score. Free. It sits beside the track
+record under the confidence ("Of your 12 scored finance calls at 60–80%, 7 happened."): the
+category's range from 10 scored answers, else the overall range from 10, else **the
+overall range from 5**, with "Too few to read yet" (D57). Counts only, never a lean.
+Linking past experience to the prediction is the one prompt with strong evidence against
+optimism about one's own plans; premortems and "list reasons you're wrong" aren't worth
+building (`docs/design/research/debiasing-2026-10.md` §1).
 
 **"Use another number"** (D62) on Edit, only on the day an open prediction was logged
 (by `created_at`, `canRenumber`; not one logged earlier and reworded today, which would
 move its streak day): Log opens as "Another number" with the words, category and date Edit
-holds (typed changes included, step 179; tapped after midnight, kept as a new prediction) and
-the number empty, and saving replaces it (saved and deleted in one transaction, the
-delete uncounted by the day-made exemption). From the next day the number is the record.
-Deleting and retyping took three testers 13 to 19 taps (blind playtest 2026-11-13d).
+holds (typed changes included; tapped after midnight, kept as a new prediction) and the
+number empty, and saving replaces it (saved and deleted in one transaction, the delete
+uncounted by the day-made exemption). From the next day the number is the record.
 
 **"+ New category"** (D61) on Log's and Edit's category chips adds one in place and
 chooses it, through the same rules as You → Categories.
 
-**"Save and log another"** (D59, 2026-11-12) saves and keeps the sheet open, the form
-started over under "Saved, due tomorrow."; it appears once there's something to save.
-When the typed words are already open for the day being saved, Log says so ("You already
-have this one open, due tomorrow.", D63) and still saves.
-**A draft is kept for a day** (D59, reversing D52 (1)): title, category, the person's own
-number and date, device-local, offered back on a plain open of Log ("Kept from before you
-left." with Start over), cleared by a save, Start over, Discard, Erase and account
-deletion.
+**"Save and log another"** (D59) saves and keeps the sheet open, the form started over
+under "Saved, due tomorrow."; it appears once there's something to save. When the typed
+words are already open for the day being saved, Log says so ("You already have this one
+open, due tomorrow.", D63) and still saves.
+**A draft is kept for a day** (D59): title, category, the person's own number and date,
+device-local, offered back on a plain open of Log ("Kept from before you left." with Start
+over), cleared by a save, Start over, Discard, Erase and account deletion.
 
-An optional AI refine button is specced but **deferred** (see AI § A). Nothing
-about the save flow depends on it — which is why cutting it cost nothing.
+An optional AI refine button is specced but **deferred** (see AI § A). Nothing about the
+save flow depends on it.
 
 ### 3. Resolution Module
 Triggered by push notification on due_date. User taps yes/no + optional one-line
 reflection. Calibration data is worthless without resolution.
 
-**An open prediction** (decided 2026-10-10, D25): tapping one that isn't due yet
-opens its details — what you said and when, the due date, **Edit** (title, category
-and due date; never the confidence, which is the record) and **Delete** — with
-**Answer it now** below, which first says it's early (`docs/design/DESIGN_SYSTEM.md`
-§7.23) and then opens Resolve; an early answer counts like any other, except on the day it was logged (D41, below). A prediction that is due opens Resolve directly, as before.
-A delete is synced as a deletion (a local tombstone pushed to Supabase), so it
-doesn't come back on the next pull; another signed-in device keeps its copy until
-it is deleted there.
+**An open prediction** (D25): tapping one that isn't due yet opens its details — what you
+said and when, the due date, **Edit** (title, category and due date; never the confidence,
+which is the record) and **Delete** — with **Answer it now** below, which first says it's
+early (`docs/design/DESIGN_SYSTEM.md` §7.23) and then opens Resolve; an early answer counts
+like any other, except on the day it was logged (D41). A prediction that is due opens
+Resolve directly. A delete is synced as a deletion (a local tombstone pushed to Supabase),
+so it doesn't come back on the next pull; another signed-in device keeps its copy until it
+is deleted there.
 
-**After a Yes or No** (decided 2026-11-09, D50; blind playtest 2026-11-09b): the
-same for both. Under the range's record, until the rating unlocks, what the number
-means ("A 70% call should come true about 7 times in 10: one that doesn't isn't a
-mistake, and one that does isn't proof."); once it's unlocked, what the answer did to
-it ("Your rating moved from 91 to 89. One answer nudges it either way; the pattern
-over many is what counts."; in an answer run the second sentence comes once, step 175), including after a reminder's Happened or Didn't, but
-not after "Change answer", where it would make a false answer a one-tap comparison.
-The reflection asks "Anything to remember about this
-one?", and the coverage nudge stays quiet for 30 minutes after any answer.
+**After a Yes or No** (D50): the same for both. Under the range's record, until the rating
+unlocks, what the number means ("A 70% call should come true about 7 times in 10: one that
+doesn't isn't a mistake, and one that does isn't proof."); once it's unlocked, what the
+answer did to it ("Your rating moved from 91 to 89. One answer nudges it either way; the
+pattern over many is what counts."; in an answer run the second sentence comes once),
+including after a reminder's Happened or Didn't, but not after "Change answer", where it
+would make a false answer a one-tap comparison. The reflection asks "Anything to remember
+about this one?", and the coverage nudge stays quiet for 30 minutes after any answer.
 
 **A note after an answer** (D62): an answered prediction's details offer "Add a note",
 "Change note" and "Remove note" at any time; a note changes no number.
 
-**Correcting an answer** (decided 2026-11-01, D34): "Change answer" right after a
-Yes or No switches it to the other in place; it no longer puts the prediction back
-to open. For **24 hours** after an answer (`CORRECTION_WINDOW_HOURS`, from the first
-answer, which a correction keeps), its details (a tap in History) can switch the
-answer, move it to another category or delete it; after that it is the record.
-After a switch there or on Resolve, one line says the rating and badges now follow the
-answer, with no figures and only where a rating can move (D63: a badge earned on a mis-tap
-went back in silence).
-A Yes or No never becomes "Can't tell": that was how a miss could be parked and
-answered later. Can't tell's own note names the last day it could still be answered
-(D60). A skip can still be answered later. Insights says how many answers
-were "Can't tell", which the rating leaves out, under "More about your record" (D62).
+**Correcting an answer** (D34): "Change answer" right after a Yes or No switches it to the
+other in place. For **24 hours** after an answer (`CORRECTION_WINDOW_HOURS`, from the first
+answer, which a correction keeps), its details (a tap in History) can switch the answer,
+move it to another category or delete it; after that it is the record. After a switch
+there or on Resolve, one line says the rating and badges now follow the answer, with no
+figures and only where a rating can move (D63). A Yes or No never becomes "Can't tell":
+that would let a miss be parked and answered later. Can't tell's own note names the last
+day it could still be answered (D60). A skip can still be answered later. Insights says how
+many answers were "Can't tell", which the rating leaves out, under "More about your record"
+(D62).
 
-**The score holes, closed** (decided 2026-11-06, D45; blind playtests 2026-11-04 and
-2026-11-05, three runs each):
+**The score holes, closed** (D45):
 - **New words are a new prediction.** Editing an open prediction's title to
   different words (not case, spacing, end punctuation or quote style: the D32
   `titleKey`) sets `title_edited_at`, and the prediction counts as made then
   (`scoredFrom`): an answer that day isn't scored (D41) and the due date is the
   next day at the earliest. `created_at` stays, so the streak's days don't move.
   Edit says so before Save, except on the day the prediction was logged while it isn't
-  due yet, when new words change nothing it could be told (D63). Supabase migration 008 adds the column; it was
-  applied to the live project on 2026-11-16 and `TITLE_EDIT_SYNC` is on (step 186), so
-  the date syncs with the prediction.
+  due yet, when new words change nothing it could be told (D63). The date syncs with the
+  prediction.
 - **Deleted calls are counted.** Tombstones are kept after the push, marked
   `counted` when the deletion hid something: a scored Yes or No (inside its
-  24-hour window), or an open prediction deleted from the day before its due day (D61; on or after its due day until then, and not on the day it was made while it isn't due yet: one made today and already due is counted)
-  (`deletionCounts`). Insights says how many, and that only this phone keeps the
+  24-hour window), or an open prediction deleted from the day before its due day (D61),
+  except on the day it was made while it isn't due yet (one made today and already due is
+  counted) (`deletionCounts`). Insights says how many, and that only this phone keeps the
   count. The delete confirmation says so first.
-- **Late due-date moves are counted** (D59, 2026-11-12). Moving an open
-  prediction's due date later on or after the day before its due day
-  (`postponementCounts`) is counted on Insights, once per prediction, on this phone
-  only (`prediction_postponements`, SQLite migration 015, never synced), and the count
-  survives a delete; Edit says so before Save. Counting discloses, it doesn't block.
-  Not on the day the prediction was made (D62, as for a delete). **New words on the
-  eve of the due day or after** are counted beside them (`rewordingCounts`, D62): the
-  date stays, so a call whose outcome was in sight could be rewritten and answered,
-  scored, the next day. Insights: "…had its due date moved later, or its words changed,
-  within a day of its due day." A switched answer isn't counted: the 24-hour window is
-  its limit.
-- **Answers moved to another category are counted** (D65, 2026-11-15, step 184).
-  Inside its 24-hour window a scored Yes or No can be moved, and each category's score
-  follows where it is filed, so a category's misses could be moved out one by one. A
-  scored answer left in a different category from the one it was answered in
-  (`refileCounts`) is counted on Insights under "More about your record" ("1 scored
-  answer was moved to another category after it was answered. Only this phone keeps
-  this count."), on this phone only (`prediction_refiles`, SQLite migration 017, never
-  synced). One moved back isn't counted, and one deleted after a move is counted once,
-  as a deletion. The answer's details say so under the category chips, before a move.
-  A same-day answer or a "Can't tell" isn't counted: neither was scored.
+- **Late due-date moves are counted** (D59). Moving an open prediction's due date later
+  on or after the day before its due day (`postponementCounts`) is counted on Insights,
+  once per prediction, on this phone only (`prediction_postponements`, SQLite migration
+  015, never synced), and the count survives a delete; Edit says so before Save. Counting
+  discloses, it doesn't block. Not on the day the prediction was made (D62, as for a
+  delete). **New words on the eve of the due day or after** are counted beside them
+  (`rewordingCounts`, D62), since the date stays. Insights: "…had its due date moved
+  later, or its words changed, within a day of its due day." A switched answer isn't
+  counted: the 24-hour window is its limit.
+- **Answers moved to another category are counted** (D65). Each category's score follows
+  where an answer is filed, so a scored Yes or No left in a different category from the
+  one it was answered in (`refileCounts`) is counted on Insights under "More about your
+  record" ("1 scored answer was moved to another category after it was answered. Only this
+  phone keeps this count."), on this phone only (`prediction_refiles`, SQLite migration
+  017, never synced). One moved back isn't counted; one deleted after a move is counted
+  once, as a deletion. The answer's details say so under the category chips, before a
+  move. A same-day answer or a "Can't tell" isn't counted: neither was scored.
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
   after its due day, and never less than the correction window after the skip, so
   a mis-tap can still be undone. After that it stays "Can't tell". A Yes or No
   given to it later is an answer like any other: it gets its own 24-hour
-  correction window, counted from that answer (clarified 2026-11-09, owner).
-  There is no way to put any answer back to open (`reopen` was deleted
-  2026-11-09).
-- **The phone's clock is the clock** (clarified 2026-11-09, owner): the skip week,
-  the correction window and same-day answers are judged by the device's time,
-  which the app accepts. It works offline, and a server clock would need a
-  connection without stopping someone set on padding; the rules raise the cost of
-  padding, they don't end it (D41).
+  correction window, counted from that answer. There is no way to put any answer back
+  to open.
+- **The phone's clock is the clock**: the skip week, the correction window and same-day
+  answers are judged by the device's time, which the app accepts, so it works offline; the
+  rules raise the cost of padding, they don't end it (D41).
 
 Note: resolution alone is a weak retention hook. The identity layer (badges climbing,
 weekly reveal) carries retention — build it deliberately.
@@ -517,7 +487,7 @@ See the authoritative section above.
 ### 5. Stats & Insight Module
 - Overall calibration rating (0–100), or provisional-progress state. Until the first
   answer, the progress state leads with when it comes ("Your first answer: tomorrow
-  evening", D30, 2026-10-10)
+  evening", D30)
 - What the rating means in points (D59): "Range by range, what you said averaged about
   14 points away from how often those things happened…", 100 minus the rounded rating;
   Today's rating opens How scoring works with the same line on top. Today's bar carries
@@ -529,10 +499,10 @@ See the authoritative section above.
   chart's lean read: inside the middle 80% while the chart names a lean, "Your score is
   within what luck gives, though the chart shows a range that leans."; below it, "Your
   score is further off than luck alone explains." only when the chart names a lean too,
-  else the figure alone; above it, "Your score is above that, which luck can do too". `perfectReference` simulates the
-  same confidences coming true as often as they say: absolute error over few answers a
-  range keeps even perfect calibration near 85–88 at 20 answers, 92 at 50, 95 at 100
-  (blind playtest 2026-11-13d, finding 1). The formula and the badge bars don't change
+  else the figure alone; above it, "Your score is above that, which luck can do too".
+  `perfectReference` simulates the same confidences coming true as often as they say:
+  absolute error over few answers a range keeps even perfect calibration near 85–88 at 20
+  answers, 92 at 50, 95 at 100. The formula and the badge bars don't change
 - **A first look before 20** (D62): from 10 scored answers until the rating unlocks,
   Today and Insights add "First look: you said about 75% on average, and 6 of your 12
   scored predictions happened. Too few to rate yet." Counts, never a lean
@@ -541,95 +511,90 @@ See the authoritative section above.
   record" on Insights, one tap away ("Show less" folds it again)
 - Calibration curve chart (stated vs. actual per bucket). Its zone words,
   "Overconfident" and "Underconfident", show on the empty chart and once some range
-  has 10 answers, as the dots' colours do (D63: over one late bus they read as a verdict);
-  the Warm-up's chart names them when its verdict names a lean
+  has 10 answers, as the dots' colours do (D63); the Warm-up's chart names them when its
+  verdict names a lean
 - The Brier score, one quiet line in the fine print from 50 scored answers (D24, D62, above)
-- **The pattern, named** (decided 2026-11-01, D37), all free and all by the one lean
-  rule (D35): the category furthest off, past `MIN_N_CATEGORY` ("Furthest off:
-  finance. You said about 85%, and 9 of 21 happened. About 45% would have matched.",
-  and since D59 how it fits that category's badge: "That gap is already in its score, 80,
-  which still clears Forecaster's 70 at its low end.");
-  the chart's title naming both sides when there are both ("You're too sure at
-  80–100% and too cautious at 60–80%"); and "since last week" under the rating once
+- **The pattern, named** (D37), all free and all by the one lean rule (D35): the category
+  furthest off, past `MIN_N_CATEGORY` ("Furthest off: finance. You said about 85%, and 9
+  of 21 happened. About 45% would have matched.", and how it fits that category's badge,
+  D59: "That gap is already in its score, 80, which still clears Forecaster's 70 at its
+  low end."); the chart's title naming both sides when there are both ("You're too sure
+  at 80–100% and too cautious at 60–80%"); and "since last week" under the rating once
   it's unlocked at both ends ("Up 2 since last week, from 6 answers given since then,
   within its give-or-take."). The Plus card shows one Coach-style card on the person's own
   numbers as a sample, written by the app and labelled so (Coach itself needs Plus
   and a sign-in).
-- **Plain counts on the chart** (decided 2026-11-10, D57), by the same rule. The
-  title names a range that leans before any range inside luck, and never says
-  there's no lean while a range with 10 or more leans. A range inside luck but 5
-  points or more off what was said reads "No clear lean at 60–80%" (the recaps' rule,
-  one shared helper); "You're well calibrated at 60–80%" only under 5. The subtitle
-  gives the expected count ("Of 21 things you called 60–80% likely, 12 happened;
-  your numbers expected about 14."), and for a range the lean rule names, what would
-  have matched ("You said about 88%; about 65% would have matched.", rounded to 5 as
-  the category line is). Insights shows "No answers are Can't tell." when there are
-  none, from the first answer (D59; once unlocked until then).
+- **Plain counts on the chart** (D57), by the same rule. The title names a range that
+  leans before any range inside luck, and never says there's no lean while a range with 10
+  or more leans. A range inside luck but 5 points or more off what was said reads "No
+  clear lean at 60–80%" (the recaps' rule, one shared helper); "You're well calibrated at
+  60–80%" only under 5. The subtitle gives the expected count ("Of 21 things you called
+  60–80% likely, 12 happened; your numbers expected about 14."), and for a range the lean
+  rule names, what would have matched ("You said about 88%; about 65% would have
+  matched.", rounded to 5 as the category line is). Insights shows "No answers are Can't
+  tell." when there are none, from the first answer (D59).
 - Per-category breakdown with badge levels, and each category's own score once it is
-  past `MIN_N_CATEGORY` (D28, 2026-10-10); before that, the count to go and its plain
-  counts ("You said about 90% on average, and 7 of 9 happened.", D53, 2026-11-09),
-  never a lean
+  past `MIN_N_CATEGORY` (D28); before that, the count to go and its plain counts ("You
+  said about 90% on average, and 7 of 9 happened.", D53), never a lean
 - While the rating is calibrating, when it could unlock at the recent pace ("At your
   recent pace, about 3 weeks (around Nov 30).", D53; on Today only when it's three weeks
   off or nearer, D63, on Insights always): scored answers over the last 28
   days (or since the first prediction, a week at least), no estimate with fewer than 3
-- **The identity line** (D27, 2026-10-10): on Today and the share card, a tier is
-  named only for a category past the count gate (20 resolved, so Tracker or above).
-  The first tier means "fewer than 20 scored here", which read as a verdict ("Guesser in
-  finance" after five months); it stays on Insights' badge rows, where the count to
-  go sits beside it, and since D36 (2026-11-01) it is named **"Getting started"**
-  there (the stored id stays `guesser`): "Guesser" stung after one prediction.
-  Until a category has a badge, Insights says the first comes at 20 answered there, or,
-  once the total would have earned one, that the answers are spread over N categories
-  (D59), and Today names the closest badge ("To reach Tracker or higher in finance: 13 more
-  scored answers.": at 20 a category can go straight to Forecaster).
-  Tapping the streak row on Today opens How scoring works at Your streak (2026-11-13). Tapping the identity line on Today explains the tiers (How
-  scoring works, at Badges) rather than opening Share.
-- Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**
-  (decided 2026-10-06): the day a streak reaches one is named ("A full week") on Today
-  and on the answer that earned it. Every other day only the number climbs. The
-  checkpoint *celebration* (motion, haptic) is planned but not built — see
-  `docs/design/FUTURE_UI.md` §B.
-- **What a day takes** (decided 2026-10-07, roadmap D17): one prediction logged
-  or answered keeps the streak. Three a day is the **daily goal**, shown as the
-  streak row's dots and named when met ("Today's goal met"), and asked of nobody.
-  It was three to count (D2, 2026-10-05); Duolingo's A/B test of exactly this
-  change raised day-14 retention 3.3% and new users on a streak 19%
-  (`docs/design/research/retention-2026-10.md` §2.1). Practice doesn't count
-  toward either.
-- **The words can be hidden** (D61, 2026-11-13): "Hide the words" in You, off by
-  default. On, a card shows "Words hidden. Open it to see them.", its number and date,
-  and no note; a category the person named (added, or a built-in renamed) reads "Your own
-  category" with a plain folder (D62), an icon the person chose gives way to the default
-  symbol (a built-in given only an icon keeps its word, owner 2026-11-14), and Today's
-  identity and next-badge lines name only categories under the app's own words. Since step 179 the same goes off the
-  cards: Insights' badge rows, furthest-off line, Trends and Coach cards read "Your own
-  category", and the share card and the recaps leave off a category with a name the person
-  gave, Share says so, and the recaps have no titles switch (their next badge names only a
-  category the card could show). With every category off, the
-  card keeps the rating (or "Calibrating") and "N categories not shown". Opening a card shows everything. For a phone someone else picks
+- **The identity line** (D27): on Today and the share card, a tier is named only for a
+  category past the count gate (20 resolved, so Tracker or above). The first tier means
+  "fewer than 20 scored here", which would read as a verdict; it stays on Insights' badge
+  rows, where the count to go sits beside it, named **"Getting started"** there (D36; the
+  stored id stays `guesser`). Until a category has a badge, Insights says the first comes
+  at 20 answered there, or, once the total would have earned one, that the answers are
+  spread over N categories (D59), and Today names the closest badge ("To reach Tracker or
+  higher in finance: 13 more scored answers.": at 20 a category can go straight to
+  Forecaster). Tapping the streak row on Today opens How scoring works at Your streak.
+  Tapping the identity line on Today explains the tiers (How scoring works, at Badges)
+  rather than opening Share.
+- Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**:
+  the day a streak reaches one is named ("A full week") on Today and on the answer that
+  earned it. Every other day only the number climbs. The checkpoint *celebration*
+  (motion, haptic) is planned but not built — see `docs/design/FUTURE_UI.md` §B.
+- **What a day takes** (D17): one prediction logged or answered keeps the streak. Three a
+  day is the **daily goal**, shown as the streak row's dots and named when met ("Today's
+  goal met"), and asked of nobody (`docs/design/research/retention-2026-10.md` §2.1).
+  Practice doesn't count toward either.
+- **The words can be hidden** (D61): "Hide the words" in You, off by default. On, a card
+  shows "Words hidden. Open it to see them.", its number and date, and no note; a category
+  the person named (added, or a built-in renamed) reads "Your own category" with a plain
+  folder (D62), an icon the person chose gives way to the default symbol (a built-in given
+  only an icon keeps its word), and Today's identity and next-badge lines name only
+  categories under the app's own words. Off the cards too: Insights' badge rows,
+  furthest-off line, Trends and Coach cards read "Your own category", and the share card
+  and the recaps leave off a category with a name the person gave (Share says so; the
+  recaps have no titles switch, and their next badge names only a category the card could
+  show). With every category off, the card keeps the rating (or "Calibrating") and "N
+  categories not shown". Opening a card shows everything. For a phone someone else picks
   up (reminders have their own switch, D60).
-- **The app can be locked** (D64, 2026-11-15, step 180): a switch in You under "Hide the words",
-  off by default, named for what the phone has ("Lock with Face ID"). On, the iPhone checks
-  Face ID, or the passcode as the way in, at launch and each time the app comes back from the
-  background, and the app is covered by the launch page (its mark and name, D66) in the app switcher. The phone checks before
-  the switch moves either way. A check that fails keeps it locked; only a phone with no passcode
-  left opens, saying so and turning the lock off. Nothing locks on a build that can't
-  (`src/lock/appLock.ts` is the only module that talks to `expo-local-authentication`, loaded
-  lazily). Reminders aren't covered, and the switch says so: their words keep their own
-  switch, and while the lock is on a reminder has no Happened / Didn't (one delivered earlier
-  opens the question behind the lock and records nothing).
-- **The streak can be hidden** (D59, 2026-11-12): a switch in You, "Streak and daily
-  goal", on by default. Off hides the streak row and its goal, the checkpoints, the
-  streak on the recap and Insights and in the welcome back; the streak is still
-  derived, so nothing in the record depends on it.
-- **Rest days** (decided 2026-10-07, at the owner's request for retention
-  features): every 7 counted days save a rest day, up to 2. A past day that
-  didn't count spends one automatically, and the streak carries on *without*
-  adding that day; with none saved, the streak ends and the reserve goes with
-  it. Derived from the predictions on every read, never stored, so every device
-  agrees. Today says what's saved, the day one covered ("Yesterday was a rest
-  day"), or when the next one comes, and once none are left says so ("None saved now", step 175). For a week after a streak of 2 days or more ends, while none runs, the streak row says so: "Your 151-day streak ended on Thursday", "No rest day was left to cover it. One prediction today starts a new one" (D60). Evidence: `docs/design/research/retention-2026-10.md` §2.2.
+- **The app can be locked** (D64): a switch in You under "Hide the words", off by default,
+  named for what the phone has ("Lock with Face ID"). On, the iPhone checks Face ID, or the
+  passcode as the way in, at launch and each time the app comes back from the background,
+  and the app is covered by the launch page (its mark and name, D66) in the app switcher.
+  The phone checks before the switch moves either way. A check that fails keeps it locked;
+  only a phone with no passcode left opens, saying so and turning the lock off. Nothing
+  locks on a build that can't (`src/lock/appLock.ts` is the only module that talks to
+  `expo-local-authentication`, loaded lazily). Reminders aren't covered, and the switch
+  says so: their words keep their own switch, and while the lock is on a reminder has no
+  Happened / Didn't (one delivered earlier opens the question behind the lock and records
+  nothing).
+- **The streak can be hidden** (D59): a switch in You, "Streak and daily goal", on by
+  default. Off hides the streak row and its goal, the checkpoints, the streak on the recap
+  and Insights and in the welcome back; the streak is still derived, so nothing in the
+  record depends on it.
+- **Rest days**: every 7 counted days save a rest day, up to 2. A past day that didn't
+  count spends one automatically, and the streak carries on *without* adding that day;
+  with none saved, the streak ends and the reserve goes with it. Derived from the
+  predictions on every read, never stored, so every device agrees. Today says what's
+  saved, the day one covered ("Yesterday was a rest day"), or when the next one comes, and
+  once none are left says so ("None saved now"). For a week after a streak of 2 days or
+  more ends, while none runs, the streak row says so: "Your 151-day streak ended on
+  Thursday", "No rest day was left to cover it. One prediction today starts a new one"
+  (D60). Evidence: `docs/design/research/retention-2026-10.md` §2.2.
 - Coach insight cards (Plus — see `COACH_AGENT.md`)
 
 ### 6. Share & Wrapped Module (free — this is the growth engine)
@@ -639,20 +604,18 @@ See the authoritative section above.
   health and money", D54); with none yet, it reads "Calibrating" and the count to go,
   or, once the rating is unlocked, leads with it ("Calibration 89/100").
 - **Calibration Wrapped** — weekly and yearly recap of the user's forecasting story.
-  Its read follows Insights (decided 2026-11-03, D42): both sides when there are
-  both ("This year, you ran too sure at 80–100% and too cautious at 60–80%."), and
-  the week's card sets the whole record's read beside its own ("Across all 148
-  scored answers, you're too sure at 80–100%."), so the two spans don't read as a
-  contradiction. Its two calls are the surest at 60% or more each way, "Surest call that
-  happened" and "Surest call that didn't happen" (D60): a 40% walk was named "Surest
-  thing that didn't".
-- **The card is honest about itself** (decided 2026-11-03, D42): the rating carries
-  its give-or-take ("Calibration 87/100, give or take 3, from 148 resolved
-  predictions"), and a card with categories left off says so ("2 categories not
-  shown (still counted)": the rating and a recap's totals always cover the whole record,
-  D63), in the image and the text share alike. Any of them can be left off, the last
-  one too (owner, 2026-11-14): the card then keeps the rating and the count. The recaps leave the same
-  categories off and say so too (2026-11-04).
+  Its read follows Insights (D42): both sides when there are both ("This year, you ran too
+  sure at 80–100% and too cautious at 60–80%."), and the week's card sets the whole
+  record's read beside its own ("Across all 148 scored answers, you're too sure at
+  80–100%."), so the two spans don't read as a contradiction. Its two calls are the surest
+  at 60% or more each way, "Surest call that happened" and "Surest call that didn't
+  happen" (D60).
+- **The card is honest about itself** (D42): the rating carries its give-or-take
+  ("Calibration 87/100, give or take 3, from 148 resolved predictions"), and a card with
+  categories left off says so ("2 categories not shown (still counted)": the rating and a
+  recap's totals always cover the whole record, D63), in the image and the text share
+  alike. Any of them can be left off, the last one too: the card then keeps the rating and
+  the count. The recaps leave the same categories off and say so too.
 - **Until the rating unlocks, the Warm-up card leads on Share** (D63; the category card,
   still "Calibrating", is one tap away), and from then on the category card leads with the
   Warm-up card one tap away ("Show my warm-up card", without its "Real predictions next."
@@ -666,56 +629,54 @@ See the authoritative section above.
   next badge's place, never "Back to Getting started" (D27); the year card carries the
   rating ("All time: calibration 87/100, give or take 3, from 148 scored answers.").
 - Exports a PNG the OS share sheet accepts.
-- A text share ends on the App Store link with a campaign token (`ct=share-card-text`)
-  once `APP_STORE_ID` is set (decided 2026-10-08, `GROWTH_AND_MONETIZATION.md` §0
-  step 1), so App Store Connect counts installs per share surface with no SDK and no
-  identifier. That count is the share-loop gate (GROWTH §7).
+- The text share ends on the App Store link (`APP_STORE_ID` is set). The campaign token
+  (`ct=share-card-text`) is added only once `APP_STORE_PROVIDER_TOKEN` is set (it is still
+  `null`; `src/share/link.ts`, `GROWTH_AND_MONETIZATION.md` §0 step 1), so App Store
+  Connect counts installs per share surface with no SDK and no identifier. That count is
+  the share-loop gate (GROWTH §7).
 
 Nothing that produces a shareable artifact is ever paywalled.
 
 ### 7. Notification Service
-- **Resolution reminder** — fires at 19:00 local on the due day (decided 2026-10-05;
-  due dates are stored at noon, which was before most outcomes were known), or at
-  the time the person picks in You (D38, 2026-11-01). **Happened** and **Didn't**
-  on the reminder record that answer and open the app on the resolved state
-  (D8, 2026-11-02); tapping the notification itself still opens the question,
-  and "Can't tell" stays in the app. Web has no actions. **The words can be kept off**
-  (D60): "Show the words in reminders" in You, off by default (owner); off, a reminder reads
+- **Resolution reminder** — fires at 19:00 local on the due day (due dates are stored at
+  noon, which was before most outcomes were known), or at the time the person picks in
+  You (D38). **Happened** and **Didn't** on the reminder record that answer and open the
+  app on the resolved state (D8); tapping the notification itself still opens the
+  question, and "Can't tell" stays in the app. Web has no actions. **The words can be kept
+  off** (D60): "Show the words in reminders" in You, off by default; off, a reminder reads
   "Your prediction from Nov 6 · You said 70%", so nothing written is on the lock screen,
-  and has no Happened / Didn't: two alike could take the wrong answer. Nor does any reminder while the app lock is on (D64): the answer would be recorded without the lock being opened. A reminder that no longer
-  matches its prediction (set for another date or time, words changed after it
-  arrived) or whose answer now would be same-day (D41) opens the question instead
-  of recording, with the current words and Resolve's note (step 169, 2026-11-10,
-  from the record audit: a delivered reminder outlives a reschedule).
+  and has no Happened / Didn't: two alike could take the wrong answer. Nor does any
+  reminder while the app lock is on (D64): the answer would be recorded without the lock
+  being opened. A reminder that no longer matches its prediction (set for another date or
+  time, words changed after it arrived) or whose answer now would be same-day (D41) opens
+  the question instead of recording, with the current words and Resolve's note (a
+  delivered reminder outlives a reschedule).
 - **Weekly digest** — fires Sunday at 18:00 local, or on the day and time the person
   picks (D38), and summarizes open and upcoming predictions
 - **Trial ending** — 10:00 local two days before a free trial renews, with the
-  renewal date and the store's price, and no offer (decided 2026-10-07, roadmap
-  D16). Cancelled when the trial is cancelled or over, or notifications are off.
+  renewal date and the store's price, and no offer (D16). Cancelled when the trial is
+  cancelled or over, or notifications are off.
 - **Practice reminder** — off until the user picks a moment ("With coffee ·
   8:00 AM", "At lunch · 12:30 PM", "After dinner · 8:30 PM"; in You also **Pick a
-  time**, any time of day, added 2026-10-10, D31), offered under a finished practice
-  and in You (decided 2026-10-07, roadmap step 89). One a day,
-  only on days the practice isn't done, with a different title daily and that
+  time**, any time of day, D31), offered under a finished practice and in You.
+  One a day, only on days the practice isn't done, with a different title daily and that
   day's first question as the body. Scheduled at most three days ahead of the
   last time the app was open, so someone who stops opening it gets three, then
   silence. Never the streak, never a loss.
 
-All four follow the Notifications switch. Under it (decided 2026-10-10, D31),
-**Due-day reminders** and **Weekly digest** (named "Sunday digest" until D38) each
-have their own switch, on by default, and the practice reminder its own choice of
-time; since D38 the reminders have a time (`dueReminderTime`) and the digest a day
-and time (`digestDay`, `digestTime`), each under its switch. The trial-ending
-reminder follows the main switch alone.
+All four follow the Notifications switch. Under it (D31), **Due-day reminders** and
+**Weekly digest** each have their own switch, on by default, and the practice reminder its
+own choice of time; the reminders have a time (`dueReminderTime`) and the digest a day and
+time (`digestDay`, `digestTime`), each under its switch (D38). The trial-ending reminder
+follows the main switch alone.
 
 ### 8. Rating prompt
 Apple's system rating prompt (`expo-store-review`), requested on Today after a
 Resolve sheet closes on a finished run or on the answer that unlocked the score,
 only after 7 days and 10 yes/no answers, never in the Warmup, at most once per 90
-days (decided 2026-10-07, roadmap D15). Never tied to a Yes: reward calibration,
-not correctness.
+days (D15). Never tied to a Yes: reward calibration, not correctness.
 
-### 9. Daily practice (decided 2026-10-07, at the owner's request for retention features)
+### 9. Daily practice
 Three two-choice questions a day, with the Warmup's 50–100% confidence control,
 the **same three for everyone on the same local day**. Real predictions resolve
 when they come due, which the user doesn't choose, so this is the reason to open
@@ -725,7 +686,7 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   city coordinates, country areas, heights, diameters, years, atomic numbers), never
   picked to be tricky. Each kind deals from a shuffled deck of every fair pair: close
   enough not to be a giveaway, far enough apart that no answer rests on which source
-  a number came from. This is the representative bank D14 (c) waits on.
+  a number came from. This is the representative bank D14 (c) asked for.
 - **Practice is practice.** Stored on the device only (`practice_answers`), never
   synced, and never mixed into `UserStat`, `CategoryStat`, the streak, badges or
   Wrapped, exactly like the Warmup. The app never claims practice improves the real
@@ -754,28 +715,24 @@ Plus sells insight, depth, and cosmetics only.
 | Advanced analytics, trends | — | ✅ |
 | Card/badge cosmetics | — | ✅ |
 
-Pricing intent: ~$4.99/mo, ~$29.99/yr (annual anchored, shown first), optional lifetime.
-Re-checked against the 2026 market on 2026-10-08: $29.99 sits below the median annual
-price ($34.80 across apps, $39.94 in Health & Fitness), and GROWTH §4 recommends
-**$34.99/yr and $79.99 lifetime, monthly unchanged** (P1, the owner's call, not
-applied). No paid installs while revenue per install is far below what one costs
-(GROWTH §2.4).
+Prices, set in App Store Connect: $4.99/month, $34.99/year (annual anchored, shown first)
+and $79.99 lifetime (GROWTH §4). No paid installs while revenue per install is far below
+what one costs (GROWTH §2.4).
 
-**Trial: one free month on the annual plan** (decided 2026-09-25), auto-renewing
-into the paid year unless cancelled. A calendar month sits inside the measured
-42.5%-conversion band ("17–32 days") instead of the unmeasured gap 14 days falls
-in, and Plus only becomes legible once predictions *resolve* — a month is more
-than one resolution cycle. This is a store-side setting: the app renders whatever
-trial the store reports, per plan, in the store's own units ("1 month", not "30
-days" — a calendar month is 28–31 days and this is a billing screen). The paywall
-must also state that the trial converts and that cancelling takes **24 hours'**
-notice, which is Apple's actual rule.
+**Trial: one free month on the annual plan**, auto-renewing into the paid year unless
+cancelled. A calendar month sits inside the measured 42.5%-conversion band ("17–32 days")
+instead of the unmeasured gap 14 days falls in, and Plus only becomes legible once
+predictions *resolve* — a month is more than one resolution cycle. This is a store-side
+setting: the app renders whatever trial the store reports, per plan, in the store's own
+units ("1 month", not "30 days" — a calendar month is 28–31 days and this is a billing
+screen). The paywall must also state that the trial converts and that cancelling takes
+**24 hours'** notice, which is Apple's actual rule.
 
-Two open points remain in `GROWTH_AND_MONETIZATION.md`: the price itself (P1, §4),
-and **net revenue, which depends on the unsettled Apple link-out commission
-question** (§2.3) — $29.99/yr is $25.49 in hand at the Small Business rate. The
-stance until a court rules: IAP only, no web checkout. Re-verify before relying on a
-revenue number. The go-to-market sequence and its gates are GROWTH §0 and §7.
+One open point remains in `GROWTH_AND_MONETIZATION.md`: **net revenue, which depends on the
+unsettled Apple link-out commission question** (§2.3) — $34.99/yr is about $29.74 in hand
+at the Small Business rate. The stance until a court rules: IAP only, no web checkout.
+Re-verify before relying on a revenue number. The go-to-market sequence and its gates are
+GROWTH §0 and §7.
 
 Rule: the paywall never touches the core loop or anything shareable.
 
@@ -788,41 +745,13 @@ features, both optional and both fail-silent:
 
 ### A. Refine (free, user-initiated) — **CUT from v1, deferred**
 
-> **Status (2026-09-24): built, not shipped, not deployed.**
-> `REFINE_ENABLED` in `src/constants/app.ts` is `false`; the ✨ button and its
-> Settings row are hidden, and `supabase/functions/refine/` is not deployed.
-> The first live run against a funded OpenAI account found the prompt below
-> turns predictions into **questions** — "I'll finish the report" came back as
-> "Will I finish the report?", four inputs out of four — which is no more
-> resolvable than what the user typed.
->
-> Two rewrites showed this is not a wording bug. Ask for specificity and the
-> model invents it ("at least $100,000 in sales"; a deadline in 2023, in a
-> field where the app already stores the due date). Forbid invention and it
-> returns the input with the hedging stripped. **A vague prediction cannot be
-> made checkable without information only the user has** — and the worked
-> example below quietly assumes invention is fine ("3", "priority tasks" and
-> "Friday" appear nowhere in its input).
->
-> That is a product decision, not a prompt fix, and the feature is explicitly
-> optional — so it waits. A user who accepts an invented number has logged a
-> prediction they never made, and their calibration data now measures the
-> model. The client, the function and their tests are kept intact and dormant.
-> Reviving it means: fix the prompt against fixtures, flip the flag, deploy.
-
-The spec as designed, for when it returns:
-A single ✨ Refine button after the user types a prediction. Sends the text to the backend
-and returns a rewritten version. User accepts or ignores.
-
-**Prompt:**
-```
-Rewrite this prediction to be concise and resolvable with a clear yes/no.
-Keep it under 15 words. Return only the rewritten prediction, nothing else.
-
-Prediction: {user_input}
-```
-- Input: "I'll do better at work this week"
-- Output: "I'll complete 3 priority tasks before Friday"
+Built, not shipped, not deployed: `REFINE_ENABLED` in `src/constants/app.ts` is `false`,
+which hides the ✨ button and its row in You, and `supabase/functions/refine/` is not
+deployed. A vague prediction can't be made checkable without information only the user
+has, so a model either invents specifics (a number, a deadline) or returns the input with
+the hedging stripped. That is a product decision, not a prompt fix, so it waits. The
+client (`src/ai/refine.ts`), the function and their tests are kept intact and dormant.
+Reviving it means: fix the prompt against fixtures, flip the flag, deploy.
 
 ### B. Coach agent (Plus)
 A bounded, read-only agent that interprets the user's computed calibration numbers and
@@ -870,12 +799,10 @@ grounding validator (`COACH_AGENT.md`).
 
 ## Point / Badge System
 
-### Integrity Points — dropped (2026-10-10, D23)
-There used to be a bonus for confidences of 35–65%. It paid for a stated number, which
-nudges reports toward it, and its rationale was wrong: calls near 50% carry the least
-information, not the most. Coverage of the whole range is encouraged by the coverage
-nudge instead. The `integrity_bonus` field stays in the data model for compatibility
-and is never shown.
+### Integrity Points — dropped (D23)
+Nothing rewards a stated confidence. The `integrity_bonus` field stays in the data model
+for compatibility and is never shown; coverage of the whole range is encouraged by the
+coverage nudge instead (Range coverage caveat).
 
 ### Badge Levels (per category)
 | Level | Name | Criteria |
@@ -894,26 +821,22 @@ app's purpose.
 give-or-take (the bootstrap behind the rating's, per category) must clear the bar,
 so a score that only luck put over the line doesn't earn the tier. Insights shows
 each unlocked category score with its give-or-take. Not adopted: discounting 95–100%
-calls or repeated titles, since a sure thing that happens is a calibrated call and
-"Log it again" exists for real repeats.
+calls or repeated titles.
 
-**A badge that falls is said** (D60, 2026-11-13): badges follow the record both ways,
-and the answer that takes one back says so under the range's box, the same after Yes and
-No ("Back to Tracker in health: after this answer its score's low end is no longer
-above Forecaster's 70. A badge follows the record both ways."), never after "Change answer"
-(D50's reason). No hysteresis. A badge earned says "New badge: Forecaster in health",
-with "Badges follow how well your numbers match what happens, not how often you're
-right." after Yes and No alike (D62; one earned on a No read as a mistake). One card
-shows per answer; when the rating unlocks on the same answer, its card names the badge too
-("New badge, too: Forecaster in health.", step 179).
+**A badge that falls is said** (D60): badges follow the record both ways, and the answer
+that takes one back says so under the range's box, the same after Yes and No ("Back to
+Tracker in health: after this answer its score's low end is no longer above Forecaster's
+70. A badge follows the record both ways."), never after "Change answer" (D50's reason).
+No hysteresis. A badge earned says "New badge: Forecaster in health", with "Badges follow
+how well your numbers match what happens, not how often you're right." after Yes and No
+alike (D62). One card shows per answer; when the rating unlocks on the same answer, its
+card names the badge too ("New badge, too: Forecaster in health.").
 
-**How hard the bars are** (simulated for D62, one category, a perfectly calibrated
-forecaster on a typical 55–95% mix): Forecaster about 9 times in 10 at 20 answers,
-Sharp about 6 in 10 at 50, Oracle about 5 in 10 at 100 (about 8 in 10 at 150). The
-low-end rule and a small count both cost points even with perfect numbers. Left as
-decided, for the owner to revisit.
+**How hard the bars are** (D62): a perfectly calibrated forecaster on a typical 55–95% mix
+earns Forecaster in a category about 9 times in 10 at 20 answers, Sharp about 6 in 10 at
+50, Oracle about 5 in 10 at 100. Left as decided, for the owner to revisit.
 
-Badges are per-category. A user can be Sharp in health and Guesser in finance
+Badges are per-category. A user can be Sharp in health and Tracker in finance
 simultaneously — this specificity is the key insight and the core shareable artifact.
 Today and the share card name only tiers past the count gate (D27, above).
 
@@ -947,12 +870,11 @@ User taps notification on due_date
 
 ## Screen List
 
-Four tabs, **Today · Insights · History · You** (decided 2026-10-07, roadmap D3);
-Log is a sheet opened by a "+" in the title bar of Today, Insights and History
-(D21, 2026-10-09; it floated over the tab bar until then), not a tab, because tabs
-navigate and logging is an action. On Today, what's ready to resolve comes before
-the streak and practice rows (D22), and with nothing ready the open predictions
-do (D48, 2026-11-06); after a save, Today scrolls to the new card (D48).
+Four tabs, **Today · Insights · History · You** (D3); Log is a sheet opened by a "+" in
+the title bar of Today, Insights and History (D21), not a tab, because tabs navigate and
+logging is an action. On Today, what's ready to resolve comes before the streak and
+practice rows (D22), and with nothing ready the open predictions do (D48); after a save,
+Today scrolls to the new card (D48).
 
 | Screen | Purpose | Tier |
 |---|---|---|
@@ -968,26 +890,6 @@ do (D48, 2026-11-06); after a save, Today scrolls to the new card (D48).
 | Paywall | Plus plans, trial, restore purchases | — |
 | You (tab) | Your card, Plus, categories (D39), the streak, hide-the-words and app-lock switches (D59, D61, D64), notification prefs, Coach toggle, usage stats, export CSV, how scoring works, account (sign in, delete account / erase device) | Free |
 | Categories (sheet, from You) | Rename, add or hide categories (D39); an emoji or picture for any of them (D40) | Free |
-
----
-
-## MVP Scope
-
-Build in this order (mirrors `BUILD_PLAN.md`):
-1. Log + resolve flow (SQLite, no backend yet)
-2. Calibration engine + stats screen
-3. Warmup onboarding (Day-0 aha)
-4. Share cards + Wrapped (the growth loop)
-5. Push notifications for due dates
-6. Supabase sync + auth
-7. ~~AI refine button (Edge Function + OpenAI)~~ — **deferred, see AI § A**
-8. Badge system
-9. Weekly digest notification
-10. Billing + paywall + Plus gating
-11. Coach agent (Plus)
-
-Billing is built **last** — don't ship a checkout before there's something worth paying
-for, and validate that people actually share before betting on the free tier.
 
 ---
 
@@ -1046,33 +948,25 @@ for, and validate that people actually share before betting on the free tier.
   libraries). `docs/design/UI_ROADMAP.md` holds the build order and the open design
   decisions. Read both before UI work. This file wins on product behaviour.
 - No hex literals in components — use the tokens in `src/constants/theme.ts`. The
-  tokens follow the phone's light or dark appearance (decided 2026-10-07), so every
-  text style sets a colour token; share cards keep their own fixed palettes.
-- Type is Instrument Sans (decided 2026-11-01, roadmap D33; Inter until then): use
-  the `type` tokens, which carry the family.
+  tokens follow the phone's light or dark appearance, so every text style sets a colour
+  token; share cards keep their own fixed palettes.
+- Type is Instrument Sans (D33): use the `type` tokens, which carry the family.
 - Dates, times and counts are written through `dateLocale()` and `localTime()`
   (`src/constants/locale.ts`, D63): English names in the phone's own day-and-month order
-  and 12- or 24-hour clock, since the app's words are English only ("Due zondag 15 nov" on
-  a Dutch phone until then). Never `toLocaleDateString(undefined, …)` or
-  `toLocaleTimeString`; a test scans for both.
+  and 12- or 24-hour clock, since the app's words are English only. Never
+  `toLocaleDateString(undefined, …)` or `toLocaleTimeString`; a test scans for both.
 - The brand has no hue (D33): actions and selection are ink (`action`, `onAction`),
   and the only colours on screen mean over, under or on the line. The one exception
   is a category icon the person chose (D40): their emoji or picture, in its own colours. A new hue needs a
   meaning and a line in DESIGN_SYSTEM §2 first.
 - Yes and No resolutions get identical feedback; colour never carries meaning alone.
 - Install native packages with `npx expo install`, never `npm i`.
-- **The `frontend-design` skill** (`.claude/skills/frontend-design/`, from
-  `anthropics/skills`, adopted 2026-11-01) applies to UI work for its process
-  (plan, check the plan against the brief, build, then critique with
-  screenshots), its restraint and its writing rules. In the app, `DESIGN_SYSTEM.md`
-  is the brief, and the skill's own rule is that the brief wins. So don't pick new
-  typefaces, palettes, radii or motion from it, and decided copy stays as it is
-  (the text share's "Sharp in health · Tracker in money" middle dot, for example).
-  The one review against it so far (2026-11-01) is what changed the brief itself:
-  roadmap D33, the Instrument direction. Its advice to
-  find a fresh direction applies only to surfaces with no set look: a landing page,
-  or App Store marketing frames (with the parked stageshow skill,
-  `docs/APP_STORE_LISTING.md` §5).
+- **The `frontend-design` skill** (`.claude/skills/frontend-design/`) applies to UI work
+  for its process (plan, check the plan against the brief, build, then critique with
+  screenshots), its restraint and its writing rules. `DESIGN_SYSTEM.md` is the brief and
+  wins: don't take typefaces, palettes, radii or motion from the skill, and decided copy
+  stays as it is. Its advice to find a fresh direction applies only to surfaces with no set
+  look: a landing page, or App Store marketing frames (`docs/APP_STORE_LISTING.md` §5).
 
 ### AI calls
 - AI requests go through `src/ai/refine.ts` and `src/ai/coach.ts` only. They must fail
@@ -1092,7 +986,7 @@ for, and validate that people actually share before betting on the free tier.
 
 ---
 
-## Agent harness (adopted 2026-11-08)
+## Agent harness
 
 Subagents and skills from idea to the App Store, adapted from the owner's other projects.
 How they fit together: `docs/agent-harness.md`. What they know about this app (the flow, the
@@ -1121,32 +1015,42 @@ The reviewing agents read and report; the builder agents write code in their lay
 delegated; the main session owns the branch, the commits and `HANDOFF.md`. Each reviewing agent
 ends with "Needs you" and "Not verified". Browser agents run one at a time.
 
+**Who does what.** All implementation (code and tests, however small) and every
+owner-called review go to Opus subagents, spawned with `model: "opus"` and
+`effort: "xhigh"`. Fable, the main session, keeps design, delegation, evaluating
+screenshots and bugs, and designing playtests, and never implements directly. Design
+subagents (`design-analyst`, `Plan`) run on Fable at `effort: "medium"`, or `"high"` when
+the question touches the record, money, privacy or data loss.
+
 | Stage | Subagent | Use it when |
 |---|---|---|
 | Decide | `design-analyst` | Before building a feature, a tuning change, a finding that needs the owner, or an open D number (`/design`) |
 | Decide | `platform-api-checker` | Before relying on an Expo, RN, Supabase, RevenueCat or Apple API, config, entitlement or limit the repo doesn't use yet |
-| Build | `core-domain`, `services`, `mobile-ui` | A large, self-contained piece of L1–L4, L5 or L6 |
-| Build | `code-reviewer` | After every task that changes `app/`, `src/`, `supabase/` or config; again after fixes (up to 3 rounds); release mode at the gate |
-| Build | `record-auditor` | Any change that computes, shows or explains a score, badge, lean or count, a card or recap, or the Coach context |
-| Build | `policy-auditor` | Any change to sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy |
+| Build | `core-domain`, `services`, `mobile-ui` | Code and tests in L1–L4, L5 or L6, spawned on Opus at `xhigh` |
+| Build | `code-reviewer` | Only when the owner calls for a review (he calls one after several features at once, not after every task); inside that review, re-run after fixes (up to 3 rounds); release mode at the gate |
+| Build | `record-auditor` | Inside an owner-called review, when the changes compute, show or explain a score, badge, lean or count, a card or recap, or the Coach context; for `/design` when an option touches the record; the whole app at the gate |
+| Build | `policy-auditor` | Inside an owner-called review, when the changes touch sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy; `/design`'s policy questions; release mode at the gate |
 | Play | `web-playtester` | After a flow or UI change (`/playtest`): does it work in the web build |
 | Play | `blind-playtester` | One persona per run, browser only (`/playtest`): would this person keep it |
 | Ship | `release-auditor` | Before every production build and at every `/release-gate` |
 | Ship | `live-ops-analyst` | After launch only (`/live-review`) |
 
-Don't use a subagent for a quick lookup in this repo, a one-line fix, or anything the main session
-already knows.
+Don't use a subagent for a quick lookup in this repo or anything the main session already
+knows. Code changes, however small, go to an Opus builder.
 
 ### The iPhone
 
-The app ships on iOS only, iPhone only. The owner's phone is an iPhone 17 on iOS 26 running a
-development build (Apple Developer account active since 2026-11-07); there is no simulator and no
-Mac. Web and tests are stand-ins: haptics, SF Symbols, Liquid Glass, native sheets, the iOS switch,
+The app ships on iOS only, iPhone only. The owner's phone is an iPhone 17 on iOS 26
+running a development build and TestFlight builds (1.0.0 build 2 installed 2026-11-16;
+Apple Developer account active since 2026-11-07); there is no simulator and no Mac. Web
+and tests are stand-ins: haptics, SF Symbols, Liquid Glass, native sheets, the iOS switch,
 pickers, notifications, Sign in with Apple, the age-range sheet, the share sheet, purchases,
 Dynamic Type and VoiceOver are confirmed only on the phone (`docs/app-profile.md` §18, which also
 lists the iOS-vs-web layout traps found there). Say what no device has run, and use
 `/device-check` for the owner's checklist. A native change (a native package, an `app.json`
-plugin, an entitlement) needs a new development build; a JS change needs only a reload.
+plugin, an entitlement) needs a new development build; a JS change needs only a reload of
+the development build. TestFlight has no dev server: any change, JS included, needs a new
+`eas build` (run once the owner confirms) and the owner's `eas submit`.
 
 ### Owner-only actions (stop and ask)
 

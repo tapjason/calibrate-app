@@ -11,7 +11,7 @@ Add the content described by: $ARGUMENTS
 3. **Design check before writing.** Run each of the type's design checks against the idea and say whether each holds. Always also: the record (profile §5: practice and Warmup content never touches the real record, R9; a card theme keeps over / under / on-the-line meaning); DESIGN_SYSTEM §0 (no new hue without a meaning, contrast on cards ≥ 4.5:1 for text); §8 ids (an existing id never changes). If any check fails, propose a change to the idea instead of building it.
 4. **Add the data** with every field the existing entries have. Practice facts carry their reference; a change to the tables changes the Warmup's ten for everyone, so say so.
 5. **Run `bash scripts/check.sh`** until it ends in `CHECK PASSED`.
-6. **Review.** Delegate to `code-reviewer` if any code changed (a theme's rendering, the deck logic); skip it for pure data. If the web server is up, take one screenshot that shows the new content (a card in the theme; Log's starter ideas; the emoji grid in Categories).
+6. **Look.** No review unless the owner asks for one (he calls `code-reviewer` himself, after several features at once). If the web server is up, take one screenshot that shows the new content (a card in the theme; Log's starter ideas; the emoji grid in Categories).
 7. Commit as `feat: <type>: <what>` (no Co-Authored-By line).
 
 Never change an existing id, and never put a person's own icon or photo on a card (D40).

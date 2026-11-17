@@ -1,6 +1,6 @@
 ---
 name: policy-auditor
-description: Audits Fairly Sure against Apple's App Store Review Guidelines, App Privacy and age-rating rules, subscription rules, and the project's own money, AI and privacy rules. Use proactively whenever a change touches accounts or sign-in, notifications, data leaving the phone, analytics, the Coach or any AI call, permissions, the paywall or purchases, age assurance, or store copy, and in release mode at every /release-gate. Read-only; returns PASS, FAIL or NEEDS HUMAN with citations.
+description: Audits Fairly Sure against Apple's App Store Review Guidelines, App Privacy and age-rating rules, subscription rules, and the project's own money, AI and privacy rules. Use only inside a review the owner calls (he calls one after several features at once), when the changes touch accounts or sign-in, notifications, data leaving the phone, analytics, the Coach or any AI call, permissions, the paywall or purchases, age assurance, or store copy; again after fixes inside that review; for /design's policy questions; and in release mode at every /release-gate. Spawned on Opus at xhigh effort for a review. Read-only; returns PASS, FAIL or NEEDS HUMAN with citations.
 tools: Read, Grep, Glob, WebFetch, WebSearch
 model: inherit
 color: red
@@ -35,7 +35,7 @@ Apple rules that always hold for this app:
 Project rules that must also hold:
 
 10. **Money (profile §6):** nothing shareable is paywalled; nothing in the core loop routes to the paywall; entitlement errors read as free.
-11. **What leaves the phone (profile §3, `docs/APP_PRIVACY.md` §2):** titles and reflections never reach analytics or the Coach by default; the analytics catalogue has no free-text property; guests send nothing unless `GUEST_ANALYTICS` is on and the event is on the guest list; category names and icons never leave the phone (D39, D40); `docs/APP_PRIVACY.md` matches the code (every row cites a file).
+11. **What leaves the phone (profile §3, `docs/APP_PRIVACY.md` §2):** titles and reflections never reach analytics or the Coach by default; the analytics catalogue has no free-text property; a guest sends only the events on the guest list (`GUEST_EVENT_NAMES`, D43), with no id of any kind; category names and icons never leave the phone (D39, D40); `docs/APP_PRIVACY.md` matches the code (every row cites a file).
 12. **Social (D44):** nothing ranks one person against another.
 
 How to audit:

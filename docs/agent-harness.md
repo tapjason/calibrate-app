@@ -16,9 +16,18 @@ session.
 - **One question per agent.** Each agent answers one question at one stage, from its own evidence.
   Two agents never judge the same thing, with one exception on purpose (the record, below).
 - **Two kinds of agent.** The **builder agents** (`core-domain`, `services`, `mobile-ui`) write code
-  in their layer when the main session delegates a large, self-contained piece. Every other agent
-  **reads and reports**: it never edits files, never builds, never submits. The main session owns
-  the branch, the commits and `HANDOFF.md`; the owner makes the calls marked "your call".
+  and tests in their layer when the main session delegates. Every other agent **reads and
+  reports**: it never edits files, never builds, never submits. The main session owns the branch,
+  the commits and `HANDOFF.md`; the owner makes the calls marked "your call".
+- **Who does what.** All implementation (code and tests, however small) and every review the owner
+  calls go to Opus subagents, spawned with `model: "opus"` and `effort: "xhigh"`. Fable, the main
+  session, keeps design, delegation, evaluating screenshots and bugs, and designing playtests, and
+  never implements directly. Design subagents (`design-analyst`, `Plan`) run on Fable at `medium`
+  effort, or `high` when the question touches the record, money, privacy or data loss.
+- **Reviews when the owner calls them.** The code-reviewer and the two auditors run when the owner
+  asks for a review (he calls one after several features at once), again on the fixed result
+  inside that review (up to three rounds), and in release mode at `/release-gate`; never after
+  every task.
 - **A fixed verdict.** Each reviewing agent returns an exact format ending in "Needs you" and "Not
   verified", so the skills can merge reports.
 - **Run on triggers only.** Subagents are the expensive path: each runs at its trigger in the map,
@@ -33,12 +42,13 @@ session.
   playtest round since October has used (`docs/design/research/playtest-*.md`). The main session
   writes its brief and checks its findings against the code afterwards.
 - **Models:** `sonnet` for fact-checking, driving the browser and measuring; `inherit` for judgment
-  (review, the record, policy, design, the blind runs, live ops).
+  (review, the record, policy, design, the blind runs, live ops), set at spawn by "Who does what"
+  above.
 - **The profile, not the prompt.** Agents read app facts from `docs/app-profile.md` by section.
 - **Where things are recorded** (this repo's existing documents, not new ones):
   - decisions: `docs/design/UI_ROADMAP.md` §2 (D numbers), and `CLAUDE.md` where it is the spec;
   - what was built: `docs/design/BUILT_LOG.md` (step numbers);
-  - what's next: `docs/NEXT_STEPS.md` "Suggested order";
+  - what's open: `docs/SHIP_READINESS.md` "Open work";
   - playtests: `docs/design/research/playtest-<date>.md`;
   - the owner's checks: `docs/HUMAN_VERIFICATION.md`;
   - the branch's state: `HANDOFF.md`, rewritten each PR.
@@ -49,10 +59,10 @@ session.
 | --- | --- | --- | --- | --- | --- |
 | 1 Decide | Before a feature, a tuning change, a playtest finding that needs the owner, or an open D number | `design-analyst` | Is it worth building, and which option? | Options ranked, a draft decision row, "your call" items | `/design` |
 | 1 Decide | Before code relies on an Expo, RN, Supabase, RevenueCat or Apple API, config, entitlement or limit the repo doesn't use yet | `platform-api-checker` | What do the version-matched docs say, and does it need a new build? | Verified / partly verified / not documented | `/design`, `/step` |
-| 2 Build | A large, self-contained piece of one layer | `core-domain`, `services`, `mobile-ui` | (They build, then hand back) | Code and tests | `/step` |
-| 2 Build | After every task that changes `app/`, `src/`, `supabase/` or config | `code-reviewer` | What breaks on a real iPhone? | BLOCKER / should-fix / nit | `/step` |
-| 2 Build | A change to anything that computes, shows or explains a score, badge, lean or count, a card or recap, or the Coach context | `record-auditor` | Is the record still honest? | HOLDS / BROKEN / NEEDS HUMAN | `/step`, `/design` |
-| 2 Build | A change to sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy | `policy-auditor` | Does it break an Apple or project rule? | PASS / FAIL / NEEDS HUMAN | `/step` |
+| 2 Build | Any code or tests in one layer, however small (on Opus at `xhigh`) | `core-domain`, `services`, `mobile-ui` | (They build, then hand back) | Code and tests | `/step` |
+| 2 Build | A review the owner calls of changes to `app/`, `src/`, `supabase/` or config (after several features at once), again after fixes (up to three rounds) | `code-reviewer` | What breaks on a real iPhone? | BLOCKER / should-fix / nit | The owner, `/release-gate` |
+| 2 Build | Inside a review the owner calls, a change to anything that computes, shows or explains a score, badge, lean or count, a card or recap, or the Coach context | `record-auditor` | Is the record still honest? | HOLDS / BROKEN / NEEDS HUMAN | The owner, `/design`, `/release-gate` |
+| 2 Build | Inside a review the owner calls, a change to sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy | `policy-auditor` | Does it break an Apple or project rule? | PASS / FAIL / NEEDS HUMAN | The owner, `/design`, `/release-gate` |
 | 3 Play | After a flow or UI change; before a release | `web-playtester` | Does it work in the web build? | WORKS / BROKEN / BLOCKED | `/playtest` |
 | 3 Play | After a flow, copy, onboarding or share change; whenever a round of judgement is wanted | `blind-playtester` | Would this person keep it? | Verdict, score, ranked complaints | `/playtest` |
 | 3 Play | After any change with a native or layout effect; when the owner sends device results | (the owner, on the iPhone) | Does it work on the phone? | Confirmed / failed, recorded | `/device-check` |
@@ -118,7 +128,7 @@ Evidence labels: every claim says where it came from.
   sync, notifications, layering, strict types, iOS on the New Architecture (the §18 traps), tokens
   and accessibility, secrets and Edge Functions, money, privacy. Flags record and policy questions
   to their auditors. Release mode reviews the whole tree plus the §8 NO-GO checks. Up to three
-  rounds.
+  rounds inside a review the owner calls.
 - **record-auditor** (inherit, teal): the engine fixtures, every R id the change touches, each
   changed number traced to the engine, an attempt to pad the record, reconciliation across every
   surface, and copy that claims how scoring works.
@@ -152,10 +162,11 @@ invoked by the model; the rest have `disable-model-invocation: true` (the user s
 
 - **`/design <D number | finding | idea>`:** `design-analyst`, then the checker and auditors on
   what it raises; the owner picks (AskUserQuestion); the pick becomes a D-number row in
-  UI_ROADMAP §2 and, if it's to be built, a step in NEXT_STEPS.
-- **`/step <n | topic>`:** a `builder/<topic>` branch; verify APIs, implement (delegating to a
-  builder agent when it helps), check, review (up to three rounds), audit (record, policy), look,
-  record in BUILT_LOG, the decision row and HANDOFF, commit; then the owner's iPhone checks.
+  UI_ROADMAP §2 and, if it's to be built, an item in SHIP_READINESS "Open work".
+- **`/step <n | topic>`:** a `builder/<topic>` branch; verify APIs, implement through an Opus
+  builder, check, look, record in BUILT_LOG, the decision row, SHIP_READINESS "Open work" and
+  HANDOFF (the step listed as unreviewed), commit once the check exits 0; then the owner's iPhone
+  checks. No review unless the owner asks for one.
 - **`/playtest`:** the web server, `web-playtester`, then one `blind-playtester` run per persona,
   synthesised and ranked into `docs/design/research/playtest-<date>.md`.
 - **`/device-check`:** the owner's iPhone checklist for what changed (reload or rebuild, steps,
@@ -167,7 +178,7 @@ invoked by the model; the rest have `disable-model-invocation: true` (the user s
   record, the owner's steps; GO or NO-GO.
 - **`/live-review`:** `live-ops-analyst` on pasted data, routed into decisions and steps.
 - **`/check`:** `bash scripts/check.sh` and its result.
-- **`/new-content <type> <idea>`:** a §15 content type's design checks, data, tests and review.
+- **`/new-content <type> <idea>`:** a §15 content type's design checks, data and tests.
 - **`frontend-design`** (vendored from anthropics/skills): process and restraint for UI work;
   `docs/design/DESIGN_SYSTEM.md` is the brief and wins. **`stageshow`** is parked until App Store
   marketing frames.
@@ -184,17 +195,6 @@ invoked by the model; the rest have `disable-model-invocation: true` (the user s
   own and adds to it; an "ask" or "deny" here still applies over a local "allow".
 - The Playwright MCP server is configured in the owner's Claude Code settings (`playwright`,
   `--isolated`), not in the repo.
-
-## First use
-
-At each agent's first real trigger, check that:
-- the report follows its format and ends with Needs you and Not verified;
-- `git status` is unchanged by a read-only agent;
-- a browser agent left the web server as it found it and said whether it is still running;
-- the blind-playtester didn't read anything but the browser.
-
-Note the result in `HANDOFF.md`. If an agent asks before running a read-only command, add it to
-`permissions.allow` in `.claude/settings.json` (a session may not change its own permissions).
 
 ## Not covered
 
