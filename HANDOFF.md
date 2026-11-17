@@ -39,7 +39,10 @@ cover the last stretch) and in git; it isn't repeated here.
   through 186, not 187.
 - **Confirmed from the owner's screenshots (2026-11-16):** times follow the 24-Hour Time switch
   (step 185); the paywall's three plans load at $34.99 a year, $4.99 a month and $79.99
-  lifetime.
+  lifetime. After the trial move, the paywall shows "1 month free, then $34.99 a year" on
+  Annual and no trial on Monthly (Session 1 item 9 passes). The same screenshot shows the
+  title under the clock again: build 2 predates step 187's fix, which Session 3 item 27
+  checks on build 3.
 - **Found:** the paywall showed the free month on Monthly and none on Annual. The
   introductory offer was attached to `calibrate_plus_monthly`; the owner moved it to
   `calibrate_plus_annual` in App Store Connect (2026-11-16; no code change, no new build).
