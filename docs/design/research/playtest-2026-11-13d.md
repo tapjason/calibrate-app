@@ -7,7 +7,7 @@ appeal kit (`docs/playtest-appeal.md`).
 - Two were cast to fill the appeal rules' gaps.
 - All eight are new.
 
-Plan and briefs: `round21-plan-2026-11-13.md`.
+Plan and briefs: [`round-plans.md`](round-plans.md#round-21).
 
 These are what the testers saw, checked against the code; they are not decisions. **The testers
 are AI agents playing people:** the appeal answers show where groups part ways, never a market

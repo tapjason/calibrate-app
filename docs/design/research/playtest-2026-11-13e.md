@@ -5,7 +5,7 @@ Raw findings, 2026-11-13. The testers are AI agents playing people, so their sco
 or "disappointed" is a forecast. Where they differ, `CLAUDE.md`, `DESIGN_SYSTEM.md` and
 `UI_ROADMAP.md` win.
 
-Round 22, the sixth appeal round. Plan: `round22-plan-2026-11-13.md`. Build:
+Round 22, the sixth appeal round. Plan: [`round-plans.md`](round-plans.md#round-22). Build:
 `builder/step-178-owner-picks` at `cc1235d` (step 178, D62).
 
 ## Method

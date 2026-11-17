@@ -3,7 +3,7 @@
 Raw findings, 2026-11-12. The sixteenth round, and a check on step 171 (the
 no-decision fixes A1–A10 of `aggregate-2026-11-12.md`): eight people who ran
 into those problems in rounds 12–15, brought back to the same start, screen
-and stand-ins. Plan and cast: `round16-plan-2026-11-12.md`. These are what the
+and stand-ins. Plan and cast: [`round-plans.md`](round-plans.md#round-16). These are what the
 testers saw, checked against the code; they are not decisions. **AI agents
 playing people:** the scores and feelings show where groups part ways, never
 a market number. Where they differ, `CLAUDE.md`, `DESIGN_SYSTEM.md` and

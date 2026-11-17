@@ -1,6 +1,6 @@
 > **Raw research, 2026-11-10.** Kept for its sources and reasoning. Nothing here is
 > decided: the hypotheses in §6 feed the eleventh playtest round
-> ([`round11-plan-2026-11-10.md`](round11-plan-2026-11-10.md)), and §7 lists points for
+> ([`round-plans.md`](round-plans.md#round-11)), and §7 lists points for
 > the owner. Where this differs from `CLAUDE.md`, `DESIGN_SYSTEM.md` or `UI_ROADMAP.md`,
 > those win. [`market.md`](market.md) (2026-09-25) covers the same field for visual
 > design; this file covers what people bring with them from it.

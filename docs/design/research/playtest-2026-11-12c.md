@@ -3,7 +3,7 @@
 Raw findings, 2026-11-12. The second appeal round, run straight after the
 thirteenth (`playtest-2026-11-12b.md`) on the same build
 (`builder/playtest-setup`, app unchanged since `6e6e28d`), with a new cast and
-the same kit (`docs/playtest-appeal.md`). Plan: `round14-plan-2026-11-12.md`.
+the same kit (`docs/playtest-appeal.md`). Plan: [`round-plans.md`](round-plans.md#round-14).
 These are what the testers saw, checked against the code; they are not
 decisions. **The testers are AI agents playing people:** the appeal answers
 show where groups part ways, never a market number. Where they differ,

@@ -3,7 +3,7 @@
 Raw findings, 2026-11-12. The seventeenth round: usability and task success,
 measured with standard instruments (SEQ, SUS, first clicks, errors), on eight
 people new to rounds 12–16 whose axes are combined in new ways. Plan, cast
-and criteria: `round17-plan-2026-11-12.md`. These are what the testers saw,
+and criteria: [`round-plans.md`](round-plans.md#round-17). These are what the testers saw,
 checked against the code; they are not decisions. **AI agents playing
 people:** SUS and SEQ here are a structured way to compare tasks and people,
 not benchmarks against real users. Where they differ, `CLAUDE.md`,

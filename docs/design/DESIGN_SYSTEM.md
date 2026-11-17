@@ -1,11 +1,11 @@
-# Calibrate — Design System
+# Fairly Sure — Design System
 
 **Audience:** anyone (human or agent) changing `app/**` or `src/components/**`.
 **Authority:** this file governs *how the app looks, moves and reads*. `CLAUDE.md`
 governs *what the product does*; if the two conflict, `CLAUDE.md` wins and this file
-gets fixed. Items tagged **Proposed** change product behaviour and need sign-off before
-anyone builds them — they are listed with the other open questions in
-[`UI_ROADMAP.md`](UI_ROADMAP.md) §2.
+gets fixed. A rule that would change product behaviour is tagged **Proposed** and needs
+the owner's sign-off, as a row in [`UI_ROADMAP.md`](UI_ROADMAP.md) §2, before anyone
+builds it; nothing here is tagged now.
 
 **Evidence:** every rule below traces to the sourced research in
 [`research/`](research/) (market, libraries, visual-language, done 2026-09-25; patterns,
@@ -27,20 +27,18 @@ means over, under or on the line (§2). The face is Instrument Sans (§3). The i
 leads the hero, left-aligned, with the rating as its receipt on a gauge (§7.1), and
 lists are grouped rows with each prediction's confidence in its own column (§7.11).
 It came out of a review against the frontend-design skill
-(`.claude/skills/frontend-design/`): Tailwind's indigo and Inter were the two most
-common defaults in generated apps, and the lists used the generic one-card-per-row
-kit. The skill's rule still holds after D33: this file is the brief, and the skill's
-process, restraint and writing rules apply within it (`CLAUDE.md`, Visual design).
+(`.claude/skills/frontend-design/`), which found the earlier look generic. The skill's
+rule still holds: this file is the brief, and the skill's process, restraint and
+writing rules apply within it (`CLAUDE.md`, Visual design).
 
-**Status (2026-11-01):** the tokens are in code at `src/constants/theme.ts` (light
+**Status (2026-11-16):** the tokens are in code at `src/constants/theme.ts` (light
 and dark both live, following the phone; Instrument Sans as the face), and `src/constants/theme.test.ts` pins every recorded
 contrast pair. Colour is fully migrated: no hex literal is left in `app/` or
 `src/components/` outside `BADGE_META` and `cardThemes`, which hold their own palettes
-by design. Many font sizes are still raw numbers rather than `type.*`; migrating them
-is in scope for the file you touch (rule 0.1). Dynamic Type caps live there too:
+by design. A few font sizes are still raw numbers rather than `type.*` (the tab labels'
+11pt, an emoji's size); migrating one is in scope for the file you touch (rule 0.1). Dynamic Type caps live there too:
 `DISPLAY_MAX_SCALE` (1.6×) for the one display number per screen and `CARD_MAX_SCALE`
-(1.2×) for share cards, which are fixed-layout images. On web, `roundedFamily` carries a system fallback
-list, because Chrome renders a bare `ui-rounded` as serif.
+(1.2×) for share cards, which are fixed-layout images.
 
 ---
 
@@ -81,7 +79,7 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 | **Ink chrome, colour only for meaning** | Actions and selection in ink; colour only where it means over, under or on the line, so every hue on screen is information (D33). | Co–Star, Wrapped 2025 "selective pops of colour", HIG Color |
 | **Honest about uncertainty** | Calibrating states, labelled regions, ranges shown as soft bands, n shown on every dot. Showing ranges barely costs trust (van der Bles 2020). | WHOOP "calibrating", Oura baseline |
 | **Reward honesty, not correctness** | Neutral outcome styling; no confidence is ever rewarded for being a particular number (the integrity bonus went, D23). | Product principle (`CLAUDE.md`) |
-| **No guilt** | "Guesser" reads as a starting point; misses and broken streaks are never red, never animated. | Gentler Streak (ADA 2024), Finch |
+| **No guilt** | "Getting started" reads as a starting point; misses and broken streaks are never red, never animated. | Gentler Streak (ADA 2024), Finch |
 | **Craft in the frequent path, celebration only at milestones** | Log and Resolve get a precise small acknowledgement; only three moments get the full treatment (§6.2). | (Not Boring) Habits (ADA 2022), HIG Motion |
 | **Native first** | Real tab bar, sheets, SF Symbols, system haptics. | ADA 2025–2026 winners |
 | **Easy before minimal** | Every control carries a word and stays visible; no gesture-only action; a familiar platform pattern beats a clever one. "Easy to use" is the praise in 204 of 4,899 five-star reviews; the most pared-down app in the set draws the most "unintuitive" ones. | `research/elements-2026-10.md` §1, NN/g icon usability |
@@ -93,8 +91,7 @@ list, because Chrome renders a bare `ui-rounded` as serif.
 
 ### 2.1 Actions and selection (ink — matches the icon and splash)
 
-Since D33 (2026-11-01) the brand has no hue. The tokens are named by role; until then
-they were an indigo ramp (`brand50`–`brand950`, Tailwind's indigo exactly).
+Since D33 (2026-11-01) the brand has no hue, and the tokens are named by role.
 
 | Token | Light | Dark | Use | Contrast |
 |---|---|---|---|---|
@@ -159,17 +156,14 @@ hue, so no chrome can be mistaken for a calibration colour; indigo sat only 3.7 
 - Categories are identified by SF Symbol + label only (§5), or by the person's own
   emoji or picture + label (D40, §7.24). That is the one place a hue appears that
   isn't over, under or on the line: it means "the icon you chose" and nothing else.
-- The app is pinned to light (`app.json` `userInterfaceStyle: "light"`). The dark
-  values above exist for share cards; a future dark mode maps onto them.
-- **Build the token file as light/dark pairs from the first commit** (e.g.
-  `colors.light` / `colors.dark` behind a `useTheme()` hook), even while only light
-  ships. The HIG says people "generally expect all apps … to respect their preference"
-  and warns against an in-app appearance toggle; retro-fitting a flat token object means
-  touching every file twice. Whether to ship dark is roadmap D7.
+- The app follows the phone's appearance (`app.json` `userInterfaceStyle: "automatic"`;
+  D7, built as step 86), with no in-app toggle: the HIG says people "generally expect
+  all apps … to respect their preference" and warns against one. Every token is a
+  light/dark pair (§2.5).
 
 ### 2.5 Dark neutrals (D7: decided and built 2026-10-07, following the system setting)
 
-Cool graphite, not an inversion (D33; indigo-tinted until then). How it works:
+Cool graphite, not an inversion (D33). How it works:
 each token in `colors` resolves where it's drawn (DynamicColorIOS on iOS, a CSS custom
 property on web), so styles made once at load still switch; `themed()` does the same
 for a colour outside the palette (the badge chips). Share cards never use `colors`:
@@ -190,9 +184,8 @@ Rules dark mode taught (2026-10-07):
   `useColorScheme` lost the first switch after a load: the header and the tab bar
   kept the old appearance under content that had changed.
 - **Native and browser controls follow the phone too:** no `themeVariant` on the
-  date picker (it was pinned to light while the app was), and `color-scheme:
-  light dark` on the web date input, whose calendar icon was black on the dark
-  surface (step 92).
+  date picker, and `color-scheme: light dark` on the web date input, whose calendar
+  icon was black on the dark surface without it (step 92).
 
 | Token | Dark hex | on `canvas` | on `surface` |
 |---|---|---|---|
@@ -216,17 +209,17 @@ stands 15.8:1 off dark `surface`.
 ## 3. Typography
 
 **Decision (roadmap D33, decided and built 2026-11-01): Instrument Sans everywhere**,
-numerals included (`FONT_FAMILY`). It replaced Inter (D1, 2026-10-07), the face the
+numerals included (`FONT_FAMILY`). It replaced Inter (D1), the face the
 frontend-design skill names first as the generated-app default. Instrument Sans is a
 grotesque with a slightly condensed, drawn feel that suits an app about measuring, it
 has tabular figures (`tnum`), and it is one face on iOS and web, so web screenshots
 stay a faithful preview of type. Four weights ship, 400 · 500 · 600 · 700, the only
-ones used (a test holds the tokens to them; the 800s Inter allowed became 700).
+ones used (a test holds the tokens to them).
 iOS embeds them at build time (the expo-font plugin in `app.json`) under the family
 "Instrument Sans", so `fontFamily` plus `fontWeight` picks the face; web registers the
 same files under the same family (`src/constants/fonts.web.ts`) with a system fallback
 stack. Header titles, tab labels, share cards and the chart's SVG labels use it too.
-The files carry "Instrument Sans" as their typographic family, as Inter's did; that
+The files carry "Instrument Sans" as their typographic family; that
 iOS picks each weight from it is a device check (`docs/HUMAN_VERIFICATION.md`, D33).
 
 - **Tabular figures** only on numbers that animate or align in a column (the rating,
@@ -298,10 +291,9 @@ RN 0.83 (New Architecture) supports `boxShadow` natively — no shadow library.
 
 ## 5. Icons
 
-- **`expo-symbols` (`SymbolView`)** on iOS, with the current Ionicons as the
-  Android/web `fallback`. `expo-symbols` is already in `node_modules` (via
-  expo-router) but should be added explicitly with `npx expo install expo-symbols`.
-  Moving off `@expo/vector-icons` now also pre-empts its deprecation in SDK 56.
+- **`expo-symbols` (`SymbolView`)** on iOS (a direct dependency, `~55.0.9`), with
+  Ionicons as the web `fallback`. Relying less on `@expo/vector-icons` also pre-empts
+  its deprecation in SDK 56.
 - Filled symbols in the tab bar (HIG).
 - Symbol map:
 
@@ -335,19 +327,19 @@ micro-interactions, layout animations for list reveals. Every animation checks
 | `commit` | card slides into list + check draws 250 ms | `impactAsync(Light)` | save prediction |
 | `resolve` | same neutral check for Yes **and** No; card collapses 300 ms | `impactAsync(Medium)` for both | Resolve |
 | `reveal` | count-up 700 ms ease-out; diagonal draws 400 ms; dots drop 60 ms stagger; regions fade 200 ms | `impactAsync(Rigid)` as the last dot lands | Warmup verdict (chart only, no count-up since D20), weekly Wrapped |
-| `unlock` | ring completes 500 ms, morphs into numeral, symbol bounce | `notificationAsync(Success)` | rating / category unlock |
+| `unlock` | the milestone card scales in on a spring (damping 14, stiffness 180); a ring completing into the numeral is parked with the ring (FUTURE_UI §B) | `notificationAsync(Success)` | rating unlock (`MilestoneCard`) |
 | `tierUp` | emblem flips on Y 600 ms, ring count increments, ≤ 40-particle confetti ≤ 1.2 s | `notificationAsync(Success)` | badge tier-up |
 | `reduced` | all of the above → 200 ms cross-fade; no count-up, confetti or flips; haptics still fire | as above | Reduce Motion on |
 
 ### 6.2 Celebration budget
 
-Full treatment (animation + success haptic + optional sound) for exactly three
-moments: **Warmup verdict**, **score unlock** (overall or category), **badge tier-up**.
+Full treatment (animation + success haptic) for exactly three
+moments: **Warmup verdict**, **score unlock**, **badge tier-up**.
 Weekly Wrapped gets `reveal` without confetti. Everything else is small and precise.
 
 **Streak checkpoints** (7, 30, 100 and 365 days, then each further year; decided
 2026-10-06) are the only streak days that get marked, and they're the planned fourth
-moment. For now the acknowledgement is **static**: the milestone tint on Home's streak
+moment. For now the acknowledgement is **static**: the milestone tint on Today's streak
 row for the rest of that day, and `StreakCheckpointCard` on the answer that earned it.
 No motion, and no Success haptic, which stays reserved below. Their celebration is
 specced but not built (FUTURE_UI §B). A streak day that isn't a checkpoint never gets
@@ -356,7 +348,7 @@ one.
 - `notificationAsync(Success)` is reserved for unlocks and tier-ups. Never for a Yes.
 - **Never animate:** demotions, broken streaks, "No" outcomes. A score that slips below
   a threshold keeps its emblem and shows a text "holding" state.
-- Sound is off by default (opt-in in Settings) and respects the silent switch.
+- The app plays no sound of its own; a notification makes the system's.
 - Animate the *number* in sync with the celebration (Brilliant's count-up), not just
   confetti.
 
@@ -364,17 +356,15 @@ one.
 
 ## 7. Patterns
 
-**Names (since D3, 2026-10-07):** Home is now *Today*, Stats is *Insights*, Settings is
-*You*, and Log is a sheet. Sections written before then use the old names; read them
-as the new ones.
+The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (D3, §7.7).
 
 ### 7.1 Hero score and provisional state
 
-- **Identity on Home** (roadmap step 28; D33 put it first): the share card's
+- **Identity on Today** (roadmap step 28; D33 put it first): the share card's
   headline leads the hero, left-aligned, from the same helper: the best category's
   30pt emblem and "Sharp in health" in `title1` (tracking −0.4), the contrast
   ("Tracker in finance") in `callout` beneath, indented to start under the words. Hidden while every
-  category is a Guesser. **D27 (2026-10-10):** only categories past the count gate
+  category is at Getting started. **D27 (2026-10-10):** only categories past the count gate
   (20 resolved) are named, so the contrast is never "Guesser in …", which means
   "fewer than 20 here" and read as a verdict. Tapping the line opens How scoring works
   at its Badges section (§7.17), not Share: two blind testers expected an
@@ -391,7 +381,7 @@ as the new ones.
   centred on its tick; 85 sits left of its tick and 90 right of its own, because centred
   they ran together as "8590" at 320pt (roadmap step 52).
 - **Provisional:** never put the countdown in the hero slot (baseline 04/05 do —
-  "20" reads as a score of 20). Show a **20-segment ring or bar** (15 per category):
+  "20" reads as a score of 20). Show a **20-segment ring or bar** (20 per category too, D46):
   filled = resolved, hatched = pending "on their way", hollow = to go. Label:
   "Calibrating · 4 on their way · 16 to go". Pending predictions really will count,
   so this endowed progress is honest (Nunes & Drèze 2006: 19% → 34% completion).
@@ -409,23 +399,24 @@ as the new ones.
   empty bucket slots — never an italic placeholder line. Its key names only what's
   drawn, so the grey-bars sentence waits for the first dot (roadmap step 68).
 - **Unlock** = the `unlock` motion (§6.1).
-- **Give or take** (roadmap D4, step 62): on Stats, a soft band on the bar and the line
+- **Give or take** (roadmap D4, step 62): on Insights, a soft band on the bar and the line
   "Give or take 5 points with this many predictions." The engine bootstraps the
   rating and sets half the spread of the middle 80% either side of it
   (`statsStore.ratingRange`); centred on the rating because resampling only adds
   error, so percentiles would sit below a calibrated user's own score.
-- **Brier score** (D24, 2026-10-10): on Insights only, once the rating is unlocked,
-  one `footnote` line in `textSecondary` under the give-or-take line: "Brier score
+- **Brier score** (D24): on Insights only, from 50 scored answers (`BRIER_MIN_N`, D62),
+  one `footnote` line in `textSecondary` under "More about your record": "Brier score
   0.22, lower is better. Saying 64% every time, how often your calls came true, would
-  score 0.23." Two decimals, from the engine (`statsStore.brier`, `brierBaseline`).
+  score 0.23, so yours does better." (`brierLine`; a tie or a loss reads as `CLAUDE.md`
+  says). Two decimals, from the engine (`statsStore.brier`, `brierBaseline`).
   Against the person's own base rate since D35 (step 140); "always saying 50% scores
   0.25" flattered anyone whose calls mostly happen. Never on Today, never on a card, never in `display`
   or `title` type: it keeps the rating honest for those who look, and stays out of
   everyone else's way.
-- **Streak** (roadmap D2, step 61): a row on Home under the rating: a flame, "12-day
-  streak", what today adds ("1 more today makes it 13", or "Today counts") and three
-  pips for today. A day counts with 3 predictions logged or answered. Gain framing
-  only. Since D60 (2026-11-13), for a week after a streak of 2 days or more ends,
+- **Streak** (roadmap D2, step 61): a row on Today under the rating: a flame, "12-day
+  streak", what today adds ("One prediction today makes it 13", or "Today counts") and
+  three pips for the day's goal. A day counts with one prediction logged or answered
+  (D17, §7.9); three is the goal. Gain framing only. Since D60 (2026-11-13), for a week after a streak of 2 days or more ends,
   while none runs, the row says so plainly with no pips ("Your 151-day streak ended
   on Thursday" / "No rest day was left to cover it. One prediction today starts a
   new one"); after that it isn't shown until the next one starts.
@@ -462,8 +453,9 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    would have matched, rounded to 5 as the category line is: "…, 38 happened. You
    said about 88%; about 65% would have matched."; both sides, one figure each. Today
    shows any of these titles (`chartVerdict`), never the chart's fallback, with the
-   dot of its direction (`lean`), and no dot for a read both ways. Under the
-   rating, once it's unlocked, "No answers were Can't tell." when there are none.
+   dot of its direction (`lean`), and no dot for a read both ways. On Insights,
+   "More about your record" says "No answers are Can't tell." when there are none
+   (D59, D62).
    **Furthest off** (D37): the first line under Category badges, `subhead` in
    `textPrimary`: "Furthest off: finance. You said about 85%, and 9 of 21 happened.
    About 45% would have matched." Only for a category past `MIN_N_CATEGORY` whose
@@ -478,7 +470,7 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    with n. Connecting line 1.5 px neutral, or none — five buckets are not a function.
 4. **Coverage row** under the chart: five bucket chips with counts, empty ones hatched
    ("You've never logged anything under 40%"). This is the spec's range-coverage caveat
-   made visible; it links to the `CoverageNudge`. On Stats each filled chip is a
+   made visible; it links to the `CoverageNudge`. On Insights each filled chip is a
    button with the control outline ("80–100%: 57 scored. Show them.") that opens
    History filtered to that range, under the line "Tap a range to see the predictions
    behind it." (roadmap step 51). Empty chips stay inert, and so does the Warmup's.
@@ -518,13 +510,12 @@ Error bars with caps are banned — lay readers treat the caps as hard limits.
 The product's central input must carry visual weight (baseline 03 shows it as two
 small ±5 buttons).
 
-- A large percentage readout (≥ 48 pt, Rounded, tabular) with a natural-frequency
+- A large percentage readout (`readout`, 48 pt, tabular) with a natural-frequency
   companion: "70% · about 7 times in 10".
 - A slider (`@react-native-community/slider`, `step={5}`, ticks at 20/40/60/80 = the
   bucket edges) with `selectionAsync` on each step. No zone is tinted and no number
-  earns a chip: the 35–65 integrity zone and its "Integrity bonus · honest
-  uncertainty" chip went with D23 (2026-10-10). Three of four blind testers couldn't
-  say what the unlabelled band meant.
+  earns a chip: the 35–65 integrity zone and its chip went with D23 (three of four
+  blind testers couldn't say what the band meant).
 - **Keep** the ±5 buttons (or equivalent `accessibilityActions`) and the existing
   `adjustable` role from `src/components/ui/adjustable.ts` — the slider must not
   regress VoiceOver. They sit on the readout's row, right-aligned, from 360pt wide
@@ -538,14 +529,10 @@ small ±5 buttons).
   50–100 track), and the first drag, tap on the track (`tapToSeek`), touch of the thumb
   or ±5 sets a real number. The first ±5 steps from where the grey thumb rests, to 45 or
   55 on Log and 50 or 55 in the Warmup and practice, as VoiceOver's first swipe does
-  (D49, step 163, 2026-11-09: resting mid-range at 75 made 70 one tap and a coin flip
-  five; D36, step 141, 2026-11-01: three blind testers expected 55 from +5). This reverses step 120, which
-  set the middle itself after three earlier testers were surprised by the step past
-  it; the two rounds disagree, so watch it in the first iPhone session. VoiceOver
-  hears "not set". Next (Warmup) and Save (Log)
-  wait for a number. It used to
-  start at 75% (Warmup) and 50% (Log, inside the integrity band), and "didn't touch
-  it" couldn't be told from "chose it" (research: `confidence-2026-10.md` §2).
+  (D49, step 163: resting mid-range at 75 made 70 one tap and a coin flip five; D36,
+  step 141: three blind testers expected 55 from +5). VoiceOver hears "not set". Next
+  (Warmup) and Save (Log) wait for a number. With a preset number, "didn't touch it"
+  couldn't be told from "chose it" (research: `confidence-2026-10.md` §2).
 
 ### 7.4 Badges — the "Lens" emblem
 
@@ -556,7 +543,7 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 
 | Tier | Emblem | Fill | Rings | Accent |
 |---|---|---|---|---|
-| Guesser | dashed outline, dotted diagonal | none | 0 | `controlBorder` |
+| Getting started (`guesser`) | dashed outline, dotted diagonal | none | 0 | `controlBorder` |
 | Tracker | solid outline, solid diagonal | `surfaceSunken` | 1 | `textSecondary` |
 | Forecaster | filled | `emblemMid` (graphite) | 2 | `emblemMark` diagonal |
 | Sharp | filled, deep | `emblemDeep` (ink) | 3 + bezel ticks | `emblemMark` diagonal |
@@ -565,25 +552,26 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 - The category SF Symbol sits small in a corner; the label is always written
   ("Sharp · Health").
 - **Provisional / not yet earned:** blueprint rendering (outline, 40% opacity) with a
-  progress arc and "9/15 to unlock". Implemented as `LensEmblem`'s `progress` prop: the
+  progress arc; the hint beside it says what's left. Implemented as `LensEmblem`'s `progress` prop: the
   outline goes dashed and faint, and a solid stroke traces it as far as the user has
   come (`src/components/ui/LensEmblem.tsx`).
-- The progress hint names every requirement still unmet: "3 more resolved to reach
-  Tracker", "Score above 70 to reach Forecaster", or both, "20 more resolved and a
-  score above 85 to reach Sharp" (roadmap step 47; the "→" went with D33). Naming only the count promised a badge that
+- The progress hint names every requirement still unmet: "3 more scored answers to
+  reach Tracker", "Score above 70 at its low end to reach Forecaster", or both, "20 more
+  scored answers and a score above 85 at its low end to reach Sharp" (roadmap step 47).
+  Naming only the count promised a badge that
   resolving alone couldn't earn. Only the threshold is printed, never a provisional
   score.
-- Each tier shows its receipt in one line: "Sharp: 52 scored, score 87". Badge
-  criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
-  presentation only and loses its `emoji` field.
+- Each tier shows its receipt in one line: "Score 87, give or take 3, from 52 scored".
+  Badge criteria stay in the engine (`evaluateBadge`); `src/constants/badges.ts` holds
+  presentation only, with no emoji.
 - **The category's own score** (D28, 2026-10-10): on each Insights badge row, once
   the category is past `MIN_N_CATEGORY` (20 resolved since D46, `score_is_provisional` false),
   its score in the row's meta line ("Score 84, give or take 5, from 52 scored" since
   D35, step 140), rounded, in `textSecondary` (never a display size; the overall
   rating is the one hero). A tier above Tracker needs the score minus its
   give-or-take over the bar; when only that is short, the hint says "Score above 85
-  even at its low end to reach Sharp".
-  Before that, the count to go, as now. A returning tester couldn't answer "how am I
+  at its low end to reach Sharp".
+  Before that, the count to go and its plain counts (D53). A returning tester couldn't answer "how am I
   doing in money" with a number.
 - **The first tier is "Getting started"** (D36, step 141; the id stays `guesser`):
   "Guesser" stung after one prediction. Its tagline says what it is: "Fewer than 20
@@ -591,63 +579,63 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   judgement). The upper tiers' taglines say "at its low end" since D35. Until any
   category has a badge, a line under Category badges says "A category earns its first
   badge, Tracker, at 20 answered there."
-- Stats lists the badge rows in the app's one category order (`CATEGORIES` in
+- Insights lists the badge rows in the app's one category order (`CATEGORIES` in
   `src/types`: work, health, finance, social, personal), as Log's chips and History's
-  filters do (roadmap step 73). A launch used to read them alphabetically, so the rows
-  changed places after the session's first log.
+  filters do (roadmap step 73), so the rows keep their places.
 - Why not one hue per tier (16Personalities-style)? Five extra hues would collide with
   the over/under/calibrated semantics. Graphite, ink and gold give each tier a distinct
-  look without that cost (D33; an indigo ramp until then). The badge chips beside the
+  look without that cost (D33). The badge chips beside the
   emblem follow the same ladder (`BADGE_CHIP_COLORS`): each tier a step darker grey, up
   to Sharp's mid grey, and Oracle gold. Sharp's chip stops short of ink because it
   holds the emblem, whose Sharp face is ink: on an ink chip the face vanished.
 
 ### 7.5 Share cards
 
-- **Hierarchy (at 1080 px wide):** identity line 88–96 px Rounded Bold ("Sharp in
+- **Hierarchy (at 1080 px wide):** identity line 88–96 px Bold ("Sharp in
   health"; every category at the top tier, two short names at most, else "and N
   more", D54) → contrast line 56 px ("Tracker in money") → one receipt
   36–40 px in natural frequencies ("Right 84% of the time I said 80%") → a mini visual
   with no axes (5-bucket strip between "0%" and "100%", each range marked by shape as
   well as colour: a ring on the line, ▲ came true more often than said, ▼ less, a dash
   for an empty range and a small dot in the theme's `muted` for one under 10 answers,
-  which shows no lean (D58); no key; the strip waits until some range has 10, as
+  which shows no lean (D58); a one-line key under it since D59, "○ no clear lean ·
+  ▲ too cautious · ▼ too sure · • under 10 answers · – none"; the strip waits until some range has 10, as
   it waits for the rating; D47, step 158; VoiceOver hears it inside the
-  card's one label, with no lean word for a range under 10), legible at thumbnail size → footer hook **≥ 32 px
-  at ≥ 4.5:1**, phrased as a question: "What are you sharp at? · calibrate.app". (The
-  current footer, `#64748b` on `#0f172a`, is 3.75:1 — the growth hook is the faintest
-  text on the card.)
+  card's one label, with no lean word for a range under 10), legible at thumbnail size → footer: the
+  app's name over the hook, phrased as a question, "Fairly Sure" / "What are you sharp
+  at?", **≥ 32 px at ≥ 4.5:1** (15 and 14 pt on the 360 pt canvas, 45 and 42 px
+  exported); `cardThemes.test.ts` holds every theme's text, the hook included, to 4.5:1.
 - **On the Share sheet** (step 112): the preview, then **Share my card** and
   **Share as text** straight under it, then Shape, On the card and the themes.
   The options adjust; the action shouldn't wait below them.
 - **Formats:** Story 1080×1920 (keep content inside y ≈ 250–1580); Post 1080×1440 (3:4,
   the tallest ratio X and iMessage show uncropped). The identity card's canvas is
   360 pt wide on every phone and is captured at 3×, which is exactly these sizes
-  (roadmap step 53); it used to take the screen's width, and on a 375pt phone its
-  content overflowed the 3:4 box in the preview and the PNG alike. The Warmup and
+  (roadmap step 53), so nothing overflows the 3:4 box on a narrow phone. The Warmup and
   Wrapped cards use the same 360pt canvas with their own height (step 57), so every
   export is 1080px wide with the same line breaks on every phone. `ScaledCanvas`
   shows each one scaled to the screen; the scale sits on its wrapper, never on the
   captured card. Plus a **plain-text share**
   (Wordle-style, spoiler-free, never includes prediction titles):
   ```
-  Calibrate · Week 38
-  Sharp in health · Guesser in money
-  ⬜🟩🟩🟧🟧  score 81
-  calibrate.app
+  My calibration · Fairly Sure
+  Sharp in health · Tracker in money
+  ⬜🟩🟩🟧🟧 score 81, give or take 3
+  Low to high: 🟩 no clear lean · 🟧 too sure · 🟦 too cautious · ⬜ under 10 answers
+  https://apps.apple.com/app/apple-store/id6831917395
   ```
   A range under 10 answers gets ⬜, as an empty one does: there's no lean to show
   there yet (D58). With every range under 10 there are no squares, and the line
   reads "Score 81, give or take 3".
-  The last line is the App Store campaign link (`@/share/link`, built 2026-10-08) once
-  `APP_STORE_ID` is set; there's no domain yet, so until then the share ends on the
-  score. An image share can't carry a link (the share sheet gets a bare PNG), so the
+  The last line is the App Store link (`@/share/link`, from `APP_STORE_ID`); it gains
+  the campaign token (`ct=share-card-text`) once `APP_STORE_PROVIDER_TOKEN` is set, which
+  it isn't yet. An image share can't carry a link (the share sheet gets a bare PNG), so the
   name in the card's footer is its only way back to the store.
 - **Which categories it names** (D27, 2026-10-10): the identity and contrast lines
   name only categories past the count gate (20 scored, Tracker or above). Best
   first, every one at that tier ("Forecaster in health and money", D54); the
   contrast is the weakest of those, shown only when its tier differs. With none
-  past the gate yet, the identity line reads "Calibrating" over the dashed Guesser
+  past the gate yet, the identity line reads "Calibrating" over the dashed Getting started
   lens and the subline counts what's left ("12 more scored answers until my
   calibration unlocks"); once the rating is unlocked it leads instead ("Calibration
   89/100", the subline then "Give or take 3, from 148 scored answers"). The text
@@ -667,12 +655,11 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
   no Skia, blur or glass inside a card.
 - Free theme "Midnight": graphite `#131418` for the identity card, and a light
   `#ECEEF1` for Wrapped, so a verdict and a recap read differently. Plus themes are
-  cosmetic only. Every palette is the app's own (D33; until then all were Tailwind's,
-  and Paper was the cream generated pages default to). A locked theme shows a small
+  cosmetic only. Every palette is the app's own (D33). A locked theme shows a small
   lock, not a ✦.
 - Offer per-category show/hide before sharing (Any Distance's eye toggles).
 - **The shape and the categories left off are kept** between visits, like the theme
-  (step 138; both reset each time Share opened). Any category can come off, the last
+  (step 138). Any category can come off, the last
   one too (owner, 2026-11-14): the card then keeps the rating (or "Calibrating") and
   "N categories not shown". Erase and account deletion forget the choice.
 
@@ -683,11 +670,11 @@ Structure beats polish (design-only paywall tests win least often). Order: value
 preselected**, "1 month free" badge; Monthly with no trial; Lifetime as a smaller
 third row) → **honest timeline** → **one** CTA.
 
-- **Every recurring price names its period** ("1 month free, then $29.99 a year",
+- **Every recurring price names its period** ("1 month free, then $34.99 a year",
   "$4.99 a month"), in the plan row and the timeline. Lifetime stays the bare price
   under "Pay once, keep it". (Roadmap step 50.)
 - **Annual's monthly figure** sits under its price in `footnote` `textSecondary`:
-  "Works out to $2.50 a month." It is RevenueCat's `pricePerMonthString`, never our
+  "Works out to $2.92 a month." It is RevenueCat's `pricePerMonthString`, never our
   division, and absent when the store gives none. App Review 3.1.2: the billed
   amount stays the most prominent price.
 
@@ -720,8 +707,8 @@ third row) → **honest timeline** → **one** CTA.
 - **Close** (roadmap step 30): a 44pt "×" on `surfaceSunken` at the top right,
   labelled "Close", as well as "Not now" at the bottom, which is below the fold on a
   phone. The screen insets its own top edge (a full-screen modal has no header).
-  It's `CloseButton`, shared with Account (roadmap step 66), which had a bare "Close"
-  text link on a white page; both Account screens now sit on `canvas` like the rest.
+  It's `CloseButton`, shared with Account (roadmap step 66), whose screens sit on
+  `canvas` like the rest.
 
 ### 7.7 Navigation and sheets
 
@@ -756,14 +743,14 @@ third row) → **honest timeline** → **one** CTA.
 Every empty state has an SF Symbol, one sentence in `textSecondary`, and a way forward
 (button). No italic grey text. "Nothing to share yet" is never shown — see §7.5.
 Built as step 56: `EmptyState` takes a `symbol` (36pt, `textSecondary`, hidden from
-screen readers): `calendar.badge.plus` on Home, `clock.arrow.circlepath` on History,
+screen readers): `calendar.badge.plus` on Today, `clock.arrow.circlepath` on History,
 `square.and.arrow.up` on Share. Its button is the primary capsule, since where an empty
 state shows it is the screen's main action. On Today and History, **Log a prediction**
 repeats the title bar's "+" (D3, D21) on purpose: in words, for someone who hasn't
-learned the symbol yet, and only until there's something to list. History had none until step 69: before
+learned the symbol yet, and only until there's something to list. History's empty state (step 69): before
 anything resolves it says when the first answer comes ("The first one comes due Tue,
-Oct 13.") and offers **Resolve it now** (one ready), **Resolve the first one** (two),
-**Answer all N** (three or more, Home's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
+Oct 13.") and offers **Answer it now** (one ready), **Answer the first one** (two),
+**Answer all N** (three or more, Today's run threshold), or **Log a prediction**. A list emptied by its filters keeps just the sentence; the
 filters are its way forward.
 
 ### 7.9 Copy and tone
@@ -773,8 +760,9 @@ filters are its way forward.
   the sentence; the chart comes second.
 - Numbers primary, words secondary — probability words mean different things to
   different people. Pair percentages with natural frequencies ("7 in 10").
-- "Guesser" is a starting point, not a grade. The streak says what today adds, never
-  what it would cost; when it ends it disappears quietly until the next one starts.
+- "Getting started" is a starting point, not a grade. The streak says what today adds,
+  never what it would cost; when one ends, the row says so plainly for a week, never as
+  a loss (D60, §7.1).
 - **One a day keeps it, three is the goal** (D17, step 90): the streak row says what
   one prediction adds ("One prediction today makes it 16"), then the goal's progress
   ("Today counts. Goal: 1 of 3") with the pips, then "Today's goal met". The goal is
@@ -787,11 +775,11 @@ filters are its way forward.
 - Badge gating is a trust feature — say it: "Badges need receipts."
 - **Things that read as one never split across lines** (roadmap step 70, checked at
   320pt): a range keeps its dash (`holdRanges`, a word joiner either side, applied
-  wherever a range is drawn: the chart title and subtitle, Home's takeaway, Resolve's
+  wherever a range is drawn: the chart title and subtitle, Today's takeaway, Resolve's
   range line, and since step 74 How scoring works, Log's track record, the Wrapped
   card, the counts table, History's range chip and Trends), a count keeps its words
   ("1 of 3" and "3 times" in Log's own record), a price keeps its period
-  ("$29.90 a year"), a date keeps its day ("Tue, Oct 13"), and the streak row starts
+  ("$34.99 a year"), a date keeps its day ("Tue, Oct 13"), and the streak row starts
   "Next milestone" on a line of its own and keeps "30 days" whole (step 138; holding
   "Next milestone:" whole too broke it mid-word at large text sizes, "mileston / e").
   Done where the text is drawn or with no-break spaces, so screen readers hear the
@@ -804,7 +792,7 @@ filters are its way forward.
 The most frequent meaningful moment in the app. Fast, neutral, honest, in that order.
 
 - **Confidence first.** Headline: "On 3 Sep you said **70%**" (the percentage in
-  `title1` Rounded), then the prediction text in `title2`, then the question "Did it
+  `title1`), then the prediction text in `title2`, then the question "Did it
   happen?". People misremember their prior confidence once they know the outcome
   (Fischhoff 1975), so the stated number is read before the answer, never as small
   metadata.
@@ -823,8 +811,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   step 58; "on average" since step 121, as the figure is the range's mean).
   Said-against-happened is the feedback that moved calibration in the studies; bare
   outcomes barely did (`research/confidence-2026-10.md` §6).
-  Then the optional one-line reflection ("What surprised you?"), never before the
-  answer.
+  Then the optional one-line reflection ("Anything to remember about this one?", D50),
+  never before the answer.
 - **The first answer ever** (step 107) gets a teaching line in place of the range
   line, built from the stated number and identical for Yes and No: "That's your
   first. A 70% call should come true about 7 times in 10, so one answer can't say
@@ -833,14 +821,14 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   (`research/day0-2026-10.md` §6). From the second answer, the range line.
 - **Changing the answer** (D34, step 139): the text button under the recorded answer
   says what it does, "Change to: it didn't happen" (or "it happened"), and switches
-  the answer in place, keeping the reflection typed so far. It used to put the
-  prediction back to open, one tap from "Can't tell", which parked a miss.
+  the answer in place, keeping the reflection typed so far. Never back to open: that
+  was one tap from "Can't tell", which parked a miss.
 - Presented as a medium-detent sheet (§7.7). "Already answered" and "not found" states
   follow §7.8.
 - **Opened from a prediction that isn't due yet**, it goes through the details sheet
   first (§7.23): Resolve is for the evening it comes due, and two testers landed on
   Yes/No a week early with no due date on screen.
-- **A skip can be taken back** (roadmap step 39): a "Not scored" card in History opens
+- **A skip can be taken back** (roadmap step 39): a "Can't tell, not scored" card in History opens
   Resolve with "You marked this as can't tell" and a secondary **Answer it now**,
   which shows the question and writes nothing until Yes or No (then un-skips and
   answers in one step; step 161). Only skips: they never counted, so answering later can't rewrite a
@@ -851,8 +839,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   week") and "Next milestone: 30 days." (one short line, so a three-digit figure
   still fits at 320pt; VoiceOver hears "7-day streak" first). When a score or badge
   milestone lands on the same answer, both show, the milestone first: `CLAUDE.md` names
-  the checkpoint on the answer that earned it (it used to give way, until a review on
-  2026-10-06). The sheet scrolls, so Done stays reachable.
+  the checkpoint on the answer that earned it. The sheet scrolls, so Done stays reachable.
 - **Log it again** (roadmap step 22): after an answer, a secondary capsule under
   Done. It saves any reflection, closes the sheet and opens Log with the title,
   category and lead time carried over, and the confidence empty: a fresh call, never
@@ -869,22 +856,22 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   confirmation, which said it a moment before (D56): the route carries that day's key
   (`?warned=2026-11-10`, `sameDayWarned`), and every other route, and any later day,
   shows the note.
-- **A run** (three or more ready; roadmap step 18): Home's primary **Answer all N**
-  opens the same sheet with "2 of 5" and a thin brand progress bar above one prompt
+- **A run** (three or more ready; roadmap step 18): Today's primary **Answer all N**
+  opens the same sheet with "2 of 5" and a thin `action` progress bar above one prompt
   at a time. After an answer the finishing button reads **Next** (**Finish** on the
   last) and the reflection waits behind "Add a reflection"; Skip moves on at once.
   Advancing is always a tap, never a timer (WCAG 2.2.1), and a milestone shows on
   the card that earned it. Ends on "All caught up" with what the run came to, in
   counts against the user's own numbers ("3 answered. 2 happened. You expected about
-  2."; skips counted apart as "can't tell"), and the Home streak row beneath it, since
+  2."; skips counted apart as "can't tell"), and Today's streak row beneath it, since
   a run of three is usually the one that makes the day count (roadmap step 65).
 
 ### 7.11 Prediction rows and the Today list
 
 - **Rows, not cards** (D33): a list's predictions share one grouped `surface`
   (radius `md` on the outer corners only, hairlines between rows), via
-  `PredictionCard`'s `position` (`rowPosition(index, count)`). It replaced one white
-  card per prediction, the generic card kit.
+  `PredictionCard`'s `position` (`rowPosition(index, count)`), not one card per
+  prediction.
 - **Layout:** the title (`body`, up to 3 lines, 6 above a 1.15 text scale); under it the category symbol and
   "Health, due Fri 3 Oct" (`footnote`, `textSecondary`); then the status ("Happened",
   "Ready to answer") in semibold ink with its glyph, when there is one to say. On the
@@ -898,9 +885,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   header the rows don't repeat it (`showReady={false}`); the row's accessible sentence
   still says it.
 - **Due and past-due are neutral.** A prediction coming due is not a lapse. Group the
-  Today list by date ("Ready to answer", "Next 7 days", "Later"; it said "This week"
-  until roadmap step 67, which put next Tuesday in this week) and let the group
-  header carry the state. No amber, no "Overdue" label, no warning colour.
+  Today list by date ("Ready to answer", "Next 7 days", "Later"; roadmap step 67) and
+  let the group header carry the state. No amber, no "Overdue" label, no warning colour.
 - **Order** (D22, step 115): the score or its progress; then, when anything is
   ready, "Ready to answer" with **Answer all N**; then the streak row, the
   reminder card and today's practice; then "Next 7 days" and "Later". With nothing
@@ -909,9 +895,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   screen and a card just saved couldn't be seen; with nothing open they follow the
   empty state. The reminder card ("Want a reminder when it's due?") stays right
   under the score either way, beside what it's about: on Day 0 it's the ask that
-  brings someone back for the first answer (D19; owner, 2026-11-10). The daily rows
-  used to come first and push the one thing on Today that asks for a tap about a
-  screen down.
+  brings someone back for the first answer (D19; owner, 2026-11-10).
 - **After a save** (D48, step 159): on the focus after Log's sheet closes, Today
   scrolls to the new card only when the whole card isn't already on screen, and
   only as far as needed: its bottom 16pt above the list's bottom edge, or 16pt
@@ -925,7 +909,7 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   moves Today later, and a sync pull never sets it. VoiceOver already hears
   "Saved.".
 - Resolved (History): outcome as neutral ink glyph + word ("Happened" / "Didn't"), never
-  ✓/✗ characters or green/red. Skipped reads "Not scored".
+  ✓/✗ characters or green/red. Skipped reads "Can't tell, not scored".
 - Tapping a ready card opens Resolve (§7.10); tapping one that isn't due yet opens
   its details (§7.23). Keep the single-sentence `accessibilityLabel`.
 - **History holds open predictions too** (D26, 2026-10-10): an "Open" section, count at the right,
@@ -933,20 +917,21 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   is ever missing from History. The category filters apply to both; a confidence
   range (step 51) applies to the resolved list only, since open ones have no outcome.
   The summary line ("145 answered, 93 happened") still counts the resolved ones.
-- **"Can't tell", counted** (D34, step 139): once the rating unlocks, a quiet line under
-  it on Insights says how many answers it leaves out: "2 of 163 answers were Can't
-  tell, so they aren't scored." Nothing when there are none.
+- **"Can't tell", counted** (D34, step 139): a quiet line on Insights, under "More about
+  your record" (D62) from the first answer (D59), says how many answers the rating
+  leaves out: "2 answers are Can't tell, so they aren't scored.", or "No answers are
+  Can't tell."
 - **Back it up** (D31, 2026-10-10): on Today, once the oldest prediction on the phone
   is 30 days old and nobody is signed in, a quiet sunken card under the daily rows:
   "Your predictions live only on this phone" over "Sign in to keep them if it's lost
   or replaced.", with a secondary **Sign in** (opens Account) and **Not now** (30
   days' quiet). Never before 30 days, never once signed in.
-- **History by range** (roadmap step 51): opened from a Stats coverage chip, History
+- **History by range** (roadmap step 51): opened from an Insights coverage chip, History
   shows a selected-style chip "You said 80–100% ×" above the category filters; the
   two combine, × clears the range, and leaving the tab drops it. The summary line's
   "57 answered, 38 happened" then matches the chart's subtitle. The range edges come
   from the engine through `statsStore.confidenceRangeLow`. A new range or category
-  opens the list at its newest (roadmap step 76); it used to keep the old offset.
+  opens the list at its newest (roadmap step 76).
 - **Reflection** (roadmap step 31): on a resolved card, a saved reflection shows under
   the title, quoted, in `footnote` italic `textSecondary`, at most four lines, and
   joins the card's accessible sentence ("Your note: …").
@@ -974,8 +959,7 @@ the control reads the chosen category.)
   which opens the native picker (`@react-native-community/datetimepicker`, §9). Under
   the chips, the resolved date as a sentence: "Due Friday, 3 Oct." One chip is chosen
   at a time (roadmap step 93): while the picker is open "Pick a date" is the choice,
-  even before the date moves off a preset's. It used to open with "In a week" still
-  chosen beside it. Whenever "Pick a date" is the choice its field shows, including
+  even before the date moves off a preset's. Whenever "Pick a date" is the choice its field shows, including
   when Edit opens on a prediction due on a picked date (step 138; Edit showed the chip
   chosen and no field until a second tap).
 - **Starter ideas** (roadmap step 40): only before the first prediction ever, five
@@ -1010,8 +994,7 @@ the control reads the chosen category.)
   confidence is set (§7.3), `commit` motion. **Pinned** under the scrolling fields
   over a hairline (step 111), so it is always on screen; the keyboard may cover it,
   since Save also waits for a confidence and setting one means the keyboard is down.
-  (Built as step 46; it used to answer an empty tap with the store's "title is
-  required".) A failed save says "Couldn't save that. Try again.", never the store's
+  (Step 46.) A failed save says "Couldn't save that. Try again.", never the store's
   developer message. Once the form is started, a `footnote` line over Save says what
   it is waiting for, in the form's own words: "To save, add a category and a
   confidence." An empty form has none, and Edit's **Save changes** does the same
@@ -1033,7 +1016,7 @@ the control reads the chosen category.)
 Sources: HIG Generative AI (updated 2026-06), Google PAIR Explainability + Trust.
 Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 
-- **Lead with the receipt.** Each card: the `evidence` number in `title2` Rounded, what
+- **Lead with the receipt.** Each card: the `evidence` number in `title2`, what
   it counts in `footnote` ("in your 80–100% range · 12 scored"), then the message
   (`body`), then the suggestion (`callout`, `textSecondary`). The number is already
   validated against the input; showing it lets the user check the Coach against the
@@ -1054,8 +1037,8 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   20 resolutions and the verdict stays gated: (1) counts: "4 scored · 3 logged",
   and under the big count, **what happened against what the
   user's own numbers expected**: "6 happened. You expected about 4." (roadmap step
-  48; the sum of stated confidences comes from the engine). It replaced "86% came
-  in": a hit rate rewards safe calls. Outcome first, since "about 4. 6 happened" read
+  48; the sum of stated confidences comes from the engine), not a hit rate, which
+  rewards safe calls. Outcome first, since "about 4. 6 happened" read
   as 4.6. The yearly card uses the same line; (2) one factual receipt in natural frequencies: "You said 90%
   three times. All three happened."; (3) progress: the unlock ring or the next badge
   ("Tracker in health: 3 to go"); (4) the verdict only when the window earns it.
@@ -1070,11 +1053,11 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   leans names direction and range ("You ran overconfident at 80–100%.";
   `headlineRange`, step 167), never a bigger gap inside luck. Averages only speak
   when no such bucket leans, because over- and underconfidence in different ranges
-  cancel in the mean, and the card must never contradict Stats.
+  cancel in the mean, and the card must never contradict Insights.
 - **The closing note** (D23, 2026-10-10) is about range, not a band: with a call
-  under 40% in the window, "2 calls under 40% this time. The unlikely end keeps your
-  score honest."; without, "Nothing under 40% this time. Log something you think won't
-  happen." It used to praise 35–65% "honest-uncertainty" calls.
+  under 40% in the window, "2 calls under 40% this week. The unlikely end keeps your
+  score honest."; without, "Nothing under 40% answered this week. Log something you
+  think won't happen." ("this year" on the year card).
 - Motion: `reveal` without confetti (§6.2), on the panel around the weekly card
   (never inside the card, which is captured to PNG), once a day per session, and
   only when the week has resolutions. The share button is disabled only when
@@ -1087,10 +1070,10 @@ the same thing, no instructions, title-style titles without ending punctuation.
 
 | Notification | Title | Body | `previewPlaceholder` | `interruptionLevel` |
 |---|---|---|---|---|
-| Resolution reminder | Did it happen | `{title}` · You said 70% | A prediction is ready to resolve | `active` |
+| Resolution reminder | Did it happen | `{title}` · You said 70% (with "Show the words in reminders" on, D60; off, the default: "Your prediction from Nov 6 · You said 70%") | A prediction is ready to resolve | `active` |
 | Digest, open > 0 | Your week ahead | 3 predictions are coming due. | Weekly check-in | `passive` |
 | Digest, open = 0 | Your week ahead | Nothing open. What do you think will happen this week? | Weekly check-in | `passive` |
-| Trial ending (D16) | Your free trial ends Thursday | Plus then renews for a year at $29.99. | About your Plus trial | default |
+| Trial ending (D16) | Your free trial ends Thursday | Plus then renews for a year at $34.99. | About your Plus trial | default |
 | Practice (step 89) | One of five, changing daily: Today’s three · Three new questions · A quick three · Practice is ready · Today’s practice | That day's first question: "Which is farther north: Dublin or Moscow?" | Daily practice | default |
 
 - The confidence goes in the reminder so that resolving from the notification still
@@ -1098,12 +1081,12 @@ the same thing, no instructions, title-style titles without ending punctuation.
 - **Never mention the streak** in a notification.
 - **Permission in context** (roadmap step 38). Launch only checks; it never shows the
   iOS alert (HIG: "Avoid requesting permission at launch unless the data or resource
-  is required for your app to function"). Once there is an open prediction, Home shows
+  is required for your app to function"). Once there is an open prediction, Today shows
   a quiet sunken card, "Want a reminder when it's due?", saying when the first one
   would come, with a secondary **Turn on reminders** (which shows the alert) and
   **Not now**. The first "Not now" holds the card until 06:00 the next morning, so a
   Day-0 refusal doesn't cost the first prediction's Day-1 reminder; from the second,
-  a week (D19, step 108). Settings' Notifications row adds **Allow
+  a week (D19, step 108). You's Notifications group adds **Allow
   reminders** while iOS hasn't been asked and **Open Settings** after a refusal.
 - One reminder per prediction; no follow-ups.
 - **The practice reminder is asked for, never assumed** (step 89): off until a moment
@@ -1119,7 +1102,7 @@ the same thing, no instructions, title-style titles without ending punctuation.
   action that doesn't open the app is not guaranteed to reach JS when the app
   is killed (expo#36282).
 - **Evening** (roadmap D9, built as step 60): the reminder fires at 19:00 local on the
-  due day (`REMINDER_HOUR`); due dates are stored at noon, which asked about Friday's
+  due day (`REMINDER_HOUR`), or at the time picked in You (D38); due dates are stored at noon, which asked about Friday's
   outcome before Friday was over. Each reminder records its time, and the launch
   reconcile replaces one set for another time.
 
@@ -1145,14 +1128,13 @@ own n, and a row below its threshold shows counts, never a score.
 ### 7.17 How scoring works
 
 A full-height reading sheet (roadmap step 29), opened by "How is this scored?" under
-the Stats rating and by a Settings row; never shown unasked, since the pitch is
+the Insights rating, by Today's rating (D59) and by a row in You; never shown unasked, since the pitch is
 identity, not statistics. Sections in `headline` with `body` text in
 `textSecondary`: what the score measures, how it's worked out (the five bands and
 their edges, that bigger bands count for more, one worked example from `CLAUDE.md`),
 the Brier score in one paragraph (D24: what it adds, that lower is better, and since
 D35 the yardstick of saying your own base rate every time), why it waits, badges (a legend of the five emblems with their
-criteria), the whole range (log unlikely things too; the integrity bonus section went
-with D23), your streak, what doesn't count (skips, the Warmup and, since step 95, the
+criteria), the whole range (log unlikely things too), your streak, what doesn't count (skips, the Warmup and, since step 95, the
 daily practice). The chance-bar sentence says what it is: a perfectly calibrated
 forecaster's dot lands inside it 8 times in 10, and the app calls a lean only for a
 dot outside it (D35). Opened with `?section=badges` (from Today's identity line, D27) it
@@ -1167,11 +1149,12 @@ The Day-0 result (`WarmupVerdictScreen`), rebuilt by D18 (steps 97–101) and re
 on 2026-10-09 (104–107). Day 0 is for calibration, so the result describes *these
 ten*, never the person. In order: eyebrow "Your warm-up"; the read in `title1` ("On
 these ten, you were overconfident" / "…underconfident" / "On these ten, no clear
-lean"); the counts ("You said 78% on average. 6 of 10 were right."); the bridge
-("Trivia is the warm-up. People are most overconfident about their own plans:
-students who expected to finish their thesis in 34 days took 56. Make your first one
-about tomorrow."); **Make a real prediction** and **Share my result**, on the first
-screen even at 320 × 568 (step 118); then the mini chart, one line of advice, one
+lean"); the counts ("You said 78% on average. 6 of 10 were right."); the line of
+advice under them (since D59; "Your numbers expected about 8 right, and you got 9…");
+the bridge ("Trivia is the warm-up. People are most overconfident about their own
+plans: students who expected to finish a big school project in 34 days took 56. Make
+your first one about tomorrow."); **Make a real prediction** and **Share my result**,
+on the first screen even at 320 × 568 (step 118); then the mini chart, one
 note ("This is a warm-up, not your calibration rating. That one needs 20 of your own
 predictions.") and the answer key. The quiz before it pins **Next** under the
 scrolling question, with **Skip for now** as a text button (step 117). It opens at its top (step 72).
@@ -1181,17 +1164,17 @@ scrolling question, with **Skip for now** as a text button (step 117). It opens 
   calibrated people. The engine names one only outside the central 80% of
   `chanceRange` at n and the mean confidence (`WARMUP_LEAN_MASS`); since D35 that is
   the one rule everywhere, and the chart's grey bars draw the same 80%.
-  Inside it the advice says what did happen, plainly (D36, step 141): "You expected
-  about 8 right and got 9. On ten answers luck often moves it that far, so it says
-  nothing either way yet. Your own predictions are the real test." ("Ten answers can't
-  tell a small lean from luck" alone read as "so… was I good?" at 9 of 10.)
+  Inside it the advice says what did happen, plainly (D36, worded by D61): "Your
+  numbers expected about 8 right, and you got 9. On ten answers luck often moves it
+  that far, so it can't tell yet whether you run too sure, too cautious or about
+  right. Your own predictions are the real test." ("Ten answers can't tell a small
+  lean from luck" alone read as "so… was I good?" at 9 of 10.)
   (`research/day0-2026-10.md` §2.)
 - **"It isn't about being right"** (D36, step 141): under the two buttons, before the
   chart, the How scoring works line "It isn't about being right. A 60% call that
   doesn't happen isn't a mistake: about 4 in 10 of them shouldn't happen."
 - **No 0–100 number** (D20, step 105). Ten answers can't carry one; the counts lead
-  and the chart shows them. It used to count up in `title1` beside "Warm-up
-  calibration".
+  and the chart shows them.
 - **Which ten** (steps 97, 102, 106). Drawn from the practice tables, the same ten
   for everyone, right answers five first and five second. Five come from inside the
   practice's closeness band and five from the whole class: the band alone tilts
@@ -1212,12 +1195,11 @@ scrolling question, with **Skip for now** as a text button (step 117). It opens 
 
 ### 7.19 Launch
 
-The native splash (ink `#15171B`, dark `#0E0F12`, `app.json`; indigo until D33) stays up until the first real screen is
+The native splash (ink `#15171B`, dark `#0E0F12`, `app.json`) stays up until the first real screen is
 decided, then fades out over 250 ms (roadmap step 59): the database is open, the
-stores are loaded, and a first run has been sent to the Warmup. It used to hide on
-the first React frame, so a cold start cut from the splash to a white screen with a grey
-spinner, and a first run showed Home for a moment before the Warmup replaced it. It
-never holds longer than 4 s.
+stores are loaded, and a first run has been sent to the Warmup, so a cold start never
+cuts to a spinner or shows Today before the Warmup. It never holds longer than 4 s
+(`SPLASH_MAX_MS`).
 
 **The launch page** (D66, 2026-11-16, the owner's request on the first TestFlight build:
 the splash cut straight to the Warm-up's first question). One page, `LaunchPage`: the
@@ -1252,52 +1234,56 @@ doesn't serve.
 | Go deeper from a row | The whole row, with a chevron and the current value | A button inside the row | HIG Lists: "use a disclosure indicator". §7.21. |
 | Close a sheet or modal | The round × (`CloseButton`) at the top | The word "Close"; a grabber alone | HIG Toolbars; NN/g bottom sheets. §7.7. |
 | The one thing to do on a screen | One filled capsule | Two filled capsules | HIG Buttons: "one or two prominent buttons per view". |
-| A minor alternative to the main action (Change answer, Can't tell, Restore purchases) | A text button, brand subhead, 44pt target | An outlined capsule beside the primary | Step 78. |
+| A minor alternative to the main action (Change answer, Can't tell, Restore purchases) | A text button, `actionText` subhead, 44pt target | An outlined capsule beside the primary | Step 78. |
 | Confirm something irreversible | A screen that says what goes, an outlined capsule with a `destructive` label, Cancel beneath | A filled red primary | HIG Buttons: never give a destructive action the primary role. Step 81. |
-| Explain a number | A text link beside it ("How is this scored?") opening a reading sheet | A tooltip, a long-press | WHOOP, Oura and Bevel put an ⓘ in the header of each score's screen; Calibrate's link does the same job with a word. |
-| Ask for a rating | The system prompt after a finished run, never in the Warmup | A custom "Enjoying Calibrate?" pre-prompt; a button | HIG Ratings and reviews. D15, built: `src/review/ratingPrompt.ts`. |
+| Explain a number | A text link beside it ("How is this scored?") opening a reading sheet | A tooltip, a long-press | WHOOP, Oura and Bevel put an ⓘ in the header of each score's screen; Fairly Sure's link does the same job with a word. |
+| Ask for a rating | The system prompt after a finished run, never in the Warmup | A custom "Enjoying Fairly Sure?" pre-prompt; a button | HIG Ratings and reviews. D15, built: `src/review/ratingPrompt.ts`. |
 
 ### 7.21 You: settings as a grouped list (built as roadmap step 80)
 
 The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: one
 `surface` card per group on the canvas, `radius.md`, rows divided by hairlines.
 
-- **Groups:** *Account* ("Sign in ›" with "Not signed in. Your predictions live only
-  on this phone." as the footer; signed in, a brand "Sign out" row under "Signed in as
-  …") · *Your card ›* and *Calibrate Plus ›* ("Active" as its value when it is), with
-  Plus's one line as the footer · *Notifications* (the main switch; under it, while
-  it's on, **Due-day reminders** and **Weekly digest** switches, D31, each with its
-  time under it while on (D38, step 143: "Reminder time" beside the native compact
-  time picker; the digest's seven day chips, Sun to Sat, and "Digest time"), and each
-  switch's line says when ("On the day each prediction comes due, at 7:00 PM.",
-  "What's open and coming up, Sunday at 6:00 PM."); the practice
-  reminder; and the "Allow reminders" / "Open Settings" row while iOS says no) ·
-  *Coach (AI)* and *Usage stats* (switches; without Plus, Coach's line starts "Plus
-  only.", and once it's on, "On for when you have Plus. Nothing is sent before then.",
-  step 138, since on it did nothing a free user could see) · *Your data* (**Export predictions
-  (CSV)**, free since D31, a row that acts in place: no chevron, and the export symbol
-  `square.and.arrow.up` at its end, since its ink label alone no longer marks it as
-  tappable, step 137) · *About* (How
-  scoring works ›, Privacy policy › once hosted, Terms of use ›) ·
-  *Erase all data on this device* / *Delete account* alone at the bottom, in
-  `destructive`, no chevron.
+- **Groups, top to bottom** (`SettingsView`): *Account*, on a build with accounts ("Sign
+  in ›" with "Not signed in. Your predictions live only on this phone." as the footer;
+  signed in, an `actionText` "Sign out" row over "Signed in as … Your predictions are
+  backed up.") · *Your card ›* and *Fairly Sure Plus ›* (`PLUS_NAME`; "Active" as its
+  value when it is), with Plus's one line as the footer · *Categories ›* (below) ·
+  three switches: **Streak and daily goal** (D59, on by default), **Hide the words**
+  (D61, off) and the app lock, "Lock with Face ID" or as the phone has it (D64, §7.25)
+  · *Notifications* (the main switch; under it, while it's on, **Due-day reminders**
+  and **Weekly digest** switches, D31, each with its time under it while on (D38, step
+  143: "Reminder time" beside the native compact time picker; the digest's seven day
+  chips, Sun to Sat, and "Digest time"), and each switch's line says when ("On the day
+  each prediction comes due, at 7:00 PM.", "How many are open, never their words,
+  Sunday at 6:00 PM."); under the reminders' time, **Show the words in reminders** (D60,
+  off by default); the "Allow reminders" / "Open Settings" row while iOS says no; the
+  practice reminder) · **AI Refine** (hidden while `REFINE_ENABLED` is false), *Coach
+  (AI)* and *Usage stats* (switches; without Plus, Coach's line starts "Plus only.",
+  and once it's on, "On for when you have Plus. Nothing is sent before then.", step
+  138, since on it did nothing a free user could see) · *Your data* (**Export
+  predictions (CSV)**, free since D31, a row that acts in place: no chevron, and the
+  export symbol `square.and.arrow.up` at its end, since its ink label alone no longer
+  marks it as tappable, step 137) · *About* (How scoring works ›, Privacy policy ›,
+  Terms of use ›, Help and support ›, with the app's name and version as the footer) ·
+  *Erase your data on this phone* (a guest) or *Delete account* (signed in), alone at
+  the bottom in `destructive`, no chevron.
 - **Rows:** the whole row is the target; a row that opens something ends in a chevron
   and, where there is one, its current value in `textSecondary`; a row that acts in
   place (Sign out, Erase) has no chevron and says so in its label's colour. An on/off
   row ends in a switch and is one `switch` element for VoiceOver (step 41, unchanged),
   its explanation under the label.
-- **No capsule buttons inside rows.** They used to end in "Sign in", "See Plus" and
-  "Read" capsules beside three switches, and only the capsule responded.
-- HIG: "Minimize the number of settings you offer." Nothing moves to Settings that
+- **No capsule buttons inside rows:** beside a row's label, only the capsule responded
+  (step 80).
+- HIG: "Minimize the number of settings you offer." Nothing moves to You that
   belongs to a task (the share card's theme stays on Share).
-- **Categories** (D39, step 144): its own group above Notifications, "Categories ›"
-  with the footer "Rename, add or hide the categories you log under." It opens a
+- **Categories** (D39, step 144): its own group under Plus, "Categories ›" with the
+  footer "Rename, add, hide or give an icon to the categories you log under." It opens a
   full-height sheet: a short line, then one card of rows, each the category's symbol,
   its name and "Rename" (a tap edits it in place, **Save** and Cancel) and a switch
   that offers it when logging. Under it "Add a category" with a field and a secondary
   **Add**, which waits for a free name ("Another category already has that name.").
-  Signed in with an added category, a footnote: "Predictions in your own categories
-  stay on this phone for now: they don't back up to your account yet." Nothing is
+  Predictions in an added category sync like any other, with only its id. Nothing is
   deleted here; hiding keeps the predictions and the record. The last category
   offered can't be switched off (logging needs one), and a built-in's own word
   stays free for it while it's renamed.
@@ -1314,7 +1300,7 @@ Three two-choice questions a day, the same for everyone on the same day, kept ap
 from everything real (`CLAUDE.md`, Daily practice).
 
 - **On Today:** one row under the streak, the streak row's shape: a target symbol,
-  "Today’s practice" over "3 questions, about 30 seconds", and **Start** in brand with
+  "Today’s practice" over "3 questions, about 30 seconds", and **Start** in `actionText` with
   a chevron; "1 of 3 answered" and **Continue** partway; done, a check, "Practice
   done" over "2 of 3 right. New ones tomorrow", and the chevron alone. The whole row
   opens the sheet. Not shown before the first prediction: on Day 0 the Warmup has
@@ -1350,7 +1336,7 @@ sheet with the round ×:
 - **Delete** (text button in `destructive`): a confirmation sheet, "Delete this
   prediction? It won't count anywhere, and it can't be undone." with **Delete** as an
   outlined destructive capsule and **Cancel** beneath (§7.20). Synced as a deletion.
-- **Answer it now** (text button, brand): opens Resolve after one line, "It's due
+- **Answer it now** (text button, `actionText`): opens Resolve after one line, "It's due
   Fri, Oct 16. Answering early is fine; just answer what you know now." with
   **Answer now** and **Not yet**. Early answers count like any other. **On the day it
   was logged** the line says the rule once, with what to do (D56, step 169): "It's due
@@ -1410,8 +1396,7 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
   words" (§7.21), named for what the phone has in use: "Lock with Face ID", "Lock with Touch
   ID" or "Lock with iPhone passcode". It never names a method the phone lacks or isn't using,
   and it is hidden on a build that can't lock. Its line ends by saying reminders aren't covered.
-- **The lock screen and the cover** are the launch page (§7.19, since D66; plain `canvas`
-  with the name until then): the mark and the app's name, and when locked a line and an
+- **The lock screen and the cover** are the launch page (§7.19, D66): the mark and the app's name, and when locked a line and an
   **Unlock** button under them, in the page's fixed colours (the app's own primary is ink in
   the light appearance and would vanish on it). The cover (the app not in front while the
   lock is on) is the mark and the name alone. No Face ID glyph: Apple's symbol isn't drawn by
@@ -1451,8 +1436,7 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
 - [ ] A chosen chip, option, tab or toggle says so on web as well as iOS: spread
       `chosenProps(kind, chosen)` instead of writing `accessibilityState`, which
       react-native-web drops (radio and checkbox → `aria-checked`, tab →
-      `aria-selected`, toggle button → `aria-pressed`). Before step 96 every chip in a
-      group read as unchosen on web, the picked one included.
+      `aria-selected`, toggle button → `aria-pressed`). Step 96.
 - [ ] Phrases that read as one hold together at 320pt: ranges through `holdRanges`,
       counts and labels with no-break spaces ("Goal: 2 of 3", "30 days"), and
       "Next milestone" on a line of its own. Steps 70, 74, 95 and 138.
@@ -1465,7 +1449,7 @@ for a built-in as much as for an added category. Tapping it again, or Done, clos
 
 ## 9. Libraries
 
-Pinned for **Expo SDK 55 / RN 0.83.6** (verified in
+Pinned for **Expo SDK 55 / RN 0.83.10** (verified in
 `node_modules/expo/bundledNativeModules.json`). Always `npx expo install <pkg>`.
 
 | Need | Use | SDK 55 pin | Notes |
@@ -1477,7 +1461,7 @@ Pinned for **Expo SDK 55 / RN 0.83.6** (verified in
 | Share export | existing `react-native-view-shot` | 4.0.3 | Stay pinned until the SDK moves. |
 | Icons | `expo-symbols` | ~55.0.9 | Ionicons as fallback. |
 | Category pictures (D40) | `expo-image-picker` + `expo-image-manipulator` | ~55.0.24 / ~55.0.21 | Library only (camera and microphone permissions off in `app.json`); square crop, 120 px PNG. Both work on web. |
-| Haptics | `expo-haptics` | ~55.0.14 | Web: no-op, harmless. |
+| Haptics | `expo-haptics` | ~55.0.18 | Web: no-op, harmless. |
 | Slider | `@react-native-community/slider` | 5.1.2 | Works on web. |
 | Date picker | `@react-native-community/datetimepicker` | 8.6.0 | "Pick a date" on Log (§7.12). Check its web behaviour before relying on it in screenshots. |
 | Glass accents | `expo-glass-effect` | 55.0.11 | iOS 26+; check `isLiquidGlassAvailable()`. `opacity: 0` breaks it. |
@@ -1491,8 +1475,8 @@ v42 needs Skia ≥ 2.6), Skia inside share cards (view-shot can't capture GL), R
 react-native-ease, expo-mesh-gradient (no web), `@gorhom/bottom-sheet` (formSheet is
 native), `@expo/ui` SwiftUI on SDK 55 (beta, no web).
 
-**SDK upgrade note:** if/when the app moves past SDK 55, go straight to **57.0.9+**
-(Hermes V1 + worklets memory regression in 56 and early 57). SDK 56 breaks
+**SDK upgrade note:** the plan is to go from 55 straight to **58** (roadmap D5),
+skipping 56 and early 57 (Hermes V1 + worklets memory regression there). SDK 56 breaks
 `@react-navigation/*` imports (codemod exists). SDK 58 stabilises NativeTabs.
 
 ---
@@ -1501,5 +1485,5 @@ native), `@expo/ui` SwiftUI on SDK 55 (beta, no web).
 
 The web export is used for automated screenshots and verification, so every screen and
 share card must **render** on web. It is not a faithful preview of iOS: SF Symbols fall
-back to Ionicons/Material, `ui-rounded` falls back, there is no glass or haptics, and
-share-card *export* is native-only. Judge type and materials on a device or simulator.
+back to Ionicons/Material, there is no glass or haptics, and share-card *export* is
+native-only. Judge type and materials on the iPhone (there is no simulator).

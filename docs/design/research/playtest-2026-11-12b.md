@@ -4,7 +4,7 @@ Raw findings, 2026-11-12. The first appeal round: eight blind runs on the web
 build, cast and briefed by the appeal kit (`docs/playtest-appeal.md`) to ask
 whether each person would choose the app, enjoy it, come back and tell
 someone, rather than whether it holds up. Run to the plan in
-`round13-plan-2026-11-12.md`, after a `web-playtester` health check of the
+[`round-plans.md`](round-plans.md#round-13), after a `web-playtester` health check of the
 start states. The build is `builder/playtest-setup` (`6e6e28d`); nothing in
 the app changed during the round. These are what the testers saw, checked
 against the code; they are not decisions. **The testers are AI agents playing

@@ -24,7 +24,7 @@
    and an identity widget ("Sharp in health") for the Home or Lock Screen. A
    prediction app's problem is coming back when something is due; a glance at the
    Home Screen does that without a notification. `expo-widgets` is stable on SDK 56,
-   so it lands naturally after the SDK upgrade (NEXT_STEPS item j).
+   so it lands naturally after the SDK upgrade (`docs/SHIP_READINESS.md` "Open work").
 2. **Private on-device Coach** (P2). Run the Coach on Apple's Foundation Models where
    available: nothing leaves the phone (no OpenAI, no Guideline 5.1.2(i) disclosure,
    works offline, no per-request cost), with the server Coach as the fallback. The

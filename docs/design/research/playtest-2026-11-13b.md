@@ -5,7 +5,7 @@ Raw findings, 2026-11-13. This is the nineteenth round:
 - four single sittings aimed at open decisions, each starting with three minutes and no task.
 
 Measures are kept from round 18, plus a `Tomorrow 0–10` after every diary sitting. Eight people
-new to rounds 17–18. The plan, cast and criteria are in `round19-plan-2026-11-13.md`.
+new to rounds 17–18. The plan, cast and criteria are in [`round-plans.md`](round-plans.md#round-19).
 
 These are what the testers saw, checked against the code; they are not decisions. **AI agents
 playing people:** the numbers compare tasks and people. They aren't benchmarks against real users.

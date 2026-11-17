@@ -15,7 +15,7 @@ last push are from api.github.com on the same day. "SDK 55 pin" means the versio
 
 ## 0. Ground truth (as of 2026-09-28; the migration it fed is done)
 
-Expo SDK 55 (RN 0.83, React 19.2, expo-router 55), New Architecture only (SDK 55 removed the legacy one). A development build is already the way this app runs (`expo-dev-client`, native `react-native-purchases`), and Expo Go supports only the SDK 54 builds. `expo-router` 55 already ships `expo-glass-effect` and `expo-symbols`, so NativeTabs, glass and SF Symbols cost almost nothing to install. SDK 56 and 57 were stable and 58 in beta by 2026-09-15 (upgrade sequencing: `docs/NEXT_STEPS.md` item j). The card must still render on web for screenshots even though export is native-only (`src/share/export.ts` lazily requires `react-native-view-shot`). The confidence control keeps its `adjustable` accessibility role whatever it draws.
+Expo SDK 55 (RN 0.83, React 19.2, expo-router 55), New Architecture only (SDK 55 removed the legacy one). A development build is already the way this app runs (`expo-dev-client`, native `react-native-purchases`), and Expo Go supports only the SDK 54 builds. `expo-router` 55 already ships `expo-glass-effect` and `expo-symbols`, so NativeTabs, glass and SF Symbols cost almost nothing to install. SDK 56 and 57 were stable and 58 in beta by 2026-09-15 (upgrade sequencing: `docs/SHIP_READINESS.md` "Open work"). The card must still render on web for screenshots even though export is native-only (`src/share/export.ts` lazily requires `react-native-view-shot`). The confidence control keeps its `adjustable` accessibility role whatever it draws.
 
 ---
 

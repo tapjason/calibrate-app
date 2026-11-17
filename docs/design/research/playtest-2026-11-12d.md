@@ -4,7 +4,7 @@ Raw findings, 2026-11-12. The third appeal round of the day: five people from
 round 13 who said "ask me again later", brought back on the playtest profile
 that puts them there, plus a wildcard on the longest record. Same build
 (`builder/playtest-setup`, app unchanged since `6e6e28d`), same kit. Plan and
-cast: `round15-plan-2026-11-12.md`. These are what the testers saw, checked
+cast: [`round-plans.md`](round-plans.md#round-15). These are what the testers saw, checked
 against the code; they are not decisions. **AI agents playing people:** the
 appeal answers show where groups part ways, never a market number. Where they
 differ, `CLAUDE.md`, `DESIGN_SYSTEM.md` and `UI_ROADMAP.md` win.
