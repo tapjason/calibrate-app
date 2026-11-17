@@ -1,4 +1,4 @@
-# Calibrate — Coach Agent Spec
+# Fairly Sure — Coach Agent Spec
 
 Companion to `CLAUDE.md`, `BUILD_PLAN.md`, and `GROWTH_AND_MONETIZATION.md`. Specifies
 an optional, **Plus-gated** in-app agent ("Coach") that reads the user's calibration
@@ -81,6 +81,11 @@ type CoachContext = {
 future feature needs them, they are opt-in, minimized, and pass through the safety
 pre-filter (Section 5.5) *before* egress. Reducing what leaves the device is the
 cheapest safeguard available.
+
+**Added categories are never sent** (roadmap D39). A category the person added is named
+in their own words, so `by_category` and the per-category patterns carry the five
+built-ins only (`src/ai/coachContext.ts`). Answers filed under an added category still
+count in `overall` and the weekday pattern, which name no category.
 
 ---
 
@@ -203,7 +208,7 @@ Function doesn't need it, so its duplicated rules are unchanged.
 
 ## 7. Prompt Sketch (system)
 
-> You are Calibrate Coach. You interpret a user's forecasting-calibration statistics and
+> You are the Fairly Sure Coach. You interpret a user's forecasting-calibration statistics and
 > return 0–3 short, specific observations. You may reference ONLY numbers in the provided
 > data; never compute or invent figures. Frame everything around the data, not the
 > person. Reward calibration, not correctness — never treat a wrong outcome as failure.
@@ -214,26 +219,23 @@ Function doesn't need it, so its duplicated rules are unchanged.
 > encouragement to keep logging instead of a verdict. Output only valid JSON matching the
 > schema. Be candid and useful, never flattering and never harsh.
 
-Temperature low; `max_tokens` small; JSON-only.
+As built, the prompt is `SYSTEM_PROMPT` in `supabase/functions/coach/index.ts`: this
+sketch with the two thresholds written in (`MIN_N_CATEGORY` and `MIN_N_OVERALL`, both
+20) and the JSON shape spelled out. The call is `gpt-4o-mini`, temperature 0.2,
+`max_tokens` 400, `response_format: json_object`.
 
 ---
 
 ## 8. Build Reroute — Amendments to `BUILD_PLAN.md`
 
-- **L1:** add `CoachContext`, `CoachOutput` types.
-- **L3:** the deterministic `patterns` and per-category `direction` derivations live
-  here (pure functions, unit-tested) — the Coach consumes them, never recomputes.
-- **L4:** gate the Coach behind `useEntitlementStore.isPlus`; add a `coachStore` for
-  request state + cached last-good insight.
-- **L5:** `/functions/v1/coach` Edge Function (JWT-verified, rate-limited); the
-  crisis pre-filter (5.5); client `src/ai/coach.ts` (fail-silent, same contract as
-  `refine`).
-- **L6:** insight cards on the Stats screen; the AI label + disable toggle in Settings;
-  the support surface for the `safe: false` path.
-- *Gate:* grounding validator drops any insight citing an absent number; a red-team
-  prompt-injection fixture cannot alter role or output; a distress-signal fixture routes
-  to the support surface and never to coaching; a forced endpoint failure leaves the app
-  fully usable.
+**Built**; `BUILD_PLAN.md`'s layers carry it now. What it added: `CoachContext` and
+`CoachOutput` in L1; the deterministic `patterns` and per-category `direction` in L3,
+which the Coach consumes and never recomputes; `coachStore` in L4 (request state and the
+cached last-good insight), gated on `useEntitlementStore.isPlus`; in L5 the `coach` Edge
+Function, the crisis pre-filter (5.5) and the fail-silent client `src/ai/coach.ts`; in L6
+the insight cards on Insights, the AI label and the Coach switch in You, and the support
+surface for the `safe: false` path. Its gate was §9's fixtures plus a forced endpoint
+failure leaving the app fully usable.
 
 ---
 
@@ -255,8 +257,12 @@ Temperature low; `max_tokens` small; JSON-only.
 
 ## 10. Open Decisions
 
-- Push (proactive weekly insight) vs pull (user taps "get feedback")? Pull is safer and
-  cheaper to start; push drives retention but needs tighter cost/tone control.
-- Whether to ever send freetext, and if so, the exact minimization + pre-filter bar.
-- Model choice and cost ceiling — revisit at implementation (research current options
-  then, as with pricing).
+- **Decided: pull, not push.** Insights are fetched when the user asks
+  (`src/store/coachStore.ts`). Push drives retention but needs tighter cost and tone
+  control, and every automatic call spends money on someone who may not be looking.
+- **Decided: the model and the ceiling.** `gpt-4o-mini`, temperature 0.2, `max_tokens`
+  400; a per-user rate limit and a daily ceiling of 25 calls
+  (`supabase/functions/coach/index.ts`). Unit cost: `GROWTH_AND_MONETIZATION.md` §2.7.
+  Re-check OpenAI's deprecation list when the app ships and every quarter after.
+- **Open:** whether to ever send freetext, and if so, the exact minimization +
+  pre-filter bar.

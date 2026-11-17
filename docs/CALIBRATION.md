@@ -1,19 +1,20 @@
-# Calibrate — Calibration Math Reference
+# Fairly Sure — Calibration Math Reference
 
-The single authoritative description of every scoring formula in the app. This
-documents **what the code actually does** (`src/engine/calibration.ts`,
-`src/engine/streak.ts`, `src/store/predictionStore.ts`, `src/store/statsStore.ts`),
-verified against the unit tests. It is aligned with the canonical spec in `CLAUDE.md`;
-the history of how the two were reconciled lives in [Spec reconciliation](#spec-reconciliation).
+This expands on the "Calibration Engine (authoritative)" section of `CLAUDE.md`,
+which wins on any conflict. It documents **what the code actually does**
+(`src/engine/calibration.ts`, `src/engine/sameDay.ts`, `src/engine/streak.ts`,
+`src/store/predictionStore.ts`, `src/store/statsStore.ts`), verified against the unit
+tests.
 
 All engine functions are pure: plain `Prediction` objects in, plain numbers/objects
-out. No I/O, no clamping tricks — the ranges below fall out of the algebra.
+out. No I/O; the ranges below fall out of the algebra (the one clamp is a guard
+against float drift).
 
 ---
 
 ## 1. What counts
 
-A prediction is **calibratable** (it feeds calibration, streak, and the badge
+A prediction is **calibratable** (it feeds calibration, the Brier score and the badge
 resolution counts) only when its outcome is a yes/no:
 
 ```
@@ -24,14 +25,21 @@ calibratable(p)  ⇔  p.status ∈ { 'resolved_yes', 'resolved_no' }
 "don't score this," so letting it count would reward dismissing one's own
 predictions — against the honesty-first design.
 
+**Same-day answers aren't scored** (D41). A Yes or No given on the local day the
+prediction was logged (`isSameDayAnswer`) stays in History but counts toward nothing
+calibrated. The stats store drops them first (`scoredOnly`), so every row below
+marked "scored" excludes them. "Logged" means `scoredFrom(p)`: `created_at`, or
+`title_edited_at` when the words changed later (D45), since new words are a new
+prediction. Derived on every read, never stored.
+
 | Aggregate | Counts pending? | Counts skipped? | Counts yes/no? |
 |-----------|:---:|:---:|:---:|
 | `UserStat.total_predictions` | ✅ | ✅ | ✅ |
-| `UserStat.total_resolved` | ❌ | ❌ | ✅ |
+| `UserStat.total_resolved` | ❌ | ❌ | ✅ scored only |
 | `CategoryStat.predictions_made` | ✅ | ✅ | ✅ |
-| `CategoryStat.predictions_resolved` | ❌ | ❌ | ✅ |
-| Calibration buckets | ❌ | ❌ | ✅ |
-| Streak | ❌ | ❌ | ✅ |
+| `CategoryStat.predictions_resolved` | ❌ | ❌ | ✅ scored only |
+| Calibration buckets, Brier | ❌ | ❌ | ✅ scored only |
+| Streak | its day of logging | its day of logging | its day of logging and its day of answer (same-day too) |
 
 So a skip is visible in the "made" totals but never affects a score.
 
@@ -122,6 +130,16 @@ category's subset).
 
 Over- and under-confidence are penalized symmetrically (the error is an absolute value).
 
+### Give-or-take
+
+`computeRatingRange` resamples the scored answers with replacement
+(`RATING_RESAMPLES`, 400, deterministic), takes the middle 80% of the resampled
+ratings, and sets half its width either side of the rounded rating ("87, give or take
+3"). Centred on the rating, not on the resampled percentiles: resampling only ever adds
+error, so a near-perfect record's percentiles would exclude its own score. Whole points,
+clamped to `0..100`; `null` with nothing scored. Each category gets its own, which its
+badge uses (§5).
+
 ### Brier score (secondary)
 
 ```
@@ -133,9 +151,16 @@ brier = (1/N) × Σ over yes/no predictions of (confidence/100 − outcome)²
 `[0, 1]`, lower is better: 0 is perfect, always saying 50% scores 0.25, and always
 saying 100% about things that never happen scores 1. Unlike the rating it rewards
 sharpness as well as calibration, so logging only coin-flips can't make it look
-good. Derived on every read, never stored; shown only as a quiet line on Insights
-and in How scoring works once the rating is unlocked (`MIN_N_OVERALL`), per
-`CLAUDE.md`.
+good. Derived on every read, never stored; shown only as a quiet line in Insights'
+fine print ("More about your record") and in How scoring works, and only from
+`BRIER_MIN_N` (50) scored answers (D62), per `CLAUDE.md`.
+
+Its yardstick is the person's own base rate (D35): `computeBrierBaseline` returns
+`p(1 − p)`, `p` being the share of scored yes/no predictions that happened, which is what
+always saying `p` would score. `brierEdge` says who wins (step 173): `'alike'` when
+`|brier − p(1 − p)|` is under `BRIER_EDGE_MIN` (0.01); `'about_same'` when the middle
+80% of a paired bootstrap of that gap (`p` recomputed in each resample, the
+give-or-take's method) holds 0; otherwise `'better'` or `'worse'`.
 
 Worked examples (unit-tested):
 
@@ -162,7 +187,7 @@ MIN_N_CATEGORY = 20   // CategoryStat.score_is_provisional = predictions_resolve
   engine predicates; the stats store persists their results onto the stat rows.
 - While provisional the engine still computes the score (for internal trend use), but
   the **UI must not headline it** — it shows progress toward the threshold instead
-  ("12 more resolutions until your finance score unlocks").
+  ("12 more scored answers until your finance score unlocks").
 - No badge above `tracker` is awarded while provisional; the badge resolution gates
   (§5) already enforce this, since every gate above tracker requires ≥ 20 = MIN_N_CATEGORY resolved.
 
@@ -170,31 +195,36 @@ MIN_N_CATEGORY = 20   // CategoryStat.score_is_provisional = predictions_resolve
 
 ## 5. Badge levels (per category)
 
-`evaluateBadge(predictionsResolved, calibrationScore)` returns the **highest** badge
-the user qualifies for. Evaluated top-down:
+`evaluateBadge(predictionsResolved, calibrationScore, giveOrTake = 0)` returns the
+**highest** badge the user qualifies for, evaluated top-down. The score is judged at
+its **low end** (D35): `low = calibrationScore − max(0, giveOrTake)`, where the stats
+store passes the category's own give-or-take (§4). A score that only luck put over a
+bar doesn't earn the tier.
 
 | Badge | Criteria (as implemented) |
 |-------|---------------------------|
-| `oracle` | `score > 90` **AND** `resolved ≥ 100` |
-| `sharp` | `score > 85` **AND** `resolved ≥ 50` |
-| `forecaster` | `score > 70` **AND** `resolved ≥ 20` |
+| `oracle` | `low > 90` **AND** `resolved ≥ 100` |
+| `sharp` | `low > 85` **AND** `resolved ≥ 50` |
+| `forecaster` | `low > 70` **AND** `resolved ≥ 20` |
 | `tracker` | `resolved ≥ 20` |
-| `guesser` | default floor (no threshold) |
+| `guesser` | default floor (no threshold; shown as "Getting started" since D36) |
 
 Every badge above `tracker` gates on **both** a score threshold and a resolution
 minimum. The minimums are required, not decorative — a badge earned on three lucky
 predictions actively misleads the user about themselves, the opposite of the app's
 purpose. They also subsume the "no badge above tracker while provisional" rule (§4a).
 
-Boundary conventions: **scores use strict `>`** (a score of exactly 85 is *not*
+Boundary conventions: **scores use strict `>`** (a low end of exactly 85 is *not*
 sharp), **counts use inclusive `≥`** (exactly 20 resolved *is* a tracker).
 
-`predictionsResolved` here is the yes/no count (skips excluded — see §1).
+`predictionsResolved` here is the scored yes/no count (skips and same-day answers
+excluded — see §1).
 
 ### Next-badge hint
 
-`nextBadge(...)` returns the badge one rung **up the fixed ladder**
-`guesser → tracker → forecaster → sharp → oracle`, with that rung's absolute
+`nextBadge(predictionsResolved, calibrationScore, giveOrTake = 0)` returns the badge
+one rung **up the fixed ladder** `guesser → tracker → forecaster → sharp → oracle`
+from the one `evaluateBadge` gives for the same arguments, with that rung's absolute
 thresholds, for the UI's "what's next" hint. It is purely positional: a forecaster's
 next is always `sharp`, even if they never met tracker's resolution count. Returns
 `null` for an oracle (top of ladder).
@@ -211,21 +241,32 @@ next is always `sharp`, even if they never met tracker's resolution count. Retur
 
 ## 6. Streak
 
-`computeStreak(resolved, { now })` counts **consecutive local calendar days**
-with at least one yes/no resolution, walking backward from the most recent.
+`streakStatus(predictions, now)` (and `computeStreak(predictions, { now })`, which
+returns its length) counts **local calendar days** on which at least one prediction
+was done (`STREAK_DAY_MIN`, one since D17): each prediction counts once on the day it
+was logged (`created_at`) and once on the day it was answered yes or no
+(`resolved_at`). A skip earns nothing. A same-day answer counts toward the streak
+though it isn't scored. `DAILY_GOAL` (3) fills the day's dots and is asked of nobody.
 
-- **Day key:** the device's local calendar day of `resolved_at`
-  (`src/engine/localTime.ts`). Changed from the UTC slice on 2026-09-25: in
-  UTC, a Pacific-time user resolving at 10:00 Monday and 18:00 Tuesday had
-  resolved on Monday and *Wednesday*, and the streak broke over a day they
-  never missed. The zone is on the device and needs no trusted clock.
-- **Expiry:** with `now`, a streak whose latest day is before yesterday has
-  ended and reads `0`. Yesterday still counts, so it doesn't vanish at midnight
-  before the user can extend it today. `statsStore` passes `now` both when it
-  recomputes and when it loads, so a lapsed streak shows `0` on the next
-  launch. Without `now` it anchors at the latest resolution, as before.
+- **Rest days:** every `REST_DAY_EVERY` (7) counted days in a run save one, up to
+  `REST_DAYS_MAX` (2). A past day that didn't count spends one, and the streak carries
+  on without adding that day; with none saved, the run ends and the reserve goes with
+  it. Nothing is stored: the walk replays every day from the first that counted, so
+  a sync or a back-dated answer gives the same streak on every device.
+- **Expiry:** with `now`, today isn't judged until it's over. Until today counts the
+  streak stands through yesterday, so it doesn't vanish at midnight before the user
+  can extend it. A run with a past day that neither counted nor was covered has ended
+  and reads `0`. `statsStore` passes `now` both when it recomputes and when it loads,
+  so a lapsed streak shows `0` on the next launch. Without `now` it anchors at the
+  latest counted day.
+- **Day key:** the device's local calendar day (`src/engine/localTime.ts`). Changed
+  from the UTC slice on 2026-09-25: in UTC, a Pacific-time user acting at 10:00
+  Monday and 18:00 Tuesday had acted on Monday and *Wednesday*, and the streak broke
+  over a day they never missed. The zone is on the device and needs no trusted clock.
 - **DST-proof:** days are compared as calendar dates, not as 24-hour spans.
-- **Skips don't count** (see §1). Empty input → `0`.
+- **Checkpoints:** 7, 30, 100 and 365 days, then every further year
+  (`isStreakCheckpoint`); the day a streak reaches one is named.
+- Empty input → `0`.
 
 The same local-calendar rule applies to the weekday pattern the Coach sees
 (`patterns.ts`), the monthly trend (`trends.ts`) and the yearly Wrapped window
@@ -247,38 +288,3 @@ Nothing reads it any more: no chip on Log, no band on the slider, no Wrapped not
 no CSV column. It never fed the rating, badges or streak. The analytics event
 `prediction_logged` still carries it, as a coverage measure of how often people log
 mid-range calls.
-
----
-
-## Spec reconciliation
-
-`CLAUDE.md` is the canonical spec; the code and this doc now match it. History of
-the alignments, for context:
-
-1. **Guesser badge.** `CLAUDE.md` used to list Guesser as *"First 5 predictions
-   resolved,"* but `evaluateBadge` has no such gate — `guesser` is the
-   unconditional default floor (`evaluateBadge(4, 50) === 'guesser'`, asserted in
-   the tests). The spec reads "Default starting badge: fewer than 20 resolved in the
-   category" (the Tracker gate).
-
-2. **`bucket_error` shape.** `CLAUDE.md` used to write a single nominal value; the
-   implementation uses the per-bucket **mean** stated confidence (§3). The spec now
-   spells out `stated_confidence_mean`.
-
-3. **Absolute, not squared error** *(adopted from the canonical spec)*. The engine
-   previously used squared error (`… ² `, scores compressed into 84–100). The spec
-   now mandates **mean absolute error**; `computeCalibration` uses
-   `| stated_mean/100 − actual_rate |` and clamps to `[0,100]` (§3, §4). The worked
-   examples and the store/prediction tests were updated to the MAE values.
-
-4. **Badge resolution minimums** *(adopted from the canonical spec)*. Forecaster now
-   also requires `resolved ≥ 20` and Sharp `resolved ≥ 50` (§5), so a high score on a
-   handful of calls can no longer earn a top badge — this is the same principle as the
-   min-N provisional gating (§4a).
-
-5. **Count-weighted rating and a Brier score** *(2026-10-10, roadmap D24)*. The
-   rating's mean over buckets is now weighted by each bucket's count (§4), and a
-   Brier score sits beside it as a secondary, quiet number. A blind tester who knew
-   the field pointed out that the unweighted score was jumpy and that a
-   calibration-only score can be raised by logging safe calls
-   (`docs/design/research/dryrun-2026-10-09.md`).

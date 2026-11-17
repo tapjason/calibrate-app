@@ -30,10 +30,11 @@ Status: filled in 2026-11-08
   `6831917395` (`APP_STORE_ID`, `eas.json` `submit.production.ios.ascAppId`).
 - **Audience:** adults who want to know when to trust their own judgement. Target age rating 4+
   (`docs/APP_STORE_LISTING.md` §1). Not for children; no Kids Category.
-- **Where it stands (2026-11-08):** every UI step through 156 is built. The Apple Developer account
-  has been active since 2026-11-07 and the first development build runs on the owner's iPhone.
-  Next: the device fixes, steps 157–159, then Batch C and D on the phone, B1/B2, TestFlight
-  (`docs/NEXT_STEPS.md` "Suggested order"). No submission date is set; the owner decides it.
+- **Where it stands (2026-11-16):** steps 1–187 are built and on `master`
+  (`docs/design/BUILT_LOG.md`). The Apple Developer account has been active since 2026-11-07. The
+  first TestFlight build (1.0.0, build 2, steps through 186) is on the owner's iPhone; build 3
+  carries step 187. Open items: `docs/SHIP_READINESS.md` "Open work". No submission date is set;
+  the owner decides it.
 
 ## §2 Main flow
 
@@ -57,8 +58,9 @@ Status: filled in 2026-11-08
 - **Insights** (tab): the rating with its give-or-take, the Brier line, the calibration chart with
   the grey luck bars, the named pattern (D37), categories with badges, the Plus card.
 - **History** (tab): open predictions first, then everything answered, filterable (D26).
-- **You** (tab): Your card and the recaps (Share), Plus, Categories (D39, D40), notifications and
-  their times, Coach, usage stats, CSV export, How scoring works, account.
+- **You** (tab): Your card and the recaps (Share), Plus, Categories (D39, D40), the streak,
+  hide-the-words and app-lock switches (D59, D61, D64), notifications and their times, Coach, usage
+  stats, CSV export, How scoring works, account.
 - **Return paths:** due-day reminders, the weekly digest, daily practice and its reminder, the
   weekly reveal on Wrapped.
 - **Practice** (sheet from Today): three questions a day, the same for everyone, never mixed into
@@ -75,15 +77,16 @@ Status: filled in 2026-11-08
 - **Supabase owns (after sign-in):** Auth (email; Sign in with Apple through `signInWithIdToken`),
   the synced copy of predictions (last-write-wins, deletions as tombstones), entitlements written by
   the `revenuecat-webhook` Edge Function, Coach usage and rate limits, analytics events from
-  signed-in users (and the guest funnel table once `GUEST_ANALYTICS` is on, D43), account deletion
-  (`delete-account`).
+  signed-in users and guests' funnel counts with no id of any kind (`guest_analytics_events`, D43),
+  account deletion (`delete-account`).
 - **RevenueCat owns:** whether someone has Plus. Absence or any error reads as free, never Plus;
   `fetchEntitlement()` returns `null` for "couldn't ask" so an offline launch doesn't strip Plus.
 - **OpenAI** (through the `coach` Edge Function only): reads computed numbers, never titles or
   reflections by default (`COACH_AGENT.md`).
 - **Never on the client:** service-role keys, the OpenAI key, the RevenueCat `sk_` key, the webhook
   secret. The client holds only `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` and
-  `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (a `test_` key until B1 issues an `appl_` key).
+  `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (the App Store `appl_` key in the EAS `production` environment;
+  the `development` one holds a Test Store `test_` key, which a release build ignores, step 182).
 - **Server checks:** every Edge Function verifies the caller's JWT (the webhook its shared secret),
   rate-limits per user, caps input size and `max_tokens`; RLS scopes every table to its owner.
 
@@ -93,9 +96,8 @@ Layers, lowest first (`BUILD_PLAN.md`; an import arrow only points downward; L6 
 `src/components/layering.test.ts`):
 
 - **L0 config:** `src/constants/` (`theme.ts` tokens, no hex literals elsewhere; `app.ts` identity
-  strings and feature flags `REFINE_ENABLED`, `CUSTOM_CATEGORY_SYNC`, `GUEST_ANALYTICS`,
-  `TITLE_EDIT_SYNC`, `APP_STORE_ID`; `badges.ts`, `cardThemes.ts`, `categoryIcons.ts`,
-  `practiceFacts.ts`, `contrast.ts`, `fonts.ts`).
+  strings, URLs and ids, `REFINE_ENABLED`, `APP_STORE_ID`, `APP_STORE_PROVIDER_TOKEN`; `badges.ts`,
+  `cardThemes.ts`, `categoryIcons.ts`, `practiceFacts.ts`, `contrast.ts`, `fonts.ts`).
 - **Development only:** `src/dev/` (playtest profiles and their loader, §9): an L4 peer that
   stitches stores and `src/db/` helpers together for `/dev/seed`, the way Erase all data does.
   Nothing outside `app/dev/` imports it.
@@ -118,7 +120,7 @@ Layers, lowest first (`BUILD_PLAN.md`; an import arrow only points downward; L6 
   `log`, `resolve/[id]`, `resolve/run`, `prediction/[id]`, `share/`, `warmup/`, `practice`,
   `categories`, `scoring`, `paywall`, `account/`, `dev/seed`, `dev/celebrations`) and
   `src/components/` (`ui/` primitives, then one folder per feature).
-- **Server:** `supabase/migrations/*.sql` (001–008; 007 and 008 not yet applied live),
+- **Server:** `supabase/migrations/*.sql` (001–008, all applied to the live project),
   `supabase/functions/` (`coach`, `revenuecat-webhook`, `delete-account` deployed; `refine` not).
 - **Builder agents** (they write code when delegated): `core-domain` (L1–L4), `services` (L5),
   `mobile-ui` (L6). The reviewing agents are read-only (`docs/agent-harness.md`).
@@ -146,9 +148,9 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 
 ## §6 Monetization
 
-- **Plus** (`PLUS_NAME`): ~$4.99/month, $29.99/year with one free month (annual only), lifetime
-  $59.99 on the RevenueCat Test Store. P1, the price itself, is open: GROWTH §4 recommends
-  $34.99/year and $79.99 lifetime. Store-side settings; the app renders what the store reports.
+- **Plus** (`PLUS_NAME`): $4.99/month, $34.99/year with one free month (annual only), $79.99
+  lifetime, set in App Store Connect (2026-11-16; P1 closed, GROWTH §4). Store-side settings; the
+  app renders what the store reports.
 - **Plus sells** the Coach, Trends, card themes and other cosmetics. **Free forever:** the whole core
   loop, the score, the chart, badges, streaks, History, CSV export, every share card and Wrapped.
 - **Rules:** the paywall never touches the core loop or anything shareable; no checkout outside IAP
@@ -185,9 +187,10 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   ids, settings keys, the notification identifiers and category (the Happened / Didn't actions),
   the analytics event names.
 - **App identity, never changed after the first build:** everything in §1 "Identity values".
-- **Sync flags:** a column the live schema lacks stays out of the wire row behind its flag
-  (`TITLE_EDIT_SYNC` for migration 008, `GUEST_ANALYTICS` for 007; both applied and both on
-  since 2026-11-16, step 186); the owner applies the migration, then the flag flips.
+- **Sync flags:** a column the live schema lacks stays out of the wire row behind its flag; the
+  owner applies the migration, then the flag flips. None is pending: 006 to 008 are live and their
+  flags are gone (2026-11-16), so an added category's id, `title_edited_at` and guests' funnel
+  counts all go up.
 - **NO-GO checks against the last submitted tag (`/release-gate`):** an edited SQLite or Supabase
   migration; a changed id above; a changed identity value; a dropped column without a moving
   migration; an analytics property that can carry free text (`EVENT_PROPS` is closed: enum and
@@ -473,7 +476,7 @@ demo data stand in. Numbers an agent reasons to without them are labelled **esti
 | Fonts | One family (Instrument Sans), four files, loaded through the `expo-font` plugin |
 | Icon | 1024 × 1024 (`assets/icons/icon.png`) |
 | iOS JS bundle | Baseline at the first `bash scripts/check.sh --release` (`.tooling/export`); flag a rise over 10% between releases |
-| Cold start | Not measured yet; the owner's first TestFlight build sets the baseline (device only) |
+| Cold start | Not measured yet; the first TestFlight build is on the phone, and the owner's measurement on it sets the baseline (device only) |
 | Network | Complete offline; sync, billing, Coach and analytics degrade silently |
 
 ## §14 Live ops
@@ -481,7 +484,8 @@ demo data stand in. Numbers an agent reasons to without them are labelled **esti
 none until launch. Then: D0 aha rate (`warmup_completed / warmup_started`) and share rate (shares
 per active user), the two validation questions with their SQL in `docs/HUMAN_VERIFICATION.md`
 "Open work that is code"; D1 / D7 / D30 retention and crashes (App Store Connect); installs per
-share surface (the `ct=share-card-text` campaign token); trial conversion (RevenueCat); range
+share surface (the `ct=share-card-text` campaign token, once `APP_STORE_PROVIDER_TOKEN` is set);
+trial conversion (RevenueCat); range
 coverage (the share of predictions under 40%). The event catalogue is `src/analytics/events.ts`.
 Saved exports go under `docs/live/` for `/live-review`.
 
@@ -534,7 +538,7 @@ Saved exports go under `docs/live/` for `/live-review`.
 - GitHub: `git push`, pull requests on the remote, Pages, repository secrets.
 - **The iPhone:** installing builds, running the app, every check in §18, Developer Mode, the
   notification permission dialog, real purchases in sandbox.
-- Decisions: pricing (P1), EU trader status, the domain, the submission date, anything in
+- Decisions: price changes, EU trader status, the domain, the submission date, anything in
   UI_ROADMAP §2 not yet decided, anything that spends money or deletes someone's data.
 
 ## §17 Store presence
@@ -543,8 +547,8 @@ Saved exports go under `docs/live/` for `/live-review`.
 "Know when to trust your gut" [30]; keywords [100 bytes] in §1 there; Productivity, then
 Lifestyle; age rating 4+ with "Yes" for age assurance; screenshots: at least one 6.9-inch set
 (1320 × 2868), seven planned (§5 there), finals from a device build; privacy policy
-`https://tapjason.github.io/calibrate-app/privacy/` and support `/support/` (404 until GitHub
-Pages is on); App Privacy answers in `docs/APP_PRIVACY.md`; review notes in §4 there; export
+`https://tapjason.github.io/calibrate-app/privacy/` and support `/support/` (live on GitHub
+Pages); App Privacy answers in `docs/APP_PRIVACY.md`; review notes in §4 there; export
 compliance declared (`ITSAppUsesNonExemptEncryption: false`).
 
 ## §18 The iPhone
@@ -558,6 +562,11 @@ behaviour is checked by the owner on that phone, and an agent says so in every r
   Reload, or `r` in the terminal); a stale screen after a fix usually means the bundle didn't
   reload (`--clear` rebuilds the cache). A native change (a new native package, an `app.json`
   plugin, an entitlement) needs a new build.
+- **TestFlight builds:** `npx eas build --profile production --platform ios`, then
+  `npx eas submit --profile production --platform ios` (both the owner's), installed from the
+  TestFlight app. They carry the bundle as built and use no dev server, so any change, JS
+  included, reaches the phone only in the next build. Build 2 (1.0.0, steps through 186) has been
+  on the phone since 2026-11-16.
 - **Native only, never verified on web:** haptics; SF Symbols (web falls back to Ionicons);
   `ui-rounded` numerals; Liquid Glass; native sheets (`formSheet`, page sheets) and their gestures;
   the iOS switch (63 × 28 pt on iOS 26, drawn exactly in its measured frame); the date and time

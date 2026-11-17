@@ -1,14 +1,14 @@
-# Calibrate
+# Fairly Sure
 
 **Track your predictions. Measure how well your confidence matches reality.**
 
-Calibrate is a mobile app for logging personal predictions with a stated confidence level, then — once each prediction comes due — recording what actually happened. Over time it surfaces a pattern most people never see about themselves: *where* their confidence is trustworthy and where it isn't.
+Fairly Sure is an iPhone app for logging personal predictions with a stated confidence level, then — once each prediction comes due — recording what actually happened. Over time it surfaces a pattern most people never see about themselves: *where* their confidence is trustworthy and where it isn't. (Fairly Sure is the working name since 2026-11-03; the repo, `calibrate-app`, and older docs still say Calibrate.)
 
 ---
 
 ## Objective
 
-Most people are systematically **overconfident** or **underconfident**, and usually in domain-specific ways — sharp about their health, hopeless about their finances. Calibrate makes that pattern visible. It answers two questions:
+Most people are systematically **overconfident** or **underconfident**, and usually in domain-specific ways — sharp about their health, hopeless about their finances. Fairly Sure makes that pattern visible. It answers two questions:
 
 1. **Goal tracking** — Did you do what you said you'd do?
 2. **Self-knowledge** — Did your confidence level actually reflect reality?
@@ -31,7 +31,7 @@ The app is designed to be approachable for a general productivity audience — l
 
 ## Architecture
 
-Calibrate is a **local-first** Expo / React Native app. The full core loop — **Log → Resolve → Stats** — works entirely offline against on-device SQLite. Cloud sync, push notifications, and AI are optional services layered on top; none of them sit in the critical path.
+Fairly Sure is a **local-first** Expo / React Native app. The full core loop — **Log → Resolve → Stats** — works entirely offline against on-device SQLite. Cloud sync, billing and AI are optional services layered on top, and reminders are local notifications; none of them sit in the critical path.
 
 ### Tech stack
 
@@ -77,7 +77,7 @@ User taps the reminder on the due date
   → outcome saved locally + synced
   → Calibration Engine recomputes bucket accuracy, the overall rating,
     per-category scores, provisional flags and badge thresholds
-  → Stats reflects the new data; a score unlock or badge tier-up is celebrated
+  → Today and Insights reflect the new data; a score unlock or badge tier-up is celebrated
   → (Plus) the Coach can turn those numbers into grounded insight cards
 ```
 
@@ -91,7 +91,7 @@ bucket_error      = | stated_confidence_mean/100 − actual_rate |    (absolute,
 calibration_score = 100 − (count-weighted mean bucket_error × 100)  (clamped to 0–100)
 ```
 
-Scores built on too little data are never shown as a headline number: the overall rating is provisional below 20 resolutions and a category below 15, and badges above Tracker need both a score and a resolution minimum. `CLAUDE.md` is the authoritative spec; [`docs/CALIBRATION.md`](./docs/CALIBRATION.md) adds fixtures.
+Scores built on too little data are never shown as a headline number: the overall rating is provisional below 20 scored answers and a category below 20, and badges above Tracker need both a resolution minimum and a score whose low end (the score minus its give-or-take) clears the bar. `CLAUDE.md` is the authoritative spec; [`docs/CALIBRATION.md`](./docs/CALIBRATION.md) expands on it.
 
 The engine (`src/engine/`) is **pure** — plain objects in, plain objects out, no I/O — which makes it the highest-value unit-test target in the project.
 
@@ -107,28 +107,31 @@ The engine (`src/engine/`) is **pure** — plain objects in, plain objects out, 
 ## Project Structure
 
 ```
-app/                      Expo Router routes: (tabs) Home/Log/Stats/History/Settings,
-                          warmup/, resolve/[id], share/, account/, paywall
+app/                      Expo Router routes: (tabs) Today/Insights/History/You;
+                          log (a sheet), resolve/, prediction/[id], practice, share/,
+                          categories, scoring, warmup/, account/, paywall, dev/
 src/
   types/                  Shared domain types — the single source of truth
   db/                     SQLite client, migrations, prediction / stat / warmup / analytics helpers
-  engine/                 Calibration, streak, trends, wrapped, warmup, milestones (pure)
+  engine/                 Calibration, streak, trends, wrapped, warmup, practice, milestones (pure)
   store/                  Zustand stores, one per file
   supabase/               Client, auth, background sync, account deletion
-  notifications/          Resolution reminders + weekly digest
+  notifications/          Due-day reminders, weekly digest, practice and trial reminders
   ai/                     Coach client, context builder, validator, crisis pre-filter
                           (and the dormant refine client)
   billing/                RevenueCat wrapper and startup wiring
   analytics/              Closed event catalogue, recorder, flush
-  share/ export/          PNG export for share cards; CSV export (Plus)
+  share/ export/          PNG export and App Store link for share cards; CSV export
+  age/ lock/ media/ review/  Age range, app lock, category pictures, rating prompt
   constants/              Theme tokens, card themes, badges, app flags
-  components/             ui/ primitives + feature folders (prediction, resolution,
-                          stats, share, warmup, paywall, account, settings)
+  components/             ui/ primitives + one folder per feature (prediction, resolution,
+                          stats, share, warmup, practice, paywall, account, settings, launch)
+  dev/                    Playtest profiles (development builds only)
 supabase/
   migrations/             Postgres schema + RLS policies
   functions/              coach, revenuecat-webhook, delete-account (live);
                           refine (written, not deployed)
-docs/                     Verification checklist, next steps, launch drafts, design system
+docs/                     Verification checklist, ship readiness, TestFlight plan, launch drafts, design system
 ```
 
 ---
@@ -141,7 +144,7 @@ npm install
 # Configure environment (optional — the app runs fully offline without it)
 cp .env.example .env.local
 #   EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY enable sync + auth
-#   EXPO_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY enable billing
+#   EXPO_PUBLIC_REVENUECAT_IOS_KEY enables billing
 
 npm start          # start the Expo dev server (open it from a development build;
                    # App Store Expo Go stops at SDK 54 and this app is SDK 55)
@@ -154,9 +157,9 @@ Edge Function deploys, secrets and verification steps are in [`supabase/README.m
 
 ## Current Status
 
-The app is feature-complete against the spec: SQLite persistence, the calibration engine, Zustand stores, the full Log → Resolve → Stats flow, the Warmup onboarding quiz, share cards + Calibration Wrapped, resolution & weekly-digest notifications, Supabase auth + background sync, sign-in and account deletion, the Coach agent, billing + paywall, the Plus tier (trends, CSV export, card themes), and product instrumentation. A full UI pass against [`docs/design/DESIGN_SYSTEM.md`](./docs/design/DESIGN_SYSTEM.md) landed 2026-09-26 → 10-03 (tokens, icons and haptics, the confidence control, the chart redesign, Lens badges, share-card shapes, sheets, motion, receipt-first Coach cards); status and open design decisions are in [`docs/design/UI_ROADMAP.md`](./docs/design/UI_ROADMAP.md).
+Every feature in the spec is built (steps 1–187, listed in [`docs/design/BUILT_LOG.md`](./docs/design/BUILT_LOG.md)): the offline Log → Resolve → Stats loop, the calibration engine, the Warmup, share cards and Calibration Wrapped, notifications, Supabase auth and sync, account deletion, the Coach, billing and the paywall, the Plus tier (Coach, Trends, card themes), daily practice and the app lock. Design rules are in [`docs/design/DESIGN_SYSTEM.md`](./docs/design/DESIGN_SYSTEM.md); open design decisions in [`docs/design/UI_ROADMAP.md`](./docs/design/UI_ROADMAP.md).
 
-**What remains is mostly verification.** Everything that needs a dashboard, a device, the $99 Apple account or a judgment call is written up batch by batch in [`docs/HUMAN_VERIFICATION.md`](./docs/HUMAN_VERIFICATION.md) — start there. The small amount of code work left is in [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md).
+**The first TestFlight build (1.0.0, build 2) is on the owner's iPhone.** What remains before the App Store is mostly checks on the phone ([`docs/HUMAN_VERIFICATION.md`](./docs/HUMAN_VERIFICATION.md), [`docs/TESTFLIGHT_PLAN.md`](./docs/TESTFLIGHT_PLAN.md)), App Store Connect, and the open items and decisions in [`docs/SHIP_READINESS.md`](./docs/SHIP_READINESS.md) "Open work".
 
 ---
 
@@ -165,23 +168,21 @@ The app is feature-complete against the spec: SQLite persistence, the calibratio
 UI feature ideas beyond the roadmap are parked in [`docs/design/FUTURE_UI.md`](./docs/design/FUTURE_UI.md).
 
 **Near-term**
-- [ ] **Resolve native integration** — verify notification deep-links land on `resolve/[id]` on a physical device (`docs/HUMAN_VERIFICATION.md`, batch D1).
+- [ ] **Resolve native integration** — verify notification deep-links land on `resolve/[id]` on a physical device (`docs/HUMAN_VERIFICATION.md`, batch D1). (No push credentials are needed: every notification is a local, scheduled one.)
 
 **Backend & platform (Layer 7)**
-- [ ] Notification deep-links verified on a device. (No push credentials are needed: every notification is a local, scheduled one.)
 - [x] App icon, splash, and the App Privacy answers (`docs/APP_PRIVACY.md`).
-- [ ] Store screenshots and a final app name (`docs/APP_STORE_LISTING.md` §0). The privacy policy URL is in the app; turn GitHub Pages on (`docs/HUMAN_VERIFICATION.md`) or that link 404s.
-- [ ] `eas build` → TestFlight → App Store submission.
+- [x] The app name (`docs/APP_STORE_LISTING.md` §0) and the privacy and support pages on GitHub Pages.
+- [x] `eas build` → TestFlight.
+- [ ] Store screenshots from a device build (`docs/APP_STORE_LISTING.md` §5), then App Store submission.
 - [ ] Clear remaining transitive dependency advisories once the Expo SDK upgrade allows it (currently only resolvable via a breaking `--force`).
 
-**AI features (V2+, Pro-gated, never in the critical path)**
+**AI features (V2+, Plus, never in the critical path)**
 - [ ] **Suggested confidence nudge** — compare an input against the user's historical accuracy on similar predictions. (Distinct from the shipped *range-coverage* nudge, which is deterministic and free.)
 - [ ] **AI weekly digest** — plain-English summary of calibration trends.
 - [ ] **Pattern detection** — surface non-obvious patterns ("Your Monday predictions are 30% less accurate").
-- [ ] **Pre-mortem mode** — stress-test high-stakes predictions before logging.
 
 **Stretch**
-- [ ] Android parity and release.
 - [ ] Multi-device conflict handling beyond last-write-wins.
 
 ---

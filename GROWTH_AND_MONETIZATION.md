@@ -1,39 +1,36 @@
-# Calibrate — Growth & Monetization
+# Fairly Sure — Growth & Monetization
 
-**As of:** 2026-10-08 (market figures re-verified the same day; §2). Companion to
+**As of:** 2026-11-16 (market figures last re-verified 2026-10-08; §2). Companion to
 `BUILD_PLAN.md` and `CLAUDE.md`: this file holds the *why* and the go-to-market plan,
 and `CLAUDE.md` governs what gets built. Everything the money and sharing layers need
-is built (§6); nothing has launched, and the first build waits on the $99 Apple
-account (`docs/NEXT_STEPS.md`).
+is built (§6). The first TestFlight build is on the owner's iPhone (2026-11-16);
+nothing has launched.
 
 ---
 
 ## 0. The plan on one page
 
-**Model.** The whole core loop and every shareable card are free forever. *Calibrate
+**Model.** The whole core loop and every shareable card are free forever. *Fairly Sure
 Plus* sells interpretation, depth and cosmetics: Coach, Trends, and card
 themes. Free users sharing their cards is the growth thesis; the paid tier is how the
 app pays for itself, not how it grows (§1).
 
-**Prices today** (`CLAUDE.md`'s intent, set up in RevenueCat's Test Store, not yet in
-App Store Connect): **$4.99/month, $29.99/year with a one-month free trial, $59.99
-lifetime.** The 2026 market re-check (§2, §4) puts $29.99 about 14% under the median
-annual price across subscription apps ($34.80) and 25% under Health & Fitness
-($39.94), with $59.99 lifetime at 2× annual, the bottom of the range vendors suggest. **Recommendation P1, yours to make: $34.99/year and $79.99 lifetime,
-monthly unchanged.** The cheapest time to decide is before the App Store Connect
-products exist.
+**Prices** (set in App Store Connect, 2026-11-16; P1 is closed): **$4.99/month,
+$34.99/year with a one-month free trial, $79.99 lifetime.** $34.99 sits at the 2026
+median annual price across subscription apps ($34.80) and 12% under Health & Fitness
+($39.94); lifetime is about 2.3× annual. Why: §4.
 
 **Sequence, with what each step needs and what moves it on:**
 
 | # | Step | Needs | Done when |
 |---|---|---|---|
-| 1 | **Give shares a way back to the store.** Text shares end on an App Store campaign link (`src/share/link.ts`, built 2026-10-08, off until configured): `ct=share-card-text` and so on, counted per campaign in App Store Connect with no SDK and nothing identifying anyone. | The name (an App Store record needs one, and "Calibrate" alone is taken twice), then the $99 account → App Store record → set `APP_STORE_ID`; the first campaign link in App Store Connect → set `APP_STORE_PROVIDER_TOKEN`. | A shared text opens the product page, and the Campaigns report lists `share-*` rows. |
-| 2 | **Decide P1 and create the products.** Annual with the one-month trial, monthly without one, lifetime. | P1; App Store Connect; RevenueCat offering re-read (the Test Store drift in `NEXT_STEPS.md` fixed first). | The paywall shows the store's prices and "1 month free". |
-| 3 | **TestFlight with 20–50 people you can ask.** Watch the Warmup, the first log, the first answer on Day 1, and whether anyone shares unprompted. | A development build passing `HUMAN_VERIFICATION.md` Batch C. | No crash or confusion that would sink a first review. |
-| 4 | **Launch 1.0 in English-language storefronts, no paid installs.** ASO from `docs/APP_STORE_LISTING.md`, the rating prompt (D15), and the share loop. | Steps 1–3; privacy policy hosted. | Live. |
-| 5 | **Read the gates (§7) at 6 weeks or 1,000 first-time downloads, whichever is later.** | App Store Connect Analytics (downloads, campaigns), RevenueCat (trials, conversion), the signed-in analytics events. | Each gate reads pass, watch or fail. |
+| 1 | **Give shares a way back to the store.** Text shares end on the App Store product page (`src/share/link.ts`; `APP_STORE_ID` set, the record named Fairly Sure). The campaign token (`ct=share-card-text` and so on, counted per campaign in App Store Connect with no SDK and nothing identifying anyone) is still off. | The first campaign link in App Store Connect → set `APP_STORE_PROVIDER_TOKEN`. | A shared text opens the product page, and the Campaigns report lists `share-*` rows. |
+| 2 | **Create the products.** Done 2026-11-16: annual, monthly and lifetime at the prices above, on `plus` in the `default` offering; the TestFlight paywall loads all three. | The one-month trial moved from the monthly product, where it was set by mistake, to annual (the owner, in App Store Connect). | The paywall shows the store's prices and "1 month free" on annual. |
+| 3 | **TestFlight with 20–50 people you can ask.** Build 2 is on the owner's phone; `docs/TESTFLIGHT_PLAN.md` stages it (the owner, then 5–8 people, then 20–50 for two weeks). Watch the Warmup, the first log, the first answer on Day 1, and whether anyone shares unprompted. | The owner's checks on the phone (`HUMAN_VERIFICATION.md` Batches C and D), the beta description and review info. | No crash or confusion that would sink a first review. |
+| 4 | **Launch 1.0 in English-language storefronts, no paid installs.** ASO from `docs/APP_STORE_LISTING.md`, the rating prompt (D15), and the share loop. | Steps 1–3 (the privacy and support pages are live). | Live. |
+| 5 | **Read the gates (§7) at 6 weeks or 1,000 first-time downloads, whichever is later.** | App Store Connect Analytics (downloads, campaigns), RevenueCat (trials, conversion), the app's own usage counts (guests' included, D43). | Each gate reads pass, watch or fail. |
 | 6 | **Branch on the share gate.** Pass: build the share surfaces that are parked (D6 milestone cards, A11 practice card, A8 web Warmup as the card's landing page). Fail: stop adding share surfaces; growth comes from ASO and the rating; Plus depth before more sharing. Either way, **no paid installs** while revenue per install sits far below what one costs (§2). | Step 5. | A written call in this section. |
-| 7 | **Then, and only with volume: a price test, and a second look at web checkout.** The annual price against one step up (with P1, $34.99 against $39.99) through RevenueCat Experiments, included in its free tier. Web checkout stays off unless the US commission picture or a test of our own changes the math (§2). | Roughly 100+ trials a month, or the test can't read. | A result, recorded here. |
+| 7 | **Then, and only with volume: a price test, and a second look at web checkout.** The annual price against one step up ($34.99 against $39.99) through RevenueCat Experiments, included in its free tier. Web checkout stays off unless the US commission picture or a test of our own changes the math (§2). | Roughly 100+ trials a month, or the test can't read. | A result, recorded here. |
 
 **What would change the plan:** the share gate failing (§8), the link-out case
 settling (§2), or Coach turning out to be what converts (then annual-first matters
@@ -98,7 +95,7 @@ longer shows in full.*
   page.)* Adapty's 2026 report finds 95% of subscription revenue going to the top 10%
   of apps.
 
-**Health & Fitness, the nearest category with public numbers** (Calibrate lists under
+**Health & Fitness, the nearest category with public numbers** (the app lists under
 Productivity, whose breakout gives little: yearly revenue per payer after year one,
 median $24.95): trial-to-paid median **37.7%**, download-to-trial 6.9%,
 download-to-paid by day 35 **2.9%**, revenue per install **$0.48** at day 14 and
@@ -132,7 +129,7 @@ their durations; durations are inferred from the usual pattern) ✅:
 donation-supported, Slack/Discord/Chrome integrations), Futures Study (iOS, $4.99 once,
 one rating), IKEMIND ($2.99), Reckon (one-time, launched 2026-08), Foresee (free with
 purchases). None shows traction in ratings. Nobody owns this on the App Store, and the
-people who already track predictions expect to pay little or nothing; Calibrate's
+people who already track predictions expect to pay little or nothing; this app's
 audience is the larger self-knowledge and habit crowd, which expects a subscription at
 $30–40 a year.
 
@@ -146,8 +143,8 @@ $30–40 a year.
   due 2026-11-13**, so argument is unlikely before early 2027 and a decision before
   June 2027. The district-court proceeding on Apple's proposed 15% / 5% (Small Business)
   link-out fee has stalled. ✅
-- **Web checkout earns less than it looks.** On a $29.99 plan, IAP at 15% nets
-  $25.49 and a link-out nets $29.99 today. But RevenueCat's own test (Dipsea, about
+- **Web checkout earns less than it looks.** On the $34.99 plan, IAP at 15% nets
+  about $29.74 and a link-out nets $34.99 today. But RevenueCat's own test (Dipsea, about
   5,600 new US users) converted **27.0%** on an IAP-only paywall, **18.1%** web-only
   and **23.5%** with both; the version with a web button made **93¢ for every dollar**
   of IAP-only, even against a 30% fee. Web revenue is 3.2% of subscription revenue
@@ -182,10 +179,11 @@ $30–40 a year.
   made within 24 hours of the link, and App Store Connect shows a campaign once it has
   five downloads and a day of age. ✅ That counts installs per share surface for every
   user, signed in or not, without an SDK or an identifier, which the app's own
-  analytics can't do (it only sends events for signed-in users, `APP_PRIVACY.md`).
-- **What a share can carry today:** the text share can carry the link (step 1). An
+  analytics can't do: they don't know where an install came from, and a guest's counts
+  carry no id at all (D43, `APP_PRIVACY.md`).
+- **What a share can carry today:** the text share carries the link (step 1). An
   image share can't: the share sheet gets a bare PNG. Its way back is the name on the
-  card, which is why the name decision matters here as much as in the listing.
+  card, Fairly Sure, which is why the name mattered here as much as in the listing.
 
 ### 2.6 Context: prediction markets went mainstream in 2026
 
@@ -211,7 +209,7 @@ one-month trial nor a lifetime plan is a cost risk.
 
 ## 3. Free vs. Plus (as built)
 
-| Capability | Free (forever) | Calibrate Plus |
+| Capability | Free (forever) | Plus |
 |---|---|---|
 | Log, resolve, score, curve, badges, streaks, rest days | ✅ | ✅ |
 | Daily practice and its reminder | ✅ | ✅ |
@@ -231,34 +229,29 @@ the model, and an AI digest. Don't add them to the paywall until they exist.
 
 ## 4. Pricing
 
-- **Today:** $4.99/month, **$29.99/year (shown first) with a one-month free trial**, and
-  $59.99 lifetime, in RevenueCat's Test Store (App Store Connect comes with the account). The trial is decided (2026-09-25): a calendar month sits inside the
+- **Set (App Store Connect, 2026-11-16; P1 closed):** $4.99/month, **$34.99/year
+  (shown first) with a one-month free trial**, and $79.99 lifetime. Why: annual demand
+  is the least price-sensitive (§2.1), and the 2026 median annual price rose about 10%
+  to $34.80 (§2.2); $34.99 sits there, 12% under Health & Fitness ($39.94), and still
+  reads "works out to $2.92 a month", 42% under monthly. Monthly at about half the
+  median is the low-commitment door, not the target: it is the most price-sensitive plan
+  and the worst container for an AI-driven subscription (AI apps' churn penalty
+  concentrates in monthly plans, §2.1), so the paywall leads with annual. Lifetime at
+  about 2.3× annual (vendor guidance, unmeasured, says 2.5–4×) stops it undercutting two
+  years of the plan we want people on. Not higher, because Plus is narrow next to Finch
+  or Habitify, the app has no reviews yet, and the free tier is the point; no $1.99 and
+  no weekly plans, because this app's value arrives over weeks, not in a session. Apple
+  lets a later price rise apply to new subscribers only, and step 7's test can still
+  move the annual price.
+- **Trial:** one month on annual, decided 2026-09-25: a calendar month sits inside the
   measured 17–32-day band (42.5% median trial-to-paid, §2.1) and is more than one
   resolution cycle, which Plus needs to be legible. It is a store setting; the app
   renders whatever trial the store reports, in the store's units. The paywall states
   that the trial converts and that cancelling takes 24 hours' notice, and the D16
-  reminder arrives two days before it renews.
-- **Where it sits in the 2026 market (§2.2):** $29.99 is below the all-app median
-  ($34.80) and the Health & Fitness median ($39.94), level with Habitify's lower Plus
-  tier and under Daylio ($35.99). $4.99 monthly is about half the median, which is
-  deliberate: monthly is the most price-sensitive plan and the worst container for an
-  AI-driven subscription, so it exists as the low-commitment door, not the target.
-  Lifetime at $59.99 is 2× annual; published guidance (vendor blogs, not measured)
-  puts lifetime at 2.5–4× for apps at this price, with break-even in years roughly equal
-  to the multiple.
-- **Recommendation P1 (open, the owner's call): annual $34.99, lifetime $79.99,
-  monthly $4.99.** Why: annual demand is the least price-sensitive (§2.1); the market
-  median rose about 10% this year; $34.99 still reads "works out to $2.92 a month",
-  42% under monthly; and lifetime at about 2.3× annual stops it undercutting two years
-  of the plan we want people on. Why not higher: Plus is narrow next to Finch or
-  Habitify, the app has no reviews yet, and the free tier is the point. If you'd rather
-  launch at $29.99, keep it and let step 7's test decide; Apple lets a price rise apply
-  to new subscribers only.
-- **Don't undercut to $1.99**, and don't add weekly plans: weekly suits apps whose value
-  arrives in a session, and this one's arrives over weeks.
-- **Push annual on AI-driven signups** (§2.1): the paywall already leads with annual.
-- **Net revenue** depends on the link-out case (§2.3); treat $29.99 as $25.49 in hand
-  under the Small Business Program until it settles.
+  reminder arrives two days before it renews. On 2026-11-16 the offer sat on the
+  monthly product by mistake; the owner is moving it to `calibrate_plus_annual`.
+- **Net revenue** depends on the link-out case (§2.3); treat $34.99 as about $29.74 in
+  hand under the Small Business Program until it settles.
 
 ---
 
@@ -271,19 +264,13 @@ deleted on Day 0. The Warmup is a 60-second quiz of ten two-choice questions wit
 confidence for each, ending on a mini calibration chart, a verdict and the first
 shareable card. Built.
 
-**D18, decided 2026-10-07 for now: Day 0 is for calibration.** The ten questions were
-picked to be tricky, which manufactures the overconfidence the verdict reports
-(`docs/design/UI_ROADMAP.md` D14). The plan: draw the ten from the practice tables;
-lead the result with counts about *these ten* ("78% sure, 6 of 10 right") instead of
-"You're overconfident"; bridge to the person's own plans, where overconfidence lives;
-make the first real prediction due tomorrow so the first real result lands on Day 1;
-and share the counts as an invitation. **Built 2026-10-08**, refined 2026-10-09. It
-trades a dramatic hook for an honest one, so read the Day-0 gates (§7) on either side
-of it. Less was given up than it looked: ten answers called a lean on 47–73% of
-perfectly calibrated people, so "you're overconfident" was mostly luck
-(`docs/design/research/day0-2026-10.md` §2). Read one more number with the gates:
-Warmup finishers with a first real answer within 48 hours of the first launch, which
-D18 exists to move.
+**D18 (decided 2026-10-07, built 2026-10-08): Day 0 is for calibration.** The ten were
+once picked to be tricky, which manufactured the overconfidence the verdict reported
+(`docs/design/UI_ROADMAP.md` D14); now they come from the practice tables, the result
+leads with counts about *these ten*, and the first real prediction is due tomorrow
+(`CLAUDE.md` "Warmup Module"). Read the Day-0 gates (§7) with one more number: Warmup
+finishers with a first real answer within 48 hours of the first launch, which D18
+exists to move.
 
 ### 5.2 Acquisition: identity cards and Wrapped (free)
 
@@ -292,8 +279,8 @@ D18 exists to move.
 - **Calibration Wrapped:** weekly and yearly recaps of the user's forecasting story.
 - **Daily practice** (built 2026-10-07): the same three questions for everyone each
   day, which is what made Wordle's grid travel; its share card is parked (FUTURE_UI A11).
-- Every share is a free ad. A text share carries a way back once step 1 is configured;
-  an image carries the name. Parked surfaces wait
+- Every share is a free ad. A text share links to the product page, counted per surface
+  once step 1's token is set; an image carries the name. Parked surfaces wait
   on the share gate: milestone cards (D6), the practice card (A11) and a web Warmup as
   the card's landing page (A8).
 
@@ -310,18 +297,10 @@ the evals).
 
 ## 6. What's built
 
-Everything this document once asked `BUILD_PLAN.md` to add is built (status
-2026-10-03, unchanged since): the `Entitlement` type and its SQLite mirror (absence or
-any error reads as free), `useEntitlementStore` and `usePaywallStore`, RevenueCat
-billing with restore, the paywall, Plus gating, the Warmup and its card, the identity
-card and Wrapped with PNG export, card themes, Trends with CSV export (the export moves
-to You and becomes free with D31, 2026-10-10), and Coach as the
-`/functions/v1/coach` Edge Function (JWT, Plus checked server-side, rate limit, daily
-ceiling). Two things differ from this file's earliest plan: there is no
-`/functions/v1/insights` (Coach is specified by `COACH_AGENT.md`), and the weekly digest
-is a local notification, not an Edge Function. Built since: the D16 trial reminder,
-the D15 rating prompt, daily practice, and the share link (step 1, off until
-configured). The build order this file argued for held: billing came last.
+Everything this document asked for is built (`docs/design/BUILT_LOG.md`): billing,
+restore and the paywall, Plus gating, the Warmup and its card, the identity card and
+Wrapped, card themes, Trends, CSV export (free since D31), Coach, the D16 trial reminder,
+the D15 rating prompt, daily practice and the share link. Billing came last, as argued.
 
 ---
 
@@ -334,7 +313,7 @@ can't move them; the rest are 2026 medians (§2).
 | Gate | Metric and where it comes from | Pass | Watch | Fail |
 |---|---|---|---|---|
 | **Share loop** (the premise) | First-time downloads from `share-*` campaigns ÷ all first-time downloads (App Store Connect) | ≥ 10% *(ours)* | 3–10% | < 3% *(ours)* |
-| Day-0 aha | `warmup_completed / warmup_started` (signed-in events; read either side of D18) | ≥ 70% *(ours)* | 50–70% | < 50% |
+| Day-0 aha | `warmup_completed / warmup_started` (signed-in and guest counts; read either side of D18) | ≥ 70% *(ours)* | 50–70% | < 50% |
 | First real prediction | First-time users with a `prediction_logged` on Day 0 | ≥ 50% of Warmup finishers *(ours)* | 30–50% | < 30% |
 | Trial-to-paid | RevenueCat, annual trials | ≥ 42.5% (17–32-day median) | 25.5–42.5% | < 25.5% (the short-trial median) |
 | Download-to-paid by day 35 | RevenueCat | ≥ 2.9% (H&F median) | 2.1–2.9% | < 2.1% (freemium median) |
@@ -346,12 +325,15 @@ problem, before anything else is. Trial-to-paid: Plus isn't legible within the t
 fix what Plus shows, not the price. Download-to-paid with a good trial-to-paid: too few
 people reach the paywall; look at where Plus is offered.
 
-**Known blind spot.** The app's own analytics only send events for signed-in users
-(`APP_PRIVACY.md`), so the Day-0 and first-prediction rows describe the signed-in
-cohort, which skews engaged. The share gate doesn't have this problem: App Store
-Connect counts every download. Counting guests' Day-0 funnel would need an anonymous
-per-install id, which contradicts the privacy label; that's the open
-"anonymous funnel" call in `docs/NEXT_STEPS.md`.
+**Later, once trials convert:** re-test the trial length (one month on the annual plan)
+against real trial-to-paid data; it was chosen from medians (§2.1, §4).
+
+**Known blind spot.** A guest's funnel events go up with no id of any kind (D43,
+`APP_PRIVACY.md`), so the Day-0 aha rate counts everyone, signed in or not. But two guest
+rows can't be tied to one person, so a row that follows a person from one event to the
+next (the first real prediction on Day 0) still describes the signed-in cohort, which
+skews engaged. A per-install id would close that and contradicts the privacy label. The
+share gate doesn't have this problem: App Store Connect counts every download.
 
 ---
 
@@ -359,13 +341,14 @@ per-install id, which contradicts the privacy label; that's the open
 
 - **The share loop is a hypothesis.** §7 measures it; §0 step 6 says what happens
   either way.
-- **Discoverability.** Two App Store apps already use the name, one a health brand.
-  Until the name is settled, a card's footer points at a search that finds someone
-  else. The name is the first blocker in §0.
+- **Discoverability.** "Calibrate" alone was taken twice on the App Store, so the app
+  ships as Fairly Sure (the working name since 2026-11-03, on the App Store Connect
+  record; `docs/APP_STORE_LISTING.md` §0), the name every card carries. An image
+  share's only way back is a search for it.
 - **"Prediction" now means betting** to many searchers (§2.6). Say "no money, no odds"
   in the listing, and keep every surface clear of wagering language.
 - **The niche is cheap.** Calibration trackers sell for $3–5 once or are free (§2.2).
-  Calibrate competes on the identity layer, the cards and Day 0, not on the tracker.
+  Fairly Sure competes on the identity layer, the cards and Day 0, not on the tracker.
 - **Revenue will be modest and slow** next to a hard paywall: a reach and brand play.
 - **Coach quality is load-bearing** for conversion, and its model can be retired:
   re-check OpenAI's deprecation list when the app ships and every quarter after.

@@ -1,14 +1,12 @@
-# Calibrate — Build Plan (by Abstraction Layer)
+# Fairly Sure — Build Plan (by Abstraction Layer)
 
-This document orders the work by **level of abstraction**, lowest first. Each layer
-depends only on layers below it and never imports from layers above. Build and
-verify a layer fully before starting the next — every layer has a **Gate** that must
-pass first.
+This document orders the code by **level of abstraction**, lowest first. Each layer
+depends only on layers below it and never imports from layers above. (The repo and
+older docs still say Calibrate.)
 
 Companion to `CLAUDE.md` (the spec). Together these two files are canonical.
 `GROWTH_AND_MONETIZATION.md` and `COACH_AGENT.md` hold rationale and detailed sub-specs;
-their build items have been merged into the layers below, so this is the single sequence
-to follow.
+their build items were merged into the layers below and are built.
 
 ```
 Layer 7  Native integration & App Store      (highest abstraction)
@@ -29,43 +27,28 @@ directly — it goes through a store.
 
 ## Where the build is
 
-**Current state (2026-10-09).** All code in L0–L6 is built; `tsc --noEmit` is
-clean and `npm test` is 125 suites / 1398 tests green. What is left is almost
-entirely L7 and human verification, tracked in `docs/HUMAN_VERIFICATION.md`.
-The few remaining code items are in `docs/NEXT_STEPS.md`; open design decisions are in
-`docs/design/UI_ROADMAP.md`, and what the UI steps built is in
-`docs/design/BUILT_LOG.md`. Older build history is in git (`git log -- BUILD_PLAN.md`).
+**Current state (2026-11-16).** Every layer is built. Steps 1–187 are on `master`;
+what each step built is in `docs/design/BUILT_LOG.md`. The first TestFlight build
+(1.0.0, build 2, steps through 186) is on the owner's iPhone; build 3 carries step 187.
+What is left is mostly the owner's: the on-phone checks (`docs/HUMAN_VERIFICATION.md`,
+`docs/TESTFLIGHT_PLAN.md`), App Store Connect, and the items in `docs/SHIP_READINESS.md`
+"Open work". Open design decisions are in `docs/design/UI_ROADMAP.md` §2. Older build
+history is in git (`git log -- BUILD_PLAN.md`).
 
-- **Built:** the offline core loop (Log, Resolve, Stats, History, Settings), the
-  Warmup, share cards and Wrapped, notifications, Supabase auth and sync, sign-in and
-  the Account screens, account deletion and guest erase, analytics, billing and the
-  paywall (one-month trial on annual), the Plus tier (Coach, Trends, CSV export, card
-  themes), the coverage nudge, the UI redesign pass against
-  `docs/design/DESIGN_SYSTEM.md`, and the retention features (daily practice, rest
-  days, a one-a-day streak, the practice reminder) and the Day-0 Warmup rework. Step
-  by step: `docs/design/BUILT_LOG.md`.
 - **Cut:** ✨ Refine (2026-09-24), dormant behind `REFINE_ENABLED`; see `CLAUDE.md`
   AI § A for why.
 - **Live services:** `coach`, `revenuecat-webhook` and `delete-account` are deployed
-  (`refine` is not). The Coach was verified end to end on 2026-09-25: every number
-  in a real response came from the request, and min-N held against real output. The
-  RevenueCat Test Store has its prices and the one-month annual trial (2026-10-01).
-  The Supabase free-tier project **pauses when idle** (it read `INACTIVE` on
-  2026-10-03), so restore it from the dashboard before any live test.
-- **Decisions on 2026-10-01:** testing is on an **iPhone only** (so a real purchase
-  waits on the $99 Apple account), and "Confirm email" stays on for now.
-- **Found 2026-10-04:** the App Store's Expo Go stops at SDK 54 and this app is
-  SDK 55, so *every* iPhone run needs a development build, and with it the $99
-  account. The web build is the only free way to look at the app until then.
-  Also new since the code was written: Guideline 5.1.2(i) (name the third-party
-  AI before sending it data), Texas age assurance (in force 2026-06-04) and the
-  2026 age-rating questionnaire. All three are tracked in `docs/NEXT_STEPS.md`.
-- **Before a build with a live paywall reaches anyone:** the three products and the
-  `plus` entitlement must exist in App Store Connect and RevenueCat, the public SDK
-  key must be in the build's env, and the sandbox-purchase gate needs a person and a
-  device. Until then the paywall shows its unavailable state, which is correct.
-- **Then:** the validation checkpoint below (instrumented, so it needs users, not
-  code), then L7.
+  (`refine` is not; the latest redeploys of `coach` and `delete-account` are not yet
+  confirmed). The Coach was verified end to end on 2026-09-25: every number
+  in a real response came from the request, and min-N held against real output.
+  Supabase migrations 001–008 are applied to the live project. The Supabase free-tier
+  project **pauses when idle**, so restore it from the dashboard before any live test.
+- **Billing:** the three products exist in App Store Connect and RevenueCat (entitlement
+  `plus`, offering `default`), and the production build carries the App Store (`appl_`)
+  key. Prices and the trial: `GROWTH_AND_MONETIZATION.md` §4.
+- **Every iPhone run needs a development or TestFlight build:** the App Store's Expo Go
+  stops at SDK 54 and this app is SDK 55. There is no simulator and no Mac
+  (`docs/app-profile.md` §18).
 
 ### Decisions worth remembering
 
@@ -82,8 +65,9 @@ next to each carry the detail.
 - **Trial copy.** The paywall shows the store's own trial unit ("1 month", not "30
   days") and says cancelling takes 24 hours' notice, which is Apple's actual rule.
 - **Analytics.** The event catalogue is a whitelist with no free-text property, so
-  "we never send your predictions" is structural. Events never flush for a guest;
-  guest events move to the account on sign-in.
+  "we never send your predictions" is structural. A guest's funnel events go up with
+  no id of any kind, to their own table (D43); the rest of a guest's events wait on the
+  device and move to the account on sign-in.
 - **Plus without paywalling artifacts.** Every share card exports in the free theme;
   a lapsed subscriber's Plus theme falls back to it. Trends shows counts, never a
   score, for a provisional month or category. CSV export escapes leading `= + - @`.
@@ -94,9 +78,10 @@ next to each carry the detail.
   launch (2026-10-05): its id map is in memory, and without that a relaunched app
   couldn't cancel what it had scheduled earlier. Permission is asked in context, not
   at launch: launch only checks, and `src/notifications/permission.ts` shows the iOS
-  alert from Home's reminder prompt or Settings, then starts both services.
+  alert from Today's reminder prompt or You, then starts both services.
 - **Days are local.** Streaks, patterns, Wrapped and trends key days by the device's
-  local time, and a streak ends once its latest day is before yesterday.
+  local time, and a streak ends at a past day that didn't count and that no saved rest
+  day covered.
 
 ### Invariants (do not break)
 
@@ -114,306 +99,85 @@ next to each carry the detail.
 
 ---
 
-## Layer 0 — Project Scaffold & Config
+## The layers
 
-**Purpose:** A buildable, empty Expo app with tooling in place.
+Each layer, where it lives, and the rule it keeps. All are built; a change keeps the
+rule and passes `bash scripts/check.sh` (types, then every test).
 
-**Build:**
-- `package.json`, Expo SDK install, `app.json` (iOS bundle ID, name, icons).
-- `tsconfig.json` with `strict: true` and the `@/` → `src/` path alias.
-- `babel.config.js` with the matching module-resolver alias.
-- `jest-expo` preset + `@testing-library/react-native` configured.
-- `eas.json` for App Store builds.
-- Folder skeleton:
-  `src/{types,db,engine,store,supabase,notifications,ai,billing,share,components}`.
+**Layer 0 — Project scaffold & config.** `package.json`, `app.json`, `eas.json`,
+`tsconfig.json` (`strict: true`, the `@/` → `src/` alias), `babel.config.js` (the same
+alias), Jest (`jest-expo`, Testing Library, `jest/setupWaits.js`), and `src/constants/`
+(theme tokens, card themes, badges, app ids and flags). Rule: components use the
+theme tokens, never hex literals; native packages go in with `npx expo install`.
 
-**Depends on:** nothing.
+**Layer 1 — Types & contracts.** `src/types/index.ts` only: `Prediction`, `UserStat`,
+`CategoryStat`, `Entitlement`, `WarmupResult`, `ShareCard`, `CoachContext` and
+`CoachOutput` (`COACH_AGENT.md` §4 and §6), the function contracts the engine and the db
+helpers implement, and the shared constants (`MIN_N_OVERALL`, `MIN_N_CATEGORY`,
+`MIN_N_BAND`, `BRIER_MIN_N`, the streak and rest-day numbers). Rule: no shared type is
+defined anywhere else.
 
-**Gate:** `npx expo start` boots; `npm test` runs (zero tests is fine); a sample
-`@/` import resolves.
+**Layer 2 — Data access (SQLite).** `src/db/`: `client.ts` (expo-sqlite behind a
+`DbAdapter` seam, sql.js under Jest), numbered migrations in `src/db/migrations/`
+(`001_initial` to `017_refiles`, listed in `index.ts`, each applied once and recorded in
+`_migrations`), and the helpers (`predictions.ts`, `stats.ts`, `entitlements.ts`,
+`warmup.ts`, `practice.ts`, `categories.ts`, `analytics.ts`, `account.ts`,
+`ageBucket.ts`, `migrateGuestData.ts`). Rules: never edit or reorder a shipped
+migration, append a new one; `async/await`, never `.then()`; an entitlement read with
+no row returns free, never Plus; the Warmup and practice tables have no `user_id` and
+no join to predictions, so they can't reach real stats.
 
----
+**Layer 3 — Domain logic (engine).** `src/engine/`, pure functions: plain objects in,
+plain objects out, `now` passed in. `calibration.ts` (buckets, the count-weighted mean
+absolute error, the give-or-take, the Brier score and its baseline, badges at the low
+end), `chance.ts` and `direction.ts` (the one lean rule), `sameDay.ts` (same-day
+answers, `scoredFrom`), `corrections.ts` (the correction window and the counted
+deletions, postponements, rewordings and refiles), `streak.ts` and `localTime.ts`,
+`patterns.ts` (what the Coach consumes; it never computes its own), `trends.ts`,
+`wrapped.ts`, `warmup.ts`, `practice.ts`, `coverageNudge.ts`, `milestones.ts` and the
+rest. Rule: imports only `@/types` and sibling engine files; the worked examples in
+`CLAUDE.md` are required fixtures. Formulas: `CLAUDE.md` "Calibration Engine
+(authoritative)", expanded in `docs/CALIBRATION.md`.
 
-## Layer 1 — Types & Contracts
+**Layer 4 — State (Zustand).** `src/store/*Store.ts`, one slice per file. Stores
+orchestrate L2 and L3 and hold no calibration math and no billing logic; every
+mutation and its stats recompute run in one `withTransaction`. Plus is read only
+through `useEntitlementStore`; with `isPlus` false the Coach makes no request.
+`src/dev/` (playtest profiles) is a development-only peer reached from `app/dev/`
+alone.
 
-**Purpose:** The shared vocabulary every other layer speaks. Pure declarations, no
-runtime code.
+**Layer 5 — Services.** `src/supabase/` (client, auth, sync, account deletion),
+`src/notifications/` (due-day reminders, the weekly digest, the practice and
+trial-ending reminders, the permission ask), `src/ai/` (the Coach client, its context,
+validator and crisis pre-filter; the dormant `refine.ts`), `src/billing/` (RevenueCat
+behind a deps seam), `src/analytics/`, `src/share/`, `src/export/`, `src/review/`,
+`src/age/`, `src/media/`, `src/lock/`; on the server, `supabase/migrations/` and the
+Edge Functions in `supabase/functions/`. Rules: every service fails silently; every
+Edge Function verifies the caller's JWT (the webhook a shared secret), rate-limits per
+user and caps input and `max_tokens` (`CLAUDE.md` "Backend Proxy Architecture"); the
+Coach checks Plus server-side and runs the crisis pre-filter before any model call
+(`COACH_AGENT.md` §5).
 
-**Build:**
-- `src/types/index.ts` — `Prediction`, `UserStat`, `CategoryStat`, plus the union
-  types (`category`, `status`, `badge_level`).
-- `Entitlement` (`{ is_plus, source, expires_at }`).
-- `WarmupResult` — quiz answers, per-question confidence, computed mini-score.
-- `ShareCard` payload — what a card needs to render and export.
-- `CoachContext` and `CoachOutput` (shapes defined in `COACH_AGENT.md` §4 and §6).
-- Constants: `MIN_N_OVERALL = 20`, `MIN_N_CATEGORY = 20` (15 until D46), bucket boundaries.
-- Function-signature contracts for the engine and db helpers.
+**Layer 6 — Presentation.** `app/` (expo-router: the tabs Today, Insights, History and
+You; Log, Resolve, Prediction, Practice, Share, Categories and How scoring works as
+sheets; the Warmup, the full-screen paywall, account and `dev/`) and `src/components/` (`ui/`
+primitives, then one folder per feature). Design: `docs/design/DESIGN_SYSTEM.md` and
+`docs/design/UI_ROADMAP.md`. Rule: reads stores and calls service actions, never the
+engine or the SQLite client; component tests cover the Warmup, Log, Resolve and the
+paywall.
 
-**Depends on:** Layer 0.
-
-**Gate:** `tsc --noEmit` passes. No type is defined anywhere outside this file.
-
----
-
-## Layer 2 — Data Access (SQLite)
-
-**Purpose:** Persist and retrieve domain objects. The only layer that touches the
-SQLite client.
-
-**Build:**
-- `src/db/client.ts` — Expo SQLite setup behind a `DbAdapter` seam, so tests run
-  against real SQLite (sql.js) without the native module.
-- `src/db/migrations/` — numbered TypeScript modules registered in `index.ts` and
-  applied once each by the runner, tracked in a `_migrations` table. Never edit or
-  reorder a shipped migration; append a new one.
-  - `001_initial` predictions + stats · `002_sync_metadata` · `003_provisional_flags`
-  - `004_entitlements` — local entitlement mirror (singleton row)
-  - `005_warmup` — warmup results (singleton row, no `user_id` and no join to
-    predictions, so Warmup data is *structurally* unable to reach real stats)
-  - `006_analytics` — the local product-analytics queue, capped and
-    push-then-delete
-- `src/db/predictions.ts` — CRUD helpers, all `async/await`.
-- `src/db/stats.ts` — read/write `UserStat` and `CategoryStat` (including the
-  provisional flags).
-- `src/db/entitlements.ts` — read/write the local entitlement mirror.
-- `src/db/warmup.ts` — read/write the stored Warmup. Persists raw answers only;
-  scoring stays in the engine so no stale verdict can be cached on disk.
-
-**Depends on:** Layers 0–1.
-
-**Gate:** Unit tests for each helper (insert → read back → update → delete) pass
-against a real SQLite instance. No `.then()` chains. Entitlement read with no row
-returns **free**, never Plus. Warmup data cannot leak into `UserStat`/`CategoryStat`
-queries.
-
----
-
-## Layer 3 — Domain Logic (Calibration Engine)
-
-**Purpose:** The core math. Pure functions — no I/O, no storage, no state.
-
-**Build:**
-- `src/engine/calibration.ts`:
-  - Bucket resolved predictions using the fixed boundaries
-    `[0,20) [20,40) [40,60) [60,80) [80,100]`.
-  - `bucket_error = | stated_confidence_mean/100 − actual_rate |`  ← **absolute**, not squared.
-  - `calibration_score = 100 − (mean bucket_error × 100)`, mean over non-empty
-    buckets only, clamped to `[0,100]`.
-  - Provisional-flag derivation against `MIN_N_OVERALL` / `MIN_N_CATEGORY`.
-  - Badge evaluation — requires **both** the score threshold and the resolution
-    minimum (see `CLAUDE.md` badge table).
-  - Bucket-coverage metric (how much of the 0–100 range the user has actually used).
-- `src/engine/trends.ts` — the Plus analytics math: month-by-month calibration,
-  per-category standing sorted worst-first (provisional categories last), range
-  coverage, and the recent-vs-earlier delta.
-- `src/engine/coverageNudge.ts` — when to ask for a prediction the user thinks
-  is *unlikely*: the recent-window coverage gap, the minimum history, and the
-  weekly cooldown. Pure; the Log screen reads the decision through `statsStore`.
-- `src/engine/warmup.ts` — scores the onboarding quiz by reusing the same bucketing
-  and error functions.
-- `src/engine/patterns.ts` — **deterministic** pattern derivations (day-of-week
-  accuracy, category drift, over/under direction per category). The Coach consumes
-  these; it never computes its own.
-- `src/engine/streak.ts`, `src/engine/localTime.ts` — streaks and day/month keys
-  in the device's local time (the offset is passed in, so they stay pure). The
-  streak also reports its checkpoints (7, 30, 100, 365, then yearly; decided
-  2026-10-06): the one today reached and the next one up.
-- `src/engine/wrapped.ts` — weekly and yearly Wrapped summaries, with their own
-  min-N gating.
-- `src/engine/milestones.ts` — upward crossings only (score unlock, badge tier-up,
-  category unlock) for the celebration moments.
-
-**Depends on:** Layer 1 only (plain objects in, plain objects out).
-
-**Gate:** Exhaustive unit tests. The worked-example table in `CLAUDE.md` is a required
-fixture set — perfect calibration → 100; 0.90 stated vs 0.50 actual → 60; multi-bucket
-mean case → 80; empty-bucket and single-bucket edge cases. Below-threshold inputs
-produce `provisional = true` and no badge above `tracker`. **This is the highest-value
-test target in the project — do not proceed to L4 until it is green.**
+**Layer 7 — Native integration & App Store.** `app.json` (bundle id `app.fairlysure`,
+iPhone only, portrait, the plugins, the declared-age-range entitlement), `eas.json`
+(the `development` and `production` profiles, the App Store Connect app id), the
+listing (`docs/APP_STORE_LISTING.md`), App Privacy (`docs/APP_PRIVACY.md`) and the
+privacy and support pages on GitHub Pages. Rule: a native change (a package, a plugin,
+an entitlement) needs a new build; `eas build` runs only with the owner's go-ahead and
+`eas submit` is the owner's. Still to confirm on hardware: a notification deep-linking
+into Resolve, and a sandbox purchase and restore.
 
 ---
 
-## Layer 4 — State (Zustand Stores)
+## Validation Checkpoints
 
-**Purpose:** Connect data (L2) and domain logic (L3) into observable app state.
-
-**Build:**
-- `src/store/predictionStore.ts` — load/create/resolve predictions via `src/db/`.
-- `src/store/statsStore.ts` — on resolution, run the engine (L3), persist results
-  via `src/db/`.
-- `src/store/authStore.ts` — session state (wired to Supabase in L5).
-- `src/store/entitlementStore.ts` — exposes `isPlus` and gated selectors; hydrates
-  from the local mirror, refreshes from RevenueCat in L5.
-- `src/store/warmupStore.ts` — onboarding quiz progress and result.
-- `src/store/coachStore.ts` — request state + cached last-good insight (Plus only).
-
-**Depends on:** Layers 1–3. Stores orchestrate; they contain no calibration math and no
-billing logic.
-
-**Gate:** Tests simulate a resolve action and assert the store recomputes and
-persists stats correctly. Toggling entitlement flips gated selectors. With
-`isPlus = false`, coach selectors return nothing and no network call is attempted.
-
----
-
-## Layer 5 — Services (Notifications, Sync, AI, Billing)
-
-**Purpose:** External-system integrations. Each is optional to the core loop and
-fails gracefully.
-
-**Build:**
-- `src/analytics/{events,track,flush}.ts` — the closed event catalogue, the
-  fire-and-forget recorder, and the batched push. Backed by the local queue in
-  `src/db/analytics.ts` (L2) and `analytics_events` in Postgres.
-- `src/notifications/scheduler.ts` — schedule resolution reminders on `due_date`.
-- `src/notifications/digest.ts` — Sunday weekly digest.
-- `src/supabase/{client,auth,sync}.ts` — auth + background local→remote sync.
-- `src/share/export.ts` — rasterize a share card to PNG for the OS share sheet.
-- `src/ai/refine.ts` — call `/functions/v1/refine`; fail silently. **Dormant:
-  refine is cut from v1 (`REFINE_ENABLED = false`), the function is not
-  deployed, and no build calls this.**
-- `src/ai/coach.ts` — call `/functions/v1/coach`; fail silently; Plus-gated.
-- `src/supabase/account.ts` — call `/functions/v1/delete-account`, wiping the
-  device only after the server confirms.
-- `src/billing/revenuecat.ts` — configure SDK, purchase, restore, entitlement sync,
-  all behind a deps seam and all failing to FREE.
-- `src/billing/init.ts` — startup wiring: hydrate the mirror, configure RevenueCat for
-  the current user, refresh on sign-in and on foreground.
-- `supabase/functions/refine/index.ts` — OpenAI proxy. **JWT-verified**, rate-limited,
-  input-capped, full error handling (see `CLAUDE.md` for the reference implementation).
-  Written and tested; **deliberately not deployed** — see the cut note above.
-- `supabase/functions/revenuecat-webhook/index.ts` — RevenueCat → Postgres
-  entitlement mirror, so the server can gate Plus without trusting the client.
-- `supabase/functions/delete-account/index.ts` — App Store 5.1.1(v) deletion:
-  optional Sign in with Apple revoke and RevenueCat customer delete, then
-  `auth.admin.deleteUser`, whose rows cascade. Spec: `docs/ACCOUNT_SPEC.md` §3.
-- `supabase/functions/coach/index.ts` — Coach endpoint. JWT-verified, rate-limited,
-  per-user daily cost ceiling, JSON-schema output validation, grounding validation
-  (every `evidence` value must match the input), and the **crisis pre-filter that runs
-  before any model call**. Full spec in `COACH_AGENT.md` §5.
-
-**Depends on:** Layers 1–4.
-
-**Gate:**
-- A scheduled notification fires; sync round-trips a record.
-- ~~`refine` returns a suggestion AND a forced failure leaves the save flow
-  unaffected.~~ Deferred with the feature; the save flow never depended on it,
-  which is what made the cut free.
-- An unauthenticated call to either function is rejected with 401.
-- A sandbox purchase unlocks `isPlus`; restore works; a fresh install with no purchase
-  reads as free.
-- A share card exports to a PNG the OS share sheet accepts.
-- Coach adversarial fixtures from `COACH_AGENT.md` §9 pass: hallucinated-number
-  insights are dropped by the validator; an injection fixture cannot alter role or
-  output schema; a distress fixture routes to the support surface and never reaches the
-  model; an n=3 category yields "keep logging," not a verdict.
-
----
-
-## Layer 6 — Presentation (Components & Screens)
-
-**Purpose:** The UI. Reads from stores (L4), calls service actions (L5). Never
-touches the SQLite client or the engine directly.
-
-**Design:** `docs/design/DESIGN_SYSTEM.md` (rules and tokens) and
-`docs/design/UI_ROADMAP.md` (redesign order and open decisions).
-
-**Build:**
-- `src/components/` — `ui/` primitives, then `prediction/`, `stats/`, `resolution/`,
-  `share/`, `paywall/`.
-- Screens in `app/`: Warmup → Home → Log → Resolve → Stats → Share/Wrapped → History →
-  Paywall → Settings.
-- `app/_layout.tsx` — root layout + auth gate; `resolve/[id].tsx` deep-linked from
-  notifications; first-run routing into Warmup.
-- Provisional-state UI: progress toward threshold instead of a headline number.
-- `CoverageNudge` on the Log screen — the range-coverage caveat's answer, free
-  and throttled to once a week.
-- Coach insight cards on Stats (Plus), plus the support surface for the
-  `safe: false` path.
-- Soft contextual upsell on Stats (one Plus teaser card); Coach and usage-stats
-  toggles in Settings (the Refine row is hidden while `REFINE_ENABLED` is false).
-- Account: `app/account` sign-in / sign-up, the Settings Account row, Delete
-  account for a signed-in user and Erase all data for a guest.
-- Cosmetic theming for cards (Plus) — `src/constants/cardThemes.ts`, applied by
-  `IdentityCard` / `WrappedCard` and chosen in `ThemePicker`. The free theme is
-  never gated.
-
-**Depends on:** Layers 1–5.
-
-**Gate:** Component tests for the Warmup, Log, and Resolve flows, plus the paywall.
-Manual run of the full loop in the iOS simulator: warmup → verdict → share card →
-log a prediction → resolve it → stats update → provisional state renders correctly →
-sandbox subscribe → Coach cards and cosmetics unlock.
-
----
-
-## Layer 7 — Native Integration & App Store
-
-**Purpose:** Ship it.
-
-**Build:**
-- iOS permissions/entitlements in `app.json` (notifications).
-- Push notification credentials, deep-link config verified on a device.
-- IAP products (`calibrate_plus_monthly` / `_annual` / `_lifetime`) configured in App
-  Store Connect and mapped to the `plus` entitlement in the RevenueCat dashboard;
-  free trial on annual: **one month, decided 2026-09-25** (inside the measured
-  "17–32 days" band, and more than one resolution cycle — `GROWTH_AND_MONETIZATION.md`
-  §4). The app renders whatever trial the store reports, so the length is a
-  dashboard setting; what *is* code is that it renders in the store's own unit
-  ("1 month", not "30 days") and states the 24-hour cancellation rule.
-- Subscription + AI privacy declarations; app icon, splash, screenshots
-  (marketing frames with the parked stageshow skill: `docs/APP_STORE_LISTING.md` §5).
-- The 2026 age-rating questionnaire (answers drafted in
-  `docs/APP_STORE_LISTING.md` §1), and the in-app OpenAI disclosure that
-  Guideline 5.1.2(i) requires before the Coach sends anything.
-- Age assurance (owner chose (a), built): `expo-age-range` 0.2.21, the SDK 55
-  release, and the `com.apple.developer.declared-age-range` entitlement. One
-  call after the first screen is up, failing open; only the age band is stored
-  on the device. Nothing is gated on it.
-- Build toolchain: App Store uploads need Xcode 26 / the iOS 26 SDK since
-  2026-04-28. EAS's SDK 55 image meets that; the SDK upgrade (55 → 58) is a
-  separate iteration after the first device build.
-- `eas build --platform ios` → TestFlight → App Store submission.
-
-**Depends on:** all layers.
-
-**Gate:** A signed build runs on a physical device; a notification deep-links into
-the Resolve screen; a real sandbox subscription completes and restores on hardware;
-TestFlight build accepted.
-
----
-
-## Recommended Sequence
-
-```
-L0 → L1 → L2 → L3 → L4
-  → L6 core UI (Home / Log / Resolve / Stats on the offline loop)
-  → Warmup (Day-0 aha)                    ← build EARLY: onboarding + first share card
-  → Share cards + Wrapped (free)          ← the growth loop; build BEFORE billing
-  → L5 services: notifications → sync     (refine: built, then cut 2026-09-24)
-  → Badges + weekly digest
-  → Billing + paywall + Plus gating       ← LAST of the money work
-  → Coach agent (Plus)                    ← after billing; needs L3 patterns + L5 guards
-  → L7 ship
-```
-
-Layer 6 can begin once Layer 4 exists — the app is fully usable **and fully shareable**
-offline before any Layer 5 service is built, matching the principle that **Log → Resolve
-→ Stats works entirely without AI or backend.**
-
-**Why billing is late:** the free tier is the marketing budget, and the whole
-light-monetization bet rests on people actually sharing their results. Ship the Warmup
-and share cards first and measure share rate. If nobody shares, the premise is wrong and
-that is the moment to revisit the model — before you've built a checkout.
-
----
-
-## Validation Checkpoints (non-code gates)
-
-- **After Warmup + share cards ship:** measure D0 aha completion and share rate. This
-  decides whether freemium is the right model at all. Instrumented as of
-  2026-09-07 — `warmup_started` / `warmup_completed` for the first,
-  `share_opened` / `share_completed` for the second.
-- **After billing ships:** measure trial-to-paid; run a trial-length experiment.
-- **After Coach ships:** measure Plus churn split by AI-heavy vs analytics/cosmetic use —
-  AI drives conversion but churns faster, so confirm the sticky layer is working.
+Now the go-to-market gates in `GROWTH_AND_MONETIZATION.md` §7 (Day-0 aha, the share
+loop, trial-to-paid, Plus churn by Coach use), read at §0 step 5.
