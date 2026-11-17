@@ -1,26 +1,25 @@
-# Calibrate — Account Spec: sign-in, sign-out, deletion
+# Fairly Sure — Account Spec: sign-in, sign-out, deletion
 
-**As of:** 2026-10-03 · **Status:** built (§1–3); `delete-account` deployed 2026-10-02 (Apple and RevenueCat legs wait on their keys) · Items 1 and 3 of
-[`NEXT_STEPS.md`](./NEXT_STEPS.md)
+**As of:** 2026-11-16 · **Status:** built (§1–3). `delete-account` is deployed (2026-10-02);
+its secrets were set on 2026-11-16 with one misspelled, so the RevenueCat leg is skipped until
+it is renamed, and the redeploy isn't confirmed (`docs/SHIP_READINESS.md`, "Open work").
 
-The auth *functions* exist (`src/supabase/auth.ts`) and the guest→account
-handoff exists (`authStore.handleSession` → `migrateGuestDataToUser`). What's
-missing is every surface a user touches, and the deletion path Apple requires.
-This spec follows the layer rules in `BUILD_PLAN.md`: screens call stores,
-stores call services, and nothing in the core loop waits on any of it.
+The spec as built. It follows the layer rules in `BUILD_PLAN.md`: screens call stores, stores
+call services (`src/supabase/auth.ts`, `src/supabase/account.ts`), and nothing in the core
+loop waits on any of it. The guest→account handoff is `authStore.handleSession` →
+`migrateGuestDataToUser`.
 
 ---
 
 ## Principles
 
-1. **Signing in stays optional.** Log → Resolve → Stats → Share never asks for
-   an account. Sign-in is offered where it buys something concrete: backup and
-   sync, the Coach, and restoring Plus on a new phone.
-2. **Offer it in context, never as a gate.** The places are the Settings Account
-   row, the Coach panel for a Plus guest, and (optionally) once after the 5th
-   resolution: "Back up your record?".
-3. **Delete means delete.** Server, RevenueCat and device, with no soft-delete
-   path. A calibration record is personal data about someone's judgment.
+1. **Signing in stays optional.** Log → Resolve → Insights → Share never asks for an
+   account. Sign-in is offered where it buys something concrete: backup and sync, the
+   Coach, and restoring Plus on a new phone.
+2. **Offer it in context, never as a gate.** The places are You's account group, the Coach
+   panel for a Plus guest, and the backup nudge.
+3. **Delete means delete.** Server, RevenueCat and device, with no soft-delete path. A
+   calibration record is personal data about someone's judgment.
 
 ---
 
@@ -28,69 +27,49 @@ stores call services, and nothing in the core loop waits on any of it.
 
 ### Surfaces
 
-**Settings → Account section** (new, at the top of `SettingsView`):
+**You, the account group** (`AccountGroup` in `SettingsView`):
 
 | State | Shows |
 |---|---|
-| Guest | "Not signed in. Your predictions live only on this phone." Button **Sign in or create account** (routes to `/account`). Row **Erase all data on this device** (see §3.5). |
-| Signed in | Email, or "Signed in with Apple" for a private-relay address. **Sign out** button. **Delete account** row, styled as destructive, at the bottom of the section. |
+| Guest | "Not signed in. Your predictions live only on this phone." and **Sign in** (routes to `/account`). At the bottom of You, **Erase your data on this phone** (§3.5). |
+| Signed in | "Signed in as …", or "Signed in with Apple." for a private-relay address, then "Your predictions are backed up." and **Sign out**. At the bottom, **Delete account**, in red. |
 
-**`app/account/index.tsx`**, the sign-in screen:
+**`app/account/index.tsx`**, the sign-in screen: on iOS the native
+`AppleAuthenticationButton` first, then email: one form with a Sign in / Create account
+toggle, the ≥8-character password rule, and inline error text from `AuthOutcome.error`. No
+Google (the unreachable path was removed in step 182). On `{ ok: true }` it goes back;
+`authStore`'s `onAuthStateChange` migrates guest data, reloads the stores and starts a sync.
 
-- **iOS:** the native `AppleAuthenticationButton` first, then "or use email".
-- **Email:** one form with a Sign in / Create account toggle, email and
-  password fields (the existing ≥8-character rule), and inline error text taken
-  from `AuthOutcome.error`.
-- **Google:** not offered. The unreachable code path was removed in step 182
-  (2026-11-15); Apple and email are the two ways in.
-- On `{ ok: true }`: `router.back()`. `authStore`'s `onAuthStateChange` already
-  migrates guest data, reloads the stores and starts a sync, so the screen does
-  nothing else.
-
-**`CoachPanel`:** when `isPlus && authStatus === 'guest'`, render "Sign in to
-use Coach. It runs on our server, which needs to know it's you." with a button
-to `/account`. Don't request insights in this state. Today it requests, gets a
-401, and shows nothing.
+**`CoachPanel`:** a Plus guest sees "Sign in to use Coach. It runs on our server, which needs
+to know it's you…" with a button to `/account`, and no request is made.
 
 ### Store
 
-Add actions to `authStore` rather than calling `@/supabase/auth` from a screen
-(L6 imports only `@/store` and `@/types`): `signInEmail`, `signUpEmail`,
-`signInApple`, `signOut`, plus a `pending` flag and a `lastError` string. Each
-one returns the `AuthOutcome` unchanged.
+`authStore` holds the actions (L6 imports only `@/store` and `@/types`): `signInWithEmail`,
+`signUpWithEmail`, `signInWithApple`, `signOut`, `deleteAccount`, and a `pending` flag. Each
+returns the service's outcome unchanged so the screen can show the error.
 
 ### The email-confirmation decision (yours)
 
-Supabase's built-in sender reaches **only members of your Supabase
-organization**, at **2 emails/hour**, and is documented as not for production.
-With "Confirm email" on (the default), a real user who signs up by email never
-gets the link. Pick one:
+Supabase's built-in sender reaches **only members of your Supabase organization**, at
+**2 emails/hour**, and is documented as not for production. With "Confirm email" on (the
+default), a real user who signs up by email never gets the link. Pick one:
 
 | Option | Cost | Trade-off |
 |---|---|---|
 | **A. Turn off "Confirm email"** (Auth → Providers → Email) | Free, 1 minute | `signUp` returns a session immediately. Unverified addresses are accepted. **Password reset still can't send.** Fine for a beta. |
 | **B. Custom SMTP** (e.g. Resend or Postmark free tier) | Free tier, needs a domain you control | Real confirmation and password reset. Needs `emailRedirectTo: 'fairlysure://auth-callback'` in `signUpWithEmail` and a route that calls `exchangeCodeForSession`. |
 
-**Recommendation:** A for TestFlight, B before public launch. Make Sign in with
-Apple the default on iOS either way, since it never touches email.
+**Recommendation:** A for TestFlight, B before public launch. Make Sign in with Apple the
+default on iOS either way, since it never touches email.
 
-**Decided 2026-10-01 (for testing only):** neither yet. "Confirm email" stays on,
-and test accounts are created with the address on the Supabase team, which the
-built-in mailer does reach. A or B is still needed before anyone else signs up.
+**Decided 2026-10-01 (for testing only):** "Confirm email" stays on, and test accounts use
+the address on the Supabase team, which the built-in mailer does reach. **Decided
+2026-11-15:** B, a custom mail sender (`SHIP_READINESS.md` decision 6), not set up yet; the
+password reset waits on it (decision 12).
 
-The code should handle both: after `signUp`, if `data.session` is null, show
-"Check your email to confirm", otherwise proceed. (`signUpWithEmail` currently
-discards `data`; return whether a session exists.)
-
-### Tests
-
-- `authStore` actions: success sets no error; failure surfaces
-  `AuthOutcome.error`.
-- Sign-in screen: iOS shows the Apple button, Android doesn't. The toggle
-  switches between modes. A confirmation-pending sign-up shows the check-email
-  state.
-- `CoachPanel`: a Plus guest sees the sign-in prompt, and **no request is
-  made**.
+The code handles both: `signUpWithEmail` returns `needsConfirmation: !data?.session`, and the
+sign-in screen then says "Check … for a confirmation link, then sign in here."
 
 ---
 
@@ -98,15 +77,12 @@ discards `data`; return whether a session exists.)
 
 `authStore.signOut()`:
 
-1. `logOutBilling()`, so the next person on the device starts anonymous (this
-   already exists).
-2. `supabase.auth.signOut()`. `onAuthStateChange` then moves the app to the
-   guest id and reloads the stores.
-3. **Local data stays on the device, under the account's user id.** The guest
-   view starts empty, and signing back in shows everything again. No confirm
-   dialog is needed, because nothing is lost.
-
-Say so in the UI: "Your predictions stay backed up to your account."
+1. `logOutBilling()`, so the next person on the device starts anonymous.
+2. `supabase.auth.signOut()`. `onAuthStateChange` then moves the app to the guest id and
+   reloads the stores.
+3. **Local data stays on the device, under the account's user id.** The guest view starts
+   empty, and signing back in shows everything again. No confirmation, because nothing is
+   lost.
 
 ---
 
@@ -133,10 +109,11 @@ From [Offering account deletion in your app](https://developer.apple.com/support
 
 ### 3.2 Flow
 
-`app/account/delete.tsx`, reached from Settings → Delete account:
+`app/account/delete.tsx`, reached from You → Delete account:
 
-1. **Explain.** "This permanently deletes your predictions, calibration
-   history, and account from our servers and this phone. It can't be undone."
+1. **Explain.** "This permanently deletes your account, every prediction and
+   reflection, your calibration history and your Warmup and practice answers, from
+   our servers and from this phone. It happens immediately and can't be undone."
 2. **If `isPlus` and the source is `trial`, `monthly` or `annual`:** "Your
    subscription is billed by Apple and **won't stop when you delete your
    account.** Cancel it first." Button: **Manage subscription**, which calls
@@ -155,9 +132,9 @@ From [Offering account deletion in your app](https://developer.apple.com/support
 5. **Call** `POST /functions/v1/delete-account` with `{ apple_authorization_code? }`.
 6. **Only after a 200:** wipe the device (§3.4), then `logOutBilling()`, then
    `auth.signOut()`, then show "Your account has been deleted." and route to
-   Home as a fresh guest.
-7. **On failure:** delete nothing locally. Show "Couldn't delete right now. Your
-   data is unchanged. Try again." A half-deleted state, with the server gone
+   Today as a fresh guest.
+7. **On failure:** delete nothing locally. Show "Couldn't delete your account right
+   now. Nothing has been deleted — try again in a moment." A half-deleted state, with the server gone
    and the device intact or the reverse, is the one outcome that must not
    happen.
 
@@ -184,21 +161,19 @@ leaves an account the user can retry deleting):
    delete cascade`, verified in `supabase/migrations/`).
 4. Return `200 { ok: true }`.
 
-Secrets it needs (**human steps**, none of them exist yet):
+Secrets (**human steps**; set on 2026-11-16, but the RevenueCat key went in as
+`REVENUTCAT_DELETE_KEY` and must be renamed `REVENUECAT_DELETE_KEY`):
 
 | Secret | Where from |
 |---|---|
-| `APPLE_TEAM_ID`, `APPLE_SIWA_KEY_ID`, `APPLE_SIWA_PRIVATE_KEY` | developer.apple.com → Keys → a key with **Sign in with Apple** enabled (not the In-App Purchase key from B0.3). Needs the $99 account. |
+| `APPLE_TEAM_ID`, `APPLE_SIWA_KEY_ID`, `APPLE_SIWA_PRIVATE_KEY` | developer.apple.com → Keys → a key with **Sign in with Apple** enabled (not the In-App Purchase key). |
 | `APPLE_CLIENT_ID` | the bundle id, `app.fairlysure` |
 | `REVENUECAT_DELETE_KEY` + `REVENUECAT_PROJECT_ID` | a v2 secret key with **customers write**. The existing `sk_` key is read-only for customers. Project `projb27eccad`. |
 
-The function must work **without** the Apple and RevenueCat secrets, skipping
-those legs and logging it, so the core deletion ships before the $99 account
-exists.
-
-Put the decision logic (which legs run, and how each result is classified) in a
-Deno-import-free module, as `revenuecat-webhook/entitlementFromEvent.ts` does,
-so Jest can cover it.
+The function works **without** the Apple and RevenueCat secrets, skipping those legs and
+logging it. The decision logic (which legs run, and how each result is classified) lives in
+`deletionPlan.ts`, a Deno-import-free module like `revenuecat-webhook/entitlementFromEvent.ts`,
+so Jest covers it.
 
 ### 3.4 Device wipe
 
@@ -215,37 +190,27 @@ The `src/db/account.ts` helper `wipeLocalUserData(userId)`, in one
 
 Then clear the per-user sync cursor in AsyncStorage.
 
-### 3.5 Guests: "Erase all data on this device"
+### 3.5 Guests: "Erase your data on this phone"
 
-Guest data never left the phone, so this is `wipeLocalData(LOCAL_GUEST_USER_ID)`
-plus the Warmup row, behind the same one-tap confirm. It satisfies Apple's
-guest-account clause, and it's a useful reset in its own right.
+Guest data never left the phone, so this is `authStore.eraseDeviceData`:
+`wipeLocalUserData(LOCAL_GUEST_USER_ID)`, then the Warmup, practice, Log's kept draft and
+the card's left-off categories, behind the same one-tap confirm. Settings stay. Only rows
+made without an account go: an account that signed out on this phone keeps its own. It
+satisfies Apple's guest-account clause, and it's a useful reset in its own right.
 
 ### 3.6 Webhook and deleted users: already handled
 
 A `RENEWAL` or `EXPIRATION` can still arrive for a deleted id. That's already
 safe: `apply_entitlement_event` (migration 004) catches
 `foreign_key_violation` and returns normally, so the webhook answers 200 and
-RevenueCat doesn't retry. Nothing to build. (The first draft of this spec
-missed that.)
+RevenueCat doesn't retry.
 
 ### 3.7 Tests
 
 - The deletion-plan module covers: no code means no Apple leg, missing secrets
   mean legs are skipped, a RevenueCat 404 is OK, an auth-delete failure
   returns 500.
-- `wipeLocalData` removes only that user's rows, against the sql.js adapter.
+- `wipeLocalUserData` removes only that user's rows, against the sql.js adapter.
 - The delete screen: a subscriber sees the billing warning and a lifetime
   holder doesn't; a failed call leaves the stores untouched; success routes to
   a fresh guest.
-
----
-
-## 4. What changes elsewhere once this ships
-
-- `APP_PRIVACY.md` §5 item 5 closes. `PRIVACY_POLICY.md` §7 becomes true and
-  the policy can be published.
-- `HUMAN_VERIFICATION.md` Batch C gains three boxes: sign in by email; sign
-  out and back in with data intact; delete the account and confirm the
-  `auth.users` row is gone.
-- Remove the "Not built" account-deletion row from the checklist.

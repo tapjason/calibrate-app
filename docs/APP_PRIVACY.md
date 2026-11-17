@@ -1,6 +1,6 @@
 # Fairly Sure — App Privacy declarations
 
-**As of:** 2026-11-15 (policy audit of step 180; first written 2026-09-24) · Derived from the code, not from intent.
+**As of:** 2026-11-16 (checked against the code after step 187; policy audit of step 180 on 2026-11-15; first written 2026-09-24) · Derived from the code, not from intent.
 
 This is the answer sheet for App Store Connect → App Privacy, and the source
 for the privacy policy text. Every row cites the file that proves it. If a
@@ -15,11 +15,10 @@ The short version:
   required.**
 - **From someone who never signs in, only a few usage counts, with no id.**
   The whole core loop — log, resolve, stats, share — runs offline against local
-  SQLite, and sync has nothing to sync. Since D43 (2026-11-03) eight funnel
-  events go up to `guest_analytics_events` with no user, install or device id
-  (`src/analytics/flush.ts`, `GUEST_EVENT_NAMES`). Migration 007 is applied
-  and `GUEST_ANALYTICS` is on since 2026-11-16 (step 186); before that
-  nothing left a guest's phone.
+  SQLite, and sync has nothing to sync. Eight funnel events go up to
+  `guest_analytics_events` with no user, install or device id (D43;
+  `src/analytics/flush.ts`, `GUEST_EVENT_NAMES`), since step 186 applied
+  migration 007 on 2026-11-16; before that nothing left a guest's phone.
 - **Freetext never reaches the AI.** The one feature that would have sent it,
   Refine, is cut from v1 (2026-09-24). The Coach sends numbers only.
 
@@ -30,7 +29,7 @@ The short version:
 | Apple data type | Collected | Linked to identity | Tracking | Purpose | Evidence |
 |---|---|---|---|---|---|
 | Contact Info → **Email address** | Yes | Yes | No | App Functionality (account + sync) | `src/supabase/auth.ts` — email/password and Sign in with Apple (the email scope only; no Google button ships) |
-| User Content → **Other User Content** (prediction titles, reflections) | Yes | Yes | No | App Functionality | `PredictionWireRow`, `src/types/index.ts:167`; `src/supabase/sync.ts` |
+| User Content → **Other User Content** (prediction titles, reflections) | Yes | Yes | No | App Functionality | `PredictionWireRow` (`src/types/index.ts`); `src/supabase/sync.ts` |
 | Identifiers → **User ID** | Yes | Yes | No | App Functionality, Analytics | Supabase auth user id; passed to RevenueCat as `appUserID`, `src/billing/revenuecat.ts` (`configureBilling`) |
 | Usage Data → **Product Interaction** | Yes | Yes | No | Analytics, App Functionality (the Coach's per-account request count, `supabase/migrations/002_coach_usage.sql`) | `src/analytics/events.ts` — closed catalogue, numeric properties only. A guest's funnel events carry no id (D43), but Apple asks per data type, and a signed-in person's are linked, so answer **linked** |
 | Purchases → **Purchase History** | Yes | Yes | No | App Functionality, Analytics (`purchase_completed` carries the plan and trial flags, `src/analytics/events.ts`; RevenueCat's guidance says both) | Apple IAP via RevenueCat; `supabase/functions/revenuecat-webhook/` |
@@ -62,8 +61,8 @@ Analytics events land in `public.analytics_events`, scoped to the user id.
 
 | Feature | What is sent | Trigger |
 |---|---|---|
-| ✨ **Refine**: **cut from v1, not in any build** (`REFINE_ENABLED = false`, function undeployed). Declare nothing for it. If it returns, this row applies. | The prediction title the user just typed, and nothing else. Never reflections, never history. | An explicit tap, per prediction. Free. Toggleable in Settings. |
-| **Coach** (Plus) | **Aggregated numbers only** — `CoachContext` is a calibration rating, per-category resolved counts / scores / rates, and deterministic pattern values. There is no string field in it but the fixed category enum. | An explicit "Get feedback" tap. **Off by default** (`coachEnabled: false`, `src/store/settingsStore.ts`). |
+| ✨ **Refine**: not shipped (`REFINE_ENABLED = false`, the function not deployed). Declare nothing for it. | If it ever returns: the title just typed, nothing else. | An explicit tap. |
+| **Coach** (Plus) | **Aggregated numbers only** — `CoachContext` is a calibration rating, per-category resolved counts / scores / rates, and deterministic pattern values. Its only strings are a built-in category id and an engine pattern key (such as `weakest_day_of_week`): a category the person added (`c-…`, named in their own words) is left out before the call (`src/ai/coachContext.ts`), and the server rejects any other category and any key that isn't a short lowercase machine key (`supabase/functions/coach/index.ts`). | An explicit "Get feedback" tap. **Off by default** (`coachEnabled: false`, `src/store/settingsStore.ts`). |
 
 Both calls go through Supabase Edge Functions that verify the caller's JWT;
 the API key is server-side only and never ships in the binary
@@ -71,7 +70,7 @@ the API key is server-side only and never ships in the binary
 
 One consequence worth stating plainly in the privacy policy: **the Coach cannot
 send a prediction's text, because the payload it is built from has nowhere to
-put one** (`src/ai/coachContext.ts`, `CoachContext` at `src/types/index.ts:119`).
+put one** (`src/ai/coachContext.ts`; `CoachContext` in `src/types/index.ts`).
 That is a structural property, not a policy.
 
 Related: freetext *is* scanned on-device by the crisis pre-filter before any
@@ -110,11 +109,10 @@ relay address — the app treats it as any other email).
   flushes on foreground alongside sync. A guest's eight funnel events go to
   `guest_analytics_events` with an event id (random, `track.ts`), the name,
   its numbers and the time, and nothing else: no user, install or device id,
-  so two rows can't be tied to one person (D43, once `GUEST_ANALYTICS` is
-  on). Their other events move to the account on sign-in
+  so two rows can't be tied to one person (D43). Their other events move to the account on sign-in
   (`migrateGuestDataToUser`), so they are sent then; the policy says so.
   Turning usage stats off clears the queue first and sends nothing more.
-- Users can turn it off: Settings → "Usage stats" (default on). Renamed from
+- Users can turn it off: You → "Usage stats" (default on). Renamed from
   "Anonymous usage stats" on 2026-10-04: the events are linked to the account,
   so "anonymous" contradicted this sheet.
 - **Share links change nothing here** (2026-10-08, `src/share/link.ts`). A text
@@ -132,15 +130,14 @@ reproduce it verbatim if that reads better than a summary.
 ## 4. Notifications — local only
 
 The app requests notification permission and schedules **local** notifications
-(resolution reminders, the Sunday digest). It never requests a push token: no
+(due-day reminders, the weekly digest on the day and time the person picks, the
+practice reminder, the trial-ending notice). It never requests a push token: no
 `getExpoPushTokenAsync`, no device push token, nothing server-side that sends a
 push (verified across `src/`, `app/`, `supabase/`).
 
 Two consequences:
 - **No push token is collected or transmitted** — declare nothing for it.
-- **An APNs key is not needed to ship this build.** It becomes needed only if
-  remote push is added later. (`docs/HUMAN_VERIFICATION.md` Batch E used to list
-  it as a blocker; it isn't one.)
+- **No APNs key is needed.** One would be only if remote push were added.
 
 ---
 
@@ -185,20 +182,20 @@ The privacy policy URL App Store Connect requires must at minimum say:
    prediction text the user typed; the Coach sends aggregated statistics only
    and never prediction text or reflections.
 3. That usage analytics are numeric-only, tied to the account, and switchable
-   off in Settings.
+   off in You.
 4. That subscriptions are processed by Apple and managed via RevenueCat.
 5. How to delete an account and its data.
 6. That on iOS 26 or later the app may keep an age band from Apple on the
    device, and that the band is not sent off the device or used to lock a
    feature. The draft in `docs/PRIVACY_POLICY.md` says so.
 
-**Item 5 is built (2026-09-25).** Settings → Delete account calls the
-`delete-account` Edge Function, which revokes Sign in with Apple (once its key
-is configured), deletes the RevenueCat customer (once a write key is), and
+**Item 5 is built (2026-09-25).** You → Delete account calls the
+`delete-account` Edge Function, which revokes Sign in with Apple (when its key
+is configured), deletes the RevenueCat customer (when a write key is), and
 deletes the auth user, whose rows cascade from every public table. The device
-is wiped only after the server confirms. Guests get "Erase all data on this
-device". Deployed 2026-10-02; the Apple and RevenueCat legs wait on their keys
-(`docs/HUMAN_VERIFICATION.md` Batch E).
+is wiped only after the server confirms. Guests get "Erase your data on this
+phone". Deployed 2026-10-02; the keys were set on 2026-11-16, and the RevenueCat
+leg waits on one misspelled secret's rename (`docs/HUMAN_VERIFICATION.md` Batch E).
 
 **In-app disclosure for the Coach (Guideline 5.1.2(i), added 2025-11-13).**
 Apple now requires apps to "clearly disclose where personal data will be shared
@@ -206,7 +203,7 @@ with third parties, including with third-party AI, and obtain explicit
 permission before doing so". The Coach toggle is the explicit permission (off
 by default, an affirmative switch, nothing sent before it). Since 2026-10-04
 the disclosure names the provider in both places a user meets it: the
-Settings switch ("…go through our server to OpenAI, which writes it") and the
+switch in You ("…go through our server to OpenAI, which writes it") and the
 Coach panel above *Get feedback* until the first answer. Both match the
 policy's §3.
 
@@ -221,6 +218,7 @@ UserDefaults, reason CA92.1; `expo-local-authentication` ships no manifest and
 needs none: LocalAuthentication is not among Apple's required-reason API types,
 which are file timestamps, system boot time, disk space, active keyboards and
 UserDefaults; policy audit, 2026-11-15). Fairly Sure adds no native code of
-its own, so it declares none directly. Confirm the generated build carries them
-when the first `eas build` runs — a missing manifest surfaces as an App Store
-Connect email after upload, not as a build failure.
+its own, so it declares none directly. The first production build went up on
+2026-11-16 (TestFlight build 2). A missing manifest surfaces as an App Store
+Connect email after upload, not as a build failure, so check that email on each
+upload.

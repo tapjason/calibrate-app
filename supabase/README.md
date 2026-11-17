@@ -9,9 +9,12 @@ The project is linked to the Supabase CLI (project ref `otopheizhjstoeyndcvc`).
 Migrations are applied with:
 
 ```sh
-npx supabase db push        # applies anything in migrations/ not yet on remote
-npx supabase migration list # shows local vs. remote state
+npx supabase db push --remote          # applies anything in migrations/ not yet on remote
+npx supabase migration list --remote   # shows local vs. remote state
 ```
+
+The CLI (3.1) targets a local stack unless given `--remote`. All eight migrations are on the
+live project (`migration list --remote`, 2026-11-16).
 
 The dashboard route still works if you prefer it — **SQL Editor → New query**, paste
 each file in `supabase/migrations/` in numeric order, run.
@@ -36,16 +39,23 @@ schema is safe.
   is what stops an out-of-order delivery from resurrecting a lapsed
   subscription.
 - `functions/refine/index.ts` — Edge Function that rewrites a user-typed
-  prediction via OpenAI GPT-4o-mini. Called from `src/ai/refine.ts`.
+  prediction via OpenAI GPT-4o-mini. Called from `src/ai/refine.ts`. Not
+  deployed (Refine is cut from v1; see below).
 - `migrations/005_analytics_events.sql` — product analytics events. Append-only
   by policy (insert + select for the owning user, no update or delete grant),
   with CHECK constraints keeping `props` a small JSON object. There is no
   column freetext could go in.
+- `migrations/006_custom_categories.sql` — the category check also accepts an
+  added category's id (`c-` and 4 to 24 lowercase letters or digits; D39), so
+  predictions filed under one sync. Never the name. Applied 2026-11-03.
 - `migrations/007_guest_analytics_events.sql` — a guest's funnel events (D43,
   2026-11-03): no user, install or device id; insert only, for `anon` only;
   the eight event names in a CHECK; nobody but the service role reads it.
-  **Not applied yet**: `GUEST_ANALYTICS` in `src/constants/app.ts` stays
-  false until it is.
+  Applied 2026-11-16; guests' counts are sent since then (step 186).
+- `migrations/008_title_edited_at.sql` — `predictions.title_edited_at`, when a
+  prediction's words last changed (D45): a reworded prediction counts as made
+  then. Nullable, no default. Applied 2026-11-16; the date syncs with its
+  prediction since then.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decision logic lives in
   `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can
@@ -62,60 +72,23 @@ schema is safe.
 
 ## Edge Functions
 
-**Live as of 2026-10-02** (`npx supabase functions list`): `coach` (JWT on),
-`revenuecat-webhook` (JWT off, shared secret) and `delete-account` (JWT on).
-`refine` is deliberately not deployed. The free-tier project pauses when idle;
-`projects list` shows `INACTIVE` when it has, and it is restored from the
-dashboard only.
+**Deployed** (`npx supabase functions list`): `coach` (JWT on), `revenuecat-webhook`
+(JWT off, shared secret; last redeployed 2026-11-03) and `delete-account` (JWT on,
+deployed 2026-10-02). **The live `coach` predates the repo's prompt** (the Fairly Sure
+name, and 20 answers per category since step 157): redeploy it with
+`npx supabase functions deploy coach`. The owner's list also has
+`npx supabase functions deploy delete-account`, after its secrets were set on 2026-11-16;
+neither redeploy is confirmed yet. `refine` is deliberately not deployed. The free-tier
+project pauses when idle; `projects list` shows `INACTIVE` when it has, and it is restored
+from the dashboard only.
 
 ### refine
 
-> **Not deployed — cut from the first release (2026-09-24).** The first live
-> run against a funded OpenAI account showed the prompt turning predictions
-> into *questions* ("I'll finish the report" → "Will I finish the report?"),
-> four inputs out of four. `REFINE_ENABLED` in `src/constants/app.ts` is false
-> and the function is intentionally absent from the project, so
-> `/functions/v1/refine` answers 404. Everything below still applies when it
-> comes back; fix the prompt first.
-
-Rewrites a user prediction into a concise yes/no-resolvable form. The mobile
-client treats every failure as silent (`src/ai/refine.ts` returns `null`), so
-the function can be down without breaking the save flow.
-
-**One-time setup**
-
-```sh
-# Install the CLI if you haven't: https://supabase.com/docs/guides/cli
-supabase login
-supabase link --project-ref <your-project-ref>
-supabase secrets set OPENAI_API_KEY=sk-...
-```
-
-**Deploy**
-
-```sh
-supabase functions deploy refine
-```
-
-JWT verification stays **on**. An earlier version deployed with
-`--no-verify-jwt` so guest-mode users could call refine, but the function now
-requires a real signed-in user and rejects the bare anon key with 401 — the
-anon key ships in the client bundle, so anyone holding it could otherwise burn
-OpenAI tokens. Guests simply keep their typed text, which costs nothing since
-refine is a signed-in-only nicety. Cost protection is layered: the auth gate,
-a per-user rate limit, and the 500-char input cap inside the function.
-
-**Verify**
-
-```sh
-curl -X POST 'https://<project-ref>.functions.supabase.co/refine' \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-  -d '{"prediction": "I will do better at work this week"}'
-```
-
-Expected: `{"refined":"..."}` with a tight rewrite under ~15 words. Note that
-the anon key alone now returns 401 — use a real user's access token.
+**Not deployed: cut from the first release (2026-09-24).** The first live run turned
+predictions into questions ("I'll finish the report" → "Will I finish the report?"),
+so `REFINE_ENABLED` in `src/constants/app.ts` is false and `/functions/v1/refine` answers
+404. The function, its client and their tests are kept dormant; fix the prompt first
+(`CLAUDE.md` § AI A), then `npx supabase functions deploy refine` with JWT verification on.
 
 ### coach
 
@@ -136,17 +109,10 @@ supabase secrets set OPENAI_API_KEY=sk-...
 # ledger and the entitlements table both exist.
 ```
 
-**Before billing exists**, no row in `entitlements` means nobody is Plus, so
-every request is refused with 403 — correct for a paid feature nobody has
-bought, but it makes the endpoint impossible to exercise. To test it:
-
-```sh
-supabase secrets set COACH_ALLOW_UNENTITLED=true   # unset before launch
-```
-
-With that set the Plus gate is skipped entirely. It is the only thing standing
-between a signed-in free user and your OpenAI bill, so unset it the moment
-billing populates the table.
+**Never leave `COACH_ALLOW_UNENTITLED` set.** It skips the Plus gate entirely, and the
+gate is the only thing standing between a signed-in free user and your OpenAI bill. If
+it is ever set for a test, unset it and redeploy in the same sitting
+(`docs/HUMAN_VERIFICATION.md` A4).
 
 **Deploy**
 
@@ -184,15 +150,6 @@ curl -X POST 'https://<project-ref>.functions.supabase.co/coach' \
 Expected: `{"insights":[...],"safe":true}` with 0–3 items, every `evidence`
 value matching a number in the request.
 
-## Notes for future schema changes
-
-- The CHECK constraints in `001_predictions.sql` mirror the union types in
-  `src/types/index.ts` AND the SQLite CHECKs in
-  `src/db/migrations/001_initial.ts`. All three move together.
-- Stats tables (`user_stats`, `category_stats`) intentionally do NOT live here
-  — those are derived from predictions and rebuilt locally via
-  `recomputeForUser` after every pull (`src/supabase/sync.ts`).
-
 ### revenuecat-webhook
 
 Keeps `public.entitlements` in step with what people own, so the Coach's
@@ -204,7 +161,7 @@ on-device and the Coach endpoint still answers 403 to a paying subscriber.
 ```sh
 # Any long random string. This IS the authentication for the endpoint.
 npx supabase secrets set REVENUECAT_WEBHOOK_SECRET="$(openssl rand -hex 32)"
-npx supabase db push        # applies 004_entitlement_event_cursor.sql
+npx supabase db push --remote   # applies 004_entitlement_event_cursor.sql
 ```
 
 **Deploy — note the flag**
@@ -253,7 +210,9 @@ npx supabase functions deploy delete-account
 That alone is a working, compliant deletion: the auth user is removed, and
 `predictions`, `coach_usage`, `entitlements` and `analytics_events` cascade
 with it. Two optional legs switch on when all of their secrets are set, and
-are skipped and logged until then:
+are skipped and logged until then. The secrets were set on 2026-11-16, but the RevenueCat
+key went in as `REVENUTCAT_DELETE_KEY`: set it again as `REVENUECAT_DELETE_KEY` and unset
+the misspelled one, or that leg stays skipped.
 
 ```sh
 # Sign in with Apple token revocation. A key with "Sign in with Apple"
@@ -269,7 +228,7 @@ npx supabase secrets set REVENUECAT_DELETE_KEY=sk_...   REVENUECAT_PROJECT_ID=pr
 
 ```sh
 curl -i -X POST https://<project-ref>.functions.supabase.co/delete-account
-# → 401. Then delete a throwaway account from the app (Settings → Delete
+# → 401. Then delete a throwaway account from the app (You → Delete
 # account) and confirm its auth.users row, and its rows in the four tables,
 # are gone.
 ```
@@ -280,3 +239,12 @@ the app leaves the device untouched so the user can retry. The body's
 
 Smoke-tested locally under Deno 2 on 2026-09-25 against the live project's
 auth: 401 without a header, 401 for a bogus token, 405 for GET.
+
+## Notes for future schema changes
+
+- The CHECK constraints in `001_predictions.sql` (the category check now in
+  `006_custom_categories.sql`) mirror the union types in `src/types/index.ts`
+  AND the SQLite CHECKs in `src/db/migrations/`. All three move together.
+- Stats tables (`user_stats`, `category_stats`) intentionally do NOT live here
+  — those are derived from predictions and rebuilt locally via
+  `recomputeForUser` after every pull (`src/supabase/sync.ts`).

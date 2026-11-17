@@ -1,274 +1,105 @@
-# Calibrate — Human Verification Checklist
+# Fairly Sure — Human Verification Checklist
 
-**As of:** 2026-10-04 (device path re-derived; see the second note) · **Branch:** `master`
+**As of:** 2026-11-16 · `master` at `2636ff2` · TestFlight 1.0.0 (build 2, steps through 186)
+is on the owner's iPhone; build 3 adds step 187.
 
-> **Before any live test: restore the Supabase project.** It read `INACTIVE`
-> on 2026-10-03 (`npx supabase projects list`), and its hostname no longer
-> resolves. Supabase dashboard → project `calibrate` → Restore. There is no
-> CLI verb for it. The keep-alive workflow (2026-10-03) stops it pausing again
-> once its two repository secrets are set (`docs/NEXT_STEPS.md`).
+Everything the app needs that an agent can't do from the repo: dashboards, the store and the
+iPhone. Each item says what to do, what "pass" looks like and what to report. Everything
+still open, with who does it, is in [`SHIP_READINESS.md`](./SHIP_READINESS.md) "Open work";
+the plan for real testers is [`TESTFLIGHT_PLAN.md`](./TESTFLIGHT_PLAN.md).
 
-> **Expo Go can't open this app on an iPhone (found 2026-10-04).** The App
-> Store's Expo Go only runs SDK 54; Apple has not approved Expo Go for SDK 55
-> or later, and this project is SDK 55. Expo's other routes need a Mac
-> (simulator) or the $99 account (`eas go`, or a development build). So
-> **every iPhone check below waits on the $99 Apple account**, and Tier 1 has
-> merged into Tier 2. Until then, the web build is the only free way to see the
-> app; `NEXT_STEPS.md` item k has the agent tick every box web can show first.
-
-Everything the build needs that an agent can't do from the repo. Each item says
-**what to do**, **what "pass" looks like**, and **what to report back**.
+> **Before any live test: check the Supabase project is up.** The free tier pauses after
+> about 7 days idle (it read `INACTIVE` on 2026-10-03, and its hostname stopped resolving).
+> `npx supabase projects list` shows it; restore it from the dashboard (project `calibrate`
+> → Restore; there is no CLI verb). The keep-alive workflow
+> (`.github/workflows/supabase-keepalive.yml`, its secrets set 2026-11-03) keeps it awake.
 
 ---
 
-## Where things stand: ordered by what it costs you
+## Where things stand
 
-Re-evaluated 2026-09-25 under one constraint: **spend nothing until everything
-that can be verified for free has been.** The batches below (A–E) are the
-detailed procedures; this section is the order to do them in.
+### Done, verified
 
-### Done, verified live
-
-| Item | Verified |
+| Item | When |
 |---|---|
-| OpenAI funded; Coach generates grounded output (A1) | 2026-09-25 |
-| All five migrations applied, RLS holds (A3) | 2026-09-24 |
-| Coach refuses users without Plus with a 403 (A4) | 2026-09-25 |
-| RevenueCat Test Store configured: `plus` entitlement, three `calibrate_plus_*` products, current offering; the app's `test_` key confirmed to belong to it (B1, Test Store half) | 2026-09-25 |
-| Webhook deployed, secret set, registered in RevenueCat, test event 200 (B3) | 2026-09-25 |
-| App icon, splash, Android adaptive icon: real artwork, 1024², wired in `app.json` | 2026-09-25 |
-| ~~Test Store prices ($4.99 / $29.99 / $59.99) and the 1-month trial on annual only~~ **Reopened 2026-10-04:** the API now reads annual $29.90 and a P1M trial on monthly too. See Tier 0. | 2026-10-01 |
-| `delete-account` deployed (JWT on), and the webhook redeployed to match `e597583` | 2026-10-02 |
-| Supabase restored (`ACTIVE_HEALTHY`, REST 200); keep-alive secrets set and a manual run green | 2026-11-03 |
-| Test Store fixed with new products: `calibrate_plus_annual_2999` $29.99 + 1-month trial, `calibrate_plus_monthly_notrial` $4.99 no trial, lifetime $59.99; the old ones and `calibrate_pro` archived; `plus` and the `default` offering hold exactly these three. The app and webhook accept them as aliases (`PRODUCT_ALIASES`); webhook redeployed (v3, unauthenticated POST still 401) | 2026-11-03 |
-| Migration 006 applied (category check accepts `c-` ids, read back live); `CUSTOM_CATEGORY_SYNC` on | 2026-11-03 |
-| The leaked test account is gone: `auth.users` is empty | 2026-11-03 |
+| OpenAI funded and the Coach generating grounded output (A1); migrations 001–005 applied with RLS holding (A3); the Coach refusing users without Plus with a 403 (A4) | 2026-09-24/25 |
+| The RevenueCat webhook deployed, its secret set, registered, test event 200 (B3); `delete-account` deployed with JWT on | 2026-09-25, 2026-10-02 |
+| Supabase restored, keep-alive secrets set and a run green; migration 006 applied; the leaked test account gone (`auth.users` empty); the Test Store products fixed (`PRODUCT_ALIASES` accepts them) | 2026-11-03 |
+| The Apple Developer account; identifier `app.fairlysure` with Sign in with Apple and Declared Age Range; the App Store Connect record (`6831917395`); the Apple provider in Supabase; EAS login and the `development` variables; the SDK 55 patch updates | 2026-11-07 |
+| GitHub Pages on: `/privacy/` and `/support/` load | 2026-11-15 |
+| The Paid Applications Agreement active; the three products at $4.99 a month, $34.99 a year and $79.99 lifetime; RevenueCat's App Store app on `plus` and `default` with its `appl_` key; the three EAS `production` variables; migrations 007 and 008 applied; the account-deletion secrets set (one misspelled, Batch E) | 2026-11-16 |
+| TestFlight 1.0.0 (build 2) installed; confirmed on it: the three plans at the store's prices, the 24-hour clock (step 185) | 2026-11-16 |
 
-### Tier 0: free, at a desk, no phone
+- [x] **Web run-through: Batch C, minus what web can't show.** Done 2026-10-04 (Playwright at
+      440 × 956, a fresh profile) and in every web playtest since; Batch C's note says what it
+      covered. Boxes marked *web-verified* need only a glance on the phone.
+- [x] ~~**Expo Go run-through.**~~ Not applicable: App Store Expo Go stops at SDK 54 and this
+      app is SDK 55. Batch C runs on the TestFlight build instead.
+- [x] ~~**An Android build for a free Test Store purchase.**~~ Not applicable: iPhone only.
+      Batch D2 is the sandbox purchase on the iPhone.
 
-- [x] **Test Store trial and prices — reopened 2026-10-04, fixed 2026-11-03** (see the table above). `store_state`
-      now reads annual **USD 29.90** (should be 29.99) and **monthly with
-      `trial.duration: P1M`** (should have no trial). Redo steps 3–4 below,
-      removing the trial from monthly, then step 6.
-      **Re-read 2026-10-04, 03:41 UTC: unchanged.** Full state through the API:
+**Project ids:** Supabase project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1 (the CLI
+is linked). RevenueCat project `projb27eccad`. Expo owner `tapjason`. Secrets live in
+`.env.local` and on Supabase; agents never read them.
 
-      | Product | Type / period | Price | Trial | Should be |
-      |---|---|---|---|---|
-      | `calibrate_plus_annual` | subscription, P1Y | USD 29.90 | P1M | **USD 29.99**; trial right |
-      | `calibrate_plus_monthly` | subscription, P1M | USD 4.99 | P1M | price right; **no trial** |
-      | `calibrate_plus_lifetime` | non-consumable | USD 59.99 | none | right |
+### Build day runbook (added 2026-11-06, step 155)
 
-      The rest is right: the `plus` entitlement holds all three products, and
-      the current offering `default` has `$rc_monthly`, `$rc_annual` and
-      `$rc_lifetime`. There's also a leftover `calibrate_pro` entitlement with
-      no products; the app only checks `plus`, so it's harmless, but you can
-      delete it while you're in the dashboard.
-- [x] ~~**Test Store trial and prices.**~~ (first pass) The three products already exist
-      (`calibrate_plus_monthly`, `_annual`, `_lifetime`); only their price and
-      the annual trial are missing, and the API can't set either. Step by step:
-      1. Go to app.revenuecat.com and open the project (`projb27eccad`).
-      2. Left sidebar → **Product catalog** → **Products** tab.
-      3. Click `calibrate_plus_annual` (the **Test Store** one, not the
-         archived `yearly`). Edit it: price **$29.99**, and add a free trial of
-         **1 month** (the field may be called "Trial duration" or
-         "Introductory offer"). Save.
-      4. Click `calibrate_plus_monthly`: price **$4.99**, no trial. Save.
-      5. Click `calibrate_plus_lifetime`: price **$59.99**. Save.
-      6. Tell the agent "check the trial". It reads `trial_duration` back
-         through the API; it should say `P1M` on annual only.
+How a build gets from Windows to the iPhone. Steps 1–4 were done on 2026-11-07, and the
+first production build reached TestFlight on 2026-11-16.
 
-      If a field isn't where these steps say, RevenueCat has moved it. Look for
-      a Test Store pricing section on the product page, or ask the agent to
-      search RevenueCat's docs for "Test Store product price".
-      **DONE 2026-10-01, verified via the API.** Read it from
-      `GET /v2/projects/projb27eccad/products/{id}/store_state`, not from the
-      product object: the product's own `trial_duration` stays `null` for Test
-      Store products. Annual reads USD 29.99 with `trial.duration: P1M`, and the
-      current offering lists all three packages.
-- [x] **Decided 2026-10-01: leave "Confirm email" on; sign up with the address you use for Supabase.** It is
-      currently **on** (`mailer_autoconfirm: false`, read 2026-09-30), so an
-      email sign-up only gets its confirmation if the address belongs to your
-      Supabase team. Either sign up with your own address, or turn it off
-      (Supabase → Auth → Providers → Email).
-- [x] **Phone: iPhone** (2026-10-01). No Android device, so the free Android
-      billing path below is out. ~~Expo Go covers everything except billing.~~
-      Not on SDK 55: see the note at the top (2026-10-04).
-
-### Tier 1: free, with a phone you already own
-
-> **Superseded 2026-11-15.** This tier was written before the Apple Developer account.
-> Its Expo Go and Android items never applied, and the web run-through was done by the
-> playtest agents. The first tier of checks on a phone is now Stage 1 of
-> [`TESTFLIGHT_PLAN.md`](./TESTFLIGHT_PLAN.md) ("you alone"), which runs Batches C and D
-> below on the TestFlight build.
-
-**Test Store purchases cost nothing.** RevenueCat simulates them; no card is
-involved and no store account is needed. So the whole billing path, from
-paywall to purchase to webhook to `entitlements` row, can be proven without an
-Apple account.
-
-What runs where, from a Windows machine:
-
-| Path | Cost | Core loop, Warmup, share, notifications | Real Test Store purchase + webhook |
-|---|---|---|---|
-| **Web build** (`npm run web`, any browser) | free | Core loop, Warmup, share preview ✅; haptics, SF Symbols, sheets, glass, notifications ❌ | ❌ |
-| ~~**Expo Go** on iPhone (`npx expo start`, scan the QR)~~ | free | ❌ **App Store Expo Go is SDK 54; this app is SDK 55** (2026-10-04) | ❌ |
-| `eas go` (your own Expo Go build on TestFlight) | $99/yr Apple account | ✅ | ❌ RevenueCat runs in preview mode in Expo Go |
-| **Android dev build** via EAS (free tier), installed as an APK | free, needs an Android phone | ✅ | ✅ The `test_` key is not tied to a platform. |
-| **iOS dev build** | $99/yr Apple account | ✅ | ✅ |
-| iOS simulator | needs a Mac | ✅ | ✅ |
-
-So, with an iPhone and Windows, the only free row is the web build, and once
-the $99 is spent the **iOS dev build** is the one to make: `eas go` would add a
-second build that can't test billing.
-
-- [ ] **Web run-through: Batch C, minus what web can't show.** An agent can
-      drive this one (`NEXT_STEPS.md` item k) and mark boxes *web-verified*.
-      Age assurance (D4) does not run on web: first launch still opens the
-      Warmup, with no age sheet and no feature locked.
-- [ ] ~~**Expo Go run-through: Batch C, minus billing.**~~ **Not possible on
-      SDK 55 (2026-10-04).** Do Batch C on the iOS dev build instead (Tier 2),
-      signing in with **email** (Apple sign-in needs the paid account too).
-- [ ] ~~**If you have (or can borrow) an Android phone:**~~ **Not applicable: iPhone only.**
-      A real Test Store purchase therefore waits on the $99 Apple account
-      (Tier 2) and an iOS dev build. Kept for reference: an EAS Android dev
-      build gives the full billing test for free. It needs these first:
-      1. ~~`npx expo install expo-dev-client`.~~ Done 2026-09-25
-         (`~55.0.40`), so the `development` profile's
-         `developmentClient: true` now has the package it needs.
-      2. **EAS environment variables.** EAS uploads the repo minus
-         `.gitignore`, and `.env.*` is ignored, so **a cloud build currently
-         gets no Supabase URL and no RevenueCat key.** Set the `EXPO_PUBLIC_*`
-         values with `eas env:create` (development environment), and set
-         `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` to the same `test_` key. Never
-         the `sk_`, `OPENAI_` or webhook secrets; those stay server-side.
-      3. `npx eas login` (the project is owned by `tapjason`), then
-         `eas build --profile development --platform android`.
-
-      Then the purchase check: sign in by email → the paywall shows annual first
-      with "1 month free, then $29.99" → buy → Plus turns on in the app → the agent
-      confirms a `public.entitlements` row with `is_plus = true, source = 'trial'`.
-      That proves D2/D3's logic end to end, on the Test Store.
-
-### Tier 2: costs money, so only after Tier 0 and the web run-through pass
-
-#### Build day runbook (added 2026-11-06, step 155)
-
-The first iOS development build, start to finish, from Windows. Do B0 first:
-the identifier must exist before EAS can sign for it.
-
-1. **On the identifier `app.fairlysure`** (developer.apple.com → Identifiers),
-   tick **Sign in with Apple** and **Declared Age Range**. `app.json` asks for
-   both (`usesAppleSignIn`, `com.apple.developer.declared-age-range`). EAS
-   syncs capabilities itself on most runs; if the build fails on a
-   provisioning profile, this is the step to check.
-   **Done 2026-11-07:** identifier registered, App Store Connect record
-   created (Apple ID `6831917395`, now `APP_STORE_ID` and `ascAppId`).
-   **Supabase:** Authentication → Sign In / Providers → **Apple** enabled
-   with `app.fairlysure` in Client IDs (done 2026-11-07). Native sign-in
-   (`signInWithIdToken`) is refused without it, even on a working build.
-   **The iPhone:** Settings → Privacy & Security → **Developer Mode** on, or a
-   development build won't open.
-2. **Log in to EAS** (the project is owned by `tapjason`):
-   `npx eas login`. Then `npx eas whoami` should print `tapjason`.
-3. **Set the build's public values.** `.env.local` is git-ignored, so EAS
-   never sees it; `eas config` read 2026-11-06 found no variables on EAS. The
-   app reads exactly these three on iOS. Run each with the value from your
-   `.env.local` (the agent never reads or prints them):
+1. **The identifier `app.fairlysure`** (developer.apple.com → Identifiers) has **Sign in
+   with Apple** and **Declared Age Range** ticked; `app.json` asks for both. If a build fails
+   on a provisioning profile, check this first. Supabase → Authentication → Sign In /
+   Providers → **Apple** is on with `app.fairlysure` in Client IDs; native sign-in is refused
+   without it. A development build also needs the iPhone's Settings → Privacy & Security →
+   **Developer Mode** on. *Done 2026-11-07.*
+2. **Log in to EAS:** `npx eas login`; `npx eas whoami` prints `tapjason`. *Done 2026-11-07.*
+3. **Set the build's public values.** `.env.local` is git-ignored, so EAS never sees it. The
+   app reads exactly these three on iOS; run each with your own value (the agent never reads
+   or prints them). `eas.json` names the environment for each profile.
    ```
    npx eas env:create --environment development --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value <from .env.local>
    npx eas env:create --environment development --visibility plaintext --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <from .env.local>
-   npx eas env:create --environment development --visibility plaintext --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value <the test_ key until B1 gives an appl_ key>
+   npx eas env:create --environment development --visibility plaintext --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value <the test_ key>
+   npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value <from .env.local>
+   npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <from .env.local>
+   npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value <the appl_ key>
    ```
-   Never the `sk_`, `OPENAI_` or webhook secrets: those stay on Supabase.
-   `eas.json` names the environment for each profile (development,
-   preview, production) since step 155, so the right set is picked.
-   **Steps 2 and 3 done 2026-11-07** (by the owner; values never read by the agent).
-4. **Item g, the same day:** `npx expo install --fix`, then
-   `bash scripts/check.sh` until it prints `CHECK PASSED`. Commit that on its
-   own branch before building, so a device bug can be traced to it or not.
-   **Done 2026-11-07** on `builder/expo-fix`: 15 SDK 55 patch updates
-   (`expo` 55.0.32, `react-native` 0.83.10).
-5. **Build:** `npx eas build --profile development --platform ios`. Sign in
-   to Apple when asked, and let EAS register your iPhone (it opens a page to
-   install a profile on the phone). The build takes about 15–30 minutes in
-   the free queue.
-6. **Install** from the link EAS prints, open it on the phone, then
-   `npx expo start --dev-client` on the PC and scan the QR code with the
-   camera. Then Batch C and D below.
+   Never the `sk_`, `OPENAI_` or webhook secrets: those stay on Supabase. A `test_` key never
+   works in a release build: the app treats it as no key, and the paywall says "Plus isn't
+   available on this build yet". *Done: `development` 2026-11-07, `production` 2026-11-16.*
+4. **Dependency drift:** `npx expo install --check`; if anything is behind,
+   `npx expo install --fix` on its own commit, then `bash scripts/check.sh` until it prints
+   `CHECK PASSED`, so a device bug can be traced to it or not. *Done 2026-11-07 (`expo`
+   55.0.32, `react-native` 0.83.10); `check.sh --release` re-checks it.*
+5. **Build.** Development: `npx eas build --profile development --platform ios` (EAS
+   registers the iPhone the first time). Production:
+   `npx eas build --profile production --platform ios`, then
+   `npx eas submit --profile production --platform ios`; the build number moves itself
+   (`autoIncrement`). About 15–30 minutes in the free queue.
+6. **Install.** A development build from the link EAS prints, then
+   `npx expo start --dev-client --tunnel` on the PC (port 8081). A production build from
+   TestFlight, after **deleting the development build** (or Erase first): they share a bundle
+   id, so the SQLite data carries over, a Plus mirror from a Test Store purchase included.
+   Then Batch C and D below.
 
-Left for later, on purpose:
-
-- `submit.production` in `eas.json` has `ascAppId` since 2026-11-07.
-- **EU (DSA trader status).** Selling Plus makes the developer a trader in
-  the EU, which puts a verified address, phone and email on the EU product
-  pages. Undeclared, the app just isn't offered in EU storefronts; the owner
-  may launch outside the EU first and add it later.
-- **Export compliance: declared 2026-11-07** by the owner at the first EAS
-  build (exempt: HTTPS through the system only). EAS wrote
-  `ios.infoPlist.ITSAppUsesNonExemptEncryption: false` into `app.json`, so
-  App Store Connect stops asking on each upload.
-- **Privacy manifests** (`APP_PRIVACY.md` §6): check the first upload's
-  App Store Connect email for a missing required-reason API.
-- The `preview` profile builds for the simulator only, so it needs a Mac.
-  Use `development`, and `production` for TestFlight.
-
-- **Apple Developer Program, $99/yr.** Unlocks **any run on your iPhone**
-  (since 2026-10-04: Expo Go can't open SDK 55), plus B0, B2, the `appl_` key,
-  C and D on a development build, and E (TestFlight, submission). Sandbox
-  purchases are free; the $99 is the only spend. First build after buying:
-  the build day runbook above.
-- **Supabase free tier pauses after ~7 days idle.** Not a cost, but it breaks
-  testing silently. Restore it from the dashboard if DNS stops resolving.
-
-### Not yet produced (assets and text)
-
-| Thing | Status | Needed for |
-|---|---|---|
-| App Store screenshots | **Drafts made 2026-10-03** from the web build with the demo data (git-ignored `screenshots/draft/`). Finals need a device build. | E |
-| Privacy policy page + public URL | **URL is in the app:** `https://tapjason.github.io/calibrate-app/privacy/` (`PRIVACY_POLICY_URL`). The page is [`docs/PRIVACY_POLICY.md`](./PRIVACY_POLICY.md) (effective November 3, 2026, renamed Fairly Sure). The Support URL, `/support/`, is [`docs/SUPPORT.md`](./SUPPORT.md). It 404s until GitHub Pages is on for `master` / `/docs`, after that commit is on `master`. Steps in Batch E. | E |
-| App Store listing text (name, subtitle, description, keywords) | **Drafted:** [`docs/APP_STORE_LISTING.md`](./APP_STORE_LISTING.md). **Name chosen for now (2026-11-03): Fairly Sure** (`Fairly Sure: Calibration Log`), see §0 there. Trademark screen done 2026-11-03: no conflicting mark, two low-to-moderate risks for counsel (§0). Still yours: counsel's clearance and filing, the `.app` domain and the App Store Connect record. The app says "Fairly Sure" since step 147. | E |
-| Account deletion (Guideline 5.1.1(v)) | **Built 2026-09-25, deployed 2026-10-02.** The optional Apple-revoke and RevenueCat-delete legs wait on their keys (Batch E). | E |
+Also: export compliance was declared at the first build (`ITSAppUsesNonExemptEncryption:
+false` in `app.json`); check each upload's App Store Connect email for a missing
+privacy-manifest reason (`APP_PRIVACY.md` §6); the `preview` profile builds for the
+simulator only, so it needs a Mac; EU trader status is `SHIP_READINESS.md` decision 5.
 
 ---
 
-## What you need in hand
+## Batch A — Backend
 
-| Thing | Needed for | Notes |
-|---|---|---|
-| OpenAI account with credit | A1 | **Funded and verified 2026-09-24.** |
-| Supabase dashboard access | A, B3 | Project `calibrate`, ref `otopheizhjstoeyndcvc`, us-east-1. CLI is linked. Pauses after ~7 days idle. |
-| RevenueCat account | B1 | Free tier. Project `projb27eccad`. `test_` public key and `sk_` v2 secret key (project config R/W, customers read) are in `.env.local`. |
-| Expo account | EAS builds (iOS dev build, TestFlight) | Owner `tapjason`; the CLI is not logged in (re-checked 2026-09-30). The EAS free tier covers dev builds. |
-| A phone | Tier 2 | **iPhone** (2026-10-01). Any run on it needs an iOS development build, so the $99 account: App Store Expo Go stops at SDK 54 (2026-10-04). |
-| Apple Developer account ($99/yr) | Any iPhone run, B0, B2, C, D, E | **Deferred until Tier 0 and the web run-through pass.** Not needed for APNs; this app only sends local notifications. |
-| A Mac with Xcode | only the iOS simulator | Not required: EAS cloud builds cover everything from Windows. |
-
----
-
-## Batch A — Backend (desk, ~30 min, no device)
-
-### A1–A3: done (kept in git history)
-
-- **A1, live Coach generation:** passed 2026-09-25. Real model output, every
-  guard held (grounding, validator, crisis pre-filter).
-- **A2, deploy `refine`:** cut 2026-09-24. Refine is deferred out of v1; the
-  reasoning is in `CLAUDE.md` § AI A.
-- **A3, apply the migrations:** done 2026-09-24. All five match remote, RLS holds
-  (an anon read returns `[]`, an anon write to `entitlements` is refused).
-  `analytics_events` is live; the validation checkpoint's two queries at the
-  bottom of this file return nothing until real users arrive.
+A1 (live Coach generation, 2026-09-25), A2 (`refine`, cut from v1 on 2026-09-24; `CLAUDE.md`
+§ AI A) and A3 (the migrations and RLS, 2026-09-24) are done; the details are in git history.
 
 ### A4. Keep `COACH_ALLOW_UNENTITLED` unset
 
-That secret bypasses the server-side Plus check entirely — with it set, any
-signed-in user can spend your OpenAI budget up to the daily ceiling.
-
-**Currently unset on the deployed project (re-checked 2026-09-24 —
-`secrets list` returns only `OPENAI_API_KEY` and the `SUPABASE_*` set), which
-is correct.** No action needed; this entry exists so it doesn't get switched on for
-a test and left on. If you ever set it, unset it and redeploy in the same
-sitting:
+That secret bypasses the server-side Plus check entirely: with it set, any signed-in user can
+spend the OpenAI budget up to the daily ceiling. It was unset on the live project when last
+read (2026-09-24). If it is ever set for a test, unset it and redeploy in the same sitting:
 
 ```sh
 npx supabase secrets list                      # it should not appear
@@ -276,246 +107,196 @@ npx supabase secrets unset COACH_ALLOW_UNENTITLED
 npx supabase functions deploy coach            # secrets take effect on deploy
 ```
 
-**Pass:** a signed-in user with no `entitlements` row gets `403` from
-`/functions/v1/coach`. **Verified live 2026-09-25**: after deleting the A1
-test user's entitlement row, the same token that had just produced insights
-got `403`. The gate reads the table on every call — no caching, no grace.
-
-**Note:** the server-side Plus check reads `public.entitlements`. The webhook
-that populates it is now written — deploying and wiring it is B3.
+**Pass:** a signed-in user with no `entitlements` row gets `403` from `/functions/v1/coach`
+(verified live 2026-09-25; the gate reads the table on every call, no caching, no grace).
 
 ---
 
-## Batch B — Store and billing setup (desk, ~1 hr)
+## Batch B — Store and billing setup
 
-The billing code is done and fails safe. A build with no RevenueCat key says
-"Plus isn't available on this build yet."; a build with a key whose offering
-comes back empty (no products attached, no current offering, a product id not
-mapped, or no connection) says "Plus plans couldn't load. Check your
-connection, then open this again." (step 167). During this setup that second
-line usually means the dashboards, not the network. A reviewer who sees it online
-rejects the build under 2.1(b), so see the plans load in sandbox before submitting.
+The billing code fails safe. A build with no RevenueCat key (or a `test_` key in a release
+build) says "Plus isn't available on this build yet."; a build whose offering comes back
+empty says "Plus plans couldn't load. Check your connection, then open this again." During
+setup that second line usually means the dashboards, not the network. A reviewer who sees it
+online rejects the build under 2.1(b), so see the plans load in sandbox before submitting.
 
-### B0. Apple prerequisites (do these first, since everything else waits on them)
+### B0. Apple prerequisites
 
-Added 2026-09-25. These were missing from this list, and each one blocks
-the store setup below:
+Done: the Paid Applications Agreement is active (StoreKit returns no products until it is,
+sandbox included); the bundle id `app.fairlysure` is registered (it can never change, and
+`APPLE_CLIENT_ID` on Supabase must match it); the App Store Connect record exists.
 
-1. **Paid Applications Agreement.** App Store Connect → Business (formerly
-   Agreements, Tax, and Banking): accept it and fill in bank + tax info.
-   Until it is *Active*, StoreKit returns no products, **even in sandbox**.
-   The paywall then shows its unavailable state and nothing explains why.
-   Approval can take a day or more, so start it first.
-2. **Register the bundle id** `app.fairlysure` (developer.apple.com →
-   Identifiers; chosen 2026-11-03, the reverse of `fairlysure.app`) and create
-   the App Store Connect app record for it. It can never change once
-   registered. Bundle ids are unique across all of Apple, so if it is already
-   taken, say so before picking another: it is set in `app.json`, and
-   `APPLE_CLIENT_ID` on Supabase must match it.
-3. **In-App Purchase Key** (App Store Connect → Users and Access →
-   Integrations → In-App Purchase → generate). Download the `.p8` once and note
-   its Key ID and your Issuer ID. RevenueCat needs it to validate StoreKit 2
-   purchases.
+- [ ] The **In-App Purchase key** (App Store Connect → Users and Access → Integrations →
+  In-App Purchase; the `.p8`, its Key ID and the Issuer ID) is uploaded to RevenueCat's App
+  Store app. RevenueCat needs it to validate StoreKit 2 purchases. Not confirmed; a sandbox
+  purchase that turns Plus on (D2) proves it.
 
-### B1. RevenueCat dashboard
+### B1. RevenueCat
 
-**Test Store half DONE 2026-09-25, via the v2 API** (`REVENUECAT_SECRET_KEY`
-in `.env.local`, project `projb27eccad`, Test Store app `app61065d48e2`).
-Onboarding had created an entitlement `calibrate_pro` and products `monthly` /
-`yearly` / `lifetime`, and none of those ids match the code. The paywall
-would have dropped every plan, and the webhook would have ignored every
-purchase. Now:
+Done (the Test Store 2026-09-25 and 2026-11-03, the App Store app 2026-11-16): entitlement
+**`plus`** (hardcoded in `src/billing/revenuecat.ts`) with the three products, all three in
+the **current** offering `default` (the app reads `offerings.current` only), and the `appl_`
+key in the EAS `production` environment.
 
-- entitlement **`plus`** exists, with `calibrate_plus_monthly` / `_annual` /
-  `_lifetime` attached (Test Store products, P1M / P1Y / non-consumable);
-- the **current** offering (`default`) has `$rc_monthly` / `$rc_annual` /
-  `$rc_lifetime` pointing at those three;
-- the onboarding defaults are **archived**, not deleted, so they can be restored.
+Optional: copy RevenueCat's App Store Server Notifications URL into App Store Connect → App
+Information, which gives faster renewal and cancel events.
 
-**Prices and trial DONE 2026-10-01** in the dashboard (the API's
-create-product call takes neither): $4.99 / $29.99 / $59.99, and a **1-month
-free trial** on `calibrate_plus_annual` only, confirmed through
-`store_state`. This also fixes what the UI pass saw on 2026-09-28 (annual at
-$29.90, a trial on monthly). The App Store app half (steps below) waits on B0.
+| Product identifier | Type | Price |
+|---|---|---|
+| `calibrate_plus_monthly` | auto-renewing, 1 month | $4.99 |
+| `calibrate_plus_annual` | auto-renewing, 1 year, one free month first | $34.99 |
+| `calibrate_plus_lifetime` | non-consumable | $79.99 |
 
-1. Create the project (one already exists, since the `test_` key came from
-   it); add the iOS App Store app with bundle id `app.fairlysure` and upload
-   the In-App Purchase Key from B0.3. Optionally copy RevenueCat's App Store
-   Server Notifications URL into App Store Connect → App Information, which
-   gives faster renewal/cancel events.
-2. Create entitlement **`plus`** — the identifier is hardcoded in
-   `src/billing/revenuecat.ts` and must match exactly.
-3. Create products and attach all three to `plus`:
-
-   | Product identifier | Type | Price |
-   |---|---|---|
-   | `calibrate_plus_monthly` | auto-renewing, 1 month | $4.99 |
-   | `calibrate_plus_annual` | auto-renewing, 1 year | $29.99 |
-   | `calibrate_plus_lifetime` | non-consumable | $59.99 |
-
-   These identifiers are also hardcoded (`PRODUCT_IDS`). A mismatch means the
-   plan is silently dropped from the paywall rather than shown wrong — check
-   the paywall lists all three before assuming it worked.
-4. Put all three in the **current** offering. The app reads
-   `offerings.current` and nothing else.
-5. Copy the **public app key** into `.env.local` as
-   `EXPO_PUBLIC_REVENUECAT_IOS_KEY`. A `test_…` Test Store key is already set
-   there; replace it with the `appl_…` key once the App Store app entry
-   exists, or D2 cannot test a real purchase.
-6. **The one-month free trial is read from the store, not set here.** Configure
-   it as an introductory offer on `calibrate_plus_annual` in App Store Connect
-   (B2); RevenueCat surfaces it and the app renders it. If you are testing
-   against the Test Store first, set the trial on the Test Store product too,
-   or the paywall will correctly show no trial.
+The ids are hardcoded too (`PRODUCT_IDS`): a mismatch drops the plan from the paywall
+silently. The trial is read from the store, not set in RevenueCat.
 
 ### B2. App Store Connect
 
-1. Create the same three IAP products with the same identifiers and prices
-   (decide P1 first, `GROWTH_AND_MONETIZATION.md` §4: the recommendation is
-   $34.99/yr and $79.99 lifetime; the store and RevenueCat must match).
-2. **Free trial on annual: one month.** Decided 2026-09-25 — no longer a
-   judgment call. Set it as an *introductory offer* of type "free trial",
-   duration **1 month**, on `calibrate_plus_annual` only.
+Done: the three products with those ids and prices (P1 closed 2026-11-16); `APP_STORE_ID`
+(`6831917395`) in `src/constants/app.ts`. Open:
 
-   Annual only is deliberate: a user is eligible for an introductory offer
-   **once per subscription group**, so offering it on monthly as well just
-   means some people burn it on the weaker container (the AI retention penalty
-   concentrates in monthly plans — `GROWTH_AND_MONETIZATION.md` §4).
+- [ ] **Move the free trial to annual.** Build 2's paywall showed "1 month free" on Monthly
+      and none on Annual: the introductory offer is on `calibrate_plus_monthly`. Remove it
+      there and set a "free trial" of **1 month** on `calibrate_plus_annual` only (decided
+      2026-09-25). Annual only on purpose: a person is eligible for one introductory offer
+      per subscription group, so a trial on monthly spends it on the weaker plan; and one
+      month sits inside the measured 42.5%-conversion band ("17–32 days"). The app renders
+      what the store reports, so Annual will read "1 month free, then $34.99" with no code
+      change. **Report:** the annual product shows the offer and monthly shows none.
+- [ ] **A sandbox tester** (Users and Access → Sandbox Testers) for Batch D, if there isn't
+      one yet.
+- [ ] **The provider token** (`GROWTH_AND_MONETIZATION.md` §0, step 1). Once the app has
+      analytics data, create one campaign link (Analytics → Acquisition → Campaigns → +, any
+      name): the `pt=` number in it is the provider token, the same for every campaign. Put
+      it in `APP_STORE_PROVIDER_TOKEN`; the app builds the `share-*` campaigns itself. Until
+      then a text share links to the App Store with no campaign token.
 
-   One month sits inside the measured 42.5%-conversion band ("17–32 days")
-   rather than the unmeasured gap 14 days falls into, and Plus is only legible
-   once predictions *resolve* — a month is more than one resolution cycle.
+### B3. The RevenueCat webhook
 
-   The app renders whatever the store reports, in the store's own unit, so it
-   will read "1 month free, then $29.99" with no code change.
-3. Create a sandbox tester account (Users and Access → Sandbox Testers) for
-   Batch D.
-4. **Share links** (`GROWTH_AND_MONETIZATION.md` §0, step 1). Copy the app's
-   numeric Apple ID from App Information into `APP_STORE_ID` in
-   `src/constants/app.ts`. Then, once the app has analytics data, create one
-   campaign link (Analytics → Acquisition → Campaigns → +, any name): the
-   `pt=` number in it is the provider token, the same for every campaign.
-   Put it in `APP_STORE_PROVIDER_TOKEN`. The app builds the `share-*`
-   campaigns itself; nothing else to create.
+Done 2026-09-25 (redeployed 2026-10-02 and 2026-11-03): deployed with `--no-verify-jwt`
+(RevenueCat has no Supabase session; the shared secret is the gate), registered in
+RevenueCat, test event 200 `{"ok":true,"action":"ignored"}`. Left for D2: after a sandbox
+purchase, a row in `public.entitlements` with `is_plus = true`.
 
-**Report:** confirmation that the annual product shows a 1-month free trial
-introductory offer, and that all three products are "Ready to Submit"; the
-App Store id and provider token, once each exists.
-
-### B3. Deploy and wire the RevenueCat webhook
-
-This is what makes a purchase visible to the *server*. Without it billing works
-on the device and the Coach endpoint still answers 403 to a paying subscriber.
-
-**Server half DONE 2026-09-25.** The secret is set in Supabase and also saved
-as `REVENUECAT_WEBHOOK_SECRET` in `.env.local` (gitignored, no `EXPO_PUBLIC_`
-prefix, so it is never bundled). The function is deployed and verified live:
-no header → 401, wrong secret → 401, a TEST event with the right secret → 200
-`{"ok":true,"action":"ignored"}`. **What remains is the dashboard half**: paste
-the URL and `Bearer <secret>` into RevenueCat (below), send its test event, and
-look for the row after D2.
-
-```sh
-# db push is already done (A3) — 004 and 005 are applied remotely.
-npx supabase secrets set REVENUECAT_WEBHOOK_SECRET="$(openssl rand -hex 32)"
-npx supabase functions deploy revenuecat-webhook --no-verify-jwt
-```
-
-`--no-verify-jwt` is required: RevenueCat has no Supabase session. The shared
-secret is the gate, and the function refuses every request when it isn't set.
-
-Then RevenueCat → Project settings → Integrations → Webhooks:
-- URL: `https://otopheizhjstoeyndcvc.functions.supabase.co/revenuecat-webhook`
-- Authorization header: the same secret.
-
-**Dashboard half DONE 2026-09-25.** Webhook `Supabase entitlements`
-(`whintgr5c5e59b2a4`) is registered on project `projb27eccad`, covering all apps,
-all environments and all event types, and RevenueCat's "Send test event" came back 200.
-What remains of the Pass line below is the `entitlements` row after the first
-purchase.
-
-**Sandbox purchases (decided in code 2026-09-25, switchable).** By default a
-SANDBOX or Test Store purchase grants server-side Plus exactly like a real
-one. `REVENUECAT_IGNORE_SANDBOX=true` on the function turns that off. **Leave it
-off through App Review.** Reviewers buy with sandbox accounts, and a reviewer
-who subscribes and then gets a Coach answering 403 is a rejection. The cost of
-leaving it off is that TestFlight testers get the Coach free, bounded by its
-daily ceiling. If you ever turn it on, redeploy the webhook for it to take
-effect.
-
-~~**The deployed webhook predates that commit.**~~ Redeployed 2026-10-02
-alongside `delete-account` (version 2, `verify_jwt: false`), so the live code
-matches the repo. `REVENUECAT_IGNORE_SANDBOX` is unset.
-
-**Pass:** RevenueCat's "Send test event" returns 200 with
-`{"ok":true,"action":"ignored"}` (a TEST event writes nothing, by design), and
-after the sandbox purchase in D2 a row appears in `public.entitlements` with
-`is_plus = true`.
-
-**Report:** the test-event response, and the row after D2.
+**Sandbox purchases.** By default a sandbox or Test Store purchase grants server-side Plus
+like a real one; `REVENUECAT_IGNORE_SANDBOX=true` on the function turns that off. **Leave it
+off through App Review.** Reviewers buy with sandbox accounts, and a reviewer who subscribes
+and then gets a Coach answering 403 is a rejection. The cost is that TestFlight testers get
+the Coach free, bounded by its daily ceiling. If you ever turn it on, redeploy the webhook.
+It was unset when last read (2026-10-02).
 
 ---
 
-## Batch C — App run-through (~30 min; an iOS development build)
+## Stage 1 on-phone checklist (items 1–28)
 
-This is the Layer 6 gate. **Changed 2026-10-04:** App Store Expo Go can't open
-an SDK 55 project, so on an iPhone this runs on the iOS development build
-(Tier 2, the $99 account). Install the build, run `npx expo start --dev-client`
-on Windows, and open the project from the build's launcher; `.env.local` is
-read by the dev server. Start from a **fresh state** (delete and reinstall the
-build) so the first-run path is real. Boxes already marked *web-verified*
-(`NEXT_STEPS.md` item k) only need a glance on the phone. Sign in with
-**email**. The paywall/plan boxes work here too, against the Test Store.
+The 28 checks given to the owner on 2026-11-16 for TestFlight Stage 1 (`docs/TESTFLIGHT_PLAN.md`):
+the ones that would hurt if wrong. "Item N" in HANDOFF, SHIP_READINESS and TESTFLIGHT_PLAN means
+this list. Most repeat a box in Batches C and D; tick that box too when an item passes. The rest
+of Batches C and D stays listed as unverified.
 
-> **Sign-in exists as of 2026-09-25:** Settings → Account → Sign in. It has
-> been checked against the live project on the web build: a wrong password
-> round-trips "Invalid login credentials". A *successful* sign-in hasn't been
-> seen yet, because the A1 test user's password no longer works. **"Confirm
-> email" stays on (decided 2026-10-01)**: the built-in mailer delivers only to
-> members of your Supabase team, so create the account with that address. See
-> `docs/ACCOUNT_SPEC.md` §1.
+### Session 1: today, on build 2 (about 45 minutes)
 
-> **Web run-through, 2026-10-04** (`NEXT_STEPS.md` item k, Playwright at
-> 440 × 956 on a fresh browser profile). These passed on web, so on the phone
-> they only need a glance: first launch lands in the Warmup; the quiz renders a
-> verdict and chart; *Share my result* opens the warm-up card; Warmup results
-> stay out of Stats; Log saves in a few seconds with all four fields and no ✨
-> Refine; the coverage nudge appears after 8 logs above 40% and *Start at 25%*
-> pre-sets the slider and hides it; Resolve (Yes → Recorded → Change answer →
-> No → reflection → Done); Stats provisional (Calibrating bar, ghost-free
-> curve with counts) and unlocked (rating, bullet bar, takeaway title); History
-> filters by category; Share → Card / This week / This year render; a Plus
-> theme opens the paywall; Settings defaults (Coach off, usage stats on);
-> Erase as a guest returns to the Warmup on the next cold launch.
->
-> **Fixed during the run:** overlapping "n=" labels on close chart dots; the
-> web tab bar clipping its labels; the yearly Wrapped calling a user "well
-> calibrated" from averages while Stats said "overconfident at 80–100%";
-> sign-in showing the raw "Failed to fetch" when the server is unreachable;
-> the analytics switch saying "Anonymous" for events that are linked to the
-> account; weekday names in demo titles that contradicted their due dates.
->
-> **Found, needs you:** the RevenueCat **Test Store prices drifted** (read
-> back through the API 2026-10-04): annual is **$29.90**, not $29.99, and
-> **monthly carries a 1-month trial too**; it should have none. The paywall
-> shows exactly that, correctly. Fix both in RevenueCat → Product catalog
-> (steps in Tier 0 above), then ask the agent to re-read `store_state`.
->
-> **Still device-only:** haptics, SF Symbols / SF Rounded, sheets and the
-> swipe-down guard, glass, notifications, share-sheet export, Apple sign-in,
-> real purchases, Dynamic Type, VoiceOver. A successful email sign-in also
-> waits on the Supabase project being restored.
+Start from a fresh install: delete the app, reinstall from TestFlight.
+
+**First run**
+1. No notification alert appears over the Warm-up. Apple's age-range sheet may appear once;
+   share or decline, and the app carries on either way.
+2. The Warm-up: ten questions, the result with its counts, the card. Share it and save the
+   image: a real PNG lands in Photos.
+
+**The core loop**
+3. "Make a real prediction": title, a number, a category, Save in under 15 seconds. It
+   defaults to tomorrow.
+4. Today shows "Want a reminder when it's due?". Turn on reminders: the iOS alert appears
+   now, not earlier. Allow.
+5. Log a second one, open it, **Answer it now**: it says an answer today isn't scored;
+   answer anyway; History marks it "not scored".
+6. Insights, History and You open with no layout faults at the top or bottom of the
+   screen. You's defaults: Hide the words off, the lock off, Show the words in reminders
+   off.
+
+**Account**
+7. You → Sign in → Sign in with Apple. The sign-in screen says a record of which features
+   are used goes with the account.
+8. After step 2 of the table: You → Delete account, on that Apple sign-in. The account
+   goes and the app returns to a signed-out state. (Sign in again afterwards for the
+   purchase test.)
+
+**Purchase** (after step 1 of the table; purchases in TestFlight are free)
+9. You → Fairly Sure Plus: three plans, Annual first, "1 month free, then $34.99 a year"
+   on Annual and no trial on Monthly.
+10. Buy Annual: Apple's sheet shows the same trial and price. You then shows Plus as
+    active.
+11. Force-quit, turn on airplane mode, reopen: still Plus.
+12. On the paywall, Restore purchases works.
+13. Signed in with Plus: You → Coach on, Insights → Get feedback. With almost no answered
+    predictions it may say there isn't enough yet; that is a pass. An error is a fail.
+
+**The app lock**
+14. You → Lock with Face ID: Face ID is asked before the switch moves.
+15. Go to the Home Screen and come back: Face ID, then the app. Once, with no second
+    prompt.
+16. The app switcher shows the app's name, not a prediction.
+17. Cover the camera so Face ID fails: the passcode gets you in.
+
+**Before you stop**
+18. Leave one prediction due tomorrow so a real reminder arrives.
+
+### Session 2: tomorrow evening (about 30 minutes)
+
+19. The reminder arrives at the time shown in You. It shows no prediction words, only the
+    day and the number. Tapping it opens the question.
+20. Answer it: this one is scored, and the screen says what a number like yours means.
+21. Inside 24 hours, open that answer in History and move it to another category: the
+    line under the chips says it's counted; Insights → More about your record shows
+    "1 scored answer was moved…". Move it back: the line goes.
+22. Largest text (Settings → Accessibility → Display & Text Size → Larger Text, all the
+    way up): Today, Log, Resolve and the paywall still work, and every button can be
+    reached by scrolling.
+23. VoiceOver: the Warm-up's first question, one log and one answer can be done by ear.
+24. In TestFlight the subscription renews daily: You still shows Plus.
+
+### Session 3: on build 3 (about 10 minutes)
+
+25. Swipe the app away and open it: the dark splash stays, "Fairly Sure" fades in under
+    the mark without the mark moving, and after about a second it fades to Today. Coming
+    back from the Home Screen shows no launch page.
+26. With the lock on: the same dark page with "Locked…" and a light Unlock button,
+    readable in light and dark appearance.
+27. The paywall's title and × sit below the clock.
+28. Anything fixed from session 1.
+
+### How to report
+
+One line per number: pass, or fail with a screenshot. "Not sure" is a useful answer too.
+Skip anything you judge too small to bother with and say so; I'll list it as unverified
+rather than ask again.
+
+## Batch C — App run-through (~30 min; the TestFlight build)
+
+The core loop on a real iPhone. Since build 2 it runs on the **TestFlight build**, from a
+fresh install (delete the development build first, runbook step 6); a development build
+still serves for a quick look. Sign in with Apple, or by email with an address on the
+Supabase team ("Confirm email" stays on until the custom mail sender, `ACCOUNT_SPEC.md` §1).
+The paywall boxes run against the sandbox.
+
+> **Web run-through, 2026-10-04** (and every web playtest since): first launch, the Warm-up
+> and its card, Log, the coverage nudge, Resolve, Insights provisional and unlocked,
+> History's filters, the three Share cards, the paywall from a Plus theme, You's defaults and
+> Erase as a guest all passed on web, so on the phone they need only a glance. **Device
+> only:** haptics, SF Symbols, sheets and the swipe-down guard, glass, notifications,
+> share-sheet export, Sign in with Apple, real purchases, Dynamic Type, VoiceOver.
 
 Tick each:
 
 - [ ] First launch lands in the **Warmup**, not the tabs.
 - [ ] The quiz completes and renders a verdict with a mini chart.
 - [ ] The verdict's share card exports and the OS share sheet opens.
-- [ ] Warmup results do **not** appear in Stats (they are structurally
+- [ ] Warmup results do **not** appear in Insights (they are structurally
       separate — this is worth confirming visually once).
 - [ ] Log a prediction: under 15 seconds, all four fields work.
 - [ ] **The range-coverage nudge.** Log 8 predictions, all above 40%
-      confidence, then open the Log tab again: a panel offers to start one at
+      confidence, then open Log again: a panel offers to start one at
       25%. Tapping it pre-sets the slider; "Not now" dismisses it. Log one
       below 40% and it stops appearing entirely (a low log is the thing it was
       asking for), as does dismissing it — for a week. This is the
@@ -524,17 +305,17 @@ Tick each:
       single bucket.
 - [ ] **The ✨ Refine button does NOT appear**, with any title text. Refine is
       cut from this release (`REFINE_ENABLED = false`), and the AI Refine row
-      is gone from Settings too. If either shows up, the flag regressed.
-- [ ] **Account.** Settings shows "Not signed in". Sign in → create an
+      is gone from You too. If either shows up, the flag regressed.
+- [ ] **Account.** You shows "Not signed in". Sign in → create an
       account by email (see the note above about confirmation). Back in
-      Settings it reads "Signed in as …", and the predictions you logged as
+      You it reads "Signed in as …", and the predictions you logged as
       a guest are still there. Sign out: the lists go empty. Sign back in:
       they return.
-- [ ] **Erase as a guest.** Signed out: Settings → "Erase all data on this
-      device" → Erase everything. Home is empty afterwards, and the next
+- [ ] **Erase as a guest.** Signed out: You → "Erase your data on this
+      phone" → Erase everything. Today is empty afterwards, and the next
       cold launch opens the Warmup. (Verified on the web build 2026-09-25.)
 - [ ] **Delete as a signed-in user** (`delete-account` is live as of 2026-10-02):
-      Settings → Delete account → Delete my account. It reads "Your account
+      You → Delete account → Delete my account. It reads "Your account
       has been deleted", the app is an empty guest, and signing in with the
       same email fails. Force-quit and relaunch: the Warmup opens, as on a
       fresh install, and Share has no Warmup card (2026-11-09: deletion now
@@ -543,8 +324,8 @@ Tick each:
       dev build): signed out, the Coach panel says "Sign in to use Coach"
       rather than offering a request that would fail.
 - [ ] Resolve it: yes/no + reflection saves.
-- [ ] Stats updates immediately after resolving.
-- [ ] With fewer than 20 resolutions, Stats shows **progress toward the
+- [ ] Insights updates immediately after resolving.
+- [ ] With fewer than 20 resolutions, Insights shows **progress toward the
       threshold**, not a headline score. This one matters —
       "never present a number built on noise" is a core principle.
 - [ ] The calibration curve renders, with the dashed perfect-calibration
@@ -554,27 +335,27 @@ Tick each:
 - [ ] The theme picker shows locks on the Plus themes for a free user, tapping
       one opens the paywall, and the free theme still exports a full-quality
       card.
-- [ ] Settings toggles work; Coach is **off** by default, usage stats **on**.
-- [ ] Stats shows **one** Plus teaser card for a free user (Coach + Trends in one
+- [ ] You's switches work; Coach is **off** by default, usage stats **on**.
+- [ ] Insights shows **one** Plus teaser card for a free user (Coach + Trends in one
       card, "Your score, curve, badges and cards stay free"), and tapping "See Plus"
       opens the paywall. (Changed 2026-09-29: it used to be two grey slabs.)
 - [ ] As Plus (after D2): Trends renders months and categories, and "Export CSV"
       produces a file the share sheet accepts. Open it in a spreadsheet and
       confirm a title starting with `=` shows as text, not a formula.
-- [ ] Settings → "See Plus" opens the paywall.
+- [ ] You → Fairly Sure Plus opens the paywall.
 - [ ] The paywall lists annual first with its trial, then monthly, then
       lifetime (after Batch B; before it, it shows the unavailable state).
       Annual is **preselected** (filled radio), there is **one** purchase button
       whose label follows the selected plan, and a Today / In 1 month timeline
       shows only while a plan with a trial is selected.
-- [ ] **Annual reads "1 month free, then $29.99"** — one *month*, not "30
+- [ ] **Annual reads "1 month free, then $34.99"** — one *month*, not "30
       days". If it says days, the store reported an unstructured period and
       the fallback fired; check the offer's configured unit.
 - [ ] **The trial terms line is present** under the plans: the trial turns
       into a paid subscription, cancel at least **24 hours** before it ends.
       That 24-hour figure is Apple's actual rule, not ours — without it the
       screen promises something the platform doesn't do.
-- [ ] Nothing in Log → Resolve → Stats → Share ever hits a paywall.
+- [ ] Nothing in Log → Resolve → Insights → Share ever hits a paywall.
 
 **Report:** which boxes failed, with a screenshot for anything visual.
 
@@ -590,10 +371,10 @@ notification placeholder.
 - [ ] **Resolve:** the screen opens with "On {date} you said **N%**", then the
       prediction, then "Did it happen?". **Yes and No look identical** (same white
       capsule, same width). Nothing is red.
-- [ ] **Home, fewer than 20 resolved:** no big number at the top. A "Calibrating" bar
+- [ ] **Today, fewer than 20 resolved:** no big number at the top. A "Calibrating" bar
       with 20 segments: solid = resolved, dashed/tinted = open predictions, hollow =
       to go. The text under it adds up.
-- [ ] **Home list** is grouped "Ready to resolve · N", "Next 7 days · N", "Later · N".
+- [ ] **Today's list** is grouped "Ready to resolve · N", "Next 7 days · N", "Later · N".
       A prediction past its due date sits under Ready to resolve with **no amber
       and no word "Overdue"**.
 - [ ] **History** cards say "Happened" / "Didn't happen" / "Not scored" — no ✓ or ✗.
@@ -602,7 +383,7 @@ notification placeholder.
       reads "Due Monday, 5 Oct" (your locale's format). No chip or tinted band
       appears at any confidence (the integrity bonus was dropped, D23). The
       Prediction box has a visible border.
-- [ ] **Stats, fewer than 20 resolved:** the same Calibrating bar; section titles in
+- [ ] **Insights, fewer than 20 resolved:** the same Calibrating bar; section titles in
       sentence case, not ALL CAPS.
 - [ ] **Share → This week:** a line like "You said 40–60% once. It happened.", a
       progress line toward your first score, and a dashed rounded-square badge icon
@@ -611,22 +392,22 @@ notification placeholder.
 - [ ] **Coach (Plus + signed in):** each insight has an × that hides it; one line
       under the cards says the Coach "can be wrong". Most cards lead with a big
       number and what it counts ("55% · came true in finance"); check it against the
-      Stats chart above.
+      Insights chart above.
 - [ ] **Resolution reminder (device):** title "Did it happen", body "{title} · You
-      said N%". Then turn on Settings → Notifications → Show Previews → *Never* (or
+      said N%". Then turn on the iPhone's Settings → Notifications → Show Previews → *Never* (or
       *When Unlocked* with the phone locked): the reminder must read "A prediction
       is ready to resolve", not the prediction text.
 - [ ] **Weekly digest (device):** title "Your week ahead"; no mention of a streak.
-- [ ] **Dynamic Type at the largest size:** Resolve, Home and Log still lay out with
+- [ ] **Dynamic Type at the largest size:** Resolve, Today and Log still lay out with
       nothing clipped.
 
 Added 2026-09-29 (second pass):
 
 - [ ] **Confidence control (Log and Warmup):** a big "70%" with "about 7 times in
       10" beside it, a slider that clicks every 5% (**feel the haptic tick on a
-      phone**), and on Log a tinted "honest uncertainty" band under 35–65%. ±5 still
+      phone**); no tinted band on Log (the integrity bonus was dropped, D23). ±5 still
       work. VoiceOver: the whole control is one element; swipe up/down changes it.
-- [ ] **Resolve is a sheet** on iOS (grabber, ~¾ height) and closes back to Home.
+- [ ] **Resolve is a sheet** on iOS (grabber, ~¾ height) and closes back to Today.
       After Yes/No you see "Recorded", a line like "In your 60–80% range, 6 of 9
       have happened", and only then the reflection box and **Done**. Skip exits
       straight away. Yes, No and Skip all give the same medium haptic.
@@ -641,7 +422,7 @@ Added 2026-09-29 (second pass):
       new one, the success tap lands as the new face turns in, and a short
       confetti burst leaves the emblem (none with Reduce Motion). To replay any
       celebration without earning it, open `/dev/celebrations` on the dev build.
-- [ ] **Stats chart:** a sentence title above it ("Your curve so far", or once
+- [ ] **Insights chart:** a sentence title above it ("Your curve so far", or once
       unlocked with ≥ 10 in a band "You're overconfident at 80–100%"), warm/cool
       tinted regions labelled Overconfident/Underconfident, coloured dots with
       "n=…", a five-box coverage row, and "Show as table".
@@ -651,19 +432,19 @@ Added 2026-09-29 (second pass):
       result" opens Share showing the **warm-up card** ("5 of 10 right", "I was 77%
       sure. How sure are you?") — test on a fresh install or after erasing the
       device's data, before any prediction resolves.
-- [ ] **Badges** are drawn emblems (dashed square for Guesser, filled graphite for
-      Forecaster, ink for Sharp, …), not emoji, in Stats and on the identity card.
+- [ ] **Badges** are drawn emblems (dashed square for Getting started, filled graphite for
+      Forecaster, ink for Sharp, …), not emoji, in Insights and on the identity card.
 - [ ] **Icons:** SF Symbols in the tab bar and on category chips/cards on iOS;
       Ionicons on Android/web.
 - [ ] **Buttons** shrink slightly when pressed (Reduce Motion: they dim instead).
 - [ ] **Hero rating** (once unlocked) rolls to its new value after a resolution
       changes it, and does *not* re-roll when you just switch tabs.
-- [ ] **Share → Share as text:** pastes as "My calibration · Calibrate", your
+- [ ] **Share → Share as text:** pastes as "My calibration · Fairly Sure", your
       headline, and (once unlocked) a row of five coloured squares with the score.
       No prediction titles.
 - [ ] **Paywall** (after Batch B): Annual preselected, one purchase button whose
       label changes with the plan, Today / In 1 month timeline for the trial.
-- [ ] **Stats, free user:** one "Calibrate Plus" card instead of two "See Plus"
+- [ ] **Insights, free user:** one "Fairly Sure Plus" card instead of two "See Plus"
       blocks.
 - [ ] **Native packages added this pass** (expo-haptics, slider, expo-symbols,
       reanimated + worklets, datetimepicker): all are in the SDK 55 module set;
@@ -676,17 +457,17 @@ Added 2026-09-29 (polish pass):
       (Android: the system dialog). Past days can't be picked; the line below
       updates to "Due {weekday}, {date}".
 - [ ] **Resolve → Change answer:** after Yes/No the screen says "Recorded: it
-      happened / it didn't happen" with a neutral glyph; "Change answer" puts the
-      prediction back to pending and shows the question again. Check History and
-      Stats don't count the withdrawn answer.
-- [ ] **Added 2026-10-05 (all web-verified; a glance on the phone):** Home shows
-      "Sharp in health" with its emblem under the rating once a category passes
-      Guesser, and tapping it opens Share. "How is this scored?" under the Stats
-      rating (and Settings → How scoring works) opens a full-height sheet that
+      happened / it didn't happen" with a neutral glyph; "Change answer" switches it
+      to the other answer in place (D34), and History and Insights count only the
+      new one.
+- [ ] **Added 2026-10-05 (all web-verified; a glance on the phone):** Today shows
+      "Sharp in health" with its emblem under the rating once a category is past
+      Getting started, and tapping it opens How scoring works at Badges (D27). "How is
+      this scored?" under the Insights rating (and You → How scoring works) opens a full-height sheet that
       scrolls and closes. The paywall has a × at the top right, clear of the
       notch. History shows saved reflections on their cards and hides its
-      filters until something is resolved. While calibrating, Home and Stats say
-      when the next one comes due. Settings ends with "Terms of use".
+      filters until something is resolved. While calibrating, Today and Insights say
+      when the next one comes due. You's links include "Terms of use".
 - [ ] **Added 2026-10-05, steps 46–51 (all web-verified; a glance on the
       phone):** Log's Save is dimmed until the prediction has a title. A badge
       row short on both counts names both ("20 more resolved and a score above
@@ -695,18 +476,18 @@ Added 2026-09-29 (polish pass):
       Warmup without moving the slider gives "You said 75% on all 10". On the
       paywall, each price names its period and Annual shows "Works out to …
       a month." in smaller type (check it against the real App Store price).
-      On Stats, tapping a filled range under the chart opens History with
+      On Insights, tapping a filled range under the chart opens History with
       "You said 80–100% ×", and the count matches the chart's subtitle.
 - [ ] **Evening reminder (added 2026-10-05, step 60):** log a prediction due
       tomorrow; the reminder should arrive at 19:00 tomorrow, not at noon. If
       the phone had reminders queued before this build, relaunch once and
-      check they now say 19:00 (Settings → Notifications shows nothing, so
+      check they now say 19:00 (You lists no queued reminders, so
       wait for one).
-- [ ] **Streak (added 2026-10-05, step 61; web-verified):** after three logs or
-      answers today, Home's streak row says "Today counts" with three filled
-      pips; VoiceOver reads it as one sentence.
-- [ ] **Streak checkpoint (added 2026-10-06, step 64; web-verified on Home):**
-      on day 7 (or 30, 100…) the third log or answer turns Home's streak row
+- [ ] **Streak (added 2026-10-05, step 61; web-verified):** after one log or
+      answer today, Today's streak row says "Today counts."; after three, "Today's
+      goal met." with three filled dots (D17). VoiceOver reads it as one sentence.
+- [ ] **Streak checkpoint (added 2026-10-06, step 64; web-verified on Today):**
+      on day 7 (or 30, 100…) the first log or answer turns Today's streak row
       grey-tinted with "A full week. Next milestone: 30 days". If it was an
       answer, the Resolve sheet shows the still flame card ("7", "A full
       week", "Next milestone: 30 days") above the range line, with no confetti and no extra
@@ -714,8 +495,8 @@ Added 2026-09-29 (polish pass):
 - [ ] **The 2026-10-06 batch (steps 65–71; web-verified):** a run of three
       ends on "3 answered. 2 happened. You expected about 2." with the streak
       row; Sign in's round × sits clear of the notch; on an SE or mini (320pt)
-      "80–100%" never splits in the Stats title (word joiners on iOS) and
-      "then $29.90 a year" stays whole; the Warmup answer key reads one stop
+      "80–100%" never splits in the Insights title (word joiners on iOS) and
+      "then $34.99 a year" stays whole; the Warmup answer key reads one stop
       per question in VoiceOver ("Which is deeper? Pacific. You picked
       “Atlantic”, 90% sure…").
 - [ ] **The second 2026-10-06 pass (steps 72–78; web-verified at 375 × 667):**
@@ -738,9 +519,8 @@ Added 2026-09-29 (polish pass):
       annual trial with a StoreKit configuration whose trial is long enough
       that "two days before" is still ahead, and the reminder is scheduled for
       10:00 that day.
-- [ ] **Inter and dark mode (steps 85–86; web-verified):** in a new build, every
-      screen is set in Inter at the right weights (Semibold buttons and headers,
-      Bold titles, no faux-bold). Switch the phone to Dark: every tab, sheet, the
+- [ ] **Dark mode (steps 85–86; web-verified):** the typeface is Instrument Sans
+      since D33 (the next box). Switch the phone to Dark: every tab, sheet, the
       chart, the badge chips and the switches read clearly, the status bar text
       turns light, and the tab bar and headers go dark with the rest. Export a
       card in Dark and in Light: the PNGs match.
@@ -767,27 +547,27 @@ Added 2026-09-29 (polish pass):
       "Money". Force-quit and reopen: all three kept.
 - [ ] **Category icons (D40, step 146; web-verified):** in You → Categories, tap
       Health's icon and pick 🏃; tap Finance's icon → Choose a picture. iOS should ask
-      for photo access once with "Calibrate uses a picture you pick as a category
+      for photo access once with "Fairly Sure uses a picture you pick as a category
       icon. It stays on this phone.", show its square crop, and the row should show
       the picture with rounded corners. Check Today's cards, Log's chips and Insights'
       badge rows show both, in light and dark, and that the share card is unchanged
       (it draws no category icons). Type "ok" in "Or any emoji": Use stays off. Force-quit and
       reopen: both kept. Use the default: the symbol is back.
-- [ ] **Guest funnel counts (D43, step 150):** apply migration 007 (SQL editor
-      or `npx supabase db push`), then set `GUEST_ANALYTICS` to true. On a
+- [ ] **Guest funnel counts (D43, steps 150 and 186):** migration 007 is applied
+      and guest counts are sent (2026-11-16). On a
       fresh install, signed out, finish the Warm-up and foreground the app
       again: `select name, count(*) from guest_analytics_events group by 1`
       shows `warmup_started` and `warmup_completed`, and the rows have no
       user column. Turn Usage stats off, do it again: nothing new arrives.
-- [ ] **Custom categories sync (D39):** 006 applied and the flag on
-      (2026-11-03). Left: sign in on two
+- [ ] **Custom categories sync (D39):** 006 applied (2026-11-03), so a prediction
+      in an added category syncs, its id only. Left: sign in on two
       phones and check a prediction filed under an added category reaches the
       other. The names stay on each phone (not synced yet): the second shows
       "Other" until it's named there.
 - [ ] **Cold start (added 2026-10-05, step 59):** force-quit and open the
-      app. The ink splash should fade straight into Home, with no white
+      app. The ink splash should fade straight into Today, with no white
       screen and spinner between. On a fresh install it should fade into the
-      Warmup without Home showing first.
+      Warmup without Today showing first.
 - [ ] **Empty confidence (added 2026-10-05, step 54; web-verified):** on the
       Warmup and on Log the readout says "—% not set yet" and the thumb rests
       grey at 50% (the middle on Log, the left end in the Warmup; D49). On the phone: tapping the track jumps the thumb
@@ -801,17 +581,17 @@ Added 2026-09-29 (polish pass):
       out at the preview's size instead, that assumption failed. Worth one
       try with Larger Text on: the content should shrink to fit, not spill
       into the footer.
-- [ ] **VoiceOver pass (added 2026-10-05, steps 41–44):** Settings reads
-      "Notifications, switch, on" (and a double-tap toggles it); the Stats
+- [ ] **VoiceOver pass (added 2026-10-05, steps 41–44):** You reads
+      "Notifications, switch, on" (and a double-tap toggles it); the Insights
       rating reads "Calibration rating, 92 out of 100"; a badge row reads
       "Health: Sharp. 45 more resolved to reach Oracle"; in the Warmup, each
       new question is spoken after Next.
 - [ ] **Log it again (added 2026-10-04; web-verified):** after Yes or No on a
       single Resolve, **Log it again** closes the sheet and opens Log with the same
       title, category and lead time, and the confidence empty. On the phone: the
-      sheet closes cleanly and the Log tab is the one showing.
-- [ ] **Resolve all (added 2026-10-04; web-verified):** with three or more ready,
-      Home shows **Resolve all N**. It opens a sheet that steps through them ("1 of
+      sheet closes cleanly and Log is the sheet showing.
+- [ ] **Answer all (added 2026-10-04; web-verified):** with three or more ready,
+      Today shows **Answer all N**. It opens a sheet that steps through them ("1 of
       3"), with **Next** after each answer, **Finish** on the last, and "All caught
       up" at the end. On the phone: the sheet's grabber and detents, the resolve
       haptic per card, and swiping down with a typed reflection still asks first.
@@ -837,7 +617,7 @@ Added 2026-09-29 (polish pass):
       Yes or No, shows "That's your first. A 70% call should come true about 7
       times in 10…" in place of the range line; the second answer shows the range
       line as before, in a single Resolve and in a run.
-- [ ] **Settings switches** are ink when on (not green); in Dark the track is
+- [ ] **You's switches** are ink when on (not green); in Dark the track is
       light and the thumb dark.
 - [ ] **Share → Shape:** "Post (3:4)" and "Story (9:16)" reshape the card, with a
       large emblem and the text centred. Export each and post the Story to an
@@ -848,8 +628,8 @@ Added 2026-09-29 (polish pass):
 
 Added 2026-09-30 (the last three commits, `7fd1aba`..`d69ba54`):
 
-- [ ] **Rating bar** (once unlocked, Home and Stats): a thin bar under the number
-      with ticks at 70 / 85 / 90. Home adds a one-line read ("You're overconfident
+- [ ] **Rating bar** (once unlocked, Insights): a thin bar under the number
+      with ticks at 70 / 85 / 90 (Today's bar has none since D59). Today adds a one-line read ("You're overconfident
       at 80–100%") only when a band has enough resolutions.
 - [ ] **Coverage nudge looks quiet:** a grey inline card, "Start at 25%" as an
       outlined button and "Not now" as text. Save stays the only filled button on Log.
@@ -896,20 +676,44 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
-Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
+Added 2026-11-16 (step 187, the launch page; in build 3):
 
-- [ ] **Hide the words, everywhere read-only:** with a category you named (or renamed) and the
-      switch on, Insights' badge row and "Furthest off" read "Your own category"; Share leaves it
-      off the card with "Categories you named stay off the card…"; the week recap has no "Show
-      prediction titles" switch. Switch off: it's all back, nothing unticked. Rename every
-      category you've answered in: the card still shows, with your rating and "N categories not
-      shown". A built-in given only an emoji stays on the card, and on Insights and Today it
-      keeps its name with its usual symbol, not the emoji. Untick every category on Share: the
-      card keeps your rating and "N categories not shown"; tick one back.
-- [ ] **The TestFlight build's paywall (step 182):** You → Fairly Sure Plus lists the three
+- [ ] **The launch page (step 187):** swipe the app away and open it: the dark splash with
+      the mark stays, "Fairly Sure" fades in under the mark without the mark moving, and
+      after about a second it fades to Today (or the Warm-up on a fresh install). Coming back
+      from the Home Screen without swiping it away shows no launch page.
+- [ ] **The lock is the launch page (step 187):** with the app lock on, open the app: the same
+      dark page with the mark and the name, "Locked. Unlock with Face ID…" and a light Unlock
+      button under them, readable in the light and the dark appearance; the app switcher shows
+      the mark and the name only.
+- [ ] **The paywall's top (step 187):** You → Fairly Sure Plus: the title and the × sit below
+      the clock and the Dynamic Island, not under them.
+
+Added 2026-11-16 (step 185, the phone's 24-Hour Time switch; in build 2):
+
+- [x] **The 24-hour clock (step 185):** with 24-Hour Time on (Settings → General → Date & Time),
+      You reads "at 19:00" under Due-day reminders and "Sunday at 18:00" under Weekly digest,
+      and the practice moments read "8:00", "12:30", "20:30". With it off: "7:00 PM". (The app
+      reads the switch at launch: close and reopen it after changing the setting.)
+      **Confirmed 2026-11-16 on TestFlight build 2** (the owner's screenshots): times follow
+      the 24-Hour Time switch.
+
+Added 2026-11-15 (step 184, moved answers counted; in build 2):
+
+- [ ] **A moved answer is counted (step 184):** answer a prediction logged on an earlier day,
+      open it in History and look under Category: "Insights counts a scored answer left in a
+      different category from the one it was answered in." Move it to another category, then
+      Insights → More about your record: "1 scored answer was moved to another category after
+      it was answered. Only this phone keeps this count." Move it back: the line is gone.
+
+Added 2026-11-15 (step 182, TestFlight hardening, and the TestFlight prep; in build 2):
+
+- [x] **The TestFlight build's paywall (step 182):** You → Fairly Sure Plus lists the three
       plans with the store's prices. If it reads "Plus isn't available on this build yet",
       the build has no RevenueCat key or has the Test Store one (`test_…`): set the `appl_`
       key in the EAS production environment and build again. It never crashes on it.
+      **Confirmed 2026-11-16 on TestFlight build 2** (the owner's screenshots): the three
+      plans load at $34.99 a year, $4.99 a month and $79.99 lifetime.
 - [ ] **Sign-in says what it sends (step 182):** You → Sign in shows "Once you're signed in,
       a record of which features you use, including what's already on this phone, is sent
       with your account…" and a Privacy policy link that opens the policy. Turn Usage stats
@@ -935,7 +739,14 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       today (the unlock card shows), then tap "Change to: …": the card goes and the line
       under the answer ends "Your rating and badges now follow this answer, so they may
       have moved." VoiceOver says the same after "Changed to: …".
-- [ ] **The app lock, turning it on (step 180; needs the new build):** You → "Lock with Face
+- [ ] **Help and version (TestFlight prep):** You → Help and support opens the support page,
+      and "Fairly Sure 1.0.0" sits under those links.
+
+Added 2026-11-15 (step 180, the app lock and units by Region; native, in build 2):
+
+- [ ] **Before these checks:** if you have turned on iOS's own Require Face ID for Fairly Sure
+      (touch and hold the icon), turn it off, or every return asks twice.
+- [ ] **The app lock, turning it on (step 180):** You → "Lock with Face
       ID" is off. Tap it: iOS asks once whether Fairly Sure may use Face ID, then checks your
       face; the switch turns on. Tap it again and cancel the prompt: it stays on, with no
       message. Tap it and pass: it turns off. Turn it back on for the checks below.
@@ -985,34 +796,14 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       run unless you choose to. With the lock on, remove the iPhone's passcode and open the app:
       "This iPhone has no passcode now…" and Continue, the app opens, and the switch is off.
       Untested if skipped.
-- [ ] **Before these checks:** if you have turned on iOS's own Require Face ID for Fairly Sure
-      (touch and hold the icon), turn it off, or every return asks twice.
 - [ ] **The app lock off (step 180):** with the switch off, nothing covers the app in the
       switcher and nothing asks for Face ID.
 - [ ] **Feet and miles by Region (step 180):** Settings → General → Language & Region → Region
       United States: the Warm-up's answer key shows feet and miles beside the metric figures.
       Region Germany with the language still English (US): metric only.
-- [ ] **A moved answer is counted (step 184):** answer a prediction logged on an earlier day,
-      open it in History and look under Category: "Insights counts a scored answer left in a
-      different category from the one it was answered in." Move it to another category, then
-      Insights → More about your record: "1 scored answer was moved to another category after
-      it was answered. Only this phone keeps this count." Move it back: the line is gone.
-- [ ] **The 24-hour clock (step 185):** with 24-Hour Time on (Settings → General → Date & Time),
-      You reads "at 19:00" under Due-day reminders and "Sunday at 18:00" under Weekly digest,
-      and the practice moments read "8:00", "12:30", "20:30". With it off: "7:00 PM". (The app
-      reads the switch at launch: close and reopen it after changing the setting.)
-- [ ] **The launch page (step 187):** swipe the app away and open it: the dark splash with
-      the mark stays, "Fairly Sure" fades in under the mark without the mark moving, and
-      after about a second it fades to Today (or the Warm-up on a fresh install). Coming back
-      from the Home Screen without swiping it away shows no launch page.
-- [ ] **The lock is the launch page (step 187):** with the app lock on, open the app: the same
-      dark page with the mark and the name, "Locked. Unlock with Face ID…" and a light Unlock
-      button under them, readable in the light and the dark appearance; the app switcher shows
-      the mark and the name only.
-- [ ] **The paywall's top (step 187):** You → Fairly Sure Plus: the title and the × sit below
-      the clock and the Dynamic Island, not under them.
-- [ ] **Help and version (TestFlight prep):** You → Help and support opens the support page,
-      and "Fairly Sure 1.0.0" sits under those links.
+
+Added 2026-11-14 (step 181, the release candidate; a reload is enough):
+
 - [ ] **Dates in English (step 181):** set the iPhone's language to Dutch or Spanish (Settings →
       General → Language & Region) and open the app: every date reads in English in the
       order that language uses ("Sun 15 Nov"), and times on the phone's own clock (24-hour
@@ -1030,6 +821,17 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       warm-up card first. On `long-time`, Share opens on the category card as before.
 - [ ] **The chart with one or two answers (step 181):** on `first-week`, Insights' chart shows
       no "Overconfident" or "Underconfident" words; on `long-time` it does.
+
+Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
+
+- [ ] **Hide the words, everywhere read-only:** with a category you named (or renamed) and the
+      switch on, Insights' badge row and "Furthest off" read "Your own category"; Share leaves it
+      off the card with "Categories you named stay off the card…"; the week recap has no "Show
+      prediction titles" switch. Switch off: it's all back, nothing unticked. Rename every
+      category you've answered in: the card still shows, with your rating and "N categories not
+      shown". A built-in given only an emoji stays on the card, and on Insights and Today it
+      keeps its name with its usual symbol, not the emoji. Untick every category on Share: the
+      card keeps your rating and "N categories not shown"; tick one back.
 - [ ] **Another number keeps your edit:** Edit a prediction made today, change its words, tap
       "Use another number": Log opens with the new words, no "Discard changes?" sheet.
 - [ ] **The unlock names its badge:** at 19 scored answers all in one category, answer the 20th:
@@ -1039,8 +841,9 @@ Added 2026-11-14 (step 179, round 22's ten fixes; a reload is enough):
       swipe and opening it again starts fresh.
 - [ ] **Words:** the friend fold explains the score and the ranges; Edit says one thing on the
       day it was made; Insights' fold reads "Show less" once open; a badge card's two sentences
-      end with a full stop; on a phone set to Spanish, Insights' "comes due sáb, 14 nov." has one
-      full stop; How scoring works opened from Today has a "Your rating" heading for VoiceOver.
+      end with a full stop; on a phone set to Spanish, Insights' "comes due …" line has one
+      full stop (dates are in English since step 181); How scoring works opened from Today has
+      a "Your rating" heading for VoiceOver.
 
 Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
 
@@ -1292,22 +1095,22 @@ Added 2026-11-10 (steps 167–168; web-verified at 320 and 375, a reload is enou
 
 ## Batch D — Physical device (~45 min)
 
-Requires a dev build (`eas build --profile development --platform ios`), not
-Expo Go — notifications and RevenueCat are both native modules.
+Runs on the TestFlight build (or a development build): notifications and RevenueCat are
+native modules.
 
 ### D1. Notifications
 - [ ] **No notification permission prompt at first launch** (changed 2026-10-05,
       roadmap step 38): the Warmup opens with no notification alert over it.
       Apple's age-range sheet, if it appears, is D4 and is not this alert.
       After logging a
-      first prediction, Home shows "Want a reminder when it's due?"; **Turn on
+      first prediction, Today shows "Want a reminder when it's due?"; **Turn on
       reminders** brings up the iOS alert. Allow it: the prediction's reminder
-      is scheduled. On a second install, refuse it: Settings → Notifications
+      is scheduled. On a second install, refuse it: You → Notifications
       shows "Open Settings", which opens the app's page in iOS Settings.
 - [ ] **The two new switches (D31, step 131):** under Notifications, turn off
       Due-day reminders: an open prediction's reminder is cancelled (check the
-      schedule in a log) and the Sunday digest stays; turn it back on and it
-      returns. The same the other way for Sunday digest.
+      schedule in a log) and the Weekly digest stays; turn it back on and it
+      returns. The same the other way for Weekly digest.
 - [ ] **An edited due date (D25, step 125):** open a prediction not yet due,
       Edit, choose In a week: its reminder moves to that evening.
 - [ ] **A delete while signed in (D25):** delete an open prediction, then pull to
@@ -1329,13 +1132,13 @@ Expo Go — notifications and RevenueCat are both native modules.
       previous build still opens Resolve from its body; after one launch of
       this build the buttons are there too (the category is registered at
       launch; the request is not rescheduled).
-- [ ] The Sunday digest is scheduled (check
+- [ ] The weekly digest is scheduled (check
       `getAllScheduledNotificationsAsync` in the dev console, or wait).
-- [ ] Turning notifications off in Settings cancels everything; turning it
+- [ ] Turning notifications off in You cancels everything; turning it
       back on reschedules.
 - [ ] **Across a relaunch (added 2026-10-05, roadmap step 37):** log a
       prediction due in a few minutes, force-quit, reopen, resolve it before it
-      fires: no reminder arrives. Repeat with Settings → Notifications off
+      fires: no reminder arrives. Repeat with You → Notifications off
       after the relaunch instead of resolving: still nothing.
 - [ ] **Practice reminder (added 2026-10-07, roadmap step 89):** finish
       today's practice; under the answers, "Want tomorrow's three at a set
@@ -1348,16 +1151,16 @@ Expo Go — notifications and RevenueCat are both native modules.
       sent.
 
 ### D2. Sandbox purchase — the Layer 5 billing gate
-- [ ] Sign in with the sandbox tester account (Settings → App Store on device).
-- [ ] Buy the annual plan. The screen says **"1 month free, then $29.99"** and
+- [ ] Sign in with the sandbox tester account (the iPhone's Settings → App Store).
+- [ ] Buy the annual plan. The screen says **"1 month free, then $34.99"** and
       Apple's own confirmation sheet agrees. If the two disagree, Apple is
       right and the offer is misconfigured.
-- [ ] `isPlus` flips: the Coach upsell on Stats is replaced by the Coach panel,
-      and Settings shows "Active".
+- [ ] `isPlus` flips: the Coach upsell on Insights is replaced by the Coach panel,
+      and You's Plus row shows "Active".
 - [ ] **While the trial is running, `source` reads `trial`** — not `annual`.
       The client maps RevenueCat's `periodType` (TRIAL/INTRO) ahead of the
       product, and the webhook does the same with `period_type`, so a mismatch
-      means one of the two paths is wrong. Check Settings copy or the dev
+      means one of the two paths is wrong. Check You's Plus row or the dev
       console.
 - [ ] **The trial converts.** Sandbox compresses subscription durations — a
       one-month trial runs in minutes, not a month (check Apple's current
@@ -1372,16 +1175,16 @@ Expo Go — notifications and RevenueCat are both native modules.
 - [ ] Delete and reinstall the app → reads as **free**.
 - [ ] "Restore purchases" on the paywall restores Plus.
 - [ ] Buy monthly with a second sandbox account; confirm `source` reads
-      `monthly` and not `annual` (Settings copy or the dev console).
+      `monthly` and not `annual` (You's Plus row or the dev console).
 - [ ] Cancel the sandbox subscription and let it lapse (sandbox subscriptions
       renew every few minutes); confirm the app drops back to free within one
       foreground.
 
 ### D3. Coach end-to-end as a real subscriber
 Only possible after D2 and B3 (the webhook is what tells the server you paid).
-- [ ] Turn Coach on in Settings; tap "Get feedback"; insights render with the
+- [ ] Turn Coach (AI) on in You; tap "Get feedback"; insights render with the
       AI label.
-- [ ] Every number in an insight matches a number on the Stats screen.
+- [ ] Every number in an insight matches a number on Insights.
 
 ### D4. Age assurance (iOS 26, a dev build that includes the entitlement)
 Needs a signed-in Apple Account. The entitlement is
@@ -1399,157 +1202,74 @@ often don't present this API; prefer a device.
 - [ ] **Not signed into an Apple Account, or an older iOS:** no sheet, and the
       app behaves as it did before this check. Web and Android are the same
       (no Play Age Signals call).
-- [ ] **Erase all data on this device:** the next launch can ask again. Until
+- [ ] **Erase your data on this phone:** the next launch can ask again. Until
       then, predictions and the rest of the app are unchanged.
 
 ---
 
 ## Batch E — Ship (needs everything above)
 
-Four items in this batch turned out not to be yours. Re-derived from the
-code on 2026-09-24:
+Done: the splash and the icon are real artwork wired in `app.json` (the icon is flattened at
+build time); no APNs key is needed, since every notification is local (no push token
+anywhere in `src/`, `app/` or `supabase/`); the App Privacy answers are drafted from the code
+in [`APP_PRIVACY.md`](./APP_PRIVACY.md); export compliance was declared at the first build.
 
-- [x] ~~Splash screen configured in `app.json`.~~ It already is —
-      `expo-splash-screen` with light and dark variants, verified resolving
-      through `npx expo config --type public`. The old note ("asset exists,
-      config doesn't") was stale.
-- [x] ~~Real app icon.~~ Not a placeholder: `assets/icons/icon.png` is the
-      calibration diagonal with points on it, 1024×1024, in ink since D33
-      (indigo until then). Worth a look if you want a different mark, but nothing is
-      blocked on it. (It carries an alpha channel; Expo flattens iOS icons at
-      build time, so confirm it looks right in the TestFlight build rather
-      than editing the PNG now.)
-- [x] ~~APNs key / push credentials.~~ **Not needed.** Every notification this
-      app sends is a *local* scheduled one. There is no `getExpoPushTokenAsync`
-      call, no device token, and nothing server-side that sends a push
-      (verified across `src/`, `app/`, `supabase/`). This becomes a real item
-      only if remote push is ever added.
-- [x] ~~App Privacy declarations.~~ Drafted from the code in
-      [`docs/APP_PRIVACY.md`](./APP_PRIVACY.md) — the App Store Connect answer
-      sheet row by row, each citing the file that proves it. Read it once and
-      transcribe; the one thing it asks you to decide is the privacy-policy URL.
-
-What is still yours:
-
-- [ ] **Account deletion: deployed 2026-10-02, optional legs not yet on.**
-      The function is live, which alone is compliant. When you have them,
-      set the Sign in with Apple key secrets (needs the $99 account) and a
-      customers-*write* RevenueCat key. See `supabase/README.md`
-      § delete-account. Test it by deleting a throwaway account from
-      Settings, then confirming its `auth.users` row is gone.
-- [ ] `submit.production` block filled in `eas.json` (currently `{}`). No
-      placeholder was committed on purpose — an empty string fails more
-      confusingly than a missing key, and `eas submit` prompts interactively
-      when the block is absent. When you have the values, paste:
-
-      ```json
-      "submit": {
-        "production": {
-          "ios": {
-            "appleId": "you@example.com",
-            "ascAppId": "1234567890",
-            "appleTeamId": "ABCDE12345"
-          }
-        }
-      }
-      ```
-
-      - `appleId` — the Apple ID email of your developer account.
-      - `ascAppId` — App Store Connect → your app → App Information → Apple ID
-        (a 10-digit number, not the bundle id).
-      - `appleTeamId` — developer.apple.com → Membership details → Team ID.
-
-- [ ] **Privacy policy URL — turn GitHub Pages on after this is on `master`.**
-      The app already links to
-      `https://tapjason.github.io/calibrate-app/privacy/`
-      (`PRIVACY_POLICY_URL` in `src/constants/app.ts`). Paywall and Settings
-      show it, so it 404s until Pages is serving `master`. App Store Connect
-      needs the same URL, and it has to load (Guideline 3.1.2). What the page
-      has to say is `docs/APP_PRIVACY.md` §5; the text is `docs/PRIVACY_POLICY.md`.
-
-      Do this **after** the privacy-policy commit is on `master`, not before.
-      Enabling Pages on an older `master` builds every file in `docs/` (no
-      `_config.yml` yet). That can fail the build, and `/privacy/` does not
-      exist until this commit is the one Pages builds.
-
-      1. On GitHub, open `tapjason/calibrate-app` → **Settings** → **Pages**
-         (under Code and automation).
-      2. **Build and deployment** → **Source**: **Deploy from a branch**.
-      3. **Branch**: `master`. **Folder**: `/docs`. Save.
-      4. Wait until the Pages deployment is green. The first build takes a
-         few minutes. The site address at the top of that settings page
-         should be `https://tapjason.github.io/calibrate-app/`.
-
-      Confirm, in a browser:
-
-      - `https://tapjason.github.io/calibrate-app/privacy/` shows the policy:
-        heading "Fairly Sure Privacy Policy", effective date November 3, 2026,
-        contact tapjason-dev@gmail.com. It is a rendered page, not the raw
-        Markdown file. Without the trailing slash should redirect to the
-        same page.
-      - `https://tapjason.github.io/calibrate-app/support/` shows "Fairly Sure
-        Support" (the App Store's Support URL, `docs/SUPPORT.md`).
-      - `https://tapjason.github.io/calibrate-app/` loads and its links open
-        the policy and the support page.
-      - `https://tapjason.github.io/calibrate-app/HUMAN_VERIFICATION` and
-        `https://tapjason.github.io/calibrate-app/NEXT_STEPS` are 404s.
-        Those files stay in the repo. They are not part of the site.
-      - In the app (the web build is enough): You → Privacy policy, and the
-        paywall's Privacy Policy, both open that URL.
-
-      Do this before a build that contains the URL is handed to anyone. The
-      links are already visible.
-- [ ] `npx expo install --check` before the build. `expo-doctor` is 19/20
-      green; the one failure is patch drift inside SDK 55 (15 packages on
-      2026-10-04, e.g.
-      `expo` 55.0.26 → 55.0.31). Not urgent, but a build is the moment to take
-      it — and re-run `npm test` after, since it moves `react-native` and
-      `jest-expo`.
-- [ ] Screenshots (the identity card and the calibration curve are the two
-      that sell it). Drafts exist; finals come from the device build.
+- [x] **`submit.production` in `eas.json`:** `ascAppId` `6831917395` since 2026-11-07;
+      `eas submit` asks for the Apple ID itself. Build 2 reached TestFlight on 2026-11-16.
+- [x] **Privacy policy and support URLs:** GitHub Pages serves `master` / `/docs` since
+      2026-11-15, and `/privacy/` and `/support/` return 200 (`check.sh --release` checks
+      both). If they ever stop loading: GitHub → `tapjason/calibrate-app` → Settings → Pages →
+      Deploy from a branch → `master` → `/docs`, then confirm
+      `https://tapjason.github.io/calibrate-app/privacy/` shows "Fairly Sure Privacy Policy"
+      and `/support/` shows "Fairly Sure Support". App Store Connect needs the same privacy
+      URL, and it has to load (Guideline 3.1.2).
+- [x] **`npx expo install --check` before the build:** clean since 2026-11-07 (15 SDK 55
+      patch updates, runbook step 4); `check.sh --release` and `/build` re-check it.
+- [x] **Age assurance decision** (Texas SB 2420): built 2026-11-02, option (a): Apple's
+      Declared Age Range asked once, failing open, only the band stored, nothing gated (D4
+      above). The under-13 rule is `SHIP_READINESS.md` decision 2.
+- [x] **`eas build` → TestFlight:** 1.0.0 (build 2) processed and installed on the owner's
+      iPhone, 2026-11-16.
+- [ ] **Account deletion, the optional legs.** The function is live (deployed 2026-10-02),
+      which alone is compliant. The secrets were set on 2026-11-16, but one is misspelled:
+      rename `REVENUTCAT_DELETE_KEY` to `REVENUECAT_DELETE_KEY`, or the RevenueCat leg stays
+      skipped. Then `npx supabase functions deploy delete-account` (not yet confirmed). Test
+      it by deleting a throwaway account from You → Delete account (one signed in with Apple,
+      for the revoke leg), then confirming its `auth.users` row is gone and the function's
+      logs show no skipped leg. See `supabase/README.md` § delete-account.
+- [ ] **The Coach names OpenAI before it is switched on** (Guideline 5.1.2(i)): You → Coach
+      (AI) says "…go through our server to OpenAI, which writes it", and the Coach panel says
+      so above Get feedback until the first answer. Confirm both on the device build.
+- [ ] Screenshots (the identity card and the calibration curve are the two that sell it).
+      Drafts exist; finals come from the device (`APP_STORE_LISTING.md` §5).
 - [ ] **Age-rating questionnaire** in App Store Connect: the updated question
       set (in-app controls, capabilities, medical or wellness topics, AI
       features) has been mandatory since 2026-01-31. Proposed answers:
       `APP_STORE_LISTING.md` §1.
-- [ ] **Age assurance decision** (Texas SB 2420, in force since 2026-06-04):
-      build the Declared Age Range check before submission or not. See
-      `NEXT_STEPS.md`, "Waiting on you", and item i.
-- [ ] **Coach discloses OpenAI by name** before it is switched on (Guideline
-      5.1.2(i)). Code item h in `NEXT_STEPS.md`; confirm the wording on the
-      device build.
-- [ ] `eas build --platform ios` → TestFlight → accepted.
+- [ ] **The rest of the App Store Connect record** (added 2026-11-16): the listing text, the
+      App Privacy answers (`APP_PRIVACY.md`), the review notes and a demo account that has
+      Plus (`APP_STORE_LISTING.md` §4).
+- [ ] **Before outside testers** (added 2026-11-16): the beta app description and beta review
+      information (`TESTFLIGHT_PLAN.md`, "Ready-to-use text").
 - [ ] Install from TestFlight and re-run Batch C on the real build.
 
 ---
 
 ## Decisions only you can make
 
-1. ~~**Trial length.**~~ **Decided 2026-09-25: one free month on annual**,
-   auto-renewing into $29.99/yr, cancellable up to 24 hours before it ends.
-   Recorded in `GROWTH_AND_MONETIZATION.md` §4 and `CLAUDE.md`; B2 is now a
-   setting to enter, not a call to make. Worth re-testing against real
-   conversion data later — that is the trial-length experiment the validation
-   checkpoints already list.
-2. **Apple link-out commission.** Since the April 2025 Epic injunction Apple
-   cannot charge commission on US link-out purchases; in August 2026 it
-   proposed 15%/5% and Epic is contesting it. Re-checked 2026-10-04: the
-   Supreme Court took Apple's appeal in June 2026 (a decision is unlikely
-   before June 2027), the district-court fee proceeding has stalled, and the
-   rate stays at 0% meanwhile. Worth 12–18% of every renewal. It doesn't block
-   shipping in-app IAP — it decides whether a link-out flow is worth building
-   later, and that question can wait until mid-2027.
-3. **Whether to ship billing at all yet.** `BUILD_PLAN.md`'s validation
-   checkpoint says measure D0 aha completion and share rate *before* the
-   checkout goes live. If nobody shares, the freemium premise is wrong and the
-   paywall is the wrong thing to be tuning.
+The open product and policy calls are in `SHIP_READINESS.md`, "Open decisions for the owner"
+(2, 5, 8, 9, 12 and 13). One more, for later: **the Apple link-out commission** (0% on US
+link-out purchases since the April 2025 injunction; Apple proposed 15%/5% in August 2026; the
+Supreme Court took its appeal in June 2026, a decision unlikely before June 2027). It doesn't
+block in-app purchase; it decides whether a link-out flow is worth building, and can wait.
 
 ---
 
 ## Open work that is code, not you
 
-Listed here only so the human checklist isn't mistaken for the whole list.
-**The full, current list is [`docs/NEXT_STEPS.md`](./NEXT_STEPS.md)**; UI status is in
-[`docs/design/UI_ROADMAP.md`](./design/UI_ROADMAP.md).
+Listed here only so the human checklist isn't mistaken for the whole list. **The current
+list is [`SHIP_READINESS.md`](./SHIP_READINESS.md), "Open work"**; what's built is in
+[`docs/design/BUILT_LOG.md`](./design/BUILT_LOG.md).
 
 Once people are using the app, the two questions that decide the business model
 (the validation checkpoint in `BUILD_PLAN.md`) are:
@@ -1565,3 +1285,7 @@ select count(*) filter (where name = 'share_completed')::float
      / nullif(count(distinct user_id), 0) as shares_per_active_user
   from public.analytics_events;
 ```
+
+A guest's funnel events land in `public.guest_analytics_events` instead (the same event
+names, no user id), so for the aha rate add its `warmup_completed` and `warmup_started`
+counts to these. Guests' rows are counts, not people: a reinstall counts twice.

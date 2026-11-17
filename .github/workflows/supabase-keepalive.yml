@@ -1,4 +1,4 @@
-# Keeps the free-tier Supabase project from pausing (NEXT_STEPS item a).
+# Keeps the free-tier Supabase project from pausing.
 #
 # Supabase pauses a free project after about a week with no database activity,
 # and a paused project makes every live test fail silently. Twice a week this

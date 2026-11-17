@@ -1,11 +1,13 @@
 # Fairly Sure — ship readiness
 
-**As of:** 2026-11-14 · **Branch:** `builder/step-181-release-candidate` · Written at the
-owner's request to evaluate what comes next: more refinement, more playtests, or the store.
+**As of:** 2026-11-16 · `master` at `2636ff2` (steps 1–187, pushed), plus `builder/cleanup-stale`
+(the stale-code and docs cleanup, not merged). First written 2026-11-14 at the owner's request
+to evaluate what comes next: more refinement, more playtests, or the store.
 
 Sources: 23 blind playtest rounds (`docs/design/research/`), the release audit and the App
-Store policy audit run on this branch the same day, `GROWTH_AND_MONETIZATION.md` §0, §2 and §7,
-and `docs/design/research/competitors-2026-11.md`. Nothing here has run on the iPhone.
+Store policy audit of 2026-11-14, `GROWTH_AND_MONETIZATION.md` §0, §2 and §7, and
+`docs/design/research/competitors-2026-11.md`. TestFlight 1.0.0 (build 2, steps through 186)
+has been on the owner's iPhone since 2026-11-16; its results are not in yet.
 
 ## The call
 
@@ -21,19 +23,18 @@ Why:
 - **What's still uncertain can't be answered by agents.** Would a real newcomer finish the
   Warm-up, log something of their own, come back on day 1, share a card? Those are the
   gates in GROWTH §7, and they are read from App Store Connect and the app's own counts.
-- **The code is healthy.** `bash scripts/check.sh --release` passed on 2026-11-14: 2,278
-  tests, `expo-doctor` 20 of 20, no dependency drift, a 6.9 MB iOS bundle (the first
-  baseline). Since step 182 its last step also fails while the privacy or support page
-  doesn't load, so it will fail there until GitHub Pages is on.
-  The policy audit found the app's own behaviour in order on subscriptions, notifications,
-  account deletion, Sign in with Apple and AI consent.
-- **What blocks the store is outside the code.** Two dead URLs, no products or prices in
-  App Store Connect, no production environment for the build, and about 205 unticked device
-  checks. See "What stands between here and the store".
+- **The code is healthy.** `bash scripts/check.sh --release` passed on 2026-11-15 (`6a38809`,
+  step 184): 187 suites, 2,425 tests, `expo-doctor` 20 of 20, no dependency drift, a 6.90 MB
+  iOS bundle, and the privacy and support pages loading. The policy audit found the app's own
+  behaviour in order on subscriptions, notifications, account deletion, Sign in with Apple
+  and AI consent.
+- **What's left is outside the code:** the on-phone checks on TestFlight, two Edge Function
+  deploys and a misspelled secret, the free trial moved to the annual plan, the App Store
+  Connect listing, and decisions 2, 5, 8, 9, 12 and 13. See "Open work".
 
 ## The market, and what it means for launch
 
-From GROWTH §2 and the November competitor research (not re-researched today):
+From GROWTH §2 and the November competitor research (not re-researched since):
 
 - **Nobody else sells this the way this app does.** Calibration trackers are free or a few
   dollars once and read as tools for forecasting hobbyists. The apps people actually arrive
@@ -43,11 +44,11 @@ From GROWTH §2 and the November competitor research (not re-researched today):
 - **"Prediction" now means betting to many searchers** (Kalshi and Polymarket in 2026). The
   listing already says "No money, no odds, no betting". Keep sports and markets out of the
   screenshots.
-- **Price.** $29.99 a year sits under the 2026 median ($34.80; $39.94 in Health & Fitness).
-  The standing recommendation is $34.99 a year, $79.99 lifetime, $4.99 a month. Decide
-  before the products are created: changing after is a price change. No tester in any round
-  would pay today's price in week one, which is expected: Plus sells interpretation of a
-  record that takes weeks to exist. Don't tune the paywall before the trial data exists.
+- **Price.** Set in App Store Connect on 2026-11-16: $34.99 a year, $79.99 lifetime, $4.99 a
+  month (P1 is closed). $34.99 sits at the 2026 median across apps ($34.80) and under Health
+  & Fitness ($39.94); at the 15% Small Business rate it is about $29.74 in hand. No tester in
+  any round would pay in week one, which is expected: Plus sells interpretation of a record
+  that takes weeks to exist. Don't tune the paywall before the trial data exists.
 - **The model's bet is the share loop**, and the rounds can't test it. In round 23 every
   first-week tester shared the Warm-up card, not the category card, so step 181 makes the
   Warm-up card lead until the rating unlocks. Whether shares bring installs is read from
@@ -58,48 +59,20 @@ From GROWTH §2 and the November competitor research (not re-researched today):
 
 ## What was changed for the release candidate (step 181, D63)
 
-Judgement calls made under the owner's go, each recorded in `UI_ROADMAP.md` D63 to overturn:
-
-- Share opens on the Warm-up card until the rating unlocks; "Got a friend's card?" explains
-  a friend's Warm-up card as well.
-- Today says when the rating unlocks only when that's three weeks off or nearer.
-- The chart's "Overconfident" and "Underconfident" words wait for a range with 10 answers.
-- "N categories not shown (still counted)" on cards and recaps.
-- A correction says the rating and badges now follow the answer; a badge gained or lost is
-  spoken to VoiceOver.
-- Log says when the same words are already open for that day.
-- Dates, times and counts are written in English on a phone set to another language.
-- From the policy audit: Sign in with Apple asks for the email only; Apple's newer relay
-  addresses are recognised; the Coach is told the app's current name; the App Privacy sheet,
-  the support page and four listing claims were brought in line with the code.
-
-Kept as they are, on purpose: the perfect-calibration line beside the rating, the Brier
-line, the badge bars, the 20-answer gates. The evidence against each was one or two testers;
-real users decide.
+Round 23's fixes and the agent's last calls before TestFlight, built 2026-11-14: `docs/design/BUILT_LOG.md`
+row 181, with each call in `docs/design/UI_ROADMAP.md` D63 to overturn. Kept on purpose: the
+perfect-calibration line, the Brier line, the badge bars and the 20-answer gates; real users decide.
 
 ## Open decisions for the owner
 
-Each is coded around: the app works either way.
+Each is coded around: the app works either way. **Answered:** 1, 3, 4, 6, 7, 10 and 11 (owner,
+2026-11-15: "Yes for all answers"; 7 and 10 were the agent's calls the same day, on "iterate
+through them yourself, using best app developer judgement"). **Still open:** 2 (a legal call),
+5, 8, 9, 12 (waits on the mail sender from 6) and 13 (due before the public release).
 
-**Answered 2026-11-15** (owner: "Yes for all answers"): 1, the native batch, in this build
-(built as step 180, roadmap D64); 3, guest usage counts (the owner applies migration 007, then
-the agent turns `GUEST_ANALYTICS` on); 4, the recommended prices ($34.99 a year, $79.99
-lifetime, $4.99 a month); 6, a custom mail sender; 11, `expo-auth-session` uninstalled. The
-Paid Applications Agreement is submitted and GitHub Pages is on (owner, the same day).
-**The agent's calls, later that day** (owner: "iterate through them yourself, using best
-app developer judgement"): 7, "habit" dropped from the keywords and "goal" kept, as
-recommended (step 183); 10, moves between categories counted on this phone (step 184).
-Still open: 2 (a legal call, the owner's), 5, 8, 9, 12 (waits on the mail sender) and 13.
-
-1. **The native batch (step 180): yes or no.** Installing packages needs your go (the
-   machine's permission rule held it back):
-   `npx expo install expo-local-authentication@~55.0.18 expo-localization@~55.0.19`.
-   It adds an optional Face ID lock, the top privacy finding of rounds 22 and 23 ("Hide the
-   words" is a curtain: one tap opens a card). It needs `NSFaceIDUsageDescription`, the
-   passcode as fallback (guideline 2.5.13), a cover for the app-switcher snapshot, one
-   sentence in the privacy policy, and a new development build.
-   **Recommendation:** yes, in the same build that goes to TestFlight, so there is one build.
-   If you'd rather ship sooner, it can follow in 1.0.1; nothing depends on it.
+1. **The native batch (step 180).** Answered yes; built 2026-11-15 as step 180 (roadmap D64):
+   an optional lock with Face ID and the passcode, and `expo-localization` for units by Region.
+   It is in TestFlight build 2.
 2. **Under-13.** The app asks Apple's age-range sheet once and does nothing with the
    answer. The policy audit's suggestion: when the range is under 13, keep the app
    local-only (no sign-in, no uploads, no Coach). That gives the question a purpose and
@@ -107,24 +80,19 @@ Still open: 2 (a legal call, the owner's), 5, 8, 9, 12 (waits on the mail sender
    Texas, Utah and Louisiana app-store laws in force since mid-2026).
    **Recommendation:** adopt the local-only rule before a US launch; ask counsel about the
    state-law duties. Not built: it changes who can make an account.
-3. **Guest usage counts.** The privacy policy says a guest's anonymous funnel counts are
-   sent; the build sends nothing for guests (`GUEST_ANALYTICS` is off until Supabase
-   migration 007 is applied). One of them has to change before the policy is published.
-   **Recommendation:** apply 007 and turn the flag on. The day-0 gates in GROWTH §7 are
-   blind without it.
-   **Done 2026-11-16 (step 186):** the owner applied 007 and 008; `GUEST_ANALYTICS` and
-   `TITLE_EDIT_SYNC` are on, so the build matches the policy.
-4. **Prices (P1).** Recommended $34.99 a year, $79.99 lifetime, $4.99 a month.
+3. **Guest usage counts.** Answered yes; built 2026-11-16 as step 186, after the owner applied
+   Supabase migrations 007 and 008. A guest's eight funnel events go up with no id, as the
+   privacy policy says, so the day-0 gates in GROWTH §7 can be read.
+4. **Prices (P1).** Answered: $34.99 a year, $79.99 lifetime, $4.99 a month, set in App Store
+   Connect on 2026-11-16.
 5. **EU.** Declare trader status (an individual's address and phone are published), or
    launch outside the EU first. Recommended: outside the EU first.
-6. **Email sign-up.** Supabase's built-in sender reaches team members only. Set up a custom
-   sender, or turn email confirmation off, before strangers sign up.
-7. **The keyword "habit".** The policy audit reads it as a 2.3.7 risk (the app isn't a
-   habit tracker); the competitor research says habit-app users are who arrives. Low risk
-   either way. Recommended: keep "goal", drop "habit".
-
-Added 2026-11-15 (step 182 and its audits):
-
+6. **Email sign-up.** Answered 2026-11-15: a custom mail sender. Not set up yet. Supabase's
+   built-in sender reaches team members only, so until then a stranger who signs up by email
+   gets no confirmation mail. Set it up, or turn email confirmation off, before strangers sign
+   up (`docs/ACCOUNT_SPEC.md` §1).
+7. **The keyword "habit".** Answered (the agent's call, as recommended): "habit" dropped and
+   "goal" kept (step 183).
 8. **A helpline directory outside the US.** The Coach's support message now shows US
    helplines on a US phone and, for anywhere else, "search for a crisis line in your
    country, or call your local emergency number". Naming findahelpline.com would be more
@@ -136,18 +104,10 @@ Added 2026-11-15 (step 182 and its audits):
    consent"; the policy audit reads the notice as enough for App Review and can't settle it
    for the Irish storefront. **Recommendation:** keep the notice for TestFlight; add a
    switch on that screen before an EU launch.
-10. **Moving an answer to another category isn't counted.** Inside its 24-hour window it
-    takes a scored miss out of one category's score. The app now says so after a move; it
-    doesn't count moves on Insights, as it counts deletions. Nothing records a move today, so
-    TestFlight can't show whether anyone does it. Moved out one by one, a category's misses
-    leave its score (not the overall rating), which could carry a badge it hasn't earned.
-    **Recommendation:** count moves on this phone, as deletions are, before the card is
-    shared outside TestFlight; the line is enough for the beta.
-    **Built 2026-11-15 (step 184, roadmap D65), the agent's call:** Insights counts a scored
-    answer left in a different category from the one it was answered in, on this phone only;
-    one moved back isn't counted; the details say so before a move.
-11. **Uninstall `expo-auth-session`.** Unused since the Google sign-in code went. A package
-    change, so it needs your yes: `npm uninstall expo-auth-session`, then the check.
+10. **Moving an answer to another category.** Built 2026-11-15 as step 184 (roadmap D65), the
+    agent's call: Insights counts a scored answer left in a different category from the one
+    it was answered in, on this phone only; one moved back isn't counted.
+11. **Uninstall `expo-auth-session`.** Answered yes; uninstalled with step 180.
 12. **A password reset.** There is none: someone who signs up by email and forgets the
     password keeps their phone's data but can't sign in again. It needs the mail sender
     and a redirect configured in Supabase first (decision 6). **Recommendation:** build it
@@ -178,46 +138,112 @@ Added 2026-11-15 (the second review of step 182 and its policy check):
 
 ## What stands between here and the store
 
-In order. "Agent" steps need only your word; the rest are yours.
+**Done** (by 2026-11-16): steps 1–187 on `master` and pushed; GitHub Pages on (the privacy and
+support pages load); the Paid Applications Agreement active; the three products and their
+prices in App Store Connect; RevenueCat's App Store app with the products on `plus` and in
+`default`, and its `appl_` key; the three EAS `production` variables; the Apple provider on in
+Supabase; migrations 006 to 008 applied; the account-deletion secrets set (one misspelled);
+TestFlight 1.0.0 (build 2) on the owner's iPhone.
 
-**Now**
-1. Agent: commit step 181 (done on this branch) and merge the step 178 to 181 stack into
-   `master`. You: `git push`.
-2. You: turn GitHub Pages on (Settings → Pages → Deploy from a branch → `master` → `/docs`).
-   The privacy policy and support URLs are both 404 today, which is a certain rejection.
-3. You: accept the Paid Applications Agreement and add bank and tax details in App Store
-   Connect. Approval takes a day or more, and StoreKit returns no products until it's active.
-4. You: answer decisions 1 to 6 above.
+**Open, in order** (details and owners in "Open work" below):
 
-**Then, about an hour at a desk** (`docs/HUMAN_VERIFICATION.md` Batches B0 to B2)
-5. Create the in-app-purchase key (`.p8`), the three products (annual with the one-month
-   trial, monthly, lifetime), the subscription group and a sandbox tester.
-6. RevenueCat: add the App Store app, attach the products to `plus`, set the `default`
-   offering, copy the `appl_` key.
-7. Set the three EAS `production` variables (Supabase URL and anon key, the `appl_` key).
-   Only the `development` environment has them today, so a production build would have no
-   sync, no sign-in and no Plus.
-8. Supabase: confirm the Apple provider is on; set the account-deletion secrets; deploy
-   `coach`; apply migrations 007 and 008 if decided.
+1. Rename the misspelled secret; deploy `coach` and `delete-account`; move the free trial from
+   monthly to annual.
+2. Session 1 on build 2 (items 1–18 of the on-phone checklist in `docs/HUMAN_VERIFICATION.md`); the agent turns
+   failures into fixes.
+3. Build 3 (`npx eas build --profile production --platform ios`, then
+   `npx eas submit --profile production --platform ios`): step 187 and the Session 1 fixes.
+4. Sessions 2 (items 19–24) and 3 (items 25–28, on build 3). The full lists are Batches C and D
+   in `docs/HUMAN_VERIFICATION.md`.
+5. TestFlight with 20 to 50 people you can ask, for two weeks (`docs/TESTFLIGHT_PLAN.md`).
+   Watch: do they finish the Warm-up, log one of their own, answer on day 1, share unprompted,
+   come back in week two.
+6. Fill in App Store Connect: listing (`docs/APP_STORE_LISTING.md`), the 2026 age-rating
+   questions (§1 there), App Privacy labels (`docs/APP_PRIVACY.md`), screenshots from the
+   device, review notes with a seeded demo account that already has Plus. Before this:
+   decision 13 settled.
+7. Submit. English-language storefronts, no paid installs. Read the gates at six weeks or
+   1,000 downloads (GROWTH §7).
 
-**Then the build**
-9. Agent, if decision 1 is yes: build step 180 (about half a day), with its reviews.
-10. You: `npx eas build --profile production --platform ios`, then `eas submit` to
-    TestFlight.
-11. You, on the TestFlight build: the core run-through (Batch C, about 30 minutes), sign-in,
-    notifications, a sandbox purchase and restore (Batch D), large text and VoiceOver, then
-    the lists added for steps 157 to 181. Send results; the agent turns failures into fixes.
+## Open work
 
-**Then people**
-12. TestFlight with 20 to 50 people you can ask, for two weeks. Watch: do they finish the
-    Warm-up, log one of their own, answer on day 1, share unprompted, come back in week two.
-13. Fill in App Store Connect: listing (`docs/APP_STORE_LISTING.md`), the 2026 age-rating
-    questions (the policy audit's draft is in HANDOFF), App Privacy labels
-    (`docs/APP_PRIVACY.md`), screenshots from the device, review notes with a seeded demo
-    account that already has Plus. Before this: decision 13 (helplines on a phone set to a
-    US territory) settled.
-14. Submit. English-language storefronts, no paid installs. Read the gates at six weeks or
-    1,000 downloads (GROWTH §7).
+Everything still to do, in one place. It replaces NEXT_STEPS (retired 2026-11-16);
+what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step checks are in
+`docs/HUMAN_VERIFICATION.md`. "Agent" work waits on the owner's word where noted.
+
+**Before build 3 (owner)**
+
+- **Rename the Supabase secret** `REVENUTCAT_DELETE_KEY` to `REVENUECAT_DELETE_KEY`. Until
+  then account deletion skips the RevenueCat customer delete (logged, not an error).
+- **Deploy the two functions:** `npx supabase functions deploy coach` and
+  `npx supabase functions deploy delete-account`. The live `coach` predates the repo's prompt
+  (the Fairly Sure name, the 20-answer minimums); neither redeploy is confirmed yet.
+- **Move the free trial** from `calibrate_plus_monthly` to `calibrate_plus_annual` (App Store
+  Connect, the introductory offer). The trial is one free month on annual only (decided
+  2026-09-25); build 2's paywall showed it on monthly.
+- **Session 1** on build 2 (items 1–18) and its results; the agent turns failures into fixes
+  (`/device-check`, then a step per batch).
+
+**The builds and the beta**
+
+- **Build 3**, then Sessions 2 and 3 (owner). An agent runs `eas build` only after the owner
+  confirms the exact command, and never `eas submit`.
+- **Before outside testers:** the beta app description and beta review information in App
+  Store Connect (owner; the text is in `docs/TESTFLIGHT_PLAN.md`, "Ready-to-use text").
+- **A sandbox tester and the In-App Purchase key:** confirm a sandbox tester exists and the
+  `.p8` In-App Purchase key is on RevenueCat's App Store app (owner). A sandbox purchase
+  (Batch D2) proves both.
+
+**Before submission (owner)**
+
+- **Decision 13** settled.
+- **App Store Connect:** the listing, the age-rating answers, the App Privacy answers,
+  screenshots from the device (the agent prepares the list, `docs/APP_STORE_LISTING.md` §5)
+  and the review notes (§4 there).
+- **A demo account for App Review:** create the user in Supabase, run
+  `node scripts/seed-demo-sql.mjs <user-uuid>` and paste the SQL into the SQL editor, then
+  grant it Plus in RevenueCat (a promotional entitlement). Dates are relative to the run, so
+  re-seed shortly before review. The credentials go in App Store Connect, never in the repo.
+- **Keep `REVENUECAT_IGNORE_SANDBOX` unset** through App Review: reviewers buy in sandbox, and
+  ignoring sandbox purchases would hand them a Coach that answers 403.
+
+**Waiting on the owner's decision or setup, then the agent**
+
+- **The custom mail sender** in Supabase (decision 6, needs a domain); then the agent builds
+  the password reset (decision 12). Until then email sign-up reaches only Supabase team
+  members' addresses.
+- **The under-13 local-only rule** (decision 2, a legal call); the agent builds it on a yes.
+- **Decisions 5, 8 and 9** (the EU, a helpline directory, a consent switch at sign-in).
+- **`APP_STORE_PROVIDER_TOKEN`:** once App Store Connect shows analytics, the owner creates one
+  campaign link and copies its `pt=` number (`docs/HUMAN_VERIFICATION.md` B2); the agent sets
+  the constant. Until then text shares link to the App Store with no campaign token, so
+  installs from shares aren't counted (the share gate, GROWTH §7).
+- **The name:** counsel's clearance and filing (classes 9 and 42) and the `fairlysure.app`
+  domain (`docs/APP_STORE_LISTING.md` §0). Blocks nothing in the build.
+- **The Coach in the App Privacy label:** confirm its answers still match OpenAI's current
+  API data retention before submitting (left for the owner by the step 181 policy audit;
+  `docs/APP_PRIVACY.md`).
+
+**Agent, on the owner's call**
+
+- **Code review** of step 180's round-2 fixes, steps 183–187 (`6222465..2636ff2`) and the
+  cleanup branch: `record-auditor` for step 184 and step 180's reminder change,
+  `code-reviewer` for the rest.
+- **Known and left:** a "Change answer" inside 600 ms of an answer can speak the first
+  answer's badge line under VoiceOver; the version in You has no build number (TestFlight's
+  feedback carries it; reading it would take `expo-application`, a native package); in Erase,
+  a reload that throws skips the clear (the retry does it); `answerKeyUnits.ts` reads the
+  region its own way; `LogPredictionForm › clamps confidence steppers at 0 and 100` failed
+  once under full-suite load.
+
+**Later**
+
+- **The Expo SDK upgrade, 55 to 58**, as its own iteration after the first release is stable
+  ("Not before launch" below), following `docs.expo.dev/router/migrate/sdk-57-to-58/`. It has
+  breaking changes in `expo-router`, `expo-sqlite` and `expo-file-system`, all used here, and
+  unblocks stable native tabs (UI_ROADMAP D3, D5), `expo-app-intents` (FUTURE_UI A10) and the
+  platform features in FUTURE_UI §D. Upgrading before the device checks pass would leave a
+  device bug's cause unclear.
 
 ## Not before launch, and why
 
@@ -230,3 +256,11 @@ In order. "Agent" steps need only your word; the rest are yours.
   today. Apple will require the iOS 27 SDK from April 2027, so the upgrade is due in the
   first quarter of 2027, after the first release is stable.
 - **A 24th playtest round.** Only after TestFlight, and only on what real users trip on.
+
+## Sources (kept from NEXT_STEPS)
+
+- Expo: [Expo Go and the App Store, May 2026](https://expo.dev/changelog/expo-go-and-app-store-may-2026) · [SDK 58 beta](https://expo.dev/changelog/sdk-58-beta)
+- Texas SB 2420 (decision 2): [Ashurst Perkins Coie on the Supreme Court denial](https://www.ashurstperkinscoie.com/en/insights/supreme-court-green-lights-the-texas-age-verification-law-for-app-stores/) · [Future of Privacy Forum, enacted acts compared](https://fpf.org/blog/comparing-enacted-app-store-accountability-acts/) · [Apple, update for apps distributed in Texas](https://developer.apple.com/news/?id=sg176nne)
+- Supabase (decisions 6 and 12): [Custom SMTP / default email limits](https://supabase.com/docs/guides/auth/auth-smtp) · [Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits)
+- supabase/auth issue [#1308, Revoke Sign in with Apple tokens](https://github.com/supabase/auth/issues/1308)
+- RevenueCat: [Account deletion rules on the App Store](https://www.revenuecat.com/blog/engineering/app-store-account-deletion) · [API v2](https://www.revenuecat.com/docs/api-v2)

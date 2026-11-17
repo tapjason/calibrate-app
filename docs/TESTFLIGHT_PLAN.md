@@ -1,6 +1,7 @@
 # Fairly Sure — TestFlight plan
 
-**As of:** 2026-11-15 · `master` holds everything through step 182 (pushed). This plan follows
+**As of:** 2026-11-16 · `master` holds steps 1–187 (pushed); TestFlight 1.0.0 (build 2, steps
+through 186) is on the owner's iPhone, and stage 1 has begun. This plan follows
 `docs/SHIP_READINESS.md`, which says why the next evidence has to come from real people.
 The step-by-step store setup stays in `docs/HUMAN_VERIFICATION.md` (Batches B0 to B2 and E);
 this file says what TestFlight is for, who tests, in what order, what gets measured and what
@@ -13,8 +14,10 @@ doesn't document something, it says so.
 
 Three questions the 23 AI rounds couldn't:
 
-1. **Does it work on real iPhones?** Nothing since step 157 has run on one. Sheets, the
-   keyboard, VoiceOver, large text, notifications, Sign in with Apple, purchases.
+1. **Does it work on real iPhones?** The owner's phone has run development builds since
+   2026-11-07 and the TestFlight build since 2026-11-16, but the lists haven't been worked
+   through yet: sheets, the keyboard, VoiceOver, large text, notifications, Sign in with
+   Apple, purchases.
 2. **Do real newcomers get to the first reward and come back?** The Warm-up finished, a
    prediction of their own logged, an answer on day 1, a return in week two. The AI rounds
    said people with a record keep it and first-week people are split; that is the claim to
@@ -46,42 +49,22 @@ A build can be tested for **90 days**. There are no over-the-air updates in this
 every fix is a new build: about 30 minutes to build, then Apple's processing. Batch fixes:
 at most one build every two or three days in stage 2, one a week in stage 3.
 
-## Before the first build (your desk, about half a day spread over a few days)
+## Before the first build (your desk)
 
-In this order, because the first two have waits:
+**Done by 2026-11-16:** the Paid Applications Agreement (active); GitHub Pages (the privacy
+and support pages load); the decisions that changed the build or the products (the lock,
+prices, guest counts, a custom mail sender: `SHIP_READINESS.md` decisions 1, 3, 4 and 6); the
+three products and their prices; RevenueCat's App Store app on `plus`
+and `default` with its `appl_` key (RevenueCat treats TestFlight purchases as sandbox: turn on
+"View Sandbox Data" to see them); the three EAS `production` variables (the commands are in
+`HUMAN_VERIFICATION.md`, "Build day runbook" step 3); the Apple provider in Supabase;
+migrations 007 and 008; the account-deletion secrets.
 
-1. **Paid Applications Agreement, bank and tax** (App Store Connect → Business). StoreKit
-   returns no products until it's active, sandbox included, and approval takes a day or more.
-2. **GitHub Pages on** (Settings → Pages → Deploy from a branch → `master` → `/docs`).
-   `/privacy/` and `/support/` are both 404 today (checked 2026-11-15, after the push). The
-   app links to both; the build shouldn't go to anyone until they load.
-3. **Decide**, since each changes the build or the products:
-   - the Face ID lock (`SHIP_READINESS.md`, decision 1): in this build, or in 1.0.1;
-   - prices (decision 4): the products are created with them;
-   - guest usage counts (decision 3): see "How it's measured" below. This plan assumes yes;
-   - email sign-up (decision 6): testers who pick email need the confirmation mail to arrive.
-4. **Products** (Batch B2): the `.p8` key, the subscription group "Fairly Sure Plus", the
-   annual product with the one-month free trial, the monthly, the lifetime, and a sandbox
-   tester for yourself.
-5. **RevenueCat** (Batch B1): add the App Store app with the `.p8`, attach the three
-   products to `plus`, set the `default` offering, copy the `appl_` key. RevenueCat needs no
-   extra setup for TestFlight: it treats TestFlight purchases as sandbox. Turn on "View
-   Sandbox Data" in its dashboard to see them.
-6. **EAS production variables.** Only `development` has them, and its RevenueCat key is a Test Store key
-   (`test_…`). RevenueCat's SDK ends the app at launch, on purpose, when a Test Store
-   key reaches a release build, TestFlight included. Since step 182 the app ignores
-   such a key in a release build, so the worst case is a paywall that says "Plus isn't
-   available on this build yet" (the same line a missing key gives). If you see that
-   line in the TestFlight build, the production key is missing or is the test one.
-   Run each with your own values:
-   ```
-   npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value <…>
-   npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <…>
-   npx eas env:create --environment production --visibility plaintext --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value <the appl_ key>
-   ```
-7. **Supabase:** the Apple provider still on; `supabase functions deploy coach`; the
-   account-deletion secrets; migration 007 if guest counts are a yes (then tell the agent
-   to turn `GUEST_ANALYTICS` on before the build); confirm the project isn't paused.
+**Still open before build 3:** rename the misspelled secret `REVENUTCAT_DELETE_KEY` to
+`REVENUECAT_DELETE_KEY`; `npx supabase functions deploy coach` and
+`npx supabase functions deploy delete-account`; move the free trial from
+`calibrate_plus_monthly` to `calibrate_plus_annual`; a sandbox tester for yourself if there
+isn't one; check the Supabase project isn't paused.
 
 Not needed for TestFlight: screenshots, the listing text, the age-rating form, App Privacy
 answers. Apple documents only the beta description and beta review information as required
@@ -101,8 +84,9 @@ The export-compliance answer is already in `app.json`. When Apple's email says t
 finished processing, check it for warnings: a missing privacy-manifest reason or an icon
 complaint would show there.
 
-An agent runs neither command. If the Face ID lock is a yes, the agent builds step 180
-first (about half a day with its reviews), then you run the build.
+An agent runs `eas build` only after you confirm the exact command, and never `eas submit`.
+Build 2 went up on 2026-11-16 with steps through 186; build 3 carries step 187 (the launch
+page) and the fixes from your first session.
 
 ## Stage 1: you alone (2 to 3 days)
 
@@ -124,7 +108,11 @@ Start from a fresh install.
   day, up to six times in a week, then stops.
 - Large text at the biggest size on Today, Log, Resolve and the paywall; VoiceOver through
   the Warm-up, a log and an answer.
-- The four "(step 181)" checks and the step 178 and 179 lists in Batch C.
+- The lists for steps 178 to 187 in Batch C.
+
+Under way since 2026-11-16 as three sessions of the owner's on-phone checklist: Session 1,
+items 1–18 on build 2; Session 2, items 19–24; Session 3, items 25–28 on build 3. The items
+are listed in `docs/HUMAN_VERIFICATION.md`, "Stage 1 on-phone checklist".
 
 Send the results as pass or fail per item with screenshots of failures. The agent turns
 failures into one batch of fixes and you build again. Stage 1 ends when the core list
@@ -166,11 +154,12 @@ Day by day:
 
 Three sources, none of which needs a new SDK:
 
-1. **The app's own counts.** With migration 007 applied and `GUEST_ANALYTICS` on, the app
-   sends anonymous funnel counts for people without an account (Warm-up started and
-   finished, a prediction logged, answered, shared, practice done), with no identifier of
-   any kind. The two queries at the end of `HUMAN_VERIFICATION.md` read them. Without 007,
-   only signed-in testers are counted and most testers won't sign in.
+1. **The app's own counts.** Since step 186 (migration 007 applied) the app sends anonymous
+   funnel counts for people without an account (Warm-up started and finished, a prediction
+   logged, answered, shared, practice done), with no identifier of any kind. The two queries
+   at the end of `HUMAN_VERIFICATION.md` read the signed-in counts, and the note under them
+   says how to add the guests'. Most testers won't sign in, so the guest counts are most of
+   the data.
 2. **TestFlight itself:** per tester, whether they installed, sessions and crashes; and
    feedback with screenshots (a tester takes a screenshot and chooses "Share Beta
    Feedback"). Crash reports can be downloaded for 120 days. Public-link testers show as
@@ -252,13 +241,11 @@ and another week.
 
 ## What the agent does, and when
 
-- **Now, no decision needed (done on `builder/testflight-prep`):** a "Help and support" link
-  and the app's version in You, so a bug report can say which version; and step 182, the
-  hardening pass (BUILT_LOG row 182): the Test Store key guard, the sign-in screen saying
-  what signing in sends, support resources by region, and `check.sh --release` failing
-  while the privacy or support page is dead.
-- **On your word:** the Face ID lock (step 180); turning `GUEST_ANALYTICS` on once 007 is
-  applied; the under-13 local-only rule if you adopt it.
+- **Done before the first build:** a "Help and support" link and the app's version in You,
+  so a bug report can say which version; step 182, the hardening pass (BUILT_LOG row 182);
+  step 180, the app lock; step 186, guest counts on; step 187, the launch page.
+- **On your word:** the under-13 local-only rule if you adopt it; the password reset once the
+  custom mail sender works.
 - **After each stage:** your device results, TestFlight feedback and survey answers turned
   into a ranked fix list (`/device-check`, then a step per batch), each with its reviews.
 - **During stage 3:** the App Store listing pass: the age-rating answers and App Privacy
@@ -272,8 +259,8 @@ Counting from the day the Paid Applications Agreement is submitted:
 
 | Days | What |
 |---|---|
-| 0 to 2 | Agreement in review; Pages on; decisions; products, RevenueCat, EAS variables |
-| 2 to 3 | Step 180 if yes; the first production build; stage 1 begins |
+| 0 to 2 | Agreement in review; Pages on; decisions; products, RevenueCat, EAS variables (**done**, 2026-11-15 to 11-16) |
+| 2 to 3 | Step 180; the first production build; stage 1 begins (**done**: build 2 installed 2026-11-16) |
 | 3 to 6 | Stage 1; one fix build; submit that build for TestFlight App Review |
 | 6 to 13 | Stage 2, with two or three first-use sessions watched |
 | 13 to 27 | Stage 3; the listing prepared in parallel |

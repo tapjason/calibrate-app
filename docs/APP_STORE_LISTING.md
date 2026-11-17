@@ -1,102 +1,38 @@
-# Fairly Sure — App Store Listing (draft)
+# Fairly Sure — App Store Listing
 
-**As of:** 2026-10-08 (daily practice and "no betting" added to the description; age rating re-done for Apple's 2026 questionnaire on 2026-10-04) · Drafted from `CLAUDE.md` and the shipped code. Every
-feature claimed below exists in `master`; ✨ Refine is cut and appears nowhere.
+**As of:** 2026-11-16 · The source for the App Store Connect record's fields, drafted from
+`CLAUDE.md` and the shipped code (the 2026 age-rating answers and review notes from the policy
+audits of 2026-11-14 and 2026-11-15). Every feature claimed below exists in `master`; ✨ Refine
+is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
 ---
 
-## 0. The name: Fairly Sure (working choice)
+## 0. The name: Fairly Sure
 
-**Chosen 2026-11-03, for now: Fairly Sure**, store name `Fairly Sure: Calibration Log`.
-Not final until a lawyer's clearance and the App Store Connect record (next
-steps below). The app says "Fairly Sure" since step 147; older docs still say
-"Calibrate".
+**Chosen 2026-11-03: Fairly Sure**, store name `Fairly Sure: Calibration Log`. The App Store
+Connect record exists (Apple ID `6831917395`, 2026-11-07). The app says "Fairly Sure" since
+step 147; the repo, the internal ids and older docs still say "Calibrate". Why not Calibrate:
+five apps already use "Calibrate:", four in Health & Fitness, and Calibrate Health holds a
+registered CALIBRATE mark (Reg. 7432181, classes 9 and 42, software and apps). A direct
+competitor also exists: Hedge: Calibrated Trivia (a calibration game, 5 ratings, 2026). The
+shortlist and the other apps checked are in git history.
 
-### Trademark screen (2026-11-03): clear to proceed, two risks to put to counsel
+**Trademark screen (2026-11-03): clear to proceed, two risks for counsel.** A knockout screen,
+not a legal opinion (the USPTO's search index, common-law and store searches). No mark, app,
+company or product found for FAIRLY SURE or its close variants.
 
-A knockout screen, not a legal opinion. US register through the USPTO's own
-search index (the API behind tmsearch.uspto.gov, checked against CALIBRATE, which
-returned its 102 records), plus common-law and store searches.
+- **FAIRLY** (Fairly AI Inc., Reg. 8320299, 8320298 and FAIRLY AI 8340321, classes 9 and 42,
+  software for AI governance and compliance) sits wholly inside FAIRLY SURE in the same
+  classes, so an examiner could cite it; meaning, impression, goods and buyers all differ.
+  **Risk: low to moderate.**
+- **The phrase** is suggestive, so it should register, but a "failure to function" refusal for
+  an everyday expression (TMEP §1202.04) is the risk to raise. **Risk: low to moderate.**
+- **Not checked:** other countries (Canada, the EU, the UK), state registers, social handles.
 
-- **No conflicting mark.** Nothing live or dead for FAIRLY SURE, FAIRLYSURE, FAIR
-  SURE, FAIRSURE, FAIRLY CERTAIN, FAIRLY CONFIDENT or QUITE SURE. PRETTY SURE (4)
-  and SURE ENOUGH (22, mostly SHO NUFF) are furniture, clothing, food and drink.
-- **The nearest mark: FAIRLY** (Fairly AI Inc., Canada; Reg. 8320299, 8320298 and
-  FAIRLY AI 8340321, registered 2026, classes 9 and 42) for software for the
-  governance, risk and compliance monitoring of AI applications. It sits wholly
-  inside FAIRLY SURE and in the same classes, so an examiner could cite it. Against
-  that: different meaning (fairness, against "moderately"), different commercial
-  impression as a phrase, and different goods and buyers (enterprise AI compliance,
-  against a consumer journal). Also live: FAIRLY (Fairly Inc., class 42, vacation
-  rentals) and FAIRLY EVEN (pricing software). **Risk: low to moderate.**
-- **SURE is a crowded word:** 119 live marks contain it in classes 9 and 42, so it
-  carries little weight on its own. None covers prediction tracking. SURELY
-  (SureVoter LLC, filed, AI knowledge-graph software) and the two "Surely" decision
-  apps are a different word.
-- **The phrase itself.** FAIRLY SURE is suggestive for the goods (it names a degree
-  of confidence, not the app), so it should register on the Principal Register. The
-  risk to raise with counsel is a "failure to function" refusal for an everyday
-  expression (TMEP §1202.04), weaker here because the phrase isn't a slogan anyone in
-  the trade uses. **Risk: low to moderate.**
-- **No common-law use found:** no app on the App Store or Google Play, and no
-  company, podcast or product by the name.
-- **Domains:** `fairlysure.app`, `.co`, `.io`, `.net` and `.org` unregistered.
-  `fairlysure.com` (registered 2022, GoDaddy) is parked at Afternic, a resale
-  marketplace, so it is most likely for sale.
-
-**Not checked:** other countries (Canada, where Fairly AI is based, the EU and the
-UK matter if the app ships there), state registers, social handles.
-
-**Next:** a clearance opinion and filing by counsel in classes 9 and 42 (an
-intent-to-use application can be filed before launch), claim `fairlysure.app`,
-ask Afternic for the `.com` price, then the App Store Connect record.
-
-**Re-researched 2026-11-03. Recommendation: rename.** Not legal advice; a
-trademark search by counsel is the real check.
-
-### The other Calibrate apps (US App Store, 2026-11-03)
-
-| App | Ratings | Since | Read |
-|---|---|---|---|
-| Calibrate – Metabolic Health (Calibrate Health, Inc.) | 5,378, 4.8★ | 2020 | Established and steady, not surging. Moved to selling through employers (about 90% of its business, Feb 2026); expects its first profitable year. Updated 2026-10-26. |
-| Calibrate: Recovery & Fitness | 1 | Jan 2026 | Negligible. |
-| Calibrate: Time Block Planner | 0 | Jan 2026 | Negligible. |
-| Calibrate: ADHD Med Tracker | 0 | May 2026 | Negligible. |
-| Calibrate: Calorie Tracker | 0 | Sep 2026 | Negligible. |
-
-None of them is trending; the point is the crowd and the mark. Five apps now
-use "Calibrate:", four of them in Health & Fitness, and **Calibrate Health
-holds a registered CALIBRATE mark (Reg. 7432181, 2024) listed in classes 9 and
-42, software and apps**, by third-party trademark sites (verify in USPTO TSDR).
-A "Calibrate: Prediction Journal" store name would sit inside that mark's
-classes, beside its owner's health brand, while this app ships a *health*
-category. A direct competitor also exists: **Hedge: Calibrated Trivia** (a
-calibration game, 5 ratings, 2026).
-
-### Words to avoid
-
-- **Odds, wager, bet, "prediction"** in the name: the App Store's "prediction"
-  results are now prediction markets (Polymarket-style), and gambling words
-  invite a closer review. "Prediction" is fine in the subtitle.
-- **Names about being right** ("Called It", "Mostly Right"): the app rewards
-  calibration, not correctness (CLAUDE.md principles).
-- **Taken in the same space:** "Surely" (Surely – Smarter Decisions, Surely
-  Predictions), "Reckon" (Reckon: Decision Journal), "Hunch" (a dating app,
-  7.5k ratings), "Credence" and "Likely" (crowded), "Surecast" (registered
-  SURECAST mark, classes 38 and 41).
-
-### Shortlist (each clear on the US App Store by name, `.app` domain unregistered, 2026-11-03)
-
-| Name | Store name [30] | Why | Against |
-|---|---|---|---|
-| **Fairly Sure** (first choice) | `Fairly Sure: Calibration Log` (28) | Speaks the product's own language: the share line is "How sure are you?" and a 70% call *is* fairly sure. Humble, which is the point of calibration. Reads as identity ("I'm fairly sure"). No app, brand or mark found. | A common phrase: harder to own in web search. Two words. `fairlysure.com` is registered (nothing identifiable on it). |
-| **Hunchmark** | `Hunchmark: Calibration Journal` (30) | Coined, so ownable: no app, brand, mark or web result at all. "Mark your hunches", with a nod to benchmark. | Says less about confidence; "hunch" is gut, not measurement. `hunchmark.com` registered, not serving. |
-| **Sure Enough** | `Sure Enough: Prediction Log` (27) | Warm, and it names the resolution moment. No app, brand or mark found. | Leans toward being right ("sure enough, it happened"). `sureenough.com` registered. |
-
-Also clear but weaker: Hunchwise, Truehunch. Checked and dropped: Brier,
-Oddsmith, Calibrated, Inkling, Priors, Plumbline, Lodestar, Sharpen, Ninety,
-Second Guess, Gut Check, Percently, Callmark, Sureline, Gutmark.
+**Still open (counsel and the owner):** a clearance opinion and filing in classes 9 and 42
+(an intent-to-use application can be filed before launch), and the `fairlysure.app` domain
+(unregistered on 2026-11-03; `fairlysure.com` is parked for resale at Afternic).
 
 **Done for the chosen name (2026-11-03):** the US trademark screen (above), the
 in-app rename (step 147), the policy, and this listing. **Permanent ids, decided
@@ -119,7 +55,7 @@ the Expo slug `calibrate` (the EAS project is linked to it), and the repo name
 ## 1. Store fields
 
 **Support URL** (required): https://tapjason.github.io/calibrate-app/support/
-(`docs/SUPPORT.md`; loads once Pages is on, like the policy).
+(`docs/SUPPORT.md`, live on GitHub Pages).
 **Copyright:** 2026 Jason Zou.
 
 **Subtitle** [30]
@@ -246,11 +182,10 @@ leaves that judgement to the developer), so getting it right first time matters.
 
 **The last two lines are required, not decoration.** Apple's subscription rules
 (Guideline 3.1.2) require a functional privacy policy link and terms of use
-(Apple's standard EULA is fine) in the metadata. The paywall and Settings link
+(Apple's standard EULA is fine) in the metadata. The paywall and You link
 to both. That privacy URL is `docs/PRIVACY_POLICY.md` on GitHub Pages
-(`permalink: /privacy/`). It has to load before submission: Pages on, source
-`master` / `/docs`. Until then the in-app link 404s.
-`docs/HUMAN_VERIFICATION.md` has the switch and the check.
+(`permalink: /privacy/`, source `master` / `/docs`), live since 2026-11-15;
+`check.sh --release` checks that it loads.
 
 ---
 
@@ -316,7 +251,7 @@ Plus in RevenueCat (a promotional entitlement), and tell the reviewer to look at
 the purchase flow signed out.
 
 **Why the demo account matters:** a reviewer on a fresh install has no resolved
-predictions. The Coach then shows "keep logging", and the Stats screen shows
+predictions. The Coach then shows "keep logging", and Insights shows
 only progress. Both are correct, and both look like broken features to someone
 with ten minutes. Seed a demo account with `node scripts/seed-demo-sql.mjs <user-uuid>` (153 resolved
 predictions; paste the output into the Supabase SQL editor, and re-run it shortly
@@ -365,9 +300,10 @@ screen has drawn. **Drafts redone 2026-11-03** under the Fairly Sure name and D3
 pre-D33 set): a 1320 × 2868 window with the page zoomed 3×, so it lays out at
 440 × 956, from a fresh install with the Warm-up done and the demo data loaded.
 Screen 7 (Coach with insights) needs a signed-in Plus account, so it waits for a
-device build; screen 5 already shows the Plus card's sample. Screen 6 shows two
-open copy calls as they stand (the yearly lean names one side; "Boldest call
-that landed: 95%").
+device build; screen 5 already shows the Plus card's sample. Screen 6's draft
+predates D42 and D60 (the year card now names both sides when there are both, and
+its calls read "Surest call that happened" and "Surest call that didn't happen"):
+retake it.
 
 **Marketing visuals: the stageshow skill (parked 2026-11-01, use before
 release).** `.claude/skills/stageshow/` is a vendored Claude Code skill

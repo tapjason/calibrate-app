@@ -28,7 +28,6 @@ exclude:
   - APP_STORE_LISTING.md
   - CALIBRATION.md
   - HUMAN_VERIFICATION.md
-  - NEXT_STEPS.md
 include:
   - index.md
   - PRIVACY_POLICY.md
