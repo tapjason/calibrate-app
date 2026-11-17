@@ -128,10 +128,13 @@ describe('SettingsView', () => {
     });
   });
 
-  // Guideline 5.1.2(i): the toggle that sends data to an AI names who gets it.
-  it('names OpenAI on the Coach toggle', () => {
+  // Guideline 5.1.2(i): the toggle that sends data to an AI discloses that a
+  // third-party AI service gets it, before anything is sent.
+  it('names a third-party AI service on the Coach toggle', () => {
     render(<SettingsView />);
-    expect(screen.getByText(/to OpenAI/)).toBeTruthy();
+    const description = screen.getByText(/to a third-party AI service/);
+    expect(description).toBeTruthy();
+    expect(description.props.children).not.toMatch(/OpenAI/);
   });
 
   // Blind playtest 2026-11-01: a free user switched Coach on and nothing
@@ -160,7 +163,8 @@ describe('SettingsView', () => {
     const row = screen.getByTestId('toggle-coach-row');
     expect(row.props.accessibilityRole).toBe('switch');
     expect(row.props.accessibilityLabel).toBe('Coach (AI)');
-    expect(row.props.accessibilityHint).toMatch(/OpenAI/);
+    expect(row.props.accessibilityHint).toMatch(/third-party AI service/);
+    expect(row.props.accessibilityHint).not.toMatch(/OpenAI/);
     expect(screen.queryByTestId('toggle-coach')).toBeNull(); // the inner Switch is hidden
   });
 

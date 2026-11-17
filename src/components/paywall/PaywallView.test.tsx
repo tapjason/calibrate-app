@@ -93,8 +93,57 @@ describe('PaywallView', () => {
     seed();
     render(<PaywallView />);
     expect(screen.getByTestId('plan-annual')).toBeTruthy();
-    expect(screen.getByText('1 month free, then $29.99\u00A0a\u00A0year')).toBeTruthy();
+    expect(screen.getByText('$29.99\u00A0a\u00A0year after 1 month free')).toBeTruthy();
     expect(screen.getByText('$4.99\u00A0a\u00A0month')).toBeTruthy();
+  });
+
+  // Owner, TestFlight 2026-11-17: "The trial is not super clear from the
+  // three options." DESIGN_SYSTEM \u00A77.6's "1 month free" badge, not "Best value".
+  it('badges the plan with a trial, in place of its tagline', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.getByTestId('plan-annual-trial-badge')).toHaveTextContent('1 month free');
+    expect(screen.queryByText('Best value')).toBeNull();
+    // The others keep their taglines and get no badge.
+    expect(screen.getByText('Month to month')).toBeTruthy();
+    expect(screen.getByText('Pay once, keep it')).toBeTruthy();
+    expect(screen.queryByTestId('plan-monthly-trial-badge')).toBeNull();
+    expect(screen.queryByTestId('plan-lifetime-trial-badge')).toBeNull();
+  });
+
+  it('keeps "Best value" on annual when the store offers no trial', () => {
+    seed({ plans: PLANS.map((p) => ({ ...p, trialDays: null, trialPeriod: null })) });
+    render(<PaywallView />);
+    expect(screen.getByText('Best value')).toBeTruthy();
+    expect(screen.queryByTestId('plan-annual-trial-badge')).toBeNull();
+    expect(screen.getByText('$29.99\u00A0a\u00A0year')).toBeTruthy();
+  });
+
+  it('says Monthly has no free trial while annual has one, and never on Lifetime', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.getByTestId('plan-monthly-no-trial')).toHaveTextContent('No free trial');
+    expect(screen.queryByTestId('plan-lifetime-no-trial')).toBeNull();
+    expect(screen.queryByTestId('plan-annual-no-trial')).toBeNull();
+    expect(screen.getAllByText('No free trial')).toHaveLength(1);
+  });
+
+  it('says nothing about a trial when no plan on offer has one', () => {
+    seed({ plans: PLANS.map((p) => ({ ...p, trialDays: null, trialPeriod: null })) });
+    render(<PaywallView />);
+    expect(screen.queryByText('No free trial')).toBeNull();
+  });
+
+  it('reads the badge and the price on the annual card to VoiceOver', () => {
+    seed();
+    render(<PaywallView />);
+    const label: string = screen.getByTestId('plan-annual').props.accessibilityLabel;
+    expect(label).toContain('1 month free');
+    expect(label).toContain('$29.99\u00A0a\u00A0year after 1 month free');
+    expect(label).not.toContain('Best value');
+    expect(screen.getByTestId('plan-monthly').props.accessibilityLabel).toBe(
+      'Monthly, $4.99\u00A0a\u00A0month. No free trial. Month to month',
+    );
   });
 
   // Roadmap step 50: the monthly figure sits under annual's price, smaller,
@@ -110,7 +159,7 @@ describe('PaywallView', () => {
       'Works out to $2.50 a month.',
     );
     expect(screen.getByTestId('plan-annual').props.accessibilityLabel).toBe(
-      'Annual, 1 month free, then $29.99\u00A0a\u00A0year. Works out to $2.50 a month. Best value',
+      'Annual, 1 month free. $29.99\u00A0a\u00A0year after 1 month free. Works out to $2.50 a month.',
     );
     expect(screen.queryByTestId('plan-monthly-equivalent')).toBeNull();
   });
@@ -174,6 +223,21 @@ describe('PaywallView', () => {
     expect(screen.getByTestId('paywall-timeline')).toBeTruthy();
     fireEvent.press(screen.getByTestId('plan-monthly'));
     expect(screen.queryByTestId('paywall-timeline')).toBeNull();
+  });
+
+  // The timeline box said nothing about what it was (owner, TestFlight 2026-11-17).
+  it('heads the timeline, and only while a trial plan is selected', () => {
+    seed();
+    render(<PaywallView />);
+    expect(screen.getByTestId('paywall-timeline-heading')).toHaveTextContent(
+      'How the free trial works',
+    );
+    fireEvent.press(screen.getByTestId('plan-monthly'));
+    expect(screen.queryByText('How the free trial works')).toBeNull();
+    fireEvent.press(screen.getByTestId('plan-lifetime'));
+    expect(screen.queryByText('How the free trial works')).toBeNull();
+    fireEvent.press(screen.getByTestId('plan-annual'));
+    expect(screen.getByText('How the free trial works')).toBeTruthy();
   });
 
   it('puts the plans in annual, monthly, lifetime order whatever the store sends', () => {

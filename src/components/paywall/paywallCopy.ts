@@ -12,8 +12,14 @@ export const PLAN_LABELS: Record<PlanId, string> = {
 };
 
 /**
- * The one-line pitch per plan. Annual carries the anchor
+ * The one-line pitch per plan, beside its name. Annual carries the anchor
  * (GROWTH_AND_MONETIZATION.md §4) and is the only plan we recommend.
+ *
+ * A plan with a free trial shows the trial badge there instead ("1 month
+ * free", `planBadge`): with "Best value" beside Annual, the free month sat
+ * mid-sentence in its price line and the three cards didn't say which one
+ * had it (owner, TestFlight 2026-11-17). Annual's tagline shows only when
+ * the store offers this person no trial.
  */
 export const PLAN_TAGLINES: Record<PlanId, string> = {
   annual: 'Best value',
@@ -101,16 +107,68 @@ function pricePerPeriod(plan: PlusPlan): string {
   return `${plan.priceString} ${PERIOD[plan.plan]}`.replace(/ /g, '\u00A0');
 }
 
-/** Trial line for a plan, or null when it has no free trial. */
-export function trialLine(plan: PlusPlan): string | null {
-  const label = trialLabel(plan);
-  if (!label) return null;
-  return `${label} free, then ${pricePerPeriod(plan)}`;
+/**
+ * The price row for a plan: the price and its period, then the trial when
+ * there is one ("$34.99 a year after 1 month free"). The billed price leads
+ * so it stays the most prominent price on the card (App Review 3.1.2); the
+ * trial itself is the badge beside the plan's name (`planBadge`). It read
+ * "1 month free, then $34.99 a year" until 2026-11-17, which buried the free
+ * month mid-sentence.
+ */
+export function priceLine(plan: PlusPlan): string {
+  const trial = trialLabel(plan);
+  if (!trial) return pricePerPeriod(plan);
+  return `${pricePerPeriod(plan)} after ${trial} free`;
 }
 
-/** The price row for a plan: trial if there is one, otherwise the price and its period. */
-export function priceLine(plan: PlusPlan): string {
-  return trialLine(plan) ?? pricePerPeriod(plan);
+export interface PlanBadge {
+  text: string;
+  /** True for a trial badge, drawn as a filled pill; false for the plain tagline. */
+  trial: boolean;
+}
+
+/**
+ * What sits beside a plan's name: "1 month free" when the store offers this
+ * person a trial on it (DESIGN_SYSTEM §7.6's badge), otherwise the plan's
+ * plain tagline. The length is the store's, in its own unit.
+ */
+export function planBadge(plan: PlusPlan): PlanBadge {
+  const trial = trialLabel(plan);
+  if (trial) return { text: `${trial} free`, trial: true };
+  return { text: PLAN_TAGLINES[plan.plan], trial: false };
+}
+
+const NO_TRIAL_LINE = 'No free trial';
+
+/**
+ * "No free trial" under a renewing plan without one, but only when another
+ * plan on offer has a trial: beside "1 month free" on Annual, Monthly's
+ * silence read as if it might have one too. Lifetime never says it (it
+ * doesn't renew, so a trial isn't a question there), and with no trial on
+ * offer nobody does.
+ */
+export function noTrialLine(plan: PlusPlan, plans: readonly PlusPlan[]): string | null {
+  if (plan.plan === 'lifetime' || trialLabel(plan) !== null) return null;
+  return plans.some((p) => trialLabel(p) !== null) ? NO_TRIAL_LINE : null;
+}
+
+/**
+ * What VoiceOver reads for a plan card, in the order the card shows it: the
+ * name, the trial badge, the price, the monthly figure and "No free trial";
+ * a plain tagline comes last, as it's the least of it.
+ */
+export function planAccessibilityLabel(plan: PlusPlan, plans: readonly PlusPlan[]): string {
+  const badge = planBadge(plan);
+  const noTrial = noTrialLine(plan, plans);
+  return [
+    badge.trial ? `${PLAN_LABELS[plan.plan]}, ${badge.text}.` : `${PLAN_LABELS[plan.plan]},`,
+    `${priceLine(plan)}.`,
+    monthlyEquivalentLine(plan),
+    noTrial ? `${noTrial}.` : null,
+    badge.trial ? null : badge.text,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**

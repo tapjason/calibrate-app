@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { APP_NAME, PLUS_NAME } from '@/constants/app';
@@ -14,12 +14,34 @@ const MANAGE_SUBSCRIPTIONS_URL =
     : 'https://apps.apple.com/account/subscriptions';
 
 /**
+ * Asks once more before anything is deleted. A system alert on the phone; on
+ * web, where react-native-web's Alert.alert does nothing, the browser's own
+ * confirm, so the web build the playtests use can still get through.
+ */
+function askToConfirm(
+  title: string,
+  message: string,
+  destructiveLabel: string,
+  onYes: () => void,
+) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) onYes();
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: destructiveLabel, style: 'destructive', onPress: onYes },
+  ]);
+}
+
+/**
  * Delete the account (signed in) or erase this device (guest) —
  * docs/ACCOUNT_SPEC.md §3.2 and §3.5, App Store Guideline 5.1.1(v).
  *
- * One deliberate tap after a plain explanation. No typed confirmation: Apple
- * rejects deletion flows that are "unnecessarily difficult", and the
- * explanation is what makes the tap deliberate.
+ * A plain explanation, the danger button, then a system alert to confirm
+ * (owner, 2026-11-17); only the alert's destructive button starts deletion.
+ * Still no typed confirmation: Apple rejects deletion flows that are
+ * "unnecessarily difficult" (Guideline 5.1.1(v)).
  */
 export function DeleteAccountView({
   onDone,
@@ -72,6 +94,27 @@ export function DeleteAccountView({
     const outcome = wasSignedIn ? await deleteAccount() : await eraseDeviceData();
     if (outcome.ok) setFinished(true);
     else setError(outcome.error);
+  };
+
+  const confirmFirst = () => {
+    if (wasSignedIn) {
+      const store = Platform.OS === 'android' ? 'Google Play' : 'Apple';
+      askToConfirm(
+        'Delete your account for good?',
+        'Your account, predictions and record go from our servers and this phone. ' +
+          "This can't be undone." +
+          (renewing ? ` ${PLUS_NAME} keeps billing until you cancel it with ${store}.` : ''),
+        'Delete account',
+        () => void onConfirm(),
+      );
+    } else {
+      askToConfirm(
+        'Erase everything on this phone?',
+        "There's no other copy. This can't be undone.",
+        'Erase',
+        () => void onConfirm(),
+      );
+    }
   };
 
   return (
@@ -142,7 +185,7 @@ export function DeleteAccountView({
         }
         variant="danger"
         disabled={pending}
-        onPress={() => void onConfirm()}
+        onPress={confirmFirst}
         testID="delete-confirm-button"
       />
       <Button

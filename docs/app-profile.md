@@ -166,8 +166,9 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   copy stays as decided (the identity line's middle dot is one such exception).
 - **No user-to-user content.** Titles and reflections are the person's own text, on their phone
   and their account only. Cards leave through the OS share sheet.
-- **The Coach** (Plus, sign-in, opt-in that names OpenAI before the first send, Guideline
-  5.1.2(i)): `COACH_AGENT.md` is authoritative. No diagnosis, no personality inference, no
+- **The Coach** (Plus, sign-in, opt-in that discloses a third-party AI service before the
+  first send, Guideline 5.1.2(i); the privacy policy names OpenAI): `COACH_AGENT.md` is
+  authoritative. No diagnosis, no personality inference, no
   medical, financial or legal advice, no numeric diet or exercise targets. Freetext isn't sent by
   default.
 - **Crisis-adjacent text:** `src/ai/crisisFilter.ts` catches distress signals before any coaching

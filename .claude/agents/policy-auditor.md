@@ -28,7 +28,7 @@ Apple rules that always hold for this app:
 4. **4.5.4 Notifications:** local only, not required for the app to work, no marketing, asked in context; the trial reminder (D16) carries no offer.
 5. **4.8 Sign in with Apple:** offered whenever any third-party or social login is; email sign-in alone doesn't trigger it. Check what `src/supabase/auth.ts` and the sign-in screen actually offer.
 6. **5.1.1 Data collection:** only what the feature needs; every permission has a purpose string (`app.json`: photo library for category pictures; camera and microphone off); the privacy policy URL is live and in the app; **(v)** account deletion is in the app, discoverable and completes (`app/account/delete.tsx`).
-7. **5.1.2 Data use:** no tracking, no ATT prompt needed; **(i)** the third-party AI (OpenAI, through the `coach` function) is named and consented to before the first send.
+7. **5.1.2 Data use:** no tracking, no ATT prompt needed; **(i)** the third-party AI (OpenAI, through the `coach` function) is disclosed in the app as "a third-party AI service" (the owner's call, 2026-11-17; the privacy policy names OpenAI) and consented to before the first send.
 8. **Age assurance:** Declared Age Range asks once, fails open, stores only the band (`src/age/ageRange.ts`); the questionnaire answer matches the build.
 9. **Privacy manifests:** required-reason APIs used by the app and its SDKs are declared (`docs/APP_PRIVACY.md` §6).
 

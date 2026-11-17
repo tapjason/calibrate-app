@@ -26,6 +26,12 @@ export type SignUpOutcome =
   | { ok: true; needsConfirmation: boolean }
   | { ok: false; error: string };
 
+/**
+ * The shortest password sign-up accepts. Exported so the sign-in screen's
+ * hint says the same number the check below enforces.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
+
 const OFFLINE = "Couldn't reach the server. Check your connection and try again.";
 const PROVIDER_OFF =
   "This way of signing in isn't available right now. Sign in with your email instead.";
@@ -122,8 +128,11 @@ export async function signUpWithEmail(
 ): Promise<SignUpOutcome> {
   const trimmed = email.trim();
   if (!trimmed) return { ok: false, error: 'Email is required.' };
-  if (password.length < 8) {
-    return { ok: false, error: 'Password must be at least 8 characters.' };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return {
+      ok: false,
+      error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+    };
   }
 
   try {

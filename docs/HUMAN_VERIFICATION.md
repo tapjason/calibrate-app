@@ -265,7 +265,8 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
 26. With the lock on: the same dark page with "Locked…" and a light Unlock button,
     readable in light and dark appearance.
 27. The paywall's title and × sit below the clock.
-28. Anything fixed from session 1.
+28. Anything fixed from session 1. Also: You → Delete account → Delete my account now asks
+    again in an alert; Cancel keeps the account (2026-11-17).
 
 ### How to report
 
@@ -313,10 +314,11 @@ Tick each:
       a guest are still there. Sign out: the lists go empty. Sign back in:
       they return.
 - [ ] **Erase as a guest.** Signed out: You → "Erase your data on this
-      phone" → Erase everything. Today is empty afterwards, and the next
+      phone" → Erase everything → the alert's Erase (from build 3). Today is empty afterwards, and the next
       cold launch opens the Warmup. (Verified on the web build 2026-09-25.)
 - [ ] **Delete as a signed-in user** (`delete-account` is live as of 2026-10-02):
-      You → Delete account → Delete my account. It reads "Your account
+      You → Delete account → Delete my account → the alert's Delete account (from build
+      3; Cancel there keeps the account). It reads "Your account
       has been deleted", the app is an empty guest, and signing in with the
       same email fails. Force-quit and relaunch: the Warmup opens, as on a
       fresh install, and Share has no Warmup card (2026-11-09: deletion now
@@ -349,7 +351,9 @@ Tick each:
       Annual is **preselected** (filled radio), there is **one** purchase button
       whose label follows the selected plan, and a Today / In 1 month timeline
       shows only while a plan with a trial is selected.
-- [ ] **Annual reads "1 month free, then $34.99"** — one *month*, not "30
+- [ ] **Annual reads "$34.99 a year after 1 month free"** (from build 3; build 2 read "1
+      month free, then $34.99 a year"), with a "1 month free" pill beside its name and
+      "No free trial" under Monthly — one *month*, not "30
       days". If it says days, the store reported an unstructured period and
       the fallback fired; check the offer's configured unit.
 - [ ] **The trial terms line is present** under the plans: the trial turns
@@ -1237,9 +1241,11 @@ in [`APP_PRIVACY.md`](./APP_PRIVACY.md); export compliance was declared at the f
       it by deleting a throwaway account from You → Delete account (one signed in with Apple,
       for the revoke leg), then confirming its `auth.users` row is gone and the function's
       logs show no skipped leg. See `supabase/README.md` § delete-account.
-- [ ] **The Coach names OpenAI before it is switched on** (Guideline 5.1.2(i)): You → Coach
-      (AI) says "…go through our server to OpenAI, which writes it", and the Coach panel says
-      so above Get feedback until the first answer. Confirm both on the device build.
+- [ ] **The Coach discloses its third-party AI before it is switched on** (Guideline
+      5.1.2(i)): You → Coach (AI) says "…go through our server to a third-party AI service,
+      which writes it", and the Coach panel says so above Get feedback until the first
+      answer. Neither names OpenAI (owner, 2026-11-17; from build 3). Confirm both on the
+      device build.
 - [ ] Screenshots (the identity card and the calibration curve are the two that sell it).
       Drafts exist; finals come from the device (`APP_STORE_LISTING.md` §5).
 - [ ] **Age-rating questionnaire** in App Store Connect: the updated question

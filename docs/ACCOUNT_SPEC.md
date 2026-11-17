@@ -120,8 +120,11 @@ From [Offering account deletion in your app](https://developer.apple.com/support
    `Purchases.showManageSubscriptions()` (RevenueCat's wrapper for Apple's
    sheet), with `https://apps.apple.com/account/subscriptions` as a text
    fallback. Lifetime purchases need no warning.
-3. **Confirm.** A single destructive button, **Delete my account**. Don't ask
-   the user to type a word; one deliberate tap after step 1 is the standard.
+3. **Confirm.** A destructive button, **Delete my account**, then a system alert,
+   "Delete your account for good?", with **Cancel** and **Delete account** (owner,
+   2026-11-17). A renewing subscription adds that it keeps billing until cancelled.
+   The guest's Erase asks the same way ("Erase everything on this phone?", **Erase**).
+   Don't ask the user to type a word: a tap and a confirmation is the standard.
 4. **If the account signed in with Apple** (`user.app_metadata.provider ===
    'apple'`), call `AppleAuthentication.signInAsync()` again to get a fresh
    `authorizationCode`, which is valid for 10 minutes. If the user cancels the

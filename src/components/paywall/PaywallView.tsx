@@ -16,13 +16,15 @@ import { useSettingsStore } from '@/store/settingsStore';
 import {
   FREE_FOREVER_NOTE,
   PLAN_LABELS,
-  PLAN_TAGLINES,
   PLUS_FEATURES,
   ctaLabel,
   defaultPlan,
   noPlansText,
+  noTrialLine,
   noticeText,
   monthlyEquivalentLine,
+  planAccessibilityLabel,
+  planBadge,
   priceLine,
   sortPlans,
   termsLine,
@@ -140,6 +142,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
             <PlanOption
               key={plan.packageId}
               plan={plan}
+              offer={ordered}
               selected={selected?.packageId === plan.packageId}
               disabled={busy}
               onPress={() => setSelectedId(plan.packageId)}
@@ -150,6 +153,13 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
 
       {timeline && (
         <View style={styles.timeline} testID="paywall-timeline">
+          <Text
+            accessibilityRole="header"
+            style={styles.timelineHeading}
+            testID="paywall-timeline-heading"
+          >
+            How the free trial works
+          </Text>
           {timeline.map((step) => (
             <View key={step.when} style={styles.timelineRow}>
               <View style={styles.timelineDot} />
@@ -260,28 +270,27 @@ function LegalLinks() {
  */
 function PlanOption({
   plan,
+  offer,
   selected,
   disabled,
   onPress,
 }: {
   plan: PlusPlan;
+  /** Every plan on offer: "No free trial" shows only when one of them has a trial. */
+  offer: readonly PlusPlan[];
   selected: boolean;
   disabled: boolean;
   onPress: () => void;
 }) {
   const equivalent = monthlyEquivalentLine(plan);
+  const badge = planBadge(plan);
+  const noTrial = noTrialLine(plan, offer);
   return (
     <Pressable
       testID={`plan-${plan.plan}`}
       accessibilityRole="radio"
       {...chosenProps('radio', selected, disabled)}
-      accessibilityLabel={[
-        `${PLAN_LABELS[plan.plan]}, ${priceLine(plan)}.`,
-        equivalent,
-        PLAN_TAGLINES[plan.plan],
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      accessibilityLabel={planAccessibilityLabel(plan, offer)}
       disabled={disabled}
       onPress={onPress}
       style={[
@@ -297,7 +306,15 @@ function PlanOption({
       <View style={styles.planText}>
         <View style={styles.planHeader}>
           <Text style={styles.planLabel}>{PLAN_LABELS[plan.plan]}</Text>
-          <Text style={styles.planTagline}>{PLAN_TAGLINES[plan.plan]}</Text>
+          {/* The free trial as a label beside the name (DESIGN_SYSTEM §7.6),
+              not a clause in the price line (owner, TestFlight 2026-11-17). */}
+          {badge.trial ? (
+            <View style={styles.trialBadge} testID={`plan-${plan.plan}-trial-badge`}>
+              <Text style={styles.trialBadgeText}>{badge.text}</Text>
+            </View>
+          ) : (
+            <Text style={styles.planTagline}>{badge.text}</Text>
+          )}
         </View>
         <Text style={styles.planPrice}>{priceLine(plan)}</Text>
         {/* Smaller than the billed price, never instead of it (App Review
@@ -305,6 +322,11 @@ function PlanOption({
         {equivalent && (
           <Text style={styles.planEquivalent} testID={`plan-${plan.plan}-equivalent`}>
             {equivalent}
+          </Text>
+        )}
+        {noTrial && (
+          <Text style={styles.planEquivalent} testID={`plan-${plan.plan}-no-trial`}>
+            {noTrial}
           </Text>
         )}
       </View>
@@ -354,9 +376,25 @@ const styles = StyleSheet.create({
     width: 10,
   },
   planText: { flex: 1, gap: 2 },
-  planHeader: { alignItems: 'baseline', flexDirection: 'row', gap: space.sm },
+  // Wraps so the badge drops under the name at a narrow width or a large
+  // Dynamic Type size, rather than running off the card.
+  planHeader: {
+    alignItems: 'baseline',
+    columnGap: space.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: space.xs,
+  },
   planLabel: { ...type.headline, color: colors.textPrimary },
   planTagline: { ...type.footnote, color: colors.textSecondary },
+  trialBadge: {
+    backgroundColor: colors.action,
+    borderRadius: radius.pill,
+    flexShrink: 1,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xxs,
+  },
+  trialBadgeText: { ...type.footnote, color: colors.onAction, fontWeight: '600' },
   planPrice: { ...type.subhead, color: colors.textPrimary },
   planEquivalent: { ...type.footnote, color: colors.textSecondary },
   timeline: {
@@ -365,6 +403,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.lg,
   },
+  timelineHeading: { ...type.subhead, color: colors.textPrimary, fontWeight: '600' },
   timelineRow: { flexDirection: 'row', gap: space.md },
   timelineDot: {
     backgroundColor: colors.action,

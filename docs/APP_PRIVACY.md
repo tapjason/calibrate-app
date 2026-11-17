@@ -201,11 +201,12 @@ leg waits on one misspelled secret's rename (`docs/HUMAN_VERIFICATION.md` Batch 
 Apple now requires apps to "clearly disclose where personal data will be shared
 with third parties, including with third-party AI, and obtain explicit
 permission before doing so". The Coach toggle is the explicit permission (off
-by default, an affirmative switch, nothing sent before it). Since 2026-10-04
-the disclosure names the provider in both places a user meets it: the
-switch in You ("…go through our server to OpenAI, which writes it") and the
-Coach panel above *Get feedback* until the first answer. Both match the
-policy's §3.
+by default, an affirmative switch, nothing sent before it). The disclosure
+says a third-party AI writes the feedback in both places a user meets it: the
+switch in You ("…go through our server to a third-party AI service, which
+writes it") and the Coach panel above *Get feedback* until the first answer.
+The app's words don't name the company (owner, 2026-11-17; they did from
+2026-10-04); the privacy policy's §3 names OpenAI.
 
 ---
 

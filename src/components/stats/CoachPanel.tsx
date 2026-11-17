@@ -167,7 +167,7 @@ export function CoachPanel({
             // (Guideline 5.1.2(i); APP_PRIVACY.md).
             <Text style={styles.caveat} testID="coach-disclosure">
               Get feedback sends your calibration numbers, never your predictions,
-              to OpenAI to write it.
+              to a third-party AI service to write it.
             </Text>
           )}
         </>

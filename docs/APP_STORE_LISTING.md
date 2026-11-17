@@ -220,7 +220,8 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 >
 > The Coach sends only computed statistics (counts and percentages), never the
 > user's text, to OpenAI through our server, and only after the user turns it
-> on in You → Coach (AI), where OpenAI is named. It needs an account because
+> on in You → Coach (AI), which says a third-party AI service writes the feedback
+> (the privacy policy names OpenAI). It needs an account because
 > our server checks the subscription per account; Sign in with Apple asks for
 > the email only.
 >

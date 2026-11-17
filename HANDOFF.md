@@ -1,7 +1,8 @@
 # Handoff
 
-**Branch:** `builder/cleanup-stale`, from `master` at `2636ff2` (2026-11-16). This file is the
-current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–187
+**Branch:** `builder/delete-confirm` (step 188, 2026-11-17), stacked on `builder/cleanup-stale`,
+which is from `master` at `2636ff2` (2026-11-16). Merge the cleanup first. This file is the
+current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
 cover the last stretch) and in git; it isn't repeated here.
 
 ## Where things stand
@@ -33,6 +34,12 @@ cover the last stretch) and in git; it isn't repeated here.
   `delete-account` (version 11) were deployed 2026-11-15, after the last change to either
   function's code.
 
+- **Step 188 (`builder/delete-confirm`):** the owner's TestFlight requests, round 1
+  (BUILT_LOG row 188): Delete account and Erase ask again in a system alert; the Coach's
+  disclosure says "a third-party AI service" instead of OpenAI; the paywall's "1 month free"
+  pill, "No free trial" and a heading over the trial timeline; Sign in / Create account as a
+  two-part switch. JS only, for build 3. Not merged.
+
 ## On the phone
 
 - **TestFlight 1.0.0 (build 2)** is on the owner's iPhone 17 (iOS 26). It contains steps
@@ -43,15 +50,26 @@ cover the last stretch) and in git; it isn't repeated here.
   Annual and no trial on Monthly (Session 1 item 9 passes). The same screenshot shows the
   title under the clock again: build 2 predates step 187's fix, which Session 3 item 27
   checks on build 3.
+- **Session 1 (2026-11-17):** the owner reports everything working except item 13: Insights →
+  Get feedback says "Coach is unavailable right now" while signed in with Plus. No item-by-item
+  list yet, so the boxes stay unticked. Diagnosis so far (read-only, 2026-11-17): the live
+  `entitlements` and `coach_usage` tables are both empty, so every Coach call stops at the
+  server's Plus check (403); `OPENAI_API_KEY` is set and `REVENUECAT_IGNORE_SANDBOX` and
+  `COACH_ALLOW_UNENTITLED` are not. The RevenueCat webhook never wrote the purchase. Asked the
+  owner for: the webhook's URL, environment (Sandbox included?) and app scope in RevenueCat;
+  the purchase's App User ID (a Supabase uuid, or `$RCAnonymousID`) and webhook delivery; the
+  `coach` invocations' status. The fix (a setting, or the function asking RevenueCat when its
+  table has no row) and kinder words than "unavailable" for a 403 wait on that.
+- **Guest usage counts reach the live project** (step 186): `guest_analytics_events` holds 23
+  rows (`supabase inspect db table-stats`, 2026-11-17).
 - **Found:** the paywall showed the free month on Monthly and none on Annual. The
   introductory offer was attached to `calibrate_plus_monthly`; the owner moved it to
   `calibrate_plus_annual` in App Store Connect (2026-11-16; no code change, no new build).
   Session 1 items 9–10 confirm it on the phone.
 - **Not yet seen on a device:** the launch page's hand-over from the splash and the lock screen
   drawn as the launch page (step 187, needs build 3); the paywall's top below the clock (step
-  187); step 184's moved-answer lines; guest counts reaching the live project (a row in
-  `guest_analytics_events` after a fresh install's Warm-up) and a reworded prediction syncing
-  its date (step 186).
+  187); step 184's moved-answer lines; a reworded prediction syncing its date (step 186); all of
+  step 188.
 - **Earlier, on the development build:** the app lock works ("The face ID lock works now",
   2026-11-15; the passcode fallback is Session 1 item 17); Log's title row clears the Dynamic Island
   (2026-11-12). No item-by-item results for step 180's checks yet.
@@ -64,7 +82,7 @@ cover the last stretch) and in git; it isn't repeated here.
 
 Reviews are the owner's call (2026-11-15): no reviewer agents after each feature; he asks for
 them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), steps 183–187
-(`6222465..2636ff2`) and this cleanup branch. When he calls for it: `record-auditor` for step
+(`6222465..2636ff2`), the cleanup branch and step 188. When he calls for it: `record-auditor` for step
 184 and step 180's reminder change, `code-reviewer` for the rest.
 
 ## Owner to-dos, in order

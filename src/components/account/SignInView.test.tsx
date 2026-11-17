@@ -67,7 +67,7 @@ describe('SignInView', () => {
     const onDone = jest.fn();
     render(<SignInView onDone={onDone} />);
 
-    fireEvent.press(screen.getByTestId('account-switch-mode'));
+    fireEvent.press(screen.getByTestId('account-mode-signUp'));
     expect(screen.getByText('Create an account')).toBeTruthy();
     fill('a@b.co', 'hunter22');
     fireEvent.press(screen.getByTestId('account-submit'));
@@ -83,15 +83,69 @@ describe('SignInView', () => {
     const onDone = jest.fn();
     render(<SignInView onDone={onDone} />);
 
-    fireEvent.press(screen.getByTestId('account-switch-mode'));
+    fireEvent.press(screen.getByTestId('account-mode-signUp'));
     fill('a@b.co', 'hunter22');
     fireEvent.press(screen.getByTestId('account-submit'));
 
     expect(await screen.findByTestId('account-notice')).toHaveTextContent(/a@b\.co/);
     expect(onDone).not.toHaveBeenCalled();
-    // Back in sign-in mode, ready for when they return from the email.
+    // Back in sign-in mode, ready for when they return from the email: the
+    // switch says so as well as the button.
     expect(screen.getByTestId('account-submit')).toHaveTextContent('Sign in');
+    expect(screen.getByTestId('account-mode-signIn')).toBeSelected();
+    expect(screen.getByTestId('account-mode-signUp')).not.toBeSelected();
+    expect(screen.queryByTestId('account-password-hint')).toBeNull();
     expect(screen.getByTestId('account-email').props.value).toBe('a@b.co');
+
+    // Tapping Sign in, already chosen, leaves the notice where it is.
+    fireEvent.press(screen.getByTestId('account-mode-signIn'));
+    expect(screen.getByTestId('account-notice')).toHaveTextContent(/a@b\.co/);
+  });
+
+  // Owner, 2026-11-17 (TestFlight): a text link at the bottom flipped the
+  // mode and only the words changed. A two-segment switch above the email
+  // field shows which one is chosen.
+  describe('the Sign in / Create account switch', () => {
+    it('starts on Sign in, with no password hint', () => {
+      render(<SignInView onDone={jest.fn()} />);
+
+      expect(screen.getByLabelText('Account').props.accessibilityRole).toBe('radiogroup');
+      expect(screen.getByTestId('account-mode-signIn').props.accessibilityRole).toBe('radio');
+      expect(screen.getByTestId('account-mode-signIn')).toBeSelected();
+      expect(screen.getByTestId('account-mode-signUp')).not.toBeSelected();
+      expect(screen.getByTestId('account-mode-signIn')).toHaveTextContent('Sign in');
+      expect(screen.getByTestId('account-mode-signUp')).toHaveTextContent('Create account');
+      expect(screen.queryByTestId('account-password-hint')).toBeNull();
+      expect(screen.queryByTestId('account-switch-mode')).toBeNull();
+    });
+
+    it('switches to Create account and back, clearing an error', async () => {
+      signInWithEmail.mockResolvedValue({ ok: false, error: 'Invalid login credentials' });
+      render(<SignInView onDone={jest.fn()} />);
+
+      fill('a@b.co', 'wrong');
+      fireEvent.press(screen.getByTestId('account-submit'));
+      expect(await screen.findByTestId('account-error')).toHaveTextContent(
+        'Invalid login credentials',
+      );
+
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+      expect(screen.getByTestId('account-mode-signUp')).toBeSelected();
+      expect(screen.getByTestId('account-mode-signIn')).not.toBeSelected();
+      expect(screen.getByTestId('account-password-hint')).toHaveTextContent(
+        'At least 8 characters.',
+      );
+      expect(screen.getByRole('header')).toHaveTextContent('Create an account');
+      expect(screen.getByTestId('account-submit')).toHaveTextContent('Create account');
+      expect(screen.queryByTestId('account-error')).toBeNull();
+
+      fireEvent.press(screen.getByTestId('account-mode-signIn'));
+      expect(screen.getByTestId('account-mode-signIn')).toBeSelected();
+      expect(screen.getByTestId('account-mode-signUp')).not.toBeSelected();
+      expect(screen.queryByTestId('account-password-hint')).toBeNull();
+      expect(screen.getByRole('header')).toHaveTextContent('Sign in');
+      expect(screen.getByTestId('account-submit')).toHaveTextContent('Sign in');
+    });
   });
 
   it('disables submit while an action is in flight', () => {

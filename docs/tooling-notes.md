@@ -114,6 +114,10 @@ that apply here.
 - **Device-only behaviour the web build hides** (found on the phone, 2026-11-07 and 08): see
   `docs/app-profile.md` §18 "Known iOS-vs-web traps". The web never showed any of them because CSS
   won't shrink content below its size and has no native sheets or switch.
+- **Delete account and Erase ask with the browser's `confirm` on the web build** (2026-11-17;
+  the phone shows a system alert). Playwright dismisses dialogs unless told otherwise, so a
+  playtest that deletes or erases must accept it (`browser_handle_dialog` with accept), or the
+  tap looks like it did nothing.
 
 ## Jest and TypeScript
 

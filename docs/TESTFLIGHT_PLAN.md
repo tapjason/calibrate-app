@@ -103,7 +103,7 @@ Start from a fresh install.
 
 **Day 2, about an hour:**
 - The 19:00 reminder: its words (hidden by default), a tap opens the question.
-- A sandbox purchase (Batch D2): the paywall lists annual first with "1 month free, then…",
+- A sandbox purchase (Batch D2): the paywall lists annual first with its "1 month free" pill,
   buy, restore, the Coach answers once signed in. In TestFlight a subscription renews every
   day, up to six times in a week, then stops.
 - Large text at the biggest size on Today, Log, Resolve and the paywall; VoiceOver through

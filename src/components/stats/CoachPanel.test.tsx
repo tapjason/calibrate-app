@@ -112,11 +112,13 @@ describe('CoachPanel — gating', () => {
     expect(screen.getByTestId('coach-ask')).toBeTruthy();
   });
 
-  // Guideline 5.1.2(i): the third-party AI is named before the first send.
-  it('names OpenAI before the first request, and drops it once answered', () => {
+  // Guideline 5.1.2(i): the third-party AI service is disclosed before the first send.
+  it('names a third-party AI service before the first request, and drops it once answered', () => {
     seed();
     const { unmount } = render(<CoachPanel />);
-    expect(screen.getByTestId('coach-disclosure').props.children).toMatch(/OpenAI/);
+    const disclosure = screen.getByTestId('coach-disclosure').props.children;
+    expect(disclosure).toMatch(/third-party AI service/);
+    expect(disclosure).not.toMatch(/OpenAI/);
     unmount();
 
     useCoachStore.setState({ insights: [], lastAnsweredAt: '2026-08-29T12:00:00.000Z' });

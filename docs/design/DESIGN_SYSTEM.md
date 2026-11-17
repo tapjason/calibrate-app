@@ -670,9 +670,16 @@ Structure beats polish (design-only paywall tests win least often). Order: value
 preselected**, "1 month free" badge; Monthly with no trial; Lifetime as a smaller
 third row) → **honest timeline** → **one** CTA.
 
-- **Every recurring price names its period** ("1 month free, then $34.99 a year",
+- **Every recurring price names its period** ("$34.99 a year after 1 month free",
   "$4.99 a month"), in the plan row and the timeline. Lifetime stays the bare price
   under "Pay once, keep it". (Roadmap step 50.)
+- **Which plan has the trial is plain at a glance** (owner, 2026-11-17, from TestFlight:
+  "the trial is not super clear"): a plan with a trial shows a filled pill beside its name
+  ("1 month free", `action` / `onAction`) instead of its tagline, and its price row leads
+  with the billed price ("$34.99 a year after 1 month free"); while one plan has a trial,
+  a renewing plan without one says "No free trial" in `footnote` `textSecondary`
+  (Lifetime never does); the timeline box opens with "How the free trial works". Without
+  a trial on offer, Annual's tagline is "Best value" and nobody says "No free trial".
 - **Annual's monthly figure** sits under its price in `footnote` `textSecondary`:
   "Works out to $2.92 a month." It is RevenueCat's `pricePerMonthString`, never our
   division, and absent when the store gives none. App Review 3.1.2: the billed

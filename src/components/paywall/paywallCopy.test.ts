@@ -5,12 +5,14 @@ import {
   defaultPlan,
   monthlyEquivalentLine,
   noPlansText,
+  noTrialLine,
   noticeText,
+  planAccessibilityLabel,
+  planBadge,
   priceLine,
   sortPlans,
   termsLine,
   trialLabel,
-  trialLine,
   trialTermsLine,
   trialTimeline,
 } from './paywallCopy';
@@ -83,33 +85,97 @@ describe('trialTermsLine', () => {
   });
 });
 
-describe('trialLine', () => {
-  it('leads a month-long trial with the month', () => {
-    expect(trialLine(annualMonthTrial)).toBe('1 month free, then $29.99\u00A0a\u00A0year');
+// Owner, TestFlight 2026-11-17: "1 month free, then $34.99 a year" buried the
+// trial mid-sentence. The billed price leads (App Review 3.1.2), the trial
+// follows, and the badge beside the name carries it.
+describe('priceLine', () => {
+  it('leads a trial plan with the billed price, then the trial', () => {
+    expect(priceLine(annualMonthTrial)).toBe('$29.99\u00A0a\u00A0year after 1 month free');
   });
 
-  it('states the trial length and what happens after it', () => {
-    expect(trialLine(annual)).toBe('21 days free, then $29.99\u00A0a\u00A0year');
+  it('says a day-count trial in days', () => {
+    expect(priceLine(annual)).toBe('$29.99\u00A0a\u00A0year after 21 days free');
   });
 
   it('singularizes a one-day trial', () => {
-    expect(trialLine({ ...annual, trialDays: 1 })).toBe('1 day free, then $29.99\u00A0a\u00A0year');
+    expect(priceLine({ ...annual, trialDays: 1 })).toBe('$29.99\u00A0a\u00A0year after 1 day free');
   });
 
-  it('is null for a plan with no trial', () => {
-    expect(trialLine(monthly)).toBeNull();
-    expect(trialLine({ ...annual, trialDays: 0 })).toBeNull();
+  it('is the store price and its period with no trial', () => {
+    expect(priceLine(monthly)).toBe('$4.99\u00A0a\u00A0month');
+    expect(priceLine(lifetime)).toBe('$59.99');
+    expect(priceLine({ ...annual, trialDays: 0 })).toBe('$29.99\u00A0a\u00A0year');
   });
 });
 
-describe('priceLine', () => {
-  it('leads with the trial when there is one', () => {
-    expect(priceLine(annual)).toBe('21 days free, then $29.99\u00A0a\u00A0year');
+// DESIGN_SYSTEM \u00A77.6: a "1 month free" badge beside Annual's name.
+describe('planBadge', () => {
+  it('names the trial on a plan that has one', () => {
+    expect(planBadge(annualMonthTrial)).toEqual({ text: '1 month free', trial: true });
   });
 
-  it('falls back to the store price', () => {
-    expect(priceLine(monthly)).toBe('$4.99\u00A0a\u00A0month');
-    expect(priceLine(lifetime)).toBe('$59.99');
+  it("says the trial in the store's own unit", () => {
+    expect(
+      planBadge({ ...annualMonthTrial, trialPeriod: { count: 2, unit: 'WEEK' } }),
+    ).toEqual({ text: '2 weeks free', trial: true });
+  });
+
+  it('keeps the plain tagline with no trial', () => {
+    // Not eligible for the trial: the store reports none, and Annual is
+    // "Best value" again.
+    expect(planBadge({ ...annualMonthTrial, trialDays: null, trialPeriod: null })).toEqual({
+      text: 'Best value',
+      trial: false,
+    });
+    expect(planBadge(monthly)).toEqual({ text: 'Month to month', trial: false });
+    expect(planBadge(lifetime)).toEqual({ text: 'Pay once, keep it', trial: false });
+  });
+});
+
+describe('noTrialLine', () => {
+  it('says a renewing plan has no trial when another plan on offer does', () => {
+    expect(noTrialLine(monthly, [annualMonthTrial, monthly, lifetime])).toBe('No free trial');
+  });
+
+  it('never says it on Lifetime, which does not renew', () => {
+    expect(noTrialLine(lifetime, [annualMonthTrial, monthly, lifetime])).toBeNull();
+  });
+
+  it('never says it on the plan that has the trial', () => {
+    expect(noTrialLine(annualMonthTrial, [annualMonthTrial, monthly, lifetime])).toBeNull();
+  });
+
+  it('says nothing when no plan on offer has a trial', () => {
+    const noTrialAnnual = { ...annualMonthTrial, trialDays: null, trialPeriod: null };
+    expect(noTrialLine(monthly, [noTrialAnnual, monthly, lifetime])).toBeNull();
+    expect(noTrialLine(noTrialAnnual, [noTrialAnnual, monthly, lifetime])).toBeNull();
+  });
+});
+
+describe('planAccessibilityLabel', () => {
+  const offer = [annualMonthTrial, monthly, lifetime];
+
+  it('reads the name, the trial badge, the price and the monthly figure, in that order', () => {
+    expect(
+      planAccessibilityLabel({ ...annualMonthTrial, pricePerMonthString: '$2.50' }, offer),
+    ).toBe('Annual, 1 month free. $29.99\u00A0a\u00A0year after 1 month free. Works out to $2.50 a month.');
+  });
+
+  it('says "No free trial" before a plain tagline', () => {
+    expect(planAccessibilityLabel(monthly, offer)).toBe(
+      'Monthly, $4.99\u00A0a\u00A0month. No free trial. Month to month',
+    );
+    expect(planAccessibilityLabel(lifetime, offer)).toBe('Lifetime, $59.99. Pay once, keep it');
+  });
+
+  it('ends on the tagline when nothing on offer has a trial', () => {
+    const noTrialAnnual = { ...annualMonthTrial, trialDays: null, trialPeriod: null };
+    expect(planAccessibilityLabel(noTrialAnnual, [noTrialAnnual, monthly])).toBe(
+      'Annual, $29.99\u00A0a\u00A0year. Best value',
+    );
+    expect(planAccessibilityLabel(monthly, [noTrialAnnual, monthly])).toBe(
+      'Monthly, $4.99\u00A0a\u00A0month. Month to month',
+    );
   });
 });
 

@@ -274,7 +274,8 @@ export function SettingsView({
         )}
         <ToggleRow
           label="Coach (AI)"
-          // Guideline 5.1.2(i): name the third-party AI before anything is sent.
+          // Guideline 5.1.2(i): say that a third-party AI service writes the
+          // feedback before anything is sent.
           // The switch itself is the explicit permission; it starts off.
           // Without Plus the switch only records the choice, and once it was
           // on nothing happened, which read as broken (blind playtest
@@ -285,7 +286,7 @@ export function SettingsView({
               : coachEnabled
                 ? 'On for when you have Plus. Nothing is sent before then. '
                 : 'Plus only. '
-          }When you ask for feedback, your calibration numbers — never your prediction text — go through our server to OpenAI, which writes it.`}
+          }When you ask for feedback, your calibration numbers — never your prediction text — go through our server to a third-party AI service, which writes it.`}
           value={coachEnabled}
           onValueChange={(v) => void setCoachEnabled(v)}
           testID="toggle-coach"
