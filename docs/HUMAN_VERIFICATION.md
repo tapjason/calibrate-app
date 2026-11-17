@@ -155,7 +155,8 @@ silently. The trial is read from the store, not set in RevenueCat.
 Done: the three products with those ids and prices (P1 closed 2026-11-16); `APP_STORE_ID`
 (`6831917395`) in `src/constants/app.ts`. Open:
 
-- [ ] **Move the free trial to annual.** Build 2's paywall showed "1 month free" on Monthly
+- [x] **Move the free trial to annual.** Done in App Store Connect (owner, 2026-11-16);
+      Session 1 items 9–10 confirm it on the phone. Build 2's paywall showed "1 month free" on Monthly
       and none on Annual: the introductory offer is on `calibrate_plus_monthly`. Remove it
       there and set a "free trial" of **1 month** on `calibrate_plus_annual` only (decided
       2026-09-25). Annual only on purpose: a person is eligible for one introductory offer
@@ -222,7 +223,7 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
    goes and the app returns to a signed-out state. (Sign in again afterwards for the
    purchase test.)
 
-**Purchase** (after the free trial moves to Annual; purchases in TestFlight are free)
+**Purchase** (purchases in TestFlight are free)
 9. You → Fairly Sure Plus: three plans, Annual first, "1 month free, then $34.99 a year"
    on Annual and no trial on Monthly.
 10. Buy Annual: Apple's sheet shows the same trial and price. You then shows Plus as

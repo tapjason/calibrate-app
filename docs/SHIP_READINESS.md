@@ -148,21 +148,20 @@ TestFlight 1.0.0 (build 2) on the owner's iPhone.
 
 **Open, in order** (details and owners in "Open work" below):
 
-1. Move the free trial from monthly to annual.
-2. Session 1 on build 2 (items 1–18 of the on-phone checklist in `docs/HUMAN_VERIFICATION.md`); the agent turns
+1. Session 1 on build 2 (items 1–18 of the on-phone checklist in `docs/HUMAN_VERIFICATION.md`); the agent turns
    failures into fixes.
-3. Build 3 (`npx eas build --profile production --platform ios`, then
+2. Build 3 (`npx eas build --profile production --platform ios`, then
    `npx eas submit --profile production --platform ios`): step 187 and the Session 1 fixes.
-4. Sessions 2 (items 19–24) and 3 (items 25–28, on build 3). The full lists are Batches C and D
+3. Sessions 2 (items 19–24) and 3 (items 25–28, on build 3). The full lists are Batches C and D
    in `docs/HUMAN_VERIFICATION.md`.
-5. TestFlight with 20 to 50 people you can ask, for two weeks (`docs/TESTFLIGHT_PLAN.md`).
+4. TestFlight with 20 to 50 people you can ask, for two weeks (`docs/TESTFLIGHT_PLAN.md`).
    Watch: do they finish the Warm-up, log one of their own, answer on day 1, share unprompted,
    come back in week two.
-6. Fill in App Store Connect: listing (`docs/APP_STORE_LISTING.md`), the 2026 age-rating
+5. Fill in App Store Connect: listing (`docs/APP_STORE_LISTING.md`), the 2026 age-rating
    questions (§1 there), App Privacy labels (`docs/APP_PRIVACY.md`), screenshots from the
    device, review notes with a seeded demo account that already has Plus. Before this:
    decision 13 settled.
-7. Submit. English-language storefronts, no paid installs. Read the gates at six weeks or
+6. Submit. English-language storefronts, no paid installs. Read the gates at six weeks or
    1,000 downloads (GROWTH §7).
 
 ## Open work
@@ -175,9 +174,9 @@ what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step chec
 
 - Done: the secret is renamed `REVENUECAT_DELETE_KEY`, and `coach` and `delete-account` are
   deployed from the current code (confirmed 2026-11-16 with `npx supabase functions list` and `secrets list`).
-- **Move the free trial** from `calibrate_plus_monthly` to `calibrate_plus_annual` (App Store
-  Connect, the introductory offer). The trial is one free month on annual only (decided
-  2026-09-25); build 2's paywall showed it on monthly.
+- Done: the free trial (one month, annual only, decided 2026-09-25) moved from
+  `calibrate_plus_monthly` to `calibrate_plus_annual` in App Store Connect (owner,
+  2026-11-16). Session 1 items 9–10 confirm it on the phone.
 - **Session 1** on build 2 (items 1–18) and its results; the agent turns failures into fixes
   (`/device-check`, then a step per batch).
 

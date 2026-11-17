@@ -41,8 +41,9 @@ cover the last stretch) and in git; it isn't repeated here.
   (step 185); the paywall's three plans load at $34.99 a year, $4.99 a month and $79.99
   lifetime.
 - **Found:** the paywall showed the free month on Monthly and none on Annual. The
-  introductory offer is attached to `calibrate_plus_monthly`; the owner is moving it to
-  `calibrate_plus_annual` (App Store Connect only, no code change).
+  introductory offer was attached to `calibrate_plus_monthly`; the owner moved it to
+  `calibrate_plus_annual` in App Store Connect (2026-11-16; no code change, no new build).
+  Session 1 items 9–10 confirm it on the phone.
 - **Not yet seen on a device:** the launch page's hand-over from the splash and the lock screen
   drawn as the launch page (step 187, needs build 3); the paywall's top below the clock (step
   187); step 184's moved-answer lines; guest counts reaching the live project (a row in
@@ -65,14 +66,13 @@ them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), s
 
 ## Owner to-dos, in order
 
-1. Move the free trial from `calibrate_plus_monthly` to `calibrate_plus_annual`.
-2. Session 1 (items 1–18 on build 2), then send the results; the agent turns failures into
+1. Session 1 (items 1–18 on build 2), then send the results; the agent turns failures into
    fixes (`/device-check`).
-3. Build 3: `npx eas build --profile production --platform ios`, then
+2. Build 3: `npx eas build --profile production --platform ios`, then
    `npx eas submit --profile production --platform ios`.
-4. Sessions 2 and 3.
+3. Sessions 2 and 3.
 
-Done: the secret rename and both function deploys (above).
+Done: the secret rename, both function deploys and the trial move (above).
 
 **Blocked on the owner:** the password reset (needs a custom mail sender in Supabase,
 `SHIP_READINESS.md` decisions 6 and 12); the under-13 local-only rule (a legal call, decision

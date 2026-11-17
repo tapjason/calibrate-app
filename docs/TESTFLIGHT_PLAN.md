@@ -61,11 +61,10 @@ and `default` with its `appl_` key (RevenueCat treats TestFlight purchases as sa
 migrations 007 and 008; the account-deletion secrets.
 
 **Done since:** the misspelled secret renamed `REVENUECAT_DELETE_KEY`; `coach` and
-`delete-account` redeployed (confirmed 2026-11-16 with `npx supabase functions list` and `secrets list`).
+`delete-account` redeployed (confirmed 2026-11-16 with `npx supabase functions list` and `secrets list`); the free trial moved to
+`calibrate_plus_annual` (owner, 2026-11-16).
 
-**Still open before build 3:** move the free trial from
-`calibrate_plus_monthly` to `calibrate_plus_annual`; a sandbox tester for yourself if there
-isn't one; check the Supabase project isn't paused.
+**Still open before build 3:** a sandbox tester for yourself if there isn't one; check the Supabase project isn't paused.
 
 Not needed for TestFlight: screenshots, the listing text, the age-rating form, App Privacy
 answers. Apple documents only the beta description and beta review information as required

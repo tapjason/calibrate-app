@@ -249,7 +249,7 @@ the model, and an AI digest. Don't add them to the paywall until they exist.
   renders whatever trial the store reports, in the store's units. The paywall states
   that the trial converts and that cancelling takes 24 hours' notice, and the D16
   reminder arrives two days before it renews. On 2026-11-16 the offer sat on the
-  monthly product by mistake; the owner is moving it to `calibrate_plus_annual`.
+  monthly product by mistake; the owner moved it to `calibrate_plus_annual` the same day.
 - **Net revenue** depends on the link-out case (§2.3); treat $34.99 as about $29.74 in
   hand under the Small Business Program until it settles.
 
