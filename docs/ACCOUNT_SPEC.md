@@ -161,8 +161,8 @@ leaves an account the user can retry deleting):
    delete cascade`, verified in `supabase/migrations/`).
 4. Return `200 { ok: true }`.
 
-Secrets (**human steps**; set on 2026-11-16, but the RevenueCat key went in as
-`REVENUTCAT_DELETE_KEY` and must be renamed `REVENUECAT_DELETE_KEY`):
+Secrets (**human steps**; all set, the RevenueCat key renamed to `REVENUECAT_DELETE_KEY`
+2026-11-16):
 
 | Secret | Where from |
 |---|---|

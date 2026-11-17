@@ -142,13 +142,13 @@ Added 2026-11-15 (the second review of step 182 and its policy check):
 support pages load); the Paid Applications Agreement active; the three products and their
 prices in App Store Connect; RevenueCat's App Store app with the products on `plus` and in
 `default`, and its `appl_` key; the three EAS `production` variables; the Apple provider on in
-Supabase; migrations 006 to 008 applied; the account-deletion secrets set (one misspelled);
+Supabase; migrations 006 to 008 applied; the account-deletion secrets set (the misspelled one renamed); `coach` and
+`delete-account` redeployed 2026-11-15;
 TestFlight 1.0.0 (build 2) on the owner's iPhone.
 
 **Open, in order** (details and owners in "Open work" below):
 
-1. Rename the misspelled secret; deploy `coach` and `delete-account`; move the free trial from
-   monthly to annual.
+1. Move the free trial from monthly to annual.
 2. Session 1 on build 2 (items 1–18 of the on-phone checklist in `docs/HUMAN_VERIFICATION.md`); the agent turns
    failures into fixes.
 3. Build 3 (`npx eas build --profile production --platform ios`, then
@@ -173,11 +173,8 @@ what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step chec
 
 **Before build 3 (owner)**
 
-- **Rename the Supabase secret** `REVENUTCAT_DELETE_KEY` to `REVENUECAT_DELETE_KEY`. Until
-  then account deletion skips the RevenueCat customer delete (logged, not an error).
-- **Deploy the two functions:** `npx supabase functions deploy coach` and
-  `npx supabase functions deploy delete-account`. The live `coach` predates the repo's prompt
-  (the Fairly Sure name, the 20-answer minimums); neither redeploy is confirmed yet.
+- Done: the secret is renamed `REVENUECAT_DELETE_KEY`, and `coach` and `delete-account` are
+  deployed from the current code (confirmed 2026-11-16 with `npx supabase functions list` and `secrets list`).
 - **Move the free trial** from `calibrate_plus_monthly` to `calibrate_plus_annual` (App Store
   Connect, the introductory offer). The trial is one free month on annual only (decided
   2026-09-25); build 2's paywall showed it on monthly.

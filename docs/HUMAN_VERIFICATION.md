@@ -218,11 +218,11 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
 **Account**
 7. You → Sign in → Sign in with Apple. The sign-in screen says a record of which features
    are used goes with the account.
-8. After step 2 of the table: You → Delete account, on that Apple sign-in. The account
+8. You → Delete account, on that Apple sign-in. The account
    goes and the app returns to a signed-out state. (Sign in again afterwards for the
    purchase test.)
 
-**Purchase** (after step 1 of the table; purchases in TestFlight are free)
+**Purchase** (after the free trial moves to Annual; purchases in TestFlight are free)
 9. You → Fairly Sure Plus: three plans, Annual first, "1 month free, then $34.99 a year"
    on Annual and no trial on Monthly.
 10. Buy Annual: Apple's sheet shows the same trial and price. You then shows Plus as
@@ -1230,10 +1230,9 @@ in [`APP_PRIVACY.md`](./APP_PRIVACY.md); export compliance was declared at the f
       above). The under-13 rule is `SHIP_READINESS.md` decision 2.
 - [x] **`eas build` → TestFlight:** 1.0.0 (build 2) processed and installed on the owner's
       iPhone, 2026-11-16.
-- [ ] **Account deletion, the optional legs.** The function is live (deployed 2026-10-02),
-      which alone is compliant. The secrets were set on 2026-11-16, but one is misspelled:
-      rename `REVENUTCAT_DELETE_KEY` to `REVENUECAT_DELETE_KEY`, or the RevenueCat leg stays
-      skipped. Then `npx supabase functions deploy delete-account` (not yet confirmed). Test
+- [ ] **Account deletion, the optional legs.** The function is live (redeployed 2026-11-15),
+      which alone is compliant, and its secrets are set (the RevenueCat key renamed to
+      `REVENUECAT_DELETE_KEY`, confirmed 2026-11-16). Test
       it by deleting a throwaway account from You → Delete account (one signed in with Apple,
       for the revoke leg), then confirming its `auth.users` row is gone and the function's
       logs show no skipped leg. See `supabase/README.md` § delete-account.

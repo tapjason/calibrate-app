@@ -28,6 +28,11 @@ cover the last stretch) and in git; it isn't repeated here.
   build 3; nothing on the phone changes. Left on purpose: comments in Supabase migrations
   006–008 still name the removed flags (migrations are history), and the dormant Refine code.
 
+- **Server side, confirmed 2026-11-16 with `npx supabase functions list` and `secrets list`:** the secret is
+  `REVENUECAT_DELETE_KEY` (the misspelled one is gone); `coach` (version 14) and
+  `delete-account` (version 11) were deployed 2026-11-15, after the last change to either
+  function's code.
+
 ## On the phone
 
 - **TestFlight 1.0.0 (build 2)** is on the owner's iPhone 17 (iOS 26). It contains steps
@@ -60,16 +65,14 @@ them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), s
 
 ## Owner to-dos, in order
 
-1. Rename the Supabase secret `REVENUTCAT_DELETE_KEY` to `REVENUECAT_DELETE_KEY`. Until then
-   account deletion skips the RevenueCat customer delete (logged, not an error).
-2. `npx supabase functions deploy coach` and `npx supabase functions deploy delete-account`.
-   The live `coach` predates the Fairly Sure name and the 20-answer minimums.
-3. Move the free trial from `calibrate_plus_monthly` to `calibrate_plus_annual`.
-4. Session 1 (items 1–18 on build 2), then send the results; the agent turns failures into
+1. Move the free trial from `calibrate_plus_monthly` to `calibrate_plus_annual`.
+2. Session 1 (items 1–18 on build 2), then send the results; the agent turns failures into
    fixes (`/device-check`).
-5. Build 3: `npx eas build --profile production --platform ios`, then
+3. Build 3: `npx eas build --profile production --platform ios`, then
    `npx eas submit --profile production --platform ios`.
-6. Sessions 2 and 3.
+4. Sessions 2 and 3.
+
+Done: the secret rename and both function deploys (above).
 
 **Blocked on the owner:** the password reset (needs a custom mail sender in Supabase,
 `SHIP_READINESS.md` decisions 6 and 12); the under-13 local-only rule (a legal call, decision

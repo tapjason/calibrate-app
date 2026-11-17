@@ -72,13 +72,10 @@ schema is safe.
 
 ## Edge Functions
 
-**Deployed** (`npx supabase functions list`): `coach` (JWT on), `revenuecat-webhook`
-(JWT off, shared secret; last redeployed 2026-11-03) and `delete-account` (JWT on,
-deployed 2026-10-02). **The live `coach` predates the repo's prompt** (the Fairly Sure
-name, and 20 answers per category since step 157): redeploy it with
-`npx supabase functions deploy coach`. The owner's list also has
-`npx supabase functions deploy delete-account`, after its secrets were set on 2026-11-16;
-neither redeploy is confirmed yet. `refine` is deliberately not deployed. The free-tier
+**Deployed** (`npx supabase functions list`, read 2026-11-16): `coach` (JWT on, version 14,
+deployed 2026-11-15), `revenuecat-webhook` (JWT off, shared secret; last redeployed
+2026-11-03) and `delete-account` (JWT on, version 11, deployed 2026-11-15). Both 2026-11-15
+deploys postdate the last change to their code. `refine` is deliberately not deployed. The free-tier
 project pauses when idle; `projects list` shows `INACTIVE` when it has, and it is restored
 from the dashboard only.
 
@@ -210,9 +207,8 @@ npx supabase functions deploy delete-account
 That alone is a working, compliant deletion: the auth user is removed, and
 `predictions`, `coach_usage`, `entitlements` and `analytics_events` cascade
 with it. Two optional legs switch on when all of their secrets are set, and
-are skipped and logged until then. The secrets were set on 2026-11-16, but the RevenueCat
-key went in as `REVENUTCAT_DELETE_KEY`: set it again as `REVENUECAT_DELETE_KEY` and unset
-the misspelled one, or that leg stays skipped.
+are skipped and logged until then. All of them are set (2026-11-16; the RevenueCat key
+is spelled `REVENUECAT_DELETE_KEY`, and a misspelled name leaves that leg skipped).
 
 ```sh
 # Sign in with Apple token revocation. A key with "Sign in with Apple"

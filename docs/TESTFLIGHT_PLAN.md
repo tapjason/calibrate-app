@@ -60,9 +60,10 @@ and `default` with its `appl_` key (RevenueCat treats TestFlight purchases as sa
 `HUMAN_VERIFICATION.md`, "Build day runbook" step 3); the Apple provider in Supabase;
 migrations 007 and 008; the account-deletion secrets.
 
-**Still open before build 3:** rename the misspelled secret `REVENUTCAT_DELETE_KEY` to
-`REVENUECAT_DELETE_KEY`; `npx supabase functions deploy coach` and
-`npx supabase functions deploy delete-account`; move the free trial from
+**Done since:** the misspelled secret renamed `REVENUECAT_DELETE_KEY`; `coach` and
+`delete-account` redeployed (confirmed 2026-11-16 with `npx supabase functions list` and `secrets list`).
+
+**Still open before build 3:** move the free trial from
 `calibrate_plus_monthly` to `calibrate_plus_annual`; a sandbox tester for yourself if there
 isn't one; check the Supabase project isn't paused.
 
