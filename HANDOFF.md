@@ -1,22 +1,21 @@
 # Handoff
 
-**Branch:** `builder/delete-confirm` (step 188, 2026-11-17), stacked on `builder/cleanup-stale`,
-which is from `master` at `2636ff2` (2026-11-16). Merge the cleanup first. This file is the
+**Branch:** `master`, at `32a7bc2` with the cleanup and step 188 merged and pushed
+(2026-11-17, the owner's word). This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
 cover the last stretch) and in git; it isn't repeated here.
 
 ## Where things stand
 
-- **`master` = `origin/master` = `2636ff2`:** steps 1–187 built, merged and pushed. The last was
-  step 187, the launch page (BUILT_LOG row 187, roadmap D66).
-- **This branch:** the stale-code and docs cleanup the owner asked for: trim unused code,
+- **`master` = `origin/master`:** steps 1–188 and the cleanup, merged (fast-forward) and pushed
+  2026-11-17. Build 2 on the phone has steps through 186.
+- **The cleanup (`builder/cleanup-stale`):** the stale-code and docs cleanup the owner asked for: trim unused code,
   check every Markdown document against the code, and compact what is outdated or describes
   finished work at length. It removes the `CUSTOM_CATEGORY_SYNC`, `TITLE_EDIT_SYNC` and
   `GUEST_ANALYTICS` flags (all were on) with their off-branches, plus `isHeldLocally` and
   `forTheServer`; uninstalls `expo-crypto` and `expo-status-bar` (nothing imported them);
   retires NEXT_STEPS into `docs/SHIP_READINESS.md` "Open work"; and replaces the
   playtest round briefs 11–19, 21 and 22 with one index, `docs/design/research/round-plans.md`.
-  Not merged.
 - **Cleanup result:** the full check passes (188 suites, 2,437 tests), the harness check
   passes, and `check.sh --release` passes (expo-doctor 20/20, no dependency drift, iOS export
   7.31 MB, both public pages 200). Also gone: five unused imports and locals, `isKnownEvent`,
@@ -38,7 +37,7 @@ cover the last stretch) and in git; it isn't repeated here.
   (BUILT_LOG row 188): Delete account and Erase ask again in a system alert; the Coach's
   disclosure says "a third-party AI service" instead of OpenAI; the paywall's "1 month free"
   pill, "No free trial" and a heading over the trial timeline; Sign in / Create account as a
-  two-part switch. JS only, for build 3. Not merged.
+  two-part switch. JS only, for build 3.
 
 ## On the phone
 
