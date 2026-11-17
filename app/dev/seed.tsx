@@ -12,8 +12,8 @@ import { usePredictionStore } from '@/store/predictionStore';
 
 /**
  * Development only: loads the demo predictions for store screenshots
- * (APP_STORE_LISTING.md §5, NEXT_STEPS d). Open /dev/seed on the web build or
- * a dev client. In a release build this route just redirects home.
+ * (APP_STORE_LISTING.md §5). Open /dev/seed on the web build or a dev
+ * client. In a release build this route just redirects home.
  *
  * Below it, the playtest profiles (docs/app-profile.md §9): named start states
  * that replace this device's data, so a web playtest and the owner's iPhone

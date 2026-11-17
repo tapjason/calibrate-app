@@ -166,12 +166,6 @@ export function initTrialReminder(): void {
   });
 }
 
-/** Test-only: drop the toggle subscription. */
-export function __resetTrialReminderForTests(): void {
-  settingsUnsub?.();
-  settingsUnsub = null;
-}
-
 /**
  * Ask billing where the trial stands and sync the reminder. Called after a
  * purchase, on every entitlement refresh (launch, sign-in, return to the

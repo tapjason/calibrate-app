@@ -874,10 +874,6 @@ export type SetReflection = (id: string, reflection: string | null) => Promise<v
 
 export type GetUserStat = (userId: string) => Promise<UserStat | null>;
 export type UpsertUserStat = (stat: UserStat) => Promise<void>;
-export type GetCategoryStat = (
-  userId: string,
-  category: Category,
-) => Promise<CategoryStat | null>;
 export type UpsertCategoryStat = (stat: CategoryStat) => Promise<void>;
 export type DeleteCategoryStat = (
   userId: string,

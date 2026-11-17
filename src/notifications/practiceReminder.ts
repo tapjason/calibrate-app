@@ -283,9 +283,3 @@ export function initPracticeReminder(): void {
   });
   unsubs.push(() => sub.remove());
 }
-
-/** Test-only: drop the subscriptions. */
-export function __resetPracticeReminderForTests(): void {
-  for (const unsub of unsubs) unsub();
-  unsubs = [];
-}

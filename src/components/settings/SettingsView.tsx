@@ -19,7 +19,6 @@ import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
   APP_NAME,
   APP_VERSION,
-  GUEST_ANALYTICS,
   PLUS_NAME,
   PRIVACY_POLICY_URL,
   REFINE_ENABLED,
@@ -822,11 +821,10 @@ function ToggleRow({
 
 /**
  * What the Usage stats switch covers. Since D43 (2026-11-03) a guest's funnel
- * counts go up with no id, once GUEST_ANALYTICS is on.
+ * counts go up with no id.
  */
-export const USAGE_STATS_DESCRIPTION = GUEST_ANALYTICS
-  ? "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no id at all; once you sign in, they're tied to your account. Turning this off deletes what's queued."
-  : "Counts of which features get used, sent only once you sign in — never your predictions, reflections, or any text. Turning this off deletes what's queued.";
+export const USAGE_STATS_DESCRIPTION =
+  "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no id at all; once you sign in, they're tied to your account. Turning this off deletes what's queued.";
 
 const styles = StyleSheet.create({
   wrap: { gap: space.xxl, padding: space.lg, paddingBottom: space.huge },
@@ -873,7 +871,6 @@ const styles = StyleSheet.create({
   // The switch (28pt on iOS 26) is taller than the label's line, which already
   // leaves a gap above the description.
   toggleDescription: { marginTop: 0 },
-  rowText: { flex: 1, paddingRight: space.sm },
   rowLabel: { ...type.callout, fontWeight: '500', color: colors.textPrimary },
   // The label wraps and the switch keeps its size: at large text a long word
   // held the label wide and pushed the switch off the card's clipped edge

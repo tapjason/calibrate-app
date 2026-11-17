@@ -180,10 +180,6 @@ interface PredictionState {
   tallyFor: (ids: readonly string[]) => AnswerTally;
 }
 
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
 /**
  * One resolve per prediction at a time. A reminder action and a tap on the
  * question can both call resolve before either commits; the second waits and
@@ -194,11 +190,12 @@ function nowIso(): string {
 const resolvesInFlight = new Map<string, Promise<void>>();
 
 /**
- * Unique-enough ID for the local single-user MVP. Format: `<ts>-<rand>` in
- * base36. NOT a UUID — when L5 turns on Supabase sync, swap this for a real
- * UUID (expo-crypto's randomUUID or similar) so cross-device IDs can't
- * collide. The L2 schema already accepts any TEXT, so the swap is local
- * to this function.
+ * A new prediction's id: the time in base36, a hyphen, then up to eight
+ * random base36 characters from Math.random (`<ts>-<rand>`). Not a UUID. The
+ * id is a TEXT primary key on the phone and in Postgres
+ * (`supabase/migrations/001_predictions.sql`), so any string works there, and
+ * two ids clash only when made in the same millisecond with the same random
+ * characters.
  */
 function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

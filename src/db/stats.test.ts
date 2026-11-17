@@ -2,7 +2,6 @@ import type { CategoryStat, UserStat } from '@/types';
 
 import { setDbForTests } from './client';
 import {
-  getCategoryStat,
   getUserStat,
   listCategoryStats,
   upsertCategoryStat,
@@ -64,8 +63,8 @@ describe('user_stats db', () => {
 });
 
 describe('category_stats db', () => {
-  it('returns null when no row exists', async () => {
-    expect(await getCategoryStat('u1', 'work')).toBeNull();
+  it('lists nothing when no row exists', async () => {
+    expect(await listCategoryStats('u1')).toEqual([]);
   });
 
   it('upserts and round-trips a CategoryStat, preserving the provisional flag', async () => {
@@ -75,7 +74,7 @@ describe('category_stats db', () => {
       badge_level: 'sharp',
     });
     await upsertCategoryStat(s);
-    expect(await getCategoryStat('u1', 'work')).toEqual(s);
+    expect(await listCategoryStats('u1')).toEqual([s]);
   });
 
   // The app's category order, as the store's recompute builds them: sorted by

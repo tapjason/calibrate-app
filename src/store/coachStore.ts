@@ -129,8 +129,3 @@ export const useCoachStore = create<CoachState>((set) => ({
 
   reset: () => set({ ...INITIAL }),
 }));
-
-/** Whether there is anything for the Coach surface to render. */
-export function selectHasCoachContent(state: CoachState): boolean {
-  return state.insights.length > 0 || state.crisisTopic !== null;
-}

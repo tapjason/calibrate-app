@@ -14,7 +14,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { GUEST_ANALYTICS } from '@/constants/app';
 import {
   deleteEvents,
   listUnsyncedEvents,
@@ -32,8 +31,6 @@ const BATCH_SIZE = 100;
 export interface FlushDeps {
   /** Override the client (tests). Null means "no client available". */
   client?: SupabaseClient | null;
-  /** Override GUEST_ANALYTICS (tests). */
-  guests?: boolean;
 }
 
 interface EventWireRow {
@@ -69,9 +66,8 @@ let inflight: Promise<number> | null = null;
 /**
  * Push queued events. Returns how many were accepted by the server.
  *
- * Never throws. Returns 0 for no user, an opted-out user, a guest while
- * GUEST_ANALYTICS is off, an unconfigured Supabase, an empty queue, or any
- * failure — all of which are ordinary.
+ * Never throws. Returns 0 for no user, an opted-out user, an unconfigured
+ * Supabase, an empty queue, or any failure — all of which are ordinary.
  */
 export function flushEvents(userId: string | null, deps?: FlushDeps): Promise<number> {
   if (inflight) return inflight;
@@ -85,7 +81,6 @@ async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
   try {
     if (!userId) return 0;
     const guest = userId === LOCAL_GUEST_USER_ID;
-    if (guest && !(deps?.guests ?? GUEST_ANALYTICS)) return 0;
     if (!useSettingsStore.getState().analyticsEnabled) return 0;
 
     const client =

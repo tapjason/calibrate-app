@@ -2,7 +2,7 @@
 // a response is a band worth keeping; this file only reads and writes the
 // two bounds. No other column exists.
 
-import type { AgeBucket, ClearAgeBucket, GetAgeBucket, SaveAgeBucket } from '@/types';
+import type { ClearAgeBucket, GetAgeBucket, SaveAgeBucket } from '@/types';
 
 import { getDb } from './client';
 

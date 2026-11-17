@@ -32,7 +32,7 @@ import { usePinnedFooter } from '@/components/ui/usePinnedFooter';
 import { useScrollReveal } from '@/components/ui/useScrollReveal';
 import { useLocalDay } from '@/components/ui/useLocalDay';
 import { REFINE_ENABLED, TRACK_RECORD_MIN_N } from '@/constants/app';
-import { colors, radius, space, type } from '@/constants/theme';
+import { colors, space, type } from '@/constants/theme';
 import { categoryOptions } from '@/store/categoryStore';
 import { useLogDraftStore, type LogDraft } from '@/store/logDraftStore';
 import {

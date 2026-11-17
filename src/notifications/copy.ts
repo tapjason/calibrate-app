@@ -77,7 +77,7 @@ export function reminderBodyWithoutWords(createdIso: string, confidence: number)
   return `${day ? `Your prediction from ${day}` : 'Your prediction'} · You said ${confidence}%`;
 }
 
-/** The Sunday digest. A leisure read — sent at the passive level. */
+/** The weekly digest. A leisure read — sent at the passive level. */
 export function digestBody(pendingCount: number): string {
   if (pendingCount === 0) {
     return 'No open predictions. What do you think will happen this week?';

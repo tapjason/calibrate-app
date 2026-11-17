@@ -162,8 +162,3 @@ export function sanitizeProps(name: EventName, props: EventProps | undefined): E
   }
   return out;
 }
-
-/** Whether a name is one this app is allowed to record. */
-export function isKnownEvent(name: string): name is EventName {
-  return (EVENT_NAMES as readonly string[]).includes(name);
-}

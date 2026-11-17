@@ -178,7 +178,7 @@ export async function deleteEvents(ids: readonly string[]): Promise<void> {
   }
 }
 
-/** How many events are waiting. Used by tests and the flush's early exit. */
+/** How many events are waiting, every owner's together. Used by tests. */
 export async function countUnsyncedEvents(): Promise<number> {
   try {
     const row = await getDb().get<{ n: number }>(

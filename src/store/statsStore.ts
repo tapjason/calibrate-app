@@ -62,7 +62,6 @@ import {
 } from '@/engine/wrapped';
 import {
   BRIER_MIN_N,
-  CATEGORIES,
   type BadgeChange,
   MIN_N_OVERALL,
   type BucketStat,

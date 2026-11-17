@@ -412,20 +412,6 @@ export async function markDeletionPushed(id: string): Promise<void> {
   );
 }
 
-/**
- * Whether a row is held back on this phone (roadmap D39): filed under a
- * category the person added and not yet pushed. Pull leaves it alone, since
- * the server's older copy would otherwise overwrite its answer, correction or
- * category the moment another device touched that copy.
- */
-export async function isHeldLocally(id: string): Promise<boolean> {
-  const row = await getDb().get<{ category: string; dirty: number }>(
-    `SELECT category, dirty FROM predictions WHERE id = ?`,
-    [id],
-  );
-  return !!row && row.dirty === 1 && row.category.startsWith('c-');
-}
-
 /** `updated_at` of a row, used by pull to decide if remote is newer. */
 export async function getPredictionUpdatedAt(
   id: string,

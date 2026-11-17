@@ -55,8 +55,8 @@ export const TERMS_OF_USE_URL =
  *
  * GitHub Pages project site for `tapjason/calibrate-app`, source folder
  * `/docs` on `master`. The file's permalink is `/privacy/`, so the page is
- * this URL once Pages is on. The paywall and Settings show the link. It 404s
- * until that switch is flipped (`docs/HUMAN_VERIFICATION.md`).
+ * this URL; Pages is on, and `scripts/check.sh --release` checks that it
+ * loads. The paywall and You show the link.
  */
 export const PRIVACY_POLICY_URL = 'https://tapjason.github.io/calibrate-app/privacy/';
 
@@ -84,39 +84,6 @@ export const APP_STORE_ID: string | null = '6831917395';
  * campaign, so App Store Connect can't say which share brought an install.
  */
 export const APP_STORE_PROVIDER_TOKEN: string | null = null;
-
-/**
- * Whether predictions filed under a category the person added (roadmap D39)
- * go up to Supabase. It needs `supabase/migrations/006_custom_categories.sql`
- * on the live project (applied 2026-11-03): before it, the predictions table
- * accepted only the five built-ins, so pushing one failed on every sync. With
- * this off they stay on the phone, still dirty, and go up on the first sync
- * after it's on, and the Categories screen says so to a signed-in person.
- * Only the id syncs; the names stay on each phone.
- */
-export const CUSTOM_CATEGORY_SYNC = true;
-
-/**
- * Whether a guest's funnel events go up, with no id of any kind (roadmap D43,
- * decided 2026-11-03), so the funnel counts people who never sign in. It
- * needs `supabase/migrations/007_guest_analytics_events.sql` on the live
- * project: before it, every push would fail. With this off a guest's events
- * wait on the phone as before and go up with an account. On since 2026-11-16
- * (step 186): the owner applied 007 that day, checked with
- * `supabase migration list --remote`.
- */
-export const GUEST_ANALYTICS = true;
-
-/**
- * Whether the date a prediction was reworded goes up to Supabase (roadmap
- * D45, decided 2026-11-06). It needs `supabase/migrations/008_title_edited_at.sql`
- * on the live project: before it, an upsert naming the column fails on every
- * sync. With this off, the rest of the row syncs as before and the date
- * stays on the phone that made the edit, so another phone scores a
- * same-day answer to it as it did before D45. On since 2026-11-16 (step 186):
- * the owner applied 008 that day, with 007.
- */
-export const TITLE_EDIT_SYNC = true;
 
 /**
  * Scored answers a confidence range needs before Log's track record shows it

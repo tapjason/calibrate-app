@@ -2,7 +2,6 @@ import {
   CARD_THEMES,
   DEFAULT_THEME,
   WRAPPED_DEFAULT_THEME,
-  availableThemes,
   resolveTheme,
 } from './cardThemes';
 import { contrastRatio } from './contrast';
@@ -14,13 +13,11 @@ describe('the theme catalogue', () => {
   it('keeps the default theme free', () => {
     expect(DEFAULT_THEME.plus).toBe(false);
     expect(WRAPPED_DEFAULT_THEME.plus).toBe(false);
-    expect(availableThemes(false)).toContainEqual(DEFAULT_THEME);
+    expect(CARD_THEMES).toContainEqual(DEFAULT_THEME);
   });
 
   it('offers extra themes to Plus', () => {
-    expect(availableThemes(true).length).toBeGreaterThan(
-      availableThemes(false).length,
-    );
+    expect(CARD_THEMES.some((t) => t.plus)).toBe(true);
   });
 
   it('has unique ids', () => {

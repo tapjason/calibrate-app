@@ -122,8 +122,3 @@ export function resolveTheme(id: string | null | undefined, isPlus: boolean): Ca
   if (theme.plus && !isPlus) return DEFAULT_THEME;
   return theme;
 }
-
-/** Themes this user can actually apply right now. */
-export function availableThemes(isPlus: boolean): CardTheme[] {
-  return CARD_THEMES.filter((t) => isPlus || !t.plus);
-}

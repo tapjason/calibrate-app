@@ -350,7 +350,7 @@ describe('digest: notifications toggle (kill-switch)', () => {
   });
 });
 
-// Roadmap D31: the Sunday digest has its own switch under the main one.
+// Roadmap D31: the weekly digest has its own switch under the main one.
 describe('digest: its own switch', () => {
   it('cancels the digest when it goes off, and brings it back', async () => {
     const notifications = makeFakeNotifications(true);

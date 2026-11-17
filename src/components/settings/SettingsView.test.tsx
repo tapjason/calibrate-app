@@ -304,7 +304,7 @@ describe('SettingsView — delete', () => {
   });
 });
 
-// Roadmap D31: due-day reminders and the Sunday digest each have a switch.
+// Roadmap D31: due-day reminders and the weekly digest each have a switch.
 describe('SettingsView — notification switches', () => {
   it('shows the two switches under Notifications while it is on, and saves each', async () => {
     useSettingsStore.setState({ notificationsEnabled: true, remindersEnabled: true, digestEnabled: true });

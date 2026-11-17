@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { Category, Prediction, UserStat } from '@/types';
 
-import { selectHasCoachContent, useCoachStore, type CoachRequest } from './coachStore';
+import { useCoachStore, type CoachRequest } from './coachStore';
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -141,7 +141,6 @@ describe('coachStore — answers', () => {
     expect(s.loading).toBe(false);
     expect(s.lastAnsweredAt).not.toBeNull();
     expect(s.lastRequestFailed).toBe(false);
-    expect(selectHasCoachContent(s)).toBe(true);
   });
 
   it('accepts an empty answer as an answer and clears the cache', async () => {
@@ -227,7 +226,6 @@ describe('coachStore — crisis path', () => {
     const s = useCoachStore.getState();
     expect(s.insights).toEqual([]);
     expect(s.crisisTopic).toBe('self_harm');
-    expect(selectHasCoachContent(s)).toBe(true);
     // And nothing was sent.
     expect(calls).toHaveLength(0);
   });
@@ -298,13 +296,29 @@ describe('coachStore — screens the user’s own words unprompted', () => {
 describe('coachStore — reset', () => {
   it('drops everything', async () => {
     const { client } = responds({ insights: [INSIGHT], safe: true });
-    await useCoachStore.getState().requestInsights(request(), { client });
+    await useCoachStore.getState().requestInsights(request(), {
+      client,
+      freetext: ['I want to die'],
+    });
+    const before = useCoachStore.getState();
+    expect(before.crisisTopic).toBe('self_harm');
+    expect(before.lastAnsweredAt).not.toBeNull();
 
     useCoachStore.getState().reset();
 
     const s = useCoachStore.getState();
     expect(s.insights).toEqual([]);
     expect(s.lastAnsweredAt).toBeNull();
-    expect(selectHasCoachContent(s)).toBe(false);
+    expect(s.crisisTopic).toBeNull();
+  });
+
+  it('drops the insights of a clean answer', async () => {
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+    expect(useCoachStore.getState().insights).toHaveLength(1);
+
+    useCoachStore.getState().reset();
+
+    expect(useCoachStore.getState().insights).toEqual([]);
   });
 });

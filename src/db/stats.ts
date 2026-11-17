@@ -7,7 +7,6 @@ import {
   type CategoryStat,
   type GetUserStat,
   type UpsertUserStat,
-  type GetCategoryStat,
   type UpsertCategoryStat,
   type DeleteCategoryStat,
   type ListCategoryStats,
@@ -90,17 +89,6 @@ export const upsertUserStat: UpsertUserStat = async (s) => {
       s.rating_is_provisional ? 1 : 0,
     ],
   );
-};
-
-export const getCategoryStat: GetCategoryStat = async (userId, category) => {
-  const row = await getDb().get<CategoryStatRow>(
-    `SELECT user_id, category, predictions_made, predictions_resolved,
-            calibration_score, score_is_provisional, badge_level
-       FROM category_stats
-       WHERE user_id = ? AND category = ?`,
-    [userId, category],
-  );
-  return row ? toCategoryStat(row) : null;
 };
 
 export const upsertCategoryStat: UpsertCategoryStat = async (s) => {

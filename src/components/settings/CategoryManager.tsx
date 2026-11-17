@@ -14,12 +14,9 @@ import { CategoryIcon } from '@/components/ui/Icon';
 import { LengthCounter } from '@/components/ui/LengthCounter';
 import { TextButton } from '@/components/ui/TextButton';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { CUSTOM_CATEGORY_SYNC } from '@/constants/app';
 import { colors, radius, space, type } from '@/constants/theme';
-import { useAuthStore } from '@/store/authStore';
 import {
   CATEGORY_NAME_MAX,
-  categoryLabel,
   categoryNameProblem,
   categoryIcon,
   categoryTitle,
@@ -28,7 +25,7 @@ import {
   useCategoryStore,
 } from '@/store/categoryStore';
 import { fitEdit, graphemeLength, unitBackstop } from '@/store/text';
-import { isBuiltInCategory, type Category } from '@/types';
+import type { Category } from '@/types';
 
 import { CategoryIconEditor } from './CategoryIconEditor';
 
@@ -42,7 +39,6 @@ import { CategoryIconEditor } from './CategoryIconEditor';
  */
 export function CategoryManager() {
   useCategoryStore((s) => s.defs);
-  const signedIn = useAuthStore((s) => s.status === 'authenticated');
   const [editing, setEditing] = useState<Category | null>(null);
   const [iconFor, setIconFor] = useState<Category | null>(null);
   const [draft, setDraft] = useState('');
@@ -51,7 +47,6 @@ export function CategoryManager() {
   const [busy, setBusy] = useState(false);
   const all = categoryOptions({ includeHidden: true });
   const shown = categoryOptions();
-  const hasOwn = all.some((c) => !isBuiltInCategory(c));
 
   // About six letters of name at the current text size: past that, Rename and
   // the switch wrap under it rather than leave "Gr…" (review, 2026-11-08).
@@ -258,14 +253,6 @@ export function CategoryManager() {
         disabled={busy || newName.trim().length === 0 || addProblem !== null}
         testID="manage-add"
       />
-      {/* Honest about backup (roadmap D39): while CUSTOM_CATEGORY_SYNC is off,
-          predictions filed under an added category stay on this phone. */}
-      {!CUSTOM_CATEGORY_SYNC && signedIn && hasOwn && (
-        <Text style={styles.footnote} testID="manage-local-note">
-          Predictions in your own categories stay on this phone for now: they don’t back up to your
-          account yet.
-        </Text>
-      )}
     </View>
   );
 }

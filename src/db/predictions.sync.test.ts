@@ -6,7 +6,6 @@
 import type { Prediction, PredictionWireRow } from '@/types';
 
 import { getDb, setDbForTests } from './client';
-import { forTheServer } from '@/supabase/sync';
 
 import {
   getPrediction,
@@ -205,13 +204,10 @@ describe('getPredictionUpdatedAt', () => {
 describe('title_edited_at across sync', () => {
   const EDITED = '2026-05-10T09:00:00.000Z';
 
-  it('goes up now that the live schema has it (TITLE_EDIT_SYNC)', async () => {
+  it('goes up with the row: the dirty row carries it', async () => {
     await insertPrediction(samplePrediction({ title_edited_at: EDITED }));
     const [row] = await listDirtyPredictions('u1');
-    expect(row.title_edited_at).toBe(EDITED);
-    // The flag is on since migration 008 was applied to the live project
-    // (2026-11-16, step 186).
-    expect(forTheServer(row)).toMatchObject({
+    expect(row).toMatchObject({
       id: 'p1',
       title: 'Ship the prototype',
       title_edited_at: EDITED,

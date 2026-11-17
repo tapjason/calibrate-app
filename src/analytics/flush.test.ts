@@ -125,16 +125,11 @@ describe('flushEvents', () => {
     await expect(countUnsyncedEvents()).resolves.toBe(1);
   });
 
-  it.each([
-    ['a guest', LOCAL_GUEST_USER_ID],
-    ['no user', null],
-  ])('sends nothing for %s (guests while GUEST_ANALYTICS is off)', async (_label, userId) => {
+  it('sends nothing for no user', async () => {
     await seed(2);
     const insert = ok();
 
-    await expect(
-      flushEvents(userId, { client: fakeClient(insert), guests: false }),
-    ).resolves.toBe(0);
+    await expect(flushEvents(null, { client: fakeClient(insert) })).resolves.toBe(0);
 
     expect(insert).not.toHaveBeenCalled();
     await expect(countUnsyncedEvents()).resolves.toBe(2);
@@ -240,7 +235,7 @@ describe('flushEvents for a guest', () => {
     const insert = ok();
 
     await expect(
-      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert), guests: true }),
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert) }),
     ).resolves.toBe(3);
 
     expect(tables).toEqual(['guest_analytics_events']);
@@ -257,15 +252,13 @@ describe('flushEvents for a guest', () => {
     await expect(countUnsyncedEvents()).resolves.toBe(1);
   });
 
-  it('sends nothing while GUEST_ANALYTICS is off, or with usage stats off', async () => {
+  it('sends nothing with usage stats off', async () => {
     const insert = ok();
-    await expect(
-      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert), guests: false }),
-    ).resolves.toBe(0);
     useSettingsStore.setState({ analyticsEnabled: false });
     await expect(
-      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert), guests: true }),
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert) }),
     ).resolves.toBe(0);
     expect(insert).not.toHaveBeenCalled();
+    await expect(countUnsyncedEvents()).resolves.toBe(4);
   });
 });

@@ -35,7 +35,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   getPredictionUpdatedAt,
   isDeletedHere,
-  isHeldLocally,
   listDirtyPredictions,
   listPendingDeletions,
   markDeletionPushed,
@@ -44,8 +43,7 @@ import {
 } from '@/db/predictions';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import { useStatsStore } from '@/store/statsStore';
-import { CUSTOM_CATEGORY_SYNC, TITLE_EDIT_SYNC } from '@/constants/app';
-import { isBuiltInCategory, type PredictionWireRow } from '@/types';
+import type { PredictionWireRow } from '@/types';
 
 import { getSupabaseClient, isSupabaseConfigured } from './client';
 
@@ -175,13 +173,6 @@ export async function pullRemote(
       continue;
     }
 
-    // Held back on this phone (roadmap D39): its local copy wins until it can
-    // be pushed, or the server's older one would overwrite it.
-    if (!CUSTOM_CATEGORY_SYNC && (await isHeldLocally(remote.id))) {
-      if (remote.updated_at > lastSeen) lastSeen = remote.updated_at;
-      continue;
-    }
-
     const localUpdatedAt = await getPredictionUpdatedAt(remote.id);
     if (!localUpdatedAt || localUpdatedAt < remote.updated_at) {
       await upsertPredictionFromRemote(remote);
@@ -205,31 +196,20 @@ export async function pullRemote(
 }
 
 /**
- * A row as the live schema takes it. Before migration 008 the server has no
- * `title_edited_at` (roadmap D45), and an upsert naming an unknown column
- * fails, so it stays on this phone until TITLE_EDIT_SYNC is on.
- */
-export function forTheServer(row: PredictionWireRow): PredictionWireRow {
-  if (TITLE_EDIT_SYNC || !('title_edited_at' in row)) return row;
-  const { title_edited_at: _kept, ...rest } = row;
-  return rest;
-}
-
-/**
  * Push every locally-dirty prediction. Returns the count of rows successfully
  * pushed (and marked clean). Per-row fallback on batch error so a single bad
  * row doesn't block the others.
+ *
+ * A prediction filed under a category the person added (roadmap D39) goes up
+ * like any other, carrying only the category's id: the names stay on each
+ * phone. The date a prediction was reworded (`title_edited_at`, D45) goes up
+ * with the row.
  */
 export async function pushDirty(
   userId: string,
   client: SupabaseClient,
 ): Promise<number> {
-  // A prediction filed under a category the person added (roadmap D39)
-  // waits on the phone until the server accepts it (CUSTOM_CATEGORY_SYNC):
-  // pushed now, it would fail every sync. It stays dirty, so it goes up later.
-  const dirty = (await listDirtyPredictions(userId))
-    .filter((row) => CUSTOM_CATEGORY_SYNC || isBuiltInCategory(row.category))
-    .map(forTheServer);
+  const dirty = await listDirtyPredictions(userId);
   if (dirty.length === 0) return 0;
 
   const upsertBatch = async (rows: PredictionWireRow[]) => {

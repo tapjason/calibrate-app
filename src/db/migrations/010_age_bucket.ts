@@ -1,4 +1,5 @@
-// The declared age band (NEXT_STEPS item i).
+// The declared age band, from Apple's Declared Age Range API, asked once
+// (src/age/ageRange.ts). Nothing in the app reads it to lock a feature.
 //
 // One row for this device. The only columns are the two bounds Apple's
 // Declared Age Range API returns — not who declared it, not parental
