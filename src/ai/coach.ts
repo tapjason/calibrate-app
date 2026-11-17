@@ -7,6 +7,10 @@
 // Failure policy (§5.8, and CLAUDE.md's "AI is never in the critical path"):
 // every failure returns an empty, safe result and logs a warn. The Coach
 // surface then renders nothing. Nothing here can block Log → Resolve → Stats.
+// Two failures are named (step 189), so the panel can say what happened
+// instead of "unavailable": a 403 means the server couldn't confirm Plus
+// (`failure: 'not_entitled'`), and no scored answer means no request was
+// made at all (`failure: 'nothing_scored'`).
 //
 // Gating, in the order it is applied:
 //   1. Plus entitlement — the caller passes `isPlus`; false means no request
@@ -14,7 +18,8 @@
 //   2. Crisis pre-filter (§5.5) — runs BEFORE the network call, so distress
 //      content never becomes coaching input. Returns `safe: false` and the
 //      caller shows the support surface instead.
-//   3. Minimum-N — a user with nothing resolved gets no request either.
+//   3. Minimum-N — a user with no scored answer gets no request either
+//      (`failure: 'nothing_scored'`).
 //
 // The server validates too. This module validates again on the way back
 // because the client is the last thing between a bad payload and the screen.
@@ -43,6 +48,15 @@ const empty = (): CoachResult => ({
   ok: false,
 });
 
+/**
+ * Why a request produced no answer, when the reason is worth its own words:
+ *   - `not_entitled`: the server's Plus check said no (HTTP 403).
+ *   - `nothing_scored`: no scored answer yet (`total_resolved` is 0, and a
+ *     same-day answer isn't scored, D41), so no request was made.
+ * Every other failure leaves `failure` unset.
+ */
+export type CoachFailure = 'not_entitled' | 'nothing_scored';
+
 export interface CoachResult extends CoachOutput {
   /**
    * Set when the crisis pre-filter tripped. The caller renders the support
@@ -59,6 +73,8 @@ export interface CoachResult extends CoachOutput {
    * on a persistent outage.
    */
   ok: boolean;
+  /** Set only on a failure with its own words (see CoachFailure). */
+  failure?: CoachFailure;
 }
 
 export interface CoachDeps {
@@ -96,8 +112,10 @@ export async function fetchCoachInsights(
   }
 
   // 3. Nothing answered means nothing to interpret. Skipping the call here
-  //    saves a round trip that could only ever return "keep logging".
-  if (context.overall.total_resolved === 0) return empty();
+  //    saves a round trip that could only ever return "keep logging". Named,
+  //    so the panel says why instead of "unavailable" (step 189): on a fresh
+  //    install whose only answer was same-day, that read as an outage.
+  if (context.overall.total_resolved === 0) return { ...empty(), failure: 'nothing_scored' };
 
   const client = resolveClient(deps);
   if (!client) return empty();
@@ -109,8 +127,11 @@ export async function fetchCoachInsights(
     );
 
     if (result.error) {
-      console.warn('[coach] edge function error:', result.error.message);
-      return empty();
+      const status = httpStatusOf(result);
+      console.warn('[coach] edge function error:', result.error.message, status ?? '');
+      // 403 is the server's Plus check, and only that (the function answers
+      // 401 for no session). Still an absence: nothing is shown but words.
+      return status === 403 ? { ...empty(), failure: 'not_entitled' } : empty();
     }
 
     const validated = validateCoachOutput(result.data, context);
@@ -120,6 +141,20 @@ export async function fetchCoachInsights(
     console.warn('[coach] request failed:', message);
     return empty();
   }
+}
+
+/**
+ * The HTTP status of a failed invoke, when there was a response at all.
+ * supabase-js returns it as `response` beside the error, and as the error's
+ * `context` (a FunctionsHttpError's Response); older versions only the latter.
+ */
+function httpStatusOf(result: unknown): number | null {
+  const r = result as {
+    response?: { status?: unknown };
+    error?: { context?: { status?: unknown } };
+  };
+  const status = r.response?.status ?? r.error?.context?.status;
+  return typeof status === 'number' ? status : null;
 }
 
 function resolveClient(deps: CoachDeps): SupabaseClient | null {

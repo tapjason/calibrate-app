@@ -36,7 +36,7 @@ describe('granting', () => {
     });
   });
 
-  it.each(['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'TRANSFER'])(
+  it.each(['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE'])(
     'grants on %s',
     (type) => {
       expect(decideFromEvent(event({ type }), NOW)).toMatchObject({ isPlus: true });
@@ -131,7 +131,8 @@ describe('ignoring', () => {
   });
 
   // A purchase made before sign-in is on an anonymous RevenueCat id. There is
-  // no row to write; the TRANSFER that follows sign-in is what lands it.
+  // no row to write for it; a TRANSFER (looked up) or the Coach's own
+  // RevenueCat lookup lands it once it sits under a Supabase user.
   it('ignores an anonymous app_user_id', () => {
     const e = event({ app_user_id: '$RCAnonymousID:abc123' });
     expect(decideFromEvent(e, NOW)).toMatchObject({ action: 'ignore', userId: null });
@@ -149,6 +150,99 @@ describe('ignoring', () => {
     ['an event with no type', { event: { app_user_id: USER } }],
   ])('ignores %s rather than throwing', (_label, payload) => {
     expect(decideFromEvent(payload, NOW).action).toBe('ignore');
+  });
+});
+
+// A TRANSFER names users, never an entitlement or an expiry (RevenueCat's
+// docs: only transferred_from / transferred_to). Until step 189 it was always
+// ignored, so a purchase that reached a Supabase user this way never wrote a
+// row and the Coach answered a paying subscriber 403.
+describe('TRANSFER', () => {
+  const OTHER = '66666666-7777-8888-9999-000000000000';
+
+  function transfer(overrides: Record<string, unknown> = {}) {
+    return {
+      event: {
+        type: 'TRANSFER',
+        id: 'evt_t',
+        event_timestamp_ms: NOW,
+        environment: 'SANDBOX',
+        transferred_from: [OTHER],
+        transferred_to: [USER],
+        ...overrides,
+      },
+    };
+  }
+
+  it('asks for a lookup of every Supabase user named, destination first', () => {
+    expect(decideFromEvent(transfer(), NOW)).toMatchObject({
+      action: 'lookup',
+      userId: null,
+      lookupUserIds: [USER, OTHER],
+      eventMs: NOW,
+    });
+  });
+
+  it('drops anonymous ids and anything that is not a uuid', () => {
+    const d = decideFromEvent(
+      transfer({
+        transferred_from: ['$RCAnonymousID:abc123', 42, null, 'not-a-uuid'],
+        transferred_to: [USER, '$RCAnonymousID:def456'],
+      }),
+      NOW,
+    );
+    expect(d).toMatchObject({ action: 'lookup', lookupUserIds: [USER] });
+  });
+
+  it('looks a user up once when named on both sides', () => {
+    const d = decideFromEvent(transfer({ transferred_from: [USER], transferred_to: [USER] }), NOW);
+    expect(d.lookupUserIds).toEqual([USER]);
+  });
+
+  it('ignores a transfer between anonymous ids only', () => {
+    const d = decideFromEvent(
+      transfer({ transferred_from: ['$RCAnonymousID:a'], transferred_to: ['$RCAnonymousID:b'] }),
+      NOW,
+    );
+    expect(d).toMatchObject({ action: 'ignore', lookupUserIds: [] });
+  });
+
+  it.each([
+    ['missing lists', { transferred_from: undefined, transferred_to: undefined }],
+    ['lists that are not arrays', { transferred_from: USER, transferred_to: { id: USER } }],
+  ])('ignores %s rather than throwing', (_label, overrides) => {
+    expect(decideFromEvent(transfer(overrides), NOW).action).toBe('ignore');
+  });
+
+  // Even shaped like a purchase, a TRANSFER is decided by the lookup: its own
+  // fields are not the truth about what either side owns.
+  it('never writes straight from the event', () => {
+    const d = decideFromEvent(
+      transfer({
+        app_user_id: USER,
+        product_id: PRODUCT_IDS.annual,
+        expiration_at_ms: FUTURE,
+        entitlement_ids: ['plus'],
+      }),
+      NOW,
+    );
+    expect(d).toMatchObject({ action: 'lookup', isPlus: false, userId: null });
+  });
+
+  it('carries the event timestamp as the cursor', () => {
+    expect(decideFromEvent(transfer({ event_timestamp_ms: 1234 }), NOW).eventMs).toBe(1234);
+  });
+
+  it('is ignored with the other sandbox events when configured to', () => {
+    expect(decideFromEvent(transfer(), NOW, { ignoreSandbox: true })).toMatchObject({
+      action: 'ignore',
+      lookupUserIds: [],
+    });
+  });
+
+  it('leaves the lookup list empty on every other decision', () => {
+    expect(decideFromEvent(event(), NOW).lookupUserIds).toEqual([]);
+    expect(decideFromEvent(event({ type: 'EXPIRATION' }), NOW).lookupUserIds).toEqual([]);
   });
 });
 

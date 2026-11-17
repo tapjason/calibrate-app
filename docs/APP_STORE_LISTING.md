@@ -247,12 +247,13 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 
 **Give the demo account Plus before review** (the policy audit, 2026-11-14): right
 after a sandbox purchase the server may not have the entitlement yet, and the
-reviewer would see "Coach is unavailable right now." Seed the account, grant it
+reviewer would see "Coach couldn't confirm your Plus subscription yet" (since step
+189 the Coach asks RevenueCat itself then, so this should be rare). Seed the account, grant it
 Plus in RevenueCat (a promotional entitlement), and tell the reviewer to look at
 the purchase flow signed out.
 
 **Why the demo account matters:** a reviewer on a fresh install has no resolved
-predictions. The Coach then shows "keep logging", and Insights shows
+predictions. The Coach then says it needs a scored answer first, and Insights shows
 only progress. Both are correct, and both look like broken features to someone
 with ten minutes. Seed a demo account with `node scripts/seed-demo-sql.mjs <user-uuid>` (153 resolved
 predictions; paste the output into the Supabase SQL editor, and re-run it shortly

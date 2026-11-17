@@ -186,6 +186,41 @@ and then gets a Coach answering 403 is a rejection. The cost is that TestFlight 
 the Coach free, bounded by its daily ceiling. If you ever turn it on, redeploy the webhook.
 It was unset when last read (2026-10-02).
 
+### B4. The RevenueCat read key (step 189, 2026-11-17)
+
+Session 1 item 13 failed on build 2: signed in with Plus, Get feedback said "Coach is
+unavailable right now", and the live `entitlements` table was empty, so the Coach's Plus
+check answered 403. Step 189 makes `coach` ask RevenueCat itself when that table has no
+Plus row (and the webhook do the same for a `TRANSFER`). It needs one new key and two
+deploys; no new build. Details: `supabase/README.md`, "The RevenueCat read key".
+
+- [ ] **Create the key.** RevenueCat → Project settings → API keys → + New secret API key,
+      API version 2, any name ("supabase read"). Read access to **customers**
+      (`customer_information:customers:read`) and to **entitlements**
+      (`project_configuration:entitlements:read`); no write access to anything. If the
+      dashboard sets access per section only, Customer information and Project configuration
+      read-only. Not the `REVENUECAT_DELETE_KEY` key, which can write.
+- [ ] **Set it and deploy both functions**, in your own terminal:
+
+      ```sh
+      npx supabase secrets set REVENUECAT_READ_KEY=sk_...
+      npx supabase functions deploy coach
+      npx supabase functions deploy revenuecat-webhook --no-verify-jwt
+      npx supabase secrets list          # REVENUECAT_READ_KEY and REVENUECAT_PROJECT_ID listed
+      ```
+
+- [ ] **Re-test on build 2,** once at least one answer is scored (a prediction answered on a
+      later day than it was logged, like Session 2 item 20): with none, the app never calls
+      the Coach and says "unavailable" whatever the server does. Signed in with Plus,
+      Insights → Get feedback. **Pass:** insights, or "Nothing worth flagging yet", and a
+      row for your account in `public.entitlements` with `is_plus = true` (Table Editor). **Fail:** "Coach is unavailable right now" again;
+      send the `coach` function's logs from that minute (Edge Functions → coach → Logs): a
+      line starting `[revenuecat-lookup]` names what went wrong (`not_configured`,
+      `http_403` for a missing permission, and so on). Build 2 still says "unavailable" for
+      any refusal; from build 3 a refusal reads "Coach couldn't confirm your Plus
+      subscription yet…" instead, and no scored answer reads "Coach reads your scored
+      answers, and you don't have one yet…" (expected, not a fail).
+
 ---
 
 ## Stage 1 on-phone checklist (items 1–28)
@@ -232,6 +267,10 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
 12. On the paywall, Restore purchases works.
 13. Signed in with Plus: You → Coach on, Insights → Get feedback. With almost no answered
     predictions it may say there isn't enough yet; that is a pass. An error is a fail.
+    (Failed 2026-11-17: "Coach is unavailable right now". Re-test after B4. With no scored
+    answer yet, build 2 never calls the Coach and says "unavailable"; build 3 says "Coach
+    reads your scored answers, and you don't have one yet…" instead, which is expected,
+    not a fail.)
 
 **The app lock**
 14. You → Lock with Face ID: Face ID is asked before the switch moves.

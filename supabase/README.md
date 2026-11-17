@@ -59,7 +59,13 @@ schema is safe.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decision logic lives in
   `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can
-  test it (`entitlementFromEvent.test.ts`, 28 cases).
+  test it (`entitlementFromEvent.test.ts`, 42 cases).
+- `functions/_shared/revenuecatLookup.ts` — asks RevenueCat (API v2) whether a
+  user has Plus right now. Used by `coach` when its entitlements row doesn't
+  say Plus, and by `revenuecat-webhook` on a `TRANSFER` (step 189). Plain
+  TypeScript, Jest-tested (`revenuecatLookup.test.ts`). The `_shared` folder is
+  Supabase's convention for code several functions import; each deploy bundles
+  it.
 - `functions/delete-account/index.ts` — deletes the caller's account (App Store
   Guideline 5.1.1(v)): revokes Sign in with Apple, deletes the RevenueCat
   customer, then `auth.admin.deleteUser`, whose rows cascade out of every
@@ -75,9 +81,43 @@ schema is safe.
 **Deployed** (`npx supabase functions list`, read 2026-11-16): `coach` (JWT on, version 14,
 deployed 2026-11-15), `revenuecat-webhook` (JWT off, shared secret; last redeployed
 2026-11-03) and `delete-account` (JWT on, version 11, deployed 2026-11-15). Both 2026-11-15
-deploys postdate the last change to their code. `refine` is deliberately not deployed. The free-tier
+deploys postdate the last change to their code. **Step 189 (2026-11-17) changed `coach` and
+`revenuecat-webhook`:** both need the new secret `REVENUECAT_READ_KEY` (below) and a
+redeploy. `refine` is deliberately not deployed. The free-tier
 project pauses when idle; `projects list` shows `INACTIVE` when it has, and it is restored
 from the dashboard only.
+
+### The RevenueCat read key (step 189)
+
+`coach` and `revenuecat-webhook` ask RevenueCat directly whether a user has Plus
+(`functions/_shared/revenuecatLookup.ts`): the Coach when its `entitlements` row is missing
+or not active Plus, the webhook for each user a `TRANSFER` names. Without this, a purchase
+the webhook never wrote (a `TRANSFER`, which carries no entitlement; a purchase made under
+an anonymous id; an account deleted and made again) left a paying subscriber with a Coach
+answering 403.
+
+It needs a **v2 secret key with two read permissions and no write access** (RevenueCat →
+Project settings → API keys → + New secret API key, API version 2). If the dashboard sets
+access only per section, Customer information and Project configuration read-only is the
+narrowest it allows:
+
+- `customer_information:customers:read`: the customer's active entitlements.
+- `project_configuration:entitlements:read`: an active entitlement names RevenueCat's own
+  id for `plus` (an `entl…` id), not the lookup key, so the function reads the project's
+  entitlements once to match them.
+
+```sh
+npx supabase secrets set REVENUECAT_READ_KEY=sk_...
+# REVENUECAT_PROJECT_ID is already set (delete-account uses it).
+npx supabase functions deploy coach
+npx supabase functions deploy revenuecat-webhook --no-verify-jwt
+```
+
+It is a separate key from `REVENUECAT_DELETE_KEY` on purpose: the delete key can write.
+Without the read key, or with a permission missing, every lookup is an error and both
+functions fail closed: the Coach answers 403 to anyone without a Plus row (as before step
+189), and the webhook answers 500 to a `TRANSFER`, so RevenueCat retries it and its
+dashboard shows the failure. The key is never logged.
 
 ### refine
 
@@ -118,7 +158,8 @@ supabase functions deploy coach
 ```
 
 Cost protection is layered: a signed-in-user gate, a **server-side Plus
-check** against `public.entitlements`, a per-isolate burst limit (4/min), a
+check** against `public.entitlements` (and, when that row doesn't say Plus,
+RevenueCat itself; a yes writes the row), a per-isolate burst limit (4/min), a
 **durable** per-user daily ceiling in `public.coach_usage`, an 8KB body cap,
 and a strict payload parser that rejects anything but numbers and enum values.
 
@@ -192,6 +233,17 @@ their access ends, and revoking on it would take away time they paid for.
 `BILLING_ISSUE` doesn't revoke either, because access continues through the
 grace period. Everything else is decided by the expiry: a grant whose
 `expiration_at_ms` has already passed writes free.
+
+**`TRANSFER`** (step 189) carries no entitlement, only `transferred_from` and
+`transferred_to`. Each Supabase user id in them (anonymous ids are skipped) is looked up in
+RevenueCat with `REVENUECAT_READ_KEY` and written as RevenueCat says, Plus with its expiry or
+free, with the event's timestamp as the cursor. A lookup that fails answers 500, so
+RevenueCat retries.
+
+**A deleted user.** `apply_entitlement_event` catches a foreign-key violation itself
+(migration 004) and returns normally. If the live function ever reports one instead
+(SQLSTATE `23503`), the webhook answers 200 `{"ok":true,"action":"ignored","reason":"no such
+user"}` rather than 500: retrying a deleted account's event can never succeed.
 
 ### delete-account
 

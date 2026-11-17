@@ -13,7 +13,7 @@
 
 import { create } from 'zustand';
 
-import { fetchCoachInsights, type CoachDeps } from '@/ai/coach';
+import { fetchCoachInsights, type CoachDeps, type CoachFailure } from '@/ai/coach';
 import { track } from '@/analytics/track';
 import { buildCoachContext } from '@/ai/coachContext';
 import type { CrisisTopic } from '@/ai/crisisFilter';
@@ -41,6 +41,13 @@ interface CoachState {
    * legitimate result and leaves this false.
    */
   lastRequestFailed: boolean;
+  /**
+   * Why the last request failed, when it has its own words (step 189):
+   * 'not_entitled' when the server couldn't confirm Plus, 'nothing_scored'
+   * when there was no scored answer and so no request. Null otherwise, and
+   * whenever lastRequestFailed is false.
+   */
+  lastFailure: CoachFailure | null;
 
   requestInsights: (request: CoachRequest, deps?: CoachDeps) => Promise<void>;
   /** Drop everything — on sign-out, or when the user turns Coach off. */
@@ -53,6 +60,7 @@ const INITIAL = {
   loading: false,
   lastAnsweredAt: null as string | null,
   lastRequestFailed: false,
+  lastFailure: null as CoachFailure | null,
 };
 
 export const useCoachStore = create<CoachState>((set) => ({
@@ -91,7 +99,7 @@ export const useCoachStore = create<CoachState>((set) => ({
       if (!result.ok) {
         // No answer. Keep the last-good insights rather than blanking the
         // surface on a dropped connection.
-        set({ loading: false, lastRequestFailed: true });
+        set({ loading: false, lastRequestFailed: true, lastFailure: result.failure ?? null });
         return;
       }
 
@@ -104,6 +112,7 @@ export const useCoachStore = create<CoachState>((set) => ({
           loading: false,
           lastAnsweredAt: new Date().toISOString(),
           lastRequestFailed: false,
+          lastFailure: null,
         });
         return;
       }
@@ -114,6 +123,7 @@ export const useCoachStore = create<CoachState>((set) => ({
         loading: false,
         lastAnsweredAt: new Date().toISOString(),
         lastRequestFailed: false,
+        lastFailure: null,
       });
       // Plus churn is meant to be split by AI-heavy vs analytics/cosmetic use
       // (GROWTH §7). The count, not the content — no insight text is recorded.
@@ -123,7 +133,7 @@ export const useCoachStore = create<CoachState>((set) => ({
       // braces so a store action can never reject into a component.
       // eslint-disable-next-line no-console
       console.warn('[coach] request failed:', e);
-      set({ loading: false, lastRequestFailed: true });
+      set({ loading: false, lastRequestFailed: true, lastFailure: null });
     }
   },
 

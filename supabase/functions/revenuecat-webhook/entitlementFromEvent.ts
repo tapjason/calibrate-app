@@ -14,9 +14,23 @@
 // something the user has paid for. So the only events that revoke outright are
 // the ones that mean access is gone right now, and everything else is decided
 // by whether the entitlement's expiry is still in the future.
+//
+// One event carries no entitlement at all: TRANSFER (a purchase moving from
+// one app user id to another) names only the users, in `transferred_from` and
+// `transferred_to`. For it the decision is `lookup`: the function asks
+// RevenueCat what each named Supabase user owns now (../_shared/
+// revenuecatLookup.ts) and writes that (step 189).
 
-/** Mirrors EntitlementSource in src/types/index.ts. */
-export type EntitlementSource = 'none' | 'trial' | 'monthly' | 'annual' | 'lifetime';
+// The .ts extension is required by Deno and rejected by the project's
+// tsconfig (TS5097); the types still resolve, and Jest resolves the path
+// as written.
+import type { EntitlementSource } from '../_shared/revenuecatLookup.ts';
+// @ts-expect-error — Deno module resolution, not TypeScript's.
+import { PLUS_ENTITLEMENT_ID, UUID_RE } from '../_shared/revenuecatLookup.ts';
+
+export type { EntitlementSource };
+/** The lookup key. Defined in ../_shared/revenuecatLookup.ts; re-exported here. */
+export { PLUS_ENTITLEMENT_ID };
 
 /** Mirrors PRODUCT_IDS in src/billing/revenuecat.ts. Keep in lockstep. */
 export const PRODUCT_IDS = {
@@ -31,9 +45,6 @@ export const PRODUCT_ALIASES: Readonly<Record<keyof typeof PRODUCT_IDS, readonly
   annual: ['calibrate_plus_annual_2999'],
   lifetime: [],
 };
-
-/** Mirrors PLUS_ENTITLEMENT_ID in src/billing/revenuecat.ts. */
-export const PLUS_ENTITLEMENT_ID = 'plus';
 
 /** The subset of a RevenueCat v1 webhook event this function reads. */
 export interface RevenueCatEvent {
@@ -50,6 +61,10 @@ export interface RevenueCatEvent {
   entitlement_id?: unknown;
   /** 'SANDBOX' or 'PRODUCTION'. */
   environment?: unknown;
+  /** TRANSFER only: the app user ids the purchase moved away from. */
+  transferred_from?: unknown;
+  /** TRANSFER only: the app user ids the purchase moved to. */
+  transferred_to?: unknown;
 }
 
 export interface DecisionOptions {
@@ -65,8 +80,12 @@ export interface DecisionOptions {
 }
 
 export interface EntitlementDecision {
-  /** `write` upserts the row; `ignore` acknowledges the event and does nothing. */
-  action: 'write' | 'ignore';
+  /**
+   * `write` upserts the row; `ignore` acknowledges the event and does nothing;
+   * `lookup` asks RevenueCat about each of `lookupUserIds` and writes what it
+   * says (TRANSFER).
+   */
+  action: 'write' | 'ignore' | 'lookup';
   /** Why — logged server-side, and the assertion surface for tests. */
   reason: string;
   /** Supabase user id. Only present when action is `write`. */
@@ -77,6 +96,11 @@ export interface EntitlementDecision {
   expiresAt: string | null;
   /** Event timestamp, used to reject out-of-order deliveries. */
   eventMs: number;
+  /**
+   * Supabase user ids to look up, destination first. Empty unless action is
+   * `lookup`.
+   */
+  lookupUserIds: string[];
 }
 
 /**
@@ -92,8 +116,6 @@ const REVOKING_TYPES = new Set(['EXPIRATION', 'REFUND', 'SUBSCRIPTION_PAUSED']);
 /** Acknowledged and skipped: nothing about entitlement state to record. */
 const IGNORED_TYPES = new Set(['TEST', 'SUBSCRIBER_ALIAS', 'INVOICE_ISSUANCE']);
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 const ignore = (reason: string, eventMs = 0): EntitlementDecision => ({
   action: 'ignore',
   reason,
@@ -102,10 +124,17 @@ const ignore = (reason: string, eventMs = 0): EntitlementDecision => ({
   source: 'none',
   expiresAt: null,
   eventMs,
+  lookupUserIds: [],
 });
 
 function num(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/** The Supabase user ids in a TRANSFER's id list; anonymous ids and junk dropped. */
+function supabaseIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((id): id is string => typeof id === 'string' && UUID_RE.test(id));
 }
 
 function grantsPlus(event: RevenueCatEvent): boolean {
@@ -172,11 +201,35 @@ export function decideFromEvent(
     return ignore('sandbox event ignored in this deployment', eventMs);
   }
 
+  // A TRANSFER carries no app_user_id, product, entitlement or expiry: only
+  // `transferred_from` and `transferred_to`, string arrays of app user ids
+  // (RevenueCat sends it for the destination user). So it can't be decided
+  // here. Each Supabase user it names is looked up in RevenueCat and written
+  // as RevenueCat says, destination first; the user it moved away from is
+  // looked up too, since after a transfer away that row should be free, and
+  // the lookup is what says so. Anonymous ids have no row and are dropped.
+  if (type === 'TRANSFER') {
+    const ids = [
+      ...new Set([...supabaseIds(event.transferred_to), ...supabaseIds(event.transferred_from)]),
+    ];
+    if (ids.length === 0) return ignore('TRANSFER names no Supabase user id', eventMs);
+    return {
+      action: 'lookup',
+      reason: `TRANSFER: look up ${ids.length} user${ids.length === 1 ? '' : 's'} in RevenueCat`,
+      userId: null,
+      isPlus: false,
+      source: 'none',
+      expiresAt: null,
+      eventMs,
+      lookupUserIds: ids,
+    };
+  }
+
   // The app configures RevenueCat with the Supabase user id, so a well-formed
-  // event carries one. Anything else — an anonymous id from a purchase made
-  // before sign-in, most often — has no row to write. RevenueCat sends a
-  // TRANSFER once that purchase is attached to a real user, and that event is
-  // the one that lands the row.
+  // event carries one. Anything else (an anonymous id from a purchase made
+  // before sign-in, most often) has no row to write. Once that purchase sits
+  // under a Supabase user, a TRANSFER (above) or the Coach's own RevenueCat
+  // lookup, when it finds no row, lands it (step 189).
   const appUserId =
     typeof event.app_user_id === 'string' && UUID_RE.test(event.app_user_id)
       ? event.app_user_id
@@ -195,6 +248,7 @@ export function decideFromEvent(
       source: 'none',
       expiresAt: null,
       eventMs,
+      lookupUserIds: [],
     };
   }
 
@@ -214,6 +268,7 @@ export function decideFromEvent(
       source: 'none',
       expiresAt: null,
       eventMs,
+      lookupUserIds: [],
     };
   }
 
@@ -225,5 +280,6 @@ export function decideFromEvent(
     source: sourceFor(event, expiresAtMs),
     expiresAt,
     eventMs,
+    lookupUserIds: [],
   };
 }

@@ -1,7 +1,7 @@
 # Handoff
 
-**Branch:** `master`, at `32a7bc2` with the cleanup and step 188 merged and pushed
-(2026-11-17, the owner's word). This file is the
+**Branch:** `builder/coach-plus-check` (step 189), off `master` at `b87d3df` (the cleanup
+and step 188 merged and pushed 2026-11-17, the owner's word). Not merged or pushed. This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
 cover the last stretch) and in git; it isn't repeated here.
 
@@ -38,6 +38,25 @@ cover the last stretch) and in git; it isn't repeated here.
   disclosure says "a third-party AI service" instead of OpenAI; the paywall's "1 month free"
   pill, "No free trial" and a heading over the trial timeline; Sign in / Create account as a
   two-part switch. JS only, for build 3.
+
+- **Step 189 (`builder/coach-plus-check`, BUILT_LOG row 189):** Session 1 item 13.
+  - **Server.** When the `entitlements` row doesn't say Plus, `coach` asks RevenueCat directly:
+    v2 active entitlements, through `supabase/functions/_shared/revenuecatLookup.ts`. On a yes it
+    writes the row and serves the request. It fails closed and answers 403 `not_entitled`.
+  - **Webhook.** A TRANSFER carries no entitlement, so `revenuecat-webhook` used to ignore it
+    always. It now looks up each uuid in it and writes the result.
+  - **Client.** A 403 gets its own words ("Coach couldn't confirm your Plus subscription
+    yet…"). With no scored answer the Coach sends nothing and now says so ("Coach reads
+    your scored answers, and you don't have one yet…").
+  - **Probable cause of item 13:** this second case. Session 1's only answer is item 5's,
+    which is same-day and so not scored, and build 2 called that "unavailable".
+  - **Check:** 190 suites, 2,562 tests. Not reviewed, and not run on Deno: `_shared` bundling
+    and the live RevenueCat responses are unverified.
+  - **Owner steps:** `HUMAN_VERIFICATION.md` B4.
+    1. A v2 secret key with `customer_information:customers:read` and
+       `project_configuration:entitlements:read` only.
+    2. `npx supabase secrets set REVENUECAT_READ_KEY=…`.
+    3. Deploy `coach`, then `revenuecat-webhook --no-verify-jwt`.
 
 ## On the phone
 
@@ -81,7 +100,7 @@ cover the last stretch) and in git; it isn't repeated here.
 
 Reviews are the owner's call (2026-11-15): no reviewer agents after each feature; he asks for
 them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), steps 183–187
-(`6222465..2636ff2`), the cleanup branch and step 188. When he calls for it: `record-auditor` for step
+(`6222465..2636ff2`), the cleanup branch, step 188 and step 189. When he calls for it: `record-auditor` for step
 184 and step 180's reminder change, `code-reviewer` for the rest.
 
 ## Owner to-dos, in order

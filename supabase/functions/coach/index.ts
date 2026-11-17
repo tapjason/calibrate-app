@@ -10,11 +10,14 @@
 //   Response:  200 { insights: CoachInsight[], safe: boolean }
 //              400 { error }  // payload failed validation
 //              401 { error }  // missing / non-user token
+//              403 { error: 'not_entitled' }  // no Plus: neither the
+//                             // entitlements row nor RevenueCat says so
 //              429 { error }  // rate limit or daily cost ceiling
 //              500 { error }  // OpenAI or server error
 //
 // The client treats every non-2xx as a silent no-op (§5.8) — nothing here can
-// block Log → Resolve → Stats.
+// block Log → Resolve → Stats. A 403 gets its own words in the Coach panel
+// ("couldn't confirm your Plus subscription yet"), nothing more.
 //
 // VALIDATION IS DUPLICATED ON PURPOSE. The same rules live in
 // src/ai/coachValidate.ts. Deno cannot import from the React Native bundle, and
@@ -27,14 +30,34 @@
 // Deploy:
 //   supabase functions deploy coach
 //   supabase secrets set OPENAI_API_KEY=sk-...
+//   supabase secrets set REVENUECAT_READ_KEY=sk_...   # step 189, below
 //   psql < supabase/migrations/002_coach_usage.sql
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected
 // by the platform.
+//
+// The Plus gate asks RevenueCat when the entitlements row doesn't say Plus
+// (step 189; ./plusGate.ts, ../_shared/revenuecatLookup.ts). That needs
+// REVENUECAT_READ_KEY (a v2 secret key with customer_information:customers:read
+// and project_configuration:entitlements:read, nothing else) and
+// REVENUECAT_PROJECT_ID. Without them the gate reads the row alone, as before.
 
 // @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
 import OpenAI from 'npm:openai@4.104.0';
 // @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+
+// The .ts extension is required by Deno and rejected by the project's
+// tsconfig (TS5097), as in revenuecat-webhook. Both modules are typechecked
+// through their Jest tests.
+// @ts-expect-error — Deno module resolution, not TypeScript's.
+import { decidePlusGate } from './plusGate.ts';
+import {
+  createLookupCache,
+  lookupPlus,
+  readLookupConfig,
+  toRpcArgs,
+  // @ts-expect-error — Deno module resolution, not TypeScript's.
+} from '../_shared/revenuecatLookup.ts';
 
 // @ts-expect-error — Deno global, not present in the project's TS lib.
 const env = Deno.env;
@@ -55,6 +78,9 @@ const CORS_HEADERS: Record<string, string> = {
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 4;
 const hits = new Map<string, number[]>();
+
+/** The plus entitlement's RevenueCat id, read once per isolate. */
+const lookupCache = createLookupCache();
 
 /** Durable per-user daily ceiling (§5.7). Backed by public.coach_usage. */
 const DAILY_CALL_CEILING = 25;
@@ -413,6 +439,9 @@ Deno.serve(async (req: Request) => {
   // COACH_ALLOW_UNENTITLED=true bypasses this, for testing the endpoint before
   // billing exists to populate the table. Leave it unset in production —
   // with it set, this gate does nothing.
+  //
+  // After the JWT and the burst limit on purpose: the RevenueCat lookup below
+  // costs a call to a third party, so only a real, unthrottled user gets one.
   if (env.get('COACH_ALLOW_UNENTITLED') !== 'true') {
     const { data: ent, error: entError } = await admin
       .from('entitlements')
@@ -427,11 +456,37 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Entitlement check unavailable' }, 500);
     }
 
-    // No row means free (CLAUDE.md: absence defaults to free, never Plus).
-    const expired =
-      ent?.expires_at != null && Date.parse(ent.expires_at) <= Date.now();
-    if (ent?.is_plus !== true || expired) {
-      return json({ error: 'Coach requires Fairly Sure Plus' }, 403);
+    // No row means free (CLAUDE.md: absence defaults to free, never Plus),
+    // unless RevenueCat itself says Plus: the webhook can miss a purchase
+    // (./plusGate.ts). Only RevenueCat's own yes opens this.
+    const now = Date.now();
+    const gate = await decidePlusGate(user.id, ent, now, () =>
+      lookupPlus(user.id, readLookupConfig((name: string) => env.get(name)), {
+        fetch,
+        now: Date.now,
+        cache: lookupCache,
+        log: (message: string) => console.error(message),
+      }),
+    );
+
+    if (!gate.entitled) {
+      console.log(`[coach] not entitled: ${gate.reason}`);
+      return json({ error: 'not_entitled' }, 403);
+    }
+
+    if (gate.via === 'lookup') {
+      // Land the row the webhook missed, through the same guarded upsert, with
+      // now as its cursor, so the next call needs no lookup. A failed write
+      // still serves this request: RevenueCat has just said Plus.
+      const { error: writeError } = await admin.rpc(
+        'apply_entitlement_event',
+        toRpcArgs(gate.write),
+      );
+      if (writeError) {
+        console.error('[coach] entitlement write after lookup failed', writeError);
+      } else {
+        console.log('[coach] entitlement row written from a RevenueCat lookup');
+      }
     }
   }
 

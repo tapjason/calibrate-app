@@ -63,6 +63,7 @@ function seed({
     loading: false,
     lastAnsweredAt: null,
     lastRequestFailed: false,
+    lastFailure: null,
   });
 }
 
@@ -191,6 +192,66 @@ describe('CoachPanel — rendering insights', () => {
 
     expect(screen.getByTestId('coach-unavailable')).toBeTruthy();
     expect(screen.queryByTestId('coach-nothing-to-say')).toBeNull();
+  });
+
+  // Step 189: a subscriber whose purchase hadn't reached the server got
+  // "unavailable" from a Coach that was up and saying no.
+  it('says the server could not confirm Plus on a 403, not that Coach is down', () => {
+    seed();
+    useCoachStore.setState({ lastRequestFailed: true, lastFailure: 'not_entitled' });
+    render(<CoachPanel />);
+
+    expect(screen.getByTestId('coach-not-confirmed').props.children).toBe(
+      "Coach couldn't confirm your Plus subscription yet. Try again in a few minutes. " +
+        'If it keeps happening, use Help and support in You.',
+    );
+    expect(screen.queryByTestId('coach-unavailable')).toBeNull();
+    expect(screen.queryByTestId('coach-nothing-to-say')).toBeNull();
+    // Get feedback is the way to try again.
+    expect(screen.getByTestId('coach-ask').props.accessibilityState.disabled).toBe(false);
+  });
+
+  // Step 189: with no scored answer no request is made; it read "unavailable".
+  it('says there is no scored answer yet, and keeps the disclosure', () => {
+    seed();
+    useCoachStore.setState({ lastRequestFailed: true, lastFailure: 'nothing_scored' });
+    render(<CoachPanel />);
+
+    expect(screen.getByTestId('coach-nothing-scored').props.children).toBe(
+      "Coach reads your scored answers, and you don't have one yet. An answer counts " +
+        'from the day after you logged the prediction.',
+    );
+    expect(screen.queryByTestId('coach-unavailable')).toBeNull();
+    expect(screen.queryByTestId('coach-not-confirmed')).toBeNull();
+    expect(screen.queryByTestId('coach-nothing-to-say')).toBeNull();
+    expect(screen.getByTestId('coach-disclosure')).toBeTruthy();
+    expect(screen.getByTestId('coach-ask').props.accessibilityState.disabled).toBe(false);
+  });
+
+  it('keeps "unavailable" for every other failure', () => {
+    seed();
+    useCoachStore.setState({ lastRequestFailed: true, lastFailure: null });
+    render(<CoachPanel />);
+
+    expect(screen.getByTestId('coach-unavailable').props.children).toBe(
+      'Coach is unavailable right now.',
+    );
+    expect(screen.queryByTestId('coach-not-confirmed')).toBeNull();
+    expect(screen.queryByTestId('coach-nothing-scored')).toBeNull();
+  });
+
+  it('shows neither once a later answer lands', () => {
+    seed();
+    useCoachStore.setState({
+      lastRequestFailed: false,
+      lastFailure: null,
+      lastAnsweredAt: '2026-08-29T12:00:00.000Z',
+    });
+    render(<CoachPanel />);
+
+    expect(screen.queryByTestId('coach-not-confirmed')).toBeNull();
+    expect(screen.queryByTestId('coach-nothing-scored')).toBeNull();
+    expect(screen.queryByTestId('coach-unavailable')).toBeNull();
   });
 
   it('disables the button while a request is in flight', () => {

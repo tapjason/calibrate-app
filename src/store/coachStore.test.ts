@@ -1,8 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { track } from '@/analytics/track';
 import type { Category, Prediction, UserStat } from '@/types';
 
 import { useCoachStore, type CoachRequest } from './coachStore';
+
+// Only what the store records is asserted here; track() itself has its own tests.
+jest.mock('@/analytics/track', () => ({ track: jest.fn(async () => undefined) }));
+const mockTrack = track as jest.MockedFunction<typeof track>;
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -72,6 +77,7 @@ let warnSpy: jest.SpyInstance;
 
 beforeEach(() => {
   seq = 0;
+  mockTrack.mockClear();
   warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   useCoachStore.setState({
     insights: [],
@@ -79,6 +85,7 @@ beforeEach(() => {
     loading: false,
     lastAnsweredAt: null,
     lastRequestFailed: false,
+    lastFailure: null,
   });
 });
 
@@ -196,6 +203,79 @@ describe('coachStore — failure keeps the last good answer', () => {
     });
     await useCoachStore.getState().requestInsights(request(), { client });
     expect(useCoachStore.getState().loading).toBe(false);
+  });
+
+  // Step 189: the server's Plus check gets its own words in the panel.
+  it('remembers that the server could not confirm Plus (403)', async () => {
+    const { client } = makeClient(async () => ({
+      data: null,
+      error: { message: 'non-2xx', context: { status: 403 } } as { message: string },
+    }));
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    const s = useCoachStore.getState();
+    expect(s.lastRequestFailed).toBe(true);
+    expect(s.lastFailure).toBe('not_entitled');
+    expect(s.loading).toBe(false);
+  });
+
+  it('names no reason for any other failure', async () => {
+    const { client } = makeClient(async () => ({
+      data: null,
+      error: { message: 'non-2xx', context: { status: 500 } } as { message: string },
+    }));
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    expect(useCoachStore.getState()).toMatchObject({
+      lastRequestFailed: true,
+      lastFailure: null,
+    });
+  });
+
+  // Step 189: no scored answer means no request, and it is named so the
+  // panel can say why. No analytics either: nothing was asked.
+  it('names a request that stopped for want of a scored answer', async () => {
+    const { client, calls } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(
+      request({ userStat: { ...USER_STAT, total_resolved: 0 }, resolved: [] }),
+      { client },
+    );
+
+    const s = useCoachStore.getState();
+    expect(calls).toHaveLength(0);
+    expect(mockTrack).not.toHaveBeenCalled();
+    expect(s).toMatchObject({
+      lastRequestFailed: true,
+      lastFailure: 'nothing_scored',
+      loading: false,
+      // Unanswered, so the panel keeps its disclosure as before.
+      lastAnsweredAt: null,
+    });
+  });
+
+  it('records coach_requested only for an answer', async () => {
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+    expect(mockTrack).toHaveBeenCalledWith('coach_requested', { insight_count: 1 });
+
+    mockTrack.mockClear();
+    const failing = makeClient(async () => ({
+      data: null,
+      error: { message: 'non-2xx', context: { status: 403 } } as { message: string },
+    }));
+    await useCoachStore.getState().requestInsights(request(), { client: failing.client });
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
+
+  it('clears the reason once an answer lands', async () => {
+    useCoachStore.setState({ lastRequestFailed: true, lastFailure: 'not_entitled' });
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    expect(useCoachStore.getState()).toMatchObject({
+      lastRequestFailed: false,
+      lastFailure: null,
+    });
   });
 
   it('never rejects into the caller', async () => {

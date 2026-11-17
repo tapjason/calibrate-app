@@ -51,6 +51,7 @@ export function CoachPanel({
   const crisisTopic = useCoachStore((s) => s.crisisTopic);
   const loading = useCoachStore((s) => s.loading);
   const failed = useCoachStore((s) => s.lastRequestFailed);
+  const failure = useCoachStore((s) => s.lastFailure);
   const lastAnsweredAt = useCoachStore((s) => s.lastAnsweredAt);
   const requestInsights = useCoachStore((s) => s.requestInsights);
 
@@ -156,7 +157,27 @@ export function CoachPanel({
             </Text>
           )}
 
-          {failed && (
+          {failed && failure === 'not_entitled' && (
+            // The server's Plus check said no while this phone says Plus
+            // (step 189): usually RevenueCat hasn't reached our server yet.
+            // "Get feedback" below is the way to try again. Not "Restore
+            // purchases": the paywall shows a Plus user no Restore button.
+            <Text style={styles.muted} testID="coach-not-confirmed">
+              Coach couldn't confirm your Plus subscription yet. Try again in a few
+              minutes. If it keeps happening, use Help and support in You.
+            </Text>
+          )}
+
+          {failed && failure === 'nothing_scored' && (
+            // No request was made: the Coach reads scored answers only, and a
+            // same-day answer isn't one (D41). Step 189; it read "unavailable".
+            <Text style={styles.muted} testID="coach-nothing-scored">
+              Coach reads your scored answers, and you don't have one yet. An answer
+              counts from the day after you logged the prediction.
+            </Text>
+          )}
+
+          {failed && failure !== 'not_entitled' && failure !== 'nothing_scored' && (
             <Text style={styles.muted} testID="coach-unavailable">
               Coach is unavailable right now.
             </Text>

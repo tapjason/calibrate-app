@@ -71,7 +71,8 @@ describe('fetchCoachInsights — gating', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('makes no request when nothing has been resolved', async () => {
+  // Step 189: named, so the panel says why instead of "unavailable".
+  it('makes no request when nothing has been scored, and says so', async () => {
     const { client, calls } = ok({ insights: [INSIGHT], safe: true });
     const empty: CoachContext = {
       ...CONTEXT,
@@ -80,7 +81,33 @@ describe('fetchCoachInsights — gating', () => {
 
     const out = await fetchCoachInsights(empty, true, { client });
 
-    expect(out.insights).toEqual([]);
+    expect(out).toEqual({
+      insights: [],
+      safe: true,
+      crisisTopic: null,
+      ok: false,
+      failure: 'nothing_scored',
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('says nothing is scored before it looks for a client', async () => {
+    const empty: CoachContext = {
+      ...CONTEXT,
+      overall: { calibration_rating: 0, total_resolved: 0 },
+    };
+    const out = await fetchCoachInsights(empty, true, { client: null });
+    expect(out.failure).toBe('nothing_scored');
+  });
+
+  it('names nothing for a free user with nothing scored', async () => {
+    const { client, calls } = ok({ insights: [], safe: true });
+    const empty: CoachContext = {
+      ...CONTEXT,
+      overall: { calibration_rating: 0, total_resolved: 0 },
+    };
+    const out = await fetchCoachInsights(empty, false, { client });
+    expect(out.failure).toBeUndefined();
     expect(calls).toHaveLength(0);
   });
 
@@ -222,5 +249,59 @@ describe('fetchCoachInsights — failure modes', () => {
       throw new Error('boom');
     });
     await expect(fetchCoachInsights(CONTEXT, true, { client })).resolves.toBeDefined();
+  });
+});
+
+// Step 189: the server's Plus check (403) gets its own words in the panel, so
+// a subscriber whose purchase hasn't reached the server isn't told the Coach
+// is down. It is still an absence: nothing to show, nothing blocked.
+describe('fetchCoachInsights — the server could not confirm Plus', () => {
+  /** supabase-js on a non-2xx: the Response as `response` and as the error's `context`. */
+  function httpError(status: number, where: 'both' | 'context' | 'response' = 'both') {
+    const response = { status };
+    return makeClient(async () => ({
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        ...(where !== 'response' ? { context: response } : {}),
+      },
+      ...(where !== 'context' ? { response } : {}),
+    }));
+  }
+
+  it.each(['both', 'context', 'response'] as const)(
+    'names a 403 as not_entitled (status read from %s)',
+    async (where) => {
+      const { client } = httpError(403, where);
+      await expect(fetchCoachInsights(CONTEXT, true, { client })).resolves.toEqual({
+        insights: [],
+        safe: true,
+        crisisTopic: null,
+        ok: false,
+        failure: 'not_entitled',
+      });
+    },
+  );
+
+  it.each([401, 429, 500, 502])('leaves a %i unnamed', async (status) => {
+    const { client } = httpError(status);
+    const out = await fetchCoachInsights(CONTEXT, true, { client });
+    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
+    expect(out.failure).toBeUndefined();
+  });
+
+  it('leaves a network failure unnamed', async () => {
+    const { client } = makeClient(async () => ({
+      data: null,
+      error: { message: 'Failed to send a request to the Edge Function' },
+    }));
+    expect((await fetchCoachInsights(CONTEXT, true, { client })).failure).toBeUndefined();
+  });
+
+  it('makes no request, and names nothing, for a free user', async () => {
+    const { client, calls } = httpError(403);
+    const out = await fetchCoachInsights(CONTEXT, false, { client });
+    expect(calls).toHaveLength(0);
+    expect(out.failure).toBeUndefined();
   });
 });
