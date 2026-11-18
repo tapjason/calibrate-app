@@ -52,6 +52,7 @@ export function DeleteAccountView({
 }) {
   const status = useAuthStore((s) => s.status);
   const hasAppleIdentity = useAuthStore((s) => s.hasAppleIdentity);
+  const hasGoogleIdentity = useAuthStore((s) => s.hasGoogleIdentity);
   const pending = useAuthStore((s) => s.pending);
   const deleteAccount = useAuthStore((s) => s.deleteAccount);
   const eraseDeviceData = useAuthStore((s) => s.eraseDeviceData);
@@ -167,6 +168,17 @@ export function DeleteAccountView({
         <Text style={styles.muted} testID="delete-apple-note">
           You'll be asked to confirm with Apple, so {APP_NAME}'s access to your Apple ID
           is removed too.
+        </Text>
+      )}
+
+      {/* An account made with Google, or linked to it (hasGoogleIdentity,
+          step 192). The app holds no Google token, so there is nothing to
+          revoke from here and no Google sheet: only where to look. */}
+      {wasSignedIn && hasGoogleIdentity && (
+        <Text style={styles.muted} testID="delete-google-note">
+          Deleting your account removes what Google shared with us. To remove {APP_NAME} from
+          your Google Account too, open its security settings and look under third-party
+          connections.
         </Text>
       )}
 

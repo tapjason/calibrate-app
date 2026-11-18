@@ -57,7 +57,8 @@ by design. A few font sizes are still raw numbers rather than `type.*` (the tab 
    theirs: never a meaning).
 6. **Ink is chrome, colour is data.** Actions and selection are ink (`action`); the
    chart and every other hue mean over, under or on the line. Nothing else on screen
-   carries a hue except the destructive red, the caution amber and Oracle's gold
+   carries a hue except the destructive red, the caution amber, Oracle's gold and
+   Google's own mark on its sign-in button (§2.4)
    (D33; `theme.test.ts` holds the rest near-neutral).
 7. **Text contrast ≥ 4.5:1**, UI/graphic contrast ≥ 3:1, no text under 11 pt, tap
    targets ≥ 44×44 pt.
@@ -156,6 +157,17 @@ hue, so no chrome can be mistaken for a calibration colour; indigo sat only 3.7 
 - Categories are identified by SF Symbol + label only (§5), or by the person's own
   emoji or picture + label (D40, §7.24). That is the one place a hue appears that
   isn't over, under or on the line: it means "the icon you chose" and nothing else.
+- **A third-party mark keeps its owner's colours.** "Continue with Google" (step 192, on
+  the sign-in screen only) follows Google's branding rules, which forbid a monochrome G:
+  the four-colour G from Google's own sample file (`googleBlue` `#4285F4`, `googleGreen`
+  `#34A853`, `googleYellow` `#FBBC04`, `googleRed` `#E94235`, the same in both
+  appearances), on Google's Light theme in light (`googleButtonFill` `#FFFFFF`,
+  `googleButtonStroke` `#747775`, `googleButtonText` `#1F1F1F`, pressed `#E9E9E9`) and its
+  Dark theme in dark (`#131314`, `#8E918F`, `#E3E3E3`, pressed `#282829`). It means "this
+  is Google's button" and nothing about the record. The label is in the system font, like
+  Apple's native button above it, not Instrument Sans (Google names Google Sans or Roboto;
+  the app carries neither). `theme.test.ts` exempts exactly those four G tokens and fails
+  on any other new hue. Apple's button stays first and the same size.
 - The app follows the phone's appearance (`app.json` `userInterfaceStyle: "automatic"`;
   D7, built as step 86), with no in-app toggle: the HIG says people "generally expect
   all apps … to respect their preference" and warns against one. Every token is a

@@ -80,6 +80,27 @@ export interface Palette {
   emblemMark: string;
   /** Oracle only: the gold hairline and the gradient's far stop. */
   oracleGold: string;
+
+  // "Continue with Google" (step 192): a third-party mark, drawn to Google's
+  // branding guidelines (developers.google.com/identity/branding-guidelines),
+  // not to the app's own look, and used nowhere else. Google's Light theme in
+  // light appearance and its Dark theme in dark; the stroke is 1 pt, inside.
+  /** The button's fill. */
+  googleButtonFill: string;
+  /** The fill while pressed: a 10% state layer of the label colour (Material). */
+  googleButtonPressed: string;
+  /** The button's outline. */
+  googleButtonStroke: string;
+  /** The label. */
+  googleButtonText: string;
+  // The four-colour "G", Google's trademark colours, the same in both
+  // appearances: Google forbids a monochrome G. The only hues outside the
+  // calibration, caution, destructive and Oracle roles, exempted by name in
+  // theme.test.ts. Values from Google's own button SVGs (GoogleSignInButton).
+  googleBlue: string;
+  googleGreen: string;
+  googleYellow: string;
+  googleRed: string;
 }
 
 // Values and their contrast ratios: DESIGN_SYSTEM §2 (roadmap D33, decided
@@ -117,6 +138,16 @@ const light: Palette = {
   emblemDeep: '#15171B',
   emblemMark: '#FFFFFF',
   oracleGold: '#B7791F',
+
+  // Google's Light theme.
+  googleButtonFill: '#FFFFFF',
+  googleButtonPressed: '#E9E9E9', // #1F1F1F at 10% over the fill
+  googleButtonStroke: '#747775', // 4.11:1 on canvas
+  googleButtonText: '#1F1F1F', // 16.5:1 on the fill, 13.6:1 pressed
+  googleBlue: '#4285F4',
+  googleGreen: '#34A853',
+  googleYellow: '#FBBC04',
+  googleRed: '#E94235',
 };
 
 /** DESIGN_SYSTEM §2.5. Actions turn light on the dark canvas, with ink on them. */
@@ -153,6 +184,16 @@ const dark: Palette = {
   emblemDeep: '#F2F3F5',
   emblemMark: '#15171B',
   oracleGold: '#E8B64C',
+
+  // Google's Dark theme.
+  googleButtonFill: '#131314',
+  googleButtonPressed: '#282829', // #E3E3E3 at 10% over the fill
+  googleButtonStroke: '#8E918F', // 6.0:1 on dark canvas
+  googleButtonText: '#E3E3E3', // 14.5:1 on the fill, 11.5:1 pressed
+  googleBlue: '#4285F4',
+  googleGreen: '#34A853',
+  googleYellow: '#FBBC04',
+  googleRed: '#E94235',
 };
 
 export const palettes = { light, dark } as const;

@@ -1,12 +1,20 @@
+// The system web sign-in sheet, which Google sign-in opens (step 192).
+jest.mock('expo-web-browser', () => ({ openAuthSessionAsync: jest.fn() }));
+
 import type { User } from '@supabase/supabase-js';
 
 import {
   authErrorText,
+  GOOGLE_REDIRECT_URL,
+  GOOGLE_UNAVAILABLE,
   hasAppleIdentity,
+  hasGoogleIdentity,
   passwordMeetsRules,
   passwordRules,
   passwordRulesError,
+  readAuthRedirect,
   signInWithEmail,
+  signInWithGoogle,
   signUpWithEmail,
   WEAK_PASSWORD_TEXT,
 } from './auth';
@@ -360,5 +368,441 @@ describe('hasAppleIdentity', () => {
     expect(
       check({ id: 'u', app_metadata: { provider: 7, providers: [null, 'apple'] }, identities: 3 }),
     ).toBe(true);
+  });
+});
+
+// Step 192: Google through the system sign-in sheet (iOS's
+// ASWebAuthenticationSession), no Google SDK. jest-expo runs these as iOS.
+describe('signInWithGoogle', () => {
+  /* eslint-disable @typescript-eslint/no-var-requires */
+  const { Platform } = require('react-native') as typeof import('react-native');
+  const openAuthSessionAsync = jest.requireMock('expo-web-browser')
+    .openAuthSessionAsync as jest.Mock;
+  /* eslint-enable @typescript-eslint/no-var-requires */
+
+  const AUTH_URL =
+    'https://example.supabase.co/auth/v1/authorize?provider=google&redirect_to=fairlysure%3A%2F%2Fgoogle-auth&code_challenge=c&code_challenge_method=s256&prompt=select_account';
+  const CODE = '8f0e3c52-6d1e-4a1b-9a57-5d0b8c1f2e33';
+  const CANCELLED = 'Sign-in cancelled.';
+  const NO_CODE = "Google didn't return a sign-in code.";
+  const OFFLINE = "Couldn't reach the server. Check your connection and try again.";
+
+  let signInWithOAuth: jest.Mock;
+  let exchangeCodeForSession: jest.Mock;
+  let consoleSpies: jest.SpyInstance[] = [];
+
+  /** The sheet ends on this redirect, as iOS hands it back. */
+  const returns = (url: string) => openAuthSessionAsync.mockResolvedValue({ type: 'success', url });
+  const failedExchange = (error: unknown) =>
+    exchangeCodeForSession.mockResolvedValue({ data: { session: null, user: null }, error });
+
+  beforeEach(() => {
+    openAuthSessionAsync.mockReset();
+    signInWithOAuth = jest
+      .fn()
+      .mockResolvedValue({ data: { provider: 'google', url: AUTH_URL }, error: null });
+    exchangeCodeForSession = jest.fn().mockResolvedValue({
+      data: { session: { access_token: 'access' }, user: { id: 'u' } },
+      error: null,
+    });
+    setSupabaseClientForTests({
+      auth: { signInWithOAuth, exchangeCodeForSession },
+    } as unknown as Parameters<typeof setSupabaseClientForTests>[0]);
+    consoleSpies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((method) =>
+      jest.spyOn(console, method).mockImplementation(() => undefined),
+    );
+  });
+
+  // Every case below, success and failure alike: nothing is logged, so the
+  // sign-in address, the code and any token never reach a log.
+  afterEach(() => {
+    for (const spy of consoleSpies) {
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    }
+  });
+
+  it("opens the system sheet on Supabase's Google address and exchanges the code it returns", async () => {
+    returns(`${GOOGLE_REDIRECT_URL}?code=${CODE}`);
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: true });
+
+    expect(GOOGLE_REDIRECT_URL).toBe('fairlysure://google-auth');
+    expect(signInWithOAuth).toHaveBeenCalledTimes(1);
+    expect(signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        redirectTo: 'fairlysure://google-auth',
+        skipBrowserRedirect: true,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    // No scopes beyond Supabase's own.
+    expect(signInWithOAuth.mock.calls[0][0].options).not.toHaveProperty('scopes');
+    // The default sheet, not an ephemeral one: no options at all.
+    expect(openAuthSessionAsync.mock.calls).toEqual([[AUTH_URL, 'fairlysure://google-auth']]);
+    expect(exchangeCodeForSession).toHaveBeenCalledTimes(1);
+    expect(exchangeCodeForSession).toHaveBeenCalledWith(CODE);
+  });
+
+  it('reads a code from the fragment too', async () => {
+    returns(`${GOOGLE_REDIRECT_URL}#code=${CODE}`);
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: true });
+    expect(exchangeCodeForSession).toHaveBeenCalledWith(CODE);
+  });
+
+  it.each(['cancel', 'dismiss'])(
+    'says the sign-in was cancelled when the sheet ends with %s',
+    async (type) => {
+      openAuthSessionAsync.mockResolvedValue({ type });
+
+      await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: CANCELLED });
+      expect(exchangeCodeForSession).not.toHaveBeenCalled();
+    },
+  );
+
+  it("reads a sheet that couldn't open as unavailable", async () => {
+    openAuthSessionAsync.mockResolvedValue({ type: 'locked' });
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'in the query',
+      `${GOOGLE_REDIRECT_URL}?error=server_error&error_description=Unable+to+exchange+external+code%3A+4%2F0Ab`,
+    ],
+    [
+      'in the fragment',
+      `${GOOGLE_REDIRECT_URL}#error=server_error&error_description=Unable+to+exchange+external+code`,
+    ],
+    [
+      'in both, as Supabase sends it',
+      `${GOOGLE_REDIRECT_URL}?error=server_error&error_code=unexpected_failure&error_description=Database+error+saving+new+user#error=server_error&error_code=unexpected_failure&error_description=Database+error+saving+new+user`,
+    ],
+  ])("reads an error %s as not the person's doing", async (_where, url) => {
+    returns(url);
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  // Before the owner's set-up, or if the provider is switched off later.
+  it('says Google sign-in is unavailable when the provider is not enabled', async () => {
+    expect(GOOGLE_UNAVAILABLE).toBe("Google sign-in isn't available right now.");
+
+    returns(
+      `${GOOGLE_REDIRECT_URL}?error=invalid_request&error_code=validation_failed&error_description=Unsupported+provider%3A+provider+is+not+enabled`,
+    );
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+
+    signInWithOAuth.mockResolvedValue({
+      data: { provider: 'google', url: null },
+      error: { message: 'Unsupported provider: provider is not enabled', code: 'validation_failed' },
+    });
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+  });
+
+  // Supabase passes Google's own refusal through with no code of its own.
+  it("reads Cancel on Google's page as a cancelled sign-in", async () => {
+    returns(`${GOOGLE_REDIRECT_URL}?error=access_denied#error=access_denied`);
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: CANCELLED });
+  });
+
+  it('passes on a reason written for the person', async () => {
+    returns(
+      `${GOOGLE_REDIRECT_URL}?error=access_denied&error_code=user_banned&error_description=User+is+banned`,
+    );
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: 'User is banned' });
+
+    returns(
+      `${GOOGLE_REDIRECT_URL}?error=access_denied&error_code=provider_email_needs_verification&error_description=Unverified+email+with+google.+A+confirmation+email+has+been+sent+to+your+google+email`,
+    );
+    await expect(signInWithGoogle()).resolves.toEqual({
+      ok: false,
+      error: 'Unverified email with google. A confirmation email has been sent to your google email',
+    });
+  });
+
+  it("reads closed sign-ups, the project's setting, as unavailable", async () => {
+    returns(
+      `${GOOGLE_REDIRECT_URL}?error=access_denied&error_code=signup_disabled&error_description=Signups+not+allowed+for+this+instance`,
+    );
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+  });
+
+  it('prefers an error to a code that came with it', async () => {
+    returns(`${GOOGLE_REDIRECT_URL}?code=${CODE}&error=server_error`);
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it('says so when Google returns neither a code nor an error', async () => {
+    returns(GOOGLE_REDIRECT_URL);
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: NO_CODE });
+
+    returns(`${GOOGLE_REDIRECT_URL}?code=&state=x`);
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: NO_CODE });
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed exchange in plain words', async () => {
+    returns(`${GOOGLE_REDIRECT_URL}?code=${CODE}`);
+
+    failedExchange({ message: 'invalid flow state, no valid flow state found', code: 'flow_state_not_found' });
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+
+    // Supabase's text for a lost verifier is written for developers.
+    failedExchange(
+      Object.assign(
+        new Error(
+          'PKCE code verifier not found in storage. This can happen if the auth flow was initiated in a different browser or device, or if the storage was cleared.',
+        ),
+        { code: 'pkce_code_verifier_not_found' },
+      ),
+    );
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+
+    failedExchange(new Error('Failed to fetch'));
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: OFFLINE });
+    expect(exchangeCodeForSession).toHaveBeenCalledTimes(3);
+  });
+
+  it("opens no sheet when Supabase can't build the address", async () => {
+    signInWithOAuth.mockResolvedValue({
+      data: { provider: 'google', url: null },
+      error: new Error('Network request failed'),
+    });
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: OFFLINE });
+
+    signInWithOAuth.mockResolvedValue({
+      data: { provider: 'google', url: null },
+      error: { message: 'Something unexpected happened', code: 'unexpected_failure' },
+    });
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+
+    // No error and no address either.
+    signInWithOAuth.mockResolvedValue({ data: { provider: 'google', url: null }, error: null });
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+
+    expect(openAuthSessionAsync).not.toHaveBeenCalled();
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it('never throws: a thrown error becomes plain words', async () => {
+    openAuthSessionAsync.mockRejectedValue(new Error('ERR_WEB_BROWSER: the native module failed'));
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+
+    returns(`${GOOGLE_REDIRECT_URL}?code=${CODE}`);
+    exchangeCodeForSession.mockRejectedValue('not even an Error');
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+
+    signInWithOAuth.mockRejectedValue(new TypeError('Network request failed'));
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: OFFLINE });
+  });
+
+  // Service down at its most basic: a build with no Supabase settings. The
+  // client's own error ("Supabase credentials missing…") is a developer's.
+  it('reads a build without Supabase as unavailable', async () => {
+    setSupabaseClientForTests(null);
+
+    await expect(signInWithGoogle()).resolves.toEqual({ ok: false, error: GOOGLE_UNAVAILABLE });
+    expect(openAuthSessionAsync).not.toHaveBeenCalled();
+  });
+
+  it.each(['android', 'web'] as const)('is iOS only: on %s it calls nothing', async (os) => {
+    const original = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: os, configurable: true });
+    try {
+      await expect(signInWithGoogle()).resolves.toEqual({
+        ok: false,
+        error: 'Google sign-in is only available on iOS.',
+      });
+      expect(signInWithOAuth).not.toHaveBeenCalled();
+      expect(openAuthSessionAsync).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: original, configurable: true });
+    }
+  });
+
+  // The code is a one-time credential: no failure's words carry it, or the
+  // address it came with.
+  it('keeps the code and the address out of every message it returns', async () => {
+    const failures = [
+      `${GOOGLE_REDIRECT_URL}?code=${CODE}&error=server_error&error_description=bad+${CODE}`,
+      `${GOOGLE_REDIRECT_URL}#code=${CODE}&error=invalid_request&error_code=bad_oauth_state`,
+    ];
+    for (const url of failures) {
+      returns(url);
+      const outcome = await signInWithGoogle();
+      expect(outcome.ok).toBe(false);
+      const words = outcome.ok ? '' : outcome.error;
+      expect(words).not.toContain(CODE);
+      expect(words).not.toContain('fairlysure://');
+      expect(words).not.toContain(AUTH_URL);
+    }
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+});
+
+describe('readAuthRedirect', () => {
+  const none = { code: null, error: null, errorCode: null, errorDescription: null };
+
+  it('reads the query, then the fragment, and decodes both', () => {
+    expect(readAuthRedirect('fairlysure://google-auth?code=abc')).toEqual({ ...none, code: 'abc' });
+    expect(
+      readAuthRedirect(
+        'fairlysure://google-auth#error=access_denied&error_code=x_y&error_description=The+user+said%20no',
+      ),
+    ).toEqual({ ...none, error: 'access_denied', errorCode: 'x_y', errorDescription: 'The user said no' });
+    expect(readAuthRedirect('fairlysure://google-auth?code=q#code=f').code).toBe('q');
+    // An empty value is no value: the fragment's is read instead.
+    expect(readAuthRedirect('fairlysure://google-auth?code=#code=f').code).toBe('f');
+    // The first of a repeated key wins.
+    expect(readAuthRedirect('fairlysure://google-auth?code=1&code=2').code).toBe('1');
+  });
+
+  it('never throws on a malformed address', () => {
+    expect(readAuthRedirect('')).toEqual(none);
+    expect(readAuthRedirect('fairlysure://google-auth')).toEqual(none);
+    expect(readAuthRedirect('fairlysure://google-auth?error=%E0%A4%A&code').error).toBe('%E0%A4%A');
+    expect(readAuthRedirect('fairlysure://google-auth?error=%E0%A4%A&code').code).toBeNull();
+    expect(readAuthRedirect('fairlysure://google-auth?constructor=x&__proto__=y&toString=z')).toEqual(
+      none,
+    );
+  });
+});
+
+// Account deletion tells an account with a Google identity how to remove the
+// app from its Google Account (DeleteAccountView). The same three signals and
+// the same tolerance as hasAppleIdentity.
+describe('hasGoogleIdentity', () => {
+  /** Whatever a session might carry, typed or not. */
+  const check = (value: unknown) => hasGoogleIdentity(value as User);
+  const identity = (provider: unknown) => ({
+    id: 'sub',
+    identity_id: 'identity',
+    user_id: 'user-1',
+    provider,
+    identity_data: {},
+  });
+
+  it('is true from app_metadata.provider alone', () => {
+    expect(check({ id: 'u', app_metadata: { provider: 'google' } })).toBe(true);
+  });
+
+  it('is true from app_metadata.providers alone, for an email account linked to Google', () => {
+    expect(
+      check({ id: 'u', app_metadata: { provider: 'email', providers: ['email', 'google'] } }),
+    ).toBe(true);
+  });
+
+  it('is true from user.identities alone', () => {
+    expect(
+      check({ id: 'u', app_metadata: {}, identities: [identity('email'), identity('google')] }),
+    ).toBe(true);
+  });
+
+  it('is true for an Apple account linked to Google, with every signal present', () => {
+    expect(
+      check({
+        id: 'u',
+        app_metadata: { provider: 'apple', providers: ['apple', 'google'] },
+        identities: [identity('apple'), identity('google')],
+      }),
+    ).toBe(true);
+  });
+
+  it('is false for an email-only account and for an Apple-only one', () => {
+    expect(
+      check({
+        id: 'u',
+        app_metadata: { provider: 'email', providers: ['email'] },
+        identities: [identity('email')],
+      }),
+    ).toBe(false);
+    expect(
+      check({
+        id: 'u',
+        app_metadata: { provider: 'apple', providers: ['apple'] },
+        identities: [identity('apple')],
+      }),
+    ).toBe(false);
+  });
+
+  it('is false with no signal at all', () => {
+    expect(check({ id: 'u', app_metadata: {} })).toBe(false);
+    expect(check({ id: 'u', app_metadata: {}, identities: [] })).toBe(false);
+  });
+
+  it.each<[string, unknown]>([
+    ['null', null],
+    ['undefined', undefined],
+    ['a string', 'google'],
+    ['a number', 42],
+    ['an array', ['google']],
+    ['a user with no app_metadata', { id: 'u' }],
+    ['app_metadata null', { id: 'u', app_metadata: null }],
+    ['app_metadata a string', { id: 'u', app_metadata: 'google' }],
+    ['provider not a string', { id: 'u', app_metadata: { provider: ['google'] } }],
+    ['providers a string, not a list', { id: 'u', app_metadata: { providers: 'google' } }],
+    ['providers holding no strings', { id: 'u', app_metadata: { providers: [null, 42, {}] } }],
+    ['identities not a list', { id: 'u', app_metadata: {}, identities: { provider: 'google' } }],
+    ['identities a string', { id: 'u', app_metadata: {}, identities: 'google' }],
+    [
+      'identities holding malformed entries',
+      { id: 'u', app_metadata: {}, identities: [null, 'google', 7, identity(42), identity(null)] },
+    ],
+  ])('is false, and never throws, for %s', (_label, value) => {
+    expect(() => check(value)).not.toThrow();
+    expect(check(value)).toBe(false);
+  });
+
+  it('still finds Google when the other fields are malformed', () => {
+    expect(
+      check({ id: 'u', app_metadata: 'garbage', identities: [null, identity('google')] }),
+    ).toBe(true);
+    expect(
+      check({ id: 'u', app_metadata: { provider: 7, providers: [null, 'google'] }, identities: 3 }),
+    ).toBe(true);
+  });
+
+  it('keeps Apple and Google apart', () => {
+    const googleOnly = {
+      id: 'u',
+      app_metadata: { provider: 'google', providers: ['google'] },
+      identities: [identity('google')],
+    };
+    expect(hasGoogleIdentity(googleOnly as unknown as User)).toBe(true);
+    expect(hasAppleIdentity(googleOnly as unknown as User)).toBe(false);
+  });
+});
+
+// App Review 5.1.1(v) and the privacy policy: a provider's own tokens stay on
+// the device. Supabase may keep Google's access token in the session after a
+// Google sign-in; no app code reads it, so none sends it anywhere.
+describe("a sign-in provider's own tokens", () => {
+  it('are read nowhere in the app', () => {
+    /* eslint-disable @typescript-eslint/no-var-requires */
+    const { readdirSync, readFileSync, statSync } = require('fs') as typeof import('fs');
+    const { join, relative } = require('path') as typeof import('path');
+    /* eslint-enable @typescript-eslint/no-var-requires */
+    const root = join(__dirname, '..', '..');
+    const sources = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) return sources(path);
+        return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
+      });
+    const field = new RegExp(['provider', '(refresh_)?token'].join('_'));
+    const readers = [...sources(join(root, 'src')), ...sources(join(root, 'app'))]
+      .filter((file) => field.test(readFileSync(file, 'utf8')))
+      .map((file) => relative(root, file));
+    expect(readers).toEqual([]);
   });
 });

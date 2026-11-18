@@ -323,6 +323,9 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
+        {/* Google sign-in's return address, if iOS ever opens it as a link:
+            it leaves at once, so nothing slides in (step 192). */}
+        <Stack.Screen name="google-auth" options={{ animation: 'none' }} />
       </Stack>
       {/* The launch page, held a moment over the first screen (step 187). */}
       <LaunchScreen started={launched} />

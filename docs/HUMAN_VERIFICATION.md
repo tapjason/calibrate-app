@@ -124,6 +124,48 @@ and a number. Until the server has the same rule, only the app enforces it.
       refusal for a leaked password would show the four-rules line to someone whose password
       already meets all four.
 
+### A6. Google sign-in (step 192, 2026-11-18)
+
+The app has a "Continue with Google" button, hidden behind `GOOGLE_SIGN_IN_ENABLED` until
+these are done. It opens Google in the system sign-in sheet; there is no Google SDK in the
+app. Why this way, and what it costs: `docs/design/research/sign-in-providers-2026-11.md`.
+Menu names are Google's and Supabase's as documented in November 2026 and may have moved.
+The client secret goes from Google straight into Supabase: don't paste it into a chat, a
+file in this repo or a terminal an agent reads.
+
+- [ ] **Google Cloud project.** console.cloud.google.com → new project, "Fairly Sure".
+- [ ] **Branding** (Google Auth Platform → Branding): app name **Fairly Sure**; your support
+      email; home page `https://tapjason.github.io/calibrate-app/support/`; privacy policy
+      `https://tapjason.github.io/calibrate-app/privacy/`; authorised domains
+      `tapjason.github.io` and `otopheizhjstoeyndcvc.supabase.co`; your contact email.
+- [ ] **Audience:** External, then **Publish app** (in Testing only listed test users can
+      sign in, so an App Review tester couldn't).
+- [ ] **Data access:** only `openid`, `.../auth/userinfo.email` and
+      `.../auth/userinfo.profile`. Nothing else: these three need no Google review.
+- [ ] **Client:** Clients → Create client → **Web application**; authorised redirect URI
+      `https://otopheizhjstoeyndcvc.supabase.co/auth/v1/callback`. Keep the page open for
+      the client ID and secret.
+- [ ] **Supabase → Authentication → Sign In / Providers → Google:** enable, paste the client
+      ID and the client secret, leave "Skip nonce check" **off**, save.
+- [ ] **Supabase → Authentication → URL Configuration → Redirect URLs:** add exactly
+      `fairlysure://google-auth`.
+- [ ] **Supabase → Authentication → Sign In / Providers → Email:** "Confirm email" is **on**
+      and stays on (with it off, an address someone else registered first would be linked
+      to its real owner's Google sign-in).
+- [ ] **Apply migration 009** (`npx supabase db push --remote`, with this branch checked out): it
+      drops the name and picture Google sends as they arrive. Read the notices it prints:
+      one names any trigger the project refused.
+- [ ] **Tell the agent**, which turns the flag on for the next build and, in the same
+      change, updates the privacy policy (§2.1, the processor table, deletion) and
+      `APP_PRIVACY.md` (the Email row's evidence; the User ID row gains Google's account
+      id). The policy goes live when that change is pushed, so it and the build go together.
+- [ ] **After the build:** sign in with Google once, then run the query at the end of
+      migration 009 in the SQL editor. **Pass:** no `name`, `full_name`, `picture` or
+      `avatar_url` among the keys. If they are there, say so: App Privacy then gains Name.
+- [ ] **Later, optional:** Google's screen says "continue to
+      otopheizhjstoeyndcvc.supabase.co". Showing "Fairly Sure" needs a Supabase custom
+      domain (a paid plan plus $10 a month) and Google's brand verification.
+
 ---
 
 ## Batch B — Store and billing setup

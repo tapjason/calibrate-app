@@ -1,6 +1,8 @@
 > **Research, 2026-11-18.** Asked by the owner on build 3: "Can you also add in login with
 > google, and any other meta, relevant providers?" Two Opus checks (platform, policy), read
-> and decided on by the main session. Nothing is built. The owner's answers are pending; the
+> and decided on by the main session. **Decided 2026-11-18** (owner: "Go with all your recommendations, I agree"): Google through
+> the system sheet, no Facebook, the name and picture discarded. Built as step 192, behind
+> `GOOGLE_SIGN_IN_ENABLED` until his setup (`HUMAN_VERIFICATION.md` A6) is done. The
 > account rules that hold today are in [`../../ACCOUNT_SPEC.md`](../../ACCOUNT_SPEC.md).
 
 # Sign-in providers: Google, Meta and the rest
@@ -39,7 +41,7 @@ redirect URI is `https://otopheizhjstoeyndcvc.supabase.co/auth/v1/callback`. No 
 `openid`, `email` and `profile` need no security assessment. The app's name and logo show
 on Google's screen only after brand verification, which needs a domain the owner controls.
 **Supabase (owner):** enable Google with the client id and secret; add the redirect URL
-(`fairlysure://…`, the exact path) to the allow-list.
+(exactly `fairlysure://google-auth`) to the allow-list.
 
 **The button.** Google forbids a monochrome "G": it must be the standard four-colour mark.
 Least colour: the Neutral or Light theme in light appearance, the Dark theme in dark;

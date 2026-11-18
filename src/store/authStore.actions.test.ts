@@ -1,4 +1,4 @@
-// The account actions on authStore: sign in, sign up, Apple, sign out. The
+// The account actions on authStore: sign in, sign up, Apple, Google, sign out. The
 // session side effects (guest handoff, reload, sync) are covered in
 // authStore.test.ts through onAuthStateChange; these only check that the
 // actions pass the service's outcome through and hold `pending` while in
@@ -8,11 +8,13 @@ jest.mock('@/supabase/auth', () => ({
   signInWithEmail: jest.fn(),
   signUpWithEmail: jest.fn(),
   signInWithApple: jest.fn(),
+  signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
   signOutLocal: jest.fn(),
   reauthenticateWithApple: jest.fn(),
-  // The real one: the deletion tests below read it off real session shapes.
+  // The real ones: the deletion tests below read them off real session shapes.
   hasAppleIdentity: jest.requireActual('@/supabase/auth').hasAppleIdentity,
+  hasGoogleIdentity: jest.requireActual('@/supabase/auth').hasGoogleIdentity,
 }));
 jest.mock('@/supabase/account', () => ({ deleteAccountOnServer: jest.fn() }));
 // A signed-in session starts a sync; none of these tests is about it.
@@ -81,6 +83,25 @@ describe('authStore account actions', () => {
 
     finish({ ok: true });
     await call;
+    expect(useAuthStore.getState().pending).toBe(false);
+  });
+
+  // Step 192: Google through the system sheet, held and passed through like
+  // Apple's.
+  it('passes the Google sign-in outcome through, holding pending until it lands', async () => {
+    let finish: (v: { ok: false; error: string }) => void = () => {};
+    mocked.signInWithGoogle.mockReturnValue(new Promise((r) => (finish = r)));
+
+    const call = useAuthStore.getState().signInWithGoogle();
+    expect(useAuthStore.getState().pending).toBe(true);
+    expect(mocked.signInWithGoogle).toHaveBeenCalledTimes(1);
+
+    finish({ ok: false, error: 'Sign-in cancelled.' });
+    await expect(call).resolves.toEqual({ ok: false, error: 'Sign-in cancelled.' });
+    expect(useAuthStore.getState().pending).toBe(false);
+
+    mocked.signInWithGoogle.mockResolvedValue({ ok: true });
+    await expect(useAuthStore.getState().signInWithGoogle()).resolves.toEqual({ ok: true });
     expect(useAuthStore.getState().pending).toBe(false);
   });
 
@@ -273,6 +294,14 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     app_metadata: { provider: 'email', providers: ['email'] },
     identities: [identity('email')],
   });
+  const GOOGLE_FIRST = sessionFor({
+    app_metadata: { provider: 'google', providers: ['google'] },
+    identities: [identity('google')],
+  });
+  const GOOGLE_LINKED_TO_APPLE = sessionFor({
+    app_metadata: { provider: 'google', providers: ['google', 'apple'] },
+    identities: [identity('google'), identity('apple')],
+  });
 
   let emit: (event: string, session: Session | null) => void = () => {};
 
@@ -351,6 +380,45 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
 
     await useAuthStore.getState().deleteAccount();
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+  });
+
+  // Step 192: a Google account is told where to remove the app from its
+  // Google Account (DeleteAccountView); deletion itself asks no Google sheet
+  // and sends no Google code, since the app holds no Google token.
+  it('marks an account made with Google, and deletes it without any Apple or Google sheet', async () => {
+    await signInWith(GOOGLE_FIRST);
+    expect(useAuthStore.getState().hasGoogleIdentity).toBe(true);
+    expect(useAuthStore.getState().hasAppleIdentity).toBe(false);
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
+    expect(mocked.signInWithGoogle).not.toHaveBeenCalled();
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+  });
+
+  it('marks both for a Google account linked to Apple, and still revokes Apple', async () => {
+    await signInWith(GOOGLE_LINKED_TO_APPLE);
+    expect(useAuthStore.getState().hasGoogleIdentity).toBe(true);
+    expect(useAuthStore.getState().hasAppleIdentity).toBe(true);
+
+    await useAuthStore.getState().deleteAccount();
+    expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+  });
+
+  it('clears the Google mark when the session goes', async () => {
+    await signInWith(GOOGLE_FIRST);
+    emit('SIGNED_OUT', null);
+    await new Promise((r) => setImmediate(r));
+
+    expect(useAuthStore.getState().status).toBe('guest');
+    expect(useAuthStore.getState().hasGoogleIdentity).toBe(false);
+    expect(useAuthStore.getState().hasAppleIdentity).toBe(false);
+  });
+
+  it('marks no Google identity on an email-only account', async () => {
+    await signInWith(EMAIL_ONLY);
+    expect(useAuthStore.getState().hasGoogleIdentity).toBe(false);
   });
 
   // Declining the sheet still deletes, for a linked account as for any other.

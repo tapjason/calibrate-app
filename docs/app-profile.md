@@ -74,7 +74,7 @@ Status: filled in 2026-11-08
   synced, D39, D40), settings, the age band, the entitlement mirror, deletion tombstones, the counts of late moves
   and of answers moved between categories (never synced). All in
   SQLite (`calibrate.db`); the app is complete offline with no account.
-- **Supabase owns (after sign-in):** Auth (email; Sign in with Apple through `signInWithIdToken`),
+- **Supabase owns (after sign-in):** Auth (email; Sign in with Apple through `signInWithIdToken`; Google through the system sheet and `exchangeCodeForSession`, behind `GOOGLE_SIGN_IN_ENABLED`),
   the synced copy of predictions (last-write-wins, deletions as tombstones), entitlements written by
   the `revenuecat-webhook` Edge Function, Coach usage and rate limits, analytics events from
   signed-in users and guests' funnel counts with no id of any kind (`guest_analytics_events`, D43),

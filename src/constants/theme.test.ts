@@ -31,6 +31,12 @@ const PAIRS: Pair[] = [
   ['overMark', 'surface', 3],
   ['underMark', 'surface', 3],
   ['calibratedMark', 'surface', 3],
+  // "Continue with Google" (step 192), in Google's own Light and Dark themes:
+  // its label at rest and pressed, and its outline, which carries the
+  // button's edge on the canvas (the fill alone is about 1.1:1 there).
+  ['googleButtonText', 'googleButtonFill', 4.5],
+  ['googleButtonText', 'googleButtonPressed', 4.5],
+  ['googleButtonStroke', 'canvas', 3],
 ];
 
 describe('theme contrast (light)', () => {
@@ -77,6 +83,15 @@ describe('ink chrome', () => {
     'overMark', 'overText', 'underMark', 'underText', 'calibratedMark', 'calibratedText',
     'cautionText', 'cautionBackground', 'destructive', 'oracleGold',
   ];
+  // One exception that means nothing about the record (step 192): the four
+  // colours of Google's "G" on "Continue with Google", a third-party
+  // trademark. Google's branding guidelines forbid a monochrome G, so the
+  // mark keeps its colours, and it appears nowhere else (DESIGN_SYSTEM §2).
+  // Exactly these four: the rest of the button (fill, pressed fill, outline,
+  // label) is held near-neutral like any chrome.
+  const THIRD_PARTY_MARK: (keyof Palette)[] = [
+    'googleBlue', 'googleGreen', 'googleYellow', 'googleRed',
+  ];
   // Chroma (max − min channel): saturation inflates near black, chroma doesn't.
   const chroma = (hex: string) => {
     const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -84,8 +99,32 @@ describe('ink chrome', () => {
   };
   it.each(['light', 'dark'] as const)('keeps every other %s token near-neutral', (mode) => {
     for (const [key, hex] of Object.entries(palettes[mode]) as [keyof Palette, string][]) {
-      if (HUED.includes(key)) continue;
+      if (HUED.includes(key) || THIRD_PARTY_MARK.includes(key)) continue;
       expect([key, chroma(hex) < 0.08]).toEqual([key, true]);
+    }
+  });
+
+  // The exemption is exact: every hued token outside the record's roles is
+  // one of the G's four, and each of the four is hued, so the list can't
+  // quietly cover a token it doesn't need to.
+  it.each(['light', 'dark'] as const)(
+    "exempts exactly the four colours of Google's G in %s",
+    (mode) => {
+      const huedOutsideRoles = (Object.entries(palettes[mode]) as [keyof Palette, string][])
+        .filter(([key, hex]) => !HUED.includes(key) && chroma(hex) >= 0.08)
+        .map(([key]) => key)
+        .sort();
+      expect(huedOutsideRoles).toEqual([...THIRD_PARTY_MARK].sort());
+    },
+  );
+
+  // Google's own values, from its button SVGs, and the same in both
+  // appearances: the G is never recoloured for dark mode.
+  it("keeps the G in Google's colours, the same in light and dark", () => {
+    const google = { googleBlue: '#4285F4', googleGreen: '#34A853', googleYellow: '#FBBC04', googleRed: '#E94235' };
+    for (const key of THIRD_PARTY_MARK) {
+      expect([key, palettes.light[key]]).toEqual([key, google[key as keyof typeof google]]);
+      expect([key, palettes.dark[key]]).toEqual([key, palettes.light[key]]);
     }
   });
 });

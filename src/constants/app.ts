@@ -42,6 +42,25 @@ export const APP_VERSION: string | null = Constants.expoConfig?.version ?? null;
 export const REFINE_ENABLED = false;
 
 /**
+ * Whether "Continue with Google" is offered on the sign-in screen (step 192).
+ *
+ * **Currently false — the button is built and hidden.** It turns true only
+ * after the owner confirms both halves are set up (`docs/HUMAN_VERIFICATION.md`
+ * A6): the Google Cloud OAuth client (a Web client whose redirect URI is the
+ * Supabase project's `/auth/v1/callback`, the consent screen published), and
+ * the Google provider enabled in Supabase with `fairlysure://google-auth`
+ * (`GOOGLE_REDIRECT_URL` in `src/supabase/auth.ts`) on its redirect allow-list.
+ * Before that a tap would open a sheet that can only fail.
+ *
+ * With it false nothing about Google is visible or reachable: the button
+ * renders nothing, and nothing else calls `signInWithGoogle`. Decided by the
+ * owner 2026-11-18: through the system sign-in sheet, no Google SDK and no new
+ * package, the name and picture Google sends discarded (Supabase migration
+ * 009), no Facebook (`docs/design/research/sign-in-providers-2026-11.md`).
+ */
+export const GOOGLE_SIGN_IN_ENABLED = false;
+
+/**
  * Terms of use for Plus: Apple's standard EULA, which is what applies unless
  * the app ships its own. App Review Guideline 3.1.2 requires a working link to
  * the terms of use *inside the app* for auto-renewing subscriptions, not only

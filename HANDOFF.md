@@ -1,6 +1,6 @@
 # Handoff
 
-**Branch:** `builder/password-rules` (step 190), off `master`, which has steps 1–189 and
+**Branch:** `builder/google-sign-in` (steps 190–192 and the two studies), off `master`, which has steps 1–189 and
 the cleanup (step 189 merged and pushed 2026-11-18, the owner's word; one docs commit,
 `af1e199`, is on `master` unpushed). Not merged or pushed. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
 submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
@@ -82,13 +82,16 @@ cover the last stretch) and in git; it isn't repeated here.
 - **Step 191 (same branch, BUILT_LOG row 191):** deleting an account that Supabase linked to
   Apple after an email sign-up now revokes Sign in with Apple (`hasAppleIdentity`; the app read
   only the first provider). JS only. Check: 190 suites, 2,612 tests. Not reviewed.
-- **Google sign-in (asked 2026-11-18, waiting on the owner):** research and the plan are in
-  `docs/design/research/sign-in-providers-2026-11.md`. Recommended: Google through the system
-  sign-in sheet with no SDK (JS only, behind a flag until Google Cloud and Supabase are set
-  up), no Facebook, the name and picture Google sends discarded by a database trigger. His
-  three answers are pending. "Confirm email" must stay on once it ships; the record says it
-  is on, and the live setting is his to confirm (the main session wrongly told him it was
-  off, then corrected it).
+- **Step 192, Google sign-in (BUILT_LOG row 192): built, switched off.** The owner decided
+  2026-11-18: Google through the system sign-in sheet with no SDK, no Facebook, the name and
+  picture Google sends discarded (migration 009, not applied). `GOOGLE_SIGN_IN_ENABLED` is
+  `false` until he finishes `HUMAN_VERIFICATION.md` A6 (Google Cloud, Supabase, migration
+  009) and says so. Turning it on is one change with the privacy policy and `APP_PRIVACY.md`
+  edits A6 lists. "Confirm email" must stay on. Check: 193 suites, 2,692 tests. Not
+  reviewed; nothing has run on a device.
+- **D67, colour, decided 2026-11-18:** a clearer streak in ink (step 193) and the checkpoint
+  moment (step 194) are next; raspberry waits for TestFlight feedback; no orange flame, brand
+  colour or warm neutrals.
 
 ## On the phone
 
@@ -136,7 +139,7 @@ cover the last stretch) and in git; it isn't repeated here.
 
 Reviews are the owner's call (2026-11-15): no reviewer agents after each feature; he asks for
 them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), steps 183–187
-(`6222465..2636ff2`), the cleanup branch and steps 188–191. When he calls for it: `record-auditor` for step
+(`6222465..2636ff2`), the cleanup branch and steps 188–192. When he calls for it: `record-auditor` for step
 184 and step 180's reminder change, `code-reviewer` for the rest.
 
 ## Owner to-dos, in order

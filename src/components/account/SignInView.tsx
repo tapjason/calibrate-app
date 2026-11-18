@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 import { AppleSignInButton } from './AppleSignInButton';
+import { GoogleSignInButton } from './GoogleSignInButton';
 import { PasswordChecklist } from './PasswordChecklist';
 
 type Mode = 'signIn' | 'signUp';
@@ -45,7 +46,9 @@ export const USAGE_NOTE =
  * not as it's typed (step 190); a password that misses one is refused on
  * submit with what's missing, as a short one was before. Sign in has no rules,
  * so an account made before them still signs in. Sign in with Apple sits above
- * the switch, since it works for both.
+ * the switch, since it works for both, and "Continue with Google" under it
+ * (step 192; iOS only, and only while GOOGLE_SIGN_IN_ENABLED is on), Apple's
+ * first.
  *
  * On success this only calls `onDone`. The session reaches the app through
  * authStore's onAuthStateChange, which moves the guest's predictions into the
@@ -57,6 +60,7 @@ export function SignInView({ onDone }: { onDone: () => void }) {
   const signInWithEmail = useAuthStore((s) => s.signInWithEmail);
   const signUpWithEmail = useAuthStore((s) => s.signUpWithEmail);
   const signInWithApple = useAuthStore((s) => s.signInWithApple);
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
 
   // Usage stats are on unless the person turned them off, and from sign-in
   // they go up with the account: said here, before the account exists
@@ -71,6 +75,14 @@ export function SignInView({ onDone }: { onDone: () => void }) {
   const onApple = async () => {
     setError(null);
     const outcome = await signInWithApple();
+    if (outcome.ok) onDone();
+    else setError(outcome.error);
+  };
+
+  // The same path as Apple's: the session arrives through onAuthStateChange.
+  const onGoogle = async () => {
+    setError(null);
+    const outcome = await signInWithGoogle();
     if (outcome.ok) onDone();
     else setError(outcome.error);
   };
@@ -137,6 +149,7 @@ export function SignInView({ onDone }: { onDone: () => void }) {
       )}
 
       <AppleSignInButton onPress={() => void onApple()} disabled={pending} />
+      <GoogleSignInButton onPress={() => void onGoogle()} disabled={pending} />
 
       <ModeSwitch mode={mode} onChoose={chooseMode} />
 

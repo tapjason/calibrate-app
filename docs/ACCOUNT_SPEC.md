@@ -1,8 +1,8 @@
 # Fairly Sure — Account Spec: sign-in, sign-out, deletion
 
-**As of:** 2026-11-16 · **Status:** built (§1–3). `delete-account` is deployed (2026-10-02);
-its secrets were set on 2026-11-16 with one misspelled, so the RevenueCat leg is skipped until
-it is renamed, and the redeploy isn't confirmed (`docs/SHIP_READINESS.md`, "Open work").
+**As of:** 2026-11-18 · **Status:** built (§1–3). `delete-account` is deployed (redeployed
+2026-11-15) with its secrets set. Google sign-in is built behind `GOOGLE_SIGN_IN_ENABLED`
+(step 192), off until the owner's setup (`HUMAN_VERIFICATION.md` A6).
 
 The spec as built. It follows the layer rules in `BUILD_PLAN.md`: screens call stores, stores
 call services (`src/supabase/auth.ts`, `src/supabase/account.ts`), and nothing in the core
@@ -35,13 +35,28 @@ loop waits on any of it. The guest→account handoff is `authStore.handleSession
 | Signed in | "Signed in as …", or "Signed in with Apple." for a private-relay address, then "Your predictions are backed up." and **Sign out**. At the bottom, **Delete account**, in red. |
 
 **`app/account/index.tsx`**, the sign-in screen: on iOS the native
-`AppleAuthenticationButton` first, then email: one form with a Sign in / Create account
+`AppleAuthenticationButton` first, then "Continue with Google" while
+`GOOGLE_SIGN_IN_ENABLED` is on (below), then email: one form with a Sign in / Create account
 switch, the password rules for Create account only (8 or more characters, an uppercase
 letter, a lowercase letter and a number, ASCII, as a four-row checklist that ticks as you
 type; step 190; the server's matching setting is `HUMAN_VERIFICATION.md` A5; Sign in never
-applies them), and inline error text from `AuthOutcome.error`. No
-Google (the unreachable path was removed in step 182). On `{ ok: true }` it goes back;
+applies them), and inline error text from `AuthOutcome.error`. On `{ ok: true }` it goes back;
 `authStore`'s `onAuthStateChange` migrates guest data, reloads the stores and starts a sync.
+
+**Google (step 192, iOS only, behind the flag).** No Google SDK: `signInWithGoogle`
+(`src/supabase/auth.ts`) asks Supabase for the provider URL (`signInWithOAuth`,
+`skipBrowserRedirect`, `prompt=select_account`), opens it in the system sign-in sheet
+(`WebBrowser.openAuthSessionAsync`, not ephemeral), and trades the returned `code` for a
+session (`exchangeCodeForSession`; the client is PKCE). The redirect is
+`GOOGLE_REDIRECT_URL`, `fairlysure://google-auth`; `app/google-auth.tsx` is a blank route
+that leaves at once, in case iOS also delivers that URL as a link. Cancel, in the sheet or
+on Google's page, reads "Sign-in cancelled."; anything that isn't the person's doing reads
+"Google sign-in isn't available right now." Nothing logs the URL or the code, and no code
+reads the provider's token. The button follows Google's branding rules (its Light and Dark
+themes, the four-colour G from Google's own sample file, `DESIGN_SYSTEM.md` §2.4); its
+label is in the system font, like Apple's button above it. Google sends a name and a
+picture with the email; migration 009 removes them as they arrive
+(`design/research/sign-in-providers-2026-11.md` §3).
 
 **`CoachPanel`:** a Plus guest sees "Sign in to use Coach. It runs on our server, which needs
 to know it's you…" with a button to `/account`, and no request is made.
@@ -49,7 +64,8 @@ to know it's you…" with a button to `/account`, and no request is made.
 ### Store
 
 `authStore` holds the actions (L6 imports only `@/store` and `@/types`): `signInWithEmail`,
-`signUpWithEmail`, `signInWithApple`, `signOut`, `deleteAccount`, and a `pending` flag. Each
+`signUpWithEmail`, `signInWithApple`, `signInWithGoogle`, `signOut`, `deleteAccount`, a
+`pending` flag, and `hasAppleIdentity` and `hasGoogleIdentity` from the session. Each
 returns the service's outcome unchanged so the screen can show the error.
 
 ### The email-confirmation decision (yours)
@@ -132,7 +148,11 @@ From [Offering account deletion in your app](https://developer.apple.com/support
    2026-11-17). A renewing subscription adds that it keeps billing until cancelled.
    The guest's Erase asks the same way ("Erase everything on this phone?", **Erase**).
    Don't ask the user to type a word: a tap and a confirmation is the standard.
-4. **If the account has an Apple identity** (`hasAppleIdentity`, `src/supabase/auth.ts`,
+4. **If the account has a Google identity** (`hasGoogleIdentity`), a note before the
+   button says deletion removes what Google shared and where to remove the app in the
+   Google Account. No re-authentication and no revocation call: the app holds no Google
+   token.
+5. **If the account has an Apple identity** (`hasAppleIdentity`, `src/supabase/auth.ts`,
    step 191: `app_metadata.provider` is `'apple'`, or `app_metadata.providers` or
    `user.identities` names it. `provider` alone is the first provider used, so an email
    account Supabase later linked to Apple read as `'email'` and skipped revocation. The

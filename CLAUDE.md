@@ -956,9 +956,10 @@ Today scrolls to the new card (D48).
   and 12- or 24-hour clock, since the app's words are English only. Never
   `toLocaleDateString(undefined, …)` or `toLocaleTimeString`; a test scans for both.
 - The brand has no hue (D33): actions and selection are ink (`action`, `onAction`),
-  and the only colours on screen mean over, under or on the line. The one exception
-  is a category icon the person chose (D40): their emoji or picture, in its own colours. A new hue needs a
-  meaning and a line in DESIGN_SYSTEM §2 first.
+  and the only colours on screen mean over, under or on the line. The exceptions
+  are a category icon the person chose (D40), their emoji or picture in its own colours, and
+  Google's "G" on the sign-in button, which Google's rules forbid recolouring (step 192). A
+  new hue needs a meaning and a line in DESIGN_SYSTEM §2 first.
 - Yes and No resolutions get identical feedback; colour never carries meaning alone.
 - Install native packages with `npx expo install`, never `npm i`.
 - **The `frontend-design` skill** (`.claude/skills/frontend-design/`) applies to UI work

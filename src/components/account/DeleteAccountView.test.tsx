@@ -19,12 +19,14 @@ const GUEST_MESSAGE = "There's no other copy. This can't be undone.";
 function seed({
   signedIn = true,
   apple = false,
+  google = false,
   entitlement = FREE_ENTITLEMENT,
-}: { signedIn?: boolean; apple?: boolean; entitlement?: Entitlement } = {}) {
+}: { signedIn?: boolean; apple?: boolean; google?: boolean; entitlement?: Entitlement } = {}) {
   useAuthStore.setState({
     userId: signedIn ? 'user-1' : 'local-user-v1',
     status: signedIn ? 'authenticated' : 'guest',
     hasAppleIdentity: signedIn && apple,
+    hasGoogleIdentity: signedIn && google,
     pending: false,
     deleteAccount,
     eraseDeviceData,
@@ -176,6 +178,62 @@ describe('DeleteAccountView — signed in', () => {
     seed();
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
     expect(screen.queryByTestId('delete-apple-note')).toBeNull();
+  });
+
+  // Step 192: the app holds no Google token, so nothing is revoked from here;
+  // an account with a Google identity is told where to look instead.
+  it('tells an account with a Google identity where to remove the app from Google', () => {
+    seed({ google: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    expect(screen.getByTestId('delete-google-note')).toHaveTextContent(
+      'Deleting your account removes what Google shared with us. To remove Fairly Sure from your Google Account too, open its security settings and look under third-party connections.',
+    );
+    expect(screen.queryByTestId('delete-apple-note')).toBeNull();
+  });
+
+  it('shows the Google note only to an account with a Google identity', () => {
+    seed();
+    const { unmount } = render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.queryByTestId('delete-google-note')).toBeNull();
+    unmount();
+
+    seed({ apple: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.getByTestId('delete-apple-note')).toBeTruthy();
+    expect(screen.queryByTestId('delete-google-note')).toBeNull();
+  });
+
+  it('gives an account linked to both Apple and Google both notes, before the button', () => {
+    seed({ apple: true, google: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    expect(screen.getByTestId('delete-apple-note')).toBeTruthy();
+    expect(screen.getByTestId('delete-google-note')).toBeTruthy();
+    // Said before deletion: the confirm step, not the finished screen.
+    expect(screen.getByTestId('delete-confirm')).toBeTruthy();
+    expect(screen.getByTestId('delete-confirm-button')).toBeTruthy();
+  });
+
+  // Deletion itself is unchanged: no Google sheet, the same one alert.
+  it('deletes a Google account through the same alert, and says it is done', async () => {
+    seed({ google: true });
+    deleteAccount.mockResolvedValue({ ok: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    expect(lastAlert().message).toBe(SIGNED_IN_MESSAGE);
+    chooseInAlert('Delete account');
+
+    expect(await screen.findByText('Your account has been deleted')).toBeTruthy();
+    expect(deleteAccount).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('delete-google-note')).toBeNull();
+  });
+
+  it('gives a guest no Google note', () => {
+    seed({ signedIn: false, google: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.queryByTestId('delete-google-note')).toBeNull();
   });
 
   it('disables both buttons while deleting', () => {

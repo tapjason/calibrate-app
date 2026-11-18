@@ -1,13 +1,13 @@
-// Auth flows: Apple, email/password, signout. Each wrapper:
+// Auth flows: Apple, Google, email/password, signout. Each wrapper:
 //   • Calls the Supabase SDK with the right shape for that provider.
 //   • Returns a normalized AuthOutcome so callers (mostly authStore) don't
 //     branch on provider-specific errors.
 //   • Throws never — surfaces failures as { ok: false, error } so the UI
 //     can render them without try/catch dancing.
 //
-// The provider SDK (Apple) is lazy-required at call
-// time so unit tests for the email/password path don't have to mock the
-// native modules.
+// The native modules (Apple's sheet, the system web sign-in sheet) are
+// lazy-required at call time so unit tests for the email/password path don't
+// have to mock them.
 
 import type { User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
@@ -106,6 +106,8 @@ export const WEAK_PASSWORD_TEXT = `That password isn't strong enough. It needs $
 const OFFLINE = "Couldn't reach the server. Check your connection and try again.";
 const PROVIDER_OFF =
   "This way of signing in isn't available right now. Sign in with your email instead.";
+/** What a person sees after closing a sign-in sheet, Apple's or Google's. */
+const CANCELLED = 'Sign-in cancelled.';
 
 /**
  * The words a person sees for an auth failure. Supabase reports an
@@ -178,8 +180,187 @@ export async function signInWithApple(): Promise<AuthOutcome> {
     // ERR_REQUEST_CANCELED is thrown when the user dismisses the sheet —
     // surface a friendly message rather than the raw code.
     const msg = errMessage(e);
-    if (msg.includes('CANCELED')) return { ok: false, error: 'Sign-in cancelled.' };
+    if (msg.includes('CANCELED')) return { ok: false, error: CANCELLED };
     return { ok: false, error: msg };
+  }
+}
+
+/**
+ * Where Google sign-in comes back to the app. Supabase sends the browser here
+ * with `?code=…` once Google has answered, and the system sheet hands that URL
+ * back to `signInWithGoogle` instead of opening it. The owner adds exactly
+ * this string to Supabase's redirect allow-list (Authentication → URL
+ * Configuration); anything else there and Supabase falls back to the Site URL,
+ * which never returns to the app. `app/google-auth.tsx` catches it if iOS
+ * ever delivers it as a deep link as well.
+ */
+export const GOOGLE_REDIRECT_URL = 'fairlysure://google-auth';
+
+/** The words for any Google failure that isn't the person's doing. */
+export const GOOGLE_UNAVAILABLE = "Google sign-in isn't available right now.";
+const GOOGLE_NO_CODE = "Google didn't return a sign-in code.";
+
+/**
+ * Supabase error codes whose message is written for the person signing in,
+ * so it is shown as it comes (through `authErrorText`). Every other code
+ * (a provider switched off, sign-ups closed, a lost or expired sign-in
+ * attempt, a server fault) reads as `GOOGLE_UNAVAILABLE`: Supabase's text for
+ * those is written for developers ("PKCE code verifier not found in
+ * storage…").
+ */
+const PERSON_FACING_CODES: ReadonlySet<string> = new Set([
+  'user_banned',
+  'provider_email_needs_verification',
+  'over_request_rate_limit',
+]);
+
+/** The words for a Google failure, from what Supabase or the sheet reported. */
+function googleFailureText(message: string, code: string | null): string {
+  const text = authErrorText(message);
+  if (text === OFFLINE) return OFFLINE;
+  if (code && PERSON_FACING_CODES.has(code) && message.trim()) return text;
+  return GOOGLE_UNAVAILABLE;
+}
+
+/** The parts of the redirect URL sign-in reads. */
+export interface AuthRedirectParams {
+  code: string | null;
+  error: string | null;
+  errorCode: string | null;
+  errorDescription: string | null;
+}
+
+/** A query string's or fragment's pairs, `+` read as a space. First wins. */
+function readPairs(part: string): Map<string, string> {
+  const pairs = new Map<string, string>();
+  for (const pair of part.split('&')) {
+    if (!pair) continue;
+    const eq = pair.indexOf('=');
+    const key = decodePart(eq < 0 ? pair : pair.slice(0, eq));
+    if (!pairs.has(key)) pairs.set(key, decodePart(eq < 0 ? '' : pair.slice(eq + 1)));
+  }
+  return pairs;
+}
+
+function decodePart(raw: string): string {
+  const spaced = raw.replace(/\+/g, ' ');
+  try {
+    return decodeURIComponent(spaced);
+  } catch {
+    return spaced;
+  }
+}
+
+/**
+ * The code or the error a sign-in redirect carries, from the query string or
+ * the `#` fragment: Supabase's PKCE flow puts them in the query, and it also
+ * copies an error into the fragment, as the implicit flow does, so either is
+ * read (the query first). Parsed by hand rather than with `URL`, whose
+ * support for a custom scheme like `fairlysure://` varies by runtime. Empty
+ * values count as absent. Exported for tests.
+ */
+export function readAuthRedirect(url: string): AuthRedirectParams {
+  const hashAt = url.indexOf('#');
+  const beforeHash = hashAt < 0 ? url : url.slice(0, hashAt);
+  const fragment = hashAt < 0 ? '' : url.slice(hashAt + 1);
+  const queryAt = beforeHash.indexOf('?');
+  const query = readPairs(queryAt < 0 ? '' : beforeHash.slice(queryAt + 1));
+  const hash = readPairs(fragment);
+  const pick = (key: string): string | null => query.get(key) || hash.get(key) || null;
+  return {
+    code: pick('code'),
+    error: pick('error'),
+    errorCode: pick('error_code'),
+    errorDescription: pick('error_description'),
+  };
+}
+
+/** The words for an error the redirect carried. */
+function redirectErrorText(params: AuthRedirectParams): string {
+  // Google's own refusal, passed through by Supabase without a code of its
+  // own: the person chose Cancel on Google's page. Supabase also reports
+  // closed sign-ups and banned users as `access_denied`, but with a code.
+  if (params.error === 'access_denied' && !params.errorCode) return CANCELLED;
+  return googleFailureText(params.errorDescription ?? '', params.errorCode);
+}
+
+/** A Supabase error's code, when it has one (`AuthError.code`). */
+function errorCode(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const { code } = error as { code?: unknown };
+  return typeof code === 'string' ? code : null;
+}
+
+/**
+ * Google sign-in through the system sign-in sheet (step 192): no Google SDK.
+ * Supabase builds Google's address (PKCE: the client keeps the verifier),
+ * `openAuthSessionAsync` shows it in iOS's ASWebAuthenticationSession (iOS
+ * first asks to let the app use the website), and the sheet hands back the
+ * redirect, whose one-time code becomes a session through
+ * `exchangeCodeForSession`. The session then reaches the app the way every
+ * sign-in's does, through authStore's onAuthStateChange.
+ *
+ * iOS only: on the web build the redirect can't use the app's scheme. No
+ * scopes beyond Supabase's own (`email`, `profile`); what `profile` brings is
+ * discarded on the server (Supabase migration 009). `prompt=select_account`
+ * shows Google's account chooser even with one account signed in, so a
+ * shared iPad or a second account isn't picked silently. The sheet isn't
+ * ephemeral, so Safari's Google sign-in is offered.
+ *
+ * Nothing here logs the redirect, its code or a token, and nothing reads
+ * Google's own access token, which Supabase may keep in the session: it
+ * stays on the device and is never sent anywhere (App Review 5.1.1(v)).
+ */
+export async function signInWithGoogle(): Promise<AuthOutcome> {
+  if (Platform.OS !== 'ios') {
+    return { ok: false, error: 'Google sign-in is only available on iOS.' };
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const WebBrowser = require('expo-web-browser') as typeof import('expo-web-browser');
+    const supabaseAuth = getSupabaseClient().auth;
+
+    const { data, error } = await supabaseAuth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: GOOGLE_REDIRECT_URL,
+        skipBrowserRedirect: true,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    if (error) return { ok: false, error: googleFailureText(error.message, errorCode(error)) };
+    if (!data?.url) return { ok: false, error: GOOGLE_UNAVAILABLE };
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, GOOGLE_REDIRECT_URL);
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+      return { ok: false, error: CANCELLED };
+    }
+    // 'locked' (another sheet is open) or anything new: not the person's doing.
+    if (result.type !== 'success') return { ok: false, error: GOOGLE_UNAVAILABLE };
+
+    const params = readAuthRedirect(result.url);
+    // An error wins over a code that came with it.
+    if (params.error || params.errorCode) {
+      return { ok: false, error: redirectErrorText(params) };
+    }
+    if (!params.code) return { ok: false, error: GOOGLE_NO_CODE };
+
+    const exchanged = await supabaseAuth.exchangeCodeForSession(params.code);
+    if (exchanged.error) {
+      return {
+        ok: false,
+        error: googleFailureText(exchanged.error.message, errorCode(exchanged.error)),
+      };
+    }
+    return { ok: true };
+  } catch (e) {
+    // A thrown error's text is a developer's ("Supabase credentials
+    // missing…", a native module's code), so only the offline case is
+    // passed on.
+    return {
+      ok: false,
+      error: googleFailureText(e instanceof Error ? e.message : String(e), errorCode(e)),
+    };
   }
 }
 
@@ -262,6 +443,36 @@ export async function signOutLocal(): Promise<AuthOutcome> {
 
 /** The provider name Supabase gives a Sign in with Apple identity. */
 const APPLE_PROVIDER = 'apple';
+/** The provider name Supabase gives a Google identity. */
+const GOOGLE_PROVIDER = 'google';
+
+/**
+ * Whether the account has an identity from this provider, by any of the three
+ * signals a session carries: `app_metadata.provider` (the first way in),
+ * `app_metadata.providers` (all of them) or `user.identities`. Never throws:
+ * a field missing or of the wrong type is no signal.
+ */
+function hasProviderIdentity(user: User | null | undefined, provider: string): boolean {
+  if (typeof user !== 'object' || user === null) return false;
+  const { app_metadata: meta, identities } = user as {
+    app_metadata?: unknown;
+    identities?: unknown;
+  };
+  if (typeof meta === 'object' && meta !== null) {
+    const { provider: first, providers } = meta as { provider?: unknown; providers?: unknown };
+    if (first === provider) return true;
+    if (Array.isArray(providers) && providers.includes(provider)) return true;
+  }
+  return (
+    Array.isArray(identities) &&
+    identities.some(
+      (identity: unknown) =>
+        typeof identity === 'object' &&
+        identity !== null &&
+        (identity as { provider?: unknown }).provider === provider,
+    )
+  );
+}
 
 /**
  * Whether the account has a Sign in with Apple identity, whichever way it was
@@ -281,25 +492,22 @@ const APPLE_PROVIDER = 'apple';
  * answer is false.
  */
 export function hasAppleIdentity(user: User | null | undefined): boolean {
-  if (typeof user !== 'object' || user === null) return false;
-  const { app_metadata: meta, identities } = user as {
-    app_metadata?: unknown;
-    identities?: unknown;
-  };
-  if (typeof meta === 'object' && meta !== null) {
-    const { provider, providers } = meta as { provider?: unknown; providers?: unknown };
-    if (provider === APPLE_PROVIDER) return true;
-    if (Array.isArray(providers) && providers.includes(APPLE_PROVIDER)) return true;
-  }
-  return (
-    Array.isArray(identities) &&
-    identities.some(
-      (identity: unknown) =>
-        typeof identity === 'object' &&
-        identity !== null &&
-        (identity as { provider?: unknown }).provider === APPLE_PROVIDER,
-    )
-  );
+  return hasProviderIdentity(user, APPLE_PROVIDER);
+}
+
+/**
+ * Whether the account has a Google identity, whichever way it was made: one
+ * made with Google, or an email or Apple account Supabase linked to Google
+ * through the same verified address. The same three signals and the same
+ * tolerance as `hasAppleIdentity`.
+ *
+ * Account deletion uses it only for words: an account with a Google identity
+ * is told how to remove the app from its Google Account too. There is no
+ * revocation call, since the app holds no Google token to revoke with (step
+ * 192).
+ */
+export function hasGoogleIdentity(user: User | null | undefined): boolean {
+  return hasProviderIdentity(user, GOOGLE_PROVIDER);
 }
 
 /**

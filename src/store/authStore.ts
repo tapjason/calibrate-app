@@ -68,6 +68,13 @@ interface AuthState {
    */
   hasAppleIdentity: boolean;
   /**
+   * Whether the signed-in account has a Google identity (`hasGoogleIdentity`
+   * in src/supabase/auth.ts), made with Google or linked to it later. False
+   * for a guest. Deletion uses it only to say how to remove the app from the
+   * Google Account too: the app holds no Google token to revoke (step 192).
+   */
+  hasGoogleIdentity: boolean;
+  /**
    * Whether signing in is possible at all on this build — false when the
    * Supabase env vars are missing, in which case the app is guest-only and
    * no screen should offer an account.
@@ -87,6 +94,8 @@ interface AuthState {
   signInWithEmail: (email: string, password: string) => Promise<AuthOutcome>;
   signUpWithEmail: (email: string, password: string) => Promise<SignUpOutcome>;
   signInWithApple: () => Promise<AuthOutcome>;
+  /** Google through the system sign-in sheet (step 192; iOS only). */
+  signInWithGoogle: () => Promise<AuthOutcome>;
   /**
    * Sign out. Local predictions stay on the device under the account's id —
    * the app drops back to an empty guest view, and signing back in shows
@@ -146,6 +155,15 @@ async function refreshAfterSync(userId: string): Promise<void> {
   await Promise.all([predictions.loadPending(), predictions.loadResolved()]);
 }
 
+/** Who the app is with no session: the device-local guest. */
+const GUEST_STATE = {
+  userId: LOCAL_GUEST_USER_ID,
+  email: null,
+  status: 'guest',
+  hasAppleIdentity: false,
+  hasGoogleIdentity: false,
+} as const;
+
 /**
  * Compute the new auth state from a session. Pure — testable without touching
  * the store.
@@ -155,15 +173,17 @@ function sessionToState(session: Session | null): {
   email: string | null;
   status: AuthStatus;
   hasAppleIdentity: boolean;
+  hasGoogleIdentity: boolean;
 } {
   if (!session?.user) {
-    return { userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', hasAppleIdentity: false };
+    return { ...GUEST_STATE };
   }
   return {
     userId: session.user.id,
     email: session.user.email ?? null,
     status: 'authenticated',
     hasAppleIdentity: auth.hasAppleIdentity(session.user),
+    hasGoogleIdentity: auth.hasGoogleIdentity(session.user),
   };
 }
 
@@ -240,6 +260,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   email: null,
   status: 'loading',
   hasAppleIdentity: false,
+  hasGoogleIdentity: false,
   accountsAvailable: false,
   pending: false,
 
@@ -250,7 +271,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!isSupabaseConfigured()) {
       // Pure offline mode — no Supabase wiring, just the guest placeholder.
       lastUserId = LOCAL_GUEST_USER_ID;
-      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', hasAppleIdentity: false });
+      set({ ...GUEST_STATE });
       return;
     }
 
@@ -263,7 +284,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // eslint-disable-next-line no-console
       console.warn('[auth] Supabase client unavailable, running as guest:', e);
       lastUserId = LOCAL_GUEST_USER_ID;
-      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', hasAppleIdentity: false });
+      set({ ...GUEST_STATE });
       return;
     }
 
@@ -295,6 +316,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       email: null,
       status: 'loading',
       hasAppleIdentity: false,
+      hasGoogleIdentity: false,
       accountsAvailable: false,
       pending: false,
     });
@@ -305,6 +327,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signUpWithEmail: (email, password) =>
     withPending(set, () => auth.signUpWithEmail(email, password)),
   signInWithApple: () => withPending(set, () => auth.signInWithApple()),
+  signInWithGoogle: () => withPending(set, () => auth.signInWithGoogle()),
   signOut: () => withPending(set, () => auth.signOut()),
 
   deleteAccount: () =>
