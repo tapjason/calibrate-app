@@ -51,7 +51,7 @@ export function DeleteAccountView({
   onCancel: () => void;
 }) {
   const status = useAuthStore((s) => s.status);
-  const provider = useAuthStore((s) => s.provider);
+  const hasAppleIdentity = useAuthStore((s) => s.hasAppleIdentity);
   const pending = useAuthStore((s) => s.pending);
   const deleteAccount = useAuthStore((s) => s.deleteAccount);
   const eraseDeviceData = useAuthStore((s) => s.eraseDeviceData);
@@ -160,7 +160,10 @@ export function DeleteAccountView({
         </View>
       )}
 
-      {wasSignedIn && provider === 'apple' && (
+      {/* The same test deletion uses to ask Apple (authStore.deleteAccount):
+          an email account linked to Apple is asked too (policy audit,
+          2026-11-18). */}
+      {wasSignedIn && hasAppleIdentity && (
         <Text style={styles.muted} testID="delete-apple-note">
           You'll be asked to confirm with Apple, so {APP_NAME}'s access to your Apple ID
           is removed too.

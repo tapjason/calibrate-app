@@ -9,6 +9,7 @@
 // time so unit tests for the email/password path don't have to mock the
 // native modules.
 
+import type { User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
 import { getSupabaseClient } from './client';
@@ -259,9 +260,52 @@ export async function signOutLocal(): Promise<AuthOutcome> {
   }
 }
 
+/** The provider name Supabase gives a Sign in with Apple identity. */
+const APPLE_PROVIDER = 'apple';
+
 /**
- * Ask Apple for a fresh authorization code for the signed-in Apple account,
- * for account deletion (docs/ACCOUNT_SPEC.md §3.2 step 4). Apple requires the
+ * Whether the account has a Sign in with Apple identity, whichever way it was
+ * made. Account deletion revokes the app's Sign in with Apple grant when this
+ * is true (docs/ACCOUNT_SPEC.md §3.2 step 4; App Store Guideline 5.1.1(v)).
+ *
+ * `app_metadata.provider` alone isn't enough: it stays the first way the
+ * account signed in. Supabase links a Sign in with Apple identity that shares
+ * a verified email with an existing account into that account, so an account
+ * made with email and password that later used Apple with the same address
+ * reads `provider: 'email'`, and 'apple' shows only in
+ * `app_metadata.providers` and `user.identities` (policy audit, 2026-11-18).
+ * Any one of the three is enough.
+ *
+ * Never throws: a field that is missing or of the wrong type (a session read
+ * back from storage, an older server) is no signal, and with no signal the
+ * answer is false.
+ */
+export function hasAppleIdentity(user: User | null | undefined): boolean {
+  if (typeof user !== 'object' || user === null) return false;
+  const { app_metadata: meta, identities } = user as {
+    app_metadata?: unknown;
+    identities?: unknown;
+  };
+  if (typeof meta === 'object' && meta !== null) {
+    const { provider, providers } = meta as { provider?: unknown; providers?: unknown };
+    if (provider === APPLE_PROVIDER) return true;
+    if (Array.isArray(providers) && providers.includes(APPLE_PROVIDER)) return true;
+  }
+  return (
+    Array.isArray(identities) &&
+    identities.some(
+      (identity: unknown) =>
+        typeof identity === 'object' &&
+        identity !== null &&
+        (identity as { provider?: unknown }).provider === APPLE_PROVIDER,
+    )
+  );
+}
+
+/**
+ * Ask Apple for a fresh authorization code for the signed-in account when it
+ * has a Sign in with Apple identity (`hasAppleIdentity`, a linked one
+ * included), for account deletion (docs/ACCOUNT_SPEC.md §3.2 step 4). Apple requires the
  * app's Sign in with Apple grant be revoked when the account is deleted, and
  * revoking needs a code no older than ten minutes — which only a new trip
  * through the system sheet produces.

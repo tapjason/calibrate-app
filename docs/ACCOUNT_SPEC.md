@@ -66,6 +66,10 @@ default), a real user who signs up by email never gets the link. Pick one:
 **Recommendation:** A for TestFlight, B before public launch. Make Sign in with Apple the
 default on iOS either way, since it never touches email.
 
+**Never option A once another sign-in provider ships** (2026-11-18,
+`design/research/sign-in-providers-2026-11.md` §5): with confirmation off, an address
+someone else registered first is linked to its real owner's Google or Apple sign-in.
+
 **Decided 2026-10-01 (for testing only):** "Confirm email" stays on, and test accounts use
 the address on the Supabase team, which the built-in mailer does reach. **Decided
 2026-11-15:** B, a custom mail sender (`SHIP_READINESS.md` decision 6), not set up yet; the
@@ -128,8 +132,12 @@ From [Offering account deletion in your app](https://developer.apple.com/support
    2026-11-17). A renewing subscription adds that it keeps billing until cancelled.
    The guest's Erase asks the same way ("Erase everything on this phone?", **Erase**).
    Don't ask the user to type a word: a tap and a confirmation is the standard.
-4. **If the account signed in with Apple** (`user.app_metadata.provider ===
-   'apple'`), call `AppleAuthentication.signInAsync()` again to get a fresh
+4. **If the account has an Apple identity** (`hasAppleIdentity`, `src/supabase/auth.ts`,
+   step 191: `app_metadata.provider` is `'apple'`, or `app_metadata.providers` or
+   `user.identities` names it. `provider` alone is the first provider used, so an email
+   account Supabase later linked to Apple read as `'email'` and skipped revocation. The
+   answer comes from this phone's session: a link made on another phone arrives with the
+   next token refresh), call `AppleAuthentication.signInAsync()` again to get a fresh
    `authorizationCode`, which is valid for 10 minutes. If the user cancels the
    sheet, delete anyway without revocation, then tell them how to remove the
    app in Settings → Apple ID → Sign in with Apple. Apple's guidance allows

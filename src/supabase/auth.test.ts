@@ -1,5 +1,8 @@
+import type { User } from '@supabase/supabase-js';
+
 import {
   authErrorText,
+  hasAppleIdentity,
   passwordMeetsRules,
   passwordRules,
   passwordRulesError,
@@ -263,5 +266,99 @@ describe('authErrorText', () => {
         "This way of signing in isn't available right now. Sign in with your email instead.",
       );
     }
+  });
+});
+
+// Account deletion revokes Sign in with Apple when this is true (ACCOUNT_SPEC
+// §3.2 step 4). Policy audit, 2026-11-18: Supabase links an Apple identity
+// with the same verified email into an email account, and
+// app_metadata.provider keeps naming the first way in, so `provider` alone
+// missed it.
+describe('hasAppleIdentity', () => {
+  /** Whatever a session might carry, typed or not. */
+  const check = (value: unknown) => hasAppleIdentity(value as User);
+  const identity = (provider: unknown) => ({
+    id: 'sub',
+    identity_id: 'identity',
+    user_id: 'user-1',
+    provider,
+    identity_data: {},
+  });
+
+  it('is true from app_metadata.provider alone', () => {
+    expect(check({ id: 'u', app_metadata: { provider: 'apple' } })).toBe(true);
+  });
+
+  it('is true from app_metadata.providers alone, for an email account linked to Apple', () => {
+    expect(
+      check({ id: 'u', app_metadata: { provider: 'email', providers: ['email', 'apple'] } }),
+    ).toBe(true);
+  });
+
+  it('is true from user.identities alone', () => {
+    expect(
+      check({
+        id: 'u',
+        app_metadata: {},
+        identities: [identity('email'), identity('apple')],
+      }),
+    ).toBe(true);
+  });
+
+  it('is true for a linked account with every signal present', () => {
+    expect(
+      check({
+        id: 'u',
+        app_metadata: { provider: 'email', providers: ['email', 'apple'] },
+        identities: [identity('email'), identity('apple')],
+      }),
+    ).toBe(true);
+  });
+
+  it('is false for an email-only account', () => {
+    expect(
+      check({
+        id: 'u',
+        app_metadata: { provider: 'email', providers: ['email'] },
+        identities: [identity('email')],
+      }),
+    ).toBe(false);
+  });
+
+  it('is false with no signal at all', () => {
+    expect(check({ id: 'u', app_metadata: {} })).toBe(false);
+    expect(check({ id: 'u', app_metadata: {}, identities: [] })).toBe(false);
+  });
+
+  it.each<[string, unknown]>([
+    ['null', null],
+    ['undefined', undefined],
+    ['a string', 'apple'],
+    ['a number', 42],
+    ['an array', ['apple']],
+    ['a user with no app_metadata', { id: 'u' }],
+    ['app_metadata null', { id: 'u', app_metadata: null }],
+    ['app_metadata a string', { id: 'u', app_metadata: 'apple' }],
+    ['provider not a string', { id: 'u', app_metadata: { provider: ['apple'] } }],
+    ['providers a string, not a list', { id: 'u', app_metadata: { providers: 'apple' } }],
+    ['providers holding no strings', { id: 'u', app_metadata: { providers: [null, 42, {}] } }],
+    ['identities not a list', { id: 'u', app_metadata: {}, identities: { provider: 'apple' } }],
+    ['identities a string', { id: 'u', app_metadata: {}, identities: 'apple' }],
+    [
+      'identities holding malformed entries',
+      { id: 'u', app_metadata: {}, identities: [null, 'apple', 7, identity(42), identity(null)] },
+    ],
+  ])('is false, and never throws, for %s', (_label, value) => {
+    expect(() => check(value)).not.toThrow();
+    expect(check(value)).toBe(false);
+  });
+
+  it('still finds Apple when the other fields are malformed', () => {
+    expect(
+      check({ id: 'u', app_metadata: 'garbage', identities: [null, identity('apple')] }),
+    ).toBe(true);
+    expect(
+      check({ id: 'u', app_metadata: { provider: 7, providers: [null, 'apple'] }, identities: 3 }),
+    ).toBe(true);
   });
 });

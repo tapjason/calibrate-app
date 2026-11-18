@@ -18,13 +18,13 @@ const GUEST_MESSAGE = "There's no other copy. This can't be undone.";
 
 function seed({
   signedIn = true,
-  provider = 'email',
+  apple = false,
   entitlement = FREE_ENTITLEMENT,
-}: { signedIn?: boolean; provider?: string | null; entitlement?: Entitlement } = {}) {
+}: { signedIn?: boolean; apple?: boolean; entitlement?: Entitlement } = {}) {
   useAuthStore.setState({
     userId: signedIn ? 'user-1' : 'local-user-v1',
     status: signedIn ? 'authenticated' : 'guest',
-    provider: signedIn ? provider : null,
+    hasAppleIdentity: signedIn && apple,
     pending: false,
     deleteAccount,
     eraseDeviceData,
@@ -107,7 +107,7 @@ describe('DeleteAccountView — signed in', () => {
   it('keeps the account wording after the store has moved to guest', async () => {
     seed();
     deleteAccount.mockImplementation(async () => {
-      useAuthStore.setState({ status: 'guest', userId: 'local-user-v1', provider: null });
+      useAuthStore.setState({ status: 'guest', userId: 'local-user-v1', hasAppleIdentity: false });
       return { ok: true };
     });
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
@@ -164,10 +164,18 @@ describe('DeleteAccountView — signed in', () => {
     expect(lastAlert().message).toBe(SIGNED_IN_MESSAGE);
   });
 
-  it('tells an Apple account it will be asked to confirm with Apple', () => {
-    seed({ provider: 'apple' });
+  // An email account linked to Apple has the flag too (hasAppleIdentity in
+  // src/supabase/auth.ts); deletion asks Apple for both, so the note shows.
+  it('tells an account with an Apple identity it will be asked to confirm with Apple', () => {
+    seed({ apple: true });
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
     expect(screen.getByTestId('delete-apple-note')).toBeTruthy();
+  });
+
+  it('gives an email-only account no Apple note', () => {
+    seed();
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.queryByTestId('delete-apple-note')).toBeNull();
   });
 
   it('disables both buttons while deleting', () => {

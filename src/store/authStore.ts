@@ -59,11 +59,14 @@ interface AuthState {
   email: string | null;
   status: AuthStatus;
   /**
-   * How the signed-in account signs in ('email' or 'apple'), from
-   * the session's app_metadata. Null for a guest. Deletion needs it: an Apple
-   * account's Sign in with Apple grant has to be revoked too.
+   * Whether the signed-in account has a Sign in with Apple identity
+   * (`hasAppleIdentity` in src/supabase/auth.ts): one made with Apple, or one
+   * made with email that Supabase later linked to Apple through the same
+   * address. False for a guest. Deletion needs it: the account's Sign in with
+   * Apple grant has to be revoked too. Not `app_metadata.provider`, which
+   * names only the first way the account signed in (policy audit, 2026-11-18).
    */
-  provider: string | null;
+  hasAppleIdentity: boolean;
   /**
    * Whether signing in is possible at all on this build — false when the
    * Supabase env vars are missing, in which case the app is guest-only and
@@ -151,17 +154,16 @@ function sessionToState(session: Session | null): {
   userId: string;
   email: string | null;
   status: AuthStatus;
-  provider: string | null;
+  hasAppleIdentity: boolean;
 } {
   if (!session?.user) {
-    return { userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', provider: null };
+    return { userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', hasAppleIdentity: false };
   }
-  const provider = session.user.app_metadata?.provider;
   return {
     userId: session.user.id,
     email: session.user.email ?? null,
     status: 'authenticated',
-    provider: typeof provider === 'string' ? provider : null,
+    hasAppleIdentity: auth.hasAppleIdentity(session.user),
   };
 }
 
@@ -237,7 +239,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   email: null,
   status: 'loading',
-  provider: null,
+  hasAppleIdentity: false,
   accountsAvailable: false,
   pending: false,
 
@@ -248,7 +250,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!isSupabaseConfigured()) {
       // Pure offline mode — no Supabase wiring, just the guest placeholder.
       lastUserId = LOCAL_GUEST_USER_ID;
-      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', provider: null });
+      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', hasAppleIdentity: false });
       return;
     }
 
@@ -261,7 +263,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // eslint-disable-next-line no-console
       console.warn('[auth] Supabase client unavailable, running as guest:', e);
       lastUserId = LOCAL_GUEST_USER_ID;
-      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', provider: null });
+      set({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest', hasAppleIdentity: false });
       return;
     }
 
@@ -292,7 +294,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       userId: null,
       email: null,
       status: 'loading',
-      provider: null,
+      hasAppleIdentity: false,
       accountsAvailable: false,
       pending: false,
     });
@@ -307,13 +309,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   deleteAccount: () =>
     withPending(set, async (): Promise<AuthOutcome> => {
-      const { status, userId, provider } = get();
+      const { status, userId, hasAppleIdentity } = get();
       if (status !== 'authenticated' || !userId) {
         return { ok: false, error: 'Not signed in.' };
       }
 
-      // Null if declined or unavailable; the server then skips revocation.
-      const appleCode = provider === 'apple' ? await auth.reauthenticateWithApple() : null;
+      // Any account with a Sign in with Apple identity, an email account
+      // linked to Apple included: its grant is revoked too. Null if declined
+      // or unavailable; the server then skips revocation.
+      const appleCode = hasAppleIdentity ? await auth.reauthenticateWithApple() : null;
 
       const outcome = await deleteAccountOnServer(appleCode);
       if (!outcome.ok) return outcome;
