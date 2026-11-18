@@ -130,6 +130,9 @@ that apply here.
   source then holds an invisible character. After such an edit, scan the changed files
   for U+00A0 and write the escape from code (`chr(92) + 'u00A0'` in Python), not as typed
   text.
+- **`jest.spyOn` on React Native's mocked `View.measureInWindow`** hands back a shared
+  `jest.fn`, and `restoreAllMocks` doesn't undo its implementation: reset it by hand in
+  the test that set it (step 194).
 - Jest runs with `jest-expo`; `jest.globalSetup.js` pins the time zone to UTC;
   `__setTimeZoneForTests` in `src/engine/localTime.ts` swaps zones in a test.
 - SQLite under Jest is sql.js (`src/db/testing.ts`).

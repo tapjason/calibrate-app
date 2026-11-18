@@ -14,6 +14,7 @@ import {
 import { cardPlacement, locateCard } from '@/components/prediction/locateCard';
 import { PredictionCard, rowPosition } from '@/components/prediction/PredictionCard';
 import { ReminderPrompt } from '@/components/prediction/ReminderPrompt';
+import { useStreakMoment } from '@/components/prediction/useStreakMoment';
 import { WelcomeBackCard } from '@/components/prediction/WelcomeBackCard';
 import { RUN_THRESHOLD } from '@/components/resolution/ResolveRun';
 import { BackupNudge } from '@/components/settings/BackupNudge';
@@ -137,19 +138,28 @@ export default function TodayScreen() {
     },
     [reduceMotion],
   );
-  // The card to decide about, and when Today regained focus. The decision
+  // A streak checkpoint a log reached (step 194, D67; FUTURE_UI B1): the
+  // streak row plays the checkpoint's moment once Log's sheet has closed onto
+  // Today, brought into view first so the haptic has its visual twin.
+  const streakMoment = useStreakMoment(listRef);
+  const { claimLogged, hold, stop } = streakMoment;
+
+  // What to decide about (a card by its id, or the streak row as null), and
+  // when Today regained focus. The decision
   // waits for the list's reports of what's on screen to settle: a screen
   // under a sheet can report nothing (the web build hides it) and only
   // catches up once shown, about a tenth of a second later; on Day 0 it has
   // never been laid out at all. A fixed short wait scrolled a card that was
   // already in full view (web check, 2026-11-10).
-  const target = useRef<{ id: string; since: number } | null>(null);
+  const target = useRef<{ id: string | null; since: number } | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const decide = useRef(() => {});
   decide.current = () => {
     const t = target.current;
     target.current = null;
-    if (t && !fullyVisible.current.has(t.id)) scrollToCard(t.id, true);
+    if (!t) return;
+    if (t.id === null) streakMoment.bringIntoView();
+    else if (!fullyVisible.current.has(t.id)) scrollToCard(t.id, true);
   };
   const settle = useRef(() => {
     if (settleTimer.current) clearTimeout(settleTimer.current);
@@ -166,10 +176,20 @@ export default function TodayScreen() {
   useFocusEffect(
     useCallback(() => {
       // Read, not subscribed: the save always lands while Log covers Today.
-      const id = usePredictionStore.getState().justSavedId;
-      if (!id) return undefined;
-      usePredictionStore.getState().clearJustSaved();
-      target.current = { id, since: Date.now() };
+      const store = usePredictionStore.getState();
+      // A log's checkpoint waits for Today ("Save and log another" keeps the
+      // sheet open), and plays once a day, never while the streak is hidden.
+      const days = claimLogged();
+      const id = store.justSavedId;
+      if (days === null && !id) return undefined;
+      store.clearJustSaved();
+      if (days !== null) {
+        // The streak row, not the new card: the moment is about the streak.
+        hold(days);
+        target.current = { id: null, since: Date.now() };
+      } else {
+        target.current = { id, since: Date.now() };
+      }
       settle();
       return () => {
         target.current = null;
@@ -178,8 +198,9 @@ export default function TodayScreen() {
           t.current = null;
         }
         retryFor.current = null;
+        stop();
       };
-    }, [settle]),
+    }, [settle, claimLogged, hold, stop]),
   );
   // What's ready to answer comes before the streak and practice rows (D22,
   // 2026-10-09): it's the one thing on Today that asks for a tap, and below
@@ -190,11 +211,15 @@ export default function TodayScreen() {
   const daily = (
     <>
       {/* The daily streak (roadmap D2): one logged or answered a day keeps
-          it, three is the day's goal (D17). */}
-      <StreakLine
-        status={streak}
-        onPress={() => router.push('/scoring?section=streak' as never)}
-      />
+          it, three is the day's goal (D17). Measured for the checkpoint's
+          moment (step 194). */}
+      <View ref={streakMoment.streakBox} collapsable={false} testID="home-streak-box">
+        <StreakLine
+          status={streak}
+          moment={streakMoment.moment}
+          onPress={() => router.push('/scoring?section=streak' as never)}
+        />
+      </View>
       {/* After 30 days on one phone without an account (roadmap D31). */}
       <BackupNudge onSignIn={() => router.push('/account' as never)} />
       {/* A reason to open the app on a day nothing comes due (roadmap
@@ -289,127 +314,138 @@ export default function TodayScreen() {
     );
 
   return (
-    <SectionList
-      ref={listRef}
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      sections={groups}
-      keyExtractor={(p) => p.id}
-      stickySectionHeadersEnabled={false}
-      ListHeaderComponent={
-        <>
-          {/* Back after a long gap: what changed, before anything else (D51). */}
-          <WelcomeBackCard />
-          <View style={styles.hero}>{hero}</View>
-          {/* Asks for notification permission here, in context, not at
-              launch (roadmap step 38). Native only. Under the score whatever
-              is ready, beside the predictions it's about: on Day 0 it's the
-              ask that brings someone back for their first answer (D19), and
-              below the cards it could fall off a small screen (owner,
-              2026-11-10, with D48). */}
-          <ReminderPrompt />
-        </>
-      }
-      ListFooterComponent={
-        hasReady ? null : (
-          <View style={styles.dailyAfterOpen} testID="home-daily-after-open">
-            {daily}
-          </View>
-        )
-      }
-      onLayout={(e) => {
-        viewHeight.current = e.nativeEvent.layout.height;
-      }}
-      viewabilityConfig={FULLY_VISIBLE}
-      onViewableItemsChanged={onViewableItemsChanged}
-      // Not rendered yet (a long list, no getItemLayout): jump near it so the
-      // list renders that far, then try once more, from the groups as they
-      // are then (RN's documented pattern).
-      onScrollToIndexFailed={(info) => {
-        const id = retryFor.current;
-        retryFor.current = null;
-        if (!id) return;
-        listRef.current
-          ?.getScrollResponder()
-          ?.scrollTo({ y: info.averageItemLength * info.index, animated: false });
-        retryTimer.current = setTimeout(() => scrollToCard(id, false), RETRY_MS);
-      }}
-      renderSectionFooter={({ section }) =>
-        section.key === 'ready' ? (
-          <View style={styles.dailyAfterReady} testID="home-daily-after-ready">
-            {daily}
-          </View>
-        ) : null
-      }
-      renderSectionHeader={({ section }) => (
-        <>
-          <SectionHeader title={section.title} count={section.data.length} unit={PREDICTIONS} />
-          {/* A backlog is where people quit: past a few, answer them in one
-              sitting (roadmap step 18). */}
-          {section.key === 'ready' && section.data.length >= RUN_THRESHOLD && (
-            <View style={styles.run}>
-              <Button
-                label={`Answer all ${section.data.length}`}
-                testID="home-resolve-all"
-                onPress={() => router.push('/resolve/run' as never)}
-              />
+    // Measured, as the frame the streak row is brought into (step 194).
+    <View
+      ref={streakMoment.screenBox}
+      collapsable={false}
+      style={styles.screenBox}
+      testID="home-screen"
+    >
+      <SectionList
+        ref={listRef}
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        onScroll={streakMoment.trackScroll}
+        onScrollEndDrag={streakMoment.trackScroll}
+        onMomentumScrollEnd={streakMoment.trackScroll}
+        sections={groups}
+        keyExtractor={(p) => p.id}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <>
+            {/* Back after a long gap: what changed, before anything else (D51). */}
+            <WelcomeBackCard />
+            <View style={styles.hero}>{hero}</View>
+            {/* Asks for notification permission here, in context, not at
+                launch (roadmap step 38). Native only. Under the score whatever
+                is ready, beside the predictions it's about: on Day 0 it's the
+                ask that brings someone back for their first answer (D19), and
+                below the cards it could fall off a small screen (owner,
+                2026-11-10, with D48). */}
+            <ReminderPrompt />
+          </>
+        }
+        ListFooterComponent={
+          hasReady ? null : (
+            <View style={styles.dailyAfterOpen} testID="home-daily-after-open">
+              {daily}
             </View>
-          )}
-        </>
-      )}
-      renderItem={({ item, index, section }) => (
-        // Measured, so a card taller than the screen is brought in by its
-        // title (D48).
-        <View
-          onLayout={(e) => {
-            cardHeights.current.set(item.id, e.nativeEvent.layout.height);
-          }}
-        >
-          <PredictionCard
-            prediction={item}
-            position={rowPosition(index, section.data.length)}
-            // The header already says it (roadmap D33).
-            showReady={section.key !== 'ready'}
-            // A due one opens Resolve; one that isn't due yet opens its details,
-            // where it can be edited, deleted or answered early (roadmap D25).
-            onPress={(id) =>
-              router.push(
-                (isReadyToResolve(item, new Date()) ? `/resolve/${id}` : `/prediction/${id}`) as never,
-              )
-            }
-          />
-        </View>
-      )}
-      ListEmptyComponent={
-        <View>
-          {/* The Warm-up's result stays one tap away until the first real
-              prediction is saved (D62): interrupted on it, a tester came back
-              to Today with the result and its share button gone (blind
-              playtest 2026-11-13d, run 7). */}
-          {warmupResult && resolvedCount === 0 && (
-            <Pressable
-              onPress={() => router.push('/warmup' as never)}
-              accessibilityRole="button"
-              accessibilityLabel={`Your warm-up: ${warmupRight} of ${warmupResult.answered} right. See your result.`}
-              style={({ pressed }) => [styles.warmupRow, pressed && styles.pressed]}
-              testID="home-warmup-result"
-            >
-              <Text style={styles.warmupText}>
-                Your warm-up: {warmupRight} of {warmupResult.answered} right.
-              </Text>
-              <Text style={styles.warmupAction}>See your result</Text>
-            </Pressable>
-          )}
-          <EmptyState
-            testID="home-empty"
-            symbol={{ sf: 'calendar.badge.plus', fallback: 'calendar-outline' }}
-            message="Nothing open. What do you think will happen this week?"
-            actionLabel="Log a prediction"
-            onAction={() => router.push('/log' as never)}
-          />
-        </View>
-      }
-    />
+          )
+        }
+        onLayout={(e) => {
+          viewHeight.current = e.nativeEvent.layout.height;
+        }}
+        viewabilityConfig={FULLY_VISIBLE}
+        onViewableItemsChanged={onViewableItemsChanged}
+        // Not rendered yet (a long list, no getItemLayout): jump near it so the
+        // list renders that far, then try once more, from the groups as they
+        // are then (RN's documented pattern).
+        onScrollToIndexFailed={(info) => {
+          const id = retryFor.current;
+          retryFor.current = null;
+          if (!id) return;
+          listRef.current
+            ?.getScrollResponder()
+            ?.scrollTo({ y: info.averageItemLength * info.index, animated: false });
+          retryTimer.current = setTimeout(() => scrollToCard(id, false), RETRY_MS);
+        }}
+        renderSectionFooter={({ section }) =>
+          section.key === 'ready' ? (
+            <View style={styles.dailyAfterReady} testID="home-daily-after-ready">
+              {daily}
+            </View>
+          ) : null
+        }
+        renderSectionHeader={({ section }) => (
+          <>
+            <SectionHeader title={section.title} count={section.data.length} unit={PREDICTIONS} />
+            {/* A backlog is where people quit: past a few, answer them in one
+                sitting (roadmap step 18). */}
+            {section.key === 'ready' && section.data.length >= RUN_THRESHOLD && (
+              <View style={styles.run}>
+                <Button
+                  label={`Answer all ${section.data.length}`}
+                  testID="home-resolve-all"
+                  onPress={() => router.push('/resolve/run' as never)}
+                />
+              </View>
+            )}
+          </>
+        )}
+        renderItem={({ item, index, section }) => (
+          // Measured, so a card taller than the screen is brought in by its
+          // title (D48).
+          <View
+            onLayout={(e) => {
+              cardHeights.current.set(item.id, e.nativeEvent.layout.height);
+            }}
+          >
+            <PredictionCard
+              prediction={item}
+              position={rowPosition(index, section.data.length)}
+              // The header already says it (roadmap D33).
+              showReady={section.key !== 'ready'}
+              // A due one opens Resolve; one that isn't due yet opens its details,
+              // where it can be edited, deleted or answered early (roadmap D25).
+              onPress={(id) =>
+                router.push(
+                  (isReadyToResolve(item, new Date()) ? `/resolve/${id}` : `/prediction/${id}`) as never,
+                )
+              }
+            />
+          </View>
+        )}
+        ListEmptyComponent={
+          <View>
+            {/* The Warm-up's result stays one tap away until the first real
+                prediction is saved (D62): interrupted on it, a tester came back
+                to Today with the result and its share button gone (blind
+                playtest 2026-11-13d, run 7). */}
+            {warmupResult && resolvedCount === 0 && (
+              <Pressable
+                onPress={() => router.push('/warmup' as never)}
+                accessibilityRole="button"
+                accessibilityLabel={`Your warm-up: ${warmupRight} of ${warmupResult.answered} right. See your result.`}
+                style={({ pressed }) => [styles.warmupRow, pressed && styles.pressed]}
+                testID="home-warmup-result"
+              >
+                <Text style={styles.warmupText}>
+                  Your warm-up: {warmupRight} of {warmupResult.answered} right.
+                </Text>
+                <Text style={styles.warmupAction}>See your result</Text>
+              </Pressable>
+            )}
+            <EmptyState
+              testID="home-empty"
+              symbol={{ sf: 'calendar.badge.plus', fallback: 'calendar-outline' }}
+              message="Nothing open. What do you think will happen this week?"
+              actionLabel="Log a prediction"
+              onAction={() => router.push('/log' as never)}
+            />
+          </View>
+        }
+      />
+    </View>
   );
 }
 
@@ -428,6 +464,7 @@ const RETRY_MS = 150;
 const FULLY_VISIBLE = { itemVisiblePercentThreshold: 100 };
 
 const styles = StyleSheet.create({
+  screenBox: { flex: 1 },
   screen: { backgroundColor: colors.canvas },
   content: { padding: space.lg, paddingBottom: space.xxl },
   // The daily rows after the ready ones (D22): spaced like a section.

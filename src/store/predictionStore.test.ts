@@ -19,6 +19,8 @@ beforeEach(async () => {
     postponedCount: 0,
     refiledCount: 0,
     streakCheckpoint: null,
+    streakCheckpointFrom: null,
+    justSavedId: null,
   });
   useStatsStore.setState({
     userStat: null,
@@ -386,6 +388,8 @@ describe('predictionStore.streakNow', () => {
     await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
     expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
     expect(usePredictionStore.getState().streakCheckpoint).toBe(7);
+    // An answer's, which is Resolve's to show (step 194).
+    expect(usePredictionStore.getState().streakCheckpointFrom).toBe('answer');
 
     // A second answer the same day: only the first earned it.
     usePredictionStore.getState().clearStreakCheckpoint();
@@ -417,6 +421,78 @@ describe('predictionStore.streakNow', () => {
     expect(usePredictionStore.getState().streakNow().checkpoint).toBeNull();
 
     await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+  });
+
+  // Step 194 (FUTURE_UI B1): a log reaches a checkpoint as well as an answer,
+  // and Log closes onto Today, which plays it.
+  it('holds the checkpoint a log reached for Today, earned once', async () => {
+    const userId = useAuthStore.getState().userId!;
+    await sixCountedDays(userId);
+    await usePredictionStore.getState().loadPending();
+
+    // Today's first log is day seven.
+    const first = await log('day seven');
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
+    expect(usePredictionStore.getState()).toMatchObject({
+      streakCheckpoint: 7,
+      streakCheckpointFrom: 'log',
+      justSavedId: first.id,
+    });
+
+    // A second log the same day: only the first earned it.
+    usePredictionStore.getState().clearStreakCheckpoint();
+    expect(usePredictionStore.getState().streakCheckpointFrom).toBeNull();
+    await log('another');
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+    expect(usePredictionStore.getState().streakCheckpointFrom).toBeNull();
+  });
+
+  it('keeps a log’s checkpoint through the next log, for "Save and log another"', async () => {
+    await sixCountedDays(useAuthStore.getState().userId!);
+    await usePredictionStore.getState().loadPending();
+    await log('day seven');
+    await log('and one more');
+    expect(usePredictionStore.getState()).toMatchObject({
+      streakCheckpoint: 7,
+      streakCheckpointFrom: 'log',
+    });
+  });
+
+  it('sets nothing for a log on a day that is no checkpoint', async () => {
+    const userId = useAuthStore.getState().userId!;
+    await sixCountedDays(userId);
+    // Five counted days before today, so today's log makes six.
+    for (let i = 0; i < 3; i += 1) await usePredictionStore.getState().remove(`d6-${i}`);
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 5, checkpoint: null });
+
+    await log('day six');
+    expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 6, checkpoint: null });
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+  });
+
+  it("doesn't credit a log with a checkpoint that rows written behind its back reached", async () => {
+    const userId = useAuthStore.getState().userId!;
+    await sixCountedDays(userId);
+    await usePredictionStore.getState().loadPending();
+    // Today's first arrives from another device: day seven, checkpoint and all.
+    await insertPrediction({
+      id: 'synced-today',
+      user_id: userId,
+      title: 'synced',
+      category: 'work',
+      confidence: 60,
+      created_at: new Date().toISOString(),
+      due_date: '2099-06-01T12:00:00.000Z',
+      status: 'pending',
+      resolved_at: null,
+      reflection: null,
+      integrity_bonus: true,
+    });
+    expect(usePredictionStore.getState().streakNow().checkpoint).toBeNull();
+
+    await log('logged here');
     expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
   });

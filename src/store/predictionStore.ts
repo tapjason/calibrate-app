@@ -168,10 +168,17 @@ interface PredictionState {
   /** A return after a long gap, today (roadmap D51), or null; practice days count as being here. */
   returnNow: (now?: Date, practiceDays?: readonly number[]) => ReturnAfterGap | null;
   /**
-   * The streak checkpoint (7, 30, 100, 365…) the last answer reached, not yet
-   * shown; Resolve shows it and clears it, as with statsStore.milestone.
+   * The streak checkpoint (7, 30, 100, 365…) the last log or answer reached,
+   * not yet shown; the screen that shows it clears it, as with
+   * statsStore.milestone.
    */
   streakCheckpoint: number | null;
+  /**
+   * What reached it (step 194): an answer's is Resolve's to show, on the
+   * answer; a log's is Today's, once the Log sheet has closed onto it. Null
+   * with no checkpoint.
+   */
+  streakCheckpointFrom: 'answer' | 'log' | null;
   clearStreakCheckpoint: () => void;
   /**
    * What these predictions' answers came to (the end of a run, roadmap step
@@ -228,8 +235,9 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   justSavedId: null,
   clearJustSaved: () => set({ justSavedId: null }),
   streakCheckpoint: null,
+  streakCheckpointFrom: null,
 
-  clearStreakCheckpoint: () => set({ streakCheckpoint: null }),
+  clearStreakCheckpoint: () => set({ streakCheckpoint: null, streakCheckpointFrom: null }),
 
   loadPending: async () => {
     const userId = requireUserId();
@@ -262,6 +270,11 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
   create: async (input) => {
     const userId = requireUserId();
     const prediction = newPredictionRow(input, userId);
+    // The streak before this log, from the database as `resolve` takes it: a
+    // sync can write rows the lists here haven't seen, and the log would then
+    // be credited with a checkpoint those rows reached (step 194).
+    await Promise.all([get().loadPending(), get().loadResolved()]);
+    const before = get().streakNow();
     // Atomic: insert + stats recompute go together so total_predictions and
     // per-category predictions_made never lag behind the prediction list.
     await withTransaction(async () => {
@@ -271,8 +284,15 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // Reload instead of appending: the DB query sorts by due_date, and the
     // newly-inserted row may belong before existing entries.
     await get().loadPending();
+    // A log that made today count on a checkpoint day earned it, as an answer
+    // does (step 194); a second log the same day reaches nothing. Kept until
+    // Today shows it, so "Save and log another" doesn't lose it.
+    const reached = checkpointReached(before, get().streakNow());
     // For Today, once the sheet closes (D48).
-    set({ justSavedId: prediction.id });
+    set({
+      justSavedId: prediction.id,
+      ...(reached === null ? {} : { streakCheckpoint: reached, streakCheckpointFrom: 'log' as const }),
+    });
     // After the transaction, never inside it: analytics must not be able to
     // roll back a saved prediction. The confidence value goes, the title does
     // not — it is the number that says whether people use the whole range
@@ -324,7 +344,7 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       await Promise.all([get().loadPending(), get().loadResolved()]);
       // Kept until shown, like an uncelebrated milestone.
       const reached = checkpointReached(before, get().streakNow());
-      if (reached !== null) set({ streakCheckpoint: reached });
+      if (reached !== null) set({ streakCheckpoint: reached, streakCheckpointFrom: 'answer' });
       const resolvedPrediction = get().resolved.find((p) => p.id === id);
       if (resolvedPrediction && resolvedPrediction.status === outcome) {
         void track('prediction_resolved', {

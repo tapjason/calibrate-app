@@ -124,6 +124,7 @@ describe('SettingsView', () => {
         ratingAskedAt: null,
         practiceReminder: null,
         practiceReminderOfferDismissedAt: null,
+        streakMomentDay: null,
       });
     });
   });

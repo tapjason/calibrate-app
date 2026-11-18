@@ -124,6 +124,7 @@ describe('settingsStore: setters persist', () => {
       ratingAskedAt: null,
       practiceReminder: null,
       practiceReminderOfferDismissedAt: null,
+      streakMomentDay: null,
     });
   });
 
@@ -159,6 +160,7 @@ describe('settingsStore: setters persist', () => {
       ratingAskedAt: null,
       practiceReminder: null,
       practiceReminderOfferDismissedAt: null,
+      streakMomentDay: null,
     });
   });
 
@@ -361,5 +363,40 @@ describe('settingsStore: the app lock', () => {
     await useSettingsStore.getState().hydrate();
     expect(useSettingsStore.getState().appLock).toBe(false);
     jest.restoreAllMocks();
+  });
+});
+
+// Step 194 (D67): the day a streak checkpoint's moment last played, so a
+// relaunch the same day doesn't replay it.
+describe('settingsStore: the checkpoint moment', () => {
+  it('starts with none played, and keeps the day across a restart', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+    await useSettingsStore.getState().setStreakMomentDay('Wed Nov 18 2026');
+    expect(saved.at(-1)?.streakMomentDay).toBe('Wed Nov 18 2026');
+
+    // A relaunch reads it back.
+    __setPersistenceForTests(makeFakePersistence(saved.at(-1)!).persistence);
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().streakMomentDay).toBe('Wed Nov 18 2026');
+  });
+
+  it('forgets it, and reads anything stored that is not a day as none', async () => {
+    const { persistence, saved } = makeFakePersistence({ streakMomentDay: 7 } as unknown as Partial<StoredSettings>);
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+    await useSettingsStore.getState().setStreakMomentDay('Wed Nov 18 2026');
+    await useSettingsStore.getState().setStreakMomentDay(null);
+    expect(saved.at(-1)?.streakMomentDay).toBeNull();
+  });
+
+  it('goes back to none with the other settings', async () => {
+    __setPersistenceForTests(makeFakePersistence({ streakMomentDay: 'Wed Nov 18 2026' }).persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().resetToDefaults();
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
   });
 });

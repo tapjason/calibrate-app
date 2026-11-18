@@ -109,9 +109,14 @@ hasn't played yet.
 |---|---|---|
 | Progress **ring** instead of the bar on Today and Insights | Roadmap step 4 | Optional. The bar reads fine. |
 | 👍 / 👎 on Coach cards | DESIGN_SYSTEM §7.13 | Only once there's an analytics event to receive it. |
-| **Streak checkpoint celebration** (B1 below) | Owner, 2026-10-06, with step 64 | Kept out of scope on purpose: the checkpoints ship with a static acknowledgement first. |
+| **Streak checkpoint celebration** (B1 below) | Owner, 2026-10-06, with step 64 | **Built as step 194 (2026-11-18, D67).** It was kept out of scope on purpose: the checkpoints ship with a static acknowledgement first. |
 
-### B1. Streak checkpoint celebration (planned, not built)
+### B1. Streak checkpoint celebration (built as step 194, 2026-11-18)
+Built as proposed below, with these calls: Rigid at 7 and 30 and Success from 100; one
+full moment per answer; once per local day (the day is kept, not the checkpoint, so a new
+streak can reach 7 again); the log path plays on Today's streak row. The rules now live in
+`DESIGN_SYSTEM.md` §6.1–6.2. Still open: the share cards at 100 and 365 (D6), and a look
+on the iPhone. The proposal, for the record:
 Checkpoints are 7, 30, 100 and 365 days, then each further year (`STREAK_CHECKPOINTS`
 in `src/types`). Step 64 marks them without motion: the tinted streak row on Today and
 the still `StreakCheckpointCard` on the answer that earned it. The celebration that

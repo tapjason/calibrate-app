@@ -223,7 +223,9 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > on in You → Coach (AI), which says a third-party AI service writes the feedback
 > (the privacy policy names OpenAI). It needs an account because
 > our server checks the subscription per account; Sign in with Apple asks for
-> the email only.
+> the email only. Continue with Google sits below Sign in with Apple; it opens
+> Google in the system sign-in sheet (no Google SDK is in the app), and the
+> name and picture Google sends are discarded.
 >
 > The app shows Apple's age-range sheet once after the first screen. Declining
 > changes nothing.

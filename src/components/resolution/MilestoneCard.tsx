@@ -1,16 +1,11 @@
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useReducedMotion } from 'react-native-reanimated';
 
 import { BRAND_CONFETTI, Confetti } from '@/components/ui/Confetti';
 import { haptics } from '@/components/ui/haptics';
 import { FLIP_MS, TierFlip } from '@/components/ui/TierFlip';
+import { useSpringIn } from '@/components/ui/useSpringIn';
 import { BADGE_META } from '@/constants/badges';
 import {
   colors,
@@ -76,23 +71,16 @@ const ORACLE_CONFETTI: readonly string[] = [...BRAND_CONFETTI, colors.oracleGold
  */
 export function MilestoneCard({ milestone }: { milestone: Milestone }) {
   const reduceMotion = useReducedMotion();
-  const shown = useSharedValue(0);
   const tierUp = milestone.kind === 'tier_up';
+  // The spring every full moment shares (a streak checkpoint's too, step 194).
+  const style = useSpringIn('play');
 
   useEffect(() => {
     // In sync with the moment (§6.2): on a tier-up, when the new face appears.
     const landing = tierUp && !reduceMotion ? FLIP_MS / 2 : 0;
     const timer = setTimeout(() => haptics.unlock(), landing);
-    shown.value = reduceMotion
-      ? withTiming(1, { duration: 200 })
-      : withSpring(1, { damping: 14, stiffness: 180 });
     return () => clearTimeout(timer);
-  }, [reduceMotion, shown, tierUp]);
-
-  const style = useAnimatedStyle(() => ({
-    opacity: shown.value,
-    transform: reduceMotion ? [] : [{ scale: 0.9 + 0.1 * shown.value }],
-  }));
+  }, [reduceMotion, tierUp]);
 
   const base = milestoneCopy(milestone);
   const copy =

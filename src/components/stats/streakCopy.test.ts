@@ -72,6 +72,9 @@ describe('streak checkpoints', () => {
       streakCopy(status({ streak: 7, today: 3, todayCounts: true, checkpoint: 7, nextCheckpoint: 30 })),
     ).toEqual({
       headline: '7-day streak',
+      count: '7',
+      unit: 'day streak',
+      counted: true,
       detail: 'A full week.\nNext milestone: 30\u00A0days',
       filled: 3,
       spoken: '7-day streak. A full week. Next milestone: 30\u00A0days.',
@@ -107,6 +110,63 @@ describe('streak checkpoints', () => {
       title: 'Triple digits',
       body: 'Next milestone: 365\u00A0days.',
       spoken: '100-day streak. Triple digits. Next milestone: 365\u00A0days.',
+    });
+  });
+});
+
+// Step 193 (D67): the row draws the count as its own figure, then "day
+// streak", and fills the flame once today counts. The headline and the
+// spoken sentence keep "149-day streak" for VoiceOver and every other caller.
+describe('streakCopy, the row figure and flame (step 193)', () => {
+  it('has an outline flame before today counts, with the figure and its unit', () => {
+    expect(streakCopy(status({ streak: 149, today: 0, todayCounts: false, nextCheckpoint: 365 }))).toMatchObject({
+      counted: false,
+      count: '149',
+      unit: 'day streak',
+      headline: '149-day streak',
+      spoken: '149-day streak. One prediction today makes it 150.',
+    });
+  });
+
+  it('fills the flame once today counts', () => {
+    expect(streakCopy(status({ streak: 150, today: 1, todayCounts: true, nextCheckpoint: 365 }))).toMatchObject({
+      counted: true,
+      count: '150',
+      unit: 'day streak',
+      headline: '150-day streak',
+      spoken: '150-day streak. Today counts. Goal:\u00A01\u00A0of\u00A03.',
+    });
+  });
+
+  it('counts on a checkpoint day, which is always one that counts', () => {
+    expect(
+      streakCopy(status({ streak: 100, today: 1, todayCounts: true, checkpoint: 100, nextCheckpoint: 365 })),
+    ).toMatchObject({
+      counted: true,
+      checkpoint: true,
+      count: '100',
+      unit: 'day streak',
+      headline: '100-day streak',
+      spoken: '100-day streak. Triple digits. Next milestone: 365\u00A0days.',
+    });
+  });
+
+  it('groups a long streak in the figure as in the headline', () => {
+    const copy = streakCopy(status({ streak: 1001, today: 0, todayCounts: false, nextCheckpoint: 1095 }));
+    expect(copy?.count).toMatch(/^1\D001$/);
+    expect(copy?.headline).toBe(`${copy?.count}-day streak`);
+  });
+
+  it('keeps the sentence of a streak that ended, its flame not counted', () => {
+    const copy = streakCopy(
+      status({ streak: 0, today: 0, todayCounts: false, ended: { days: 151, on: '2026-11-12T00:00:00', ago: 1 } }),
+    );
+    expect(copy).toMatchObject({
+      counted: false,
+      count: '151',
+      unit: 'day streak',
+      headline: 'Your 151-day streak ended yesterday',
+      ended: true,
     });
   });
 });

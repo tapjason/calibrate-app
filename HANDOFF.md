@@ -1,6 +1,6 @@
 # Handoff
 
-**Branch:** `builder/google-sign-in` (steps 190–192 and the two studies), off `master`, which has steps 1–189 and
+**Branch:** `builder/google-sign-in` (steps 190–194 and the two studies), off `master`, which has steps 1–189 and
 the cleanup (step 189 merged and pushed 2026-11-18, the owner's word; one docs commit,
 `af1e199`, is on `master` unpushed). Not merged or pushed. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
 submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
@@ -89,9 +89,13 @@ cover the last stretch) and in git; it isn't repeated here.
   009) and says so. Turning it on is one change with the privacy policy and `APP_PRIVACY.md`
   edits A6 lists. "Confirm email" must stay on. Check: 193 suites, 2,692 tests. Not
   reviewed; nothing has run on a device.
-- **D67, colour, decided 2026-11-18:** a clearer streak in ink (step 193) and the checkpoint
-  moment (step 194) are next; raspberry waits for TestFlight feedback; no orange flame, brand
-  colour or warm neutrals.
+- **D67, colour, decided 2026-11-18; steps 193 and 194 built (BUILT_LOG rows 193–194):** the
+  streak row's flame is an outline until today counts, then filled, with a larger count and
+  "Today's goal" under the dots; a checkpoint (7, 30, 100, 365, yearly) plays a moment once
+  that day, on the answer's card or, after a log, on Today's streak row. Raspberry waits for
+  TestFlight feedback; no orange flame, brand colour or warm neutrals. JS only, for build 4.
+  Check: 194 suites, 2,751 tests. Not reviewed; motion and haptics have run in Jest and the
+  web build only.
 
 ## On the phone
 
@@ -131,7 +135,7 @@ cover the last stretch) and in git; it isn't repeated here.
   2026-11-15; the passcode fallback is Session 1 item 17); Log's title row clears the Dynamic Island
   (2026-11-12). No item-by-item results for step 180's checks yet.
 - **The on-phone checklist** runs in three sessions: Session 1, items 1–18 on build 2;
-  Session 2, items 19–24; Session 3, items 25–30 on build 3 (results above) and item 31 on build 4. The 31 items are
+  Session 2, items 19–24; Session 3, items 25–30 on build 3 (results above) and items 31–33 on build 4. The 33 items are
   `docs/HUMAN_VERIFICATION.md` "Stage 1 on-phone checklist"; the longer lists are Batches C
   and D, where `/device-check` records results.
 
@@ -139,7 +143,7 @@ cover the last stretch) and in git; it isn't repeated here.
 
 Reviews are the owner's call (2026-11-15): no reviewer agents after each feature; he asks for
 them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), steps 183–187
-(`6222465..2636ff2`), the cleanup branch and steps 188–192. When he calls for it: `record-auditor` for step
+(`6222465..2636ff2`), the cleanup branch and steps 188–194. When he calls for it: `record-auditor` for step
 184 and step 180's reminder change, `code-reviewer` for the rest.
 
 ## Owner to-dos, in order

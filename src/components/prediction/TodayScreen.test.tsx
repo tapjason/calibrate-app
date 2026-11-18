@@ -1,10 +1,13 @@
 // The Today screen (app/(tabs)/index.tsx). It lives here because a test file
 // under app/ would be a route to Expo Router.
 import { act, render, screen } from "@testing-library/react-native";
-import { SectionList } from "react-native";
+import { SectionList, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 
+import type { CheckpointMoment } from "@/components/stats/checkpointMoment";
+import { localDayKey } from "@/components/ui/useLocalDay";
 import { usePredictionStore } from "@/store/predictionStore";
+import { __setPersistenceForTests, useSettingsStore } from "@/store/settingsStore";
 import type { Prediction } from "@/types";
 
 import TodayScreen from "../../../app/(tabs)/index";
@@ -40,8 +43,11 @@ jest.mock("@/components/practice/PracticeCard", () => ({
     return <T>daily-practice</T>;
   },
 }));
+// It records the moment it's handed (step 194).
+const mockStreakLine = jest.fn();
 jest.mock("@/components/stats/StreakLine", () => ({
-  StreakLine: () => {
+  StreakLine: (props: { moment?: unknown }) => {
+    mockStreakLine(props);
     const { Text: T } =
       jest.requireActual<typeof import("react-native")>("react-native");
     return <T>daily-streak</T>;
@@ -323,5 +329,173 @@ describe("Today after a save (roadmap D48)", () => {
     view.unmount();
     act(() => jest.advanceTimersByTime(700));
     expect(scroll).not.toHaveBeenCalled();
+  });
+});
+
+// Step 194 (D67; FUTURE_UI B1): a log can reach a streak checkpoint as well
+// as an answer, and Log closes onto Today, so the streak row plays the moment.
+describe("Today after a log reached a streak checkpoint (step 194)", () => {
+  const list = () => screen.UNSAFE_getByType(SectionList);
+  const toCard = () =>
+    jest.spyOn(SectionList.prototype, "scrollToLocation").mockImplementation(() => {});
+  const moment = (): CheckpointMoment | null =>
+    (mockStreakLine.mock.calls.at(-1)?.[0] as { moment?: CheckpointMoment | null })?.moment ??
+    null;
+  // React Native's Jest View shares one jest.fn for measureInWindow, so
+  // spyOn hands that back and restoreAllMocks leaves its implementation:
+  // reset after each test.
+  const viewMethods = (View as unknown as { prototype: { measureInWindow: jest.Mock } })
+    .prototype;
+  /** Where the row and the screen sit in the window, as measureInWindow reports them. */
+  const measured = (row: [number, number], screenBox: [number, number]) =>
+    viewMethods.measureInWindow.mockImplementation(function (
+      this: { props: { testID?: string } },
+      cb: (x: number, y: number, w: number, h: number) => void,
+    ) {
+      if (this.props.testID === "home-streak-box") cb(0, row[0], 320, row[1]);
+      if (this.props.testID === "home-screen") cb(0, screenBox[0], 320, screenBox[1]);
+    });
+  const scrollResponder = () => {
+    const scrollTo = jest.fn();
+    jest
+      .spyOn(SectionList.prototype, "getScrollResponder")
+      .mockReturnValue({ scrollTo } as never);
+    return scrollTo;
+  };
+  const loggedDaySeven = (extra: Partial<ReturnType<typeof usePredictionStore.getState>> = {}) =>
+    usePredictionStore.setState({
+      pending: [open("a", 3), open("new", 20, 1_000)],
+      justSavedId: "new",
+      streakCheckpoint: 7,
+      streakCheckpointFrom: "log",
+      ...extra,
+    });
+
+  beforeEach(() => {
+    mockStreakLine.mockClear();
+    // The day the moment last played: in memory.
+    let stored: object | null = null;
+    __setPersistenceForTests({
+      load: async () => stored,
+      save: async (s) => {
+        stored = s;
+      },
+    });
+  });
+  afterEach(() => {
+    __setPersistenceForTests(null);
+    viewMethods.measureInWindow.mockReset();
+  });
+
+  it("plays on the streak row, held out of sight until then, instead of a scroll to the card", () => {
+    const scroll = toCard();
+    loggedDaySeven();
+    render(<TodayScreen />);
+    expect(moment()).toEqual({ days: 7, play: false });
+    // Taken: neither Today later nor Resolve shows it again.
+    expect(usePredictionStore.getState()).toMatchObject({
+      streakCheckpoint: null,
+      streakCheckpointFrom: null,
+      justSavedId: null,
+    });
+    expect(useSettingsStore.getState().streakMomentDay).toBe(localDayKey(new Date()));
+
+    // Once the list has settled, and the row's place couldn't be measured:
+    // it plays where it is.
+    act(() => jest.advanceTimersByTime(120 + 300));
+    expect(moment()).toEqual({ days: 7, play: true });
+    expect(scroll).not.toHaveBeenCalled();
+    // Still again once it has played.
+    act(() => jest.advanceTimersByTime(1800));
+    expect(moment()).toBeNull();
+  });
+
+  it("brings the row into view first, only as far as needed, then plays", () => {
+    const scroll = toCard();
+    const scrollTo = scrollResponder();
+    // The screen is 500 tall from y 100; the row's 90 sit at 900, below it.
+    measured([900, 90], [100, 500]);
+    loggedDaySeven();
+    render(<TodayScreen />);
+    act(() =>
+      list().props.onScroll({ nativeEvent: { contentOffset: { x: 0, y: 50 } } }),
+    );
+    act(() => jest.advanceTimersByTime(120));
+    // Its bottom (800 + 90 into the screen) to 16 above the screen's bottom.
+    expect(scrollTo).toHaveBeenCalledWith({ y: 50 + (890 - 484), animated: true });
+    expect(scroll).not.toHaveBeenCalled();
+    expect(moment()).toEqual({ days: 7, play: false });
+    act(() => jest.advanceTimersByTime(400));
+    expect(moment()).toEqual({ days: 7, play: true });
+  });
+
+  it("stays put when the row is already all in view, and plays at once", () => {
+    const scrollTo = scrollResponder();
+    measured([300, 90], [100, 500]);
+    loggedDaySeven();
+    render(<TodayScreen />);
+    act(() => jest.advanceTimersByTime(120));
+    expect(scrollTo).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(0));
+    expect(moment()).toEqual({ days: 7, play: true });
+  });
+
+  it("jumps without a slide under Reduce Motion, and plays at once", () => {
+    jest.mocked(useReducedMotion).mockReturnValue(true);
+    const scrollTo = scrollResponder();
+    measured([900, 90], [100, 500]);
+    loggedDaySeven();
+    render(<TodayScreen />);
+    act(() => jest.advanceTimersByTime(120));
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ animated: false }));
+    expect(moment()).toEqual({ days: 7, play: true });
+  });
+
+  it("plays when Today is next shown, after a log made over another tab", () => {
+    // That tab took the new card's mark (D48); the checkpoint waited.
+    loggedDaySeven({ justSavedId: null });
+    render(<TodayScreen />);
+    expect(moment()).toEqual({ days: 7, play: false });
+    act(() => jest.advanceTimersByTime(420));
+    expect(moment()).toEqual({ days: 7, play: true });
+  });
+
+  it("plays nothing while the streak is hidden in You, and scrolls to the card as before", () => {
+    useSettingsStore.setState({ streakShown: false });
+    const scroll = toCard();
+    loggedDaySeven();
+    render(<TodayScreen />);
+    act(() => jest.advanceTimersByTime(700));
+    expect(moment()).toBeNull();
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+  });
+
+  it("plays once a day: after it has played today, Today scrolls to the card as before", () => {
+    useSettingsStore.setState({ streakMomentDay: localDayKey(new Date()) });
+    const scroll = toCard();
+    loggedDaySeven();
+    render(<TodayScreen />);
+    act(() => jest.advanceTimersByTime(700));
+    expect(moment()).toBeNull();
+    expect(scroll).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves an answer's checkpoint for Resolve", () => {
+    loggedDaySeven({ streakCheckpointFrom: "answer", justSavedId: null });
+    render(<TodayScreen />);
+    act(() => jest.advanceTimersByTime(700));
+    expect(moment()).toBeNull();
+    expect(usePredictionStore.getState().streakCheckpoint).toBe(7);
+  });
+
+  it("stops if Today is left before it plays", () => {
+    loggedDaySeven();
+    const view = render(<TodayScreen />);
+    view.unmount();
+    mockStreakLine.mockClear();
+    act(() => jest.advanceTimersByTime(3000));
+    expect(mockStreakLine).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { colors } from '@/constants/theme';
+import { colors, DISPLAY_MAX_SCALE, type } from '@/constants/theme';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { StreakStatus } from '@/types';
 
@@ -91,5 +91,108 @@ describe('StreakLine tapped', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
     view.rerender(<StreakLine status={status} />);
     expect(screen.getByTestId('streak-line').props.accessibilityRole).toBe('text');
+  });
+});
+
+// Step 193 (D67): a clearer streak, still ink. The flame's shape says whether
+// today counts, the count is its own figure, and the goal dots are named.
+describe('StreakLine, clearer (step 193)', () => {
+  const HIDDEN = { includeHiddenElements: true } as const;
+  const flame = () => screen.getByTestId('streak-line-flame', HIDDEN);
+  const running = (s: Partial<StreakStatus>): StreakStatus => ({
+    streak: 149,
+    today: 0,
+    todayCounts: false,
+    checkpoint: null,
+    nextCheckpoint: 365,
+    ...NO_REST,
+    ...s,
+  });
+
+  it('draws an outline flame in the secondary grey before today counts', () => {
+    render(<StreakLine status={running({})} />);
+    expect(flame().props.name).toBe('flame');
+    expect(flame().props.fallback.props.name).toBe('flame-outline');
+    expect(flame().props.tintColor).toEqual(colors.textSecondary);
+    expect(flame().props.fallback.props.color).toEqual(colors.textSecondary);
+    expect(flame().props.size).toBe(22);
+  });
+
+  it('fills the flame in ink once today counts', () => {
+    render(<StreakLine status={running({ streak: 150, today: 1, todayCounts: true })} />);
+    expect(flame().props.name).toBe('flame.fill');
+    expect(flame().props.fallback.props.name).toBe('flame');
+    expect(flame().props.tintColor).toEqual(colors.action);
+  });
+
+  it('fills it on a checkpoint day too', () => {
+    render(
+      <StreakLine status={running({ streak: 100, today: 1, todayCounts: true, checkpoint: 100 })} />,
+    );
+    expect(flame().props.name).toBe('flame.fill');
+    expect(flame().props.tintColor).toEqual(colors.action);
+  });
+
+  it('shows the count as its own figure, a step above the headline, then "day streak"', () => {
+    render(<StreakLine status={running({})} />);
+    const count = screen.getByTestId('streak-line-count');
+    expect(count.props.children).toBe('149');
+    const style = StyleSheet.flatten(count.props.style);
+    expect(style.fontSize).toBe(type.title3.fontSize);
+    expect(style.fontWeight).toBe('700');
+    expect(count.props.maxFontSizeMultiplier).toBe(DISPLAY_MAX_SCALE);
+    // Held to its words by a no-break space: "149 day streak".
+    expect(screen.getByTestId('streak-line-headline').props.children[1]).toBe('\u00A0day streak');
+    expect(screen.getByTestId('streak-line-headline')).toHaveTextContent('149 day streak');
+    // VoiceOver keeps "149-day streak".
+    expect(screen.getByTestId('streak-line').props.accessibilityLabel).toBe(
+      '149-day streak. One prediction today makes it 150.',
+    );
+  });
+
+  it('names the goal dots under them, hidden from VoiceOver with the dots', () => {
+    render(<StreakLine status={running({ streak: 150, today: 2, todayCounts: true })} />);
+    expect(screen.queryByTestId('streak-line-goal-name')).toBeNull();
+    const name = screen.getByTestId('streak-line-goal-name', HIDDEN);
+    expect(name).toHaveTextContent("Today's goal");
+    expect(StyleSheet.flatten(name.props.style).fontSize).toBe(type.caption.fontSize);
+    expect(StyleSheet.flatten(name.props.style).color).toEqual(colors.textTertiary);
+    const goal = screen.getByTestId('streak-line-goal', HIDDEN);
+    expect(goal.props.accessibilityElementsHidden).toBe(true);
+    expect(goal.props.importantForAccessibility).toBe('no-hide-descendants');
+    // The dots and their name are one piece, so they wrap together.
+    expect(screen.getByTestId('streak-line-pip-0', HIDDEN)).toBeTruthy();
+    expect(goal).toContainElement(screen.getByTestId('streak-line-pip-2', HIDDEN));
+    expect(goal).toContainElement(name);
+  });
+
+  // The quietest grey is 4.4:1 on the checkpoint tint, under the text floor.
+  it('takes the secondary grey for its quiet lines on the checkpoint tint', () => {
+    render(
+      <StreakLine
+        status={running({ streak: 7, today: 1, todayCounts: true, checkpoint: 7, nextCheckpoint: 30, restDays: 1, restEarnedToday: true })}
+      />,
+    );
+    const color = (id: string) => StyleSheet.flatten(screen.getByTestId(id, HIDDEN).props.style).color;
+    expect(color('streak-line-goal-name')).toEqual(colors.textSecondary);
+    expect(color('streak-line-rest')).toEqual(colors.textSecondary);
+    // And a hollow dot's edge, 2.8:1 there in controlBorder, under the 3:1 floor.
+    const pip = StyleSheet.flatten(screen.getByTestId('streak-line-pip-1', HIDDEN).props.style);
+    expect(pip.borderColor).toEqual(colors.textTertiary);
+  });
+
+  it('keeps the sentence of a streak that ended, with a quiet outline flame and no goal', () => {
+    render(
+      <StreakLine
+        status={running({ streak: 0, ended: { days: 151, on: '2026-11-12T00:00:00', ago: 1 } })}
+      />,
+    );
+    expect(screen.getByTestId('streak-line-headline')).toHaveTextContent(
+      'Your 151-day streak ended yesterday',
+    );
+    expect(screen.queryByTestId('streak-line-count', HIDDEN)).toBeNull();
+    expect(screen.queryByTestId('streak-line-goal', HIDDEN)).toBeNull();
+    expect(flame().props.name).toBe('flame');
+    expect(flame().props.tintColor).toEqual(colors.textTertiary);
   });
 });

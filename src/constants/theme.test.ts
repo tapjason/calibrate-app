@@ -15,6 +15,9 @@ const PAIRS: Pair[] = [
   ['actionText', 'surface', 4.5],
   ['onAction', 'action', 4.5],
   ['selectedText', 'selectedFill', 4.5],
+  // The streak row's quiet lines on a checkpoint day (step 193): textTertiary
+  // is 4.4:1 there, so they take textSecondary.
+  ['textSecondary', 'selectedFill', 4.5],
   ['destructive', 'surface', 4.5],
   ['onAction', 'destructive', 4.5],
   ['cautionText', 'cautionBackground', 4.5],

@@ -28,7 +28,21 @@ export const haptics = {
   resolve: () => play(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
   /** The last dot of a reveal landing (Warmup verdict chart). */
   reveal: () => play(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)),
-  /** Reserved for unlocks and badge tier-ups (§6.2). Never for a Yes. */
+  /**
+   * Reserved for unlocks, badge tier-ups and the larger streak checkpoints
+   * (§6.2, `checkpoint` below). Never for a Yes.
+   */
   unlock: () =>
     play(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
+  /**
+   * A streak checkpoint's moment landing (step 194, D67; FUTURE_UI B1): the
+   * `reveal` tap (Rigid) at 7 and 30 days, Success from 100 on, so the
+   * pattern grows with the milestone and the larger ones join the unlock's.
+   */
+  checkpoint: (major: boolean) =>
+    play(() =>
+      major
+        ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid),
+    ),
 };

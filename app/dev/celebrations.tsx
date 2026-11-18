@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PracticeReminderOfferCard } from '@/components/practice/PracticeReminderOfferCard';
@@ -8,6 +8,7 @@ import { ReminderPromptCard } from '@/components/prediction/ReminderPromptCard';
 import { MilestoneCard } from '@/components/resolution/MilestoneCard';
 import { StreakCheckpointCard } from '@/components/resolution/StreakCheckpointCard';
 import { StreakLine } from '@/components/stats/StreakLine';
+import type { CheckpointMoment } from '@/components/stats/checkpointMoment';
 import { Button } from '@/components/ui/Button';
 import { colors, space, type } from '@/constants/theme';
 import type { Milestone, StreakStatus } from '@/types';
@@ -47,6 +48,35 @@ const REST_SAMPLES: StreakStatus[] = [
 ];
 
 /**
+ * The streak row's four states (step 193): today not counted yet (outline
+ * flame), counted (filled), a checkpoint day (filled, tinted), and a streak
+ * that ended (D60 (e)).
+ */
+const ROW_SAMPLES: { label: string; status: StreakStatus }[] = [
+  { label: 'Not yet today', status: { ...STREAK, streak: 149, nextCheckpoint: 365, restDays: 2, nextRestAt: null } },
+  { label: 'Counted', status: { ...STREAK, streak: 150, today: 1, todayCounts: true, nextCheckpoint: 365, restDays: 2, nextRestAt: null } },
+  { label: 'Checkpoint day', status: { ...STREAK, streak: 100, today: 1, todayCounts: true, checkpoint: 100, nextCheckpoint: 365, restDays: 2, nextRestAt: null } },
+  { label: 'Ended', status: { ...STREAK, streak: 0, ended: { days: 151, on: new Date(Date.now() - 86_400_000).toISOString(), ago: 1 } } },
+];
+
+/** The checkpoint's moment (step 194): 7 and 30 with the Rigid tap, 100 and up with Success and confetti. */
+const MOMENT_SAMPLES: { days: number; next: number }[] = [
+  { days: 7, next: 30 },
+  { days: 100, next: 365 },
+];
+
+/** A checkpoint day for the row's moment. */
+const momentDay = (days: number, next: number): StreakStatus => ({
+  ...STREAK,
+  streak: days,
+  today: 1,
+  todayCounts: true,
+  checkpoint: days,
+  nextCheckpoint: next,
+  nextRestAt: null,
+});
+
+/**
  * Development only: replays the celebration cards (DESIGN_SYSTEM §6.2) so the
  * motion and haptics can be checked without earning a badge first. Open
  * /dev/celebrations on the web build or a dev client. Release builds redirect
@@ -55,6 +85,10 @@ const REST_SAMPLES: StreakStatus[] = [
 export default function DevCelebrationsScreen() {
   const [shown, setShown] = useState(0);
   const [run, setRun] = useState(0);
+  // The checkpoint moment to replay, and how many times, so a new key remounts it.
+  const [moment, setMoment] = useState<{ days: number; next: number; run: number } | null>(null);
+  const [rowMoment, setRowMoment] = useState<CheckpointMoment | null>(null);
+  const [rowRun, setRowRun] = useState(0);
 
   if (!__DEV__) return <Redirect href="/" />;
 
@@ -93,11 +127,57 @@ export default function DevCelebrationsScreen() {
           <StreakLine key={i} status={status} testID={`dev-rest-${i}`} />
         ))}
 
-        {/* Static on purpose: the checkpoint celebration isn't built yet
-            (FUTURE_UI §B). */}
+        {/* The streak row in each state (step 193). */}
+        <Text style={styles.title}>Streak row</Text>
+        {ROW_SAMPLES.map(({ label, status }, i) => (
+          <View key={label} testID={`dev-row-${i}`}>
+            <Text style={styles.body}>{label}</Text>
+            <StreakLine status={status} testID={`dev-row-line-${i}`} />
+          </View>
+        ))}
+
+        {/* The checkpoint's moment (step 194), on Resolve's card and on
+            Today's row. Tap to play; the haptic needs a phone. These play
+            every time, without the once-a-day rule. */}
         <Text style={styles.title}>Streak checkpoints</Text>
-        <StreakCheckpointCard days={7} next={30} />
-        <StreakCheckpointCard days={100} next={365} />
+        {MOMENT_SAMPLES.map(({ days, next }) => (
+          <Button
+            key={`card-${days}`}
+            label={`Card at ${days} days`}
+            variant={moment?.days === days ? 'primary' : 'secondary'}
+            onPress={() => setMoment((m) => ({ days, next, run: (m?.run ?? 0) + 1 }))}
+            testID={`dev-checkpoint-card-${days}`}
+          />
+        ))}
+        {moment && (
+          <StreakCheckpointCard
+            key={`card-${moment.run}`}
+            days={moment.days}
+            next={moment.next}
+            celebrate
+          />
+        )}
+        {MOMENT_SAMPLES.map(({ days }) => (
+          <Button
+            key={`row-${days}`}
+            label={`Row at ${days} days`}
+            variant={rowMoment?.days === days ? 'primary' : 'secondary'}
+            onPress={() => {
+              setRowMoment({ days, play: true });
+              setRowRun((r) => r + 1);
+            }}
+            testID={`dev-checkpoint-row-${days}`}
+          />
+        ))}
+        {rowMoment && (
+          <StreakLine
+            key={`row-${rowRun}`}
+            status={momentDay(rowMoment.days, rowMoment.days === 7 ? 30 : 365)}
+            moment={rowMoment}
+            testID="dev-checkpoint-row"
+          />
+        )}
+        {/* And still, as when the same answer unlocked the rating. */}
         <StreakCheckpointCard days={365} next={730} />
       </ScrollView>
     </SafeAreaView>

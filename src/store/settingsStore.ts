@@ -134,6 +134,15 @@ export interface StoredSettings {
   practiceReminder: PracticeReminderTime | null;
   /** When the practice sheet's reminder offer was last waved off, or null. */
   practiceReminderOfferDismissedAt: string | null;
+  /**
+   * The local day a streak checkpoint's moment last played (step 194, D67),
+   * as `localDayKey` writes it ("Wed Nov 18 2026"), or null. Like the
+   * cooldowns above, a memory, not a preference: a checkpoint is reached at
+   * most once a day, and a new streak can reach 7 again later, so the day is
+   * the key, not the number. A relaunch the same day doesn't replay it.
+   * Cleared by Erase and account deletion.
+   */
+  streakMomentDay: string | null;
 }
 
 /** The share card's shape: Post (3:4) or Story (9:16). */
@@ -194,6 +203,8 @@ interface SettingsState extends StoredSettings {
   setPracticeReminder: (time: PracticeReminderTime | null) => Promise<void>;
   /** "Not now" on the practice reminder offer: a week before it asks again. */
   dismissPracticeReminderOffer: () => Promise<void>;
+  /** The day a checkpoint's moment played, or null to forget it (Erase, account deletion). */
+  setStreakMomentDay: (day: string | null) => Promise<void>;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -233,6 +244,7 @@ const DEFAULTS: StoredSettings = {
   ratingAskedAt: null,
   practiceReminder: null,
   practiceReminderOfferDismissedAt: null,
+  streakMomentDay: null,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -331,6 +343,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
           practiceReminderOfferDismissedAt:
             stored.practiceReminderOfferDismissedAt ?? DEFAULTS.practiceReminderOfferDismissedAt,
+          streakMomentDay:
+            typeof stored.streakMomentDay === 'string'
+              ? stored.streakMomentDay
+              : DEFAULTS.streakMomentDay,
         });
       }
     } catch (e) {
@@ -467,6 +483,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ practiceReminderOfferDismissedAt: new Date().toISOString() });
     await persist(snapshot(get()));
   },
+
+  setStreakMomentDay: async (day) => {
+    set({ streakMomentDay: day });
+    await persist(snapshot(get()));
+  },
 }));
 
 /** A stored day of the week, if it is one: 0 (Sunday) to 6. */
@@ -536,5 +557,6 @@ function snapshot(state: StoredSettings): StoredSettings {
     ratingAskedAt: state.ratingAskedAt,
     practiceReminder: state.practiceReminder,
     practiceReminderOfferDismissedAt: state.practiceReminderOfferDismissedAt,
+    streakMomentDay: state.streakMomentDay,
   };
 }

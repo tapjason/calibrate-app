@@ -11,7 +11,7 @@ If the app's name changes, update it here. Not legal advice.
 
 # Fairly Sure Privacy Policy
 
-**Effective:** November 15, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 18, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
@@ -59,8 +59,11 @@ remove it with the rest of the on-device data.
 ### If you create an account
 
 **2.1 Account information.** Your email address, or, if you use Sign in with
-Apple, the address Apple gives us, which may be a private relay address. We use
-it only to sign you in.
+Apple, the address Apple gives us, which may be a private relay address. If you
+use Continue with Google, Google gives us your email address and an identifier
+for your Google account. Google also sends your name and profile picture; we
+don't use them, and they are removed as they arrive rather than kept. We use
+account information only to sign you in.
 
 **2.2 Your predictions.** The text of each prediction, its category, the
 confidence you gave it, its due date, how it resolved, and any reflection you
@@ -124,6 +127,7 @@ contacting the Coach. That check never sends your text anywhere.
 | **OpenAI** | The statistics summary in §3, only when you request Coach feedback | Generates Coach feedback |
 | **RevenueCat** | An account identifier (a random one for this install if you haven't signed in) and your App Store purchase records | Manages subscriptions |
 | **Apple** | Payments, and sign-in if you use Sign in with Apple | App Store billing and authentication |
+| **Google** | Nothing from the app. If you use Continue with Google, Google knows you signed in to Fairly Sure | Authentication |
 
 We share data with these providers only to run the app. We don't sell or rent
 personal data, and we don't share it for advertising.
@@ -151,6 +155,9 @@ In the app: **You → Delete account** (at the bottom). This permanently deletes
 - and the copy of your data on that device, your warm-up and practice answers included.
 
 If you signed in with Apple, we also revoke the app's access to your Apple ID.
+If you signed in with Google, deleting your account removes what Google shared
+with us; to disconnect Fairly Sure on Google's side as well, remove it in your
+Google Account's security settings, under third-party connections.
 
 **Deleting your account doesn't cancel an App Store subscription.** Apple bills
 it, so cancel it first in Settings → [your name] → Subscriptions, or the app

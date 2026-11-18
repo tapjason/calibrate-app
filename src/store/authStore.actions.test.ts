@@ -525,3 +525,36 @@ describe('authStore.eraseDeviceData', () => {
     expect(wipe).not.toHaveBeenCalled();
   });
 });
+
+// Step 194: the day a streak checkpoint's moment played was about the erased
+// record, like the categories left off the card.
+describe('the checkpoint moment after Erase and account deletion', () => {
+  const PLAYED = 'Wed Nov 18 2026';
+
+  it('is forgotten by Erase', async () => {
+    useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', hasAppleIdentity: false });
+    wipe.mockResolvedValue(undefined);
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    usePredictionStore.setState({ loadPending: jest.fn(async () => {}), loadResolved: jest.fn(async () => {}) });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    useSettingsStore.setState({ streakMomentDay: PLAYED });
+
+    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+  });
+
+  it('is forgotten when the account is deleted', async () => {
+    useAuthStore.setState({ userId: 'user-1', email: 'a@b.co', status: 'authenticated', hasAppleIdentity: false });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    wipe.mockResolvedValue(undefined);
+    mocked.signOutLocal.mockResolvedValue({ ok: true });
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    useSettingsStore.setState({ streakMomentDay: PLAYED });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+  });
+});

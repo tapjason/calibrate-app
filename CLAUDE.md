@@ -553,8 +553,9 @@ See the authoritative section above.
   rather than opening Share.
 - Streak tracker. Checkpoints at **7, 30, 100 and 365 days, then every further year**:
   the day a streak reaches one is named ("A full week") on Today and on the answer that
-  earned it. Every other day only the number climbs. The checkpoint *celebration*
-  (motion, haptic) is planned but not built — see `docs/design/FUTURE_UI.md` §B.
+  earned it. Every other day only the number climbs. A checkpoint plays once, on the
+  answer's card or, after a log, on Today's streak row (step 194; DESIGN_SYSTEM §6.2).
+  The row's flame is an outline until today counts, then filled (step 193, D67).
 - **What a day takes** (D17): one prediction logged or answered keeps the streak. Three a
   day is the **daily goal**, shown as the streak row's dots and named when met ("Today's
   goal met"), and asked of nobody (`docs/design/research/retention-2026-10.md` §2.1).

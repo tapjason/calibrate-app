@@ -133,29 +133,30 @@ Menu names are Google's and Supabase's as documented in November 2026 and may ha
 The client secret goes from Google straight into Supabase: don't paste it into a chat, a
 file in this repo or a terminal an agent reads.
 
-- [ ] **Google Cloud project.** console.cloud.google.com → new project, "Fairly Sure".
-- [ ] **Branding** (Google Auth Platform → Branding): app name **Fairly Sure**; your support
+- [x] **Google Cloud project.** Done 2026-11-18 (owner). console.cloud.google.com → new project, "Fairly Sure".
+- [x] **Branding** (done 2026-11-18; Google Auth Platform → Branding): app name **Fairly Sure**; your support
       email; home page `https://tapjason.github.io/calibrate-app/support/`; privacy policy
       `https://tapjason.github.io/calibrate-app/privacy/`; authorised domains
       `tapjason.github.io` and `otopheizhjstoeyndcvc.supabase.co`; your contact email.
-- [ ] **Audience:** External, then **Publish app** (in Testing only listed test users can
+- [x] **Audience** (done 2026-11-18)**:** External, then **Publish app** (in Testing only listed test users can
       sign in, so an App Review tester couldn't).
-- [ ] **Data access:** only `openid`, `.../auth/userinfo.email` and
+- [x] **Data access** (done 2026-11-18)**:** only `openid`, `.../auth/userinfo.email` and
       `.../auth/userinfo.profile`. Nothing else: these three need no Google review.
-- [ ] **Client:** Clients → Create client → **Web application**; authorised redirect URI
+- [x] **Client** (done 2026-11-18)**:** Clients → Create client → **Web application**; authorised redirect URI
       `https://otopheizhjstoeyndcvc.supabase.co/auth/v1/callback`. Keep the page open for
       the client ID and secret.
-- [ ] **Supabase → Authentication → Sign In / Providers → Google:** enable, paste the client
+- [x] **Supabase → Authentication → Sign In / Providers → Google** (done 2026-11-18)**:** enable, paste the client
       ID and the client secret, leave "Skip nonce check" **off**, save.
-- [ ] **Supabase → Authentication → URL Configuration → Redirect URLs:** add exactly
+- [x] **Supabase → Authentication → URL Configuration → Redirect URLs** (done 2026-11-18)**:** add exactly
       `fairlysure://google-auth`.
-- [ ] **Supabase → Authentication → Sign In / Providers → Email:** "Confirm email" is **on**
+- [x] **Supabase → Authentication → Sign In / Providers → Email** (checked 2026-11-18)**:** "Confirm email" is **on**
       and stays on (with it off, an address someone else registered first would be linked
       to its real owner's Google sign-in).
-- [ ] **Apply migration 009** (`npx supabase db push --remote`, with this branch checked out): it
+- [x] **Applied 2026-11-18** (owner; `migration list --remote` shows 009, and `pg_trigger` shows both
+      triggers enabled, on `auth.users` and `auth.identities`). **Apply migration 009** (`npx supabase db push --remote`, with this branch checked out): it
       drops the name and picture Google sends as they arrive. Read the notices it prints:
       one names any trigger the project refused.
-- [ ] **Tell the agent**, which turns the flag on for the next build and, in the same
+- [x] **Told 2026-11-18.** **Tell the agent**, which turns the flag on for the next build and, in the same
       change, updates the privacy policy (§2.1, the processor table, deletion) and
       `APP_PRIVACY.md` (the Email row's evidence; the User ID row gains Google's account
       id). The policy goes live when that change is pushed, so it and the build go together.
@@ -379,6 +380,16 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
     type; Create account with a rule unmet says what's missing ("Your password needs a
     number."); a password that meets all four makes the account; Sign in shows no rows and
     an old password still signs in; the iPhone's suggested strong password is accepted.
+32. Step 192, on build 4: the sign-in screen shows "Continue with Google" under the Apple
+    button, the same width and height, readable in light and dark. Tapping it: iOS asks
+    to let Fairly Sure use a website to sign in; Google's page opens; after choosing an
+    account the sheet closes and you are signed in, with no blank or "unmatched route"
+    screen on the way. Cancelling says "Sign-in cancelled." You shows "Signed in as"
+    your Google address. Then run query 2 at the end of
+    `supabase/migrations/009_strip_provider_profile.sql` (A6).
+33. Step 193, on build 4: Today's streak row has an outline flame before today counts and
+    a filled one after; the count is the largest thing in the row; "Today's goal" sits
+    under the dots.
 
 **Results, build 3, 2026-11-18 (owner):** 25–28 pass (the launch page and the paywall's top
 are in his screenshots). 29 passes except the free-month pill, which his Apple ID can't show:
@@ -613,9 +624,20 @@ Added 2026-09-29 (polish pass):
 - [ ] **Streak checkpoint (added 2026-10-06, step 64; web-verified on Today):**
       on day 7 (or 30, 100…) the first log or answer turns Today's streak row
       grey-tinted with "A full week. Next milestone: 30 days". If it was an
-      answer, the Resolve sheet shows the still flame card ("7", "A full
-      week", "Next milestone: 30 days") above the range line, with no confetti and no extra
-      haptic; Done and the reflection box stay reachable in the medium sheet.
+      answer, the Resolve sheet shows the flame card ("7", "A full
+      week", "Next milestone: 30 days") above the range line; Done and the reflection box
+      stay reachable in the medium sheet. **From build 4 (step 194) it moves:** the card
+      springs in, the number rolls from 6 to 7, the flame pulses once, and the phone taps
+      once (a firm tap at 7 and 30; the success pattern and a short burst of confetti at
+      100 and 365). After a log instead of an answer, Today scrolls to the streak row and
+      the row does the same. It plays once that day: reopening the app doesn't replay it.
+      With Reduce Motion on, a short fade and the tap only. With "Streak and daily goal"
+      off, nothing. Easiest to see without waiting a week: there is no shortcut in a
+      TestFlight build, so this waits for a real day 7.
+- [ ] **The streak row (step 193, build 4):** before anything is logged or answered
+      today, the flame is an outline; after the first one it is filled. The day count is
+      larger than the words after it. The three dots have "Today's goal" under them. At
+      the largest text size the row still reads and nothing is cut off.
 - [ ] **The 2026-10-06 batch (steps 65–71; web-verified):** a run of three
       ends on "3 answered. 2 happened. You expected about 2." with the streak
       row; Sign in's round × sits clear of the notch; on an SE or mini (320pt)

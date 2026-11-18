@@ -353,6 +353,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // any can be left off now, so a kept choice could empty a new card
         // (code review, 2026-11-14). First, so a later failure can't keep it.
         await useSettingsStore.getState().setCardHiddenCategories([]);
+        // And the day a streak checkpoint's moment played (step 194).
+        await useSettingsStore.getState().setStreakMomentDay(null);
         await wipeLocalUserData(userId);
         // The Warmup's rows went with the wipe; its store forgets them too.
         // Practice belongs to the device like the Warmup, and the privacy
@@ -393,8 +395,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Log's kept draft is the person's own words (step 173).
         await useLogDraftStore.getState().clear();
         useResolveRunStore.getState().clear();
-        // As after account deletion: the choice was about the erased record.
+        // As after account deletion: the choice was about the erased record,
+        // and so was the day a streak checkpoint's moment played (step 194).
         await useSettingsStore.getState().setCardHiddenCategories([]);
+        await useSettingsStore.getState().setStreakMomentDay(null);
         await reloadForUser(LOCAL_GUEST_USER_ID);
         // And what's already on the lock screen was about it too. After the
         // reload, which cancels the reminders still to come, and not awaited:

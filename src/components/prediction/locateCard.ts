@@ -54,3 +54,26 @@ export function cardPlacement(input: {
   }
   return "bottom";
 }
+
+/**
+ * How far Today scrolls to bring the streak row all into view after a log
+ * reached a streak checkpoint (step 194): the moment's haptic needs its
+ * visual twin on screen (rule 0.8). Positive scrolls down. Zero when all of
+ * it is already on screen; otherwise as far as needed, as for a card (D48):
+ * its bottom `margin` above the bottom edge, or its top `margin` below the
+ * top when it's above what's shown or too tall to fit.
+ *
+ * `top` is the row's top measured from the top of the list's frame.
+ */
+export function scrollToShow(input: {
+  top: number;
+  height: number;
+  viewHeight: number;
+  margin: number;
+}): number {
+  const { top, height, viewHeight, margin } = input;
+  const bottom = top + height;
+  if (top >= 0 && bottom <= viewHeight) return 0;
+  if (top < 0 || height + 2 * margin > viewHeight) return top - margin;
+  return bottom - (viewHeight - margin);
+}

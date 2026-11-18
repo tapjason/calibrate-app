@@ -1,7 +1,9 @@
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
+import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
+import { localDayKey } from '@/components/ui/useLocalDay';
 import { setDbForTests } from '@/db/client';
 import { getPrediction, insertPrediction } from '@/db/predictions';
 import { getUserStat } from '@/db/stats';
@@ -9,6 +11,7 @@ import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useRatingStore } from '@/store/ratingStore';
+import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
@@ -43,7 +46,12 @@ const samplePending = (overrides: Partial<Prediction> = {}): Prediction => ({
 beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.getState().reset();
-  usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
+  usePredictionStore.setState({
+    pending: [],
+    resolved: [],
+    streakCheckpoint: null,
+    streakCheckpointFrom: null,
+  });
   useRatingStore.setState({ moment: false });
   useStatsStore.setState({
     userStat: null,
@@ -825,8 +833,24 @@ describe('ResolvePrompt milestones', () => {
   });
 });
 
-// Decided 2026-10-06: streak checkpoints at 7, 30, 100 and 365 days.
+// Decided 2026-10-06: streak checkpoints at 7, 30, 100 and 365 days. Since
+// step 194 the card plays the checkpoint's moment, once.
 describe('ResolvePrompt streak checkpoints', () => {
+  // The day the moment last played lives in the settings: in memory here.
+  beforeEach(() => {
+    let stored: object | null = null;
+    __setPersistenceForTests({
+      load: async () => stored,
+      save: async (s) => {
+        stored = s;
+      },
+    });
+  });
+  afterEach(() => {
+    __setPersistenceForTests(null);
+    jest.restoreAllMocks();
+  });
+
   /**
    * Local noon `back` calendar days ago, or now for today. Subtracting 24h
    * steps could skip or merge a local day near midnight or across DST.
@@ -857,12 +881,11 @@ describe('ResolvePrompt streak checkpoints', () => {
     await usePredictionStore.getState().loadPending();
   };
 
-  it('names the checkpoint the answer reached, without a celebration', async () => {
+  it('names the checkpoint the answer reached, and plays its moment once', async () => {
+    const checkpoint = jest.spyOn(haptics, 'checkpoint');
     await sixDaysThenToday();
     render(<ResolvePrompt predictionId="p1" />);
-    await waitFor(() => {
-      expect(screen.getByTestId('resolve-no')).toBeTruthy();
-    });
+    await waitFor(() => expect(screen.getByTestId('resolve-no')).toBeEnabled());
     fireEvent.press(screen.getByTestId('resolve-no'));
 
     await waitFor(() => {
@@ -873,6 +896,60 @@ describe('ResolvePrompt streak checkpoints', () => {
     );
     expect(screen.queryByTestId(/^milestone-/)).toBeNull();
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+    // The Rigid tap at 7 (not a major one), as the card lands; marked played today.
+    await waitFor(() => {
+      expect(checkpoint).toHaveBeenCalledTimes(1);
+    });
+    expect(checkpoint).toHaveBeenCalledWith(false);
+    expect(useSettingsStore.getState().streakMomentDay).toBe(localDayKey(new Date()));
+  });
+
+  it('shows it still once the moment has played today, as after a relaunch', async () => {
+    useSettingsStore.setState({ streakMomentDay: localDayKey(new Date()) });
+    const checkpoint = jest.spyOn(haptics, 'checkpoint');
+    await sixDaysThenToday();
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-no')).toBeEnabled());
+    fireEvent.press(screen.getByTestId('resolve-no'));
+    await waitFor(() => {
+      expect(screen.getByTestId('streak-checkpoint')).toBeTruthy();
+    });
+    await new Promise((r) => setTimeout(r, 400));
+    expect(checkpoint).not.toHaveBeenCalled();
+  });
+
+  it('plays nothing, and shows no card, while the streak is hidden in You', async () => {
+    useSettingsStore.setState({ streakShown: false });
+    const checkpoint = jest.spyOn(haptics, 'checkpoint');
+    await sixDaysThenToday();
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded')).toBeTruthy();
+    });
+    await new Promise((r) => setTimeout(r, 400));
+    expect(screen.queryByTestId('streak-checkpoint')).toBeNull();
+    expect(checkpoint).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+  });
+
+  // A log's checkpoint is Today's to show, not this answer's.
+  it('leaves a checkpoint a log reached for Today', async () => {
+    await insertPrediction(samplePending());
+    usePredictionStore.setState({ streakCheckpoint: 7, streakCheckpointFrom: 'log' });
+    await useStatsStore.getState().recomputeForUser(useAuthStore.getState().userId!);
+    await usePredictionStore.getState().resolve('p1', 'resolved_no');
+    render(<ResolvePrompt predictionId="p1" recordedAnswer="resolved_no" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('resolve-recorded')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('streak-checkpoint')).toBeNull();
+    // Still there for Today.
+    expect(usePredictionStore.getState()).toMatchObject({
+      streakCheckpoint: 7,
+      streakCheckpointFrom: 'log',
+    });
   });
 
   it('names the checkpoint when the reminder action earned it', async () => {
@@ -915,6 +992,42 @@ describe('ResolvePrompt streak checkpoints', () => {
       expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy();
     });
     expect(screen.getByTestId('streak-checkpoint')).toBeTruthy();
+  });
+
+  // Step 194: one full moment per answer. The unlock plays; the checkpoint
+  // shows still, with no haptic or confetti of its own.
+  it('shows the checkpoint still when the same answer unlocks the rating', async () => {
+    const unlock = jest.spyOn(haptics, 'unlock');
+    const checkpoint = jest.spyOn(haptics, 'checkpoint');
+    await sixDaysThenToday();
+    for (let i = 0; i < 19; i++) {
+      await insertPrediction(
+        samplePending({
+          id: `done-${i}`,
+          status: i % 2 ? 'resolved_yes' : 'resolved_no',
+          resolved_at: '2026-05-20T00:00:00.000Z',
+        }),
+      );
+    }
+    await useStatsStore.getState().recomputeForUser(useAuthStore.getState().userId!);
+
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+    await waitFor(() => {
+      expect(screen.getByTestId('milestone-rating_unlocked')).toBeTruthy();
+    });
+    await waitFor(() => {
+      expect(unlock).toHaveBeenCalledTimes(1);
+    });
+    await new Promise((r) => setTimeout(r, 400));
+    expect(checkpoint).not.toHaveBeenCalled();
+    expect(unlock).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByTestId('streak-checkpoint-confetti', { includeHiddenElements: true }),
+    ).toBeNull();
+    // Not marked: the checkpoint's own moment hasn't played.
+    expect(useSettingsStore.getState().streakMomentDay).toBeNull();
   });
 
   it('shows nothing for an answer that reached no checkpoint', async () => {

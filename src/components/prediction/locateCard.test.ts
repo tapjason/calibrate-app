@@ -1,6 +1,6 @@
 import type { Prediction } from "@/types";
 
-import { cardPlacement, locateCard } from "./locateCard";
+import { cardPlacement, locateCard, scrollToShow } from "./locateCard";
 
 function card(id: string): Prediction {
   return {
@@ -72,5 +72,32 @@ describe("cardPlacement", () => {
     expect(cardPlacement({ ...base, cardHeight: null, viewHeight: null })).toBe(
       "bottom",
     );
+  });
+});
+
+// Step 194: after a log reached a streak checkpoint, Today brings the streak
+// row into view, only as far as needed, as it does a card (D48).
+describe("scrollToShow", () => {
+  const view = { viewHeight: 600, margin: 16 };
+
+  it("stays put when all of the row is on screen", () => {
+    expect(scrollToShow({ top: 0, height: 90, ...view })).toBe(0);
+    expect(scrollToShow({ top: 510, height: 90, ...view })).toBe(0);
+  });
+
+  it("brings a row below the view up until its bottom sits just inside the edge", () => {
+    // Its bottom at 900, so 900 - (600 - 16) = 316 down.
+    expect(scrollToShow({ top: 810, height: 90, ...view })).toBe(316);
+    // Cut off by the bottom edge: only the part that's missing, and the margin.
+    expect(scrollToShow({ top: 560, height: 90, ...view })).toBe(66);
+  });
+
+  it("brings a row above the view down until its top sits just below the top", () => {
+    expect(scrollToShow({ top: -200, height: 90, ...view })).toBe(-216);
+    expect(scrollToShow({ top: -30, height: 90, ...view })).toBe(-46);
+  });
+
+  it("shows the top of a row too tall for the view", () => {
+    expect(scrollToShow({ top: 700, height: 590, ...view })).toBe(684);
   });
 });

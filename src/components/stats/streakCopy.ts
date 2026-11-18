@@ -21,8 +21,20 @@ import { localDate } from '@/components/ui/dates';
 import { DAILY_GOAL, type StreakStatus } from '@/types';
 
 export interface StreakCopy {
-  /** "12-day streak". */
+  /**
+   * "12-day streak": the spoken sentence's start, and every caller's but the
+   * row's, which draws `count` as its own figure before `unit` (step 193).
+   */
   headline: string;
+  /** The streak's length, grouped ("1,001"): the row's figure (step 193). */
+  count: string;
+  /** What follows the figure on the row: "day streak", so it reads "149 day streak". */
+  unit: string;
+  /**
+   * Today has counted (D17: one logged or answered), so the row's flame is
+   * filled; an outline until then (step 193). False for a streak that ended.
+   */
+  counted: boolean;
   /** What today adds, or that it already counts. */
   detail: string | null;
   /** Today's progress toward the day's goal, 0..DAILY_GOAL, for the pips. */
@@ -36,6 +48,12 @@ export interface StreakCopy {
   /** A streak that ended lately, said with no streak running (D60 (e)): no goal dots. */
   ended?: boolean;
 }
+
+/**
+ * After the row's figure (step 193): "149 day streak" on screen, where the
+ * spoken sentence keeps "149-day streak".
+ */
+const STREAK_UNIT = 'day streak';
 
 const YEAR_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 
@@ -123,6 +141,10 @@ function endedCopy(ended: NonNullable<StreakStatus['ended']>): StreakCopy {
   const detail = 'No rest day was left to cover it. One prediction today starts a new one';
   return {
     headline,
+    // The streak that ended: the row keeps its sentence and draws no figure.
+    count: localCount(ended.days),
+    unit: STREAK_UNIT,
+    counted: false,
     detail,
     filled: 0,
     spoken: `${headline}. ${detail}.`,
@@ -170,6 +192,9 @@ export function streakCopy(status: StreakStatus): StreakCopy | null {
   const said = detail.replace('\n', ' ');
   return {
     headline,
+    count: localCount(streak),
+    unit: STREAK_UNIT,
+    counted: todayCounts,
     detail,
     filled,
     spoken: rest ? `${headline}. ${said}. ${rest}.` : `${headline}. ${said}.`,

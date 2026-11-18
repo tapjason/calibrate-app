@@ -341,23 +341,30 @@ micro-interactions, layout animations for list reveals. Every animation checks
 | `reveal` | count-up 700 ms ease-out; diagonal draws 400 ms; dots drop 60 ms stagger; regions fade 200 ms | `impactAsync(Rigid)` as the last dot lands | Warmup verdict (chart only, no count-up since D20), weekly Wrapped |
 | `unlock` | the milestone card scales in on a spring (damping 14, stiffness 180); a ring completing into the numeral is parked with the ring (FUTURE_UI §B) | `notificationAsync(Success)` | rating unlock (`MilestoneCard`) |
 | `tierUp` | emblem flips on Y 600 ms, ring count increments, ≤ 40-particle confetti ≤ 1.2 s | `notificationAsync(Success)` | badge tier-up |
+| `checkpoint` | the card or the streak row scales in on `unlock`'s spring; the day count rolls up from the day before; the flame scales 1 → 1.15 → 1 once; ≤ 40-particle confetti only at 100, 365 and each further year | `impactAsync(Rigid)` at 7 and 30, `notificationAsync(Success)` from 100, once, as it lands | a streak checkpoint (step 194) |
 | `reduced` | all of the above → 200 ms cross-fade; no count-up, confetti or flips; haptics still fire | as above | Reduce Motion on |
 
 ### 6.2 Celebration budget
 
-Full treatment (animation + success haptic) for exactly three
-moments: **Warmup verdict**, **score unlock**, **badge tier-up**.
+Full treatment (animation + success haptic) for four moments: **Warmup verdict**,
+**score unlock**, **badge tier-up**, and a **streak checkpoint from 100 days** (7 and
+30 get the motion with a Rigid tap and no confetti).
 Weekly Wrapped gets `reveal` without confetti. Everything else is small and precise.
 
 **Streak checkpoints** (7, 30, 100 and 365 days, then each further year; decided
-2026-10-06) are the only streak days that get marked, and they're the planned fourth
-moment. For now the acknowledgement is **static**: the milestone tint on Today's streak
-row for the rest of that day, and `StreakCheckpointCard` on the answer that earned it.
-No motion, and no Success haptic, which stays reserved below. Their celebration is
-specced but not built (FUTURE_UI §B). A streak day that isn't a checkpoint never gets
-one.
+2026-10-06, the moment built as step 194 on the owner's word, D67) are the only streak
+days that get marked. The `checkpoint` moment (§6.1) plays **once per local day**
+(`streakMomentDay`, a device setting): on `StreakCheckpointCard` when an answer reached
+it, or on Today's streak row when a log did, where Today scrolls the row into view
+instead of the new card (§7.11) so the haptic has its visual twin. **One full moment
+per answer:** when the same answer unlocks the rating or tiers a badge up, that moment
+plays and the checkpoint card is still, with no haptic or confetti of its own. Nothing
+plays while "Streak and daily goal" is off. The milestone tint stays on the row for the
+rest of that day. A streak day that isn't a checkpoint never gets one. Only Jest and the
+web build have run it; timing and 60 fps are for the iPhone.
 
-- `notificationAsync(Success)` is reserved for unlocks and tier-ups. Never for a Yes.
+- `notificationAsync(Success)` is reserved for unlocks, tier-ups and a checkpoint from
+  100 days. Never for a Yes.
 - **Never animate:** demotions, broken streaks, "No" outcomes. A score that slips below
   a threshold keeps its emblem and shows a text "holding" state.
 - The app plays no sound of its own; a notification makes the system's.
@@ -425,9 +432,16 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   0.25" flattered anyone whose calls mostly happen. Never on Today, never on a card, never in `display`
   or `title` type: it keeps the rating honest for those who look, and stays out of
   everyone else's way.
-- **Streak** (roadmap D2, step 61): a row on Today under the rating: a flame, "12-day
-  streak", what today adds ("One prediction today makes it 13", or "Today counts") and
-  three pips for the day's goal. A day counts with one prediction logged or answered
+- **Streak** (roadmap D2, step 61; its form step 193, D67): a row on Today under the
+  rating. A 22 pt flame that is an **outline** in `textSecondary` until today counts and
+  **filled** in `action` once it does (shape carries the state; an ended streak's is an
+  outline in `textTertiary`); the count as its own figure (`title3`, bold) before "day
+  streak", spoken as "12-day streak"; what today adds ("One prediction today makes it
+  13", or "Today counts"); and three pips for the day's goal, captioned "Today's goal"
+  (two lines, hidden from VoiceOver with the pips). No hue: a classic orange flame is
+  `over`'s orange (`research/colour-2026-11.md`). On the milestone tint the caption and
+  the rest line use `textSecondary` and a hollow pip's edge `textTertiary`
+  (`textTertiary` reads 4.4:1 there, `controlBorder` 2.8:1). A day counts with one prediction logged or answered
   (D17, §7.9); three is the goal. Gain framing only. Since D60 (2026-11-13), for a week after a streak of 2 days or more ends,
   while none runs, the row says so plainly with no pips ("Your 151-day streak ended
   on Thursday" / "No rest day was left to cover it. One prediction today starts a
@@ -788,7 +802,8 @@ filters are its way forward.
   never a condition: no line suggests the streak needs three.
 - **Rest days** (roadmap step 87) are said as a relief, never as a miss: "Yesterday
   was a rest day", "1 rest day saved", "A rest day comes with day 7", "Today saved a
-  rest day". A third line on the streak row, `caption` in `textTertiary`, and part of
+  rest day". A third line on the streak row, `caption` in `textTertiary` (`textSecondary`
+  on the milestone tint), and part of
   the row's one spoken sentence. The words *missed*, *lost* and *broke* never appear.
 - Sentence case everywhere; no ALL-CAPS labels.
 - Badge gating is a trust feature — say it: "Badges need receipts."
@@ -853,7 +868,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   answers in one step; step 161). Only skips: they never counted, so answering later can't rewrite a
   score.
 - **Streak checkpoint** (step 64): when the answer is the one that made today count
-  and that reached a checkpoint, a still card in the milestone tint sits where the
+  and that reached a checkpoint, a card in the milestone tint, which plays the
+  `checkpoint` moment once (§6.2; still when a milestone plays on the same answer), sits where the
   milestone card would: the flame and the day count in `readout`, the name ("A full
   week") and "Next milestone: 30 days." (one short line, so a three-digit figure
   still fits at 320pt; VoiceOver hears "7-day streak" first). When a score or badge
@@ -916,6 +932,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   under the score either way, beside what it's about: on Day 0 it's the ask that
   brings someone back for the first answer (D19; owner, 2026-11-10).
 - **After a save** (D48, step 159): on the focus after Log's sheet closes, Today
+  (on a save that reached a streak checkpoint, the streak row instead of the new card,
+  by the same rules, and the row plays the moment there: step 194)
   scrolls to the new card only when the whole card isn't already on screen, and
   only as far as needed: its bottom 16pt above the list's bottom edge, or 16pt
   below the top when it's above what's shown or taller than the screen, so its

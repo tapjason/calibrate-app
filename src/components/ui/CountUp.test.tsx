@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react-native';
+import { StrictMode } from 'react';
 
 import { CountUp } from './CountUp';
 
@@ -39,5 +40,37 @@ describe('CountUp from', () => {
       jest.advanceTimersByTime(1000);
     });
     expect(screen.getByTestId('n').props.children).toBe(64);
+  });
+});
+
+// Step 194: a streak checkpoint rolls from the day before, written as the
+// streak row writes its count.
+describe('CountUp format', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('writes every number, and the spoken one, through format', () => {
+    const grouped = (n: number) => (n >= 1000 ? `${Math.floor(n / 1000)},${String(n % 1000).padStart(3, '0')}` : String(n));
+    render(<CountUp value={1095} from={1094} format={grouped} testID="n" />);
+    expect(screen.getByTestId('n').props.children).toBe('1,094');
+    expect(screen.getByTestId('n').props.accessibilityLabel).toBe('1,095');
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('n').props.children).toBe('1,095');
+  });
+
+  // React's development Strict Mode runs each effect twice on mount.
+  it('still rolls when its effect runs twice before the first frame', () => {
+    render(
+      <StrictMode>
+        <CountUp value={7} from={6} testID="n" />
+      </StrictMode>,
+    );
+    expect(screen.getByTestId('n').props.children).toBe(6);
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('n').props.children).toBe(7);
   });
 });

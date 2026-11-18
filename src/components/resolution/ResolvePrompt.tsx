@@ -8,6 +8,7 @@ import { AnsweredDetails, CORRECTED_NOTE } from '@/components/prediction/Answere
 import { daysUntilDue } from '@/components/prediction/dueGroups';
 import { loggedAgainLine, logAgainWords } from '@/components/prediction/dueWords';
 import { MIN_BUCKET_N_FOR_VERDICT } from '@/components/stats/chartTakeaway';
+import { claimStreakMoment } from '@/components/stats/checkpointMoment';
 import { BADGE_LADDER } from '@/components/stats/scoringCopy';
 import { BADGE_META, BADGE_SCORE_BAR } from '@/constants/badges';
 import { Button } from '@/components/ui/Button';
@@ -232,20 +233,22 @@ function readAcknowledgement(
   ratingBefore: number | null;
   milestone: Milestone | null;
   tierDrop: TierDrop | null;
-  checkpoint: { days: number; next: number } | null;
+  checkpoint: { days: number; next: number; celebrate: boolean } | null;
   unlocked: boolean;
 } {
   const stats = useStatsStore.getState();
   const bucket = stats.bucketFor(prediction.confidence);
   const predictions = usePredictionStore.getState();
-  const days = predictions.streakCheckpoint;
+  // An answer's checkpoint only: one a log reached is Today's to show (step 194).
+  const days =
+    predictions.streakCheckpointFrom === 'answer' ? predictions.streakCheckpoint : null;
   const milestone = stats.milestone;
   // Only a drop in this prediction's category is this answer's: a sync in
   // between could have dropped another (code review, step 176).
   const tierDrop = stats.tierDrop?.category === prediction.category ? stats.tierDrop : null;
   if (milestone?.kind === 'rating_unlocked') useRatingStore.getState().noteMoment();
   stats.clearMilestone();
-  predictions.clearStreakCheckpoint();
+  if (days !== null) predictions.clearStreakCheckpoint();
   // Answered the day it was logged (roadmap D41): said instead of the range's
   // record, which this answer doesn't join.
   const sameDay = answeredSameDay({
@@ -276,7 +279,17 @@ function readAcknowledgement(
     milestone,
     tierDrop,
     unlocked: milestone?.kind === 'rating_unlocked',
-    checkpoint: days === null ? null : { days, next: predictions.streakNow().nextCheckpoint },
+    checkpoint:
+      days === null
+        ? null
+        : {
+            days,
+            next: predictions.streakNow().nextCheckpoint,
+            // One full moment per answer (step 194): when it also unlocked
+            // the rating or earned a badge, that one plays and the checkpoint
+            // shows still. Decided here, once, so reopening it can't replay it.
+            celebrate: milestone === null && claimStreakMoment(),
+          },
   };
 }
 
@@ -376,8 +389,11 @@ export function ResolvePrompt({
     milestone: Milestone | null;
     /** A badge this answer took back (D60 (a)), said under the range's record. */
     tierDrop: TierDrop | null;
-    /** A streak checkpoint this answer reached (7, 30, 100…), and the next one. */
-    checkpoint: { days: number; next: number } | null;
+    /**
+     * A streak checkpoint this answer reached (7, 30, 100…), the next one,
+     * and whether its card plays the checkpoint's moment (step 194).
+     */
+    checkpoint: { days: number; next: number; celebrate: boolean } | null;
     /** This answer unlocked the rating: its meaning line survives a correction. */
     unlocked: boolean;
   } | null>(null);
@@ -427,8 +443,10 @@ export function ResolvePrompt({
     setSubmitting(true);
     try {
       // Anything left over belongs to an earlier change, not to this answer.
+      // A log's checkpoint stays for Today, which shows it (step 194).
       useStatsStore.getState().clearMilestone();
-      usePredictionStore.getState().clearStreakCheckpoint();
+      const leftover = usePredictionStore.getState();
+      if (leftover.streakCheckpointFrom === 'answer') leftover.clearStreakCheckpoint();
       const ratingBefore = shownRating();
       await usePredictionStore
         .getState()
@@ -663,11 +681,13 @@ export function ResolvePrompt({
         </Text>
         {answered.milestone && <MilestoneCard milestone={answered.milestone} />}
         {/* CLAUDE.md names a checkpoint on the answer that earned it, so it
-            shows even beside a score or badge milestone, after it. */}
+            shows even beside a score or badge milestone, after it: still
+            then, since that milestone has the moment (step 194). */}
         {answered.checkpoint && streakShown && (
           <StreakCheckpointCard
             days={answered.checkpoint.days}
             next={answered.checkpoint.next}
+            celebrate={answered.checkpoint.celebrate}
           />
         )}
         {answered.line && (
