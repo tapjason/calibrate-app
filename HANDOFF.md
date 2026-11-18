@@ -1,7 +1,9 @@
 # Handoff
 
 **Branch:** `master`, with steps 1–189 and the cleanup merged and pushed (step 189
-2026-11-18, the owner's word). Build 3 is next, from `master`. This file is the
+2026-11-18, the owner's word). **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
+submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
+export 7.32 MB, both public pages 200). This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
 cover the last stretch) and in git; it isn't repeated here.
 
@@ -55,7 +57,8 @@ cover the last stretch) and in git; it isn't repeated here.
   - **Owner steps (B4) done 2026-11-18:** `REVENUECAT_READ_KEY` set; `coach` version 16 and
     `revenuecat-webhook` version 13 deployed from this branch (`functions list`); the webhook
     boots on Supabase (an unsigned POST gets its own 401). Left: the retest after a scored
-    answer. Deploy log warned about a comment the CLI read as an import (fixed since; harmless).
+    answer. `entitlements` holds 1 row since (table-stats estimate, 2026-11-18; 0 before),
+    `coach_usage` still 0. Deploy log warned about a comment the CLI read as an import (fixed since; harmless).
     What B4 asked for:
     1. A v2 secret key with `customer_information:customers:read` and
        `project_configuration:entitlements:read` only.
@@ -96,7 +99,7 @@ cover the last stretch) and in git; it isn't repeated here.
   2026-11-15; the passcode fallback is Session 1 item 17); Log's title row clears the Dynamic Island
   (2026-11-12). No item-by-item results for step 180's checks yet.
 - **The on-phone checklist** runs in three sessions: Session 1, items 1–18 on build 2;
-  Session 2, items 19–24; Session 3, items 25–28 on build 3. No results yet. The 28 items are
+  Session 2, items 19–24; Session 3, items 25–30 on build 3. No results yet. The 30 items are
   `docs/HUMAN_VERIFICATION.md` "Stage 1 on-phone checklist"; the longer lists are Batches C
   and D, where `/device-check` records results.
 

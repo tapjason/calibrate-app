@@ -194,13 +194,14 @@ check answered 403. Step 189 makes `coach` ask RevenueCat itself when that table
 Plus row (and the webhook do the same for a `TRANSFER`). It needs one new key and two
 deploys; no new build. Details: `supabase/README.md`, "The RevenueCat read key".
 
-- [ ] **Create the key.** RevenueCat → Project settings → API keys → + New secret API key,
+- [x] **Create the key.** Done 2026-11-18. RevenueCat → Project settings → API keys → + New secret API key,
       API version 2, any name ("supabase read"). Read access to **customers**
       (`customer_information:customers:read`) and to **entitlements**
       (`project_configuration:entitlements:read`); no write access to anything. If the
       dashboard sets access per section only, Customer information and Project configuration
       read-only. Not the `REVENUECAT_DELETE_KEY` key, which can write.
-- [ ] **Set it and deploy both functions**, in your own terminal:
+- [x] **Set it and deploy both functions**, in your own terminal (done 2026-11-18: `coach`
+      version 16, `revenuecat-webhook` version 13):
 
       ```sh
       npx supabase secrets set REVENUECAT_READ_KEY=sk_...
@@ -296,7 +297,7 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
 23. VoiceOver: the Warm-up's first question, one log and one answer can be done by ear.
 24. In TestFlight the subscription renews daily: You still shows Plus.
 
-### Session 3: on build 3 (about 10 minutes)
+### Session 3: on build 3 (about 15 minutes)
 
 25. Swipe the app away and open it: the dark splash stays, "Fairly Sure" fades in under
     the mark without the mark moving, and after about a second it fades to Today. Coming
@@ -306,6 +307,14 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
 27. The paywall's title and × sit below the clock.
 28. Anything fixed from session 1. Also: You → Delete account → Delete my account now asks
     again in an alert; Cancel keeps the account (2026-11-17).
+29. Step 188's other changes: the paywall's Annual plan carries a "1 month free" pill and
+    reads "$34.99 a year after 1 month free", Monthly says "No free trial", and a heading
+    "How the free trial works" sits over the timeline; the Coach's disclosure says "a
+    third-party AI service"; Sign in / Create account is a two-part switch above Email, and
+    Create account shows "At least 8 characters."; signed out, Erase asks in an alert too.
+30. Step 189: Insights → Get feedback with no scored answer says "Coach reads your scored
+    answers, and you don't have one yet…"; with one, insights or "Nothing worth flagging
+    yet" (the server side is live since 2026-11-18, so this also works on build 2).
 
 ### How to report
 

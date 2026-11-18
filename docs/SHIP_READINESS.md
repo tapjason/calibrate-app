@@ -152,7 +152,7 @@ TestFlight 1.0.0 (build 2) on the owner's iPhone.
    failures into fixes.
 2. Build 3 (`npx eas build --profile production --platform ios`, then
    `npx eas submit --profile production --platform ios`): step 187 and the Session 1 fixes.
-3. Sessions 2 (items 19–24) and 3 (items 25–28, on build 3). The full lists are Batches C and D
+3. Sessions 2 (items 19–24) and 3 (items 25–30, on build 3). The full lists are Batches C and D
    in `docs/HUMAN_VERIFICATION.md`.
 4. TestFlight with 20 to 50 people you can ask, for two weeks (`docs/TESTFLIGHT_PLAN.md`).
    Watch: do they finish the Warm-up, log one of their own, answer on day 1, share unprompted,

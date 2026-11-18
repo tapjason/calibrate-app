@@ -111,7 +111,7 @@ Start from a fresh install.
 - The lists for steps 178 to 187 in Batch C.
 
 Under way since 2026-11-16 as three sessions of the owner's on-phone checklist: Session 1,
-items 1–18 on build 2; Session 2, items 19–24; Session 3, items 25–28 on build 3. The items
+items 1–18 on build 2; Session 2, items 19–24; Session 3, items 25–30 on build 3. The items
 are listed in `docs/HUMAN_VERIFICATION.md`, "Stage 1 on-phone checklist".
 
 Send the results as pass or fail per item with screenshots of failures. The agent turns
