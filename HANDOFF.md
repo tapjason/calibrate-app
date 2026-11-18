@@ -1,8 +1,8 @@
 # Handoff
 
-**Branch:** `builder/google-sign-in` (steps 190–194 and the two studies), off `master`, which has steps 1–189 and
-the cleanup (step 189 merged and pushed 2026-11-18, the owner's word; one docs commit,
-`af1e199`, is on `master` unpushed). Not merged or pushed. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
+**Branch:** `master`, with steps 1–194, the cleanup and the two studies merged and pushed
+(steps 190–194 on 2026-11-18, the owner's word). **Build 4 is next**, from `master`; the
+owner builds and submits it. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
 submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
 export 7.32 MB, both public pages 200). This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
@@ -10,8 +10,8 @@ cover the last stretch) and in git; it isn't repeated here.
 
 ## Where things stand
 
-- **`master` = `origin/master`:** steps 1–189 and the cleanup, merged (fast-forward) and pushed
-  2026-11-17 and 2026-11-18. Build 2 on the phone has steps through 186.
+- **`master` = `origin/master`:** steps 1–194 and the cleanup, merged (fast-forward) and pushed
+  2026-11-17 and 2026-11-18. The privacy policy that names Google went live with that push. Build 2 on the phone has steps through 186.
 - **The cleanup (`builder/cleanup-stale`):** the stale-code and docs cleanup the owner asked for: trim unused code,
   check every Markdown document against the code, and compact what is outdated or describes
   finished work at length. It removes the `CUSTOM_CATEGORY_SYNC`, `TITLE_EDIT_SYNC` and
