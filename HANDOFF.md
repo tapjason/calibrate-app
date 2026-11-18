@@ -71,6 +71,14 @@ cover the last stretch) and in git; it isn't repeated here.
   checklist; Sign in is unchanged. JS only, for build 4. The owner sets the matching rule in
   Supabase (`HUMAN_VERIFICATION.md` A5). Check: 190 suites, 2,585 tests. Not reviewed.
 
+- **Colour study (2026-11-18, D67, open):** the owner asked whether the app should carry more
+  colour, "for example a more clearer fire streak". Research and measurements are in
+  `docs/design/research/colour-2026-11.md`; six directions drawn on Today, light and dark, are
+  at https://claude.ai/artifact/5wvN6NgASDwyLpMkLzcWRu (private to him). Recommended: a
+  clearer streak in ink and the checkpoint moment; raspberry as a colour for showing up is
+  his call after seeing it on the phone; not an orange flame (it is `over`'s orange), not a
+  brand colour, not warm neutrals. Nothing is built; waiting on his answer.
+
 ## On the phone
 
 - **TestFlight 1.0.0 (build 2)** is on the owner's iPhone 17 (iOS 26). It contains steps
