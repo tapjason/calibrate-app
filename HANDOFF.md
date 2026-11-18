@@ -1,7 +1,8 @@
 # Handoff
 
-**Branch:** `master`, with steps 1–189 and the cleanup merged and pushed (step 189
-2026-11-18, the owner's word). **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
+**Branch:** `builder/password-rules` (step 190), off `master`, which has steps 1–189 and
+the cleanup (step 189 merged and pushed 2026-11-18, the owner's word; one docs commit,
+`af1e199`, is on `master` unpushed). Not merged or pushed. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
 submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
 export 7.32 MB, both public pages 200). This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
@@ -65,6 +66,11 @@ cover the last stretch) and in git; it isn't repeated here.
     2. `npx supabase secrets set REVENUECAT_READ_KEY=…`.
     3. Deploy `coach`, then `revenuecat-webhook --no-verify-jwt`.
 
+- **Step 190 (`builder/password-rules`, BUILT_LOG row 190):** Create account asks for 8 or
+  more characters with an uppercase letter, a lowercase letter and a number, as a four-row
+  checklist; Sign in is unchanged. JS only, for build 4. The owner sets the matching rule in
+  Supabase (`HUMAN_VERIFICATION.md` A5). Check: 190 suites, 2,585 tests. Not reviewed.
+
 ## On the phone
 
 - **TestFlight 1.0.0 (build 2)** is on the owner's iPhone 17 (iOS 26). It contains steps
@@ -91,6 +97,10 @@ cover the last stretch) and in git; it isn't repeated here.
   introductory offer was attached to `calibrate_plus_monthly`; the owner moved it to
   `calibrate_plus_annual` in App Store Connect (2026-11-16; no code change, no new build).
   Session 1 items 9–10 confirm it on the phone.
+- **Session 3 on build 3 (2026-11-18):** items 25–28 and 30 pass, and the Coach answers
+  (item 13). Item 29 passes except the paywall's free-month pill, which the owner's Apple ID
+  can't show: it has used the trial, and the paywall leaves the offer off for a customer the
+  store says isn't eligible. Sessions 1 and 2 still have no item-by-item list.
 - **Not yet seen on a device:** the launch page's hand-over from the splash and the lock screen
   drawn as the launch page (step 187, needs build 3); the paywall's top below the clock (step
   187); step 184's moved-answer lines; a reworded prediction syncing its date (step 186); all of
@@ -99,7 +109,7 @@ cover the last stretch) and in git; it isn't repeated here.
   2026-11-15; the passcode fallback is Session 1 item 17); Log's title row clears the Dynamic Island
   (2026-11-12). No item-by-item results for step 180's checks yet.
 - **The on-phone checklist** runs in three sessions: Session 1, items 1–18 on build 2;
-  Session 2, items 19–24; Session 3, items 25–30 on build 3. No results yet. The 30 items are
+  Session 2, items 19–24; Session 3, items 25–30 on build 3 (results above) and item 31 on build 4. The 31 items are
   `docs/HUMAN_VERIFICATION.md` "Stage 1 on-phone checklist"; the longer lists are Batches C
   and D, where `/device-check` records results.
 
@@ -107,7 +117,7 @@ cover the last stretch) and in git; it isn't repeated here.
 
 Reviews are the owner's call (2026-11-15): no reviewer agents after each feature; he asks for
 them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), steps 183–187
-(`6222465..2636ff2`), the cleanup branch, step 188 and step 189. When he calls for it: `record-auditor` for step
+(`6222465..2636ff2`), the cleanup branch and steps 188–190. When he calls for it: `record-auditor` for step
 184 and step 180's reminder change, `code-reviewer` for the rest.
 
 ## Owner to-dos, in order

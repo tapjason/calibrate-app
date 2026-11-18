@@ -110,6 +110,20 @@ npx supabase functions deploy coach            # secrets take effect on deploy
 **Pass:** a signed-in user with no `entitlements` row gets `403` from `/functions/v1/coach`
 (verified live 2026-09-25; the gate reads the table on every call, no caching, no grace).
 
+### A5. Password requirements on the server (step 190, 2026-11-18)
+
+Create account asks for 8 or more characters with an uppercase letter, a lowercase letter
+and a number. Until the server has the same rule, only the app enforces it.
+
+- [ ] **Supabase → Authentication → Sign In / Providers → Email:** minimum password length
+      **8**, password requirements **Lowercase, uppercase letters and digits**. Save. Not
+      the option with symbols: the app doesn't ask for one, so the server would refuse
+      passwords the app accepts. Existing accounts keep signing in with the password they
+      have.
+- [ ] **Leave leaked-password protection off** (a paid-plan setting, if the page shows it) unless the wording changes first: a
+      refusal for a leaked password would show the four-rules line to someone whose password
+      already meets all four.
+
 ---
 
 ## Batch B — Store and billing setup
@@ -210,7 +224,9 @@ deploys; no new build. Details: `supabase/README.md`, "The RevenueCat read key".
       npx supabase secrets list          # REVENUECAT_READ_KEY and REVENUECAT_PROJECT_ID listed
       ```
 
-- [ ] **Re-test on build 2,** once at least one answer is scored (a prediction answered on a
+- [x] **Passed 2026-11-18 on build 3** (owner: "Coach also seems to be working… it works for
+      a few logged answers"; not tested at length). The steps were: **re-test on build 2,**
+      once at least one answer is scored (a prediction answered on a
       later day than it was logged, like Session 2 item 20): with none, the app never calls
       the Coach and says "unavailable" whatever the server does. Signed in with Plus,
       Insights → Get feedback. **Pass:** insights, or "Nothing worth flagging yet", and a
@@ -271,7 +287,7 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
     (Failed 2026-11-17: "Coach is unavailable right now". Re-test after B4. With no scored
     answer yet, build 2 never calls the Coach and says "unavailable"; build 3 says "Coach
     reads your scored answers, and you don't have one yet…" instead, which is expected,
-    not a fail.)
+    not a fail. Passed 2026-11-18 on build 3, after B4.)
 
 **The app lock**
 14. You → Lock with Face ID: Face ID is asked before the switch moves.
@@ -311,10 +327,23 @@ Start from a fresh install: delete the app, reinstall from TestFlight.
     reads "$34.99 a year after 1 month free", Monthly says "No free trial", and a heading
     "How the free trial works" sits over the timeline; the Coach's disclosure says "a
     third-party AI service"; Sign in / Create account is a two-part switch above Email, and
-    Create account shows "At least 8 characters."; signed out, Erase asks in an alert too.
+    Create account shows "At least 8 characters." (build 3; from build 4 a four-row
+    checklist, item 31); signed out, Erase asks in an alert too.
 30. Step 189: Insights → Get feedback with no scored answer says "Coach reads your scored
     answers, and you don't have one yet…"; with one, insights or "Nothing worth flagging
     yet" (the server side is live since 2026-11-18, so this also works on build 2).
+31. Step 190, on build 4: Create account shows four rows under Password (8 or more
+    characters, an uppercase letter, a lowercase letter, a number), each ticking as you
+    type; Create account with a rule unmet says what's missing ("Your password needs a
+    number."); a password that meets all four makes the account; Sign in shows no rows and
+    an old password still signs in; the iPhone's suggested strong password is accepted.
+
+**Results, build 3, 2026-11-18 (owner):** 25–28 pass (the launch page and the paywall's top
+are in his screenshots). 29 passes except the free-month pill, which his Apple ID can't show:
+it has already used the trial, and the paywall leaves the offer off when the store says the
+customer isn't eligible (`introEligibleProducts`), so his paywall shows three plans with no
+trial. The pill, "No free trial" and the timeline heading are still unseen on a device. He
+asked for stronger password rules than 8 characters (step 190). 30 passes.
 
 ### How to report
 

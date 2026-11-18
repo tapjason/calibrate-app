@@ -18,6 +18,9 @@ that apply here.
 - The Write and Edit tools turn the text `\u` plus four hex digits into the character itself. When
   an escape must stay text (a regex, a SQL pattern), build it from `chr(92)` in a script and check
   the bytes.
+- **A builder agent doesn't `git stash`** (2026-11-18): the main session's uncommitted doc
+  edits share the working tree, and a stash takes them out until the pop. To see whether a
+  warning predates a change, read the test or run it at `git worktree add` of `HEAD`.
 - The repo has no Prettier or ESLint config: don't run either, and don't reformat files you touch.
 - Memory is tight with the web server, Jest and Chrome running together: the web server
   (`scripts/web-serve.sh`) was ended by Windows for low memory on 2026-11-08. `status` reports it;

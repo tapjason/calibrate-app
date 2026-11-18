@@ -10,9 +10,9 @@ import { PRIVACY_POLICY_URL } from '@/constants/app';
 import { colors, elevation, radius, space, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { MIN_PASSWORD_LENGTH } from '@/supabase/auth';
 
 import { AppleSignInButton } from './AppleSignInButton';
+import { PasswordChecklist } from './PasswordChecklist';
 
 type Mode = 'signIn' | 'signUp';
 
@@ -41,8 +41,11 @@ export const USAGE_NOTE =
  * One form for both. A two-segment switch above the email field, "Sign in" and
  * "Create account", picks which (owner, 2026-11-17: the text link at the
  * bottom it replaced changed only the words, so the switch was hard to see).
- * Create account also says how long the password must be under its field. Sign
- * in with Apple sits above the switch, since it works for both.
+ * Create account also lists the password's rules under its field, each met or
+ * not as it's typed (step 190); a password that misses one is refused on
+ * submit with what's missing, as a short one was before. Sign in has no rules,
+ * so an account made before them still signs in. Sign in with Apple sits above
+ * the switch, since it works for both.
  *
  * On success this only calls `onDone`. The session reaches the app through
  * authStore's onAuthStateChange, which moves the guest's predictions into the
@@ -155,11 +158,7 @@ export function SignInView({ onDone }: { onDone: () => void }) {
         autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
         testID="account-password"
       >
-        {mode === 'signUp' && (
-          <Text style={styles.hint} testID="account-password-hint">
-            {`At least ${MIN_PASSWORD_LENGTH} characters.`}
-          </Text>
-        )}
+        {mode === 'signUp' && <PasswordChecklist password={password} />}
       </TextField>
 
       {error && (
@@ -264,7 +263,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modeLabelChosen: { color: colors.textPrimary, fontWeight: '600' },
-  hint: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
   error: { ...type.subhead, color: colors.destructive },
   notice: { ...type.subhead, color: colors.actionText },
 });

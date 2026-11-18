@@ -69,11 +69,11 @@ describe('SignInView', () => {
 
     fireEvent.press(screen.getByTestId('account-mode-signUp'));
     expect(screen.getByText('Create an account')).toBeTruthy();
-    fill('a@b.co', 'hunter22');
+    fill('a@b.co', 'Hunter22');
     fireEvent.press(screen.getByTestId('account-submit'));
 
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
-    expect(signUpWithEmail).toHaveBeenCalledWith('a@b.co', 'hunter22');
+    expect(signUpWithEmail).toHaveBeenCalledWith('a@b.co', 'Hunter22');
   });
 
   // With "Confirm email" on there is no session yet. Finishing here would drop
@@ -84,7 +84,7 @@ describe('SignInView', () => {
     render(<SignInView onDone={onDone} />);
 
     fireEvent.press(screen.getByTestId('account-mode-signUp'));
-    fill('a@b.co', 'hunter22');
+    fill('a@b.co', 'Hunter22');
     fireEvent.press(screen.getByTestId('account-submit'));
 
     expect(await screen.findByTestId('account-notice')).toHaveTextContent(/a@b\.co/);
@@ -132,8 +132,9 @@ describe('SignInView', () => {
       fireEvent.press(screen.getByTestId('account-mode-signUp'));
       expect(screen.getByTestId('account-mode-signUp')).toBeSelected();
       expect(screen.getByTestId('account-mode-signIn')).not.toBeSelected();
-      expect(screen.getByTestId('account-password-hint')).toHaveTextContent(
-        'At least 8 characters.',
+      expect(screen.getByTestId('account-password-hint')).toBeTruthy();
+      expect(screen.getByTestId('account-password-rule-length')).toHaveTextContent(
+        '8 or more characters',
       );
       expect(screen.getByRole('header')).toHaveTextContent('Create an account');
       expect(screen.getByTestId('account-submit')).toHaveTextContent('Create account');
@@ -145,6 +146,166 @@ describe('SignInView', () => {
       expect(screen.queryByTestId('account-password-hint')).toBeNull();
       expect(screen.getByRole('header')).toHaveTextContent('Sign in');
       expect(screen.getByTestId('account-submit')).toHaveTextContent('Sign in');
+    });
+  });
+
+  // Step 190 (owner): Create account asks for more than 8 characters. The
+  // rules are listed under the field from the start and tick off as typed.
+  describe("Create account's password checklist", () => {
+    const RULES = [
+      ['length', '8 or more characters'],
+      ['upper', 'An uppercase letter'],
+      ['lower', 'A lowercase letter'],
+      ['digit', 'A number'],
+    ] as const;
+
+    function row(key: string) {
+      return screen.getByTestId(`account-password-rule-${key}`);
+    }
+    function icon(key: string) {
+      return screen.getByTestId(`account-password-rule-${key}-icon`, {
+        includeHiddenElements: true,
+      });
+    }
+    /** Which rules read as met, by their spoken label. */
+    function metKeys() {
+      return RULES.filter(([key, label]) => {
+        const spoken = row(key).props.accessibilityLabel;
+        if (spoken === `${label}, met`) return true;
+        expect(spoken).toBe(`${label}, not met`);
+        return false;
+      }).map(([key]) => key);
+    }
+
+    it('is shown only in Create account, from the start', () => {
+      render(<SignInView onDone={jest.fn()} />);
+      expect(screen.queryByTestId('account-password-hint')).toBeNull();
+      for (const [key] of RULES) {
+        expect(screen.queryByTestId(`account-password-rule-${key}`)).toBeNull();
+      }
+
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+      expect(screen.getByTestId('account-password-hint')).toBeTruthy();
+      for (const [key, label] of RULES) {
+        expect(row(key)).toHaveTextContent(label);
+      }
+      expect(screen.queryByText('At least 8 characters.')).toBeNull();
+
+      fireEvent.press(screen.getByTestId('account-mode-signIn'));
+      expect(screen.queryByTestId('account-password-hint')).toBeNull();
+      // Typing in Sign in shows nothing either.
+      fill('a@b.co', 'x');
+      expect(screen.queryByTestId('account-password-rule-length')).toBeNull();
+    });
+
+    it('starts with every rule unmet, as hollow circles in quieter text', () => {
+      render(<SignInView onDone={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+
+      expect(metKeys()).toEqual([]);
+      for (const [key, label] of RULES) {
+        expect(row(key).props.accessibilityLabel).toBe(`${label}, not met`);
+        expect(row(key).props.accessibilityRole).toBe('text');
+        expect(row(key).props.accessible).toBe(true);
+        expect(icon(key).props.name).toBe('circle');
+        expect(icon(key).props.fallback.props.name).toBe('ellipse-outline');
+      }
+    });
+
+    it('ticks each rule off as the password changes, and back', () => {
+      render(<SignInView onDone={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+      const typed = (password: string) =>
+        fireEvent.changeText(screen.getByTestId('account-password'), password);
+
+      typed('a');
+      expect(metKeys()).toEqual(['lower']);
+      typed('aB');
+      expect(metKeys()).toEqual(['upper', 'lower']);
+      typed('aB3');
+      expect(metKeys()).toEqual(['upper', 'lower', 'digit']);
+      typed('aB3defgh');
+      expect(metKeys()).toEqual(['length', 'upper', 'lower', 'digit']);
+      for (const [key, label] of RULES) {
+        expect(screen.getByLabelText(`${label}, met`)).toBe(row(key));
+        expect(icon(key).props.name).toBe('checkmark.circle.fill');
+        expect(icon(key).props.fallback.props.name).toBe('checkmark-circle');
+      }
+
+      // Letters and digits outside ASCII don't count, as on the server.
+      typed('ÉSSß１２３４');
+      expect(metKeys()).toEqual(['length', 'upper']);
+      typed('');
+      expect(metKeys()).toEqual([]);
+      expect(icon('length').props.name).toBe('circle');
+    });
+
+    it('announces nothing as the password is typed', () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { AccessibilityInfo } = require('react-native') as typeof import('react-native');
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      render(<SignInView onDone={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+      fireEvent.changeText(screen.getByTestId('account-password'), 'aB3defgh');
+
+      expect(announce).not.toHaveBeenCalled();
+      expect(screen.getByTestId('account-password-hint').props.accessibilityLiveRegion).toBeUndefined();
+      for (const [key] of RULES) {
+        expect(row(key).props.accessibilityLiveRegion).toBeUndefined();
+      }
+      announce.mockRestore();
+    });
+
+    // As a short password did before: the button stays enabled and the
+    // refusal comes on submit, now naming what's missing. Here through the
+    // real sign-up check, which refuses before reaching the server.
+    it('refuses on submit with what is missing, button still enabled', async () => {
+      /* eslint-disable @typescript-eslint/no-var-requires */
+      const auth = require('@/supabase/auth') as typeof import('@/supabase/auth');
+      const { setSupabaseClientForTests } = require('@/supabase/client') as typeof import('@/supabase/client');
+      /* eslint-enable @typescript-eslint/no-var-requires */
+      const signUp = jest.fn();
+      setSupabaseClientForTests({ auth: { signUp } } as unknown as Parameters<
+        typeof setSupabaseClientForTests
+      >[0]);
+      const realSignUp = jest.fn(auth.signUpWithEmail);
+      useAuthStore.setState({ signUpWithEmail: realSignUp });
+      const onDone = jest.fn();
+      try {
+        render(<SignInView onDone={onDone} />);
+        fireEvent.press(screen.getByTestId('account-mode-signUp'));
+        fill('a@b.co', 'hunter22');
+
+        expect(screen.getByTestId('account-submit')).toBeEnabled();
+        fireEvent.press(screen.getByTestId('account-submit'));
+
+        expect(await screen.findByTestId('account-error')).toHaveTextContent(
+          'Your password needs an uppercase letter.',
+        );
+        expect(realSignUp).toHaveBeenCalledWith('a@b.co', 'hunter22');
+        expect(signUp).not.toHaveBeenCalled();
+        expect(onDone).not.toHaveBeenCalled();
+        // Still on Create account, the checklist showing the one rule left.
+        expect(screen.getByTestId('account-mode-signUp')).toBeSelected();
+        expect(metKeys()).toEqual(['length', 'lower', 'digit']);
+        expect(screen.getByTestId('account-submit')).toBeEnabled();
+      } finally {
+        setSupabaseClientForTests(null);
+      }
+    });
+
+    it("doesn't hold Sign in to the rules", async () => {
+      signInWithEmail.mockResolvedValue({ ok: true });
+      const onDone = jest.fn();
+      render(<SignInView onDone={onDone} />);
+
+      fill('a@b.co', 'hunter');
+      expect(screen.getByTestId('account-submit')).toBeEnabled();
+      fireEvent.press(screen.getByTestId('account-submit'));
+
+      await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+      expect(signInWithEmail).toHaveBeenCalledWith('a@b.co', 'hunter');
+      expect(screen.queryByTestId('account-error')).toBeNull();
     });
   });
 

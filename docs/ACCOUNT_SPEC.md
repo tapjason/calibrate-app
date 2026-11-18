@@ -36,7 +36,10 @@ loop waits on any of it. The guest→account handoff is `authStore.handleSession
 
 **`app/account/index.tsx`**, the sign-in screen: on iOS the native
 `AppleAuthenticationButton` first, then email: one form with a Sign in / Create account
-toggle, the ≥8-character password rule, and inline error text from `AuthOutcome.error`. No
+switch, the password rules for Create account only (8 or more characters, an uppercase
+letter, a lowercase letter and a number, ASCII, as a four-row checklist that ticks as you
+type; step 190; the server's matching setting is `HUMAN_VERIFICATION.md` A5; Sign in never
+applies them), and inline error text from `AuthOutcome.error`. No
 Google (the unreachable path was removed in step 182). On `{ ok: true }` it goes back;
 `authStore`'s `onAuthStateChange` migrates guest data, reloads the stores and starts a sync.
 

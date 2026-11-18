@@ -28,9 +28,79 @@ export type SignUpOutcome =
 
 /**
  * The shortest password sign-up accepts. Exported so the sign-in screen's
- * hint says the same number the check below enforces.
+ * checklist says the same number the check below enforces.
  */
 export const MIN_PASSWORD_LENGTH = 8;
+
+/** Which of Create account's four password rules a password meets. */
+export interface PasswordRules {
+  length: boolean;
+  upper: boolean;
+  lower: boolean;
+  digit: boolean;
+}
+
+/**
+ * Create account's password rules (step 190): 8 or more characters, an
+ * uppercase letter, a lowercase letter and a number. The letters and digits
+ * are ASCII on purpose: they mirror Supabase's own "Lowercase, uppercase
+ * letters and digits" option, so a password the app accepts is never refused
+ * by the server for its characters. "É" or "ß" isn't an uppercase or a
+ * lowercase letter here, nor "１" a number, because the server wouldn't count
+ * them. Nothing is forbidden and no symbol is required.
+ *
+ * Sign in never applies them: an account made before them keeps working.
+ * The length is in UTF-16 units, as before; the server counts UTF-8 bytes,
+ * never fewer, so it can't refuse a length the app accepts.
+ */
+export function passwordRules(password: string): PasswordRules {
+  return {
+    length: password.length >= MIN_PASSWORD_LENGTH,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    digit: /[0-9]/.test(password),
+  };
+}
+
+export function passwordMeetsRules(password: string): boolean {
+  const met = passwordRules(password);
+  return met.length && met.upper && met.lower && met.digit;
+}
+
+/** Each rule as the refusal names it, in the checklist's order. */
+const RULE_WORDS: ReadonlyArray<{ key: keyof PasswordRules; words: string }> = [
+  { key: 'length', words: `${MIN_PASSWORD_LENGTH} or more characters` },
+  { key: 'upper', words: 'an uppercase letter' },
+  { key: 'lower', words: 'a lowercase letter' },
+  { key: 'digit', words: 'a number' },
+];
+
+/** "a", "a and b", "a, b and c". */
+function joinParts(parts: string[]): string {
+  if (parts.length <= 1) return parts.join('');
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * The refusal for a password that misses a rule, naming only what's missing
+ * ("Your password needs an uppercase letter and a number."). Null when every
+ * rule is met. Exported for tests.
+ */
+export function passwordRulesError(password: string): string | null {
+  const met = passwordRules(password);
+  const missing = RULE_WORDS.filter((r) => !met[r.key]).map((r) => r.words);
+  if (missing.length === 0) return null;
+  return `Your password needs ${joinParts(missing)}.`;
+}
+
+/**
+ * What a person sees when the server itself refuses a password as weak
+ * (`weak_password`, `AuthWeakPasswordError`): the four rules in plain words,
+ * not the server's text, which lists the alphabet.
+ */
+export const WEAK_PASSWORD_TEXT = `That password isn't strong enough. It needs ${joinParts(
+  RULE_WORDS.map((r) => r.words),
+)}.`;
 
 const OFFLINE = "Couldn't reach the server. Check your connection and try again.";
 const PROVIDER_OFF =
@@ -56,6 +126,23 @@ export function authErrorText(message: string): string {
 
 function errMessage(e: unknown): string {
   return authErrorText(e instanceof Error ? e.message : String(e));
+}
+
+/**
+ * Sign-up's words for a failure: the server's weak-password refusal as the
+ * four rules (it comes back as `{ error }`, or thrown), anything else as
+ * `authErrorText` says it. Matched on the code and on the class name, so a
+ * plain error object with either is caught too.
+ */
+function signUpErrorText(e: unknown): string {
+  if (typeof e === 'object' && e !== null) {
+    const { code, name, message } = e as { code?: unknown; name?: unknown; message?: unknown };
+    if (code === 'weak_password' || name === 'AuthWeakPasswordError') {
+      return WEAK_PASSWORD_TEXT;
+    }
+    if (typeof message === 'string') return authErrorText(message);
+  }
+  return errMessage(e);
 }
 
 /**
@@ -121,6 +208,9 @@ export async function signInWithEmail(
  * the account is created without a session and `needsConfirmation` is true:
  * the user confirms from the email, then signs in here. With it off, the
  * session arrives immediately and onAuthStateChange takes it from there.
+ *
+ * A password that misses one of `passwordRules` is refused here, before the
+ * server, with what it's missing.
  */
 export async function signUpWithEmail(
   email: string,
@@ -128,22 +218,18 @@ export async function signUpWithEmail(
 ): Promise<SignUpOutcome> {
   const trimmed = email.trim();
   if (!trimmed) return { ok: false, error: 'Email is required.' };
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return {
-      ok: false,
-      error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
-    };
-  }
+  const weak = passwordRulesError(password);
+  if (weak) return { ok: false, error: weak };
 
   try {
     const { data, error } = await getSupabaseClient().auth.signUp({
       email: trimmed,
       password,
     });
-    if (error) return { ok: false, error: authErrorText(error.message) };
+    if (error) return { ok: false, error: signUpErrorText(error) };
     return { ok: true, needsConfirmation: !data?.session };
   } catch (e) {
-    return { ok: false, error: errMessage(e) };
+    return { ok: false, error: signUpErrorText(e) };
   }
 }
 
