@@ -1,8 +1,8 @@
 > **Research, 2026-11-18.** Asked by the owner on build 3: "Can you also add in login with
 > google, and any other meta, relevant providers?" Two Opus checks (platform, policy), read
 > and decided on by the main session. **Decided 2026-11-18** (owner: "Go with all your recommendations, I agree"): Google through
-> the system sheet, no Facebook, the name and picture discarded. Built as step 192, behind
-> `GOOGLE_SIGN_IN_ENABLED` until his setup (`HUMAN_VERIFICATION.md` A6) is done. The
+> the system sheet, no Facebook, the name and picture discarded. Built as step 192 and
+> turned on the same day, after his setup (`HUMAN_VERIFICATION.md` A6). The
 > account rules that hold today are in [`../../ACCOUNT_SPEC.md`](../../ACCOUNT_SPEC.md).
 
 # Sign-in providers: Google, Meta and the rest

@@ -4,8 +4,9 @@ import { useAuthStore } from '@/store/authStore';
 
 import { SignInView } from './SignInView';
 
-// Step 192, with the flag on as it will be once the owner has set Google up.
-// The shipped value (off) is covered in GoogleSignInButton.test.tsx.
+// Step 192, with the flag on, as shipped since 2026-11-18, stated here so
+// these hold whatever src/constants/app.ts says. The flag off is covered in
+// SignInView.googleOff.test.tsx and GoogleSignInButton.test.tsx.
 jest.mock('@/constants/app', () => ({
   ...jest.requireActual('@/constants/app'),
   GOOGLE_SIGN_IN_ENABLED: true,

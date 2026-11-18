@@ -1,8 +1,9 @@
 # Fairly Sure — Account Spec: sign-in, sign-out, deletion
 
 **As of:** 2026-11-18 · **Status:** built (§1–3). `delete-account` is deployed (redeployed
-2026-11-15) with its secrets set. Google sign-in is built behind `GOOGLE_SIGN_IN_ENABLED`
-(step 192), off until the owner's setup (`HUMAN_VERIFICATION.md` A6).
+2026-11-15) with its secrets set. Google sign-in (step 192) is on since 2026-11-18, after the owner's setup
+(`HUMAN_VERIFICATION.md` A6); `GOOGLE_SIGN_IN_ENABLED` turns it off again. Not yet run on
+a device.
 
 The spec as built. It follows the layer rules in `BUILD_PLAN.md`: screens call stores, stores
 call services (`src/supabase/auth.ts`, `src/supabase/account.ts`), and nothing in the core
@@ -43,7 +44,7 @@ type; step 190; the server's matching setting is `HUMAN_VERIFICATION.md` A5; Sig
 applies them), and inline error text from `AuthOutcome.error`. On `{ ok: true }` it goes back;
 `authStore`'s `onAuthStateChange` migrates guest data, reloads the stores and starts a sync.
 
-**Google (step 192, iOS only, behind the flag).** No Google SDK: `signInWithGoogle`
+**Google (step 192, iOS only; the flag is on).** No Google SDK: `signInWithGoogle`
 (`src/supabase/auth.ts`) asks Supabase for the provider URL (`signInWithOAuth`,
 `skipBrowserRedirect`, `prompt=select_account`), opens it in the system sign-in sheet
 (`WebBrowser.openAuthSessionAsync`, not ephemeral), and trades the returned `code` for a

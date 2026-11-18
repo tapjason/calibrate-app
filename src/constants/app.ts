@@ -44,21 +44,23 @@ export const REFINE_ENABLED = false;
 /**
  * Whether "Continue with Google" is offered on the sign-in screen (step 192).
  *
- * **Currently false — the button is built and hidden.** It turns true only
- * after the owner confirms both halves are set up (`docs/HUMAN_VERIFICATION.md`
- * A6): the Google Cloud OAuth client (a Web client whose redirect URI is the
- * Supabase project's `/auth/v1/callback`, the consent screen published), and
- * the Google provider enabled in Supabase with `fairlysure://google-auth`
- * (`GOOGLE_REDIRECT_URL` in `src/supabase/auth.ts`) on its redirect allow-list.
- * Before that a tap would open a sheet that can only fail.
+ * **On since 2026-11-18**, once the owner had set up both halves
+ * (`docs/HUMAN_VERIFICATION.md` A6): the Google Cloud OAuth client (a Web
+ * client whose redirect URI is the Supabase project's `/auth/v1/callback`, the
+ * consent screen published), and the Google provider enabled in Supabase with
+ * `fairlysure://google-auth` (`GOOGLE_REDIRECT_URL` in `src/supabase/auth.ts`)
+ * on its redirect allow-list, with Supabase migration 009's two triggers
+ * enabled on the live project.
  *
- * With it false nothing about Google is visible or reachable: the button
- * renders nothing, and nothing else calls `signInWithGoogle`. Decided by the
- * owner 2026-11-18: through the system sign-in sheet, no Google SDK and no new
- * package, the name and picture Google sends discarded (Supabase migration
- * 009), no Facebook (`docs/design/research/sign-in-providers-2026-11.md`).
+ * It must not ship on without the Google provider enabled in Supabase: a tap
+ * would open a sheet that can only fail. Turning it off hides the button and
+ * makes Google unreachable: the button renders nothing, and nothing else calls
+ * `signInWithGoogle`. Decided by the owner 2026-11-18: through the system
+ * sign-in sheet, no Google SDK and no new package, the name and picture Google
+ * sends discarded (Supabase migration 009), no Facebook
+ * (`docs/design/research/sign-in-providers-2026-11.md`).
  */
-export const GOOGLE_SIGN_IN_ENABLED = false;
+export const GOOGLE_SIGN_IN_ENABLED = true;
 
 /**
  * Terms of use for Plus: Apple's standard EULA, which is what applies unless

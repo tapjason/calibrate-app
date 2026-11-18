@@ -489,7 +489,7 @@ describe('signInWithGoogle', () => {
     expect(exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
-  // Before the owner's set-up, or if the provider is switched off later.
+  // If the provider is ever switched off on the project while the flag is on.
   it('says Google sign-in is unavailable when the provider is not enabled', async () => {
     expect(GOOGLE_UNAVAILABLE).toBe("Google sign-in isn't available right now.");
 

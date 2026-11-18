@@ -5,11 +5,19 @@ import { useAuthStore } from '@/store/authStore';
 
 import { SignInView } from './SignInView';
 
-// The real button loads a native module; its presence is all these tests need.
+// The screen as shipped, with "Continue with Google" on (since 2026-11-18),
+// stated here so these hold whatever src/constants/app.ts says. Google itself
+// is SignInView.google.test.tsx's; the flag off, SignInView.googleOff.test.tsx's.
+jest.mock('@/constants/app', () => ({
+  ...jest.requireActual('@/constants/app'),
+  GOOGLE_SIGN_IN_ENABLED: true,
+}));
+
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
 }));
 
+// The real button loads a native module; its presence is all these tests need.
 jest.mock('./AppleSignInButton', () => {
   const { Platform: P, Pressable } = jest.requireActual('react-native');
   return {

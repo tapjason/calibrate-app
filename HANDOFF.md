@@ -82,13 +82,16 @@ cover the last stretch) and in git; it isn't repeated here.
 - **Step 191 (same branch, BUILT_LOG row 191):** deleting an account that Supabase linked to
   Apple after an email sign-up now revokes Sign in with Apple (`hasAppleIdentity`; the app read
   only the first provider). JS only. Check: 190 suites, 2,612 tests. Not reviewed.
-- **Step 192, Google sign-in (BUILT_LOG row 192): built, switched off.** The owner decided
+- **Step 192, Google sign-in (BUILT_LOG row 192): built and on.** The owner decided
   2026-11-18: Google through the system sign-in sheet with no SDK, no Facebook, the name and
-  picture Google sends discarded (migration 009, not applied). `GOOGLE_SIGN_IN_ENABLED` is
-  `false` until he finishes `HUMAN_VERIFICATION.md` A6 (Google Cloud, Supabase, migration
-  009) and says so. Turning it on is one change with the privacy policy and `APP_PRIVACY.md`
-  edits A6 lists. "Confirm email" must stay on. Check: 193 suites, 2,692 tests. Not
-  reviewed; nothing has run on a device.
+  picture Google sends discarded. He finished `HUMAN_VERIFICATION.md` A6 the same day (Google
+  Cloud, the Supabase provider, the redirect URL, migration 009, both triggers confirmed
+  enabled), so `GOOGLE_SIGN_IN_ENABLED` is `true`, and the privacy policy (effective
+  2026-11-18), `APP_PRIVACY.md` and the review notes say so. **The policy goes live when
+  this branch is pushed to `master`, so push and build 4 go together.** "Confirm email" must
+  stay on. Left for him after build 4: one Google sign-in on the phone (Session 3 item 32)
+  and query 2 in the migration. Check: 195 suites, 2,756 tests. Not reviewed; nothing has
+  run on a device.
 - **D67, colour, decided 2026-11-18; steps 193 and 194 built (BUILT_LOG rows 193–194):** the
   streak row's flame is an outline until today counts, then filled, with a larger count and
   "Today's goal" under the dots; a checkpoint (7, 30, 100, 365, yearly) plays a moment once

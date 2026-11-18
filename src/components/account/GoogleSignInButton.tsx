@@ -51,9 +51,9 @@ const G_SIZE = 20;
  * the app's Instrument Sans, at about the size Apple's button draws its text
  * at this height.
  *
- * Renders nothing unless `GOOGLE_SIGN_IN_ENABLED` is on and this is iOS: the
- * web build's redirect can't use the app's scheme, and the flag waits for the
- * owner's Google Cloud and Supabase set-up.
+ * Renders nothing unless `GOOGLE_SIGN_IN_ENABLED` is on (it is, since the
+ * owner's Google Cloud and Supabase set-up on 2026-11-18) and this is iOS: the
+ * web build's redirect can't use the app's scheme.
  */
 export function GoogleSignInButton({
   onPress,

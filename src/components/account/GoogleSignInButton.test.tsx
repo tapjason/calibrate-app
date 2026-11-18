@@ -5,6 +5,8 @@ import { GOOGLE_BUTTON_LABEL, GoogleSignInButton } from './GoogleSignInButton';
 
 // The flag, switchable per test: a getter, read only when the button renders
 // (defined after the spread, which would otherwise read it at mock time).
+// Every test states its value, so both states stay tested whatever
+// src/constants/app.ts ships (on since 2026-11-18).
 const mockFlag = { on: true };
 jest.mock('@/constants/app', () =>
   Object.defineProperty({ ...jest.requireActual('@/constants/app') }, 'GOOGLE_SIGN_IN_ENABLED', {
@@ -27,20 +29,28 @@ beforeEach(() => {
 afterAll(() => setOS(originalOS));
 
 describe('GoogleSignInButton', () => {
-  // Step 192: built and hidden until the owner has set Google up.
-  it('renders nothing while the flag is off, the shipped value', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const actual = jest.requireActual('@/constants/app') as typeof import('@/constants/app');
-    expect(actual.GOOGLE_SIGN_IN_ENABLED).toBe(false);
-
+  // Step 192: turning the flag off hides Google, on iOS too.
+  it('renders nothing on iOS while the flag is off', () => {
     mockFlag.on = false;
     render(<GoogleSignInButton onPress={jest.fn()} />);
     expect(screen.queryByTestId('account-google')).toBeNull();
     expect(screen.queryByText(GOOGLE_BUTTON_LABEL)).toBeNull();
   });
 
+  it('renders on iOS while the flag is on', () => {
+    mockFlag.on = true;
+    render(<GoogleSignInButton onPress={jest.fn()} />);
+    expect(screen.getByTestId('account-google')).toBeTruthy();
+  });
+
   // The web build's redirect can't use the app's scheme.
-  it.each(['android', 'web'] as const)('renders nothing on %s, flag or not', (os) => {
+  it.each([
+    ['android', true],
+    ['android', false],
+    ['web', true],
+    ['web', false],
+  ] as const)('renders nothing on %s, flag on: %s', (os, on) => {
+    mockFlag.on = on;
     setOS(os);
     render(<GoogleSignInButton onPress={jest.fn()} />);
     expect(screen.queryByTestId('account-google')).toBeNull();

@@ -13,9 +13,8 @@ npx supabase db push --remote          # applies anything in migrations/ not yet
 npx supabase migration list --remote   # shows local vs. remote state
 ```
 
-The CLI (3.1) targets a local stack unless given `--remote`. Migrations 001–008 are on the
-live project (`migration list --remote`, 2026-11-16). **009 is not applied yet** (the
-owner's step, `docs/HUMAN_VERIFICATION.md` A6).
+The CLI (3.1) targets a local stack unless given `--remote`. All nine migrations are on the
+live project (`migration list --remote`, 2026-11-18; the owner applied 009 that day).
 
 The dashboard route still works if you prefer it — **SQL Editor → New query**, paste
 each file in `supabase/migrations/` in numeric order, run.
@@ -62,7 +61,9 @@ schema is safe.
   as the row is written (step 192; Google sends both and nothing uses them).
   The function never raises, so it can't block a sign-in, and each trigger is
   created in a block that turns a refusal into a NOTICE, so the push succeeds
-  either way. The file ends with the queries that check it. Not applied yet.
+  either way. The file ends with the queries that check it. Applied 2026-11-18, and
+  both triggers are enabled (`pg_trigger`, the owner's screenshot); the file's own
+  header still says "not applied", left as it was pushed.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decision logic lives in
   `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can
