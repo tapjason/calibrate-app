@@ -4,7 +4,7 @@
 // It lives in its own file, free of Deno imports, for one reason — it is the
 // part that can be wrong in ways nobody notices until a paying subscriber
 // can't use what they bought, and this way Jest can test it directly
-// (`entitlementFromEvent.test.ts`) even though the function around it only
+// (its test file sits beside it) even though the function around it only
 // ever runs on Deno.
 //
 // Shape of the truth this encodes: **the expiry decides, not the event name.**

@@ -52,7 +52,11 @@ cover the last stretch) and in git; it isn't repeated here.
     which is same-day and so not scored, and build 2 called that "unavailable".
   - **Check:** 190 suites, 2,562 tests. Not reviewed, and not run on Deno: `_shared` bundling
     and the live RevenueCat responses are unverified.
-  - **Owner steps:** `HUMAN_VERIFICATION.md` B4.
+  - **Owner steps (B4) done 2026-11-18:** `REVENUECAT_READ_KEY` set; `coach` version 16 and
+    `revenuecat-webhook` version 13 deployed from this branch (`functions list`); the webhook
+    boots on Supabase (an unsigned POST gets its own 401). Left: the retest after a scored
+    answer. Deploy log warned about a comment the CLI read as an import (fixed since; harmless).
+    What B4 asked for:
     1. A v2 secret key with `customer_information:customers:read` and
        `project_configuration:entitlements:read` only.
     2. `npx supabase secrets set REVENUECAT_READ_KEY=…`.

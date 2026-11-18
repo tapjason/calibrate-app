@@ -3,7 +3,7 @@
 //
 // Kept free of Deno imports for the same reason as the webhook's
 // entitlementFromEvent.ts — Jest can test it directly
-// (`deletionPlan.test.ts`), and it is the part that decides whether a user's
+// (its test file sits beside it), and it is the part that decides whether a user's
 // data is actually gone.
 //
 // The shape it encodes (docs/ACCOUNT_SPEC.md §3.3):

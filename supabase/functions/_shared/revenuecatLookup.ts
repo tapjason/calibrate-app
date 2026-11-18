@@ -10,9 +10,9 @@
 //
 // Plain TypeScript with no Deno imports, like
 // revenuecat-webhook/entitlementFromEvent.ts, so Jest can test it
-// (`revenuecatLookup.test.ts`). The fetch is injected; the functions pass
+// (its test file sits beside it). The fetch is injected; the functions pass
 // Deno's global one. The `_shared` folder is Supabase's convention for code
-// imported by several functions (`import … from '../_shared/….ts'`); the
+// imported by several functions through a relative path into _shared; the
 // deploy bundles it with each function that imports it.
 //
 // The calls (RevenueCat API v2, a secret key with read permissions only):

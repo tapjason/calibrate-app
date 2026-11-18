@@ -3,7 +3,7 @@
 //
 // Plain TypeScript with no Deno imports, like
 // revenuecat-webhook/entitlementFromEvent.ts, so Jest can test it
-// (`plusGate.test.ts`). index.ts reads the row, hands this the lookup, and
+// (its test file sits beside it). index.ts reads the row, hands this the lookup, and
 // does what the outcome says.
 //
 // Why the lookup: the row is written by the RevenueCat webhook, and the
