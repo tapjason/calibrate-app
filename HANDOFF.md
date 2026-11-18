@@ -1,14 +1,14 @@
 # Handoff
 
-**Branch:** `builder/coach-plus-check` (step 189), off `master` at `b87d3df` (the cleanup
-and step 188 merged and pushed 2026-11-17, the owner's word). Not merged or pushed. This file is the
+**Branch:** `master`, with steps 1–189 and the cleanup merged and pushed (step 189
+2026-11-18, the owner's word). Build 3 is next, from `master`. This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
 cover the last stretch) and in git; it isn't repeated here.
 
 ## Where things stand
 
-- **`master` = `origin/master`:** steps 1–188 and the cleanup, merged (fast-forward) and pushed
-  2026-11-17. Build 2 on the phone has steps through 186.
+- **`master` = `origin/master`:** steps 1–189 and the cleanup, merged (fast-forward) and pushed
+  2026-11-17 and 2026-11-18. Build 2 on the phone has steps through 186.
 - **The cleanup (`builder/cleanup-stale`):** the stale-code and docs cleanup the owner asked for: trim unused code,
   check every Markdown document against the code, and compact what is outdated or describes
   finished work at length. It removes the `CUSTOM_CATEGORY_SYNC`, `TITLE_EDIT_SYNC` and
