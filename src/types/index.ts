@@ -312,6 +312,30 @@ export function isUtcOffsetMinutes(value: unknown): value is number {
 }
 
 /**
+ * The one shape a stored instant must have to be compared with another or
+ * sent in a server filter: an ISO 8601 date and time carrying its own offset
+ * ('Z' or '±hh:mm'), to at most microseconds (Postgres's precision), that
+ * the engine can read. This phone writes '…T19:00:00.000Z'; a row pulled
+ * from the server keeps the server's '…T19:00:00+00:00' or
+ * '…T19:00:00.123456+00:00'. Carrying its own offset, no time zone can move
+ * it, and it holds no character that could leave a quoted filter value.
+ *
+ * One rule for both halves of a deletion's sync (2026-11-19, re-review of
+ * round 7): `tombstoneCovers` (src/db/predictions.ts) never counts a time
+ * that fails it as a match, and sync's delete filter never sends one, so the
+ * two never disagree about whether a server row is covered. Moved here
+ * unchanged from sync.ts's `isFilterInstant`, which the UTC offset backfill
+ * used first. Accepts any value, so a nullable field can be checked as it is.
+ */
+const STORED_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/;
+
+export function isStoredInstant(s: unknown): s is string {
+  if (typeof s !== 'string' || !STORED_INSTANT.test(s)) return false;
+  // Parsed on its milliseconds alone: an engine may read no more than three digits.
+  return !Number.isNaN(Date.parse(s.replace(/(\.\d{3})\d+/, '$1')));
+}
+
+/**
  * A deletion as this phone keeps it (roadmap D25, D45): the tombstone sync
  * pushes, kept after the push so Insights can count deleted calls.
  */
@@ -586,12 +610,37 @@ export interface OffsetBackfillRow {
  *                         "deleted open", so it never removes an answer.
  *   deleted_resolved_at — that copy's `resolved_at`, as stored (null for an
  *                         open one, and on every tombstone before 021).
+ *
+ * **And the version the server held, as this phone last knew it** (SQLite
+ * migration 023, 2026-11-19, re-review of round 7): an answer pushed from
+ * here and then changed here ("Change answer" keeps `resolved_at`; a pushed
+ * Can't tell answered later) and deleted before the next sync left the
+ * server on the old version and the tombstone on the new one, so nothing
+ * matched and the old answer came back with the counted deletion gone. Both
+ * are versions this phone held, so either may be removed:
+ *
+ *   synced_status       — the status of the version this phone last pushed
+ *                         (once the push's mark landed) or pulled, copied
+ *                         from the row when it was deleted. Null when this
+ *                         phone never synced the row, on every tombstone
+ *                         from before 023, and when the row had changed
+ *                         since the caller read it (a pull wrote it): then
+ *                         what the caller knew of the server is unknown.
+ *   synced_resolved_at  — that version's `resolved_at`, as stored (null for
+ *                         an open one, and whenever `synced_status` is null).
+ *
+ * A server row is covered (`tombstoneCovers`) when it is open, or when it is
+ * an answer (Yes, No or Can't tell) with the status and the `resolved_at`
+ * instant of either copy, each time a valid `isStoredInstant`. A tombstone
+ * with neither copy reads as "deleted open".
  */
 export interface PendingTombstone {
   id: string;
   deleted_at: string;
   deleted_status: PredictionStatus | null;
   deleted_resolved_at: string | null;
+  synced_status: PredictionStatus | null;
+  synced_resolved_at: string | null;
 }
 
 /** Per-bucket result produced by the calibration engine. */
@@ -1005,7 +1054,9 @@ export type AnswerSkippedPrediction = (
  * the prediction as the caller held it when it decided to delete (review
  * round 7): the tombstone records its status and `resolved_at`, and sync's
  * delete removes only that from the server (`PendingTombstone`). The row as
- * read at the start of the delete when omitted.
+ * read at the start of the delete when omitted. The tombstone also keeps the
+ * version this phone last synced (SQLite migration 023), unless the row no
+ * longer matches `seen`.
  */
 export type DeletePrediction = (
   id: string,

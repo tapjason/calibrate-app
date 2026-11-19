@@ -6,9 +6,12 @@ import {
   insertPrediction,
   listCategoryOrigins,
   listDeletions,
+  listDirtyPredictions,
   listPendingPredictions,
   listPendingTombstonesSettled,
+  markPredictionSynced,
   reconcileTombstoneWithRemote,
+  tombstoneCovers,
   upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { getUserStat, listCategoryStats } from '@/db/stats';
@@ -2871,5 +2874,67 @@ describe('which deletes are counted', () => {
       expect.objectContaining({ id: p.id, deleted_status: 'pending', deleted_resolved_at: null }),
     ]);
     expect(await deleted()).toBe(0);
+  });
+
+  // 2026-11-19, re-review of round 7 (SQLite migration 023; the record
+  // auditor's cases 3 and 4): an answer that reached the server, changed
+  // here, then deleted before the next sync. The tombstone keeps the version
+  // last pushed too, so the server's copy is covered and the delete stays
+  // counted, instead of the old answer coming back.
+  describe('an answer pushed, changed here, then deleted', () => {
+    /** What a push sends, marked as sync marks it; the server's copies by id. */
+    async function pushAll(userId: string) {
+      const rows = await listDirtyPredictions(userId);
+      for (const row of rows) await markPredictionSynced(row.id, row.updated_at);
+      return new Map(rows.map((row) => [row.id, row]));
+    }
+
+    it('after Change answer, the Yes the server holds is covered', async () => {
+      const userId = useAuthStore.getState().userId!;
+      const p = await loggedEarlier(() => create('Pushed, then switched', 30));
+      await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+      const onServer = (await pushAll(userId)).get(p.id)!;
+      expect(onServer).toMatchObject({ status: 'resolved_yes' });
+
+      await usePredictionStore.getState().correct(p.id, 'resolved_no');
+      const shown = (await usePredictionStore.getState().getById(p.id))!;
+      expect(shown).toMatchObject({ status: 'resolved_no', resolved_at: onServer.resolved_at });
+      await usePredictionStore.getState().remove(p.id, shown);
+
+      const [tomb] = await listPendingTombstonesSettled(userId);
+      expect(tomb).toMatchObject({
+        deleted_status: 'resolved_no',
+        synced_status: 'resolved_yes',
+        synced_resolved_at: onServer.resolved_at,
+      });
+      expect(tombstoneCovers(tomb, onServer)).toBe(true);
+      expect(await reconcileTombstoneWithRemote(onServer)).toBe('kept');
+      expect(await getPrediction(p.id)).toBeNull();
+      expect(await deleted()).toBe(1);
+    });
+
+    it("after a pushed Can't tell is answered here, the Can't tell the server holds is covered", async () => {
+      const userId = useAuthStore.getState().userId!;
+      const p = await loggedEarlier(() => create('Pushed skip', 1), 2);
+      await usePredictionStore.getState().resolve(p.id, 'skipped');
+      const onServer = (await pushAll(userId)).get(p.id)!;
+      expect(onServer).toMatchObject({ status: 'skipped' });
+
+      await usePredictionStore
+        .getState()
+        .resolve(p.id, 'resolved_no', undefined, { answeringSkip: true });
+      expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+      await usePredictionStore.getState().remove(p.id);
+
+      const [tomb] = await listPendingTombstonesSettled(userId);
+      expect(tomb).toMatchObject({
+        deleted_status: 'resolved_no',
+        synced_status: 'skipped',
+        synced_resolved_at: onServer.resolved_at,
+      });
+      expect(await reconcileTombstoneWithRemote(onServer)).toBe('kept');
+      expect(await getPrediction(p.id)).toBeNull();
+      expect(await deleted()).toBe(1);
+    });
   });
 });

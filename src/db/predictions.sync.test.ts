@@ -26,7 +26,9 @@ import {
   markDeletionPushed,
   markPredictionSynced,
   reconcileTombstoneWithRemote,
+  refilePrediction,
   resolvePrediction,
+  setPredictionReflection,
   tombstoneCovers,
   updatePrediction,
   upsertPredictionFromRemote,
@@ -201,6 +203,143 @@ describe('markPredictionSynced', () => {
     await markPredictionSynced('p1', before!.updated_at);
     const final = await getRawRow('p1');
     expect(final?.dirty).toBe(1);
+  });
+});
+
+// 2026-11-19, re-review of round 7 (SQLite migration 023): the version this
+// phone last learned the server holds, which a later deletion may remove too.
+// Set by a push that lands and by every pull; never by a local write.
+describe('the version this phone last synced', () => {
+  const T1 = '2026-06-01T19:00:00.000Z';
+  const T2 = '2026-06-03T09:00:00.000Z';
+
+  async function syncedPair(id = 'p1') {
+    return await getDb().get<{ synced_status: string | null; synced_resolved_at: string | null }>(
+      `SELECT synced_status, synced_resolved_at FROM predictions WHERE id = ?`,
+      [id],
+    );
+  }
+  const pair = (synced_status: string | null, synced_resolved_at: string | null = null) => ({
+    synced_status,
+    synced_resolved_at,
+  });
+
+  /** Push `id` as sync does: read the dirty row, send it, mark it with its `updated_at`. */
+  async function push(id = 'p1'): Promise<PredictionWireRow> {
+    const up = (await listDirtyPredictions('u1')).find((r) => r.id === id)!;
+    await markPredictionSynced(id, up.updated_at);
+    return up;
+  }
+
+  it('has none on a new row, and a push that lands records what went up', async () => {
+    await insertPrediction(samplePrediction());
+    expect(await syncedPair()).toEqual(pair(null));
+    await push();
+    expect(await syncedPair()).toEqual(pair('pending'));
+    await resolvePrediction('p1', 'resolved_yes', undefined, { at: T1 });
+    expect(await syncedPair()).toEqual(pair('pending'));
+    await push();
+    expect(await syncedPair()).toEqual(pair('resolved_yes', T1));
+  });
+
+  it("records nothing for a push whose mark doesn't land: a write after its read, or a pull", async () => {
+    await insertPrediction(samplePrediction({ status: 'resolved_yes', resolved_at: T1 }));
+    await push();
+    await correctPredictionOutcome('p1', 'resolved_no');
+    const [read] = await listDirtyPredictions('u1');
+    expect(read).toMatchObject({ status: 'resolved_no' });
+    // A note written after the push read the row: the mark misses, and the
+    // No that went up isn't recorded as the server's.
+    await setPredictionReflection('p1', 'Late note');
+    await markPredictionSynced('p1', read.updated_at);
+    expect(await syncedPair()).toEqual(pair('resolved_yes', T1));
+    expect((await getRawRow('p1'))?.dirty).toBe(1);
+
+    // A pull that wrote the row after the push read it: the row is clean and
+    // holds the server's copy, which the mark leaves alone.
+    await insertPrediction(samplePrediction({ id: 'q' }));
+    const [readQ] = (await listDirtyPredictions('u1')).filter((r) => r.id === 'q');
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'q', status: 'resolved_no', resolved_at: T2, updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    await markPredictionSynced('q', readQ.updated_at);
+    expect(await syncedPair('q')).toEqual(pair('resolved_no', T2));
+  });
+
+  it('is changed by no local write', async () => {
+    // An answer: Change answer, a note, a move to another category.
+    await insertPrediction(samplePrediction({ status: 'resolved_yes', resolved_at: T1 }));
+    await push();
+    await correctPredictionOutcome('p1', 'resolved_no');
+    await setPredictionReflection('p1', 'A note');
+    await refilePrediction('p1', 'health');
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no', category: 'health' });
+    expect(await syncedPair()).toEqual(pair('resolved_yes', T1));
+
+    // A Can't tell answered later.
+    await insertPrediction(samplePrediction({ id: 'skip', status: 'skipped', resolved_at: T1 }));
+    await push('skip');
+    await answerSkippedPrediction('skip', 'resolved_no', undefined, { at: T2 });
+    expect(await getPrediction('skip')).toMatchObject({ status: 'resolved_no', resolved_at: T2 });
+    expect(await syncedPair('skip')).toEqual(pair('skipped', T1));
+
+    // An open one: an edit, then an answer.
+    await insertPrediction(samplePrediction({ id: 'open' }));
+    await push('open');
+    await updatePrediction(
+      'open',
+      { title: 'New words', category: 'personal', due_date: '2026-06-05T12:00:00.000Z' },
+      { rewordedAt: '2026-05-02T09:00:00.000Z' },
+    );
+    await resolvePrediction('open', 'resolved_yes', undefined, { at: T2 });
+    expect(await getPrediction('open')).toMatchObject({ status: 'resolved_yes', resolved_at: T2 });
+    expect(await syncedPair('open')).toEqual(pair('pending'));
+  });
+
+  it("records the server's copy on every pull, inserted or written over this phone's", async () => {
+    await upsertPredictionFromRemote(sampleWire({ id: 'new', status: 'resolved_yes', resolved_at: T1 }));
+    expect(await syncedPair('new')).toEqual(pair('resolved_yes', T1));
+
+    await insertPrediction(samplePrediction());
+    // The server writes the time its own way: kept as it came.
+    await upsertPredictionFromRemote(
+      sampleWire({
+        id: 'p1',
+        status: 'resolved_no',
+        resolved_at: '2026-06-01T19:00:00+00:00',
+        updated_at: '2099-01-01T00:00:00.000Z',
+      }),
+    );
+    expect(await syncedPair()).toEqual(pair('resolved_no', '2026-06-01T19:00:00+00:00'));
+    expect((await getRawRow('p1'))?.dirty).toBe(0);
+  });
+
+  it("records the server's copy when this phone's answered row stands whole", async () => {
+    // A stale open copy over this phone's Yes.
+    await insertPrediction(samplePrediction({ status: 'resolved_yes', resolved_at: T2 }));
+    await push();
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', status: 'pending', resolved_at: null, updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: T2 });
+    expect(await syncedPair()).toEqual(pair('pending'));
+    expect((await getRawRow('p1'))?.dirty).toBe(1);
+
+    // A Can't tell over this phone's No, not yet pushed.
+    await insertPrediction(samplePrediction({ id: 'q', status: 'resolved_no', resolved_at: T2 }));
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'q', status: 'skipped', resolved_at: T1, updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    expect(await getPrediction('q')).toMatchObject({ status: 'resolved_no', resolved_at: T2 });
+    expect(await syncedPair('q')).toEqual(pair('skipped', T1));
+  });
+
+  it("records the server's copy on a row the reconcile restores", async () => {
+    await insertPrediction(samplePrediction());
+    await deletePrediction('p1', { counted: true });
+    const answered = sampleWire({ id: 'p1', status: 'resolved_no', resolved_at: T2, updated_at: '2099-01-01T00:00:00.000Z' });
+    expect(await reconcileTombstoneWithRemote(answered)).toBe('restored');
+    expect(await syncedPair()).toEqual(pair('resolved_no', T2));
   });
 });
 
@@ -697,15 +836,16 @@ describe('a pull never undoes an answer', () => {
       status: 'resolved_no',
       reflection: 'Missed it',
     });
-    // Every column as it was but the push marks: dirty again, updated_at on.
+    // Every column as it was but the sync marks: dirty again, updated_at on,
+    // and the version the server holds (SQLite migration 023) now the open
+    // copy it sent.
     const rawAfter = await getDb().get<Record<string, unknown>>(
       `SELECT * FROM predictions WHERE id = 'p1'`,
     );
-    expect({ ...rawAfter, updated_at: 'x', dirty: 'x' }).toEqual({
-      ...rawBefore,
-      updated_at: 'x',
-      dirty: 'x',
-    });
+    const marks = { updated_at: 'x', dirty: 'x', synced_status: 'x', synced_resolved_at: 'x' };
+    expect({ ...rawAfter, ...marks }).toEqual({ ...rawBefore, ...marks });
+    expect(rawBefore).toMatchObject({ synced_status: 'resolved_no', synced_resolved_at: ANSWERED_AT });
+    expect(rawAfter).toMatchObject({ synced_status: 'pending', synced_resolved_at: null });
     expect(rawAfter?.dirty).toBe(1);
     expect(String(rawAfter?.updated_at) > staleOpenCopy.updated_at).toBe(true);
     // Pushed back as it stands here.
@@ -1148,6 +1288,9 @@ describe('listPendingTombstonesSettled', () => {
       deleted_at: expect.any(String),
       deleted_status: 'pending',
       deleted_resolved_at: null,
+      // Never synced: no version the server holds is known.
+      synced_status: null,
+      synced_resolved_at: null,
     });
     expect(byId.no).toMatchObject({ deleted_status: 'resolved_no', deleted_resolved_at: '2026-05-30T19:00:00.000Z' });
     expect(byId.skip).toMatchObject({ deleted_status: 'skipped', deleted_resolved_at: '2026-06-02T19:00:00.000Z' });
@@ -1161,9 +1304,21 @@ describe('listPendingTombstonesSettled', () => {
       sampleWire({ id: 'p1', status: 'resolved_no', resolved_at: '2026-05-30T19:00:00.000Z', updated_at: '2099-01-01T00:00:00.000Z' }),
     );
     await deletePrediction('p1', { counted: true, seen: seen! });
+    // And no synced copy: the pull's knowledge of the server (that No) is
+    // something the caller never saw, so it must restore, never cover.
     expect(await listPendingTombstonesSettled('u1')).toEqual([
-      expect.objectContaining({ id: 'p1', deleted_status: 'pending', deleted_resolved_at: null }),
+      expect.objectContaining({
+        id: 'p1',
+        deleted_status: 'pending',
+        deleted_resolved_at: null,
+        synced_status: null,
+        synced_resolved_at: null,
+      }),
     ]);
+    const [tomb] = await listPendingTombstonesSettled('u1');
+    expect(
+      tombstoneCovers(tomb, { status: 'resolved_no', resolved_at: '2026-05-30T19:00:00.000Z' }),
+    ).toBe(false);
   });
 
   it('records a status that is no status as none, and lists a tombstone from before 021 with none', async () => {
@@ -1177,7 +1332,120 @@ describe('listPendingTombstonesSettled', () => {
     );
     const byId = Object.fromEntries((await listPendingTombstonesSettled('u1')).map((t) => [t.id, t]));
     expect(byId.odd).toMatchObject({ deleted_status: null, deleted_resolved_at: null });
-    expect(byId.legacy).toMatchObject({ deleted_status: null, deleted_resolved_at: null });
+    expect(byId.legacy).toMatchObject({
+      deleted_status: null,
+      deleted_resolved_at: null,
+      synced_status: null,
+      synced_resolved_at: null,
+    });
+  });
+
+  // 2026-11-19, re-review of round 7 (SQLite migration 023).
+  describe('the version this phone last synced', () => {
+    const T1 = '2026-06-01T19:00:00.000Z';
+    const T2 = '2026-06-03T09:00:00.000Z';
+    async function pushed(id = 'p1') {
+      await markPredictionSynced(id, (await getRawRow(id))!.updated_at);
+    }
+
+    it('lists it beside what was deleted', async () => {
+      await insertPrediction(samplePrediction({ status: 'resolved_yes', resolved_at: T1 }));
+      await pushed();
+      await correctPredictionOutcome('p1', 'resolved_no');
+      await deletePrediction('p1', { counted: true, seen: (await getPrediction('p1'))! });
+
+      await insertPrediction(samplePrediction({ id: 'skip', status: 'skipped', resolved_at: T1 }));
+      await pushed('skip');
+      await answerSkippedPrediction('skip', 'resolved_no', undefined, { at: T2 });
+      await deletePrediction('skip', { counted: true });
+
+      const byId = Object.fromEntries((await listPendingTombstonesSettled('u1')).map((t) => [t.id, t]));
+      expect(byId.p1).toEqual({
+        id: 'p1',
+        deleted_at: expect.any(String),
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: T1,
+        synced_status: 'resolved_yes',
+        synced_resolved_at: T1,
+      });
+      expect(byId.skip).toMatchObject({
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: T2,
+        synced_status: 'skipped',
+        synced_resolved_at: T1,
+      });
+    });
+
+    it('keeps it when the row is the copy the caller saw, its time written another way', async () => {
+      await insertPrediction(samplePrediction({ status: 'resolved_yes', resolved_at: T1 }));
+      await pushed();
+      const seen = (await getPrediction('p1'))!;
+      // A note added on another phone, pulled: the same answer, the time as
+      // the server writes it.
+      await upsertPredictionFromRemote(
+        sampleWire({
+          id: 'p1',
+          status: 'resolved_yes',
+          resolved_at: '2026-06-01T19:00:00+00:00',
+          reflection: 'From the other phone',
+          updated_at: '2099-01-01T00:00:00.000Z',
+        }),
+      );
+      await deletePrediction('p1', { counted: true, seen });
+      expect(await listPendingTombstonesSettled('u1')).toEqual([
+        expect.objectContaining({
+          deleted_status: 'resolved_yes',
+          deleted_resolved_at: T1,
+          synced_status: 'resolved_yes',
+          synced_resolved_at: '2026-06-01T19:00:00+00:00',
+        }),
+      ]);
+    });
+
+    it('keeps none when the row changed since the caller saw it, or the caller saw no status', async () => {
+      // This phone's Yes, pushed; another phone switched it to No, pulled
+      // after the screen showed the Yes.
+      await insertPrediction(samplePrediction({ status: 'resolved_yes', resolved_at: T1 }));
+      await pushed();
+      const seen = (await getPrediction('p1'))!;
+      await upsertPredictionFromRemote(
+        sampleWire({ id: 'p1', status: 'resolved_no', resolved_at: T1, updated_at: '2099-01-01T00:00:00.000Z' }),
+      );
+      await deletePrediction('p1', { counted: true, seen });
+      const [tomb] = await listPendingTombstonesSettled('u1');
+      expect(tomb).toMatchObject({
+        deleted_status: 'resolved_yes',
+        deleted_resolved_at: T1,
+        synced_status: null,
+        synced_resolved_at: null,
+      });
+      // The No it never saw is restored, never removed.
+      expect(tombstoneCovers(tomb, { status: 'resolved_no', resolved_at: T1 })).toBe(false);
+
+      await insertPrediction(samplePrediction({ id: 'odd', status: 'resolved_yes', resolved_at: T1 }));
+      await pushed('odd');
+      await deletePrediction('odd', { seen: { status: 'archived' as Prediction['status'], resolved_at: T1 } });
+      const byId = Object.fromEntries((await listPendingTombstonesSettled('u1')).map((t) => [t.id, t]));
+      expect(byId.odd).toMatchObject({ deleted_status: null, synced_status: null, synced_resolved_at: null });
+    });
+
+    it('lists a stored value that is no status as none', async () => {
+      await getDb().run(
+        `INSERT INTO prediction_deletions
+           (id, user_id, deleted_at, pushed_at, counted, deleted_status, deleted_resolved_at,
+            synced_status, synced_resolved_at)
+           VALUES ('p1', 'u1', '2026-06-01T00:00:00.000Z', NULL, 1, 'resolved_no', ?, 'maybe', ?)`,
+        [T2, T1],
+      );
+      expect(await listPendingTombstonesSettled('u1')).toEqual([
+        expect.objectContaining({
+          deleted_status: 'resolved_no',
+          deleted_resolved_at: T2,
+          synced_status: null,
+          synced_resolved_at: null,
+        }),
+      ]);
+    });
   });
 });
 
@@ -1221,6 +1489,80 @@ describe('tombstoneCovers', () => {
     expect(tombstoneCovers(tomb('resolved_yes', 'soon'), remote('resolved_yes', 'soon'))).toBe(false);
     expect(tombstoneCovers(tomb('resolved_yes', T), remote('resolved_yes', null))).toBe(false);
     expect(tombstoneCovers(tomb('resolved_yes', null), remote('resolved_yes', T))).toBe(false);
+  });
+
+  // The one rule for stored instants (`isStoredInstant`), which sync's
+  // filter applies too: a time it refuses never matches, even itself, even
+  // when the engine could read it (as round 7's `Date.parse` did).
+  it('never matches a time that is not a stored instant, on either side or either copy', () => {
+    for (const loose of [
+      '2026-11-17 19:00:00Z', // no T
+      '2026-11-17T19:00:00.000', // no offset: read in the engine's zone
+      '2026-11-17T19:00:00.0000000Z', // past microseconds
+      '2026-11-17T19:00:00+0000', // offset without its colon
+      '2026-11-17',
+    ]) {
+      expect(tombstoneCovers(tomb('resolved_yes', loose), remote('resolved_yes', loose))).toBe(false);
+      expect(tombstoneCovers(tomb('resolved_yes', T), remote('resolved_yes', loose))).toBe(false);
+      expect(tombstoneCovers(tomb('resolved_yes', loose), remote('resolved_yes', T))).toBe(false);
+      expect(
+        tombstoneCovers({ ...tomb('resolved_no', T), synced_status: 'resolved_yes', synced_resolved_at: loose }, remote('resolved_yes', loose)),
+      ).toBe(false);
+    }
+  });
+
+  // 2026-11-19, re-review of round 7 (SQLite migration 023): the version
+  // this phone last synced is covered too.
+  describe('with the version this phone last synced', () => {
+    const LATER = '2026-11-19T09:00:00.000Z';
+    const both = (
+      deleted: [PendingTombstone['deleted_status'], string | null],
+      synced: [PendingTombstone['synced_status'], string | null],
+    ) => ({
+      deleted_status: deleted[0],
+      deleted_resolved_at: deleted[1],
+      synced_status: synced[0],
+      synced_resolved_at: synced[1],
+    });
+
+    it('covers the synced answer as well as the deleted one', () => {
+      // Pushed Yes, switched to No here, deleted.
+      const switched = both(['resolved_no', T], ['resolved_yes', T]);
+      expect(tombstoneCovers(switched, remote('resolved_yes', T))).toBe(true);
+      expect(tombstoneCovers(switched, remote('resolved_yes', '2026-11-17T19:00:00+00:00'))).toBe(true);
+      expect(tombstoneCovers(switched, remote('resolved_no', T))).toBe(true);
+      expect(tombstoneCovers(switched, remote('pending'))).toBe(true);
+      // Pushed Can't tell, answered No here later, deleted.
+      const answered = both(['resolved_no', LATER], ['skipped', T]);
+      expect(tombstoneCovers(answered, remote('skipped', T))).toBe(true);
+      expect(tombstoneCovers(answered, remote('resolved_no', LATER))).toBe(true);
+    });
+
+    it('covers nothing else: another status, another time, or the other copy’s time', () => {
+      const switched = both(['resolved_no', T], ['resolved_yes', T]);
+      expect(tombstoneCovers(switched, remote('skipped', T))).toBe(false);
+      expect(tombstoneCovers(switched, remote('resolved_yes', LATER))).toBe(false);
+      const answered = both(['resolved_no', LATER], ['skipped', T]);
+      // A Yes given elsewhere to the Can't tell this phone pushed.
+      expect(tombstoneCovers(answered, remote('resolved_yes', LATER))).toBe(false);
+      expect(tombstoneCovers(answered, remote('resolved_yes', T))).toBe(false);
+      expect(tombstoneCovers(answered, remote('skipped', LATER))).toBe(false);
+      expect(tombstoneCovers(answered, remote('resolved_no', T))).toBe(false);
+    });
+
+    it('never covers an answer with a synced open copy, and reads either copy alone', () => {
+      for (const status of ['resolved_yes', 'resolved_no', 'skipped'] as const) {
+        expect(tombstoneCovers(both(['pending', null], ['pending', null]), remote(status, T))).toBe(false);
+        expect(tombstoneCovers(both(['pending', null], ['pending', T]), remote(status, T))).toBe(false);
+        // No copy at all (from before 021, synced none): deleted open.
+        expect(tombstoneCovers(both([null, null], [null, null]), remote(status, T))).toBe(false);
+        expect(tombstoneCovers(both([null, null], [null, T]), remote(status, T))).toBe(false);
+      }
+      // An open copy deleted, the answer this phone last synced on the server.
+      expect(tombstoneCovers(both(['pending', null], ['resolved_yes', T]), remote('resolved_yes', T))).toBe(true);
+      // A tombstone from before 023 has no synced copy: as round 7.
+      expect(tombstoneCovers(tomb('resolved_no', T), remote('resolved_yes', T))).toBe(false);
+    });
   });
 });
 
@@ -1310,6 +1652,135 @@ describe('a deletion across two phones', () => {
     expect(server.get('p1')?.status).toBe('resolved_no');
     expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no' });
     expect(await listDeletions('u1')).toEqual([]);
+  });
+
+  // 2026-11-19, re-review of round 7 (the record auditor's cases 3 and 4,
+  // reproduced by the client reviewer too): an answer pushed from here, then
+  // changed here and deleted before the next sync. The server still holds
+  // the version this phone pushed (SQLite migration 023 remembers it), so
+  // the deletion removes it and stays counted, instead of restoring the old
+  // answer and dropping the deletion.
+  describe('an answer changed here after it was pushed, then deleted', () => {
+    const LATER = '2099-06-11T09:00:00.000Z';
+
+    /** Push this phone's dirty rows as sync does: the server takes them, then each is marked. */
+    async function pushRowsTo(server: Map<string, PredictionWireRow>): Promise<void> {
+      for (const row of await listDirtyPredictions('u1')) {
+        server.set(row.id, { ...row });
+        await markPredictionSynced(row.id, row.updated_at);
+      }
+    }
+
+    async function expectDeletedAndCounted(server: Map<string, PredictionWireRow>) {
+      expect(server.has('p1')).toBe(false);
+      expect(await getPrediction('p1')).toBeNull();
+      expect(await listPendingTombstonesSettled('u1')).toEqual([]);
+      expect(await listDeletions('u1')).toEqual([expect.objectContaining({ id: 'p1', counted: true })]);
+      expect(await isDeletedHere('p1')).toBe(true);
+      expect(await countUnsynced('u1')).toBe(0);
+    }
+
+    it('case 3: a Yes pushed, switched to No here (Change answer), deleted: the server’s Yes goes, counted', async () => {
+      await insertPrediction(samplePrediction({ due_date: DUE, status: 'resolved_yes', resolved_at: B_ANSWERED }));
+      const server = new Map<string, PredictionWireRow>();
+      await pushRowsTo(server);
+      expect(server.get('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: B_ANSWERED });
+
+      await correctPredictionOutcome('p1', 'resolved_no');
+      const seen = (await getPrediction('p1'))!;
+      expect(seen).toMatchObject({ status: 'resolved_no', resolved_at: B_ANSWERED });
+      await deletePrediction('p1', { counted: true, seen });
+
+      await pushDeletionsTo(server);
+      await expectDeletedAndCounted(server);
+    });
+
+    it("case 4: a Can't tell pushed, answered No here, deleted: the server's Can't tell goes, counted", async () => {
+      await insertPrediction(samplePrediction({ due_date: DUE, status: 'skipped', resolved_at: B_ANSWERED }));
+      const server = new Map<string, PredictionWireRow>();
+      await pushRowsTo(server);
+
+      await answerSkippedPrediction('p1', 'resolved_no', undefined, { at: LATER });
+      const seen = (await getPrediction('p1'))!;
+      await deletePrediction('p1', { counted: true, seen });
+
+      await pushDeletionsTo(server);
+      await expectDeletedAndCounted(server);
+    });
+
+    it('the same when a pull comes before the push: the tombstone stands, then the push removes it', async () => {
+      await insertPrediction(samplePrediction({ due_date: DUE, status: 'resolved_yes', resolved_at: B_ANSWERED }));
+      const server = new Map<string, PredictionWireRow>();
+      await pushRowsTo(server);
+      await correctPredictionOutcome('p1', 'resolved_no');
+      await deletePrediction('p1', { counted: true, seen: (await getPrediction('p1'))! });
+
+      // The server's copy, as a pull reads it back (its own time format).
+      const onTheServer = { ...server.get('p1')!, resolved_at: '2099-06-08T19:00:00+00:00' };
+      expect(await reconcileTombstoneWithRemote(onTheServer)).toBe('kept');
+      expect(await getPrediction('p1')).toBeNull();
+      expect(await listDeletions('u1')).toEqual([expect.objectContaining({ id: 'p1', counted: true })]);
+
+      await pushDeletionsTo(server);
+      await expectDeletedAndCounted(server);
+    });
+
+    // Round 7's case still holds: a version another phone made, which this
+    // phone never saw, is never removed.
+    it('a Yes pushed, switched to No on the other phone, this one deletes its Yes: the No stays and comes back', async () => {
+      await insertPrediction(samplePrediction({ due_date: DUE, status: 'resolved_yes', resolved_at: B_ANSWERED }));
+      const server = new Map<string, PredictionWireRow>();
+      await pushRowsTo(server);
+      // The other phone's Change answer; this one hasn't pulled.
+      server.set('p1', { ...server.get('p1')!, status: 'resolved_no', updated_at: '2099-06-08T20:00:00.000Z' });
+
+      await deletePrediction('p1', { counted: true, seen: (await getPrediction('p1'))! });
+      await pushDeletionsTo(server);
+
+      expect(server.get('p1')).toMatchObject({ status: 'resolved_no', resolved_at: B_ANSWERED });
+      expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no', resolved_at: B_ANSWERED });
+      expect(await listDeletions('u1')).toEqual([]);
+      expect(await isDeletedHere('p1')).toBe(false);
+    });
+
+    it("a Can't tell pushed, answered Yes on the other phone, this one answers No and deletes: the Yes stays and comes back", async () => {
+      await insertPrediction(samplePrediction({ due_date: DUE, status: 'skipped', resolved_at: B_ANSWERED }));
+      const server = new Map<string, PredictionWireRow>();
+      await pushRowsTo(server);
+      const OTHER = '2099-06-10T08:00:00.000Z';
+      server.set('p1', {
+        ...server.get('p1')!,
+        status: 'resolved_yes',
+        resolved_at: OTHER,
+        updated_at: OTHER,
+      });
+
+      await answerSkippedPrediction('p1', 'resolved_no', undefined, { at: LATER });
+      await deletePrediction('p1', { counted: true, seen: (await getPrediction('p1'))! });
+      await pushDeletionsTo(server);
+
+      expect(server.get('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: OTHER });
+      expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: OTHER });
+      expect(await listDeletions('u1')).toEqual([]);
+    });
+
+    it('an answer never pushed has no synced version; the open copy the server holds is removed', async () => {
+      await insertPrediction(samplePrediction({ due_date: DUE }));
+      const server = new Map<string, PredictionWireRow>();
+      await pushRowsTo(server);
+      await resolvePrediction('p1', 'resolved_yes', undefined, { at: B_ANSWERED });
+      await correctPredictionOutcome('p1', 'resolved_no');
+      await deletePrediction('p1', { counted: true, seen: (await getPrediction('p1'))! });
+      const [tomb] = await listPendingTombstonesSettled('u1');
+      expect(tomb).toMatchObject({
+        deleted_status: 'resolved_no',
+        synced_status: 'pending',
+        synced_resolved_at: null,
+      });
+      expect(server.get('p1')?.status).toBe('pending');
+      await pushDeletionsTo(server);
+      await expectDeletedAndCounted(server);
+    });
   });
 
   it('an open copy on the server is deleted, whatever this phone deleted', async () => {

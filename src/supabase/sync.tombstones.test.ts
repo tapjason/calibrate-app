@@ -9,20 +9,31 @@
 // (the review's round 7 blocker).
 //
 // Now each tombstone carries what this phone deleted (`deleted_status`,
-// `deleted_resolved_at`), and the server delete removes only that row
-// (`deletionMatch`): deleted open, only a row still open; deleted answered,
-// only the same answer at the same time (or a row still open, which holds no
-// answer). In the same statement, so no answer can land between a check and
-// the delete. When it removes nothing, the row is read and handed to
+// `deleted_resolved_at`) and the copy it last synced (`synced_status`,
+// `synced_resolved_at`), and the server delete removes only a row this phone
+// saw (`deletionMatch`): a row still open (which holds no answer), the
+// deleted copy, or the synced copy, each answer at its own time. In the same
+// statement, so no answer can land between a check and the delete. When it
+// removes nothing, the row is read and handed to
 // `reconcileTombstoneWithRemote` (src/db), which restores a row answered
-// differently from what was deleted and drops the tombstone; the pull does
-// the same. Real SQLite (the test database); a fake server that applies the
+// differently from both copies and drops the tombstone; the pull does the
+// same. A tombstone that read-back keeps waits an hour before it is sent
+// again. Real SQLite (the test database); a fake server that applies the
 // delete's filter as PostgREST would.
+//
+// The synced copy (round 7 follow-up): an answer changed here after it
+// synced (Yes to No with "Change answer", which keeps `resolved_at`; a synced
+// "Can't tell" answered later) is still the synced version on the server.
+// Matching only the deleted copy, its delete removed nothing and the
+// read-back restored the old answer.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getDb, setDbForTests } from '@/db/client';
+import * as predictionsDb from '@/db/predictions';
 import {
+  answerSkippedPrediction,
+  correctPredictionOutcome,
   countUnsynced,
   deletePrediction,
   getPrediction,
@@ -31,15 +42,18 @@ import {
   listDeletions,
   listPendingDeletions,
   listPendingTombstonesSettled,
+  resolvePrediction,
 } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
-import type { Prediction, PredictionWireRow } from '@/types';
+import type { PendingTombstone, Prediction, PredictionWireRow } from '@/types';
 
 import {
   __resetSyncStateForTests,
   deletionMatch,
+  KEPT_DELETION_RETRY_MS,
   pullRemote,
   pushDeletions,
+  pushDirty,
   pushNow,
   stopSyncFor,
   syncNow,
@@ -100,10 +114,24 @@ function instantMicros(iso: string): number {
   return Date.parse(iso.replace(/\.\d+/, '')) * 1000 + Number(fraction);
 }
 
+/** An answered copy in the delete's `or` filter. */
+const ANSWERED_TERM = /and\(status\.eq\.(resolved_yes|resolved_no|skipped),resolved_at\.eq\."([^"]+)"\)/g;
+
+/**
+ * The one grammar `deletionMatch`'s filter may have: `status.eq.pending`,
+ * then one or two answered copies, each a fixed status and a strict instant.
+ */
+const FILTER_GRAMMAR =
+  /^status\.eq\.pending(,and\(status\.eq\.(resolved_yes|resolved_no|skipped),resolved_at\.eq\."\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})"\)){1,2}$/;
+
 /**
  * The delete's condition, applied as PostgREST would: `status=eq.<s>`, or the
- * `or` filter `deletionMatch` builds for an answered deletion. Throws on any
- * other shape, and on a delete with no condition or two.
+ * `or` filter `deletionMatch` builds for an answered deletion (`pending`, or
+ * any of its answered copies). Throws on any other shape, and on a delete
+ * with no condition or two.
+ *
+ * Round 7 follow-up: was one answered copy only (`…,and(…)$`); a tombstone
+ * now carries the synced copy too, so the filter may hold two.
  */
 function passesDelete(
   row: PredictionWireRow,
@@ -114,16 +142,13 @@ function passesDelete(
     throw new Error('a delete must carry exactly one condition');
   }
   if (orFilter === null) return row.status === status;
-  const match =
-    /^status\.eq\.pending,and\(status\.eq\.(resolved_yes|resolved_no|skipped),resolved_at\.eq\."([^"]+)"\)$/.exec(
-      orFilter,
-    );
-  if (!match) throw new Error(`unexpected filter: ${orFilter}`);
+  if (!FILTER_GRAMMAR.test(orFilter)) throw new Error(`unexpected filter: ${orFilter}`);
   if (row.status === 'pending') return true;
-  return (
-    row.status === match[1] &&
-    row.resolved_at !== null &&
-    instantMicros(row.resolved_at) === instantMicros(match[2])
+  return [...orFilter.matchAll(ANSWERED_TERM)].some(
+    ([, answered, at]) =>
+      row.status === answered &&
+      row.resolved_at !== null &&
+      instantMicros(row.resolved_at) === instantMicros(at),
   );
 }
 
@@ -310,6 +335,154 @@ describe('deletionMatch', () => {
         kind: 'open',
       });
     }
+  });
+});
+
+// Round 7 follow-up: the copy this phone last synced counts as well as the
+// one it deleted, so the delete of an answer changed here after it synced
+// removes the synced version the server still holds.
+describe('deletionMatch, with the copy this phone last synced', () => {
+  const T = '2026-11-19T10:00:00.000Z';
+  const T2 = '2026-11-21T08:00:00.000Z';
+  const deletedYes = { deleted_status: 'resolved_yes', deleted_resolved_at: T };
+  const deletedYesOnly = {
+    kind: 'answered',
+    filter: `status.eq.pending,and(status.eq.resolved_yes,resolved_at.eq."${T}")`,
+  };
+
+  it('a Yes corrected to No after it synced: the deleted copy, then the synced copy', () => {
+    expect(
+      deletionMatch({
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: T,
+        synced_status: 'resolved_yes',
+        synced_resolved_at: T,
+      }),
+    ).toEqual({
+      kind: 'answered',
+      filter: `status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."${T}"),and(status.eq.resolved_yes,resolved_at.eq."${T}")`,
+    });
+  });
+
+  it("a synced Can't tell answered later: both copies, each at its own time", () => {
+    expect(
+      deletionMatch({
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: T2,
+        synced_status: 'skipped',
+        synced_resolved_at: T,
+      }),
+    ).toEqual({
+      kind: 'answered',
+      filter: `status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."${T2}"),and(status.eq.skipped,resolved_at.eq."${T}")`,
+    });
+  });
+
+  it('the same copy synced and deleted: one term, as before', () => {
+    expect(deletionMatch({ ...deletedYes, synced_status: 'resolved_yes', synced_resolved_at: T })).toEqual(
+      deletedYesOnly,
+    );
+  });
+
+  it('nothing synced, or synced open: the deleted copy alone', () => {
+    for (const synced of [
+      {},
+      { synced_status: null, synced_resolved_at: null },
+      { synced_status: 'pending', synced_resolved_at: null },
+      // An open copy adds nothing beyond `status.eq.pending`, whatever time it carries.
+      { synced_status: 'pending', synced_resolved_at: T2 },
+    ]) {
+      expect(deletionMatch({ ...deletedYes, ...synced })).toEqual(deletedYesOnly);
+    }
+  });
+
+  it('deleted open with an answered synced copy: the synced copy counts, as `tombstoneCovers` reads it', () => {
+    expect(
+      deletionMatch({
+        deleted_status: 'pending',
+        deleted_resolved_at: null,
+        synced_status: 'resolved_yes',
+        synced_resolved_at: T,
+      }),
+    ).toEqual(deletedYesOnly);
+  });
+
+  it('builds no term from a synced copy it cannot validate, by its time or its status', () => {
+    for (const bad of [
+      '',
+      'soon',
+      '2026-13-45T10:00:00.000Z',
+      `${T}"),id.neq.("`,
+      `${T}),or(id.neq.x`,
+      `${T},status.eq.resolved_no`,
+      '2026-11-19 10:00:00',
+      `${T}\n`,
+      null,
+      undefined,
+    ]) {
+      expect(deletionMatch({ ...deletedYes, synced_status: 'resolved_no', synced_resolved_at: bad })).toEqual(
+        deletedYesOnly,
+      );
+    }
+    for (const status of ['resolved_maybe', 'resolved_no,id.neq.x', 'resolved_no),or(id.neq.x', '', null, undefined]) {
+      expect(deletionMatch({ ...deletedYes, synced_status: status, synced_resolved_at: T2 })).toEqual(
+        deletedYesOnly,
+      );
+    }
+  });
+
+  it('with neither copy valid: deleted open', () => {
+    expect(
+      deletionMatch({
+        deleted_status: 'resolved_yes',
+        deleted_resolved_at: 'soon',
+        synced_status: 'resolved_no',
+        synced_resolved_at: `${T}"),id.neq.("`,
+      }),
+    ).toEqual({ kind: 'open' });
+    expect(
+      deletionMatch({
+        deleted_status: 'resolved_maybe',
+        deleted_resolved_at: T,
+        synced_status: 'pending',
+        synced_resolved_at: T,
+      }),
+    ).toEqual({ kind: 'open' });
+  });
+
+  it('every filter it builds, over a grid of good and hostile copies, has the one grammar', () => {
+    const statuses = ['pending', 'resolved_yes', 'resolved_no', 'skipped', 'resolved_maybe', 'skipped)', '', null];
+    const times = [
+      T,
+      '2026-11-19T10:00:00.123456+05:30',
+      'soon',
+      `${T}"`,
+      `${T})`,
+      `${T},id.neq.x`,
+      '2026-11-19T10:00:00.1234567Z',
+      null,
+    ];
+    let built = 0;
+    for (const deletedStatus of statuses) {
+      for (const deletedAt of times) {
+        for (const syncedStatus of statuses) {
+          for (const syncedAt of times) {
+            const match = deletionMatch({
+              deleted_status: deletedStatus,
+              deleted_resolved_at: deletedAt,
+              synced_status: syncedStatus,
+              synced_resolved_at: syncedAt,
+            });
+            if (match.kind === 'answered') {
+              built += 1;
+              expect(match.filter).toMatch(FILTER_GRAMMAR);
+            }
+          }
+        }
+      }
+    }
+    // The grid did build filters, with one copy and with two.
+    expect(built).toBeGreaterThan(100);
   });
 });
 
@@ -638,5 +811,352 @@ describe('the conditional delete', () => {
     expect(calls).toEqual(['delete:p1', 'recheck']);
     expect(held.get('p1')?.status).toBe('resolved_yes');
     expect(await countUnsynced(USER)).toBe(0);
+  });
+});
+
+// Round 7 follow-up. A deliberate delete of an answer this phone changed after
+// it synced used to fail: the delete matched only the deleted copy, the
+// server held the synced version, nothing was removed, and the read-back
+// restored the old answer. Now the synced copy counts too. Through the real
+// flows: an answer pushed (or pulled), changed here, deleted here.
+describe('deleting an answer changed here after it synced', () => {
+  const answeredAt = '2026-06-01T19:30:00.000Z';
+
+  /** p1 answered `status` at `at` here and pushed: the server holds that copy, synced here. */
+  async function answeredAndSynced(status: 'resolved_yes' | 'resolved_no' | 'skipped', at: string) {
+    await insertPrediction(prediction());
+    await resolvePrediction('p1', status, undefined, { at });
+    const server = fakeServer();
+    await expect(pushDirty(USER, server.client, always)).resolves.toBe(1);
+    expect(server.held.get('p1')).toMatchObject({ status, resolved_at: at });
+    expect(await countUnsynced(USER)).toBe(0);
+    server.calls.length = 0;
+    return server;
+  }
+
+  it("synced Yes, corrected to No, deleted: the server's Yes is removed", async () => {
+    const server = await answeredAndSynced('resolved_yes', answeredAt);
+    await correctPredictionOutcome('p1', 'resolved_no');
+    await deletePrediction('p1', { counted: true });
+    expect(await listPendingTombstonesSettled(USER)).toEqual([
+      expect.objectContaining({
+        id: 'p1',
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: answeredAt,
+        synced_status: 'resolved_yes',
+        synced_resolved_at: answeredAt,
+      }),
+    ]);
+
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(1);
+    expect(server.calls).toEqual(['delete:p1']);
+    expect(server.filtersSent).toEqual([
+      `or=(status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."${answeredAt}"),and(status.eq.resolved_yes,resolved_at.eq."${answeredAt}"))`,
+    ]);
+    expect(server.held.has('p1')).toBe(false);
+    expect(await getPrediction('p1')).toBeNull();
+    expect(await listPendingDeletions(USER)).toEqual([]);
+    // The tombstone stays, pushed and counted (D45).
+    expect(await isDeletedHere('p1')).toBe(true);
+    expect((await listDeletions(USER))[0]?.counted).toBe(true);
+    expect(await countUnsynced(USER)).toBe(0);
+  });
+
+  it('the same in a sweep: removed on the server first, and the pull brings nothing back', async () => {
+    const server = await answeredAndSynced('resolved_yes', answeredAt);
+    await correctPredictionOutcome('p1', 'resolved_no');
+    await deletePrediction('p1', { counted: true });
+    const recompute = jest.fn(async () => {});
+
+    await expect(
+      syncNow(USER, { client: server.client, cursorStore: cursorStore(), recompute }),
+    ).resolves.toEqual({ pulled: 0, pushed: 0 });
+    expect(server.calls[0]).toBe('delete:p1');
+    expect(server.held.has('p1')).toBe(false);
+    expect(await getPrediction('p1')).toBeNull();
+    expect(await isDeletedHere('p1')).toBe(true);
+    expect(recompute).not.toHaveBeenCalled();
+  });
+
+  it("the same in sign-out's one more push", async () => {
+    const server = await answeredAndSynced('resolved_yes', answeredAt);
+    await correctPredictionOutcome('p1', 'resolved_no');
+    await deletePrediction('p1', { counted: true });
+
+    await expect(pushNow(USER, { client: server.client })).resolves.toBe(1);
+    expect(server.held.has('p1')).toBe(false);
+    expect(await countUnsynced(USER)).toBe(0);
+  });
+
+  it('synced Yes pulled from another phone, its time in microseconds, corrected to No here, deleted: removed', async () => {
+    await insertPrediction(prediction());
+    const server = fakeServer();
+    await pushDirty(USER, server.client, always);
+    // Phone B answered it; this phone pulls the answer as the server wrote it.
+    const onB = '2026-06-01T19:30:00.123456+00:00';
+    server.held.set('p1', serverCopy(onB, { updated_at: afterTheDeletion() }));
+    await expect(pullRemote(USER, server.client, cursorStore())).resolves.toBe(1);
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: onB });
+    await correctPredictionOutcome('p1', 'resolved_no');
+    await deletePrediction('p1', { counted: true });
+
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(1);
+    expect(server.filtersSent).toEqual([
+      `or=(status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."${onB}"),and(status.eq.resolved_yes,resolved_at.eq."${onB}"))`,
+    ]);
+    expect(server.held.has('p1')).toBe(false);
+    expect(await getPrediction('p1')).toBeNull();
+  });
+
+  it("synced Can't tell, answered No here, deleted: the server's Can't tell is removed", async () => {
+    const skippedAt = '2026-06-02T19:00:00.000Z';
+    const answeredLater = '2026-06-04T08:00:00.000Z';
+    const server = await answeredAndSynced('skipped', skippedAt);
+    await answerSkippedPrediction('p1', 'resolved_no', undefined, { at: answeredLater });
+    await deletePrediction('p1', { counted: true });
+    expect(await listPendingTombstonesSettled(USER)).toEqual([
+      expect.objectContaining({
+        id: 'p1',
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: answeredLater,
+        synced_status: 'skipped',
+        synced_resolved_at: skippedAt,
+      }),
+    ]);
+
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(1);
+    expect(server.calls).toEqual(['delete:p1']);
+    expect(server.filtersSent).toEqual([
+      `or=(status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."${answeredLater}"),and(status.eq.skipped,resolved_at.eq."${skippedAt}"))`,
+    ]);
+    expect(server.held.has('p1')).toBe(false);
+    expect(await getPrediction('p1')).toBeNull();
+    expect(await listPendingDeletions(USER)).toEqual([]);
+    expect(await isDeletedHere('p1')).toBe(true);
+  });
+
+  it('synced Yes, changed to No on another phone this phone never pulled, deleted here: not removed, and the No comes back', async () => {
+    const server = await answeredAndSynced('resolved_yes', answeredAt);
+    // Phone B corrected it ("Change answer" keeps the time); this phone never pulled.
+    const onB = serverCopy(answeredAt, {
+      status: 'resolved_no',
+      reflection: 'From phone B',
+      updated_at: afterTheDeletion(),
+    });
+    server.held.set('p1', onB);
+    await deletePrediction('p1', { counted: true });
+
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(0);
+    expect(server.calls).toEqual(['delete:p1', 'recheck']);
+    // Both copies this phone saw are its Yes: one term.
+    expect(server.filtersSent).toEqual([
+      `or=(status.eq.pending,and(status.eq.resolved_yes,resolved_at.eq."${answeredAt}"))`,
+    ]);
+    expect(server.held.get('p1')).toEqual(onB);
+    expect(await getPrediction('p1')).toMatchObject({
+      status: 'resolved_no',
+      resolved_at: answeredAt,
+      reflection: 'From phone B',
+    });
+    expect(await isDeletedHere('p1')).toBe(false);
+    expect(await listDeletions(USER)).toEqual([]);
+    expect(await countUnsynced(USER)).toBe(0);
+  });
+
+  it("synced Can't tell, answered Yes on another phone this phone never pulled, answered No and deleted here: not removed, and the Yes comes back", async () => {
+    const skippedAt = '2026-06-02T19:00:00.000Z';
+    const server = await answeredAndSynced('skipped', skippedAt);
+    const onB = serverCopy('2026-06-03T09:00:00.000Z', { updated_at: afterTheDeletion() });
+    server.held.set('p1', onB);
+    await answerSkippedPrediction('p1', 'resolved_no', undefined, { at: '2026-06-04T08:00:00.000Z' });
+    await deletePrediction('p1', { counted: true });
+
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(0);
+    expect(server.calls).toEqual(['delete:p1', 'recheck']);
+    expect(server.held.get('p1')).toEqual(onB);
+    expect(await getPrediction('p1')).toMatchObject({
+      status: 'resolved_yes',
+      resolved_at: '2026-06-03T09:00:00.000Z',
+    });
+    expect(await isDeletedHere('p1')).toBe(false);
+    expect(await countUnsynced(USER)).toBe(0);
+  });
+
+  it('sends only what it validated: a synced copy with a hostile time or status adds nothing to the filter', async () => {
+    const deletedAt = '2026-11-19T10:00:00.000Z';
+    const hostile: PendingTombstone[] = [
+      {
+        id: 'p1',
+        deleted_at: deletedAt,
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: answeredAt,
+        synced_status: 'resolved_yes',
+        synced_resolved_at: `${answeredAt}"),id.neq.("`,
+      },
+      {
+        id: 'p2',
+        deleted_at: deletedAt,
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: answeredAt,
+        synced_status: 'resolved_yes),or(id.neq.x' as PendingTombstone['synced_status'],
+        synced_resolved_at: answeredAt,
+      },
+    ];
+    jest.spyOn(predictionsDb, 'listPendingTombstonesSettled').mockResolvedValue(hostile);
+    const server = fakeServer({
+      rows: [
+        serverCopy(answeredAt, { status: 'resolved_no' }),
+        serverCopy(answeredAt, { id: 'p2', status: 'resolved_no' }),
+      ],
+    });
+
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(2);
+    const deletedOnly = `or=(status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."${answeredAt}"))`;
+    expect(server.filtersSent).toEqual([deletedOnly, deletedOnly]);
+  });
+});
+
+// Round 7 follow-up. A tombstone the read-back keeps (the server holds a row
+// the deletion covers, which the delete didn't remove: a copy the filter
+// can't express, say) was sent again in every sweep. Now it waits an hour (in
+// memory, per account), as a row refused at a cap does, and stays pending and
+// counted as unsynced meanwhile.
+describe('a deletion the read-back keeps waits before it is sent again', () => {
+  const HOUR = 60 * 60_000;
+  const OTHER = 'user-bbb';
+
+  /**
+   * A server whose delete removes nothing (unless `state.removes`) and whose
+   * read still finds the row open, so the read-back keeps the tombstone;
+   * `state.fails` makes the delete fail instead. Records `delete:<id>`,
+   * `recheck` and `pull`.
+   */
+  function keepingServer() {
+    const calls: string[] = [];
+    const state = { removes: false, fails: false };
+    const from = () => ({
+      delete() {
+        const filters: Record<string, unknown> = {};
+        const q = {
+          eq(col: string, val: unknown) {
+            filters[col] = val;
+            return q;
+          },
+          or: () => q,
+          select: async () => {
+            const id = String(filters.id);
+            calls.push(`delete:${id}`);
+            if (state.fails) return { data: null, error: { message: 'offline' } };
+            return { data: state.removes ? [{ id }] : [], error: null };
+          },
+        };
+        return q;
+      },
+      select() {
+        const filters: Record<string, unknown> = {};
+        const q = {
+          eq(col: string, val: unknown) {
+            filters[col] = val;
+            return q;
+          },
+          gt: () => q,
+          order: () => q,
+          limit: async () => {
+            calls.push('pull');
+            return { data: [], error: null };
+          },
+          in: async (_col: string, ids: string[]) => {
+            calls.push('recheck');
+            return {
+              data: ids.map((id) => serverCopy(null, { id, user_id: String(filters.user_id) })),
+              error: null,
+            };
+          },
+        };
+        return q;
+      },
+    });
+    const client = {
+      from,
+      auth: { getSession: async () => ({ data: { session: { user: { id: USER } } }, error: null }) },
+    } as unknown as SupabaseClient;
+    return { client, calls, state };
+  }
+
+  it("is not sent again within the hour, by a push, a sweep or sign-out's push, and stays counted as unsynced", async () => {
+    expect(KEPT_DELETION_RETRY_MS).toBe(HOUR);
+    await deletedHere();
+    const server = keepingServer();
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(0);
+    expect(server.calls).toEqual(['delete:p1', 'recheck']);
+    expect(await listPendingDeletions(USER)).toEqual(['p1']);
+
+    server.calls.length = 0;
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(0);
+    await syncNow(USER, { client: server.client, cursorStore: cursorStore(), recompute: async () => {} });
+    await expect(pushNow(USER, { client: server.client })).resolves.toBe(0);
+    // Only the sweep's pull went: no delete, no read-back.
+    expect(server.calls).toEqual(['pull']);
+    expect(await listPendingDeletions(USER)).toEqual(['p1']);
+    expect(await countUnsynced(USER)).toBe(1);
+    expect(await getPrediction('p1')).toBeNull();
+  });
+
+  it('is sent again once the hour is over, and goes through then', async () => {
+    await deletedHere();
+    const server = keepingServer();
+    await pushDeletions(USER, server.client, always);
+    server.calls.length = 0;
+    server.state.removes = true;
+
+    jest.spyOn(Date, 'now').mockReturnValue(Date.now() + HOUR + 1_000);
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(1);
+    expect(server.calls).toEqual(['delete:p1']);
+    expect(await listPendingDeletions(USER)).toEqual([]);
+    expect(await isDeletedHere('p1')).toBe(true);
+  });
+
+  it('is sent again at once when its tombstone is written again', async () => {
+    await deletedHere();
+    const server = keepingServer();
+    await pushDeletions(USER, server.client, always);
+    server.calls.length = 0;
+    server.state.removes = true;
+
+    // Deleted again: a new deletion time.
+    await getDb().run(`UPDATE prediction_deletions SET deleted_at = ? WHERE id = ?`, [
+      new Date(Date.now() + 1_000).toISOString(),
+      'p1',
+    ]);
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(1);
+    expect(server.calls).toEqual(['delete:p1']);
+  });
+
+  it('only a kept read-back holds a deletion: one whose delete failed is tried at the next push', async () => {
+    await deletedHere();
+    const server = keepingServer();
+    server.state.fails = true;
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(0);
+    server.calls.length = 0;
+    server.state.fails = false;
+    server.state.removes = true;
+
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(1);
+    expect(server.calls).toEqual(['delete:p1']);
+  });
+
+  it("is held per account: another account's deletion goes meanwhile, and leaves this one held", async () => {
+    await deletedHere();
+    await insertPrediction(prediction({ id: 'p2', user_id: OTHER }));
+    await deletePrediction('p2');
+    const server = keepingServer();
+    await pushDeletions(USER, server.client, always);
+    server.calls.length = 0;
+    server.state.removes = true;
+
+    await expect(pushDeletions(OTHER, server.client, always)).resolves.toBe(1);
+    await expect(pushDeletions(USER, server.client, always)).resolves.toBe(0);
+    expect(server.calls).toEqual(['delete:p2']);
+    expect(await listPendingDeletions(USER)).toEqual(['p1']);
   });
 });

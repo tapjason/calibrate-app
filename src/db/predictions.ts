@@ -7,6 +7,7 @@
 
 import { UTC_OFFSET_SYNC } from '@/constants/app';
 import {
+  isStoredInstant,
   isUtcOffsetMinutes,
   type Category,
   type CategoryOrigin,
@@ -57,6 +58,13 @@ interface PredictionRow {
   // writes, reads or syncs it. The column stays (an applied migration is
   // never edited); `SELECT *` still returns it, and rowToPrediction and
   // rowToWire leave it out.
+  /**
+   * SQLite migration 023: the version this phone last learned the server
+   * holds (`markPredictionSynced`, `upsertPredictionFromRemote`), for the
+   * tombstone (`deletePrediction`). Never in Prediction or the wire row.
+   */
+  synced_status: string | null;
+  synced_resolved_at: string | null;
   updated_at: string;
   dirty: number;
 }
@@ -173,6 +181,21 @@ function statusOrNull(value: unknown): PredictionStatus | null {
 /** Yes, No or Can't tell: the statuses that carry an answer. */
 function isAnswer(status: unknown): boolean {
   return status === 'resolved_yes' || status === 'resolved_no' || status === 'skipped';
+}
+
+/** A stored time as it is, else null (a tombstone's copy). */
+function stringOrNull(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+/**
+ * Whether two stored times are the same instant: both a valid
+ * `isStoredInstant` (a time that fails it is never the same as anything,
+ * itself included), equal to the millisecond (as `isoMs` reads them, so 'Z' /
+ * '+00:00' and microseconds don't matter).
+ */
+function sameInstant(a: unknown, b: unknown): boolean {
+  return isStoredInstant(a) && isStoredInstant(b) && isoMs(a) === isoMs(b);
 }
 
 /**
@@ -654,11 +677,24 @@ export async function getAnsweredCategory(
  * same answer: `tombstoneCovers`), and an answer given on another phone that
  * this one never saw is restored here instead (`reconcileTombstoneWithRemote`).
  *
+ * **And the version this phone last synced** (SQLite migration 023,
+ * 2026-11-19): the row's `synced_status` and `synced_resolved_at`, the
+ * version it last pushed or pulled, so a deletion also removes an answer of
+ * its own that reached the server before a change made here ("Change
+ * answer", or a pushed Can't tell answered later) could follow it. Copied
+ * only while the row is still the copy the caller saw (the same status, and
+ * the same `resolved_at` string or instant): a row a pull rewrote since
+ * holds the pull's knowledge of the server, which the caller never saw, so
+ * the tombstone then keeps no synced copy (round 7's case: a stale phone's
+ * open copy, answered elsewhere and pulled while the screen still showed it
+ * open, must restore the answer, never remove it).
+ *
  * Read before anything is written, so a change landing in between (a pull's
  * writes don't queue behind a transaction) can only make the copy recorded
  * differ from what was deleted, and a differing copy only ever restores,
- * never removes, an answer. A `seen.status` that isn't a status is recorded
- * as none, read as "deleted open". Tombstone first, then the row: a pull in
+ * never removes, an answer: both copies are versions this phone held. A
+ * `seen.status` that isn't a status is recorded as none, read as "deleted
+ * open", with no synced copy. Tombstone first, then the row: a pull in
  * between finds the tombstone and leaves the row to the reconcile.
  */
 export const deletePrediction: DeletePrediction = async (id, opts) => {
@@ -667,20 +703,34 @@ export const deletePrediction: DeletePrediction = async (id, opts) => {
     user_id: string;
     status: string;
     resolved_at: string | null;
-  }>(`SELECT user_id, status, resolved_at FROM predictions WHERE id = ?`, [id]);
+    synced_status: string | null;
+    synced_resolved_at: string | null;
+  }>(
+    `SELECT user_id, status, resolved_at, synced_status, synced_resolved_at
+       FROM predictions WHERE id = ?`,
+    [id],
+  );
   if (!row) return;
   const seen = opts?.seen ?? row;
+  const stillSeen =
+    seen.status === row.status &&
+    (seen.resolved_at === row.resolved_at || sameInstant(seen.resolved_at, row.resolved_at));
+  const syncedStatus = stillSeen ? statusOrNull(row.synced_status) : null;
+  const syncedResolvedAt = syncedStatus === null ? null : stringOrNull(row.synced_resolved_at);
   await db.run(
     `INSERT OR REPLACE INTO prediction_deletions
-       (id, user_id, deleted_at, pushed_at, counted, deleted_status, deleted_resolved_at)
-       VALUES (?, ?, ?, NULL, ?, ?, ?)`,
+       (id, user_id, deleted_at, pushed_at, counted, deleted_status, deleted_resolved_at,
+        synced_status, synced_resolved_at)
+       VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
     [
       id,
       row.user_id,
       nowIso(),
       opts?.counted ? 1 : 0,
       statusOrNull(seen.status),
-      typeof seen.resolved_at === 'string' ? seen.resolved_at : null,
+      stringOrNull(seen.resolved_at),
+      syncedStatus,
+      syncedResolvedAt,
     ],
   );
   await db.run(`DELETE FROM predictions WHERE id = ?`, [id]);
@@ -885,15 +935,19 @@ export async function listPendingDeletionsSettled(userId: string): Promise<strin
 
 /**
  * The deletions not yet pushed for `userId`, oldest first, each with when it
- * was made and what it deleted (`PendingTombstone`: the status and
- * `resolved_at` of this phone's copy, review round 7), read as
- * `listPendingDeletionsSettled` reads. For the deletion push, which must
- * remove from the server only what this phone deleted (`tombstoneCovers`):
- * a row that is open, or, when `deleted_status` is an answer (Yes, No or
- * Can't tell), one with that status and the same `resolved_at` instant.
- * `deleted_status` is null for a tombstone from before SQLite migration 021
- * (or one holding a value that isn't a status): "deleted open", an open row
- * only. Never call it inside a `withTransaction` callback.
+ * was made, what it deleted and the version this phone last synced
+ * (`PendingTombstone`: the status and `resolved_at` of this phone's copy,
+ * review round 7; and of the version it last pushed or pulled, SQLite
+ * migration 023), read as `listPendingDeletionsSettled` reads. For the
+ * deletion push, which must remove from the server only what this phone held
+ * (`tombstoneCovers`): a row that is open, or an answer (Yes, No or Can't
+ * tell) with the status and the same `resolved_at` instant of either copy.
+ * Each status is null when there is no such copy (a tombstone from before
+ * 021 has neither, and reads as "deleted open", an open row only; one from
+ * before 023 has no synced copy), or when the stored value isn't a status.
+ * The times are as stored; whether they can be compared is
+ * `isStoredInstant`'s call, on both sides. Never call it inside a
+ * `withTransaction` callback.
  */
 export async function listPendingTombstonesSettled(userId: string): Promise<PendingTombstone[]> {
   const rows = await afterQueuedTransactions(() =>
@@ -902,50 +956,78 @@ export async function listPendingTombstonesSettled(userId: string): Promise<Pend
       deleted_at: string;
       deleted_status: string | null;
       deleted_resolved_at: string | null;
+      synced_status: string | null;
+      synced_resolved_at: string | null;
     }>(
-      `SELECT id, deleted_at, deleted_status, deleted_resolved_at FROM prediction_deletions
+      `SELECT id, deleted_at, deleted_status, deleted_resolved_at, synced_status, synced_resolved_at
+         FROM prediction_deletions
          WHERE user_id = ? AND pushed_at IS NULL
          ORDER BY deleted_at ASC`,
       [userId],
     ),
   );
-  return rows.map((r) => ({
-    id: r.id,
-    deleted_at: r.deleted_at,
-    deleted_status: statusOrNull(r.deleted_status),
-    deleted_resolved_at: typeof r.deleted_resolved_at === 'string' ? r.deleted_resolved_at : null,
-  }));
+  return rows.map((r) => {
+    const syncedStatus = statusOrNull(r.synced_status);
+    return {
+      id: r.id,
+      deleted_at: r.deleted_at,
+      deleted_status: statusOrNull(r.deleted_status),
+      deleted_resolved_at: stringOrNull(r.deleted_resolved_at),
+      synced_status: syncedStatus,
+      // No time without a version it belongs to, as `deletePrediction` writes.
+      synced_resolved_at: syncedStatus === null ? null : stringOrNull(r.synced_resolved_at),
+    };
+  });
 }
+
+/** A tombstone's two copies; one with no synced copy (before 023) may leave it out. */
+export type TombstoneCopies = Pick<PendingTombstone, 'deleted_status' | 'deleted_resolved_at'> &
+  Partial<Pick<PendingTombstone, 'synced_status' | 'synced_resolved_at'>>;
 
 /**
  * Whether this phone's deletion covers the server's copy of the prediction
- * as it now is (review round 7): the copy is open, or it is the very answer
- * this phone deleted. The one rule behind both halves of a deletion's sync:
- * the push may remove a server row only when this is true (the services
- * builder turns it into the delete's filter), and the pull keeps the
- * tombstone only when this is true (`reconcileTombstoneWithRemote`).
+ * as it now is (review round 7; the synced copy, 2026-11-19): the copy is
+ * open, or it is a version this phone held, the answer it deleted or the one
+ * it last synced. The one rule behind both halves of a deletion's sync: the
+ * push may remove a server row only when this is true (sync turns it into
+ * the delete's filter), and the pull keeps the tombstone only when this is
+ * true (`reconcileTombstoneWithRemote`).
  *
  *   - An open copy (`pending`) is always covered: it carries no answer, so
- *     deleting it removes none, whatever this phone's copy was.
- *   - A Yes, No or Can't tell is covered only when this phone deleted an
- *     answer (`deleted_status` Yes, No or Can't tell) with the same status
- *     and the same `resolved_at` instant (read as `isoMs` reads it, so
- *     `Z` / `+00:00` and microseconds don't matter).
- *   - Anything else is an answer this deletion never saw: a tombstone that
- *     deleted an open copy (or has no copy recorded, from before migration
- *     021), another status, another answer time, or a time that can't be
- *     read on either side. Never covered, whatever the times: the answer
- *     outranks the deletion.
+ *     deleting it removes none, whatever this phone's copies were.
+ *   - A Yes, No or Can't tell is covered when either copy is an answer (Yes,
+ *     No or Can't tell) with the same status and the same `resolved_at`
+ *     instant: the deleted copy (`deleted_*`), or the version this phone last
+ *     pushed or pulled (`synced_*`, SQLite migration 023), which the server
+ *     still holds when a change made here never reached it ("Change answer"
+ *     keeps `resolved_at`; a pushed Can't tell answered later). Each time
+ *     must be a valid `isStoredInstant`, compared to the millisecond (`Z` /
+ *     `+00:00` and microseconds don't matter).
+ *   - Anything else is an answer this phone never held: a tombstone with no
+ *     answer copy (it deleted an open copy and never synced an answer, or
+ *     has no copy recorded, from before migration 021), another status,
+ *     another answer time, or a time that fails `isStoredInstant` on either
+ *     side, as sync's filter never sends one. Never covered, whatever the
+ *     times: the answer outranks the deletion.
  */
 export function tombstoneCovers(
-  tomb: Pick<PendingTombstone, 'deleted_status' | 'deleted_resolved_at'>,
+  tomb: TombstoneCopies,
   remote: Pick<PredictionWireRow, 'status' | 'resolved_at'>,
 ): boolean {
   if (remote.status === 'pending') return true;
-  if (!isAnswer(tomb.deleted_status) || remote.status !== tomb.deleted_status) return false;
-  const deleted = isoMs(tomb.deleted_resolved_at);
-  const now = isoMs(remote.resolved_at);
-  return !Number.isNaN(deleted) && !Number.isNaN(now) && deleted === now;
+  return (
+    isSameAnswer(tomb.deleted_status, tomb.deleted_resolved_at, remote) ||
+    isSameAnswer(tomb.synced_status, tomb.synced_resolved_at, remote)
+  );
+}
+
+/** Whether one of a tombstone's copies is the answer `remote` holds (`tombstoneCovers`). */
+function isSameAnswer(
+  status: unknown,
+  resolvedAt: unknown,
+  remote: Pick<PredictionWireRow, 'status' | 'resolved_at'>,
+): boolean {
+  return isAnswer(status) && remote.status === status && sameInstant(resolvedAt, remote.resolved_at);
 }
 
 /**
@@ -1031,6 +1113,14 @@ export async function getPredictionUpdatedAt(
  * (another logging time, or new words with their own date) still takes only
  * what the pulled row brings. The answer's offset column (unused since round
  * 6) is never written.
+ *
+ * **The server's version is recorded** (SQLite migration 023, 2026-11-19):
+ * `synced_status` and `synced_resolved_at` take the pulled row's status and
+ * `resolved_at` every time, inserted or updated, and also when this phone's
+ * answered row stands whole: the pulled copy is what the server holds, and
+ * this phone's row, pushed, would replace it there. A deletion made here
+ * then covers it too (`tombstoneCovers`). A status that isn't one is
+ * recorded as none.
  */
 export async function upsertPredictionFromRemote(
   row: PredictionWireRow,
@@ -1063,8 +1153,9 @@ export async function upsertPredictionFromRemote(
        (id, user_id, title, category, confidence, created_at, due_date,
         status, resolved_at, reflection, integrity_bonus, title_edited_at,
         created_utc_offset_min, title_edited_utc_offset_min,
+        synced_status, synced_resolved_at,
         updated_at, dirty)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT(id) DO UPDATE SET
        user_id         = ${unlessKept('user_id')},
        title           = ${unlessKept('title')},
@@ -1086,6 +1177,9 @@ export async function upsertPredictionFromRemote(
          'title_edited_utc_offset_min',
          offsetFrom('title_edited_utc_offset_min', 'title_edited_at'),
        )},
+       -- What the server holds, whether this phone's row stands or not.
+       synced_status      = excluded.synced_status,
+       synced_resolved_at = excluded.synced_resolved_at,
        -- Past the pulled time (laterThan) and never behind this phone's own,
        -- in the text order sync compares by.
        updated_at      = CASE WHEN ${keepLocal} THEN MAX(?, predictions.updated_at)
@@ -1106,6 +1200,8 @@ export async function upsertPredictionFromRemote(
       row.title_edited_at ?? null,
       incoming(row.created_utc_offset_min),
       incoming(row.title_edited_utc_offset_min),
+      statusOrNull(row.status),
+      stringOrNull(row.resolved_at),
       row.updated_at,
       laterThan(row.updated_at),
     ],
@@ -1135,21 +1231,24 @@ function isoMs(iso: string | null | undefined): number {
  * deletion, pushed, took the answer off the server for every phone, whether
  * the answer came before the delete or after (round 6 only caught after).
  *
- * Now the tombstone remembers what this phone deleted (SQLite migration 021),
- * and the rule is `tombstoneCovers`: when the pulled row is an answer (Yes,
- * No or Can't tell) other than the one this phone deleted (it deleted an open
- * copy, or has no copy recorded, from before 021; or the status or the
- * `resolved_at` instant differ), the answer was given without this deletion
- * seeing it and outranks it, **whatever the times**. The tombstone is dropped,
- * pushed or not (so it is neither pushed nor counted, D45), and the pulled
+ * Now the tombstone remembers what this phone deleted (SQLite migration 021)
+ * and the version it last synced (migration 023), and the rule is
+ * `tombstoneCovers`: when the pulled row is an answer (Yes, No or Can't tell)
+ * other than either of those (it deleted an open copy and never synced an
+ * answer, or has no copy recorded, from before 021; or the status or the
+ * `resolved_at` instant differ from both), the answer was given without this
+ * deletion seeing it and outranks it, **whatever the times**. The tombstone
+ * is dropped, pushed or not (so it is neither pushed nor counted, D45), and the pulled
  * row is written here as a pull writes any row (`upsertPredictionFromRemote`,
  * `dirty = 0`), in one transaction with the drop ('restored').
  *
  * The tombstone stands ('kept') for an open pulled row (it carries no answer:
  * the deletion outranks it, whatever this phone's copy was), for the very
- * answer this phone deleted (a deliberate delete of an answer it saw), for a
- * tombstone under another account, and for a pulled row whose status isn't
- * one at all (nothing to restore).
+ * answer this phone deleted (a deliberate delete of an answer it saw), for
+ * the version it last synced (its own answer, which a change made here and
+ * deleted with it never replaced on the server), for a tombstone under
+ * another account, and for a pulled row whose status isn't one at all
+ * (nothing to restore).
  *
  * Its own transaction: never call it inside a `withTransaction` callback,
  * which would wait on itself.
@@ -1163,18 +1262,23 @@ export async function reconcileTombstoneWithRemote(
       user_id: string;
       deleted_status: string | null;
       deleted_resolved_at: string | null;
+      synced_status: string | null;
+      synced_resolved_at: string | null;
     }>(
-      `SELECT user_id, deleted_status, deleted_resolved_at FROM prediction_deletions WHERE id = ?`,
+      `SELECT user_id, deleted_status, deleted_resolved_at, synced_status, synced_resolved_at
+         FROM prediction_deletions WHERE id = ?`,
       [row.id],
     );
     if (!tomb) return 'none';
     if (tomb.user_id !== row.user_id) return 'kept';
     if (!isAnswer(row.status)) return 'kept';
-    const copy = {
+    const copies: TombstoneCopies = {
       deleted_status: statusOrNull(tomb.deleted_status),
-      deleted_resolved_at: tomb.deleted_resolved_at,
+      deleted_resolved_at: stringOrNull(tomb.deleted_resolved_at),
+      synced_status: statusOrNull(tomb.synced_status),
+      synced_resolved_at: stringOrNull(tomb.synced_resolved_at),
     };
-    if (tombstoneCovers(copy, row)) return 'kept';
+    if (tombstoneCovers(copies, row)) return 'kept';
     await db.run(`DELETE FROM prediction_deletions WHERE id = ? AND user_id = ?`, [
       row.id,
       row.user_id,
@@ -1202,6 +1306,18 @@ function laterThan(iso: string): string {
  * Clear `dirty` after a successful push, but ONLY if `updated_at` still
  * matches what we pushed. A concurrent local write would have bumped
  * updated_at and re-set dirty=1; this guard preserves that.
+ *
+ * When the mark lands, the row also records the version that went up as the
+ * one the server holds (`synced_status`, `synced_resolved_at`, SQLite
+ * migration 023), for a later deletion (`tombstoneCovers`). That is the
+ * row's own status and `resolved_at` in the same statement: every local
+ * write moves `updated_at` (`nowIso`), and a pull either clears `dirty` or
+ * keeps this phone's whole row (`upsertPredictionFromRemote`), so a row still
+ * dirty with the `updated_at` pushed holds exactly the status and
+ * `resolved_at` that were pushed. A mark that doesn't land records nothing.
+ * A version the server's trigger kept from landing (an open copy over an
+ * answer, Supabase migration 011) is still one this phone held, so covering
+ * it never removes an answer given elsewhere.
  */
 export async function markPredictionSynced(
   id: string,
@@ -1209,7 +1325,7 @@ export async function markPredictionSynced(
 ): Promise<void> {
   await getDb().run(
     `UPDATE predictions
-       SET dirty = 0
+       SET dirty = 0, synced_status = status, synced_resolved_at = resolved_at
        WHERE id = ? AND updated_at = ? AND dirty = 1`,
     [id, syncedUpdatedAt],
   );

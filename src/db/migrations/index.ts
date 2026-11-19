@@ -39,6 +39,7 @@ import { MIGRATION_019 } from './019_category_origins';
 import { MIGRATION_020 } from './020_sync_markers';
 import { MIGRATION_021 } from './021_deletion_snapshots';
 import { MIGRATION_022 } from './022_answered_categories';
+import { MIGRATION_023 } from './023_synced_versions';
 
 export interface Migration {
   id: string;
@@ -69,6 +70,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: '020_sync_markers', sql: MIGRATION_020 },
   { id: '021_deletion_snapshots', sql: MIGRATION_021 },
   { id: '022_answered_categories', sql: MIGRATION_022 },
+  { id: '023_synced_versions', sql: MIGRATION_023 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();

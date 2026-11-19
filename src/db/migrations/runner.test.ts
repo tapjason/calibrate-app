@@ -226,3 +226,63 @@ describe('migration 009 (custom categories)', () => {
     expect(await raw.all(`SELECT * FROM categories`)).toEqual([]);
   });
 });
+
+// 2026-11-19, re-review of round 7: the version this phone last synced, for
+// a later deletion. A clean row holds exactly the version last pushed or
+// pulled, so it takes it; a dirty row and every older tombstone take none.
+describe('migration 023 (synced versions)', () => {
+  it('backfills each clean row with its own version, and nothing else', async () => {
+    const raw = await createRawTestDb();
+    await runMigrations(
+      raw,
+      MIGRATIONS.filter((m) => m.id < '023'),
+    );
+    const insert = (id: string, status: string, resolvedAt: string | null, dirty: 0 | 1) =>
+      raw.run(
+        `INSERT INTO predictions
+           (id, user_id, title, category, confidence, created_at, due_date, status,
+            resolved_at, updated_at, dirty)
+         VALUES (?, 'u1', 'kept', 'work', 70, '2026-10-01T12:00:00.000Z',
+                 '2026-10-03T12:00:00.000Z', ?, ?, '2026-10-03T19:00:00.000Z', ?)`,
+        [id, status, resolvedAt, dirty],
+      );
+    await insert('clean-yes', 'resolved_yes', '2026-10-03T19:00:00.000Z', 0);
+    await insert('clean-skip', 'skipped', '2026-10-03T19:00:00+00:00', 0);
+    await insert('clean-open', 'pending', null, 0);
+    await insert('dirty-no', 'resolved_no', '2026-10-03T19:00:00.000Z', 1);
+    await raw.run(
+      `INSERT INTO prediction_deletions
+         (id, user_id, deleted_at, pushed_at, counted, deleted_status, deleted_resolved_at)
+       VALUES ('gone', 'u1', '2026-10-04T00:00:00.000Z', NULL, 1, 'resolved_no', '2026-10-03T19:00:00.000Z')`,
+    );
+
+    await runMigrations(raw);
+
+    const synced = await raw.all<{ id: string; synced_status: string | null; synced_resolved_at: string | null }>(
+      `SELECT id, synced_status, synced_resolved_at FROM predictions ORDER BY id`,
+    );
+    expect(synced).toEqual([
+      { id: 'clean-open', synced_status: 'pending', synced_resolved_at: null },
+      { id: 'clean-skip', synced_status: 'skipped', synced_resolved_at: '2026-10-03T19:00:00+00:00' },
+      { id: 'clean-yes', synced_status: 'resolved_yes', synced_resolved_at: '2026-10-03T19:00:00.000Z' },
+      { id: 'dirty-no', synced_status: null, synced_resolved_at: null },
+    ]);
+    // Every other column as it was.
+    expect(await raw.get(`SELECT * FROM predictions WHERE id = 'dirty-no'`)).toMatchObject({
+      status: 'resolved_no',
+      updated_at: '2026-10-03T19:00:00.000Z',
+      dirty: 1,
+    });
+    expect(
+      await raw.get(
+        `SELECT deleted_status, deleted_resolved_at, synced_status, synced_resolved_at
+           FROM prediction_deletions WHERE id = 'gone'`,
+      ),
+    ).toEqual({
+      deleted_status: 'resolved_no',
+      deleted_resolved_at: '2026-10-03T19:00:00.000Z',
+      synced_status: null,
+      synced_resolved_at: null,
+    });
+  });
+});

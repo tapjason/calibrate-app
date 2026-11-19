@@ -1,10 +1,20 @@
 # Handoff
 
-**Branch:** `master`, with steps 1–196, the cleanup and the two studies merged and pushed
-(steps 195 and 196 on 2026-11-18, the owner's word, after he picked D68). **Build 5 is
-next**, from `master`: steps 195 and 196, JS only; the owner builds and submits it. He
-reports build 4 (steps 188–194) merged and pushed the same day. The order of what is left
-before submission is `docs/SHIP_READINESS.md`, "What stands between here and the store".
+**Branch:** `builder/review-2026-11-18`, the owner-called security and code review of
+2026-11-18/19: seven fix rounds on top of `master` (`6b71795`), commits `c7bf083`,
+`6830354`, `7b5b0ea`, `893d404`, `800cd2f` and round 8. **Not pushed or merged** (the owner's word is
+needed). The owner's decisions are D69 in `docs/design/UI_ROADMAP.md`; what changed is in
+`CLAUDE.md` (D41, D45, "Accounts and the data on the phone"). The next build must be a new
+**development build and TestFlight build**: `expo-secure-store` and `expo-crypto` are native.
+Before strangers get it, the owner works down `supabase/README.md`'s ordered checklist
+(2026-11-19 section): audit-log setting and purge, migrations 010, 011, 012 with their checks,
+pg_cron, three redeploys (`coach` from this branch's final commit, never `6830354`), then
+tells the agent "011 is live" so `UTC_OFFSET_SYNC` can be turned on in a later build. The
+privacy policy and support page on this branch publish only after those steps
+(`docs/PRIVACY_POLICY.md`'s top comment).
+Before this review: `master` held steps 1–196, the cleanup and the two studies, merged and
+pushed 2026-11-18. The order of what is left before submission is
+`docs/SHIP_READINESS.md`, "What stands between here and the store".
 **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
 submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
 export 7.32 MB, both public pages 200). This file is the
@@ -162,10 +172,11 @@ cover the last stretch) and in git; it isn't repeated here.
 
 ## Not reviewed
 
-Reviews are the owner's call (2026-11-15): no reviewer agents after each feature; he asks for
-them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), steps 183–187
-(`6222465..2636ff2`), the cleanup branch and steps 188–196. When he calls for it: `record-auditor` for step
-184 and step 180's reminder change, `code-reviewer` for the rest.
+Reviews are the owner's call (2026-11-15). The 2026-11-18/19 review covered steps 180–196 and
+the whole security surface (server, client, Coach, record, policy), with three re-review
+rounds on the fixes; its last round verifies round 7's deletion fix. Nothing on this branch
+has run on a real database or on the iPhone: migrations 010–012 are proven only by the
+README's checks, and the native changes by the next development build.
 
 ## Owner to-dos, in order
 
@@ -223,8 +234,9 @@ and delegation are done by Fable (the main session), which doesn't implement dir
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run on this branch
-  (2026-11-18, step 196): 198 suites, 2,824 tests. `check.sh --release` passed on the same tree before the merge
-  (expo-doctor 20/20, iOS export 7.34 MB, both public pages 200). Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
+  (2026-11-19, review round 8): 228 suites, 5,139 tests. `check.sh --release`
+  passed on the same tree with the two new native packages: expo-doctor 20/20, iOS export
+  7.58 MB (bundle 7.17 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;
   restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED` (it does on this branch).
