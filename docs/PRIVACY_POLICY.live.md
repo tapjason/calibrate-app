@@ -1,0 +1,209 @@
+---
+layout: default
+title: Fairly Sure Privacy Policy
+permalink: /privacy/
+---
+
+<!--
+Published at https://tapjason.github.io/calibrate-app/privacy/
+If the app's name changes, update it here. Not legal advice.
+-->
+
+# Fairly Sure Privacy Policy
+
+**Effective:** November 18, 2026 · **Contact:** tapjason-dev@gmail.com
+
+Fairly Sure ("the app") is made by Jason Zou. This policy says what
+the app collects, why, who else handles it, and how to delete it. It's written
+to be read, not skimmed past.
+
+## 1. The short version
+
+- **Without an account, your predictions never leave your phone.** You can
+  log, resolve, score, and share predictions entirely offline. A few usage
+  counts do, with no id that could tell us who or which phone (§2).
+- **With an account, your predictions are backed up to our server** so they
+  survive a new phone. That includes their text.
+- **We don't sell your data, show ads, or track you across other apps or
+  websites.** The app contains no advertising or third-party analytics SDK.
+- **The AI Coach sees numbers, never your words.** It receives calibration
+  statistics only. It is technically unable to send the text of a prediction or
+  reflection, because the data it's built from has no field for text.
+- **You can delete your account and all of its data from inside the app.**
+
+## 2. What we collect
+
+### If you don't sign in
+Your predictions, results, and settings stay in a database on your device.
+Usage events (§2.3) are recorded on the device. A few of them, those that
+count how many people start and finish the warm-up, log, answer, share and
+practise, are sent to us with no account, no device or install identifier and
+nothing else that could tell us who you are or which phone sent them, so we
+can't link them to you or to each other. The others are sent only if you
+later create an account, with it. Turning usage stats off deletes the ones
+still on the device and stops all of them.
+
+To know whether you have Fairly Sure Plus, the app asks RevenueCat, the
+service that manages subscriptions, each time it starts. Without an account
+that request carries a random identifier RevenueCat makes for this install,
+not your name, email or anything you typed, along with the technical details
+any app request carries (such as the app version, language and time zone).
+None of your predictions are sent.
+
+On an iPhone running iOS 26 or later, the app may ask Apple for an age range
+the first time a screen is up. If you share one, only the age band — a lower
+and an upper bound, not your birthday — is stored on the device. It is not
+sent to us and it is not used to lock any feature. Erase and account deletion
+remove it with the rest of the on-device data.
+
+### If you create an account
+
+**2.1 Account information.** Your email address, or, if you use Sign in with
+Apple, the address Apple gives us, which may be a private relay address. If you
+use Continue with Google, Google gives us your email address and an identifier
+for your Google account. Google also sends your name and profile picture; we
+don't use them, and they are removed as they arrive rather than kept. We use
+account information only to sign you in.
+
+**2.2 Your predictions.** The text of each prediction, its category, the
+confidence you gave it, its due date, how it resolved, and any reflection you
+wrote. We store these so you can restore them on another device. We don't read,
+analyze, or share them. Your warm-up and daily practice answers are not
+predictions: they stay on your device and are never sent, signed in or not.
+
+**2.3 Usage events.** A small, fixed list of in-app events, such as "warmup
+started", "prediction logged", "share completed" and "paywall viewed". Each
+carries only numbers or yes/no values (for example, the confidence you chose,
+not what you predicted). They tell us whether the app works for people. The
+full list:
+
+`warmup_started`, `warmup_completed`, `share_opened`, `share_completed`,
+`prediction_logged`, `prediction_resolved`, `paywall_viewed`,
+`purchase_completed`, `purchase_abandoned`, `coverage_nudge_shown`,
+`coverage_nudge_accepted`, `practice_started`, `practice_completed`,
+`practice_reminder_set`, `coach_requested`, `data_exported`.
+
+These are linked to your account. **You can turn them off** in You →
+Usage stats. (Before you sign in, the few described above are sent with no
+identifier, so they can't be linked to you, or deleted as yours.)
+
+**2.4 Purchase status.** Whether you have Fairly Sure Plus, which plan, and when it
+renews or ends. We receive this from our subscription provider (§4). We never
+see your payment details.
+
+**2.5 Coach usage count.** If you use the Coach, a daily count of requests, to
+enforce usage limits.
+
+### What we never collect
+Location, contacts, health or fitness data, financial accounts, photos, your
+device's advertising identifier, or crash reports. A picture you pick as a category
+icon is shrunk and kept on your phone; it is never uploaded. "Health" and "finance" in
+Fairly Sure are labels you choose for your own predictions. The app doesn't
+connect to any health or financial service.
+
+## 3. The AI Coach (Fairly Sure Plus, off by default)
+
+The Coach is optional and is turned off until you switch it on. When you tap
+**Get feedback**, the app sends our server a summary of your statistics: your
+overall calibration score, and for each category the number of resolved
+predictions, the category's score, the average confidence, the rate of
+predictions that came true, and a few patterns computed from those numbers
+(such as which weekday you're least accurate on). **No prediction text, no
+reflections, no email address.**
+
+Our server forwards that summary to OpenAI to generate the feedback. OpenAI
+processes it under its API terms, which state that API data isn't used to train
+their models by default.
+
+Before any Coach request, the app checks your predictions and reflections **on
+your device** for signs of distress. If it finds any, it shows you support resources instead of
+contacting the Coach. That check never sends your text anywhere.
+
+## 4. Who else handles your data
+
+| Service | What it receives | Why |
+|---|---|---|
+| **Supabase** (database and sign-in; servers in the United States) | Everything in §2.1–2.5 | Stores your account and backed-up predictions |
+| **OpenAI** | The statistics summary in §3, only when you request Coach feedback | Generates Coach feedback |
+| **RevenueCat** | An account identifier (a random one for this install if you haven't signed in) and your App Store purchase records | Manages subscriptions |
+| **Apple** | Payments, and sign-in if you use Sign in with Apple | App Store billing and authentication |
+| **Google** | Nothing from the app. If you use Continue with Google, Google knows you signed in to Fairly Sure | Authentication |
+
+We share data with these providers only to run the app. We don't sell or rent
+personal data, and we don't share it for advertising.
+
+## 5. Notifications
+
+Reminders are scheduled **on your device**. We don't collect a push token and
+we don't send notifications from a server. A due-day reminder shows only
+the day you made the prediction and the confidence you gave it. Its words appear
+only if you turn on **You → Show the words in reminders**. The weekly digest shows only how many predictions are open.
+
+## 6. How long we keep it
+
+As long as your account exists. When you delete your account, your data is
+removed as described in §7.
+
+## 7. Deleting your account
+
+In the app: **You → Delete account** (at the bottom). This permanently deletes:
+
+- your account and email address,
+- all backed-up predictions and reflections,
+- your usage events and Coach usage count,
+- your subscription record at RevenueCat,
+- and the copy of your data on that device, your warm-up and practice answers included.
+
+If you signed in with Apple, we also revoke the app's access to your Apple ID.
+If you signed in with Google, deleting your account removes what Google shared
+with us; to disconnect Fairly Sure on Google's side as well, remove it in your
+Google Account's security settings, under third-party connections.
+
+**Deleting your account doesn't cancel an App Store subscription.** Apple bills
+it, so cancel it first in Settings → [your name] → Subscriptions, or the app
+will point you there.
+
+Without an account, **You → Erase your data on this phone** removes
+everything made on this device without an account. Your settings (switches and
+reminder times) stay, and hold nothing you wrote; so does the data of any account
+that signed out on this device, until that account is deleted.
+
+You can also email tapjason-dev@gmail.com to request deletion or a copy of your data.
+
+## 8. Your rights
+
+Depending on where you live (for example, under the GDPR in the EU/UK or the
+CCPA in California), you may have the right to access, correct, export, or
+delete your personal data, and to object to or restrict its processing. You can
+export your predictions yourself as CSV or ask us for a copy at
+tapjason-dev@gmail.com. We'll respond within 30 days. We don't sell personal
+information as the CCPA defines it.
+
+## 9. Children
+
+Fairly Sure is not directed to children under 13, and we don't knowingly collect
+their personal information. If you believe a child has created an account,
+contact us and we'll delete it.
+
+## 10. Security
+
+Data is encrypted in transit (HTTPS). Server-side, each account can read only
+its own rows. The database enforces that, not just the app. No system is
+perfectly secure, but we collect as little as we can, partly so there's less
+to protect.
+
+If you turn on the app's lock (**You → Lock with Face ID**, named for how your
+iPhone unlocks), your iPhone does the checking, with Face ID, Touch ID or your
+passcode. Fairly Sure learns only whether the check passed and which of these
+your iPhone has set up. It never sees your face, your fingerprint or your
+passcode, and nothing about the check is sent to us.
+
+## 11. Changes
+
+If this policy changes in a way that matters, we'll say so in the app before it
+takes effect. The effective date at the top always reflects the current
+version.
+
+## 12. Contact
+
+Jason Zou · tapjason-dev@gmail.com

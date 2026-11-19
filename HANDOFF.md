@@ -1,17 +1,22 @@
 # Handoff
 
 **Branch:** `builder/review-2026-11-18`, the owner-called security and code review of
-2026-11-18/19: seven fix rounds on top of `master` (`6b71795`), commits `c7bf083`,
-`6830354`, `7b5b0ea`, `893d404`, `800cd2f` and round 8. **Not pushed or merged** (the owner's word is
-needed). The owner's decisions are D69 in `docs/design/UI_ROADMAP.md`; what changed is in
+2026-11-18/19: eight fix rounds on top of `6b71795`, commits `c7bf083`,
+`6830354`, `7b5b0ea`, `893d404`, `800cd2f` and `3d6439f`. **Merged into `master`
+(fast-forward) and pushed 2026-11-19** on the owner's word. **The public pages did not
+change with that push:** the repo is public and Pages serves `master`'s `docs/`, so the
+rewritten `docs/PRIVACY_POLICY.md` and `docs/SUPPORT.md` are held off the site and the
+pages live since 2026-11-18 are served from `docs/PRIVACY_POLICY.live.md` and
+`docs/SUPPORT.live.md` (`docs/_config.yml` says how to switch, in one commit, once the
+policy's header steps are done). The owner's decisions are D69 in `docs/design/UI_ROADMAP.md`; what changed is in
 `CLAUDE.md` (D41, D45, "Accounts and the data on the phone"). The next build must be a new
 **development build and TestFlight build**: `expo-secure-store` and `expo-crypto` are native.
 Before strangers get it, the owner works down `supabase/README.md`'s ordered checklist
 (2026-11-19 section): audit-log setting and purge, migrations 010, 011, 012 with their checks,
 pg_cron, three redeploys (`coach` from this branch's final commit, never `6830354`), then
 tells the agent "011 is live" so `UTC_OFFSET_SYNC` can be turned on in a later build. The
-privacy policy and support page on this branch publish only after those steps
-(`docs/PRIVACY_POLICY.md`'s top comment).
+rewritten privacy policy and support page publish only after those steps
+(`docs/PRIVACY_POLICY.md`'s top comment), by the switch in `docs/_config.yml`.
 Before this review: `master` held steps 1–196, the cleanup and the two studies, merged and
 pushed 2026-11-18. The order of what is left before submission is
 `docs/SHIP_READINESS.md`, "What stands between here and the store".

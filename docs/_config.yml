@@ -28,10 +28,18 @@ exclude:
   - APP_STORE_LISTING.md
   - CALIBRATION.md
   - HUMAN_VERIFICATION.md
+#
+# HOLD (2026-11-19, security review): PRIVACY_POLICY.md and SUPPORT.md are rewritten for
+# the state after the owner's server steps and the next build (the policy's header comment),
+# so they are NOT in `include` and "*.md" above keeps them off the site. The pages served
+# today are the two `.live.md` files: byte-for-byte what `master` published on 2026-11-18,
+# with the same permalinks. To publish the rewrite, in one commit: resolve the policy's
+# header steps, delete both `.live.md` files, and put PRIVACY_POLICY.md and SUPPORT.md
+# back in `include` in their place.
 include:
   - index.md
-  - PRIVACY_POLICY.md
-  - SUPPORT.md
+  - PRIVACY_POLICY.live.md
+  - SUPPORT.live.md
 
 defaults:
   - scope:
