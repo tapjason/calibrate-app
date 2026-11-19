@@ -492,6 +492,9 @@ See the authoritative section above.
   14 points away from how often those things happened…", 100 minus the rounded rating;
   Today's rating opens How scoring works with the same line on top. Today's bar carries
   no 70 / 85 / 90 marks (Insights keeps them, with D54's caption)
+- **The lines under Insights' rating sit in three groups** (D68): the points line leads, in
+  larger ink, with the perfect-calibration line under it; then give or take and "since last
+  week"; then the count. The words and their order are as decided; only the setting changed
 - **What perfect calibration scores on the same answers** (D62), under that line:
   "Even perfectly calibrated, 20 answers like yours would typically score about 86,
   since luck alone moves each range. At this count, your score can't be told apart from
@@ -875,7 +878,8 @@ Four tabs, **Today · Insights · History · You** (D3); Log is a sheet opened b
 the title bar of Today, Insights and History (D21), not a tab, because tabs navigate and
 logging is an action. On Today, what's ready to resolve comes before the streak and
 practice rows (D22), and with nothing ready the open predictions do (D48); after a save,
-Today scrolls to the new card (D48).
+Today scrolls to the new card (D48). The streak and practice rows sit together as a pair,
+and the sign-in nudge follows them (D68).
 
 | Screen | Purpose | Tier |
 |---|---|---|

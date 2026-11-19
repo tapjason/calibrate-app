@@ -146,23 +146,45 @@ Supabase; migrations 006 to 008 applied; the account-deletion secrets set (the m
 `delete-account` redeployed 2026-11-15;
 TestFlight 1.0.0 (build 2) on the owner's iPhone.
 
-**Open, in order** (details and owners in "Open work" below):
+**Done since** (by 2026-11-18): steps 188–196 on `master` and pushed; builds 3 and 4; Session 3
+items 25–30 on build 3; the Coach answers on the phone (step 189, with `REVENUECAT_READ_KEY`
+and the two function deploys); Google sign-in set up and on (step 192, migration 009).
 
-1. Session 1 on build 2 (items 1–18 of the on-phone checklist in `docs/HUMAN_VERIFICATION.md`); the agent turns
-   failures into fixes.
-2. Build 3 (`npx eas build --profile production --platform ios`, then
-   `npx eas submit --profile production --platform ios`): step 187 and the Session 1 fixes.
-3. Sessions 2 (items 19–24) and 3 (items 25–30, on build 3). The full lists are Batches C and D
-   in `docs/HUMAN_VERIFICATION.md`.
-4. TestFlight with 20 to 50 people you can ask, for two weeks (`docs/TESTFLIGHT_PLAN.md`).
-   Watch: do they finish the Warm-up, log one of their own, answer on day 1, share unprompted,
-   come back in week two.
-5. Fill in App Store Connect: listing (`docs/APP_STORE_LISTING.md`), the 2026 age-rating
-   questions (§1 there), App Privacy labels (`docs/APP_PRIVACY.md`), screenshots from the
-   device, review notes with a seeded demo account that already has Plus. Before this:
-   decision 13 settled.
-6. Submit. English-language storefronts, no paid installs. Read the gates at six weeks or
-   1,000 downloads (GROWTH §7).
+**Open, in order** (as of 2026-11-18; details and owners in "Open work" below):
+
+1. **Close stage 1.** Session 3 items 31–33 on build 4, Session 2 (items 19–24), and Session
+   1's item-by-item results. Then build 5 (steps 195 and 196) with its short device list in
+   `HANDOFF.md`. The agent turns failures into one batch of fixes.
+2. **One code review before strangers get a build** (the owner's call): nothing since step
+   180's round 2 has been reviewed (steps 183–196 and the cleanup), and that stretch holds
+   sign-in, account deletion, the Coach's Plus check and two record changes. Then
+   `bash scripts/check.sh --release`.
+3. **Mail before outside testers.** The custom mail sender in Supabase (decision 6), then the
+   password reset (decision 12, the agent). Until the sender works, a stranger who signs up
+   by email gets no confirmation mail, and "Confirm email" has to stay on for Google
+   sign-in. Apple and Google sign-in work without it.
+4. **TestFlight external testing:** the beta app description and beta review information
+   (text in `docs/TESTFLIGHT_PLAN.md`), TestFlight App Review, then stage 2 (5 to 8 people,
+   about a week, two or three first uses watched) and stage 3 (20 to 50 people, 14 days).
+   Fixes go out in batches, one build every two or three days in stage 2 and one a week in
+   stage 3.
+5. **During stage 3, the store record:** the listing (`docs/APP_STORE_LISTING.md`), the
+   age-rating questions, the App Privacy labels (`docs/APP_PRIVACY.md`, with the Coach's
+   answers checked against OpenAI's current retention), the three products submitted for
+   review with version 1.0.0 (Apple reviews an app's first in-app purchases with an app
+   version; not checked against Apple's page here, so confirm it in App Store Connect), the
+   demo account with Plus, the review notes, and the screenshots. **The screenshots need a plan:** the required set is 6.9-inch (1320 × 2868),
+   the owner's iPhone 17 is not that size and there is no simulator; the web build renders
+   that size as drafts (`APP_STORE_LISTING.md` §5).
+6. **Decisions due before the public release:** 2 (under-13, a legal call; the agent builds
+   the local-only rule on a yes), 13 (helplines on a US-territory phone), 5 (the EU:
+   recommended outside it first) and with it 9, and 8.
+7. **Read the exit criteria** (`docs/TESTFLIGHT_PLAN.md`); a row in "stop and fix" gets a fix
+   and another week.
+8. **The release gate** (`/release-gate`): the release, policy and record audits over the
+   whole app, `check.sh --release`, then the last production build.
+9. **Submit.** English-language storefronts, no paid installs. Read the gates at six weeks
+   or 1,000 downloads (GROWTH §7).
 
 ## Open work
 

@@ -1,10 +1,11 @@
 # Handoff
 
-**Branch:** `builder/hierarchy` (step 196), stacked on `builder/sunken-contrast` (step 195).
-Neither is merged or pushed: both are JS only, for build 5, and step 196 waits on the
-owner's pick for D68. `master` has steps 1–194, the cleanup and the two studies, merged and
-pushed (steps 190–194 on 2026-11-18); the owner reports build 4 merged and pushed the same
-day. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
+**Branch:** `master`, with steps 1–196, the cleanup and the two studies merged and pushed
+(steps 195 and 196 on 2026-11-18, the owner's word, after he picked D68). **Build 5 is
+next**, from `master`: steps 195 and 196, JS only; the owner builds and submits it. He
+reports build 4 (steps 188–194) merged and pushed the same day. The order of what is left
+before submission is `docs/SHIP_READINESS.md`, "What stands between here and the store".
+**Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
 submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
 export 7.32 MB, both public pages 200). This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
@@ -86,16 +87,15 @@ cover the last stretch) and in git; it isn't repeated here.
   changed. Not built, the builder's alternative: darkening `controlBorder` itself (light
   `#7F838D`, dark `#727680`) clears every fill and would let the swaps go; the owner's call.
   Web build: every change measured at 393 and 320, light and dark; all pass.
-- **D68, hierarchy on Insights and Today (open):** the study's other leftover. Mocks at true
-  size, light and dark: https://claude.ai/artifact/6jdUjs8pnVtftkTjdPWVot (private to the
-  owner). **Step 196 (`builder/hierarchy`, BUILT_LOG row 196) builds the two recommended
-  options on the agent's call:** under Insights' rating the lines keep their words and
-  order in three groups 12 pt apart, with the points line as the lead (`subhead`, ink); on
-  Today the streak and practice rows sit 8 pt apart and the backup card follows them. Styles
-  and one reorder. **Waiting on the owner:** keep A and A, or Insights B (the luck line at
-  the lead's size) or C (the 70 / 85 / 90 marks and caption off the overall bar; reverses
-  D54 (b) and D59 (a), and goes through `record-auditor`), and Today B (daily rows flat) once
-  A is on the phone in dark. Web build: every gap measured in every state; all match.
+- **D68, hierarchy on Insights and Today, decided 2026-11-18** (owner, on the mocks at
+  https://claude.ai/artifact/6jdUjs8pnVtftkTjdPWVot: "Go with A"). **Step 196 (BUILT_LOG row
+  196):** under Insights' rating the lines keep their words and order in three groups 12 pt
+  apart, with the points line as the lead (`subhead`, ink); on Today the streak and practice
+  rows sit 8 pt apart and the backup card follows them. Styles and one reorder. Not adopted:
+  Insights B and C, Today B (worth another look once A is on the phone in dark). On the
+  agent's recommendation the same day: `controlBorder` keeps its value, and the lead line
+  stays as built beside the bolder link under it, to be judged on the phone. Web build: every
+  gap measured in every state; all match.
 
 - **Step 191 (same branch, BUILT_LOG row 191):** deleting an account that Supabase linked to
   Apple after an email sign-up now revokes Sign in with Apple (`hasAppleIdentity`; the app read
@@ -174,11 +174,14 @@ them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), s
 2. Build 3: `npx eas build --profile production --platform ios`, then
    `npx eas submit --profile production --platform ios`.
 3. Sessions 2 and 3.
-4. D68: pick on the mock page (above); then steps 195 and 196 merge for build 5.
+4. Build 5 from `master` (steps 195 and 196).
 5. On build 5, or a reload of the development build: the chart's zone words at 12 pt and the
    darker edges (backup nudge, practice offer, sign-in switch, Share's tabs), both
    appearances; on Today with VoiceOver, streak, practice, then the backup card; a
-   checkpoint's confetti over the practice row; the Insights lead line at the largest text.
+   checkpoint's confetti over the practice row; the Insights lead line at the largest text,
+   and in dark beside "More about your record".
+6. Then the order in `docs/SHIP_READINESS.md`: a code review of steps 183–196 (your call),
+   the mail sender, external TestFlight, the store record, the open decisions, the gate.
 
 Done: the secret rename, both function deploys and the trial move (above).
 
@@ -220,8 +223,8 @@ and delegation are done by Fable (the main session), which doesn't implement dir
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run on this branch
-  (2026-11-18, step 196): 198 suites, 2,824 tests. `check.sh --release` hasn't been run on steps 195–196; run it
-  before build 5. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
+  (2026-11-18, step 196): 198 suites, 2,824 tests. `check.sh --release` passed on the same tree before the merge
+  (expo-doctor 20/20, iOS export 7.34 MB, both public pages 200). Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;
   restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED` (it does on this branch).
