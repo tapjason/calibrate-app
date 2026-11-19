@@ -4,12 +4,14 @@
 // the answer that unlocks the score. Either one only *notes* the moment; the
 // ask itself waits until Today has focus again, after the sheet has closed,
 // because HIG says not to interrupt a task. The rules (7 days, 10 answers,
-// 90 days between asks) live in src/review/ratingPrompt.ts.
+// 90 days between asks) live in src/review/ratingPrompt.ts. A local-only
+// phone (the under-13 rule, roadmap D70) is never asked.
 
 import { create } from 'zustand';
 
 import { ratingContextFor, requestRating, shouldAskForRating } from '@/review/ratingPrompt';
 
+import { isLocalOnly } from './ageStore';
 import { usePredictionStore } from './predictionStore';
 import { useSettingsStore } from './settingsStore';
 
@@ -34,6 +36,9 @@ export const useRatingStore = create<RatingState>((set, get) => ({
   askIfDue: async (now = new Date()) => {
     if (!get().moment) return false;
     set({ moment: false });
+    // Never on a local-only phone (roadmap D70, call 6): the moment is spent
+    // all the same, so it doesn't wait for the rule to lift.
+    if (isLocalOnly()) return false;
     const { pending, resolved } = usePredictionStore.getState();
     const settings = useSettingsStore.getState();
     const context = ratingContextFor([...pending, ...resolved], now, settings.ratingAskedAt);

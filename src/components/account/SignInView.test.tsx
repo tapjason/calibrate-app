@@ -1,10 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Platform, StyleSheet } from 'react-native';
 
 import { colors } from '@/constants/theme';
+import { setDbForTests } from '@/db/client';
+import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 
-import { SignInView } from './SignInView';
+import { SignInView, USAGE_NOTE, USAGE_OFF_NOTE } from './SignInView';
 
 // The screen with "Continue with Google" on (since 2026-11-18), stated here
 // so these hold whatever src/constants/app.ts says. Google itself is
@@ -466,15 +468,16 @@ describe('SignInView', () => {
 // creates the account said nothing about them.
 describe('SignInView — what signing in sends', () => {
   /* eslint-disable @typescript-eslint/no-var-requires */
-  const { useSettingsStore } = require('@/store/settingsStore') as typeof import('@/store/settingsStore');
+  const { __setPersistenceForTests, useSettingsStore } = require('@/store/settingsStore') as typeof import('@/store/settingsStore');
   const { PRIVACY_POLICY_URL } = require('@/constants/app') as typeof import('@/constants/app');
   /* eslint-enable @typescript-eslint/no-var-requires */
-  afterEach(() => useSettingsStore.setState({ analyticsEnabled: true }));
+  // In act: the switch on screen follows the store, and the screen is still up here.
+  afterEach(() => act(() => useSettingsStore.setState({ analyticsEnabled: true })));
 
   it('says usage counts go with the account, and how to turn them off', () => {
     render(<SignInView onDone={jest.fn()} />);
     expect(screen.getByTestId('account-usage-note')).toHaveTextContent(
-      'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn that off in You, under Usage stats.',
+      'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn this off here or in You, under Usage stats.',
     );
   });
 
@@ -489,10 +492,88 @@ describe('SignInView — what signing in sends', () => {
     expect(note).not.toHaveTextContent(/numbers and yes\/no values,/);
   });
 
-  it('says nothing about them once they are off', () => {
+  // Decision 9 (2026-11-19): the state and a switch, always, as on the
+  // Warm-up's first screen.
+  it('says they are off, and how to turn them on, once they are off', () => {
     useSettingsStore.setState({ analyticsEnabled: false });
     render(<SignInView onDone={jest.fn()} />);
-    expect(screen.queryByTestId('account-usage-note')).toBeNull();
+    expect(screen.getByTestId('account-usage-note')).toHaveTextContent(
+      'Usage stats are off, so no record of which features you use is sent. You can turn them on here or in You, under Usage stats.',
+    );
+    expect(screen.getByTestId('account-usage-row').props.accessibilityState).toMatchObject({
+      checked: false,
+    });
+  });
+
+  it('is one switch named Usage stats, with the line shown as its hint, in both states', () => {
+    render(<SignInView onDone={jest.fn()} />);
+    const row = screen.getByTestId('account-usage-row');
+    expect(row.props.accessibilityRole).toBe('switch');
+    expect(row.props.accessibilityLabel).toBe('Usage stats');
+    expect(row.props.accessibilityHint).toBe(USAGE_NOTE);
+    expect(row.props.accessibilityState).toMatchObject({ checked: true });
+    // The inner switch is hidden from assistive tech.
+    expect(screen.queryByTestId('account-usage-switch')).toBeNull();
+    expect(screen.getByTestId('account-usage-switch', { includeHiddenElements: true })).toBeTruthy();
+
+    act(() => useSettingsStore.setState({ analyticsEnabled: false }));
+    expect(screen.getByTestId('account-usage-row').props.accessibilityHint).toBe(USAGE_OFF_NOTE);
+  });
+
+  it('turns usage stats off and on in the same setting as You', async () => {
+    __setPersistenceForTests({ load: async () => null, save: async () => {} });
+    // Off deletes what's queued, from the database.
+    setDbForTests(await createTestDb());
+    try {
+      render(<SignInView onDone={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('account-usage-row'));
+      await waitFor(() => expect(useSettingsStore.getState().analyticsEnabled).toBe(false));
+      expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_OFF_NOTE);
+
+      fireEvent.press(screen.getByTestId('account-usage-row'));
+      await waitFor(() => expect(useSettingsStore.getState().analyticsEnabled).toBe(true));
+      expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_NOTE);
+    } finally {
+      __setPersistenceForTests(null);
+      setDbForTests(null);
+    }
+  });
+
+  // The record couldn't be read: the store holds usage stats off, and so does the switch.
+  it('shows the switch off while the settings store holds its fail-safe state', () => {
+    useSettingsStore.setState({ loadFailed: true, analyticsEnabled: false });
+    try {
+      render(<SignInView onDone={jest.fn()} />);
+      const inner = screen.getByTestId('account-usage-switch', { includeHiddenElements: true });
+      expect(inner.props.value).toBe(false);
+      expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_OFF_NOTE);
+    } finally {
+      useSettingsStore.setState({ loadFailed: false });
+    }
+  });
+
+  // The buttons under it stay put: the longer line, the one for on, holds the
+  // space in both states, unseen and unheard while the other is shown.
+  it('keeps the longer line’s space while off, so the buttons below don’t move', () => {
+    useSettingsStore.setState({ analyticsEnabled: false });
+    render(<SignInView onDone={jest.fn()} />);
+    expect(screen.queryByTestId('account-usage-spacer')).toBeNull();
+    const spacer = screen.getByTestId('account-usage-spacer', { includeHiddenElements: true });
+    expect(spacer).toHaveTextContent(USAGE_NOTE);
+    expect(StyleSheet.flatten(spacer.props.style)).toMatchObject({ opacity: 0 });
+    // The off line sits over that space, not after it.
+    expect(StyleSheet.flatten(screen.getByTestId('account-usage-note').props.style)).toMatchObject({
+      position: 'absolute',
+      top: 0,
+    });
+
+    // On, the same line is in the same place, now shown, and nothing sits over it.
+    act(() => useSettingsStore.setState({ analyticsEnabled: true }));
+    expect(screen.queryByTestId('account-usage-spacer', { includeHiddenElements: true })).toBeNull();
+    const note = screen.getByTestId('account-usage-note');
+    expect(note).toHaveTextContent(USAGE_NOTE);
+    expect(StyleSheet.flatten(note.props.style).opacity).toBeUndefined();
+    expect(StyleSheet.flatten(note.props.style).position).toBeUndefined();
   });
 
   it('opens the privacy policy', () => {

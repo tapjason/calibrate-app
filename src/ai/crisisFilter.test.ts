@@ -1,6 +1,12 @@
 import { __setDeviceLocaleForTests } from '@/constants/locale';
 
-import { INTERNATIONAL_CONTACT, scanForCrisis, supportResource } from './crisisFilter';
+import {
+  INTERNATIONAL_CONTACT,
+  scanForCrisis,
+  supportResource,
+  TERRITORY_FALLBACK_CONTACT,
+  TERRITORY_LIFELINE_CONTACT,
+} from './crisisFilter';
 
 describe('scanForCrisis', () => {
   it('passes ordinary prediction text through', () => {
@@ -335,27 +341,65 @@ describe('supportResource by region', () => {
   });
 
   // Code review and policy audit, 2026-11-15: a phone set to a US territory
-  // was told "in your country" and shown no number. 988 is confirmed there
-  // (SAMHSA: "a U.S. state, territory or tribal land"); the other two lines
-  // aren't, so those topics keep the line for elsewhere until the owner decides.
-  describe.each(['PR', 'GU', 'VI', 'AS', 'MP'])('on a phone set to %s', (region) => {
-    it.each(['self_harm', 'distress'] as const)('gives 988 for %s, as on a US phone', (topic) => {
-      const r = supportResource({ safe: false, topic }, region)!;
-      expect(r.contact).toBe(`988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`);
-      expect(r).toEqual(supportResource({ safe: false, topic }, 'US'));
-    });
+  // was told "in your country" and shown no number. Main session, 2026-11-19
+  // (decision 13): 988 on every topic there, the one line confirmed in all
+  // five territories and one for any emotional distress (SAMHSA's 988 FAQ,
+  // 988lifeline.org), and a second line that says neither "the US" nor "your
+  // country". The other two numbers still aren't shown there.
+  const territory =
+    "988 Suicide & Crisis Lifeline — call or text 988\nIf 988 doesn't connect where you are: search for a local crisis line, or call your local emergency number.";
 
-    it.each(['abuse', 'eating_disorder'] as const)('gives no unconfirmed number for %s', (topic) => {
-      const r = supportResource({ safe: false, topic }, region)!;
-      expect(r.contact).toBe(elsewhere);
-      expect(r.contact).not.toMatch(/\(US\)|988|1-8/);
-    });
+  it('pins the territory lines', () => {
+    expect(TERRITORY_LIFELINE_CONTACT).toBe('988 Suicide & Crisis Lifeline — call or text 988');
+    expect(TERRITORY_FALLBACK_CONTACT).toBe(
+      "If 988 doesn't connect where you are: search for a local crisis line, or call your local emergency number.",
+    );
+    expect(TERRITORY_FALLBACK_CONTACT).not.toMatch(/the US|your country|\.com|\.org|https?:|www\./i);
+  });
+
+  describe.each(['PR', 'GU', 'VI', 'AS', 'MP'])('on a phone set to %s', (region) => {
+    it.each(['self_harm', 'eating_disorder', 'abuse', 'distress'] as const)(
+      'gives 988 and the territory line for %s, with the topic’s own words',
+      (topic) => {
+        const r = supportResource({ safe: false, topic }, region)!;
+        const us = supportResource({ safe: false, topic }, 'US')!;
+        expect(r).toEqual({ title: us.title, body: us.body, contact: territory });
+        expect(r.contact).not.toMatch(/\(US\)|the US|your country|1-8/);
+      },
+    );
   });
 
   it('reads a territory from the phone too', () => {
     __setDeviceLocaleForTests('es-PR');
-    expect(supportResource({ safe: false, topic: 'self_harm' })!.contact).toMatch(/988[^]*Outside the US/);
-    expect(supportResource({ safe: false, topic: 'abuse' })!.contact).toBe(elsewhere);
+    expect(supportResource({ safe: false, topic: 'self_harm' })!.contact).toBe(territory);
+    expect(supportResource({ safe: false, topic: 'abuse' })!.contact).toBe(territory);
+    __setDeviceLocaleForTests('en-GU');
+    expect(supportResource({ safe: false, topic: 'eating_disorder' })!.contact).toBe(territory);
+  });
+
+  // The US and other-region wording doesn't change, character for character.
+  it('keeps every US and other-region line exactly as it was', () => {
+    const expected = {
+      US: {
+        self_harm: `988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`,
+        eating_disorder: `National Alliance for Eating Disorders — 1-866-662-1235 (US)\n${elsewhere}`,
+        abuse: `National Domestic Violence Hotline — 1-800-799-7233 (US)\n${elsewhere}`,
+        distress: `988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`,
+      },
+      GB: { self_harm: elsewhere, eating_disorder: elsewhere, abuse: elsewhere, distress: elsewhere },
+    } as const;
+    for (const region of ['US', 'GB'] as const) {
+      for (const topic of ['self_harm', 'eating_disorder', 'abuse', 'distress'] as const) {
+        expect({ region, topic, contact: supportResource({ safe: false, topic }, region)!.contact }).toEqual({
+          region,
+          topic,
+          contact: expected[region][topic],
+        });
+      }
+    }
+    expect(supportResource({ safe: false, topic: 'eating_disorder' }, null)!.contact).toBe(
+      expected.US.eating_disorder,
+    );
   });
 
   it('gives both when the region cannot be read', () => {

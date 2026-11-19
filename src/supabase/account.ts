@@ -17,6 +17,13 @@
 // account's Sign in with Apple grant (`appleRevoked`, security review
 // 2026-11-18, round 4): when it didn't, the finished screen tells the person
 // where to remove the app themselves (docs/ACCOUNT_SPEC.md §3.2 step 5).
+//
+// The under-13 rule (roadmap D70, 2026-11-19) deliberately doesn't gate this
+// file: deleting the account is the one upload path left open on a local-only
+// phone, because it removes data (the main session's call 3; an account
+// signed in before the band arrived may be an adult's). It sends the session's
+// token and, when there is one, Apple's authorization code; nothing else.
+// src/age/egress.test.ts lists it as the permitted exception.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 

@@ -3,7 +3,10 @@
 **As of:** 2026-11-18 · The source for the App Store Connect record's fields, drafted from
 `CLAUDE.md` and the shipped code (the 2026 age-rating answers and review notes from the policy
 audits of 2026-11-14 and 2026-11-15; the review notes, the Google sentence and the age-range
-lines revised after the security and policy review of 2026-11-18). Every feature claimed below exists in `master`; ✨ Refine
+lines revised after the security and policy review of 2026-11-18, and the age-assurance answer
+and the review notes' age-range lines again for the under-13 rule, D70, on 2026-11-19). Every
+feature claimed below exists in `master`, except the under-13 rule, which is on
+`builder/owner-decisions` (uncommitted on 2026-11-19) until it merges; ✨ Refine
 is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
@@ -97,7 +100,7 @@ the reason:
 | Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms, the support page). |
 | Mature or suggestive themes | None | The app shows no such content. The Coach's support surface (a helpline pointer when someone's own text signals distress) isn't a depiction of trauma or abuse; if Apple's wording counts it, "infrequent" is 9+: the owner's call on the day. |
 | Advertising | No | There are no ads. |
-| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once per launch until a band is stored, so after a decline it asks again at the next launch (`src/age/ageRange.ts`: one ask per process, and nothing is stored on a decline). Nothing in the app is gated on the result. Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services"; the build asks and gates nothing, so read the question as worded on the day (policy audit, 2026-11-14; the under-13 decision in `SHIP_READINESS.md` would settle it). |
+| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once per launch until a band is stored, so after a decline it asks again at the next launch, and while the stored band is under 13 it asks at each launch and again after 24 hours in a long run (`src/age/ageRange.ts`: one ask per launch; a decline stores nothing and keeps a stored band). **The result gates services** (the under-13 rule, D70, 2026-11-19; `docs/design/research/under-13-2026-11.md`): a band that includes ages under 13 makes the app local-only, with no sign-in, backup, usage counts, Coach or RevenueCat, and Plus not offered (`useAgeStore.localOnly`). Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services": accounts, backup, the Coach and purchases are those services here, so "Yes" is plainly true of a build that carries D70. A build without it asked and gated nothing (policy audit, 2026-11-14). Counsel is still to be asked about the state acts' duties (`SHIP_READINESS.md` decision 2). |
 | Social media; social media disabled under 13 (asked since July 2026, required from September) | No | No feed, profiles, followers or posts. |
 | Shared location; dating and relationships (descriptors from 2026-11-16, all apps by 2027-01-12) | No | The app reads no location and matches nobody. |
 | Gambling; simulated gambling; contests; loot boxes (asked one by one) | None | No stakes, odds, currency, prizes or chance mechanics. Nobody competes: a friend comparison, if ever built, would change the contests answer. |
@@ -237,14 +240,20 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 >
 > After the first screen appears, the app asks Apple's Declared Age Range API
 > for an age band, once per launch until one is shared; after a decline it asks
-> again at the next launch. Declining changes nothing.
+> again at the next launch. Declining changes nothing. If the band is under 13,
+> the app keeps everything on the phone: no sign-in, backup, usage counts or
+> Coach, and Plus isn't offered; You explains it under "Kept on this phone", and
+> the app asks again at each launch in case the band has changed. To
+> see it, set the device's Sandbox Apple Account to Under 13 (Settings →
+> Developer → Sandbox Apple Account → Manage → Age Assurance), then You → Erase
+> your data on this phone if a band was already shared, and relaunch.
 >
 > Usage counts: before any is sent from a phone without an account, the Warm-up's
 > first screen says "Fairly Sure sends a few usage counts, with no account or
 > device id, to see how the app is used. You can turn this off here or in You."
 > with a switch (also in You →
 > Usage stats). Without an account they carry no account, device or install id;
-> the sign-in screen says what goes with an account.
+> the sign-in screen says what goes with an account, with the same switch.
 
 **Before pasting the Google sentence** (2026-11-18): "our database removes the name and
 picture Google sends as they arrive" is true only once the owner has turned off Supabase's
@@ -253,12 +262,19 @@ purged `auth.audit_log_entries`; until then each sign-in keeps the Google name t
 (`docs/APP_PRIVACY.md`, the Name row). If those steps aren't done, end the sentence at "(no
 Google SDK is in the app)." The age-range lines follow `src/age/ageRange.ts` (one ask per
 process, nothing stored on a decline); whether iOS shows its sheet again after a decline
-is iOS's decision, so say "asks", not "shows". The usage-count lines (2026-11-19) quote
+is iOS's decision, so say "asks", not "shows". The under-13 lines hold only for a build that
+carries D70 (2026-11-19) and quote `LOCAL_ONLY_GUEST_ROW` ("Kept on this phone",
+`src/components/age/localOnlyCopy.ts`). The sandbox path is from
+`docs/design/research/under-13-2026-11.md` ("What only the iPhone can show": it needs
+Developer Mode, a Sandbox Apple Account and iOS 26.2 or later); confirm it on the owner's
+iPhone (`HUMAN_VERIFICATION.md` D4) before pasting, and leave the last sentence out if it
+doesn't hold. Erase clears the stored band, so the relaunch asks Apple again. The usage-count lines (2026-11-19) quote
 `WARMUP_USAGE_NOTE` (`src/components/warmup/UsageStatsNotice.tsx`) and hold only for a
 build that carries round 5 (commit `7b5b0ea`, which saves the "notice shown" stamp; the
 privacy policy's header, step 8); the words "to see how the app is used" only for one that
 carries round 7 (2026-11-19, the policy re-audit's L1); check the quote against that build. The sign-in and sign-out lines hold from the
-same build (`EMAIL_SIGN_UP_ENABLED = false`, D69 (a) and (c)).
+same build (`EMAIL_SIGN_UP_ENABLED = false`, D69 (a) and (c)); "with the same switch" only
+from the build that carries D71 (d) (`UsageStatsSwitch` on the sign-in screen).
 >
 > Optional app lock: You → Lock with Face ID (off by default; named Lock with
 > Touch ID or Lock with iPhone passcode on other iPhones). It uses

@@ -1,22 +1,34 @@
 # Handoff
 
-**Branch:** `builder/review-2026-11-18`, the owner-called security and code review of
-2026-11-18/19: eight fix rounds on top of `6b71795`, commits `c7bf083`,
-`6830354`, `7b5b0ea`, `893d404`, `800cd2f` and `3d6439f`. **Merged into `master`
-(fast-forward) and pushed 2026-11-19** on the owner's word. **The public pages did not
-change with that push:** the repo is public and Pages serves `master`'s `docs/`, so the
-rewritten `docs/PRIVACY_POLICY.md` and `docs/SUPPORT.md` are held off the site and the
-pages live since 2026-11-18 are served from `docs/PRIVACY_POLICY.live.md` and
-`docs/SUPPORT.live.md` (`docs/_config.yml` says how to switch, in one commit, once the
-policy's header steps are done). The owner's decisions are D69 in `docs/design/UI_ROADMAP.md`; what changed is in
+**Branch:** `builder/owner-decisions`, on top of `master` (`d1c23cf`). **Not pushed or
+merged, and not reviewed.** It holds the open decisions the owner delegated on 2026-11-19
+("apply your smart recommendations"), each his to overturn:
+
+- **D70, the under-13 rule:** when Apple's age range says under 13 the app is local-only
+  (no sign-in, sync, usage counts, Coach or RevenueCat; Plus isn't offered).
+  `docs/design/research/under-13-2026-11.md` has the rule, every gate and the seven points
+  for counsel; `src/age/egress.test.ts` fails when a new upload path forgets the gate.
+- **D71:** Erase removes everything on the phone, whoever's account it was under; the
+  Coach's support card can be set aside ("Back to Coach"); a US-territory phone gets 988 on
+  every topic; the sign-in screen carries the usage-stats switch.
+- **For the owner:** `docs/SHIP_READINESS.md`, "The owner's list", has everything still
+  his with a recommendation for each; `docs/OWNER_MESSAGES.md` has the four messages only he
+  can send. JS only: no new native package beyond the review's two.
+
+**`master` = `origin/master` = `d1c23cf`:** the security and code review of 2026-11-18/19
+(eight fix rounds, commits `c7bf083`, `6830354`, `7b5b0ea`, `893d404`, `800cd2f`,
+`3d6439f`; D69), merged (fast-forward) and pushed 2026-11-19 on the owner's word.
+**The public pages did not change with that push:** the repo is public and Pages serves
+`master`'s `docs/`, so the rewritten `docs/PRIVACY_POLICY.md` and `docs/SUPPORT.md` are
+held off the site and the pages live since 2026-11-18 are served from
+`docs/PRIVACY_POLICY.live.md` and `docs/SUPPORT.live.md` (`docs/_config.yml` says how to
+switch, in one commit, once the policy's header steps are done). What the review changed is in
 `CLAUDE.md` (D41, D45, "Accounts and the data on the phone"). The next build must be a new
 **development build and TestFlight build**: `expo-secure-store` and `expo-crypto` are native.
 Before strangers get it, the owner works down `supabase/README.md`'s ordered checklist
 (2026-11-19 section): audit-log setting and purge, migrations 010, 011, 012 with their checks,
-pg_cron, three redeploys (`coach` from this branch's final commit, never `6830354`), then
-tells the agent "011 is live" so `UTC_OFFSET_SYNC` can be turned on in a later build. The
-rewritten privacy policy and support page publish only after those steps
-(`docs/PRIVACY_POLICY.md`'s top comment), by the switch in `docs/_config.yml`.
+pg_cron, three redeploys (`coach` from `master`, never `6830354`). `UTC_OFFSET_SYNC` stays
+off for 1.0 (the agent's recommendation: it would put Coarse Location on the privacy label).
 Before this review: `master` held steps 1–196, the cleanup and the two studies, merged and
 pushed 2026-11-18. The order of what is left before submission is
 `docs/SHIP_READINESS.md`, "What stands between here and the store".
@@ -179,9 +191,15 @@ cover the last stretch) and in git; it isn't repeated here.
 
 Reviews are the owner's call (2026-11-15). The 2026-11-18/19 review covered steps 180–196 and
 the whole security surface (server, client, Coach, record, policy), with three re-review
-rounds on the fixes; its last round verifies round 7's deletion fix. Nothing on this branch
-has run on a real database or on the iPhone: migrations 010–012 are proven only by the
-README's checks, and the native changes by the next development build.
+rounds on the fixes; its last round verifies round 7's deletion fix. **D70 and D71
+(`builder/owner-decisions`, BUILT_LOG rows 198 and 199) are not reviewed**; the agent
+recommends one before that build goes to anyone else (`code-reviewer` and `policy-auditor`
+on the under-13 rule, `record-auditor` on Erase). Nothing has run on a real database or on
+the iPhone: migrations 010–012 are proven only by the README's checks, the native changes
+by the next development build, and the under-13 rule by the sandbox "Under 13" check
+(`docs/HUMAN_VERIFICATION.md` D4). In the web build the local-only screens, both routes, the
+sign-in switch and Erase's words were looked at on 2026-11-19 (`/dev/seed` has a
+development-only control that sets an under-13 band); the support card was not.
 
 ## Owner to-dos, in order
 
@@ -196,15 +214,16 @@ README's checks, and the native changes by the next development build.
    appearances; on Today with VoiceOver, streak, practice, then the backup card; a
    checkpoint's confetti over the practice row; the Insights lead line at the largest text,
    and in dark beside "More about your record".
-6. Then the order in `docs/SHIP_READINESS.md`: a code review of steps 183–196 (your call),
-   the mail sender, external TestFlight, the store record, the open decisions, the gate.
+6. Then `docs/SHIP_READINESS.md`, "The owner's list": the server checklist, the new builds,
+   a review of D70 and D71 (your call), the mail sender, external TestFlight, the store
+   record, the gate.
 
 Done: the secret rename, both function deploys and the trial move (above).
 
 **Blocked on the owner:** the password reset (needs a custom mail sender in Supabase,
-`SHIP_READINESS.md` decisions 6 and 12); the under-13 local-only rule (a legal call, decision
-2); decisions 5, 8, 9 and 13 (13 before the public release); the beta app description and
-review information before outside testers. Everything open, with who does it, is in
+`SHIP_READINESS.md` decisions 6 and 12); counsel and the sandbox check for the under-13
+rule; decision 5 (the EU), 8 and the rest of 13 (the messages in `docs/OWNER_MESSAGES.md`);
+the beta app description and review information before outside testers. Everything open, with who does it, is in
 `docs/SHIP_READINESS.md` "Open work".
 
 ## Notes that still hold
@@ -239,8 +258,8 @@ and delegation are done by Fable (the main session), which doesn't implement dir
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run on this branch
-  (2026-11-19, review round 8): 228 suites, 5,139 tests. `check.sh --release`
-  passed on the same tree with the two new native packages: expo-doctor 20/20, iOS export
+  (2026-11-19, D70 and D71): 244 suites, 5,431 tests. `check.sh --release` last
+  passed on the review's round 7 tree with the two new native packages: expo-doctor 20/20, iOS export
   7.58 MB (bundle 7.17 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;
   restart the web server after edits under `app/` (`docs/tooling-notes.md`).

@@ -432,3 +432,34 @@ describe('PaywallView', () => {
     expect(openBrowserAsync).toHaveBeenCalledWith(PRIVACY_POLICY_URL);
   });
 });
+
+// The route waits for RevenueCat to start before the plans are asked for
+// (roadmap D70, `ensureBillingStarted`); meanwhile the screen shows its
+// loading state.
+describe('PaywallView — before billing has started', () => {
+  it('asks for no plans and shows the loading state, with nothing to press', async () => {
+    const { loadPlans, restore } = seed({ plans: [] });
+    render(<PaywallView billingReady={false} />);
+    await act(async () => {});
+
+    expect(loadPlans).not.toHaveBeenCalled();
+    expect(screen.getByTestId('paywall-loading')).toBeTruthy();
+    expect(screen.queryByTestId('paywall-unavailable')).toBeNull();
+    expect(screen.getByTestId('paywall-restore').props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(screen.getByTestId('paywall-restore'));
+    expect(restore).not.toHaveBeenCalled();
+  });
+
+  it('asks for the plans once billing has started', async () => {
+    const { loadPlans } = seed({ plans: [] });
+    const { rerender } = render(<PaywallView billingReady={false} />);
+    await act(async () => {});
+    expect(loadPlans).not.toHaveBeenCalled();
+
+    rerender(<PaywallView billingReady />);
+    await waitFor(() => expect(loadPlans).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId('paywall-loading')).toBeNull();
+    // No plans came back: today's line for that.
+    expect(screen.getByTestId('paywall-unavailable')).toBeTruthy();
+  });
+});

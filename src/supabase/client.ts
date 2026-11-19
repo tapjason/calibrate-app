@@ -3,11 +3,21 @@
 // imported in environments where the SDK shouldn't load (e.g. Jest unit
 // tests that mock the client entirely).
 //
-// Layer rule: L5 (services). Imports React Native's Platform and its sibling
-// sessionStorage only — never reaches into stores, the engine, or DB helpers.
+// Layer rule: L5 (services). Imports React Native's Platform, its sibling
+// sessionStorage and the age store (a leaf: zustand, the age band's db helper
+// and the engine's predicate) only — never other stores, the engine, or DB
+// helpers.
+//
+// The under-13 rule (roadmap D70): a client made while the phone is local-only
+// is made with the session's auto-refresh off, so supabase-js neither
+// refreshes a stored session as it starts nor runs its refresh timer.
+// src/supabase/auth.ts pauses and resumes the timer on a client that already
+// exists (`pauseSessionRefresh`, `resumeSessionRefresh`).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+
+import { isLocalOnly } from '@/store/ageStore';
 
 import { createSessionStorage, supabaseStorageKey, type KeychainDeps } from './sessionStorage';
 
@@ -29,6 +39,15 @@ let client: SupabaseClient | null = null;
  * security review round 5, 2026-11-19), in AsyncStorage on web. The storage
  * key is passed explicitly, the one supabase-js would pick itself, so the
  * storage's launch check reads the same keys the client does.
+ *
+ * `autoRefreshToken` is off when the client is made under the under-13 rule
+ * (D70). With it on, auth-js 2.106 refreshes an expiring stored session as
+ * soon as the client starts (GoTrueClient `_recoverAndRefresh`) and, outside a
+ * browser, starts its refresh timer (`_handleVisibilityChange`); with it off,
+ * neither happens. A `getSession()` on a session within its expiry margin
+ * still refreshes it (`__loadSession` calls `_callRefreshToken` whatever the
+ * setting): that is the residual the design discloses, and it is what keeps
+ * Sign out and Delete account working for an account frozen by the rule.
  */
 export function getSupabaseClient(): SupabaseClient {
   if (client) return client;
@@ -57,7 +76,7 @@ export function getSupabaseClient(): SupabaseClient {
         keychain: loadKeychain(),
       }),
       storageKey,
-      autoRefreshToken: true,
+      autoRefreshToken: !isLocalOnly(),
       persistSession: true,
       // PKCE flow is required for native OAuth — the implicit flow's URL
       // fragment doesn't survive the redirect back into the app.
@@ -89,6 +108,15 @@ export function loadKeychain(): KeychainDeps | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The client if it has been made, else null: never makes one. For pausing and
+ * resuming the session's refresh (src/supabase/auth.ts), which must not make
+ * the client early: a client made later reads the rule itself.
+ */
+export function peekSupabaseClient(): SupabaseClient | null {
+  return client;
 }
 
 /**

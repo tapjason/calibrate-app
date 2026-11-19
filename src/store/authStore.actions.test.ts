@@ -33,7 +33,12 @@ jest.mock('@/supabase/sync', () => ({
   // Round 6 (N2): what sign-out reads again just before the wipe.
   unsyncedRows: jest.fn(async () => new Map()),
 }));
-jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn() }));
+jest.mock('@/db/account', () => ({
+  wipeLocalUserData: jest.fn(),
+  // Guest Erase takes everything on the phone (2026-11-19); it returns the
+  // user ids that had rows.
+  wipeEverythingOnDevice: jest.fn(async () => []),
+}));
 // Round 5: sign-out counts what the server doesn't have yet.
 jest.mock('@/db/predictions', () => ({
   ...jest.requireActual('@/db/predictions'),
@@ -75,6 +80,7 @@ import { useWarmupStore } from './warmupStore';
 const mocked = auth as jest.Mocked<typeof auth>;
 const server = serverAccount as jest.Mocked<typeof serverAccount>;
 const wipe = (localAccount as jest.Mocked<typeof localAccount>).wipeLocalUserData;
+const wipeAll = (localAccount as jest.Mocked<typeof localAccount>).wipeEverythingOnDevice;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -566,9 +572,10 @@ describe('authStore.signOut', () => {
 });
 
 describe('authStore.eraseDeviceData', () => {
-  it("wipes the guest's rows, the Warmup and practice, then reloads the empty stores", async () => {
+  it('wipes everything on the phone, the Warmup and practice, then reloads the empty stores', async () => {
     useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', hasAppleIdentity: false });
     wipe.mockResolvedValue(undefined);
+    wipeAll.mockResolvedValue([LOCAL_GUEST_USER_ID]);
     const retake = jest.fn(async () => {});
     useWarmupStore.setState({ retake });
     const clearPractice = jest.fn(async () => {});
@@ -582,7 +589,9 @@ describe('authStore.eraseDeviceData', () => {
     useCategoryStore.setState({ load: loadCategories });
 
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
-    expect(wipe).toHaveBeenCalledWith(LOCAL_GUEST_USER_ID);
+    // Every account's rows, not the guest's alone (main session, 2026-11-19).
+    expect(wipeAll).toHaveBeenCalledTimes(1);
+    expect(wipe).not.toHaveBeenCalled();
     expect(retake).toHaveBeenCalled();
     // Practice belongs to the device, like the Warmup (roadmap step 88).
     expect(clearPractice).toHaveBeenCalled();
@@ -643,6 +652,7 @@ describe('authStore.eraseDeviceData', () => {
 
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toMatchObject({ ok: false });
     expect(wipe).not.toHaveBeenCalled();
+    expect(wipeAll).not.toHaveBeenCalled();
   });
 });
 

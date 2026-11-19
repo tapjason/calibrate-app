@@ -22,6 +22,21 @@
 // ends. The guest's Warm-up and practice stay, and so do this phone's
 // integrity counts (round 6).
 //
+// The under-13 rule (roadmap D70, 2026-11-19): while the age store says the
+// phone is local-only (`isLocalOnly`, ./ageStore), every sign-in and sign-up
+// action refuses with `LOCAL_ONLY_SIGN_IN` before any service is called, and
+// `syncForUser` sends nothing. An account already signed in is frozen, not
+// signed out: Sign out and Delete account work as built (deletion is the one
+// upload left open, since it removes data). Guest Erase and a confirmed
+// deletion clear the stored band, and the gate stays on for the run
+// (`forgetBand`). Stopping the session's refresh and the rest of entering or
+// leaving the rule are src/age/localOnly.ts's.
+//
+// Guest Erase removes everything on the phone, whoever's it was (main
+// session, 2026-11-19): every per-user row under every account id, the
+// device data with it (`wipeEverythingOnDevice`). Account deletion and
+// sign-out stay scoped to one account (`wipeLocalUserData`).
+//
 // Layer rule: L4 (state). May import from L2 (db) and L5 (services): the
 // Supabase client, auth, account and sync modules and the account markers,
 // two functions of the reminder scheduler (after a wipe, and on leaving an
@@ -38,7 +53,7 @@ import type {
   SupabaseClient,
 } from '@supabase/supabase-js';
 
-import { wipeLocalUserData } from '@/db/account';
+import { wipeEverythingOnDevice, wipeLocalUserData } from '@/db/account';
 import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
@@ -78,6 +93,13 @@ import {
   syncNow,
 } from '@/supabase/sync';
 
+import {
+  AGE_ANSWER_WAIT_MS,
+  isLocalOnly,
+  LOCAL_ONLY_SIGN_IN as AGE_RANGE_REFUSAL,
+  useAgeStore,
+  whenAgeSettled,
+} from './ageStore';
 import { useCategoryStore } from './categoryStore';
 import { useLogDraftStore } from './logDraftStore';
 import { useResolveRunStore } from './resolveRunStore';
@@ -135,6 +157,23 @@ export const SIGN_OUT_CHECK_FAILED =
  */
 export const SIGN_OUT_FAILED_AFTER_WIPE =
   "Couldn't finish signing you out, so you're still signed in. Your backed-up predictions will come back to this phone; anything you agreed to lose is gone.";
+
+/**
+ * What every sign-in and sign-up returns while the under-13 rule applies
+ * (roadmap D70): "Accounts are off on this phone because of the age range it
+ * shares with Fairly Sure." Defined in the age store, a leaf, so the auth
+ * service can use the same words without a require cycle. A plain constant,
+ * not an `export { … } from` re-export: that compiles to a getter, which a
+ * test spreading this module part-way through a require cycle would call
+ * before ./ageStore is assigned.
+ */
+export const LOCAL_ONLY_SIGN_IN: string = AGE_RANGE_REFUSAL;
+
+/**
+ * Erase didn't finish: the wipe failed (one transaction, so nothing was
+ * removed) or a step after it did, or a sign-in was under way.
+ */
+const ERASE_FAILED = "Couldn't finish erasing your data. Try again.";
 
 interface AuthState {
   /**
@@ -198,10 +237,12 @@ interface AuthState {
    * read again: anything new since stops the sign-out the same way, the
    * account kept as it was (round 6, N2). 4. The account's rows are wiped
    * (its predictions, stats and categories; not this phone's integrity counts,
-   * the Warm-up, the age band or practice), its sync cursor cleared and the
-   * cached copies swept. 5. The session ends, online or on this phone alone
-   * as before (`localOnly`), and the account is remembered as signed out
-   * here, so a stale copy of its session coming back is ignored. 6. Then
+   * the Warm-up, the age band or practice), its sync cursor cleared, the
+   * cached copies swept and the support card's set-asides forgotten (keys
+   * that hash the words, 2026-11-19). 5. The session ends, online or on this
+   * phone alone as before (`localOnly`), and the account is remembered as
+   * signed out here, so a stale copy of its session coming back is ignored.
+   * 6. Then
    * everything a sign-out did before: the guest, billing logged out and
    * dropped to free, reminders still to come cancelled with the reload,
    * reminders showing words dismissed, the Coach, the Log draft and the
@@ -227,7 +268,17 @@ interface AuthState {
   deleteAccount: () => Promise<DeleteAccountResult>;
   /**
    * A guest's equivalent (§3.5): erase everything the app stored on this
-   * device, the Warmup included. Nothing to call — it never left the phone.
+   * device, whoever's it was (main session, 2026-11-19): every per-user row
+   * under every account id (the guest's, and any an account left here, its
+   * integrity counts and sync markers included), the age band, the Warm-up
+   * and practice (`wipeEverythingOnDevice`); then wipes owed for any account
+   * are settled and every account's sync cursor cleared, the Log draft, the
+   * answer run, the card and streak-moment choices, the usage line's stamp
+   * and the support card's set-asides forgotten, the stores reloaded, the lock
+   * screen and the cache cleared and the Coach dropped. The "signed out here"
+   * list stays (ids only; it keeps a stale session from coming back), and so
+   * do the entitlement mirror and the settings. Nothing to call — it never
+   * left the phone. Refused while a sign-in is under way.
    */
   eraseDeviceData: () => Promise<AuthOutcome>;
   /** Test-only: drop the session. */
@@ -329,7 +380,11 @@ function sweepCachedCopies(): void {
  *   §3.4), as before: the card's left-off categories, the streak moment
  *   day and when the line about usage counts was shown (D69 (b)), the
  *   account's rows, the Warm-up and the age band (the wipe's
- *   default), then the Warm-up and practice stores.
+ *   default), then the age store's band (D70), the Warm-up and practice
+ *   stores.
+ *
+ * Every kind also forgets the support card's set-asides, once the settings
+ * have been read (`forgetSupportAside`).
  */
 type EraseKind = 'signOut' | 'accountRows' | 'confirmedDeletion';
 
@@ -347,6 +402,12 @@ function eraseKindFor(reason: markers.WipeReason): EraseKind {
  * swept whether or not the wipe went through.
  */
 async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolean> {
+  // The Coach's support card set aside (main session, 2026-11-19), whatever
+  // took the account's rows: each key holds a prediction's id and a hash of
+  // its words, and that one exists says the crisis filter matched them, so
+  // none outlasts the rows. Signing back in shows the card once more, and
+  // one tap sets it aside again. Never throws.
+  await forgetSupportAside();
   if (kind === 'confirmedDeletion') {
     try {
       // The categories left off the card were about the erased record: any
@@ -378,6 +439,12 @@ async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolea
     // eslint-disable-next-line no-console
     console.warn('[auth] local wipe failed:', errorForLog(e));
   }
+  if (kind === 'confirmedDeletion' && wiped) {
+    // The stored age band went with the wipe (device data): the store forgets
+    // it, and the under-13 gate, if on, stays on for the rest of the run
+    // (D70, call 4); the next launch asks Apple again before anything goes.
+    useAgeStore.getState().forgetBand();
+  }
   if (kind === 'confirmedDeletion') {
     try {
       // The Warmup's rows went with the wipe; its store forgets them too.
@@ -396,6 +463,51 @@ async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolea
   await clearSyncCursor(userId);
   sweepCachedCopies();
   return wiped;
+}
+
+/**
+ * Forget every support-card set-aside (settingsStore). Never throws.
+ *
+ * Only once the settings have been read: the auth store initializes before
+ * they hydrate (app/_layout.tsx), and a write before then would store the
+ * defaults over the person's record. So a wipe retried at launch leaves the
+ * keys; the sign-out that owed it cleared them when it ran, and they are
+ * keys only, no words.
+ */
+async function forgetSupportAside(): Promise<void> {
+  try {
+    const settings = useSettingsStore.getState();
+    if (!settings.hydrated) return;
+    await settings.clearSupportAside();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not forget the support card set aside:', errorForLog(e));
+  }
+}
+
+/**
+ * After a guest's Erase took every per-user row on the phone
+ * (`wipeEverythingOnDevice`): what else was kept per account. Never throws.
+ *
+ *   - Every wipe still owed is done: its rows went with everything else.
+ *     The "signed out here" list stays: it stops a stale copy of a signed-out
+ *     account's session from coming back, and holds ids only.
+ *   - The sync cursor of every account that had rows here, or was owed a
+ *     wipe: a timestamp under its id, in AsyncStorage. Without one, a later
+ *     sign-in pulls everything, as a person's sign-in does anyway.
+ */
+async function forgetAccountsAfterErase(owners: readonly string[]): Promise<void> {
+  try {
+    await markers.loadAuthMarkers();
+    const owed = markers.owedWipes().map(({ userId }) => userId);
+    for (const userId of owed) await markers.settleOwedWipe(userId);
+    const accounts = new Set([...owners, ...owed]);
+    accounts.delete(LOCAL_GUEST_USER_ID);
+    for (const userId of accounts) await clearSyncCursor(userId);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not clear what Erase leaves per account:', errorForLog(e));
+  }
 }
 
 /**
@@ -422,6 +534,10 @@ async function reloadForUser(userId: string): Promise<void> {
  * import predictionStore.
  */
 export function syncForUser(userId: string | null): ReturnType<typeof syncNow> {
+  // The under-13 rule (D70): a frozen account sends nothing. syncNow checks it
+  // too (src/supabase/sync.ts); this keeps the store's own syncs (a session
+  // that arrives, a sign-out that didn't end) from even starting one.
+  if (isLocalOnly()) return Promise.resolve({ pulled: 0, pushed: 0 });
   return syncNow(userId, { recompute: refreshAfterSync });
 }
 
@@ -650,6 +766,34 @@ async function asPersonSignIn<T>(signIn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** A sign-in or sign-up refused under the under-13 rule. */
+type LocalOnlyRefusal = { ok: false; error: string };
+
+/**
+ * Every sign-in and sign-up action goes through here (roadmap D70): with
+ * `pending` held, it waits for Apple's age answer on a launch that asks (at
+ * most `AGE_ANSWER_WAIT_MS`; at once anywhere else), and refuses with
+ * `LOCAL_ONLY_SIGN_IN` while the phone is local-only, before any service or
+ * client is touched. Checked again just before the service is called, after
+ * any sign-out still settling has been waited out. The services refuse on
+ * their own too (`refuseWhenLocalOnly`, src/supabase/auth.ts).
+ */
+function accountSignIn<T>(
+  set: (s: Partial<AuthState>) => void,
+  start: () => Promise<T>,
+): Promise<T | LocalOnlyRefusal> {
+  return withPending(set, async (): Promise<T | LocalOnlyRefusal> => {
+    // Only while Apple is being asked: otherwise the sign-in starts in the
+    // same tick as the tap, as it always has.
+    if (!useAgeStore.getState().settled) await whenAgeSettled(AGE_ANSWER_WAIT_MS);
+    if (isLocalOnly()) return { ok: false, error: LOCAL_ONLY_SIGN_IN };
+    return asPersonSignIn(async (): Promise<T | LocalOnlyRefusal> => {
+      if (isLocalOnly()) return { ok: false, error: LOCAL_ONLY_SIGN_IN };
+      return start();
+    });
+  });
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   email: null,
@@ -754,12 +898,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
+  // Every action named sign(In|Up)… goes through accountSignIn: a test lists
+  // them off the store and checks each refuses under the under-13 rule
+  // (authStore.localOnly.test.ts), so a new one can't miss the gate.
   signInWithEmail: (email, password) =>
-    withPending(set, () => asPersonSignIn(() => auth.signInWithEmail(email, password))),
+    accountSignIn(set, () => auth.signInWithEmail(email, password)),
   signUpWithEmail: (email, password) =>
-    withPending(set, () => asPersonSignIn(() => auth.signUpWithEmail(email, password))),
-  signInWithApple: () => withPending(set, () => asPersonSignIn(() => auth.signInWithApple())),
-  signInWithGoogle: () => withPending(set, () => asPersonSignIn(() => auth.signInWithGoogle())),
+    accountSignIn(set, () => auth.signUpWithEmail(email, password)),
+  signInWithApple: () => accountSignIn(set, () => auth.signInWithApple()),
+  signInWithGoogle: () => accountSignIn(set, () => auth.signInWithGoogle()),
 
   signOut: (opts) =>
     withPending(set, async (): Promise<SignOutOutcome> => {
@@ -1005,8 +1152,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (get().status !== 'guest') {
         return { ok: false, error: 'Signed-in accounts are deleted from Delete account.' };
       }
+      // A sign-in under way would land its account's rows in the middle of a
+      // wipe that takes every account's: Erase waits for another try.
+      if (signInsInFlight > 0) return { ok: false, error: ERASE_FAILED };
       try {
-        await wipeLocalUserData(LOCAL_GUEST_USER_ID);
+        // Everything on the phone, whoever's it was (main session,
+        // 2026-11-19): every per-user row under every account id, the age
+        // band, the Warm-up and practice, in one transaction.
+        const owners = await wipeEverythingOnDevice();
+        // The stored band went with it: the store forgets it, and the
+        // under-13 gate, if on, stays on for the rest of the run (D70, call
+        // 4); the next launch asks Apple again before anything goes.
+        useAgeStore.getState().forgetBand();
+        // Owed wipes are done, and every account's sync cursor goes.
+        await forgetAccountsAfterErase(owners);
         await useWarmupStore.getState().retake();
         // Practice, like the Warmup, belongs to the device (roadmap step 88).
         await usePracticeStore.getState().clear();
@@ -1020,6 +1179,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await useSettingsStore.getState().setCardHiddenCategories([]);
         await useSettingsStore.getState().setStreakMomentDay(null);
         await useSettingsStore.getState().forgetUsageNoticeShown();
+        // And the support card's set-asides: keys of predictions now gone.
+        await useSettingsStore.getState().clearSupportAside();
         await reloadForUser(LOCAL_GUEST_USER_ID);
         // And what's already on the lock screen was about it too. After the
         // reload, which cancels the reminders still to come, and not awaited:
@@ -1033,7 +1194,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[auth] erase failed:', errorForLog(e));
-        return { ok: false, error: "Couldn't finish erasing your data. Try again." };
+        return { ok: false, error: ERASE_FAILED };
       }
     }),
 }));

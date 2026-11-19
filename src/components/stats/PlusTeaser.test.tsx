@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 
 import { CoachPanel } from './CoachPanel';
@@ -54,5 +55,44 @@ describe('PlusTeaser sample', () => {
   it('shows none without one', () => {
     render(<PlusTeaser onUpgrade={jest.fn()} />);
     expect(screen.queryByTestId('plus-teaser-sample')).toBeNull();
+  });
+});
+
+// The under-13 rule (roadmap D70): Plus isn't offered on a local-only phone,
+// so Insights shows no Plus card and no panel shows an upsell.
+describe('Plus surfaces under the under-13 rule', () => {
+  beforeEach(() => useEntitlementStore.setState({ isPlus: false }));
+  afterEach(() => act(() => __resetAgeStoreForTests()));
+
+  it('draws no Plus card', () => {
+    useAgeStore.setState({ localOnly: true });
+    const onUpgrade = jest.fn();
+    const teaser = render(<PlusTeaser onUpgrade={onUpgrade} monthsOnFile="3 months" />);
+    expect(teaser.toJSON()).toBeNull();
+    expect(screen.queryByTestId('plus-teaser-cta')).toBeNull();
+  });
+
+  it('draws no upsell in Coach or Trends, even where the screen asks for one', () => {
+    useAgeStore.setState({ localOnly: true });
+    const coach = render(<CoachPanel upsell onUpgrade={jest.fn()} />);
+    expect(coach.toJSON()).toBeNull();
+    const trends = render(<TrendsPanel upsell onUpgrade={jest.fn()} />);
+    expect(trends.toJSON()).toBeNull();
+  });
+
+  it('draws them as usual without the rule', () => {
+    useAgeStore.setState({ localOnly: false });
+    render(<PlusTeaser onUpgrade={jest.fn()} />);
+    expect(screen.getByTestId('plus-teaser-cta')).toBeTruthy();
+    render(<TrendsPanel upsell onUpgrade={jest.fn()} />);
+    expect(screen.getByTestId('trends-upsell-cta')).toBeTruthy();
+  });
+
+  // Trends on a Plus mirror already on the phone is unchanged.
+  it('keeps Trends for a Plus mirror', () => {
+    useEntitlementStore.setState({ isPlus: true });
+    useAgeStore.setState({ localOnly: true });
+    render(<TrendsPanel upsell={false} />);
+    expect(screen.getByTestId('trends-panel')).toBeTruthy();
   });
 });

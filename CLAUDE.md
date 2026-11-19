@@ -733,8 +733,24 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
 - **Create account is hidden** until a custom mail sender works in Supabase
   (`EMAIL_SIGN_UP_ENABLED`); Apple, Google and email sign-in for existing accounts stay.
 - **Usage counts wait for consent**: a guest's counts go up only after the Warm-up's first
-  screen has shown its line and switch (`usageNoticeShownAt`); the switch is in You too.
+  screen has shown its line and switch (`usageNoticeShownAt`); the switch is in You too,
+  and on the sign-in screen, where counts become tied to an account (D71 (d)).
   Kept on the server 13 months (migration 012).
+- **Erase means everything** (D71 (a)): guest Erase removes all that Fairly Sure keeps on
+  the phone, whoever's account it was under, the counts sign-out keeps included
+  (`wipeEverythingOnDevice`); settings, the Plus mirror and the ids of accounts signed out
+  here stay. Account deletion and sign-out stay scoped to their account.
+- **Under 13, the app is local-only** (D70, the main session's call; counsel before the
+  public US release). When Apple's Declared Age Range says under 13 (`isUnder13Band`),
+  there is no sign-in, sync, usage count, Coach or RevenueCat, Plus isn't offered and the
+  rating prompt isn't asked; everything else works. `useAgeStore.localOnly` is the one
+  field every gate reads, and `src/age/egress.test.ts` fails when a new upload path or
+  sign-in route forgets it. On a launch that asks Apple, RevenueCat and the guest flush
+  wait for the answer (a paywall open or sign-in at most 5 s, a sync at most 60 s). An
+  account already signed in is frozen, not signed out or deleted: Sign out and Delete
+  account still work. Asked again each launch while the rule applies. You explains it once,
+  as "the age range this iPhone shares with Fairly Sure", never an age. No band (declined,
+  unavailable, older iOS) means nothing changes. `docs/design/research/under-13-2026-11.md`.
 - **Server limits** (migrations 010–012): what the public key can write, per-account write
   limits and a 25 MB text budget, no answer put back to open, and a storage ceiling (400 MB,
   checked every 5 minutes) past which the app's writes that add rows or text wait. The owner applies them
@@ -776,7 +792,8 @@ at the Small Business rate. The stance until a court rules: IAP only, no web che
 Re-verify before relying on a revenue number. The go-to-market sequence and its gates are
 GROWTH §0 and §7.
 
-Rule: the paywall never touches the core loop or anything shareable.
+Rule: the paywall never touches the core loop or anything shareable. On a phone the
+under-13 rule applies to (D70), Plus isn't offered at all.
 
 ---
 
@@ -812,8 +829,12 @@ Hard constraints carried here for visibility:
   US phone, and for anywhere else a line that names no number and no website (alone on a
   phone set to another region; after the US lines on a US phone or when the region can't
   be read) (step 182). A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988
-  line on the self-harm and distress topics, the one line confirmed there; the other
-  two topics show the line for elsewhere until the owner decides (2026-11-15).
+  line on every topic, the one line confirmed there, and then "If 988 doesn't connect
+  where you are: search for a local crisis line, or call your local emergency number."
+  (D71 (c)); the domestic-violence and eating-disorder numbers stay off a territory phone
+  until those organisations answer the owner. **The card can be set aside** (D71 (b)): it
+  says why it came up and offers "Back to Coach", which sets aside the predictions that
+  matched (ids and a hash, on this phone only); new matching words bring it back.
 
 ### Backend Proxy Architecture
 API keys never live in the client. All AI calls go through Supabase Edge Functions, and

@@ -41,8 +41,10 @@ Status: filled in 2026-11-08
 - **First run:** the Warmup (ten two-choice questions, an empty 50–100% confidence control each,
   then the counts and a read of *these ten*, D18) → "Make a real prediction" → Log, with the due
   date on Tomorrow and starter ideas that resolve by then. No account and no permission prompt
-  first; the iOS age-range sheet asks once after the first screen is up and fails open (D4 in
-  `docs/HUMAN_VERIFICATION.md`).
+  first; Apple's age-range sheet may appear after the first screen is up (D4 in
+  `docs/HUMAN_VERIFICATION.md`). No band, or a decline, changes nothing; a band that includes
+  ages under 13 makes the phone local-only (D70: no sign-in, sync, usage counts, Coach or
+  RevenueCat, no Plus offered, no rating prompt; everything else as usual).
 - **Log** (a page sheet from the "+" in the title bar of Today, Insights and History, D21): title,
   confidence (starts empty, D13), category (starts empty, D29), due date (starts on Tomorrow, D55).
   Save waits for a title, a number and a category, and names the date ("Save, due Sunday", D55).
@@ -80,7 +82,19 @@ Status: filled in 2026-11-08
   SQLite (`calibrate.db`); the app is complete offline with no account. The sign-in session is
   in the iPhone Keychain (`src/supabase/sessionStorage.ts`, D69 (d)). Sign-out takes the
   account's rows off the phone, all but those integrity counts (D69 (a), round 6,
-  `docs/ACCOUNT_SPEC.md` §2).
+  `docs/ACCOUNT_SPEC.md` §2); a guest's Erase takes every account id's rows, those counts
+  included, with the age band, the Warm-up and practice; settings and the entitlement mirror
+  stay (D71 (a), `wipeEverythingOnDevice`). The support card's set-asides
+  (an id and a hash of the words per prediction, D71 (b)) live in the settings record,
+  never synced.
+- **The under-13 rule (D70) decides whether anything leaves the phone:** one predicate
+  (`isUnder13Band`, `src/engine/ageBand.ts`), one field (`useAgeStore.localOnly`,
+  `src/store/ageStore.ts`), read by every upload path; `src/age/egress.test.ts` fails when a
+  file that can send over the network isn't listed and gated. Account deletion and sign-out
+  stay open (they remove data). An account signed in before the rule came on is frozen
+  (`docs/ACCOUNT_SPEC.md` §2). On a launch that asks Apple, RevenueCat and the guest flush
+  wait for the answer (a paywall open or a sign-in at most 5 s, a sync at most 60 s).
+  `docs/design/research/under-13-2026-11.md` is the spec.
 - **Supabase owns (after sign-in):** Auth (email sign-in, with Create account hidden, D69 (c); Sign in with Apple through `signInWithIdToken`, with a nonce; Google through the system sheet and `exchangeCodeForSession`, behind `GOOGLE_SIGN_IN_ENABLED`),
   the synced copy of predictions (last-write-wins, except that an answered prediction never goes back to open, D69; deletions as tombstones, each removing on the server only the open row or the same answer the deleting phone saw, round 7), entitlements written by
   the `revenuecat-webhook` Edge Function, Coach usage and rate limits, analytics events from
@@ -88,6 +102,8 @@ Status: filled in 2026-11-08
   account deletion (`delete-account`).
 - **RevenueCat owns:** whether someone has Plus. Absence or any error reads as free, never Plus;
   `fetchEntitlement()` returns `null` for "couldn't ask" so an offline launch doesn't strip Plus.
+  Never configured on a local-only phone (D70), where a Plus mirror already there is left
+  as it is.
 - **OpenAI** (through the `coach` Edge Function only): reads computed numbers, never titles or
   reflections by default (`COACH_AGENT.md`).
 - **Never on the client:** service-role keys, the OpenAI key, the RevenueCat `sk_` key, the webhook
@@ -116,7 +132,8 @@ Layers, lowest first (`BUILD_PLAN.md`; an import arrow only points downward; L6 
 - **L3 engine:** `src/engine/` pure functions (`calibration.ts`, `chance.ts`, `direction.ts`,
   `sameDay.ts`, `corrections.ts`, `streak.ts`, `localTime.ts`, `patterns.ts`, `trends.ts`,
   `wrapped.ts`, `warmup.ts`, `practice.ts`, `coverageNudge.ts`, `milestones.ts`, `pastOutcomes.ts`,
-  `categories.ts`). The engine takes `now` as an argument and never reads the clock.
+  `categories.ts`, `ageBand.ts`, `supportAside.ts`). The engine takes `now` as an argument and
+  never reads the clock.
 - **L4 state:** `src/store/*Store.ts` (Zustand; state and actions, no business math; every
   mutation and its stats recompute in one `withTransaction`).
 - **L5 services:** `src/supabase/`, `src/notifications/`, `src/ai/`, `src/billing/`,
@@ -163,7 +180,9 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 - **Rules:** the paywall never touches the core loop or anything shareable; no checkout outside IAP
   (link-out commission unsettled, `docs/HUMAN_VERIFICATION.md` "Decisions only you can make"); the
   paywall states that the trial converts and that cancelling takes 24 hours' notice; the trial
-  reminder (D16) carries no offer; a purchase prompt opens only from a deliberate tap.
+  reminder (D16) carries no offer; a purchase prompt opens only from a deliberate tap. On a
+  local-only phone (D70) Plus isn't offered at all: no Plus row in You, no Plus card or Coach
+  upsell, no locked themes, and the paywall route shows "Plus isn't offered on this phone".
 - **No ads, no tracking, no ATT prompt.**
 
 ## §7 Content, tone and the Coach
@@ -179,7 +198,11 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   medical, financial or legal advice, no numeric diet or exercise targets. Freetext isn't sent by
   default.
 - **Crisis-adjacent text:** `src/ai/crisisFilter.ts` catches distress signals before any coaching
-  call and routes to `src/components/stats/SupportSurface.tsx`, never to the model.
+  call and routes to `src/components/stats/SupportSurface.tsx`, never to the model. The card
+  says why it came up and offers "Back to Coach", which sets aside the predictions that
+  matched, on this phone only, until new matching words appear (D71 (b),
+  `src/engine/supportAside.ts`). A US-territory phone gets 988 on every topic (D71 (c)).
+  The Coach is off on a local-only phone (D70).
 - **Social:** cooperative only, after v1 (D44): nothing ranks, scores one person against another
   or names a winner.
 
@@ -204,7 +227,8 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   migration; an analytics property that can carry free text (`EVENT_PROPS` is closed: enum and
   numeric values only); a sync flag on before its migration is live.
 - **Portability and deletion:** CSV export (free); account deletion in the app
-  (`app/account/delete.tsx` → `delete-account`); guest Erase clears the device.
+  (`app/account/delete.tsx` → `delete-account`); guest Erase clears the device, whoever's
+  account the rows were under, all but settings and the entitlement mirror (D71 (a)).
 
 ## §9 Test bridge
 
@@ -220,8 +244,13 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   landscape viewport shows what no iPhone can (found 2026-11-12).
 - **Dev routes (only when `__DEV__`):** `/dev/seed` with **Load demo data** (`dev-seed-load`: about
   153 resolved and 7 open predictions over five months; status in `dev-seed-status`), **Preview
-  Plus until reload** (`dev-seed-plus`, in memory only), **Go to Today** (`dev-seed-home`);
-  `/dev/celebrations` replays the celebration moments. A development build opened on `/dev/…`
+  Plus until reload** (`dev-seed-plus`, in memory only), **Set an under-13 age range
+  (local-only)** (`dev-seed-under13`, D70: saves an under-13 band, `(null, 12)`, through the
+  age store's `accept`, as Apple's answer would, so it holds across reloads and the rule's
+  screens can be seen on web; status in `dev-seed-status`; pressed again it reads **Clear the
+  under-13 age range (saves 18+)** and saves `(18, null)`, which lifts the rule at once and,
+  on an iPhone, means Apple isn't asked again until Erase all data), **Go to Today**
+  (`dev-seed-home`); `/dev/celebrations` replays the celebration moments. A development build opened on `/dev/…`
   skips the first-run redirect to the Warm-up, and You has a "Test data and playtest profiles"
   row (`you-dev-seed`, development builds only), the way in on the iPhone.
 - **Playtest profiles** (`src/dev/playtestProfiles.ts`, on `/dev/seed`, added 2026-11-12): named
@@ -545,9 +574,11 @@ Saved exports go under `docs/live/` for `/live-review`.
 - RevenueCat: the dashboard, products, offerings, keys.
 - GitHub: `git push`, pull requests on the remote, Pages, repository secrets.
 - **The iPhone:** installing builds, running the app, every check in §18, Developer Mode, the
-  notification permission dialog, real purchases in sandbox.
+  notification permission dialog, real purchases in sandbox, the Sandbox Apple Account's Age
+  Assurance setting for the under-13 check (`docs/HUMAN_VERIFICATION.md` D4).
 - Decisions: price changes, EU trader status, the domain, the submission date, anything in
   UI_ROADMAP §2 not yet decided, anything that spends money or deletes someone's data.
+  Counsel on the under-13 rule (D70; the points in `docs/design/research/under-13-2026-11.md`).
 
 ## §17 Store presence
 
@@ -579,7 +610,9 @@ behaviour is checked by the owner on that phone, and an agent says so in every r
   `ui-rounded` numerals; Liquid Glass; native sheets (`formSheet`, page sheets) and their gestures;
   the iOS switch (63 × 28 pt on iOS 26, drawn exactly in its measured frame); the date and time
   pickers; local notifications, their permission dialog and the Happened / Didn't actions; Sign in
-  with Apple; the Declared Age Range sheet; the OS share sheet and PNG export (view-shot); the
+  with Apple; the Declared Age Range sheet and the under-13 band it can return (D70; the
+  dev seed's `dev-seed-under13` shows the screens on web, not Apple's answer); the OS share
+  sheet and PNG export (view-shot); the
   rating prompt; RevenueCat purchases and restore; real Dynamic Type; VoiceOver; cold start;
   keyboard avoidance; the app lock (Face ID and the passcode, the lock screen's overlay over sheets,
   the cover in the app switcher) and the phone's Region setting (`expo-localization`).

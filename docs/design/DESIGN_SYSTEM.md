@@ -709,7 +709,9 @@ Tier is encoded by **fill + ring count + written label**, never colour alone:
 - Free theme "Midnight": graphite `#131418` for the identity card, and a light
   `#ECEEF1` for Wrapped, so a verdict and a recap read differently. Plus themes are
   cosmetic only. Every palette is the app's own (D33). A locked theme shows a small
-  lock, not a ✦.
+  lock, not a ✦. Under the under-13 rule (D70) no theme is locked or offered: only the
+  themes the phone can use are drawn (the free one, and Plus's with a Plus mirror already
+  there), and with only the free one there is no picker.
 - Offer per-category show/hide before sharing (Any Distance's eye toggles).
 - **The shape and the categories left off are kept** between visits, like the theme
   (step 138). Any category can come off, the last
@@ -1098,7 +1100,18 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
 - No celebration motion, no `oracleGold`; calibration hues only for the direction the
   card describes.
 - **Support surface:** stays plain and visually unlike an insight: no AI chip, no
-  evidence number, no feedback buttons, no card chrome shared with Coach.
+  evidence number, no feedback buttons, no card chrome shared with Coach. A
+  `surfaceSunken` block, `radius.md`, no border: the title in `headline`, the body in
+  `subhead` `textSecondary`, the contact lines in `subhead` `textPrimary` at weight 600,
+  selectable. A US-territory phone's contact is 988 and its own second line on every
+  topic (D71 (c)).
+- **The way back to Coach** (D71 (b), 2026-11-19): under the contact lines, one note in
+  `footnote` `textSecondary`, "This came up because of words in one of your predictions
+  or notes, checked on this phone. If it doesn't fit, you can go back to Coach."
+  (`SUPPORT_ASIDE_NOTE`), then a secondary capsule, **Back to Coach**, with `onSunken`
+  (its edge in `textTertiary`, §2.2). No icon, no colour; disabled while it saves. It
+  sets the card aside and the panel returns to its first state, Get feedback. The note
+  speaks of where the words were checked, never of the person.
 
 ### 7.14 Wrapped
 
@@ -1317,8 +1330,8 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   in ›" with "Not signed in. Your predictions live only on this phone." as the footer;
   signed in, an `actionText` "Sign out" row over "Signed in as … Your predictions are
   backed up. Signing out removes them from this phone, and signing back in brings them
-  back. Categories you added or changed, and the counts only this phone keeps, aren't
-  backed up, so signing out removes them."; D69 (a)) · *Your card ›* and *Fairly Sure Plus ›* (`PLUS_NAME`; "Active" as its
+  back. Categories you added or changed live only on this phone, so signing out removes
+  them."; D69 (a)) · *Your card ›* and *Fairly Sure Plus ›* (`PLUS_NAME`; "Active" as its
   value when it is), with Plus's one line as the footer · *Categories ›* (below) ·
   three switches: **Streak and daily goal** (D59, on by default), **Hide the words**
   (D61, off) and the app lock, "Lock with Face ID" or as the phone has it (D64, §7.25)
@@ -1330,7 +1343,8 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   Sunday at 6:00 PM."); under the reminders' time, **Show the words in reminders** (D60,
   off by default); the "Allow reminders" / "Open Settings" row while iOS says no; the
   practice reminder) · **AI Refine** (hidden while `REFINE_ENABLED` is false), *Coach
-  (AI)* and *Usage stats* (switches; without Plus, Coach's line starts "Plus only.",
+  (AI)* and *Usage stats* (switches, the whole group gone under the under-13 rule, below;
+  without Plus, Coach's line starts "Plus only.",
   and once it's on, "On for when you have Plus. Nothing is sent before then.", step
   138, since on it did nothing a free user could see) · *Your data* (**Export
   predictions (CSV)**, free since D31, a row that acts in place: no chevron, and the
@@ -1338,7 +1352,8 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   marks it as tappable, step 137) · *About* (How scoring works ›, Privacy policy ›,
   Terms of use ›, Help and support ›, with the app's name and version as the footer) ·
   *Erase your data on this phone* (a guest) or *Delete account* (signed in), alone at
-  the bottom in `destructive`, no chevron.
+  the bottom in `destructive`, no chevron. Under the under-13 rule the Account group and
+  the Plus row change (below); the rest of the list is as usual.
 - **Rows:** the whole row is the target; a row that opens something ends in a chevron
   and, where there is one, its current value in `textSecondary`; a row that acts in
   place (Sign out, Erase) has no chevron and says so in its label's colour. An on/off
@@ -1358,6 +1373,42 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   deleted here; hiding keeps the predictions and the record. The last category
   offered can't be switched off (logging needs one), and a built-in's own word
   stays free for it while it's renamed.
+- **The usage line and its switch** (`UsageStatsSwitch`, shared by the Warm-up's first
+  screen, D69 (b), and the sign-in screen, D71 (d), so the two can't drift): the line on
+  the leading side and the iOS switch at the trailing edge, set on the line's first line,
+  not centred on the block. One `switch` element for VoiceOver, "Usage stats", its state
+  and the line shown; the inner switch hidden from it. The line is `footnote` on the
+  Warm-up and `subhead` on the sign-in screen, in `textSecondary`. Where the line differs by
+  state (the sign-in screen's on and off lines), the longer one always holds the height,
+  drawn invisible under the shorter, so flipping the switch moves nothing below it. It is
+  the same setting as You's Usage stats row.
+- **Under the under-13 rule** (D70, 2026-11-19): the *Account* group of a guest is one
+  static row, "Kept on this phone", in the rows' label style, with no chevron and nothing
+  to tap, and a two-paragraph footer: "Because of the age range this iPhone shares with Fairly
+  Sure, everything you log stays on this phone. Accounts, backup, usage counts, Coach and
+  Plus are off. Your predictions, score, badges and cards work as usual, and Export
+  predictions keeps a copy." and "The age range comes from this iPhone's Apple Account. To
+  see it: Settings → your name → Personal Information → Age Range for Apps." An account
+  signed in before keeps its Sign out row, its footer "Signed in as …" followed by "Backup
+  is off on this phone because of the age range it shares with Fairly Sure, so new changes
+  stay here. What was backed up before stays on our server until you delete the account.
+  Signing out removes your predictions from this phone, so export them first if you want a
+  copy." The *Fairly Sure Plus* row and its footer go (Your card stays, with no footer),
+  and so does the whole Coach (AI) and Usage stats group. Never an age in the words: only
+  "the age range" (`src/components/age/localOnlyCopy.ts`, held to that by its test).
+- **The local-only page** (`LocalOnlyPage`, D70): what the paywall and account routes show
+  under the rule instead of their own views, since a deep link reaches both. Laid out as
+  the account screen is: the round × at the top right, then on the canvas a `title2`
+  title, one `subhead` `textSecondary` paragraph and one filled capsule, **Close**. Nothing
+  on it offers a purchase or a sign-in. The paywall's: "Plus isn't offered on this phone" /
+  "Because of the age range this iPhone shares with Fairly Sure, purchases are off here.
+  Your score, chart, badges and cards are free." The account route's: "No account on this
+  phone" / "Because of the age range this iPhone shares with Fairly Sure, your predictions
+  stay on this phone. To keep a copy, use Export predictions in You."
+- **Erase** (D71 (a)): the guest's confirmation screen says what goes, "everything Fairly
+  Sure keeps on this phone, including anything left by an account that was signed in here
+  before", then names it; the alert reads "Erase everything on this phone?" / "Nothing here
+  has another copy unless an account backed it up. This can't be undone."
 - **Practice reminder** (step 89): a stacked row in the Notifications group, its
   label and one line over five chips (Off, With coffee, At lunch, After dinner, each
   with its time, and **Pick a time**, D31, which opens the time picker; once a time

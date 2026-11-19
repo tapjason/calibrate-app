@@ -1,6 +1,12 @@
 import { AppState } from 'react-native';
 
-import type { PlusPlan, TrialStatus } from '@/billing/revenuecat';
+import {
+  __setBillingDepsForTests,
+  type BillingDeps,
+  type PlusPlan,
+  type TrialStatus,
+} from '@/billing/revenuecat';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 import { __resetPermissionStateForTests } from './permissionState';
@@ -9,6 +15,7 @@ import {
   TRIAL_REMINDER_PLACEHOLDER,
   __setTrialReminderApiForTests,
   initTrialReminder,
+  refreshTrialReminder,
   syncTrialReminder,
   trialReminderCopy,
   trialReminderTime,
@@ -137,6 +144,64 @@ describe('syncTrialReminder', () => {
     await expect(
       syncTrialReminder(trial(), [annualPlan], { enabled: true, now: before }),
     ).resolves.toBe('skipped');
+  });
+});
+
+describe('refreshTrialReminder', () => {
+  /** A RevenueCat seam whose every method throws: asking it would show. */
+  function throwingBilling(): { deps: BillingDeps; touched: string[] } {
+    const touched: string[] = [];
+    const deps = new Proxy({} as BillingDeps, {
+      get(_target, prop) {
+        touched.push(String(prop));
+        throw new Error(`RevenueCat was asked: ${String(prop)}`);
+      },
+    });
+    return { deps, touched };
+  }
+
+  beforeEach(() => {
+    process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY = 'test_key';
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    delete process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
+    __setBillingDepsForTests(null);
+    __resetAgeStoreForTests();
+    useSettingsStore.setState({ notificationsEnabled: true });
+    jest.restoreAllMocks();
+  });
+
+  // Off means off, whether or not RevenueCat can be reached (and on a
+  // local-only phone it is never asked).
+  it('with notifications off, cancels the reminder without asking RevenueCat', async () => {
+    const fake = fakeApi();
+    __setTrialReminderApiForTests(fake.api);
+    const { deps, touched } = throwingBilling();
+    __setBillingDepsForTests(deps);
+    useSettingsStore.setState({ notificationsEnabled: false });
+
+    await refreshTrialReminder();
+
+    expect(fake.cancelled).toEqual([TRIAL_REMINDER_ID]);
+    expect(touched).toEqual([]);
+  });
+
+  // The under-13 rule (D70): RevenueCat is never asked, so nothing is
+  // scheduled; a reminder scheduled before stays, as when it can't be reached.
+  it('on a local-only phone, asks RevenueCat nothing and schedules nothing', async () => {
+    const fake = fakeApi();
+    __setTrialReminderApiForTests(fake.api);
+    const { deps, touched } = throwingBilling();
+    __setBillingDepsForTests(deps);
+    useAgeStore.getState().load({ lowerBound: null, upperBound: 12 }, { willAsk: false });
+
+    await refreshTrialReminder();
+
+    expect(fake.scheduled).toEqual([]);
+    expect(fake.cancelled).toEqual([]);
+    expect(touched).toEqual([]);
   });
 });
 

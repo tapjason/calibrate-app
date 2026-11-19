@@ -58,10 +58,36 @@
 // `pushNow` is the one more push sign-out makes before it counts what is
 // still unsynced.
 //
+// The under-13 rule (roadmap D70, 2026-11-19): while the phone is local-only
+// (`isLocalOnly`, src/store/ageStore.ts) nothing here sends anything.
+// `syncNow`, `pushNow` and `backfillOffsets` return at once, and so do the
+// exported helpers (`pullRemote`, `pushDirty`, `pushDeletions`); the check a
+// sweep makes before each request (`sessionStillFor`, and the rule checked
+// again around any check a caller passes in) returns false, so a sweep or a
+// push already running stops before its next request. Rows stay dirty and
+// deletions pending, so sign-out's question counts them: its last push sends
+// nothing, and what the person is told would be lost is what this phone
+// holds that the server doesn't.
+//
+// And a sweep waits for Apple's answer on a launch that asks (the age store
+// not yet `settled`), as the guest flush and RevenueCat do (call 2): a child's
+// first answer can arrive after the launch's sweep has started, and an
+// account signed in before any band was stored would otherwise sync its
+// rows in that window. Unlike theirs, this wait has a cap, `AGE_SYNC_WAIT_MS`
+// (60 s), counted from when the age store began waiting (main session,
+// 2026-11-19): a backup that never runs costs an adult their data if the
+// phone is lost, nobody has yet seen what an age request that never resolves
+// does on an iPhone, and the case the wait protects is rare. After the cap the
+// sweep goes on as before, and every gate still holds: an under-13 answer that
+// arrives later makes the entry points do nothing and stops a running sweep
+// before its next request. Stopping the account (`stopSyncFor`) ends the wait
+// too. Sign-out's `pushNow` waits at most 5 s (`AGE_ANSWER_WAIT_MS`) from its
+// own call, then goes on.
+//
 // Layer rule: L5. Imports @/db, @/supabase, @/types, and @/store. The
-// store-imports cross L4 only in `defaultRecompute` (which uses the
-// statsStore to rebuild derived stats after pulling). All lower-level
-// helpers accept their deps by parameter for testability.
+// store-imports cross L4 in `defaultRecompute` (which uses the statsStore to
+// rebuild derived stats after pulling) and for the age store, a leaf. All
+// lower-level helpers accept their deps by parameter for testability.
 //
 // Clock-skew assumption: every local write stamps `updated_at` with the
 // client clock. The Postgres `now()` default only applies to direct dashboard
@@ -86,6 +112,7 @@ import {
   upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
+import { AGE_ANSWER_WAIT_MS, isLocalOnly, useAgeStore } from '@/store/ageStore';
 import { useStatsStore } from '@/store/statsStore';
 import {
   isStoredInstant,
@@ -354,8 +381,10 @@ async function clientSessionUserId(client: SupabaseClient): Promise<string | nul
 
 /**
  * A check that the client's session is still `userId`'s, for a sweep that
- * started for it, and that the account isn't being taken off the phone
- * (`stopSyncFor`). Fails safe: a session that can't be read reads as someone
+ * started for it, that the account isn't being taken off the phone
+ * (`stopSyncFor`), and that the under-13 rule doesn't apply (D70): checked
+ * before the session is read, so no session read is made under the rule, and
+ * again after it. Fails safe: a session that can't be read reads as someone
  * else's, and the sweep stops.
  */
 function sessionStillFor(
@@ -364,14 +393,91 @@ function sessionStillFor(
   sessionUserId?: () => Promise<string | null>,
 ): () => Promise<boolean> {
   return async () => {
-    if (stoppedUsers.has(userId)) return false;
+    if (isLocalOnly() || stoppedUsers.has(userId)) return false;
     try {
       const current = sessionUserId ? await sessionUserId() : await clientSessionUserId(client);
-      return current === userId;
+      return current === userId && !isLocalOnly();
     } catch {
       return false;
     }
   };
+}
+
+/**
+ * `stillCurrent` with the under-13 rule checked before and after it, for the
+ * exported helpers, whose callers may pass a check of their own: a request is
+ * sent only while the rule doesn't apply, whatever the check passed in.
+ */
+function whileNotLocalOnly(stillCurrent: () => Promise<boolean>): () => Promise<boolean> {
+  return async () => {
+    if (isLocalOnly()) return false;
+    const current = await stillCurrent();
+    return current && !isLocalOnly();
+  };
+}
+
+/**
+ * The longest a sweep waits for Apple's answer on a launch that asks, counted
+ * from when the age store began waiting (`ageWaitStartedAt`); after it the
+ * sweep goes on as before, every gate still in force. Why there is a cap at
+ * all: the header comment.
+ */
+export const AGE_SYNC_WAIT_MS = 60_000;
+
+/**
+ * When the age store last began waiting for Apple's answer (`settled` turned
+ * false), or null while it has one: a sweep's cap counts from here, not from
+ * the sweep's own start, so a sweep started late in a long wait doesn't wait
+ * a full minute more.
+ */
+let ageWaitStartedAt: number | null = useAgeStore.getState().settled ? null : Date.now();
+useAgeStore.subscribe((state, prev) => {
+  if (state.settled) ageWaitStartedAt = null;
+  else if (prev.settled || ageWaitStartedAt === null) ageWaitStartedAt = Date.now();
+});
+
+/** What is left of a sweep's `AGE_SYNC_WAIT_MS`, in ms (0 or less: none). */
+function syncWaitLeft(): number {
+  if (useAgeStore.getState().settled || ageWaitStartedAt === null) return 0;
+  return ageWaitStartedAt + AGE_SYNC_WAIT_MS - Date.now();
+}
+
+/** Sweeps and pushes waiting for Apple's answer, by account: `stopSyncFor` wakes them. */
+const ageWaiters = new Map<string, Set<() => void>>();
+
+/**
+ * Resolves once Apple has answered on this launch (at once when it has, or
+ * when this launch doesn't ask), when `userId`'s sync is stopped
+ * (`stopSyncFor`), or after `maxWaitMs`, whichever comes first (at once for
+ * a cap of 0 or less). Leaves no timer or subscription behind once resolved.
+ * Never rejects. Says nothing about the answer: read `isLocalOnly()`
+ * afterwards.
+ */
+function whenAgeSettledOrStopped(userId: string, maxWaitMs: number): Promise<void> {
+  if (useAgeStore.getState().settled || stoppedUsers.has(userId) || !(maxWaitMs > 0)) {
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let unsubscribe: (() => void) | null = null;
+    const wakers = ageWaiters.get(userId) ?? new Set<() => void>();
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (timer !== null) clearTimeout(timer);
+      unsubscribe?.();
+      wakers.delete(finish);
+      if (wakers.size === 0 && ageWaiters.get(userId) === wakers) ageWaiters.delete(userId);
+      resolve();
+    };
+    wakers.add(finish);
+    ageWaiters.set(userId, wakers);
+    unsubscribe = useAgeStore.subscribe((state) => {
+      if (state.settled) finish();
+    });
+    timer = setTimeout(finish, maxWaitMs);
+  });
 }
 
 async function defaultRecompute(userId: string): Promise<void> {
@@ -416,8 +522,11 @@ export async function pullRemote(
   client: SupabaseClient,
   cursorStore: CursorStore,
 ): Promise<number> {
+  // The under-13 rule (D70): no request, here or after the cursor's read.
+  if (isLocalOnly()) return 0;
   const cursorRaw = await cursorStore.get(userId);
   const cursor = cursorRaw ?? EPOCH_CURSOR;
+  if (isLocalOnly()) return 0;
 
   const { data, error } = await client
     .from('predictions')
@@ -513,8 +622,12 @@ export async function pullRemote(
 export async function pushDirty(
   userId: string,
   client: SupabaseClient,
-  stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
+  givenStillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<number> {
+  // The under-13 rule (D70): nothing is sent, and the rule is checked again
+  // before each request whatever check was passed in.
+  if (isLocalOnly()) return 0;
+  const stillCurrent = whileNotLocalOnly(givenStillCurrent);
   // Read once every queued transaction has settled (review round 5): an
   // unqueued read on the one connection sees a transaction's uncommitted
   // writes, and one pushed that then rolled back would come back on the next
@@ -608,6 +721,8 @@ export async function pushDeletions(
   client: SupabaseClient,
   stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<number> {
+  // The under-13 rule (D70); pushDeletionsCounted checks it before each request too.
+  if (isLocalOnly()) return 0;
   return (await pushDeletionsCounted(userId, client, stillCurrent)).deleted;
 }
 
@@ -701,8 +816,12 @@ function answeredTerm(status: unknown, resolvedAt: unknown): string | null {
 async function pushDeletionsCounted(
   userId: string,
   client: SupabaseClient,
-  stillCurrent: () => Promise<boolean>,
+  givenStillCurrent: () => Promise<boolean>,
 ): Promise<{ deleted: number; restored: number }> {
+  // The under-13 rule (D70): nothing is sent, and the rule is checked again
+  // before each request whatever check was passed in.
+  if (isLocalOnly()) return { deleted: 0, restored: 0 };
+  const stillCurrent = whileNotLocalOnly(givenStillCurrent);
   // Settled, as pushDirty's read is: a delete that rolls back is never sent.
   const listed: PendingTombstone[] = await listPendingTombstonesSettled(userId);
   forgetUnlistedDeletions(userId, listed);
@@ -980,11 +1099,15 @@ export interface OffsetBackfillResult {
 export async function backfillOffsets(
   userId: string,
   client: SupabaseClient,
-  stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
+  givenStillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<OffsetBackfillResult> {
+  // The under-13 rule (D70): nothing is sent; checked again before each
+  // request below, and around the check passed in.
+  if (isLocalOnly()) return { sent: 0, done: false };
   if (!UTC_OFFSET_SYNC || userId === LOCAL_GUEST_USER_ID || stoppedUsers.has(userId)) {
     return { sent: 0, done: false };
   }
+  const stillCurrent = whileNotLocalOnly(givenStillCurrent);
   if (await offsetBackfillDone(userId)) {
     offsetBackfillSent.delete(userId);
     return { sent: 0, done: true };
@@ -1010,8 +1133,9 @@ export async function backfillOffsets(
       }
       let rowSent = true;
       for (const fill of fills) {
-        // The account is leaving the phone, or sign-out's push waits for this sweep.
-        if (stoppedUsers.has(userId) || pushesRunning.has(userId)) {
+        // The account is leaving the phone, sign-out's push waits for this
+        // sweep, or the under-13 rule now applies (D70).
+        if (stoppedUsers.has(userId) || pushesRunning.has(userId) || isLocalOnly()) {
           halted = true;
           break batch;
         }
@@ -1063,10 +1187,19 @@ export async function backfillOffsets(
 // AppState listener (foreground) fire close together.
 const inflight = new Map<string, Promise<SyncResult>>();
 
+/**
+ * One sweep for `userId`: deletions, pull, push, recompute, offset backfill.
+ * Does nothing for no user, the guest, a stopped account or under the under-13
+ * rule (D70). On a launch that asks Apple, waits for the answer before any
+ * request, at most `AGE_SYNC_WAIT_MS` (60 s) from when the age store began
+ * waiting (stopping the account ends the wait), then does nothing if the rule
+ * applies, or goes on as before if there is still no answer. Never throws.
+ */
 export function syncNow(
   userId: string | null,
   deps?: SyncDeps,
 ): Promise<SyncResult> {
+  if (isLocalOnly()) return Promise.resolve(ZERO);
   if (!userId || userId === LOCAL_GUEST_USER_ID || stoppedUsers.has(userId)) {
     return Promise.resolve(ZERO);
   }
@@ -1082,6 +1215,13 @@ export function syncNow(
 }
 
 async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
+  // Apple's answer first, on a launch that asks, for what is left of the
+  // 60 s cap; then the rule decides. Past the cap the sweep goes on, and the
+  // check before each request still stops it if the rule comes on later.
+  if (!useAgeStore.getState().settled) {
+    await whenAgeSettledOrStopped(userId, syncWaitLeft());
+    if (isLocalOnly() || stoppedUsers.has(userId)) return ZERO;
+  }
   const resolved = resolveDeps(deps);
   if (!resolved.client) return ZERO;
   const stillCurrent = sessionStillFor(userId, resolved.client, resolved.sessionUserId);
@@ -1173,12 +1313,19 @@ async function settleWithin(p: Promise<unknown>, ms: number): Promise<void> {
  * push still running then goes on by itself, and sign-out counts what is
  * still unsynced. Returns how many rows and deletions reached the server.
  * Never throws.
+ *
+ * Under the under-13 rule (D70) it sends nothing and returns 0 at once, so
+ * sign-out's question names every change this phone holds that the server
+ * doesn't. On a launch still waiting for Apple's answer it waits for it at
+ * most `AGE_ANSWER_WAIT_MS` (5 s), within the same `maxWaitMs`, then sends
+ * only if the rule doesn't apply.
  */
 export async function pushNow(
   userId: string | null,
   deps?: SyncDeps,
   maxWaitMs: number = DEFAULT_WAIT_MS,
 ): Promise<number> {
+  if (isLocalOnly()) return 0;
   if (!userId || userId === LOCAL_GUEST_USER_ID || stoppedUsers.has(userId)) return 0;
   let pushed = 0;
   const run = (async () => {
@@ -1190,6 +1337,8 @@ export async function pushNow(
         // Its own failures are logged where they happen.
       }
     }
+    if (!useAgeStore.getState().settled) await whenAgeSettledOrStopped(userId, AGE_ANSWER_WAIT_MS);
+    if (isLocalOnly() || stoppedUsers.has(userId)) return;
     const resolved = resolveDeps(deps);
     if (!resolved.client) return;
     const stillCurrent = sessionStillFor(userId, resolved.client, resolved.sessionUserId);
@@ -1237,6 +1386,8 @@ const pushesRunning = new Map<string, Set<Promise<void>>>();
  */
 export async function stopSyncFor(userId: string, maxWaitMs: number = DEFAULT_WAIT_MS): Promise<void> {
   stoppedUsers.add(userId);
+  // A sweep still waiting for Apple's answer ends now, sending nothing.
+  for (const wake of [...(ageWaiters.get(userId) ?? [])]) wake();
   const running: Promise<unknown>[] = [];
   const sweep = inflight.get(userId);
   if (sweep) running.push(sweep);
@@ -1263,4 +1414,6 @@ export function __resetSyncStateForTests(): void {
   heldDeletions.clear();
   pushesRunning.clear();
   offsetBackfillSent.clear();
+  for (const wakers of [...ageWaiters.values()]) for (const wake of [...wakers]) wake();
+  ageWaiters.clear();
 }

@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native';
 import { colors, type } from '@/constants/theme';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
 import {
@@ -133,5 +134,48 @@ describe('UsageStatsNotice', () => {
     await waitFor(() => expect(useSettingsStore.getState().usageNoticeShownAt).not.toBeNull());
     expect(usageCountsMayGoUp()).toBe(true);
     await waitFor(() => expect(saved).toHaveLength(1));
+  });
+});
+
+// The under-13 rule (roadmap D70): no count is ever sent from a local-only
+// phone, so the line isn't drawn and nothing is stamped; before Apple has
+// answered on a launch that asks, it is drawn and the stamp waits.
+describe('UsageStatsNotice under the under-13 rule', () => {
+  afterEach(() => act(() => __resetAgeStoreForTests()));
+
+  it('is not drawn and stamps nothing on a local-only phone', async () => {
+    useAgeStore.setState({ localOnly: true, settled: true });
+    render(<UsageStatsNotice />);
+    await act(async () => {});
+    expect(screen.queryByTestId('warmup-usage-row')).toBeNull();
+    expect(screen.queryByTestId('warmup-usage-note')).toBeNull();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+    expect(saved).toHaveLength(0);
+  });
+
+  it('is drawn but waits for Apple’s answer before it stamps', async () => {
+    useAgeStore.setState({ localOnly: false, settled: false });
+    render(<UsageStatsNotice />);
+    await act(async () => {});
+    expect(screen.getByTestId('warmup-usage-note')).toHaveTextContent(WARMUP_USAGE_NOTE);
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+    expect(saved).toHaveLength(0);
+
+    act(() => useAgeStore.getState().markSettled());
+    await waitFor(() => expect(useSettingsStore.getState().usageNoticeShownAt).not.toBeNull());
+    await waitFor(() => expect(saved).toHaveLength(1));
+  });
+
+  it('goes, unstamped, when the answer turns the rule on', async () => {
+    useAgeStore.setState({ localOnly: false, settled: false });
+    render(<UsageStatsNotice />);
+    await act(async () => {});
+    expect(screen.getByTestId('warmup-usage-row')).toBeTruthy();
+
+    act(() => useAgeStore.setState({ localOnly: true, settled: true }));
+    await act(async () => {});
+    expect(screen.queryByTestId('warmup-usage-row')).toBeNull();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+    expect(saved).toHaveLength(0);
   });
 });

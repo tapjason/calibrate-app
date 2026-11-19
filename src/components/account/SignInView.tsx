@@ -2,6 +2,7 @@ import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
 import { AccessibilityInfo, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { UsageStatsSwitch } from '@/components/settings/UsageStatsSwitch';
 import { Button } from '@/components/ui/Button';
 import { chosenProps } from '@/components/ui/chosen';
 import { TextButton } from '@/components/ui/TextButton';
@@ -9,7 +10,6 @@ import { TextField } from '@/components/ui/TextField';
 import { GOOGLE_SIGN_IN_ENABLED, PRIVACY_POLICY_URL } from '@/constants/app';
 import { colors, elevation, radius, space, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
-import { useSettingsStore } from '@/store/settingsStore';
 
 import { AppleSignInButton } from './AppleSignInButton';
 import { EMAIL_SIGN_UP_ENABLED } from './emailSignUp';
@@ -29,9 +29,16 @@ const MODES: ReadonlyArray<{ key: Mode; label: string }> = [
  */
 const MODE_MAX_SCALE = 1.6;
 
-/** What signing in sends besides the predictions, in You's own words for it. */
+/**
+ * What signing in sends besides the predictions, in You's own words for it,
+ * while Usage stats is on. The switch is beside it (decision 9, 2026-11-19).
+ */
 export const USAGE_NOTE =
-  'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn that off in You, under Usage stats.';
+  'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn this off here or in You, under Usage stats.';
+
+/** The same line while Usage stats is off. */
+export const USAGE_OFF_NOTE =
+  'Usage stats are off, so no record of which features you use is sent. You can turn them on here or in You, under Usage stats.';
 
 /**
  * While Create account is hidden (D69 (c)), the line under the email form
@@ -84,10 +91,6 @@ export function SignInView({ onDone }: { onDone: () => void }) {
   const signInWithApple = useAuthStore((s) => s.signInWithApple);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
 
-  // Usage stats are on unless the person turned them off, and from sign-in
-  // they go up with the account: said here, before the account exists
-  // (guideline 5.1.1(ii); policy audit, 2026-11-14).
-  const usageStatsOn = useSettingsStore((s) => s.analyticsEnabled);
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -167,11 +170,20 @@ export function SignInView({ onDone }: { onDone: () => void }) {
         moves into your account, notes included, so another phone can restore it.
         We don't read or share it.
       </Text>
-      {usageStatsOn && (
-        <Text style={styles.lede} testID="account-usage-note">
-          {USAGE_NOTE}
-        </Text>
-      )}
+      {/* Usage stats are on unless the person turned them off, and from
+          sign-in they go up with the account: said here, before the account
+          exists (guideline 5.1.1(ii); policy audit, 2026-11-14), with the
+          switch beside it, as on the Warm-up's first screen (decision 9,
+          2026-11-19). The longer line holds the space, so a flip moves none
+          of the buttons below. */}
+      <View style={styles.usage}>
+        <UsageStatsSwitch
+          noteOn={USAGE_NOTE}
+          noteOff={USAGE_OFF_NOTE}
+          size="subhead"
+          testID="account-usage"
+        />
+      </View>
       {PRIVACY_POLICY_URL && (
         <TextButton
           label="Privacy policy"
@@ -281,6 +293,8 @@ const styles = StyleSheet.create({
   wrap: { gap: space.md, padding: space.xxl },
   title: { ...type.title2, color: colors.textPrimary },
   lede: { ...type.subhead, color: colors.textSecondary, marginBottom: space.sm },
+  // The usage line and its switch, spaced as the lede above it.
+  usage: { marginBottom: space.sm },
   modes: {
     backgroundColor: colors.surfaceSunken,
     borderRadius: radius.pill,

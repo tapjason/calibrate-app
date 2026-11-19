@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { LOCAL_ONLY_COACH } from '@/components/age/localOnlyCopy';
 import { Button } from '@/components/ui/Button';
 import { colors, FONT_FAMILY, radius, space, tabularNums, type } from '@/constants/theme';
+import { useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
@@ -29,6 +31,10 @@ import { SupportSurface } from './SupportSurface';
  *
  * The AI label is not decoration — §5.6 requires the Coach be clearly marked
  * as AI wherever it speaks.
+ *
+ * Under the under-13 rule (roadmap D70) the Coach is off: with a Plus mirror
+ * already on the phone the panel says so in one line, and otherwise it isn't
+ * drawn. Nothing then offers Plus or a sign-in, and no request is possible.
  */
 export function CoachPanel({
   onUpgrade,
@@ -42,6 +48,7 @@ export function CoachPanel({
 } = {}) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const isPlus = useEntitlementStore((s) => s.isPlus);
+  const localOnly = useAgeStore((s) => s.localOnly);
   const authStatus = useAuthStore((s) => s.status);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
   const userStat = useStatsStore((s) => s.userStat);
@@ -54,6 +61,7 @@ export function CoachPanel({
   const failure = useCoachStore((s) => s.lastFailure);
   const lastAnsweredAt = useCoachStore((s) => s.lastAnsweredAt);
   const requestInsights = useCoachStore((s) => s.requestInsights);
+  const setSupportAside = useCoachStore((s) => s.setSupportAside);
   // Whether the last answer had insights and lost every one to validation
   // (CoachResult.droppedAll, src/ai/coach.ts), as coachStore keeps it in
   // `lastDroppedAll`: false before any answer, after a failure and when the
@@ -65,6 +73,17 @@ export function CoachPanel({
   // whenever a new answer lands so a fresh insight is never pre-hidden.
   const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
   useEffect(() => setDismissed(new Set()), [lastAnsweredAt]);
+
+  if (localOnly) {
+    // No upsell and no sign-in here: neither is offered on this phone.
+    if (!isPlus) return null;
+    return (
+      <View style={styles.wrap} testID="coach-local-only">
+        <Text accessibilityRole="header" style={styles.heading}>Coach</Text>
+        <Text style={styles.muted}>{LOCAL_ONLY_COACH}</Text>
+      </View>
+    );
+  }
 
   if (!isPlus && !upsell) return null;
 
@@ -145,7 +164,10 @@ export function CoachPanel({
       </View>
 
       {crisisTopic ? (
-        <SupportSurface topic={crisisTopic} />
+        // "Back to Coach" sets aside the answered predictions whose words put
+        // it up, the same list the request scanned; it comes back only for
+        // new matching words (useCoachStore.setSupportAside).
+        <SupportSurface topic={crisisTopic} onSetAside={() => setSupportAside(resolved)} />
       ) : (
         <>
           {insights.map((insight, i) =>
@@ -215,12 +237,18 @@ export function CoachPanel({
         </>
       )}
 
-      <Button
-        label={loading ? 'Reading your numbers…' : 'Get feedback'}
-        testID="coach-ask"
-        disabled={loading}
-        onPress={onAsk}
-      />
+      {/* Not while the support card is up: there it would only scan the same
+          words and bring the same card back. The card and its "Back to
+          Coach" are the whole panel then; set aside, the panel is idle and
+          this is its way to ask (main session, 2026-11-19). */}
+      {!crisisTopic && (
+        <Button
+          label={loading ? 'Reading your numbers…' : 'Get feedback'}
+          testID="coach-ask"
+          disabled={loading}
+          onPress={onAsk}
+        />
+      )}
     </View>
   );
 }

@@ -4,6 +4,7 @@ import { track } from '@/analytics/track';
 import type { Category, Prediction, UserStat } from '@/types';
 
 import { useCoachStore, type CoachRequest } from './coachStore';
+import { __setPersistenceForTests, useSettingsStore } from './settingsStore';
 
 // Only what the store records is asserted here; track() itself has its own tests.
 jest.mock('@/analytics/track', () => ({ track: jest.fn(async () => undefined) }));
@@ -720,5 +721,194 @@ describe('coachStore — reset', () => {
     useCoachStore.getState().reset();
 
     expect(useCoachStore.getState().insights).toEqual([]);
+  });
+});
+
+// Main session decision 2026-11-19: an answered prediction can't be deleted
+// after its 24 hours, so one false positive of the pre-filter would replace
+// the Coach for good. The person can set the card aside; it comes back only
+// for new matching words.
+describe('coachStore — the support card set aside', () => {
+  let saved: Array<{ supportAsideKeys: string[] }>;
+
+  /** An answered prediction whose title trips the filter on its own. */
+  const tripping = (id: string, over: Partial<Prediction> = {}) =>
+    prediction({ id, title: 'I want to die before this ships', ...over });
+
+  const ask = async (resolved: readonly Prediction[]) => {
+    const coach = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request({ resolved }), { client: coach.client });
+    return coach.calls;
+  };
+
+  const asideKeys = () => useSettingsStore.getState().supportAsideKeys;
+
+  beforeEach(() => {
+    saved = [];
+    __setPersistenceForTests({
+      load: async () => null,
+      save: async (s) => {
+        saved.push({ supportAsideKeys: [...(s.supportAsideKeys ?? [])] });
+      },
+    });
+  });
+
+  afterEach(() => {
+    __setPersistenceForTests(null);
+  });
+
+  it('shows the card for a tripping prediction, and sends nothing', async () => {
+    const calls = await ask([...RESOLVED, tripping('t1')]);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('after setting it aside, goes back to idle, then a new request reaches the Coach', async () => {
+    const record = [...RESOLVED, tripping('t1')];
+    await ask(record);
+
+    await expect(useCoachStore.getState().setSupportAside(record)).resolves.toBe(true);
+    // The first idle state: the panel shows its ask button again.
+    expect(useCoachStore.getState()).toMatchObject({
+      insights: [],
+      crisisTopic: null,
+      loading: false,
+      lastAnsweredAt: null,
+      lastRequestFailed: false,
+      lastFailure: null,
+      lastDroppedAll: false,
+    });
+    // Kept on the phone: one key, no words.
+    expect(asideKeys()).toHaveLength(1);
+    expect(saved[saved.length - 1]?.supportAsideKeys).toHaveLength(1);
+    expect(JSON.stringify(saved)).not.toMatch(/die|ships/);
+
+    const calls = await ask(record);
+    expect(calls).toHaveLength(1);
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
+    expect(useCoachStore.getState().insights).toHaveLength(1);
+  });
+
+  it('keeps only the predictions that tripped, each on its own', async () => {
+    const record = [...RESOLVED, tripping('t1'), prediction({ id: 'calm', reflection: 'Shipped it early' })];
+    await useCoachStore.getState().setSupportAside(record);
+    expect(asideKeys()).toEqual([expect.stringMatching(/^t1#[0-9a-f]{16}$/)]);
+  });
+
+  it('brings the card back for a second, different tripping prediction', async () => {
+    const first = tripping('t1');
+    await useCoachStore.getState().setSupportAside([...RESOLVED, first]);
+
+    const calls = await ask([...RESOLVED, first, tripping('t2', { title: 'Better off dead than late' })]);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(calls).toHaveLength(0);
+  });
+
+  it("brings it back when the first one's note changes", async () => {
+    const first = tripping('t1');
+    await useCoachStore.getState().setSupportAside([...RESOLVED, first]);
+    expect(await ask([...RESOLVED, first])).toHaveLength(1);
+
+    await ask([...RESOLVED, { ...first, reflection: 'Took the weekend off' }]);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+  });
+
+  it("brings it back when the first one's title changes", async () => {
+    const first = tripping('t1');
+    await useCoachStore.getState().setSupportAside([...RESOLVED, first]);
+
+    await ask([...RESOLVED, { ...first, title: 'I want to die before the launch' }]);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+  });
+
+  it('keeps at most 200 set-asides: the oldest one past the cap shows the card again', async () => {
+    const many = Array.from({ length: 201 }, (_, i) => tripping(`t${i}`));
+    await useCoachStore.getState().setSupportAside(many);
+    expect(asideKeys()).toHaveLength(200);
+    expect(asideKeys().some((k) => k.startsWith('t0#'))).toBe(false);
+
+    // The newest 200 are left out of the scan; the dropped one trips again.
+    expect(await ask([...RESOLVED, ...many.slice(1)])).toHaveLength(1);
+    await ask([...RESOLVED, many[0]!]);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+  });
+
+  it('changes nothing when nothing in the record trips (the card came from words passed in)', async () => {
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client, freetext: ['I want to die'] });
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+
+    await expect(useCoachStore.getState().setSupportAside(RESOLVED)).resolves.toBe(false);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(asideKeys()).toEqual([]);
+    expect(saved).toHaveLength(0);
+  });
+
+  it('still screens words passed in whole, set aside or not', async () => {
+    const first = tripping('t1');
+    await useCoachStore.getState().setSupportAside([first]);
+    const { client, calls } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request({ resolved: [...RESOLVED, first] }), {
+      client,
+      freetext: [first.title],
+    });
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('lets no request still running write the card back', async () => {
+    const record = [...RESOLVED, tripping('t1')];
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    const running = useCoachStore.getState().requestInsights(request({ resolved: record }), { client });
+    await useCoachStore.getState().setSupportAside(record);
+    await running;
+
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
+    expect(useCoachStore.getState().lastAnsweredAt).toBeNull();
+  });
+
+  it('records no analytics event and logs no words', async () => {
+    const record = [...RESOLVED, tripping('t1', { reflection: 'private note' })];
+    await ask(record);
+    mockTrack.mockClear();
+    warnSpy.mockClear();
+
+    await useCoachStore.getState().setSupportAside(record);
+
+    expect(mockTrack).not.toHaveBeenCalled();
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toMatch(/die|ships|private note/);
+  });
+
+  // Fail safe: a record that can't be read holds no set-asides, so the card shows.
+  it('shows the card when the settings could not be read', async () => {
+    const first = tripping('t1');
+    __setPersistenceForTests({
+      load: async () => {
+        throw new Error('read failed');
+      },
+      save: async () => {},
+    });
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().loadFailed).toBe(true);
+    expect(asideKeys()).toEqual([]);
+
+    const calls = await ask([...RESOLVED, first]);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('a set-aside made while the record cannot be read still holds for this run, unstored', async () => {
+    const save = jest.fn(async () => {});
+    __setPersistenceForTests({
+      load: async () => {
+        throw new Error('read failed');
+      },
+      save,
+    });
+    await useSettingsStore.getState().hydrate();
+    const record = [...RESOLVED, tripping('t1')];
+    await useCoachStore.getState().setSupportAside(record);
+    expect(await ask(record)).toHaveLength(1);
+    expect(save).not.toHaveBeenCalled();
   });
 });

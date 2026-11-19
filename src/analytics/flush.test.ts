@@ -375,6 +375,8 @@ describe('flushEvents for a guest', () => {
 
   beforeEach(async () => {
     tables.length = 0;
+    // The line about usage counts has been shown on this phone (D69 (b)).
+    useSettingsStore.setState({ usageNoticeShownAt: '2026-11-19T09:00:00.000Z' });
     const events = [
       ['g1', 'warmup_started', {}],
       ['g2', 'warmup_completed', { score: 70, question_count: 10 }],
@@ -391,6 +393,8 @@ describe('flushEvents for a guest', () => {
       });
     }
   });
+
+  afterEach(() => useSettingsStore.setState({ usageNoticeShownAt: null }));
 
   it('sends only the funnel events, to their own table, with no id of any kind', async () => {
     const insert = ok();
@@ -419,6 +423,20 @@ describe('flushEvents for a guest', () => {
     await expect(
       flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert) }),
     ).resolves.toBe(0);
+    expect(insert).not.toHaveBeenCalled();
+    await expect(countUnsyncedEvents()).resolves.toBe(4);
+  });
+
+  // D69 (b), checked by the flush itself for any caller: nothing goes up from
+  // a guest before the line about usage counts has been shown.
+  it('sends nothing before the line about usage counts has been shown', async () => {
+    const insert = ok();
+    useSettingsStore.setState({ usageNoticeShownAt: null });
+
+    await expect(
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert) }),
+    ).resolves.toBe(0);
+
     expect(insert).not.toHaveBeenCalled();
     await expect(countUnsyncedEvents()).resolves.toBe(4);
   });

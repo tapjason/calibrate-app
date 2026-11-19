@@ -1,15 +1,19 @@
-import type { Prediction } from '@/types';
+import type { PracticeAnswer, Prediction } from '@/types';
 
 import {
   INTEGRITY_COUNT_TABLES,
   PER_USER_TABLES,
   SIGN_OUT_KEPT_TABLES,
+  wipeEverythingOnDevice,
   wipeLocalUserData,
 } from './account';
 import { getAgeBucket, saveAgeBucket } from './ageBucket';
 import { enqueueEvent, listUnsyncedEvents } from './analytics';
 import { listCategoryDefs } from './categories';
 import { getDb, setDbForTests } from './client';
+import { getEntitlement, upsertEntitlement } from './entitlements';
+import { LOCAL_GUEST_USER_ID } from './migrateGuestData';
+import { listPracticeAnswers, savePracticeAnswer } from './practice';
 import {
   countPostponements,
   countRefiles,
@@ -491,6 +495,205 @@ describe('wipeLocalUserData with keepIntegrityCounts (sign-out)', () => {
     expect(await listCategoryOrigins('me')).toEqual([]);
   });
 });
+
+// Main session decision 2026-11-19: guest Erase ("Erase all data") empties
+// every per-user table for every user id, sign-out's kept tables included,
+// with the device data, in one transaction.
+describe('wipeEverythingOnDevice (guest Erase)', () => {
+  const USERS = [LOCAL_GUEST_USER_ID, 'left-behind', 'signed-out'] as const;
+
+  /** A row in every per-user table for `userId`. */
+  async function seedEveryTable(userId: string): Promise<void> {
+    await seedUser(userId);
+    await insertPrediction(p(`${userId}-del`, userId));
+    await deletePrediction(`${userId}-del`, { counted: true });
+    await insertPrediction(p(`${userId}-late`, userId));
+    await recordPostponement(`${userId}-late`, userId, '2026-02-01T00:00:00.000Z', '2026-02-03T00:00:00.000Z');
+    await moveAnswer(`${userId}-moved`, userId);
+    await insertPrediction({ ...p(`${userId}-origin`, userId), category: 'health' });
+    await rememberCategoryOrigin(`${userId}-origin`, userId, 'work', 'health', false);
+    await getDb().run(
+      `INSERT INTO categories (id, user_id, name, hidden, position, created_at)
+         VALUES ('c-mine', ?, 'Thesis', 0, 0, '2026-01-01T00:00:00.000Z')`,
+      [userId],
+    );
+    await getDb().run(
+      `INSERT INTO sync_markers (user_id, marker, done_at) VALUES (?, ?, '2026-11-19T12:00:00.000Z')`,
+      [userId, OFFSET_BACKFILL_MARKER],
+    );
+  }
+
+  const countFor = async (table: string, userId: string) =>
+    (await getDb().get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`, [userId]))?.n;
+
+  /** Every table with a user_id column, read from the schema rather than the list. */
+  async function tablesWithUserId(): Promise<string[]> {
+    const tables = await getDb().all<{ name: string }>(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
+    );
+    const withUser: string[] = [];
+    for (const { name } of tables) {
+      const cols = await getDb().all<{ name: string }>(`PRAGMA table_info(${name})`);
+      if (cols.some((c) => c.name === 'user_id')) withUser.push(name);
+    }
+    return withUser;
+  }
+
+  async function seedDeviceData(): Promise<void> {
+    await saveAgeBucket({ lowerBound: null, upperBound: 12 });
+    await saveWarmupRecord({ completed_at: '2026-08-29T12:00:00.000Z', answers: [{ confidence: 70, correct: true }] });
+    await saveWarmupProgress({ question_ids: ['q1'], answers: [{ confidence: 60, correct: false }] });
+    await savePracticeAnswer(practiceAnswer());
+  }
+
+  it('empties every per-user table for the guest and two other account ids', async () => {
+    for (const userId of USERS) await seedEveryTable(userId);
+    // Sign-out keeps these for an account (SIGN_OUT_KEPT_TABLES): one that
+    // signed out properly leaves only them.
+    await wipeLocalUserData('signed-out', { deviceData: false, keepIntegrityCounts: true });
+    for (const table of PER_USER_TABLES) {
+      for (const userId of USERS) {
+        const kept = userId !== 'signed-out' || (SIGN_OUT_KEPT_TABLES as readonly string[]).includes(table);
+        const n = (await countFor(table, userId)) ?? 0;
+        expect({ table, userId, seeded: n > 0 }).toEqual({ table, userId, seeded: kept });
+      }
+    }
+
+    const owners = await wipeEverythingOnDevice();
+
+    expect([...owners].sort()).toEqual([...USERS].sort());
+    // Checked against the schema, not only the list: a per-user table missing
+    // from PER_USER_TABLES would keep its rows here.
+    const tables = await tablesWithUserId();
+    expect([...tables].sort()).toEqual([...PER_USER_TABLES].sort());
+    for (const table of tables) {
+      const row = await getDb().get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`);
+      expect({ table, n: row?.n }).toEqual({ table, n: 0 });
+    }
+    expect(await listDeletions('signed-out')).toEqual([]);
+    expect(await countRefiles('signed-out')).toBe(0);
+    expect(await countPostponements('signed-out')).toBe(0);
+    expect(await listCategoryOrigins('signed-out')).toEqual([]);
+  });
+
+  it('takes the device data and practice with it', async () => {
+    await seedDeviceData();
+    await wipeEverythingOnDevice();
+    await expect(getAgeBucket()).resolves.toBeNull();
+    await expect(getWarmupRecord()).resolves.toBeNull();
+    await expect(getWarmupProgress()).resolves.toBeNull();
+    await expect(listPracticeAnswers()).resolves.toEqual([]);
+  });
+
+  it('leaves the entitlement mirror and the migration log', async () => {
+    await upsertEntitlement({ is_plus: true, source: 'annual', expires_at: '2027-01-01T00:00:00.000Z' });
+    const migrations = (await getDb().get<{ n: number }>(`SELECT COUNT(*) AS n FROM _migrations`))?.n;
+
+    await wipeEverythingOnDevice();
+
+    await expect(getEntitlement()).resolves.toMatchObject({ is_plus: true });
+    expect((await getDb().get<{ n: number }>(`SELECT COUNT(*) AS n FROM _migrations`))?.n).toBe(migrations);
+  });
+
+  it('returns no ids for an empty phone', async () => {
+    await expect(wipeEverythingOnDevice()).resolves.toEqual([]);
+  });
+
+  it('leaves everything in place when a delete fails partway', async () => {
+    for (const userId of USERS) await seedEveryTable(userId);
+    await seedDeviceData();
+    const before: Record<string, number | undefined> = {};
+    for (const table of PER_USER_TABLES) {
+      before[table] = (await getDb().get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`))?.n;
+    }
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    const realExec = db.exec.bind(db);
+    const realGet = db.get.bind(db);
+    const after: string[] = [];
+    // Late in the list: earlier tables have been emptied when it throws.
+    db.run = async (sql, params) => {
+      if (sql.includes('DELETE FROM categories')) throw new Error('forced failure');
+      return realRun(sql, params);
+    };
+    db.exec = async (sql: string) => {
+      if (sql.includes('VACUUM')) after.push('vacuum');
+      return realExec(sql);
+    };
+    db.get = async <T,>(sql: string, params?: unknown[]) => {
+      if (sql.includes('wal_checkpoint')) after.push('checkpoint');
+      return realGet<T>(sql, params);
+    };
+
+    await expect(wipeEverythingOnDevice()).rejects.toThrow(/forced failure/);
+    db.run = realRun;
+    db.exec = realExec;
+    db.get = realGet;
+
+    for (const table of PER_USER_TABLES) {
+      const row = await getDb().get<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`);
+      expect({ table, n: row?.n }).toEqual({ table, n: before[table] });
+    }
+    await expect(getAgeBucket()).resolves.toEqual({ lowerBound: null, upperBound: 12 });
+    await expect(getWarmupRecord()).resolves.not.toBeNull();
+    await expect(listPracticeAnswers()).resolves.toHaveLength(1);
+    expect(after).toEqual([]);
+  });
+
+  it('rebuilds the file and truncates the log after the deletes commit, outside the transaction', async () => {
+    await seedEveryTable('left-behind');
+    const db = getDb();
+    const events: string[] = [];
+    let inTx = false;
+    const realTransaction = db.transaction.bind(db);
+    const realExec = db.exec.bind(db);
+    const realGet = db.get.bind(db);
+    db.transaction = async <T,>(fn: () => Promise<T>) => {
+      const result = await realTransaction(async () => {
+        inTx = true;
+        try {
+          return await fn();
+        } finally {
+          inTx = false;
+        }
+      });
+      events.push('committed');
+      return result;
+    };
+    db.exec = async (sql: string) => {
+      if (sql.includes('VACUUM')) events.push(`VACUUM${inTx ? ' (inside)' : ''}`);
+      return realExec(sql);
+    };
+    db.get = async <T,>(sql: string, params?: unknown[]) => {
+      if (sql.includes('wal_checkpoint')) events.push(`checkpoint${inTx ? ' (inside)' : ''}`);
+      return realGet<T>(sql, params);
+    };
+
+    await wipeEverythingOnDevice();
+
+    expect(events).toEqual(['committed', 'VACUUM', 'checkpoint']);
+  });
+});
+
+/** One practice answer, as the practice tests write it. */
+function practiceAnswer(): PracticeAnswer {
+  return {
+    day: 20_734,
+    slot: 0,
+    question: {
+      id: 'north:Rome|New York',
+      kind: 'north',
+      prompt: 'Which is farther north?',
+      options: ['Rome', 'New York'],
+      correctIndex: 0,
+      fact: 'Rome is about 1° farther north than New York (41.9°N against 40.7°N).',
+    },
+    picked: 0,
+    correct: true,
+    confidence: 70,
+    answered_at: '2026-10-08T12:00:00.000Z',
+  };
+}
 
 /** An answered prediction moved from work to health, with the move noted (step 184). */
 async function moveAnswer(id: string, userId: string): Promise<void> {

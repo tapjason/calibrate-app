@@ -20,7 +20,10 @@ jest.mock('@/supabase/sync', () => ({
   // Round 6 (N2): what sign-out reads again just before the wipe.
   unsyncedRows: jest.fn(async () => new Map()),
 }));
-jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn(async () => {}) }));
+jest.mock('@/db/account', () => ({
+  wipeLocalUserData: jest.fn(async () => {}),
+  wipeEverythingOnDevice: jest.fn(async () => []),
+}));
 jest.mock('@/db/predictions', () => ({
   ...jest.requireActual('@/db/predictions'),
   countUnsynced: jest.fn(async () => 0),

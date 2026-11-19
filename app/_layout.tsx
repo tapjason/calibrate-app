@@ -3,7 +3,8 @@ import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-rout
 import { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 
-import { ensureAgeBucket } from '@/age/ageRange';
+import { ensureAgeBucket, hydrateAgeGate, recheckAgeBucketIfDue } from '@/age/ageRange';
+import { initLocalOnly } from '@/age/localOnly';
 import { flushEvents } from '@/analytics/flush';
 import { initBilling, refreshBilling } from '@/billing/init';
 import { AppLockGate } from '@/components/launch/AppLockGate';
@@ -88,6 +89,15 @@ export default function RootLayout() {
         // Instrument Sans on web (D33), alongside the database, so the first
         // screen paints in it; native builds embed the font. Never rejects.
         await Promise.all([initDb(), loadFonts()]);
+        // The under-13 rule (roadmap D70): the stored age band into the age
+        // store, and whether this launch will ask Apple, before the auth store
+        // initialises. The Supabase client and the first sync are made there,
+        // and each checks the rule. A read that fails reads as no band; it
+        // never rejects. Then the housekeeping for the rule coming on or off
+        // (the queued counts, the session refresh, the Coach), at once when a
+        // stored band already puts it on; never throws.
+        await hydrateAgeGate();
+        initLocalOnly();
         await useAuthStore.getState().initialize();
         const userId = useAuthStore.getState().userId;
         if (userId) {
@@ -149,7 +159,9 @@ export default function RootLayout() {
         // only once the line on the Warm-up's first screen, which says so and
         // holds the switch, has been shown on this phone (D69 (b)): until then
         // they stay queued. After the settings' hydrate above, which reads
-        // when it was first shown.
+        // when it was first shown. On a launch still waiting for Apple's age
+        // answer, nothing here: the flush follows the answer (initLocalOnly),
+        // and never on a local-only phone (D70).
         if (usageCountsMayGoUp()) void flushEvents(useAuthStore.getState().userId);
         // A CSV export the app was killed over, or whose share sheet never
         // reported closing, is still in the cache: it holds every title and
@@ -213,6 +225,9 @@ export default function RootLayout() {
   // means it is not asked again. The promise never rejects. It waits for the
   // app lock (D64): Apple's sheet shouldn't open under the lock screen. This
   // runs again on each unlock, and `ensureAgeBucket` still asks once per launch.
+  // While a stored band keeps the phone local-only (D70, call 5), an unlock
+  // after a day or more asks again (`recheckAgeBucketIfDue`: silent, Apple
+  // answers from its cache; nothing before the launch's own ask is done).
   const locked = useLockStore((s) => s.locked);
   useEffect(() => {
     if (!launched || locked) return;
@@ -220,6 +235,7 @@ export default function RootLayout() {
       // eslint-disable-next-line no-console
       console.warn('[age] check failed:', e);
     });
+    void recheckAgeBucketIfDue();
   }, [launched, locked]);
 
   // Foreground sync. Sign-in already triggers one sweep via authStore; this
@@ -229,6 +245,11 @@ export default function RootLayout() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
+      // The under-13 rule's ask, again after a day or more in a long run
+      // (D70, call 5), for a guest too. Not under the app lock: Apple's sheet
+      // would open over the lock screen; the unlock above asks instead.
+      // Never rejects.
+      if (!useLockStore.getState().locked) void recheckAgeBucketIfDue();
       const userId = useAuthStore.getState().userId;
       if (!userId) return;
       void syncForUser(userId);

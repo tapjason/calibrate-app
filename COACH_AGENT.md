@@ -312,11 +312,14 @@ count in `overall` and the weekday pattern, which name no category.
   localize per region). As built (step 182): on a phone whose locale's region is US, or
   unreadable, the US line and then "Outside the US: search for a crisis line in your
   country, or call your local emergency number."; on any other phone that sentence
-  alone. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988 line the same
-  way on the self-harm and distress topics, since SAMHSA says anyone in a US territory
-  can reach 988 (policy audit, 2026-11-15); the other two lines aren't confirmed there, so
-  those topics show that sentence alone until the owner decides
-  (`docs/SHIP_READINESS.md`). No number per country (a wrong one costs more than a missing one) and no named
+  alone. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988 line on every
+  topic (D71 (c), 2026-11-19): SAMHSA's 988 FAQ answers "Yes" to whether it is available "in all
+  states and all five territories", and says that "there are many reasons that people connect with the 988
+  Lifeline beyond suicide" (read 2026-11-19). The domestic-violence and eating-disorder
+  numbers aren't confirmed there, so they stay off a territory phone until those
+  organisations answer the owner (`docs/OWNER_MESSAGES.md`). Its second line reads "If 988
+  doesn't connect where you are: search for a local crisis line, or call your local
+  emergency number.", with neither "the US" nor "your country". No number per country (a wrong one costs more than a missing one) and no named
   directory: Find A Helpline's terms need written permission for commercial use, which
   is the owner's to ask for (`docs/SHIP_READINESS.md`).
 - The agent never attempts to counsel, assess risk, or diagnose. It steps back and
@@ -324,6 +327,16 @@ count in `overall` and the weekday pattern, which name no category.
   confidentiality or outcomes.
 - Implement this as a **pre-filter that runs before the coaching call**, so distress
   content never becomes coaching input in the first place.
+- **The person can set the card aside** (D71 (b), 2026-11-19). The filter matches words,
+  so it is sometimes wrong, and an answered prediction can't be deleted after a day: one
+  false positive used to replace the Coach for good. Under the helpline the card says why
+  it came up ("This came up because of words in one of your predictions or notes, checked
+  on this phone. If it doesn't fit, you can go back to Coach.") and offers "Back to Coach".
+  That sets aside the predictions that matched, each by its id and a hash of its words, on
+  this phone only (no words stored, no usage event, at most 200); a new prediction that
+  matches, or a changed note on one set aside, brings the card back. Sign-out, Erase and
+  account deletion clear the list. The safeguard's substance is unchanged: no free text
+  reaches the model in any case, so nothing is ever coached on.
 
 ### 5.6 Privacy & data minimization
 - Prefer aggregates; minimize freetext egress (Section 4).

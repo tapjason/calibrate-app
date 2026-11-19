@@ -13,6 +13,12 @@ import {
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { dateLocale } from '@/constants/locale';
+import {
+  LOCAL_ONLY_FROZEN_FOOTER,
+  LOCAL_ONLY_GUEST_FOOTER,
+  LOCAL_ONLY_GUEST_ROW,
+  LOCAL_ONLY_GUEST_WHERE,
+} from '@/components/age/localOnlyCopy';
 import { appLocked } from '@/components/ui/appLocked';
 import { askToConfirm } from '@/components/ui/askToConfirm';
 import { localCount } from '@/components/ui/count';
@@ -47,6 +53,7 @@ import {
   type ReminderPermission,
 } from '@/notifications/permission';
 import { choosePracticeReminder, reminderTimeLabel } from '@/notifications/practiceReminder';
+import { useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useLockStore } from '@/store/lockStore';
@@ -66,6 +73,14 @@ import { useSettingsStore, type PracticeReminderTime } from '@/store/settingsSto
  *   - AI Refine (hidden while REFINE_ENABLED is false), Coach, usage stats.
  *   - About: how scoring works, terms, privacy.
  *   - Erase all data / Delete account, alone at the bottom.
+ *
+ * Under the under-13 rule (roadmap D70; docs/design/research/
+ * under-13-2026-11.md, "Screens"): the account group explains why everything
+ * stays on this phone (a guest) or that backup is off (an account signed in
+ * before, frozen: Sign out and Delete account stay), and the Plus row, Coach
+ * and Usage stats (with the dormant AI Refine) are gone, since none of them
+ * can do anything here.
+ * Everything else, Export included, is as usual.
  *
  * Pure presentation: reads + writes the store, no other logic. The setters
  * persist and swallow their own errors.
@@ -118,6 +133,9 @@ export function SettingsView({
   const setHideTitles = useSettingsStore((s) => s.setHideTitles);
   // Whether reminders carry Happened / Didn't follows the app lock (D64).
   const appLock = useSettingsStore((s) => s.appLock);
+  // The under-13 rule (D70): no Plus, no Coach, no usage counts on this phone.
+  const localOnly = useAgeStore((s) => s.localOnly);
+  const showPlus = !!onOpenPaywall && !localOnly;
 
   return (
     <View style={styles.wrap}>
@@ -127,17 +145,21 @@ export function SettingsView({
         Plus sits high because it is also where a subscriber goes to restore a
         purchase after a reinstall: the paywall carries Restore, and this is
         the only permanent route to it for someone who has already paid.
+        Under the under-13 rule only Your card is left, with no footer: Plus's
+        line would offer what isn't offered here.
       */}
-      {(onOpenCard || onOpenPaywall) && (
+      {(onOpenCard || showPlus) && (
         <Group
           footer={
-            isPlus
-              ? 'Active. Coach and Trends are unlocked.'
-              : 'Plus adds Coach, Trends and extra card themes. Your score, curve, badges and cards stay free.'
+            !showPlus
+              ? undefined
+              : isPlus
+                ? 'Active. Coach and Trends are unlocked.'
+                : 'Plus adds Coach, Trends and extra card themes. Your score, curve, badges and cards stay free.'
           }
         >
           {onOpenCard && <NavRow label="Your card" onPress={onOpenCard} testID="settings-card" />}
-          {onOpenPaywall && (
+          {showPlus && onOpenPaywall && (
             <NavRow
               label={PLUS_NAME}
               value={isPlus ? 'Active' : undefined}
@@ -261,49 +283,54 @@ export function SettingsView({
         <PracticeReminderRow />
       </Group>
 
-      <Group>
-        {/* Hidden while refine is cut from the release — a toggle for a button
-            that doesn't exist is worse than no toggle. The stored preference is
-            left untouched, so flipping REFINE_ENABLED back on restores whatever
-            the user had chosen. */}
-        {REFINE_ENABLED && (
+      {/* Under the under-13 rule the whole group goes (D70): none of AI
+          Refine, Coach and Usage stats can send anything here, and the
+          account group says why. The stored choices are left untouched. */}
+      {!localOnly && (
+        <Group>
+          {/* Hidden while refine is cut from the release — a toggle for a button
+              that doesn't exist is worse than no toggle. The stored preference is
+              left untouched, so flipping REFINE_ENABLED back on restores whatever
+              the user had chosen. */}
+          {REFINE_ENABLED && (
+            <ToggleRow
+              label="AI Refine"
+              description="Show the ✨ Refine button to rewrite predictions for a clear yes/no."
+              value={aiRefineEnabled}
+              onValueChange={(v) => void setAiRefineEnabled(v)}
+              testID="toggle-ai-refine"
+            />
+          )}
           <ToggleRow
-            label="AI Refine"
-            description="Show the ✨ Refine button to rewrite predictions for a clear yes/no."
-            value={aiRefineEnabled}
-            onValueChange={(v) => void setAiRefineEnabled(v)}
-            testID="toggle-ai-refine"
+            label="Coach (AI)"
+            // Guideline 5.1.2(i): say that a third-party AI service writes the
+            // feedback before anything is sent.
+            // The switch itself is the explicit permission; it starts off.
+            // Without Plus the switch only records the choice, and once it was
+            // on nothing happened, which read as broken (blind playtest
+            // 2026-11-01); on, it says it waits for Plus.
+            description={`${
+              isPlus
+                ? ''
+                : coachEnabled
+                  ? 'On for when you have Plus. Nothing is sent before then. '
+                  : 'Plus only. '
+            }When you ask for feedback, your calibration numbers — never your prediction text — go through our server to a third-party AI service, which writes it.`}
+            value={coachEnabled}
+            onValueChange={(v) => void setCoachEnabled(v)}
+            testID="toggle-coach"
           />
-        )}
-        <ToggleRow
-          label="Coach (AI)"
-          // Guideline 5.1.2(i): say that a third-party AI service writes the
-          // feedback before anything is sent.
-          // The switch itself is the explicit permission; it starts off.
-          // Without Plus the switch only records the choice, and once it was
-          // on nothing happened, which read as broken (blind playtest
-          // 2026-11-01); on, it says it waits for Plus.
-          description={`${
-            isPlus
-              ? ''
-              : coachEnabled
-                ? 'On for when you have Plus. Nothing is sent before then. '
-                : 'Plus only. '
-          }When you ask for feedback, your calibration numbers — never your prediction text — go through our server to a third-party AI service, which writes it.`}
-          value={coachEnabled}
-          onValueChange={(v) => void setCoachEnabled(v)}
-          testID="toggle-coach"
-        />
-        <ToggleRow
-          // Not "anonymous": once you sign in, events are tied to the account
-          // (APP_PRIVACY.md declares them linked), so the label mustn't say so.
-          label="Usage stats"
-          description={USAGE_STATS_DESCRIPTION}
-          value={analyticsEnabled}
-          onValueChange={(v) => void setAnalyticsEnabled(v)}
-          testID="toggle-analytics"
-        />
-      </Group>
+          <ToggleRow
+            // Not "anonymous": once you sign in, events are tied to the account
+            // (APP_PRIVACY.md declares them linked), so the label mustn't say so.
+            label="Usage stats"
+            description={USAGE_STATS_DESCRIPTION}
+            value={analyticsEnabled}
+            onValueChange={(v) => void setAnalyticsEnabled(v)}
+            testID="toggle-analytics"
+          />
+        </Group>
+      )}
 
       <DataGroup />
 
@@ -436,12 +463,28 @@ function AppLockRow() {
   );
 }
 
-/** One inset card of rows, with an optional footer explaining them. */
-function Group({ children, footer }: { children: ReactNode; footer?: string }) {
+/**
+ * One inset card of rows, with an optional footer explaining them: one line,
+ * or several, each its own paragraph.
+ */
+function Group({
+  children,
+  footer,
+}: {
+  children: ReactNode;
+  footer?: string | readonly string[];
+}) {
+  const lines = footer === undefined ? [] : typeof footer === 'string' ? [footer] : footer;
   return (
     <View style={styles.group}>
       <View style={styles.card}>{children}</View>
-      {footer && <Text style={styles.footer}>{footer}</Text>}
+      {lines.map((line) =>
+        line ? (
+          <Text key={line} style={styles.footer}>
+            {line}
+          </Text>
+        ) : null,
+      )}
     </View>
   );
 }
@@ -693,8 +736,10 @@ function NotificationPermissionRow() {
 /**
  * The way out, alone at the bottom where destructive settings live. Apple
  * requires account deletion be easy to find in the app (Guideline
- * 5.1.1(v)); a guest gets the equivalent for data that only ever lived on
- * this phone. It opens a confirmation, so the row itself is just red words.
+ * 5.1.1(v)); a guest gets the equivalent, Erase, which removes everything the
+ * app keeps on this phone, anything an account signed in here before left
+ * included (`wipeEverythingOnDevice`). It opens a confirmation, so the row
+ * itself is just red words.
  */
 function DeleteGroup({ onOpenDelete }: { onOpenDelete: () => void }) {
   const status = useAuthStore((s) => s.status);
@@ -771,6 +816,12 @@ export function unsyncedSignOutLine({
  * categories added or changed (D39, D40). The counts only this phone keeps
  * stay on it through a sign-out (`INTEGRITY_COUNT_TABLES` in
  * src/db/account.ts; round 6), so the footer no longer names them.
+ *
+ * Under the under-13 rule (roadmap D70): a guest gets one static row, "Kept on
+ * this phone", and the explanation (shown on any build, accounts or not: it
+ * also says why Plus, Coach and Usage stats are gone from You); an account
+ * signed in before is frozen, with Sign out kept and the footer saying backup
+ * is off. Never a way to sign in.
  */
 function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
   const accountsAvailable = useAuthStore((s) => s.accountsAvailable);
@@ -778,11 +829,24 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
   const email = useAuthStore((s) => s.email);
   const pending = useAuthStore((s) => s.pending);
   const signOut = useAuthStore((s) => s.signOut);
+  const localOnly = useAgeStore((s) => s.localOnly);
   // Sign-out can wait about 15 seconds with no connection (the server's
   // turn, then this phone's own), so the row says it's working, as the
   // export row does, and a failure is said rather than dropped.
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  if (localOnly && status !== 'authenticated') {
+    return (
+      <View testID="settings-account">
+        <Group footer={[LOCAL_ONLY_GUEST_FOOTER, LOCAL_ONLY_GUEST_WHERE]}>
+          <View style={styles.row} testID="settings-local-only">
+            <Text style={styles.rowLabel}>{LOCAL_ONLY_GUEST_ROW}</Text>
+          </View>
+        </Group>
+      </View>
+    );
+  }
 
   if (!accountsAvailable) return null;
 
@@ -825,7 +889,12 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
     return (
       <View testID="settings-account">
         <Group
-          footer={`${describeAccount(email)} Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed live only on this phone, so signing out removes them.`}
+          footer={
+            localOnly
+              ? // Frozen (D70, call 3): who is signed in, then the spec's words.
+                `${describeAccount(email)} ${LOCAL_ONLY_FROZEN_FOOTER}`
+              : `${describeAccount(email)} Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed live only on this phone, so signing out removes them.`
+          }
         >
           <NavRow
             label={signingOut ? 'Signing out…' : 'Sign out'}

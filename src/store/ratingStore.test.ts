@@ -1,6 +1,7 @@
 import { __setStoreReviewDepsForTests } from '@/review/ratingPrompt';
 import type { Prediction } from '@/types';
 
+import { __resetAgeStoreForTests, useAgeStore } from './ageStore';
 import { usePredictionStore } from './predictionStore';
 import { useRatingStore } from './ratingStore';
 import { __setPersistenceForTests, useSettingsStore } from './settingsStore';
@@ -61,5 +62,19 @@ describe('ratingStore (roadmap D15)', () => {
     await expect(useRatingStore.getState().askIfDue(now)).resolves.toBe(false);
     expect(useRatingStore.getState().moment).toBe(false);
     expect(requestReview).not.toHaveBeenCalled();
+  });
+
+  // Roadmap D70, call 6: a local-only phone is never asked.
+  it('never asks on a local-only phone, and spends the moment', async () => {
+    useAgeStore.getState().load({ lowerBound: null, upperBound: 12 }, { willAsk: false });
+    try {
+      useRatingStore.getState().noteMoment();
+      await expect(useRatingStore.getState().askIfDue(now)).resolves.toBe(false);
+      expect(requestReview).not.toHaveBeenCalled();
+      expect(useRatingStore.getState().moment).toBe(false);
+      expect(useSettingsStore.getState().ratingAskedAt).toBeNull();
+    } finally {
+      __resetAgeStoreForTests();
+    }
   });
 });

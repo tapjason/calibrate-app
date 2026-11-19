@@ -9,8 +9,9 @@
 // fixing the prompt, and deploying the function — the reasoning is on the
 // constant.
 //
-// Layer rule: L5 (services). Imports from @/supabase only. Components import
-// THIS module — never the supabase client directly.
+// Layer rule: L5 (services). Imports from @/supabase and the age store (a
+// leaf, for the under-13 rule) only. Components import THIS module — never
+// the supabase client directly.
 //
 // Failure policy (per CLAUDE.md): AI is never in the critical path. Every
 // failure mode below resolves to `null` and logs a console.warn. The caller
@@ -18,6 +19,8 @@
 // the user's original text is untouched.
 //
 // Failure modes that return null:
+//   • The phone is local-only under the under-13 rule (roadmap D70): before
+//     any client is built.
 //   • Supabase not configured (guest-mode dev build with no env vars).
 //   • Not signed in — the Edge Function requires a real user JWT and returns
 //     401 for the anon key (guest mode). Refine is a signed-in-only nicety;
@@ -31,6 +34,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { isLocalOnly } from '@/store/ageStore';
 import { getSupabaseClient, isSupabaseConfigured } from '@/supabase/client';
 
 const DEFAULT_TIMEOUT_MS = 8_000;
@@ -52,6 +56,8 @@ export async function refinePrediction(
   prediction: string,
   deps: RefineDeps = {},
 ): Promise<string | null> {
+  // The under-13 rule (D70): nothing leaves the phone.
+  if (isLocalOnly()) return null;
   const trimmed = prediction.trim();
   if (trimmed.length === 0 || trimmed.length > MAX_INPUT_LEN) {
     return null;

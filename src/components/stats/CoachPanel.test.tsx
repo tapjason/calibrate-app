@@ -1,16 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { StyleSheet, Text } from 'react-native';
 
+import { LOCAL_ONLY_COACH } from '@/components/age/localOnlyCopy';
 import { __setDeviceLocaleForTests } from '@/constants/locale';
+import { colors, type as typeTokens } from '@/constants/theme';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
-import { FREE_ENTITLEMENT, type CoachInsight, type UserStat } from '@/types';
+import { FREE_ENTITLEMENT, type CoachInsight, type Prediction, type UserStat } from '@/types';
 
 import { CoachPanel } from './CoachPanel';
+import { SUPPORT_ASIDE_NOTE } from './SupportSurface';
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -389,6 +394,52 @@ describe('CoachPanel — crisis path', () => {
     expect(screen.queryByTestId('coach-insight-finance')).toBeNull();
   });
 
+  // Main session, 2026-11-19: with "Back to Coach" on the card, a second
+  // button that only rescans and brings the same card back read as a dead
+  // end. The card is the whole panel while it is up, under the heading.
+  it('shows no ask button, and no loading, failure or caveat line, while the card is up', () => {
+    seed();
+    useCoachStore.setState({
+      insights: [INSIGHT],
+      crisisTopic: 'self_harm',
+      loading: true,
+      lastRequestFailed: true,
+      lastFailure: null,
+      lastAnsweredAt: '2026-08-29T12:00:00.000Z',
+    });
+    try {
+      render(<CoachPanel />);
+
+      expect(screen.getByTestId('coach-support-surface')).toBeTruthy();
+      expect(screen.queryByTestId('coach-ask')).toBeNull();
+      expect(screen.queryByText('Get feedback')).toBeNull();
+      expect(screen.queryByText('Reading your numbers…')).toBeNull();
+      for (const id of [
+        'coach-unavailable',
+        'coach-not-confirmed',
+        'coach-nothing-scored',
+        'coach-nothing-to-say',
+        'coach-nothing-backed',
+        'coach-caveat',
+        'coach-disclosure',
+      ]) {
+        expect(screen.queryByTestId(id)).toBeNull();
+      }
+      // The heading and the AI label stay.
+      expect(screen.getByText('Coach')).toBeTruthy();
+      expect(screen.getByText('AI')).toBeTruthy();
+      screen.unmount();
+    } finally {
+      useCoachStore.setState({
+        insights: [],
+        crisisTopic: null,
+        loading: false,
+        lastRequestFailed: false,
+        lastAnsweredAt: null,
+      });
+    }
+  });
+
   it('points at the resource matching the topic', () => {
     seed();
     // A US phone, whatever the machine running the tests is set to.
@@ -453,5 +504,193 @@ describe('CoachPanel — control and trust', () => {
     render(<CoachPanel />);
 
     expect(screen.getAllByTestId('coach-caveat')).toHaveLength(1);
+  });
+});
+
+// Main session decision 2026-11-19: the support card can be set aside, since
+// an answered prediction can't be deleted after its 24 hours and one false
+// match would otherwise replace the Coach for good.
+describe('CoachPanel — setting the support card aside', () => {
+  const answered = (id: string, title: string): Prediction => ({
+    id,
+    user_id: 'u1',
+    title,
+    category: 'work',
+    confidence: 70,
+    created_at: '2026-11-01T12:00:00.000Z',
+    due_date: '2026-11-03T12:00:00.000Z',
+    status: 'resolved_yes',
+    resolved_at: '2026-11-03T19:00:00.000Z',
+    reflection: null,
+    integrity_bonus: false,
+  });
+  const RESOLVED = [
+    answered('a1', 'Finish the report by Friday'),
+    answered('t1', 'I want to die before the launch'),
+  ];
+  const realSetSupportAside = useCoachStore.getState().setSupportAside;
+  const realRequestInsights = useCoachStore.getState().requestInsights;
+
+  beforeEach(() => {
+    __setPersistenceForTests({ load: async () => null, save: async () => {} });
+    seed();
+    usePredictionStore.setState({ pending: [], resolved: RESOLVED });
+    useCoachStore.setState({ crisisTopic: 'self_harm' });
+  });
+
+  afterEach(() => {
+    // In act: the panel is still on screen here.
+    act(() => {
+      useCoachStore.setState({
+        setSupportAside: realSetSupportAside,
+        requestInsights: realRequestInsights,
+        crisisTopic: null,
+      });
+      useSettingsStore.setState({ supportAsideKeys: [] });
+      __setPersistenceForTests(null);
+    });
+  });
+
+  it('says why it came up under the contact line, quietly, with a way back to Coach', () => {
+    render(<CoachPanel />);
+    const card = screen.getByTestId('coach-support-surface');
+    const note = screen.getByTestId('support-aside-note');
+    expect(note.props.children).toBe(
+      "This came up because of words in one of your predictions or notes, checked on this phone. If it doesn't fit, you can go back to Coach.",
+    );
+    expect(note.props.children).toBe(SUPPORT_ASIDE_NOTE);
+    expect(StyleSheet.flatten(note.props.style)).toMatchObject({
+      fontSize: typeTokens.footnote.fontSize,
+      color: colors.textSecondary,
+    });
+    expect(card).toContainElement(note);
+    expect(card).toContainElement(screen.getByTestId('support-back-to-coach'));
+    expect(screen.getByText('Back to Coach')).toBeTruthy();
+    // The helpline line stays above it, and stays selectable.
+    const contact = screen.getByTestId('support-contact');
+    expect(contact.props.selectable).toBe(true);
+    const texts = screen.UNSAFE_getAllByType(Text).map((t) => t.props.testID);
+    expect(texts.indexOf('support-contact')).toBeLessThan(texts.indexOf('support-aside-note'));
+  });
+
+  it('sets aside the same list of answered predictions the panel asks with', async () => {
+    const setSupportAside = jest.fn(async () => false);
+    const requestInsights = jest.fn(async () => {});
+    useCoachStore.setState({ setSupportAside, requestInsights });
+    render(<CoachPanel />);
+
+    fireEvent.press(screen.getByTestId('support-back-to-coach'));
+    await waitFor(() => expect(setSupportAside).toHaveBeenCalledTimes(1));
+    expect(setSupportAside).toHaveBeenCalledWith(RESOLVED);
+
+    // The very array the request is given, asked once the card has gone
+    // (there is no ask button under it).
+    await waitFor(() =>
+      expect(screen.getByTestId('support-back-to-coach').props.accessibilityState.disabled).toBe(false),
+    );
+    act(() => useCoachStore.setState({ crisisTopic: null }));
+    fireEvent.press(screen.getByTestId('coach-ask'));
+    await waitFor(() => expect(requestInsights).toHaveBeenCalledTimes(1));
+    const request = (requestInsights.mock.calls[0] as unknown as [{ resolved: unknown }])[0];
+    expect((setSupportAside.mock.calls[0] as unknown as [unknown])[0]).toBe(request.resolved);
+  });
+
+  it('goes back to the ask button once it resolves true', async () => {
+    // The store's own action, on a record whose second title trips the check.
+    render(<CoachPanel />);
+    expect(screen.queryByTestId('coach-ask')).toBeNull();
+    fireEvent.press(screen.getByTestId('support-back-to-coach'));
+
+    await waitFor(() => expect(screen.queryByTestId('coach-support-surface')).toBeNull());
+    expect(screen.getByTestId('coach-ask').props.accessibilityState.disabled).toBe(false);
+    // The first idle state: the disclosure before a first request, no line about an answer.
+    expect(screen.getByTestId('coach-disclosure')).toBeTruthy();
+    expect(screen.queryByTestId('coach-nothing-to-say')).toBeNull();
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
+    // Remembered on this phone: one key, for the one tripping prediction.
+    expect(useSettingsStore.getState().supportAsideKeys).toHaveLength(1);
+  });
+
+  it('leaves the card up, with no ask button, when it resolves false, and offers its button again', async () => {
+    let finish: (value: boolean) => void = () => {};
+    const setSupportAside = jest.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    useCoachStore.setState({ setSupportAside });
+    render(<CoachPanel />);
+
+    fireEvent.press(screen.getByTestId('support-back-to-coach'));
+    // While it runs, a second press does nothing.
+    await waitFor(() =>
+      expect(screen.getByTestId('support-back-to-coach').props.accessibilityState.disabled).toBe(true),
+    );
+    fireEvent.press(screen.getByTestId('support-back-to-coach'));
+    expect(setSupportAside).toHaveBeenCalledTimes(1);
+
+    await act(async () => finish(false));
+    expect(screen.getByTestId('coach-support-surface')).toBeTruthy();
+    expect(screen.getByTestId('support-back-to-coach').props.accessibilityState.disabled).toBe(false);
+    expect(screen.queryByTestId('coach-ask')).toBeNull();
+  });
+});
+
+// The under-13 rule (roadmap D70): the Coach is off on a local-only phone.
+// With a Plus mirror the panel says so; otherwise it isn't drawn. Nothing
+// offers Plus or a sign-in, and there is no way to ask.
+describe('CoachPanel — under the under-13 rule', () => {
+  afterEach(() => act(() => __resetAgeStoreForTests()));
+
+  it.each([
+    ['signed in, Coach on', {}],
+    ['a guest', { signedIn: false }],
+    ['Coach off', { coachEnabled: false }],
+  ])('says the Coach is off where a Plus mirror is active (%s)', (_label, who) => {
+    seed(who);
+    useAgeStore.setState({ localOnly: true });
+    render(<CoachPanel onUpgrade={jest.fn()} onSignIn={jest.fn()} />);
+
+    expect(screen.getByTestId('coach-local-only')).toBeTruthy();
+    expect(screen.getByText(LOCAL_ONLY_COACH)).toBeTruthy();
+    for (const id of [
+      'coach-ask',
+      'coach-sign-in',
+      'coach-upsell-cta',
+      'coach-needs-account',
+      'coach-panel',
+      'coach-disabled',
+    ]) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+  });
+
+  it('is not drawn without Plus, even where the screen offers an upsell', () => {
+    seed({ isPlus: false });
+    useAgeStore.setState({ localOnly: true });
+    render(<CoachPanel onUpgrade={jest.fn()} />);
+    expect(screen.toJSON()).toBeNull();
+  });
+
+  // A request under the rule returns ok: false with no failure; the panel
+  // shows the rule's line, not "unavailable".
+  it('shows the line in place of a request that came back empty', () => {
+    seed();
+    useCoachStore.setState({ lastRequestFailed: true, lastFailure: null });
+    useAgeStore.setState({ localOnly: true });
+    render(<CoachPanel />);
+    expect(screen.getByTestId('coach-local-only')).toBeTruthy();
+    expect(screen.queryByTestId('coach-unavailable')).toBeNull();
+    screen.unmount();
+    useCoachStore.setState({ lastRequestFailed: false });
+  });
+
+  it('is the usual panel without the rule', () => {
+    seed();
+    useAgeStore.setState({ localOnly: false });
+    render(<CoachPanel />);
+    expect(screen.queryByTestId('coach-local-only')).toBeNull();
+    expect(screen.getByTestId('coach-ask')).toBeTruthy();
   });
 });

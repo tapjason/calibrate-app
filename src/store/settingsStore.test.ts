@@ -3,6 +3,9 @@
 
 import { AppState } from 'react-native';
 
+import { supportAsideKey } from '@/engine/supportAside';
+import { SUPPORT_ASIDE_MAX_KEYS } from '@/types';
+
 import {
   __setPersistenceForTests,
   useSettingsStore,
@@ -1238,5 +1241,136 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     expect(app.remove).toHaveBeenCalledTimes(1);
     expect(rec.saved).toHaveLength(1);
     expect(rec.saved[0]).toMatchObject({ notificationsEnabled: true, appLock: false, analyticsEnabled: true });
+  });
+
+  // The support card's set-asides (2026-11-19): held like the other
+  // automatic changes, and merged into the record's own once it reads.
+  it('holds a set-aside in memory, then merges it into the record once it reads', async () => {
+    const older = supportAsideKey({ id: 'old', title: 'a', reflection: null });
+    const newer = supportAsideKey({ id: 'new', title: 'b', reflection: null });
+    const rec = flakyRecord({ notificationsEnabled: false, supportAsideKeys: [older] });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+    expect(store().supportAsideKeys).toEqual([]);
+
+    await store().addSupportAsideKeys([newer]);
+    expect(rec.saved).toHaveLength(0);
+    expect(store().supportAsideKeys).toEqual([newer]);
+
+    rec.heal();
+    await app.foreground();
+    expect(store()).toMatchObject({ supportAsideKeys: [older, newer], notificationsEnabled: false });
+    expect(rec.saved[rec.saved.length - 1]?.supportAsideKeys).toEqual([older, newer]);
+  });
+
+  it('a clear held while the record cannot be read empties the record once it reads', async () => {
+    const older = supportAsideKey({ id: 'old', title: 'a', reflection: null });
+    const rec = flakyRecord({ supportAsideKeys: [older] });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().clearSupportAside();
+    expect(rec.saved).toHaveLength(0);
+
+    rec.heal();
+    await app.foreground();
+    expect(store().supportAsideKeys).toEqual([]);
+    // An empty list is left out of the record: absent reads as none.
+    expect(rec.saved[rec.saved.length - 1]).not.toHaveProperty('supportAsideKeys');
+  });
+});
+
+describe('settingsStore: the support card set aside', () => {
+  const key = (i: number) => supportAsideKey({ id: `p${i}`, title: `Title ${i}`, reflection: null });
+
+  it('starts with none set aside', () => {
+    __setPersistenceForTests(makeFakePersistence().persistence);
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+  });
+
+  it('writes no list while none is set aside, so the record keeps the shape earlier builds wrote', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().setStreakShown(false);
+    expect(saved[0]).not.toHaveProperty('supportAsideKeys');
+  });
+
+  it('stores the keys, each once, newest last', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+
+    await useSettingsStore.getState().addSupportAsideKeys([key(1), key(2)]);
+    await useSettingsStore.getState().addSupportAsideKeys([key(1), key(3)]);
+
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([key(2), key(1), key(3)]);
+    expect(saved[saved.length - 1]?.supportAsideKeys).toEqual([key(2), key(1), key(3)]);
+  });
+
+  it('keeps at most 200, dropping the oldest', async () => {
+    __setPersistenceForTests(makeFakePersistence().persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().addSupportAsideKeys(Array.from({ length: 199 }, (_, i) => key(i)));
+    await useSettingsStore.getState().addSupportAsideKeys([key(500), key(501), key(502)]);
+
+    const keys = useSettingsStore.getState().supportAsideKeys;
+    expect(keys).toHaveLength(SUPPORT_ASIDE_MAX_KEYS);
+    expect(keys[0]).toBe(key(2));
+    expect(keys.slice(-3)).toEqual([key(500), key(501), key(502)]);
+  });
+
+  it('ignores anything that is not a key, and writes nothing for none', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+
+    await useSettingsStore.getState().addSupportAsideKeys(['I want to die', '']);
+
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(saved).toHaveLength(0);
+  });
+
+  it('clears them', async () => {
+    const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1)] });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([key(1)]);
+
+    await useSettingsStore.getState().clearSupportAside();
+
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(saved[saved.length - 1]).not.toHaveProperty('supportAsideKeys');
+  });
+
+  it.each<[string, unknown]>([
+    ['not a list', 'p1#0123456789abcdef'],
+    ['a list of words', ['I want to die', 7, null]],
+    ['missing', undefined],
+  ])('reads a stored value that is %s as none set aside', async (_label, value) => {
+    __setPersistenceForTests(
+      makeFakePersistence({ supportAsideKeys: value } as unknown as Partial<StoredSettings>).persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+  });
+
+  it('reads at most the newest 200 of a longer stored list', async () => {
+    const stored = Array.from({ length: 250 }, (_, i) => key(i));
+    __setPersistenceForTests(makeFakePersistence({ supportAsideKeys: stored }).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual(stored.slice(50));
+  });
+
+  it('holds none when the record cannot be read', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    __setPersistenceForTests(
+      makeFakePersistence({ supportAsideKeys: [key(1)] }, { loadThrows: true }).persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState()).toMatchObject({ loadFailed: true, supportAsideKeys: [] });
+    jest.restoreAllMocks();
   });
 });

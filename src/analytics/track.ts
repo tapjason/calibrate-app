@@ -9,11 +9,16 @@
 //     already queued the moment they do.
 //   - It can only record events declared in events.ts, with properties
 //     declared for that event. Freetext cannot reach it.
+//   - It records nothing while the phone is local-only under the under-13
+//     rule (roadmap D70): no usage counts are kept for upload. What was queued
+//     before the rule came on is cleared then (src/age/localOnly.ts).
 //
-// Layer note: L5. It reads settingsStore and authStore (L4) the same way the
-// notification services do — services subscribe to stores, never the reverse.
+// Layer note: L5. It reads settingsStore, authStore and the age store (L4)
+// the same way the notification services do — services subscribe to stores,
+// never the reverse.
 
 import { enqueueEvent, type QueuedEvent } from '@/db/analytics';
+import { isLocalOnly } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -26,6 +31,8 @@ import { sanitizeProps, type EventName, type EventProps } from './events';
  */
 export async function track(name: EventName, props?: EventProps): Promise<void> {
   try {
+    // The under-13 rule (D70): nothing is queued.
+    if (isLocalOnly()) return;
     if (!useSettingsStore.getState().analyticsEnabled) return;
 
     const userId = useAuthStore.getState().userId;

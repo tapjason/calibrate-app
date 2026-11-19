@@ -97,8 +97,11 @@ Start from a fresh install.
 - The core list (`HUMAN_VERIFICATION.md` Batch C, about 30 minutes): the Warm-up to its
   result and card, a first prediction in under 15 seconds, an answer, Insights, History,
   the share sheet with a real export, You's defaults, Erase.
-- Sign in with Apple and with email; the age-range sheet appears once; delete a throwaway
-  account.
+- Sign in with Apple and with email; Apple's age-range sheet may appear once (after you
+  share a range of 13 or over the app doesn't ask again, and after a decline it carries
+  on); delete a throwaway account. On a build that carries D70, a band under 13 keeps
+  everything on the phone instead (no sign-in, backup, usage counts, Coach or Plus): the
+  sandbox "Under 13" check in `HUMAN_VERIFICATION.md` D4.
 - Log one prediction due tomorrow so a real reminder arrives.
 
 **Day 2, about an hour:**

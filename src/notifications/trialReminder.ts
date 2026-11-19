@@ -179,9 +179,19 @@ export function initTrialReminder(): void {
  * purchase, on every entitlement refresh (launch, sign-in, return to the
  * app) and when the notifications toggle changes. If RevenueCat can't be
  * reached, a scheduled reminder is left as it is.
+ *
+ * With notifications off the reminder is cancelled without asking RevenueCat:
+ * off means off whether or not it can be reached. On a local-only phone (the
+ * under-13 rule, D70) RevenueCat is never asked, so no reminder is scheduled
+ * there; one scheduled before the rule came on stays (it tells the truth about
+ * a real trial) until its time, the trial's end, or notifications going off.
  */
 export async function refreshTrialReminder(): Promise<void> {
   try {
+    if (!useSettingsStore.getState().notificationsEnabled) {
+      await syncTrialReminder(null, [], { enabled: false });
+      return;
+    }
     const status = await fetchTrialStatus();
     if (status === undefined) return;
     const plans = status ? await fetchPlans() : [];

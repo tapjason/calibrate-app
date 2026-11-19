@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { PLUS_NAME } from '@/constants/app';
 import { colors, FONT_FAMILY, radius, space, tabularNums, type } from '@/constants/theme';
+import { useAgeStore } from '@/store/ageStore';
 
 interface PlusTeaserProps {
   onUpgrade: () => void;
@@ -28,12 +29,18 @@ interface PlusTeaserProps {
  *
  * One card, one button, two benefits in a line each, the way the paywall
  * itself will read.
+ *
+ * Not drawn while the under-13 rule applies (roadmap D70): Plus isn't
+ * offered on this phone.
  */
 export function PlusTeaser({ onUpgrade, monthsOnFile = null, sample = null }: PlusTeaserProps) {
+  const localOnly = useAgeStore((s) => s.localOnly);
   const trendsLine =
     monthsOnFile
       ? `Trends: your ${monthsOnFile} on file, and what your 80% really means.`
       : 'Trends: your calibration month by month, and what your 80% really means.';
+
+  if (localOnly) return null;
 
   return (
     <View style={styles.card} testID="plus-teaser">

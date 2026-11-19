@@ -438,11 +438,33 @@ export const FREE_ENTITLEMENT: Entitlement = {
  * Range API. Null on a side means that side was open. Nothing else from the
  * response is stored, and the band is never synced. Absence means we have
  * no band — the app does not treat that as any particular age.
+ *
+ * One thing reads it (roadmap D70, 2026-11-19): a band that includes ages
+ * under `LOCAL_ONLY_BELOW_AGE` (`isUnder13Band`, src/engine/ageBand.ts) makes
+ * the phone local-only: no sign-in, sync, usage counts, Coach or purchases,
+ * and everything else as usual (`useAgeStore.localOnly`,
+ * docs/design/research/under-13-2026-11.md). Any other band, and no band,
+ * changes nothing.
  */
 export interface AgeBucket {
   lowerBound: number | null;
   upperBound: number | null;
 }
+
+/**
+ * The age below which nothing leaves the phone (roadmap D70): COPPA's 13.
+ * A band that may include someone younger is treated as under it.
+ */
+export const LOCAL_ONLY_BELOW_AGE = 13;
+
+/**
+ * The most support-card set-asides the phone keeps (`supportAsideKey`,
+ * src/engine/supportAside.ts); the oldest go first. One per answered
+ * prediction whose words matched the Coach's crisis pre-filter, so far more
+ * than a record holds in practice; a key dropped by the cap only brings the
+ * card back, the safe way to be wrong.
+ */
+export const SUPPORT_ASIDE_MAX_KEYS = 200;
 
 // ---- Coach agent (Plus). Authoritative shapes: COACH_AGENT.md §4 and §6. ----
 

@@ -1,9 +1,17 @@
 // RevenueCat billing (L5). The only module in the app that knows a payments
 // SDK exists.
 //
-// Layer rule: imports from @/types only. It never touches a store — the
+// Layer rule: imports from @/types, and `isLocalOnly` from the age store (a
+// leaf) for the under-13 rule. It never touches another store — the
 // paywallStore (L4) calls in here and pushes the result into
 // entitlementStore, the same shape as coachStore → @/ai/coach.
+//
+// The under-13 rule (roadmap D70, 2026-11-19): while the phone is local-only,
+// `apiKeyForPlatform()` returns '' and every function below already reads
+// that as billing unavailable: RevenueCat is never configured, nothing is
+// fetched, bought or restored, and Plus reads as unavailable. A local
+// entitlement mirror already on the phone is left as it is (entitlementStore;
+// `fetchEntitlement`'s null never overwrites it).
 //
 // Two properties everything below is built around:
 //
@@ -22,6 +30,7 @@
 
 import { Platform } from 'react-native';
 
+import { isLocalOnly } from '@/store/ageStore';
 import {
   FREE_ENTITLEMENT,
   type Entitlement,
@@ -225,8 +234,13 @@ let warnedTestStoreKey = false;
  * tester and for App Review. With the key treated as absent, every function
  * below fails to "free" and the paywall says Plus isn't available on this
  * build, which the first TestFlight check will show.
+ *
+ * **No key on a local-only phone** (the under-13 rule, D70): every function
+ * below reads '' as unavailable, so RevenueCat is never configured there and
+ * nothing goes to it. Checked first, on every call.
  */
 function apiKeyForPlatform(): string {
+  if (isLocalOnly()) return '';
   const ios = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
   const android = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '';
   const key = (Platform.OS === 'android' ? android : ios).trim();

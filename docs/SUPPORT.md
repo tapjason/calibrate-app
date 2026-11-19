@@ -12,8 +12,12 @@ step with the app's screens.
 HOLD (2026-11-19): this page publishes with the privacy policy (docs/PRIVACY_POLICY.md)
 and carries the same "within 7 days" claim ("Delete my data"), and its sign-out and
 sign-up entries describe the build that carries rounds 5 and 6 (the policy's header,
-step 7). Push it only together with the policy, after
+step 7). The entry on accounts being off and the Erase line describe the build that
+carries D70 and D71 (the same step). Push it only together with the policy, after
 the owner steps in the policy's header comment are done.
+
+The age-range entry uses the app's own words (src/components/age/localOnlyCopy.ts) and,
+like the app, never states an age.
 -->
 
 # Fairly Sure Support
@@ -60,6 +64,18 @@ predictions from this phone. Signing back in brings back what was
 backed up. Names, icons and hiding you set for categories are kept only on the
 phone, so set them again after signing back in.
 
+**Sign in, backup, Coach and Plus are missing.** That's because of the age range
+this iPhone shares with Fairly Sure: the app then keeps everything you log on
+this phone, and You says so ("Kept on this phone" when you aren't signed in).
+There's no signing in or backup, no usage counts, no Coach and no Fairly Sure
+Plus. Your predictions, score, badges and cards work as usual. The age range
+comes from this iPhone's Apple Account; to see it, open iOS Settings → your name
+→ Personal Information → Age Range for Apps. To keep a copy of your predictions,
+use You → Export predictions (CSV). If an account was already signed in, it
+stays signed in, but new changes stay on this phone: Sign out and Delete account
+still work, and signing out removes your predictions from this phone, so export
+them first.
+
 **Restore a purchase.** You → Fairly Sure Plus → Restore purchases.
 
 **Cancel a subscription.** Subscriptions are managed by Apple: iOS Settings →
@@ -83,7 +99,9 @@ if You → Notifications → Show the words in reminders is on.
 **Delete my data.** Signed in: You → Delete account removes it from our servers
 and your phone (our hosting provider's short-lived logs and backups expire on
 their own within 7 days; the privacy policy has the details). Not signed in:
-You → Erase your data on this phone. Deleting an account doesn't cancel a
-subscription; cancel it first.
+You → Erase your data on this phone, which removes your data from this phone,
+including anything left by an account that was signed in here before; settings,
+like reminder times, stay, and so does Plus if you have it.
+Deleting an account doesn't cancel a subscription; cancel it first.
 
 [Privacy policy](../privacy/)

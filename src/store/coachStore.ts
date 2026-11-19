@@ -10,14 +10,24 @@
 // for them. Push is a retention lever but needs tighter cost and tone control
 // than we have evidence for yet, and every automatic call spends money on
 // someone who may not be looking.
+//
+// The support card can be set aside (main session decision 2026-11-19): an
+// answered prediction can't be deleted after its 24 hours, so one false
+// positive of the crisis pre-filter would replace the Coach for good. The
+// person's set-asides are kept on this phone by the settings store, one key
+// per prediction (src/engine/supportAside.ts), and the scan leaves those out
+// until their words change.
 
 import { create } from 'zustand';
 
 import { fetchCoachInsights, type CoachDeps, type CoachFailure } from '@/ai/coach';
 import { track } from '@/analytics/track';
 import { buildCoachContext } from '@/ai/coachContext';
-import type { CrisisTopic } from '@/ai/crisisFilter';
+import { scanForCrisis, type CrisisTopic } from '@/ai/crisisFilter';
+import { supportAsideKey } from '@/engine/supportAside';
 import type { CoachInsight, Prediction, UserStat } from '@/types';
+
+import { useSettingsStore } from './settingsStore';
 
 export interface CoachRequest {
   userStat: UserStat | null;
@@ -58,6 +68,20 @@ interface CoachState {
   lastDroppedAll: boolean;
 
   requestInsights: (request: CoachRequest, deps?: CoachDeps) => Promise<void>;
+  /**
+   * The person sets the support card aside (main session decision
+   * 2026-11-19). Every prediction in `resolved` (the list the request
+   * scanned) whose title or note trips the crisis pre-filter on its own is
+   * remembered by its key (`supportAsideKey`: its id and a hash of those
+   * words), on this phone only, and left out of the scan from then on; the
+   * store goes back to its first idle state, so the panel shows its ask
+   * button, and a request still running writes nothing. The card comes back
+   * for new matching words: another prediction, or a changed title or note.
+   * When nothing in `resolved` trips, nothing changes and the card stays.
+   * True when something was set aside. Never throws. No analytics and no log
+   * line: the words are the person's.
+   */
+  setSupportAside: (resolved: readonly Prediction[]) => Promise<boolean>;
   /** Drop everything — on sign-out, or when the user turns Coach off. */
   reset: () => void;
 }
@@ -82,6 +106,31 @@ const INITIAL = {
  * state: nothing renders it.
  */
 let generation = 0;
+
+/**
+ * The keys of the predictions whose support card was set aside, as the
+ * settings store holds them. Not yet read, or a record that couldn't be
+ * read, is none: the card shows, the safe way to be wrong. Never throws.
+ */
+function setAsideKeys(): ReadonlySet<string> {
+  try {
+    const keys = useSettingsStore.getState().supportAsideKeys;
+    return new Set(Array.isArray(keys) ? keys : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * The words the crisis pre-filter screens: the title and note of every
+ * answered prediction, but those set aside with these very words. None of
+ * it is sent: buildCoachContext has no freetext channel.
+ */
+function freetextToScreen(resolved: readonly Prediction[]): Array<string | null> {
+  const aside = setAsideKeys();
+  const screened = aside.size === 0 ? resolved : resolved.filter((p) => !aside.has(supportAsideKey(p)));
+  return screened.flatMap((p) => [p.title, p.reflection]);
+}
 
 export const useCoachStore = create<CoachState>((set) => ({
   ...INITIAL,
@@ -116,8 +165,10 @@ export const useCoachStore = create<CoachState>((set) => ({
         //
         // Titles as well as reflections: distress can be written into either.
         // None of this is sent — buildCoachContext has no freetext channel.
-        freetext:
-          deps?.freetext ?? resolved.flatMap((p) => [p.title, p.reflection]),
+        // A prediction whose card the person set aside, with the same words
+        // still, is left out (setSupportAside); words passed in are screened
+        // whole.
+        freetext: deps?.freetext ?? freetextToScreen(resolved),
       });
 
       // The account changed, the Coach was turned off, or a newer request
@@ -168,6 +219,34 @@ export const useCoachStore = create<CoachState>((set) => ({
       if (superseded()) return;
       set({ loading: false, lastRequestFailed: true, lastFailure: null });
     }
+  },
+
+  setSupportAside: async (resolved) => {
+    let keys: string[];
+    try {
+      // Each prediction on its own, as the request's scan reads each text on
+      // its own: exactly the ones that put the card up.
+      keys = resolved
+        .filter((p) => !scanForCrisis([p.title, p.reflection]).safe)
+        .map((p) => supportAsideKey(p));
+    } catch {
+      return false;
+    }
+    // The card came from somewhere else (words passed in): it stays.
+    if (keys.length === 0) return false;
+    // Into memory at once (the store's write is applied before its first
+    // await), so a request made from here on leaves them out.
+    const saving = useSettingsStore.getState().addSupportAsideKeys(keys);
+    // A request still running can't write the card back; the panel shows its
+    // ask button again, not "nothing worth flagging".
+    generation += 1;
+    set({ ...INITIAL });
+    try {
+      await saving;
+    } catch {
+      // The settings store swallows its own failures; kept for this run.
+    }
+    return true;
   },
 
   reset: () => {

@@ -1,0 +1,184 @@
+// The paywall and account routes (app/paywall.tsx, app/account/index.tsx)
+// under the under-13 rule (roadmap D70; docs/design/research/
+// under-13-2026-11.md, "Screens"). Both are reachable by deep link, so each
+// route itself draws the local-only page and never mounts PaywallView or
+// SignInView. Tested from here: a test file under app/ would be a route.
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+
+import { track } from '@/analytics/track';
+import { ensureBillingStarted } from '@/billing/init';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
+
+import AccountScreen from '../../../app/account/index';
+import PaywallScreen from '../../../app/paywall';
+import {
+  LOCAL_ONLY_ACCOUNT_BODY,
+  LOCAL_ONLY_ACCOUNT_TITLE,
+  LOCAL_ONLY_PAYWALL_BODY,
+  LOCAL_ONLY_PAYWALL_TITLE,
+} from './localOnlyCopy';
+
+const mockRouter = {
+  back: jest.fn(),
+  replace: jest.fn(),
+  push: jest.fn(),
+  canGoBack: jest.fn(() => true),
+};
+jest.mock('expo-router', () => ({
+  useRouter: () => mockRouter,
+  useLocalSearchParams: () => ({ from: 'stats' }),
+}));
+// The paywall insets its own top edge from the window's insets; no provider here.
+jest.mock('react-native-safe-area-context', () => ({
+  ...jest.requireActual('react-native-safe-area-context'),
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+}));
+jest.mock('@/analytics/track', () => ({ track: jest.fn(async () => {}) }));
+jest.mock('@/billing/init', () => ({ ensureBillingStarted: jest.fn(async () => true) }));
+
+// The two views stand in for themselves: what matters here is whether the
+// route mounts them, and with what.
+const mockPaywallMounts = jest.fn();
+jest.mock('@/components/paywall/PaywallView', () => {
+  const { createElement } = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  return {
+    PaywallView: (props: { billingReady?: boolean; onClose?: () => void }) => {
+      mockPaywallMounts(props);
+      return createElement(Text, { testID: 'paywall-view' }, `ready:${String(props.billingReady)}`);
+    },
+  };
+});
+const mockSignInMounts = jest.fn();
+jest.mock('@/components/account/SignInView', () => {
+  const { createElement } = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  return {
+    SignInView: (props: { onDone: () => void }) => {
+      mockSignInMounts(props);
+      return createElement(Text, { testID: 'sign-in-view' }, 'Sign in');
+    },
+  };
+});
+
+const ensure = ensureBillingStarted as jest.Mock;
+const trackMock = track as jest.Mock;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockRouter.canGoBack.mockReturnValue(true);
+  ensure.mockResolvedValue(true);
+});
+
+afterEach(() => act(() => __resetAgeStoreForTests()));
+
+describe('the paywall route', () => {
+  describe('under the rule', () => {
+    beforeEach(() => useAgeStore.setState({ localOnly: true }));
+
+    it('draws the local-only page and never mounts the paywall, starts billing or records a view', async () => {
+      render(<PaywallScreen />);
+      await act(async () => {});
+
+      expect(screen.getByTestId('paywall-local-only')).toBeTruthy();
+      expect(screen.getByText(LOCAL_ONLY_PAYWALL_TITLE)).toBeTruthy();
+      expect(screen.getByText(LOCAL_ONLY_PAYWALL_BODY)).toBeTruthy();
+      expect(screen.getByText(LOCAL_ONLY_PAYWALL_TITLE).props.accessibilityRole).toBe('header');
+      expect(screen.queryByTestId('paywall-view')).toBeNull();
+      expect(mockPaywallMounts).not.toHaveBeenCalled();
+      expect(ensure).not.toHaveBeenCalled();
+      expect(trackMock).not.toHaveBeenCalled();
+    });
+
+    it('closes from Close and from the ×, back where it came from', () => {
+      render(<PaywallScreen />);
+      fireEvent.press(screen.getByTestId('paywall-local-only-close'));
+      fireEvent.press(screen.getByTestId('paywall-local-only-dismiss'));
+      expect(mockRouter.back).toHaveBeenCalledTimes(2);
+    });
+
+    it('closes to Insights from a cold deep link', () => {
+      mockRouter.canGoBack.mockReturnValue(false);
+      render(<PaywallScreen />);
+      fireEvent.press(screen.getByTestId('paywall-local-only-close'));
+      expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/insights');
+    });
+  });
+
+  describe('without the rule', () => {
+    it('waits for billing to start before the plans load, showing the paywall loading meanwhile', async () => {
+      let started: (value: boolean) => void = () => {};
+      ensure.mockImplementation(
+        () =>
+          new Promise<boolean>((resolve) => {
+            started = resolve;
+          }),
+      );
+      render(<PaywallScreen />);
+
+      expect(ensure).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('paywall-view')).toHaveTextContent('ready:false');
+      await act(async () => started(true));
+      expect(screen.getByTestId('paywall-view')).toHaveTextContent('ready:true');
+      expect(trackMock).toHaveBeenCalledWith('paywall_viewed', { source: 'stats' });
+      expect(screen.queryByTestId('paywall-local-only')).toBeNull();
+    });
+
+    // No SDK or key: billing doesn't start, and the paywall says why there
+    // are no plans, as today.
+    it('opens the paywall when billing can’t start', async () => {
+      ensure.mockResolvedValue(false);
+      render(<PaywallScreen />);
+      await waitFor(() => expect(screen.getByTestId('paywall-view')).toHaveTextContent('ready:true'));
+    });
+
+    it('takes the paywall away at once when a band turns the rule on while it is open', async () => {
+      render(<PaywallScreen />);
+      await waitFor(() => expect(screen.getByTestId('paywall-view')).toHaveTextContent('ready:true'));
+
+      act(() => useAgeStore.setState({ localOnly: true }));
+      expect(screen.queryByTestId('paywall-view')).toBeNull();
+      expect(screen.getByTestId('paywall-local-only')).toBeTruthy();
+    });
+  });
+});
+
+describe('the account route', () => {
+  it('draws the local-only page under the rule and never mounts the sign-in view', () => {
+    useAgeStore.setState({ localOnly: true });
+    render(<AccountScreen />);
+
+    expect(screen.getByTestId('account-local-only')).toBeTruthy();
+    expect(screen.getByText(LOCAL_ONLY_ACCOUNT_TITLE)).toBeTruthy();
+    expect(screen.getByText(LOCAL_ONLY_ACCOUNT_BODY)).toBeTruthy();
+    expect(screen.queryByTestId('sign-in-view')).toBeNull();
+    expect(mockSignInMounts).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('account-local-only-close'));
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes to You from a cold deep link under the rule', () => {
+    useAgeStore.setState({ localOnly: true });
+    mockRouter.canGoBack.mockReturnValue(false);
+    render(<AccountScreen />);
+    fireEvent.press(screen.getByTestId('account-local-only-dismiss'));
+    expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)/you');
+  });
+
+  it('is the sign-in screen without the rule', () => {
+    render(<AccountScreen />);
+    expect(screen.getByTestId('sign-in-view')).toBeTruthy();
+    expect(screen.getByTestId('account-close')).toBeTruthy();
+    expect(screen.queryByTestId('account-local-only')).toBeNull();
+  });
+
+  it('takes the form away at once when a band turns the rule on while it is open', () => {
+    render(<AccountScreen />);
+    expect(screen.getByTestId('sign-in-view')).toBeTruthy();
+
+    act(() => useAgeStore.setState({ localOnly: true }));
+    expect(screen.queryByTestId('sign-in-view')).toBeNull();
+    expect(screen.getByTestId('account-local-only')).toBeTruthy();
+  });
+});

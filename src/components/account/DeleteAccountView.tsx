@@ -61,9 +61,11 @@ export function DeleteAccountView({
             ? // "Deleted", not "gone": the hosting provider's logs and any
               // backups keep some of it for up to 7 days (privacy policy §7).
               'Your predictions and account are deleted from our servers and this phone.'
-            : // What Erase removes, as the confirmation says: settings stay,
-              // and so does an account's copy (roadmap D60).
-              'What you made on this phone without an account is gone.'}
+            : // What Erase removes, as the confirmation says: everything the
+              // app kept on this phone, an earlier account's leftovers
+              // included (wipeEverythingOnDevice). Settings stay, and so does
+              // any copy an account backed up (roadmap D60).
+              'Your data on this phone is gone, including anything left by an account that was signed in here before.'}
         </Text>
         {/* ACCOUNT_SPEC §3.2 step 5: the sheet was cancelled, the server
             skipped or failed the revoke, or its answer was never seen. Apple's
@@ -121,9 +123,11 @@ export function DeleteAccountView({
         () => void onConfirm(),
       );
     } else {
+      // "Unless an account backed it up": what an account signed in here
+      // before left behind may have a copy on our server.
       askToConfirm(
         'Erase everything on this phone?',
-        "There's no other copy. This can't be undone.",
+        "Nothing here has another copy unless an account backed it up. This can't be undone.",
         'Erase',
         () => void onConfirm(),
       );
@@ -144,18 +148,21 @@ export function DeleteAccountView({
             'and your calibration history, from our servers and from this phone, and ' +
             'your Warmup and practice answers from this phone. ' +
             "It happens immediately and can't be undone."
-          : // Everything wipeLocalUserData and eraseDeviceData remove, named
-            // (blind playtest 2026-11-13b, run 6: the old line left out
-            // categories, practice and the usage queue), and what stays.
-            // Guest rows only, hence "made here without an account": an
-            // account's own rows leave the phone when it signs out (D69 (a)),
-            // and a wipe that didn't finish is retried at the next launch.
-            'This permanently erases what was made on this phone without an account: ' +
+          : // Everything eraseDeviceData removes, named (blind playtest
+            // 2026-11-13b, run 6: the old line left out categories, practice
+            // and the usage queue), and what stays. Every row on the phone,
+            // whoever's (wipeEverythingOnDevice, main session 2026-11-19): a
+            // guest's, and anything an account signed in here before left,
+            // such as predictions left by a sign-out on an older build and
+            // the counts sign-out keeps. Such an account may have a copy on
+            // our server, hence "unless an account backed it up".
+            `This permanently erases everything ${APP_NAME} keeps on this phone, including ` +
+            'anything left by an account that was signed in here before: ' +
             'every prediction and reflection, ' +
             'your categories and their icons, your Warmup and practice answers, a ' +
             'prediction you were still typing, your age range and usage stats not yet ' +
             'sent. Settings, like reminder times, stay. ' +
-            "You aren't signed in, so there is no other copy. It can't be undone."}
+            "You aren't signed in, so nothing here has another copy unless an account backed it up. It can't be undone."}
       </Text>
 
       {renewing && (

@@ -67,8 +67,12 @@ perfect-calibration line, the Brier line, the badge bars and the 20-answer gates
 
 Each is coded around: the app works either way. **Answered:** 1, 3, 4, 6, 7, 10 and 11 (owner,
 2026-11-15: "Yes for all answers"; 7 and 10 were the agent's calls the same day, on "iterate
-through them yourself, using best app developer judgement"). **Still open:** 2 (a legal call),
-5, 8, 9, 12 (waits on the mail sender from 6) and 13 (due before the public release).
+through them yourself, using best app developer judgement"). **Decided by the agent
+2026-11-19** (owner: "apply your smart recommendations"; each is his to overturn): 2 (built,
+D70; counsel still to be asked), 9 (the switch is on the sign-in screen, D71 (d)) and the
+interim half of 13 (988 on every topic, D71 (c)). **Still open:** 5, 8, 12 (waits on the
+mail sender from 6) and the rest of 13. Everything still his, with a recommendation for
+each, is in "The owner's list" below.
 
 1. **The native batch (step 180).** Answered yes; built 2026-11-15 as step 180 (roadmap D64):
    an optional lock with Face ID and the passcode, and `expo-localization` for units by Region.
@@ -79,7 +83,10 @@ through them yourself, using best app developer judgement"). **Still open:** 2 (
    makes "age assurance: yes" true on the rating form. It is a legal call (COPPA, and the
    Texas, Utah and Louisiana app-store laws in force since mid-2026).
    **Recommendation:** adopt the local-only rule before a US launch; ask counsel about the
-   state-law duties. Not built: it changes who can make an account.
+   state-law duties. **Built 2026-11-19 as D70** on `builder/owner-decisions`, the agent's
+   call on the owner's delegation: `docs/design/research/under-13-2026-11.md` has the rule,
+   what it gates and the seven points for counsel. Left for the owner: the sandbox "Under
+   13" check on the iPhone, and counsel.
 3. **Guest usage counts.** Answered yes; built 2026-11-16 as step 186, after the owner applied
    Supabase migrations 007 and 008. A guest's eight funnel events go up with no id, as the
    privacy policy says, so the day-0 gates in GROWTH §7 can be read.
@@ -104,7 +111,9 @@ through them yourself, using best app developer judgement"). **Still open:** 2 (
    sent and how to turn it off (notice and opt-out). Guideline 5.1.1(ii) says "secure user
    consent"; the policy audit reads the notice as enough for App Review and can't settle it
    for the Irish storefront. **Recommendation:** keep the notice for TestFlight; add a
-   switch on that screen before an EU launch.
+   switch on that screen before an EU launch. **Built 2026-11-19 (D71 (d)):** the sign-in
+   screen shows the state and a switch, as the Warm-up's first screen has since D69 (b).
+   Still a notice with an opt-out; an EU launch needs it off until chosen there (with 5).
 10. **Moving an answer to another category.** Built 2026-11-15 as step 184 (roadmap D65), the
     agent's call: Insights counts a scored answer left in a different category from the one
     it was answered in, on this phone only; one moved back isn't counted. Since round 6 of
@@ -146,6 +155,93 @@ Added 2026-11-15 (the second review of step 182 and its policy check):
     **Recommendation:** send the two emails; keep today's build as it is for TestFlight
     (the Coach needs Plus and a sign-in, so few testers reach this surface). Settle it
     before the public release: the hold shouldn't ship by default.
+    **Built 2026-11-19 (D71 (c)), the agent's call on the second and third points:** a
+    territory phone gets the 988 line on every topic (SAMHSA's FAQ, read that day: available
+    "in all states and all five territories", for "many reasons … beyond suicide"), written
+    without "(US)", and then "If 988 doesn't connect where you are: search for a local crisis
+    line, or call your local emergency number." The two emails are drafted in
+    `docs/OWNER_MESSAGES.md`; the other two numbers go on a territory phone only when those
+    organisations confirm.
+
+## The owner's list (2026-11-19), with the agent's recommendation for each
+
+Written at the owner's request after the security review was merged. In order of when each
+is needed.
+
+**Before strangers get a build (external TestFlight)**
+
+1. **The server checklist** in `supabase/README.md` (2026-11-19 section): the audit-log
+   setting and purge, migrations 010, 011, 012 with their checks, `pg_cron`, the three
+   redeploys. Nobody else can do it, and until it is done the limits and the 13-month purge
+   exist only in the repo. *Recommendation: do it next, in one sitting, in the order
+   written; `coach` is deployed from `master`, never from `6830354`.* Then say "the server
+   steps are done" and the agent publishes the rewritten privacy and support pages (one
+   commit: `docs/_config.yml`) with that day as the effective date.
+2. **A new development build and TestFlight build** (two native packages). The agent runs
+   `eas build` once the owner confirms the command. The phone checks are in `HANDOFF.md`.
+3. **A review of D70 and D71** before that build goes to anyone else. *Recommendation:
+   call one: `code-reviewer` and `policy-auditor` on the under-13 rule, `record-auditor` on
+   Erase. It decides whether a child's data leaves the phone and it was built in a day.*
+4. **The mail sender** (decision 6), then the password reset (12) and Create account back
+   on. *Recommendation: buy the domain now (`fairlysure.app` if counsel clears the name, any
+   domain otherwise), verify it with a transactional mail service that has a free tier, and
+   enter its SMTP details in Supabase. DNS is the slow part, so start it first. It costs a
+   few dollars a year. Until then Apple and Google sign-in carry stage 2.*
+5. **The Supabase plan.** *Recommendation: stay on Free through TestFlight, move to Pro
+   (about $25 a month; check the current price) before the public release.* Free has no automatic backups (verified
+   2026-11-18), so a mistake in the dashboard or a bad migration could lose every backed-up
+   prediction; the policy's "within 7 days" figures hold on both.
+
+**Before submission**
+
+6. **The under-13 rule (D70), built.** *Recommendation: keep it; run the sandbox "Under 13"
+   check on the development build (`research/under-13-2026-11.md`, "What only the iPhone can
+   show"); book an hour with a lawyer who does app privacy on the seven points listed there
+   before the public US release; answer "age assurance: yes" on the rating form.*
+7. **The EU (decision 5).** *Recommendation: launch without the 27 EU storefronts; keep the
+   US, Canada, the UK, Australia and New Zealand.* The EU needs trader status (an
+   individual's address and phone number published on the listing), opt-in consent for
+   usage counts, and a look at under-16 consent ages. Revisit when the six-week gates are
+   read (GROWTH §7).
+8. **Usage-count consent (decision 9), built as a switch.** *Recommendation: enough for the
+   storefronts in 7. Before any EU launch the agent makes it off until chosen on phones set
+   to an EEA, UK or Swiss region.*
+9. **OpenAI's Data Processing Addendum.** *Recommendation: execute it from the platform
+   account that holds the Coach's key and keep the copy (`docs/OWNER_MESSAGES.md` §5); the
+   policy then names OpenAI among the companies that process data on our behalf. Don't wait
+   on Zero Data Retention: the policy already states the 30 days.*
+10. **App Privacy answers** (`docs/APP_PRIVACY.md`). *Recommendation: Name: Yes (Google sends
+    it before our trigger strips it). IP address: no data type of its own, since Apple's
+    form has none and it isn't used to locate anyone; the policy discloses where it is
+    stored. The Coach's summary: count it as collected (OpenAI keeps it up to 30 days). It
+    adds no row: Other User Content is already declared, and as linked, which is the
+    stricter answer. Location: No, see 11.*
+11. **Time-zone offsets (`UTC_OFFSET_SYNC`).** *Recommendation: leave it off for 1.0.* Each
+    phone already judges same-day answers in the zone it logged them in. Sync only closes
+    the two-phone version of that hole, and it would put "Coarse Location" on the privacy
+    label of an app whose pitch is privacy. Migration 011 is still needed for its other
+    parts.
+12. **RevenueCat's Sandbox Testing Access.** *Recommendation: leave it as it is through App
+    Review; send the question in `docs/OWNER_MESSAGES.md` §4 now, and restrict it only on
+    their written yes.*
+13. **Helplines (decisions 8 and 13).** *Recommendation: send the three messages in
+    `docs/OWNER_MESSAGES.md` (ThroughLine, the domestic-violence hotline, the eating-disorder
+    alliance). Nothing waits on the answers: the app names nothing it hasn't confirmed.*
+14. **The name.** *Recommendation: have counsel run the clearance search before screenshots
+    and the listing are made, since a rename after that costs the most.*
+15. **Screenshots.** *Recommendation: marketing frames composed from the web build at
+    1320 × 2868 (the agent drafts them), checked against the phone for anything web draws
+    differently. Apple requires the size, not a physical 6.9-inch phone.*
+
+**After launch**
+
+16. **The badge bars and the 20-answer gates (D62).** *Recommendation: leave them until the
+    six-week read; real records decide.*
+17. **`APP_STORE_PROVIDER_TOKEN`.** *Recommendation: copy the `pt=` number as soon as App
+    Store Connect shows analytics; the share gate can't be read without it.*
+18. **`decode-uri-component`, `jose` and `supabase/config.toml`** (the review's low items).
+    *Recommendation: the agent pins all three in the first maintenance release, on the
+    owner's yes to a dependency change; none is exploitable today.*
 
 ## What stands between here and the store
 
@@ -187,9 +283,9 @@ and the two function deploys); Google sign-in set up and on (step 192, migration
    demo account with Plus, the review notes, and the screenshots. **The screenshots need a plan:** the required set is 6.9-inch (1320 × 2868),
    the owner's iPhone 17 is not that size and there is no simulator; the web build renders
    that size as drafts (`APP_STORE_LISTING.md` §5).
-6. **Decisions due before the public release:** 2 (under-13, a legal call; the agent builds
-   the local-only rule on a yes), 13 (helplines on a US-territory phone), 5 (the EU:
-   recommended outside it first) and with it 9, and 8.
+6. **Decisions due before the public release:** "The owner's list" above, items 6 to 15.
+   Decided and built 2026-11-19 on the owner's delegation: 2 (the under-13 rule, D70), 9
+   (the sign-in switch) and the interim half of 13 (D71).
 7. **Read the exit criteria** (`docs/TESTFLIGHT_PLAN.md`); a row in "stop and fix" gets a fix
    and another week.
 8. **The release gate** (`/release-gate`): the release, policy and record audits over the
@@ -241,8 +337,10 @@ what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step chec
 - **The custom mail sender** in Supabase (decision 6, needs a domain); then the agent builds
   the password reset (decision 12) and turns Create account back on. Until then Create
   account is hidden in the app (D69 (c)); existing email accounts still sign in.
-- **The under-13 local-only rule** (decision 2, a legal call); the agent builds it on a yes.
-- **Decisions 5, 8 and 9** (the EU, a helpline directory, a consent switch at sign-in).
+- **The under-13 local-only rule** (decision 2): built 2026-11-19 (D70); counsel and the
+  sandbox check are the owner's.
+- **Decisions 5 and 8** (the EU, a helpline directory) and the rest of 13: "The owner's
+  list" above.
 - **`APP_STORE_PROVIDER_TOKEN`:** once App Store Connect shows analytics, the owner creates one
   campaign link and copies its `pt=` number (`docs/HUMAN_VERIFICATION.md` B2); the agent sets
   the constant. Until then text shares link to the App Store with no campaign token, so

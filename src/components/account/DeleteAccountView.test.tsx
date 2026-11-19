@@ -17,7 +17,10 @@ const eraseDeviceData = jest.fn();
 const SIGNED_IN_MESSAGE =
   "Your account, predictions and record go from our servers and this phone. This can't be undone.";
 const BILLING_SENTENCE = `${PLUS_NAME} keeps billing until you cancel it with Apple.`;
-const GUEST_MESSAGE = "There's no other copy. This can't be undone.";
+// Main session decision 2026-11-19: Erase takes everything on the phone,
+// an earlier account's leftovers included, which that account may have
+// backed up.
+const GUEST_MESSAGE = "Nothing here has another copy unless an account backed it up. This can't be undone.";
 
 function seed({
   signedIn = true,
@@ -301,9 +304,36 @@ describe('DeleteAccountView — guest', () => {
     seed({ signedIn: false });
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
     const body = screen.getByText(/permanently erases/).props.children as string;
-    for (const part of ['without an account', 'prediction and reflection', 'categories and their icons', 'practice answers', 'still typing', 'age range', 'usage stats not yet sent', 'Settings, like reminder times, stay']) {
+    for (const part of ['prediction and reflection', 'categories and their icons', 'practice answers', 'still typing', 'age range', 'usage stats not yet sent', 'Settings, like reminder times, stay']) {
       expect(body).toContain(part);
     }
+  });
+
+  // Main session decision 2026-11-19 (wipeEverythingOnDevice): everything on
+  // the phone, whoever's it was, so nothing says "without an account" now.
+  it('says it erases everything the app keeps on this phone, an earlier account’s leftovers included', () => {
+    seed({ signedIn: false });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    const body = screen.getByText(/permanently erases/).props.children as string;
+    expect(body).toBe(
+      'This permanently erases everything Fairly Sure keeps on this phone, including anything left by an account that was signed in here before: every prediction and reflection, your categories and their icons, your Warmup and practice answers, a prediction you were still typing, your age range and usage stats not yet sent. Settings, like reminder times, stay. ' +
+        "You aren't signed in, so nothing here has another copy unless an account backed it up. It can't be undone.",
+    );
+    expect(body).not.toContain('without an account');
+  });
+
+  it('says afterwards that the data on this phone is gone, an earlier account’s included', async () => {
+    seed({ signedIn: false });
+    eraseDeviceData.mockResolvedValue({ ok: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    chooseInAlert('Erase');
+    expect(
+      await screen.findByText(
+        'Your data on this phone is gone, including anything left by an account that was signed in here before.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/without an account/)).toBeNull();
   });
 });
 

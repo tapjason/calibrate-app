@@ -1,8 +1,9 @@
 // Coach client. Calls the `coach` Edge Function and returns validated
 // insights. Authoritative spec: COACH_AGENT.md.
 //
-// Layer rule: L5 (services). Imports from @/supabase, @/types, and sibling
-// L5 modules. Components never call this directly — the coachStore (L4) does.
+// Layer rule: L5 (services). Imports from @/supabase, @/types, the age store
+// (a leaf, for the under-13 rule) and sibling L5 modules. Components never
+// call this directly — the coachStore (L4) does.
 //
 // Failure policy (§5.8, and CLAUDE.md's "AI is never in the critical path"):
 // every failure returns an empty, safe result and logs a warn. The Coach
@@ -18,7 +19,11 @@
 //   2. Crisis pre-filter (§5.5) — runs BEFORE the network call, so distress
 //      content never becomes coaching input. Returns `safe: false` and the
 //      caller shows the support surface instead.
-//   3. Minimum-N — a user with no scored answer gets no request either
+//   3. The under-13 rule (roadmap D70) — on a local-only phone the Coach is
+//      off: the empty result, before any client is built. After the crisis
+//      pre-filter, which sends nothing, so the support surface still shows if
+//      a Coach panel is ever asked on such a phone.
+//   4. Minimum-N — a user with no scored answer gets no request either
 //      (`failure: 'nothing_scored'`).
 //
 // The server validates too. This module validates again on the way back
@@ -26,6 +31,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { isLocalOnly } from '@/store/ageStore';
 import { getSupabaseClient, isSupabaseConfigured } from '@/supabase/client';
 import type { CoachContext, CoachOutput } from '@/types';
 
@@ -118,7 +124,11 @@ export async function fetchCoachInsights(
     return { insights: [], safe: false, crisisTopic: scan.topic, ok: true };
   }
 
-  // 3. Nothing answered means nothing to interpret. Skipping the call here
+  // 3. The under-13 rule (D70): nothing leaves the phone, so no request, and
+  //    no client is built.
+  if (isLocalOnly()) return empty();
+
+  // 4. Nothing answered means nothing to interpret. Skipping the call here
   //    saves a round trip that could only ever return "keep logging". Named,
   //    so the panel says why instead of "unavailable" (step 189): on a fresh
   //    install whose only answer was same-day, that read as an outage.
@@ -128,6 +138,8 @@ export async function fetchCoachInsights(
   if (!client) return empty();
 
   try {
+    // Checked once more at the call itself (D70).
+    if (isLocalOnly()) return empty();
     const result = await withTimeout(
       client.functions.invoke('coach', { body: { context } }),
       deps.timeoutMs ?? DEFAULT_TIMEOUT_MS,

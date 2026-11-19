@@ -9,8 +9,8 @@ Published at https://tapjason.github.io/calibrate-app/privacy/
 If the app's name changes, update it here. Not legal advice.
 
 DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE ALL OF THESE (revised 2026-11-18
-after the security and policy review, and 2026-11-19 after its rounds 5, 6 and 7 and the
-policy re-audit's W1-W4). The text
+after the security and policy review, and 2026-11-19 after its rounds 5, 6 and 7, the
+policy re-audit's W1-W4, and the under-13 rule and Erase, D70 and D71). The text
 below is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6
 are not true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true
 only of the build in step 7.
@@ -77,7 +77,11 @@ in step 3b below.
    the data was removed, and §2's account of what the warm-up's line says; the same build
    carries it if it is built from the final commit. Publish with, or after, that build. Redeploying
    delete-account (the checklist's item 11) is not needed for any sentence here, but makes
-   the Apple revocation check live.
+   the Apple revocation check live. D70 and D71 (2026-11-19, uncommitted on
+   builder/owner-decisions when this was written; JavaScript only, no new native package)
+   are true only of a build that carries them: §1's and §2's lines on the age range,
+   RevenueCat and usage counts, §2.3's switch on the sign-in screen, §3's "Back to Coach",
+   §6's and §7's Erase, and §9. Publish with, or after, that build too.
 8. Settled 2026-11-19 (policy re-audit L4; kept so the numbering holds). The warm-up
    notice (§2, "only after the warm-up's first screen has shown you a line saying so") is
    a saved stamp: UsageStatsNotice writes usageNoticeShownAt in the settings store when it
@@ -90,23 +94,34 @@ in step 3b below.
 9. Sign-out (§7) removes an account's data only on builds that carry round 5. Rows an
    account left on a phone by signing out on an earlier build (TestFlight build 2 and
    later builds before round 5) stay under that account, out of view, until it signs in
-   and out again there or the app is deleted; Erase doesn't touch them. Before the App
+   and out again there, Erase is used there on a build that carries D71 (a) (§7; earlier
+   builds' Erase didn't touch them), or the app is deleted. Before the App
    Store this concerns TestFlight testers only; decide whether that needs a word to them.
-Once 1-9 are done, delete this list; the evidence notes below can stay.
+10. The under-13 rule (§9, D70) is the main session's call on the owner's delegation and
+   rests on legal readings the agent can't settle. Before the public US release: run the
+   sandbox "Under 13" check on the iPhone (docs/HUMAN_VERIFICATION.md D4: Settings →
+   Developer → Sandbox Apple Account → Manage → Age Assurance → "Under 13", then Erase in
+   the app and relaunch; You should show "Kept on this phone"), and take the seven points
+   under "For counsel" in docs/design/research/under-13-2026-11.md to a lawyer, among them
+   whether what a frozen account already has on our server must be deleted (§9 says it
+   stays until the account is deleted). If counsel changes the rule, §2's age-range
+   paragraph and §9 change with it.
+Once 1-10 are done, delete this list; the evidence notes below can stay.
 
 Evidence for each claim (2026-11-18): src/analytics/events.ts (catalogue, props),
 src/analytics/flush.ts (guest rows carry no user id), supabase/migrations/007 and 010
 (guest table; hashed id, day-only times), src/store/warmupStore.ts:186 and
 src/store/practiceStore.ts:121 (the warm-up score and practice tally sent),
 src/store/predictionStore.ts:443 (confidence and whether it happened),
-src/components/account/SignInView.tsx:32 (the sign-in notice), src/ai/coachContext.ts
+src/components/account/SignInView.tsx USAGE_NOTE (the sign-in notice), src/ai/coachContext.ts
 and supabase/functions/coach/contract.ts parseContext (the Coach summary; built-ins
 only), supabase/functions/coach/index.ts:282-294 (no account id sent to OpenAI),
 src/store/authStore.ts signOut/deleteAccount/eraseDeviceData, src/supabase/auth.ts
 endSession, src/supabase/account.ts, supabase/functions/delete-account/index.ts,
 src/db/account.ts and src/db/client.ts:40-64 (secure_delete), src/age/ageRange.ts
-(asks each launch until a band is stored), supabase/migrations/009 (name and picture
-stripped from auth.users and auth.identities).
+(asks each launch until a band is stored; since D70 also while the stored band is under
+13, below), supabase/migrations/009 (name and picture stripped from auth.users and
+auth.identities).
 Round 5 (2026-11-19): src/store/authStore.ts signOut and eraseAccountHere (push, count
 what's unsynced, ask, end the session, wipe with deviceData: false; round 6 wipes first,
 below), src/db/predictions.ts
@@ -151,6 +166,43 @@ src/supabase/sync.ts backfillOffsets (header step 3a), "What we never collect" o
 §1, and the request logs can record a country), node_modules/react-native-purchases
 10.9.0 and node_modules/@revenuecat (no time zone named anywhere in them; the native iOS
 SDK, PurchasesHybridCommon 18.33.1, comes through CocoaPods and isn't in node_modules).
+2026-11-19, D70 and D71 (builder/owner-decisions, uncommitted when this was written):
+src/engine/ageBand.ts isUnder13Band (an upper bound of 13 or less, and no lower bound of
+13 or more: §9's "includes ages under 13"); src/store/ageStore.ts (localOnly, the one field
+every gate reads; uploadsMayStart; whenAgeSettled; LOCAL_ONLY_SIGN_IN); src/age/ageRange.ts
+hydrateAgeGate, ensureAgeBucket and recheckAgeBucketIfDue (asked at each launch with no
+stored band or an under-13 one, and while under 13 on a return to the app 24 hours after
+the last ask; a decline or an error keeps the stored band: §2); src/age/localOnly.ts (on
+entering the rule: queued usage events cleared, the warm-up notice's stamp forgotten, the
+session's background refresh stopped, the Coach cleared); src/age/egress.test.ts (every
+file that can send over the network is listed, and each checks the rule, account deletion
+and sign-out excepted); src/supabase/auth.ts refuseWhenLocalOnly (every sign-in and sign-up refused) and
+pauseSessionRefresh; src/supabase/client.ts (autoRefreshToken off when the client is made
+under the rule; its comment reads auth-js 2.106: GoTrueClient __loadSession still calls
+_callRefreshToken for a session within its expiry margin, so getSession at launch,
+src/store/authStore.ts initialize, can renew a frozen account's sign-in once: §9);
+src/supabase/sync.ts (syncNow, pushNow, backfillOffsets and the check before each request
+send nothing); src/analytics/track.ts and flush.ts (nothing queued, nothing sent;
+uploadsMayStart); src/components/warmup/usageNotice.ts usageCountsMayGoUp; src/ai/coach.ts
+(no request); src/billing/revenuecat.ts apiKeyForPlatform and src/billing/init.ts
+(RevenueCat never configured on a local-only phone, and on a launch that asks Apple only
+after the answer, or after 5 s when the paywall opens, ensureBillingStarted: §2);
+src/store/ratingStore.ts (no rating prompt); src/supabase/account.ts (deletion left open:
+it removes data); src/components/age/localOnlyCopy.ts (You's words; none names an age).
+D71: src/db/account.ts wipeEverythingOnDevice and src/store/authStore.ts eraseDeviceData
+(every PER_USER_TABLES table emptied for every account id, with the age band, warm-up and
+practice, in one transaction; every account's sync cursor cleared; the settings, the
+entitlement mirror and the "signed out here" list of account ids stay: §7's Erase);
+src/components/account/DeleteAccountView.tsx (Erase's words: "everything Fairly Sure keeps
+on this phone, including anything left by an account that was signed in here before");
+src/engine/supportAside.ts, src/store/coachStore.ts setSupportAside and
+src/store/settingsStore.ts supportAsideKeys (a prediction id and a 64-bit FNV-1a hash of
+its title and note per entry, at most 200, stored with the settings and never sent; cleared
+by sign-out, Erase and account deletion in authStore: §3, §7);
+src/components/stats/SupportSurface.tsx SUPPORT_ASIDE_NOTE and "Back to Coach";
+src/components/account/SignInView.tsx USAGE_NOTE and USAGE_OFF_NOTE with
+src/components/settings/UsageStatsSwitch.tsx (the sign-in screen's switch: §2.3);
+src/ai/crisisFilter.ts TERRITORY_LIFELINE_CONTACT (no sentence here names a helpline).
 Public pages read 2026-11-19:
 - RevenueCat, Apple App Privacy (https://www.revenuecat.com/docs/platform-resources/
   apple-platform-resources/apple-app-privacy): "RevenueCat does not collect precise or
@@ -222,7 +274,8 @@ to be read, not skimmed past.
 - **Without an account, your predictions stay on your phone.** We never receive
   them. You can log, resolve, score, and share predictions entirely offline. A
   few usage counts are sent, with no account, device or install identifier, once
-  the warm-up has told you so; you can turn them off there or in You (§2).
+  the warm-up has told you so; you can turn them off there or in You (§2). None
+  are sent if Apple says this iPhone's age range is under 13 (§9).
 - **With an account, your predictions are backed up to our server** so they
   survive a new phone. That includes their text. Signing out removes them from
   the phone; signing back in brings back what was backed up (§7).
@@ -246,7 +299,9 @@ count how many people start and finish the warm-up, log, answer, share and
 practise, are sent to us, but only after the warm-up's first screen has shown
 you a line saying so and what they're for (to see how the app is used), with a
 switch to turn them off (the same switch as You → Usage stats). Until then they
-wait on the phone. They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
+wait on the phone. On a launch where the app asks Apple for an age range
+(below), they also wait for Apple's answer, and if the range is under 13 none
+are kept for sending and none are sent (§9). They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
 event's own id with a one-way scrambled version of it and keeps only the day the
 event happened, not the time. Like any request over the internet, they reach our
 hosting provider with your IP address, which its logs may keep for up to 7 days
@@ -258,18 +313,25 @@ You can turn usage stats off at any time, on that warm-up screen or in You →
 Usage stats: that deletes the ones still on the device and stops all of them.
 
 To know whether you have Fairly Sure Plus, the app asks RevenueCat, the
-service that manages subscriptions, each time it starts. Without an account
+service that manages subscriptions, each time it starts. On a launch where it
+asks Apple for an age range (below), it waits for Apple's answer first, or for
+at most 5 seconds if you open the Plus screen sooner; if the range is under 13,
+it never contacts RevenueCat (§9). Without an account
 that request carries a random identifier RevenueCat makes for this install,
 not your name, email or anything you typed, along with the technical details
 any app request carries (such as your IP address, the app version and
 language). None of your predictions are sent.
 
 On an iPhone running iOS 26 or later, the app may ask Apple for an age range
-once its first screen is up, at each launch until you share one. If you share
-one, only the age band — a lower and an upper bound, not your birthday — is
-stored on the device. It is not sent to us and it is not used to lock any
-feature. Erase and account deletion remove it with the rest of the on-device
-data.
+once its first screen is up: at each launch until you share one, and, while
+the range it has is under 13, at each launch and when you come back to the app
+a day or more after it last asked. If you share one, only the age band — a
+lower and an upper bound, not your birthday — is stored on the device. It is
+not sent to us. A band under 13 turns off signing in, backup, usage counts,
+the Coach and Fairly Sure Plus (§9); any other band, or none, changes nothing.
+If you decline, a band you shared before stays. Erase and account deletion
+remove it with the rest of the on-device data, and the app then asks again at
+the next launch.
 
 ### If you create an account
 
@@ -317,11 +379,13 @@ was shared. They tell us whether the app works for people. The full list:
 `coverage_nudge_accepted`, `practice_started`, `practice_completed`,
 `practice_reminder_set`, `coach_requested`, `data_exported`.
 
-These are linked to your account, and the sign-in screen says so while usage
-stats are on, including that events recorded before you signed in and still
-on the phone go with your account. **You can turn them off** in You → Usage
-stats. (The few sent before you sign in carry no account, device or install
-identifier, as described above, so they can't be found or deleted as yours.)
+These are linked to your account. The sign-in screen says so before you sign
+in, including that events recorded before you signed in and still on the phone
+go with your account, and it has a switch to turn them off (the same switch as
+You → Usage stats); while they're off, it says none are sent. **You can turn
+them off** there or in You → Usage stats. (The few sent before you sign in
+carry no account, device or install identifier, as described above, so they
+can't be found or deleted as yours.)
 
 **2.4 Purchase status.** Whether you have Fairly Sure Plus, which plan, and when it
 renews or ends. We receive this from our subscription provider (§4). We never
@@ -374,6 +438,13 @@ harm.
 Before any Coach request, the app checks your predictions and reflections **on
 your device** for signs of distress. If it finds any, it shows you support resources instead of
 contacting the Coach. That check never sends your text anywhere.
+
+If that support message doesn't fit, **Back to Coach** sets it aside. The app
+then remembers, on this phone only, which predictions it came up for, each by
+its id and a short code worked out from its words (never the words
+themselves), at most 200 of them, and shows the message again only for new
+words that match: another prediction, or a changed note. That list is
+never sent. Signing out, Erase and account deletion clear it.
 
 ## 4. Who else handles your data
 
@@ -439,7 +510,8 @@ only if you turn on **You → Show the words in reminders**. The weekly digest s
   Neither holds your email or anything you wrote.
 - **On your phone:** until you delete it (§7), sign out of the account it
   belongs to (§7; the counts that only this phone keeps stay until you delete
-  your account on this phone or delete the app), or delete the app. If you
+  your account on this phone, use Erase on it after signing out, or delete the
+  app), or delete the app. If you
   delete the app while signed in, iOS may keep your sign-in session in the
   Keychain (§10); if you install the app again, it doesn't use that session and
   deletes it.
@@ -453,7 +525,8 @@ In the app: **You → Delete account** (at the bottom). This permanently deletes
 - your usage events, purchase status and Coach usage count on our server,
 - and this phone's copy of your data: predictions, categories and their icons,
   the counts of deleted, late-changed and moved predictions, warm-up and
-  practice answers, the age band, a prediction you were still typing, and the
+  practice answers, the age band, a prediction you were still typing, the list
+  of support messages you set aside (§3), and the
   exported files, card images and pictures the app left in the phone's cache. Your settings (switches and reminder times), which hold
   nothing you wrote, stay.
 
@@ -471,9 +544,9 @@ months old (§6), since they carry no account, device or install identifier to
 find them by. Apple keeps its own records of your App Store purchases. If your
 account is also signed in on another phone, or its session there ended without
 signing out there (see "Signing out", below), that phone keeps its copy until
-you delete the app there. A phone you signed out on keeps the account's counts
+you use Erase there or delete the app there. A phone you signed out on keeps the account's counts
 of deleted, late-changed and moved predictions (see "Signing out"), which hold
-no words, until you delete the app there.
+no words, until you use Erase there or delete the app there.
 
 If your account uses Sign in with Apple, you're asked to confirm with Apple,
 and our server then revokes Fairly Sure's access to that Apple ID. If you
@@ -489,7 +562,8 @@ it, so cancel it first in Settings → [your name] → Subscriptions, or the app
 will point you there.
 
 **Signing out** (You → Sign out) first tries to send our server any changes
-this phone hasn't backed up yet. If some can't be sent, for example without a
+this phone hasn't backed up yet (except on an iPhone whose age range is under
+13, where no changes are sent, §9). If some can't be sent, for example without a
 connection, or if you have categories that are kept only on this phone (ones
 you added, renamed, gave an icon or hid), the app says how many and asks before
 going on. If you go on, those categories are removed, and those changes don't
@@ -500,8 +574,9 @@ the app stops and asks again.
 
 Then your account's data is removed from this phone: its predictions and
 reflections, the categories you added and any names, icons or hiding you set
-for categories, and usage events not yet sent, along with the exported files,
-card images and pictures the app left in the phone's cache. If that can't
+for categories, usage events not yet sent and the list of support messages you
+set aside (§3), along with the exported files, card images and pictures the
+app left in the phone's cache. If that can't
 finish at once, the app tries again the next time it opens. The counts of
 deleted, late-changed and moved predictions that only this phone keeps (they
 hold no words) stay on the phone, so signing out and back in doesn't clear them.
@@ -524,14 +599,20 @@ words are cleared.
 
 When a phone's session ends some other way, for example because you signed
 out on a different phone, that phone keeps its copy of your data, out of view,
-until you sign in and out again there, or delete the app there.
+until you sign in and out again there, use Erase there, or delete the app there.
 
-Without an account, **You → Erase your data on this phone** removes
-everything made on this device without an account, along with the exported
-files, card images and pictures the app left in the phone's cache. Your
-settings (switches and reminder times) stay, and hold nothing you wrote. Erase
-doesn't touch an account's data, which is removed from the phone when the
-account signs out, as above, all but the counts that stay.
+Without an account, **You → Erase your data on this phone** removes everything
+Fairly Sure keeps on the phone, whoever's account it was under, except three
+things that hold nothing you wrote: your settings (switches and reminder times),
+whether this phone has Fairly Sure Plus, and the ids of accounts that signed out
+here, which stop an old sign-in from coming back. So it removes predictions and
+reflections, categories and their icons, warm-up and practice answers, the age
+band, a prediction you were still typing, usage events not yet sent, the list of
+support messages you set aside (§3), the counts of deleted, late-changed and
+moved predictions that signing out leaves, and anything else an account signed
+in here before left behind, along with the exported files, card images and
+pictures the app left in the phone's cache. What an account backed up stays on
+our server until that account is deleted.
 
 You can also email tapjason-dev@gmail.com to request deletion or a copy of your data.
 
@@ -547,8 +628,29 @@ information as the CCPA defines it.
 ## 9. Children
 
 Fairly Sure is not directed to children under 13, and we don't knowingly collect
-their personal information. If you believe a child has created an account,
-contact us and we'll delete it.
+their personal information.
+
+If the age range an iPhone shares with Fairly Sure (§2) includes ages under 13
+(this policy calls that "under 13"), the app keeps what you log on the phone.
+There is no signing in, no backup, no usage counts and no Coach, and Fairly Sure
+Plus isn't offered, so the app never contacts RevenueCat. It doesn't ask for an
+App Store rating either. Everything else works as usual, and You → Export
+predictions keeps a copy. The app explains this in You without saying an age.
+If the range shared later is 13 or over, the app goes back to working as the
+rest of this policy describes.
+
+If an account was already signed in on that iPhone, it stays signed in but is
+frozen: nothing new is backed up, nothing is deleted from our server, and its
+predictions stay on the phone. What was backed up before stays on our server
+until the account is deleted, and Sign out and Delete account still work; since
+nothing can be backed up, signing out says how many changes haven't reached our
+server and asks before removing them (§7). Apart from those two, one thing
+still reaches our server: when the app starts and that
+account's sign-in has expired, it may renew it once. That sends the sign-in's
+refresh token and, like any request, the phone's IP address (which our sign-in
+service records, as in §2.1), and none of your predictions.
+
+If you believe a child has created an account, contact us and we'll delete it.
 
 ## 10. Security
 
@@ -582,9 +684,12 @@ version.
 the warm-up and practice tallies; on 2026-11-19 the warm-up notice, the time-zone offsets,
 Apple's crash reports, the country in request logs, and after round 6 the 13 months for
 usage counts and what an offset can say about where you are; after the policy re-audit,
-"Precise location" in "What we never collect", and no "time zone" for RevenueCat) and changes what signing out
+"Precise location" in "What we never collect", and no "time zone" for RevenueCat; for D70 and
+D71, the under-13 rule in §2 and §9, the sign-in screen's switch, and the support message's
+set-aside list) and changes what signing out
 does (it now removes the account's data from the phone, all but the counts only the phone
-keeps, and asks first about categories kept only there). The app isn't on the App Store yet, so
+keeps, and asks first about categories kept only there) and what Erase does (it now removes
+everything the app keeps on the phone, those counts included). The app isn't on the App Store yet, so
 no in-app notice seems needed for it; confirm, and remember that §11 promises one for
 later changes. -->
 

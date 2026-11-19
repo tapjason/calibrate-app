@@ -24,6 +24,7 @@ import { create } from 'zustand';
 
 import { clearEvents } from '@/db/analytics';
 import { DEFAULT_THEME } from '@/constants/cardThemes';
+import { withSupportAsideKeys } from '@/engine/supportAside';
 import { CATEGORIES, isCategory, type Category } from '@/types';
 
 export interface StoredSettings {
@@ -167,6 +168,24 @@ export interface StoredSettings {
    * before anything goes up; kept by sign-out, which keeps the Warm-up too.
    */
   usageNoticeShownAt: string | null;
+  /**
+   * The Coach's support card, set aside (main session decision 2026-11-19):
+   * one key per answered prediction whose words matched the crisis
+   * pre-filter when the person set the card aside (`supportAsideKey`,
+   * src/engine/supportAside.ts: the id and a hash of its title and note, no
+   * words), oldest first, at most `SUPPORT_ASIDE_MAX_KEYS` (200). The Coach
+   * store leaves those predictions out of its scan, so the card comes back
+   * only for new matching words. Like the cooldowns, a memory, not a
+   * preference. A record that can't be read holds none (the card shows: the
+   * safe way to be wrong). Cleared by Erase, account deletion and sign-out:
+   * a key carries a hash of the words, and that it exists says the filter
+   * matched them.
+   *
+   * Written only when there is one: an empty list is left out of the stored
+   * record (absent reads as none), so a record with nothing set aside keeps
+   * the shape earlier builds wrote. Always present in the store's state.
+   */
+  supportAsideKeys?: string[];
 }
 
 /** The share card's shape: Post (3:4) or Story (9:16). */
@@ -192,6 +211,8 @@ export interface SettingsPersistence {
 }
 
 interface SettingsState extends StoredSettings {
+  /** The support card's set-asides (`StoredSettings.supportAsideKeys`): none is an empty list here. */
+  supportAsideKeys: string[];
   /** True once hydrate() has run (whether or not stored values existed). */
   hydrated: boolean;
   /**
@@ -273,6 +294,14 @@ interface SettingsState extends StoredSettings {
   markUsageNoticeShown: () => Promise<void>;
   /** Forget that the line was shown (Erase, account deletion), so it is shown again first. */
   forgetUsageNoticeShown: () => Promise<void>;
+  /**
+   * Remember support-card set-asides (`useCoachStore.setSupportAside`): the
+   * keys are added at the newest end, the oldest dropped past 200. Anything
+   * that isn't a key is ignored.
+   */
+  addSupportAsideKeys: (keys: readonly string[]) => Promise<void>;
+  /** Forget every set-aside (Erase, account deletion, sign-out): the card shows again for any match. */
+  clearSupportAside: () => Promise<void>;
   /** What the permission read found (null: unknown). Held in memory only, never stored. */
   setNotificationPermission: (permission: NotificationPermission | null) => void;
 }
@@ -289,7 +318,10 @@ interface SettingsState extends StoredSettings {
 // about the person. Off by default would produce a sample skewed toward
 // whoever reads settings screens, which is not a sample worth deciding the
 // business model on.
-const DEFAULTS: StoredSettings = {
+/** The settings as the store holds them: every value present, none set aside an empty list. */
+type HeldSettings = StoredSettings & { supportAsideKeys: string[] };
+
+const DEFAULTS: HeldSettings = {
   notificationsEnabled: true,
   remindersEnabled: true,
   digestEnabled: true,
@@ -316,6 +348,7 @@ const DEFAULTS: StoredSettings = {
   practiceReminderOfferDismissedAt: null,
   streakMomentDay: null,
   usageNoticeShownAt: null,
+  supportAsideKeys: [],
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -389,6 +422,10 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                is drawn, forgotten at Erase and account deletion. Held, it
  *                is applied over the record once it reads, and a stamp the
  *                record already has is kept);
+ *                addSupportAsideKeys, clearSupportAside (the support card
+ *                set aside on Insights, and forgotten at Erase, account
+ *                deletion and sign-out. Held, an addition is merged into the
+ *                record's keys once it reads, and a clear empties them);
  *                dismissReminderPrompt, dismissBackupNudge,
  *                dismissWelcomeBack, dismissPracticeReminderOffer ("Not now"
  *                on Today's cards and the practice sheet's);
@@ -513,7 +550,7 @@ async function persist(settings: StoredSettings): Promise<boolean> {
  * A stored record as settings: each value checked, and the default for one
  * that is missing or isn't of its kind.
  */
-function fromStored(stored: Partial<StoredSettings>): StoredSettings {
+function fromStored(stored: Partial<StoredSettings>): HeldSettings {
   return {
     notificationsEnabled: stored.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
     remindersEnabled: stored.remindersEnabled ?? DEFAULTS.remindersEnabled,
@@ -556,6 +593,11 @@ function fromStored(stored: Partial<StoredSettings>): StoredSettings {
     // Anything that isn't a time reads as never shown: the line is shown
     // again, and nothing goes up from a guest until it is.
     usageNoticeShownAt: validStamp(stored.usageNoticeShownAt) ?? DEFAULTS.usageNoticeShownAt,
+    // Keys only, each once, the newest 200; anything else reads as none set
+    // aside, so the card shows.
+    supportAsideKeys: Array.isArray(stored.supportAsideKeys)
+      ? withSupportAsideKeys(stored.supportAsideKeys)
+      : DEFAULTS.supportAsideKeys,
   };
 }
 
@@ -863,6 +905,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       await save('automatic');
     },
 
+    addSupportAsideKeys: async (keys) => {
+      const added = withSupportAsideKeys([], keys);
+      if (added.length === 0) return;
+      // Merged into whatever it is applied to: memory now, the record later
+      // if it couldn't be read.
+      change((s) => ({ supportAsideKeys: withSupportAsideKeys(s.supportAsideKeys ?? [], added) }));
+      await save('automatic');
+    },
+
+    clearSupportAside: async () => {
+      change(() => ({ supportAsideKeys: [] }));
+      await save('automatic');
+    },
+
     // No persist: the phone's state, read again at every launch.
     setNotificationPermission: (permission) => {
       if (get().notificationPermission !== permission) set({ notificationPermission: permission });
@@ -914,9 +970,19 @@ function validTime(value: unknown): PracticeReminderTime | null {
 /**
  * The persistable slice of the store. Each setter writes the whole snapshot
  * after updating state, so adding a toggle no longer means editing every
- * other setter — the bug that shape invited.
+ * other setter — the bug that shape invited. The support card's set-asides
+ * only when there is one (`StoredSettings.supportAsideKeys`).
  */
 function snapshot(state: StoredSettings): StoredSettings {
+  const aside = state.supportAsideKeys ?? [];
+  return {
+    ...settingsValues(state),
+    ...(aside.length > 0 ? { supportAsideKeys: aside } : {}),
+  };
+}
+
+/** Every stored value but the set-asides. */
+function settingsValues(state: StoredSettings): Omit<StoredSettings, 'supportAsideKeys'> {
   return {
     notificationsEnabled: state.notificationsEnabled,
     remindersEnabled: state.remindersEnabled,

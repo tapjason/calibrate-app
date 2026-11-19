@@ -1,5 +1,7 @@
-// Device-side half of deleting an account, or of erasing a guest's data
-// (docs/ACCOUNT_SPEC.md §3.4–3.5).
+// Device-side half of deleting an account or signing out (one account's rows,
+// `wipeLocalUserData`), or of a guest's "Erase all data" (everything on the
+// phone, whoever's it was, `wipeEverythingOnDevice`; docs/ACCOUNT_SPEC.md
+// §3.4–3.5).
 //
 // Layer rule: L2. Pure SQL. The caller decides *when* — for a signed-in user,
 // only after the server has confirmed the account is gone, so a failed server
@@ -104,7 +106,8 @@ export interface WipeOptions {
  * half gone.
  *
  * Scoped to one user on purpose. A shared phone can hold another account's
- * rows, and wiping yours must not delete theirs.
+ * rows, and deleting your account or signing out must not delete theirs.
+ * Only a guest's Erase takes everything (`wipeEverythingOnDevice`).
  *
  * Not touched here: the entitlement mirror (billing resets it to free when
  * the identity changes), daily practice (device-wide; its store clears it on
@@ -135,14 +138,71 @@ export async function wipeLocalUserData(
       if (kept.has(table)) continue;
       await db.run(`DELETE FROM ${table} WHERE user_id = ?`, [userId]);
     }
-    if (deviceData) {
-      await clearAgeBucket();
-      await db.run(`DELETE FROM warmup_results`);
-      await db.run(`DELETE FROM warmup_progress`);
-    }
+    if (deviceData) await clearDeviceData();
   });
-  // The rebuild first, so in WAL mode its pages go through the log that the
-  // checkpoint then folds in and truncates.
+  await rebuildAfterWipe();
+}
+
+/**
+ * Guest Erase ("Erase all data", main session decision 2026-11-19): empty
+ * every table in `PER_USER_TABLES` for every user id, the guest's and any
+ * account's, with the device data (the age band, the Warmup with any
+ * unfinished one) and daily practice, in one transaction; then the same
+ * rebuild and checkpoint as `wipeLocalUserData`. A failure anywhere leaves
+ * everything in place.
+ *
+ * Why every account's rows: "Erase all data" means all. A phone can hold
+ * rows under other account ids, out of view: predictions an account left
+ * behind by signing out on a build from before the security review (sign-out
+ * now takes them, D69 (a)), and the integrity counts and sync markers that
+ * sign-out keeps on purpose (`SIGN_OUT_KEPT_TABLES`). Those counts live on
+ * this phone only and a reinstall already clears them, so keeping them
+ * through Erase protected nothing, while words left under another account
+ * are exactly what Erase promises to remove.
+ *
+ * Practice is device-wide like the Warmup; its store also forgets it
+ * (`usePracticeStore.clear`), and deleting it here keeps the whole erase in
+ * one transaction, under the rebuild. Not touched: the entitlement mirror
+ * (billing's, and "no row" would read a guest's purchase as free while
+ * offline), the migration log, and settings (the stores clear what Erase
+ * resets).
+ *
+ * Returns every user id that had a row, the guest's included, so the caller
+ * can clear what else is kept per account (sync cursors).
+ *
+ * Only for a guest: account deletion and sign-out keep their one-account
+ * scope (`wipeLocalUserData`).
+ */
+export async function wipeEverythingOnDevice(): Promise<string[]> {
+  const owners = new Set<string>();
+  await withTransaction(async () => {
+    const db = getDb();
+    for (const table of PER_USER_TABLES) {
+      const rows = await db.all<{ user_id: string | null }>(`SELECT DISTINCT user_id FROM ${table}`);
+      for (const { user_id } of rows) if (typeof user_id === 'string') owners.add(user_id);
+      await db.run(`DELETE FROM ${table}`);
+    }
+    await clearDeviceData();
+    await db.run(`DELETE FROM practice_answers`);
+  });
+  await rebuildAfterWipe();
+  return [...owners];
+}
+
+/** What belongs to whoever holds the phone: the age band and the Warmup. Inside the caller's transaction. */
+async function clearDeviceData(): Promise<void> {
+  const db = getDb();
+  await clearAgeBucket();
+  await db.run(`DELETE FROM warmup_results`);
+  await db.run(`DELETE FROM warmup_progress`);
+}
+
+/**
+ * After a committed wipe. The rebuild first, so in WAL mode its pages go
+ * through the log that the checkpoint then folds in and truncates. Neither
+ * throws.
+ */
+async function rebuildAfterWipe(): Promise<void> {
   await vacuumAfterWipe();
   await checkpointAfterWipe();
 }

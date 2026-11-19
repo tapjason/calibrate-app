@@ -1,7 +1,8 @@
 # Fairly Sure — Human Verification Checklist
 
 **As of:** 2026-11-16 · `master` at `2636ff2` · TestFlight 1.0.0 (build 2, steps through 186)
-is on the owner's iPhone; build 3 adds step 187.
+is on the owner's iPhone; build 3 adds step 187. D4 and D5 revised 2026-11-19 for D70 and D71
+(`builder/owner-decisions`).
 
 Everything the app needs that an agent can't do from the repo: dashboards, the store and the
 iPhone. Each item says what to do, what "pass" looks like and what to report. Everything
@@ -1382,11 +1383,14 @@ Only possible after D2 and B3 (the webhook is what tells the server you paid).
 Needs a signed-in Apple Account. The entitlement is
 `com.apple.developer.declared-age-range` in `app.json`. If the build fails to
 sign, enable Declared Age Range on the App ID and rebuild. Simulator runtimes
-often don't present this API; prefer a device.
+often don't present this API; prefer a device. Since D70 (2026-11-19, the
+under-13 rule; JS only, so a reload of the development build carries it) a band
+under 13 makes the phone local-only; any other band, or none, locks nothing
+(`docs/design/research/under-13-2026-11.md`).
 - [ ] **iOS 26, first launch:** after the splash, Apple's age-range sheet may
-      appear (the app has no sheet of its own). Share a range: the Warmup or
-      Today is usable, and nothing is locked. Force-quit and reopen: the sheet
-      does not appear again.
+      appear (the app has no sheet of its own). Share a range of 13 or over:
+      the Warmup or Today is usable, and nothing is locked. Force-quit and
+      reopen: the sheet does not appear again.
 - [ ] **Decline:** the app continues as it does today. Nothing is locked, and
       you are not stuck on the sheet. Force-quit and reopen: still not stuck
       (a second sheet, if Apple shows one, still lets you through when you
@@ -1396,6 +1400,70 @@ often don't present this API; prefer a device.
       (no Play Age Signals call).
 - [ ] **Erase your data on this phone:** the next launch can ask again. Until
       then, predictions and the rest of the app are unchanged.
+- [ ] **Under 13, in the sandbox (D70; needs Developer Mode, a Sandbox Apple
+      Account and iOS 26.2 or later):** iPhone Settings → Developer → Sandbox
+      Apple Account → Manage → Age Assurance → "Under 13". In the app, signed
+      out, You → Erase your data on this phone (so no band is stored), then
+      force-quit and relaunch, and share if Apple asks. Pass: You shows a row
+      "Kept on this phone" with its two lines underneath ("Because of the age
+      range this iPhone shares with Fairly Sure, everything you log stays on
+      this phone…" and where to see the age range in Settings); there is no
+      Fairly Sure Plus row, no Coach (AI) or Usage stats switch and no way to
+      sign in; Insights has no Plus card; Share shows no locked themes (without
+      Plus, no theme picker at all). Type `fairlysure://paywall` into Safari's
+      address bar and let it open the app: "Plus isn't offered on this phone"
+      with a Close button; `fairlysure://account` shows "No account on this
+      phone". Logging, answering, Insights, Share and Export work as usual.
+      Force-quit and reopen: still the same (the app asks again each launch;
+      Apple should answer from its cache without a sheet). Report whether the
+      sheet appeared again, and send a screenshot of You. Then set Age
+      Assurance back, Erase, relaunch and share an adult range: the Plus row
+      and Sign in come back.
+- [ ] **Under 13 while signed in (optional):** on a fresh install, decline
+      Apple's sheet (no band is stored, so it asks again next launch) and sign
+      in; then set "Under 13", force-quit and relaunch, and share if asked.
+      Pass: You keeps Sign out under "Signed in as …" and the line "Backup is
+      off on this phone because of the age range it shares with Fairly Sure, so
+      new changes stay here…"; Delete account is still at the bottom; Sign out
+      asks "Sign out anyway?" if anything changed since, and then works.
+
+### D5. D71's four calls (2026-11-19; JS only, a reload of the development build)
+- [ ] **The support card's "Back to Coach" (D71 (b)):** signed in with Plus and
+      Coach on, open an answered prediction in History and Add a note: "The car
+      keeps breaking down." (the filter reads "breaking down" as distress, a
+      known false match). Insights → Get feedback: the support card, then "This
+      came up because of words in one of your predictions or notes, checked on
+      this phone. If it doesn't fit, you can go back to Coach." and a **Back to
+      Coach** button. Tap it: the panel shows Get feedback again; tap that:
+      feedback, or one of the Coach's usual lines, not the card. Change the note to
+      "The car keeps breaking down again.": Get feedback shows the card again.
+      Remove the note afterwards.
+- [ ] **Erase removes everything (D71 (a)):** on an account whose Insights →
+      More about your record shows a count only this phone keeps (for example
+      "1 scored answer was moved to another category…", item 21), sign out,
+      then You → Erase your data on this phone. The alert reads "Erase
+      everything on this phone?" and "Nothing here has another copy unless an
+      account backed it up. This can't be undone."; afterwards "Your data on
+      this phone is gone, including anything left by an account that was signed
+      in here before." Sign back in: the predictions come back from the server
+      and the count doesn't (it lived only on this phone).
+- [ ] **The sign-in screen's switch (D71 (d)):** You → Sign in: the line about
+      what goes up with the account has a switch beside it, on. Turn it off: the
+      line reads "Usage stats are off, so no record of which features you use is
+      sent. You can turn them on here or in You, under Usage stats." and nothing
+      under it moves. Back in You, Usage stats is off too. Turn it back on.
+      VoiceOver hears one element, "Usage stats, switch".
+- [ ] **A US-territory phone gets 988 (D71 (c)):** iPhone Settings → General →
+      Language & Region → Region → Puerto Rico. Add a note "The old printer is
+      breaking down." to an answered prediction (new words, so nothing set aside
+      in the first check hides them), then Get
+      feedback: the card's contact reads "988 Suicide &
+      Crisis Lifeline — call or text 988" with no "(US)", then "If 988 doesn't
+      connect where you are: search for a local crisis line, or call your local
+      emergency number." For a second topic, add a note "The slump hits me at
+      3." to another answered prediction (read as the abuse topic, whose card
+      used to show no number on a territory phone): the same two lines. Set
+      Region back and remove the notes.
 
 ---
 
@@ -1418,8 +1486,10 @@ in [`APP_PRIVACY.md`](./APP_PRIVACY.md); export compliance was declared at the f
 - [x] **`npx expo install --check` before the build:** clean since 2026-11-07 (15 SDK 55
       patch updates, runbook step 4); `check.sh --release` and `/build` re-check it.
 - [x] **Age assurance decision** (Texas SB 2420): built 2026-11-02, option (a): Apple's
-      Declared Age Range asked once, failing open, only the band stored, nothing gated (D4
-      above). The under-13 rule is `SHIP_READINESS.md` decision 2.
+      Declared Age Range asked once, failing open, only the band stored, nothing gated.
+      Since 2026-11-19 (D70, `SHIP_READINESS.md` decision 2, on `builder/owner-decisions`)
+      a band under 13 makes the phone local-only (D4 above, the sandbox check); any other
+      band, or none, still gates nothing. Counsel is still the owner's.
 - [x] **`eas build` → TestFlight:** 1.0.0 (build 2) processed and installed on the owner's
       iPhone, 2026-11-16.
 - [ ] **Account deletion, the optional legs.** The function is live (redeployed 2026-11-15),

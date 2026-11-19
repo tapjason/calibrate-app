@@ -5,6 +5,7 @@ import { monthsOnFileWords } from '@/components/stats/wholeMonthsSince';
 import { Button } from '@/components/ui/Button';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, type } from '@/constants/theme';
+import { useAgeStore } from '@/store/ageStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useStatsStore } from '@/store/statsStore';
 import type {
@@ -32,6 +33,8 @@ import { useSettingsStore } from '@/store/settingsStore';
  *
  * Free users see the section with its numbers withheld, not a hidden feature.
  * A locked door you can see is an upsell; one you can't is just an absence.
+ * Except under the under-13 rule (roadmap D70), where Plus isn't offered: no
+ * upsell then. A Plus mirror already on the phone keeps its Trends.
  */
 export function TrendsPanel({
   onUpgrade,
@@ -43,6 +46,7 @@ export function TrendsPanel({
 } = {}) {
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const isPlus = useEntitlementStore((s) => s.isPlus);
+  const localOnly = useAgeStore((s) => s.localOnly);
   const trends = useStatsStore((s) => s.trends);
   // Free since D31: the same export as You's row, offered here too.
   const { exporting, message, run: onExport } = useCsvExport();
@@ -51,7 +55,7 @@ export function TrendsPanel({
   // Time since the first answer; under a month, no number (wholeMonthsSince).
   const months = monthsOnFileWords(trends.first_resolved_at, new Date());
 
-  if (!isPlus && !upsell) return null;
+  if (!isPlus && (!upsell || localOnly)) return null;
 
   if (!isPlus) {
     return (

@@ -1,8 +1,11 @@
 import { act, render, waitFor } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import { ensureAgeBucket, hydrateAgeGate, recheckAgeBucketIfDue } from '@/age/ageRange';
+import { initLocalOnly } from '@/age/localOnly';
 import { flushEvents } from '@/analytics/flush';
 import { sweepExportFiles } from '@/export/file';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { syncForUser, useAuthStore } from '@/store/authStore';
 import { useCategoryStore } from '@/store/categoryStore';
 import { useLockStore } from '@/store/lockStore';
@@ -23,7 +26,9 @@ import RootLayout from '../../../app/_layout';
 // D69 (b): a guest's usage counts go up only once the line on the Warm-up's
 // first screen, which says so and holds the switch, has been shown on this
 // phone (the settings store keeps when); before, they stay queued. Round 5:
-// export files left in the cache are swept at launch.
+// export files left in the cache are swept at launch. D70: the stored age
+// band is read before the auth store initialises, and nothing is flushed at
+// launch on a local-only phone or before Apple has answered.
 
 jest.mock('@react-navigation/native', () => ({
   DarkTheme: { colors: {} },
@@ -54,7 +59,12 @@ jest.mock('@/db/client', () => ({
   ...jest.requireActual('@/db/client'),
   initDb: jest.fn(async () => {}),
 }));
-jest.mock('@/age/ageRange', () => ({ ensureAgeBucket: jest.fn(async () => {}) }));
+jest.mock('@/age/ageRange', () => ({
+  ensureAgeBucket: jest.fn(async () => null),
+  hydrateAgeGate: jest.fn(async () => {}),
+  recheckAgeBucketIfDue: jest.fn(async () => false),
+}));
+jest.mock('@/age/localOnly', () => ({ initLocalOnly: jest.fn() }));
 jest.mock('@/analytics/flush', () => ({ flushEvents: jest.fn(async () => 0) }));
 jest.mock('@/billing/init', () => ({
   initBilling: jest.fn(async () => {}),
@@ -87,6 +97,10 @@ const GUEST = 'local-user-v1';
 const flush = flushEvents as jest.Mock;
 const sweep = sweepExportFiles as jest.Mock;
 const sync = syncForUser as jest.Mock;
+const hydrateAge = hydrateAgeGate as jest.Mock;
+const ensureAge = ensureAgeBucket as jest.Mock;
+const recheckAge = recheckAgeBucketIfDue as jest.Mock;
+const initRule = initLocalOnly as jest.Mock;
 
 let appStateHandlers: Array<(next: AppStateStatus) => void>;
 
@@ -164,6 +178,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  act(() => __resetAgeStoreForTests());
 });
 
 describe('the root layout: usage counts (D69 (b))', () => {
@@ -245,5 +260,68 @@ describe('the root layout: export files (round 5)', () => {
     // sweep leaves its file for the app it's going to.
     foreground();
     expect(sweep).toHaveBeenCalledTimes(1);
+  });
+});
+
+// D70 (docs/design/research/under-13-2026-11.md, "Screens"): the stored band
+// goes into the age store after the database opens and before the auth store
+// initialises, which makes the Supabase client and starts the first sync.
+describe('the root layout: the under-13 rule (D70)', () => {
+  it('reads the stored age band, then follows the rule, before the auth store initialises', async () => {
+    seed();
+    const order: string[] = [];
+    hydrateAge.mockImplementationOnce(async () => {
+      order.push('hydrateAgeGate');
+    });
+    initRule.mockImplementationOnce(() => {
+      order.push('initLocalOnly');
+    });
+    useAuthStore.setState({
+      initialize: jest.fn(async () => {
+        order.push('initialize');
+      }),
+    });
+    await launch();
+    expect(order).toEqual(['hydrateAgeGate', 'initLocalOnly', 'initialize']);
+    expect(hydrateAge).toHaveBeenCalledTimes(1);
+    expect(initRule).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks Apple once the first screen is up, and checks whether a re-ask is due', async () => {
+    seed();
+    await launch();
+    await waitFor(() => expect(ensureAge).toHaveBeenCalledTimes(1));
+    expect(recheckAge).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks for a re-ask on each return to the front, for a guest too, but not under the app lock', async () => {
+    seed();
+    await launch();
+    recheckAge.mockClear();
+
+    foreground();
+    expect(recheckAge).toHaveBeenCalledTimes(1);
+
+    act(() => useLockStore.setState({ locked: true }));
+    recheckAge.mockClear();
+    foreground();
+    expect(recheckAge).not.toHaveBeenCalled();
+  });
+
+  it('flushes nothing at launch or on return on a local-only phone', async () => {
+    seed({ status: 'authenticated', userId: 'user-1', shownAt: SHOWN });
+    useAgeStore.setState({ localOnly: true, settled: true });
+    await launch();
+    expect(flush).not.toHaveBeenCalled();
+
+    foreground();
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it('flushes nothing at launch while Apple has yet to answer', async () => {
+    seed({ shownAt: SHOWN, warmup: finishedWarmup });
+    useAgeStore.setState({ localOnly: false, settled: false });
+    await launch();
+    expect(flush).not.toHaveBeenCalled();
   });
 });

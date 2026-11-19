@@ -1,3 +1,4 @@
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import { useWarmupStore } from '@/store/warmupStore';
@@ -77,5 +78,36 @@ describe('usageCountsMayGoUp', () => {
 
     await useSettingsStore.getState().forgetUsageNoticeShown();
     expect(usageCountsMayGoUp()).toBe(false);
+  });
+});
+
+// The under-13 rule (roadmap D70): nothing goes up on a local-only phone, nor
+// before Apple has answered on a launch that asks, whoever is signed in and
+// whatever was shown.
+describe('usageCountsMayGoUp under the under-13 rule', () => {
+  afterEach(() => __resetAgeStoreForTests());
+
+  it.each([
+    ['a guest who was shown the line', () => guest({ shownAt: SHOWN })],
+    [
+      'a signed-in account',
+      () => {
+        guest();
+        useAuthStore.setState({ status: 'authenticated', userId: 'user-1' });
+      },
+    ],
+  ])('holds %s while the phone is local-only', (_label, arrange) => {
+    arrange();
+    useAgeStore.setState({ localOnly: true, settled: true });
+    expect(usageCountsMayGoUp()).toBe(false);
+  });
+
+  it('holds until Apple has answered on a launch that asks, then lets through', () => {
+    guest({ shownAt: SHOWN });
+    useAgeStore.setState({ localOnly: false, settled: false });
+    expect(usageCountsMayGoUp()).toBe(false);
+
+    useAgeStore.getState().markSettled();
+    expect(usageCountsMayGoUp()).toBe(true);
   });
 });

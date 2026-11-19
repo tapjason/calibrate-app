@@ -14,14 +14,19 @@
 // support surface. False positives are the acceptable direction to err — a
 // missed signal costs something real — but they aren't free: the store scans
 // every answered prediction's title and note on each request
-// (src/store/coachStore.ts), and an answered title can't be edited, so a
-// match keeps the Coach replaced by the support card for as long as that
-// prediction is in the record (a note can be changed or removed). So the
-// patterns below are phrase-shaped rather than keyword-shaped: "kill" alone
-// would fire on "I'll kill this presentation", which is both useless and
-// alarming. A few idioms that matched are carved out (security review,
-// 2026-11-18; narrowed 2026-11-19), each only where the words can't be the
-// distress reading.
+// (src/store/coachStore.ts), so a match replaces the Coach with the support
+// card on every request until the person sets the card aside ("Back to
+// Coach", D71 (b)). `useCoachStore.setSupportAside` then remembers each
+// prediction that matched by its id and a hash of its title and note
+// (src/engine/supportAside.ts), on this phone only, and `requestInsights`
+// leaves those out of the scan. A new matching prediction, or a changed title
+// or note on one set aside, brings the card back; words a caller passes in are
+// screened whole. Setting it aside is a step the person has to take each time
+// it comes back, so the patterns below are still phrase-shaped rather than
+// keyword-shaped: "kill" alone would fire on "I'll kill this presentation",
+// which is both useless and alarming. A few idioms that matched are carved out
+// (security review, 2026-11-18; narrowed 2026-11-19), each only where the
+// words can't be the distress reading.
 //
 // Every text is read as typed and again with the iPhone's curly apostrophes
 // and dashes made plain, whitespace collapsed and NFKC applied, and a match in
@@ -168,7 +173,7 @@ export const INTERNATIONAL_CONTACT =
 // Deliberately non-clinical, and makes no categorical promise about
 // confidentiality, hours or outcome (§5.5): the words sit above services the
 // app can't vouch for. These are US resources; a phone set to another region
-// gets the line above.
+// gets the line above, and a US territory's phone 988 on every topic (below).
 const RESOURCES: Record<CrisisTopic, SupportResource> = {
   self_harm: {
     title: 'Support is available',
@@ -196,26 +201,58 @@ const RESOURCES: Record<CrisisTopic, SupportResource> = {
  * The US territories a phone names as its own region: Puerto Rico, Guam, the
  * US Virgin Islands, American Samoa and the Northern Mariana Islands. Until
  * 2026-11-15 they got the line for elsewhere alone, "in your country", and no
- * number (code review of step 182).
+ * number (code review of step 182); until 2026-11-19, 988 on two topics only.
  */
 const US_TERRITORIES: ReadonlySet<string> = new Set(['PR', 'GU', 'VI', 'AS', 'MP']);
 
 /**
- * The topics whose line is 988, the one line confirmed for the territories:
- * SAMHSA's 988 FAQ says anyone in "a U.S. state, territory or tribal land" can
- * call, chat or text it (policy audit, 2026-11-15). The other two lines aren't
- * confirmed there (the eating-disorders line for none of the five, the
- * domestic-violence line for some), so a territory phone keeps the line for
- * elsewhere on those topics until the owner decides (`docs/SHIP_READINESS.md`).
+ * A territory phone's first line, on every topic (main session, 2026-11-19,
+ * decision 13, delegated by the owner): 988, the one line confirmed in all
+ * five territories, and one that takes calls about any emotional distress,
+ * not only suicide. Checked on 2026-11-19:
+ *
+ *   SAMHSA, "988 Frequently Asked Questions" (last updated 12/16/2025),
+ *   https://www.samhsa.gov/mental-health/988/faqs
+ *     Q: "Is the 988 Suicide & Crisis Lifeline available in all states and
+ *     all five territories?" A: "Yes." … "Anyone located in a U.S. state,
+ *     territory or tribal land with access to telephone, cellular, or internet
+ *     services" … "There are many reasons that people connect with the 988
+ *     Lifeline beyond suicide." … "problems with drug or alcohol use,
+ *     emotional distress, anxiety, depression, mental illness" … "offering
+ *     one-on-one support for mental health, suicide, and substance use-related
+ *     problems for anyone 24/7."
+ *   988 Lifeline, "Get Help", https://988lifeline.org/get-help/
+ *     "connects individuals in need of support with counselors across the
+ *     United States and its territories." "People do not have to be suicidal
+ *     to call." "Reasons to call include: substance use disorder, economic
+ *     worries, relationships, culture and identity, illness, … intimate
+ *     partner violence, depression, mental and physical illness, and
+ *     loneliness."
+ *
+ * No "(US)": on a territory phone it would read as a line for somewhere
+ * else. The domestic-violence and eating-disorder numbers still aren't shown
+ * there (not confirmed for every territory; the owner is asking both
+ * organisations), so a territory phone gets 988 for those topics too.
  */
-const LIFELINE_TOPICS: ReadonlySet<CrisisTopic> = new Set<CrisisTopic>(['self_harm', 'distress']);
+export const TERRITORY_LIFELINE_CONTACT = '988 Suicide & Crisis Lifeline — call or text 988';
+
+/**
+ * A territory phone's second line, on every topic: what to do if 988 doesn't
+ * get through, without "the US" or "your country", both the wrong frame for a
+ * territory. Names no number and no website, like the line for elsewhere.
+ */
+export const TERRITORY_FALLBACK_CONTACT =
+  "If 988 doesn't connect where you are: search for a local crisis line, or call your local emergency number.";
 
 /**
  * The support content for a scan result, or null when the scan was clean.
- * The contact follows the phone's region: on a US phone, or when the region
- * can't be read, the US line and then the line for elsewhere (someone with a
- * US phone may be abroad); on a US territory's phone the same, for the 988
- * topics only; on any other phone, the line for elsewhere alone.
+ * Each topic keeps its own title and body everywhere; the contact follows the
+ * phone's region:
+ *   - a US phone, or a region that can't be read: the topic's US line, then
+ *     the line for elsewhere (someone with a US phone may be abroad);
+ *   - a US territory's phone: 988 and the territory's fallback line, on
+ *     every topic (`TERRITORY_LIFELINE_CONTACT`, `TERRITORY_FALLBACK_CONTACT`);
+ *   - any other phone: the line for elsewhere alone.
  */
 export function supportResource(
   scan: CrisisScan,
@@ -223,10 +260,10 @@ export function supportResource(
 ): SupportResource | null {
   if (!scan.topic) return null;
   const us = RESOURCES[scan.topic];
-  const showUsLine =
-    region === 'US' ||
-    region === null ||
-    (US_TERRITORIES.has(region) && LIFELINE_TOPICS.has(scan.topic));
+  if (region !== null && US_TERRITORIES.has(region)) {
+    return { ...us, contact: `${TERRITORY_LIFELINE_CONTACT}\n${TERRITORY_FALLBACK_CONTACT}` };
+  }
+  const showUsLine = region === 'US' || region === null;
   return {
     ...us,
     contact: showUsLine ? `${us.contact}\n${INTERNATIONAL_CONTACT}` : INTERNATIONAL_CONTACT,

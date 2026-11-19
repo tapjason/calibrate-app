@@ -47,8 +47,19 @@ const BENEFIT_ICONS = [
  * It is a destination, never a gate — nothing in the core loop routes here,
  * and every path into it is a user tapping something optional. A build with no
  * billing SDK renders the unavailable state rather than an error.
+ *
+ * `billingReady` false (the route waiting for `ensureBillingStarted`, roadmap
+ * D70): the plans aren't asked for yet, the screen shows its loading state,
+ * and nothing that reaches the store (a plan, the purchase, Restore) can be
+ * pressed. True by default.
  */
-export function PaywallView({ onClose }: { onClose?: () => void }) {
+export function PaywallView({
+  onClose,
+  billingReady = true,
+}: {
+  onClose?: () => void;
+  billingReady?: boolean;
+}) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const entitlement = useEntitlementStore((s) => s.entitlement);
   const plans = usePaywallStore((s) => s.plans);
@@ -60,12 +71,16 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   const loadPlans = usePaywallStore((s) => s.loadPlans);
   const purchase = usePaywallStore((s) => s.purchase);
   const restore = usePaywallStore((s) => s.restore);
+  // Waiting for RevenueCat to start reads as loading the plans.
+  const loading = loadingPlans || !billingReady;
 
   // Before the first paint: loadPlans marks the plans as loading at once, so
   // a first open shows the spinner rather than a frame of "couldn't load".
+  // Not before billing has started: the plans would be asked of a store that
+  // isn't configured yet.
   useLayoutEffect(() => {
-    void loadPlans();
-  }, [loadPlans]);
+    if (billingReady) void loadPlans();
+  }, [billingReady, loadPlans]);
 
   // Annual preselected (DESIGN_SYSTEM §7.6). Held as an id so a plan list
   // that reloads doesn't reset a choice the user already made.
@@ -83,7 +98,7 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   );
   const timeline = selected ? trialTimeline(selected, { reminder: reminderComes }) : null;
 
-  const busy = purchasing !== null || restoring;
+  const busy = purchasing !== null || restoring || !billingReady;
   const message = noticeText(notice);
   // The fine print for the plan chosen, not every plan on offer: Lifetime
   // read "Your free trial turns into a paid subscription" (blind playtest
@@ -134,9 +149,9 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
         })}
       </View>
 
-      {loadingPlans && <ActivityIndicator testID="paywall-loading" />}
+      {loading && <ActivityIndicator testID="paywall-loading" />}
 
-      {!loadingPlans && plans.length === 0 && (
+      {!loading && plans.length === 0 && (
         <Text style={styles.muted} testID="paywall-unavailable">
           {noPlansText(billingAvailable)}
         </Text>

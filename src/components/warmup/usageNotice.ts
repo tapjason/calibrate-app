@@ -1,3 +1,4 @@
+import { uploadsMayStart } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
@@ -7,8 +8,12 @@ import { useSettingsStore } from '@/store/settingsStore';
  * about them. The root layout asks before each flush; events are still
  * queued on the phone before then, just not sent.
  *
+ * - Never while the under-13 rule applies, nor on a launch still waiting for
+ *   Apple's age answer (`uploadsMayStart`, roadmap D70): the flush that was
+ *   held then follows the answer (src/age/localOnly.ts).
  * - Signed in: yes. The sign-in screen says what goes up with the account
- *   before the account exists (`USAGE_NOTE`), and the switch is in You.
+ *   before the account exists (`USAGE_NOTE`), and the switch is there and in
+ *   You.
  * - A guest (or auth still loading): only once the line has been shown on
  *   this phone, which `UsageStatsNotice` stamps in the settings store when
  *   it is drawn (`usageNoticeShownAt`). Read from memory: while the stored
@@ -25,6 +30,7 @@ import { useSettingsStore } from '@/store/settingsStore';
  * Usage stats is off.
  */
 export function usageCountsMayGoUp(): boolean {
+  if (!uploadsMayStart()) return false;
   if (useAuthStore.getState().status === 'authenticated') return true;
   return useSettingsStore.getState().usageNoticeShownAt !== null;
 }

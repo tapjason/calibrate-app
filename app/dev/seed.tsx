@@ -7,8 +7,14 @@ import { Button } from '@/components/ui/Button';
 import { colors, space, type } from '@/constants/theme';
 import { loadPlaytestProfile } from '@/dev/loadProfile';
 import { PLAYTEST_PROFILES, type ProfileId } from '@/dev/playtestProfiles';
+import { useAgeStore } from '@/store/ageStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
+import type { AgeBucket } from '@/types';
+
+/** Apple's sandbox answer for under 13 (inclusive bounds), and an adult's. */
+const UNDER_13: AgeBucket = { lowerBound: null, upperBound: 12 };
+const ADULT: AgeBucket = { lowerBound: 18, upperBound: null };
 
 /**
  * Development only: loads the demo predictions for store screenshots
@@ -19,6 +25,11 @@ import { usePredictionStore } from '@/store/predictionStore';
  * that replace this device's data, so a web playtest and the owner's iPhone
  * can start from the same record. A profile takes two taps, the first arming
  * it, since it erases whatever is there.
+ *
+ * And one control for the under-13 rule (roadmap D70), whose screens nothing
+ * on web can reach otherwise: Apple's age sheet exists only on an iPhone. It
+ * gives the age store a band the way Apple's answer does (`accept`), behind
+ * this route's own guard, so a release build never draws it.
  */
 export default function DevSeedScreen() {
   const router = useRouter();
@@ -30,6 +41,8 @@ export default function DevSeedScreen() {
     null,
   );
   const [loading, setLoading] = useState<ProfileId | null>(null);
+  const localOnly = useAgeStore((s) => s.localOnly);
+  const [ageBusy, setAgeBusy] = useState(false);
 
   if (!__DEV__) return <Redirect href="/" />;
 
@@ -42,6 +55,22 @@ export default function DevSeedScreen() {
       setStatus(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Saved on this device like Apple's answer, so it holds across reloads.
+  // Clearing saves an adult band: the rule lifts at once, and a later launch
+  // on an iPhone never asks Apple again until Erase all data.
+  const toggleUnder13 = async () => {
+    setAgeBusy(true);
+    try {
+      const saved = await useAgeStore.getState().accept(localOnly ? ADULT : UNDER_13);
+      const state = useAgeStore.getState().localOnly
+        ? 'This device is local-only (an under-13 age range).'
+        : 'The under-13 rule is off (an 18+ age range is saved).';
+      setStatus(saved ? state : `The age range couldn't be saved. ${state}`);
+    } finally {
+      setAgeBusy(false);
     }
   };
 
@@ -103,6 +132,19 @@ export default function DevSeedScreen() {
             setStatus('Plus previewed in memory. Reload to end it.');
           }}
           testID="dev-seed-plus"
+        />
+        {/* The under-13 rule's screens (D70): You, Insights, Today, Share, the
+            paywall and account routes. */}
+        <Button
+          label={
+            localOnly
+              ? 'Clear the under-13 age range (saves 18+)'
+              : 'Set an under-13 age range (local-only)'
+          }
+          variant="secondary"
+          onPress={() => void toggleUnder13()}
+          disabled={ageBusy}
+          testID="dev-seed-under13"
         />
         <Button
           label="Go to Today"

@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { colors, radius, space, type } from '@/constants/theme';
+import { useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -18,16 +19,20 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * exist, only for a guest, only once the oldest prediction on the phone is
  * BACKUP_NUDGE_AFTER_DAYS old, and not within the cooldown of a "Not now". A
  * tester five months in found "Your predictions live only on this phone" only
- * in You, and was alarmed.
+ * in You, and was alarmed. Never while the under-13 rule applies (roadmap
+ * D70): there is no account to back up to, and You says why.
  */
 export function shouldShowBackupNudge(input: {
   accountsAvailable: boolean;
   signedIn: boolean;
+  /** The under-13 rule applies (`useAgeStore.localOnly`). */
+  localOnly?: boolean;
   /** created_at of the oldest prediction here, or null with none. */
   oldestCreatedAt: string | null;
   dismissedAt: string | null;
   now: Date;
 }): boolean {
+  if (input.localOnly) return false;
   if (!input.accountsAvailable || input.signedIn || !input.oldestCreatedAt) return false;
   const age = input.now.getTime() - Date.parse(input.oldestCreatedAt);
   if (!(age >= BACKUP_NUDGE_AFTER_DAYS * DAY_MS)) return false;
@@ -38,11 +43,12 @@ export function shouldShowBackupNudge(input: {
 /**
  * Today's quiet back-it-up card (DESIGN_SYSTEM §7.11): sunken like the
  * reminder card, a secondary Sign in and a real "Not now". Never before 30
- * days, never once signed in.
+ * days, never once signed in, never under the under-13 rule.
  */
 export function BackupNudge({ onSignIn }: { onSignIn: () => void }) {
   const accountsAvailable = useAuthStore((s) => s.accountsAvailable);
   const signedIn = useAuthStore((s) => s.status === 'authenticated');
+  const localOnly = useAgeStore((s) => s.localOnly);
   const pending = usePredictionStore((s) => s.pending);
   const resolved = usePredictionStore((s) => s.resolved);
   const dismissedAt = useSettingsStore((s) => s.backupNudgeDismissedAt);
@@ -54,6 +60,7 @@ export function BackupNudge({ onSignIn }: { onSignIn: () => void }) {
   const show = shouldShowBackupNudge({
     accountsAvailable,
     signedIn,
+    localOnly,
     oldestCreatedAt: oldest,
     dismissedAt,
     now: new Date(),

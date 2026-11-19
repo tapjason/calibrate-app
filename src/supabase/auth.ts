@@ -8,11 +8,31 @@
 // The native modules (Apple's sheet, the system web sign-in sheet) are
 // lazy-required at call time so unit tests for the email/password path don't
 // have to mock them.
+//
+// The under-13 rule (roadmap D70, 2026-11-19): every exported sign-in and
+// sign-up function (signInWithApple, signInWithGoogle, signInWithEmail,
+// signUpWithEmail) starts with `refuseWhenLocalOnly()`, which refuses with
+// `LOCAL_ONLY_SIGN_IN` before any client, nonce or native sheet is touched:
+// defence in depth under authStore's own refusal. src/age/egress.test.ts
+// checks every exported `sign(In|Up)…` function starts with it. Deliberately
+// left open, because they remove data: `signOut` and `signOutLocal` (and the
+// local `discardStoredSession`), and `reauthenticateWithApple`, used only by
+// account deletion to revoke the Sign in with Apple grant. The session's
+// background refresh is paused and resumed here (`pauseSessionRefresh`,
+// `resumeSessionRefresh`, called by src/age/localOnly.ts).
 
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
-import { getSupabaseClient } from './client';
+import {
+  AGE_ANSWER_WAIT_MS,
+  isLocalOnly,
+  LOCAL_ONLY_SIGN_IN,
+  useAgeStore,
+  whenAgeSettled,
+} from '@/store/ageStore';
+
+import { getSupabaseClient, peekSupabaseClient } from './client';
 import { SESSION_KEY_SUFFIXES } from './sessionStorage';
 
 export type AuthOutcome =
@@ -149,6 +169,103 @@ function signUpErrorText(e: unknown): string {
   return errMessage(e);
 }
 
+// ----------------------------------------------------------------------------
+// The under-13 rule (D70)
+// ----------------------------------------------------------------------------
+
+/** What a sign-in or sign-up returns while the rule applies. */
+export type LocalOnlyRefusal = { ok: false; error: string };
+
+/**
+ * When the age store last began waiting for Apple's answer (`settled` turned
+ * false), or null while it has one. Kept by the subscription below, so a
+ * sign-in can tell how much of the 5 s wait is left.
+ */
+let ageWaitStartedAt: number | null = useAgeStore.getState().settled ? null : Date.now();
+useAgeStore.subscribe((state, prev) => {
+  if (state.settled) ageWaitStartedAt = null;
+  else if (prev.settled || ageWaitStartedAt === null) ageWaitStartedAt = Date.now();
+});
+
+/**
+ * The first statement of every exported sign-in and sign-up function: null to
+ * go on, or the refusal while the phone is local-only. Before any client,
+ * nonce or native sheet is touched.
+ *
+ * On a launch that asks Apple, it waits for the answer for what is left of
+ * `AGE_ANSWER_WAIT_MS` (5 s) since the age store began waiting, then goes on
+ * as today (call 2). Measured from then, not from this call, so it never adds
+ * a second wait after authStore's own (`accountSignIn` waits up to 5 s from
+ * the tap first). Anywhere the question isn't asked it resolves at once. Never
+ * rejects.
+ */
+export async function refuseWhenLocalOnly(): Promise<LocalOnlyRefusal | null> {
+  try {
+    if (!useAgeStore.getState().settled && ageWaitStartedAt !== null) {
+      const left = ageWaitStartedAt + AGE_ANSWER_WAIT_MS - Date.now();
+      if (left > 0) await whenAgeSettled(left);
+    }
+    return isLocalOnly() ? { ok: false, error: LOCAL_ONLY_SIGN_IN } : null;
+  } catch {
+    // The age store can't be read: refuse, the safe side.
+    return { ok: false, error: LOCAL_ONLY_SIGN_IN };
+  }
+}
+
+/** Bumped by every pause and resume, so only the latest one acts. */
+let refreshGeneration = 0;
+
+/** A session refresh call's failure for the log: its message only. */
+function refreshLog(e: unknown): string {
+  return e instanceof Error ? e.message : 'unknown error';
+}
+
+/**
+ * Stop the session's background token refresh (the under-13 rule, D70): no
+ * refresh timer runs while the phone is local-only. Never makes the client (a
+ * client made later is made with the refresh off, src/supabase/client.ts),
+ * never throws and never rejects.
+ *
+ * Waits for the client's own start first: auth-js starts its refresh timer at
+ * the end of it, which would undo a stop made before. A `resumeSessionRefresh`
+ * called meanwhile wins. What stays (disclosed): a `getSession()` on a session
+ * within its expiry margin still refreshes it, which Sign out and Delete
+ * account rely on.
+ */
+export async function pauseSessionRefresh(): Promise<void> {
+  const mine = ++refreshGeneration;
+  try {
+    const client = peekSupabaseClient();
+    if (!client) return;
+    await client.auth.initialize();
+    if (mine !== refreshGeneration) return;
+    await client.auth.stopAutoRefresh();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not stop the session refresh:', refreshLog(e));
+  }
+}
+
+/**
+ * Start the session's background token refresh again once the rule no longer
+ * applies. Never makes the client, never throws and never rejects. Does
+ * nothing if a later pause came in, or if the rule applies again by the time
+ * the client has started.
+ */
+export async function resumeSessionRefresh(): Promise<void> {
+  const mine = ++refreshGeneration;
+  try {
+    const client = peekSupabaseClient();
+    if (!client) return;
+    await client.auth.initialize();
+    if (mine !== refreshGeneration || isLocalOnly()) return;
+    await client.auth.startAutoRefresh();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not start the session refresh:', refreshLog(e));
+  }
+}
+
 /** What a person sees when Sign in with Apple can't be started on this build. */
 export const APPLE_UNAVAILABLE = "Sign in with Apple isn't available right now.";
 
@@ -197,6 +314,8 @@ export async function makeAppleNonce(): Promise<AppleNonce> {
  * Apple, the raw value to Supabase.
  */
 export async function signInWithApple(): Promise<AuthOutcome> {
+  const refused = await refuseWhenLocalOnly();
+  if (refused) return refused;
   if (Platform.OS !== 'ios') {
     return { ok: false, error: 'Apple Sign-In is only available on iOS.' };
   }
@@ -364,6 +483,8 @@ function errorCode(error: unknown): string | null {
  * stays on the device and is never sent anywhere (App Review 5.1.1(v)).
  */
 export async function signInWithGoogle(): Promise<AuthOutcome> {
+  const refused = await refuseWhenLocalOnly();
+  if (refused) return refused;
   if (Platform.OS !== 'ios') {
     return { ok: false, error: 'Google sign-in is only available on iOS.' };
   }
@@ -421,6 +542,8 @@ export async function signInWithEmail(
   email: string,
   password: string,
 ): Promise<AuthOutcome> {
+  const refused = await refuseWhenLocalOnly();
+  if (refused) return refused;
   const trimmed = email.trim();
   if (!trimmed) return { ok: false, error: 'Email is required.' };
   if (!password) return { ok: false, error: 'Password is required.' };
@@ -450,6 +573,8 @@ export async function signUpWithEmail(
   email: string,
   password: string,
 ): Promise<SignUpOutcome> {
+  const refused = await refuseWhenLocalOnly();
+  if (refused) return refused;
   const trimmed = email.trim();
   if (!trimmed) return { ok: false, error: 'Email is required.' };
   const weak = passwordRulesError(password);
@@ -512,6 +637,9 @@ export const LATE_SIGN_OUT_WAIT_MS = 60_000;
  * phone. supabase-js keeps the session when the server can't be reached, so
  * a sign-out with no connection used to do nothing (security review,
  * 2026-11-18); `endSession` then ends it here alone.
+ *
+ * Not gated by the under-13 rule (D70), nor is `signOutLocal`: ending a
+ * session removes data, and a frozen account must still be able to leave.
  */
 export async function signOut(): Promise<SessionEndOutcome> {
   return await endSession('global');
@@ -833,6 +961,9 @@ export function hasGoogleIdentity(user: User | null | undefined): boolean {
  * it guards nothing yet: only the code leaves the phone, and the server checks
  * the identity in what Apple returns for it, not a nonce. So when one can't be
  * made the sheet still opens without it, rather than costing the revocation.
+ *
+ * Not gated by the under-13 rule (D70), on purpose: it is used only to delete
+ * an account, the one upload left open because it removes data.
  */
 export async function reauthenticateWithApple(): Promise<string | null> {
   if (Platform.OS !== 'ios') return null;

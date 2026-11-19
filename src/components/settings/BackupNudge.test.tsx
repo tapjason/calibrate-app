@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { colors } from '@/constants/theme';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
@@ -36,6 +37,12 @@ describe('shouldShowBackupNudge', () => {
     expect(shouldShowBackupNudge({ ...base, dismissedAt: daysAgo(29) })).toBe(false);
     expect(shouldShowBackupNudge({ ...base, dismissedAt: daysAgo(30) })).toBe(true);
   });
+
+  // Roadmap D70: no account to back up to on a local-only phone.
+  it('never asks while the under-13 rule applies', () => {
+    expect(shouldShowBackupNudge({ ...base, localOnly: true })).toBe(false);
+    expect(shouldShowBackupNudge({ ...base, localOnly: false })).toBe(true);
+  });
 });
 
 describe('BackupNudge', () => {
@@ -62,6 +69,22 @@ describe('BackupNudge', () => {
 
   afterEach(() => {
     __setPersistenceForTests(null);
+    act(() => __resetAgeStoreForTests());
+  });
+
+  // Roadmap D70: Today offers no sign-in on a local-only phone.
+  it('is not drawn while the under-13 rule applies, and is drawn without it', () => {
+    useAgeStore.setState({ localOnly: true });
+    const { unmount } = render(<BackupNudge onSignIn={jest.fn()} />);
+    expect(screen.queryByTestId('backup-nudge')).toBeNull();
+    expect(screen.queryByTestId('backup-nudge-sign-in')).toBeNull();
+    unmount();
+
+    useAgeStore.setState({ localOnly: false });
+    render(<BackupNudge onSignIn={jest.fn()} />);
+    expect(screen.getByTestId('backup-nudge-sign-in')).toBeTruthy();
+    // Before afterEach resets the stores under it.
+    screen.unmount();
   });
 
   it('offers sign-in, and goes quiet on Not now', async () => {
