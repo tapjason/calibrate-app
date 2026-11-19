@@ -53,6 +53,21 @@ describe('Button', () => {
     );
   });
 
+  // Step 195: on a sunken card controlBorder is 2.93:1 in light, under the
+  // 3:1 a control's edge needs, so the outline takes textTertiary there.
+  it('outlines a secondary button in textTertiary on a sunken card, controlBorder elsewhere', () => {
+    const { rerender } = render(
+      <Button label="Sign in" variant="secondary" onPress={jest.fn()} testID="s" />,
+    );
+    const border = () => StyleSheet.flatten(screen.getByTestId('s').props.style).borderColor;
+    expect(border()).toBe(colors.controlBorder);
+    rerender(<Button label="Sign in" variant="secondary" onSunken onPress={jest.fn()} testID="s" />);
+    expect(border()).toBe(colors.textTertiary);
+    // Only the outlined secondary changes: a danger edge stays red.
+    rerender(<Button label="Erase" variant="danger" onSunken onPress={jest.fn()} testID="s" />);
+    expect(border()).toBe(colors.destructive);
+  });
+
   // Blind playtest 2026-11-01 (run 4): under Reduce Motion the press dip's
   // own opacity came after the disabled style and drew Save at full strength.
   it.each([false, true])('dims a disabled button (Reduce Motion %s)', (reduced) => {

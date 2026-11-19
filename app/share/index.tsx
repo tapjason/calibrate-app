@@ -8,7 +8,7 @@ import { ShareCardPanel } from '@/components/share/ShareCardPanel';
 import { WrappedPanel } from '@/components/share/WrappedPanel';
 import { chosenProps } from '@/components/ui/chosen';
 import { CloseButton } from '@/components/ui/CloseButton';
-import { colors, type } from '@/constants/theme';
+import { colors, elevation, type } from '@/constants/theme';
 
 type Tab = 'card' | 'week' | 'year';
 
@@ -126,14 +126,27 @@ const styles = StyleSheet.create({
   },
   tab: {
     alignItems: 'center',
+    // Every tab has the edge, clear on the unchosen ones, so choosing doesn't
+    // move a label by a point; the padding gives the point back, so a tab is
+    // the size it was before it had one (step 195).
+    borderColor: 'transparent',
     borderRadius: 8,
+    borderWidth: 1,
     flexBasis: 0,
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 8,
+    paddingHorizontal: 3,
+    paddingVertical: 7,
   },
-  tabActive: { backgroundColor: colors.surface },
+  // Raised, as the sign-in switch's chosen segment is: the card colour, the
+  // cards' shadow and an edge. Alone, surface on the sunken track was 1.19:1
+  // in light and 1.13:1 in dark; textTertiary is 4.66:1 on the track (4.92:1
+  // in dark) and 5.57:1 on the tab's own surface (step 195).
+  tabActive: {
+    ...elevation.e1,
+    backgroundColor: colors.surface,
+    borderColor: colors.textTertiary,
+  },
   // Stretched to the tab, so a long label wraps inside it at large sizes
   // instead of running into the next one (playtest 2026-11-03, run 3).
   tabLabel: {

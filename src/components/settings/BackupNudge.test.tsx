@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
+import { colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
@@ -70,5 +72,14 @@ describe('BackupNudge', () => {
     fireEvent.press(screen.getByTestId('backup-nudge-dismiss'));
     await waitFor(() => expect(screen.queryByTestId('backup-nudge')).toBeNull());
     expect(useSettingsStore.getState().backupNudgeDismissedAt).not.toBeNull();
+  });
+
+  // Step 195: the card is sunken, where controlBorder is 2.93:1 in light.
+  it('outlines its button for the sunken card', () => {
+    const { unmount } = render(<BackupNudge onSignIn={jest.fn()} />);
+    const signIn = StyleSheet.flatten(screen.getByTestId('backup-nudge-sign-in').props.style);
+    expect(signIn.borderColor).toBe(colors.textTertiary);
+    // Before afterEach resets the settings store under it.
+    unmount();
   });
 });

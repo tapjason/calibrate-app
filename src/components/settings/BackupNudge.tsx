@@ -65,7 +65,13 @@ export function BackupNudge({ onSignIn }: { onSignIn: () => void }) {
       <Text style={styles.title}>Your predictions live only on this phone</Text>
       <Text style={styles.body}>Sign in to keep them if it's lost or replaced.</Text>
       <View style={styles.actions}>
-        <Button label="Sign in" variant="secondary" onPress={onSignIn} testID="backup-nudge-sign-in" />
+        <Button
+          label="Sign in"
+          variant="secondary"
+          onSunken
+          onPress={onSignIn}
+          testID="backup-nudge-sign-in"
+        />
         <Pressable
           onPress={() => void useSettingsStore.getState().dismissBackupNudge()}
           accessibilityRole="button"

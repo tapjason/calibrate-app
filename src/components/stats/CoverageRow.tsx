@@ -144,9 +144,11 @@ const styles = StyleSheet.create({
   // other controls use, so it reads as one; empty ranges keep their dashes.
   cellTappable: { borderColor: colors.controlBorder },
   cellPressed: { backgroundColor: colors.surfaceSunken },
+  // The dashes alternate with the sunken fill, where controlBorder is 2.93:1
+  // in light; textTertiary, the "none" word's grey, is 4.66:1 (step 195).
   empty: {
     backgroundColor: colors.surfaceSunken,
-    borderColor: colors.controlBorder,
+    borderColor: colors.textTertiary,
     borderStyle: 'dashed',
   },
   // 11pt, the floor (DESIGN_SYSTEM §0 rule 7): in Inter, "80–100%" at 12pt

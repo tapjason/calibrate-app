@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
+import { colors } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 
 import { SignInView } from './SignInView';
@@ -154,6 +155,19 @@ describe('SignInView', () => {
       expect(screen.queryByTestId('account-password-hint')).toBeNull();
       expect(screen.getByRole('header')).toHaveTextContent('Sign in');
       expect(screen.getByTestId('account-submit')).toHaveTextContent('Sign in');
+    });
+
+    // Step 195: the raised segment's outline meets the sunken track, where
+    // controlBorder is 2.93:1 in light; textTertiary is 4.66:1 there.
+    it('outlines the chosen segment in textTertiary, and only that one', () => {
+      render(<SignInView onDone={jest.fn()} />);
+      const border = (id: string) =>
+        StyleSheet.flatten(screen.getByTestId(id).props.style).borderColor;
+      expect(border('account-mode-signIn')).toBe(colors.textTertiary);
+      expect(border('account-mode-signUp')).toBe('transparent');
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+      expect(border('account-mode-signUp')).toBe(colors.textTertiary);
+      expect(border('account-mode-signIn')).toBe('transparent');
     });
   });
 

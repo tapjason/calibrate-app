@@ -119,12 +119,19 @@ Since D33 (2026-11-01) the brand has no hue, and the tokens are named by role.
 | `surface` | `#FFFFFF` | — |
 | `surfaceSunken` | `#E9EBEE` | — |
 | `hairline` | `#DDE0E5` | decorative only |
-| `controlBorder` | `#858993` | 3.50:1 on white, 3.18:1 on canvas (UI ≥ 3:1) |
+| `controlBorder` | `#858993` | 3.50:1 on white, 3.18:1 on canvas, 3.07:1 on `cautionBackground` (UI ≥ 3:1); 2.93:1 on sunken and 2.78:1 on `selectedFill` |
 | `textPrimary` | `#15171B` | 16.3:1 on canvas |
 | `textSecondary` | `#4B4F58` | 7.46:1 on canvas |
-| `textTertiary` | `#646873` | 5.06:1 canvas · 4.66:1 sunken · the chart's luck-bar outline, ≥ 4.6:1 over its region tints in both appearances (D47) |
-| `destructive` | `#C4271C` | 5.75:1 on white (sign-out, delete only) |
+| `textTertiary` | `#646873` | 5.06:1 canvas · 4.66:1 sunken · 4.42:1 `selectedFill` (an edge there, not text) · the chart's luck-bar outline, ≥ 4.6:1 over its region tints in both appearances (D47) |
+| `destructive` | `#C4271C` | 5.75:1 on white, 4.81:1 on sunken (sign-out, delete only) |
 | `cautionText` / `cautionBackground` | `#7E4600` / `#FBEFD6` | 6.67:1 (account deletion's warning only) |
+
+`controlBorder` is never an edge on `surfaceSunken` or `selectedFill`: it falls under 3:1
+on both in light, and on `selectedFill` in dark (2.87:1). A control on a sunken card or track (a nudge's button, the practice
+offer's moments, the raised segment of the sign-in switch and of Share's tabs, an empty
+coverage range) or on the
+checkpoint tint takes `textTertiary` for its edge (`onSunken` on `Button` and
+`MomentChips`; steps 193 and 195).
 
 The Lens emblem has its own three (§7.4): `emblemMid` `#5B5F69` (Forecaster),
 `emblemDeep` `#15171B` (Sharp, and where Oracle's gradient starts) and `emblemMark`
@@ -143,8 +150,15 @@ Cool = underconfident, warm = overconfident, green = on the line.
 | too few (a range under 10, D58) | `textSecondary` (chart dot); the card theme's `muted` (strip dot) | no lean word | | `muted` |
 | `oracleGold` (emblem hairline only) | `#B7791F` (graphic) | chip `#7A4F0E` / `#FDF6E7` (6.61) | | `#E8B64C` |
 
+Lean colours are drawn on `canvas` and `surface` only. In light a mark is never set on
+`surfaceSunken` or `selectedFill` (`calibrated` measures 2.86:1 and 2.71:1 there), nor
+lean text (`over` 4.26:1 and 4.03:1). Over the chart's region tints the words need a
+canvas halo (§7.2).
+
 Validated with the dataviz palette validator (Machado 2009 CVD simulation): worst
-colour-blind ΔE 11.0 (light) and 11.0 (dark), both pass. Since D33 the brand has no
+colour-blind ΔE 11.0 (light) and 11.0 (dark), both pass. That ΔE is the validator's
+OKLab distance ×100, whose pass lines are 8 for colour-blind viewers and 15 for normal
+vision; it is not CIEDE2000 (`research/colour-2026-11.md` §4). Since D33 the brand has no
 hue, so no chrome can be mistaken for a calibration colour; indigo sat only 3.7 ΔE from
 `under` for tritan viewers. Rule 0.6 keeps it that way.
 
@@ -212,9 +226,10 @@ Rules dark mode taught (2026-10-07):
 | `actionText` | `#F2F3F5` | 17.26 | 15.82 |
 | `destructive` | `#FF6B5E` | | 6.29 |
 
-Calibration marks and text use the "Dark card" column of §2.3 (marks ≥ 4.79:1 even on
-dark `surfaceSunken`). The CTA is a light fill with ink on it (16.2:1), and the fill
-stands 15.8:1 off dark `surface`.
+Calibration marks and text use the "Dark card" column of §2.3. On dark `surfaceSunken`
+the marks measure 4.65:1 (`over`, the lowest), 4.78:1 (`under`) and 5.11:1
+(`calibrated`), all over the 3:1 a mark needs, and the text 6.29:1 or more. The CTA is a
+light fill with ink on it (16.2:1), and the fill stands 15.8:1 off dark `surface`.
 
 ---
 
@@ -491,11 +506,14 @@ Keep the hand-rolled `react-native-svg` chart; invest in design, not a library.
    since last week, from 6 answers given since then, within its give-or-take."
 2. **Regions labelled in place:** below the diagonal lightly warm-tinted, labelled
    *Overconfident*; above lightly cool-tinted, *Underconfident*; the diagonal labelled
-   *Perfectly calibrated*. Position + tint + text = three channels.
+   *Perfectly calibrated*. Position + tint + text = three channels. Each word sits on a
+   canvas halo, as the n labels do: over its tint, a grid line or a luck bar, `over` text
+   measured 4.27:1 in light, under 4.5:1; on the canvas it is 4.62:1 (step 195).
 3. **Dots** coloured by side (`over` / `under` / `calibrated`), sized by n, labelled
    with n. Connecting line 1.5 px neutral, or none — five buckets are not a function.
 4. **Coverage row** under the chart: five bucket chips with counts, empty ones hatched
-   ("You've never logged anything under 40%"). This is the spec's range-coverage caveat
+   ("You've never logged anything under 40%"): sunken, with "none" and a dashed
+   `textTertiary` edge (step 195). This is the spec's range-coverage caveat
    made visible; it links to the `CoverageNudge`. On Insights each filled chip is a
    button with the control outline ("80–100%: 57 scored. Show them.") that opens
    History filtered to that range, under the line "Tap a range to see the predictions

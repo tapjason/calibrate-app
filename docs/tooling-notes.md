@@ -109,10 +109,13 @@ that apply here.
   visited tabs stay in the Tab order, sheets drop focus to `body`, Escape closes nothing, every route
   is titled "Fairly Sure", every heading is `h1`; the lightning-bolt button is Expo's dev overlay.
   Times show as "07:00 PM" where the phone shows its locale ("19:00").
-- **Three require-cycle warnings in the console are known** (2026-11-09b web check), all in
-  `src/store`: `categoryStore` ↔ `authStore`; `authStore` → `practiceStore` → `analytics` →
-  `authStore`; `authStore` ↔ `predictionStore`. Every use sits inside a function, not at module
-  load, so nothing reads an unfinished module. Not a playtest finding; a new cycle is worth a look. Also known: "props.pointerEvents is
+- **Three require-cycle warnings in the console are known** (2026-11-09b web check; paths as of
+  2026-11-18, step 195). `authStore` imports `notifications/scheduler` (for
+  `dismissDeliveredNotifications`) before its sibling stores, so two of them run through it:
+  `authStore` → `notifications/scheduler` → `predictionStore` → `analytics/track` → `authStore`;
+  `authStore` → `notifications/scheduler` → `predictionStore` → `authStore`; and `categoryStore` ↔
+  `authStore`. (`practiceStore` → `analytics/track` adds none: `track` has loaded by then.) Every
+  use sits inside a function, not at module load, so nothing reads an unfinished module. Not a playtest finding; a new cycle is worth a look. Also known: "props.pointerEvents is
   deprecated. Use style.pointerEvents", from the react-native-web bundle, not app code (2026-11-10).
 - **Device-only behaviour the web build hides** (found on the phone, 2026-11-07 and 08): see
   `docs/app-profile.md` §18 "Known iOS-vs-web traps". The web never showed any of them because CSS

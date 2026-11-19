@@ -118,7 +118,9 @@ const light: Palette = {
   surface: '#FFFFFF',
   surfaceSunken: '#E9EBEE',
   hairline: '#DDE0E5',
-  controlBorder: '#858993', // 3.50:1 on white, 3.18:1 on canvas (UI ≥ 3:1)
+  // 3.50:1 on white, 3.18:1 on canvas (UI ≥ 3:1). Never an edge on
+  // surfaceSunken (2.93:1) or selectedFill (2.78:1): use textTertiary there.
+  controlBorder: '#858993',
   textPrimary: '#15171B', // 16.3:1 on canvas
   textSecondary: '#4B4F58', // 7.46:1 on canvas
   textTertiary: '#646873', // 5.06:1 canvas · 4.66:1 sunken

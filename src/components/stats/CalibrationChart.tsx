@@ -345,33 +345,71 @@ export function CalibrationChart({
             {/* The region labels over the luck bars, not under them: a bar
                 at 60–80% ran through "Overconfident" (blind playtest
                 2026-11-13c, finding 23). The dots still go on top. */}
+            {/* Each word on a canvas halo, as the n labels are: over its
+                region's tint, the grid lines and a luck bar, overText read
+                4.27:1 in light, under the 4.5:1 text needs; on the canvas it
+                is 4.62:1 (step 195). Both words, so they look alike. */}
             {namesZones && (
-            <SvgText
-              x={right - 8}
-              y={bottom - 10}
-              fontSize={TICK_FONT}
-              fontFamily={svgFontFamily}
-              fontWeight="600"
-              fill={colors.overText}
-              textAnchor="end"
-              testID="region-label-over"
-            >
-              Overconfident
-            </SvgText>
+              <>
+                <SvgText
+                  x={right - 8}
+                  y={bottom - 10}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fontWeight="600"
+                  fill={colors.canvas}
+                  stroke={colors.canvas}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  textAnchor="end"
+                  testID="region-label-over-halo"
+                >
+                  Overconfident
+                </SvgText>
+                <SvgText
+                  x={right - 8}
+                  y={bottom - 10}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fontWeight="600"
+                  fill={colors.overText}
+                  textAnchor="end"
+                  testID="region-label-over"
+                >
+                  Overconfident
+                </SvgText>
+              </>
             )}
             {namesZones && (
-            <SvgText
-              x={left + 8}
-              y={top + 18}
-              fontSize={TICK_FONT}
-              fontFamily={svgFontFamily}
-              fontWeight="600"
-              fill={colors.underText}
-              textAnchor="start"
-              testID="region-label-under"
-            >
-              Underconfident
-            </SvgText>
+              <>
+                <SvgText
+                  x={left + 8}
+                  y={top + 18}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fontWeight="600"
+                  fill={colors.canvas}
+                  stroke={colors.canvas}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  textAnchor="start"
+                  testID="region-label-under-halo"
+                >
+                  Underconfident
+                </SvgText>
+                <SvgText
+                  x={left + 8}
+                  y={top + 18}
+                  fontSize={TICK_FONT}
+                  fontFamily={svgFontFamily}
+                  fontWeight="600"
+                  fill={colors.underText}
+                  textAnchor="start"
+                  testID="region-label-under"
+                >
+                  Underconfident
+                </SvgText>
+              </>
             )}
 
             {/* Connecting line: neutral and thin — five buckets are not a

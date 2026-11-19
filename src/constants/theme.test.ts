@@ -18,6 +18,12 @@ const PAIRS: Pair[] = [
   // The streak row's quiet lines on a checkpoint day (step 193): textTertiary
   // is 4.4:1 there, so they take textSecondary.
   ['textSecondary', 'selectedFill', 4.5],
+  // And a hollow goal pip's edge there (step 193): controlBorder is 2.78:1.
+  ['textTertiary', 'selectedFill', 3],
+  // The milestone and checkpoint cards' titles and count, a chosen plan or
+  // answer's radio, the filled flame.
+  ['textPrimary', 'selectedFill', 4.5],
+  ['action', 'selectedFill', 3],
   ['destructive', 'surface', 4.5],
   ['onAction', 'destructive', 4.5],
   ['cautionText', 'cautionBackground', 4.5],
@@ -26,6 +32,8 @@ const PAIRS: Pair[] = [
   ['calibratedText', 'surface', 4.5],
   ['controlBorder', 'surface', 3],
   ['controlBorder', 'canvas', 3],
+  // "Manage subscription" on the caution box in Delete account.
+  ['controlBorder', 'cautionBackground', 3],
   ['action', 'canvas', 3],
   ['action', 'surface', 3],
   ['emblemMid', 'surface', 3],
@@ -34,6 +42,31 @@ const PAIRS: Pair[] = [
   ['overMark', 'surface', 3],
   ['underMark', 'surface', 3],
   ['calibratedMark', 'surface', 3],
+  // Today's lean dot sits on the canvas (calibrated 3.11:1 in light).
+  ['overMark', 'canvas', 3],
+  ['underMark', 'canvas', 3],
+  ['calibratedMark', 'canvas', 3],
+  // The chart's region words, each on a canvas halo (step 195): over the
+  // over tint overText read 4.27:1 in light.
+  ['overText', 'canvas', 4.5],
+  ['underText', 'canvas', 4.5],
+  // Error lines on the canvas, and Sign out / Delete under a pressed row in You.
+  ['destructive', 'canvas', 4.5],
+  ['destructive', 'surfaceSunken', 4.5],
+  // What the app sets on a sunken card or track (the nudges, the reminder
+  // prompts, the range's record on Resolve, the Coach sample, the × button,
+  // Share's and sign-in's segmented tracks, a pressed row). A control's edge
+  // there is textTertiary, pinned at 4.5 above (4.66:1 in light), never
+  // controlBorder, which is 2.93:1 (step 195).
+  ['textPrimary', 'surfaceSunken', 4.5],
+  ['textSecondary', 'surfaceSunken', 4.5],
+  ['actionText', 'surfaceSunken', 4.5],
+  // "Rename" in You → Categories is ink text on a sunken pill; the run's
+  // progress fill and the paywall's timeline dots are ink on sunken tracks.
+  ['action', 'surfaceSunken', 4.5],
+  // A chosen moment chip while pressed keeps an ink fill (step 195): the
+  // sunken press under its label read 1.2:1.
+  ['onAction', 'actionPressed', 4.5],
   // "Continue with Google" (step 192), in Google's own Light and Dark themes:
   // its label at rest and pressed, and its outline, which carries the
   // button's edge on the canvas (the fill alone is about 1.1:1 there).

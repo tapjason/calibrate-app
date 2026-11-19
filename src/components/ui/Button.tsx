@@ -18,6 +18,12 @@ interface ButtonProps {
   accessibilityLabel?: string;
   /** What the tap does, where the label alone doesn't say it. */
   accessibilityHint?: string;
+  /**
+   * The button sits on a `surfaceSunken` card (a nudge, a prompt). A secondary
+   * button's outline then takes `textTertiary`: `controlBorder` is 2.93:1 on
+   * the sunken fill in light, under the 3:1 a control's edge needs (step 195).
+   */
+  onSunken?: boolean;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -36,6 +42,7 @@ export function Button({
   testID,
   accessibilityLabel,
   accessibilityHint,
+  onSunken = false,
 }: ButtonProps) {
   const reduceMotion = useReducedMotion();
   const pressed = useSharedValue(0);
@@ -66,7 +73,12 @@ export function Button({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled }}
-      style={[styles.base, styles[variant], pressStyle]}
+      style={[
+        styles.base,
+        styles[variant],
+        onSunken && variant === 'secondary' && styles.secondaryOnSunken,
+        pressStyle,
+      ]}
     >
       <Text style={[styles.labelBase, styles[`label_${variant}`]]}>{label}</Text>
     </AnimatedPressable>
@@ -93,6 +105,8 @@ const styles = StyleSheet.create({
     borderColor: colors.controlBorder,
     borderWidth: 1,
   },
+  // On a sunken card: 4.66:1 there in light, 4.92:1 in dark (theme.test.ts).
+  secondaryOnSunken: { borderColor: colors.textTertiary },
   // Destructive actions only (erase, delete) — never an outcome. Outlined,
   // not filled: HIG Buttons, "Don't assign the primary role to a button that
   // performs a destructive action" (roadmap step 81). The red label and

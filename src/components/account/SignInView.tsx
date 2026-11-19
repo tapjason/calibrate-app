@@ -260,12 +260,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     paddingVertical: space.sm,
   },
-  // Raised: the card colour, the fields' outline (controlBorder, 3:1 or more
-  // on surface in both appearances) and the cards' shadow.
+  // Raised: the card colour, an outline and the cards' shadow. The outline
+  // meets the sunken track, where the fields' controlBorder is 2.93:1 in
+  // light, under the 3:1 a control's edge needs; textTertiary is 4.66:1 there
+  // (4.92:1 in dark) and 5.57:1 on the segment's own surface (step 195).
   modeChosen: {
     ...elevation.e1,
     backgroundColor: colors.surface,
-    borderColor: colors.controlBorder,
+    borderColor: colors.textTertiary,
   },
   // Stretched to the segment, so a label that wraps at a large text size
   // wraps inside it (Share's tabs, playtest 2026-11-03).

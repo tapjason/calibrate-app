@@ -48,6 +48,7 @@ export function CoverageNudge({
         <Button
           label={`Start at ${suggestedConfidence}%`}
           variant="secondary"
+          onSunken
           onPress={onAccept}
           testID="coverage-nudge-accept"
         />

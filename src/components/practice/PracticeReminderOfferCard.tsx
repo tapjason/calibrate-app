@@ -37,7 +37,13 @@ export function PracticeReminderOfferCard({ onChoose, onDismiss, confirmation, b
       <Text style={styles.body}>
         Pick a moment in your day. One reminder then, only on days practice isn’t done.
       </Text>
-      <MomentChips selected={null} onChoose={(t) => t && onChoose(t)} disabled={busy} testID="practice-reminder-moments" />
+      <MomentChips
+        selected={null}
+        onChoose={(t) => t && onChoose(t)}
+        disabled={busy}
+        onSunken
+        testID="practice-reminder-moments"
+      />
       <Pressable
         onPress={onDismiss}
         accessibilityRole="button"

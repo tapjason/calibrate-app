@@ -7,7 +7,18 @@ import {
   xTickLabel,
 } from '@/components/stats/CalibrationChart';
 import { haptics } from '@/components/ui/haptics';
+import { palettes, type Palette } from '@/constants/theme';
 import type { BucketStat } from '@/types';
+
+/**
+ * A colour as react-native-svg hands it to the host: a brush holding the
+ * DynamicColorIOS pair as ARGB numbers. Read back as the light and dark hex.
+ */
+function brushHex(brush: { payload: { dynamic: { light: number; dark: number } } }) {
+  const hex = (n: number) => `#${(n & 0xffffff).toString(16).padStart(6, '0').toUpperCase()}`;
+  return { light: hex(brush.payload.dynamic.light), dark: hex(brush.payload.dynamic.dark) };
+}
+const token = (key: keyof Palette) => ({ light: palettes.light[key], dark: palettes.dark[key] });
 
 function bucket(partial: Partial<BucketStat> & Pick<BucketStat, 'low'>): BucketStat {
   return {
@@ -420,6 +431,32 @@ describe('CalibrationChart chance capsules', () => {
     expect(at('region-label-over')).toBeGreaterThan(at('chance-60'));
     expect(at('region-label-under')).toBeGreaterThan(at('chance-60'));
     expect(at('point-60')).toBeGreaterThan(at('region-label-over'));
+  });
+
+  // Step 195: over the over tint, a grid line or a luck bar, overText read
+  // 4.27:1 in light, under the 4.5:1 text needs. Each word sits on a canvas
+  // halo, as the n labels do, where overText is 4.62:1 (theme.test.ts).
+  it('sets each zone word on a canvas halo, drawn just before it', () => {
+    const view = render(<CalibrationChart buckets={[bucket({ low: 60 })]} />);
+    layout(view);
+    const opts = { includeHiddenElements: true };
+    for (const [side, ink] of [
+      ['over', 'overText'],
+      ['under', 'underText'],
+    ] as const) {
+      const halo = view.getByTestId(`region-label-${side}-halo`, opts);
+      const word = view.getByTestId(`region-label-${side}`, opts);
+      expect(brushHex(halo.props.fill)).toEqual(token('canvas'));
+      expect(brushHex(halo.props.stroke)).toEqual(token('canvas'));
+      expect(Number(halo.props.strokeWidth)).toBeGreaterThanOrEqual(3);
+      expect(brushHex(word.props.fill)).toEqual(token(ink));
+      expect([halo.props.x, halo.props.y]).toEqual([word.props.x, word.props.y]);
+    }
+    const tree = JSON.stringify(view.toJSON());
+    const at = (id: string) => tree.indexOf(`"testID":"${id}"`);
+    expect(at('region-label-over-halo')).toBeGreaterThan(at('chance-60'));
+    expect(at('region-label-over')).toBeGreaterThan(at('region-label-over-halo'));
+    expect(at('region-label-under')).toBeGreaterThan(at('region-label-under-halo'));
   });
 
   // Step 181 (blind playtest 2026-11-14, finding 11): "Overconfident" over

@@ -35,6 +35,7 @@ export function ReminderPromptCard({ firstDue, onAllow, onDismiss, busy }: Remin
         <Button
           label={busy ? 'Asking…' : 'Turn on reminders'}
           variant="secondary"
+          onSunken
           onPress={onAllow}
           disabled={busy}
           testID="reminder-prompt-allow"

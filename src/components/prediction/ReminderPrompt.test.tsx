@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
+import { colors } from '@/constants/theme';
 import { usePredictionStore } from '@/store/predictionStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import type { Prediction } from '@/types';
@@ -9,6 +11,7 @@ import {
   ReminderPrompt,
   shouldShowReminderPrompt,
 } from './ReminderPrompt';
+import { ReminderPromptCard } from './ReminderPromptCard';
 
 const mockPermission = { current: 'undetermined' as string, answer: 'granted' as string };
 const mockAsk = jest.fn(async () => mockPermission.answer);
@@ -125,6 +128,17 @@ describe('ReminderPrompt', () => {
     });
     expect(screen.queryByTestId('reminder-prompt')).toBeNull();
     expect(mockAsk).toHaveBeenCalledTimes(1);
+  });
+
+  // Step 195: the card is sunken, where controlBorder is 2.93:1 in light.
+  it('outlines its button for the sunken card', () => {
+    const { unmount } = render(
+      <ReminderPromptCard firstDue="Tue, Oct 6" onAllow={jest.fn()} onDismiss={jest.fn()} />,
+    );
+    const allow = StyleSheet.flatten(screen.getByTestId('reminder-prompt-allow').props.style);
+    expect(allow.borderColor).toBe(colors.textTertiary);
+    // Before afterEach resets the settings store under it.
+    unmount();
   });
 
   it('"Not now" starts the cooldown', async () => {

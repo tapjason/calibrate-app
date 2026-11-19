@@ -1,4 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+
+import { colors } from '@/constants/theme';
 
 import { PRACTICE_REMINDER_OFFER_COOLDOWN_DAYS, shouldOfferPracticeReminder } from './PracticeReminderOffer';
 import { PracticeReminderOfferCard } from './PracticeReminderOfferCard';
@@ -49,6 +52,13 @@ describe('PracticeReminderOfferCard', () => {
     fireEvent.press(screen.getByTestId('practice-reminder-dismiss'));
     expect(onDismiss).toHaveBeenCalled();
     expect(screen.queryByTestId('practice-reminder-moments-off')).toBeNull();
+  });
+
+  // Step 195: the card is sunken, where controlBorder is 2.93:1 in light.
+  it('edges its moments for the sunken card', () => {
+    render(<PracticeReminderOfferCard onChoose={() => {}} onDismiss={() => {}} />);
+    const host = screen.getByTestId('practice-reminder-moments-lunch');
+    expect(StyleSheet.flatten(host.props.style).borderColor).toBe(colors.textTertiary);
   });
 
   it('confirms the choice and says where to change it', () => {

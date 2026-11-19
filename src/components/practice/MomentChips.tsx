@@ -20,6 +20,12 @@ interface MomentChipsProps {
    */
   onPickTime?: () => void;
   picking?: boolean;
+  /**
+   * The chips sit on a `surfaceSunken` card (the offer under a finished
+   * practice): an unchosen chip's edge takes `textTertiary`, since
+   * `controlBorder` is 2.93:1 on the sunken fill in light (step 195).
+   */
+  onSunken?: boolean;
 }
 
 const same = (a: PracticeReminderTime | null, b: PracticeReminderTime) =>
@@ -39,6 +45,7 @@ export function MomentChips({
   testID = 'moment-chips',
   onPickTime,
   picking = false,
+  onSunken = false,
 }: MomentChipsProps) {
   const custom =
     selected !== null && !PRACTICE_REMINDER_MOMENTS.some((m) => same(selected, m));
@@ -53,6 +60,7 @@ export function MomentChips({
           title="Off"
           active={!picking && selected === null}
           disabled={disabled}
+          onSunken={onSunken}
           half
           onPress={() => onChoose(null)}
           testID={`${testID}-off`}
@@ -65,6 +73,7 @@ export function MomentChips({
           subtitle={reminderTimeLabel(m)}
           active={!picking && same(selected, m)}
           disabled={disabled}
+          onSunken={onSunken}
           half={withOff}
           onPress={() => onChoose({ hour: m.hour, minute: m.minute })}
           testID={`${testID}-${m.id}`}
@@ -76,6 +85,7 @@ export function MomentChips({
           subtitle={ownTime ? reminderTimeLabel(ownTime) : undefined}
           active={picking || custom}
           disabled={disabled}
+          onSunken={onSunken}
           half={withOff}
           onPress={onPickTime}
           testID={`${testID}-custom`}
@@ -91,6 +101,7 @@ function Chip({
   active,
   disabled,
   half,
+  onSunken,
   onPress,
   testID,
 }: {
@@ -100,6 +111,7 @@ function Chip({
   disabled?: boolean;
   /** Two to a row, for four choices. */
   half?: boolean;
+  onSunken: boolean;
   onPress: () => void;
   testID: string;
 }) {
@@ -113,8 +125,11 @@ function Chip({
       style={({ pressed }) => [
         styles.chip,
         half && styles.half,
+        onSunken && styles.chipOnSunken,
         active && styles.chipActive,
-        pressed && styles.chipPressed,
+        // A chosen chip keeps an ink fill while pressed: the sunken press
+        // under its white label read 1.2:1 (step 195).
+        pressed && (active ? styles.chipActivePressed : styles.chipPressed),
       ]}
       testID={testID}
     >
@@ -150,6 +165,9 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm - 1,
   },
   chipPressed: { backgroundColor: colors.surfaceSunken },
+  chipActivePressed: { backgroundColor: colors.actionPressed, borderColor: colors.actionPressed },
+  // On a sunken card: 4.66:1 there in light, 4.92:1 in dark (theme.test.ts).
+  chipOnSunken: { borderColor: colors.textTertiary },
   half: { flexBasis: '40%' },
   title: { ...type.subhead, color: colors.textPrimary, fontWeight: '500' },
   titleActive: { color: colors.onAction, fontWeight: '700' },
