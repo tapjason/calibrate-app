@@ -36,6 +36,7 @@ beforeEach(async () => {
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
     categoryCalibration: {},
+    stale: false,
   });
   __setPersistenceForTests({ load: async () => null, save: async () => {} });
   await useAuthStore.getState().initialize();
@@ -388,5 +389,89 @@ describe('statsStore.tierDrop', () => {
     useStatsStore.setState({ tierDrop: { category: 'health', from: 'sharp', to: 'forecaster' } });
     useStatsStore.getState().clearMilestone();
     expect(useStatsStore.getState().tierDrop).toBeNull();
+  });
+});
+
+// Review round 5: a write rolled back after its recompute had set the
+// numbers here, and reading them again failed too. Until the next read from
+// the database, nothing is claimed from them.
+describe('statsStore when stale', () => {
+  /** Twenty scored answers, the rating unlocked and stored. */
+  async function unlockedAndStored(): Promise<void> {
+    for (let i = 0; i < 20; i += 1) {
+      await insertPrediction(p({ id: `s${i}`, confidence: 70 }));
+      await resolvePrediction(`s${i}`, i % 10 < 7 ? 'resolved_yes' : 'resolved_no');
+    }
+    await useStatsStore.getState().recomputeForUser(USER);
+    useStatsStore.getState().clearMilestone();
+    expect(useStatsStore.getState().userStat?.rating_is_provisional).toBe(false);
+  }
+
+  const provisional = {
+    user_id: USER,
+    calibration_rating: 90,
+    total_predictions: 19,
+    total_resolved: 19,
+    current_streak: 0,
+    rating_is_provisional: true,
+  };
+
+  it('never claims a moment from numbers that may be wrong: "before" comes from the database', async () => {
+    await unlockedAndStored();
+    // Memory says provisional, but the database stored the unlock already.
+    useStatsStore.setState({ userStat: provisional });
+    useStatsStore.getState().markStale();
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().milestone).toBeNull();
+    expect(useStatsStore.getState().stale).toBe(false);
+
+    // Without the mark, the same memory would claim the unlock again.
+    useStatsStore.setState({ userStat: provisional });
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().milestone).toMatchObject({ kind: 'rating_unlocked' });
+  });
+
+  it('still earns the moment the database says was crossed', async () => {
+    for (let i = 0; i < 19; i += 1) {
+      await insertPrediction(p({ id: `s${i}`, confidence: 70 }));
+      await resolvePrediction(`s${i}`, i % 10 < 7 ? 'resolved_yes' : 'resolved_no');
+    }
+    await useStatsStore.getState().recomputeForUser(USER);
+    // Memory ran ahead (an unlock that was rolled back), then went stale.
+    useStatsStore.setState({ userStat: { ...provisional, rating_is_provisional: false } });
+    useStatsStore.getState().markStale();
+    await insertPrediction(p({ id: 's19', confidence: 70 }));
+    await resolvePrediction('s19', 'resolved_yes');
+    await useStatsStore.getState().recomputeForUser(USER);
+    expect(useStatsStore.getState().milestone).toMatchObject({ kind: 'rating_unlocked' });
+  });
+
+  it('reads the rating before an answer as unknown', async () => {
+    await unlockedAndStored();
+    useStatsStore.getState().noteRatingBefore('x');
+    expect(useStatsStore.getState().takeRatingBefore('x')).toEqual(expect.any(Number));
+    useStatsStore.getState().markStale();
+    useStatsStore.getState().noteRatingBefore('x');
+    expect(useStatsStore.getState().takeRatingBefore('x')).toBeNull();
+  });
+
+  it('puts back the numbers it is given, drops any moment, and a load clears it', async () => {
+    await unlockedAndStored();
+    const held = useStatsStore.getState().heldStats();
+    useStatsStore.setState({
+      userStat: provisional,
+      milestone: { kind: 'rating_unlocked', rating: 80 },
+      tierDrop: { category: 'work', from: 'forecaster', to: 'tracker' },
+    });
+    useStatsStore.getState().markStale(held);
+    expect(useStatsStore.getState()).toMatchObject({
+      stale: true,
+      milestone: null,
+      tierDrop: null,
+      userStat: held.userStat,
+      calibration: held.calibration,
+    });
+    await useStatsStore.getState().loadForUser(USER);
+    expect(useStatsStore.getState().stale).toBe(false);
   });
 });

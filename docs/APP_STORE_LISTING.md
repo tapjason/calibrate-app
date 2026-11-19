@@ -211,10 +211,12 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > To review Fairly Sure Plus: You → Fairly Sure Plus → purchase any plan with
 > your sandbox account. The Coach requires signing in because it runs on our
 > server. Please sign in with this demo account: You → Sign in, enter the email
-> and password under Sign in, [DEMO ACCOUNT: email / password, pre-seeded with
-> 153 resolved predictions and with Plus]. Please don't create a new account by
-> email: confirmation emails aren't being sent yet, so a new email account
-> can't be confirmed. Sign in with Apple and Continue with Google also work.
+> and password, [DEMO ACCOUNT: email / password, pre-seeded with 153 resolved
+> predictions and with Plus]. The app doesn't offer creating an account by email
+> yet (confirmation emails aren't being sent), so the email form signs in to
+> existing accounts only. Sign in with Apple and Continue with Google also work.
+> Signing out removes the account's predictions from the phone; signing back in
+> brings them back.
 > The Coach is off by default; enable it in You → Coach (AI), then Insights →
 > Get feedback. Coach feedback needs predictions resolved in the past, which the
 > demo account has.
@@ -236,6 +238,12 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > After the first screen appears, the app asks Apple's Declared Age Range API
 > for an age band, once per launch until one is shared; after a decline it asks
 > again at the next launch. Declining changes nothing.
+>
+> Usage counts: before any is sent from a phone without an account, the Warm-up's
+> first screen says "Fairly Sure sends a few usage counts with no account or
+> device id. You can turn this off here or in You." with a switch (also in You →
+> Usage stats). Without an account they carry no account, device or install id;
+> the sign-in screen says what goes with an account.
 
 **Before pasting the Google sentence** (2026-11-18): "our database removes the name and
 picture Google sends as they arrive" is true only once the owner has turned off Supabase's
@@ -244,7 +252,11 @@ purged `auth.audit_log_entries`; until then each sign-in keeps the Google name t
 (`docs/APP_PRIVACY.md`, the Name row). If those steps aren't done, end the sentence at "(no
 Google SDK is in the app)." The age-range lines follow `src/age/ageRange.ts` (one ask per
 process, nothing stored on a decline); whether iOS shows its sheet again after a decline
-is iOS's decision, so say "asks", not "shows".
+is iOS's decision, so say "asks", not "shows". The usage-count lines (2026-11-19) quote
+`WARMUP_USAGE_NOTE` (`src/components/warmup/UsageStatsNotice.tsx`) and hold only for a
+build that carries round 5 with the saved "notice shown" flag (the privacy policy's header,
+step 8); check the quote against that build. The sign-in and sign-out lines hold from the
+same build (`EMAIL_SIGN_UP_ENABLED = false`, D69 (a) and (c)).
 >
 > Optional app lock: You → Lock with Face ID (off by default; named Lock with
 > Touch ID or Lock with iPhone passcode on other iPhones). It uses

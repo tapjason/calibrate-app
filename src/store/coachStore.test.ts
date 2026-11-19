@@ -86,6 +86,7 @@ beforeEach(() => {
     lastAnsweredAt: null,
     lastRequestFailed: false,
     lastFailure: null,
+    lastDroppedAll: false,
   });
 });
 
@@ -173,6 +174,125 @@ describe('coachStore — answers', () => {
     await useCoachStore.getState().requestInsights(request(), { client });
 
     expect(useCoachStore.getState().insights).toEqual([]);
+  });
+});
+
+// Item 12 (2026-11-19): an answer whose insights were all dropped by the
+// validators is kept apart from one with none, so the panel can say nothing
+// could be backed by the numbers instead of telling someone with 40 answers
+// there's nothing worth flagging yet.
+describe('coachStore — an answer that lost every insight', () => {
+  /** An insight whose evidence matches nothing in the context: dropped here. */
+  const UNGROUNDED = { ...INSIGHT, evidence: 999 };
+
+  it('remembers an answer whose insights this app dropped', async () => {
+    const { client } = responds({ insights: [UNGROUNDED], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    expect(useCoachStore.getState()).toMatchObject({
+      insights: [],
+      lastDroppedAll: true,
+      lastRequestFailed: false,
+      loading: false,
+    });
+    expect(useCoachStore.getState().lastAnsweredAt).not.toBeNull();
+  });
+
+  it('remembers an answer whose insights the function dropped', async () => {
+    const { client } = responds({ insights: [], safe: true, dropped: 2 });
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    expect(useCoachStore.getState()).toMatchObject({ insights: [], lastDroppedAll: true });
+  });
+
+  it('is false on an answer that kept an insight', async () => {
+    useCoachStore.setState({ lastDroppedAll: true });
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    expect(useCoachStore.getState().insights).toHaveLength(1);
+    expect(useCoachStore.getState().lastDroppedAll).toBe(false);
+  });
+
+  it('is false on an answer with nothing to say', async () => {
+    useCoachStore.setState({ lastDroppedAll: true });
+    const { client } = responds({ insights: [], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    expect(useCoachStore.getState()).toMatchObject({ insights: [], lastDroppedAll: false });
+  });
+
+  it('is false on the crisis path', async () => {
+    const dropped = responds({ insights: [UNGROUNDED], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client: dropped.client });
+    expect(useCoachStore.getState().lastDroppedAll).toBe(true);
+
+    const { client } = responds({ insights: [UNGROUNDED], safe: true });
+    await useCoachStore.getState().requestInsights(request(), {
+      client,
+      freetext: ['I want to die'],
+    });
+
+    expect(useCoachStore.getState()).toMatchObject({
+      crisisTopic: 'self_harm',
+      lastDroppedAll: false,
+    });
+  });
+
+  // A failure keeps what was on screen (§5.8), and the words that went with it.
+  it.each([
+    [
+      'an error response',
+      () => makeClient(async () => ({ data: null, error: { message: 'rate limited' } })),
+    ],
+    [
+      'a thrown request',
+      () =>
+        makeClient(async () => {
+          throw new Error('network down');
+        }),
+    ],
+  ])('is left as it was after %s', async (_name, failing) => {
+    const dropped = responds({ insights: [UNGROUNDED], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client: dropped.client });
+    expect(useCoachStore.getState().lastDroppedAll).toBe(true);
+
+    await useCoachStore.getState().requestInsights(request(), { client: failing().client });
+
+    expect(useCoachStore.getState()).toMatchObject({
+      lastRequestFailed: true,
+      lastDroppedAll: true,
+    });
+  });
+
+  it('is left false after a failure when it was false', async () => {
+    const { client } = makeClient(async () => ({ data: null, error: { message: 'rate limited' } }));
+    await useCoachStore.getState().requestInsights(request(), { client });
+
+    expect(useCoachStore.getState()).toMatchObject({
+      lastRequestFailed: true,
+      lastDroppedAll: false,
+    });
+  });
+
+  it('is cleared by reset', async () => {
+    const { client } = responds({ insights: [UNGROUNDED], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+    expect(useCoachStore.getState().lastDroppedAll).toBe(true);
+
+    useCoachStore.getState().reset();
+
+    expect(useCoachStore.getState().lastDroppedAll).toBe(false);
+  });
+
+  it('is cleared by a request with the Coach off', async () => {
+    const { client } = responds({ insights: [UNGROUNDED], safe: true });
+    await useCoachStore.getState().requestInsights(request(), { client });
+    expect(useCoachStore.getState().lastDroppedAll).toBe(true);
+
+    await useCoachStore.getState().requestInsights(request({ enabled: false }), { client });
+
+    expect(useCoachStore.getState().lastDroppedAll).toBe(false);
   });
 });
 
@@ -420,6 +540,7 @@ describe('coachStore — a request that is overtaken while it runs', () => {
       lastAnsweredAt: null,
       lastRequestFailed: false,
       lastFailure: null,
+      lastDroppedAll: false,
     });
     // Nor is it counted, under whoever is signed in now.
     expect(mockTrack).not.toHaveBeenCalled();
@@ -509,6 +630,51 @@ describe('coachStore — a request that is overtaken while it runs', () => {
     expect(useCoachStore.getState().lastRequestFailed).toBe(false);
     expect(mockTrack).toHaveBeenCalledTimes(1);
     expect(mockTrack).toHaveBeenCalledWith('coach_requested', { insight_count: 0 });
+  });
+
+  // Item 12: whether every insight was dropped is part of the answer, so an
+  // overtaken request writes it no more than it writes its cards.
+  it("writes no all-dropped mark of the previous account's answer after a reset", async () => {
+    const held = heldClient();
+    const running = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+
+    useCoachStore.getState().reset();
+    held.answer(0, { data: { insights: [], safe: true, dropped: 2 }, error: null });
+    await running;
+
+    expect(useCoachStore.getState()).toMatchObject({ lastDroppedAll: false, lastAnsweredAt: null });
+  });
+
+  it("keeps a newer answer's all-dropped mark when an older clean answer lands after it", async () => {
+    const held = heldClient();
+    const older = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+    const newer = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+
+    held.answer(1, { data: { insights: [], safe: true, dropped: 2 }, error: null });
+    await newer;
+    held.answer(0, { data: { insights: [INSIGHT], safe: true }, error: null });
+    await older;
+
+    expect(useCoachStore.getState()).toMatchObject({ insights: [], lastDroppedAll: true });
+  });
+
+  it("keeps a newer clean answer when an older all-dropped one lands after it", async () => {
+    const held = heldClient();
+    const older = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+    const newer = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+
+    held.answer(1, { data: { insights: [INSIGHT], safe: true }, error: null });
+    await newer;
+    held.answer(0, { data: { insights: [], safe: true, dropped: 2 }, error: null });
+    await older;
+
+    expect(useCoachStore.getState().insights).toHaveLength(1);
+    expect(useCoachStore.getState().lastDroppedAll).toBe(false);
   });
 
   it('still lands a request made after a reset', async () => {

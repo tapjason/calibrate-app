@@ -113,7 +113,10 @@ npx supabase functions deploy coach            # secrets take effect on deploy
 ### A5. Password requirements on the server (step 190, 2026-11-18)
 
 Create account asks for 8 or more characters with an uppercase letter, a lowercase letter
-and a number. Until the server has the same rule, only the app enforces it.
+and a number. Until the server has the same rule, only the app enforces it. (From round 5's
+build Create account is hidden until a custom mail sender works, D69 (c),
+`EMAIL_SIGN_UP_ENABLED`; the setting still matters for when it returns, and for any
+sign-up made outside the app.)
 
 - [ ] **Supabase → Authentication → Sign In / Providers → Email:** minimum password length
       **8**, password requirements **Lowercase, uppercase letters and digits**. Save. Not
@@ -438,11 +441,14 @@ Tick each:
 - [ ] **The ✨ Refine button does NOT appear**, with any title text. Refine is
       cut from this release (`REFINE_ENABLED = false`), and the AI Refine row
       is gone from You too. If either shows up, the flag regressed.
-- [ ] **Account.** You shows "Not signed in". Sign in → create an
-      account by email (see the note above about confirmation). Back in
-      You it reads "Signed in as …", and the predictions you logged as
-      a guest are still there. Sign out: the lists go empty. Sign back in:
-      they return.
+- [ ] **Account.** You shows "Not signed in". Sign in with Apple, Google or
+      an existing email account (from round 5's build there is no Create
+      account, D69 (c): the email form shows "New here? Use Apple or Google
+      for now."). Back in You it reads "Signed in as …", and the predictions
+      you logged as a guest are still there. Sign out: the lists go empty
+      (from round 5's build the account's predictions leave the phone; with
+      Airplane Mode on after a change, You first asks "Sign out anyway?" with
+      the count). Sign back in: they return from the server.
 - [ ] **Erase as a guest.** Signed out: You → "Erase your data on this
       phone" → Erase everything → the alert's Erase (from build 3). Today is empty afterwards, and the next
       cold launch opens the Warmup. (Verified on the web build 2026-09-25.)
@@ -1012,7 +1018,10 @@ Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
       "1 month free" anywhere, and Apple's sheet agrees. A fresh tester still sees the trial.
 - [ ] **Late changes:** move a date the day it was logged: no warning, nothing counted. On the eve,
       change a prediction's words: Edit says it's counted; Insights → More about your record says
-      "…moved later, or its words changed, within a day of its due day".
+      "…moved later, its words changed, or its category changed, within a day of its due day".
+      From round 5's build (D69 (e)): on the eve, change an open prediction's category: a note
+      under the chips says "It's due tomorrow, so changing its category is counted on Insights…"
+      before Save, and the count goes up once.
 - [ ] **Insights fine print:** "More about your record" opens the Can't tell line and any counts;
       the Brier line appears there only from 50 scored answers.
 - [ ] **Recaps:** answer the 20th in a category: the week's recap leads "New this week: … in …"

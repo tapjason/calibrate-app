@@ -88,23 +88,27 @@ type CoachContext = {
 }
 ```
 
-**The patterns, as built** (`src/ai/coachPatterns.ts`, `src/ai/coachContext.ts`). Four
+**The patterns, as built** (`src/ai/coachPatterns.ts`, `src/ai/coachContext.ts`). Five
 kinds, and the server accepts no other (`parseContext` in
 `supabase/functions/coach/contract.ts`; until 2026-11-18 any `^[a-z0-9_]{1,40}$` key got
-through, a channel for words of a caller's own):
+through, a channel for words of a caller's own). At most 13 patterns (`MAX_PATTERNS`: the
+weekday's three, and a drift and its half count for each built-in).
 
 | Kind | Value | Sent when | Citable |
 |---|---|---|---|
-| `weakest_day_of_week` | the weekday whose answers calibrate worst, 0 = Sunday … 6 = Saturday | `total_resolved` ≥ `MIN_N_OVERALL` (20) and that day has `WEEKDAY_MIN_N` (10, the app's `MIN_N_BAND`) scored answers | never: a day, not a figure; the model names it in words |
+| `weakest_day_of_week` | the weekday whose answers calibrate worst, 0 = Sunday … 6 = Saturday | `total_resolved` ≥ `MIN_N_OVERALL` (20) and that day has `WEEKDAY_MIN_N` (20, `MIN_N_CATEGORY`) scored answers | never: a day, not a figure; the model names it in words |
 | `weakest_day_score` | that day's 0–100 score | with the day | only past both gates |
 | `weakest_day_answers` | scored answers on that day (added 2026-11-18) | with the day | never: it is there so both validators can check the day's floor |
-| `drift_<built-in>` | the category's newer half's score minus its older half's | the category has `MIN_N_CATEGORY` (20) scored answers | only past that gate |
+| `drift_<built-in>` | the category's newer half's score minus its older half's | the category has `MIN_N_CATEGORY` (20) scored answers and each half it compares has `DRIFT_HALF_MIN_N` (20) | only past both gates |
+| `drift_half_answers_<built-in>` | scored answers in the smaller half that drift compares (the older half: `floor(n / 2)` of the category's answers with a `resolved_at`, `categoryDrift`'s split; added 2026-11-19) | with the drift | never: it is there so both validators can check the halves' floor |
 
-Only patterns that could ever be cited are sent (security review, 2026-11-18): before it
-the weekday went from 5 answers on a day with no overall floor, and a drift from 4. A
-build from before 2026-11-18 sends no `weakest_day_answers`; the function still accepts
-its payload, and never lets its weekday score be cited, since the day's floor can't be
-checked.
+Only patterns that could ever be cited are sent, and **no figure the Coach can cite rests on
+fewer than 20 answers** (main session's decision, 2026-11-19, D69's agent calls): until
+2026-11-18 the weekday went from 5 answers on a day with no overall floor, then from 10;
+a drift went from 4 answers in all, then from 20 in all (so halves of 10). A build from before
+2026-11-18 sends no `weakest_day_answers`, and one from before 2026-11-19 no
+`drift_half_answers_`; the function still accepts their payloads, and never lets the
+weekday score or the drift they carry be cited, since the floor can't be checked.
 
 **Freetext rule:** prediction titles and reflections are excluded by default. If a
 future feature needs them, they are opt-in, minimized, and pass through the safety
@@ -125,11 +129,46 @@ count in `overall` and the weekday pattern, which name no category.
   insight must include an `evidence` field naming the number it rests on.
 - **Validator rejects** any insight whose `evidence` doesn't match a value in the input
   (numeric tolerance check). Rejected insights are dropped, not shown. As built
-  (2026-11-18), every number written in the message or suggestion is checked too, and
-  each must be a figure the app would itself show as a number: the overall rating only
-  from `MIN_N_OVERALL`, a category's figures only from `MIN_N_CATEGORY` in it, the weekday
-  score only past both of its gates, the weekday index never; a lean is named only for a
-  category whose `direction` says exactly that (contract.ts's header lists every rule).
+  (2026-11-18, tightened 2026-11-19), both validators hold the message and suggestion to
+  these rules too; contract.ts's header lists them, and an insight the validator is
+  unsure about is dropped (§5.8):
+  - **Which numbers.** Every number written, as well as the `evidence`, must be a figure
+    the app would itself show as a number: the overall rating only from `MIN_N_OVERALL`;
+    a category's score, stated confidence and hit rate only from `MIN_N_CATEGORY` in it;
+    its drift only with `DRIFT_HALF_MIN_N` (20) in each half; the weekday score only past
+    the overall gate and `WEEKDAY_MIN_N` (20) answers on that day; the weekday index
+    never. A number that also matches a figure still under its gate is dropped, since it
+    may be that figure. Encouragement may cite counts only.
+  - **What kind of number** (2026-11-19). The words beside a number say what it is:
+    "score" or "rating" for a 0–100 score, "points" for a drift, "answers" for a count,
+    "said" or "stated" for the stated confidence, "happened" or "came true" for the hit
+    rate. A count is never passed as a score, nor a hit rate as what was said. Whose
+    number it is comes from the category named in its clause, else its sentence, else the
+    insight's label; overall figures only where no category is named or beside a word
+    that says overall. Ambiguous: dropped.
+  - **Leans.** Over or under is named only about categories whose `direction` says
+    exactly that, past `MIN_N_CATEGORY`, never for the person overall. A comparison with
+    what was said, expected or thought ("less often than you said") only in an
+    overconfidence or underconfidence card the category's direction backs. "Well
+    calibrated" (or accurate, about right, spot on, in line with what happened) only for a
+    `calibrated` category whose stated confidence and hit rate, each rounded to a whole
+    percent, are less than 5 points apart (`CLOSE_TO_SAID_POINTS`, the chart's rule, D57);
+    a `calibrated` category further apart is "no clear lean".
+  - **No badge words.** The context carries no badge, so any tier named is a guess:
+    Getting started, Guesser, Tracker, Forecaster, Sharp and Oracle are dropped.
+  - **No numbers written as words** ("two", "half", "twice", "dozens"…), which can't be
+    checked against a figure; "one" is let through, being mostly a pronoun, and so are
+    idioms that claim no number ("the older half", "think twice", "double-check", "zero in
+    on").
+  - **Disclaimers.** §5.4's note ("Not a substitute for professional advice.", "Not
+    financial advice.") is taken out before the domain-advice check, so the note itself
+    passes and nothing else that names a domain does.
+  - **Characters.** Text is NFKC-normalised first, so look-alike and compatibility
+    characters (fullwidth digits, mathematical alphabets, ligatures) are checked as the
+    plain characters they render as; on a runtime without a working NFKC only printable
+    ASCII and line breaks pass, which is stricter. No links, addresses, phone numbers,
+    markup, invisible, other-script or emoji characters, and at most one line break in a
+    field.
 - Low temperature. System prompt requires "if the data is insufficient, say so" rather
   than filling gaps.
 - **Minimum-N gating:** the Coach does not opine on any category with fewer than 20 (`MIN_N_CATEGORY`, D46)
@@ -234,8 +273,25 @@ type CoachOutput = {
     suggestion?: string;  // optional, calibration-focused only
   }>;                     // 0–3 items; 0 is valid (e.g., insufficient data)
   safe: boolean;          // false → suppress and show support surface instead
+  dropped?: number;       // added 2026-11-19: how many insights the validator dropped,
+                          // present only when that is more than none
 }
 ```
+
+**`dropped` (2026-11-19).** The function's response carries it when its validator dropped
+any of the model's insights (`validateOutput`), and answers `{ insights: [], safe: true,
+dropped: 1 }` to a reply that isn't JSON (`index.ts`). It changes nothing about what is
+shown; it lets the app tell "the Coach had nothing to say" from "the Coach said things the
+numbers couldn't back". The app's `CoachOutput` type has no such field: `src/ai/coach.ts`
+(`allDropped`) reads it off the raw response and sets `droppedAll` on its result when an
+answer had insights and lost every one, to the server's validator (a positive `dropped`
+and none passed) or to the app's own (some passed there, none here). `coachStore` keeps it
+as `lastDroppedAll`. The panel (`CoachPanel`) then shows "Coach didn't find anything it could
+back with your numbers this time. Try again later." when nothing is left to show and the
+person has at least `MIN_N_OVERALL` scored answers; below that, or when the Coach wrote
+none, the line stays "Nothing worth flagging yet — keep logging and answering." (telling
+someone with 150 answers to keep logging was the Coach re-review's finding). A function
+deployed before this sends no `dropped`, and builds before it ignore the field.
 
 **Client annotation (2026-10-03).** After an insight passes, the client validator
 (`src/ai/coachValidate.ts`) adds `evidence_source`: which `CoachContext` figure the
@@ -247,7 +303,8 @@ with the receipt ("55% · came true in finance", DESIGN_SYSTEM §7.13). The Edge
 Function doesn't need it, so the annotation is client-only. The rules that accept or drop
 an insight are not: they are written in both validators and changed in both
 (`supabase/functions/coach/contract.ts`, `src/ai/coachValidate.ts`; the security review
-of 2026-11-18 changed both), and `src/ai/coachLockstep.test.ts` keeps them the same.
+of 2026-11-18 and its round 5 of 2026-11-19 changed both), and
+`src/ai/coachLockstep.test.ts` keeps them the same.
 
 ---
 
@@ -266,11 +323,30 @@ of 2026-11-18 changed both), and `src/ai/coachLockstep.test.ts` keeps them the s
 
 As built, the prompt is `SYSTEM_PROMPT` in `supabase/functions/coach/contract.ts`
 (`index.ts` imports it): this sketch with a glossary of every field the context carries,
-the thresholds written in (`MIN_N_OVERALL` and `MIN_N_CATEGORY`, both 20, and the
-weekday's `WEEKDAY_MIN_N`, 10), when a lean may be named, the rules about numbers (copied
-as digits, never computed or spelled out), and the JSON shape spelled out. The user turn is
-`userMessage`: the parsed context as JSON inside `<user_data>`. The call is `gpt-4o-mini`,
-temperature 0.2, `max_tokens` 400, `response_format: json_object`.
+the thresholds written in (`MIN_N_OVERALL` and `MIN_N_CATEGORY`, both 20, and
+`WEEKDAY_MIN_N` and `DRIFT_HALF_MIN_N`, both 20 since 2026-11-19), when a lean may be
+named, the rules about numbers (copied as digits, never computed or spelled out), and the
+JSON shape spelled out. The lines added on 2026-11-19, so the model writes what the
+validators (§5.1) let through:
+
+- the badge words by name: "never use the words Getting started, Tracker, Forecaster,
+  Sharp or Oracle";
+- `drift_half_answers_<category>` in the glossary ("for the threshold only, never cite
+  it"), and a drift's own threshold: at least `DRIFT_HALF_MIN_N` in it;
+- a weekday card cites `weakest_day_score`, never the day's index or its answer count,
+  and names the day in words ("your Monday answers");
+- "well calibrated" (or accurate, about right, spot on, in line with what happened) only
+  for a `calibrated` direction with stated and happened less than 5 points apart, else
+  "no clear lean", and never that gap written out;
+- a comparison with what was said, expected or thought only in an overconfidence or
+  underconfidence card;
+- the word for what each number is right beside it ("score" or "rating", "points",
+  "answers", "said" or "stated", "happened" or "came true"), and never a count called a
+  score;
+- one category per sentence, with only that category's numbers in it.
+
+The user turn is `userMessage`: the parsed context as JSON inside `<user_data>`. The call
+is `gpt-4o-mini`, temperature 0.2, `max_tokens` 400, `response_format: json_object`.
 
 ---
 

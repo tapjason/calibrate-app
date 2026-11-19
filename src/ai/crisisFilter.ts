@@ -20,7 +20,8 @@
 // patterns below are phrase-shaped rather than keyword-shaped: "kill" alone
 // would fire on "I'll kill this presentation", which is both useless and
 // alarming. A few idioms that matched are carved out (security review,
-// 2026-11-18), each only where the words can't be the distress reading.
+// 2026-11-18; narrowed 2026-11-19), each only where the words can't be the
+// distress reading.
 //
 // Every text is read as typed and again with the iPhone's curly apostrophes
 // and dashes made plain, whitespace collapsed and NFKC applied, and a match in
@@ -40,23 +41,30 @@ export interface CrisisScan {
 
 const SAFE: CrisisScan = { safe: true, topic: null };
 
-// The carve-outs (security review, 2026-11-18). Each is a negative lookahead
-// on one phrase, never a change to the rest of its pattern, and each keeps the
+// The carve-outs (security review, 2026-11-18; narrowed 2026-11-19, Coach
+// re-review F, main session's decision). Each is a negative lookahead on one
+// phrase, never a change to the rest of its pattern, and each keeps the
 // distress readings of the same words: "beats me at home", "cutting myself
 // again", "breaking down in tears", "not eating for days" all still match.
+// Only phrasings that can't be the distress reading are carved out: a missed
+// disclosure costs more than an unneeded support card. "beats me by 9",
+// "beats me at game night", "beats me to it" and fasting past 16 hours match
+// again.
 //
-//   "beats me" at a game ("Sam beats me at chess"), "to it", "by 3".
+//   "beats me" at or in a named game ("Sam beats me at chess"). A short,
+//   explicit list: never "game", "games" or "sports", which can be a place
+//   or a time ("he beats me at game night").
 const BEATS_ME =
-  'beats me(?!\\s+(?:at|in)\\s+(?:chess|checkers|tennis|squash|badminton|golf|pool|darts|cards|poker|scrabble|wordle|trivia|ping[\\s-]?pong|pickleball|basketball|soccer|football|bowling|racing|races?|running|video games?|board games?|games?|sports?)\\b|\\s+to\\s+it\\b|\\s+by\\s+\\d)';
+  'beats me(?!\\s+(?:at|in)\\s+(?:chess|checkers|tennis|padel|squash|badminton|golf|darts|cards|poker|scrabble|wordle|ping[\\s-]?pong|pickleball|mario\\s+kart|catan)\\b)';
 //   "cut myself (some) slack".
 const CUT_MYSELF = 'cut(ting)? myself(?!\\s+(?:some\\s+)?slack\\b)';
 //   "breaking down" with a thing as its object ("breaking down the moving
-//   boxes", "breaking down the problem"). Intransitive uses all still match.
+//   boxes", "breaking down a big project"). Intransitive uses all still match.
 const BREAKING_DOWN =
-  'breaking down(?!\\s+(?:(?:the|these|those|my|our|all|some|old|moving|cardboard|big|large|empty)\\s+)*(?:boxes|box|cardboard|tasks?|projects?|problems?|steps|goals?|data|numbers|costs?|budget|barriers|walls?|recipes?)\\b)';
-//   "not eating for" a fasting window of up to 20 hours ("for 16 hours").
-//   Days, weeks, "a while", or 21 hours and more still match.
-const NOT_EATING_FOR = 'not eat(ing)? (?:for(?!\\s+(?:[1-9]|1\\d|20)\\s*(?:hours?|hrs?|h)\\b)|at all)';
+  'breaking down(?!\\s+(?:(?:the|a|an|this|that|these|those|my|our|all|some|old|moving|cardboard|big|large|empty)\\s+)*(?:boxes|box|cardboard|tasks?|projects?|problems?|steps|goals?|data|numbers|costs?|budget|barriers|walls?|recipes?)\\b)';
+//   "not eating for" a fasting window of 1 to 16 hours ("for 16 hours").
+//   Days, weeks, "a while", or 17 hours and more still match.
+const NOT_EATING_FOR = 'not eat(ing)? (?:for(?!\\s+(?:[1-9]|1[0-6])\\s*(?:hours?|hrs?|h)\\b)|at all)';
 
 // Ordered: the more specific topics are tested first so the support surface
 // points at the most appropriate resource rather than the generic one.

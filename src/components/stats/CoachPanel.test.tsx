@@ -65,6 +65,7 @@ function seed({
     lastAnsweredAt: null,
     lastRequestFailed: false,
     lastFailure: null,
+    lastDroppedAll: false,
   });
 }
 
@@ -230,6 +231,55 @@ describe('CoachPanel — rendering insights', () => {
     render(<CoachPanel />);
 
     expect(screen.getByTestId('coach-nothing-to-say')).toBeTruthy();
+  });
+
+  // Item 12 (2026-11-19): past the overall gate, an answer whose insights
+  // were all dropped told someone with 40 answers to keep logging. The store
+  // keeps whether they were in `lastDroppedAll` (CoachResult.droppedAll),
+  // set here as an answer leaves it.
+  describe('when every insight the Coach wrote was dropped', () => {
+    const NOTHING_BACKED =
+      "Coach didn't find anything it could back with your numbers this time. Try again later.";
+    function answeredWith(lastDroppedAll: boolean, totalResolved = USER_STAT.total_resolved) {
+      seed();
+      useStatsStore.setState({ userStat: { ...USER_STAT, total_resolved: totalResolved } });
+      const state = { ...useCoachStore.getState(), lastAnsweredAt: '2026-08-29T12:00:00.000Z', lastDroppedAll };
+      useCoachStore.setState(state);
+    }
+    afterEach(() => {
+      // Back to the store's default for the tests after these.
+      useCoachStore.setState({ lastDroppedAll: false });
+    });
+
+    it('says nothing could be backed, past the overall gate', () => {
+      answeredWith(true);
+      render(<CoachPanel />);
+      expect(screen.getByTestId('coach-nothing-backed').props.children).toBe(NOTHING_BACKED);
+      expect(screen.queryByTestId('coach-nothing-to-say')).toBeNull();
+    });
+
+    it('keeps "keep logging" below the overall gate', () => {
+      answeredWith(true, 12);
+      render(<CoachPanel />);
+      expect(screen.getByTestId('coach-nothing-to-say')).toBeTruthy();
+      expect(screen.queryByTestId('coach-nothing-backed')).toBeNull();
+    });
+
+    it('keeps "keep logging" when the Coach wrote none', () => {
+      answeredWith(false);
+      render(<CoachPanel />);
+      expect(screen.getByTestId('coach-nothing-to-say')).toBeTruthy();
+      expect(screen.queryByTestId('coach-nothing-backed')).toBeNull();
+    });
+
+    it('shows neither over a failure', () => {
+      answeredWith(true);
+      useCoachStore.setState({ lastRequestFailed: true });
+      render(<CoachPanel />);
+      expect(screen.queryByTestId('coach-nothing-backed')).toBeNull();
+      expect(screen.queryByTestId('coach-nothing-to-say')).toBeNull();
+      expect(screen.getByTestId('coach-unavailable')).toBeTruthy();
+    });
   });
 
   it('distinguishes an outage from an empty answer', () => {

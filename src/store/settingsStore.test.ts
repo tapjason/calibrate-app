@@ -1,6 +1,8 @@
 // Tests for the L4 settings store. Persistence is swapped for an in-memory
 // fake via __setPersistenceForTests so nothing touches native AsyncStorage.
 
+import { AppState } from 'react-native';
+
 import {
   __setPersistenceForTests,
   useSettingsStore,
@@ -166,6 +168,7 @@ describe('settingsStore: setters persist', () => {
       practiceReminder: null,
       practiceReminderOfferDismissedAt: null,
       streakMomentDay: null,
+      usageNoticeShownAt: null,
     });
   });
 
@@ -202,6 +205,7 @@ describe('settingsStore: setters persist', () => {
       practiceReminder: null,
       practiceReminderOfferDismissedAt: null,
       streakMomentDay: null,
+      usageNoticeShownAt: null,
     });
   });
 
@@ -601,9 +605,15 @@ describe('settingsStore: privacy choices after a record that cannot be read', ()
     const { persistence, saved } = makeFakePersistence(null, { loadThrows: true });
     __setPersistenceForTests(persistence);
     await useSettingsStore.getState().hydrate();
+    // Round 5 (2026-11-19): the share card's shape isn't a change made in
+    // You, so it is held in memory and stores nothing while the record
+    // can't be read.
     await useSettingsStore.getState().setCardFormat('story');
+    expect(saved).toHaveLength(0);
+    // A change in You stores the whole snapshot, the private sides with it.
+    await useSettingsStore.getState().setDigestEnabled(false);
     expect(saved).toHaveLength(1);
-    expect(saved[0]).toMatchObject({ ...PRIVATE, cardFormat: 'story' });
+    expect(saved[0]).toMatchObject({ ...PRIVATE, cardFormat: 'story', digestEnabled: false });
   });
 
   it('each switch can then be changed as usual, and is stored', async () => {
@@ -725,5 +735,508 @@ describe('settingsStore: the checkpoint moment', () => {
     await useSettingsStore.getState().hydrate();
     await useSettingsStore.getState().resetToDefaults();
     expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+  });
+});
+
+// D69 (b): when the line about usage counts (the Warm-up's first screen) was
+// first shown. A guest's counts go up only once it has been.
+describe('settingsStore: when the line about usage counts was first shown', () => {
+  const SHOWN = '2026-11-19T09:00:00.000Z';
+
+  it('starts as never shown', () => {
+    __setPersistenceForTests(makeFakePersistence().persistence);
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+  });
+
+  it('is stamped now and saved, once: a later showing keeps the first and writes nothing', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+
+    const before = Date.now();
+    await useSettingsStore.getState().markUsageNoticeShown();
+    const stamp = useSettingsStore.getState().usageNoticeShownAt;
+    expect(stamp).not.toBeNull();
+    expect(Date.parse(stamp!)).toBeGreaterThanOrEqual(before);
+    expect(saved).toHaveLength(1);
+    expect(saved[0].usageNoticeShownAt).toBe(stamp);
+
+    await useSettingsStore.getState().markUsageNoticeShown();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBe(stamp);
+    expect(saved).toHaveLength(1);
+  });
+
+  it('keeps a stamp read from the record: showing it again moves nothing', async () => {
+    const { persistence, saved } = makeFakePersistence({ usageNoticeShownAt: SHOWN });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBe(SHOWN);
+
+    await useSettingsStore.getState().markUsageNoticeShown();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBe(SHOWN);
+    expect(saved).toHaveLength(0);
+  });
+
+  it('survives a restart, and is kept when another setting is written', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().markUsageNoticeShown();
+    const stamp = useSettingsStore.getState().usageNoticeShownAt;
+    await useSettingsStore.getState().setStreakShown(false);
+    expect(saved.at(-1)?.usageNoticeShownAt).toBe(stamp);
+
+    __setPersistenceForTests(makeFakePersistence(saved.at(-1)!).persistence);
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBe(stamp);
+  });
+
+  it.each([
+    ['a number', 7],
+    ['a string that is not a time', 'yes'],
+    ['true', true],
+  ])('reads %s stored as never shown', async (_label, value) => {
+    __setPersistenceForTests(
+      makeFakePersistence({ usageNoticeShownAt: value } as unknown as Partial<StoredSettings>).persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+  });
+
+  // Erase and account deletion call this (authStore), with the Warm-up's own
+  // reset: a fresh start shows the line again before anything goes up.
+  it('is forgotten, and that is saved', async () => {
+    const { persistence, saved } = makeFakePersistence({ usageNoticeShownAt: SHOWN });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+
+    await useSettingsStore.getState().forgetUsageNoticeShown();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+    expect(saved.at(-1)?.usageNoticeShownAt).toBeNull();
+
+    // And the next showing stamps afresh.
+    await useSettingsStore.getState().markUsageNoticeShown();
+    expect(useSettingsStore.getState().usageNoticeShownAt).not.toBeNull();
+    expect(useSettingsStore.getState().usageNoticeShownAt).not.toBe(SHOWN);
+  });
+
+  it('goes back to never shown with the other settings', async () => {
+    __setPersistenceForTests(makeFakePersistence({ usageNoticeShownAt: SHOWN }).persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().resetToDefaults();
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+  });
+});
+
+// Client re-review, round 5 (2026-11-19), LOW-C: after a record that couldn't
+// be read, the next automatic write (a cooldown, a checkpoint's day) stored
+// the defaults over it, turning notifications back on for someone who had
+// turned them off. Until a read succeeds, only a change the person makes in
+// You is stored; the rest is held in memory and applied over the record once
+// it reads, which is tried again at each return to the foreground.
+describe('settingsStore: what is stored while the record cannot be read', () => {
+  type Store = ReturnType<typeof useSettingsStore.getState>;
+  const PRIVATE = { appLock: true, hideTitles: true, reminderWords: false, analyticsEnabled: false };
+
+  /** A record that is there but can't be read until heal(); every save kept. */
+  function flakyRecord(initial: Partial<StoredSettings> | null) {
+    let stored = initial;
+    let readable = false;
+    let loads = 0;
+    const saved: StoredSettings[] = [];
+    const persistence: SettingsPersistence = {
+      async load() {
+        loads += 1;
+        if (!readable) throw new Error('read failed');
+        return stored;
+      },
+      async save(s) {
+        saved.push(s);
+        stored = s;
+      },
+    };
+    return {
+      persistence,
+      saved,
+      heal: () => {
+        readable = true;
+      },
+      loads: () => loads,
+      stored: () => stored,
+    };
+  }
+
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+  /** The foreground listener the store adds, and a way to fire it. */
+  function watchAppState() {
+    const remove = jest.fn();
+    let listener: ((state: string) => void) | null = null;
+    // jest-expo's AppState.addEventListener is already a mock, so the spy is
+    // the same function in every test: cleared here, so counts are per test.
+    const add = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_type, fn) => {
+        listener = fn as (state: string) => void;
+        return { remove } as unknown as ReturnType<typeof AppState.addEventListener>;
+      })
+      .mockClear();
+    const fire = async (state: string) => {
+      listener?.(state);
+      await settle();
+    };
+    return { add, remove, foreground: () => fire('active'), background: () => fire('background') };
+  }
+
+  const store = () => useSettingsStore.getState();
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('an automatic write stores nothing, so a record that only failed to read keeps its choices', async () => {
+    const record = { notificationsEnabled: false, digestEnabled: false, streakShown: false };
+    const rec = flakyRecord(record);
+    __setPersistenceForTests(rec.persistence);
+    watchAppState();
+    await store().hydrate();
+    expect(store().loadFailed).toBe(true);
+
+    await store().markCoverageNudgeShown();
+    await store().setStreakMomentDay('Thu Nov 19 2026');
+
+    expect(rec.saved).toHaveLength(0);
+    expect(rec.stored()).toEqual(record);
+    // Each still applies in memory, this session.
+    expect(store().coverageNudgeLastShownAt).not.toBeNull();
+    expect(store().streakMomentDay).toBe('Thu Nov 19 2026');
+  });
+
+  it.each<[string, (s: Store) => Promise<void>, Partial<StoredSettings>]>([
+    ['markCoverageNudgeShown', (s) => s.markCoverageNudgeShown(), {}],
+    ['markRatingAsked', (s) => s.markRatingAsked(), {}],
+    ['setStreakMomentDay', (s) => s.setStreakMomentDay('Thu Nov 19 2026'), { streakMomentDay: 'Thu Nov 19 2026' }],
+    ['dismissReminderPrompt', (s) => s.dismissReminderPrompt(), { reminderPromptDismissals: 1 }],
+    ['dismissBackupNudge', (s) => s.dismissBackupNudge(), {}],
+    [
+      'dismissWelcomeBack',
+      (s) => s.dismissWelcomeBack('2026-11-01T10:00:00.000Z'),
+      { welcomeBackDismissedFor: '2026-11-01T10:00:00.000Z' },
+    ],
+    ['dismissPracticeReminderOffer', (s) => s.dismissPracticeReminderOffer(), {}],
+    ['setCardThemeId', (s) => s.setCardThemeId('paper'), { cardThemeId: 'paper' }],
+    ['setCardFormat', (s) => s.setCardFormat('story'), { cardFormat: 'story' }],
+    ['setCardHiddenCategories', (s) => s.setCardHiddenCategories(['work']), { cardHiddenCategories: ['work'] }],
+    ['markUsageNoticeShown', (s) => s.markUsageNoticeShown(), {}],
+    ['forgetUsageNoticeShown', (s) => s.forgetUsageNoticeShown(), { usageNoticeShownAt: null }],
+  ])('%s is held in memory and not stored', async (_name, run, inMemory) => {
+    const rec = flakyRecord({ notificationsEnabled: false });
+    __setPersistenceForTests(rec.persistence);
+    watchAppState();
+    await store().hydrate();
+
+    await run(store());
+
+    expect(rec.saved).toHaveLength(0);
+    expect(store()).toMatchObject({ ...PRIVATE, ...inMemory, loadFailed: true });
+    // No second read: only a change in You reads the record again.
+    expect(rec.loads()).toBe(2);
+  });
+
+  it.each<[string, (s: Store) => Promise<void>, Partial<StoredSettings>]>([
+    ['setNotificationsEnabled', (s) => s.setNotificationsEnabled(false), { notificationsEnabled: false }],
+    ['setRemindersEnabled', (s) => s.setRemindersEnabled(false), { remindersEnabled: false }],
+    ['setDigestEnabled', (s) => s.setDigestEnabled(false), { digestEnabled: false }],
+    [
+      'setDueReminderTime',
+      (s) => s.setDueReminderTime({ hour: 20, minute: 30 }),
+      { dueReminderTime: { hour: 20, minute: 30 } },
+    ],
+    ['setDigestDay', (s) => s.setDigestDay(3), { digestDay: 3 }],
+    ['setDigestTime', (s) => s.setDigestTime({ hour: 9, minute: 15 }), { digestTime: { hour: 9, minute: 15 } }],
+    ['setAiRefineEnabled', (s) => s.setAiRefineEnabled(false), { aiRefineEnabled: false }],
+    ['setCoachEnabled', (s) => s.setCoachEnabled(true), { coachEnabled: true }],
+    ['setAnalyticsEnabled', (s) => s.setAnalyticsEnabled(true), { analyticsEnabled: true }],
+    ['setStreakShown', (s) => s.setStreakShown(false), { streakShown: false }],
+    ['setReminderWords', (s) => s.setReminderWords(true), { reminderWords: true }],
+    ['setHideTitles', (s) => s.setHideTitles(false), { hideTitles: false }],
+    ['setAppLock', (s) => s.setAppLock(false), { appLock: false }],
+    [
+      'setPracticeReminder',
+      (s) => s.setPracticeReminder({ hour: 8, minute: 0 }),
+      { practiceReminder: { hour: 8, minute: 0 } },
+    ],
+  ])(
+    '%s, a change in You, is stored with the private sides when the record still cannot be read',
+    async (_name, run, changed) => {
+      const rec = flakyRecord(null);
+      __setPersistenceForTests(rec.persistence);
+      const app = watchAppState();
+      await store().hydrate();
+
+      await run(store());
+
+      // The record was read once more first (two reads at launch, one now).
+      expect(rec.loads()).toBe(3);
+      expect(rec.saved).toHaveLength(1);
+      expect(rec.saved[0]).toMatchObject({ ...PRIVATE, ...changed });
+      // A record now exists that reads: nothing is left to protect.
+      expect(store().loadFailed).toBe(false);
+      expect(app.remove).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('a change in You reads the record again first, and one that reads now is kept, with every held change on top', async () => {
+    const rec = flakyRecord({
+      notificationsEnabled: false,
+      hideTitles: false,
+      analyticsEnabled: true,
+      reminderPromptDismissedAt: '2026-11-01T10:00:00.000Z',
+      reminderPromptDismissals: 2,
+    });
+    __setPersistenceForTests(rec.persistence);
+    const app = watchAppState();
+    await store().hydrate();
+
+    await store().markCoverageNudgeShown();
+    const stamp = store().coverageNudgeLastShownAt;
+    await store().dismissReminderPrompt();
+    expect(store().reminderPromptDismissals).toBe(1); // counted on the defaults, in memory
+    expect(rec.saved).toHaveLength(0);
+
+    rec.heal();
+    await store().setDigestEnabled(false);
+
+    expect(rec.saved).toHaveLength(1);
+    const expected = {
+      notificationsEnabled: false, // the record's, not the default
+      hideTitles: false, // the record's, not the private side
+      analyticsEnabled: true, // the record's
+      appLock: false, // the record has none: the default
+      digestEnabled: false, // the change
+      coverageNudgeLastShownAt: stamp, // held, then applied
+      reminderPromptDismissals: 3, // counted again, on the record's 2
+    };
+    expect(rec.saved[0]).toMatchObject(expected);
+    expect(store()).toMatchObject({ ...expected, loadFailed: false });
+    expect(app.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('the read is tried again at each return to the foreground, and a record that reads is loaded with what was held', async () => {
+    const rec = flakyRecord({ notificationsEnabled: false, appLock: false, hideTitles: false, analyticsEnabled: true });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+    expect(app.add).toHaveBeenCalledTimes(1);
+
+    await store().setCardFormat('story');
+
+    // Still unreadable: nothing changes, nothing is stored.
+    await app.foreground();
+    expect(rec.loads()).toBe(3);
+    expect(store()).toMatchObject({ ...PRIVATE, loadFailed: true });
+    expect(rec.saved).toHaveLength(0);
+
+    rec.heal();
+    // Going to the background reads nothing.
+    await app.background();
+    expect(rec.loads()).toBe(3);
+
+    await app.foreground();
+    const expected = { notificationsEnabled: false, appLock: false, hideTitles: false, analyticsEnabled: true };
+    expect(store()).toMatchObject({ ...expected, cardFormat: 'story', loadFailed: false });
+    // Stored once, with the held change, so it survives a restart.
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0]).toMatchObject({ ...expected, cardFormat: 'story' });
+    expect(app.remove).toHaveBeenCalledTimes(1);
+
+    // From here an automatic change is stored as usual.
+    await store().markRatingAsked();
+    expect(rec.saved).toHaveLength(2);
+  });
+
+  it('a record that reads again with nothing held is loaded and not written again', async () => {
+    const rec = flakyRecord({ notificationsEnabled: false, appLock: false });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    rec.heal();
+    await app.foreground();
+
+    expect(store()).toMatchObject({ notificationsEnabled: false, appLock: false, loadFailed: false });
+    expect(rec.saved).toHaveLength(0);
+  });
+
+  it('a read that then finds no record keeps the private sides', async () => {
+    const rec = flakyRecord(null);
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    rec.heal();
+    await app.foreground();
+
+    expect(store()).toMatchObject({ ...PRIVATE, loadFailed: true });
+    expect(rec.saved).toHaveLength(0);
+    expect(app.remove).not.toHaveBeenCalled();
+  });
+
+  it('a change in You whose write fails leaves the record unreadable, and automatic changes still store nothing', async () => {
+    let saves = 0;
+    __setPersistenceForTests({
+      load: async () => {
+        throw new Error('read failed');
+      },
+      save: async () => {
+        saves += 1;
+        throw new Error('write failed');
+      },
+    });
+    watchAppState();
+    await store().hydrate();
+
+    await store().setDigestEnabled(false);
+    expect(saves).toBe(1);
+    expect(store()).toMatchObject({ digestEnabled: false, loadFailed: true });
+
+    await store().markCoverageNudgeShown();
+    expect(saves).toBe(1);
+  });
+
+  it('a change held while a change in You is being written is stored after it', async () => {
+    const saved: StoredSettings[] = [];
+    let release: () => void = () => {};
+    __setPersistenceForTests({
+      load: async () => {
+        throw new Error('read failed');
+      },
+      save: (s) => {
+        saved.push(s);
+        if (saved.length > 1) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      },
+    });
+    watchAppState();
+    await store().hydrate();
+
+    const inYou = store().setDigestEnabled(false);
+    await settle();
+    expect(saved).toHaveLength(1);
+    // The write is under way; the nudge's cooldown comes in meanwhile.
+    await store().markCoverageNudgeShown();
+    const stamp = store().coverageNudgeLastShownAt;
+    expect(saved[0].coverageNudgeLastShownAt).toBeNull();
+
+    release();
+    await inYou;
+
+    expect(store().loadFailed).toBe(false);
+    expect(saved).toHaveLength(2);
+    expect(saved[1]).toMatchObject({ ...PRIVATE, digestEnabled: false, coverageNudgeLastShownAt: stamp });
+  });
+
+  // D69 (b): the line about usage counts shown while the record can't be read.
+  // The stamp counts at once in memory (the gate reads it there; usage stats
+  // read as off meanwhile), and is replayed over the record, never lost.
+  it('a showing of the usage line is held, read in memory, and stored once the record reads', async () => {
+    const rec = flakyRecord({ notificationsEnabled: false, analyticsEnabled: true });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().markUsageNoticeShown();
+    const stamp = store().usageNoticeShownAt;
+    expect(stamp).not.toBeNull();
+    expect(rec.saved).toHaveLength(0);
+    // A second showing while held adds nothing.
+    await store().markUsageNoticeShown();
+    expect(store().usageNoticeShownAt).toBe(stamp);
+
+    rec.heal();
+    await app.foreground();
+
+    expect(store()).toMatchObject({
+      notificationsEnabled: false,
+      analyticsEnabled: true,
+      usageNoticeShownAt: stamp,
+      loadFailed: false,
+    });
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0]).toMatchObject({ notificationsEnabled: false, usageNoticeShownAt: stamp });
+  });
+
+  it('a held showing of the usage line keeps the earlier one the record holds', async () => {
+    const earlier = '2026-11-01T09:00:00.000Z';
+    const rec = flakyRecord({ usageNoticeShownAt: earlier, cardFormat: 'post' });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().markUsageNoticeShown();
+    expect(store().usageNoticeShownAt).not.toBe(earlier); // memory held only the defaults
+    await store().setCardFormat('story');
+
+    rec.heal();
+    await app.foreground();
+
+    expect(store()).toMatchObject({ usageNoticeShownAt: earlier, cardFormat: 'story', loadFailed: false });
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0]).toMatchObject({ usageNoticeShownAt: earlier, cardFormat: 'story' });
+  });
+
+  it('a showing of the usage line held when a change in You writes a new record is in it', async () => {
+    const rec = flakyRecord(null);
+    watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().markUsageNoticeShown();
+    const stamp = store().usageNoticeShownAt;
+    await store().setDigestEnabled(false);
+
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0]).toMatchObject({ ...PRIVATE, digestEnabled: false, usageNoticeShownAt: stamp });
+  });
+
+  it('forgetting the usage line while held (Erase) is replayed over a record that holds a showing', async () => {
+    const rec = flakyRecord({ usageNoticeShownAt: '2026-11-01T09:00:00.000Z' });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().forgetUsageNoticeShown();
+    expect(rec.saved).toHaveLength(0);
+
+    rec.heal();
+    await app.foreground();
+
+    expect(store()).toMatchObject({ usageNoticeShownAt: null, loadFailed: false });
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0].usageNoticeShownAt).toBeNull();
+  });
+
+  it('watches for the foreground only after a read that failed', async () => {
+    const app = watchAppState();
+    __setPersistenceForTests(makeFakePersistence({ notificationsEnabled: false }).persistence);
+    await store().hydrate();
+    expect(app.add).not.toHaveBeenCalled();
+    expect(store().loadFailed).toBe(false);
+  });
+
+  it('resetToDefaults writes a fresh record, ends the failed state and stops watching', async () => {
+    const rec = flakyRecord({ notificationsEnabled: false });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().resetToDefaults();
+
+    expect(store().loadFailed).toBe(false);
+    expect(app.remove).toHaveBeenCalledTimes(1);
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0]).toMatchObject({ notificationsEnabled: true, appLock: false, analyticsEnabled: true });
   });
 });

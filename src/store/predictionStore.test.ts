@@ -1,3 +1,4 @@
+import { wipeLocalUserData } from '@/db/account';
 import { getDb, setDbForTests } from '@/db/client';
 import {
   getPrediction,
@@ -7,9 +8,17 @@ import {
 } from '@/db/predictions';
 import { getUserStat, listCategoryStats } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
+import { __setTimeZoneForTests } from '@/engine/localTime';
 
 import { useAuthStore } from './authStore';
-import { openRepeatOf, openTwinFor, rewordedLater, usePredictionStore } from './predictionStore';
+import {
+  answerNowIsSameDay,
+  categoryChangeIsCounted,
+  openRepeatOf,
+  openTwinFor,
+  rewordedLater,
+  usePredictionStore,
+} from './predictionStore';
 import { useStatsStore } from './statsStore';
 import { loggedEarlier } from '../../jest/loggedEarlier';
 
@@ -31,6 +40,7 @@ beforeEach(async () => {
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+    stale: false,
   });
   await useAuthStore.getState().initialize();
 });
@@ -795,6 +805,89 @@ describe('predictionStore.streakNow', () => {
         expect(useStatsStore.getState().milestone).toMatchObject({ kind: 'rating_unlocked' });
       });
 
+      // Review round 5: the commit fails AND reading the stats again fails.
+      // Memory held the rolled-back answer's numbers, and the retry, comparing
+      // against them, lost the unlock moment.
+      it('puts the stats back and marks them stale when the reload after a failed commit fails too', async () => {
+        const userId = useAuthStore.getState().userId!;
+        for (let i = 0; i < 19; i += 1) {
+          await insertPrediction({
+            id: `a${i}`,
+            user_id: userId,
+            title: `answered #${i}`,
+            category: 'work',
+            confidence: 70,
+            created_at: daysAgo(3),
+            due_date: daysAgo(1),
+            status: i % 10 < 7 ? 'resolved_yes' : 'resolved_no',
+            resolved_at: daysAgo(1),
+            reflection: null,
+            integrity_bonus: false,
+          });
+        }
+        await insertPrediction({
+          id: 'twentieth',
+          user_id: userId,
+          title: 'the twentieth',
+          category: 'work',
+          confidence: 70,
+          created_at: daysAgo(3),
+          due_date: daysAgo(1),
+          status: 'pending',
+          resolved_at: null,
+          reflection: null,
+          integrity_bonus: false,
+        });
+        await useStatsStore.getState().recomputeForUser(userId);
+        useStatsStore.getState().clearMilestone();
+
+        // The answer's transaction runs its body and fails to commit; the
+        // reload's transaction fails outright.
+        const db = getDb();
+        const realTransaction = db.transaction.bind(db);
+        let calls = 0;
+        db.transaction = async <T,>(fn: () => Promise<T>) => {
+          calls += 1;
+          if (calls === 1) {
+            return realTransaction(async () => {
+              await fn();
+              throw new Error('commit failed');
+            });
+          }
+          if (calls === 2) throw new Error('reload failed');
+          return realTransaction(fn);
+        };
+
+        try {
+          await expect(
+            usePredictionStore.getState().resolve('twentieth', 'resolved_yes'),
+          ).rejects.toThrow('commit failed');
+        } finally {
+          db.transaction = realTransaction;
+        }
+
+        expect(await statusOf('twentieth')).toBe('pending');
+        // Nothing of the rolled-back answer stays on screen or is claimed.
+        expect(useStatsStore.getState()).toMatchObject({
+          stale: true,
+          milestone: null,
+          tierDrop: null,
+          userStat: { total_resolved: 19, rating_is_provisional: true },
+        });
+        expect(warn).toHaveBeenCalledWith(
+          '[predictions] reloading the stats after a failed write failed:',
+          expect.any(Error),
+        );
+
+        // Answered again once the database works: the unlock is this
+        // answer's, read against what the database stored, and the stats are
+        // fresh again.
+        await usePredictionStore.getState().resolve('twentieth', 'resolved_yes');
+        expect(await statusOf('twentieth')).toBe('resolved_yes');
+        expect(useStatsStore.getState().milestone).toMatchObject({ kind: 'rating_unlocked' });
+        expect(useStatsStore.getState().stale).toBe(false);
+      });
+
       it("writes nothing when a Can't tell's read fails and no copy is held", async () => {
         await skipped('skip-1', 1);
         usePredictionStore.setState({ getById: failing });
@@ -1524,5 +1617,306 @@ describe('rewordedLater', () => {
     expect(
       rewordedLater({ ...base, created_at: logged, title_edited_at: new Date(2026, 10, 15, 7).toISOString() }),
     ).toBe(true);
+  });
+
+  // 2026-11-19: each day read where it happened.
+  it('reads both days in their stored offsets', () => {
+    // Logged Wed 20:00 in New York (Thu 01:00 UTC), reworded Thu 09:00 in
+    // London: a later day where each happened, though one UTC day.
+    const travelled = {
+      ...base,
+      created_at: '2026-11-19T01:00:00.000Z',
+      created_utc_offset_min: -300,
+      title_edited_at: '2026-11-19T09:00:00.000Z',
+      title_edited_utc_offset_min: 0,
+    };
+    expect(rewordedLater(travelled)).toBe(true);
+  });
+});
+
+/** Run `fn` with the clock (Date only) at `iso`, as loggedEarlier does. */
+async function atTime<T>(iso: string, fn: () => Promise<T>): Promise<T> {
+  jest.useFakeTimers({
+    doNotFake: [
+      'hrtime',
+      'nextTick',
+      'performance',
+      'queueMicrotask',
+      'requestAnimationFrame',
+      'cancelAnimationFrame',
+      'requestIdleCallback',
+      'cancelIdleCallback',
+      'setImmediate',
+      'clearImmediate',
+      'setInterval',
+      'clearInterval',
+      'setTimeout',
+      'clearTimeout',
+    ],
+    now: new Date(iso),
+  });
+  try {
+    return await fn();
+  } finally {
+    jest.useRealTimers();
+  }
+}
+
+// Owner decision 2026-11-19 (record audit: 20 answers given the day they
+// were logged in New York all counted once the phone was in London). Each
+// moment is stored with the phone's UTC offset, and the same-day rule reads
+// each where it happened.
+describe('same-day answers across a time-zone change', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  const userId = () => useAuthStore.getState().userId!;
+  const log = (title: string) =>
+    usePredictionStore.getState().create({
+      title,
+      category: 'health',
+      confidence: 95,
+      due_date: '2026-11-21T17:00:00.000Z',
+    });
+  const scored = () => useStatsStore.getState().userStat?.total_resolved;
+
+  it('keeps 20 answered the day they were logged in New York unscored once the phone is in London', async () => {
+    __setTimeZoneForTests('America/New_York');
+    const ids: string[] = [];
+    // Logged Wed Nov 18 at 09:00 New York time.
+    for (let i = 0; i < 20; i += 1) {
+      ids.push((await atTime('2026-11-18T14:00:00.000Z', () => log(`Sure thing ${i}`))).id);
+    }
+    // Answered at 22:00 the same evening: 03:00 Thursday in London.
+    for (const id of ids) {
+      await atTime('2026-11-19T03:00:00.000Z', () =>
+        usePredictionStore.getState().resolve(id, 'resolved_yes'),
+      );
+    }
+    expect(await getPrediction(ids[0])).toMatchObject({
+      created_utc_offset_min: -300,
+      resolved_utc_offset_min: -300,
+    });
+    expect(scored()).toBe(0);
+
+    __setTimeZoneForTests('Europe/London');
+    await useStatsStore.getState().recomputeForUser(userId());
+    expect(scored()).toBe(0);
+    expect(useStatsStore.getState().userStat?.rating_is_provisional).toBe(true);
+
+    // The same rows without offsets, as every row before this build: read
+    // in London as before, they count (the reading kept for old rows).
+    await getDb().run(
+      `UPDATE predictions SET created_utc_offset_min = NULL, resolved_utc_offset_min = NULL`,
+    );
+    await useStatsStore.getState().recomputeForUser(userId());
+    expect(scored()).toBe(20);
+  });
+
+  it('and keeps 20 scored in London scored once the phone is in New York', async () => {
+    __setTimeZoneForTests('Europe/London');
+    const ids: string[] = [];
+    // Logged Wed Nov 18 at 23:30 in London, answered Thu at 00:30: the next
+    // day there, one Wednesday evening in New York.
+    for (let i = 0; i < 20; i += 1) {
+      ids.push((await atTime('2026-11-18T23:30:00.000Z', () => log(`Late one ${i}`))).id);
+    }
+    for (const id of ids) {
+      await atTime('2026-11-19T00:30:00.000Z', () =>
+        usePredictionStore.getState().resolve(id, 'resolved_yes'),
+      );
+    }
+    expect(scored()).toBe(20);
+
+    __setTimeZoneForTests('America/New_York');
+    await useStatsStore.getState().recomputeForUser(userId());
+    expect(scored()).toBe(20);
+  });
+
+  it('scores a traveller who logs in New York and answers the next morning in London', async () => {
+    __setTimeZoneForTests('America/New_York');
+    // Wed Nov 18 at 20:00 in New York.
+    const p = await atTime('2026-11-19T01:00:00.000Z', () => log('Flight lands on time'));
+    // Later that evening in New York, an answer would be same-day.
+    expect(answerNowIsSameDay(p, new Date('2026-11-19T02:00:00.000Z'))).toBe(true);
+
+    __setTimeZoneForTests('Europe/London');
+    // Thu Nov 19 at 09:00 in London: the next day where it was logged.
+    expect(answerNowIsSameDay(p, new Date('2026-11-19T09:00:00.000Z'))).toBe(false);
+    await atTime('2026-11-19T09:00:00.000Z', () =>
+      usePredictionStore.getState().resolve(p.id, 'resolved_yes'),
+    );
+    expect(await getPrediction(p.id)).toMatchObject({
+      created_utc_offset_min: -300,
+      resolved_utc_offset_min: 0,
+    });
+    expect(scored()).toBe(1);
+  });
+
+  it("keeps the first answer's offset through a correction in another zone (D34)", async () => {
+    __setTimeZoneForTests('America/New_York');
+    const p = await atTime('2026-11-18T14:00:00.000Z', () => log('Same-day one'));
+    await atTime('2026-11-19T03:00:00.000Z', () =>
+      usePredictionStore.getState().resolve(p.id, 'resolved_yes'),
+    );
+    __setTimeZoneForTests('Europe/London');
+    await atTime('2026-11-19T05:00:00.000Z', () =>
+      usePredictionStore.getState().correct(p.id, 'resolved_no'),
+    );
+    expect(await getPrediction(p.id)).toMatchObject({
+      status: 'resolved_no',
+      resolved_at: '2026-11-19T03:00:00.000Z',
+      resolved_utc_offset_min: -300,
+    });
+    // Still the day it was logged where it was answered: not scored.
+    expect(scored()).toBe(0);
+  });
+
+  it("gives a Can't tell answered later in another zone that answer's offset", async () => {
+    __setTimeZoneForTests('America/New_York');
+    const p = await atTime('2026-11-18T14:00:00.000Z', () => log('Hard to say'));
+    await atTime('2026-11-21T23:00:00.000Z', () =>
+      usePredictionStore.getState().resolve(p.id, 'skipped'),
+    );
+    expect((await getPrediction(p.id))?.resolved_utc_offset_min).toBe(-300);
+    __setTimeZoneForTests('Europe/London');
+    await atTime('2026-11-23T10:00:00.000Z', () =>
+      usePredictionStore.getState().resolve(p.id, 'resolved_yes', undefined, { answeringSkip: true }),
+    );
+    expect(await getPrediction(p.id)).toMatchObject({
+      status: 'resolved_yes',
+      resolved_at: '2026-11-23T10:00:00.000Z',
+      resolved_utc_offset_min: 0,
+    });
+  });
+
+  it('dates new words with the offset they were written in (D45)', async () => {
+    __setTimeZoneForTests('America/New_York');
+    const p = await atTime('2026-11-16T14:00:00.000Z', () => log('Knee is fine'));
+    __setTimeZoneForTests('Asia/Tokyo');
+    await atTime('2026-11-18T01:00:00.000Z', () =>
+      usePredictionStore.getState().update(p.id, {
+        title: 'Knee still hurts',
+        category: 'health',
+        due_date: p.due_date,
+      }),
+    );
+    expect(await getPrediction(p.id)).toMatchObject({
+      title_edited_at: '2026-11-18T01:00:00.000Z',
+      title_edited_utc_offset_min: 540,
+      created_utc_offset_min: -300,
+    });
+  });
+});
+
+// Review round 5: answering a Can't tell reopened it and then answered it,
+// and a push could read the open row in between.
+describe("answering a Can't tell", () => {
+  it('writes the answer over the skip in one statement, never through open', async () => {
+    const p = await loggedEarlier(
+      () =>
+        usePredictionStore.getState().create({
+          title: 'Hard to say',
+          category: 'work',
+          confidence: 60,
+          due_date: new Date(Date.now() + 86_400_000).toISOString(),
+        }),
+      2,
+    );
+    await usePredictionStore.getState().resolve(p.id, 'skipped');
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    const writes: string[] = [];
+    db.run = async (sql, params) => {
+      if (/UPDATE predictions/.test(sql)) writes.push(sql);
+      return realRun(sql, params);
+    };
+    try {
+      await usePredictionStore
+        .getState()
+        .resolve(p.id, 'resolved_yes', undefined, { answeringSkip: true });
+    } finally {
+      db.run = realRun;
+    }
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatch(/status = 'skipped'/);
+    expect(writes.some((sql) => /'pending'/.test(sql))).toBe(false);
+    expect((await getPrediction(p.id))?.status).toBe('resolved_yes');
+  });
+});
+
+// Owner decision 2026-11-19 (record audit: moving a likely miss to another
+// category before answering left no trace, refiledCount 0): an open
+// prediction's category changed from the eve of its due day on is counted
+// like a late due-date move, once per prediction, on this phone only.
+describe('late category changes', () => {
+  const DAY = 86_400_000;
+  const create = (dueInDays: number) =>
+    usePredictionStore.getState().create({
+      title: 'Knee is fine by Friday',
+      category: 'health',
+      confidence: 80,
+      due_date: new Date(Date.now() + dueInDays * DAY).toISOString(),
+    });
+  const moveTo = (p: { id: string; title: string; due_date: string }, category: 'health' | 'personal' | 'work') =>
+    usePredictionStore.getState().update(p.id, { title: p.title, category, due_date: p.due_date });
+  const counted = () => usePredictionStore.getState().postponedCount;
+
+  it("counts the auditor's sequence once: on the eve, health to personal, then a No", async () => {
+    // Logged yesterday, due tomorrow: today is its eve.
+    const p = await loggedEarlier(() => create(2));
+    expect(categoryChangeIsCounted(p, 'personal')).toBe(true);
+    expect(categoryChangeIsCounted(p, 'health')).toBe(false);
+    await moveTo(p, 'personal');
+    expect(counted()).toBe(1);
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    await usePredictionStore.getState().loadResolved();
+    expect(counted()).toBe(1);
+    // Not a move of an answer (D65), so not counted twice.
+    expect(usePredictionStore.getState().refiledCount).toBe(0);
+  });
+
+  it('leaves a change on the day it was made uncounted', async () => {
+    const p = await create(1);
+    expect(categoryChangeIsCounted(p, 'personal')).toBe(false);
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().loadResolved();
+    expect(counted()).toBe(0);
+  });
+
+  it('leaves a change two days before the due day uncounted', async () => {
+    // Logged yesterday, due the day after tomorrow.
+    const p = await loggedEarlier(() => create(3));
+    expect(categoryChangeIsCounted(p, 'personal')).toBe(false);
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().loadResolved();
+    expect(counted()).toBe(0);
+  });
+
+  it('counts it once when moved twice, even back where it started', async () => {
+    const p = await loggedEarlier(() => create(2));
+    await moveTo(p, 'personal');
+    await moveTo(p, 'work');
+    await moveTo(p, 'health');
+    await usePredictionStore.getState().loadResolved();
+    expect(counted()).toBe(1);
+  });
+
+  it('keeps the count after a delete, and Erase clears it', async () => {
+    const p = await loggedEarlier(() => create(2));
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().remove(p.id);
+    await usePredictionStore.getState().loadResolved();
+    expect(counted()).toBe(1);
+
+    await wipeLocalUserData(useAuthStore.getState().userId!);
+    await usePredictionStore.getState().loadResolved();
+    expect(counted()).toBe(0);
+  });
+
+  it('is never counted for an answered prediction', async () => {
+    const p = await loggedEarlier(() => create(2));
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    const answered = (await usePredictionStore.getState().getById(p.id))!;
+    expect(categoryChangeIsCounted(answered, 'personal')).toBe(false);
   });
 });

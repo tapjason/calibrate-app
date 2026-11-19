@@ -63,6 +63,28 @@ export const REFINE_ENABLED = false;
 export const GOOGLE_SIGN_IN_ENABLED = true;
 
 /**
+ * Whether the UTC offsets stored with each prediction (when it was logged,
+ * answered and reworded: `created_utc_offset_min`, `resolved_utc_offset_min`,
+ * `title_edited_utc_offset_min`; owner decision 2026-11-19) go up to Supabase
+ * and come down from it.
+ *
+ * **Off until the owner applies the Supabase migration that adds the three
+ * columns to `public.predictions`.** Before it, an upsert naming an unknown
+ * column fails the whole batch on every sync. With this off, no pushed row
+ * names them (`listDirtyPredictions` leaves them out), and a pulled row's are
+ * ignored: this phone keeps its own offset for a moment the pulled row
+ * shares, and a moment that came from another phone is read in this phone's
+ * zone, as every row was before. The same pattern as `TITLE_EDIT_SYNC`
+ * before Supabase migration 008 (commits e55eb11, 47a0ffb).
+ *
+ * Turned on, every pushed row carries all three, null included, so no row
+ * in a batch upsert writes NULL over another's (postgrest-js names the union
+ * of a batch's keys), and a pulled row that wins brings its own, null
+ * included.
+ */
+export const UTC_OFFSET_SYNC = false;
+
+/**
  * Terms of use for Plus: Apple's standard EULA, which is what applies unless
  * the app ships its own. App Review Guideline 3.1.2 requires a working link to
  * the terms of use *inside the app* for auto-renewing subscriptions, not only

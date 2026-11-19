@@ -34,8 +34,12 @@
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected
 // by the platform.
 
+// Pinned to the version the app has installed (node_modules, 2026-11-19), as
+// coach is, so a deploy never picks up a supabase-js the app hasn't run
+// against.
 // @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.106.2';
+// Not pinned yet: no lock file in the repo records the 5.x it resolves to.
 // @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
 import { importPKCS8, SignJWT } from 'npm:jose@5';
 
@@ -56,6 +60,10 @@ import {
   runDeletion,
   // @ts-expect-error — Deno module resolution, not TypeScript's.
 } from './deletionPlan.ts';
+import {
+  readBodyCapped,
+  // @ts-expect-error — Deno module resolution, not TypeScript's.
+} from './readBody.ts';
 
 // @ts-expect-error — Deno global, not present in the project's TS lib.
 const env = Deno.env;
@@ -211,9 +219,12 @@ Deno.serve(async (req: Request) => {
 
   if (rateLimited(user.id)) return json({ error: 'rate_limited' }, 429);
 
-  // --- Body: optional, small, and strictly shaped. ---
-  const bodyText = await req.text();
-  if (bodyText.length > MAX_BODY_BYTES) return json({ error: 'bad_request' }, 400);
+  // --- Body: optional, small, and strictly shaped. The declared length
+  //     first, then what arrives, so a large body is refused before it is
+  //     read and never held whole (security review, round 5). ---
+  const body = await readBodyCapped(req.headers.get('Content-Length'), req.body, MAX_BODY_BYTES);
+  if (!body.ok) return json({ error: 'bad_request' }, 400);
+  const bodyText = body.text;
   let raw: unknown = null;
   if (bodyText.trim() !== '') {
     try {

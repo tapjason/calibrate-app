@@ -8,9 +8,12 @@
 // The file lands in the cache directory on purpose. It is a hand-off artifact,
 // not a document, and it holds the person's whole history, every title and
 // reflection: it is deleted as soon as the share sheet closes, however it
-// closed (security review, 2026-11-18), and Erase and account deletion sweep
-// any left behind (`sweepExportFiles`), say by the app being killed with the
-// sheet open.
+// closed (security review, 2026-11-18). One can still be left behind: the app
+// killed with the sheet open, or a sheet that ends in a way expo-sharing never
+// reports, so `shareAsync` never settles and the `finally` never runs (client
+// re-review, round 5, 2026-11-19). So `sweepExportFiles` deletes any left
+// behind: before each new export (here), at Erase and account deletion
+// (authStore), and meant for launch too, once the layout calls it there.
 
 import { Platform } from 'react-native';
 
@@ -93,12 +96,19 @@ function getDeps(): FileExportDeps {
   return deps;
 }
 
+/**
+ * The names of exports whose share sheet is open now, with how many: the
+ * sweep before a new export leaves their files for the app they're going to.
+ */
+const inFlight = new Map<string, number>();
+
 /** Test-only: swap the platform deps. */
 export function __setFileExportDepsForTests(next: FileExportDeps | null): void {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('__setFileExportDepsForTests is only allowed when NODE_ENV=test');
   }
   deps = next;
+  inFlight.clear();
 }
 
 /**
@@ -106,10 +116,11 @@ export function __setFileExportDepsForTests(next: FileExportDeps | null): void {
  * file.
  *
  * Availability is checked *before* writing: no point leaving a file on disk on
- * a platform that can't share it. The file goes in a `finally`, once the
- * sheet has closed, sent, cancelled or failed: expo-sharing resolves
- * `shareAsync` from the sheet's completion handler on iOS, so the app the
- * person chose has the file by then.
+ * a platform that can't share it. Then any export an earlier one left behind
+ * is deleted, all but those whose sheet is still open. The file goes in a
+ * `finally`, once the sheet has closed, sent, cancelled or failed:
+ * expo-sharing resolves `shareAsync` from the sheet's completion handler on
+ * iOS, so the app the person chose has the file by then.
  */
 export async function shareTextFile(
   name: string,
@@ -122,7 +133,11 @@ export async function shareTextFile(
   let written = false;
   try {
     if (!(await d.isAvailable())) return 'unavailable';
+    // Never throws, and a sweep that can't list the cache doesn't stop this
+    // export.
+    await sweep(d, (n) => inFlight.has(n));
     written = true;
+    inFlight.set(name, (inFlight.get(name) ?? 0) + 1);
     const uri = await d.writeCacheFile(name, content);
     await d.share(uri, mimeType, dialogTitle);
     return 'shared';
@@ -131,17 +146,26 @@ export async function shareTextFile(
     console.warn('[export] file share failed:', messageOf(e));
     return 'failed';
   } finally {
-    if (written) await discard(d, name);
+    if (written) {
+      await discard(d, name);
+      const left = (inFlight.get(name) ?? 1) - 1;
+      if (left > 0) inFlight.set(name, left);
+      else inFlight.delete(name);
+    }
   }
 }
 
 /**
  * Delete every export left in the cache directory: files directly in it named
- * as `EXPORT_FILE_NAME` says, nothing else. For Erase and account deletion.
- * Never throws.
+ * as `EXPORT_FILE_NAME` says, nothing else. For Erase, account deletion and
+ * launch. Never throws.
  */
 export async function sweepExportFiles(): Promise<void> {
-  const d = getDeps();
+  await sweep(getDeps(), () => false);
+}
+
+/** Delete the exports in the cache, all but those `keep` names. Never throws. */
+async function sweep(d: FileExportDeps, keep: (name: string) => boolean): Promise<void> {
   let names: string[];
   try {
     names = (await d.listCacheFiles?.()) ?? [];
@@ -151,7 +175,7 @@ export async function sweepExportFiles(): Promise<void> {
     return;
   }
   for (const name of names) {
-    if (EXPORT_FILE_NAME.test(name)) await discard(d, name);
+    if (EXPORT_FILE_NAME.test(name) && !keep(name)) await discard(d, name);
   }
 }
 

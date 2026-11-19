@@ -3,6 +3,7 @@ import type { Prediction } from '@/types';
 import {
   canAnswerSkip,
   canCorrect,
+  categoryChangeCounts,
   correctableUntil,
   CORRECTION_WINDOW_HOURS,
   deletionCounts,
@@ -12,6 +13,7 @@ import {
   SKIP_ANSWER_DAYS,
   skipLastDay,
 } from './corrections';
+import { __setTimeZoneForTests } from './localTime';
 
 const answered = (over: Partial<Prediction> = {}): Prediction => ({
   id: 'p1',
@@ -214,5 +216,86 @@ describe('refileCounts', () => {
     expect(refileCounts(sameDay)).toBe(false);
     expect(refileCounts(answered({ status: 'skipped' }))).toBe(false);
     expect(refileCounts(answered({ status: 'pending', resolved_at: null }))).toBe(false);
+  });
+});
+
+// Owner decision 2026-11-19 (record audit: a likely miss moved to another
+// category before it was answered left no trace): counted like a late move.
+describe('categoryChangeCounts', () => {
+  const open = (over: Partial<Prediction> = {}): Prediction => ({
+    ...answered(),
+    status: 'pending',
+    resolved_at: null,
+    created_at: new Date('2026-11-10T09:00:00').toISOString(),
+    due_date: new Date('2026-11-14T12:00:00').toISOString(),
+    ...over,
+  });
+
+  it('counts a change on the eve of the due day or after', () => {
+    expect(categoryChangeCounts(open(), new Date('2026-11-13T20:00:00'))).toBe(true);
+    expect(categoryChangeCounts(open(), new Date('2026-11-14T08:00:00'))).toBe(true);
+    expect(categoryChangeCounts(open(), new Date('2026-11-16T08:00:00'))).toBe(true);
+  });
+
+  it('leaves one two days before the due day alone', () => {
+    expect(categoryChangeCounts(open(), new Date('2026-11-12T23:00:00'))).toBe(false);
+  });
+
+  it('leaves a change on the day it was made, or last reworded, alone (D62)', () => {
+    const madeOnEve = open({ created_at: new Date('2026-11-13T09:00:00').toISOString() });
+    expect(categoryChangeCounts(madeOnEve, new Date('2026-11-13T20:00:00'))).toBe(false);
+    const rewordedToday = open({ title_edited_at: new Date('2026-11-13T10:00:00').toISOString() });
+    expect(categoryChangeCounts(rewordedToday, new Date('2026-11-13T20:00:00'))).toBe(false);
+    // As for a late move, the exemption holds on the due day too.
+    const madeOnDueDay = open({ created_at: new Date('2026-11-14T07:00:00').toISOString() });
+    expect(categoryChangeCounts(madeOnDueDay, new Date('2026-11-14T08:00:00'))).toBe(false);
+  });
+
+  it('never counts an answered one, and not on an unreadable due date', () => {
+    expect(categoryChangeCounts(answered(), new Date('2026-11-01T20:00:00'))).toBe(false);
+    expect(categoryChangeCounts(open({ due_date: 'never' }), new Date('2026-11-13T20:00:00'))).toBe(
+      false,
+    );
+    // An unreadable made time doesn't exempt it, as for a move.
+    expect(categoryChangeCounts(open({ created_at: 'nope' }), new Date('2026-11-13T20:00:00'))).toBe(
+      true,
+    );
+  });
+});
+
+// Owner decision 2026-11-19: the day a prediction was made is read where it
+// was made, for the late-change exemptions as for the same-day rule.
+describe('the day made, read in its stored offset', () => {
+  afterEach(() => __setTimeZoneForTests(null));
+
+  it('exempts a change on the day it was made where it was made, not where the phone is now', () => {
+    __setTimeZoneForTests('Europe/London');
+    // Due Fri Nov 20 at noon in London; now Thu Nov 19, 09:00 in London: the eve.
+    const now = new Date('2026-11-19T09:00:00.000Z');
+    const p = (created: string, offset?: number): Prediction => ({
+      ...answered(),
+      status: 'pending',
+      resolved_at: null,
+      created_at: created,
+      due_date: '2026-11-20T12:00:00.000Z',
+      ...(offset === undefined ? {} : { created_utc_offset_min: offset }),
+    });
+    // Logged Wed 22:00 in New York, which London reads as 03:00 today. Where
+    // it was made, that was yesterday: a change today is late.
+    const fromNewYork = p('2026-11-19T03:00:00.000Z', -300);
+    expect(categoryChangeCounts(fromNewYork, now)).toBe(true);
+    expect(rewordingCounts(fromNewYork, now)).toBe(true);
+    expect(deletionCounts(fromNewYork, now)).toBe(true);
+    expect(
+      postponementCounts(fromNewYork.due_date, '2026-11-25T12:00:00.000Z', now, fromNewYork.created_at, -300),
+    ).toBe(true);
+    // A row with no offset is read in London, as before: made today, exempt.
+    const legacy = p('2026-11-19T03:00:00.000Z');
+    expect(categoryChangeCounts(legacy, now)).toBe(false);
+    expect(rewordingCounts(legacy, now)).toBe(false);
+    expect(deletionCounts(legacy, now)).toBe(false);
+    expect(postponementCounts(legacy.due_date, '2026-11-25T12:00:00.000Z', now, legacy.created_at)).toBe(
+      false,
+    );
   });
 });

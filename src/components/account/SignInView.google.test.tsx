@@ -55,16 +55,19 @@ function testIdsInOrder(): string[] {
 }
 
 describe('SignInView — Continue with Google', () => {
-  it("sits under Apple's button and above the Sign in / Create account switch", () => {
+  // Above the email form: since D69 (c) hid Create account there is no
+  // Sign in / Create account switch between them (it was the anchor here),
+  // and with it back the switch sits above the email field too.
+  it("sits under Apple's button and above the email form", () => {
     render(<SignInView onDone={jest.fn()} />);
     const ids = testIdsInOrder();
 
     const apple = ids.indexOf('account-apple');
     const google = ids.indexOf('account-google');
-    const modes = ids.indexOf('account-mode-signIn');
+    const form = ids.indexOf('account-email');
     expect(apple).toBeGreaterThanOrEqual(0);
     expect(google).toBeGreaterThan(apple);
-    expect(modes).toBeGreaterThan(google);
+    expect(form).toBeGreaterThan(google);
   });
 
   it('signs in and finishes the way Apple does', async () => {

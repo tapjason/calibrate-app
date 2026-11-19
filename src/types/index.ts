@@ -267,6 +267,41 @@ export interface Prediction {
    * the streak's days don't move.
    */
   title_edited_at?: string | null;
+  /**
+   * The UTC offset, in minutes east of UTC (`-getTimezoneOffset()`), the
+   * phone was in when it was logged (owner decision 2026-11-19). Same-day
+   * answers (D41) are judged on each moment's own calendar day where it
+   * happened, so moving the phone to another zone re-scores nothing. Absent
+   * or null on rows written before SQLite migration 018, and on rows from
+   * another phone on an older build: that side is read in the phone's current
+   * zone, as every row was before. Range −840…840 (`UTC_OFFSET_LIMIT_MIN`).
+   */
+  created_utc_offset_min?: number | null;
+  /**
+   * The offset when `resolved_at` was set. A correction keeps the first
+   * answer's time (D34), and so its offset; a "Can't tell" answered later
+   * takes the new answer's.
+   */
+  resolved_utc_offset_min?: number | null;
+  /** The offset when `title_edited_at` was set (D45). */
+  title_edited_utc_offset_min?: number | null;
+}
+
+/**
+ * The widest UTC offset a stored offset may hold, in minutes (UTC−14:00 to
+ * UTC+14:00, the extremes in use). A value outside it, or not a whole
+ * number, reads as missing.
+ */
+export const UTC_OFFSET_LIMIT_MIN = 840;
+
+/** Whether `value` is a usable stored UTC offset in minutes. */
+export function isUtcOffsetMinutes(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= -UTC_OFFSET_LIMIT_MIN &&
+    value <= UTC_OFFSET_LIMIT_MIN
+  );
 }
 
 /**
@@ -448,6 +483,16 @@ export interface PredictionWireRow {
    * so rows built without it still type-check.
    */
   title_edited_at?: string | null;
+  /**
+   * The three UTC offsets (owner decision 2026-11-19), each with the moment
+   * it belongs to. Only while `UTC_OFFSET_SYNC` is on (it waits for the
+   * Supabase migration that adds the columns): then every row pushed carries
+   * all three, null included, and a pulled row that wins brings its own.
+   * While it's off, no row pushed names them and a pulled row's are ignored.
+   */
+  created_utc_offset_min?: number | null;
+  resolved_utc_offset_min?: number | null;
+  title_edited_utc_offset_min?: number | null;
   updated_at: string;
 }
 
@@ -835,10 +880,28 @@ export type InsertPrediction = (p: Prediction) => Promise<void>;
 export type GetPrediction = (id: string) => Promise<Prediction | null>;
 export type ListPendingPredictions = (userId: string) => Promise<Prediction[]>;
 export type ListResolvedPredictions = (userId: string) => Promise<Prediction[]>;
+/**
+ * Record an answer on an open prediction; a no-op on one already answered.
+ * `at` is when it was answered (now when omitted) and `utcOffsetMin` the
+ * phone's UTC offset then (the device's at `at` when omitted; an unusable
+ * value is stored as null).
+ */
 export type ResolvePrediction = (
   id: string,
   outcome: ResolvedStatus,
   reflection?: string,
+  opts?: { at?: string; utcOffsetMin?: number | null },
+) => Promise<void>;
+/**
+ * Answer a "Can't tell" with a Yes or No (D45) in one statement; a no-op on a
+ * row that isn't a "Can't tell". `at` and `utcOffsetMin` as for
+ * ResolvePrediction.
+ */
+export type AnswerSkippedPrediction = (
+  id: string,
+  outcome: 'resolved_yes' | 'resolved_no',
+  reflection?: string,
+  opts?: { at?: string; utcOffsetMin?: number | null },
 ) => Promise<void>;
 /**
  * Delete and leave a tombstone (D25). `counted` is the engine's call on
@@ -856,12 +919,14 @@ export interface PredictionEdit {
 }
 /**
  * Edit an open prediction; a no-op on one that has been answered. With
- * `rewordedAt`, the words changed (D45) and `title_edited_at` is set to it.
+ * `rewordedAt`, the words changed (D45) and `title_edited_at` is set to it,
+ * with `rewordedUtcOffsetMin` as its offset (the device's at `rewordedAt`
+ * when omitted).
  */
 export type UpdatePrediction = (
   id: string,
   edit: PredictionEdit,
-  opts?: { rewordedAt?: string },
+  opts?: { rewordedAt?: string; rewordedUtcOffsetMin?: number | null },
 ) => Promise<void>;
 /**
  * Switch a Yes to a No or back (roadmap D34), keeping when it was answered.

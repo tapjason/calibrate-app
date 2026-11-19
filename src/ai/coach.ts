@@ -75,6 +75,13 @@ export interface CoachResult extends CoachOutput {
   ok: boolean;
   /** Set only on a failure with its own words (see CoachFailure). */
   failure?: CoachFailure;
+  /**
+   * Set (true) only on an answer that had insights and lost every one to
+   * validation: the server's (its `dropped` count, from 2026-11-19) or this
+   * app's. Absent when the Coach returned none, which is "nothing to say".
+   * The panel words the two apart.
+   */
+  droppedAll?: true;
 }
 
 export interface CoachDeps {
@@ -135,12 +142,31 @@ export async function fetchCoachInsights(
     }
 
     const validated = validateCoachOutput(result.data, context);
-    return { ...validated, crisisTopic: null, ok: true };
+    const out: CoachResult = { ...validated, crisisTopic: null, ok: true };
+    if (allDropped(result.data, validated)) out.droppedAll = true;
+    return out;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.warn('[coach] request failed:', message);
     return empty();
   }
+}
+
+/**
+ * Whether an answer had insights and every one was dropped: the function
+ * dropped some (`dropped`, a positive whole number, sent from 2026-11-19; a
+ * function deployed before it sends none) and passed none, or it passed some
+ * and this app dropped them all. Only a label for the panel's words: what is
+ * shown is still only what validation kept.
+ */
+function allDropped(data: unknown, validated: CoachOutput): boolean {
+  if (!validated.safe || validated.insights.length > 0) return false;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
+  const body = data as { insights?: unknown; dropped?: unknown };
+  const passed = Array.isArray(body.insights) ? body.insights.length : 0;
+  const droppedThere =
+    typeof body.dropped === 'number' && Number.isInteger(body.dropped) && body.dropped > 0;
+  return passed > 0 || droppedThere;
 }
 
 /**

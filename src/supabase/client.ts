@@ -3,10 +3,13 @@
 // imported in environments where the SDK shouldn't load (e.g. Jest unit
 // tests that mock the client entirely).
 //
-// Layer rule: L5 (services). Imports from @/types only — never reaches into
-// stores, the engine, or DB helpers.
+// Layer rule: L5 (services). Imports React Native's Platform and its sibling
+// sessionStorage only — never reaches into stores, the engine, or DB helpers.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
+
+import { createSessionStorage, supabaseStorageKey, type KeychainDeps } from './sessionStorage';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -18,9 +21,14 @@ let client: SupabaseClient | null = null;
  * vars are missing — that's surfaced at the call site rather than at module
  * load so the offline-only build path still imports cleanly.
  *
- * Native modules (AsyncStorage, the URL polyfill) are lazy-required here
- * for the same reason: importing this file from Jest must not crash on a
- * missing native bridge.
+ * Native modules (AsyncStorage, SecureStore, the URL polyfill) are
+ * lazy-required here for the same reason: importing this file from Jest must
+ * not crash on a missing native bridge.
+ *
+ * The session is kept in the iPhone's Keychain (src/supabase/sessionStorage.ts;
+ * security review round 5, 2026-11-19), in AsyncStorage on web. The storage
+ * key is passed explicitly, the one supabase-js would pick itself, so the
+ * storage's launch check reads the same keys the client does.
  */
 export function getSupabaseClient(): SupabaseClient {
   if (client) return client;
@@ -40,9 +48,15 @@ export function getSupabaseClient(): SupabaseClient {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createClient } = require('@supabase/supabase-js') as typeof import('@supabase/supabase-js');
 
+  const storageKey = supabaseStorageKey(SUPABASE_URL);
   client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
-      storage: AsyncStorage,
+      storage: createSessionStorage({
+        storageKey,
+        asyncStorage: AsyncStorage,
+        keychain: loadKeychain(),
+      }),
+      storageKey,
       autoRefreshToken: true,
       persistSession: true,
       // PKCE flow is required for native OAuth — the implicit flow's URL
@@ -52,6 +66,29 @@ export function getSupabaseClient(): SupabaseClient {
     },
   });
   return client;
+}
+
+/**
+ * The iPhone's Keychain for the session, or null to keep AsyncStorage: on any
+ * platform but iOS (web has no Keychain), and on a build made before
+ * `expo-secure-store` was added, whose native module is missing (the require
+ * throws). Every item is written `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`: not in
+ * backups, not restored to another phone, readable once the phone has been
+ * unlocked after a restart. Never throws.
+ */
+export function loadKeychain(): KeychainDeps | null {
+  if (Platform.OS !== 'ios') return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const SecureStore = require('expo-secure-store') as typeof import('expo-secure-store');
+    const accessible = SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY;
+    // Without the constant an item would be written with the default,
+    // WHEN_UNLOCKED, which goes into backups: AsyncStorage then, as before.
+    if (typeof accessible !== 'number') return null;
+    return { store: SecureStore, accessible };
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -7,7 +7,9 @@
 // Contract — kept in lockstep with src/ai/coach.ts:
 //   Request:   POST { context: CoachContext }
 //              Authorization: Bearer <user JWT>   // a real signed-in user
-//   Response:  200 { insights: CoachInsight[], safe: boolean }
+//   Response:  200 { insights: CoachInsight[], safe: boolean, dropped?: number }
+//              // dropped (2026-11-19): how many of the model's insights the
+//              // validator dropped, when any were; builds before it ignore it
 //              400 { error }  // payload failed validation, or too large
 //              401 { error }  // missing / non-user token
 //              403 { error: 'not_entitled' }  // no Plus: neither the
@@ -26,11 +28,14 @@
 // "server + client"), and src/ai/coachLockstep.test.ts runs one fixture set
 // through both so they can't drift. Change a rule in one, change the other.
 //
-// Compatibility (2026-11-18): this function accepts every payload the app
-// builds have sent (by_category of built-ins; patterns weakest_day_of_week,
-// weakest_day_score and drift_<built-in>, at most 7), plus the
-// weakest_day_answers pattern builds from 2026-11-18 add. A build that doesn't
-// send it never gets a weekday score cited: the day's floor can't be checked.
+// Compatibility (2026-11-18, 2026-11-19): this function accepts every payload
+// the app builds have sent (by_category of built-ins; patterns
+// weakest_day_of_week, weakest_day_score and drift_<built-in>, at most 7),
+// plus the weakest_day_answers pattern builds from 2026-11-18 add and the
+// drift_half_answers_<built-in> patterns builds from 2026-11-19 add (at most
+// 13 in all). A build that doesn't send a floor's count never gets that
+// figure cited: the weekday score without the day's count, a drift without
+// its halves' count.
 //
 // Deploy:
 //   supabase functions deploy coach
@@ -298,9 +303,11 @@ Deno.serve(async (req: Request) => {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // A non-JSON reply is discarded whole (§5.8) rather than salvaged.
+      // A non-JSON reply is discarded whole (§5.8) rather than salvaged, and
+      // counted as dropped: the app says nothing could be backed, not that
+      // there was nothing to say.
       console.error('Coach returned non-JSON');
-      return json({ insights: [], safe: true });
+      return json({ insights: [], safe: true, dropped: 1 });
     }
 
     return json(validateOutput(parsed, context));

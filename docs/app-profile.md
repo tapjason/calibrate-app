@@ -72,12 +72,15 @@ Status: filled in 2026-11-08
   (recomputed in the same transaction as every change), the streak and rest days (derived on every
   read, never stored), practice and Warmup answers (never synced), categories, names and icons (not
   synced, D39, D40), settings, the age band, the entitlement mirror, deletion tombstones, the counts of late moves
-  and of answers moved between categories (never synced). All in
-  SQLite (`calibrate.db`); the app is complete offline with no account.
-- **Supabase owns (after sign-in):** Auth (email; Sign in with Apple through `signInWithIdToken`; Google through the system sheet and `exchangeCodeForSession`, behind `GOOGLE_SIGN_IN_ENABLED`),
-  the synced copy of predictions (last-write-wins, deletions as tombstones), entitlements written by
+  and of answers moved between categories (never synced), and each prediction's UTC offsets
+  (synced only once `UTC_OFFSET_SYNC` is on, D69 (f)). All in
+  SQLite (`calibrate.db`); the app is complete offline with no account. The sign-in session is
+  in the iPhone Keychain (`src/supabase/sessionStorage.ts`, D69 (d)). Sign-out takes the
+  account's rows off the phone (D69 (a), `docs/ACCOUNT_SPEC.md` §2).
+- **Supabase owns (after sign-in):** Auth (email sign-in, with Create account hidden, D69 (c); Sign in with Apple through `signInWithIdToken`, with a nonce; Google through the system sheet and `exchangeCodeForSession`, behind `GOOGLE_SIGN_IN_ENABLED`),
+  the synced copy of predictions (last-write-wins, except that an answered prediction never goes back to open, D69; deletions as tombstones), entitlements written by
   the `revenuecat-webhook` Edge Function, Coach usage and rate limits, analytics events from
-  signed-in users and guests' funnel counts with no id of any kind (`guest_analytics_events`, D43),
+  signed-in users and guests' funnel counts with no account, device or install id, sent only after the Warm-up's notice (`guest_analytics_events`, D43, D69 (b)),
   account deletion (`delete-account`).
 - **RevenueCat owns:** whether someone has Plus. Absence or any error reads as free, never Plus;
   `fetchEntitlement()` returns `null` for "couldn't ask" so an offline launch doesn't strip Plus.

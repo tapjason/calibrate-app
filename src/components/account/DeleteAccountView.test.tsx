@@ -375,7 +375,8 @@ describe('DeleteAccountView — the alert pressed while the app is locked', () =
 // Deletion can wait 45 seconds on the server, then check once more whether the
 // account is gone (security review, 2026-11-18).
 describe('DeleteAccountView — while deletion runs', () => {
-  it('says it can take up to a minute, under the disabled button', () => {
+  // "About", not "up to": the worst case is about 65 seconds (round 5).
+  it('says it can take about a minute, under the disabled button', () => {
     seed();
     useAuthStore.setState({ pending: true });
     render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
@@ -383,7 +384,8 @@ describe('DeleteAccountView — while deletion runs', () => {
     expect(screen.getByTestId('delete-confirm-button')).toBeDisabled();
     expect(screen.getByTestId('delete-confirm-button')).toHaveTextContent('Deleting…');
     const note = screen.getByTestId('delete-pending-note');
-    expect(note).toHaveTextContent('This can take up to a minute.');
+    expect(note).toHaveTextContent('This can take about a minute.');
+    expect(screen.queryByText(/up to a minute/)).toBeNull();
     expect(StyleSheet.flatten(note.props.style)).toMatchObject({
       fontSize: type.subhead.fontSize,
       color: colors.textSecondary,
@@ -446,10 +448,11 @@ describe('DeleteAccountView — while deletion runs', () => {
 // Security review, 2026-11-18, round 4 (ACCOUNT_SPEC §3.2 step 5): when the
 // Apple grant may still stand (the sheet was cancelled, the server skipped or
 // failed the revoke, or its answer was never seen), the finished screen says
-// where to remove the app, in Apple's own path (support.apple.com/en-us/102571).
+// where to remove the app, in Apple's own path (support.apple.com/en-us/102571),
+// ending on its last step, the app removed (round 5).
 describe('DeleteAccountView — Sign in with Apple not revoked', () => {
   const REMOVE_NOTE =
-    'Sign in with Apple may still list Fairly Sure. To remove it, open Settings, tap your name, then Sign in with Apple.';
+    'Sign in with Apple may still list Fairly Sure. To remove it, open Settings, tap your name, then Sign in with Apple, and remove Fairly Sure.';
 
   async function deleteWith(
     outcome: { ok: true; appleNotRevoked: boolean },

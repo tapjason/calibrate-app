@@ -18,6 +18,7 @@ import {
   answeredBefore,
   answerNowIsSameDay,
   canRenumber,
+  categoryChangeIsCounted,
   deleteIsCounted,
   earliestDueForEdit,
   madeAt,
@@ -79,6 +80,24 @@ const REWORD_SPOKEN =
  */
 export const REWORD_COUNTED =
   'It’s due soon, so changing its words is counted on Insights, as moving it later would be. It doesn’t change your score.';
+/**
+ * Another category from the eve of its due day is counted too (owner decision
+ * 2026-11-19, D69 (e)): a likely miss moved out before it was answered took
+ * its category's score with it. Said before Save, as a late move is, in the
+ * late move's words.
+ */
+const CATEGORY_COUNTED_SPOKEN =
+  'Changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.';
+
+/**
+ * Edit's note under the category chips when the change will be counted,
+ * worded as the late move's under the date. Exported for tests.
+ */
+export function categoryCountedNote(daysLeft: number): string {
+  const when =
+    daysLeft >= 1 ? 'It’s due tomorrow' : daysLeft === 0 ? 'It’s due today' : 'It’s past its due day';
+  return `${when}, so changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.`;
+}
 
 /**
  * Edit's line under the number. The number can't change. On the day it was
@@ -184,6 +203,12 @@ export function PredictionDetails({
       );
     }
   }, [rewordNow, rewordCountedNow, lateMoveNow]);
+  // Another category from the eve on (D69 (e)), said as it appears.
+  const categoryCountedNow =
+    editing && category !== null && categoryChangeIsCounted(prediction, category);
+  useEffect(() => {
+    if (categoryCountedNow) AccessibilityInfo.announceForAccessibility(CATEGORY_COUNTED_SPOKEN);
+  }, [categoryCountedNow]);
 
   if (loading) {
     return (
@@ -396,6 +421,13 @@ export function PredictionDetails({
           canAdd
           onAddPendingChange={setCategoryPending}
         />
+        {/* Another category from the eve of its due day is counted (D69 (e)),
+            said before Save under the chips, as a late move is under the date. */}
+        {categoryCountedNow && (
+          <Text style={styles.note} testID="details-category-counted" accessibilityLiveRegion="polite">
+            {categoryCountedNote(daysLeft)}
+          </Text>
+        )}
         <Text style={[styles.label, styles.spaced]}>Due date</Text>
         <DueDateChips
           presets={presets}

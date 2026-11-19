@@ -1,13 +1,21 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Alert, Platform, StyleSheet } from 'react-native';
 
 import { colors, type } from '@/constants/theme';
-import { useAuthStore } from '@/store/authStore';
+import { SIGN_OUT_CHECK_FAILED, useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
+import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
+import { SIGN_OUT_FAILED as SIGN_OUT_FAILED_CONST } from '@/supabase/auth';
 import { FREE_ENTITLEMENT } from '@/types';
 
-import { reminderWordsLine, SettingsView, USAGE_STATS_DESCRIPTION } from './SettingsView';
+import {
+  reminderWordsLine,
+  SettingsView,
+  SIGN_OUT_ANYWAY_TITLE,
+  unsyncedSignOutLine,
+  USAGE_STATS_DESCRIPTION,
+} from './SettingsView';
 
 // Refine is CUT from the release (`REFINE_ENABLED = false`), so these tests
 // force the flag on. The behavior stays covered while the feature is dormant,
@@ -127,6 +135,7 @@ describe('SettingsView', () => {
         practiceReminder: null,
         practiceReminderOfferDismissedAt: null,
         streakMomentDay: null,
+        usageNoticeShownAt: null,
       });
     });
   });
@@ -162,13 +171,18 @@ describe('SettingsView', () => {
 
   // Policy audit F7 (2026-11-18): every row has a random event id, so a
   // guest's counts don't go up with "no id at all"; none names an account, a
-  // device or an install.
+  // device or an install. Policy re-audit N2 (2026-11-19): the events carry
+  // numbers too (an answer's confidence and whether it happened, the Warm-up's
+  // score), so "counts of which features get used" undersold them.
   it('says what a guest’s counts carry no id of, and only that', () => {
     render(<SettingsView />);
     expect(USAGE_STATS_DESCRIPTION).toBe(
-      "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no account, device or install id; once you sign in, they're tied to your account. Turning this off deletes what's queued.",
+      "Which features get used, with numbers like the confidence you chose and whether it happened. Never the words of your predictions or notes. Before you sign in, a few counts go up with no account, device or install id; once you sign in, they're tied to your account. Turning this off deletes what's queued.",
     );
     expect(USAGE_STATS_DESCRIPTION).not.toMatch(/no id at all/);
+    expect(USAGE_STATS_DESCRIPTION).not.toMatch(/^Counts of which features/);
+    // No em dash in the app's voice.
+    expect(USAGE_STATS_DESCRIPTION).not.toContain('—');
     expect(screen.getByTestId('toggle-analytics-row').props.accessibilityHint).toBe(
       USAGE_STATS_DESCRIPTION,
     );
@@ -281,6 +295,30 @@ describe('SettingsView — account', () => {
     expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
     fireEvent.press(screen.getByTestId('settings-sign-out'));
     expect(signOut).toHaveBeenCalledTimes(1);
+    // Everything reached the server: nothing to ask, and nothing discarded.
+    expect(signOut).toHaveBeenCalledWith();
+  });
+
+  // D69 (a): sign-out takes the account's predictions off this phone, and
+  // signing back in brings back what the server has. The row says so, and
+  // nothing says they stay. What never syncs goes for good (the categories
+  // table, D39 and D40, and the on-phone counts), and the row says that too
+  // (round 5, 2026-11-19: it promised everything came back).
+  it('says signing out removes the predictions from this phone and signing in brings them back', () => {
+    useAuthStore.setState({
+      accountsAvailable: true,
+      status: 'authenticated',
+      email: 'a@b.co',
+      signOut,
+    });
+    render(<SettingsView />);
+
+    expect(
+      screen.getByText(
+        "Signed in as a@b.co. Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed, and the counts only this phone keeps, aren't backed up, so signing out removes them.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/stay on this phone|kept on this phone/)).toBeNull();
   });
 
   // Security review, 2026-11-18: the store returns how the sign-out ended.
@@ -384,6 +422,259 @@ describe('SettingsView — account', () => {
       );
       expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
       expect(announce).not.toHaveBeenCalled();
+    });
+
+    // Round 5: what's unsynced couldn't be counted, so nothing changed. Both
+    // failures are the store's own words, shown and said the same way.
+    it.each([
+      ['the session could not be ended', SIGN_OUT_FAILED_CONST],
+      ['what is unsynced could not be counted', SIGN_OUT_CHECK_FAILED],
+    ])('shows and says the error when %s', async (_label, message) => {
+      const signOut = jest.fn().mockResolvedValue({ ok: false, error: message });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+
+      expect(await screen.findByTestId('settings-sign-out-error')).toHaveTextContent(message);
+      expect(announce).toHaveBeenCalledWith(message);
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+    });
+  });
+
+  // D69 (a): sign-out takes the account's rows off this phone. When this
+  // phone holds changes the server doesn't have, the store changes nothing
+  // and says how many; the screen asks before going on.
+  describe('when changes have not reached the server', () => {
+    let alertSpy: jest.SpyInstance<void, Parameters<typeof Alert.alert>>;
+    let announce: jest.SpyInstance;
+
+    beforeEach(() => {
+      expect(Platform.OS).toBe('ios');
+      alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    });
+    afterEach(() => {
+      alertSpy.mockRestore();
+      announce.mockRestore();
+      __resetLockStoreForTests();
+    });
+
+    function signedIn(fn: jest.Mock) {
+      useAuthStore.setState({
+        accountsAvailable: true,
+        status: 'authenticated',
+        email: 'a@b.co',
+        pending: false,
+        signOut: fn,
+      });
+    }
+
+    function lastAlert() {
+      const calls = alertSpy.mock.calls;
+      if (calls.length === 0) throw new Error('No alert was shown');
+      const [title, message, buttons] = calls[calls.length - 1];
+      return { title, message, buttons: buttons ?? [] };
+    }
+
+    function chooseInAlert(label: string) {
+      const button = lastAlert().buttons.find((b) => b.text === label);
+      if (!button) throw new Error(`The alert has no "${label}" button`);
+      act(() => {
+        button.onPress?.();
+      });
+    }
+
+    async function pressSignOutAndWaitForAlert() {
+      await waitFor(() => expect(screen.getByTestId('settings-sign-out')).toBeEnabled());
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+      await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(1));
+      // The first call is done: the row is free again under the alert.
+      await waitFor(() =>
+        expect(screen.getByTestId('settings-sign-out')).toHaveTextContent('Sign out'),
+      );
+    }
+
+    it('asks first, in a system alert with Cancel and a destructive Sign out', async () => {
+      const signOut = jest.fn().mockResolvedValue({ ok: false, unsynced: 3 });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+
+      const { title, message, buttons } = lastAlert();
+      expect(title).toBe('Sign out anyway?');
+      expect(title).toBe(SIGN_OUT_ANYWAY_TITLE);
+      expect(message).toBe(
+        "3 changes haven't reached the server yet. Signing out removes them from this phone.",
+      );
+      expect(buttons.map(({ text, style }) => ({ text, style }))).toEqual([
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive' },
+      ]);
+      // Asked once, discarding nothing; no error, nothing said over the alert.
+      expect(signOut).toHaveBeenCalledTimes(1);
+      expect(signOut).toHaveBeenCalledWith();
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+      expect(announce).not.toHaveBeenCalled();
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+    });
+
+    it('signs out discarding them once Sign out is chosen, and says nothing when that works', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 1 })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      expect(lastAlert().message).toBe(
+        "1 change hasn't reached the server yet. Signing out removes it from this phone.",
+      );
+      chooseInAlert('Sign out');
+
+      await waitFor(() => expect(signOut).toHaveBeenCalledTimes(2));
+      expect(signOut).toHaveBeenNthCalledWith(1);
+      expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+      await waitFor(() =>
+        expect(screen.getByTestId('settings-sign-out')).toHaveTextContent('Sign out'),
+      );
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+      expect(announce).not.toHaveBeenCalled();
+      // Asked once only.
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows and says the confirmed sign-out's error, as for any sign-out", async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 2 })
+        .mockResolvedValueOnce({ ok: false, error: SIGN_OUT_FAILED_CONST });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      chooseInAlert('Sign out');
+
+      expect(await screen.findByTestId('settings-sign-out-error')).toHaveTextContent(
+        SIGN_OUT_FAILED_CONST,
+      );
+      expect(announce).toHaveBeenCalledWith(SIGN_OUT_FAILED_CONST);
+      expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+      await waitFor(() => expect(screen.getByTestId('settings-sign-out')).toBeEnabled());
+    });
+
+    it('changes nothing when Cancel is chosen', async () => {
+      const signOut = jest.fn().mockResolvedValue({ ok: false, unsynced: 4 });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      chooseInAlert('Cancel');
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(signOut).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+      expect(screen.getByTestId('settings-sign-out')).toBeEnabled();
+    });
+
+    // The alert has its own window, above the app lock: left up when the
+    // person went Home, its Sign out must do nothing for whoever opens the
+    // app next (security review, 2026-11-18).
+    it('does nothing when Sign out is pressed while the app is locked', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 2 })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      act(() => useLockStore.setState({ locked: true }));
+      chooseInAlert('Sign out');
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(signOut).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+    });
+
+    it('works as before once the lock is open again', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 2 })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      act(() => useLockStore.setState({ locked: true }));
+      act(() => useLockStore.setState({ locked: false }));
+      chooseInAlert('Sign out');
+
+      await waitFor(() => expect(signOut).toHaveBeenCalledTimes(2));
+      expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+    });
+
+    it('pluralises the count, grouping large ones', () => {
+      expect(unsyncedSignOutLine(1)).toBe(
+        "1 change hasn't reached the server yet. Signing out removes it from this phone.",
+      );
+      expect(unsyncedSignOutLine(2)).toBe(
+        "2 changes haven't reached the server yet. Signing out removes them from this phone.",
+      );
+      expect(unsyncedSignOutLine(1234)).toBe(
+        "1,234 changes haven't reached the server yet. Signing out removes them from this phone.",
+      );
+    });
+
+    // react-native-web's Alert.alert does nothing; the web build asks with
+    // the browser's confirm, as Delete account does.
+    describe('on web', () => {
+      const originalOS = Platform.OS;
+      let confirm: jest.Mock<boolean, [string?]>;
+
+      beforeEach(() => {
+        Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+        confirm = jest.fn();
+        Object.defineProperty(window, 'confirm', { value: confirm, configurable: true, writable: true });
+      });
+      afterEach(() => {
+        Object.defineProperty(Platform, 'OS', { value: originalOS, configurable: true });
+        delete (window as { confirm?: unknown }).confirm;
+      });
+
+      it.each([
+        ['signs out discarding them on OK', true, 2],
+        ['changes nothing when dismissed', false, 1],
+      ])('%s', async (_label, ok, calls) => {
+        confirm.mockReturnValue(ok);
+        const signOut = jest
+          .fn()
+          .mockResolvedValueOnce({ ok: false, unsynced: 5 })
+          .mockResolvedValueOnce({ ok: true });
+        signedIn(signOut);
+        render(<SettingsView />);
+
+        await waitFor(() => expect(screen.getByTestId('settings-sign-out')).toBeEnabled());
+        fireEvent.press(screen.getByTestId('settings-sign-out'));
+
+        await waitFor(() =>
+          expect(confirm).toHaveBeenCalledWith(
+            "Sign out anyway?\n\n5 changes haven't reached the server yet. Signing out removes them from this phone.",
+          ),
+        );
+        expect(alertSpy).not.toHaveBeenCalled();
+        await waitFor(() => expect(signOut).toHaveBeenCalledTimes(calls));
+        if (ok) expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+      });
     });
   });
 

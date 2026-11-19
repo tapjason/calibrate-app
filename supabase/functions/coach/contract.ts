@@ -23,16 +23,22 @@
 //   - Every number, the `evidence` and every number written in the message or
 //     suggestion, must match a figure in the context that the app itself would
 //     show as a number: the overall rating only from MIN_N_OVERALL scored
-//     answers; a category's score, mean stated confidence, hit rate and drift
-//     only from MIN_N_CATEGORY in that category; the weekday score only with
-//     both the overall gate and WEEKDAY_MIN_N answers on that day. The weekday
-//     index is never citable. A number that also matches a figure still under
-//     its gate is dropped, since it may be that figure. Encouragement may cite
-//     counts only. Which figure a number may be is decided by the categories
-//     the text names (or its label when it names none), never by the label
-//     alone.
-//   - A lean (over / under / well calibrated) is named only about categories
-//     whose `direction` says exactly that, past MIN_N_CATEGORY; never overall.
+//     answers; a category's score, mean stated confidence and hit rate only
+//     from MIN_N_CATEGORY in that category; its drift only with
+//     DRIFT_HALF_MIN_N in each half; the weekday score only with both the
+//     overall gate and WEEKDAY_MIN_N answers on that day. The weekday index is
+//     never citable. A number that also matches a figure still under its gate
+//     is dropped, since it may be that figure. Encouragement may cite counts
+//     only.
+//   - What a number is, from the words beside it ("score", "answers", "said",
+//     "happened"): a count is never shown as a score, nor a hit rate as what
+//     was said. Whose number, from the category named in its clause, else its
+//     sentence, else the label; overall figures only where no category is
+//     named or beside a word that says overall. Ambiguous: dropped.
+//   - A lean (over / under) is named only about categories whose `direction`
+//     says exactly that, past MIN_N_CATEGORY, and a comparison with what was
+//     said only in an over/under card; "well calibrated" only for a
+//     `calibrated` category within CLOSE_TO_SAID_POINTS; never overall.
 //   - No links, addresses, phone numbers, markup, invisible or unusual
 //     characters, spelled-out numbers, badge names, numeric health targets,
 //     domain advice, referrals or mental-state claims.
@@ -41,21 +47,24 @@ export const MIN_N_OVERALL = 20;
 // The app's MIN_N_CATEGORY (src/types), 20 since roadmap D46 (step 157).
 export const MIN_N_CATEGORY = 20;
 /**
- * Scored answers the weakest weekday needs before its score may be cited: the
- * app's MIN_N_BAND, its floor for saying anything about a slice of answers.
- * The app shows no weekday figure anywhere else, so it has no floor of its own.
+ * Scored answers the weakest weekday needs before its score may be cited, and
+ * each half of a drift: MIN_N_CATEGORY, the floor for any figure the Coach
+ * cites (2026-11-19; the weekday's was 10 from 2026-11-18). The app's copies
+ * are WEEKDAY_MIN_N and DRIFT_HALF_MIN_N in src/ai/coachPatterns.ts.
  */
-export const WEEKDAY_MIN_N = 10;
+export const WEEKDAY_MIN_N = MIN_N_CATEGORY;
+export const DRIFT_HALF_MIN_N = MIN_N_CATEGORY;
 
 /** Bytes, checked against Content-Length and again while reading. */
 export const MAX_BODY_BYTES = 8_000;
 export const MAX_CATEGORIES = 5;
 /**
- * The most the app sends: the weekday's three (day, score, answers) and one
- * drift per built-in category. Builds before 2026-11-18 send at most seven
- * (no `weakest_day_answers`).
+ * The most the app sends: the weekday's three (day, score, answers) and, per
+ * built-in category, its drift and its drift's half count. Builds before
+ * 2026-11-18 send at most seven (no `weakest_day_answers`), builds from
+ * 2026-11-18 at most eight (no `drift_half_answers_`).
  */
-export const MAX_PATTERNS = 8;
+export const MAX_PATTERNS = 13;
 /** A sane ceiling on any count: years of daily use is in the thousands. */
 export const MAX_COUNT = 100_000;
 
@@ -72,6 +81,16 @@ export const MAX_LINE_BREAKS = 1;
 export const TOLERANCE_ABSOLUTE = 0.5;
 export const TOLERANCE_RATE = 0.005;
 export const TOLERANCE_EXACT = 1e-9;
+/** Added to every tolerance: 0.575 x 100 is 57.49999999999999 in floating point. */
+export const TOLERANCE_EPSILON = 1e-9;
+
+/**
+ * "Well calibrated" needs what was said and what happened within this many
+ * whole points, each rounded first: the app's closeToSaid
+ * (src/components/stats/chartTakeaway.ts, roadmap D57), pinned by
+ * src/ai/coachThresholds.test.ts.
+ */
+export const CLOSE_TO_SAID_POINTS = 5;
 
 export const CATEGORIES = ['work', 'health', 'finance', 'social', 'personal'] as const;
 export type BuiltInCategory = (typeof CATEGORIES)[number];
@@ -89,6 +108,13 @@ export const WEEKDAY_KIND = 'weakest_day_of_week';
 export const WEEKDAY_SCORE_KIND = 'weakest_day_score';
 export const WEEKDAY_ANSWERS_KIND = 'weakest_day_answers';
 export const DRIFT_PREFIX = 'drift_';
+/** Checked before DRIFT_PREFIX everywhere, since it starts with it. */
+export const DRIFT_HALF_ANSWERS_PREFIX = 'drift_half_answers_';
+
+/** The app's closeToSaid: within 5 whole points. */
+export function closeToSaid(statedPercent: number, happenedPercent: number): boolean {
+  return Math.abs(Math.round(statedPercent) - Math.round(happenedPercent)) < CLOSE_TO_SAID_POINTS;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -120,6 +146,12 @@ export interface Insight {
 export interface CoachOutput {
   insights: Insight[];
   safe: boolean;
+  /**
+   * How many of the model's insights were dropped, when that is more than
+   * none (added 2026-11-19). The app tells "nothing it could back" apart from
+   * "nothing to say" with it; builds before it ignore the field.
+   */
+  dropped?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,16 +167,25 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 const isBuiltIn = (v: unknown): v is BuiltInCategory =>
   typeof v === 'string' && (CATEGORIES as readonly string[]).includes(v);
 
-/** Whether one pattern's kind is one the app sends and its value is in range. */
-function patternOk(kind: string, value: unknown, categories: ReadonlySet<string>): boolean {
+/**
+ * Whether one pattern's kind is one the app sends and its value is in range.
+ * `resolved` maps each category the payload carries to its scored answers.
+ */
+function patternOk(kind: string, value: unknown, resolved: ReadonlyMap<string, number>): boolean {
   if (kind === WEEKDAY_KIND) return inRange(value, 0, 6) && Number.isInteger(value);
   if (kind === WEEKDAY_SCORE_KIND) return inRange(value, 0, 100);
   if (kind === WEEKDAY_ANSWERS_KIND) return isCount(value);
+  if (kind.startsWith(DRIFT_HALF_ANSWERS_PREFIX)) {
+    // The smaller half of a category's drift: never more than half its answers.
+    const category = kind.slice(DRIFT_HALF_ANSWERS_PREFIX.length);
+    const n = resolved.get(category);
+    return isBuiltIn(category) && n !== undefined && isCount(value) && 2 * value <= n;
+  }
   if (kind.startsWith(DRIFT_PREFIX)) {
     const category = kind.slice(DRIFT_PREFIX.length);
     // A drift is the difference of two 0-100 scores, for a category the
     // payload carries (the app derives both from the same answers).
-    return isBuiltIn(category) && categories.has(category) && inRange(value, -100, 100);
+    return isBuiltIn(category) && resolved.has(category) && inRange(value, -100, 100);
   }
   return false;
 }
@@ -172,13 +213,13 @@ export function parseContext(raw: unknown): CoachContext | null {
 
   if (!Array.isArray(raw.by_category) || raw.by_category.length > MAX_CATEGORIES) return null;
   const byCategory: CategoryEntry[] = [];
-  const categories = new Set<string>();
+  const resolved = new Map<string, number>();
   for (const item of raw.by_category) {
     if (!isObject(item)) return null;
     const { category, direction } = item;
     // Built-ins only: a category the person added is named in their own
     // words and never reaches the Coach (roadmap D39).
-    if (!isBuiltIn(category) || categories.has(category)) return null;
+    if (!isBuiltIn(category) || resolved.has(category)) return null;
     if (typeof direction !== 'string' || !(DIRECTIONS as readonly string[]).includes(direction)) {
       return null;
     }
@@ -190,7 +231,7 @@ export function parseContext(raw: unknown): CoachContext | null {
     ) {
       return null;
     }
-    categories.add(category);
+    resolved.set(category, item.resolved);
     byCategory.push({
       category,
       resolved: item.resolved,
@@ -207,7 +248,7 @@ export function parseContext(raw: unknown): CoachContext | null {
   for (const item of raw.patterns) {
     if (!isObject(item)) return null;
     const { kind, value } = item;
-    if (typeof kind !== 'string' || kinds.has(kind) || !patternOk(kind, value, categories)) {
+    if (typeof kind !== 'string' || kinds.has(kind) || !patternOk(kind, value, resolved)) {
       return null;
     }
     kinds.add(kind);
@@ -294,18 +335,37 @@ export async function readBodyCapped(
 // ---------------------------------------------------------------------------
 
 /**
+ * Whether this runtime really has NFKC, checked once: a ligature and a
+ * fullwidth digit must come back plain.
+ */
+const HAS_NFKC: boolean = (() => {
+  try {
+    return typeof ''.normalize === 'function' && 'ﬁ８'.normalize('NFKC') === 'fi8';
+  } catch {
+    return false;
+  }
+})();
+
+/** Without NFKC: printable ASCII and line breaks only, which NFKC leaves as they are. */
+const ASCII_ONLY = /^[\x20-\x7E\n]*$/;
+
+/**
  * NFKC, so look-alike and compatibility characters (fullwidth digits, the
  * mathematical alphabets, ligatures, superscripts) are checked as the plain
- * characters they render as, and line endings as \n. Null when the runtime
- * can't normalise: the insight is then dropped, never checked unnormalised.
+ * characters they render as, and line endings as \n. Without NFKC the raw
+ * text is checked, and only if it is plain ASCII (stricter: NFKC changes no
+ * ASCII character). Null when the field can't be checked.
  */
 function normalise(text: string): string | null {
-  try {
-    if (typeof text.normalize !== 'function') return null;
-    return text.normalize('NFKC').replace(/\r\n?/g, '\n');
-  } catch {
-    return null;
+  if (HAS_NFKC) {
+    try {
+      return text.normalize('NFKC').replace(/\r\n?/g, '\n');
+    } catch {
+      // Fall through to the raw text, held to ASCII.
+    }
   }
+  const raw = text.replace(/\r\n?/g, '\n');
+  return ASCII_ONLY.test(raw) ? raw : null;
 }
 
 /**
@@ -337,16 +397,25 @@ const PHONE_NUMBER = /\d(?:[\s().-]*\d){6,}/;
 /**
  * Numbers written as words can't be matched against the context, so they are
  * not allowed at all ("one" is left alone: it is mostly a pronoun). The prompt
- * asks for digits.
+ * asks for digits. "two" or "half" can't be checked against a figure either,
+ * so they stay banned outside the idioms below.
  */
 const NUMBER_WORDS =
-  /\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|dozens?|half|halves|halved|thirds?|quarters?|twice|double[sd]?|doubling|triple[sd]?|tripling|(?:two|three|four|five|ten)fold)\b/;
+  /\b(?:zero|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|dozens?|half|halves|halved|thirds?|quarters?|fifths?|sixths?|sevenths?|eighths?|ninths?|tenths?|hundredths?|twice|double[sd]?|doubling|triple[sd]?|tripling|(?:two|three|four|five|ten)fold|couples?|pairs?)\b/;
 /** Idioms that hold a number word but claim no number; removed before the check. */
 const NUMBER_WORD_IDIOMS =
   /\b(?:(?:older|newer|earlier|recent|later|latest|first|second) half|both halves|think(?:ing)? twice|double[\s-]check\w*|zero(?:ing)? in on)\b/g;
 
 /** Badge tiers: the context has none, so any tier named is a guess. */
-const BADGE_NAMES = /\b(?:oracles?|forecasters?|trackers?)\b/;
+const BADGE_NAMES = /\b(?:oracles?|forecasters?|trackers?|sharp|getting\s+started|guessers?)\b/;
+
+/**
+ * §5.4's note, which names a domain without giving advice in it ("Not a
+ * substitute for professional advice.", "Not financial advice."). Removed
+ * before the advice check, so only the note itself is let through.
+ */
+const DISCLAIMERS =
+  /\b(?:not|isn't|aren't|never)\s+(?:a\s+substitute\s+for\s+)?(?:(?:professional|personal|individual)\s+)?(?:(?:legal|financial|investment|medical|tax|clinical|health)\s+)?advice\b/g;
 
 /**
  * Out-of-domain direction the Coach must never give (§5.3, §5.4): medical,
@@ -358,10 +427,14 @@ const BADGE_NAMES = /\b(?:oracles?|forecasters?|trackers?)\b/;
  * lowercased text with apostrophes and dashes made plain.
  */
 const DOMAIN_ADVICE: readonly RegExp[] = [
-  // Financial direction
-  /\b(invest|buy|sell|short|allocate|move|shift|put)\b[^.]*\b(stocks?|bonds?|crypto|shares?|portfolio|savings|your money|\d+\s?%)/,
-  /\b(financial advisor|investment advice)\b/,
+  // Financial direction: a product or money as the object. Never a bare
+  // percentage ("move your number toward 58%" is calibration advice), and
+  // "short" only as a trade ("fell short: you said 81%" is a lean).
+  /\b(?:invest|buy|sell|allocate|move|shift|put|transfer|deposit|withdraw)\b[^.]*\b(?:stocks?|bonds?|crypto|portfolio|savings|your money|funds?|cash|assets?|equit(?:y|ies)|securities|retirement|pension|(?:some|your|the|more|\d+)\s+shares)\b/,
+  /\bshort(?:ing|ed)?\s+(?:the\s+)?(?:stocks?|shares|bonds?|crypto|market|positions?)\b/,
+  /\b(?:financial advisor|investment advice)\b/,
   /\b\d+\s?%\s*(?:of\s+)?(?:your\s+)?(?:income|salary|pay|paycheck|earnings|budget|savings|portfolio)\b/,
+  /\b\d+\s?%\s+(?:aside|away)\b/,
   /\bsave\s+(?:\$|£|€|\d)/,
   /\b(?:index funds?|etfs?|mutual funds?|stocks?|bonds?|crypto(?:currency)?|bitcoin|401\s?\(?k\)?|ira|roth|annuit(?:y|ies)|mortgages?|refinanc\w*|credit cards?|loans?|insurance|savings accounts?|high-yield|brokerage)\b/,
   // Medical / clinical
@@ -375,29 +448,219 @@ const DOMAIN_ADVICE: readonly RegExp[] = [
   /\b\d[\d,.]*\s?k?\s?(?:steps|minutes?|mins?|hours?|hrs?|h|grams?|g|mg|servings?|portions?|cals?|calories|kcals?|cups?|glass(?:es)?|litres?|liters?|ml|oz|ounces?|sets|laps|nights?|days? a week|times a week)\b/,
   /\b(?:diets?|dieting|fasting|carbs?|protein|sugar intake|weight loss|lose weight|losing weight|gain weight|your weight|workouts?|work out more|exercise (?:more|less|daily)|sleep (?:more|less|longer|earlier)|eat (?:less|more|fewer)|drink (?:less|more|fewer)|alcohol|supplements?|vitamins?)\b/,
   // Referrals and helplines
-  /\b(?:see|consult|talk(?:ing)? to|speak(?:ing)? (?:to|with)|visit|ask|contact|call|book|get help from|reach out to|check with)\s+(?:(?:a|an|your|the)\s+)?(?:doctor|physician|gp|nurse|therapist|psychologist|psychiatrist|counsell?or|lawyer|attorney|solicitor|accountant|dietitian|nutritionist|trainer|(?:financial|investment|tax|legal) (?:advisor|adviser|planner|professional)|advisor|adviser|planner|specialist|mental health professional)\b/,
-  /\b(?:therapy|therapists?|psychiatrists?|psychologists?|counsell?ing|hotlines?|helplines?|lifelines?|crisis lines?|988)\b/,
+  /\b(?:see|consult|talk(?:ing)? to|speak(?:ing)? (?:to|with)|visit|ask|contact|call|book|get help from|reach out to|check with|hire|find|get|seek(?: out)?|look for)\s+(?:(?:a|an|your|the)\s+)?(?:doctor|physician|gp|nurse|therapist|psychologist|psychiatrist|counsell?or|lawyer|attorney|solicitor|accountant|dietitian|nutritionist|trainer|(?:financial|investment|tax|legal) (?:advisor|adviser|planner|professional)|advisor|adviser|planner|specialist|mental health professional)\b/,
+  /\b(?:therapy|therapists?|psychiatrists?|psychologists?|counsell?ing|hotlines?|helplines?|lifelines?|crisis lines?)\b/,
+  // 988 as a line to call, not as a count ("988 scored answers").
+  /\b(?:call(?:ing)?|text(?:ing)?|dial(?:ing)?|phon(?:e|ing)|ring|contact(?:ing)?|reach(?:ing)?)\s+(?:the\s+)?988\b|\b988\s*-?\s*(?:suicide|crisis|lifeline|line|hotline|helpline)\b/,
   // Diagnosis, mental states and personality (§5.3)
   /\b(?:anxiety|anxious|depression|depressed|adhd|ocd|bipolar|trauma|traumati[sz]ed|ptsd|disorders?|narcissis\w*|neurotic|burnout|mental illness|mental health)\b/,
   /\b(?:you're|you are|you seem(?: to be)?|you sound|you appear(?: to be)?|you feel|you might be|you may be|you must be|you're probably|you are probably|you're likely|you are likely)\s+(?:a bit |very |quite |really |so |too |an? )?(?:anxious|depressed|stressed|afraid|scared|fearful|insecure|nervous|worried|impulsive|lazy|reckless|arrogant|neurotic|perfectionist|pessimist|pessimistic|optimist|burn(?:ed|t) out|overwhelmed|unhappy|sad|lonely|manic|obsessive|compulsive|avoidant|in denial|fragile)\b/,
 ];
 
-/** Words that name a lean. Read on the lowercased text, dashes made plain. */
-const OVER_WORDS =
-  /\bover[\s-]?confiden(?:t|ce)\b|\btoo (?:sure|confident|certain|optimistic|high)\b|\bover[\s-]?estimat\w*|\bover[\s-]?sure\b|\bmore (?:sure|confident|certain) than\b|\b(?:ran|runs|run|running) (?:a bit |slightly )?(?:hot|high|ahead)\b/;
-const UNDER_WORDS =
-  /\bunder[\s-]?confiden(?:t|ce)\b|\btoo (?:cautious|unsure|careful|timid|conservative|pessimistic|modest|hesitant|low|humble)\b|\bunder[\s-]?estimat\w*|\bunder[\s-]?sell\w*|\bless (?:sure|confident|certain) than\b|\b(?:ran|runs|run|running) (?:a bit |slightly )?(?:cold|low)\b/;
-const CALIBRATED_WORDS =
-  /\bwell[\s-]calibrated\b|\b(?:perfectly|nicely|highly|very|really|quite|fairly|pretty|closely|tightly) calibrated\b|\bno (?:clear |real |obvious )?lean\b|\bspot[\s-]on\b|\bright on target\b/;
+// --- Leans. Read on the lowercased text, dashes made plain, after turnLeans.
 
-/** How the text names each built-in ("work on" is advice, not the category). */
+/** The words for each lean, as turnLeans looks for them after a negation. */
+const OVER_CORE = String.raw`(?:over[\s-]?confiden(?:t|ce|tly)|too (?:sure|confident|certain|optimistic|high)|over[\s-]?estimat\w*|over[\s-]?sure|overly (?:confident|sure|certain|optimistic|bold))`;
+const UNDER_CORE = String.raw`(?:under[\s-]?confiden(?:t|ce|tly)|too (?:cautious|unsure|careful|timid|conservative|pessimistic|modest|hesitant|low|humble)|under[\s-]?estimat\w*|under[\s-]?sell\w*)`;
+const CLOSE_CORE = String.raw`(?:(?:well[\s-]|perfectly |nicely |closely |tightly )?calibrated|spot[\s-]on|(?:right )?on target|about right|accurate(?:ly)?|in line with|as often as)`;
+/**
+ * A negation that turns a lean word around ("isn't overconfident", "not too
+ * sure"). Not "don't" or "never": "don't overestimate" is advice, and names
+ * the lean it warns about.
+ */
+const NEGATION = String.raw`\b(?:not|no longer|hardly|barely|isn't|aren't|wasn't|weren't|doesn't|didn't|isnt|arent|wasnt|werent|doesnt|didnt)\s+(?:(?:really|very|that|so|quite|entirely|fully|always|exactly|totally|completely|overly|particularly|especially|systematically|consistently|clearly|obviously|actually)\s+)?`;
+
+/**
+ * Turned leans, replaced by a marker before the lean words are read:
+ *   - "neither overconfident nor underconfident", "isn't overconfident",
+ *     "not too sure", "no overconfidence": calibrated wording (~close~), held
+ *     to the same rule as "well calibrated";
+ *   - "not well calibrated", "isn't accurate", "poorly calibrated": a miss
+ *     with no direction (~miss~), allowed only where the app names a lean;
+ *   - "worst calibrated", "less calibrated", "a calibrated forecaster": a
+ *     comparison or a reference, no verdict (removed).
+ */
+const TURNED_LEANS: ReadonlyArray<[RegExp, string]> = [
+  [new RegExp(String.raw`\bneither\s+(?:${OVER_CORE}|${UNDER_CORE})\s+nor\s+(?:${OVER_CORE}|${UNDER_CORE})`, 'g'), ' ~close~ '],
+  [new RegExp(`${NEGATION}(?:${OVER_CORE}|${UNDER_CORE})`, 'g'), ' ~close~ '],
+  [/\bno\s+(?:clear\s+|real\s+|obvious\s+|sign\s+of\s+)?(?:over|under)[\s-]?confidence\b/g, ' ~close~ '],
+  [new RegExp(`${NEGATION}${CLOSE_CORE}`, 'g'), ' ~miss~ '],
+  [/\b(?:doesn't|didn't|don't|does not|did not|do not)\s+match\b/g, ' ~miss~ '],
+  [/\b(?:less|least|more|most|better|best|worse|worst)\s+(?:well[\s-])?calibrated\b/g, ' '],
+  [/\bcalibrated\s+(?:forecasters?|persons?|people|predictors?|guessers?|someone)\b/g, ' '],
+  // Aims and comparisons, which claim nothing about now: "to become well
+  // calibrated", "to be more accurate", "bring your numbers in line with".
+  [/\b(?:to|toward|towards)\s+(?:be(?:ing)?\s+|become\s+|get(?:ting)?\s+|stay(?:ing)?\s+)?(?:better\s+|more\s+|well[\s-]|perfectly\s+)?calibrated\b/g, ' '],
+  [/\b(?:more|less|most|least)\s+accurate(?:ly)?\b/g, ' '],
+  [/\b(?:bring|get|keep|put|move|pull)\s+(?:\w+\s+){0,3}?in line with\b/g, ' '],
+  [/\b(?:poorly|badly|loosely|weakly)\s+calibrated\b|\bmiscalibrat\w*|\b(?:poor|weak|bad|loose|shaky)\s+calibration\b/g, ' ~miss~ '],
+];
+
+/** The text the lean words are read on. */
+function turnLeans(scan: string): string {
+  let out = scan;
+  for (const [pattern, marker] of TURNED_LEANS) out = out.replace(pattern, marker);
+  return out;
+}
+
+/** What was said, expected or thought, as a comparison ends ("than you said"). */
+const SAID = String.raw`(?:the\s+)?(?:\d+(?:\.\d+)?\s?%\s+)?(?:you\s+|you'd\s+|what\s+you\s+)?(?:said|say|stated|state|expected|expect|thought|predicted|guessed|felt|believed|claimed|estimated|figured|forecast)\b`;
+/**
+ * A bare "optimistic", "cautious", "conservative" or "pessimistic" names a
+ * lean when it describes the calls or numbers ("your calls run cautious",
+ * "on the cautious side"), not as advice: "be more cautious" is what an
+ * overconfident card should say.
+ */
+const DESCRIBED = String.raw`\b(?:calls?|numbers?|predictions?|estimates?|forecasts?|confidence|guesses|you|they|it)\s+(?:are|were|was|is|run|runs|ran|running|look|looks|looked|seem|seems|seemed|sit|sits|tend to be|tends to be|lean|leans|leaned|skew|skews|skewed|come across as|read as|stay|stays)\s+(?:a bit |slightly |very |quite |rather |fairly |somewhat |consistently |systematically |a little )?`;
+/** Before a noun only after "your" ("your cautious finance calls"): "try more conservative numbers" is advice. */
+const DESCRIBED_BEFORE = String.raw`\byour\s+(?:\w+\s+)?`;
+const DESCRIBED_NOUN = String.raw`\s+(?:\w+\s+)?(?:calls?|numbers?|estimates?|predictions?|forecasts?|guesses)\b`;
+
+/** Words that name overconfidence. */
+const OVER_WORDS = new RegExp(
+  [
+    String.raw`\b${OVER_CORE}`,
+    String.raw`\bmore (?:sure|confident|certain) than\b`,
+    String.raw`\b(?:ran|runs|run|running) (?:a bit |slightly )?(?:hot|ahead)\b`,
+    String.raw`\b(?:confidence|numbers?|estimates?) (?:ran|runs|run|running) (?:a bit |slightly )?high\b`,
+    String.raw`\bless often than\b(?!\s+not\b)`,
+    String.raw`\b(?:fewer|less|lower)\b[^.;:!?\n]{0,40}?\bthan\s+${SAID}`,
+    String.raw`\bover[\s-]?(?:stat(?:e|ed|es|ing|ement|ements)|rat(?:e|ed|es|ing)|shoot(?:s|ing)?|shot)\b`,
+    String.raw`\b(?:fell|falls|fall|falling|came|comes|coming) short\b`,
+    String.raw`\b(?:below|under|beneath|behind|short of|shy of)\s+${SAID}`,
+    String.raw`${DESCRIBED}optimistic\b`,
+    String.raw`${DESCRIBED_BEFORE}optimistic${DESCRIBED_NOUN}`,
+    String.raw`\bon the (?:optimistic|high) side\b`,
+  ].join('|'),
+);
+/** Words that name underconfidence. */
+const UNDER_WORDS = new RegExp(
+  [
+    String.raw`\b${UNDER_CORE}`,
+    String.raw`\bless (?:sure|confident|certain) than\b`,
+    String.raw`\b(?:ran|runs|run|running) (?:a bit |slightly )?cold\b`,
+    String.raw`\b(?:confidence|numbers?|estimates?) (?:ran|runs|run|running) (?:a bit |slightly )?low\b`,
+    String.raw`\bmore often than\b(?!\s+not\b)`,
+    String.raw`\b(?:more|higher|greater)\b(?!\s+(?:sure|confident|certain)\b)[^.;:!?\n]{0,40}?\bthan\s+${SAID}`,
+    String.raw`\bunder[\s-]?(?:stat(?:e|ed|es|ing|ement|ements)|rat(?:e|ed|es|ing))\b`,
+    String.raw`\bnot (?:confident|sure|certain|bold) enough\b`,
+    String.raw`\b(?:beat|beats|exceeded|exceeds|outpaced|outran)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted))\b`,
+    String.raw`\b(?:above|over|beyond|ahead of)\s+${SAID}`,
+    String.raw`${DESCRIBED}(?:cautious|conservative|pessimistic)\b`,
+    String.raw`${DESCRIBED_BEFORE}(?:cautious|conservative|pessimistic)${DESCRIBED_NOUN}`,
+    String.raw`\bon the (?:cautious|conservative|careful|safe|low) side\b`,
+  ].join('|'),
+);
+/**
+ * Any comparison with what was said, expected or thought: a lean, whichever
+ * way it reads, so only in an over/under card the category's direction backs.
+ */
+const COMPARE_WORDS = new RegExp(
+  [
+    String.raw`\bthan\s+${SAID}`,
+    String.raw`\bthan\s+(?:your|the)\s+(?:stated|expected|predicted|forecast|estimated)\b`,
+    String.raw`\b(?:compared|relative)\s+(?:to|with)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted))\b`,
+    String.raw`\b(?:versus|vs|against)\s+what\s+you\s+(?:said|stated|expected|thought|predicted)\b`,
+    String.raw`\b(?:short|shy)\s+of\s+what\s+you\s+(?:said|stated|expected|thought|predicted)\b`,
+    String.raw`\b(?:beat|beats|exceeded|exceeds|outpaced|missed|undershot|overshot)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted))\b`,
+    String.raw`\b(?:below|under|beneath|behind|above|over|beyond|ahead of)\s+${SAID}`,
+  ].join('|'),
+);
+/** Words that say what was said matched what happened (rule: closeToSaid). */
+const CLOSE_WORDS = new RegExp(
+  [
+    '~close~',
+    String.raw`\bcalibrated\b`,
+    String.raw`\bspot[\s-]on\b`,
+    String.raw`\bon target\b`,
+    String.raw`\babout right\b`,
+    String.raw`\baccurate(?:ly)?\b`,
+    String.raw`\bin line with\b`,
+    String.raw`\bmatch(?:ed|es|ing)?\s+(?:what\s+(?:happened|you\s+(?:said|stated|expected))|(?:the\s+)?outcomes?|reality)\b`,
+    String.raw`\bas often as (?:you )?(?:said|stated|expected|thought|predicted)\b`,
+    String.raw`\bclose to\s+(?:what\s+you\s+(?:said|stated|expected)|your\s+(?:\d+(?:\.\d+)?\s?%\s+)?(?:stated|said|confidence))\b`,
+    String.raw`\b(?:good|great|strong|excellent|solid|tight|close|accurate|precise)\s+calibration\b`,
+    String.raw`\bcalibration\s+(?:is|was|looks|seems|stays)\s+(?:good|great|strong|excellent|solid|tight|spot-on|accurate|on point)\b`,
+  ].join('|'),
+);
+/** "No clear lean": the app's words for a `calibrated` direction, close or not. */
+const NO_LEAN_WORDS =
+  /\bno (?:clear |real |obvious |strong |consistent |particular )?lean(?:s|ing)?\b|\b(?:doesn't|does not|don't|do not|didn't|did not)\s+(?:clearly\s+)?lean\b(?!\s+(?:on|into)\b)/;
+/** A miss with no direction ("not well calibrated"): only where the app names a lean. */
+const MISS_WORDS = /~miss~/;
+
+// --- Categories.
+
+/** The words for each built-in. Which uses count is decided by categoryMentions. */
 const CATEGORY_WORDS: Readonly<Record<BuiltInCategory, RegExp>> = {
-  work: /\bwork\b(?!\s+(?:on|at|out|through|towards?|with)\b)/,
-  health: /\bhealth\b/,
-  finance: /\b(?:finance|finances|financial|money)\b/,
-  social: /\bsocial\b/,
-  personal: /\bpersonal\b/,
+  work: /\bwork\b/g,
+  health: /\bhealth\b/g,
+  finance: /\b(?:finance|finances|financial|money)\b/g,
+  social: /\bsocial\b/g,
+  personal: /\bpersonal\b/g,
 };
+/** Right after the word, a use as the category, always: "work calls", "finance's", "health score". */
+const CATEGORY_USE_AFTER =
+  /^(?:'s\b|-related\b|\s+(?:calls?|predictions?|forecasts?|answers?|guesses|estimates?|categor(?:y|ies)|ones|scores?|ratings?|records?|numbers|figures|confidence|stats|results|outcomes|side|domain|area|bucket|items|entries|questions|picks|calibration|drift|track record)\b)/;
+/** Right before the word, a use as the category, always: "your work". */
+const CATEGORY_USE_BEFORE = /\b(?:your|my|their)\s+$/;
+/**
+ * Idioms that hold the word but aren't the category ("keep up the good work",
+ * "personal best", "not financial advice"). Every other use counts, so a
+ * phrasing nobody listed is read as naming the category: the safe direction.
+ */
+const NOT_THE_CATEGORY: Readonly<Record<BuiltInCategory, { before?: RegExp; after?: RegExp }>> = {
+  work: {
+    before:
+      /\b(?:good|great|nice|fine|hard|excellent|solid|careful|honest|steady|consistent|amazing|awesome|terrific|brilliant|impressive|thoughtful|real|quality|detective|guess|leg|busy|home|team|field|paper|ground|patch|the|this|that|some|more|less|extra|further|might|may|could|would|should|will|can|does|do|did|doesn't|don't|didn't|won't|can't|cannot|which)\s+$/,
+    after:
+      /^\s+(?:on|at|out|through|towards?|with|it|hard|harder|well|best|for|in progress|wonders|against|around|together)\b/,
+  },
+  health: {
+    before: /\b(?:mental|good|bad|poor|great|ill|physical|public|financial|sexual|reproductive)\s+$/,
+    after:
+      /^\s+(?:advice|professionals?|care|insurance|conditions?|issues?|problems?|concerns?|providers?|services?|records?|and safety|matters|benefits?|risks?)\b/,
+  },
+  finance: {
+    before:
+      /\b(?:make|making|made|save|saving|saved|spend|spending|spent|lose|losing|lost|earn|earning|earned|put|move|invest|bet|betting|borrow|borrowing|owe|time is|personal|real|extra|more|less|some)\s+$/,
+    after:
+      /^\s+(?:advice|advisors?|advisers?|planners?|planning|professionals?|products?|decisions?|situation|institutions?|markets?|literacy|services?|security|goals?|worries|worry|matters|management|aid|freedom|wellbeing|well-being)\b/,
+  },
+  social: {
+    after:
+      /^\s+(?:media|security|skills?|anxiety|norms?|pressure|proof|cues?|sciences?|networks?|networking|workers?|services?)\b/,
+  },
+  personal: {
+    before: /\b(?:nothing|too|very|get|getting|so|more|less)\s+$/,
+    after:
+      /^\s+(?:bests?|record|records|note|notes|touch|opinions?|advice|growth|data|information|details|taste|preferences?|space|finances?|matters?|reasons?|reference)\b/,
+  },
+};
+
+interface Mention {
+  category: BuiltInCategory;
+  index: number;
+}
+
+/** Where the words name a built-in category as a category. */
+function categoryMentions(scan: string): Mention[] {
+  const out: Mention[] = [];
+  for (const category of CATEGORIES) {
+    const re = new RegExp(CATEGORY_WORDS[category].source, 'g');
+    for (let m = re.exec(scan); m !== null; m = re.exec(scan)) {
+      const end = m.index + m[0].length;
+      const before = scan.slice(Math.max(0, m.index - 40), m.index);
+      const after = scan.slice(end, end + 40);
+      if (!CATEGORY_USE_AFTER.test(after) && !CATEGORY_USE_BEFORE.test(before)) {
+        const idiom = NOT_THE_CATEGORY[category];
+        if (idiom.before?.test(before) || idiom.after?.test(after)) continue;
+      }
+      out.push({ category, index: m.index });
+    }
+  }
+  return out;
+}
 
 /** Lowercased, curly apostrophes and the dash family made plain, for the word checks. */
 function scanForm(text: string): string {
@@ -421,33 +684,32 @@ function wordsBreakARule(text: string, scan: string): boolean {
   if (PHONE_NUMBER.test(text)) return true;
   if (NUMBER_WORDS.test(scan.replace(NUMBER_WORD_IDIOMS, ' '))) return true;
   if (BADGE_NAMES.test(scan)) return true;
-  return DOMAIN_ADVICE.some((p) => p.test(scan));
-}
-
-function categoriesNamedIn(scan: string): Set<BuiltInCategory> {
-  const named = new Set<BuiltInCategory>();
-  for (const c of CATEGORIES) if (CATEGORY_WORDS[c].test(scan)) named.add(c);
-  return named;
+  const advice = scan.replace(DISCLAIMERS, ' ');
+  return DOMAIN_ADVICE.some((p) => p.test(advice));
 }
 
 // ---------------------------------------------------------------------------
 // Output: the numbers (§5.1)
 // ---------------------------------------------------------------------------
 
+/** The scale a figure is written on. */
 type FigureKind = 'count' | 'score' | 'percent' | 'rate' | 'index';
+/** What a figure is, as the words beside a number name it. */
+type Role = 'count' | 'score' | 'drift' | 'stated' | 'hit' | 'index';
 
 /**
  * A number the model was shown.
  *   citable  - past its gate: may ground a number
  *   withheld - under its gate: grounds nothing, and a number that matches it
  *              is dropped even if it also matches a citable figure
- *   neutral  - the weekday index and its answer count: never cited, never
+ *   neutral  - the weekday index and the floors' counts: never cited, never
  *              blocking
  */
 interface Figure {
   value: number;
   tolerance: number;
   kind: FigureKind;
+  role: Role;
   /** 'overall' or a built-in category. */
   scope: string;
   state: 'citable' | 'withheld' | 'neutral';
@@ -468,37 +730,55 @@ function statsByCategory(context: CoachContext): Map<string, CategoryEntry> {
 
 function figuresOf(context: CoachContext, stats: ReadonlyMap<string, CategoryEntry>): Figure[] {
   const figures: Figure[] = [];
-  const add = (value: number, kind: FigureKind, scope: string, state: Figure['state']) =>
-    figures.push({ value, tolerance: toleranceFor(value, kind), kind, scope, state });
+  const add = (value: number, kind: FigureKind, role: Role, scope: string, state: Figure['state']) =>
+    figures.push({ value, tolerance: toleranceFor(value, kind), kind, role, scope, state });
 
   const overallOk = context.overall.total_resolved >= MIN_N_OVERALL;
-  add(context.overall.calibration_rating, 'score', 'overall', overallOk ? 'citable' : 'withheld');
-  add(context.overall.total_resolved, 'count', 'overall', 'citable');
+  add(context.overall.calibration_rating, 'score', 'score', 'overall', overallOk ? 'citable' : 'withheld');
+  add(context.overall.total_resolved, 'count', 'count', 'overall', 'citable');
 
   for (const [category, c] of stats) {
     const gate = c.resolved >= MIN_N_CATEGORY ? 'citable' : 'withheld';
-    add(c.resolved, 'count', category, 'citable');
-    add(c.calibration_score, 'score', category, gate);
-    add(c.mean_stated_confidence, 'percent', category, gate);
-    add(c.actual_rate, 'rate', category, gate);
+    add(c.resolved, 'count', 'count', category, 'citable');
+    add(c.calibration_score, 'score', 'score', category, gate);
+    add(c.mean_stated_confidence, 'percent', 'stated', category, gate);
+    add(c.actual_rate, 'rate', 'hit', category, gate);
     // Rates arrive as 0-1 and are written as percentages: the same fact.
-    if (c.actual_rate >= 0 && c.actual_rate <= 1) add(c.actual_rate * 100, 'percent', category, gate);
+    if (c.actual_rate >= 0 && c.actual_rate <= 1) add(c.actual_rate * 100, 'percent', 'hit', category, gate);
   }
 
   const answers = context.patterns.find((p) => p.kind === WEEKDAY_ANSWERS_KIND)?.value;
   const weekdayOk = overallOk && typeof answers === 'number' && answers >= WEEKDAY_MIN_N;
+  const halves = new Map<string, number>();
   for (const p of context.patterns) {
-    if (p.kind === WEEKDAY_KIND || p.kind === WEEKDAY_ANSWERS_KIND) {
-      add(p.value, p.kind === WEEKDAY_KIND ? 'index' : 'count', 'overall', 'neutral');
+    if (p.kind.startsWith(DRIFT_HALF_ANSWERS_PREFIX)) halves.set(p.kind.slice(DRIFT_HALF_ANSWERS_PREFIX.length), p.value);
+  }
+  for (const p of context.patterns) {
+    if (p.kind === WEEKDAY_KIND) {
+      add(p.value, 'index', 'index', 'overall', 'neutral');
+    } else if (p.kind === WEEKDAY_ANSWERS_KIND) {
+      add(p.value, 'count', 'count', 'overall', 'neutral');
     } else if (p.kind === WEEKDAY_SCORE_KIND) {
-      add(p.value, 'score', 'overall', weekdayOk ? 'citable' : 'withheld');
+      add(p.value, 'score', 'score', 'overall', weekdayOk ? 'citable' : 'withheld');
+    } else if (p.kind.startsWith(DRIFT_HALF_ANSWERS_PREFIX)) {
+      const category = p.kind.slice(DRIFT_HALF_ANSWERS_PREFIX.length);
+      add(p.value, 'count', 'count', isBuiltIn(category) ? category : 'overall', 'neutral');
     } else if (p.kind.startsWith(DRIFT_PREFIX)) {
+      // Each half it compares needs DRIFT_HALF_MIN_N answers. Without the
+      // count (a build before 2026-11-19), or with one the category can't
+      // hold, the drift is never cited.
       const category = p.kind.slice(DRIFT_PREFIX.length);
       const stat = stats.get(category);
-      const ok = stat !== undefined && stat.resolved >= MIN_N_CATEGORY;
-      add(p.value, 'score', isBuiltIn(category) ? category : 'overall', ok ? 'citable' : 'withheld');
+      const half = halves.get(category);
+      const ok =
+        stat !== undefined &&
+        stat.resolved >= MIN_N_CATEGORY &&
+        half !== undefined &&
+        half >= DRIFT_HALF_MIN_N &&
+        2 * half <= stat.resolved;
+      add(p.value, 'score', 'drift', isBuiltIn(category) ? category : 'overall', ok ? 'citable' : 'withheld');
     } else {
-      add(p.value, 'score', 'overall', 'withheld');
+      add(p.value, 'score', 'score', 'overall', 'withheld');
     }
   }
   return figures;
@@ -506,19 +786,19 @@ function figuresOf(context: CoachContext, stats: ReadonlyMap<string, CategoryEnt
 
 /**
  * The figures a number may be, or null when it may not be cited: it matches
- * no citable figure of an allowed kind, or it matches a withheld one.
+ * no citable figure that `allowed` lets it be, or it matches a withheld one.
  */
 function judge(
   figures: readonly Figure[],
   inScope: (f: Figure) => boolean,
   matches: (f: Figure) => boolean,
-  kinds: ReadonlySet<FigureKind>,
+  allowed: (f: Figure) => boolean,
 ): Figure[] | null {
   const ok: Figure[] = [];
   for (const f of figures) {
     if (!inScope(f) || !matches(f)) continue;
     if (f.state === 'withheld') return null;
-    if (f.state === 'citable' && kinds.has(f.kind)) ok.push(f);
+    if (f.state === 'citable' && allowed(f)) ok.push(f);
   }
   return ok.length > 0 ? ok : null;
 }
@@ -528,6 +808,8 @@ interface NumberToken {
   percent: boolean;
   start: number;
   end: number;
+  /** Where the number ends with its "%", "percent", "per cent" or "pct". */
+  unitEnd: number;
 }
 
 /**
@@ -541,11 +823,13 @@ function numbersIn(text: string): NumberToken[] {
   const re = /\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g;
   for (let m = re.exec(text); m !== null; m = re.exec(text)) {
     const end = m.index + m[0].length;
+    const unit = /^\s?(?:%|percent\b|per cent\b|pct\b)/i.exec(text.slice(end));
     tokens.push({
       value: Number(m[0].replace(/,/g, '')),
-      percent: /^\s?(?:%|percent\b|per cent\b|pct\b)/i.test(text.slice(end)),
+      percent: unit !== null,
       start: m.index,
       end,
+      unitEnd: end + (unit === null ? 0 : unit[0].length),
     });
   }
   return tokens;
@@ -553,12 +837,12 @@ function numbersIn(text: string): NumberToken[] {
 
 /**
  * The only numbers not taken from the context: a gate the prompt names, in
- * its own phrasing ("at 20 scored answers", "until 10 answers"), and the
+ * its own phrasing ("at 20 scored answers", "until 20 answers"), and the
  * scale ("72/100", "out of 100"). Nothing else: "20 points" or "you have 20
  * answers" must still match a figure.
  */
 function allowedSpans(text: string): Array<[number, number]> {
-  const gates = [...new Set([MIN_N_OVERALL, MIN_N_CATEGORY, WEEKDAY_MIN_N])].join('|');
+  const gates = [...new Set([MIN_N_OVERALL, MIN_N_CATEGORY, WEEKDAY_MIN_N, DRIFT_HALF_MIN_N])].join('|');
   const patterns = [
     new RegExp(
       `\\b(?:at least|at|from|after|until|till|once|reach(?:es|ing)?|hit(?:s|ting)?|need(?:s|ed)?|takes?)\\s+` +
@@ -577,9 +861,274 @@ function allowedSpans(text: string): Array<[number, number]> {
   return spans;
 }
 
-const ALL_KINDS: ReadonlySet<FigureKind> = new Set<FigureKind>(['count', 'score', 'percent', 'rate']);
-const COUNT_KINDS: ReadonlySet<FigureKind> = new Set<FigureKind>(['count']);
-const PERCENT_KINDS: ReadonlySet<FigureKind> = new Set<FigureKind>(['percent']);
+// --- Clauses and sentences: which words belong to which number.
+
+type Span = [number, number];
+
+/** Where a sentence ends: . ! ? before a space or the end, a semicolon, a line break. */
+const SENTENCE_BREAKS = /[.!?](?=\s|$)|[;\n]/g;
+/**
+ * Where a clause ends: a sentence break, a colon, a bracket, a comma (not
+ * inside "1,234"), a spaced dash, or a word that turns the sentence.
+ */
+const CLAUSE_BREAKS = /[.!?](?=\s|$)|[;:\n()]|,(?!\d)|\s-\s|\b(?:but|while|whereas|though|although)\b/g;
+/**
+ * Inside a clause, "and" also ends what a cue word can reach ("you said 60%
+ * and 82% happened"), though not whose number it is ("finance and work both
+ * sit at 80%" names two categories beside one number).
+ */
+const CUE_BREAKS = /\band\b/g;
+
+function breaksIn(scan: string, pattern: RegExp): Span[] {
+  const re = new RegExp(pattern.source, 'g');
+  const out: Span[] = [];
+  for (let m = re.exec(scan); m !== null; m = re.exec(scan)) out.push([m.index, m.index + m[0].length]);
+  return out;
+}
+
+/** The stretch between the last break before [start, end) and the first after it. */
+function segment(start: number, end: number, breaks: readonly Span[], length: number): Span {
+  let from = 0;
+  let to = length;
+  for (const [s, e] of breaks) {
+    if (e <= start) {
+      if (e > from) from = e;
+    } else if (s >= end && s < to) {
+      to = s;
+    }
+  }
+  return [from, to];
+}
+
+function categoriesWithin(mentions: readonly Mention[], [from, to]: Span): Set<BuiltInCategory> {
+  const out = new Set<BuiltInCategory>();
+  for (const m of mentions) if (m.index >= from && m.index < to) out.add(m.category);
+  return out;
+}
+
+/** Words that put a number on the whole record, not one category. */
+const OVERALL_WORDS =
+  /\b(?:overall|in total|total|altogether|in all|all (?:of )?your|across (?:all|every)|every category|all categories|your (?:calibration )?rating|whole record|entire record|(?:mon|tues|wednes|thurs|fri|satur|sun)days?|weekdays?|day of the week)\b/;
+
+/**
+ * Whose figure a number may be: 'overall', a category, or null when that is
+ * ambiguous (two categories named beside it). The category named in its
+ * clause; else, with a word that says overall nearby, the overall figures;
+ * else the category named in its sentence; else the label's. A category's
+ * number is never an overall figure, nor another category's.
+ */
+function bindingFor(
+  token: NumberToken,
+  clause: Span,
+  sentenceBreaks: readonly Span[],
+  mentions: readonly Mention[],
+  scan: string,
+  label: string | null,
+): string | null {
+  const inClause = categoriesWithin(mentions, clause);
+  if (inClause.size > 1) return null;
+  if (inClause.size === 1) return [...inClause][0];
+  const sentence = segment(token.start, token.unitEnd, sentenceBreaks, scan.length);
+  const inSentence = categoriesWithin(mentions, sentence);
+  if (inSentence.size > 1) return null;
+  const overall =
+    OVERALL_WORDS.test(scan.slice(clause[0], clause[1])) ||
+    (inSentence.size === 0 && OVERALL_WORDS.test(scan.slice(sentence[0], sentence[1])));
+  if (overall) return 'overall';
+  if (inSentence.size === 1) return [...inSentence][0];
+  return label ?? 'overall';
+}
+
+// --- Cues: the words that say what a number is.
+
+type Side = 'left' | 'right';
+
+interface Cue {
+  pattern: RegExp;
+  /**
+   * The roles a number may have with this word beside it, at `distance`
+   * words on `side`: null when the word says nothing about such a number,
+   * an empty list when no figure fits ("88% score").
+   */
+  roles: (percent: boolean, side: Side, distance: number, word: string) => readonly Role[] | null;
+  /**
+   * A unit: right after a plain number it says what the number counts,
+   * whatever stands before it ("score 7.3 points better", "logged 81 scored
+   * answers").
+   */
+  unit?: true;
+}
+
+const CUES: readonly Cue[] = [
+  // Phrases that hold a cue word but say nothing of a number beside them.
+  {
+    pattern: /\b(?:about|all|just)\s+right\b|\bright\s+(?:on|now|away|there|here)\b|\bmake\s+sure\b|\bfor\s+sure\b/,
+    roles: () => null,
+  },
+  // A count: "25 answers", "81 scored answers". After a percentage, "80% calls" is what was said.
+  {
+    pattern:
+      /\b(?:(?:scored|resolved|answered)\s+)?(?:answers?|predictions?|calls?|forecasts?|resolutions?|entries|guesses|questions|items)\b/,
+    roles: (percent, side, distance, word) => {
+      if (!percent) return ['count'];
+      return side === 'right' && distance === 0 && /^(?:calls?|predictions?|forecasts?|guesses)$/.test(word)
+        ? ['stated']
+        : null;
+    },
+    unit: true,
+  },
+  // "resolved 25"; beside a percentage, a share the context doesn't hold ("resolved 80%").
+  { pattern: /\b(?:resolved|answered|logged)\b/, roles: (percent) => (percent ? [] : ['count']) },
+  // "8 times", "12 of 21", "12 out of 21": right after the number.
+  { pattern: /\btimes\b/, roles: (percent, side) => (!percent && side === 'right' ? ['count'] : null), unit: true },
+  {
+    pattern: /\b(?:out\s+)?of\b/,
+    roles: (percent, side, distance) => (!percent && side === 'right' && distance === 0 ? ['count'] : null),
+  },
+  // A score, never a percentage: "a score of 88".
+  { pattern: /\b(?:scores?|ratings?)\b/, roles: (percent) => (percent ? [] : ['score']) },
+  // The scale: "72/100", "72 out of 100".
+  { pattern: /\/\s?100\b|\bout\s+of\s+100\b/, roles: (percent) => (percent ? [] : ['score']), unit: true },
+  // "rated 88" is a score; "calls you rated 80%" is what was said.
+  { pattern: /\brated\b/, roles: (percent) => (percent ? ['stated'] : ['score']) },
+  // A score or a drift: "scored 61", "calibrate worst".
+  {
+    pattern: /\b(?:scored|scoring|calibration|calibrates?|calibrated)\b/,
+    roles: (percent) => (percent ? [] : ['score', 'drift']),
+  },
+  // Points: "88 points" is a score or a drift, "7.3 points better" a drift.
+  {
+    pattern: /\bpoints?\s+(?:better|worse|higher|lower|up|down)\b/,
+    roles: (percent) => (percent ? [] : ['drift']),
+    unit: true,
+  },
+  { pattern: /\b(?:points?|pts)\b/, roles: (percent) => (percent ? [] : ['score', 'drift']), unit: true },
+  // A change: "slipped by 6.5", "improved 7.3 points".
+  {
+    pattern:
+      /\b(?:slipped|slips?|fell|falls?|fallen|dropped|drops?|rose|rises?|risen|improved|improves?|improving|climbed|climbs?|gained|gains?|declined|declines?|worsened|changed|changes?|shifted|moved|drift(?:ed|s)?|trend(?:ed|ing|s)?)\b/,
+    roles: (percent) => (percent ? null : ['drift']),
+  },
+  { pattern: /\bby\b/, roles: (percent, side, distance) => (!percent && side === 'left' && distance === 0 ? ['drift'] : null) },
+  // What was said: "you said 80%", "80% sure".
+  {
+    pattern:
+      /\b(?:average\s+confidence|said|say|says|saying|stated|state|states|stating|sure|confident|confidence|certain|felt|feel|feels|feeling|expected|expect|expects|expecting|thought|gave|give|giving|called|likely)\b/,
+    roles: () => ['stated'],
+  },
+  // What happened: "55% happened", "a 0.55 hit rate" (a plain number takes only the 0-1 rate).
+  {
+    pattern:
+      /\b(?:hit\s+rate|rate|happened|happen|happens|happening|came\s+true|come\s+true|comes\s+true|coming\s+true|right|correct|hits?|of\s+the\s+time|occurred|occurs?|turned\s+out|actually|actual|landed|panned\s+out)\b/,
+    roles: () => ['hit'],
+  },
+];
+
+interface CueHit {
+  start: number;
+  end: number;
+  word: string;
+  cue: Cue;
+  order: number;
+}
+
+/** Every cue in the text. Where two overlap, the longer (then the one listed first) is the one read. */
+function cuesIn(scan: string): CueHit[] {
+  const hits: CueHit[] = [];
+  CUES.forEach((cue, order) => {
+    const re = new RegExp(cue.pattern.source, 'g');
+    for (let m = re.exec(scan); m !== null; m = re.exec(scan)) {
+      hits.push({ start: m.index, end: m.index + m[0].length, word: m[0], cue, order });
+    }
+  });
+  const length = (h: CueHit) => h.end - h.start;
+  return hits.filter(
+    (h) =>
+      !hits.some(
+        (o) =>
+          o !== h &&
+          o.start < h.end &&
+          h.start < o.end &&
+          (length(o) > length(h) || (length(o) === length(h) && o.order < h.order)),
+      ),
+  );
+}
+
+const WORD = /[a-z]+(?:'[a-z]+)?/g;
+
+/**
+ * What a number may be, from the nearest cue words within its reach (no
+ * nearer number between): their roles, or null when two cues equally near
+ * disagree. A unit right after a plain number decides alone. A cue word
+ * pressed between this number and another, with no word on either side
+ * ("rated 80% came true 55%", "at 60% happened 82%"), can belong to either,
+ * so it is read for neither. With no cue, a percentage may be what was said
+ * or what happened (said, after "at": "overconfident at 80%"), and a plain
+ * number reads as a score, or as a count in an encouragement.
+ */
+function rolesFor(
+  token: NumberToken,
+  tokens: readonly NumberToken[],
+  cues: readonly CueHit[],
+  reach: Span,
+  scan: string,
+  encouragement: boolean,
+): ReadonlySet<Role> | null {
+  const noWord = (from: number, to: number) => (scan.slice(from, to).match(WORD) ?? []).length === 0;
+  const others = tokens.filter((t) => t !== token && t.start >= reach[0] && t.unitEnd <= reach[1]);
+  let best = Number.POSITIVE_INFINITY;
+  let roles: Set<Role> | null = null;
+  for (const hit of cues) {
+    if (hit.start < reach[0] || hit.end > reach[1]) continue;
+    let side: Side;
+    let from: number;
+    let to: number;
+    if (hit.end <= token.start) {
+      side = 'left';
+      from = hit.end;
+      to = token.start;
+    } else if (hit.start >= token.unitEnd) {
+      side = 'right';
+      from = token.unitEnd;
+      to = hit.start;
+    } else {
+      continue;
+    }
+    if (tokens.some((t) => t !== token && t.start >= from && t.end <= to)) continue;
+    const distance = (scan.slice(from, to).match(WORD) ?? []).length;
+    const said = hit.cue.roles(token.percent, side, distance, hit.word);
+    if (said === null) continue;
+    if (hit.cue.unit && side === 'right' && distance === 0 && !token.percent) return said.length > 0 ? new Set(said) : null;
+    if (
+      distance === 0 &&
+      others.some((t) => (side === 'left' ? t.unitEnd <= hit.start && noWord(t.unitEnd, hit.start) : t.start >= hit.end && noWord(hit.end, t.start)))
+    ) {
+      continue;
+    }
+    if (distance < best) {
+      best = distance;
+      roles = new Set(said);
+    } else if (distance === best && roles !== null) {
+      const current: Set<Role> = roles;
+      roles = new Set([...current].filter((r) => said.includes(r)));
+    }
+  }
+  if (roles === null) {
+    if (token.percent) {
+      return new Set<Role>(/\bat\s+$/.test(scan.slice(reach[0], token.start)) ? ['stated'] : ['stated', 'hit']);
+    }
+    return new Set<Role>(encouragement ? ['count'] : ['score', 'drift']);
+  }
+  return roles.size > 0 ? roles : null;
+}
+
+/** Whether a figure is one a number with these roles may be. */
+function fits(f: Figure, token: NumberToken, roles: ReadonlySet<Role>): boolean {
+  if (!roles.has(f.role)) return false;
+  if (token.percent) return f.kind === 'percent';
+  // A plain number is a hit rate only as its 0-1 fraction: "55 happened" reads as a count.
+  return f.role === 'hit' ? f.kind === 'rate' : true;
+}
 
 // ---------------------------------------------------------------------------
 // Output: one insight
@@ -630,7 +1179,8 @@ function judgeInsight(
   const scan = scanForm(text);
   if (wordsBreakARule(text, scan)) return null;
 
-  const named = categoriesNamedIn(scan);
+  const mentions = categoryMentions(scan);
+  const named = new Set<BuiltInCategory>(mentions.map((m) => m.category));
   const label = category === 'overall' ? null : category;
   const pastGate = (c: string) => {
     const s = stats.get(c);
@@ -649,40 +1199,72 @@ function judgeInsight(
   // One lean rule (D35): an over- or underconfidence insight is about a
   // category the app itself calls that, never 'overall' (the context carries
   // no overall lean).
-  if (type === 'overconfidence' || type === 'underconfidence') {
-    const want = type === 'overconfidence' ? 'overconfident' : 'underconfident';
+  const want =
+    type === 'overconfidence' ? 'overconfident' : type === 'underconfidence' ? 'underconfident' : null;
+  if (want !== null) {
     if (label === null || !pastGate(label) || stats.get(label)?.direction !== want) return null;
   }
   // And whatever the type, words naming a lean are about categories whose
   // direction says exactly that.
   const about = new Set<string>(named);
   if (label !== null) about.add(label);
-  const allAre = (direction: string) =>
-    about.size > 0 && [...about].every((c) => pastGate(c) && stats.get(c)?.direction === direction);
-  if (OVER_WORDS.test(scan) && !allAre('overconfident')) return null;
-  if (UNDER_WORDS.test(scan) && !allAre('underconfident')) return null;
-  if (CALIBRATED_WORDS.test(scan) && !allAre('calibrated')) return null;
+  const every = (test: (c: string, s: CategoryEntry) => boolean) =>
+    about.size > 0 &&
+    [...about].every((c) => {
+      const s = stats.get(c);
+      return s !== undefined && pastGate(c) && test(c, s);
+    });
+  const allAre = (direction: string) => every((_c, s) => s.direction === direction);
+  const leans = turnLeans(scan);
+  if (OVER_WORDS.test(leans) && !allAre('overconfident')) return null;
+  if (UNDER_WORDS.test(leans) && !allAre('underconfident')) return null;
+  // A comparison with what was said only in an over/under card it backs.
+  if (COMPARE_WORDS.test(leans) && (want === null || !allAre(want))) return null;
+  const close = CLOSE_WORDS.test(leans);
+  if ((close || NO_LEAN_WORDS.test(leans)) && !allAre('calibrated')) return null;
+  // "Well calibrated" only within the chart's 5 points (D57); else "no clear lean".
+  if (close && !every((_c, s) => closeToSaid(s.mean_stated_confidence, s.actual_rate * 100))) return null;
+  if (
+    MISS_WORDS.test(leans) &&
+    !every((_c, s) => s.direction === 'overconfident' || s.direction === 'underconfident')
+  ) {
+    return null;
+  }
 
-  // Which figures a number may be: those of the categories the words name,
-  // or the label's when they name none, and the overall ones.
-  const scope = named.size > 0 ? named : new Set<string>(label === null ? [] : [label]);
-  const inScope = (f: Figure) => f.scope === 'overall' || scope.has(f.scope);
-  const kinds = type === 'encouragement' ? COUNT_KINDS : ALL_KINDS;
-
-  const evidenceHits = judge(figures, inScope, (f) => Math.abs(f.value - evidence) <= f.tolerance, kinds);
+  // The evidence: a figure of the categories the words name, or the label's
+  // when they name none, or an overall one.
+  const evidenceScope = named.size > 0 ? named : new Set<string>(label === null ? [] : [label]);
+  const evidenceHits = judge(
+    figures,
+    (f) => f.scope === 'overall' || evidenceScope.has(f.scope),
+    (f) => Math.abs(f.value - evidence) <= f.tolerance + TOLERANCE_EPSILON,
+    (f) => (type === 'encouragement' ? f.role === 'count' : f.role !== 'index'),
+  );
   if (evidenceHits === null) return null;
 
-  const spans = allowedSpans(text);
-  for (const token of numbersIn(text)) {
+  // Every number in the words: the kind its words name, of the category its
+  // clause or sentence names.
+  const spans = allowedSpans(scan);
+  const tokens = numbersIn(scan);
+  const cues = cuesIn(scan);
+  const sentenceBreaks = breaksIn(scan, SENTENCE_BREAKS);
+  const clauseBreaks = breaksIn(scan, CLAUSE_BREAKS);
+  const cueBreaks = [...clauseBreaks, ...breaksIn(scan, CUE_BREAKS)];
+  for (const token of tokens) {
     if (spans.some(([s, e]) => token.start >= s && token.end <= e)) continue;
-    const tokenKinds = token.percent
-      ? new Set([...kinds].filter((k) => PERCENT_KINDS.has(k)))
-      : kinds;
+    const clause = segment(token.start, token.unitEnd, clauseBreaks, scan.length);
+    const reach = segment(token.start, token.unitEnd, cueBreaks, scan.length);
+    const roles = rolesFor(token, tokens, cues, reach, scan, type === 'encouragement');
+    if (roles === null) return null;
+    const allowed = type === 'encouragement' ? new Set([...roles].filter((r) => r === 'count')) : roles;
+    if (allowed.size === 0) return null;
+    const bound = bindingFor(token, clause, sentenceBreaks, mentions, scan, label);
+    if (bound === null) return null;
     const hits = judge(
       figures,
-      inScope,
-      (f) => Math.abs(Math.abs(f.value) - token.value) <= f.tolerance,
-      tokenKinds,
+      (f) => f.scope === bound,
+      (f) => Math.abs(Math.abs(f.value) - token.value) <= f.tolerance + TOLERANCE_EPSILON,
+      (f) => fits(f, token, allowed),
     );
     if (hits === null) return null;
   }
@@ -695,7 +1277,9 @@ function judgeInsight(
 /**
  * Validate the model's answer against the context it was given. At most
  * three insights; anything unparseable, ungrounded, under a gate, off-lean or
- * unsafe is dropped. `safe: false` returns no insights at all.
+ * unsafe is dropped. `safe: false` returns no insights at all. When insights
+ * were dropped, `dropped` says how many (the app words an all-dropped answer
+ * apart from an empty one).
  */
 export function validateOutput(raw: unknown, context: CoachContext): CoachOutput {
   if (!isObject(raw)) return { insights: [], safe: true };
@@ -705,13 +1289,17 @@ export function validateOutput(raw: unknown, context: CoachContext): CoachOutput
   const stats = statsByCategory(context);
   const figures = figuresOf(context, stats);
   const out: Insight[] = [];
+  let dropped = 0;
   for (const item of raw.insights) {
     const insight = judgeInsight(item, context, stats, figures);
-    if (!insight) continue;
+    if (!insight) {
+      dropped += 1;
+      continue;
+    }
     out.push(insight);
     if (out.length === MAX_INSIGHTS) break;
   }
-  return { insights: out, safe: true };
+  return dropped > 0 ? { insights: out, safe: true, dropped } : { insights: out, safe: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -732,7 +1320,8 @@ export const SYSTEM_PROMPT = [
   'Reward calibration, not correctness - never treat a wrong outcome as failure.',
   'Do not diagnose, infer mental states or personality, or give medical, financial, legal, or',
   'clinical advice. Do not give diet, weight, sleep, or exercise targets. Do not refer the person',
-  'to professionals, products, or helplines, and do not name badges or tiers. A short "not a',
+  'to professionals, products, or helplines, and do not name badges or tiers: never use the words',
+  'Getting started, Tracker, Forecaster, Sharp or Oracle. A short "not a',
   'substitute for professional advice" note is fine.',
   'Write plain sentences: no links, email addresses, phone numbers, markdown, HTML, or emoji,',
   'and at most one line break in a field.',
@@ -753,15 +1342,30 @@ export const SYSTEM_PROMPT = [
   `- patterns ${WEEKDAY_ANSWERS_KIND}: scored answers on that day; for the threshold only, never cite it.`,
   `- patterns ${DRIFT_PREFIX}<category>: that category's score over its more recent answers minus`,
   'its score over its earlier ones; positive means improving, negative means worsening.',
+  `- patterns ${DRIFT_HALF_ANSWERS_PREFIX}<category>: scored answers in each half that drift compares`,
+  '(the smaller half); for the threshold only, never cite it.',
   'Thresholds. Figures below them are provisional: never cite them.',
   `- The overall rating needs overall.total_resolved of at least ${MIN_N_OVERALL}.`,
   `- A category's calibration_score, mean_stated_confidence, actual_rate and drift need its`,
   `resolved to be at least ${MIN_N_CATEGORY}.`,
+  `- A category's drift also needs ${DRIFT_HALF_ANSWERS_PREFIX}<category> of at least ${DRIFT_HALF_MIN_N}.`,
   `- ${WEEKDAY_SCORE_KIND} needs overall.total_resolved of at least ${MIN_N_OVERALL} and`,
   `${WEEKDAY_ANSWERS_KIND} of at least ${WEEKDAY_MIN_N}.`,
+  `- A card about the weekday cites ${WEEKDAY_SCORE_KIND} as its evidence, never ${WEEKDAY_KIND}`,
+  `or ${WEEKDAY_ANSWERS_KIND}, and names the day in words ("your Monday answers").`,
   '- Name overconfidence or underconfidence only for a category whose direction says so, and',
   'call a category well calibrated only if its direction is "calibrated". Never name a lean',
   'for the person overall.',
+  '- Say "well calibrated" (or accurate, about right, spot on, in line with what happened) only',
+  'when the direction is "calibrated" and mean_stated_confidence and actual_rate as a percent',
+  'are less than 5 points apart; otherwise, for "calibrated", say "no clear lean". Never write',
+  'that gap.',
+  '- Compare what happened with what was said, expected or thought ("less often than you said")',
+  'only in an overconfidence or underconfidence card.',
+  '- Put the word for what each number is right beside it: "score" or "rating" for a 0-100',
+  'score, "points" for a drift, "answers" for a count, "said" or "stated" for',
+  'mean_stated_confidence, "happened" or "came true" for actual_rate. Never call a count a score.',
+  "- Name one category per sentence, and use only that category's numbers in it.",
   '- When the data is below the thresholds, return an "encouragement" to keep logging that cites',
   `only a count (total_resolved or a category's resolved). To mention a threshold, write it as`,
   `"at ${MIN_N_CATEGORY} scored answers".`,

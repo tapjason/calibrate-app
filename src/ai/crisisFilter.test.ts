@@ -94,28 +94,50 @@ describe('scanForCrisis — text as an iPhone types it', () => {
 
 // Finding 15: idioms that replaced the Coach with a support card on every tap.
 // Each carve-out is narrow, and the distress reading of the same words still
-// matches.
+// matches. Narrowed again 2026-11-19 (Coach re-review F, main session's
+// decision): "beats me to it", "beats me by 3 points", "not eating for 20 hrs"
+// and "for 18h" were let through until then and are flagged now (below), as
+// a missed disclosure costs more than an unneeded support card.
 describe('scanForCrisis — idioms that are not distress', () => {
   it.each([
     'Sam beats me at chess',
     'My sister beats me in tennis every week',
     'Dad beats me at cards',
-    'She always beats me to it',
-    'He beats me by 3 points',
+    'Jo beats me at Mario Kart',
+    'Kim beats me at Catan',
+    'Alex beats me at padel',
+    'He beats me at poker',
     'Cut myself some slack this week',
     'cutting myself some slack on the diet',
     'Finish breaking down the moving boxes',
     'Breaking down the problem into steps',
     'breaking down tasks for the sprint',
+    'Breaking down a big project',
+    'breaking down an old wall',
+    'breaking down this recipe',
+    'breaking down that budget',
     'Not eating for 16 hours today',
     'not eat for 12 hours before the blood test',
-    'not eating for 20 hrs on Friday',
-    'Not eating for 18h',
+    'not eating for 1 hour',
   ])('lets %p through', (text) => {
     expect(scanForCrisis([text])).toEqual({ safe: true, topic: null });
   });
 
   it.each([
+    // Re-included 2026-11-19: no carve-out may hide the distress reading.
+    ['he beats me by 9 every night', 'abuse'],
+    ['he beats me at game night', 'abuse'],
+    ['he beats me at games', 'abuse'],
+    ['she beats me in sports', 'abuse'],
+    ['He beats me by 3 points', 'abuse'],
+    ['She always beats me to it', 'abuse'],
+    ['not eating for 20 hours at a time', 'eating_disorder'],
+    ['not eating for 20 hrs on Friday', 'eating_disorder'],
+    ['Not eating for 18h', 'eating_disorder'],
+    ['not eating for 17 hours', 'eating_disorder'],
+    ['breaking down a lot lately', 'distress'],
+    ['breaking down this week', 'distress'],
+    ['breaking down that night', 'distress'],
     ['he beats me', 'abuse'],
     ['My husband beats me at home', 'abuse'],
     ['she beats me when she drinks', 'abuse'],
@@ -212,6 +234,29 @@ describe('scanForCrisis — never catches less than before', () => {
       expect(oldScan(text)).not.toBeNull();
       expect(scanForCrisis([text]).safe).toBe(true);
     }
+  });
+});
+
+// Item 14 (2026-11-19): without String.prototype.normalize the scan still
+// reads each text as typed and with apostrophes, dashes and spaces made
+// plain; only the NFKC reading is lost (it only ever adds matches).
+describe('scanForCrisis — without NFKC', () => {
+  const original = Object.getOwnPropertyDescriptor(String.prototype, 'normalize')!;
+  afterEach(() => Object.defineProperty(String.prototype, 'normalize', original));
+
+  it.each([
+    ['missing', undefined],
+    ['throwing', () => {
+      throw new RangeError('no ICU');
+    }],
+  ])('still flags every reading but NFKC when normalize is %s', (_name, normalize) => {
+    Object.defineProperty(String.prototype, 'normalize', { ...original, value: normalize });
+    expect(scanForCrisis(['I want to die'])).toEqual({ safe: false, topic: 'self_harm' });
+    expect(scanForCrisis(['I can’t go on'])).toEqual({ safe: false, topic: 'distress' });
+    expect(scanForCrisis(['self–harm again'])).toEqual({ safe: false, topic: 'self_harm' });
+    expect(scanForCrisis(['I want  to\ndie'])).toEqual({ safe: false, topic: 'self_harm' });
+    expect(scanForCrisis(['he beats me at game night'])).toEqual({ safe: false, topic: 'abuse' });
+    expect(scanForCrisis(['Ship the prototype by Friday'])).toEqual({ safe: true, topic: null });
   });
 });
 

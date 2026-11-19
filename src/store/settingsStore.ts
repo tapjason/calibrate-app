@@ -5,7 +5,20 @@
 // Layer note: this is L4. It owns no business math and reaches no service.
 // The notification services (L5) SUBSCRIBE to this store to react to toggle
 // changes — the dependency arrow points L5 → L4, never the reverse, exactly
-// like the prediction-store subscriptions in scheduler.ts / digest.ts.
+// like the prediction-store subscriptions in scheduler.ts / digest.ts. The
+// one platform call it makes is a foreground listener while the stored
+// record can't be read (`watchForeground`, below).
+//
+// A record that can't be read (client re-review, round 5, 2026-11-19).
+// hydrate() then holds the defaults with every privacy choice on its private
+// side. Each setter used to store the whole snapshot, so the next automatic
+// write (a cooldown stamped, a checkpoint's day) wrote those defaults over a
+// record that may only have failed to read for a moment, turning
+// notifications back on for someone who had turned them off. Now, until a
+// read succeeds, only the person's own choice of a setting is stored (see
+// `ChangeKind`); every other change is held in memory and applied over the
+// record once it reads, which is tried again each time the app comes back to
+// the foreground.
 
 import { create } from 'zustand';
 
@@ -143,6 +156,17 @@ export interface StoredSettings {
    * Cleared by Erase and account deletion.
    */
   streakMomentDay: string | null;
+  /**
+   * When the line about usage counts, on the Warm-up's first screen with the
+   * Usage stats switch (owner decision 2026-11-19, D69 (b); guideline
+   * 5.1.1(ii)), was first shown on this phone, or null if it never has been.
+   * A guest's counts go up only once it has (`usageCountsMayGoUp`). Like the
+   * cooldowns above, a memory, not a preference: stamped once and never moved
+   * (`markUsageNoticeShown`). Cleared by Erase and account deletion, which
+   * start this phone afresh, Warm-up included, so the line is shown again
+   * before anything goes up; kept by sign-out, which keeps the Warm-up too.
+   */
+  usageNoticeShownAt: string | null;
 }
 
 /** The share card's shape: Post (3:4) or Story (9:16). */
@@ -180,6 +204,15 @@ interface SettingsState extends StoredSettings {
    * safe way to be wrong, and each can be changed back in You as usual.
    */
   loadFailed: boolean;
+  /**
+   * Read the stored record again, after hydrate() couldn't (round 5,
+   * 2026-11-19). Called on each return to the foreground while `loadFailed`
+   * is true (the store watches for it itself). A record that reads is
+   * loaded, the changes held since are applied over it and stored, and
+   * `loadFailed` clears. A read that fails again, or finds no record, leaves
+   * everything as it is. Never throws.
+   */
+  retryLoad: () => Promise<void>;
   /**
    * The phone's notification permission, or null until it has been read (and
    * whenever it can't be: web, a read that failed). Not a setting: it is the
@@ -232,6 +265,14 @@ interface SettingsState extends StoredSettings {
   dismissPracticeReminderOffer: () => Promise<void>;
   /** The day a checkpoint's moment played, or null to forget it (Erase, account deletion). */
   setStreakMomentDay: (day: string | null) => Promise<void>;
+  /**
+   * The line about usage counts is on screen (D69 (b)): stamp now, the first
+   * time only. A stamp already set, in memory or in a record read later, is
+   * kept, and a second call writes nothing.
+   */
+  markUsageNoticeShown: () => Promise<void>;
+  /** Forget that the line was shown (Erase, account deletion), so it is shown again first. */
+  forgetUsageNoticeShown: () => Promise<void>;
   /** What the permission read found (null: unknown). Held in memory only, never stored. */
   setNotificationPermission: (permission: NotificationPermission | null) => void;
 }
@@ -274,6 +315,7 @@ const DEFAULTS: StoredSettings = {
   practiceReminder: null,
   practiceReminderOfferDismissedAt: null,
   streakMomentDay: null,
+  usageNoticeShownAt: null,
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -306,12 +348,109 @@ function defaultPersistence(): SettingsPersistence {
 
 let persistence: SettingsPersistence = defaultPersistence();
 
+/**
+ * A change to the settings: what it sets, worked out from the settings it is
+ * applied to (only "Not now" on the reminder prompt reads them: it counts).
+ * Kept while the record can't be read, to be applied again over the record
+ * once it can.
+ */
+type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
+
+/**
+ * Who makes a change, which decides whether it is stored while the record
+ * can't be read (`loadFailed`). With the record read, every change is stored
+ * at once, as before.
+ *
+ *   explicit   the person's own choice of this setting. Stored, and with it
+ *              the snapshot You shows, private sides included. The record is
+ *              read once more first: if it reads now, it is loaded and this
+ *              change, with every change held since, applied over it. If it
+ *              still can't be read, or there is none, this change starts a
+ *              new record and ends the failed state.
+ *                setNotificationsEnabled, setRemindersEnabled,
+ *                setDigestEnabled, setDueReminderTime, setDigestDay,
+ *                setDigestTime, setAiRefineEnabled, setCoachEnabled,
+ *                setAnalyticsEnabled, setStreakShown, setReminderWords,
+ *                setHideTitles: You's switches and pickers (SettingsView,
+ *                their only caller).
+ *                setAppLock: You's switch, through lockStore.setEnabled, and
+ *                Continue on the lock screen of a phone with no passcode
+ *                (lockStore.continueWithoutLock). Both are the person's
+ *                choice of this very setting.
+ *                setPracticeReminder: choosePracticeReminder, from You or
+ *                from the practice sheet's offer; the person picks the time.
+ *   automatic  everything else. Held in memory only while the record can't
+ *              be read, then applied over it once it reads.
+ *                markCoverageNudgeShown, markRatingAsked, setStreakMomentDay
+ *                (a cooldown's or a moment's memory; setStreakMomentDay is
+ *                also cleared at Erase and account deletion);
+ *                markUsageNoticeShown, forgetUsageNoticeShown (when the line
+ *                about usage counts was first shown, D69 (b): stamped when it
+ *                is drawn, forgotten at Erase and account deletion. Held, it
+ *                is applied over the record once it reads, and a stamp the
+ *                record already has is kept);
+ *                dismissReminderPrompt, dismissBackupNudge,
+ *                dismissWelcomeBack, dismissPracticeReminderOffer ("Not now"
+ *                on Today's cards and the practice sheet's);
+ *                setCardThemeId, setCardFormat, setCardHiddenCategories (the
+ *                share card's choices, made on Share; the last is also
+ *                cleared at Erase and account deletion).
+ *
+ * Never stored at all: setNotificationPermission (the phone's state). And
+ * resetToDefaults (the playtest loader) writes a fresh record and ends the
+ * failed state.
+ */
+type ChangeKind = 'explicit' | 'automatic';
+
+/** The changes made since the record couldn't be read, in order. */
+let heldChanges: SettingsChange[] = [];
+/** Bumped by every change, so a save can tell whether one came in meanwhile. */
+let changeCount = 0;
+/** The foreground listener while the record can't be read, or null. */
+let foregroundWatch: { remove?: () => void } | null = null;
+
+/**
+ * Try the record again each time the app comes back to the foreground, until
+ * a read succeeds (`retryLoad`). Lazy, so tests and the web bundle load
+ * react-native only when a read has failed. Never throws.
+ */
+function watchForeground(): void {
+  if (foregroundWatch) return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { AppState } = require('react-native') as typeof import('react-native');
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void useSettingsStore.getState().retryLoad();
+    });
+    foregroundWatch = subscription ?? {};
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[settings] could not watch for the foreground:',
+      e instanceof Error ? e.message : 'unknown error',
+    );
+  }
+}
+
+function stopWatchingForeground(): void {
+  const watch = foregroundWatch;
+  foregroundWatch = null;
+  try {
+    watch?.remove?.();
+  } catch {
+    // Nothing to keep: the listener only ever retries a read.
+  }
+}
+
 /** Test-only: swap persistence and reset the store to defaults. */
 export function __setPersistenceForTests(next: SettingsPersistence | null): void {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('__setPersistenceForTests is only allowed when NODE_ENV=test');
   }
   persistence = next ?? defaultPersistence();
+  heldChanges = [];
+  changeCount = 0;
+  stopWatchingForeground();
   useSettingsStore.setState({
     ...DEFAULTS,
     hydrated: false,
@@ -352,259 +491,384 @@ function resetCoach(): void {
   }
 }
 
-/** Persist the current toggle values, swallowing storage errors. */
-async function persist(settings: StoredSettings): Promise<void> {
+/**
+ * Persist the current toggle values, swallowing storage errors. True when
+ * the write landed.
+ */
+async function persist(settings: StoredSettings): Promise<boolean> {
   try {
     await persistence.save(settings);
+    return true;
   } catch (e) {
     // Settings are non-critical, like the L5 services — a failed write must
     // never throw into the toggle handler. The in-memory value still applies
     // this session; it just won't survive a restart.
     // eslint-disable-next-line no-console
     console.warn('[settings] save failed:', e);
+    return false;
   }
 }
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
-  ...DEFAULTS,
-  hydrated: false,
-  loadFailed: false,
-  notificationPermission: null,
+/**
+ * A stored record as settings: each value checked, and the default for one
+ * that is missing or isn't of its kind.
+ */
+function fromStored(stored: Partial<StoredSettings>): StoredSettings {
+  return {
+    notificationsEnabled: stored.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
+    remindersEnabled: stored.remindersEnabled ?? DEFAULTS.remindersEnabled,
+    digestEnabled: stored.digestEnabled ?? DEFAULTS.digestEnabled,
+    dueReminderTime: validTime(stored.dueReminderTime) ?? DEFAULTS.dueReminderTime,
+    digestDay: validDay(stored.digestDay) ?? DEFAULTS.digestDay,
+    digestTime: validTime(stored.digestTime) ?? DEFAULTS.digestTime,
+    aiRefineEnabled: stored.aiRefineEnabled ?? DEFAULTS.aiRefineEnabled,
+    coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
+    analyticsEnabled: stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
+    streakShown:
+      typeof stored.streakShown === 'boolean' ? stored.streakShown : DEFAULTS.streakShown,
+    reminderWords:
+      typeof stored.reminderWords === 'boolean' ? stored.reminderWords : DEFAULTS.reminderWords,
+    hideTitles: typeof stored.hideTitles === 'boolean' ? stored.hideTitles : DEFAULTS.hideTitles,
+    appLock: typeof stored.appLock === 'boolean' ? stored.appLock : DEFAULTS.appLock,
+    cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
+    cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
+    cardHiddenCategories:
+      validCategories(stored.cardHiddenCategories) ?? DEFAULTS.cardHiddenCategories,
+    coverageNudgeLastShownAt:
+      stored.coverageNudgeLastShownAt ?? DEFAULTS.coverageNudgeLastShownAt,
+    reminderPromptDismissedAt:
+      stored.reminderPromptDismissedAt ?? DEFAULTS.reminderPromptDismissedAt,
+    // A dismissal stored before D19 counts as one.
+    reminderPromptDismissals:
+      stored.reminderPromptDismissals ??
+      (stored.reminderPromptDismissedAt ? 1 : DEFAULTS.reminderPromptDismissals),
+    backupNudgeDismissedAt: stored.backupNudgeDismissedAt ?? DEFAULTS.backupNudgeDismissedAt,
+    welcomeBackDismissedFor:
+      typeof stored.welcomeBackDismissedFor === 'string'
+        ? stored.welcomeBackDismissedFor
+        : DEFAULTS.welcomeBackDismissedFor,
+    ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
+    practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
+    practiceReminderOfferDismissedAt:
+      stored.practiceReminderOfferDismissedAt ?? DEFAULTS.practiceReminderOfferDismissedAt,
+    streakMomentDay:
+      typeof stored.streakMomentDay === 'string' ? stored.streakMomentDay : DEFAULTS.streakMomentDay,
+    // Anything that isn't a time reads as never shown: the line is shown
+    // again, and nothing goes up from a guest until it is.
+    usageNoticeShownAt: validStamp(stored.usageNoticeShownAt) ?? DEFAULTS.usageNoticeShownAt,
+  };
+}
 
-  hydrate: async () => {
+export const useSettingsStore = create<SettingsState>((set, get) => {
+  /** Apply a change in memory, and hold it while the record can't be read. */
+  const change = (update: SettingsChange): void => {
+    changeCount += 1;
+    set(update(snapshot(get())));
+    if (get().loadFailed) heldChanges.push(update);
+  };
+
+  /** The record is readable, or replaced: nothing held, nothing to watch for. */
+  const endFailure = (): void => {
+    heldChanges = [];
+    stopWatchingForeground();
+    set({ loadFailed: false });
+  };
+
+  /**
+   * Take a record that reads: its values, then every change held since the
+   * failed read, in order. True when there were changes to apply (and so
+   * something the record doesn't have yet).
+   */
+  const adopt = (stored: Partial<StoredSettings>): boolean => {
+    let next = fromStored(stored);
+    for (const update of heldChanges) next = { ...next, ...update(next) };
+    const applied = heldChanges.length > 0;
+    set(next);
+    endFailure();
+    return applied;
+  };
+
+  /** Store what a change left, by its kind (`ChangeKind`). Never throws. */
+  const save = async (kind: ChangeKind): Promise<void> => {
+    if (!get().loadFailed) {
+      await persist(snapshot(get()));
+      return;
+    }
+    // The record couldn't be read: an automatic change stays in memory, so
+    // it can't write the defaults over a record that is still there.
+    if (kind === 'automatic') return;
+
+    // The person's own choice. The record first, once more.
+    let stored: Partial<StoredSettings> | null = null;
+    let readable = true;
     try {
+      stored = await loadStored();
+    } catch {
+      readable = false;
+    }
+    if (!get().loadFailed) {
+      // Read meanwhile (a return to the foreground); this change was applied
+      // over it with the others.
+      await persist(snapshot(get()));
+      return;
+    }
+    if (readable && stored) {
+      adopt(stored);
+      await persist(snapshot(get()));
+      return;
+    }
+    // Still unreadable, or gone: this change starts a new record, with the
+    // snapshot You shows (the private sides included). Once it has landed
+    // nothing unreadable is left to protect.
+    const before = changeCount;
+    if (await persist(snapshot(get()))) {
+      endFailure();
+      // A change that came in while the write ran is in memory only.
+      if (changeCount !== before) await persist(snapshot(get()));
+    }
+  };
+
+  return {
+    ...DEFAULTS,
+    hydrated: false,
+    loadFailed: false,
+    notificationPermission: null,
+
+    hydrate: async () => {
+      try {
+        let stored: Partial<StoredSettings> | null;
+        try {
+          stored = await loadStored();
+        } catch {
+          // Once more: a storage read can fail for a moment. A record that
+          // doesn't parse fails again, and that is the failed read below.
+          stored = await loadStored();
+        }
+        // Changes held from an earlier failed read (a second hydrate) are
+        // applied over the record, and then stored.
+        if (stored && adopt(stored)) await persist(snapshot(get()));
+      } catch (e) {
+        // Fall back to defaults — never block startup on a settings read. But
+        // not for the privacy choices: the record that couldn't be read may
+        // have held them. So each takes its private side, in state:
+        //   - the lock on: it locks at launch where this build can
+        //     (lockStore.arm: Face ID or the passcode opens it; a build without
+        //     the module never locks), and turning it off is the usual check
+        //     with the phone;
+        //   - "Hide the words" on: a card opens with a tap, as always;
+        //   - the words off reminders (already the default): no words and no
+        //     Happened / Didn't on the lock screen;
+        //   - usage stats off: nothing is recorded or sent until they're turned
+        //     back on. What was queued before stays queued, unsent: nobody
+        //     asked for it to be deleted, and track() and flushEvents() both
+        //     read this switch first.
+        // Nothing is stored for any of this, nor for any automatic change,
+        // until the record reads or the person changes a setting in You
+        // (`ChangeKind`, round 5); the read is tried again at each return to
+        // the foreground.
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[settings] load failed; using defaults with every privacy choice on its private side:',
+          e instanceof Error ? e.message : 'unknown error',
+        );
+        set({
+          loadFailed: true,
+          appLock: true,
+          hideTitles: true,
+          reminderWords: false,
+          analyticsEnabled: false,
+        });
+        watchForeground();
+      } finally {
+        set({ hydrated: true });
+      }
+    },
+
+    retryLoad: async () => {
+      if (!get().loadFailed) return;
       let stored: Partial<StoredSettings> | null;
       try {
         stored = await loadStored();
       } catch {
-        // Once more: a storage read can fail for a moment. A record that
-        // doesn't parse fails again, and that is the failed read below.
-        stored = await loadStored();
+        // Still unreadable: the next return to the foreground tries again.
+        return;
       }
-      if (stored) {
-        set({
-          notificationsEnabled:
-            stored.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
-          remindersEnabled: stored.remindersEnabled ?? DEFAULTS.remindersEnabled,
-          digestEnabled: stored.digestEnabled ?? DEFAULTS.digestEnabled,
-          dueReminderTime: validTime(stored.dueReminderTime) ?? DEFAULTS.dueReminderTime,
-          digestDay: validDay(stored.digestDay) ?? DEFAULTS.digestDay,
-          digestTime: validTime(stored.digestTime) ?? DEFAULTS.digestTime,
-          aiRefineEnabled: stored.aiRefineEnabled ?? DEFAULTS.aiRefineEnabled,
-          coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
-          analyticsEnabled:
-            stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
-          streakShown:
-            typeof stored.streakShown === 'boolean' ? stored.streakShown : DEFAULTS.streakShown,
-          reminderWords:
-            typeof stored.reminderWords === 'boolean'
-              ? stored.reminderWords
-              : DEFAULTS.reminderWords,
-          hideTitles:
-            typeof stored.hideTitles === 'boolean' ? stored.hideTitles : DEFAULTS.hideTitles,
-          appLock: typeof stored.appLock === 'boolean' ? stored.appLock : DEFAULTS.appLock,
-          cardThemeId: stored.cardThemeId ?? DEFAULTS.cardThemeId,
-          cardFormat: validShape(stored.cardFormat) ?? DEFAULTS.cardFormat,
-          cardHiddenCategories:
-            validCategories(stored.cardHiddenCategories) ?? DEFAULTS.cardHiddenCategories,
-          coverageNudgeLastShownAt:
-            stored.coverageNudgeLastShownAt ??
-            DEFAULTS.coverageNudgeLastShownAt,
-          reminderPromptDismissedAt:
-            stored.reminderPromptDismissedAt ?? DEFAULTS.reminderPromptDismissedAt,
-          // A dismissal stored before D19 counts as one.
-          reminderPromptDismissals:
-            stored.reminderPromptDismissals ??
-            (stored.reminderPromptDismissedAt ? 1 : DEFAULTS.reminderPromptDismissals),
-          backupNudgeDismissedAt:
-            stored.backupNudgeDismissedAt ?? DEFAULTS.backupNudgeDismissedAt,
-          welcomeBackDismissedFor:
-            typeof stored.welcomeBackDismissedFor === 'string'
-              ? stored.welcomeBackDismissedFor
-              : DEFAULTS.welcomeBackDismissedFor,
-          ratingAskedAt: stored.ratingAskedAt ?? DEFAULTS.ratingAskedAt,
-          practiceReminder: validTime(stored.practiceReminder) ?? DEFAULTS.practiceReminder,
-          practiceReminderOfferDismissedAt:
-            stored.practiceReminderOfferDismissedAt ?? DEFAULTS.practiceReminderOfferDismissedAt,
-          streakMomentDay:
-            typeof stored.streakMomentDay === 'string'
-              ? stored.streakMomentDay
-              : DEFAULTS.streakMomentDay,
-        });
-      }
-    } catch (e) {
-      // Fall back to defaults — never block startup on a settings read. But
-      // not for the privacy choices: the record that couldn't be read may
-      // have held them, and a default here would be written over that record
-      // by the next change of any setting. So each takes its private side,
-      // in state, and that is what the next write stores:
-      //   - the lock on: it locks at launch where this build can
-      //     (lockStore.arm: Face ID or the passcode opens it; a build without
-      //     the module never locks), and turning it off is the usual check
-      //     with the phone;
-      //   - "Hide the words" on: a card opens with a tap, as always;
-      //   - the words off reminders (already the default): no words and no
-      //     Happened / Didn't on the lock screen;
-      //   - usage stats off: nothing is recorded or sent until they're turned
-      //     back on. What was queued before stays queued, unsent: nobody
-      //     asked for it to be deleted, and track() and flushEvents() both
-      //     read this switch first.
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[settings] load failed; using defaults with every privacy choice on its private side:',
-        e instanceof Error ? e.message : 'unknown error',
-      );
-      set({
-        loadFailed: true,
-        appLock: true,
-        hideTitles: true,
-        reminderWords: false,
-        analyticsEnabled: false,
-      });
-    } finally {
-      set({ hydrated: true });
-    }
-  },
+      // No record: nothing to load, and the private sides stay until a change
+      // in You writes one (or the next launch, which reads no record as a
+      // fresh install).
+      if (!stored || !get().loadFailed) return;
+      if (adopt(stored)) await persist(snapshot(get()));
+    },
 
-  resetToDefaults: async () => {
-    // A fresh record, written whole: nothing unreadable is left to protect.
-    set({ ...DEFAULTS, loadFailed: false });
-    await persist(snapshot(get()));
-  },
+    resetToDefaults: async () => {
+      // A fresh record, written whole: nothing unreadable is left to protect.
+      set({ ...DEFAULTS });
+      endFailure();
+      await persist(snapshot(get()));
+    },
 
-  setNotificationsEnabled: async (enabled) => {
-    set({ notificationsEnabled: enabled });
-    await persist(snapshot(get()));
-  },
+    setNotificationsEnabled: async (enabled) => {
+      change(() => ({ notificationsEnabled: enabled }));
+      await save('explicit');
+    },
 
-  setRemindersEnabled: async (enabled) => {
-    set({ remindersEnabled: enabled });
-    await persist(snapshot(get()));
-  },
+    setRemindersEnabled: async (enabled) => {
+      change(() => ({ remindersEnabled: enabled }));
+      await save('explicit');
+    },
 
-  setDigestEnabled: async (enabled) => {
-    set({ digestEnabled: enabled });
-    await persist(snapshot(get()));
-  },
+    setDigestEnabled: async (enabled) => {
+      change(() => ({ digestEnabled: enabled }));
+      await save('explicit');
+    },
 
-  setDueReminderTime: async (time) => {
-    set({ dueReminderTime: validTime(time) ?? DEFAULTS.dueReminderTime });
-    await persist(snapshot(get()));
-  },
+    setDueReminderTime: async (time) => {
+      const dueReminderTime = validTime(time) ?? DEFAULTS.dueReminderTime;
+      change(() => ({ dueReminderTime }));
+      await save('explicit');
+    },
 
-  setDigestDay: async (day) => {
-    set({ digestDay: validDay(day) ?? DEFAULTS.digestDay });
-    await persist(snapshot(get()));
-  },
+    setDigestDay: async (day) => {
+      const digestDay = validDay(day) ?? DEFAULTS.digestDay;
+      change(() => ({ digestDay }));
+      await save('explicit');
+    },
 
-  setDigestTime: async (time) => {
-    set({ digestTime: validTime(time) ?? DEFAULTS.digestTime });
-    await persist(snapshot(get()));
-  },
+    setDigestTime: async (time) => {
+      const digestTime = validTime(time) ?? DEFAULTS.digestTime;
+      change(() => ({ digestTime }));
+      await save('explicit');
+    },
 
-  setStreakShown: async (shown) => {
-    set({ streakShown: shown });
-    await persist(snapshot(get()));
-  },
+    setStreakShown: async (shown) => {
+      change(() => ({ streakShown: shown }));
+      await save('explicit');
+    },
 
-  setReminderWords: async (shown) => {
-    set({ reminderWords: shown });
-    await persist(snapshot(get()));
-  },
+    setReminderWords: async (shown) => {
+      change(() => ({ reminderWords: shown }));
+      await save('explicit');
+    },
 
-  setHideTitles: async (hidden) => {
-    set({ hideTitles: hidden });
-    await persist(snapshot(get()));
-  },
+    setHideTitles: async (hidden) => {
+      change(() => ({ hideTitles: hidden }));
+      await save('explicit');
+    },
 
-  setAppLock: async (on) => {
-    set({ appLock: on });
-    await persist(snapshot(get()));
-  },
+    setAppLock: async (on) => {
+      change(() => ({ appLock: on }));
+      await save('explicit');
+    },
 
-  setAiRefineEnabled: async (enabled) => {
-    set({ aiRefineEnabled: enabled });
-    await persist(snapshot(get()));
-  },
+    setAiRefineEnabled: async (enabled) => {
+      change(() => ({ aiRefineEnabled: enabled }));
+      await save('explicit');
+    },
 
-  setCoachEnabled: async (enabled) => {
-    set({ coachEnabled: enabled });
-    // Off clears the cards on screen at once, before the write.
-    if (!enabled) resetCoach();
-    await persist(snapshot(get()));
-  },
+    setCoachEnabled: async (enabled) => {
+      change(() => ({ coachEnabled: enabled }));
+      // Off clears the cards on screen at once, before the write.
+      if (!enabled) resetCoach();
+      await save('explicit');
+    },
 
-  setAnalyticsEnabled: async (enabled) => {
-    set({ analyticsEnabled: enabled });
-    await persist(snapshot(get()));
-    // Opting out means what it says: the queue of what was already recorded
-    // goes too, not just future events. clearEvents swallows its own errors.
-    if (!enabled) await clearEvents();
-  },
+    setAnalyticsEnabled: async (enabled) => {
+      change(() => ({ analyticsEnabled: enabled }));
+      await save('explicit');
+      // Opting out means what it says: the queue of what was already recorded
+      // goes too, not just future events. clearEvents swallows its own errors.
+      if (!enabled) await clearEvents();
+    },
 
-  setCardThemeId: async (id) => {
-    set({ cardThemeId: id });
-    await persist(snapshot(get()));
-  },
+    setCardThemeId: async (id) => {
+      change(() => ({ cardThemeId: id }));
+      await save('automatic');
+    },
 
-  setCardFormat: async (format) => {
-    set({ cardFormat: format });
-    await persist(snapshot(get()));
-  },
+    setCardFormat: async (format) => {
+      change(() => ({ cardFormat: format }));
+      await save('automatic');
+    },
 
-  setCardHiddenCategories: async (hidden) => {
-    set({ cardHiddenCategories: validCategories(hidden) ?? [] });
-    await persist(snapshot(get()));
-  },
+    setCardHiddenCategories: async (hidden) => {
+      const cardHiddenCategories = validCategories(hidden) ?? [];
+      change(() => ({ cardHiddenCategories }));
+      await save('automatic');
+    },
 
-  markCoverageNudgeShown: async () => {
-    set({ coverageNudgeLastShownAt: new Date().toISOString() });
-    await persist(snapshot(get()));
-  },
+    markCoverageNudgeShown: async () => {
+      const coverageNudgeLastShownAt = new Date().toISOString();
+      change(() => ({ coverageNudgeLastShownAt }));
+      await save('automatic');
+    },
 
-  dismissReminderPrompt: async () => {
-    set((s) => ({
-      reminderPromptDismissedAt: new Date().toISOString(),
-      reminderPromptDismissals: s.reminderPromptDismissals + 1,
-    }));
-    await persist(snapshot(get()));
-  },
+    dismissReminderPrompt: async () => {
+      const reminderPromptDismissedAt = new Date().toISOString();
+      // Counted on whatever it is applied to: memory now, the record later if
+      // it couldn't be read.
+      change((s) => ({
+        reminderPromptDismissedAt,
+        reminderPromptDismissals: s.reminderPromptDismissals + 1,
+      }));
+      await save('automatic');
+    },
 
-  dismissBackupNudge: async () => {
-    set({ backupNudgeDismissedAt: new Date().toISOString() });
-    await persist(snapshot(get()));
-  },
+    dismissBackupNudge: async () => {
+      const backupNudgeDismissedAt = new Date().toISOString();
+      change(() => ({ backupNudgeDismissedAt }));
+      await save('automatic');
+    },
 
-  dismissWelcomeBack: async (lastActiveAt) => {
-    set({ welcomeBackDismissedFor: lastActiveAt });
-    await persist(snapshot(get()));
-  },
+    dismissWelcomeBack: async (lastActiveAt) => {
+      change(() => ({ welcomeBackDismissedFor: lastActiveAt }));
+      await save('automatic');
+    },
 
-  markRatingAsked: async () => {
-    set({ ratingAskedAt: new Date().toISOString() });
-    await persist(snapshot(get()));
-  },
+    markRatingAsked: async () => {
+      const ratingAskedAt = new Date().toISOString();
+      change(() => ({ ratingAskedAt }));
+      await save('automatic');
+    },
 
-  setPracticeReminder: async (time) => {
-    set({ practiceReminder: time === null ? null : validTime(time) });
-    await persist(snapshot(get()));
-  },
+    setPracticeReminder: async (time) => {
+      const practiceReminder = time === null ? null : validTime(time);
+      change(() => ({ practiceReminder }));
+      await save('explicit');
+    },
 
-  dismissPracticeReminderOffer: async () => {
-    set({ practiceReminderOfferDismissedAt: new Date().toISOString() });
-    await persist(snapshot(get()));
-  },
+    dismissPracticeReminderOffer: async () => {
+      const practiceReminderOfferDismissedAt = new Date().toISOString();
+      change(() => ({ practiceReminderOfferDismissedAt }));
+      await save('automatic');
+    },
 
-  setStreakMomentDay: async (day) => {
-    set({ streakMomentDay: day });
-    await persist(snapshot(get()));
-  },
+    setStreakMomentDay: async (day) => {
+      change(() => ({ streakMomentDay: day }));
+      await save('automatic');
+    },
 
-  // No persist: the phone's state, read again at every launch.
-  setNotificationPermission: (permission) => {
-    if (get().notificationPermission !== permission) set({ notificationPermission: permission });
-  },
-}));
+    markUsageNoticeShown: async () => {
+      // The first showing is the one kept: a later one changes and writes nothing.
+      if (get().usageNoticeShownAt !== null) return;
+      const usageNoticeShownAt = new Date().toISOString();
+      // Worked out on whatever it is applied to: while the record can't be
+      // read, memory now, then the record once it reads, which keeps a
+      // showing it already holds.
+      change((s) => (s.usageNoticeShownAt === null ? { usageNoticeShownAt } : {}));
+      await save('automatic');
+    },
+
+    forgetUsageNoticeShown: async () => {
+      change(() => ({ usageNoticeShownAt: null }));
+      await save('automatic');
+    },
+
+    // No persist: the phone's state, read again at every launch.
+    setNotificationPermission: (permission) => {
+      if (get().notificationPermission !== permission) set({ notificationPermission: permission });
+    },
+  };
+});
 
 /** A stored day of the week, if it is one: 0 (Sunday) to 6. */
 function validDay(value: unknown): number | null {
@@ -631,6 +895,11 @@ function validCategories(value: unknown): Category[] | null {
     return i >= 0 ? i : CATEGORIES.length;
   };
   return ids.sort((a, b) => rank(a) - rank(b));
+}
+
+/** A stored moment, if it is one: a string that reads as a date and time. */
+function validStamp(value: unknown): string | null {
+  return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null;
 }
 
 /** A stored time, if it is one: whole hours 0–23 and minutes 0–59. */
@@ -674,5 +943,6 @@ function snapshot(state: StoredSettings): StoredSettings {
     practiceReminder: state.practiceReminder,
     practiceReminderOfferDismissedAt: state.practiceReminderOfferDismissedAt,
     streakMomentDay: state.streakMomentDay,
+    usageNoticeShownAt: state.usageNoticeShownAt,
   };
 }

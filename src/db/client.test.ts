@@ -8,6 +8,7 @@ import {
   enableSecureDelete,
   initDb,
   setDbForTests,
+  vacuumAfterWipe,
   withTransaction,
   type DbAdapter,
 } from './client';
@@ -203,5 +204,72 @@ describe('checkpointAfterWipe', () => {
     expect(warn).toHaveBeenCalledWith(
       '[db] the checkpoint after a wipe was blocked; the next one folds the log in',
     );
+  });
+});
+
+// Client review 2026-11-18, LOW 6.
+describe('vacuumAfterWipe', () => {
+  it('runs on a real SQLite without complaint', async () => {
+    const db = await createTestDb();
+    setDbForTests(db);
+    await expect(vacuumAfterWipe()).resolves.toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('waits for a queued transaction to settle, and one queued after it waits for it', async () => {
+    const db = await createTestDb();
+    const order: string[] = [];
+    let inTx = false;
+    const realTransaction = db.transaction.bind(db);
+    const realExec = db.exec.bind(db);
+    db.transaction = async <T,>(fn: () => Promise<T>) =>
+      realTransaction(async () => {
+        inTx = true;
+        try {
+          return await fn();
+        } finally {
+          inTx = false;
+        }
+      });
+    db.exec = async (sql: string) => {
+      if (sql.includes('VACUUM')) order.push(inTx ? 'vacuum inside' : 'vacuum outside');
+      return realExec(sql);
+    };
+    setDbForTests(db);
+
+    let release!: () => void;
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const tx = withTransaction(async () => {
+      order.push('tx start');
+      await db.run(`DELETE FROM predictions`);
+      await held;
+      order.push('tx end');
+    });
+    const vacuum = vacuumAfterWipe();
+    const after = withTransaction(async () => {
+      order.push('next tx');
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(order).toEqual(['tx start']);
+
+    release();
+    await Promise.all([tx, vacuum, after]);
+    expect(order).toEqual(['tx start', 'tx end', 'vacuum outside', 'next tx']);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('never throws when the rebuild fails, or with no database mounted', async () => {
+    const db = await createTestDb();
+    db.exec = async () => {
+      throw new Error('database or disk is full');
+    };
+    setDbForTests(db);
+    await expect(vacuumAfterWipe()).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith('[db] the vacuum after a wipe failed:', expect.any(Error));
+
+    setDbForTests(null);
+    await expect(vacuumAfterWipe()).resolves.toBeUndefined();
   });
 });

@@ -14,6 +14,10 @@ jest.mock('@/constants/app', () => ({
   GOOGLE_SIGN_IN_ENABLED: false,
 }));
 
+// Create account hidden, as shipped since D69 (c), stated so the line under
+// the form is asserted whatever emailSignUp.ts says.
+jest.mock('./emailSignUp', () => ({ EMAIL_SIGN_UP_ENABLED: false }));
+
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
 }));
@@ -66,7 +70,9 @@ function testIdsInOrder(): string[] {
 }
 
 describe('SignInView — Continue with Google, flag off', () => {
-  it("shows no Google button: Apple's sits above the Sign in / Create account switch", () => {
+  // Above the email form: since D69 (c) hid Create account there is no
+  // Sign in / Create account switch (it was the anchor here).
+  it("shows no Google button: Apple's sits above the email form", () => {
     render(<SignInView onDone={jest.fn()} />);
     const ids = testIdsInOrder();
 
@@ -75,9 +81,17 @@ describe('SignInView — Continue with Google, flag off', () => {
     expect(screen.queryByLabelText(GOOGLE_BUTTON_LABEL)).toBeNull();
 
     const apple = ids.indexOf('account-apple');
-    const modes = ids.indexOf('account-mode-signIn');
+    const form = ids.indexOf('account-email');
     expect(apple).toBeGreaterThanOrEqual(0);
-    expect(modes).toBeGreaterThan(apple);
+    expect(form).toBeGreaterThan(apple);
+  });
+
+  // With Create account hidden (D69 (c)), the line under the form names only
+  // what this screen shows: Apple's button, not Google's.
+  it('sends someone new to Apple alone', () => {
+    render(<SignInView onDone={jest.fn()} />);
+    expect(screen.getByTestId('account-new-here')).toHaveTextContent('New here? Use Apple for now.');
+    expect(screen.queryByText(/Google/)).toBeNull();
   });
 
   it('never reaches Google: Apple and email sign in as before', async () => {

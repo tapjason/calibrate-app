@@ -5,7 +5,8 @@ import { validateCoachOutput } from './coachValidate';
 /**
  * A user with a well-populated finance category (over MIN_N_CATEGORY) and a
  * thin health one, overall past MIN_N_OVERALL. The weekday carries its answer
- * count (12, past WEEKDAY_MIN_N), as the app sends it from 2026-11-18.
+ * count (24, past WEEKDAY_MIN_N), as the app sends it from 2026-11-18. It was
+ * 12 until the weekday's floor rose from 10 to 20 (2026-11-19).
  */
 const CONTEXT: CoachContext = {
   overall: { calibration_rating: 72, total_resolved: 40 },
@@ -30,7 +31,7 @@ const CONTEXT: CoachContext = {
   patterns: [
     { kind: 'weakest_day_of_week', value: 1 },
     { kind: 'weakest_day_score', value: 58 },
-    { kind: 'weakest_day_answers', value: 12 },
+    { kind: 'weakest_day_answers', value: 24 },
   ],
 };
 
@@ -524,12 +525,22 @@ describe('validateCoachOutput — out of domain', () => {
     expect(out.insights).toEqual([]);
   });
 
+  // The sentence here was "You resolved 80 percent of what you logged in
+  // finance." until 2026-11-19, and it was kept: 80 is finance's mean stated
+  // confidence, which that sentence calls a share resolved (Coach re-review,
+  // item 1: a number is the kind its words name). It now drops (below), and
+  // the kept sentence names 80 as what was said.
   it('does not trip on ordinary calibration language containing numbers', () => {
+    const out = validateCoachOutput(insight('You said 80 percent on average in finance.'), CONTEXT);
+    expect(out.insights).toHaveLength(1);
+  });
+
+  it('drops a number its words call something it is not', () => {
     const out = validateCoachOutput(
       insight('You resolved 80 percent of what you logged in finance.'),
       CONTEXT,
     );
-    expect(out.insights).toHaveLength(1);
+    expect(out.insights).toEqual([]);
   });
 });
 
@@ -635,6 +646,62 @@ describe('validateCoachOutput — normalised text', () => {
       CONTEXT,
     );
     expect(out.insights).toEqual([]);
+  });
+});
+
+// Item 14 (2026-11-19): a runtime without NFKC used to drop every card. It
+// now checks the raw text, held to plain ASCII, which NFKC would leave as it
+// is. The validator checks for NFKC once, when it loads, so each case loads a
+// fresh copy with String.prototype.normalize changed first.
+describe('validateCoachOutput — without NFKC', () => {
+  const original = Object.getOwnPropertyDescriptor(String.prototype, 'normalize')!;
+  afterEach(() => Object.defineProperty(String.prototype, 'normalize', original));
+
+  function validatorWith(normalize: unknown): typeof validateCoachOutput {
+    Object.defineProperty(String.prototype, 'normalize', { ...original, value: normalize });
+    let fresh: typeof validateCoachOutput | undefined;
+    jest.isolateModules(() => {
+      fresh = (require('./coachValidate') as typeof import('./coachValidate')).validateCoachOutput;
+    });
+    return fresh!;
+  }
+
+  const ascii = { ...GOOD_INSIGHT, message: 'Your finance predictions run overconfident: 80% stated against a 55% hit rate.' };
+  const run = (validate: typeof validateCoachOutput, message: string) =>
+    validate({ insights: [{ ...ascii, message }], safe: true }, CONTEXT).insights;
+
+  it.each([
+    ['missing', undefined],
+    ['throwing', () => {
+      throw new RangeError('no ICU');
+    }],
+    ['returning its input unchanged', function (this: string) {
+      return String(this);
+    }],
+  ])('keeps a plain-ASCII card when normalize is %s', (_name, normalize) => {
+    const validate = validatorWith(normalize);
+    expect(run(validate, ascii.message)).toEqual([expect.objectContaining({ message: ascii.message })]);
+  });
+
+  it.each([
+    ['a fullwidth digit, which NFKC would have read', 'Finance runs overconfident: ８０% stated.'],
+    ['a curly apostrophe, outside ASCII', 'Finance’s calls run overconfident: 80% stated.'],
+    ['an em dash, outside ASCII', 'Finance runs overconfident — 80% stated.'],
+  ])('drops %s', (_name, message) => {
+    const validate = validatorWith(undefined);
+    expect(run(validate, message)).toEqual([]);
+  });
+
+  it('still drops what the rules drop', () => {
+    const validate = validatorWith(undefined);
+    expect(run(validate, 'When you say 80%, it happens about 30% of the time.')).toEqual([]);
+  });
+
+  it('is the full check again once NFKC is there', () => {
+    const validate = validatorWith(original.value);
+    expect(run(validate, 'Finance runs overconfident: ８０% stated.')).toEqual([
+      expect.objectContaining({ message: 'Finance runs overconfident: 80% stated.' }),
+    ]);
   });
 });
 

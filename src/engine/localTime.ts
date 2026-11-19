@@ -102,6 +102,22 @@ function zoneOffsetMs(date: Date, zone: string): number {
 }
 
 /**
+ * The device zone's offset from UTC at `date`, in whole minutes east of UTC
+ * (`-getTimezoneOffset()`: New York in winter is −300, Tokyo 540). Stored with
+ * each moment of a prediction (owner decision 2026-11-19), so its calendar
+ * day can be read later where it happened. Follows the test zone like
+ * everything here. NaN for an unreadable date.
+ */
+export function utcOffsetMinutes(date: Date): number {
+  if (Number.isNaN(date.getTime())) return NaN;
+  const minutes = zoneOverride
+    ? zoneOffsetMs(date, zoneOverride) / 60_000
+    : -date.getTimezoneOffset();
+  // `+ 0` turns -0 (UTC) into 0.
+  return Math.round(minutes) + 0;
+}
+
+/**
  * The instant of local midnight at the start of the given calendar date.
  * (`month` 0–11; overflow rolls over like Date's, so month 12 is next January.)
  */

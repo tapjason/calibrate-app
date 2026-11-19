@@ -12,6 +12,11 @@ jest.mock('@/supabase/auth', () => ({
   signOut: jest.fn(),
   signOutLocal: jest.fn(),
   reauthenticateWithApple: jest.fn(),
+  // Round 5: a sign-out the client is still running holds account actions
+  // back, and a session written back after a sign-out here is discarded.
+  signOutStillSettling: jest.fn(() => false),
+  whenSignOutSettles: jest.fn(async () => {}),
+  discardStoredSession: jest.fn(async () => {}),
   // The real ones: the deletion tests below read them off real session shapes.
   hasAppleIdentity: jest.requireActual('@/supabase/auth').hasAppleIdentity,
   hasGoogleIdentity: jest.requireActual('@/supabase/auth').hasGoogleIdentity,
@@ -21,8 +26,17 @@ jest.mock('@/supabase/account', () => ({ deleteAccountOnServer: jest.fn() }));
 jest.mock('@/supabase/sync', () => ({
   syncNow: jest.fn().mockResolvedValue({ pulled: 0, pushed: 0 }),
   clearSyncCursor: jest.fn(async () => {}),
+  // Round 5: sign-out pushes once more, and a wipe stops the account's sync.
+  pushNow: jest.fn(async () => 0),
+  stopSyncFor: jest.fn(async () => {}),
+  resumeSyncFor: jest.fn(),
 }));
 jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn() }));
+// Round 5: sign-out counts what the server doesn't have yet.
+jest.mock('@/db/predictions', () => ({
+  ...jest.requireActual('@/db/predictions'),
+  countUnsynced: jest.fn(async () => 0),
+}));
 jest.mock('@/notifications/scheduler', () => ({
   dismissDeliveredNotifications: jest.fn(async () => {}),
   dismissDeliveredReminderWords: jest.fn(async () => {}),
@@ -180,7 +194,7 @@ describe('authStore.deleteAccount', () => {
     expect(wipe).toHaveBeenCalledWith('user-1');
     // Not an Apple account: no re-auth sheet.
     expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null, { expectedUserId: 'user-1' });
   });
 
   // The one outcome that must not happen is a half-deleted account.
@@ -205,7 +219,7 @@ describe('authStore.deleteAccount', () => {
     server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: true });
 
     await useAuthStore.getState().deleteAccount();
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh', { expectedUserId: 'user-1' });
   });
 
   // Declining the Apple sheet must not block deletion (Apple rejects apps that
@@ -217,7 +231,7 @@ describe('authStore.deleteAccount', () => {
 
     // Nothing was revoked, so the finished screen says where to remove it.
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: true });
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null, { expectedUserId: 'user-1' });
   });
 
   // Once the server has deleted the account, "try again" would be a lie.
@@ -287,7 +301,7 @@ describe('authStore.deleteAccount: whether Sign in with Apple may still list the
       ok: true,
       appleNotRevoked: false,
     });
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh', { expectedUserId: 'user-1' });
   });
 
   it('is true when the Apple sheet was cancelled, so no code was sent', async () => {
@@ -299,7 +313,7 @@ describe('authStore.deleteAccount: whether Sign in with Apple may still list the
       ok: true,
       appleNotRevoked: true,
     });
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null, { expectedUserId: 'user-1' });
   });
 
   // A different Apple ID, a failed or timed-out leg, an unreadable answer, or
@@ -443,7 +457,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh', { expectedUserId: 'user-1' });
   });
 
   it('asks Apple and revokes for an account made with Apple, as before', async () => {
@@ -452,7 +466,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh', { expectedUserId: 'user-1' });
   });
 
   it('never shows the Apple sheet to an email-only account', async () => {
@@ -461,7 +475,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null, { expectedUserId: 'user-1' });
   });
 
   // The link can be made on another phone; the next session event this phone
@@ -473,7 +487,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     expect(useAuthStore.getState().hasAppleIdentity).toBe(true);
 
     await useAuthStore.getState().deleteAccount();
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh', { expectedUserId: 'user-1' });
   });
 
   // Step 192: a Google account is told where to remove the app from its
@@ -487,7 +501,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
     expect(mocked.signInWithGoogle).not.toHaveBeenCalled();
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null, { expectedUserId: 'user-1' });
   });
 
   it('marks both for a Google account linked to Apple, and still revokes Apple', async () => {
@@ -497,7 +511,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
 
     await useAuthStore.getState().deleteAccount();
     expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh', { expectedUserId: 'user-1' });
   });
 
   it('clears the Google mark when the session goes', async () => {
@@ -522,7 +536,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: true });
     expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
-    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null, { expectedUserId: 'user-1' });
   });
 });
 
@@ -655,6 +669,50 @@ describe('the checkpoint moment after Erase and account deletion', () => {
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+  });
+});
+
+// D69 (b): when the line about usage counts was first shown goes with the
+// Warm-up that showed it. Erase and account deletion are a fresh start, so the
+// line is shown again before a guest's counts go up; sign-out keeps the
+// Warm-up, and the stamp with it.
+describe('the usage line’s stamp after Erase, account deletion and sign-out', () => {
+  const SHOWN = '2026-11-19T09:00:00.000Z';
+
+  it('is forgotten by Erase', async () => {
+    useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', hasAppleIdentity: false });
+    wipe.mockResolvedValue(undefined);
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    usePredictionStore.setState({ loadPending: jest.fn(async () => {}), loadResolved: jest.fn(async () => {}) });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    useSettingsStore.setState({ usageNoticeShownAt: SHOWN });
+
+    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+  });
+
+  it('is forgotten when the account is deleted', async () => {
+    useAuthStore.setState({ userId: 'user-1', email: 'a@b.co', status: 'authenticated', hasAppleIdentity: false });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
+    wipe.mockResolvedValue(undefined);
+    mocked.signOutLocal.mockResolvedValue({ ok: true });
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    useSettingsStore.setState({ usageNoticeShownAt: SHOWN });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+  });
+
+  it('is kept by sign-out, which keeps the Warm-up', async () => {
+    useAuthStore.setState({ userId: 'user-1', status: 'authenticated', hasAppleIdentity: false });
+    mocked.signOut.mockResolvedValue({ ok: true });
+    useSettingsStore.setState({ usageNoticeShownAt: SHOWN });
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBe(SHOWN);
   });
 });
 

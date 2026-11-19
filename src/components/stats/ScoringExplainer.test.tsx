@@ -30,6 +30,14 @@ describe('scoringCopy (roadmap step 29)', () => {
     expect(text).toContain(`until it holds ${MIN_N_BAND}`);
   });
 
+  // D69 (e): another category close to the due day is counted on Insights,
+  // beside a late move and new words, so the page names all three.
+  it('names every late change Insights counts', () => {
+    expect(allText()).toContain(
+      'The same goes for a due date moved later, new words or another category, that close to the due day.',
+    );
+  });
+
   // Roadmap D60: badges follow the record both ways, and the page says so
   // (blind playtest 2026-11-13c, finding 16: two testers had to guess).
   it('says a badge can go back', () => {

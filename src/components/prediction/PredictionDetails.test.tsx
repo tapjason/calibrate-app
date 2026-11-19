@@ -11,6 +11,7 @@ import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
 import {
+  categoryCountedNote,
   EDIT_NUMBER_FIX,
   EDIT_NUMBER_NOTE,
   PredictionDetails,
@@ -321,6 +322,76 @@ describe('PredictionDetails (roadmap D25)', () => {
     expect(screen.getByTestId('details-late-move')).toHaveTextContent(
       'It’s due tomorrow, so moving it later is counted on Insights: the outcome may already be known. It doesn’t change your score.',
     );
+  });
+
+  // D69 (e): another category from the eve of its due day is counted, said
+  // before Save under the chips, in the late move's words.
+  describe('a category change close to its due day', () => {
+    const DUE_TOMORROW =
+      'It’s due tomorrow, so changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.';
+
+    it('is said under the chips when it is due tomorrow, aloud too, and counted on Save', async () => {
+      const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+      await insertPrediction(open({ due_date: tomorrow }));
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      try {
+        renderDetails();
+        await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+        fireEvent.press(screen.getByTestId('details-edit-button'));
+        expect(screen.queryByTestId('details-category-counted')).toBeNull();
+
+        fireEvent.press(screen.getByTestId('category-personal'));
+        expect(screen.getByTestId('details-category-counted')).toHaveTextContent(DUE_TOMORROW);
+        expect(categoryCountedNote(1)).toBe(DUE_TOMORROW);
+        await waitFor(() =>
+          expect(announce).toHaveBeenCalledWith(
+            'Changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.',
+          ),
+        );
+        // Back to its own category: nothing to count, nothing said.
+        fireEvent.press(screen.getByTestId('category-work'));
+        expect(screen.queryByTestId('details-category-counted')).toBeNull();
+
+        // What it says is what Save records (the store's own rule).
+        fireEvent.press(screen.getByTestId('category-personal'));
+        await waitFor(() => expect(screen.getByTestId('details-save')).toBeEnabled());
+        fireEvent.press(screen.getByTestId('details-save'));
+        await waitFor(() => expect(screen.getByTestId('details')).toBeTruthy());
+        expect(usePredictionStore.getState().postponedCount).toBe(1);
+        expect((await getPrediction('p1'))?.category).toBe('personal');
+      } finally {
+        announce.mockRestore();
+      }
+    });
+
+    it('says nothing when it is further off', async () => {
+      await insertPrediction(open());
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      fireEvent.press(screen.getByTestId('category-personal'));
+      expect(screen.queryByTestId('details-category-counted')).toBeNull();
+    });
+
+    // A change on the day it was made is a slip fixed (D62), even due tomorrow.
+    it('says nothing on the day it was made', async () => {
+      const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+      await insertPrediction(open({ created_at: new Date().toISOString(), due_date: tomorrow }));
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      fireEvent.press(screen.getByTestId('category-personal'));
+      expect(screen.queryByTestId('details-category-counted')).toBeNull();
+    });
+
+    it('names the day as the late move does', () => {
+      expect(categoryCountedNote(0)).toBe(
+        'It’s due today, so changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.',
+      );
+      expect(categoryCountedNote(-3)).toBe(
+        'It’s past its due day, so changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.',
+      );
+    });
   });
 
   it('says a delete is counted once the prediction is due', async () => {

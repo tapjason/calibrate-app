@@ -5,6 +5,7 @@
 
 import {
   CATEGORIES,
+  DRIFT_HALF_MIN_N,
   MAX_BODY_BYTES,
   MAX_PATTERNS,
   MIN_N_CATEGORY,
@@ -13,6 +14,7 @@ import {
   readBodyCapped,
   SYSTEM_PROMPT,
   userMessage,
+  validateOutput,
   WEEKDAY_MIN_N,
   type BodyStreamLike,
   type CoachContext,
@@ -76,6 +78,40 @@ describe('parseContext — what it takes', () => {
   it('takes empty categories and patterns', () => {
     expect(parseContext({ ...VALID, by_category: [], patterns: [] })).not.toBeNull();
   });
+
+  // 2026-11-19: a drift's halves' count, sent so the floor of 20 a half can be checked.
+  it('takes a drift with its halves’ count, up to half the category', () => {
+    const withHalves = changed((c) => {
+      c.by_category[0].resolved = 44;
+      c.patterns.push({ kind: 'drift_half_answers_finance', value: 22 });
+    });
+    expect(parseContext(withHalves)).toEqual(withHalves);
+  });
+
+  it('takes every pattern this build can send', () => {
+    const full = {
+      overall: { calibration_rating: 80, total_resolved: 400 },
+      by_category: CATEGORIES.map((category) => ({
+        category,
+        resolved: 80,
+        calibration_score: 80,
+        mean_stated_confidence: 75,
+        actual_rate: 0.7,
+        direction: 'calibrated',
+      })),
+      patterns: [
+        { kind: 'weakest_day_of_week', value: 2 },
+        { kind: 'weakest_day_score', value: 61 },
+        { kind: 'weakest_day_answers', value: 57 },
+        ...CATEGORIES.flatMap((c) => [
+          { kind: `drift_${c}`, value: -3 },
+          { kind: `drift_half_answers_${c}`, value: 40 },
+        ]),
+      ],
+    };
+    expect(full.patterns).toHaveLength(MAX_PATTERNS);
+    expect(parseContext(full)).toEqual(full);
+  });
 });
 
 // COACH_AGENT.md §9, injection, and the security review of 2026-11-18,
@@ -99,6 +135,11 @@ describe('parseContext — what it refuses', () => {
     ['a weekday score over 100', (c) => { c.patterns[1].value = 101; }],
     ['a fractional day count', (c) => { c.patterns[2].value = 12.5; }],
     ['a drift past 100', (c) => { c.patterns[3].value = -150; }],
+    ['a halves’ count over half the category', (c) => c.patterns.push({ kind: 'drift_half_answers_finance', value: 13 })],
+    ['a halves’ count for a category the payload lacks', (c) => c.patterns.push({ kind: 'drift_half_answers_health', value: 2 })],
+    ['a halves’ count for an unknown category', (c) => c.patterns.push({ kind: 'drift_half_answers_romance', value: 2 })],
+    ['a fractional halves’ count', (c) => c.patterns.push({ kind: 'drift_half_answers_finance', value: 10.5 })],
+    ['a negative halves’ count', (c) => c.patterns.push({ kind: 'drift_half_answers_finance', value: -1 })],
     ['a pattern value that is a string', (c) => { c.patterns[1].value = '58'; }],
     ['a pattern value that is null (NaN in JSON)', (c) => { c.patterns[1].value = null; }],
     ['an added category', (c) => { c.by_category[0].category = 'c-abcd1234'; }],
@@ -268,10 +309,50 @@ describe('SYSTEM_PROMPT', () => {
     expect(SYSTEM_PROMPT).toContain(`overall.total_resolved of at least ${MIN_N_OVERALL}`);
     expect(SYSTEM_PROMPT).toContain(`resolved to be at least ${MIN_N_CATEGORY}`);
     expect(SYSTEM_PROMPT).toContain(`weakest_day_answers of at least ${WEEKDAY_MIN_N}`);
+    expect(SYSTEM_PROMPT).toContain(`drift_half_answers_<category> of at least ${DRIFT_HALF_MIN_N}`);
+  });
+
+  // 2026-11-19 (Coach re-review): what the validators now hold the words to.
+  it.each([
+    ['a weekday card’s evidence is the weekday score', /weekday cites weakest_day_score as its evidence, never weakest_day_of_week\s+or weakest_day_answers/],
+    ['the day is named in words', /names the day in words/],
+    ['the halves’ count is never cited', /drift_half_answers_<category>: scored answers in each half[^]*never cite it/],
+    ['"well calibrated" needs 5 points', /less than 5 points apart; otherwise, for "calibrated", say "no clear lean"/],
+    ['a comparison only in an over/under card', /only in an overconfidence or underconfidence card/],
+    ['each number with its word', /"answers" for a count[^]*Never call a count a score/],
+    ['one category a sentence', /Name one category per sentence/],
+    ['no badge words', /never use the words\s+Getting started, Tracker, Forecaster, Sharp or Oracle/],
+  ])('says %s', (_name, pattern) => {
+    expect(SYSTEM_PROMPT).toMatch(pattern);
   });
 
   it('allows §5.4’s professional-advice note', () => {
     expect(SYSTEM_PROMPT).toMatch(/"not a\s+substitute for professional advice" note is fine/);
+  });
+});
+
+// Item 14: the server checks for NFKC once, as the app does. Deno has it; if
+// a runtime ever didn't, the raw text is checked, held to plain ASCII.
+describe('validateOutput — without NFKC', () => {
+  const original = Object.getOwnPropertyDescriptor(String.prototype, 'normalize')!;
+  afterEach(() => Object.defineProperty(String.prototype, 'normalize', original));
+
+  it('keeps a plain-ASCII card and drops what NFKC would have changed', () => {
+    Object.defineProperty(String.prototype, 'normalize', { ...original, value: undefined });
+    let validate: typeof validateOutput | undefined;
+    jest.isolateModules(() => {
+      validate = (require('./contract') as typeof import('./contract')).validateOutput;
+    });
+    const card = (message: string) => ({ type: 'overconfidence', category: 'finance', message, evidence: 80 });
+    const ascii = 'Finance runs overconfident: 80% stated against a 55% hit rate.';
+    expect(validate!({ insights: [card(ascii)], safe: true }, VALID).insights).toEqual([
+      expect.objectContaining({ message: ascii }),
+    ]);
+    expect(validate!({ insights: [card('Finance runs overconfident: ８０% stated.')], safe: true }, VALID)).toEqual({
+      insights: [],
+      safe: true,
+      dropped: 1,
+    });
   });
 });
 

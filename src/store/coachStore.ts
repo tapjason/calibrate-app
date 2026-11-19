@@ -48,6 +48,14 @@ interface CoachState {
    * whenever lastRequestFailed is false.
    */
   lastFailure: CoachFailure | null;
+  /**
+   * True when the last answer had insights and lost every one to validation
+   * (CoachResult.droppedAll, item 12, 2026-11-19), so the panel can say
+   * nothing could be backed by the numbers rather than "nothing worth
+   * flagging". False on an answer with none, on the crisis path and after a
+   * reset; a failed request leaves it as it was, like the cached insights.
+   */
+  lastDroppedAll: boolean;
 
   requestInsights: (request: CoachRequest, deps?: CoachDeps) => Promise<void>;
   /** Drop everything — on sign-out, or when the user turns Coach off. */
@@ -61,6 +69,7 @@ const INITIAL = {
   lastAnsweredAt: null as string | null,
   lastRequestFailed: false,
   lastFailure: null as CoachFailure | null,
+  lastDroppedAll: false,
 };
 
 /**
@@ -134,6 +143,7 @@ export const useCoachStore = create<CoachState>((set) => ({
           lastAnsweredAt: new Date().toISOString(),
           lastRequestFailed: false,
           lastFailure: null,
+          lastDroppedAll: false,
         });
         return;
       }
@@ -145,6 +155,7 @@ export const useCoachStore = create<CoachState>((set) => ({
         lastAnsweredAt: new Date().toISOString(),
         lastRequestFailed: false,
         lastFailure: null,
+        lastDroppedAll: result.droppedAll === true,
       });
       // Plus churn is meant to be split by AI-heavy vs analytics/cosmetic use
       // (GROWTH §7). The count, not the content — no insight text is recorded.

@@ -13,6 +13,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
 import { getSupabaseClient } from './client';
+import { SESSION_KEY_SUFFIXES } from './sessionStorage';
 
 export type AuthOutcome =
   | { ok: true }
@@ -148,13 +149,62 @@ function signUpErrorText(e: unknown): string {
   return errMessage(e);
 }
 
+/** What a person sees when Sign in with Apple can't be started on this build. */
+export const APPLE_UNAVAILABLE = "Sign in with Apple isn't available right now.";
+
+/** The two halves of a Sign in with Apple nonce. */
+export interface AppleNonce {
+  /** 32 random bytes as lowercase hex: sent to Supabase. */
+  raw: string;
+  /** SHA-256 of `raw`, lowercase hex: sent to Apple, which puts it in the identity token. */
+  hashed: string;
+}
+
+/**
+ * A fresh replay guard for one Sign in with Apple (security review round 5,
+ * 2026-11-19). Apple copies the `nonce` it is given into the identity token;
+ * Supabase hashes the raw value it is given with SHA-256, as lowercase hex,
+ * and refuses the token unless the two match, so a token taken from another
+ * sign-in can't be replayed here.
+ *
+ * `getRandomBytesAsync`, not `getRandomBytes`: both read the system's secure
+ * random source, but the synchronous one falls back to `Math.random` in a
+ * development build without the old bridge's sync hook (expo-crypto 55's
+ * `getRandomBytes`), which the New Architecture doesn't have. Throws when
+ * expo-crypto is missing (a build made before it was added) or answers with
+ * something that isn't a digest or random: no sign-in goes without the guard.
+ */
+export async function makeAppleNonce(): Promise<AppleNonce> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Crypto = require('expo-crypto') as typeof import('expo-crypto');
+  const bytes = await Crypto.getRandomBytesAsync(32);
+  if (!(bytes instanceof Uint8Array) || bytes.length !== 32 || bytes.every((b) => b === 0)) {
+    throw new Error('nonce: no random bytes');
+  }
+  const raw = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  const digest = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw, {
+    encoding: Crypto.CryptoEncoding.HEX,
+  });
+  const hashed = typeof digest === 'string' ? digest.toLowerCase() : '';
+  if (!/^[0-9a-f]{64}$/.test(hashed)) throw new Error('nonce: not a SHA-256 digest');
+  return { raw, hashed };
+}
+
 /**
  * Native Apple Sign-In. iOS-only at the SDK level — on any other platform
  * this returns a "not supported" error so the caller can hide the button.
+ * Each sign-in carries a fresh nonce (`makeAppleNonce`): its SHA-256 goes to
+ * Apple, the raw value to Supabase.
  */
 export async function signInWithApple(): Promise<AuthOutcome> {
   if (Platform.OS !== 'ios') {
     return { ok: false, error: 'Apple Sign-In is only available on iOS.' };
+  }
+  let nonce: AppleNonce;
+  try {
+    nonce = await makeAppleNonce();
+  } catch {
+    return { ok: false, error: APPLE_UNAVAILABLE };
   }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -164,6 +214,7 @@ export async function signInWithApple(): Promise<AuthOutcome> {
       // The email only: nothing uses a name, and asking for one is data the
       // task doesn't need (5.1.1(iii); policy audit, 2026-11-14).
       requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL],
+      nonce: nonce.hashed,
     });
 
     if (!credential.identityToken) {
@@ -173,6 +224,7 @@ export async function signInWithApple(): Promise<AuthOutcome> {
     const { error } = await getSupabaseClient().auth.signInWithIdToken({
       provider: 'apple',
       token: credential.identityToken,
+      nonce: nonce.raw,
     });
     if (error) return { ok: false, error: authErrorText(error.message) };
     return { ok: true };
@@ -416,15 +468,25 @@ export async function signUpWithEmail(
 }
 
 /**
- * How a sign-out ended. `localOnly`: the session ended on this phone, but the
- * server never took the sign-out (no connection, or it refused), so the
- * session stays open on the server. Supabase's refresh tokens don't expire
- * (each can be used only once) and sessions have no time limit unless the
- * project sets one (a Pro setting), so it stays open until the next sign-out
- * with a connection, whose global scope ends every session, or until the
- * account is deleted. Nothing on this phone holds it any more.
+ * How ending the session ended (`signOut`, `signOutLocal`). `localOnly`: the
+ * session ended on this phone, but the server never took the sign-out (no
+ * connection, or it refused), so the session stays open on the server.
+ * Supabase's refresh tokens don't expire (each can be used only once) and
+ * sessions have no time limit unless the project sets one (a Pro setting), so
+ * it stays open until the next sign-out with a connection, whose global scope
+ * ends every session, or until the account is deleted. Nothing on this phone
+ * holds it any more.
  */
-export type SignOutOutcome = { ok: true; localOnly?: true } | { ok: false; error: string };
+export type SessionEndOutcome = { ok: true; localOnly?: true } | { ok: false; error: string };
+
+/**
+ * How the app's sign-out ended (`authStore.signOut`): the session's end, or
+ * `unsynced`, when this phone still holds that many changes the server
+ * doesn't have and the person hasn't said to discard them. Nothing was
+ * changed then: still signed in, every row still here (owner decision
+ * 2026-11-19, D69 (a)).
+ */
+export type SignOutOutcome = SessionEndOutcome | { ok: false; unsynced: number };
 
 /** What the person sees when even this phone's copy of the session couldn't be removed. */
 export const SIGN_OUT_FAILED = "Couldn't sign you out on this phone. Try again.";
@@ -433,6 +495,12 @@ export const SIGN_OUT_FAILED = "Couldn't sign you out on this phone. Try again."
 const SIGN_OUT_TIMEOUT_MS = 10_000;
 /** How long the read-back after clearing the stored session may wait on the client. */
 const SESSION_CHECK_TIMEOUT_MS = 5_000;
+/**
+ * How long, at most, a sign-out auth-js is still running after this phone
+ * ended the session alone holds back the next account action
+ * (`whenSignOutSettles`).
+ */
+export const LATE_SIGN_OUT_WAIT_MS = 60_000;
 
 /**
  * Sign out everywhere (Supabase's default scope), and in any case on this
@@ -440,7 +508,7 @@ const SESSION_CHECK_TIMEOUT_MS = 5_000;
  * a sign-out with no connection used to do nothing (security review,
  * 2026-11-18); `endSession` then ends it here alone.
  */
-export async function signOut(): Promise<SignOutOutcome> {
+export async function signOut(): Promise<SessionEndOutcome> {
   return await endSession('global');
 }
 
@@ -450,8 +518,78 @@ export async function signOut(): Promise<SignOutOutcome> {
  * sign-out with a 401 or 403, which supabase-js takes as signed out; with no
  * connection this phone ends the session alone, as `signOut` does.
  */
-export async function signOutLocal(): Promise<SignOutOutcome> {
+export async function signOutLocal(): Promise<SessionEndOutcome> {
   return await endSession('local');
+}
+
+/**
+ * A sign-out auth-js was still running when this phone ended the session
+ * alone (its 10 s were up), and when the wait for it ends.
+ */
+let lateSignOut: { settled: Promise<void>; deadline: number } | null = null;
+
+/**
+ * Whether a sign-out auth-js was still running when this phone ended the
+ * session alone is still running, within its 60 s (`LATE_SIGN_OUT_WAIT_MS`).
+ *
+ * Why it matters (security review round 5, client reviewer LOW-B): that
+ * call waits behind the client's lock, often for a token refresh with no
+ * connection, and when it runs it reads whatever session is stored then. A
+ * sign-in started meanwhile would be that session: auth-js would sign the new
+ * account out everywhere, or remove a Google sign-in's code verifier halfway
+ * through. authStore keeps its `pending` flag up while this is true, so no
+ * sign-in starts underneath it.
+ */
+export function signOutStillSettling(): boolean {
+  const entry = lateSignOut;
+  return entry !== null && entry.deadline > Date.now();
+}
+
+/**
+ * Resolves when the sign-out `signOutStillSettling` reports has settled, or
+ * its 60 s are up; at once when there is none. Never rejects.
+ */
+export async function whenSignOutSettles(): Promise<void> {
+  const entry = lateSignOut;
+  if (!entry) return;
+  const left = entry.deadline - Date.now();
+  if (left <= 0) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      entry.settled,
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, left);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+/** Remember a sign-out auth-js is still running, until it settles. */
+function trackLateSignOut(call: Promise<unknown>): void {
+  const settled = (async () => {
+    try {
+      await call;
+    } catch {
+      // Settled is all that matters here.
+    }
+  })();
+  const entry = { settled, deadline: Date.now() + LATE_SIGN_OUT_WAIT_MS };
+  lateSignOut = entry;
+  void (async () => {
+    await settled;
+    if (lateSignOut === entry) lateSignOut = null;
+  })();
+}
+
+/** Test-only: forget any sign-out still running. */
+export function __resetLateSignOutForTests(): void {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('__resetLateSignOutForTests is only allowed when NODE_ENV=test');
+  }
+  lateSignOut = null;
 }
 
 /**
@@ -467,31 +605,70 @@ export async function signOutLocal(): Promise<SignOutOutcome> {
  * to `clearStoredSession`.
  *
  * Never throws. When the session ended here alone, the caller has to move the
- * app on itself: supabase-js sends no SIGNED_OUT for it.
+ * app on itself: supabase-js sends no SIGNED_OUT for it. When auth-js's own
+ * call was still running at that point (the 10 s ran out), it is remembered
+ * until it settles (`signOutStillSettling`).
  */
-async function endSession(scope: 'global' | 'local'): Promise<SignOutOutcome> {
+async function endSession(scope: 'global' | 'local'): Promise<SessionEndOutcome> {
   let client: SupabaseClient;
   try {
     client = getSupabaseClient();
   } catch (e) {
     return { ok: false, error: errMessage(e) };
   }
+  let call: Promise<{ error: unknown }> | null = null;
+  let settled = false;
   try {
-    const { error } = await withTimeout(
-      scope === 'global' ? client.auth.signOut() : client.auth.signOut({ scope: 'local' }),
-      SIGN_OUT_TIMEOUT_MS,
-    );
+    call = scope === 'global' ? client.auth.signOut() : client.auth.signOut({ scope: 'local' });
+    const watched = call;
+    void (async () => {
+      try {
+        await watched;
+      } catch {
+        // Settled either way.
+      } finally {
+        settled = true;
+      }
+    })();
+    const { error } = await withTimeout(watched, SIGN_OUT_TIMEOUT_MS);
     if (!error) return { ok: true };
   } catch {
     // A timeout or a throw: the same as an error, the session may still be stored.
   }
+  if (call && !settled) trackLateSignOut(call);
   return (await clearStoredSession(client))
     ? { ok: true, localOnly: true }
     : { ok: false, error: SIGN_OUT_FAILED };
 }
 
-/** The keys auth-js's own sign-out removes (`_removeSession`), after the storage key. */
-const SESSION_KEY_SUFFIXES = ['', '-code-verifier', '-user'] as const;
+/**
+ * Take the stored session off this phone again, without the server and
+ * without waiting on the client's lock: the same keys `clearStoredSession`
+ * removes, with no read-back. For a session auth-js wrote back after this
+ * phone signed out alone (a token refresh that landed late; security review
+ * round 5, client reviewer LOW-A): authStore ignores it and calls this. Never
+ * throws.
+ */
+export async function discardStoredSession(): Promise<void> {
+  let client: SupabaseClient;
+  try {
+    client = getSupabaseClient();
+  } catch {
+    return;
+  }
+  const { storageKey, storage } = client.auth as unknown as {
+    storageKey?: unknown;
+    storage?: unknown;
+  };
+  if (typeof storageKey !== 'string' || storageKey === '' || !isRemovableStorage(storage)) return;
+  for (const suffix of SESSION_KEY_SUFFIXES) {
+    try {
+      await storage.removeItem(storageKey + suffix);
+    } catch {
+      // Tried again the next time it shows up.
+    }
+  }
+}
 
 interface RemovableStorage {
   removeItem(key: string): unknown;
@@ -646,13 +823,26 @@ export function hasGoogleIdentity(user: User | null | undefined): boolean {
  * Null when unavailable or declined. Deletion goes ahead without it: making
  * the user complete an extra sign-in to be allowed to leave is the
  * "unnecessarily difficult" case Apple rejects for.
+ *
+ * The request carries a nonce like a sign-in's (security review round 5). Here
+ * it guards nothing yet: only the code leaves the phone, and the server checks
+ * the identity in what Apple returns for it, not a nonce. So when one can't be
+ * made the sheet still opens without it, rather than costing the revocation.
  */
 export async function reauthenticateWithApple(): Promise<string | null> {
   if (Platform.OS !== 'ios') return null;
+  let nonce: string | null = null;
+  try {
+    nonce = (await makeAppleNonce()).hashed;
+  } catch {
+    nonce = null;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const AppleAuthentication = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
-    const credential = await AppleAuthentication.signInAsync({ requestedScopes: [] });
+    const credential = await AppleAuthentication.signInAsync(
+      nonce ? { requestedScopes: [], nonce } : { requestedScopes: [] },
+    );
     return credential.authorizationCode ?? null;
   } catch {
     return null;

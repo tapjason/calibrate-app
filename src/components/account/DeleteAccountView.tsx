@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { appLocked } from '@/components/ui/appLocked';
+// Asks once more before anything is deleted: a system alert on the phone,
+// the browser's confirm on web (shared with sign-out in You since D69 (a)).
+import { askToConfirm } from '@/components/ui/askToConfirm';
 import { Button } from '@/components/ui/Button';
 import { APP_NAME, PLUS_NAME } from '@/constants/app';
 import { colors, type } from '@/constants/theme';
@@ -13,27 +16,6 @@ const MANAGE_SUBSCRIPTIONS_URL =
   Platform.OS === 'android'
     ? 'https://play.google.com/store/account/subscriptions'
     : 'https://apps.apple.com/account/subscriptions';
-
-/**
- * Asks once more before anything is deleted. A system alert on the phone; on
- * web, where react-native-web's Alert.alert does nothing, the browser's own
- * confirm, so the web build the playtests use can still get through.
- */
-function askToConfirm(
-  title: string,
-  message: string,
-  destructiveLabel: string,
-  onYes: () => void,
-) {
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) onYes();
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: destructiveLabel, style: 'destructive', onPress: onYes },
-  ]);
-}
 
 /**
  * Delete the account (signed in) or erase this device (guest) —
@@ -89,7 +71,7 @@ export function DeleteAccountView({
         {wasSignedIn && appleNotRevoked && (
           <Text style={styles.muted} testID="delete-apple-remove-note">
             Sign in with Apple may still list {APP_NAME}. To remove it, open Settings, tap your
-            name, then Sign in with Apple.
+            name, then Sign in with Apple, and remove {APP_NAME}.
           </Text>
         )}
         <Button label="Done" onPress={onDone} testID="delete-done" />
@@ -165,8 +147,9 @@ export function DeleteAccountView({
           : // Everything wipeLocalUserData and eraseDeviceData remove, named
             // (blind playtest 2026-11-13b, run 6: the old line left out
             // categories, practice and the usage queue), and what stays.
-            // Guest rows only: an account signed out on this phone keeps its own
-            // (record audit 2026-11-13), hence "made here without an account".
+            // Guest rows only, hence "made here without an account": an
+            // account's own rows leave the phone when it signs out (D69 (a)),
+            // and a wipe that didn't finish is retried at the next launch.
             'This permanently erases what was made on this phone without an account: ' +
             'every prediction and reflection, ' +
             'your categories and their icons, your Warmup and practice answers, a ' +
@@ -239,10 +222,11 @@ export function DeleteAccountView({
       {/* The server call can wait 45 seconds, then the app asks once more
           whether the account is gone (src/supabase/account.ts): said, so a
           long wait doesn't read as stuck (security review, 2026-11-18). An
-          erase is on this phone alone and quick. */}
+          erase is on this phone alone and quick. "About", not "up to": the
+          worst case is about 65 seconds (round 5). */}
       {pending && wasSignedIn && (
         <Text style={styles.muted} testID="delete-pending-note">
-          This can take up to a minute.
+          This can take about a minute.
         </Text>
       )}
       <Button

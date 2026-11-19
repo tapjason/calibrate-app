@@ -1316,7 +1316,9 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
 - **Groups, top to bottom** (`SettingsView`): *Account*, on a build with accounts ("Sign
   in ›" with "Not signed in. Your predictions live only on this phone." as the footer;
   signed in, an `actionText` "Sign out" row over "Signed in as … Your predictions are
-  backed up.") · *Your card ›* and *Fairly Sure Plus ›* (`PLUS_NAME`; "Active" as its
+  backed up. Signing out removes them from this phone, and signing back in brings them
+  back. Categories you added or changed, and the counts only this phone keeps, aren't
+  backed up, so signing out removes them."; D69 (a)) · *Your card ›* and *Fairly Sure Plus ›* (`PLUS_NAME`; "Active" as its
   value when it is), with Plus's one line as the footer · *Categories ›* (below) ·
   three switches: **Streak and daily goal** (D59, on by default), **Hide the words**
   (D61, off) and the app lock, "Lock with Face ID" or as the phone has it (D64, §7.25)

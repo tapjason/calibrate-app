@@ -28,6 +28,14 @@
 // account's, and stops if not: a sign-out or a switch mid-sweep must not send
 // one account's rows under the next one's session.
 //
+// An account whose rows are leaving the phone (sign-out, D69 (a); a session
+// that ended after its deletion was asked for) is stopped first
+// (`stopSyncFor`): no new sweep starts for it, a running one writes nothing
+// more to the phone (a pull's rows landing after the wipe would put the
+// account back), and the caller waits for it to finish before wiping.
+// `pushNow` is the one more push sign-out makes before it counts what is
+// still unsynced.
+//
 // Layer rule: L5. Imports @/db, @/supabase, @/types, and @/store. The
 // store-imports cross L4 only in `defaultRecompute` (which uses the
 // statsStore to rebuild derived stats after pulling). All lower-level
@@ -44,8 +52,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   getPredictionUpdatedAt,
   isDeletedHere,
-  listDirtyPredictions,
-  listPendingDeletions,
+  listDirtyPredictionsSettled,
+  listPendingDeletionsSettled,
   markDeletionPushed,
   markPredictionSynced,
   upsertPredictionFromRemote,
@@ -92,6 +100,40 @@ const EPOCH_CURSOR = '1970-01-01T00:00:00.000Z';
 // A modest cap so a one-shot pull doesn't pull a million rows. Hitting this
 // just means the next sweep continues — no data loss.
 const MAX_PULL_BATCH = 500;
+
+/**
+ * Accounts whose rows are leaving the phone (`stopSyncFor`): no sweep starts
+ * for them, and a running one writes nothing more.
+ */
+const stoppedUsers = new Set<string>();
+
+/** How long sign-out's one more push, and a stop's wait for a running sweep, may take. */
+const DEFAULT_WAIT_MS = 10_000;
+
+/**
+ * The most rows one push sends. Supabase migration 011
+ * (supabase/migrations/011_offsets_answers_limits.sql,
+ * `predictions_write_limits`) enforces this ceiling: an upsert of more than
+ * 100 new or more than 100 changed rows is refused whole with PT413. The
+ * analytics flush sends the same 100 (BATCH_SIZE in src/analytics/flush.ts).
+ */
+export const PUSH_BATCH_SIZE = 100;
+
+/**
+ * The server's write limits (migration 011): PT429, the account is at a cap
+ * (50,000 predictions, or its text budget, which refuses only statements that
+ * add text: answers, category moves and shorter notes still go through);
+ * PT413, too many rows in one request (can't happen with batches of 100, and
+ * is handled the same way if it ever does).
+ */
+const LIMIT_CODES: ReadonlySet<string> = new Set(['PT429', 'PT413']);
+
+/** The limit a push was refused for, or null for any other failure. */
+function limitCode(e: unknown): string | null {
+  if (typeof e !== 'object' || e === null) return null;
+  const { code } = e as { code?: unknown };
+  return typeof code === 'string' && LIMIT_CODES.has(code) ? code : null;
+}
 
 // ----------------------------------------------------------------------------
 // Default deps
@@ -168,7 +210,8 @@ async function clientSessionUserId(client: SupabaseClient): Promise<string | nul
 
 /**
  * A check that the client's session is still `userId`'s, for a sweep that
- * started for it. Fails safe: a session that can't be read reads as someone
+ * started for it, and that the account isn't being taken off the phone
+ * (`stopSyncFor`). Fails safe: a session that can't be read reads as someone
  * else's, and the sweep stops.
  */
 function sessionStillFor(
@@ -177,6 +220,7 @@ function sessionStillFor(
   sessionUserId?: () => Promise<string | null>,
 ): () => Promise<boolean> {
   return async () => {
+    if (stoppedUsers.has(userId)) return false;
     try {
       const current = sessionUserId ? await sessionUserId() : await clientSessionUserId(client);
       return current === userId;
@@ -246,6 +290,9 @@ export async function pullRemote(
   let lastSeen = cursor;
 
   for (const raw of data) {
+    // The account is leaving the phone (`stopSyncFor`): nothing more is
+    // written, and the cursor stays where it was.
+    if (stoppedUsers.has(userId)) return written;
     const remote = raw as PredictionWireRow;
     // Defense: RLS should already filter, but a misconfigured server could
     // return foreign rows. Skip them rather than writing them locally.
@@ -261,12 +308,14 @@ export async function pullRemote(
 
     const localUpdatedAt = await getPredictionUpdatedAt(remote.id);
     if (!localUpdatedAt || localUpdatedAt < remote.updated_at) {
+      if (stoppedUsers.has(userId)) return written;
       await upsertPredictionFromRemote(remote);
       written += 1;
     }
     if (remote.updated_at > lastSeen) lastSeen = remote.updated_at;
   }
 
+  if (stoppedUsers.has(userId)) return written;
   if (lastSeen !== cursor) {
     await cursorStore.set(userId, lastSeen);
   }
@@ -293,15 +342,28 @@ export async function pullRemote(
  *
  * Each request first checks that the client's session is still `userId`'s
  * (`stillCurrent`, by default the client's own session) and stops if not.
+ *
+ * In batches of at most `PUSH_BATCH_SIZE` (100) rows, oldest change first,
+ * the ceiling Supabase migration 011 enforces. A refused batch is tried once
+ * more one row at a time (at most 100 requests), and the push goes on to the
+ * next batch. That includes a refusal for a server limit (PT429, PT413): the
+ * text budget refuses only rows that add text, so an answer or a category
+ * move in the same batch still goes through alone. A row refused alone stays
+ * dirty for the next sweep, and sign-out counts it as unsynced, so the person
+ * is asked before it is discarded. For a limit, only its code (and how many
+ * rows) is logged.
  */
 export async function pushDirty(
   userId: string,
   client: SupabaseClient,
   stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<number> {
-  const dirty = await listDirtyPredictions(userId);
+  // Read once every queued transaction has settled (review round 5): an
+  // unqueued read on the one connection sees a transaction's uncommitted
+  // writes, and one pushed that then rolled back would come back on the next
+  // pull.
+  const dirty = await listDirtyPredictionsSettled(userId);
   if (dirty.length === 0) return 0;
-  if (!(await stillCurrent())) return 0;
 
   const upsertBatch = async (rows: PredictionWireRow[]) => {
     const { error } = await client
@@ -310,29 +372,48 @@ export async function pushDirty(
     if (error) throw error;
   };
 
-  try {
-    await upsertBatch(dirty);
-    for (const row of dirty) {
-      await markPredictionSynced(row.id, row.updated_at);
-    }
-    return dirty.length;
-  } catch (batchErr) {
-    // eslint-disable-next-line no-console
-    console.warn('[sync] batch push failed, falling back to per-row:', errorForLog(batchErr));
-    let pushed = 0;
-    for (const row of dirty) {
-      if (!(await stillCurrent())) break;
-      try {
-        await upsertBatch([row]);
+  let pushed = 0;
+  for (let start = 0; start < dirty.length; start += PUSH_BATCH_SIZE) {
+    const batch = dirty.slice(start, start + PUSH_BATCH_SIZE);
+    if (!(await stillCurrent())) return pushed;
+    try {
+      await upsertBatch(batch);
+      for (const row of batch) {
         await markPredictionSynced(row.id, row.updated_at);
-        pushed += 1;
-      } catch (rowErr) {
+      }
+      pushed += batch.length;
+    } catch (batchErr) {
+      const batchLimit = limitCode(batchErr);
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[sync] batch push failed, falling back to per-row:',
+        batchLimit ?? errorForLog(batchErr),
+      );
+      // Rows refused alone for a limit, by code: logged once for the batch.
+      const refusedAtLimit = new Map<string, number>();
+      for (const row of batch) {
+        if (!(await stillCurrent())) return pushed;
+        try {
+          await upsertBatch([row]);
+          await markPredictionSynced(row.id, row.updated_at);
+          pushed += 1;
+        } catch (rowErr) {
+          const rowLimit = limitCode(rowErr);
+          if (rowLimit) {
+            refusedAtLimit.set(rowLimit, (refusedAtLimit.get(rowLimit) ?? 0) + 1);
+          } else {
+            // eslint-disable-next-line no-console
+            console.warn(`[sync] push failed for ${row.id}:`, errorForLog(rowErr));
+          }
+        }
+      }
+      for (const [code, count] of refusedAtLimit) {
         // eslint-disable-next-line no-console
-        console.warn(`[sync] push failed for ${row.id}:`, errorForLog(rowErr));
+        console.warn(`[sync] ${count} row(s) refused (${code}); they stay on this phone`);
       }
     }
-    return pushed;
   }
+  return pushed;
 }
 
 /**
@@ -346,7 +427,8 @@ export async function pushDeletions(
   client: SupabaseClient,
   stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<number> {
-  const ids = await listPendingDeletions(userId);
+  // Settled, as pushDirty's read is: a delete that rolls back is never sent.
+  const ids = await listPendingDeletionsSettled(userId);
   let done = 0;
   for (const id of ids) {
     if (!(await stillCurrent())) break;
@@ -381,7 +463,7 @@ export function syncNow(
   userId: string | null,
   deps?: SyncDeps,
 ): Promise<SyncResult> {
-  if (!userId || userId === LOCAL_GUEST_USER_ID) {
+  if (!userId || userId === LOCAL_GUEST_USER_ID || stoppedUsers.has(userId)) {
     return Promise.resolve(ZERO);
   }
 
@@ -431,7 +513,9 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
     console.warn('[sync] push failed:', errorForLog(e));
   }
 
-  if (pulled + pushed > 0) {
+  // Not for an account leaving the phone: its stats would be written back
+  // after the wipe.
+  if (pulled + pushed > 0 && !stoppedUsers.has(userId)) {
     try {
       await resolved.recompute(userId);
     } catch (e) {
@@ -443,6 +527,93 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
   return { pulled, pushed };
 }
 
+/** Wait for `p` at most `ms`, whichever comes first. Never rejects. */
+async function settleWithin(p: Promise<unknown>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      (async () => {
+        try {
+          await p;
+        } catch {
+          // Settled is enough.
+        }
+      })(),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, ms);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+/**
+ * One more push for `userId` (sign-out, D69 (a)): what is waiting to be
+ * deleted on the server, then every dirty row, after any sweep already
+ * running for the account. No pull and no recompute: the rows are about to
+ * leave the phone. Each request checks the session is still the account's,
+ * as a sweep's do. Waits at most `maxWaitMs` (default 10 s) altogether; a
+ * push still running then goes on by itself, and sign-out counts what is
+ * still unsynced. Returns how many rows and deletions reached the server.
+ * Never throws.
+ */
+export async function pushNow(
+  userId: string | null,
+  deps?: SyncDeps,
+  maxWaitMs: number = DEFAULT_WAIT_MS,
+): Promise<number> {
+  if (!userId || userId === LOCAL_GUEST_USER_ID || stoppedUsers.has(userId)) return 0;
+  let pushed = 0;
+  const run = (async () => {
+    const running = inflight.get(userId);
+    if (running) {
+      try {
+        await running;
+      } catch {
+        // Its own failures are logged where they happen.
+      }
+    }
+    const resolved = resolveDeps(deps);
+    if (!resolved.client) return;
+    const stillCurrent = sessionStillFor(userId, resolved.client, resolved.sessionUserId);
+    try {
+      pushed += await pushDeletions(userId, resolved.client, stillCurrent);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[sync] delete push failed:', errorForLog(e));
+    }
+    try {
+      pushed += await pushDirty(userId, resolved.client, stillCurrent);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[sync] push failed:', errorForLog(e));
+    }
+  })();
+  await settleWithin(run, maxWaitMs);
+  return pushed;
+}
+
+/**
+ * Stop syncing `userId` before its rows leave the phone: no sweep starts for
+ * it, a running one writes nothing more to the phone (no pulled row, no
+ * cursor, no recompute) and sends nothing more, and this waits for it to
+ * finish, at most `maxWaitMs` (default 10 s). A sweep still waiting on the
+ * network after that writes nothing when its answer comes. Undone by
+ * `resumeSyncFor` (the session didn't end after all, or the account signed in
+ * again). Never throws.
+ */
+export async function stopSyncFor(userId: string, maxWaitMs: number = DEFAULT_WAIT_MS): Promise<void> {
+  stoppedUsers.add(userId);
+  const running = inflight.get(userId);
+  if (running) await settleWithin(running, maxWaitMs);
+}
+
+/** Let `userId` sync again (`stopSyncFor`). */
+export function resumeSyncFor(userId: string): void {
+  stoppedUsers.delete(userId);
+}
+
 /**
  * Test-only: clear the in-flight serialization map so each test starts fresh.
  * Production code never has reason to call this — finally() handles cleanup.
@@ -452,4 +623,5 @@ export function __resetSyncStateForTests(): void {
     throw new Error('__resetSyncStateForTests is only allowed when NODE_ENV=test');
   }
   inflight.clear();
+  stoppedUsers.clear();
 }

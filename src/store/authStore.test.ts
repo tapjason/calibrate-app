@@ -23,6 +23,12 @@ import { syncNow } from '@/supabase/sync';
 jest.mock('@/supabase/sync', () => ({
   syncNow: jest.fn().mockResolvedValue({ pulled: 0, pushed: 0 }),
   __resetSyncStateForTests: jest.fn(),
+  // Round 5: a person's sign-in clears the account's cursor, and an account
+  // that comes in syncs again.
+  clearSyncCursor: jest.fn(async () => {}),
+  resumeSyncFor: jest.fn(),
+  stopSyncFor: jest.fn(async () => {}),
+  pushNow: jest.fn(async () => 0),
 }));
 
 import { syncForUser, useAuthStore } from './authStore';
@@ -31,6 +37,12 @@ import { useStatsStore } from './statsStore';
 
 interface FakeAuth {
   getSession(): Promise<{ data: { session: Session | null } }>;
+  /**
+   * A password sign-in, as auth-js does it: the session is saved and
+   * SIGNED_IN sent before the call returns. Signs in as `signInAs`.
+   */
+  signInWithPassword(): Promise<{ data: unknown; error: null }>;
+  signInAs: Session | null;
   onAuthStateChange(
     cb: (event: string, session: Session | null) => void,
   ): { data: { subscription: { unsubscribe: () => void } } };
@@ -43,6 +55,12 @@ function makeFakeAuth(initialSession: Session | null): FakeAuth {
   return {
     async getSession() {
       return { data: { session: initialSession } };
+    },
+    signInAs: null,
+    async signInWithPassword() {
+      const session = this.signInAs;
+      if (callback && session) callback('SIGNED_IN', session);
+      return { data: { session }, error: null };
     },
     onAuthStateChange(cb) {
       callback = cb;
@@ -181,8 +199,13 @@ describe('authStore — with Supabase client', () => {
     });
     expect(usePredictionStore.getState().pending).toHaveLength(2);
 
-    // Now simulate Supabase reporting a fresh session.
-    auth.__emit('SIGNED_IN', fakeSession('real-user-uuid'));
+    // Now the person signs in, and Supabase reports the fresh session while
+    // that sign-in runs. Only a sign-in the person started moves the guest's
+    // rows (security review round 5).
+    auth.signInAs = fakeSession('real-user-uuid');
+    await expect(
+      useAuthStore.getState().signInWithEmail('u@example.com', 'pw'),
+    ).resolves.toEqual({ ok: true });
 
     // Migration is async — let the handleSession promise settle.
     await new Promise((r) => setImmediate(r));

@@ -49,21 +49,31 @@ export interface DeleteAccountDeps {
   timeoutMs?: number;
   /** How long to wait for the session read and the follow-up question. Default 10 s. */
   probeTimeoutMs?: number;
+  /**
+   * The account the app shows as signed in, the one the person asked to
+   * delete. Nothing is sent unless the session read before the call is this
+   * account's (security review round 5): the call deletes whoever the token
+   * belongs to, and the phone then wipes this id's rows.
+   */
+  expectedUserId?: string;
 }
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_PROBE_TIMEOUT_MS = 10_000;
 
 /**
- * The server answered, and the account is still there: nothing was deleted.
- * Also when no request could be made at all.
+ * Nothing was deleted: the function refused before it started (a 4xx: every
+ * such answer comes before its Apple and RevenueCat steps), and the account
+ * is still there. Also when no request was sent at all: no client, no session
+ * to read, or a session for another account than the one asked about.
  */
 export const DELETE_FAILED_MESSAGE =
   "Couldn't delete your account right now. Nothing has been deleted. Try again in a moment.";
 
 /**
  * No answer either way (the call timed out or never got through, and the
- * server couldn't be asked afterwards): the app can't say what happened.
+ * server couldn't be asked afterwards), or a server error after which part of
+ * the work may have been done: the app can't say what happened.
  */
 export const DELETE_UNCONFIRMED_MESSAGE =
   "Couldn't confirm whether your account was deleted. Check your connection and try again.";
@@ -94,17 +104,32 @@ export async function deleteAccountOnServer(
   // Read before the call, while the user certainly exists: afterwards a token
   // refresh would fail for a deleted user and the SDK would drop the session.
   const asked = await sessionNow(client, probeTimeoutMs);
+  // No session read: nothing could check the call afterwards, and it could go
+  // out without this account's token. Nothing is sent, so nothing happened.
+  if (!asked) return { ok: false, error: DELETE_FAILED_MESSAGE };
+  // A session for another account than the one shown: deleting it would
+  // delete the wrong account. Nothing is sent.
+  if (deps.expectedUserId !== undefined && asked.userId !== deps.expectedUserId) {
+    // eslint-disable-next-line no-console
+    console.warn('[account] the session is for another account than the one shown; nothing sent');
+    return { ok: false, error: DELETE_FAILED_MESSAGE };
+  }
 
-  // Whether the function sent an answer that ended its work. After a timeout
-  // or a lost connection it may still be running, so "the user still exists"
-  // then doesn't mean nothing will be deleted.
-  let answered = false;
+  // Whether the function answered before starting its work (a 4xx, or a 2xx
+  // that didn't confirm). After a timeout or a lost connection it may still be
+  // running, and after a 5xx it may have revoked Apple and deleted the
+  // RevenueCat customer, so "the user still exists" then doesn't mean nothing
+  // was or will be deleted.
+  let nothingRan = false;
   try {
     const result = (await withTimeout(
       client.functions.invoke('delete-account', {
         body: appleAuthorizationCode
           ? { apple_authorization_code: appleAuthorizationCode }
           : {},
+        // The token whose user was just checked, and that the follow-up
+        // question uses: the account deleted is the one asked about.
+        headers: { Authorization: `Bearer ${asked.token}` },
       }),
       deps.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     )) as InvokeResult;
@@ -116,7 +141,7 @@ export async function deleteAccountOnServer(
         appleRevoked: appleAuthorizationCode !== null && appleRevokedIn(result.data),
       };
     }
-    answered = finishedAnswer(result);
+    nothingRan = refusedBeforeWork(result);
     // eslint-disable-next-line no-console
     console.warn('[account] delete-account did not confirm:', describeResult(result));
   } catch (e) {
@@ -128,7 +153,7 @@ export async function deleteAccountOnServer(
   // The account is gone: done, whichever call did it. The function's answer
   // was never read, so nothing says Apple's grant was revoked.
   if (probe === 'gone') return { ok: true, appleRevoked: false };
-  if (probe === 'exists' && answered) return { ok: false, error: DELETE_FAILED_MESSAGE };
+  if (probe === 'exists' && nothingRan) return { ok: false, error: DELETE_FAILED_MESSAGE };
   return { ok: false, error: DELETE_UNCONFIRMED_MESSAGE };
 }
 
@@ -166,15 +191,25 @@ interface InvokeResult {
 }
 
 /**
- * Whether the function answered in a way that ended its work: a 2xx whose
- * body didn't confirm, or an error with an HTTP status. A gateway timeout
- * (504) can leave the function running, and an error with no status (no
- * connection, an unreadable body) says nothing about what it did.
+ * Whether the function answered before doing any of its work, so a user who
+ * still exists means nothing was deleted anywhere: a 2xx whose body didn't
+ * confirm (the function sends 200 only with `ok: true`, after the delete), or
+ * a 4xx. Every 4xx in supabase/functions/delete-account/index.ts (401 no or
+ * bad token, 405, 429, 400 the body) is returned before `runDeletion`.
+ *
+ * Not a 5xx (security review round 5, client reviewer): the function's own
+ * 500 after `runDeletion` (index.ts, "if (!result.deleted)") comes once the
+ * Apple revoke and the RevenueCat delete have run (`runDeletion` in
+ * deletionPlan.ts settles both legs before deleting the user), and its other
+ * 500 (its settings missing) can't be told apart from it; a 546 or 502 is a
+ * worker stopped partway. A 504 can leave the function running, and an error
+ * with no status (no connection, an unreadable body) says nothing about what
+ * it did.
  */
-function finishedAnswer(result: InvokeResult): boolean {
+function refusedBeforeWork(result: InvokeResult): boolean {
   if (!result.error) return true;
   const status = result.response?.status;
-  return typeof status === 'number' && status !== 504;
+  return typeof status === 'number' && status >= 400 && status < 500;
 }
 
 /** For the log: the status and the error's message, never the body. */

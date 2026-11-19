@@ -7,7 +7,7 @@
 import type { Prediction } from '@/types';
 
 import { localDayNumber, localMidnight, localParts } from './localTime';
-import { isSameDayAnswer, scoredFrom } from './sameDay';
+import { dayNumberAt, isSameDayAnswer, madeDayNumber } from './sameDay';
 
 /**
  * For this long after a Yes or No, its details can change the answer, move it
@@ -108,7 +108,9 @@ export function refileCounts(p: Prediction): boolean {
  * eve of it unless it was made (or reworded) today. The window shared by a
  * counted delete (D61), a counted due-date move and a counted rewording
  * (D62): by then the outcome may be known, while a change on the day it was
- * made is a slip fixed, not a hidden outcome.
+ * made is a slip fixed, not a hidden outcome. The day it was made is read
+ * where it was made, as the same-day rule reads it (2026-11-19); today, where
+ * the phone is now.
  */
 function lateForOpen(p: Prediction, now: Date): boolean {
   if (p.status !== 'pending') return false;
@@ -118,8 +120,8 @@ function lateForOpen(p: Prediction, now: Date): boolean {
   const dueDay = localDayNumber(due);
   if (today >= dueDay) return true;
   if (today !== dueDay - 1) return false;
-  const made = new Date(scoredFrom(p));
-  return Number.isNaN(made.getTime()) || localDayNumber(made) < today;
+  const made = madeDayNumber(p);
+  return Number.isNaN(made) || made < today;
 }
 
 /**
@@ -132,14 +134,17 @@ function lateForOpen(p: Prediction, now: Date): boolean {
  * day it was made (D62, blind playtest 2026-11-13d, run 5: a date fixed two
  * minutes after logging read as "being called a cheat"), the same exemption
  * as a delete (D61); `madeIso` is when it counts as made before this edit
- * (`scoredFrom`), so a rewording on the due day still counts its move. Days
- * by the phone's clock, as for the other rules (D45).
+ * (`scoredFrom`), so a rewording on the due day still counts its move, and
+ * `madeUtcOffsetMin` the offset stored for it (`scoredFromOffset`), so that
+ * day is read where it was made (2026-11-19). Days by the phone's clock, as
+ * for the other rules (D45).
  */
 export function postponementCounts(
   oldDueIso: string,
   newDueIso: string,
   now: Date,
   madeIso?: string,
+  madeUtcOffsetMin?: number | null,
 ): boolean {
   const oldDay = localDayNumber(new Date(oldDueIso));
   const newDay = localDayNumber(new Date(newDueIso));
@@ -147,8 +152,30 @@ export function postponementCounts(
   const today = localDayNumber(now);
   if (today < oldDay - 1) return false;
   if (madeIso === undefined) return true;
-  const made = new Date(madeIso);
-  return Number.isNaN(made.getTime()) || localDayNumber(made) !== today;
+  const made = dayNumberAt(new Date(madeIso), madeUtcOffsetMin);
+  return Number.isNaN(made) || made !== today;
+}
+
+/**
+ * Whether moving an open prediction to another category now counts on
+ * Insights (owner decision 2026-11-19; record audit: a likely miss moved out
+ * of its category before it was answered left no trace, while the same move
+ * after the answer is counted, D65). The window and exemption of a counted
+ * due-date move: on or after the day before its due day, by when the outcome
+ * may be known, and not on the day it was made (`madeDayNumber`: logged, or
+ * last reworded), when a change is a slip fixed (D62). Counted beside the late
+ * moves and rewordings, once per prediction. The caller decides whether the
+ * category changed. An unreadable due date isn't counted; an unreadable made
+ * time doesn't exempt it, as for a move.
+ */
+export function categoryChangeCounts(p: Prediction, now: Date): boolean {
+  if (p.status !== 'pending') return false;
+  const due = new Date(p.due_date);
+  if (Number.isNaN(due.getTime())) return false;
+  const today = localDayNumber(now);
+  if (today < localDayNumber(due) - 1) return false;
+  const made = madeDayNumber(p);
+  return Number.isNaN(made) || made !== today;
 }
 
 /**

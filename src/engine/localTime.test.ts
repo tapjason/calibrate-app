@@ -3,6 +3,7 @@ import {
   localDayNumber,
   localMidnight,
   localParts,
+  utcOffsetMinutes,
 } from './localTime';
 
 afterEach(() => __setTimeZoneForTests(null));
@@ -63,5 +64,35 @@ describe('localMidnight', () => {
 
   it('rolls month overflow into the next year', () => {
     expect(localMidnight(2026, 12, 1).toISOString()).toBe('2027-01-01T00:00:00.000Z');
+  });
+});
+
+// Owner decision 2026-11-19: stored with each moment of a prediction.
+describe('utcOffsetMinutes', () => {
+  it('is 0 in UTC, never -0', () => {
+    expect(Object.is(utcOffsetMinutes(new Date('2026-11-19T12:00:00Z')), 0)).toBe(true);
+  });
+
+  it('is minutes east of UTC in the zone, across daylight time', () => {
+    __setTimeZoneForTests('America/New_York');
+    expect(utcOffsetMinutes(new Date('2026-11-19T12:00:00Z'))).toBe(-300);
+    expect(utcOffsetMinutes(new Date('2026-07-01T12:00:00Z'))).toBe(-240);
+    __setTimeZoneForTests('Asia/Tokyo');
+    expect(utcOffsetMinutes(new Date('2026-11-19T12:00:00Z'))).toBe(540);
+    __setTimeZoneForTests('Asia/Kolkata');
+    expect(utcOffsetMinutes(new Date('2026-11-19T12:00:00Z'))).toBe(330);
+  });
+
+  it('is NaN for an unreadable date', () => {
+    expect(utcOffsetMinutes(new Date('nope'))).toBeNaN();
+  });
+
+  // Review round 5: the server column is an integer. Monrovia kept local
+  // mean time, UTC−00:44:30, until 1972.
+  it('is a whole number of minutes for a zone whose offset had seconds', () => {
+    __setTimeZoneForTests('Africa/Monrovia');
+    const offset = utcOffsetMinutes(new Date('1970-06-01T12:00:00Z'));
+    expect(Number.isInteger(offset)).toBe(true);
+    expect(offset).toBe(-44);
   });
 });

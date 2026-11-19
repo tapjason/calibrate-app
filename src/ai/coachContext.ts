@@ -26,6 +26,8 @@ import {
 } from '@/types';
 
 import {
+  DRIFT_HALF_ANSWERS_PREFIX,
+  DRIFT_HALF_MIN_N,
   DRIFT_PREFIX,
   WEEKDAY_ANSWERS_KIND,
   WEEKDAY_KIND,
@@ -104,12 +106,15 @@ export function buildCoachContext(
  * explains (./coachPatterns.ts); the validator checks every citation against
  * these numbers.
  *
- * Only patterns that could ever be cited are sent (security review,
- * 2026-11-18): the weekday from MIN_N_OVERALL scored answers and WEEKDAY_MIN_N
- * on that day (it ran from 5 on a day, with no overall floor), a category's
- * drift from MIN_N_CATEGORY in it (it ran from 4). Below those the figures
- * are provisional, and a figure the model can't see is one it can't cite.
- * The validators hold the same gates for builds that still send them.
+ * Only patterns that could ever be cited are sent: no figure from fewer than
+ * MIN_N_CATEGORY (20) answers (main session's decision, 2026-11-19). The
+ * weekday needs MIN_N_OVERALL scored answers and WEEKDAY_MIN_N (20) on that
+ * day (5 on a day until 2026-11-18, then 10); a category's drift needs
+ * DRIFT_HALF_MIN_N (20) in each half it compares (4 answers in all until
+ * 2026-11-18, then 20 in all, so halves of 10). Below those the figures are
+ * provisional, and a figure the model can't see is one it can't cite. Each
+ * floor's count travels with its figure so the validators can check it,
+ * including for builds that still send thinner figures.
  */
 function buildPatterns(
   yesNo: readonly Prediction[],
@@ -127,11 +132,27 @@ function buildPatterns(
 
   for (const [category, list] of byCategory) {
     if (list.length < MIN_N_CATEGORY) continue;
+    const half = smallerDriftHalf(list);
+    if (half < DRIFT_HALF_MIN_N) continue;
     const drift = categoryDrift(list);
     if (drift) {
       patterns.push({ kind: `${DRIFT_PREFIX}${category}`, value: drift.delta });
+      patterns.push({ kind: `${DRIFT_HALF_ANSWERS_PREFIX}${category}`, value: half });
     }
   }
 
   return patterns;
+}
+
+/**
+ * The answers in the smaller half `categoryDrift` compares: it splits the
+ * category's yes/no answers that have a `resolved_at` in time, the older half
+ * taking floor(n / 2) and the newer the rest (src/engine/patterns.ts). Counted
+ * the same way here; coachContext.test.ts pins the two together.
+ */
+function smallerDriftHalf(list: readonly Prediction[]): number {
+  const n = list.filter(
+    (p) => (p.status === 'resolved_yes' || p.status === 'resolved_no') && p.resolved_at,
+  ).length;
+  return Math.floor(n / 2);
 }

@@ -9,7 +9,7 @@ import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
-import type { CoachInsight } from '@/types';
+import { MIN_N_OVERALL, type CoachInsight } from '@/types';
 import {
   categoryTitle,
   useCategoryStore,
@@ -54,6 +54,11 @@ export function CoachPanel({
   const failure = useCoachStore((s) => s.lastFailure);
   const lastAnsweredAt = useCoachStore((s) => s.lastAnsweredAt);
   const requestInsights = useCoachStore((s) => s.requestInsights);
+  // Whether the last answer had insights and lost every one to validation
+  // (CoachResult.droppedAll, src/ai/coach.ts), as coachStore keeps it in
+  // `lastDroppedAll`: false before any answer, after a failure and when the
+  // Coach wrote none, so those keep the line they have always had.
+  const lastDroppedAll = useCoachStore((s) => s.lastDroppedAll);
 
   // Dismissed cards stay hidden until the next answer (HIG Generative AI:
   // let people dismiss content they don't want). Keyed by position, and reset
@@ -123,6 +128,15 @@ export function CoachPanel({
   const onAsk = () =>
     void requestInsights({ userStat, resolved, isPlus, enabled: coachEnabled });
 
+  // An answer with nothing to show. Past the overall gate, when the Coach did
+  // write insights and none could be backed by the numbers, "keep logging"
+  // told someone with 150 answers to do what they had done (Coach re-review,
+  // 2026-11-19); that case has its own line. Below the gate, or when the
+  // Coach wrote none, the first line stays.
+  const answeredEmpty = insights.length === 0 && lastAnsweredAt !== null && !failed;
+  const nothingBacked =
+    answeredEmpty && lastDroppedAll && (userStat?.total_resolved ?? 0) >= MIN_N_OVERALL;
+
   return (
     <View style={styles.wrap} testID="coach-panel">
       <View style={styles.header}>
@@ -151,9 +165,16 @@ export function CoachPanel({
             </Text>
           )}
 
-          {insights.length === 0 && lastAnsweredAt && !failed && (
+          {answeredEmpty && !nothingBacked && (
             <Text style={styles.muted} testID="coach-nothing-to-say">
               Nothing worth flagging yet — keep logging and answering.
+            </Text>
+          )}
+
+          {nothingBacked && (
+            <Text style={styles.muted} testID="coach-nothing-backed">
+              Coach didn't find anything it could back with your numbers this time. Try again
+              later.
             </Text>
           )}
 

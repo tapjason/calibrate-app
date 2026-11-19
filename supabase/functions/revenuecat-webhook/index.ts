@@ -41,8 +41,11 @@
 // them. This file is the transport: check the secret, cap and parse the body,
 // hand over the real lookup and the real write, answer.
 
+// Pinned to the version the app has installed (node_modules, 2026-11-19), as
+// coach is, so a deploy never picks up a supabase-js the app hasn't run
+// against.
 // @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.106.2';
 
 // The .ts extension is required by Deno for a local import and rejected by the
 // project's tsconfig (TS5097), the same shape of conflict as the npm: imports

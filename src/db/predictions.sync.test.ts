@@ -5,15 +5,24 @@
 
 import type { Prediction, PredictionWireRow } from '@/types';
 
-import { getDb, setDbForTests } from './client';
+import { getDb, setDbForTests, withTransaction } from './client';
 
 import {
+  answerSkippedPrediction,
+  correctPredictionOutcome,
+  countUnsynced,
+  deletePrediction,
   getPrediction,
   getPredictionUpdatedAt,
   insertPrediction,
   listDirtyPredictions,
+  listDirtyPredictionsSettled,
+  listPendingDeletions,
+  listPendingDeletionsSettled,
+  markDeletionPushed,
   markPredictionSynced,
   resolvePrediction,
+  updatePrediction,
   upsertPredictionFromRemote,
 } from './predictions';
 import { createTestDb } from './testing';
@@ -189,6 +198,219 @@ describe('markPredictionSynced', () => {
   });
 });
 
+/** Run `fn` with Date frozen at `iso`, so every write lands in one millisecond. */
+async function inOneMillisecond<T>(iso: string, fn: () => Promise<T>): Promise<T> {
+  jest.useFakeTimers({
+    doNotFake: [
+      'hrtime',
+      'nextTick',
+      'performance',
+      'queueMicrotask',
+      'setImmediate',
+      'clearImmediate',
+      'setInterval',
+      'clearInterval',
+      'setTimeout',
+      'clearTimeout',
+    ],
+    now: new Date(iso),
+  });
+  try {
+    return await fn();
+  } finally {
+    jest.useRealTimers();
+  }
+}
+
+// Review round 5: a push that read a row must never mark a later write to
+// it clean, even one made in the same millisecond.
+describe('a write after a push read the row', () => {
+  it('keeps the row dirty when the next write lands in the same millisecond', async () => {
+    await inOneMillisecond('2026-11-19T10:00:00.000Z', async () => {
+      await insertPrediction(samplePrediction());
+      const [pushed] = await listDirtyPredictions('u1');
+      await resolvePrediction('p1', 'resolved_yes');
+      expect((await getRawRow('p1'))?.updated_at).not.toBe(pushed.updated_at);
+      await markPredictionSynced('p1', pushed.updated_at);
+      expect((await getRawRow('p1'))?.dirty).toBe(1);
+    });
+  });
+
+  it('stamps each local write later than the last, even in one millisecond', async () => {
+    await inOneMillisecond('2026-11-19T10:00:00.000Z', async () => {
+      await insertPrediction(samplePrediction({ id: 'a' }));
+      await insertPrediction(samplePrediction({ id: 'b' }));
+      const a = (await getRawRow('a'))!.updated_at;
+      const b = (await getRawRow('b'))!.updated_at;
+      expect(b > a).toBe(true);
+    });
+  });
+});
+
+// Review round 5: answering a Can't tell was "reopen, then answer", two
+// statements a push could read between.
+describe('answerSkippedPrediction', () => {
+  const skipped = () =>
+    insertPrediction(
+      samplePrediction({
+        status: 'skipped',
+        resolved_at: '2026-06-01T20:00:00.000Z',
+        reflection: 'No idea',
+      }),
+    );
+
+  it('goes from Can’t tell to the answer in one statement, never through open', async () => {
+    await skipped();
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    const statements: string[] = [];
+    db.run = async (sql, params) => {
+      statements.push(sql);
+      return realRun(sql, params);
+    };
+    try {
+      await answerSkippedPrediction('p1', 'resolved_no', 'Turned out no', {
+        at: '2026-06-03T09:00:00.000Z',
+        utcOffsetMin: 60,
+      });
+    } finally {
+      db.run = realRun;
+    }
+    expect(statements).toHaveLength(1);
+    expect(statements[0]).not.toMatch(/'pending'/);
+    expect(await getPrediction('p1')).toMatchObject({
+      status: 'resolved_no',
+      resolved_at: '2026-06-03T09:00:00.000Z',
+      resolved_utc_offset_min: 60,
+      reflection: 'Turned out no',
+    });
+    expect((await getRawRow('p1'))?.dirty).toBe(1);
+  });
+
+  it('leaves a Yes, a No and an open prediction alone', async () => {
+    await insertPrediction(samplePrediction({ id: 'yes', status: 'resolved_yes', resolved_at: '2026-06-01T20:00:00.000Z' }));
+    await insertPrediction(samplePrediction({ id: 'open' }));
+    await answerSkippedPrediction('yes', 'resolved_no');
+    await answerSkippedPrediction('open', 'resolved_no');
+    expect((await getPrediction('yes'))?.status).toBe('resolved_yes');
+    expect(await getPrediction('open')).toMatchObject({ status: 'pending', resolved_at: null });
+  });
+
+  it('is never marked clean by a push that read the Can’t tell, in the same millisecond', async () => {
+    await inOneMillisecond('2026-11-19T10:00:00.000Z', async () => {
+      await skipped();
+      const [pushed] = await listDirtyPredictions('u1');
+      expect(pushed.status).toBe('skipped');
+      await answerSkippedPrediction('p1', 'resolved_yes');
+      await markPredictionSynced('p1', pushed.updated_at);
+      expect(await getRawRow('p1')).toMatchObject({ dirty: 1 });
+      const [again] = await listDirtyPredictions('u1');
+      expect(again.status).toBe('resolved_yes');
+    });
+  });
+});
+
+// Review round 5: on the one connection, a read that isn't queued sees a
+// transaction's uncommitted writes. The push reads through the queue.
+describe('the settled reads for the push', () => {
+  /** A transaction that writes, then waits for `release` before ending. */
+  function heldTransaction(write: () => Promise<void>, rollBack = false) {
+    let release!: () => void;
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    const tx = withTransaction(async () => {
+      await write();
+      await held;
+      if (rollBack) throw new Error('rolled back');
+    });
+    return { tx, release };
+  }
+
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+
+  it('waits for a transaction open when the read is issued, then sees what it committed', async () => {
+    const { tx, release } = heldTransaction(() => insertPrediction(samplePrediction({ id: 'new' })));
+    await tick();
+    // The plain read sees the uncommitted row: the hazard.
+    expect((await listDirtyPredictions('u1')).map((r) => r.id)).toEqual(['new']);
+
+    let settled: PredictionWireRow[] | null = null;
+    const read = listDirtyPredictionsSettled('u1').then((rows) => {
+      settled = rows;
+    });
+    await tick();
+    expect(settled).toBeNull();
+
+    release();
+    await Promise.all([tx, read]);
+    expect(settled!.map((r) => r.id)).toEqual(['new']);
+  });
+
+  it('never sees a transaction that rolls back', async () => {
+    await insertPrediction(samplePrediction({ id: 'kept' }));
+    const { tx, release } = heldTransaction(async () => {
+      await insertPrediction(samplePrediction({ id: 'ghost' }));
+      await resolvePrediction('kept', 'resolved_yes');
+    }, true);
+    await tick();
+    const read = listDirtyPredictionsSettled('u1');
+    release();
+    await expect(tx).rejects.toThrow('rolled back');
+    const rows = await read;
+    expect(rows.map((r) => r.id)).toEqual(['kept']);
+    expect(rows[0].status).toBe('pending');
+  });
+
+  it('reads pending deletions the same way: an open delete waits, a rolled-back one is never seen', async () => {
+    await insertPrediction(samplePrediction({ id: 'a' }));
+    await insertPrediction(samplePrediction({ id: 'b' }));
+
+    const rolled = heldTransaction(() => deletePrediction('a'), true);
+    await tick();
+    expect(await listPendingDeletions('u1')).toEqual(['a']);
+    const duringRollback = listPendingDeletionsSettled('u1');
+    rolled.release();
+    await expect(rolled.tx).rejects.toThrow('rolled back');
+    expect(await duringRollback).toEqual([]);
+
+    const committed = heldTransaction(() => deletePrediction('b'));
+    await tick();
+    let ids: string[] | null = null;
+    const read = listPendingDeletionsSettled('u1').then((r) => {
+      ids = r;
+    });
+    await tick();
+    expect(ids).toBeNull();
+    committed.release();
+    await Promise.all([committed.tx, read]);
+    expect(ids).toEqual(['b']);
+  });
+
+  it('fails as the plain reads fail, and leaves the queue working', async () => {
+    const db = getDb();
+    const realAll = db.all.bind(db);
+    db.all = async () => {
+      throw new Error('disk I/O error');
+    };
+    try {
+      await expect(listDirtyPredictions('u1')).rejects.toThrow('disk I/O error');
+      await expect(listDirtyPredictionsSettled('u1')).rejects.toThrow('disk I/O error');
+      await expect(listPendingDeletions('u1')).rejects.toThrow('disk I/O error');
+      await expect(listPendingDeletionsSettled('u1')).rejects.toThrow('disk I/O error');
+    } finally {
+      db.all = realAll;
+    }
+    await withTransaction(() => insertPrediction(samplePrediction({ id: 'after' })));
+    expect((await listDirtyPredictionsSettled('u1')).map((r) => r.id)).toEqual(['after']);
+
+    setDbForTests(null);
+    await expect(listDirtyPredictions('u1')).rejects.toThrow('Database not initialized');
+    await expect(listDirtyPredictionsSettled('u1')).rejects.toThrow('Database not initialized');
+    await expect(listPendingDeletionsSettled('u1')).rejects.toThrow('Database not initialized');
+  });
+});
+
 describe('getPredictionUpdatedAt', () => {
   it('returns the row updated_at or null when missing', async () => {
     expect(await getPredictionUpdatedAt('nope')).toBeNull();
@@ -320,5 +542,274 @@ describe('title_edited_at across sync', () => {
   it('reads as absent on a row never reworded', async () => {
     await insertPrediction(samplePrediction());
     expect(await getPrediction('p1')).not.toHaveProperty('title_edited_at');
+  });
+});
+
+// D34/D45, record audit 2026-11-19: "There is no way to put any answer back
+// to open." A stale phone's newer edit of its open copy reopened a prediction
+// answered elsewhere, since the pull took the newer row whole.
+describe('a pull never undoes an answer', () => {
+  const ANSWERED_AT = '2026-11-19T03:00:00.000Z';
+
+  /** This phone's copy: answered, with a note and the answer's offset, pushed. */
+  async function answeredHere(status: 'resolved_yes' | 'resolved_no' | 'skipped') {
+    await insertPrediction(samplePrediction({ category: 'health' }));
+    await resolvePrediction('p1', status, 'Felt sure', { at: ANSWERED_AT, utcOffsetMin: -300 });
+    const row = await getRawRow('p1');
+    await markPredictionSynced('p1', row!.updated_at);
+  }
+
+  // The auditor's last-write-wins case: phone B, not yet pulled, moves its
+  // open copy to another category after phone A answered Yes. Main session,
+  // 2026-11-19 (the strict direction): the stale copy is stale whole, so none
+  // of its edits land on the answer.
+  it("keeps this phone's whole answered row when a newer open copy comes down", async () => {
+    await answeredHere('resolved_yes');
+    const before = await getPrediction('p1');
+    const staleOpenCopy = sampleWire({
+      id: 'p1',
+      title: 'Ship the prototype',
+      category: 'personal',
+      status: 'pending',
+      resolved_at: null,
+      reflection: null,
+      updated_at: '2099-01-01T00:00:00.000Z',
+    });
+
+    await upsertPredictionFromRemote(staleOpenCopy);
+
+    expect(await getPrediction('p1')).toEqual(before);
+    expect(before).toMatchObject({
+      category: 'health',
+      status: 'resolved_yes',
+      resolved_at: ANSWERED_AT,
+      reflection: 'Felt sure',
+      resolved_utc_offset_min: -300,
+    });
+    // Marked to go back up, newer than the copy it overrode, so the server
+    // and the other phone end on the answer.
+    const raw = await getRawRow('p1');
+    expect(raw?.dirty).toBe(1);
+    expect(raw!.updated_at > staleOpenCopy.updated_at).toBe(true);
+    const [up] = await listDirtyPredictions('u1');
+    expect(up).toMatchObject({
+      id: 'p1',
+      category: 'health',
+      status: 'resolved_yes',
+      resolved_at: ANSWERED_AT,
+    });
+  });
+
+  // D45 (new words after an answer) and D65 (a move nothing counted): a
+  // stale copy with other words, category and due date, reworded on its
+  // phone, changes nothing here.
+  it('lands none of a stale copy’s words, category, due date or rewording on the answer', async () => {
+    await insertPrediction(
+      samplePrediction({
+        category: 'health',
+        title_edited_at: '2026-05-02T09:00:00.000Z',
+        created_utc_offset_min: -300,
+        title_edited_utc_offset_min: -300,
+      }),
+    );
+    await resolvePrediction('p1', 'resolved_no', 'Missed it', { at: ANSWERED_AT, utcOffsetMin: -300 });
+    await markPredictionSynced('p1', (await getRawRow('p1'))!.updated_at);
+    const before = await getPrediction('p1');
+    const rawBefore = await getDb().get<Record<string, unknown>>(
+      `SELECT * FROM predictions WHERE id = 'p1'`,
+    );
+
+    const staleOpenCopy = sampleWire({
+      id: 'p1',
+      title: 'Ship nothing at all',
+      category: 'personal',
+      confidence: 70,
+      created_at: '2026-05-01T00:00:00.000Z',
+      due_date: '2026-07-15T00:00:00.000Z',
+      status: 'pending',
+      resolved_at: null,
+      reflection: null,
+      title_edited_at: '2026-11-20T09:00:00.000Z',
+      created_utc_offset_min: 0,
+      title_edited_utc_offset_min: 0,
+      updated_at: '2099-01-01T00:00:00.000Z',
+    });
+    await upsertPredictionFromRemote(staleOpenCopy);
+
+    const after = await getPrediction('p1');
+    expect(after).toEqual(before);
+    expect(after).toMatchObject({
+      title: 'Ship the prototype',
+      category: 'health',
+      due_date: '2026-06-01T00:00:00.000Z',
+      title_edited_at: '2026-05-02T09:00:00.000Z',
+      title_edited_utc_offset_min: -300,
+      created_utc_offset_min: -300,
+      status: 'resolved_no',
+      reflection: 'Missed it',
+    });
+    // Every column as it was but the push marks: dirty again, updated_at on.
+    const rawAfter = await getDb().get<Record<string, unknown>>(
+      `SELECT * FROM predictions WHERE id = 'p1'`,
+    );
+    expect({ ...rawAfter, updated_at: 'x', dirty: 'x' }).toEqual({
+      ...rawBefore,
+      updated_at: 'x',
+      dirty: 'x',
+    });
+    expect(rawAfter?.dirty).toBe(1);
+    expect(String(rawAfter?.updated_at) > staleOpenCopy.updated_at).toBe(true);
+    // Pushed back as it stands here.
+    const [up] = await listDirtyPredictions('u1');
+    expect(up).toMatchObject({
+      title: 'Ship the prototype',
+      category: 'health',
+      due_date: '2026-06-01T00:00:00.000Z',
+      title_edited_at: '2026-05-02T09:00:00.000Z',
+      status: 'resolved_no',
+    });
+  });
+
+  it("never moves this phone's updated_at backwards when its row stands", async () => {
+    await answeredHere('resolved_yes');
+    // This phone's clock ran ahead when it answered.
+    await getDb().run(
+      `UPDATE predictions SET updated_at = '2100-01-01T00:00:00.000Z' WHERE id = 'p1'`,
+    );
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', status: 'pending', resolved_at: null, updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    expect(await getRawRow('p1')).toEqual({ updated_at: '2100-01-01T00:00:00.000Z', dirty: 1 });
+  });
+
+  it('pushes back later than an open copy written with a Postgres timestamp', async () => {
+    await answeredHere('resolved_no');
+    const serverTime = '2099-03-04T05:06:07.123456+00:00';
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', status: 'pending', resolved_at: null, updated_at: serverTime }),
+    );
+    const raw = await getRawRow('p1');
+    expect(raw!.updated_at > serverTime).toBe(true);
+    expect(Date.parse(raw!.updated_at)).toBeGreaterThan(Date.parse('2099-03-04T05:06:07.123Z'));
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
+  });
+
+  it("keeps a Can't tell when a newer open copy comes down", async () => {
+    await answeredHere('skipped');
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', status: 'pending', resolved_at: null, updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    expect(await getPrediction('p1')).toMatchObject({ status: 'skipped', resolved_at: ANSWERED_AT });
+    expect((await getRawRow('p1'))?.dirty).toBe(1);
+  });
+
+  it("refuses to turn a Yes or No into a Can't tell (D34)", async () => {
+    await answeredHere('resolved_yes');
+    await upsertPredictionFromRemote(
+      sampleWire({
+        id: 'p1',
+        status: 'skipped',
+        resolved_at: '2026-11-20T09:00:00.000Z',
+        reflection: null,
+        updated_at: '2099-01-01T00:00:00.000Z',
+      }),
+    );
+    expect(await getPrediction('p1')).toMatchObject({
+      status: 'resolved_yes',
+      resolved_at: ANSWERED_AT,
+      reflection: 'Felt sure',
+    });
+    expect((await getRawRow('p1'))?.dirty).toBe(1);
+  });
+
+  it('still takes Yes to No from another phone: that is "Change answer"', async () => {
+    await answeredHere('resolved_yes');
+    await upsertPredictionFromRemote(
+      sampleWire({
+        id: 'p1',
+        category: 'health',
+        status: 'resolved_no',
+        resolved_at: ANSWERED_AT,
+        reflection: 'Felt sure',
+        updated_at: '2099-01-01T00:00:00.000Z',
+      }),
+    );
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
+    const raw = await getRawRow('p1');
+    expect(raw).toEqual({ updated_at: '2099-01-01T00:00:00.000Z', dirty: 0 });
+  });
+
+  it("still takes a Yes for a Can't tell: a skip is answered later", async () => {
+    await answeredHere('skipped');
+    await upsertPredictionFromRemote(
+      sampleWire({
+        id: 'p1',
+        status: 'resolved_yes',
+        resolved_at: '2026-11-21T09:00:00.000Z',
+        reflection: null,
+        updated_at: '2099-01-01T00:00:00.000Z',
+      }),
+    );
+    expect(await getPrediction('p1')).toMatchObject({
+      status: 'resolved_yes',
+      resolved_at: '2026-11-21T09:00:00.000Z',
+      reflection: null,
+    });
+    expect((await getRawRow('p1'))?.dirty).toBe(0);
+  });
+
+  it('still takes an answer from another phone onto an open copy here', async () => {
+    await insertPrediction(samplePrediction());
+    await upsertPredictionFromRemote(
+      sampleWire({
+        id: 'p1',
+        status: 'resolved_no',
+        resolved_at: ANSWERED_AT,
+        updated_at: '2099-01-01T00:00:00.000Z',
+      }),
+    );
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no', resolved_at: ANSWERED_AT });
+    expect((await getRawRow('p1'))?.dirty).toBe(0);
+  });
+});
+
+// Owner decision 2026-11-19: sign-out removes the account's rows, so it
+// first asks how many changes the server doesn't have yet.
+describe('countUnsynced', () => {
+  it('counts dirty predictions and deletions not yet pushed, for that user only', async () => {
+    expect(await countUnsynced('u1')).toBe(0);
+    await insertPrediction(samplePrediction({ id: 'a' }));
+    await insertPrediction(samplePrediction({ id: 'b' }));
+    await insertPrediction(samplePrediction({ id: 'theirs', user_id: 'u2' }));
+    expect(await countUnsynced('u1')).toBe(2);
+
+    await deletePrediction('b');
+    // One dirty row and one deletion waiting.
+    expect(await countUnsynced('u1')).toBe(2);
+    expect(await countUnsynced('u2')).toBe(1);
+
+    const a = await getRawRow('a');
+    await markPredictionSynced('a', a!.updated_at);
+    expect(await countUnsynced('u1')).toBe(1);
+    await markDeletionPushed('b');
+    expect(await countUnsynced('u1')).toBe(0);
+  });
+
+  it('counts a change made after the last push, and a pulled row as synced', async () => {
+    await insertPrediction(samplePrediction({ id: 'a' }));
+    const a = await getRawRow('a');
+    await markPredictionSynced('a', a!.updated_at);
+    await new Promise((r) => setTimeout(r, 2));
+    await updatePrediction('a', {
+      title: 'Ship it now',
+      category: 'work',
+      due_date: '2026-06-02T00:00:00.000Z',
+    });
+    expect(await countUnsynced('u1')).toBe(1);
+    await correctPredictionOutcome('a', 'resolved_yes'); // a no-op on an open one
+    expect(await countUnsynced('u1')).toBe(1);
+
+    await upsertPredictionFromRemote(sampleWire({ id: 'pulled' }));
+    expect(await countUnsynced('u1')).toBe(1);
   });
 });

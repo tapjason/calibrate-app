@@ -88,9 +88,10 @@ through them yourself, using best app developer judgement"). **Still open:** 2 (
 5. **EU.** Declare trader status (an individual's address and phone are published), or
    launch outside the EU first. Recommended: outside the EU first.
 6. **Email sign-up.** Answered 2026-11-15: a custom mail sender. Not set up yet. Supabase's
-   built-in sender reaches team members only, so until then a stranger who signs up by email
-   gets no confirmation mail. Set it up, or turn email confirmation off, before strangers sign
-   up (`docs/ACCOUNT_SPEC.md` §1).
+   built-in sender reaches team members only, so a stranger who signed up by email would get
+   no confirmation mail; since 2026-11-19 (D69 (c)) the app hides Create account until the
+   sender works, and existing email accounts still sign in. Set it up, then turn Create
+   account back on (`EMAIL_SIGN_UP_ENABLED`; `docs/ACCOUNT_SPEC.md` §1).
 7. **The keyword "habit".** Answered (the agent's call, as recommended): "habit" dropped and
    "goal" kept (step 183).
 8. **A helpline directory outside the US.** The Coach's support message now shows US
@@ -108,8 +109,9 @@ through them yourself, using best app developer judgement"). **Still open:** 2 (
     agent's call: Insights counts a scored answer left in a different category from the one
     it was answered in, on this phone only; one moved back isn't counted.
 11. **Uninstall `expo-auth-session`.** Answered yes; uninstalled with step 180.
-12. **A password reset.** There is none: someone who signs up by email and forgets the
-    password keeps their phone's data but can't sign in again. It needs the mail sender
+12. **A password reset.** There is none: someone with an email account who forgets the
+    password can't sign in again; their backup stays on the server, and a phone still signed
+    in keeps its copy (since D69 (a), signing out removes it from that phone). It needs the mail sender
     and a redirect configured in Supabase first (decision 6). **Recommendation:** build it
     after TestFlight stage 1, once mail works; until then the support page is the route.
 
@@ -228,8 +230,8 @@ what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step chec
 **Waiting on the owner's decision or setup, then the agent**
 
 - **The custom mail sender** in Supabase (decision 6, needs a domain); then the agent builds
-  the password reset (decision 12). Until then email sign-up reaches only Supabase team
-  members' addresses.
+  the password reset (decision 12) and turns Create account back on. Until then Create
+  account is hidden in the app (D69 (c)); existing email accounts still sign in.
 - **The under-13 local-only rule** (decision 2, a legal call); the agent builds it on a yes.
 - **Decisions 5, 8 and 9** (the EU, a helpline directory, a consent switch at sign-in).
 - **`APP_STORE_PROVIDER_TOKEN`:** once App Store Connect shows analytics, the owner creates one

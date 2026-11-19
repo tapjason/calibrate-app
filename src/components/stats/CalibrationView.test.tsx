@@ -627,13 +627,18 @@ describe('CalibrationView step 173', () => {
     expect(queryByTestId('badges-first')).toBeNull();
   });
 
+  // A category change from the eve is counted on the same line (D69 (e)).
   it('counts late due-date moves on this phone', () => {
     expect(postponedLine(1)).toBe(
-      '1 prediction had its due date moved later, or its words changed, within a day of its due day. Only this phone keeps this count.',
+      '1 prediction had its due date moved later, its words changed, or its category changed, within a day of its due day. Only this phone keeps this count.',
+    );
+    expect(postponedLine(2)).toBe(
+      '2 predictions had their due dates moved later, their words changed, or their categories changed, within a day of their due day. Only this phone keeps this count.',
     );
     const view = fine(render(
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} postponedCount={2} />,
     ));
+    expect(view.getByTestId('stats-postponed')).toHaveTextContent(postponedLine(2));
     expect(view.getByTestId('stats-postponed')).toHaveTextContent(/^2 predictions had their due dates moved later/);
     view.rerender(
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,

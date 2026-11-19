@@ -13,6 +13,7 @@ import { buildDemoPredictions } from '@/db/demoData';
 import {
   canAnswerSkip,
   canCorrect,
+  categoryChangeCounts,
   correctableUntil,
   deletionCounts,
   postponementCounts,
@@ -20,14 +21,16 @@ import {
   rewordingCounts,
   skipLastDay,
 } from '@/engine/corrections';
-import { localDayNumber } from '@/engine/localTime';
+import { localDayNumber, utcOffsetMinutes } from '@/engine/localTime';
 import { pastOutcomes, titleKey } from '@/engine/pastOutcomes';
 import {
   clampDueDate,
+  dayNumberAt,
   earliestDueDay,
   isSameDayAnswer,
   latestDueDay,
   scoredFrom,
+  scoredFromOffset,
 } from '@/engine/sameDay';
 import { checkpointReached, returnAfterGap, streakStatus } from '@/engine/streak';
 import { tallyAnswers } from '@/engine/wrapped';
@@ -45,7 +48,7 @@ import {
   recordPostponement,
   resolvePrediction,
   refilePrediction,
-  unskipPrediction,
+  answerSkippedPrediction,
   setPredictionReflection,
   updatePrediction,
 } from '@/db/predictions';
@@ -61,7 +64,7 @@ import type {
 } from '@/types';
 
 import { useAuthStore } from './authStore';
-import { useStatsStore } from './statsStore';
+import { useStatsStore, type HeldStats } from './statsStore';
 
 interface CreatePredictionInput {
   title: string;
@@ -80,8 +83,9 @@ interface PredictionState {
    */
   deletedCount: number;
   /**
-   * Predictions whose due date was moved later, or whose words changed, the
-   * day before it or after, on this phone (step 173, D62).
+   * Predictions whose due date was moved later, whose words changed, or that
+   * were moved to another category, the day before it or after, on this
+   * phone (step 173, D62, 2026-11-19), each once.
    */
   postponedCount: number;
   /**
@@ -252,10 +256,21 @@ async function readSucceeds(load: () => Promise<void>): Promise<boolean> {
  * database, in their own transaction (code review, 2026-11-18). The write's
  * error still reaches the caller: nothing was recorded, so trying again is
  * safe.
+ *
+ * If that reload fails too (review round 5), the stats are put back as they
+ * were when the write began and marked stale: nothing from the rolled-back
+ * write stays on screen, the next recompute takes its "before" from the
+ * database (so a retry still earns the unlock it brings, and no moment is
+ * claimed from memory that may be wrong), and the next load rebuilds them.
  */
 async function writeWithStats(userId: string, write: () => Promise<void>): Promise<void> {
+  let held: HeldStats | null = null;
   try {
-    await withTransaction(write);
+    await withTransaction(async () => {
+      // Inside the transaction, so no other queued write lands in between.
+      held = useStatsStore.getState().heldStats();
+      await write();
+    });
   } catch (e) {
     useStatsStore.getState().clearMilestone();
     try {
@@ -263,6 +278,7 @@ async function writeWithStats(userId: string, write: () => Promise<void>): Promi
     } catch (reloadError) {
       // eslint-disable-next-line no-console
       console.warn('[predictions] reloading the stats after a failed write failed:', reloadError);
+      useStatsStore.getState().markStale(held);
     }
     throw e;
   }
@@ -391,15 +407,15 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     resolvesInFlight.set(id, done);
     try {
       const userId = requireUserId();
-      let reopenFirst = false;
+      let answerSkip = false;
       if (options?.answeringSkip && outcome !== 'skipped') {
         // The skip's week (D45) is checked on the row, or on the copy held
-        // here if that read fails (code review, 2026-11-18): the reopen below
+        // here if that read fails (code review, 2026-11-18): the answer below
         // only touches a row still skipped, whatever the copy says.
         const target = await getByIdOrHeld(get, id);
         if (target?.status === 'skipped') {
           if (!canAnswerSkip(target, new Date())) throw new Error(SKIP_CLOSED);
-          reopenFirst = true;
+          answerSkip = true;
         }
       }
       // The streak before this answer, from the database rather than the lists
@@ -417,10 +433,20 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       // milestone and a badge's fall are found inside it, on the same reads
       // as the answer's stats, so they stand or fall with the answer.
       await writeWithStats(userId, async () => {
-        // Only a row still skipped: a sync between the check above and here
-        // may have brought an answer from another phone (review, 2026-11-08).
-        if (reopenFirst) await unskipPrediction(id);
-        await resolvePrediction(id, outcome, reflection);
+        // When it was answered and the phone's UTC offset then, from one
+        // clock reading (owner decision 2026-11-19): the same-day rule reads
+        // the answer's day where it was given.
+        const at = new Date();
+        const when = { at: at.toISOString(), utcOffsetMin: utcOffsetMinutes(at) };
+        if (answerSkip && outcome !== 'skipped') {
+          // Skipped straight to the answer in one statement, never through
+          // open (review round 5), and only a row still skipped: a sync
+          // between the check above and here may have brought an answer from
+          // another phone (review, 2026-11-08).
+          await answerSkippedPrediction(id, outcome, reflection, when);
+        } else {
+          await resolvePrediction(id, outcome, reflection, when);
+        }
         await useStatsStore.getState().recomputeForUser(userId);
       });
       // Refresh local lists from the source of truth. The answer is saved by
@@ -519,24 +545,41 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const current = await get().getById(id);
     if (!current) return;
     // New words are a new prediction from now (D45); a fixed typo, case or
-    // punctuation isn't (the same key as D32's own record).
+    // punctuation isn't (the same key as D32's own record). The rewording
+    // keeps the phone's UTC offset now beside its date (2026-11-19).
     const now = new Date();
     const rewordedAt = rewords(current.title, title) ? now.toISOString() : undefined;
+    const rewordedUtcOffsetMin = rewordedAt !== undefined ? utcOffsetMinutes(now) : undefined;
     const from = rewordedAt ?? scoredFrom(current);
+    const fromOffset = rewordedAt !== undefined ? rewordedUtcOffsetMin : scoredFromOffset(current);
     // The picker's floor, held here too: a typed date can get past it.
-    const due_date = clampDueDate(edit.due_date, new Date(from), now);
+    const due_date = clampDueDate(edit.due_date, new Date(from), now, fromOffset);
     // A late move later is counted on Insights (step 173), held here so a
     // deep link or a typed date is caught as the picker is.
     // Only an open one: an answer landing meanwhile leaves the row unchanged
     // (the UPDATE is for pending rows), so nothing to count (code review).
     // New words on the eve are counted too (D62): the date stays, so a call
     // whose outcome was in sight could be rewritten and answered tomorrow.
+    // So is another category from the eve on (owner decision 2026-11-19): a
+    // likely miss moved out before it was answered took its category's score
+    // with it, uncounted.
     const late =
       current.status === 'pending' &&
-      (postponementCounts(current.due_date, due_date, now, scoredFrom(current)) ||
-        (rewordedAt !== undefined && rewordingCounts(current, now)));
+      (postponementCounts(
+        current.due_date,
+        due_date,
+        now,
+        scoredFrom(current),
+        scoredFromOffset(current),
+      ) ||
+        (rewordedAt !== undefined && rewordingCounts(current, now)) ||
+        (edit.category !== current.category && categoryChangeCounts(current, now)));
     await withTransaction(async () => {
-      await updatePrediction(id, { ...edit, title, due_date }, { rewordedAt });
+      await updatePrediction(
+        id,
+        { ...edit, title, due_date },
+        { rewordedAt, rewordedUtcOffsetMin },
+      );
       if (late) await recordPostponement(id, userId, current.due_date, due_date);
       await useStatsStore.getState().recomputeForUser(userId);
     });
@@ -618,7 +661,8 @@ export function correctionWindow(p: Prediction, now: Date): Date | null {
 /**
  * The earliest due day for a prediction logged at `createdAt` (roadmap D41):
  * the next day, since an answer on the day it was logged isn't scored. For
- * the date pickers of Log and Edit.
+ * Log's date picker, logging now, so the day is the phone's own; Edit uses
+ * earliestDueForEdit, which reads the day it was made where it was made.
  */
 export function earliestDueFor(createdAt: string | Date, now: Date = new Date()): Date {
   return earliestDueDay(new Date(createdAt), now);
@@ -652,7 +696,8 @@ export function openRepeatOf(p: Prediction, pending: readonly Prediction[]): Pre
  * (roadmap D55), so it never names a date that won't be saved.
  */
 export function dueDateSavedAt(dueIso: string, now: Date = new Date()): string {
-  return clampDueDate(dueIso, now, now);
+  // With the offset `create` stores, so the two can't part.
+  return clampDueDate(dueIso, now, now, utcOffsetMinutes(now));
 }
 
 /**
@@ -663,9 +708,17 @@ export function latestDueFor(now: Date = new Date()): Date {
   return latestDueDay(now);
 }
 
-/** Whether an answer given at `now` would be a same-day one, not scored (D41). */
+/**
+ * Whether an answer given at `now` would be a same-day one, not scored (D41):
+ * the answer as `resolve` would store it, with the phone's offset now.
+ */
 export function answerNowIsSameDay(p: Prediction, now: Date = new Date()): boolean {
-  return isSameDayAnswer({ ...p, status: 'resolved_yes', resolved_at: now.toISOString() });
+  return isSameDayAnswer({
+    ...p,
+    status: 'resolved_yes',
+    resolved_at: now.toISOString(),
+    resolved_utc_offset_min: utcOffsetMinutes(now),
+  });
 }
 
 /**
@@ -702,10 +755,11 @@ export function openTwinFor(
  * already counts as made today (blind playtest 2026-11-14, finding 15).
  */
 export function rewordedLater(p: Prediction): boolean {
-  const made = new Date(scoredFrom(p));
-  const logged = new Date(p.created_at);
-  if (Number.isNaN(made.getTime()) || Number.isNaN(logged.getTime())) return false;
-  return localDayNumber(made) !== localDayNumber(logged);
+  // Each day read where it happened, as the same-day rule reads them.
+  const made = dayNumberAt(new Date(scoredFrom(p)), scoredFromOffset(p));
+  const logged = dayNumberAt(new Date(p.created_at), p.created_utc_offset_min);
+  if (Number.isNaN(made) || Number.isNaN(logged)) return false;
+  return made !== logged;
 }
 
 /**
@@ -739,7 +793,11 @@ export function rewords(before: string, after: string): boolean {
  * rewords it.
  */
 export function earliestDueForEdit(p: Prediction, draftTitle: string, now: Date = new Date()): Date {
-  return earliestDueDay(new Date(rewords(p.title, draftTitle) ? now : scoredFrom(p)), now);
+  // As `update` clamps it: from now with new words, else from when it was
+  // made, read where it was made.
+  return rewords(p.title, draftTitle)
+    ? earliestDueDay(now, now, utcOffsetMinutes(now))
+    : earliestDueDay(new Date(scoredFrom(p)), now, scoredFromOffset(p));
 }
 
 /** When the prediction, as it now reads, was made: logged or last reworded (D45). */
@@ -783,6 +841,9 @@ function newPredictionRow(
     throw new Error('title is required');
   }
   const createdAt = now.toISOString();
+  // The phone's UTC offset as it's logged (owner decision 2026-11-19), so its
+  // day is read where it was made, wherever the phone goes.
+  const createdOffset = utcOffsetMinutes(now);
   return {
     id: newId(),
     user_id: userId,
@@ -790,11 +851,12 @@ function newPredictionRow(
     category: input.category,
     confidence: input.confidence,
     created_at: createdAt,
-    due_date: clampDueDate(input.due_date, new Date(createdAt), now),
+    due_date: clampDueDate(input.due_date, new Date(createdAt), now, createdOffset),
     status: 'pending',
     resolved_at: null,
     reflection: null,
     integrity_bonus: isIntegrityBonus(input.confidence),
+    created_utc_offset_min: createdOffset,
   };
 }
 
@@ -806,8 +868,9 @@ function newPredictionRow(
  */
 export function canRenumber(p: Prediction, now: Date = new Date()): boolean {
   if (p.status !== 'pending') return false;
-  const made = new Date(p.created_at);
-  return !Number.isNaN(made.getTime()) && localDayNumber(made) === localDayNumber(now);
+  // The day it was logged, read where it was logged (2026-11-19).
+  const made = dayNumberAt(new Date(p.created_at), p.created_utc_offset_min);
+  return !Number.isNaN(made) && made === localDayNumber(now);
 }
 
 const RENUMBER_CLOSED =
@@ -846,9 +909,28 @@ export function moveIsCounted(
   // The date Save will keep, clamped as `update` clamps it, so a rewording on
   // the due day that pushes the date on is warned about too (record audit
   // 2026-11-12).
-  const from = rewords(p.title, title.trim()) ? now.toISOString() : scoredFrom(p);
-  const saved = clampDueDate(newDueIso, new Date(from), now);
-  return postponementCounts(p.due_date, saved, now, scoredFrom(p));
+  const reworded = rewords(p.title, title.trim());
+  const from = reworded ? now.toISOString() : scoredFrom(p);
+  const fromOffset = reworded ? utcOffsetMinutes(now) : scoredFromOffset(p);
+  const saved = clampDueDate(newDueIso, new Date(from), now, fromOffset);
+  return postponementCounts(p.due_date, saved, now, scoredFrom(p), scoredFromOffset(p));
+}
+
+/**
+ * Whether moving an open prediction to `category` now would be counted on
+ * Insights (owner decision 2026-11-19), for Edit to say so before Save, as
+ * moveIsCounted does for a date: another category on the eve of its due day
+ * or after, except on the day it was made (or last reworded). The rule is
+ * the engine's (`categoryChangeCounts`); `update` records it, once per
+ * prediction, beside the late moves and rewordings.
+ */
+export function categoryChangeIsCounted(
+  p: Prediction,
+  category: Category,
+  now: Date = new Date(),
+): boolean {
+  if (p.status !== 'pending') return false;
+  return category !== p.category && categoryChangeCounts(p, now);
 }
 
 /**

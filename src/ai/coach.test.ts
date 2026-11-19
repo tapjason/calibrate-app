@@ -197,6 +197,59 @@ describe('fetchCoachInsights — happy path', () => {
     expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: true });
   });
 
+  // Item 12 (2026-11-19): an answer whose insights were all dropped is told
+  // apart from one with none, so the panel can say which.
+  describe('when every insight was dropped', () => {
+    const BAD = { ...INSIGHT, message: 'When you say 80%, it happens about 30% of the time.' };
+
+    it('says so when this app dropped them all (a function deployed before 2026-11-19)', async () => {
+      const { client } = ok({ insights: [BAD, { ...INSIGHT, evidence: 999 }], safe: true });
+      await expect(fetchCoachInsights(CONTEXT, true, { client })).resolves.toEqual({
+        insights: [],
+        safe: true,
+        crisisTopic: null,
+        ok: true,
+        droppedAll: true,
+      });
+    });
+
+    it('says so when the function dropped them all and said how many', async () => {
+      const { client } = ok({ insights: [], safe: true, dropped: 2 });
+      const out = await fetchCoachInsights(CONTEXT, true, { client });
+      expect(out).toMatchObject({ insights: [], ok: true, droppedAll: true });
+    });
+
+    it('says nothing of the kind when the Coach wrote none', async () => {
+      const { client } = ok({ insights: [], safe: true });
+      expect(await fetchCoachInsights(CONTEXT, true, { client })).not.toHaveProperty('droppedAll');
+    });
+
+    it('says nothing of the kind when one was kept', async () => {
+      const { client } = ok({ insights: [BAD, INSIGHT], safe: true, dropped: 1 });
+      const out = await fetchCoachInsights(CONTEXT, true, { client });
+      expect(out.insights).toHaveLength(1);
+      expect(out).not.toHaveProperty('droppedAll');
+    });
+
+    it.each([
+      ['zero', 0],
+      ['negative', -1],
+      ['fractional', 1.5],
+      ['a string', '2'],
+      ['null', null],
+    ])('ignores a %s dropped count', async (_name, dropped) => {
+      const { client } = ok({ insights: [], safe: true, dropped });
+      expect(await fetchCoachInsights(CONTEXT, true, { client })).not.toHaveProperty('droppedAll');
+    });
+
+    it('never marks the crisis path', async () => {
+      const { client } = ok({ insights: [BAD], safe: false, dropped: 1 });
+      const out = await fetchCoachInsights(CONTEXT, true, { client });
+      expect(out.safe).toBe(false);
+      expect(out).not.toHaveProperty('droppedAll');
+    });
+  });
+
   it('marks every failure path as not-ok so the caller can keep its cache', async () => {
     const { client: erroring } = makeClient(async () => ({
       data: null,

@@ -133,6 +133,122 @@ describe('shareTextFile: the file goes once the sheet has closed', () => {
   });
 });
 
+// Client re-review, round 5 (2026-11-19): a sheet that ends in a way
+// expo-sharing never reports leaves `shareAsync` unsettled, so its `finally`
+// never deletes the file. Each new export sweeps what earlier ones left.
+describe('shareTextFile: what earlier exports left behind', () => {
+  /** A cache folder in memory, logging every call in order. */
+  function cache(initial: string[]) {
+    const files = new Set(initial);
+    const log: string[] = [];
+    const share = jest.fn(async (_uri: string) => {
+      log.push('share');
+    });
+    const d = deps({
+      listCacheFiles: jest.fn(async () => {
+        log.push('list');
+        return [...files];
+      }),
+      deleteCacheFile: jest.fn(async (name: string) => {
+        log.push(`delete ${name}`);
+        files.delete(name);
+      }),
+      writeCacheFile: jest.fn(async (name: string) => {
+        log.push(`write ${name}`);
+        files.add(name);
+        return `file:///cache/${name}`;
+      }),
+      share,
+    });
+    return { d, files, log, share };
+  }
+
+  it('deletes them before writing the new one, and leaves other files alone', async () => {
+    const { d, files, log } = cache(['fairly-sure-2026-11-17.csv', 'calibrate-2026-09-07.csv', 'notes.csv']);
+    __setFileExportDepsForTests(d);
+
+    await expect(shareTextFile('fairly-sure-2026-11-19.csv', 'x', 'text/csv', 'Export')).resolves.toBe('shared');
+
+    expect(log).toEqual([
+      'list',
+      'delete fairly-sure-2026-11-17.csv',
+      'delete calibrate-2026-09-07.csv',
+      'write fairly-sure-2026-11-19.csv',
+      'share',
+      'delete fairly-sure-2026-11-19.csv',
+    ]);
+    expect([...files]).toEqual(['notes.csv']);
+  });
+
+  it("replaces a same-day copy left behind with the new export's file", async () => {
+    const { d, log } = cache(['fairly-sure-2026-11-19.csv']);
+    __setFileExportDepsForTests(d);
+
+    await shareTextFile('fairly-sure-2026-11-19.csv', 'x', 'text/csv', 'Export');
+    expect(log.slice(0, 3)).toEqual(['list', 'delete fairly-sure-2026-11-19.csv', 'write fairly-sure-2026-11-19.csv']);
+  });
+
+  it('still exports when the cache cannot be listed', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const writeCacheFile = jest.fn(async () => 'file:///cache/fairly-sure-2026-11-19.csv');
+    __setFileExportDepsForTests(
+      deps({
+        listCacheFiles: jest.fn(async () => {
+          throw new Error('no dir');
+        }),
+        writeCacheFile,
+      }),
+    );
+
+    await expect(shareTextFile('fairly-sure-2026-11-19.csv', 'x', 'text/csv', 'Export')).resolves.toBe('shared');
+    expect(writeCacheFile).toHaveBeenCalled();
+  });
+
+  it('sweeps nothing where nothing is written', async () => {
+    const listCacheFiles = jest.fn(async () => ['fairly-sure-2026-11-17.csv']);
+    __setFileExportDepsForTests(deps({ isAvailable: jest.fn(async () => false), listCacheFiles }));
+
+    await expect(shareTextFile('fairly-sure-2026-11-19.csv', 'x', 'text/csv', 'Export')).resolves.toBe(
+      'unavailable',
+    );
+    expect(listCacheFiles).not.toHaveBeenCalled();
+  });
+
+  // Two exports at once can't come from the app's one button, but a sweep
+  // must never take the file from under a sheet that is still open.
+  it('leaves the file of an export whose sheet is still open, and its own finally deletes it', async () => {
+    const { d, files } = cache([]);
+    let closeFirst: () => void = () => {};
+    let calls = 0;
+    d.share = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          calls += 1;
+          if (calls === 1) closeFirst = resolve;
+          else resolve();
+        }),
+    );
+    __setFileExportDepsForTests(d);
+
+    const first = shareTextFile('fairly-sure-2026-11-18.csv', 'x', 'text/csv', 'Export');
+    await new Promise((r) => setImmediate(r));
+    expect(files.has('fairly-sure-2026-11-18.csv')).toBe(true);
+
+    await expect(shareTextFile('fairly-sure-2026-11-19.csv', 'y', 'text/csv', 'Export')).resolves.toBe('shared');
+    // The second export's sweep kept the first one's file.
+    expect(files.has('fairly-sure-2026-11-18.csv')).toBe(true);
+
+    closeFirst();
+    await expect(first).resolves.toBe('shared');
+    expect(files.size).toBe(0);
+
+    // Once its sheet has closed, it is an ordinary leftover to the next sweep.
+    files.add('fairly-sure-2026-11-18.csv');
+    await shareTextFile('fairly-sure-2026-11-20.csv', 'z', 'text/csv', 'Export');
+    expect(files.size).toBe(0);
+  });
+});
+
 describe('sweepExportFiles', () => {
   it('deletes the exports left in the cache, and nothing else', async () => {
     const deleteCacheFile = jest.fn(async (_name: string) => {});

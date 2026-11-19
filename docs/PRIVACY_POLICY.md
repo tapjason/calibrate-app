@@ -9,8 +9,10 @@ Published at https://tapjason.github.io/calibrate-app/privacy/
 If the app's name changes, update it here. Not legal advice.
 
 DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE ALL OF THESE (revised 2026-11-18
-after the security and policy review). The text below is written for the state AFTER
-them; before them, §2.1, §2 (guest counts) and §6 are not true.
+after the security and policy review, and 2026-11-19 after its round 5). The text below
+is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6 are not
+true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true only of
+the build in step 7.
 
 1. Supabase dashboard → Authentication → Configuration → Audit Logs: turn OFF "Write
    audit logs to the database". While it is on, every sign-in writes the person's email,
@@ -21,6 +23,12 @@ them; before them, §2.1, §2 (guest counts) and §6 are not true.
 3. Apply migration 010 (supabase/README.md, "2026-11-18: migration 010 and two
    redeploys"). It hashes each guest event id and cuts guest times to the UTC day, which
    §2 describes.
+3a. Then apply migration 011, after 010 and 010's checks (supabase/README.md, "2026-11-19:
+   migration 011, two redeploys, and the sandbox Plus rows"; 011 refuses to run without
+   010). It adds the three UTC-offset columns §2.2 mentions. §2.2 is worded to be true
+   whether or not they are backed up yet (the app sends them only once UTC_OFFSET_SYNC in
+   src/constants/app.ts is turned on, after 011 is live). When a build with it on ships,
+   §2.2's "If your version of the app backs them up" can become a plain statement.
 4. Confirm the Supabase plan. "Within 7 days" for logs and backups (§6, §7) is true on
    Free (API logs 1 day, auth logs 24 h, no automatic backups) and on Pro (7 days each)
    without the Point-in-Time Recovery add-on. On Team (14-day backups, 28-day logs) or
@@ -31,10 +39,26 @@ them; before them, §2.1, §2 (guest counts) and §6 are not true.
 7. Timing: the on-phone claims (sign-out without a connection still ending the session
    on the phone, Erase and deletion clearing the cached exports, card images and
    pictures, the database overwriting deleted text) are true of builds from commit
-   c7bf083 on; TestFlight 1.0.0 build 2 predates them. Publish with, or after, the build
-   that carries them. Redeploying delete-account (same README section) is not needed for
-   any sentence here, but makes the Apple revocation check live.
-Once 1-7 are done, delete this list; the evidence notes below can stay.
+   c7bf083 on; TestFlight 1.0.0 build 2 predates them. Round 5's (2026-11-19, uncommitted
+   when this was written) are true only of a build that carries it: sign-out removing the
+   account's data from the phone (§7), the session in the Keychain (§10), and guest counts
+   waiting for the warm-up's notice (§2). The Keychain needs expo-secure-store and the Apple
+   nonce expo-crypto, both native, so that is a new development and TestFlight build.
+   Publish with, or after, that build. Redeploying delete-account (same README section) is
+   not needed for any sentence here, but makes the Apple revocation check live.
+8. The warm-up notice (§2, "only after the warm-up's first screen has shown you a line
+   saying so"): src/components/warmup/usageNotice.ts usageCountsMayGoUp. As written on
+   2026-11-19 it stands in for a saved "notice shown" flag with the Warm-up's own record (a
+   finished Warm-up, an answered question, a kept choice), so a phone that finished the
+   Warm-up on a build from before the notice (TestFlight build 2) counts as having seen
+   it and sends after the update without showing it. A saved flag was being built the same
+   day. Publish only with a build where a phone that never drew the notice sends nothing.
+9. Sign-out (§7) removes an account's data only on builds that carry round 5. Rows an
+   account left on a phone by signing out on an earlier build (TestFlight build 2 and
+   later builds before round 5) stay under that account, out of view, until it signs in
+   and out again there or the app is deleted; Erase doesn't touch them. Before the App
+   Store this concerns TestFlight testers only; decide whether that needs a word to them.
+Once 1-9 are done, delete this list; the evidence notes below can stay.
 
 Evidence for each claim (2026-11-18): src/analytics/events.ts (catalogue, props),
 src/analytics/flush.ts (guest rows carry no user id), supabase/migrations/007 and 010
@@ -49,6 +73,38 @@ endSession, src/supabase/account.ts, supabase/functions/delete-account/index.ts,
 src/db/account.ts and src/db/client.ts:40-64 (secure_delete), src/age/ageRange.ts
 (asks each launch until a band is stored), supabase/migrations/009 (name and picture
 stripped from auth.users and auth.identities).
+Round 5 (2026-11-19): src/store/authStore.ts signOut and eraseAccountHere (push, count
+what's unsynced, ask, end the session, wipe with deviceData: false), src/db/predictions.ts
+countUnsynced (dirty predictions and unpushed deletions), src/db/account.ts
+PER_USER_TABLES (what the wipe removes) and src/db/client.ts vacuumAfterWipe,
+src/supabase/authMarkers.ts (a wipe that didn't finish is retried at the next launch),
+src/components/settings/SettingsView.tsx unsyncedSignOutLine ("Signing out removes
+them from this phone"), src/supabase/sessionStorage.ts and client.ts loadKeychain
+(Keychain, AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY, AsyncStorage when the Keychain can't be
+used; a Keychain copy from an earlier install is cleared before the client reads it),
+src/db/migrations/018_utc_offsets.ts and src/constants/app.ts UTC_OFFSET_SYNC (false:
+offsets stored on the phone, not sent), src/components/warmup/UsageStatsNotice.tsx and
+usageNotice.ts with app/_layout.tsx (no flush before the notice), src/db/migrateGuestData.ts
+(queued guest events move to the account at sign-in), src/ai/coachContext.ts (added
+categories left out of by_category; their answers in overall and the weekday pattern).
+Public pages read 2026-11-19:
+- Apple, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+  (developer.apple.com/documentation/security/ksecattraccessibleafterfirstunlockthisdeviceonly):
+  "After the first unlock, the data remains accessible until the next restart … Items
+  with this attribute do not migrate to a new device. Thus, after restoring from a backup
+  of a different device, these items will not be present." (Hence §10 says "never moved
+  to another phone, even through a backup", not "not in backups".)
+- Expo SecureStore (docs.expo.dev/versions/latest/sdk/securestore/): on iOS, data "will
+  persist across app uninstallations" if reinstalled with the same bundle ID, "not
+  guaranteed".
+- Apple, "Acquiring crash reports and diagnostic logs" (developer.apple.com/documentation/
+  xcode/acquiring-crash-reports-and-diagnostic-logs): crash reports "from customers who
+  share diagnostic and usage information"; "TestFlight users of your app automatically
+  share crash reports with you, regardless of the device settings".
+- Apple, App privacy details: "You are not responsible for disclosing data collected by
+  Apple."
+- §2's and §6's "the country a request came from" in our hosting provider's logs is the
+  policy re-audit's finding N4 (2026-11-19), not a page read here; it is worded as "can".
 Public pages read 2026-11-18:
 - Supabase sessions (https://supabase.com/docs/guides/auth/sessions): refresh tokens
   "never expire but can only be used once"; sessions last indefinitely by default.
@@ -89,9 +145,11 @@ to be read, not skimmed past.
 
 - **Without an account, your predictions stay on your phone.** We never receive
   them. You can log, resolve, score, and share predictions entirely offline. A
-  few usage counts are sent, with no account, device or install identifier (§2).
+  few usage counts are sent, with no account, device or install identifier, once
+  the warm-up has told you so; you can turn them off there or in You (§2).
 - **With an account, your predictions are backed up to our server** so they
-  survive a new phone. That includes their text.
+  survive a new phone. That includes their text. Signing out removes them from
+  the phone; signing back in brings back what was backed up (§7).
 - **We don't sell your data, show ads, or track you across other apps or
   websites.** The app contains no advertising or third-party analytics SDK.
 - **The AI Coach sees numbers, never your words.** It receives calibration
@@ -109,16 +167,19 @@ them, as it does any app's data.)
 
 Usage events (§2.3) are recorded on the device. A few of them, those that
 count how many people start and finish the warm-up, log, answer, share and
-practise, are sent to us, starting the first time you open the app. They carry
-the event's details (§2.3) and no account, device or install identifier. Our
-server replaces each event's own id with a one-way scrambled version of it and
-keeps only the day the event happened, not the time. Like any request over the
-internet, they reach our hosting provider with your IP address, which its logs
-may keep for up to 7 days (§6); the counts themselves don't store it. Because they
-carry no account, device or install identifier, we have no way to find yours,
-so we can't delete them on request. The other events are sent only if you later create an account, with
-it. You can turn usage stats off at any time in You → Usage stats: that deletes
-the ones still on the device and stops all of them.
+practise, are sent to us, but only after the warm-up's first screen has shown
+you a line saying so, with a switch to turn them off (the same switch as You →
+Usage stats). Until then they wait on the phone. They carry the event's details
+(§2.3) and no account, device or install identifier. Our server replaces each
+event's own id with a one-way scrambled version of it and keeps only the day the
+event happened, not the time. Like any request over the internet, they reach our
+hosting provider with your IP address, which its logs may keep for up to 7 days
+(§6); the counts themselves don't store it. Because they carry no account,
+device or install identifier, we have no way to find yours, so we can't delete
+them on request. The other events, and any of the few still waiting on the
+phone, are sent only if you later sign in or create an account, with it (§2.3).
+You can turn usage stats off at any time, on that warm-up screen or in You →
+Usage stats: that deletes the ones still on the device and stops all of them.
 
 To know whether you have Fairly Sure Plus, the app asks RevenueCat, the
 service that manages subscriptions, each time it starts. Without an account
@@ -138,9 +199,9 @@ data.
 
 **2.1 Account information.** Your email address, or, if you use Sign in with
 Apple, the address Apple gives us, which may be a private relay address, and an
-identifier for your Apple ID. If you
-sign up with email, also your password, which our sign-in service stores only
-as a one-way hash. If you use Continue with Google, Google gives us your email
+identifier for your Apple ID. If your account signs in with an email address
+and password, also your password, which our sign-in service stores only as a
+one-way hash. If you use Continue with Google, Google gives us your email
 address and an identifier for your Google account. Google also sends your name
 and profile picture. We don't use them, and our database removes them as they
 arrive; your name can still appear in our hosting provider's sign-in logs until
@@ -155,7 +216,11 @@ one such as "finance", or for a category you added, a random id, never the
 name you gave it), the confidence you gave it, its due date, how it resolved,
 any reflection you wrote, and when it was made, answered and last changed. We
 store these so you can restore them on another device. We don't read, analyze,
-or share them. Your warm-up and daily practice answers are not predictions:
+or share them. On your phone, the app also keeps with each prediction how far
+your phone's time zone was from UTC (in minutes) when you made, answered and
+last reworded it, so that moving to another time zone doesn't change which
+answers count. If your version of the app backs these up, they're stored with
+the prediction on our server too. Your warm-up and daily practice answers are not predictions:
 the answers themselves stay on your device, signed in or not. What is sent is a
 tally: when you finish the warm-up, its 0–100 score and how many questions it
 had; when you finish a day's practice, how many you got right out of how many
@@ -175,9 +240,10 @@ was shared. They tell us whether the app works for people. The full list:
 `practice_reminder_set`, `coach_requested`, `data_exported`.
 
 These are linked to your account, and the sign-in screen says so while usage
-stats are on. **You can turn them off** in You → Usage stats. (The few sent
-before you sign in carry no account, device or install identifier, as
-described above, so they can't be found or deleted as yours.)
+stats are on, including that events recorded before you signed in and still
+on the phone go with your account. **You can turn them off** in You → Usage
+stats. (The few sent before you sign in carry no account, device or install
+identifier, as described above, so they can't be found or deleted as yours.)
 
 **2.4 Purchase status.** Whether you have Fairly Sure Plus, which plan, and when it
 renews or ends. We receive this from our subscription provider (§4). We never
@@ -187,12 +253,17 @@ see your payment details.
 enforce usage limits.
 
 ### What we never collect
-Location (the app never asks for it), contacts, health or fitness data,
-financial accounts, photos, your device's advertising identifier, or crash
-reports. A picture you pick as a category icon is shrunk and kept on your
-phone; it is never uploaded. The names you give categories stay on your phone
-too. "Health" and "finance" in Fairly Sure are labels you choose for your own
-predictions. The app doesn't connect to any health or financial service.
+Location, contacts, health or fitness data, financial accounts, photos, or your
+device's advertising identifier. The app never asks for your location, and we
+don't work out where you are from your IP address; our hosting provider's
+request logs can record the country a request came from (§6). The app has no
+crash reporter of its own. Apple may share a report with us when the app
+crashes: for TestFlight testers, and otherwise only if you've chosen in your
+iPhone's settings to share analytics with app developers. A picture you pick as
+a category icon is shrunk and kept on your phone; it is never uploaded. The
+names you give categories stay on your phone too. "Health" and "finance" in
+Fairly Sure are labels you choose for your own predictions. The app doesn't
+connect to any health or financial service.
 
 ## 3. The AI Coach (Fairly Sure Plus, off by default)
 
@@ -203,8 +274,11 @@ built-in category you've answered in, the number of scored answers, the
 category's score, the average confidence, the share that came true, and whether
 it leans overconfident, underconfident or neither; and a few patterns computed
 from those numbers (such as which weekday you're least accurate on, and how a
-category's score has moved). A category you added isn't in the summary at all.
-**No prediction text, no reflections, no names you typed, no email address.**
+category's score has moved), each with how many answers it rests on. A category
+you added isn't named or listed in the summary, but its answers count in the
+overall figures (your overall score, your number of scored answers and the
+weekday pattern). **No prediction text, no reflections, no names you typed, no
+email address.**
 
 Our server checks that the request comes from a signed-in account with Plus,
 then forwards the summary, without your account id or email, to OpenAI to
@@ -264,9 +338,10 @@ only if you turn on **You → Show the words in reminders**. The weekly digest s
 - **Usage counts sent without an account (§2):** kept with no set end date.
   They carry no account, device or install identifier.
 - **Our hosting provider's logs:** Supabase keeps logs of requests to our
-  server and of sign-ins, which can include your email address, your IP address
-  and the time (and, for a Google sign-in, your name), for security and to keep
-  the service running. They're deleted automatically within 7 days.
+  server and of sign-ins, which can include your email address, your IP address,
+  the country a request came from and the time (and, for a Google sign-in, your
+  name), for security and to keep the service running. They're deleted
+  automatically within 7 days.
 - **Backups:** if our hosting provider keeps backups of our database, they're
   deleted automatically within 7 days, so data you delete can remain in one
   for up to that long.
@@ -275,11 +350,21 @@ only if you turn on **You → Show the words in reminders**. The weekly digest s
   until account deletion asks RevenueCat to delete it (§7). A record made
   without an account, under a random install identifier, stays at RevenueCat.
   Neither holds your email or anything you wrote.
-- **On your phone:** until you delete it (§7), or delete the app.
+- **On your phone:** until you delete it (§7), sign out of the account it
+  belongs to (§7), or delete the app. If you delete the app while signed in, iOS
+  may keep your sign-in session in the Keychain (§10); if you install the app
+  again, it doesn't use that session and deletes it.
 
 <!-- OWNER: "kept with no set end date" for the guest counts is what the server does
 today (no job deletes guest_analytics_events). If you'd rather keep them for a set time
 (for example 24 months), schedule the delete first, then change this line. -->
+
+<!-- OWNER: "the country a request came from" in the hosting provider's logs (here and in
+§2) is the policy re-audit's finding N4 (2026-11-19). No public Supabase page read that day
+names the field (supabase.com/docs/guides/telemetry/logs and advanced-log-filtering were
+checked).
+It is worded "can record", so it discloses rather than promises; confirm it from the
+dashboard's log explorer (an edge log's request metadata) or keep it as is. -->
 
 ## 7. Deleting your account, and signing out
 
@@ -304,9 +389,10 @@ A few copies outlast the deletion for a short time. Our hosting provider's logs
 are deleted automatically within 7 days (§6). If you used the Coach, OpenAI may
 keep its copies of your statistics summaries, which carry no account id, for up
 to 30 days (§3). Usage counts sent before you signed in stay, since they carry
-no account, device or install identifier to find them by. Apple keeps its own records of your App Store purchases. If
-your account is also signed in on another phone, that phone keeps its copy
-until you delete the app there.
+no account, device or install identifier to find them by. Apple keeps its own
+records of your App Store purchases. If your account is also signed in on
+another phone, or its session there ended without signing out there (see
+"Signing out", below), that phone keeps its copy until you delete the app there.
 
 If your account uses Sign in with Apple, you're asked to confirm with Apple,
 and our server then revokes Fairly Sure's access to that Apple ID. If you
@@ -321,20 +407,38 @@ Google Account's security settings, under third-party connections.
 it, so cancel it first in Settings → [your name] → Subscriptions, or the app
 will point you there.
 
-**Signing out** (You → Sign out) ends your session on this phone. With a
-connection, it also ends your sessions on every other device. Without one, our
-server isn't told, but this phone no longer holds anything that could use the
-session; it ends the next time you sign out with a connection, or when you
-delete your account. Your predictions stay on this phone under your account,
-out of view, and show again when you sign back in. Reminders for them stop,
-and any on the lock screen showing a prediction's words are cleared.
+**Signing out** (You → Sign out) first tries to send our server any changes
+this phone hasn't backed up yet. If some can't be sent, for example without a
+connection, the app says how many and asks before going on; if you go on, those
+changes are lost.
+
+It then ends your session on this phone. With a connection, it also ends your
+sessions on every other device. Without one, our server isn't told, but this
+phone no longer holds anything that could use the session; it ends the next
+time you sign out with a connection, or when you delete your account.
+
+Then your account's data leaves this phone: its predictions and reflections,
+the categories you added and any names, icons or hiding you set for categories,
+the counts of deleted, late-changed and moved predictions that only this phone
+keeps, and usage events not yet sent, along with the exported files, card
+images and pictures the app left in the phone's cache. If that can't finish at
+once, the app tries again the next time it opens. Signing back in brings back
+your predictions and reflections from our server. Category names, icons and
+hiding, and those counts, are kept only on the phone, so they don't come back.
+Your warm-up, daily practice and age band belong to the phone rather than the
+account, and stay, as do your settings. Reminders for the account's predictions
+stop, and any on the lock screen showing a prediction's words are cleared.
+
+When a phone's session ends some other way, for example because you signed
+out on a different phone, that phone keeps its copy of your data, out of view,
+until you sign in and out again there, or delete the app there.
 
 Without an account, **You → Erase your data on this phone** removes
 everything made on this device without an account, along with the exported
 files, card images and pictures the app left in the phone's cache. Your
-settings (switches and reminder times) stay, and hold nothing you wrote; so
-does the data of any account that signed out on this device. To remove that,
-sign in to the account and delete it, or delete the app.
+settings (switches and reminder times) stay, and hold nothing you wrote. Erase
+doesn't touch an account's data, which leaves the phone when the account signs
+out, as above.
 
 You can also email tapjason-dev@gmail.com to request deletion or a copy of your data.
 
@@ -362,6 +466,13 @@ overwrite deleted text rather than only mark it deleted. No system is
 perfectly secure, but we collect as little as we can, partly so there's less
 to protect.
 
+On your iPhone, the app keeps your sign-in session (the tokens that keep you
+signed in, stored with your account's basic details such as its email address)
+in the iOS Keychain. It can be read only after the iPhone has been
+unlocked once since it was turned on, and it is never moved to another phone,
+even through a backup. If the Keychain can't be used, the app keeps the
+session in its own storage on the phone instead, as earlier versions did.
+
 If you turn on the app's lock (**You → Lock with Face ID**, named for how your
 iPhone unlocks), your iPhone does the checking, with Face ID, Touch ID or your
 passcode. Fairly Sure learns only whether the check passed and which of these
@@ -375,8 +486,11 @@ takes effect. The effective date at the top always reflects the current
 version.
 
 <!-- OWNER: this version adds disclosures (sign-in logs, session IP addresses, retention,
-the warm-up and practice tallies). The app isn't on the App Store yet, so no in-app notice
-seems needed for it; confirm, and remember that §11 promises one for later changes. -->
+the warm-up and practice tallies; on 2026-11-19 the warm-up notice, the time-zone offsets,
+Apple's crash reports and the country in request logs) and changes what signing out does
+(it now removes the account's data from the phone). The app isn't on the App Store yet, so
+no in-app notice seems needed for it; confirm, and remember that §11 promises one for
+later changes. -->
 
 ## 12. Contact
 

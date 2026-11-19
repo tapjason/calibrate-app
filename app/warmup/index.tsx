@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { track } from '@/analytics/track';
 
+import { UsageStatsNotice } from '@/components/warmup/UsageStatsNotice';
 import { WarmupQuiz } from '@/components/warmup/WarmupQuiz';
 import { WarmupVerdictScreen } from '@/components/warmup/WarmupVerdict';
 import { colors, type } from '@/constants/theme';
@@ -72,6 +73,9 @@ export default function WarmupScreen() {
                 happens. First, ten quick questions: pick an answer, then say how
                 sure you are. After that, your own predictions.
               </Text>
+              {/* What usage counts go up, with their switch, before any is
+                  sent (D69 (b)): under the intro, above the first question. */}
+              <UsageStatsNotice />
             </View>
           }
           // An escape hatch, because this route replaces the stack. Without it

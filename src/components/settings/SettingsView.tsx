@@ -13,6 +13,9 @@ import {
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { dateLocale } from '@/constants/locale';
+import { appLocked } from '@/components/ui/appLocked';
+import { askToConfirm } from '@/components/ui/askToConfirm';
+import { localCount } from '@/components/ui/count';
 import { endSentence } from '@/components/ui/sentence';
 import { Icon } from '@/components/ui/Icon';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -709,11 +712,29 @@ function DeleteGroup({ onOpenDelete }: { onOpenDelete: () => void }) {
   );
 }
 
+/** The question sign-out asks when this phone holds changes the server doesn't (D69 (a)). */
+export const SIGN_OUT_ANYWAY_TITLE = 'Sign out anyway?';
+
+/**
+ * What that question says: how many changes would leave the phone with the
+ * account and be lost, since only what reached the server comes back on
+ * signing in. Exported for tests.
+ */
+export function unsyncedSignOutLine(count: number): string {
+  return count === 1
+    ? "1 change hasn't reached the server yet. Signing out removes it from this phone."
+    : `${localCount(count)} changes haven't reached the server yet. Signing out removes them from this phone.`;
+}
+
 /**
  * Signed out: a way in, and what being signed out means for your data.
- * Signed in: who you are, and a way out. Sign-out keeps local data under the
- * account's id, so it needs no confirmation: signing back in shows
- * everything again.
+ * Signed in: who you are, and a way out. Sign-out takes the account's
+ * predictions off this phone after one more sync (owner decision 2026-11-19,
+ * D69 (a)); signing back in brings back everything the server has. So it
+ * asks first only when something couldn't reach the server: those changes
+ * would be lost. The footer also says what never reaches the server and so
+ * goes for good: categories added or changed (D39, D40) and the counts only
+ * this phone keeps (`PER_USER_TABLES` in src/db/account.ts).
  */
 function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
   const accountsAvailable = useAuthStore((s) => s.accountsAvailable);
@@ -729,16 +750,28 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
 
   if (!accountsAvailable) return null;
 
-  const onSignOut = async () => {
+  const onSignOut = async (discardUnsynced = false) => {
     if (signingOut) return;
     setSigningOut(true);
     setSignOutError(null);
     try {
-      const outcome = await signOut();
+      const outcome = await (discardUnsynced ? signOut({ discardUnsynced: true }) : signOut());
       // Ended on this phone, whether or not the server heard (`localOnly`):
       // nothing to say, the screen moves to signed out by itself.
       if (outcome.ok) return;
-      // Even this phone's copy of the session stayed: still signed in.
+      if ('unsynced' in outcome) {
+        // Nothing changed yet: still signed in, every row still here. Asked
+        // in a system alert, whose destructive button does nothing while the
+        // app is locked (the alert sits above the lock screen; security
+        // review, 2026-11-18). Confirming goes again, discarding them.
+        askToConfirm(SIGN_OUT_ANYWAY_TITLE, unsyncedSignOutLine(outcome.unsynced), 'Sign out', () => {
+          if (appLocked()) return;
+          void onSignOut(true);
+        });
+        return;
+      }
+      // Even this phone's copy of the session stayed, or what's unsynced
+      // couldn't be counted: still signed in, nothing changed.
       setSignOutError(outcome.error);
       AccessibilityInfo.announceForAccessibility(outcome.error);
     } finally {
@@ -749,7 +782,9 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
   if (status === 'authenticated') {
     return (
       <View testID="settings-account">
-        <Group footer={`${describeAccount(email)} Your predictions are backed up.`}>
+        <Group
+          footer={`${describeAccount(email)} Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed, and the counts only this phone keeps, aren't backed up, so signing out removes them.`}
+        >
           <NavRow
             label={signingOut ? 'Signing out…' : 'Sign out'}
             onPress={() => void onSignOut()}
@@ -851,10 +886,13 @@ function ToggleRow({
  * What the Usage stats switch covers. Since D43 (2026-11-03) a guest's funnel
  * counts go up with no account, device or install id. Each row still has a
  * random id of its own, so the server can drop a retried copy, which is why
- * it no longer says "no id at all" (policy audit F7, 2026-11-18).
+ * it no longer says "no id at all" (policy audit F7, 2026-11-18). The events
+ * carry numbers as well as names (src/analytics/events.ts): an answer's
+ * confidence and whether it happened, the Warm-up's score. "Counts of which
+ * features get used" undersold that (policy re-audit N2, 2026-11-19).
  */
 export const USAGE_STATS_DESCRIPTION =
-  "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no account, device or install id; once you sign in, they're tied to your account. Turning this off deletes what's queued.";
+  "Which features get used, with numbers like the confidence you chose and whether it happened. Never the words of your predictions or notes. Before you sign in, a few counts go up with no account, device or install id; once you sign in, they're tied to your account. Turning this off deletes what's queued.";
 
 const styles = StyleSheet.create({
   wrap: { gap: space.xxl, padding: space.lg, paddingBottom: space.huge },

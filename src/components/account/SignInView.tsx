@@ -1,17 +1,18 @@
 import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { chosenProps } from '@/components/ui/chosen';
 import { TextButton } from '@/components/ui/TextButton';
 import { TextField } from '@/components/ui/TextField';
-import { PRIVACY_POLICY_URL } from '@/constants/app';
+import { GOOGLE_SIGN_IN_ENABLED, PRIVACY_POLICY_URL } from '@/constants/app';
 import { colors, elevation, radius, space, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 import { AppleSignInButton } from './AppleSignInButton';
+import { EMAIL_SIGN_UP_ENABLED } from './emailSignUp';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { PasswordChecklist } from './PasswordChecklist';
 
@@ -33,11 +34,32 @@ export const USAGE_NOTE =
   'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn that off in You, under Usage stats.';
 
 /**
- * Sign in or create an account (docs/ACCOUNT_SPEC.md §1).
+ * While Create account is hidden (D69 (c)), the line under the email form
+ * that sends someone new to the buttons above it. It names only the buttons
+ * this phone shows (Apple's and Google's are iOS only, Google's also behind
+ * GOOGLE_SIGN_IN_ENABLED), and with neither there is nothing to point to, so
+ * no line. Exported for tests.
+ */
+export function newHereLine(apple: boolean, google: boolean): string | null {
+  if (apple && google) return 'New here? Use Apple or Google for now.';
+  if (apple) return 'New here? Use Apple for now.';
+  if (google) return 'New here? Use Google for now.';
+  return null;
+}
+
+/**
+ * Sign in, or create an account while EMAIL_SIGN_UP_ENABLED is on
+ * (docs/ACCOUNT_SPEC.md §1).
  *
  * Optional by design: nothing in the core loop routes here. People arrive from
  * Settings or from the Coach, which runs on the server and so needs to know who
  * is asking.
+ *
+ * Create account is hidden for now (owner decision 2026-11-19, D69 (c)): with
+ * EMAIL_SIGN_UP_ENABLED off there is no switch, the email form signs in to an
+ * account that already exists, and one line under it sends someone new to
+ * Apple or Google (`newHereLine`). Everything below is kept for when it's
+ * turned back on.
  *
  * One form for both. A two-segment switch above the email field, "Sign in" and
  * "Create account", picks which (owner, 2026-11-17: the text link at the
@@ -129,6 +151,12 @@ export function SignInView({ onDone }: { onDone: () => void }) {
     setNotice(null);
   };
 
+  // With Create account hidden (D69 (c)): who is new goes to the buttons
+  // above, as each button decides for itself whether it shows.
+  const newHere = EMAIL_SIGN_UP_ENABLED
+    ? null
+    : newHereLine(Platform.OS === 'ios', GOOGLE_SIGN_IN_ENABLED && Platform.OS === 'ios');
+
   return (
     <View style={styles.wrap}>
       <Text accessibilityRole="header" style={styles.title}>
@@ -160,7 +188,7 @@ export function SignInView({ onDone }: { onDone: () => void }) {
       <AppleSignInButton onPress={() => void onApple()} disabled={pending} />
       <GoogleSignInButton onPress={() => void onGoogle()} disabled={pending} />
 
-      <ModeSwitch mode={mode} onChoose={chooseMode} />
+      {EMAIL_SIGN_UP_ENABLED && <ModeSwitch mode={mode} onChoose={chooseMode} />}
 
       <TextField
         label="Email"
@@ -202,6 +230,11 @@ export function SignInView({ onDone }: { onDone: () => void }) {
         onPress={() => void onSubmit()}
         testID="account-submit"
       />
+      {newHere && (
+        <Text style={styles.newHere} testID="account-new-here">
+          {newHere}
+        </Text>
+      )}
     </View>
   );
 }
@@ -289,4 +322,6 @@ const styles = StyleSheet.create({
   modeLabelChosen: { color: colors.textPrimary, fontWeight: '600' },
   error: { ...type.subhead, color: colors.destructive },
   notice: { ...type.subhead, color: colors.actionText },
+  // The lede's secondary style, under the form's button.
+  newHere: { ...type.subhead, color: colors.textSecondary },
 });

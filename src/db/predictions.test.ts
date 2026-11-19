@@ -2,6 +2,7 @@ import type { Prediction } from '@/types';
 
 import { getDb, setDbForTests } from './client';
 import {
+  countPostponements,
   countRefiles,
   deletePrediction,
   getPrediction,
@@ -9,6 +10,7 @@ import {
   listPendingPredictions,
   listResolvedPredictions,
   noteRefile,
+  recordPostponement,
   refilePrediction,
   resolvePrediction,
 } from './predictions';
@@ -221,5 +223,33 @@ describe('prediction_refiles', () => {
       `SELECT from_category, to_category FROM prediction_refiles WHERE prediction_id = 'p1'`,
     );
     expect(note).toEqual({ from_category: 'work', to_category: 'health' });
+  });
+});
+
+// Late changes to an open prediction (step 173, D62, 2026-11-19): counted
+// once per prediction, kept after a delete, and only for an edit that landed.
+describe('prediction_postponements', () => {
+  const DUE = '2026-06-01T00:00:00.000Z';
+
+  it('counts a prediction once, whatever changed and however often', async () => {
+    await insertPrediction(samplePrediction());
+    await recordPostponement('p1', 'u1', DUE, '2026-06-05T00:00:00.000Z');
+    await recordPostponement('p1', 'u1', DUE, DUE);
+    expect(await countPostponements('u1')).toBe(1);
+    await deletePrediction('p1');
+    expect(await countPostponements('u1')).toBe(1);
+  });
+
+  // Code review round 5: the store decides from a read taken before its
+  // transaction; an answer pulled in between leaves the edit unwritten.
+  it('notes nothing for a prediction no longer open, or not this user’s', async () => {
+    await insertPrediction(samplePrediction({ id: 'answered' }));
+    await resolvePrediction('answered', 'resolved_no');
+    await recordPostponement('answered', 'u1', DUE, DUE);
+    await insertPrediction(samplePrediction({ id: 'theirs', user_id: 'u2' }));
+    await recordPostponement('theirs', 'u1', DUE, DUE);
+    await recordPostponement('missing', 'u1', DUE, DUE);
+    expect(await countPostponements('u1')).toBe(0);
+    expect(await countPostponements('u2')).toBe(0);
   });
 });

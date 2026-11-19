@@ -524,15 +524,17 @@ export function deletedLine(count: number): string {
 }
 
 /**
- * "1 prediction had its due date moved later, or its words changed, within a
- * day of its due day." (step 173, aggregate B1; rewording added by D62). A
- * known miss could be moved past its due day, or rewritten on its eve, and
- * answered later; counted as a late delete is (D45), on this phone only.
+ * "1 prediction had its due date moved later, its words changed, or its
+ * category changed, within a day of its due day." (step 173, aggregate B1;
+ * rewording added by D62, a category change by D69 (e)). A known miss could
+ * be moved past its due day, rewritten on its eve or moved out of its
+ * category, and answered later; counted as a late delete is (D45), once per
+ * prediction, on this phone only.
  */
 export function postponedLine(count: number): string {
   return count === 1
-    ? '1 prediction had its due date moved later, or its words changed, within a day of its due day. Only this phone keeps this count.'
-    : `${count} predictions had their due dates moved later, or their words changed, within a day of their due day. Only this phone keeps this count.`;
+    ? '1 prediction had its due date moved later, its words changed, or its category changed, within a day of its due day. Only this phone keeps this count.'
+    : `${count} predictions had their due dates moved later, their words changed, or their categories changed, within a day of their due day. Only this phone keeps this count.`;
 }
 
 /**

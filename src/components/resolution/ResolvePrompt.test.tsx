@@ -57,6 +57,7 @@ beforeEach(async () => {
     userStat: null,
     categoryStats: [],
     calibration: { rating: 0, buckets: [] },
+    stale: false,
   });
   await useAuthStore.getState().initialize();
 });
@@ -478,6 +479,68 @@ describe('ResolvePrompt acknowledgement', () => {
     });
     const after = Math.round(useStatsStore.getState().userStat!.calibration_rating);
     expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(ratingChangeLine(before, after));
+  });
+
+  // Review round 5: after a failed write whose reload failed too, the stats
+  // are stale, and memory may hold a rating the database doesn't. No "moved
+  // from 91 to 89" is built from it, before the answer or after.
+  describe('while the stats are stale', () => {
+    async function unlockedWithOneOpen() {
+      for (let i = 0; i < 24; i++) {
+        await insertPrediction(
+          samplePending({
+            id: `done-${i}`,
+            status: i % 5 ? 'resolved_yes' : 'resolved_no',
+            resolved_at: '2026-05-20T00:00:00.000Z',
+          }),
+        );
+      }
+      await insertPrediction(samplePending());
+      await useStatsStore.getState().recomputeForUser(useAuthStore.getState().userId!);
+      expect(useStatsStore.getState().userStat!.rating_is_provisional).toBe(false);
+    }
+
+    it('takes no "before" from them', async () => {
+      await unlockedWithOneOpen();
+      // A rating memory holds and the database may not: stale.
+      const held = useStatsStore.getState().userStat!;
+      useStatsStore.setState({ userStat: { ...held, calibration_rating: 12 }, stale: true });
+
+      render(<ResolvePrompt predictionId="p1" />);
+      await waitFor(() => expect(screen.getByTestId('resolve-no')).toBeEnabled());
+      fireEvent.press(screen.getByTestId('resolve-no'));
+      await waitFor(() => expect(screen.getByTestId('resolve-recorded')).toBeTruthy());
+
+      // The answer's own recompute cleared it; the rating now is real, the
+      // one before wasn't known, so no move is claimed.
+      expect(useStatsStore.getState().stale).toBe(false);
+      expect(screen.queryByText(/Your rating (moved|stays)/)).toBeNull();
+      expect(screen.queryByText(/from 12/)).toBeNull();
+    });
+
+    it('takes no "after" from them', async () => {
+      await unlockedWithOneOpen();
+      const realResolve = usePredictionStore.getState().resolve;
+      // The answer lands, and the stats are left stale behind it.
+      usePredictionStore.setState({
+        resolve: async (...args: Parameters<typeof realResolve>) => {
+          await realResolve(...args);
+          useStatsStore.setState({ stale: true });
+        },
+      });
+      try {
+        render(<ResolvePrompt predictionId="p1" />);
+        await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+        fireEvent.press(screen.getByTestId('resolve-yes'));
+        await waitFor(() => expect(screen.getByTestId('resolve-recorded')).toBeTruthy());
+
+        expect(screen.queryByText(/Your rating (moved|stays)/)).toBeNull();
+        // What the number means instead, which needs no rating.
+        expect(screen.getByTestId('resolve-answer-note')).toHaveTextContent(meaningLine(80)!);
+      } finally {
+        usePredictionStore.setState({ resolve: realResolve });
+      }
+    });
   });
 
   it('finishes without a reflection, leaving it empty', async () => {

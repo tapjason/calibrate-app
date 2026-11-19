@@ -25,6 +25,7 @@ import {
 
 import {
   MAX_CATEGORIES as SERVER_MAX_CATEGORIES,
+  MAX_PATTERNS as SERVER_MAX_PATTERNS,
   parseContext,
   validateOutput as serverValidate,
 } from '../../supabase/functions/coach/contract';
@@ -38,9 +39,12 @@ import { validateCoachOutput as clientValidate } from './coachValidate';
 
 /**
  * 81 scored answers. Finance leans over and social under (both past the
- * category gate), work has no clear lean, health is thin (4 answers). The
- * weekday carries its answer count. drift_health is what a build before
- * 2026-11-18 sends for a thin category (its drift ran from 4 answers).
+ * category gate), work has no clear lean and what it said sits within 5
+ * points of what happened (75 against 77), health is thin (4 answers). The
+ * weekday carries its answer count (24, past the floor of 20). The drifts
+ * come without their halves' count, as from a build before 2026-11-19, so
+ * none is citable (finance's halves would be 12 and 13); drift_health is
+ * what a build before 2026-11-18 sends for a thin category.
  */
 const CTX: CoachContext = {
   overall: { calibration_rating: 72.4, total_resolved: 81 },
@@ -53,7 +57,7 @@ const CTX: CoachContext = {
   patterns: [
     { kind: 'weakest_day_of_week', value: 1 },
     { kind: 'weakest_day_score', value: 58 },
-    { kind: 'weakest_day_answers', value: 12 },
+    { kind: 'weakest_day_answers', value: 24 },
     { kind: 'drift_finance', value: -6.5 },
     { kind: 'drift_work', value: 7.3 },
     { kind: 'drift_health', value: -50 },
@@ -65,24 +69,80 @@ const withPatterns = (patterns: CoachContext['patterns'], overall = CTX.overall)
   overall,
   patterns,
 });
+const withCategory = (
+  base: CoachContext,
+  category: string,
+  change: Partial<CoachContext['by_category'][number]>,
+): CoachContext => ({
+  ...base,
+  by_category: base.by_category.map((c) => (c.category === category ? { ...c, ...change } : c)),
+});
+const WEEKDAY = (answers: number): CoachContext['patterns'] => [
+  { kind: 'weakest_day_of_week', value: 1 },
+  { kind: 'weakest_day_score', value: 58 },
+  { kind: 'weakest_day_answers', value: answers },
+];
 
 const OLDER_BUILD = withPatterns([
   { kind: 'weakest_day_of_week', value: 1 },
   { kind: 'weakest_day_score', value: 58 },
 ]);
-const THIN_DAY = withPatterns([
-  { kind: 'weakest_day_of_week', value: 1 },
-  { kind: 'weakest_day_score', value: 58 },
-  { kind: 'weakest_day_answers', value: 6 },
-]);
-const THIN_OVERALL_DAY = withPatterns(
-  [
-    { kind: 'weakest_day_of_week', value: 1 },
-    { kind: 'weakest_day_score', value: 58 },
-    { kind: 'weakest_day_answers', value: 12 },
+/** 12 answers on the day: past the floor of 2026-11-18 (10), under today's (20). */
+const THIN_DAY = withPatterns(WEEKDAY(12));
+const DAY_19 = withPatterns(WEEKDAY(19));
+const DAY_20 = withPatterns(WEEKDAY(20));
+const THIN_OVERALL_DAY = withPatterns(WEEKDAY(24), { calibration_rating: 72.4, total_resolved: 15 });
+
+/**
+ * Drifts as this build sends them: finance with 44 answers (halves of 22),
+ * work with 48 (halves of 24), each with its halves' count.
+ */
+const RICH: CoachContext = {
+  ...withCategory(withCategory(CTX, 'finance', { resolved: 44 }), 'work', { resolved: 48 }),
+  patterns: [
+    ...WEEKDAY(24),
+    { kind: 'drift_finance', value: -6.5 },
+    { kind: 'drift_half_answers_finance', value: 22 },
+    { kind: 'drift_work', value: 7.3 },
+    { kind: 'drift_half_answers_work', value: 24 },
+    { kind: 'drift_health', value: -50 },
   ],
-  { calibration_rating: 72.4, total_resolved: 15 },
-);
+};
+/** Finance's drift from halves of 19 and 20 (39 answers): under the floor. */
+const HALF_19: CoachContext = {
+  ...withCategory(CTX, 'finance', { resolved: 39 }),
+  patterns: [
+    { kind: 'drift_finance', value: -6.5 },
+    { kind: 'drift_half_answers_finance', value: 19 },
+  ],
+};
+/** Finance's drift from halves of 20 (40 answers): at the floor. */
+const HALF_20: CoachContext = {
+  ...withCategory(CTX, 'finance', { resolved: 40 }),
+  patterns: [
+    { kind: 'drift_finance', value: -6.5 },
+    { kind: 'drift_half_answers_finance', value: 20 },
+  ],
+};
+
+/** 85 scored answers; finance has 21, health 12 (thin). A count can sit on a score's place. */
+const COUNTS: CoachContext = {
+  overall: { calibration_rating: 71.6, total_resolved: 85 },
+  by_category: [
+    { category: 'finance', resolved: 21, calibration_score: 64.2, mean_stated_confidence: 78, actual_rate: 0.52, direction: 'overconfident' },
+    { category: 'health', resolved: 12, calibration_score: 88, mean_stated_confidence: 70, actual_rate: 0.75, direction: 'calibrated' },
+    { category: 'work', resolved: 52, calibration_score: 83, mean_stated_confidence: 72, actual_rate: 0.7, direction: 'calibrated' },
+  ],
+  patterns: [],
+};
+/** Work's said and happened 5 whole points apart (75 against 79.5, which rounds to 80). */
+const WORK_5_APART = withCategory(CTX, 'work', { actual_rate: 0.795 });
+/** 4 apart (75 against 79.4, which rounds to 79). */
+const WORK_4_APART = withCategory(CTX, 'work', { actual_rate: 0.794 });
+/** Finance came true 57.5% of the time: 0.575 × 100 is 57.49999999999999 in floating point. */
+const FLOAT_EDGE = withCategory(CTX, 'finance', { actual_rate: 0.575 });
+/** Exactly 988 scored answers: a count, not a helpline. */
+const TOTAL_988 = withPatterns([], { calibration_rating: 72.4, total_resolved: 988 });
 /** Under every gate: 12 answers, all health. */
 const THIN: CoachContext = {
   overall: { calibration_rating: 72.4, total_resolved: 12 },
@@ -144,10 +204,12 @@ const KEEP: Fixture[] = [
   },
   {
     name: 'a drift, written by its size',
+    context: RICH,
     insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points from your older answers to your recent ones.', evidence: -6.5 },
   },
   {
     name: 'a positive drift',
+    context: RICH,
     insight: { type: 'pattern', category: 'work', message: 'Work improved by 7.3 points from earlier to recent answers.', evidence: 7.3 },
   },
   {
@@ -193,6 +255,7 @@ const KEEP: Fixture[] = [
   { name: '"zero in on"', insight: over(BASE, { suggestion: 'Zero in on the finance calls you feel surest about.' }) },
   {
     name: 'a drift told by its halves',
+    context: RICH,
     insight: { type: 'pattern', category: 'finance', message: 'Finance scored 6.5 points lower over your newer half of answers than your older half.', evidence: -6.5 },
   },
   {
@@ -209,6 +272,179 @@ const KEEP: Fixture[] = [
     name: 'everything else from an older build',
     context: OLDER_BUILD,
     insight: over(BASE),
+  },
+
+  // --- 2026-11-19, item 1: what a number is, from the words beside it ---
+  {
+    name: 'a count named as a count',
+    context: COUNTS,
+    insight: { type: 'strength', category: 'finance', message: 'Finance has 21 scored answers and a score of 64.', evidence: 64.2 },
+  },
+  {
+    name: 'the overall count, named overall',
+    context: COUNTS,
+    insight: { type: 'pattern', category: 'overall', message: 'You have 85 scored answers in total.', evidence: 85 },
+  },
+  {
+    name: 'what happened and what was said, each by its own word (the swap’s twin)',
+    insight: over('You were right 55% of the time in finance, though you felt 80% sure.'),
+  },
+  {
+    name: 'a category’s score beside the overall rating, named as the rating',
+    insight: { type: 'strength', category: 'finance', message: 'Finance scores 61, below your rating of 72.', evidence: 61 },
+  },
+  {
+    name: 'two categories in two clauses',
+    insight: { type: 'strength', category: 'work', message: 'Finance sits at 80% stated, while work sits at 75%.', evidence: 75 },
+  },
+  {
+    name: 'a percentage after "at" read as what was said',
+    insight: over('Finance runs overconfident at 80%.'),
+  },
+  { name: 'what was said, as a percentage written out', insight: { type: 'strength', category: 'finance', message: 'You said 80 percent on average in finance.', evidence: 80 } },
+  {
+    name: 'a count named as answers',
+    insight: { type: 'pattern', category: 'overall', message: 'You are at 81 scored answers so far.', evidence: 81 },
+  },
+  {
+    name: 'a bare number in an encouragement reads as a count',
+    insight: { type: 'encouragement', category: 'overall', message: 'You are at 81 so far, keep logging.', evidence: 81 },
+  },
+  {
+    name: 'a bare number in a verdict reads as a score',
+    insight: { type: 'strength', category: 'work', message: 'Work stands out at 88.', evidence: 88 },
+  },
+  {
+    name: 'the weekday in a card labelled with a category',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance runs overconfident. Your Monday answers calibrate worst, at 58.', evidence: 58 },
+  },
+
+  // --- Item 2: "well calibrated" only within 5 points ---
+  ...[
+    'Work is spot-on, with a score of 88.',
+    'Work is perfectly calibrated, with a score of 88.',
+    'Work is about right, with a score of 88.',
+    'Your work calls are accurate, with a score of 88.',
+    'Work is in line with what happened, with a score of 88.',
+    'Work is right on target, with a score of 88.',
+    'Your work calls matched what happened, with a score of 88.',
+    'Work is calibrated, with a score of 88.',
+    'Work shows no clear lean, with a score of 88.',
+    // Item 6: a negated lean is calibrated wording, held to the same rule.
+    'Work is neither overconfident nor underconfident, with a score of 88.',
+    'Work isn’t overconfident, with a score of 88.',
+    'Your work calls are not too sure, with a score of 88.',
+  ].map((message) => ({
+    name: `close words for a category within 5 points: "${message}"`,
+    insight: { type: 'strength', category: 'work', message, evidence: 88 },
+  })),
+  {
+    name: '"no clear lean" for a calibrated category 25 points apart',
+    context: FINANCE_CALIBRATED,
+    insight: { type: 'strength', category: 'finance', message: 'Finance shows no clear lean, with a score of 61.', evidence: 61 },
+  },
+  {
+    name: '"well calibrated" 4 whole points apart',
+    context: WORK_4_APART,
+    insight: { type: 'strength', category: 'work', message: 'Work is well calibrated, with a score of 88.', evidence: 88 },
+  },
+  {
+    name: '"poorly calibrated" for a category that leans',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance is poorly calibrated, with a score of 61.', evidence: 61 },
+  },
+  {
+    name: '"isn’t well calibrated" for a category that leans',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance isn’t well calibrated, with a score of 61.', evidence: 61 },
+  },
+  {
+    name: 'a weekday "worst calibrated", a comparison and no verdict',
+    insight: { type: 'pattern', category: 'overall', message: 'Mondays are your worst calibrated day, at 58.', evidence: 58 },
+  },
+
+  // --- Item 3: leans in plain words, in a card the direction backs ---
+  ...[
+    'Finance calls came true less often than you said.',
+    'Fewer finance calls happened than you expected.',
+    'Finance calls came true less often than the 80% you said.',
+    'Your finance calls overstated how often things happen.',
+    'You overrate your finance calls.',
+    'Your finance numbers overshoot what happens.',
+    'You are overly confident on finance calls.',
+    'Your finance calls run optimistic.',
+    'Compared with what you said, finance came true at 55%.',
+    'Finance fell short: you said 80% and 55% happened.',
+  ].map((message) => ({ name: `an overconfident lean in plain words: "${message}"`, insight: over(message) })),
+  ...[
+    'Social calls came true more often than you said.',
+    'More social calls happened than you expected.',
+    'Your social calls understated how often things happen.',
+    'You underrate your social calls.',
+    'You are not confident enough on social calls.',
+    'Your social calls run cautious.',
+    'Your social numbers look conservative.',
+  ].map((message) => ({
+    name: `an underconfident lean in plain words: "${message}"`,
+    insight: { type: 'underconfidence', category: 'social', message, evidence: 82 },
+  })),
+  // A bare "cautious" or "optimistic" as advice names no lean: it is what
+  // the card should advise.
+  { name: 'advice to be more cautious in an overconfident card', insight: over(BASE, { suggestion: 'Consider being more cautious with your finance calls.' }) },
+  { name: 'advice for more conservative numbers in an overconfident card', insight: over(BASE, { suggestion: 'Try more conservative numbers in finance.' }) },
+  {
+    name: 'advice to be more optimistic in an underconfident card',
+    insight: { type: 'underconfidence', category: 'social', message: 'Social runs underconfident.', suggestion: 'Try being a bit more optimistic with social calls.', evidence: 82 },
+  },
+  {
+    name: '"on the cautious side" for an underconfident category',
+    insight: { type: 'underconfidence', category: 'social', message: 'Your social numbers sit on the cautious side: 60% stated, 82% happened.', evidence: 82 },
+  },
+  // An aim claims nothing about now.
+  { name: 'advice "to become well calibrated" in an overconfident card', insight: over(BASE, { suggestion: 'Lower your finance numbers to become well calibrated.' }) },
+  { name: 'advice to bring numbers "in line with" what happens', insight: over(BASE, { suggestion: 'Bring your finance numbers in line with what happens.' }) },
+  { name: 'advice "to be more accurate"', insight: over(BASE, { suggestion: 'Try lower finance numbers to be more accurate.' }) },
+  // Item 7: a score that runs high is honest.
+  { name: 'a score that "runs high"', insight: { type: 'strength', category: 'work', message: 'Your work score runs high at 88.', evidence: 88 } },
+
+  // --- Item 4: the floors at 20 ---
+  {
+    name: 'the weekday score from 20 answers on the day',
+    context: DAY_20,
+    insight: { type: 'pattern', category: 'overall', message: 'Your Monday answers calibrate worst, at 58.', evidence: 58 },
+  },
+  {
+    name: 'a drift from halves of 20',
+    context: HALF_20,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points.', evidence: -6.5 },
+  },
+
+  // --- Item 5: idioms that hold a category's word ---
+  { name: '"keep up the good work" in a finance card', insight: over('Finance runs overconfident at 80%. Keep up the good work!') },
+  { name: '"personal best" in a finance card', insight: over('Finance runs overconfident at 80%. Calibration is not about a personal best.') },
+  {
+    name: '"not financial advice" in a work card',
+    insight: { type: 'strength', category: 'work', message: 'Work is well calibrated, with a score of 88. Not financial advice.', evidence: 88 },
+  },
+
+  // --- Item 8: calibration advice with a number is not money advice ---
+  { name: 'move your number toward what happened', insight: over(BASE, { suggestion: 'Move your finance numbers toward 55%.' }) },
+  { name: 'shift your number', insight: over(BASE, { suggestion: 'Shift your number toward 55%.' }) },
+
+  // --- Item 9: floating point ---
+  {
+    name: '58% for a rate of 0.575',
+    context: FLOAT_EDGE,
+    insight: { type: 'strength', category: 'finance', message: 'Finance came true 58% of the time.', evidence: 58 },
+  },
+
+  // --- Item 10: the disclaimers ---
+  { name: '"Not legal advice."', insight: over(BASE, { suggestion: 'Not legal advice.' }) },
+  { name: '"This is not investment advice."', insight: over(BASE, { suggestion: 'This is not investment advice.' }) },
+
+  // --- Item 13: 988 as a count ---
+  {
+    name: 'exactly 988 scored answers',
+    context: TOTAL_988,
+    insight: { type: 'pattern', category: 'overall', message: 'You have 988 scored answers in total.', evidence: 988 },
   },
 ];
 
@@ -311,7 +547,7 @@ const DROP: Fixture[] = [
     insight: { type: 'strength', category: 'finance', message: 'You have 20 answers in finance, scoring 61.', evidence: 61 },
   },
   { name: 'a gate number dressed as a gap', insight: over('Finance runs 20 points overconfident at 80%.') },
-  { name: 'evidence of the wrong sign for a drift', insight: { type: 'pattern', category: 'finance', message: 'Finance slipped by 6.5 points.', evidence: 6.5 } },
+  { name: 'evidence of the wrong sign for a drift', context: RICH, insight: { type: 'pattern', category: 'finance', message: 'Finance slipped by 6.5 points.', evidence: 6.5 } },
 
   // --- 3. Leans the app didn't name (finding 3) ---
   {
@@ -360,7 +596,7 @@ const DROP: Fixture[] = [
   },
   {
     name: 'the weekday’s answer count as evidence',
-    insight: { type: 'pattern', category: 'overall', message: 'Your Monday answers calibrate worst, across 12 answers.', evidence: 12 },
+    insight: { type: 'pattern', category: 'overall', message: 'Your Monday answers calibrate worst, across 24 answers.', evidence: 24 },
   },
 
   // --- 5. What the words may contain ---
@@ -417,6 +653,190 @@ const DROP: Fixture[] = [
   { name: 'a category that is an object', insight: over(BASE, { category: { name: 'finance' } }) },
   { name: 'an over-long message', insight: over('x'.repeat(241)) },
   { name: 'a message that only NFKC makes over-long', insight: over(`${'ﬁ'.repeat(121)}`) },
+
+  // --- 2026-11-19, item 1: a number shown as a kind it isn't ---
+  {
+    name: 'record re-audit: a total count as a thin category’s score',
+    context: COUNTS,
+    insight: { type: 'encouragement', category: 'health', message: 'Your health score is 85 so far. Keep logging.', evidence: 12 },
+  },
+  {
+    name: 'a total count as a category’s score, in a verdict',
+    context: COUNTS,
+    insight: { type: 'strength', category: 'work', message: 'Your work score is 85.', evidence: 83 },
+  },
+  {
+    name: 'record re-audit: a category’s count as its score',
+    context: COUNTS,
+    insight: { type: 'strength', category: 'finance', message: 'Your finance score is 21.', evidence: 64.2 },
+  },
+  {
+    name: 'record re-audit: what was said and what happened swapped',
+    insight: over('You were right 80% of the time in finance, though you felt only 55% sure.'),
+  },
+  {
+    name: 'the overall rating as a category’s score',
+    insight: { type: 'strength', category: 'finance', message: 'Your finance score is 72.', evidence: 61 },
+  },
+  {
+    name: 'one number beside two categories',
+    insight: { type: 'strength', category: 'work', message: 'Finance and work both sit at 80%.', evidence: 75 },
+  },
+  {
+    name: 'what happened as a plain number, read as a count',
+    insight: over('Finance: 80% stated, and 55 happened.'),
+  },
+  {
+    name: 'what was said, presented as a share resolved',
+    insight: { type: 'strength', category: 'finance', message: 'You resolved 80 percent of what you logged in finance.', evidence: 80 },
+  },
+  {
+    name: 'a bare count in a verdict, read as a score',
+    insight: { type: 'pattern', category: 'overall', message: 'You are at 81 so far.', evidence: 81 },
+  },
+  {
+    name: 'what happened, after "at", read as what was said',
+    insight: { type: 'underconfidence', category: 'social', message: 'Social runs underconfident at 82%.', evidence: 82 },
+  },
+  {
+    name: 'the overall count in a category’s card',
+    insight: over('Finance runs overconfident.\nYou have 81 scored answers.'),
+  },
+
+  // --- Item 2: "well calibrated" where the app says "no clear lean" ---
+  ...[
+    'Finance is well calibrated, with a score of 61.',
+    'Finance is spot-on, with a score of 61.',
+    'Finance is perfectly calibrated, with a score of 61.',
+    'Finance is about right, with a score of 61.',
+    'Your finance calls are accurate, with a score of 61.',
+    'Finance is in line with what happened, with a score of 61.',
+    'Finance is right on target, with a score of 61.',
+    'Your finance calls matched what happened, with a score of 61.',
+    'Finance is calibrated, with a score of 61.',
+    'Finance is neither overconfident nor underconfident, with a score of 61.',
+    'Finance isn’t overconfident, with a score of 61.',
+    'Your finance calls are not too sure, with a score of 61.',
+  ].map((message) => ({
+    name: `close words for a calibrated category 25 points apart: "${message}"`,
+    context: FINANCE_CALIBRATED,
+    insight: { type: 'strength', category: 'finance', message, evidence: 61 },
+  })),
+  {
+    name: '"well calibrated" 5 whole points apart',
+    context: WORK_5_APART,
+    insight: { type: 'strength', category: 'work', message: 'Work is well calibrated, with a score of 88.', evidence: 88 },
+  },
+  {
+    name: 'a negated lean for a category that leans',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance isn’t overconfident, with a score of 61.', evidence: 61 },
+  },
+  {
+    name: '"poorly calibrated" for a category with no lean',
+    insight: { type: 'strength', category: 'work', message: 'Work is poorly calibrated, with a score of 88.', evidence: 88 },
+  },
+  {
+    name: '"isn’t well calibrated" for a category within 5 points',
+    insight: { type: 'strength', category: 'work', message: 'Work isn’t well calibrated, with a score of 88.', evidence: 88 },
+  },
+
+  // --- Item 3: the same leans where the direction doesn't back them ---
+  ...[
+    'Work calls came true less often than you said.',
+    'Fewer work calls happened than you expected.',
+    'Your work calls overstated how often things happen.',
+    'You overrate your work calls.',
+    'Your work numbers overshoot what happens.',
+    'You are overly confident on work calls.',
+    'Your work calls run optimistic.',
+    'Work calls came true more often than you said.',
+    'More work calls happened than you expected.',
+    'Your work calls understated how often things happen.',
+    'You underrate your work calls.',
+    'You are not confident enough on work calls.',
+    'Your work calls run cautious.',
+    'Your work numbers look conservative.',
+    'Compared with what you said, work came true at 77%.',
+    'Your confidence runs high in work.',
+  ].map((message) => ({
+    name: `a lean in plain words for a category with no lean: "${message}"`,
+    insight: { type: 'strength', category: 'work', message, evidence: 88 },
+  })),
+  {
+    name: 'a comparison with what was said outside an over/under card',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance came true less often than you expected.', evidence: 80 },
+  },
+  {
+    name: 'a comparison with what was said in an overall card',
+    insight: { type: 'pattern', category: 'overall', message: 'Your calls came true less often than you said.', evidence: 81 },
+  },
+  {
+    name: 'a comparison the wrong way for the card',
+    insight: over('More finance calls happened than you said.'),
+  },
+
+  // --- Item 4: the floors at 20 ---
+  {
+    name: 'the weekday score from 19 answers on the day',
+    context: DAY_19,
+    insight: { type: 'pattern', category: 'overall', message: 'Your Monday answers calibrate worst, at 58.', evidence: 58 },
+  },
+  {
+    name: 'a drift from halves of 19 and 20',
+    context: HALF_19,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points.', evidence: -6.5 },
+  },
+  {
+    name: 'a drift sent without its halves’ count (a build before 2026-11-19)',
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points.', evidence: -6.5 },
+  },
+  {
+    name: 'a drift’s halves’ count cited',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance compares halves of 22 answers.', evidence: 44 },
+  },
+
+  // --- Item 5: a real use of the category's word still names it ---
+  { name: 'work named by "your work calls" in a finance card', insight: over('Finance runs overconfident at 80%, and so do your work calls.') },
+  { name: 'work named by "at work" in a finance card', insight: over('Finance runs overconfident at 80%, unlike your calls at work.') },
+  { name: 'work named by "related to work" in a finance card', insight: over('Finance runs overconfident at 80%, unlike calls related to work.') },
+  {
+    name: '"well calibrated" as a claim, not an aim, for a category that leans',
+    insight: over(BASE, { suggestion: 'Finance is well calibrated now.' }),
+  },
+  { name: 'personal named by "your personal calls"', insight: over('Finance runs overconfident at 80%, and so do your personal calls.') },
+  {
+    name: 'finance named by "your financial calls" in a work card',
+    insight: { type: 'strength', category: 'work', message: 'Work is well calibrated, with a score of 88, as are your financial calls.', evidence: 88 },
+  },
+
+  // --- Item 8: money advice still drops ---
+  { name: 'a percentage of savings into bonds', insight: over(BASE, { suggestion: 'Move 55% of your savings into bonds.' }) },
+  { name: 'a percentage put aside', insight: over(BASE, { suggestion: 'Put 55% aside each month.' }) },
+  { name: 'shorting', insight: over(BASE, { suggestion: 'Short the market less often.' }) },
+
+  // --- Item 9: still only rounding ---
+  {
+    name: '59% for a rate of 0.575',
+    context: FLOAT_EDGE,
+    insight: { type: 'strength', category: 'finance', message: 'Finance came true 59% of the time.', evidence: 58 },
+  },
+
+  // --- Items 10 and 13: words ---
+  { name: 'legal advice given', insight: over(BASE, { suggestion: 'Get legal advice before finance calls.' }) },
+  { name: '"a couple"', insight: over('A couple of finance calls ran overconfident.') },
+  { name: '"a pair"', insight: over('A pair of finance calls ran overconfident.') },
+  { name: '"a fifth"', insight: over('A fifth of finance calls ran overconfident.') },
+  { name: 'a badge: Sharp', insight: { type: 'strength', category: 'work', message: 'Work is sharp at 88.', evidence: 88 } },
+  { name: 'a badge: Getting started', insight: { type: 'encouragement', category: 'health', message: 'You are getting started in health with 4 answers.', evidence: 4 } },
+  { name: 'a badge: Guesser', insight: { type: 'strength', category: 'work', message: 'Work is past Guesser at 88.', evidence: 88 } },
+  { name: 'hire an accountant', insight: over(BASE, { suggestion: 'Hire an accountant for finance calls.' }) },
+  { name: 'find a therapist', insight: over(BASE, { suggestion: 'Find a therapist.' }) },
+  {
+    name: '988 as a line to call',
+    context: TOTAL_988,
+    insight: { type: 'pattern', category: 'overall', message: 'You have 988 scored answers. Call 988 if this feels heavy.', evidence: 988 },
+  },
 ];
 
 /** What a validator kept, without the client's receipt annotation. */
@@ -441,6 +861,16 @@ describe('Coach lockstep — fixtures the server accepts as input', () => {
     ['THIN', THIN],
     ['THIN_COINCIDENT', THIN_COINCIDENT],
     ['FINANCE_CALIBRATED', FINANCE_CALIBRATED],
+    ['DAY_19', DAY_19],
+    ['DAY_20', DAY_20],
+    ['RICH', RICH],
+    ['HALF_19', HALF_19],
+    ['HALF_20', HALF_20],
+    ['COUNTS', COUNTS],
+    ['WORK_5_APART', WORK_5_APART],
+    ['WORK_4_APART', WORK_4_APART],
+    ['FLOAT_EDGE', FLOAT_EDGE],
+    ['TOTAL_988', TOTAL_988],
   ])('%s is a payload the function takes', (_name, context) => {
     expect(parseContext(context)).toEqual(context);
   });
@@ -501,6 +931,23 @@ describe('Coach lockstep — whole responses', () => {
     const raw = { insights: [over(BASE)], safe: false };
     expect(clientValidate(raw, CTX)).toEqual({ insights: [], safe: false });
     expect(serverValidate(raw, CTX)).toEqual({ insights: [], safe: false });
+  });
+
+  // Item 12: the function says how many it dropped, so the app can tell
+  // "nothing it could back" from "nothing to say".
+  it('has the function say how many insights it dropped', () => {
+    const bad = over('When you say 80%, it happens about 30% of the time.');
+    expect(serverValidate({ insights: [bad, over(BASE), bad], safe: true }, CTX)).toEqual({
+      insights: [expect.objectContaining({ message: BASE })],
+      safe: true,
+      dropped: 2,
+    });
+    expect(serverValidate({ insights: [bad], safe: true }, CTX)).toEqual({ insights: [], safe: true, dropped: 1 });
+  });
+
+  it('has the function leave the count off when nothing was dropped', () => {
+    expect(serverValidate({ insights: [over(BASE)], safe: true }, CTX)).not.toHaveProperty('dropped');
+    expect(serverValidate({ insights: [], safe: true }, CTX)).toEqual({ insights: [], safe: true });
   });
 
   // An added category never reaches the Coach (D39); if a payload ever held
@@ -597,9 +1044,11 @@ const HISTORIES: Array<[string, Prediction[]]> = [
   ['one answer', run('work', 1, 1, 70)],
   ['a thin start across categories', [...run('health', 4, 3, 70), ...run('finance', 3, 1, 80, 4)]],
   ['one rich category', run('finance', 30, 16, 80)],
+  // 41 a category, one a day: about 29 on each weekday (past 20), and each
+  // category's drift from halves of 20 and 21.
   [
-    'every built-in past the gate, a weekday past its floor',
-    CATEGORIES.flatMap((c, i) => run(c, 21, 12 + i, 60 + i * 5, i * 21)),
+    'every built-in past the gate, a weekday past its floor, every drift from halves of 20',
+    CATEGORIES.flatMap((c, i) => run(c, 41, 24 + i, 60 + i * 5, i * 41)),
   ],
   ['an added category beside built-ins', [...run('work', 25, 20, 70), ...run('c-abcd1234' as Category, 30, 10, 90, 25)]],
 ];
@@ -618,14 +1067,27 @@ describe('Coach compatibility — what this build sends', () => {
     expect(deployedParseContext(contextFor(predictions))).toBe(true);
   });
 
-  it('sends the weekday’s three and every drift when all are past their gates, within the cap', () => {
+  it('sends the weekday’s three and every drift with its halves’ count when all are past their gates, within the cap', () => {
     const context = contextFor(HISTORIES[3][1]);
     const kinds = context.patterns.map((p) => p.kind);
     expect(kinds).toEqual(
       expect.arrayContaining(['weakest_day_of_week', 'weakest_day_score', 'weakest_day_answers']),
     );
-    expect(kinds.filter((k) => k.startsWith('drift_'))).toHaveLength(CATEGORIES.length);
+    expect(kinds.filter((k) => k.startsWith('drift_half_answers_'))).toHaveLength(CATEGORIES.length);
+    expect(kinds.filter((k) => /^drift_(?!half_answers_)/.test(k))).toHaveLength(CATEGORIES.length);
+    expect(context.patterns.filter((p) => p.kind.startsWith('drift_half_answers_')).map((p) => p.value)).toEqual(
+      CATEGORIES.map(() => 20),
+    );
+    expect(context.patterns.length).toBeLessThanOrEqual(SERVER_MAX_PATTERNS);
     expect(context.by_category.length).toBeLessThanOrEqual(SERVER_MAX_CATEGORIES);
+  });
+
+  // The weekday's floor and the drift's halves are both 20 now, so a history
+  // that cleared 2026-11-18's floors (10 on the day, 20 in the category) sends
+  // neither, and nothing about either reaches the model.
+  it('sends no weekday from 15 answers on the day and no drift from halves of 10', () => {
+    const context = contextFor(CATEGORIES.flatMap((c, i) => run(c, 21, 12 + i, 60 + i * 5, i * 21)));
+    expect(context.patterns).toEqual([]);
   });
 });
 
@@ -669,6 +1131,18 @@ const OLDER_PAYLOADS: Array<[string, CoachContext]> = [
         { kind: 'weakest_day_score', value: 0 },
         ...CATEGORIES.map((c) => ({ kind: `drift_${c}`, value: 100 })),
       ],
+    },
+  ],
+  [
+    // What a build from this branch before 2026-11-19 sends: the weekday from
+    // 10 on the day with its count, drifts from 20 answers with no halves' count.
+    'the shape of 2026-11-18',
+    {
+      overall: { calibration_rating: 70, total_resolved: 60 },
+      by_category: [
+        { category: 'work', resolved: 25, calibration_score: 81, mean_stated_confidence: 72, actual_rate: 0.68, direction: 'calibrated' },
+      ],
+      patterns: [...WEEKDAY(12), { kind: 'drift_work', value: 4.2 }],
     },
   ],
 ];

@@ -192,10 +192,15 @@ export function ratingChangeLine(before: number, after: number, explain = true):
   return explain ? `${move} ${RATING_WHY}` : move;
 }
 
-/** The rating as Today shows it, or null while it's provisional. */
+/**
+ * The rating as Today shows it, or null while it's provisional, or while the
+ * stats are stale: after a write that failed and a reload that failed too,
+ * memory may hold numbers the database doesn't, so no "moved from 91 to 89"
+ * is ever built from them (statsStore `stale`, review round 5).
+ */
 function shownRating(): number | null {
-  const stat = useStatsStore.getState().userStat;
-  if (!stat || stat.rating_is_provisional) return null;
+  const { userStat: stat, stale } = useStatsStore.getState();
+  if (stale || !stat || stat.rating_is_provisional) return null;
   return Math.round(stat.calibration_rating);
 }
 

@@ -30,7 +30,15 @@ prediction was logged (`isSameDayAnswer`) stays in History but counts toward not
 calibrated. The stats store drops them first (`scoredOnly`), so every row below
 marked "scored" excludes them. "Logged" means `scoredFrom(p)`: `created_at`, or
 `title_edited_at` when the words changed later (D45), since new words are a new
-prediction. Derived on every read, never stored.
+prediction. Derived on every read, never stored as a verdict. **Each moment's day is
+read where it happened** (D69 (f), 2026-11-19): the prediction stores the phone's UTC
+offset when it was logged, answered and reworded (`created_utc_offset_min`,
+`resolved_utc_offset_min`, `title_edited_utc_offset_min`, SQLite migration 018), and
+`dayNumberAt` takes each moment's calendar day in its own offset, so moving the phone to
+another zone doesn't re-score past answers. A moment with no stored offset (rows from
+before migration 018, or one from another phone on an older build) is read in the phone's
+current zone, as before. The offsets sync only once Supabase migration 011 is applied and
+`UTC_OFFSET_SYNC` is on.
 
 | Aggregate | Counts pending? | Counts skipped? | Counts yes/no? |
 |-----------|:---:|:---:|:---:|

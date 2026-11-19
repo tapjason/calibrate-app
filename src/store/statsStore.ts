@@ -192,6 +192,24 @@ interface StatsState {
   loadForUser: (userId: string) => Promise<void>;
   /** Re-run the engine over all of a user's predictions and persist. */
   recomputeForUser: (userId: string) => Promise<void>;
+  /**
+   * Whether the numbers held here may not match the database (review round
+   * 5): a write rolled back after its recompute had set them, and reading
+   * them again failed too. While true, the rating before an answer is read
+   * as unknown (`noteRatingBefore`), the next recompute takes its "before"
+   * from the database, and the next load or recompute clears it. A screen
+   * that reads `userStat` for a "before" figure should read none while this
+   * is true.
+   */
+  stale: boolean;
+  /** The derived numbers held now, for a failed write to put back. */
+  heldStats: () => HeldStats;
+  /**
+   * After a failed write whose stats reload failed too: put back `held` (the
+   * numbers as they were when the write began) if given, drop any milestone
+   * or badge fall, and mark the stats stale.
+   */
+  markStale: (held?: HeldStats | null) => void;
 }
 
 const EMPTY_CALIBRATION: CalibrationResult = { rating: 0, buckets: [] };
@@ -261,6 +279,27 @@ type DerivedStats = Pick<
   | 'perfect'
   | 'coverageGap'
 > & { userStat: UserStat };
+
+/**
+ * The derived numbers held in memory, the user's stat included (null before
+ * any), as `heldStats` reads them and `markStale` puts them back.
+ */
+export type HeldStats = Omit<DerivedStats, 'userStat'> & { userStat: UserStat | null };
+
+/**
+ * The stats as the database last stored them, for a recompute whose memory
+ * is stale: what the last committed write left, since every write stores its
+ * recompute in its own transaction. Read before the rebuild writes new ones.
+ */
+async function storedStats(
+  userId: string,
+): Promise<{ userStat: UserStat | null; categoryStats: CategoryStat[] }> {
+  const [userStat, categoryStats] = await Promise.all([
+    getUserStat(userId),
+    listCategoryStats(userId),
+  ]);
+  return { userStat, categoryStats };
+}
 
 /**
  * Re-run the engine over all of a user's predictions and persist the result.
@@ -370,12 +409,39 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   coverageGap: EMPTY_COVERAGE_GAP,
   milestone: null,
   tierDrop: null,
+  stale: false,
 
   clearMilestone: () => set({ milestone: null, tierDrop: null }),
 
+  heldStats: () => {
+    const s = get();
+    return {
+      userStat: s.userStat,
+      categoryStats: s.categoryStats,
+      nextBadges: s.nextBadges,
+      calibration: s.calibration,
+      categoryCalibration: s.categoryCalibration,
+      categoryRanges: s.categoryRanges,
+      furthestOff: s.furthestOff,
+      categoryCounts: s.categoryCounts,
+      overallCounts: s.overallCounts,
+      trends: s.trends,
+      ratingRange: s.ratingRange,
+      brier: s.brier,
+      brierBaseline: s.brierBaseline,
+      brierEdge: s.brierEdge,
+      perfect: s.perfect,
+      coverageGap: s.coverageGap,
+    };
+  },
+
+  markStale: (held) =>
+    set({ ...(held ?? {}), stale: true, milestone: null, tierDrop: null }),
+
   ratingBeforeAnswer: null,
   noteRatingBefore: (predictionId) => {
-    const stat = get().userStat;
+    // Unknown while stale: memory may hold a rating the database doesn't.
+    const stat = get().stale ? null : get().userStat;
     const rating = stat && !stat.rating_is_provisional ? Math.round(stat.calibration_rating) : null;
     set({ ratingBeforeAnswer: { predictionId, rating } });
   },
@@ -403,7 +469,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     // badges, until the next answer. A rebuild is cheap (N is small) and sets
     // no milestone: reopening the app is not an achievement.
     if (await getUserStat(userId)) {
-      set(await rebuildStats(userId));
+      set({ ...(await rebuildStats(userId)), stale: false });
       return;
     }
     // Nothing computed yet (no write since install or erase): show what the
@@ -433,11 +499,19 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       brierEdge: null,
       perfect: null,
       coverageGap: computeCoverageGap([...pending, ...answered]),
+      stale: false,
     });
   },
 
   recomputeForUser: async (userId) => {
-    const prev = get();
+    const held = get();
+    // "Before" for the milestone and a badge's fall: memory, or, while it is
+    // stale, what the database stored at the last committed write (review
+    // round 5). A moment is never claimed from numbers that may be wrong, and
+    // a write retried after a failure still earns the line it crosses.
+    const prev = held.stale
+      ? await storedStats(userId)
+      : { userStat: held.userStat, categoryStats: held.categoryStats };
     const next = await rebuildStats(userId);
     const milestone = detectMilestone(
       prev.userStat,
@@ -445,10 +519,12 @@ export const useStatsStore = create<StatsState>((set, get) => ({
       next.userStat,
       next.categoryStats,
     );
-    // Keep an uncelebrated milestone rather than overwrite it with null.
+    // Keep an uncelebrated milestone rather than overwrite it with null
+    // (markStale already dropped any from a write that didn't land).
     set({
       ...next,
-      milestone: milestone ?? prev.milestone,
+      stale: false,
+      milestone: milestone ?? held.milestone,
       tierDrop: detectTierDrop(prev.categoryStats, next.categoryStats),
     });
   },

@@ -5,23 +5,26 @@
 // into the public Prediction shape — only the sync helpers at the bottom of
 // this file return rows that include `updated_at`.
 
-import type {
-  Prediction,
-  PredictionDeletion,
-  PredictionWireRow,
-  InsertPrediction,
-  GetPrediction,
-  ListPendingPredictions,
-  ListResolvedPredictions,
-  ResolvePrediction,
-  DeletePrediction,
-  SetReflection,
-  CorrectPredictionOutcome,
-  RefilePrediction,
-  UpdatePrediction,
+import { UTC_OFFSET_SYNC } from '@/constants/app';
+import {
+  isUtcOffsetMinutes,
+  type Prediction,
+  type PredictionDeletion,
+  type PredictionWireRow,
+  type InsertPrediction,
+  type GetPrediction,
+  type ListPendingPredictions,
+  type ListResolvedPredictions,
+  type ResolvePrediction,
+  type AnswerSkippedPrediction,
+  type DeletePrediction,
+  type SetReflection,
+  type CorrectPredictionOutcome,
+  type RefilePrediction,
+  type UpdatePrediction,
 } from '@/types';
 
-import { getDb } from './client';
+import { afterQueuedTransactions, getDb } from './client';
 
 // Wire shape: integrity_bonus is INTEGER 0/1, dirty is INTEGER 0/1 on disk.
 // Convert at the boundary.
@@ -39,6 +42,10 @@ interface PredictionRow {
   integrity_bonus: number;
   /** Roadmap D45; null when never reworded. */
   title_edited_at: string | null;
+  /** SQLite migration 018 (owner decision 2026-11-19); null when unknown. */
+  created_utc_offset_min: number | null;
+  resolved_utc_offset_min: number | null;
+  title_edited_utc_offset_min: number | null;
   updated_at: string;
   dirty: number;
 }
@@ -49,6 +56,29 @@ interface PredictionRow {
  */
 function rewordedField(r: PredictionRow): { title_edited_at?: string } {
   return r.title_edited_at ? { title_edited_at: r.title_edited_at } : {};
+}
+
+type OffsetFields = Pick<
+  Prediction,
+  'created_utc_offset_min' | 'resolved_utc_offset_min' | 'title_edited_utc_offset_min'
+>;
+
+/**
+ * Each stored UTC offset only when there is one, like `title_edited_at`: a
+ * row from before migration 018 reads exactly as it did.
+ */
+function offsetFields(r: PredictionRow): OffsetFields {
+  const out: OffsetFields = {};
+  if (r.created_utc_offset_min !== null && r.created_utc_offset_min !== undefined) {
+    out.created_utc_offset_min = r.created_utc_offset_min;
+  }
+  if (r.resolved_utc_offset_min !== null && r.resolved_utc_offset_min !== undefined) {
+    out.resolved_utc_offset_min = r.resolved_utc_offset_min;
+  }
+  if (r.title_edited_utc_offset_min !== null && r.title_edited_utc_offset_min !== undefined) {
+    out.title_edited_utc_offset_min = r.title_edited_utc_offset_min;
+  }
+  return out;
 }
 
 function rowToPrediction(r: PredictionRow): Prediction {
@@ -65,6 +95,7 @@ function rowToPrediction(r: PredictionRow): Prediction {
     reflection: r.reflection,
     integrity_bonus: r.integrity_bonus === 1,
     ...rewordedField(r),
+    ...offsetFields(r),
   };
 }
 
@@ -75,6 +106,11 @@ function rowToPrediction(r: PredictionRow): Prediction {
  * another row had it, was written with NULL, whatever date the server held
  * for it. Each row now states its own date, so the words and their date go
  * up together.
+ *
+ * The three UTC offsets follow the same rule once `UTC_OFFSET_SYNC` is on:
+ * all three on every row, null included. While it's off, no row names them,
+ * since the live table doesn't have the columns yet and an upsert naming one
+ * fails the whole batch.
  */
 function rowToWire(r: PredictionRow): PredictionWireRow {
   return {
@@ -90,22 +126,63 @@ function rowToWire(r: PredictionRow): PredictionWireRow {
     reflection: r.reflection,
     integrity_bonus: r.integrity_bonus === 1,
     title_edited_at: r.title_edited_at ?? null,
+    ...(UTC_OFFSET_SYNC
+      ? {
+          created_utc_offset_min: offsetOrNull(r.created_utc_offset_min),
+          resolved_utc_offset_min: offsetOrNull(r.resolved_utc_offset_min),
+          title_edited_utc_offset_min: offsetOrNull(r.title_edited_utc_offset_min),
+        }
+      : {}),
     updated_at: r.updated_at,
   };
 }
 
+/** The last `updated_at` this module stamped, in ms since the epoch. */
+let lastStampMs = 0;
+
+/**
+ * The `updated_at` for a local write: now, and always later than the last one
+ * stamped here, even within one millisecond (review round 5).
+ * `markPredictionSynced` clears `dirty` only when the row's `updated_at` still
+ * equals the one pushed, so two writes sharing a millisecond could let a push
+ * that read the first mark the second clean, and the server would never get
+ * it. In memory only: a restart starts again from the clock.
+ */
 function nowIso(): string {
-  return new Date().toISOString();
+  lastStampMs = Math.max(Date.now(), lastStampMs + 1);
+  return new Date(lastStampMs).toISOString();
 }
 
+/** A usable offset (a whole number of minutes, −840…840), else null. */
+function offsetOrNull(value: unknown): number | null {
+  return isUtcOffsetMinutes(value) ? value : null;
+}
+
+/**
+ * The device's UTC offset at `iso`, in minutes east of UTC, for a write whose
+ * caller didn't say. Null for an unreadable time.
+ */
+function deviceOffsetAt(iso: string): number | null {
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return null;
+  // `+ 0` turns -0 (UTC) into 0.
+  return offsetOrNull(Math.round(-t.getTimezoneOffset()) + 0);
+}
+
+/**
+ * Inserted with exactly the offsets `p` carries (none means unknown): the
+ * store states the logging offset of a new prediction, and demo or older
+ * rows are inserted with none, so they read as every row did before.
+ */
 export const insertPrediction: InsertPrediction = async (p) => {
   const now = nowIso();
   await getDb().run(
     `INSERT INTO predictions
        (id, user_id, title, category, confidence, created_at, due_date,
         status, resolved_at, reflection, integrity_bonus, title_edited_at,
+        created_utc_offset_min, resolved_utc_offset_min, title_edited_utc_offset_min,
         updated_at, dirty)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [
       p.id,
       p.user_id,
@@ -119,6 +196,9 @@ export const insertPrediction: InsertPrediction = async (p) => {
       p.reflection,
       p.integrity_bonus ? 1 : 0,
       p.title_edited_at ?? null,
+      offsetOrNull(p.created_utc_offset_min),
+      offsetOrNull(p.resolved_utc_offset_min),
+      offsetOrNull(p.title_edited_utc_offset_min),
       now,
     ],
   );
@@ -152,18 +232,23 @@ export const listResolvedPredictions: ListResolvedPredictions = async (userId) =
   return rows.map(rowToPrediction);
 };
 
-export const resolvePrediction: ResolvePrediction = async (id, outcome, reflection) => {
+export const resolvePrediction: ResolvePrediction = async (id, outcome, reflection, opts) => {
   const now = nowIso();
+  // When it was answered, with the offset the phone was in then (owner
+  // decision 2026-11-19): the store states both, from one clock reading.
+  const at = opts?.at ?? now;
+  const offset =
+    opts && opts.utcOffsetMin !== undefined ? offsetOrNull(opts.utcOffsetMin) : deviceOffsetAt(at);
   // `AND status = 'pending'` makes a second resolve a no-op instead of
   // overwriting the original outcome/resolved_at. The UI already guards
   // this, but defense-in-depth matters once notifications can deep-link
   // into Resolve twice (e.g. user taps a stale push).
   await getDb().run(
     `UPDATE predictions
-       SET status = ?, resolved_at = ?, reflection = ?,
+       SET status = ?, resolved_at = ?, resolved_utc_offset_min = ?, reflection = ?,
            updated_at = ?, dirty = 1
        WHERE id = ? AND status = 'pending'`,
-    [outcome, now, reflection ?? null, now, id],
+    [outcome, at, offset, reflection ?? null, now, id],
   );
 };
 
@@ -184,26 +269,43 @@ export const setPredictionReflection: SetReflection = async (id, reflection) => 
 };
 
 /**
- * Put a "Can't tell" back to open, and only a "Can't tell": the guard is in
- * the statement, so a Yes or No pulled from another phone a moment earlier
- * is never wiped (review, 2026-11-08). Answering a skip (D45) runs this and
- * the answer in one transaction.
+ * Answer a "Can't tell" with a Yes or No (D45), in one statement: status,
+ * `resolved_at`, its offset, the reflection, `updated_at` and `dirty` change
+ * at once, and only on a row still skipped, so a Yes or No pulled from
+ * another phone a moment earlier is never overwritten (review, 2026-11-08).
+ * The answer gets its own time, offset and correction window; the skip's
+ * note goes with the skip.
+ *
+ * It used to reopen the row and then answer it, two statements in one
+ * transaction (review round 5): sync's reads don't queue behind a
+ * transaction, so a push could read the open row in between, and with both
+ * writes in one millisecond mark the answered row clean; the server, keeping
+ * its Can't tell, then brought it back over the answer. There is no open
+ * state in between now, and nothing here puts an answer back to open.
  */
-export async function unskipPrediction(id: string): Promise<void> {
+export const answerSkippedPrediction: AnswerSkippedPrediction = async (
+  id,
+  outcome,
+  reflection,
+  opts,
+) => {
   const now = nowIso();
+  const at = opts?.at ?? new Date().toISOString();
+  const offset =
+    opts && opts.utcOffsetMin !== undefined ? offsetOrNull(opts.utcOffsetMin) : deviceOffsetAt(at);
   await getDb().run(
     `UPDATE predictions
-       SET status = 'pending', resolved_at = NULL, reflection = NULL,
+       SET status = ?, resolved_at = ?, resolved_utc_offset_min = ?, reflection = ?,
            updated_at = ?, dirty = 1
        WHERE id = ? AND status = 'skipped'`,
-    [now, id],
+    [outcome, at, offset, reflection ?? null, now, id],
   );
-}
+};
 
 /**
  * Correct a Yes to a No or back (roadmap D34). `resolved_at` stays as it was,
- * so the correction window is measured from the first answer and correcting
- * can't stretch it. Only between Yes and No: never to "Can't tell", which is
+ * and its offset with it, so the correction window is measured from the
+ * first answer, correcting can't stretch it, and a same-day answer stays one. Only between Yes and No: never to "Can't tell", which is
  * how a miss used to be parked (blind playtest 2026-11-01). The window itself
  * is the store's to check; it knows the time.
  */
@@ -236,21 +338,39 @@ export const refilePrediction: RefilePrediction = async (id, category) => {
 export const updatePrediction: UpdatePrediction = async (id, edit, opts) => {
   const now = nowIso();
   // Whether the words changed is the store's call (the engine's titleKey,
-  // D45); a rewording only ever moves title_edited_at forward.
+  // D45); a rewording only ever moves title_edited_at forward, and its
+  // offset goes with it (owner decision 2026-11-19).
+  const rewordedAt = opts?.rewordedAt ?? null;
+  const rewordedOffset =
+    rewordedAt === null
+      ? null
+      : opts?.rewordedUtcOffsetMin !== undefined
+        ? offsetOrNull(opts.rewordedUtcOffsetMin)
+        : deviceOffsetAt(rewordedAt);
   await getDb().run(
     `UPDATE predictions
        SET title = ?, category = ?, due_date = ?,
            title_edited_at = COALESCE(?, title_edited_at),
+           title_edited_utc_offset_min =
+             CASE WHEN ? IS NOT NULL THEN ? ELSE title_edited_utc_offset_min END,
            updated_at = ?, dirty = 1
        WHERE id = ? AND status = 'pending'`,
-    [edit.title, edit.category, edit.due_date, opts?.rewordedAt ?? null, now, id],
+    [edit.title, edit.category, edit.due_date, rewordedAt, rewordedAt, rewordedOffset, now, id],
   );
 };
 
 /**
- * Record a late due-date move (step 173), or late new words (D62, with
- * `fromDue` equal to `toDue`): once per prediction, the first kept. Device-local, never synced. No transaction of its own: the store
- * calls it beside the update.
+ * Record a late due-date move (step 173), late new words (D62) or a late
+ * category change (owner decision 2026-11-19), the last two with `fromDue`
+ * equal to `toDue` when the date stays: once per prediction, the first kept,
+ * so the one Insights line counts each prediction once whatever changed.
+ * Device-local, never synced, kept after a delete. No transaction of its
+ * own: the store calls it beside the update, after `updatePrediction`.
+ *
+ * Only an edit that landed is recorded: the statement requires this user's
+ * prediction to be still open, as the update just required. One answered
+ * from another phone between the store's check and its transaction (the
+ * update then changed nothing) leaves the count alone, as `noteRefile` does.
  */
 export async function recordPostponement(
   predictionId: string,
@@ -260,12 +380,18 @@ export async function recordPostponement(
 ): Promise<void> {
   await getDb().run(
     `INSERT OR IGNORE INTO prediction_postponements (prediction_id, user_id, moved_at, from_due, to_due)
-       VALUES (?, ?, ?, ?, ?)`,
-    [predictionId, userId, nowIso(), fromDue, toDue],
+       SELECT ?, ?, ?, ?, ?
+       WHERE EXISTS (SELECT 1 FROM predictions
+                       WHERE id = ? AND user_id = ? AND status = 'pending')`,
+    [predictionId, userId, nowIso(), fromDue, toDue, predictionId, userId],
   );
 }
 
-/** How many predictions had a late due-date move on this phone (step 173). */
+/**
+ * How many predictions had a late change on this phone: a due date moved
+ * later (step 173), new words (D62) or another category (2026-11-19), each
+ * prediction once.
+ */
 export async function countPostponements(userId: string): Promise<number> {
   const row = await getDb().get<{ n: number }>(
     `SELECT COUNT(*) AS n FROM prediction_postponements WHERE user_id = ?`,
@@ -403,6 +529,24 @@ export async function listDirtyPredictions(
   return rows.map(rowToWire);
 }
 
+/**
+ * How many of `userId`'s changes this phone holds that the server doesn't
+ * have yet: predictions still marked dirty (a log, answer, edit or note not
+ * pushed, or an answer the pull kept and must push back) and deletions not
+ * yet pushed. What sign-out would lose if it removed the account's rows now.
+ * Queued analytics events aren't counted: they are no one's record.
+ */
+export async function countUnsynced(userId: string): Promise<number> {
+  const row = await getDb().get<{ n: number }>(
+    `SELECT
+       (SELECT COUNT(*) FROM predictions WHERE user_id = ? AND dirty = 1)
+       + (SELECT COUNT(*) FROM prediction_deletions WHERE user_id = ? AND pushed_at IS NULL)
+       AS n`,
+    [userId, userId],
+  );
+  return Number(row?.n ?? 0);
+}
+
 /** Deletions not yet pushed for `userId`, oldest first (roadmap D25). */
 export async function listPendingDeletions(userId: string): Promise<string[]> {
   const rows = await getDb().all<{ id: string }>(
@@ -412,6 +556,30 @@ export async function listPendingDeletions(userId: string): Promise<string[]> {
     [userId],
   );
   return rows.map((r) => r.id);
+}
+
+/**
+ * `listDirtyPredictions`, read once every queued transaction has settled
+ * (review round 5), for the push. On the one connection an unqueued read
+ * runs between a transaction's statements and sees its uncommitted writes:
+ * pushed, a write that then rolled back would sit on the server, and the
+ * next pull would bring it back. The same rows and the same errors as
+ * `listDirtyPredictions`. Never call it inside a `withTransaction` callback.
+ */
+export async function listDirtyPredictionsSettled(
+  userId: string,
+): Promise<PredictionWireRow[]> {
+  return await afterQueuedTransactions(() => listDirtyPredictions(userId));
+}
+
+/**
+ * `listPendingDeletions`, read once every queued transaction has settled,
+ * for pushing deletions: a delete that rolls back is never sent. The same
+ * ids and the same errors as `listPendingDeletions`. Never call it inside a
+ * `withTransaction` callback.
+ */
+export async function listPendingDeletionsSettled(userId: string): Promise<string[]> {
+  return await afterQueuedTransactions(() => listPendingDeletions(userId));
 }
 
 /**
@@ -462,31 +630,92 @@ export async function getPredictionUpdatedAt(
  * a column it doesn't name as it was, so they can't clear a date either. When
  * this phone's row is the newer one, pull doesn't call this at all, and its
  * own words and date stand.
+ *
+ * **No answer goes back to open, and no Yes or No becomes "Can't tell"**
+ * (D34, D45; record audit 2026-11-19; main session's decision the same day,
+ * the strict direction). A phone that hadn't pulled could edit its open copy
+ * of a prediction answered elsewhere, and that newer row, whole, reopened the
+ * answer here. Now, when this phone's row is answered (Yes, No or Can't tell)
+ * and the pulled one is open, or this phone's is a Yes or No and the pulled
+ * one a Can't tell, **this phone's whole row stands**: the answer (status,
+ * `resolved_at`, reflection), and also the words, category, due date,
+ * `title_edited_at` and every offset. The pulled copy is stale by definition
+ * (its phone didn't know about the answer), so none of its edits land on an
+ * answered prediction: new words after an answer (D45) or a move to another
+ * category that nothing counted (D65). The row is marked dirty with an
+ * `updated_at` past both its own and the pulled one, so the answered row goes
+ * back up and every phone ends on it. Yes ↔ No between phones stays last
+ * write wins ("Change answer"), and a Can't tell can still become a Yes or No
+ * (a skip is answered later): there the newer row wins whole, as before. One
+ * statement, so nothing written between a read and the write can slip past
+ * the rule.
+ *
+ * **The UTC offsets** (owner decision 2026-11-19): with `UTC_OFFSET_SYNC` on,
+ * a winning row brings its own, null included, like `title_edited_at`. While
+ * it's off the server has none to send: this phone keeps its offset for a
+ * moment the pulled row shares (the same instant, however the server wrote
+ * it), and a moment the pulled row changed has none, so it is read in this
+ * phone's zone, as before.
  */
 export async function upsertPredictionFromRemote(
   row: PredictionWireRow,
 ): Promise<void> {
+  // This phone's answered row stands when the pulled one would undo it (see
+  // above).
+  const keepLocal = `(
+       (predictions.status IN ('resolved_yes', 'resolved_no', 'skipped')
+          AND excluded.status = 'pending')
+       OR (predictions.status IN ('resolved_yes', 'resolved_no')
+          AND excluded.status = 'skipped'))`;
+  // Each column: this phone's value when its row stands, else `otherwise`.
+  const unlessKept = (column: string, otherwise = `excluded.${column}`) =>
+    `CASE WHEN ${keepLocal} THEN predictions.${column} ELSE ${otherwise} END`;
+  // A pulled row's offset, or with the flag off this phone's own for the same
+  // moment and none for a moment the pulled row changed.
+  const offsetFrom = (column: string, moment: string) =>
+    UTC_OFFSET_SYNC
+      ? `excluded.${column}`
+      : `CASE WHEN julianday(excluded.${moment}) IS julianday(predictions.${moment})
+              THEN predictions.${column} ELSE NULL END`;
+  const incoming = (value: number | null | undefined) =>
+    UTC_OFFSET_SYNC ? offsetOrNull(value) : null;
   await getDb().run(
     `INSERT INTO predictions
        (id, user_id, title, category, confidence, created_at, due_date,
         status, resolved_at, reflection, integrity_bonus, title_edited_at,
+        created_utc_offset_min, resolved_utc_offset_min, title_edited_utc_offset_min,
         updated_at, dirty)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
      ON CONFLICT(id) DO UPDATE SET
-       user_id         = excluded.user_id,
-       title           = excluded.title,
-       category        = excluded.category,
-       confidence      = excluded.confidence,
-       created_at      = excluded.created_at,
-       due_date        = excluded.due_date,
-       status          = excluded.status,
-       resolved_at     = excluded.resolved_at,
-       reflection      = excluded.reflection,
-       integrity_bonus = excluded.integrity_bonus,
+       user_id         = ${unlessKept('user_id')},
+       title           = ${unlessKept('title')},
+       category        = ${unlessKept('category')},
+       confidence      = ${unlessKept('confidence')},
+       created_at      = ${unlessKept('created_at')},
+       due_date        = ${unlessKept('due_date')},
+       status          = ${unlessKept('status')},
+       resolved_at     = ${unlessKept('resolved_at')},
+       reflection      = ${unlessKept('reflection')},
+       integrity_bonus = ${unlessKept('integrity_bonus')},
        -- With the words it came with (D45), null included: see above.
-       title_edited_at = excluded.title_edited_at,
-       updated_at      = excluded.updated_at,
-       dirty           = 0`,
+       title_edited_at = ${unlessKept('title_edited_at')},
+       created_utc_offset_min = ${unlessKept(
+         'created_utc_offset_min',
+         offsetFrom('created_utc_offset_min', 'created_at'),
+       )},
+       resolved_utc_offset_min = ${unlessKept(
+         'resolved_utc_offset_min',
+         offsetFrom('resolved_utc_offset_min', 'resolved_at'),
+       )},
+       title_edited_utc_offset_min = ${unlessKept(
+         'title_edited_utc_offset_min',
+         offsetFrom('title_edited_utc_offset_min', 'title_edited_at'),
+       )},
+       -- Past the pulled time (laterThan) and never behind this phone's own,
+       -- in the text order sync compares by.
+       updated_at      = CASE WHEN ${keepLocal} THEN MAX(?, predictions.updated_at)
+                              ELSE excluded.updated_at END,
+       dirty           = CASE WHEN ${keepLocal} THEN 1 ELSE 0 END`,
     [
       row.id,
       row.user_id,
@@ -500,9 +729,27 @@ export async function upsertPredictionFromRemote(
       row.reflection,
       row.integrity_bonus ? 1 : 0,
       row.title_edited_at ?? null,
+      incoming(row.created_utc_offset_min),
+      incoming(row.resolved_utc_offset_min),
+      incoming(row.title_edited_utc_offset_min),
       row.updated_at,
+      laterThan(row.updated_at),
     ],
   );
+}
+
+/**
+ * A timestamp later than `iso` and no earlier than now, for an answer the
+ * pull kept: pushed back, it must be newer than the open copy it overrode,
+ * on the server and on the phone that wrote that copy (sync compares
+ * `updated_at` as text, and an ISO time ending `Z` sorts after the same
+ * instant written `+00:00`). The server may write microseconds, which not
+ * every engine parses, so they are cut to milliseconds first.
+ */
+function laterThan(iso: string): string {
+  const now = Date.now();
+  const parsed = typeof iso === 'string' ? Date.parse(iso.replace(/(\.\d{3})\d+/, '$1')) : NaN;
+  return new Date(Number.isNaN(parsed) ? now : Math.max(now, parsed + 1)).toISOString();
 }
 
 /**

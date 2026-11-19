@@ -154,9 +154,12 @@ Day by day:
 
 Three sources, none of which needs a new SDK:
 
-1. **The app's own counts.** Since step 186 (migration 007 applied) the app sends anonymous
+1. **The app's own counts.** Since step 186 (migration 007 applied) the app sends
    funnel counts for people without an account (Warm-up started and finished, a prediction
-   logged, answered, shared, practice done), with no identifier of any kind. The two queries
+   logged, answered, shared, practice done), with no account, device or install id. From
+   round 5's build they go only after the Warm-up's first screen has shown its line about
+   them and the Usage stats switch (D69 (b)), and not at all from a tester who turns the
+   switch off there or in You. The two queries
    at the end of `HUMAN_VERIFICATION.md` read the signed-in counts, and the note under them
    says how to add the guests'. Most testers won't sign in, so the guest counts are most of
    the data.

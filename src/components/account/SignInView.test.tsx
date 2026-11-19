@@ -6,13 +6,19 @@ import { useAuthStore } from '@/store/authStore';
 
 import { SignInView } from './SignInView';
 
-// The screen as shipped, with "Continue with Google" on (since 2026-11-18),
-// stated here so these hold whatever src/constants/app.ts says. Google itself
-// is SignInView.google.test.tsx's; the flag off, SignInView.googleOff.test.tsx's.
+// The screen with "Continue with Google" on (since 2026-11-18), stated here
+// so these hold whatever src/constants/app.ts says. Google itself is
+// SignInView.google.test.tsx's; the flag off, SignInView.googleOff.test.tsx's.
 jest.mock('@/constants/app', () => ({
   ...jest.requireActual('@/constants/app'),
   GOOGLE_SIGN_IN_ENABLED: true,
 }));
+
+// Create account on, as it comes back once a mail sender works in Supabase
+// (D69 (c)): the switch, the sign-up path and step 190's checklist are kept
+// for then, and these keep them working. Hidden, as shipped since
+// 2026-11-19, is SignInView.signUpOff.test.tsx's.
+jest.mock('./emailSignUp', () => ({ EMAIL_SIGN_UP_ENABLED: true }));
 
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
@@ -126,6 +132,8 @@ describe('SignInView', () => {
       expect(screen.getByTestId('account-mode-signUp')).toHaveTextContent('Create account');
       expect(screen.queryByTestId('account-password-hint')).toBeNull();
       expect(screen.queryByTestId('account-switch-mode')).toBeNull();
+      // With Create account offered, nothing sends someone new elsewhere.
+      expect(screen.queryByTestId('account-new-here')).toBeNull();
     });
 
     it('switches to Create account and back, clearing an error', async () => {

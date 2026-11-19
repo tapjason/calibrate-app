@@ -328,11 +328,12 @@ people reach the paywall; look at where Plus is offered.
 **Later, once trials convert:** re-test the trial length (one month on the annual plan)
 against real trial-to-paid data; it was chosen from medians (§2.1, §4).
 
-**Known blind spot.** A guest's funnel events go up with no id of any kind (D43,
-`APP_PRIVACY.md`), so the Day-0 aha rate counts everyone, signed in or not. But two guest
-rows can't be tied to one person, so a row that follows a person from one event to the
-next (the first real prediction on Day 0) still describes the signed-in cohort, which
-skews engaged. A per-install id would close that and contradicts the privacy label. The
+**Known blind spot.** A guest's funnel events go up with no account, device or install id
+(D43, `APP_PRIVACY.md`), and only after the Warm-up's first screen has said so with a
+switch (D69 (b)), so the Day-0 aha rate counts everyone who leaves usage stats on, signed in
+or not. But the queries can't tie two guest rows to one person, so a row that follows a
+person from one event to the next (the first real prediction on Day 0) still describes the
+signed-in cohort, which skews engaged. A per-install id would close that and contradicts the privacy label. The
 share gate doesn't have this problem: App Store Connect counts every download.
 
 ---

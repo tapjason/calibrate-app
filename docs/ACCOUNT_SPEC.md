@@ -1,9 +1,15 @@
 # Fairly Sure — Account Spec: sign-in, sign-out, deletion
 
-**As of:** 2026-11-18 · **Status:** built (§1–3). `delete-account` is deployed (redeployed
+**As of:** 2026-11-19 · **Status:** built (§1–3). `delete-account` is deployed (redeployed
 2026-11-15) with its secrets set; the security review's changes to it of 2026-11-18 (§3.3)
 are in the code and live only after the redeploy in `supabase/README.md` ("2026-11-18:
-migration 010 and two redeploys"). §2 and §3.2's client changes ship with the next build. Google sign-in (step 192) is on since 2026-11-18, after the owner's setup
+migration 010 and two redeploys"; the 2026-11-19 section redeploys it again). §2 and
+§3.2's client changes ship with the next build. Round 5 of the review (2026-11-19, roadmap
+D69; uncommitted on `builder/review-2026-11-18` when this was written) rewrote sign-out
+(§2: it now removes the account's rows), moved the session to the iPhone Keychain (§2.1),
+gave Sign in with Apple a nonce (§1) and hid Create account (§1). The Keychain needs
+`expo-secure-store` and the nonce `expo-crypto`, both native: a new development and
+TestFlight build. Google sign-in (step 192) is on since 2026-11-18, after the owner's setup
 (`HUMAN_VERIFICATION.md` A6); `GOOGLE_SIGN_IN_ENABLED` turns it off again. Not yet run on
 a device.
 
@@ -35,16 +41,35 @@ loop waits on any of it. The guest→account handoff is `authStore.handleSession
 | State | Shows |
 |---|---|
 | Guest | "Not signed in. Your predictions live only on this phone." and **Sign in** (routes to `/account`). At the bottom of You, **Erase your data on this phone** (§3.5). |
-| Signed in | "Signed in as …", or "Signed in with Apple." for a private-relay address, then "Your predictions are backed up." and **Sign out**. At the bottom, **Delete account**, in red. |
+| Signed in | "Signed in as …", or "Signed in with Apple." for a private-relay address, then "Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed, and the counts only this phone keeps, aren't backed up, so signing out removes them." and **Sign out** (§2). At the bottom, **Delete account**, in red. |
 
 **`app/account/index.tsx`**, the sign-in screen: on iOS the native
 `AppleAuthenticationButton` first, then "Continue with Google" while
-`GOOGLE_SIGN_IN_ENABLED` is on (below), then email: one form with a Sign in / Create account
-switch, the password rules for Create account only (8 or more characters, an uppercase
+`GOOGLE_SIGN_IN_ENABLED` is on (below), then email. **Create account is hidden** (owner
+decision 2026-11-19, D69 (c); `EMAIL_SIGN_UP_ENABLED = false` in
+`src/components/account/emailSignUp.ts`) until a custom mail sender works: the email form
+only signs in to an account that already exists, and a line under it sends someone new to
+the buttons above ("New here? Use Apple or Google for now.", naming only the buttons the
+phone shows; `newHereLine`). With the flag on, the form has a Sign in / Create account
+switch and the password rules for Create account only (8 or more characters, an uppercase
 letter, a lowercase letter and a number, ASCII, as a four-row checklist that ticks as you
 type; step 190; the server's matching setting is `HUMAN_VERIFICATION.md` A5; Sign in never
-applies them), and inline error text from `AuthOutcome.error`. On `{ ok: true }` it goes back;
-`authStore`'s `onAuthStateChange` migrates guest data, reloads the stores and starts a sync.
+applies them); all of it is kept in `SignInView` for when it returns. Errors show inline
+from `AuthOutcome.error`. On `{ ok: true }` it goes back; `authStore`'s
+`onAuthStateChange` migrates guest data (only on a sign-in the person started, §2),
+reloads the stores and starts a sync.
+
+**Apple (round 5: a nonce).** `signInWithApple` (`src/supabase/auth.ts`) makes a fresh
+nonce for each sign-in (`makeAppleNonce`: 32 random bytes from `expo-crypto`'s
+`getRandomBytesAsync`, as lowercase hex, and their SHA-256 as lowercase hex). The hash goes
+to Apple (`signInAsync({ nonce })`), which copies it into the identity token; the raw value
+goes to Supabase (`signInWithIdToken({ nonce })`), which hashes it and refuses a token
+whose nonce doesn't match, so a token from another sign-in can't be replayed. No nonce, no
+sign-in: if one can't be made (a build without `expo-crypto`, or no random bytes) the
+screen reads "Sign in with Apple isn't available right now." (`APPLE_UNAVAILABLE`). The
+email scope only, as before. Deletion's re-authentication (§3.2 step 5) sends a nonce too
+when it can, and opens the sheet without one when it can't: there it guards nothing yet
+(only the code leaves the phone, and the server checks the identity Apple returns for it).
 
 **Google (step 192, iOS only; the flag is on).** No Google SDK: `signInWithGoogle`
 (`src/supabase/auth.ts`) asks Supabase for the provider URL (`signInWithOAuth`,
@@ -73,7 +98,10 @@ to know it's you…" with a button to `/account`, and no request is made.
 `authStore` holds the actions (L6 imports only `@/store` and `@/types`): `signInWithEmail`,
 `signUpWithEmail`, `signInWithApple`, `signInWithGoogle`, `signOut`, `deleteAccount`, a
 `pending` flag, and `hasAppleIdentity` and `hasGoogleIdentity` from the session. Each
-returns the service's outcome unchanged so the screen can show the error.
+sign-in returns the service's outcome unchanged so the screen can show the error;
+`signOut(opts?)` returns the session's end or, before anything changes, `{ ok: false,
+unsynced }` (§2). `pending` also stays up while a sign-out the client is still running
+settles (§2, the races).
 
 ### The email-confirmation decision (yours)
 
@@ -96,10 +124,12 @@ someone else registered first is linked to its real owner's Google or Apple sign
 **Decided 2026-10-01 (for testing only):** "Confirm email" stays on, and test accounts use
 the address on the Supabase team, which the built-in mailer does reach. **Decided
 2026-11-15:** B, a custom mail sender (`SHIP_READINESS.md` decision 6), not set up yet; the
-password reset waits on it (decision 12). Until it exists, someone outside the Supabase
-team who signs up by email never gets the link, and nobody can reset a password: the
-support page says so and points to Sign in with Apple or Google, and the App Review notes
-point the reviewer at the demo account (`APP_STORE_LISTING.md` §4).
+password reset waits on it (decision 12). **Decided 2026-11-19 (D69 (c)):** until it exists,
+Create account is hidden (above), so nobody starts an email sign-up in the app that never
+gets its link; accounts that already exist still sign in by email, and nobody can reset a
+password.
+The support page says so and points to Sign in with Apple or Google, and the App Review
+notes point the reviewer at the demo account (`APP_STORE_LISTING.md` §4).
 
 The code handles both: `signUpWithEmail` returns `needsConfirmation: !data?.session`, and the
 sign-in screen then says "Check … for a confirmation link, then sign in here."
@@ -108,37 +138,158 @@ sign-in screen then says "Check … for a confirmation link, then sign in here."
 
 ## 2. Sign-out
 
-`authStore.signOut()` → `auth.signOut()` (`src/supabase/auth.ts`, `endSession('global')`;
-security review, 2026-11-18):
+**Sign-out takes the account's rows off this phone** (owner decision 2026-11-19, D69 (a);
+round 5 of the security review). One more push first; if anything is still unsynced, the
+app asks before going on. Signing back in brings back what the server has. Until round 5
+the rows stayed on the phone under the account's id, out of view, and this section called
+wiping them an open decision.
 
-1. **Online:** `supabase.auth.signOut()` with Supabase's default scope, `global`, which
-   invalidates every session of the account on the server, on every device
-   ([signOut](https://supabase.com/docs/reference/javascript/auth-signout)). It gets 10 s
-   (`SIGN_OUT_TIMEOUT_MS`).
-2. **Offline, or the server refuses or times out:** supabase-js keeps the session when the
-   server can't be reached, so `clearStoredSession` removes it from this phone itself: the
-   same AsyncStorage keys auth-js's own sign-out removes (the storage key, `-code-verifier`,
-   `-user`), read back once in case a refresh in flight wrote it again. The outcome is
-   `{ ok: true, localOnly: true }`. The server never hears: that session stays valid there,
-   but nothing on the phone holds its tokens any more. **It does not expire on its own**:
-   Supabase refresh tokens "never expire but can only be used once", and a session "lasts
-   indefinitely" by default; time-boxed and inactivity limits need the Pro plan
-   ([Sessions](https://supabase.com/docs/guides/auth/sessions), read 2026-11-18). It ends
-   at the account's next sign-out with a connection (scope `global`), or with the account.
-3. `{ ok: false, error: SIGN_OUT_FAILED }` ("Couldn't sign you out on this phone. Try
-   again.") only when even this phone's copy couldn't be removed; the app then stays
-   signed in.
-4. On `ok`, `handleSession(null)` moves the app to the guest at once (supabase-js sends no
-   `SIGNED_OUT` for a local-only end): the Coach's cards are cleared, billing logs out and
-   drops to free (`src/billing/init.ts` follows the user id), reminders still to come are
-   cancelled with the reload, and Log's kept draft and the answer run are cleared.
-5. Either way, delivered reminders that show a prediction's words are dismissed from the
-   lock screen (`dismissDeliveredReminderWords`), and again whenever a session ends by
-   itself (an expired or revoked one).
-6. **Local data stays on the device, under the account's user id.** The guest view starts
-   empty, and signing back in shows everything again. No confirmation, because nothing is
-   lost. (Whether sign-out should wipe the account's rows instead is an open owner
-   decision.)
+`authStore.signOut(opts?)` (`src/store/authStore.ts`), with `pending` held throughout:
+
+1. **One more push.** `pushNow(account)` (`src/supabase/sync.ts`): deletions not yet sent,
+   then every dirty row, after any sweep already running for the account. No pull and no
+   recompute, since the rows are about to go. Each request checks that the session is still
+   the account's, as a sweep's do. At most 10 s in all; a push still running then carries
+   on alone, and step 2 counts what is left.
+2. **What signing out would lose.** Unless `opts.discardUnsynced` is set,
+   `countUnsynced(account)` (`src/db/predictions.ts`): predictions still marked dirty (a
+   log, answer, edit or note not pushed, or an answer the pull kept and must push back) plus
+   deletions not yet pushed. Queued analytics aren't counted: they are no one's record.
+   - More than 0: `{ ok: false, unsynced: n }`, and **nothing changes**: still signed in,
+     every row still here. You (`SettingsView`) asks in a system alert (`askToConfirm`),
+     "Sign out anyway?", with "1 change hasn't reached the server yet. Signing out removes
+     it from this phone." or "N changes haven't reached the server yet. Signing out removes
+     them from this phone." (`unsyncedSignOutLine`), **Sign out** (destructive) and Cancel.
+     **Sign out** calls `signOut({ discardUnsynced: true })`; it does nothing while the app
+     is locked (`appLocked()`: the alert sits above the lock screen).
+   - The count fails: `{ ok: false, error: SIGN_OUT_CHECK_FAILED }` ("Couldn't check
+     whether everything on this phone is backed up, so you're still signed in. Try
+     again."), nothing changed.
+3. **Mark, then stop syncing.** The account is marked as owed a wipe
+   (`markers.addOwedWipe(account, 'signOut')`, `src/supabase/authMarkers.ts`, kept in
+   AsyncStorage and mirrored in memory), its sync is stopped and the running sweep waited
+   for (`stopSyncFor`, at most 10 s; a sweep still waiting on the network after that writes
+   nothing when its answer comes), and the account goes into `wipesInHand`, so a
+   `SIGNED_OUT` the client sends meanwhile doesn't start a second wipe.
+4. **End the session**, `auth.signOut()` → `endSession('global')` (`src/supabase/auth.ts`):
+   - **Online:** `supabase.auth.signOut()` with Supabase's default scope, `global`, which
+     invalidates every session of the account on the server, on every device
+     ([signOut](https://supabase.com/docs/reference/javascript/auth-signout)). It gets 10 s
+     (`SIGN_OUT_TIMEOUT_MS`).
+   - **Offline, or the server refuses or times out:** supabase-js keeps the session when the
+     server can't be reached, so `clearStoredSession` removes it from this phone itself: the
+     keys auth-js's own sign-out removes (the storage key, `-code-verifier`, `-user`), from
+     the session storage (§2.1, the Keychain on iOS), read back once in case a refresh in
+     flight wrote it again. The outcome is `{ ok: true, localOnly: true }`. The server never
+     hears: that session stays valid there, but nothing on the phone holds its tokens any
+     more. **It does not expire on its own**: Supabase refresh tokens "never expire but can
+     only be used once", and a session "lasts indefinitely" by default; time-boxed and
+     inactivity limits need the Pro plan
+     ([Sessions](https://supabase.com/docs/guides/auth/sessions), read 2026-11-18). It ends
+     at the account's next sign-out with a connection (scope `global`), or with the account.
+   - **Even this phone's copy couldn't be removed:** `{ ok: false, error: SIGN_OUT_FAILED }`
+     ("Couldn't sign you out on this phone. Try again."). The account stays signed in with
+     its rows, its sync resumes, and the owed wipe this sign-out marked is dropped
+     (`keepAccount`; one a deletion marked earlier stays). Delivered reminders showing a
+     prediction's words still leave the lock screen: the person asked to leave.
+5. **Wipe.** After a local-only end the account is first remembered as signed out here
+   alone (`rememberSignedOutHere`; races, below). Then `eraseAccountHere(account,
+   'accountRows')`: `wipeLocalUserData(account, { deviceData: false })` (§3.4: the
+   account's rows in every `PER_USER_TABLES` table, including its categories and icons, the
+   counted deletions, late changes and moved answers, and its queued analytics), then the
+   sync cursor cleared and the caches swept, whether or not the wipe went. A wipe that went
+   settles the owed mark (a deletion's too); one that failed leaves it, and `initialize()`
+   retries it at the next launch.
+6. **Then everything a sign-out did before.** `handleSession('APP_SIGN_OUT', null)` moves
+   the app to the guest at once (supabase-js sends no `SIGNED_OUT` for a local-only end):
+   the Coach's cards are cleared, billing logs out and drops to free (`src/billing/init.ts`
+   follows the user id), reminders still to come are cancelled with the reload, and Log's
+   kept draft and the answer run are cleared. Delivered reminders that show a prediction's
+   words are dismissed from the lock screen (`dismissDeliveredReminderWords`), and again
+   whenever a session ends by itself (an expired or revoked one).
+
+**What stays on the phone:** the Warm-up (`warmup_results`, `warmup_progress`), the age
+band and daily practice belong to the phone, not the account (main session, 2026-11-19), and
+stay; so do settings and any guest rows. **What doesn't come back** on signing in again:
+what was only ever on the phone, which is the account's categories (names, icons, hiding;
+predictions under an added category show "Other" until it is named again, as on another
+phone, D39), the counted deletions, late changes and moved answers, and queued analytics
+not yet sent. Predictions, answers and reflections that reached the server come back.
+
+**Signing back in.** A sign-in the person starts to the account (`asPersonSignIn`) clears
+its "signed out here alone" mark and any owed wipe, and clears its sync cursor, so the
+first sync pulls every row the server has, even if clearing the cursor at sign-out failed.
+
+**A session that ends by itself** (a global sign-out on another phone, a revoked or
+expired session) wipes nothing, except after a deletion that was asked for and not
+confirmed (§3.2 step 8): `handleSession`, leaving an account on any event but the app's own
+sign-out, wipes its rows (`'accountRows'`, so not the Warm-up, the age band or practice)
+when it carries a `'deletion'` owed mark, and settles the mark if the wipe went. Otherwise
+the rows stay under the account's id, out of view, until it signs in and out again on that
+phone or the app is deleted; the privacy policy §7 says so.
+
+**At launch** (`initialize()`): the markers are loaded (`loadAuthMarkers`; markers that
+can't be read count as none, so nothing is wiped on a guess). A stored session for an
+account marked signed out here alone is discarded (`auth.discardStoredSession`) and doesn't
+count. Every owed wipe for an account not signed in now is carried out (account rows only)
+and settled if it went. An owed `'signOut'` wipe for the account still signed in (the app
+was closed before the session ended) is dropped: the account and its rows, new ones
+included, are the person's again. An owed `'deletion'` mark stays until the session ends.
+
+**The races** (security review round 5; client reviewer LOW-A, LOW-B):
+
+- **A late token refresh** under way when this phone signed out alone can land afterwards
+  and write the session back. `handleSession` ignores any session, for an account marked
+  signed out here alone, that doesn't come from a sign-in the person started (a
+  `SIGNED_IN` while `asPersonSignIn` runs), and takes it off the phone again
+  (`discardStoredSession`: the same keys, no server, no wait on the client's lock). If that
+  write replaced the session of the account the app shows, the app follows it out too. Ten
+  accounts at most are remembered, the oldest dropped first.
+- **auth-js's own sign-out still running** after the 10 s (it waits behind the client's
+  lock, often for a token refresh with no connection) would, when it runs, sign out
+  whatever session is stored then: a sign-in started meanwhile. `auth.signOutStillSettling()`
+  reports it for at most 60 s (`LATE_SIGN_OUT_WAIT_MS`); `pending` stays up meanwhile, so
+  screens disable their account buttons, and `asPersonSignIn` waits for it.
+- **Only a sign-in the person started moves the guest's rows** into an account
+  (`migrateGuestDataToUser`); a session that arrives any other way never takes them.
+- **No sync writes after the wipe:** the sync is stopped and waited for before it
+  (`stopSyncFor`), and `wipesInHand` keeps a `SIGNED_OUT` from the client during the app's
+  own sign-out or deletion from starting a second wipe.
+
+### 2.1 Where the session is kept (round 5, D69 (d))
+
+auth-js keeps the access and refresh tokens, with the user, in the storage the client is
+made with (`src/supabase/client.ts`; the storage key is passed explicitly, the one
+supabase-js would pick, `sb-<project ref>-auth-token`). On iOS that is now the **Keychain**
+(`createSessionStorage`, `src/supabase/sessionStorage.ts`, over `expo-secure-store`), every
+item written `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`: readable once the phone has been unlocked
+after a restart (a reminder's action can run while it's locked), and, in Apple's words for
+`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, items that "do not migrate to a new
+device … after restoring from a backup of a different device, these items will not be
+present". Until round 5 it was AsyncStorage, a plain file in the app's folder that goes
+into the phone's backups. Web keeps AsyncStorage.
+
+- **Size:** values are split into chunks of at most 2,000 UTF-8 bytes (some iOS releases
+  refused values over about 2 KB, Expo's SecureStore page) under numbered keys, two slots
+  with a header written last, so a write cut short leaves the old value whole; a missing
+  chunk reads as no value.
+- **Deleting the app:** Keychain items can outlast it (Expo: "will persist across app
+  uninstallations … not guaranteed"). A marker in AsyncStorage, which a deleted app takes
+  with it, says the Keychain's copy belongs to this install
+  (`calibrate:session-in-keychain`). Without it, the launch check clears the session's
+  Keychain keys before the client reads anything, so a reinstall never signs back in.
+- **The move:** a session already in AsyncStorage (an upgrade from an earlier build) is
+  copied into the Keychain and then removed from AsyncStorage, so nobody is signed out by
+  the update.
+- **Falling back:** if the module is missing (a build before it was added), its
+  accessibility constant is missing, or the marker or the old session can't be read, or the
+  copy or the marker can't be written, that run keeps using AsyncStorage as earlier builds
+  did, and the next launch decides again. Reads never throw (a failed Keychain read is no
+  session); a write the Keychain refuses throws, so a sign-in whose session can't be kept
+  fails rather than holding tokens nowhere.
+
+The account markers (`calibrate:auth-markers`) and the sync cursor stay in AsyncStorage:
+neither holds a token.
 
 ---
 
@@ -199,31 +350,42 @@ From [Offering account deletion in your app](https://developer.apple.com/support
    the account had an Apple identity and the revoke isn't confirmed (the sheet was
    cancelled, the server skipped or failed the revoke, or the deletion was confirmed by
    the "already deleted" check), adds "Sign in with Apple may still list Fairly Sure. To
-   remove it, open Settings, tap your name, then Sign in with Apple." (Apple's path, from
-   support.apple.com/102571, read 2026-11-19). The server revokes nothing when the code is
+   remove it, open Settings, tap your name, then Sign in with Apple, and remove Fairly
+   Sure." (`DeleteAccountView`; Apple's path, from support.apple.com/102571, read
+   2026-11-19). The server revokes nothing when the code is
    for a different Apple ID than the account's (§3.3), and the line shows then too.
 6. **Call** `POST /functions/v1/delete-account` with `{ apple_authorization_code? }`
    (`deleteAccountOnServer`, `src/supabase/account.ts`). The session's token and user id
-   are read first (10 s), while the user certainly exists. The call waits up to **45 s**
-   (`DEFAULT_TIMEOUT_MS`).
+   are read first (10 s), while the user certainly exists, and the call is sent only if the
+   session is this account's (`expectedUserId`). The call waits up to **45 s**
+   (`DEFAULT_TIMEOUT_MS`). **Before it** (round 5, client reviewer HIGH 2), the account is
+   marked as owed a wipe (`markers.addOwedWipe(userId, 'deletion')`), so that if the
+   server deletes it without this phone hearing, its rows still leave the phone when its
+   session ends by itself (§2).
 7. **Done means the account is gone,** shown one of two ways: the function's `200 { ok:
    true }`, or, after any call that doesn't confirm (an error, a timeout, a lost
    connection), **the "already deleted" check**: `auth.getUser(token)` with the token read
    before the call (one `GET /user`, no refresh, 10 s). Only GoTrue's definite answer for a
    deleted user, an `AuthApiError` with status 403 and code `user_not_found`, counts as
    gone; the function may have finished while its 200 was lost, and every retry would then
-   get a 401. Then: the Coach's cards, the card's left-off categories and the streak
-   moment day are cleared, the device is wiped (§3.4), the Warmup, practice, Log's draft
-   and the answer run are reset, the sync cursor is cleared and the caches swept (both
-   outside the wipe's `try`, so they run even if the wipe fails), `auth.signOutLocal()`
-   ends the session here (scope `local`; the server answers 401 or 403 for a deleted user,
-   which supabase-js takes as signed out, and offline the phone removes it alone, §2),
-   `handleSession(null)` moves to a fresh guest (billing logs out and drops to free), and
-   delivered notifications are dismissed. Nothing after the server's confirmation reports
-   failure: a local step that fails is logged and passed over. The screen shows "Your
-   account has been deleted".
+   get a 401. Then (`eraseAccountHere(userId, 'confirmedDeletion')`, with the account in
+   `wipesInHand`): the Coach's cards, the card's left-off categories and the streak moment
+   day are cleared, the account's sync is stopped and waited for, the device is wiped (§3.4,
+   with the device data), the Warmup and practice are reset, the sync cursor is cleared and
+   the caches swept (both whether or not the wipe went), Log's draft and the answer run are
+   cleared, and the owed mark is settled if the wipe went (a wipe that failed stays owed and
+   is retried at the next launch, account rows only). `auth.signOutLocal()` ends the
+   session here (scope `local`; the server answers 401 or 403 for a deleted user, which
+   supabase-js takes as signed out, and offline the phone removes it alone, §2),
+   `handleSession('APP_SIGN_OUT', null)` moves to a fresh guest (billing logs out and drops
+   to free), and delivered notifications are dismissed. Nothing after the server's
+   confirmation reports failure: a local step that fails is logged and passed over. The
+   screen shows "Your account has been deleted".
 8. **Not done:** delete nothing locally, and show one of the two messages exported from
-   `src/supabase/account.ts`:
+   `src/supabase/account.ts`. On `DELETE_FAILED_MESSAGE` (nothing was deleted, for certain)
+   the owed mark this attempt set is dropped; on `DELETE_UNCONFIRMED_MESSAGE` it stays, so
+   if the account turns out to be gone, its rows (not the Warm-up, the age band or
+   practice) leave the phone once its session ends by itself (§2):
    - `DELETE_FAILED_MESSAGE`, when the server answered and the account still exists (or no
      request could be made at all): "Couldn't delete your account right now. Nothing has
      been deleted. Try again in a moment."
@@ -292,35 +454,46 @@ so Jest covers it.
 
 ### 3.4 Device wipe
 
-The `src/db/account.ts` helper `wipeLocalUserData(userId)`, in one
+The `src/db/account.ts` helper `wipeLocalUserData(userId, { deviceData = true })`, in one
 `withTransaction`:
 
-- `DELETE FROM predictions WHERE user_id = ?`, and the same for `user_stats`,
-  `category_stats`, `analytics_events`, the deletion tombstones
-  (`prediction_deletions`), the counted due-date moves (`prediction_postponements`), the
-  counted category moves (`prediction_refiles`) and the person's categories with their
-  icons (`categories`).
-- **Clear** the Warmup rows (`warmup_results`, `warmup_progress`) and the age
-  band, device-wide: they have no `user_id` but are the person's own (owner,
-  2026-11-09; this said "keep" until then). After the wipe, account deletion
-  also resets the Warmup store and clears daily practice, as guest Erase does.
+- `DELETE FROM <table> WHERE user_id = ?` for every table in `PER_USER_TABLES`:
+  `predictions`, `user_stats`, `category_stats`, `analytics_events`, the deletion
+  tombstones (`prediction_deletions`), the counted late changes (`prediction_postponements`:
+  date moves, rewordings and, since D69 (e), category changes), the counted category moves
+  of answers (`prediction_refiles`) and the person's categories with their icons
+  (`categories`). A table added with a `user_id` belongs on the list; the wipe's test checks
+  it against the schema.
+- **With `deviceData` (the default), clear** the Warmup rows (`warmup_results`,
+  `warmup_progress`) and the age band, device-wide: they have no `user_id` but are the
+  person's own (owner, 2026-11-09; this said "keep" until then). After the wipe, account
+  deletion also resets the Warmup store and clears daily practice, as guest Erase does.
+  **Sign-out passes `deviceData: false`** (§2; main session, 2026-11-19), as does every
+  owed wipe (a sign-out's that didn't finish, an unconfirmed deletion's once its session
+  has ended): the Warm-up, the age band and practice belong to the phone and stay.
 - The entitlement mirror isn't touched here: billing resets it to free when the identity
-  changes (the comment on `wipeLocalUserData`).
-- **Deleted text doesn't stay in the file** (security review, 2026-11-18): every
-  connection turns on SQLite's `secure_delete`, which overwrites deleted content with
+  changes (the comment on `wipeLocalUserData`). Daily practice and settings aren't either.
+- **Deleted text doesn't stay in the file** (security review, 2026-11-18, and round 5):
+  every connection turns on SQLite's `secure_delete`, which overwrites deleted content with
   zeros (`enableSecureDelete`, `src/db/client.ts`; a failure to turn it on is logged and
-  the database opens anyway), and once the deletes have committed, `checkpointAfterWipe`
-  truncates any write-ahead log. Without it the words stayed in
-  `Documents/SQLite/calibrate.db`, which goes into the phone's backups.
+  the database opens anyway). Once the deletes have committed, `vacuumAfterWipe` rebuilds
+  the file once with `VACUUM` (round 5: pages freed before `secure_delete` was on, in
+  builds before 2026-11-18, still held deleted words, and only a rebuild overwrites them),
+  then `checkpointAfterWipe` truncates any write-ahead log. Both run outside the
+  transaction, in the transaction queue, as SQLite requires, and never throw: a wipe that
+  committed is done. Without them the words stayed in `Documents/SQLite/calibrate.db`,
+  which goes into the phone's backups.
 
-Then, outside the wipe's `try` so they run even if it fails (`authStore.deleteAccount`):
+Then, whether or not the wipe went (`eraseAccountHere` in `authStore`, for sign-out, owed
+wipes and a confirmed deletion):
 
 - **The sync cursor is cleared**: `clearSyncCursor(userId)` removes
   `calibrate:sync_cursor:<user id>` from AsyncStorage (`src/supabase/sync.ts`).
 - **The caches are swept**, not awaited, each sweep swallowing its own errors: CSV exports
   (`sweepExportFiles`, every title and reflection), share-card images
   (`sweepShareCaptures`) and the icon picker's pictures (`sweepIconImageFiles`). Guest
-  Erase sweeps the same three.
+  Erase sweeps the same three, and since round 5 the CSV exports are also swept at every
+  launch and before each new export (`app/_layout.tsx`, `src/export/file.ts`).
 
 ### 3.5 Guests: "Erase your data on this phone"
 
@@ -329,8 +502,12 @@ Guest data never left the phone, so this is `authStore.eraseDeviceData`:
 answer run, the card's left-off categories and the streak moment day; then delivered
 notifications are dismissed, the three caches swept (§3.4) and the Coach's cards cleared,
 behind the same one-tap confirm. Settings stay. Only rows
-made without an account go: an account that signed out on this phone keeps its own. It
-satisfies Apple's guest-account clause, and it's a useful reset in its own right.
+made without an account go. An account's own rows leave the phone when it signs out here
+(§2, since round 5); rows that stay under an account's id are those of an account whose
+session ended some other way (a sign-out on another phone, an expired session), or one
+that signed out on a build before round 5, and Erase leaves them, as the confirmation's
+"made on this phone without an account" says. It satisfies Apple's guest-account clause,
+and it's a useful reset in its own right.
 
 ### 3.6 Webhook and deleted users: already handled
 
@@ -344,7 +521,13 @@ RevenueCat doesn't retry.
 - The deletion-plan module covers: no code means no Apple leg, missing secrets
   mean legs are skipped, a RevenueCat 404 is OK, an auth-delete failure
   returns 500.
-- `wipeLocalUserData` removes only that user's rows, against the sql.js adapter.
+- `wipeLocalUserData` removes only that user's rows, against the sql.js adapter, and
+  leaves the Warm-up and the age band with `deviceData: false`.
+- Sign-out (round 5): `src/store/authStore.signOut.test.ts` (the push, the `unsynced`
+  outcome that changes nothing, the discard, the wipe, the owed wipe retried at launch)
+  and `src/store/authStore.races.test.ts` (a late refresh, a sign-out still settling, a
+  session that wasn't the person's sign-in); the session storage in
+  `src/supabase/sessionStorage.test.ts`; the nonce in `src/supabase/auth.nonce.test.ts`.
 - The delete screen: a subscriber sees the billing warning and a lifetime
   holder doesn't; a failed call leaves the stores untouched; success routes to
   a fresh guest.

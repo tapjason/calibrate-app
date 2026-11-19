@@ -11,9 +11,11 @@ import { LaunchPage } from '@/components/launch/LaunchPage';
 import { LaunchScreen } from '@/components/launch/LaunchScreen';
 import { holdSplash, useLaunchSplash } from '@/components/launch/useLaunchSplash';
 import { useAppearance } from '@/components/ui/useAppearance';
+import { usageCountsMayGoUp } from '@/components/warmup/usageNotice';
 import { loadFonts } from '@/constants/fonts';
 import { colors, palettes, type } from '@/constants/theme';
 import { initDb } from '@/db/client';
+import { sweepExportFiles } from '@/export/file';
 import { initDigest } from '@/notifications/digest';
 import { initPracticeReminder } from '@/notifications/practiceReminder';
 import { initTrialReminder } from '@/notifications/trialReminder';
@@ -143,8 +145,17 @@ export default function RootLayout() {
         initPracticeReminder();
         // One sweep at startup so a queue built up offline doesn't wait for
         // the next foreground. Fire-and-forget; it returns 0 and logs on any
-        // failure. A guest sends only funnel counts, with no id (D43).
-        void flushEvents(useAuthStore.getState().userId);
+        // failure. A guest sends only funnel counts, with no id (D43), and
+        // only once the line on the Warm-up's first screen, which says so and
+        // holds the switch, has been shown on this phone (D69 (b)): until then
+        // they stay queued. After the settings' hydrate above, which reads
+        // when it was first shown.
+        if (usageCountsMayGoUp()) void flushEvents(useAuthStore.getState().userId);
+        // A CSV export the app was killed over, or whose share sheet never
+        // reported closing, is still in the cache: it holds every title and
+        // note (client re-review, round 5). No share sheet is open at launch,
+        // so every one goes. Never throws.
+        void sweepExportFiles();
         setReady(true);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -226,8 +237,9 @@ export default function RootLayout() {
       // notice them.
       void refreshBilling();
       // Analytics rides along on the same trigger. Queued locally as it
-      // happens, pushed when the app is already doing network work anyway.
-      void flushEvents(userId);
+      // happens, pushed when the app is already doing network work anyway,
+      // under the same check as at launch (D69 (b)).
+      if (usageCountsMayGoUp()) void flushEvents(userId);
     });
     return () => sub.remove();
   }, []);

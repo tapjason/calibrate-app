@@ -82,23 +82,31 @@ describe('deleteAccountOnServer', () => {
     expect(getUser).not.toHaveBeenCalled();
   });
 
+  // Round 5: the call carries the token read before it, the one whose user
+  // was checked and that the follow-up question uses (was: no headers).
   it('sends the Apple code when there is one, and nothing otherwise', async () => {
     const withCode = fakeClient({ data: { ok: true }, error: null });
     await deleteAccountOnServer('c1.abc', { client: withCode.client });
     expect(withCode.invoke).toHaveBeenCalledWith('delete-account', {
       body: { apple_authorization_code: 'c1.abc' },
+      headers: { Authorization: `Bearer ${TOKEN}` },
     });
 
     const without = fakeClient({ data: { ok: true }, error: null });
     await deleteAccountOnServer(null, { client: without.client });
-    expect(without.invoke).toHaveBeenCalledWith('delete-account', { body: {} });
+    expect(without.invoke).toHaveBeenCalledWith('delete-account', {
+      body: {},
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
   });
 
   // The caller wipes the device only on proof the account is gone. A 200
   // without `ok: true` is not proof; with the server confirming the user is
   // still there, nothing has been deleted.
+  // Round 5: 'a function error' (a 500) moved below: after one the server may
+  // have revoked Apple and deleted the RevenueCat customer, so it is no longer
+  // "nothing has been deleted".
   it.each([
-    ['a function error', { data: null, error: { message: 'internal' }, response: { status: 500 } }],
     ['a body without ok', { data: { something: 'else' }, error: null }],
     ['an empty body', { data: null, error: null }],
   ])('fails on %s', async (_label, result) => {
@@ -168,14 +176,18 @@ describe('deleteAccountOnServer', () => {
       });
     });
 
-    it('a real failure from the server, with the user still there, is "nothing deleted"', async () => {
+    // Round 5 (client reviewer): the function's 500 after `runDeletion` comes
+    // once the Apple revoke and the RevenueCat delete have run
+    // (supabase/functions/delete-account/index.ts, deletionPlan.ts), so
+    // "Nothing has been deleted" could be untrue. Was DELETE_FAILED_MESSAGE.
+    it('a server error with the user still there is unconfirmed: part of the work may have run', async () => {
       const { client } = fakeClient(
         { data: { error: 'internal' }, error: { message: 'Edge Function returned a non-2xx status code' }, response: { status: 500 } },
         { kind: 'exists' },
       );
       await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
         ok: false,
-        error: DELETE_FAILED_MESSAGE,
+        error: DELETE_UNCONFIRMED_MESSAGE,
       });
     });
 
@@ -223,12 +235,16 @@ describe('deleteAccountOnServer', () => {
       ).resolves.toEqual({ ok: false, error: DELETE_UNCONFIRMED_MESSAGE });
     });
 
-    it('cannot ask without a session, so it never counts as done', async () => {
-      const { client, getUser } = fakeClient(NEVER(), { kind: 'gone' }, null);
+    // Round 5 (client reviewer): with no session read, nothing is sent at
+    // all, so the person is told nothing was deleted. Was: the call went out
+    // and the outcome read DELETE_UNCONFIRMED_MESSAGE.
+    it('sends nothing without a session, so it never counts as done and nothing was deleted', async () => {
+      const { client, getUser, invoke } = fakeClient(NEVER(), { kind: 'gone' }, null);
       await expect(deleteAccountOnServer(null, { client, timeoutMs: 10 })).resolves.toEqual({
         ok: false,
-        error: DELETE_UNCONFIRMED_MESSAGE,
+        error: DELETE_FAILED_MESSAGE,
       });
+      expect(invoke).not.toHaveBeenCalled();
       expect(getUser).not.toHaveBeenCalled();
     });
 
@@ -357,5 +373,84 @@ describe('the failure messages', () => {
     }
     expect(DELETE_FAILED_MESSAGE).toContain('Nothing has been deleted.');
     expect(DELETE_UNCONFIRMED_MESSAGE).not.toContain('Nothing has been deleted');
+  });
+});
+
+// Security review round 5 (client reviewer's deletion nits).
+describe('deleteAccountOnServer: what is sent, and what a failure says', () => {
+  const non2xx = (status: number) => ({
+    data: { error: 'x' },
+    error: { message: 'Edge Function returned a non-2xx status code' },
+    response: { status },
+  });
+
+  it.each([400, 401, 405, 429])(
+    'a %i comes before any of the work: with the user still there, nothing was deleted',
+    async (status) => {
+      const { client } = fakeClient(non2xx(status), { kind: 'exists' });
+      await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
+        ok: false,
+        error: DELETE_FAILED_MESSAGE,
+      });
+    },
+  );
+
+  it.each([500, 502, 503, 546])(
+    'a %i may come after the Apple and RevenueCat steps: unconfirmed, never "nothing deleted"',
+    async (status) => {
+      const { client } = fakeClient(non2xx(status), { kind: 'exists' });
+      await expect(deleteAccountOnServer('c1.code', { client })).resolves.toEqual({
+        ok: false,
+        error: DELETE_UNCONFIRMED_MESSAGE,
+      });
+    },
+  );
+
+  it('a 5xx after which the user is gone is done, as any call is', async () => {
+    const { client } = fakeClient(non2xx(500), { kind: 'gone' });
+    await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
+      ok: true,
+      appleRevoked: false,
+    });
+  });
+
+  it('sends nothing when the session belongs to another account than the one shown', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { client, invoke, getUser } = fakeClient({ data: { ok: true }, error: null });
+    await expect(
+      deleteAccountOnServer('c1.code', { client, expectedUserId: 'someone-else' }),
+    ).resolves.toEqual({ ok: false, error: DELETE_FAILED_MESSAGE });
+    expect(invoke).not.toHaveBeenCalled();
+    expect(getUser).not.toHaveBeenCalled();
+    // The log names neither account.
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).not.toContain(USER);
+    expect(logged).not.toContain('someone-else');
+  });
+
+  it("sends the call when the session is the shown account's", async () => {
+    const { client, invoke } = fakeClient({ data: { ok: true, skipped: [] }, error: null });
+    await expect(deleteAccountOnServer(null, { client, expectedUserId: USER })).resolves.toEqual({
+      ok: true,
+      appleRevoked: false,
+    });
+    expect(invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends nothing when the session read throws or never answers', async () => {
+    const throws = fakeClient({ data: { ok: true }, error: null });
+    throws.getSession.mockRejectedValueOnce(new Error('storage'));
+    await expect(deleteAccountOnServer(null, { client: throws.client })).resolves.toEqual({
+      ok: false,
+      error: DELETE_FAILED_MESSAGE,
+    });
+    expect(throws.invoke).not.toHaveBeenCalled();
+
+    const hangs = fakeClient({ data: { ok: true }, error: null });
+    hangs.getSession.mockImplementationOnce(() => new Promise(() => {}));
+    await expect(
+      deleteAccountOnServer(null, { client: hangs.client, probeTimeoutMs: 10 }),
+    ).resolves.toEqual({ ok: false, error: DELETE_FAILED_MESSAGE });
+    expect(hangs.invoke).not.toHaveBeenCalled();
   });
 });

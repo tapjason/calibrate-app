@@ -379,6 +379,698 @@ nothing needs it undone).
 
 To undo a function deploy, deploy it again from `master`.
 
+## 2026-11-19: migration 011, two redeploys, and the sandbox Plus rows
+
+From round 5 of the security review. Nothing here has been applied or deployed by an agent,
+and no Postgres was available to run 011 against (no psql, Docker or Deno on this machine,
+and WSL's virtual machine platform isn't enabled): it was checked by reading only, so steps
+1 and 3 are how it gets checked for real. **Apply it only after 010** and 010's checks (the
+2026-11-18 section above); 011 refuses to run without 010's functions and changes nothing if
+so. What 011 does:
+
+- `predictions` gains `created_utc_offset_min`, `resolved_utc_offset_min` and
+  `title_edited_utc_offset_min`: the phone's offset from UTC, in minutes east, when the
+  prediction was logged, answered and reworded (the owner's decision of 2026-11-19: a
+  same-day answer is judged on the day where each moment happened). Nullable, each held to
+  −840…840.
+- No answer goes back to open through sync: an update that would turn an answered row (Yes,
+  No or "Can't tell") into open, or a Yes or No into "Can't tell", comes from a phone that
+  hadn't pulled the answer, and none of it lands. The whole row stays as it was (status,
+  `resolved_at`, reflection, title, category, due date, `title_edited_at`, the offsets) and
+  only `updated_at` moves, past both copies' times, so the stale phone's next pull takes the
+  answered row. Yes ↔ No and "Can't tell" → Yes or No still go through. It never raises an
+  error.
+- Per account (the public key's roles only; your own statements in the SQL editor aren't
+  limited): at most 100 new and 100 changed predictions per request and 50,000 predictions
+  per account; at most 25 MB of titles and notes per account (a statement that adds text past
+  it is refused; one that adds none, such as an answer, always goes through); at most 100
+  events per request and 5,000 per UTC day on `analytics_events`, whose `received_at` is now
+  always the server's clock; a title at most 8,000 bytes and a reflection 20,000 (010 counted
+  characters, which can be 4 bytes each).
+- Guest table: an insert of more than 100 rows stops at row 101, before the rest is written;
+  inserts stop once the table's estimated rows pass 500,000; and on both analytics tables a
+  number in `props` is at most 24 characters long (010 allowed hundreds of digits).
+
+Every query in steps 1 and 3 only reads; each test statement undoes itself. Run each block in
+**Supabase dashboard → SQL Editor → New query**, one at a time.
+
+### 1. Look first (read-only)
+
+**1a. 010 is in.** Expect `true` and `true`. If either is `false`, apply 010 first (the
+section above).
+
+```sql
+select to_regprocedure('public.analytics_props_ok(jsonb)') is not null as has_010_props_rule,
+       to_regprocedure('public.guest_analytics_events_limits()') is not null as has_010_guest_limits;
+```
+
+**1b. The longest text, in bytes.** Expect titles under 7,200 and reflections under 18,000
+(the most the app can write). The new limits are 8,000 and 20,000.
+
+```sql
+select 'predictions.title (bytes)' as what, max(octet_length(title)) as longest from public.predictions
+union all select 'predictions.reflection (bytes)', max(octet_length(reflection)) from public.predictions;
+```
+
+**1c. Rows the new checks would refuse.** Expect **no rows**. It shows ids only, never a title
+or reflection. A row here doesn't stop 011 (that constraint is left unvalidated and step 2
+prints a NOTICE naming it), but tell the agent before applying: it may be a shape the app
+sends that the rule missed.
+
+```sql
+select 'predictions' as table_name, id from public.predictions
+ where octet_length(title) > 8000 or octet_length(coalesce(reflection, '')) > 20000
+union all
+select 'analytics_events', e.id from public.analytics_events e
+ where exists (select 1 from jsonb_each(e.props) p
+                where jsonb_typeof(p.value) = 'number' and length(p.value::text) > 24)
+union all
+select 'guest_analytics_events', g.id from public.guest_analytics_events g
+ where exists (select 1 from jsonb_each(g.props) p
+                where jsonb_typeof(p.value) = 'number' and length(p.value::text) > 24);
+```
+
+**1d. How close anyone is to the new caps.** Note the numbers. Expect the first far under
+50,000, the second far under 26,214,400 bytes (25 MB; a typical account holds a few hundred
+thousand at most), the third far under 5,000, and the guest rows far under 500,000 (the
+estimate reads `-1` on a table never analyzed, which is fine).
+
+```sql
+select
+  (select coalesce(max(n), 0) from (select count(*) as n from public.predictions group by user_id) s)
+    as most_predictions_one_account,
+  (select coalesce(max(b), 0) from (select sum(octet_length(title) + coalesce(octet_length(reflection), 0)) as b
+                                      from public.predictions group by user_id) s)
+    as most_text_bytes_one_account,
+  (select coalesce(max(n), 0) from (select count(*) as n from public.analytics_events
+                                     where received_at >= date_trunc('day', now(), 'UTC')
+                                     group by user_id) s)
+    as most_events_one_account_today,
+  (select reltuples::bigint from pg_class where oid = 'public.guest_analytics_events'::regclass)
+    as guest_rows_estimate,
+  (select count(*) from public.guest_analytics_events) as guest_rows;
+```
+
+**A backup?** 011 rewrites no row. It adds three empty columns, checks, triggers and an index,
+and replaces two functions; step 7 takes them off again.
+
+### 2. Apply 011
+
+Open `supabase/migrations/011_offsets_answers_limits.sql`, paste the **whole file** into a new
+query and run it. It runs as one transaction: all of it applies, or none of it.
+**Expected:** "Success. No rows returned", and no NOTICE.
+
+- A NOTICE "Constraint … left NOT VALID" means rows already stored break that rule (1c lists
+  them); everything else applied, and the rule still holds for every new row. Tell the agent.
+- `ERROR: P0001: Migration 011 needs migration 010 first…`: nothing was applied. Apply 010,
+  then 011.
+- `ERROR: 55P03: canceling statement due to lock timeout`: the app held a table for more
+  than 10 seconds; nothing was applied. Run it again a minute later.
+
+(As with 010, the CLI's migration history won't list 011 after the SQL editor; a later
+`npx supabase db push --remote` runs 010 and then 011 again, which is safe. **Never run 010
+alone after 011**: it would put back 010's looser props rule. If you do, run 011 again.)
+
+### 3. Check it
+
+**3a. The columns.** Expect 3 rows, each `integer` and `YES`.
+
+```sql
+select column_name, data_type, is_nullable
+  from information_schema.columns
+ where table_schema = 'public' and table_name = 'predictions'
+   and column_name in ('created_utc_offset_min', 'resolved_utc_offset_min', 'title_edited_utc_offset_min')
+ order by 1;
+```
+
+**3b. The constraints.** Expect 7 rows, every `convalidated` `true`.
+
+```sql
+select conrelid::regclass as on_table, conname, convalidated
+  from pg_constraint
+ where conname in ('predictions_created_utc_offset_min_range',
+                   'predictions_resolved_utc_offset_min_range',
+                   'predictions_title_edited_utc_offset_min_range',
+                   'predictions_title_bytes', 'predictions_reflection_bytes',
+                   'analytics_events_props_allowed', 'guest_analytics_events_props_allowed')
+ order by conrelid::regclass::text, conname;
+```
+
+**3c. The triggers.** Expect these 9 rows, each `tgenabled` `O`: on `analytics_events`,
+`analytics_events_limits` and `analytics_events_stamp_received`; on `guest_analytics_events`,
+`guest_analytics_events_count_rows`, `guest_analytics_events_limits`,
+`guest_analytics_events_normalize` and `guest_analytics_events_reset_count`; on `predictions`,
+`predictions_insert_limits`, `predictions_keep_answer` and `predictions_update_limits`.
+
+```sql
+select tgrelid::regclass as on_table, tgname, tgenabled
+  from pg_trigger
+ where tgrelid in ('public.predictions'::regclass, 'public.analytics_events'::regclass,
+                   'public.guest_analytics_events'::regclass)
+   and not tgisinternal
+ order by tgrelid::regclass::text, tgname;
+```
+
+**3d. The index.** Expect 1 row, `idx_analytics_events_user_received`.
+
+```sql
+select indexname from pg_indexes
+ where schemaname = 'public' and indexname = 'idx_analytics_events_user_received';
+```
+
+**3e. Who owns the counts.** Expect 3 rows, each with `owner` equal to `table_owner`
+(`postgres`). If one differs, `owner_bypasses_rls` must be `true`, or that count misses rows;
+tell the agent.
+
+```sql
+select t.fn as trigger_function, p.proowner::regrole as owner, r.rolbypassrls as owner_bypasses_rls,
+       (select relowner::regrole from pg_class where oid = t.tbl) as table_owner
+  from (values ('public.predictions_write_limits()'::regprocedure, 'public.predictions'::regclass),
+               ('public.analytics_events_limits()'::regprocedure, 'public.analytics_events'::regclass),
+               ('public.guest_analytics_events_count_rows()'::regprocedure,
+                'public.guest_analytics_events'::regclass)) as t(fn, tbl)
+  join pg_proc p on p.oid = t.fn
+  join pg_roles r on r.oid = p.proowner;
+```
+
+**3f. The props rule on every shape the app sends.** Expect 17 rows, all `ok` `true` (010's
+15, then the longest numbers the rule takes).
+
+```sql
+select shape, public.analytics_props_ok(shape::jsonb) as ok
+  from (values
+    ('{}'),
+    ('{"score": 63.333333333333336, "question_count": 10}'),
+    ('{"surface": "card"}'), ('{"surface": "weekly"}'),
+    ('{"surface": "yearly"}'), ('{"surface": "warmup"}'),
+    ('{"confidence": 70, "integrity_bonus": false}'),
+    ('{"confidence": 85, "correct": true}'),
+    ('{"source": "stats_coach"}'),
+    ('{"plan_annual": true, "plan_monthly": false, "plan_lifetime": false, "trial": true}'),
+    ('{"buckets_used": 3}'),
+    ('{"correct": 2, "question_count": 3}'),
+    ('{"hour": 20}'),
+    ('{"insight_count": 3}'),
+    ('{"row_count": 148}'),
+    ('{"score": 99.99999999999999}'),
+    ('{"score": 0.0000012345678901234567}')
+  ) as t(shape);
+```
+
+And on shapes it must refuse: expect 11 rows, all `ok` `false` (010's 8, then numbers longer
+than 24 characters).
+
+```sql
+select shape, public.analytics_props_ok(shape::jsonb) as ok
+  from (values
+    ('{"title": "I will finish the report"}'),
+    ('{"surface": "I will finish the report"}'),
+    ('{"confidence": "70"}'),
+    ('{"score": 1, "question_count": 2, "confidence": 3, "correct": true, "hour": 5}'),
+    ('{"row_count": 10000000000}'),
+    ('{"surface": null}'),
+    ('{"surface": ["card"]}'),
+    ('[]'),
+    ('{"score": 0.00000123456789012345678}'),
+    ('{"score": 1e-30}'),
+    ('{"row_count": 123456789.123456789123456789}')
+  ) as t(shape);
+```
+
+**Test statements.** Each writes to the live tables and then raises an error on purpose, so
+everything it did is rolled back: **an error is the expected result**, and its message says
+PASS or FAIL. Nothing stays, and no other session ever sees the rows. T5–T9 act as a signed-in
+phone of the oldest account (most likely yours): they set the session's JWT claims and the
+`authenticated` role, exactly as the API does. T10 acts as a guest (`anon`).
+
+**T5, answered rows stay as they were.** A stale phone's open copy, pushed over a Yes and
+over a "Can't tell", and a Yes pushed as "Can't tell", each leave every field of the row as it
+was and move `updated_at` past both copies' times; "Change answer" and answering a "Can't
+tell" still go through. Expected:
+`ERROR: P0001: PASS: stale copies changed nothing but updated_at; Change answer and answering a Can't tell still work; rolled back`.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  before_row public.predictions;
+  after_row public.predictions;
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+
+  -- A Yes, as a phone pushes it.
+  insert into public.predictions
+    (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, reflection,
+     title_edited_at, created_utc_offset_min, resolved_utc_offset_min, title_edited_utc_offset_min, updated_at)
+  values
+    ('verify-011-yes', uid, 'Verify 011', 'work', 70, now() - interval '3 days', now() - interval '1 day',
+     'resolved_yes', now() - interval '1 day', 'kept', null, 60, 60, null, '2026-11-19T10:00:00.000Z');
+  select * into before_row from public.predictions where id = 'verify-011-yes';
+
+  -- An older phone's open copy, reworded, re-dated and re-filed, pushed later
+  -- with a later time: the upsert the app sends, every column named.
+  insert into public.predictions
+    (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, reflection,
+     title_edited_at, created_utc_offset_min, resolved_utc_offset_min, title_edited_utc_offset_min, updated_at)
+  values
+    ('verify-011-yes', uid, 'Verify 011, reworded', 'health', 70, now() - interval '3 days', now() + interval '5 days',
+     'pending', null, null, now(), -300, null, -300, '2026-11-19T10:05:00.000Z')
+  on conflict (id) do update set
+    title = excluded.title, category = excluded.category, due_date = excluded.due_date,
+    status = excluded.status, resolved_at = excluded.resolved_at, reflection = excluded.reflection,
+    title_edited_at = excluded.title_edited_at, created_utc_offset_min = excluded.created_utc_offset_min,
+    resolved_utc_offset_min = excluded.resolved_utc_offset_min,
+    title_edited_utc_offset_min = excluded.title_edited_utc_offset_min, updated_at = excluded.updated_at;
+
+  select * into after_row from public.predictions where id = 'verify-011-yes';
+  if to_jsonb(after_row) - 'updated_at' <> to_jsonb(before_row) - 'updated_at'
+     or after_row.updated_at <= before_row.updated_at
+     or after_row.updated_at <= '2026-11-19T10:05:00.000Z'::timestamptz
+     or after_row.updated_at <> date_trunc('milliseconds', after_row.updated_at) then
+    raise exception 'FAIL: the open copy changed the Yes, or its time did not move past both (rolled back)';
+  end if;
+
+  -- A Yes pushed as Can't tell: the same.
+  before_row := after_row;
+  update public.predictions set status = 'skipped', reflection = null where id = 'verify-011-yes';
+  select * into after_row from public.predictions where id = 'verify-011-yes';
+  if to_jsonb(after_row) - 'updated_at' <> to_jsonb(before_row) - 'updated_at'
+     or after_row.updated_at <= before_row.updated_at then
+    raise exception 'FAIL: a Yes became Can''t tell, or its time did not move on (rolled back)';
+  end if;
+
+  -- Yes to No still goes through ("Change answer").
+  update public.predictions set status = 'resolved_no' where id = 'verify-011-yes';
+  if (select status from public.predictions where id = 'verify-011-yes') <> 'resolved_no' then
+    raise exception 'FAIL: Change answer was refused (rolled back)';
+  end if;
+
+  -- A Can't tell pushed as open, with new words: nothing changes but the time.
+  insert into public.predictions
+    (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, updated_at)
+  values
+    ('verify-011-skip', uid, 'Verify 011 skip', 'work', 60, now() - interval '3 days', now() - interval '1 day',
+     'skipped', now() - interval '1 day', '2026-11-19T10:00:00.000Z');
+  select * into before_row from public.predictions where id = 'verify-011-skip';
+  update public.predictions
+     set status = 'pending', resolved_at = null, title = 'Verify 011 skip, reworded'
+   where id = 'verify-011-skip';
+  select * into after_row from public.predictions where id = 'verify-011-skip';
+  if to_jsonb(after_row) - 'updated_at' <> to_jsonb(before_row) - 'updated_at'
+     or after_row.updated_at <= before_row.updated_at then
+    raise exception 'FAIL: a Can''t tell went back to open or took the new words (rolled back)';
+  end if;
+
+  -- And a Can't tell can still be answered.
+  update public.predictions set status = 'resolved_yes', resolved_at = now() where id = 'verify-011-skip';
+  if (select status from public.predictions where id = 'verify-011-skip') <> 'resolved_yes' then
+    raise exception 'FAIL: a Can''t tell could not be answered (rolled back)';
+  end if;
+
+  raise exception 'PASS: stale copies changed nothing but updated_at; Change answer and answering a Can''t tell still work; rolled back';
+end $$;
+```
+
+**T6, a request holds at most 100 new and 100 changed predictions.** Expected:
+`ERROR: P0001: PASS: 101 predictions went in as 100 and 1; 101 new and 101 changed in one statement were refused (PT413); rolled back`.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  new_refused text := 'not refused';
+  changed_refused text := 'not refused';
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+
+  insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+  select 'verify-011-' || g, uid, 'Verify 011', 'work', 70, now(), now() + interval '1 day', 'pending', now()
+    from generate_series(1, 100) as g;
+  insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+  values ('verify-011-101', uid, 'Verify 011', 'work', 70, now(), now() + interval '1 day', 'pending', now());
+
+  begin
+    insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+    select 'verify-011-big-' || g, uid, 'Verify 011', 'work', 70, now(), now() + interval '1 day', 'pending', now()
+      from generate_series(1, 101) as g;
+  exception when sqlstate 'PT413' then new_refused := sqlerrm;
+  end;
+
+  begin
+    update public.predictions set confidence = 60 where id like 'verify-011-%';
+  exception when sqlstate 'PT413' then changed_refused := sqlerrm;
+  end;
+
+  if new_refused = 'predictions: at most 100 new rows in one request'
+     and changed_refused = 'predictions: at most 100 changed rows in one request' then
+    raise exception 'PASS: 101 predictions went in as 100 and 1; 101 new and 101 changed in one statement were refused (PT413); rolled back';
+  end if;
+  raise exception 'FAIL: 101 new rows: %; 101 changed rows: % (rolled back)', new_refused, changed_refused;
+end $$;
+```
+
+**T7 (optional, up to a minute), the 50,000 cap.** Inserts batches of 100 until the cap
+refuses one. Expected: `ERROR: P0001: PASS: the account cap refused batch N …`, with N equal
+to the "expected batch" in the same message (about 500, less a hundredth of the account's
+predictions). It leaves about 50,000 dead rows that autovacuum clears by itself. If the editor
+times out first, that says nothing about the cap; skip it.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  had bigint;
+  batch integer;
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  select count(*) into had from public.predictions where user_id = uid;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  for batch in 1..501 loop
+    begin
+      insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+      select 'verify-011-cap-' || batch || '-' || g, uid, 'v', 'work', 70, now(), now() + interval '1 day',
+             'pending', now()
+        from generate_series(1, 100) as g;
+    exception
+      when sqlstate 'PT429' then
+        raise exception 'PASS: the account cap refused batch % (the account had % predictions; expected batch %), then everything was rolled back',
+          batch, had, (50000 - had) / 100 + 1;
+    end;
+  end loop;
+  raise exception 'FAIL: 50,100 predictions went in without the cap refusing (rolled back)';
+end $$;
+```
+
+**T8, events: 100 a request, and the server's clock.** Expected:
+`ERROR: P0001: PASS: 100 events went in, the server set received_at, 101 were refused (PT413); rolled back`.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  stamped timestamptz;
+  refused text := 'not refused';
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+
+  insert into public.analytics_events (id, user_id, name, props, created_at)
+  select 'verify-011-' || g, uid, 'prediction_logged', '{"confidence": 70, "integrity_bonus": false}'::jsonb, now()
+    from generate_series(1, 100) as g;
+
+  -- A client that sends its own received_at.
+  insert into public.analytics_events (id, user_id, name, props, created_at, received_at)
+  values ('verify-011-clock', uid, 'warmup_started', '{}'::jsonb, now(), '2000-01-01T00:00:00Z');
+  select received_at into stamped from public.analytics_events where id = 'verify-011-clock';
+
+  begin
+    insert into public.analytics_events (id, user_id, name, props, created_at)
+    select 'verify-011-big-' || g, uid, 'warmup_started', '{}'::jsonb, now()
+      from generate_series(1, 101) as g;
+  exception when sqlstate 'PT413' then refused := sqlerrm;
+  end;
+
+  if stamped = now() and refused = 'analytics_events: at most 100 rows per insert' then
+    raise exception 'PASS: 100 events went in, the server set received_at, 101 were refused (PT413); rolled back';
+  end if;
+  raise exception 'FAIL: received_at %, 101 rows: % (rolled back)', stamped, refused;
+end $$;
+```
+
+**T9 (optional, a few seconds), the day's cap.** Expected: `ERROR: P0001: PASS: the day cap
+refused batch N …`, with N equal to the "expected batch" in the message (51, less a hundredth
+of the account's events today).
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  had bigint;
+  batch integer;
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  select count(*) into had from public.analytics_events
+   where user_id = uid and received_at >= date_trunc('day', now(), 'UTC');
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  for batch in 1..51 loop
+    begin
+      insert into public.analytics_events (id, user_id, name, props, created_at)
+      select 'verify-011-day-' || batch || '-' || g, uid, 'warmup_started', '{}'::jsonb, now()
+        from generate_series(1, 100) as g;
+    exception
+      when sqlstate 'PT429' then
+        raise exception 'PASS: the day cap refused batch % (the account had % events today; expected batch %), then everything was rolled back',
+          batch, had, (5000 - had) / 100 + 1;
+    end;
+  end loop;
+  raise exception 'FAIL: 5,100 events went in today without the cap refusing (rolled back)';
+end $$;
+```
+
+**T10, a guest insert stops at row 101, and each statement is counted alone.** Expected:
+`ERROR: P0001: PASS: two inserts of 100 went in; one of 101 stopped at row 101 (PT413); rolled back`.
+If you get `ERROR: PT413: guest_analytics_events: stopped at row 101…` instead, with no PASS,
+the count didn't start again at the second statement; if the FAIL message names "at most 100
+rows per insert", the early stop didn't work and only 010's check caught it. Either way tell
+the agent (010's limit still holds).
+
+```sql
+do $$
+declare
+  refused text := 'not refused';
+begin
+  set local role anon;
+  insert into public.guest_analytics_events (id, name, props, created_at)
+  select 'verify-011-a-' || g, 'warmup_started', '{}'::jsonb, now() from generate_series(1, 100) as g;
+  insert into public.guest_analytics_events (id, name, props, created_at)
+  select 'verify-011-b-' || g, 'warmup_started', '{}'::jsonb, now() from generate_series(1, 100) as g;
+  begin
+    insert into public.guest_analytics_events (id, name, props, created_at)
+    select 'verify-011-c-' || g, 'warmup_started', '{}'::jsonb, now() from generate_series(1, 101) as g;
+  exception when sqlstate 'PT413' then refused := sqlerrm;
+  end;
+  if refused = 'guest_analytics_events: stopped at row 101; at most 100 rows per insert' then
+    raise exception 'PASS: two inserts of 100 went in; one of 101 stopped at row 101 (PT413); rolled back';
+  end if;
+  raise exception 'FAIL: 101 rows: % (rolled back)', refused;
+end $$;
+```
+
+**T11 (a few seconds), the 25 MB text budget.** Inserts batches of 100 predictions holding
+28,000 bytes of title and note each (2.8 MB a batch) until the budget refuses one; then, as you
+(the SQL editor isn't limited), pushes the account past the budget; then, as the phone again,
+answers one prediction (adds no text: goes through) and lengthens a note (adds text: refused).
+Expected:
+`ERROR: P0001: PASS: the text budget refused batch N as expected; your own insert wasn't limited; over the budget an answer went through and a longer note was refused (PT429); rolled back`,
+with N about 10 (fewer if the account already holds megabytes of text). The text is repeated
+letters, which Postgres compresses, so it takes little room before it is rolled back.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  had bigint;
+  expected integer;
+  batch integer;
+  refused_at integer;
+  answered boolean;
+  longer_note text := 'not refused';
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  select coalesce(sum(octet_length(title) + coalesce(octet_length(reflection), 0)), 0) into had
+    from public.predictions where user_id = uid;
+  expected := (26214400 - had) / 2800000 + 1;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+
+  for batch in 1..11 loop
+    begin
+      insert into public.predictions
+        (id, user_id, title, category, confidence, created_at, due_date, status, reflection, updated_at)
+      select 'verify-011-text-' || batch || '-' || g, uid, repeat('t', 8000), 'work', 70, now(),
+             now() + interval '1 day', 'pending', repeat('r', 20000), now()
+        from generate_series(1, 100) as g;
+    exception when sqlstate 'PT429' then
+      refused_at := batch;
+      exit;
+    end;
+  end loop;
+
+  -- As you, in the SQL editor: not limited, so the account goes past the budget.
+  set local role none;
+  insert into public.predictions
+    (id, user_id, title, category, confidence, created_at, due_date, status, reflection, updated_at)
+  select 'verify-011-text-owner-' || g, uid, repeat('t', 8000), 'work', 70, now(),
+         now() + interval '1 day', 'pending', repeat('r', 20000), now()
+    from generate_series(1, 100) as g;
+  insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+  values ('verify-011-text-small', uid, 'Short', 'work', 70, now(), now() + interval '1 day', 'pending', now());
+
+  -- The phone again, over the budget: an answer adds no text and goes through ...
+  set local role authenticated;
+  update public.predictions set status = 'resolved_yes', resolved_at = now() where id = 'verify-011-text-small';
+  answered := (select status from public.predictions where id = 'verify-011-text-small') = 'resolved_yes';
+  -- ... and a longer note adds text and is refused.
+  begin
+    update public.predictions set reflection = 'A note that adds text' where id = 'verify-011-text-small';
+  exception when sqlstate 'PT429' then longer_note := sqlerrm;
+  end;
+
+  if refused_at = expected and answered
+     and longer_note = 'predictions: an account holds at most 26214400 bytes of titles and notes' then
+    raise exception 'PASS: the text budget refused batch % as expected; your own insert wasn''t limited; over the budget an answer went through and a longer note was refused (PT429); rolled back',
+      refused_at;
+  end if;
+  raise exception 'FAIL: refused at batch % (expected %), answer went through: %, longer note: % (rolled back)',
+    refused_at, expected, answered, longer_note;
+end $$;
+```
+
+After 011, 010's T2 answers with this new message instead of its own; 010's T1, T3 and T4 are
+unchanged. Then run 1d again: the numbers are the same as before the tests.
+
+**The guest ceiling** can't be tested without 500,000 rows. This shows where the table stands
+against it (read-only):
+
+```sql
+select (select reltuples::bigint from pg_class where oid = 'public.guest_analytics_events'::regclass)
+         as estimated_rows,
+       500000 as ceiling;
+```
+
+### 4. Then turn the offsets on in the app
+
+Tell the agent "011 is live" (3a's three rows are enough). The agent then turns on
+`UTC_OFFSET_SYNC` in `src/constants/app.ts`, in a later build. **Not before:** a phone that
+names those columns while the server doesn't have them fails every sync. And once a build
+with it on is installed anywhere, the columns must stay (step 7).
+
+### 5. Redeploy delete-account and revenuecat-webhook
+
+```sh
+npx supabase functions deploy delete-account
+npx supabase functions deploy revenuecat-webhook --no-verify-jwt
+```
+
+What changed: both import `npm:@supabase/supabase-js@2.106.2` (the version the app has
+installed) instead of whatever 2.x was newest at deploy time, as `coach` already does; and
+`delete-account` checks `Content-Length` before reading the body and stops reading past 4,000
+bytes (it used to read the whole body, then check). `jose` stays `npm:jose@5`: no lock file in
+the repo records the 5.x it resolves to, so it couldn't be pinned without guessing.
+
+Check as on 2026-11-18: `npx supabase functions list` shows each one version higher, updated
+today; RevenueCat → Project settings → Integrations → Webhooks → **Send test event** gives 200
+with `{"ok":true,"action":"ignored",…}`; and
+`curl -i -X POST https://<project-ref>.functions.supabase.co/delete-account` with no token gives
+401. Step 5 doesn't depend on steps 2–4.
+
+### 6. Sandbox Plus rows, after App Store approval (separate, later)
+
+Your decision of 2026-11-19: TestFlight testers keep sandbox Plus through the beta. After App
+Store approval you set RevenueCat → Project settings → **Sandbox Testing Access** to "Allowed
+App User IDs only". RevenueCat's page on that setting says it then removes the entitlements
+earlier sandbox purchases granted to anyone not on the list. It says nothing about webhooks,
+so `public.entitlements` (which only the Coach's server-side Plus check reads; the app itself
+asks RevenueCat) keeps whatever the webhook last wrote. A sandbox subscription's row lapses on
+its own (its `expires_at` passes, and a row past its expiry reads as not Plus). A sandbox
+**Lifetime** row (`is_plus` and no `expires_at`) never does. These steps clear those.
+
+**Before switching, check one thing:** RevenueCat's page doesn't mention App Review. Apple's
+reviewers buy in the sandbox, for every update too, and by the setting's own wording a
+reviewer who isn't on the list gets no entitlement from that purchase. **Before you switch
+Sandbox Testing Access, get RevenueCat's confirmation in writing that App Review purchases
+still grant entitlements under "Allowed App User IDs only"** (their page doesn't say so). If
+they don't confirm it, don't switch, and clear leftover TestFlight Lifetime rows only with the
+explicit-list statement in 6a–6c.
+
+**6a. List them (read-only).** One row per account the server counts as Plus for ever.
+
+```sql
+select user_id, source, updated_at, last_event_ms
+  from public.entitlements
+ where is_plus and expires_at is null
+ order by updated_at;
+```
+
+**6b. Check each against RevenueCat first.** The table can't tell a sandbox purchase from a
+real one. For every `user_id`, open RevenueCat → Customers, search that id (the App User ID is
+the Supabase user id) and look at its purchases. **Keep every real Lifetime buyer off the
+list**: a production Lifetime purchase is someone who paid $79.99. Only an id whose plus
+entitlement came from sandbox purchases alone goes on the list. If RevenueCat still shows plus
+as active for an id, leave it off: the Coach asks RevenueCat when its row doesn't say Plus,
+and would write Plus back the next time that person asks it.
+
+**6c. Clear them.** Paste the ids you checked between the brackets, each in single quotes,
+separated by commas. It touches only those ids, and only while they are still Lifetime Plus;
+it never takes "all rows". The cursor moves to now, so a retry of an old sandbox event can't
+write Plus back, and anything RevenueCat sends from now on still applies. It returns one row
+per id it changed: check that list against what you pasted.
+
+```sql
+update public.entitlements as e
+   set is_plus = false,
+       source = 'none',
+       expires_at = null,
+       updated_at = now(),
+       last_event_ms = greatest(coalesce(e.last_event_ms, 0),
+                                (extract(epoch from now()) * 1000)::bigint)
+ where e.user_id = any (array[
+         'PASTE-USER-ID-HERE'
+       ]::uuid[])
+   and e.is_plus
+   and e.expires_at is null
+returning e.user_id, e.is_plus, e.source, e.last_event_ms;
+```
+
+With the placeholder left in, it stops with `invalid input syntax for type uuid` and changes
+nothing. To put one back (a mistake): RevenueCat is the source of truth, so a real buyer's
+next Coach request writes their row again from RevenueCat; or set it directly with
+`update public.entitlements set is_plus = true, source = 'lifetime' where user_id = '…';`.
+
+### 7. Undo 011, if something goes wrong
+
+The triggers, functions, byte limits and index come off with this, in one run:
+
+```sql
+drop trigger if exists predictions_keep_answer on public.predictions;
+drop trigger if exists predictions_insert_limits on public.predictions;
+drop trigger if exists predictions_update_limits on public.predictions;
+drop trigger if exists analytics_events_stamp_received on public.analytics_events;
+drop trigger if exists analytics_events_limits on public.analytics_events;
+drop trigger if exists guest_analytics_events_count_rows on public.guest_analytics_events;
+drop trigger if exists guest_analytics_events_reset_count on public.guest_analytics_events;
+drop function if exists public.predictions_keep_answer();
+drop function if exists public.predictions_write_limits();
+drop function if exists public.analytics_events_stamp_received();
+drop function if exists public.analytics_events_limits();
+drop function if exists public.guest_analytics_events_count_rows();
+drop function if exists public.guest_analytics_events_reset_count();
+alter table public.predictions
+  drop constraint if exists predictions_title_bytes,
+  drop constraint if exists predictions_reflection_bytes;
+drop index if exists public.idx_analytics_events_user_received;
+```
+
+- **The three columns stay** (with their range checks): they're empty until the app sends
+  them, and once a build with `UTC_OFFSET_SYNC` on is installed, dropping them fails every
+  sync from it. Only if no build ever had it on:
+  `alter table public.predictions drop column if exists created_utc_offset_min, drop column if exists resolved_utc_offset_min, drop column if exists title_edited_utc_offset_min;`
+  (their checks go with them).
+- **The props rule** can stay: it refuses only numbers longer than 24 characters, which the
+  app never sends. To put 010's back, run 010's first `create or replace function` again (lines
+  67–121 of `010_public_key_limits.sql`); the CHECKs need nothing, since 010's rule takes
+  everything 011's does.
+
+To change one answer by hand on purpose (the trigger keeps it otherwise), in one run:
+`begin; alter table public.predictions disable trigger predictions_keep_answer; update …; alter table public.predictions enable trigger predictions_keep_answer; commit;`.
+
 ## Files
 
 - `migrations/001_predictions.sql` — `public.predictions` table + RLS policies.
@@ -426,7 +1118,18 @@ To undo a function deploy, deploy it again from `master`.
   values; guest rows kept to the day with a hashed id, so they can't be tied
   together by time; size limits on prediction and event ids and text; each
   role's table grants cut to what the app uses. **Not applied yet**: the steps
-  are in "2026-11-18: migration 010 and two redeploys" below.
+  are in "2026-11-18: migration 010 and two redeploys" above.
+- `migrations/011_offsets_answers_limits.sql` — security review round 5
+  (2026-11-19), applied after 010: the three `*_utc_offset_min` columns on
+  `predictions` (the app sends them once `UTC_OFFSET_SYNC` is on); a trigger
+  that keeps an answered prediction whole when a stale phone pushes it back as
+  open (or a Yes or No as "Can't tell"), with a later `updated_at`; per-account
+  limits on signed-in writes (100 rows a request, 50,000 predictions, 25 MB of
+  titles and notes, 5,000 events a UTC day, byte limits on title and
+  reflection); a guest insert that
+  stops at row 101 and a 500,000-row guest ceiling; numbers in `props` at most
+  24 characters. **Not applied yet**: the steps are in "2026-11-19: migration
+  011, two redeploys, and the sandbox Plus rows" above.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decisions live in
   `entitlementFromEvent.ts` and its flow (look up, write, answer) in
@@ -443,7 +1146,8 @@ To undo a function deploy, deploy it again from `master`.
   ID) and deletes the RevenueCat customer at the same time, then
   `auth.admin.deleteUser`, whose rows cascade out of every public table. Called
   from `src/supabase/account.ts`. Decision logic in `deletionPlan.ts`,
-  Jest-tested (`deletionPlan.test.ts`).
+  Jest-tested (`deletionPlan.test.ts`); the capped body reader in `readBody.ts`
+  (`readBody.test.ts`, 2026-11-19), a copy of the Coach's.
 - `functions/coach/index.ts` — Edge Function that interprets calibration stats
   into grounded insights. Called from `src/ai/coach.ts`. Its validation logic
   is deliberately duplicated from `src/ai/coachValidate.ts` (Deno cannot import
@@ -693,6 +1397,12 @@ the service role, exchanges the code, and compares the `sub` in the id_token App
 On a different Apple ID (the phone signed into another one) nothing is revoked, and
 `skipped` says "apple: the code is for a different Apple ID than the account's; not
 revoked". An account with no Apple identity never sends the code to Apple.
+
+Since 2026-11-19 (round 5): the body is read through `readBody.ts`, which refuses a
+`Content-Length` over 4,000 bytes before reading and stops reading past 4,000 bytes (400
+either way, as for any malformed body), and `supabase-js` is pinned to 2.106.2 here and in
+`revenuecat-webhook`. `jose` is still `npm:jose@5`: no lock file records the version it
+resolves to.
 
 Smoke-tested locally under Deno 2 on 2026-09-25 against the live project's
 auth: 401 without a header, 401 for a bogus token, 405 for GET.

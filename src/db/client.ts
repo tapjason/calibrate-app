@@ -158,6 +158,20 @@ export function withTransaction<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * Run `fn`, a read, once every transaction queued before it has settled, so
+ * it sees only committed rows (review round 5). There is one connection, and a
+ * read that isn't queued runs between a transaction's statements and sees
+ * what that transaction has written so far, even if it then rolls back. A
+ * transaction queued after this waits for `fn`. No transaction of its own,
+ * and `fn`'s result or error comes back unchanged; a failure doesn't hold up
+ * the queue. Never call it from inside a `withTransaction` callback, which
+ * would wait on itself.
+ */
+export function afterQueuedTransactions<T>(fn: () => Promise<T>): Promise<T> {
+  return enqueue(fn);
+}
+
+/**
  * After a wipe (Erase, account deletion; security review 2026-11-18): fold
  * the write-ahead log back into the file and truncate it to nothing, so no
  * copy of a deleted page waits there. Today the database keeps SQLite's
@@ -184,6 +198,33 @@ export function checkpointAfterWipe(): Promise<void> {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[db] the checkpoint after a wipe failed:', e);
+    }
+  });
+}
+
+/**
+ * After a wipe (sign-out's, Erase's, account deletion's; client review
+ * 2026-11-18, LOW 6): rebuild the database file once with `VACUUM`. Pages
+ * freed before `secure_delete` was turned on (builds before 2026-11-18) still
+ * hold deleted words, and only a rebuild overwrites them: VACUUM writes the
+ * live rows into a fresh copy and puts it in place of the file, which shrinks
+ * to fit.
+ *
+ * SQLite refuses VACUUM inside a transaction, so like the checkpoint it takes
+ * its turn in the transaction queue: every transaction queued before it has
+ * settled before it runs, and any queued after it waits for it. Never call it
+ * from inside a `withTransaction` callback, which would wait on itself.
+ *
+ * Never throws: a failure (no room for the copy, a statement still open) is
+ * logged, and the wipe, already committed, still counts as done.
+ */
+export function vacuumAfterWipe(): Promise<void> {
+  return enqueue(async () => {
+    try {
+      await getDb().exec('VACUUM');
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[db] the vacuum after a wipe failed:', e);
     }
   });
 }
