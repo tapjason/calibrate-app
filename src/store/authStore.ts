@@ -55,6 +55,16 @@ import { useWarmupStore } from './warmupStore';
 
 export type AuthStatus = 'loading' | 'guest' | 'authenticated';
 
+/**
+ * How account deletion ended. Done carries `appleNotRevoked`: the account had
+ * a Sign in with Apple identity and its grant may still stand, so the finished
+ * screen says where to remove the app (docs/ACCOUNT_SPEC.md §3.2 step 5).
+ * False for an account with no Apple identity.
+ */
+export type DeleteAccountResult =
+  | { ok: true; appleNotRevoked: boolean }
+  | { ok: false; error: string };
+
 interface AuthState {
   /**
    * The user_id every db helper uses. Always non-null after `initialize()`:
@@ -117,9 +127,10 @@ interface AuthState {
    * Delete the signed-in account (docs/ACCOUNT_SPEC.md §3.2). The server
    * deletes first; only on its confirmation is this device wiped and the
    * session dropped. A failure changes nothing anywhere, so the user can
-   * simply try again.
+   * simply try again. Done says whether Sign in with Apple may still list
+   * the app (`appleNotRevoked`).
    */
-  deleteAccount: () => Promise<AuthOutcome>;
+  deleteAccount: () => Promise<DeleteAccountResult>;
   /**
    * A guest's equivalent (§3.5): erase everything the app stored on this
    * device, the Warmup included. Nothing to call — it never left the phone.
@@ -425,7 +436,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }),
 
   deleteAccount: () =>
-    withPending(set, async (): Promise<AuthOutcome> => {
+    withPending(set, async (): Promise<DeleteAccountResult> => {
       const { status, userId, hasAppleIdentity } = get();
       if (status !== 'authenticated' || !userId) {
         return { ok: false, error: 'Not signed in.' };
@@ -438,6 +449,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const outcome = await deleteAccountOnServer(appleCode);
       if (!outcome.ok) return outcome;
+
+      // Whether the person removes the app from Sign in with Apple themselves
+      // (ACCOUNT_SPEC §3.2 step 5; security review, 2026-11-18, round 4). Any
+      // account with an Apple identity whose revoke the server didn't confirm:
+      // the sheet was cancelled so no code went, the server skipped it (a
+      // different Apple ID, no key) or it failed or timed out, or the deletion
+      // was confirmed by the "already deleted" check, which says nothing about
+      // Apple. Unsure reads as not revoked: the line is harmless if it was.
+      const appleNotRevoked = hasAppleIdentity && !outcome.appleRevoked;
 
       // The account is gone: the function said so, or the auth server said
       // afterwards that the user no longer exists (src/supabase/account.ts).
@@ -490,7 +510,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Last and not awaited: the wipe and the sign-out never wait on the lock
       // screen, and it never throws (code review, 2026-11-15).
       void dismissDeliveredNotifications().catch(() => {});
-      return { ok: true };
+      return { ok: true, appleNotRevoked };
     }),
 
   eraseDeviceData: () =>

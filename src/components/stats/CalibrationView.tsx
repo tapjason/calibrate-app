@@ -19,6 +19,7 @@ import {
 } from '@/components/stats/ratingHeadline';
 import { ScoreBar } from '@/components/stats/ScoreBar';
 import { UnlockProgress } from '@/components/stats/UnlockProgress';
+import { useStreakNow } from '@/components/stats/useStreakNow';
 import { CountUp } from '@/components/ui/CountUp';
 import { localCount } from '@/components/ui/count';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -138,8 +139,11 @@ export function CalibrationView({
   // Re-render on a rename (roadmap D39): "Furthest off" kept the old name
   // until something else redrew Insights (blind playtest 2026-11-12d, run 2).
   useCategoryStore((s) => s.defs);
-  // The streak beside the count only while it's shown (step 173).
+  // The streak beside the count only while it's shown (step 173), and as it
+  // stands now, as Today reads it: the stored one waits for a write, so it
+  // outlived a streak that had ended (record audit, 2026-11-18).
   const streakShown = useSettingsStore((s) => s.streakShown);
+  const streak = useStreakNow().streak;
   // Names the person chose stay out of view while the words are hidden (D62).
   const hideTitles = useSettingsStore((s) => s.hideTitles);
   const headline = ratingHeadline(userStat);
@@ -294,9 +298,7 @@ export function CalibrationView({
             // The third group (D68): 12 below the line before it.
             <Text style={[styles.subtle, styles.groupStart]}>
               {localCount(userStat.total_resolved)} scored
-              {userStat.current_streak > 0 && streakShown
-                ? `, ${localCount(userStat.current_streak)}-day streak`
-                : ''}
+              {streak > 0 && streakShown ? `, ${localCount(streak)}-day streak` : ''}
             </Text>
           )}
           {/* After the count, so it doesn't read as the count's heading. */}

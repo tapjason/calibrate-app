@@ -5,7 +5,7 @@ import { haptics } from '@/components/ui/haptics';
 import { holdRanges } from '@/components/ui/holdRanges';
 import { localDayKey } from '@/components/ui/useLocalDay';
 import { setDbForTests } from '@/db/client';
-import { getPrediction, insertPrediction } from '@/db/predictions';
+import { getPrediction, insertPrediction, resolvePrediction } from '@/db/predictions';
 import { getUserStat } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
@@ -1369,5 +1369,146 @@ describe('ResolvePrompt — answered late', () => {
     render(<ResolvePrompt predictionId="p1" />);
     await waitFor(() => expect(screen.getByTestId('resolve-stated')).toBeTruthy());
     expect(screen.getByTestId('resolve-stated')).not.toHaveTextContent(/was due/);
+  });
+});
+
+// Security review, 2026-11-18: once `resolve` has saved the answer, a read of
+// the row after it that fails showed an error, which invited answering again.
+// The answer is shown from what is known, and nothing that read would back.
+describe('ResolvePrompt — the read after a saved answer fails', () => {
+  // The store's own read, put back after each test: setState keeps a
+  // replaced action across tests.
+  const realGetById = usePredictionStore.getState().getById;
+  afterEach(() => usePredictionStore.setState({ getById: realGetById }));
+
+  /** Load as usual, then make every later read of the row fail. */
+  function failReadsAfterLoad() {
+    const real = realGetById;
+    const getById = jest.fn(async (id: string) => {
+      if (getById.mock.calls.length === 1) return real(id);
+      throw new Error('disk I/O error');
+    });
+    usePredictionStore.setState({ getById });
+    return getById;
+  }
+
+  it.each([
+    ['resolve-yes', 'resolved_yes', 'Recorded: it happened'],
+    ['resolve-no', 'resolved_no', 'Recorded: it didn’t happen'],
+  ] as const)(
+    'shows %s as recorded, never the error, and claims nothing the read would back',
+    async (button, status, label) => {
+      await insertPrediction(samplePending());
+      const getById = failReadsAfterLoad();
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      const resolveHaptic = jest.spyOn(haptics, 'resolve');
+      const onAnswered = jest.fn();
+      try {
+        render(<ResolvePrompt predictionId="p1" onAnswered={onAnswered} />);
+        await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+
+        fireEvent.press(screen.getByTestId(button));
+
+        expect(await screen.findByTestId('resolve-recorded')).toBeTruthy();
+        expect(getById).toHaveBeenCalledTimes(2);
+        expect(screen.getByTestId('resolve-recorded-label')).toHaveTextContent(label);
+        expect(screen.queryByText('disk I/O error')).toBeNull();
+        // Nothing from the read that failed: no range line, no rating move.
+        expect(screen.queryByTestId('resolve-bucket-line')).toBeNull();
+        expect(screen.queryByTestId('resolve-answer-note')).toBeNull();
+        expect(screen.queryByTestId('resolve-tier-drop')).toBeNull();
+        // The same acknowledgement as any answer: the haptic, and it is said.
+        expect(resolveHaptic).toHaveBeenCalledTimes(1);
+        expect(announce).toHaveBeenCalledWith(label);
+        expect(onAnswered).toHaveBeenCalledTimes(1);
+        // And the answer is saved.
+        expect((await getPrediction('p1'))?.status).toBe(status);
+        // Done still finishes, and a reflection still saves.
+        expect(screen.getByTestId('resolve-done')).toBeEnabled();
+      } finally {
+        announce.mockRestore();
+        resolveHaptic.mockRestore();
+      }
+    },
+  );
+
+  it('shows Yes and No the same way', async () => {
+    const shown: string[] = [];
+    for (const button of ['resolve-yes', 'resolve-no'] as const) {
+      setDbForTests(await createTestDb());
+      await insertPrediction(samplePending());
+      failReadsAfterLoad();
+      const view = render(<ResolvePrompt predictionId="p1" />);
+      await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+      fireEvent.press(screen.getByTestId(button));
+      await screen.findByTestId('resolve-recorded');
+      // Every testID on the acknowledgement, which differ only in the label's words.
+      shown.push(
+        JSON.stringify(
+          screen
+            .UNSAFE_queryAllByProps({})
+            .map((n) => n.props.testID)
+            .filter((id): id is string => typeof id === 'string'),
+        ),
+      );
+      view.unmount();
+    }
+    expect(shown[0]).toBe(shown[1]);
+  });
+
+  it('shows no badge or checkpoint the answer may have left, and clears them', async () => {
+    await insertPrediction(samplePending());
+    const real = realGetById;
+    const getById = jest.fn(async (id: string) => {
+      if (getById.mock.calls.length === 1) return real(id);
+      // As if this answer had left a badge and a checkpoint to show.
+      useStatsStore.setState({
+        milestone: { kind: 'tier_up', category: 'work', badge: 'forecaster', from: 'tracker' },
+      });
+      usePredictionStore.setState({ streakCheckpoint: 7, streakCheckpointFrom: 'answer' });
+      throw new Error('disk I/O error');
+    });
+    usePredictionStore.setState({ getById });
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+
+    expect(await screen.findByTestId('resolve-recorded')).toBeTruthy();
+    expect(screen.queryByText(/New badge/)).toBeNull();
+    expect(screen.queryByText(/Forecaster/)).toBeNull();
+    expect(screen.queryByText(/A full week/)).toBeNull();
+    expect(useStatsStore.getState().milestone).toBeNull();
+    expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+  });
+
+  it('says an answer given the day it was logged is not scored, as ever', async () => {
+    await insertPrediction(samplePending({ created_at: new Date().toISOString() }));
+    failReadsAfterLoad();
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+
+    expect(await screen.findByTestId('resolve-bucket-line')).toHaveTextContent(SAME_DAY_LINE);
+    expect(screen.queryByTestId('resolve-answer-note')).toBeNull();
+  });
+
+  // A reminder or another phone answered it first, so `resolve` left the row
+  // as it was: the lists reloaded after it say so, and that is shown.
+  it('never shows an answer the row does not hold', async () => {
+    await insertPrediction(samplePending());
+    failReadsAfterLoad();
+    render(<ResolvePrompt predictionId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('resolve-yes')).toBeEnabled());
+    // Answered "No" elsewhere while this screen showed it open.
+    await resolvePrediction('p1', 'resolved_no');
+
+    fireEvent.press(screen.getByTestId('resolve-yes'));
+
+    expect(await screen.findByTestId('answered-details')).toBeTruthy();
+    expect(screen.queryByTestId('resolve-recorded')).toBeNull();
+    expect(screen.queryByText('disk I/O error')).toBeNull();
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
   });
 });

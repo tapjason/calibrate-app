@@ -1,6 +1,6 @@
 import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { chosenProps } from '@/components/ui/chosen';
@@ -30,7 +30,7 @@ const MODE_MAX_SCALE = 1.6;
 
 /** What signing in sends besides the predictions, in You's own words for it. */
 export const USAGE_NOTE =
-  'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers and yes/no values, never the words of your predictions or notes. You can turn that off in You, under Usage stats.';
+  'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn that off in You, under Usage stats.';
 
 /**
  * Sign in or create an account (docs/ACCOUNT_SPEC.md §1).
@@ -72,11 +72,20 @@ export function SignInView({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // Shown under the fields and said aloud, as Log and the category chips say
+  // theirs: `accessibilityRole="alert"` adds no trait on iOS and posts
+  // nothing, so VoiceOver never heard a refusal, and since step 190's
+  // password rules one is routine (security review, 2026-11-18).
+  const fail = (message: string) => {
+    setError(message);
+    AccessibilityInfo.announceForAccessibility(message);
+  };
+
   const onApple = async () => {
     setError(null);
     const outcome = await signInWithApple();
     if (outcome.ok) onDone();
-    else setError(outcome.error);
+    else fail(outcome.error);
   };
 
   // The same path as Apple's: the session arrives through onAuthStateChange.
@@ -84,7 +93,7 @@ export function SignInView({ onDone }: { onDone: () => void }) {
     setError(null);
     const outcome = await signInWithGoogle();
     if (outcome.ok) onDone();
-    else setError(outcome.error);
+    else fail(outcome.error);
   };
 
   const onSubmit = async () => {
@@ -93,12 +102,12 @@ export function SignInView({ onDone }: { onDone: () => void }) {
     if (mode === 'signIn') {
       const outcome = await signInWithEmail(email, password);
       if (outcome.ok) onDone();
-      else setError(outcome.error);
+      else fail(outcome.error);
       return;
     }
     const outcome = await signUpWithEmail(email, password);
     if (!outcome.ok) {
-      setError(outcome.error);
+      fail(outcome.error);
     } else if (outcome.needsConfirmation) {
       // The account exists but has no session until the email link is
       // clicked. Leave the form in sign-in mode, email filled, for when they

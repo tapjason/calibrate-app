@@ -30,6 +30,19 @@ your score. This keeps the score from being padded with sure things.
 **I answered the wrong way.** For 24 hours after answering, tap the prediction in
 History to switch the answer, move it to another category, or delete it.
 
+**Forgot your password?** There's no password reset in the app yet. Email
+**tapjason-dev@gmail.com** from the address you signed up with, and we'll reply.
+Your predictions aren't lost: what you logged on this phone stays on it, and the
+backup stays on our server.
+
+**Signed up by email and got no confirmation?** Confirmation emails aren't being
+sent yet. Use Sign in with Apple or Continue with Google for now. If you'd like
+the unconfirmed sign-up deleted, email us from that address.
+
+<!-- Both entries are true until the custom mail sender exists (docs/SHIP_READINESS.md
+decisions 6 and 12; docs/ACCOUNT_SPEC.md §1: Supabase's built-in sender reaches only
+members of the Supabase organization). Remove or rewrite them when it does. -->
+
 **Restore a purchase.** You → Fairly Sure Plus → Restore purchases.
 
 **Cancel a subscription.** Subscriptions are managed by Apple: iOS Settings →
@@ -51,7 +64,9 @@ lock is on they can't record an answer, and they show your prediction's words on
 if You → Notifications → Show the words in reminders is on.
 
 **Delete my data.** Signed in: You → Delete account removes it from our servers
-and your phone. Not signed in: You → Erase your data on this phone. Deleting an
-account doesn't cancel a subscription; cancel it first.
+and your phone (our hosting provider's short-lived logs and backups expire on
+their own within 7 days; the privacy policy has the details). Not signed in:
+You → Erase your data on this phone. Deleting an account doesn't cancel a
+subscription; cancel it first.
 
 [Privacy policy](../privacy/)

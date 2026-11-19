@@ -1,8 +1,9 @@
 # Fairly Sure — App Store Listing
 
-**As of:** 2026-11-16 · The source for the App Store Connect record's fields, drafted from
+**As of:** 2026-11-18 · The source for the App Store Connect record's fields, drafted from
 `CLAUDE.md` and the shipped code (the 2026 age-rating answers and review notes from the policy
-audits of 2026-11-14 and 2026-11-15). Every feature claimed below exists in `master`; ✨ Refine
+audits of 2026-11-14 and 2026-11-15; the review notes, the Google sentence and the age-range
+lines revised after the security and policy review of 2026-11-18). Every feature claimed below exists in `master`; ✨ Refine
 is cut and appears nowhere.
 The limits in brackets are Apple's, and every field was counted against them.
 
@@ -96,7 +97,7 @@ the reason:
 | Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms, the support page). |
 | Mature or suggestive themes | None | The app shows no such content. The Coach's support surface (a helpline pointer when someone's own text signals distress) isn't a depiction of trauma or abuse; if Apple's wording counts it, "infrequent" is 9+: the owner's call on the day. |
 | Advertising | No | There are no ads. |
-| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once (`src/age/ageRange.ts`). Nothing in the app is gated on the result. Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services"; the build asks and gates nothing, so read the question as worded on the day (policy audit, 2026-11-14; the under-13 decision in `SHIP_READINESS.md` would settle it). |
+| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once per launch until a band is stored, so after a decline it asks again at the next launch (`src/age/ageRange.ts`: one ask per process, and nothing is stored on a decline). Nothing in the app is gated on the result. Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services"; the build asks and gates nothing, so read the question as worded on the day (policy audit, 2026-11-14; the under-13 decision in `SHIP_READINESS.md` would settle it). |
 | Social media; social media disabled under 13 (asked since July 2026, required from September) | No | No feed, profiles, followers or posts. |
 | Shared location; dating and relationships (descriptors from 2026-11-16, all apps by 2027-01-12) | No | The app reads no location and matches nobody. |
 | Gambling; simulated gambling; contests; loot boxes (asked one by one) | None | No stakes, odds, currency, prizes or chance mechanics. Nobody competes: a friend comparison, if ever built, would change the contests answer. |
@@ -208,27 +209,42 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > the core features (log with +, answer on Today, Insights, Share).
 >
 > To review Fairly Sure Plus: You → Fairly Sure Plus → purchase any plan with
-> your sandbox account. The Coach requires signing in (You → Sign in) because
-> it runs on our server. It is off by default; enable it in You → Coach (AI), then
-> Insights → Get feedback. Coach feedback needs predictions resolved in the
-> past. To see it with data, [DEMO ACCOUNT: email / password, pre-seeded with
-> 153 resolved predictions].
+> your sandbox account. The Coach requires signing in because it runs on our
+> server. Please sign in with this demo account: You → Sign in, enter the email
+> and password under Sign in, [DEMO ACCOUNT: email / password, pre-seeded with
+> 153 resolved predictions and with Plus]. Please don't create a new account by
+> email: confirmation emails aren't being sent yet, so a new email account
+> can't be confirmed. Sign in with Apple and Continue with Google also work.
+> The Coach is off by default; enable it in You → Coach (AI), then Insights →
+> Get feedback. Coach feedback needs predictions resolved in the past, which the
+> demo account has.
 >
 > Account deletion: You → Delete account (at the bottom, once signed in).
 >
 > Notifications are local reminders only; no push server is involved.
 >
-> The Coach sends only computed statistics (counts and percentages), never the
-> user's text, to OpenAI through our server, and only after the user turns it
-> on in You → Coach (AI), which says a third-party AI service writes the feedback
-> (the privacy policy names OpenAI). It needs an account because
-> our server checks the subscription per account; Sign in with Apple asks for
-> the email only. Continue with Google sits below Sign in with Apple; it opens
-> Google in the system sign-in sheet (no Google SDK is in the app), and the
-> name and picture Google sends are discarded.
+> The Coach sends only computed statistics (counts, scores and percentages),
+> never the user's text or account id, to OpenAI through our server, and only
+> after the user turns it on in You → Coach (AI), which says a third-party AI
+> service writes the feedback (the privacy policy names OpenAI). It needs an
+> account because our server checks the subscription per account; Sign in with
+> Apple asks for the email only. Continue with Google sits below Sign in with
+> Apple; it opens Google in the system sign-in sheet (no Google SDK is in the
+> app), and our database removes the name and picture Google sends as they
+> arrive.
 >
-> The app shows Apple's age-range sheet once after the first screen. Declining
-> changes nothing.
+> After the first screen appears, the app asks Apple's Declared Age Range API
+> for an age band, once per launch until one is shared; after a decline it asks
+> again at the next launch. Declining changes nothing.
+
+**Before pasting the Google sentence** (2026-11-18): "our database removes the name and
+picture Google sends as they arrive" is true only once the owner has turned off Supabase's
+Authentication → Configuration → Audit Logs → "Write audit logs to the database" and
+purged `auth.audit_log_entries`; until then each sign-in keeps the Google name there
+(`docs/APP_PRIVACY.md`, the Name row). If those steps aren't done, end the sentence at "(no
+Google SDK is in the app)." The age-range lines follow `src/age/ageRange.ts` (one ask per
+process, nothing stored on a decline); whether iOS shows its sheet again after a decline
+is iOS's decision, so say "asks", not "shows".
 >
 > Optional app lock: You → Lock with Face ID (off by default; named Lock with
 > Touch ID or Lock with iPhone passcode on other iPhones). It uses

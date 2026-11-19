@@ -1,9 +1,14 @@
-import type { PlusPlan, TrialStatus } from '@/billing/revenuecat';
+import { AppState } from 'react-native';
 
+import type { PlusPlan, TrialStatus } from '@/billing/revenuecat';
+import { useSettingsStore } from '@/store/settingsStore';
+
+import { __resetPermissionStateForTests } from './permissionState';
 import {
   TRIAL_REMINDER_ID,
   TRIAL_REMINDER_PLACEHOLDER,
   __setTrialReminderApiForTests,
+  initTrialReminder,
   syncTrialReminder,
   trialReminderCopy,
   trialReminderTime,
@@ -132,5 +137,39 @@ describe('syncTrialReminder', () => {
     await expect(
       syncTrialReminder(trial(), [annualPlan], { enabled: true, now: before }),
     ).resolves.toBe('skipped');
+  });
+});
+
+// Security review, 2026-11-18, round 4: the paywall names this reminder only
+// while iOS permission is granted, so startup also starts reading it, at once
+// and on every return to the foreground.
+describe('initTrialReminder: the permission the paywall reads', () => {
+  afterEach(() => {
+    __resetPermissionStateForTests();
+    jest.restoreAllMocks();
+    useSettingsStore.setState({ notificationPermission: null });
+  });
+
+  it('reads the permission at startup and again when the app comes back', async () => {
+    let answer = { granted: true, status: 'granted' };
+    __resetPermissionStateForTests({ getPermissionsAsync: async () => answer });
+    let onChange: ((state: string) => void) | undefined;
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_type, listener) => {
+        onChange = listener as (state: string) => void;
+        return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
+      });
+    const settle = () => new Promise((r) => setImmediate(r));
+
+    initTrialReminder();
+    await settle();
+    expect(useSettingsStore.getState().notificationPermission).toBe('granted');
+
+    // Turned off in iOS Settings while the app was away.
+    answer = { granted: false, status: 'denied' };
+    onChange?.('active');
+    await settle();
+    expect(useSettingsStore.getState().notificationPermission).toBe('denied');
   });
 });

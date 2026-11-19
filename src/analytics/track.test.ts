@@ -9,7 +9,7 @@ import {
 } from '@/db/analytics';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 
 import { EVENT_NAMES, sanitizeProps } from './events';
 import { track } from './track';
@@ -64,6 +64,31 @@ describe('track', () => {
     setDbForTests(null);
 
     await expect(track('prediction_logged', { confidence: 50 })).resolves.toBeUndefined();
+  });
+
+  // Security review, 2026-11-18, round 3: a settings record that can't be
+  // read may have held the opt-out, so nothing is recorded until usage stats
+  // are turned back on; what was queued before stays, unsent.
+  it('records nothing after the settings could not be read, and keeps what was queued', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await track('warmup_started');
+    __setPersistenceForTests({
+      load: async () => {
+        throw new Error('read failed');
+      },
+      save: async () => {},
+    });
+    try {
+      await useSettingsStore.getState().hydrate();
+      expect(useSettingsStore.getState().loadFailed).toBe(true);
+
+      await track('prediction_logged', { confidence: 70 });
+
+      const queued = await listUnsyncedEvents(USER, 10);
+      expect(queued.map((e) => e.name)).toEqual(['warmup_started']);
+    } finally {
+      __setPersistenceForTests(null);
+    }
   });
 
   it('gives every event a distinct id', async () => {

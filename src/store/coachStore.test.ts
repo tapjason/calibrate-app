@@ -373,6 +373,160 @@ describe('coachStore — screens the user’s own words unprompted', () => {
   });
 });
 
+// Security review, 2026-11-18: a request still running when the account
+// changed (or the Coach was turned off) wrote the previous account's cards, or
+// its support screen, after the reset had cleared them.
+describe('coachStore — a request that is overtaken while it runs', () => {
+  type InvokeResult = { data: unknown; error: { message: string } | null };
+
+  /** A client whose answers arrive only when the test says so, in any order. */
+  function heldClient() {
+    const pending: Array<(result: InvokeResult) => void> = [];
+    let calls = 0;
+    const client = {
+      functions: {
+        invoke: () => {
+          calls += 1;
+          return new Promise<InvokeResult>((resolve) => pending.push(resolve));
+        },
+      },
+    } as unknown as SupabaseClient;
+    return {
+      client,
+      calls: () => calls,
+      answer: (i: number, result: InvokeResult) => pending[i]!(result),
+    };
+  }
+
+  /** Let the request reach the client before the test moves on. */
+  const settle = () => new Promise((r) => setImmediate(r));
+
+  it("writes nothing of the previous account's answer after an account change", async () => {
+    const held = heldClient();
+    const running = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+    expect(held.calls()).toBe(1);
+    expect(useCoachStore.getState().loading).toBe(true);
+
+    // What authStore does when the signed-in account changes.
+    useCoachStore.getState().reset();
+    held.answer(0, { data: { insights: [INSIGHT], safe: true }, error: null });
+    await running;
+
+    expect(useCoachStore.getState()).toMatchObject({
+      insights: [],
+      crisisTopic: null,
+      loading: false,
+      lastAnsweredAt: null,
+      lastRequestFailed: false,
+      lastFailure: null,
+    });
+    // Nor is it counted, under whoever is signed in now.
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
+
+  it("writes no support screen for the previous account's words", async () => {
+    // The pre-filter answers without the network; the reset still comes
+    // between the request starting and its answer being written.
+    const { client, calls } = responds({ insights: [INSIGHT], safe: true });
+    const running = useCoachStore.getState().requestInsights(request(), {
+      client,
+      freetext: ['I want to die'],
+    });
+    useCoachStore.getState().reset();
+    await running;
+
+    expect(calls).toHaveLength(0);
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
+    expect(useCoachStore.getState().lastAnsweredAt).toBeNull();
+  });
+
+  it('writes no failure either, once the account has changed', async () => {
+    const held = heldClient();
+    const running = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+
+    useCoachStore.getState().reset();
+    held.answer(0, { data: null, error: { message: 'non-2xx', context: { status: 403 } } as { message: string } });
+    await running;
+
+    expect(useCoachStore.getState()).toMatchObject({
+      lastRequestFailed: false,
+      lastFailure: null,
+      loading: false,
+    });
+  });
+
+  it('writes nothing after the Coach is turned off in You mid-request', async () => {
+    const settings = require('./settingsStore') as typeof import('./settingsStore');
+    settings.__setPersistenceForTests({ load: async () => null, save: async () => {} });
+    try {
+      const held = heldClient();
+      const running = useCoachStore.getState().requestInsights(request(), { client: held.client });
+      await settle();
+
+      await settings.useSettingsStore.getState().setCoachEnabled(false);
+      held.answer(0, { data: { insights: [INSIGHT], safe: true }, error: null });
+      await running;
+
+      expect(useCoachStore.getState().insights).toEqual([]);
+      expect(useCoachStore.getState().lastAnsweredAt).toBeNull();
+      expect(useCoachStore.getState().loading).toBe(false);
+      expect(mockTrack).not.toHaveBeenCalled();
+    } finally {
+      settings.__setPersistenceForTests(null);
+    }
+  });
+
+  it('writes nothing after a request with the Coach off clears the cards', async () => {
+    const held = heldClient();
+    const running = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+
+    await useCoachStore.getState().requestInsights(request({ enabled: false }), { client: held.client });
+    held.answer(0, { data: { insights: [INSIGHT], safe: true }, error: null });
+    await running;
+
+    expect(held.calls()).toBe(1);
+    expect(useCoachStore.getState().insights).toEqual([]);
+    expect(useCoachStore.getState().loading).toBe(false);
+  });
+
+  it("keeps a newer request's answer when an older one lands after it", async () => {
+    const held = heldClient();
+    const older = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+    const newer = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+    expect(held.calls()).toBe(2);
+
+    held.answer(1, { data: { insights: [], safe: true }, error: null });
+    await newer;
+    held.answer(0, { data: { insights: [INSIGHT], safe: true }, error: null });
+    await older;
+
+    expect(useCoachStore.getState().insights).toEqual([]);
+    expect(useCoachStore.getState().lastRequestFailed).toBe(false);
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+    expect(mockTrack).toHaveBeenCalledWith('coach_requested', { insight_count: 0 });
+  });
+
+  it('still lands a request made after a reset', async () => {
+    useCoachStore.getState().reset();
+    const held = heldClient();
+    const running = useCoachStore.getState().requestInsights(request(), { client: held.client });
+    await settle();
+    held.answer(0, { data: { insights: [INSIGHT], safe: true }, error: null });
+    await running;
+
+    const s = useCoachStore.getState();
+    expect(s.insights).toHaveLength(1);
+    expect(s.loading).toBe(false);
+    expect(s.lastAnsweredAt).not.toBeNull();
+    expect(mockTrack).toHaveBeenCalledWith('coach_requested', { insight_count: 1 });
+  });
+});
+
 describe('coachStore — reset', () => {
   it('drops everything', async () => {
     const { client } = responds({ insights: [INSIGHT], safe: true });

@@ -148,6 +148,13 @@ export interface StoredSettings {
 /** The share card's shape: Post (3:4) or Story (9:16). */
 export type CardShape = 'post' | 'story';
 
+/**
+ * The phone's notification permission, as iOS last reported it: `'granted'`
+ * exactly when the schedulers would deliver (they check `granted`), else what
+ * the system says.
+ */
+export type NotificationPermission = 'granted' | 'denied' | 'undetermined';
+
 /** A local time of day for the practice reminder. */
 export interface PracticeReminderTime {
   hour: number;
@@ -166,11 +173,23 @@ interface SettingsState extends StoredSettings {
   /**
    * True when hydrate() found a settings record it couldn't read (the read
    * threw twice, or what came back wasn't a settings object). Not set for a
-   * fresh install, which has no record. The app lock then reads as on
-   * (security review, 2026-11-18): the person may have chosen it, and a lock
-   * that opens with Face ID or the passcode is the safe way to be wrong.
+   * fresh install, which has no record. Every privacy choice then reads as
+   * its private side (security review, 2026-11-18), since the record may have
+   * held it: the app lock on (Face ID or the passcode opens it), "Hide the
+   * words" on, the words off reminders, and usage stats off. Each is the
+   * safe way to be wrong, and each can be changed back in You as usual.
    */
   loadFailed: boolean;
+  /**
+   * The phone's notification permission, or null until it has been read (and
+   * whenever it can't be: web, a read that failed). Not a setting: it is the
+   * phone's state, so it is never stored and no reset touches it. Written by
+   * src/notifications/permissionState.ts at launch, on each return to the
+   * foreground and after the app asks (security review, 2026-11-18, round 4).
+   * A screen that would promise a notification reads it, and treats null as
+   * no: the paywall names the trial reminder only when it is 'granted'.
+   */
+  notificationPermission: NotificationPermission | null;
   /** Load persisted settings into the store. Safe to call once at startup. */
   hydrate: () => Promise<void>;
   /**
@@ -213,6 +232,8 @@ interface SettingsState extends StoredSettings {
   dismissPracticeReminderOffer: () => Promise<void>;
   /** The day a checkpoint's moment played, or null to forget it (Erase, account deletion). */
   setStreakMomentDay: (day: string | null) => Promise<void>;
+  /** What the permission read found (null: unknown). Held in memory only, never stored. */
+  setNotificationPermission: (permission: NotificationPermission | null) => void;
 }
 
 // Defaults preserve today's behavior: refine button is available and
@@ -291,7 +312,12 @@ export function __setPersistenceForTests(next: SettingsPersistence | null): void
     throw new Error('__setPersistenceForTests is only allowed when NODE_ENV=test');
   }
   persistence = next ?? defaultPersistence();
-  useSettingsStore.setState({ ...DEFAULTS, hydrated: false, loadFailed: false });
+  useSettingsStore.setState({
+    ...DEFAULTS,
+    hydrated: false,
+    loadFailed: false,
+    notificationPermission: null,
+  });
 }
 
 /**
@@ -343,6 +369,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULTS,
   hydrated: false,
   loadFailed: false,
+  notificationPermission: null,
 
   hydrate: async () => {
     try {
@@ -407,18 +434,33 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       }
     } catch (e) {
       // Fall back to defaults — never block startup on a settings read. But
-      // not for the lock: the record that couldn't be read may have had it
-      // on, and `appLock: false` here would be written over that record by
-      // the next change of any setting. On, it locks at launch where this
-      // build can (lockStore.arm: Face ID or the passcode opens it; a build
-      // without the module never locks), the switch in You shows it on, and
-      // turning it off is the usual check with the phone.
+      // not for the privacy choices: the record that couldn't be read may
+      // have held them, and a default here would be written over that record
+      // by the next change of any setting. So each takes its private side,
+      // in state, and that is what the next write stores:
+      //   - the lock on: it locks at launch where this build can
+      //     (lockStore.arm: Face ID or the passcode opens it; a build without
+      //     the module never locks), and turning it off is the usual check
+      //     with the phone;
+      //   - "Hide the words" on: a card opens with a tap, as always;
+      //   - the words off reminders (already the default): no words and no
+      //     Happened / Didn't on the lock screen;
+      //   - usage stats off: nothing is recorded or sent until they're turned
+      //     back on. What was queued before stays queued, unsent: nobody
+      //     asked for it to be deleted, and track() and flushEvents() both
+      //     read this switch first.
       // eslint-disable-next-line no-console
       console.warn(
-        '[settings] load failed; using defaults with the app lock on:',
+        '[settings] load failed; using defaults with every privacy choice on its private side:',
         e instanceof Error ? e.message : 'unknown error',
       );
-      set({ loadFailed: true, appLock: true });
+      set({
+        loadFailed: true,
+        appLock: true,
+        hideTitles: true,
+        reminderWords: false,
+        analyticsEnabled: false,
+      });
     } finally {
       set({ hydrated: true });
     }
@@ -556,6 +598,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setStreakMomentDay: async (day) => {
     set({ streakMomentDay: day });
     await persist(snapshot(get()));
+  },
+
+  // No persist: the phone's state, read again at every launch.
+  setNotificationPermission: (permission) => {
+    if (get().notificationPermission !== permission) set({ notificationPermission: permission });
   },
 }));
 

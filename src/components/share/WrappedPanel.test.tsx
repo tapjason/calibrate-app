@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { holdRanges } from '@/components/ui/holdRanges';
 import { __setShareDepsForTests, type ShareDeps } from '@/share/export';
@@ -500,10 +500,39 @@ describe('WrappedPanel — weekly reveal', () => {
   });
 });
 
-// Roadmap step 63: the daily streak travels with the recap.
+/**
+ * One open prediction logged a day, `days` days in a row, the last of them
+ * `lastDaysAgo` days ago (0 = today), due well after the week: they only
+ * make the streak, as Today reads it.
+ */
+function loggedDaily(days: number, lastDaysAgo = 0): Prediction[] {
+  const now = new Date();
+  return Array.from({ length: days }, (_, i) => {
+    const back = lastDaysAgo + i;
+    const at = new Date(now);
+    at.setDate(at.getDate() - back);
+    // Earlier days at noon; today at the moment itself, never later.
+    if (back > 0) at.setHours(12, 0, 0, 0);
+    const due = new Date(now);
+    due.setDate(due.getDate() + 30);
+    return prediction({
+      created_at: at.toISOString(),
+      due_date: due.toISOString(),
+      status: 'pending',
+      resolved_at: null,
+    });
+  });
+}
+
+// Roadmap step 63: the daily streak travels with the recap. Since the record
+// audit of 2026-11-18 (R11) it is the streak as Today reads it, live from the
+// predictions: the stored one waits for a write, so it outlived an ended one.
 describe('WrappedPanel streak', () => {
+  afterEach(() => act(() => useSettingsStore.setState({ streakShown: true })));
+
   it('puts a running streak on the card, and says it to a screen reader', () => {
     seed(run(4, 3));
+    usePredictionStore.setState({ pending: loggedDaily(15) });
     seedOverall(30, 15);
     render(<WrappedPanel span="week" />);
     expect(screen.getByTestId('wrapped-streak')).toHaveTextContent('15-day streak');
@@ -513,9 +542,47 @@ describe('WrappedPanel streak', () => {
   });
 
   it('leaves it off with no streak to speak of', () => {
-    seed(run(4, 3));
+    // Logged three days ago, answered today: today counts, yesterday didn't,
+    // so the streak is one day, too short for the card.
+    seed(run(4, 3, { created_at: new Date(Date.now() - 3 * 86_400_000).toISOString() }));
     seedOverall(30, 1);
     render(<WrappedPanel span="week" />);
     expect(screen.queryByTestId('wrapped-streak')).toBeNull();
+  });
+
+  it.each(['week', 'year'] as const)(
+    'leaves off a streak that has ended though the stored one says 5 (%s)',
+    (span) => {
+      // Five days in a row, the last ten days ago, no rest day saved: it ended
+      // nine days ago, and nothing written since has recomputed the stored 5.
+      seed([]);
+      usePredictionStore.setState({ pending: loggedDaily(5, 10) });
+      seedOverall(30, 5);
+      render(<WrappedPanel span={span} />);
+      expect(screen.queryByTestId('wrapped-streak')).toBeNull();
+      expect(screen.getByTestId('wrapped-card').props.accessibilityLabel).not.toMatch(
+        /day streak/,
+      );
+    },
+  );
+
+  it('shows the running streak though the stored one lags behind', () => {
+    seed(run(4, 3));
+    usePredictionStore.setState({ pending: loggedDaily(6) });
+    seedOverall(30, 0);
+    render(<WrappedPanel span="year" />);
+    expect(screen.getByTestId('wrapped-streak')).toHaveTextContent('6-day streak');
+  });
+
+  it('keeps it off the recap while the streak is off in You', () => {
+    seed(run(4, 3));
+    usePredictionStore.setState({ pending: loggedDaily(15) });
+    seedOverall(30, 15);
+    useSettingsStore.setState({ streakShown: false });
+    render(<WrappedPanel span="week" />);
+    expect(screen.queryByTestId('wrapped-streak')).toBeNull();
+    expect(screen.getByTestId('wrapped-card').props.accessibilityLabel).not.toMatch(
+      /day streak/,
+    );
   });
 });

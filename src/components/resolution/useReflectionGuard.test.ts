@@ -1,6 +1,7 @@
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import { renderHook, waitFor } from '@testing-library/react-native';
 
+import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
 import { usePredictionStore } from '@/store/predictionStore';
 
 import { GUARD_OPTIONS, useReflectionGuard } from './useReflectionGuard';
@@ -140,6 +141,62 @@ describe('useReflectionGuard', () => {
 
   it('saves without asking on web, which has no action sheet', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    renderHook(() => useReflectionGuard('p1', 'lucky timing'));
+
+    tryToLeave();
+
+    await waitFor(() => expect(mockDispatch).toHaveBeenCalledWith(ACTION));
+    expect(reflect).toHaveBeenCalledWith('p1', 'lucky timing');
+  });
+});
+
+// Security review, 2026-11-18: a system sheet or alert can sit above the app
+// lock, so a choice made in it while the app is locked does nothing.
+describe('useReflectionGuard while the app is locked', () => {
+  afterEach(() => __resetLockStoreForTests());
+
+  it.each([
+    ['Save reflection', 0],
+    ['Discard reflection', 1],
+  ])('ignores %s on the action sheet: nothing saved, the sheet stays', async (_label, index) => {
+    jest
+      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
+      .mockImplementation((_options, choose) => {
+        // Locked between the sheet opening and the press, as when the person
+        // went Home with it up and someone else opened the app.
+        useLockStore.setState({ locked: true });
+        choose(index);
+      });
+    renderHook(() => useReflectionGuard('p1', 'lucky timing'));
+
+    tryToLeave();
+    await Promise.resolve();
+
+    expect(reflect).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
+  });
+
+  it.each(['Save', 'Discard'])('ignores %s on the Android alert', async (label) => {
+    Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    renderHook(() => useReflectionGuard('p1', 'lucky timing'));
+
+    tryToLeave();
+    useLockStore.setState({ locked: true });
+    const button = (alert.mock.calls[0][2] ?? []).find((b) => b.text === label);
+    button?.onPress?.();
+    await Promise.resolve();
+
+    expect(button).toBeDefined();
+    expect(reflect).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
+  });
+
+  it('saves and leaves as before once the lock is open again', async () => {
+    jest
+      .spyOn(ActionSheetIOS, 'showActionSheetWithOptions')
+      .mockImplementation((_options, choose) => choose(0));
+    useLockStore.setState({ locked: false });
     renderHook(() => useReflectionGuard('p1', 'lucky timing'));
 
     tryToLeave();

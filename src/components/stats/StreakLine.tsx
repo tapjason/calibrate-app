@@ -145,8 +145,15 @@ export function StreakLine({
             </Text>
           ) : (
             // "149 day streak" on screen; VoiceOver hears the row's sentence,
-            // "149-day streak" (step 193).
-            <Text style={styles.headline} testID={`${testID}-headline`}>
+            // "149-day streak" (step 193). The words take the figure's cap:
+            // uncapped, at the largest text sizes "day streak" grew to about
+            // twice the size of the count it follows (security review,
+            // 2026-11-18). The figure carries the same cap itself.
+            <Text
+              style={styles.headline}
+              maxFontSizeMultiplier={DISPLAY_MAX_SCALE}
+              testID={`${testID}-headline`}
+            >
               {figure}
               {`${NBSP}${copy.unit}`}
             </Text>

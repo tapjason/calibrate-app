@@ -1,5 +1,5 @@
 import { categoryLabel } from '@/store/categoryStore';
-import type { Category, CoachEvidenceSource } from '@/types';
+import { isBuiltInCategory, type Category, type CoachEvidenceSource } from '@/types';
 
 export interface CoachReceipt {
   /** The figure, formatted as the user sees it elsewhere ("62%", "24"). */
@@ -48,11 +48,15 @@ export function coachReceipt(
     case 'actual_rate':
       return { figure: `${Math.round(value * 100)}%`, label: `came true in ${scope}` };
     case 'pattern':
-      return patternReceipt(kind, value);
+      return patternReceipt(kind, value, label);
   }
 }
 
-function patternReceipt(kind: string | undefined, value: number): CoachReceipt | null {
+function patternReceipt(
+  kind: string | undefined,
+  value: number,
+  label: (category: Category) => string,
+): CoachReceipt | null {
   if (kind === 'weakest_day_of_week') {
     const day = DAYS[value];
     return day ? { figure: day, label: 'your least calibrated day' } : null;
@@ -62,9 +66,21 @@ function patternReceipt(kind: string | undefined, value: number): CoachReceipt |
   }
   const drift = kind?.match(/^drift_(\w+)$/);
   if (drift) {
+    // Only a built-in's drift is ever sent (coachPatterns' DRIFT_PREFIX);
+    // anything else has no category to name, so no receipt.
+    const category = drift[1];
+    if (!isBuiltInCategory(category)) return null;
+    // Through the card's own label, as the header and the other receipts are:
+    // the bare id named "health" under a header that read "Your own category"
+    // while the words were hidden, and under a rename (security review,
+    // 2026-11-18).
+    const scope = label(category);
     const delta = Math.round(value);
     const figure = delta > 0 ? `+${delta}` : delta < 0 ? `−${Math.abs(delta)}` : '0';
-    return { figure, label: `change in your ${drift[1]} score, earlier to recent` };
+    return {
+      figure,
+      label: `change in ${scope.startsWith('your ') ? scope : `your ${scope}`} score, earlier to recent`,
+    };
   }
   return null;
 }

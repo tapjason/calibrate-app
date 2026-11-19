@@ -24,6 +24,8 @@ import {
 } from '@/billing/revenuecat';
 import { useSettingsStore } from '@/store/settingsStore';
 
+import { trackNotificationPermission } from './permissionState';
+
 export const TRIAL_REMINDER_ID = 'calibrate-trial-ending';
 export const TRIAL_REMINDER_CATEGORY = 'calibrate-trial-ending';
 /** Hidden-preview text: no price or plan on a locked screen. */
@@ -158,9 +160,15 @@ let settingsUnsub: (() => void) | null = null;
 /**
  * Follow the notifications toggle, as the reminders and the digest do: off
  * cancels the trial reminder, on brings it back. Call once at startup.
+ *
+ * Also starts reading the phone's notification permission into settingsStore,
+ * now and on every return to the foreground (permissionState.ts): without it
+ * this reminder is never scheduled (`syncTrialReminder` above), so the
+ * paywall names it only while the permission is granted.
  */
 export function initTrialReminder(): void {
   if (settingsUnsub) return;
+  trackNotificationPermission();
   settingsUnsub = useSettingsStore.subscribe((state, prev) => {
     if (state.notificationsEnabled !== prev.notificationsEnabled) void refreshTrialReminder();
   });

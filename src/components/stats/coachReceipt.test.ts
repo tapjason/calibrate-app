@@ -1,3 +1,5 @@
+import type { Category } from '@/types';
+
 import { coachReceipt } from './coachReceipt';
 
 describe('coachReceipt', () => {
@@ -52,6 +54,38 @@ describe('coachReceipt', () => {
     expect(
       coachReceipt({ field: 'pattern', scope: 'overall', value: 9, kind: 'weakest_day_of_week' }),
     ).toBe(null);
+  });
+});
+
+// Security review, 2026-11-18: the drift receipt named the bare id ("health")
+// under a header that read "Your own category" while the words were hidden.
+describe('coachReceipt, a drift through the card’s label', () => {
+  const drift = (label?: (c: Category) => string, kind = 'drift_health') =>
+    coachReceipt({ field: 'pattern', scope: 'overall', value: 5, kind }, label);
+
+  it('names a renamed built-in by the card’s hidden words, never its id', () => {
+    const hidden = () => 'your own category';
+    expect(drift(hidden)).toEqual({
+      figure: '+5',
+      label: 'change in your own category score, earlier to recent',
+    });
+    expect(drift(hidden)?.label).not.toMatch(/health/);
+  });
+
+  it('names a renamed built-in by its new name with the words shown', () => {
+    const renamed = (c: Category) => (c === 'health' ? 'Fitness' : c);
+    expect(drift(renamed)?.label).toBe('change in your Fitness score, earlier to recent');
+  });
+
+  it('passes the category itself to the label', () => {
+    const label = jest.fn((c: Category) => c);
+    drift(label, 'drift_finance');
+    expect(label).toHaveBeenCalledWith('finance');
+  });
+
+  it('leaves the receipt off for a drift with no built-in category', () => {
+    expect(drift(undefined, 'drift_other')).toBe(null);
+    expect(drift(undefined, 'drift_overall')).toBe(null);
   });
 });
 

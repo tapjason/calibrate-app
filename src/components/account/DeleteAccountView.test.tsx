@@ -1,9 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Alert, Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet } from 'react-native';
 
 import { PLUS_NAME } from '@/constants/app';
+import { colors, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
+import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
+import { DELETE_FAILED_MESSAGE, DELETE_UNCONFIRMED_MESSAGE } from '@/supabase/account';
 import { FREE_ENTITLEMENT, type Entitlement } from '@/types';
 
 import { DeleteAccountView } from './DeleteAccountView';
@@ -236,6 +239,19 @@ describe('DeleteAccountView — signed in', () => {
     expect(screen.queryByTestId('delete-google-note')).toBeNull();
   });
 
+  // Security review, 2026-11-18: the Warmup's and practice's answers never
+  // leave the phone (only tallies go up as usage counts), so they are removed
+  // from this phone, never "from our servers".
+  it('says what goes from the servers and what only from this phone', () => {
+    seed();
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    const body = screen.getByText(/permanently deletes/);
+    expect(body).toHaveTextContent(
+      "This permanently deletes your account, every prediction and reflection and your calibration history, from our servers and from this phone, and your Warmup and practice answers from this phone. It happens immediately and can't be undone.",
+    );
+    expect(body).not.toHaveTextContent(/practice answers, from our servers/);
+  });
+
   it('disables both buttons while deleting', () => {
     seed();
     useAuthStore.setState({ pending: true });
@@ -307,6 +323,198 @@ describe('DeleteAccountView — Cancel in the alert', () => {
     expect(screen.getByTestId('delete-confirm')).toBeTruthy();
     expect(screen.queryByTestId('delete-error')).toBeNull();
     expect(screen.getByTestId('delete-confirm-button')).not.toBeDisabled();
+  });
+});
+
+// Security review, 2026-11-18: the system alert has its own window, above the
+// app lock. Left up when the person went Home, it is still there when someone
+// else opens the app and cancels Face ID, and its button must do nothing.
+describe('DeleteAccountView — the alert pressed while the app is locked', () => {
+  afterEach(() => __resetLockStoreForTests());
+
+  it.each([
+    ['signed in', true, 'Delete account'],
+    ['guest', false, 'Erase'],
+  ])('deletes and erases nothing (%s)', async (_label, signedIn, button) => {
+    seed({ signedIn });
+    deleteAccount.mockResolvedValue({ ok: true });
+    eraseDeviceData.mockResolvedValue({ ok: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    // The app went to the background with the alert up, and locked.
+    act(() => useLockStore.setState({ locked: true }));
+    chooseInAlert(button);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(deleteAccount).not.toHaveBeenCalled();
+    expect(eraseDeviceData).not.toHaveBeenCalled();
+    expect(screen.getByTestId('delete-confirm')).toBeTruthy();
+    expect(screen.queryByTestId('delete-finished')).toBeNull();
+    expect(screen.queryByTestId('delete-error')).toBeNull();
+    expect(screen.getByTestId('delete-confirm-button')).not.toBeDisabled();
+  });
+
+  it('works as before once the lock is open again', async () => {
+    seed();
+    deleteAccount.mockResolvedValue({ ok: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    act(() => useLockStore.setState({ locked: true }));
+    act(() => useLockStore.setState({ locked: false }));
+    chooseInAlert('Delete account');
+
+    expect(await screen.findByText('Your account has been deleted')).toBeTruthy();
+    expect(deleteAccount).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Deletion can wait 45 seconds on the server, then check once more whether the
+// account is gone (security review, 2026-11-18).
+describe('DeleteAccountView — while deletion runs', () => {
+  it('says it can take up to a minute, under the disabled button', () => {
+    seed();
+    useAuthStore.setState({ pending: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    expect(screen.getByTestId('delete-confirm-button')).toBeDisabled();
+    expect(screen.getByTestId('delete-confirm-button')).toHaveTextContent('Deleting…');
+    const note = screen.getByTestId('delete-pending-note');
+    expect(note).toHaveTextContent('This can take up to a minute.');
+    expect(StyleSheet.flatten(note.props.style)).toMatchObject({
+      fontSize: type.subhead.fontSize,
+      color: colors.textSecondary,
+    });
+  });
+
+  it('shows the line only while it runs, and to nobody erasing this phone', async () => {
+    seed();
+    let finish!: (outcome: { ok: false; error: string }) => void;
+    deleteAccount.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          useAuthStore.setState({ pending: true });
+          finish = (outcome) => {
+            useAuthStore.setState({ pending: false });
+            resolve(outcome);
+          };
+        }),
+    );
+    const view = render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.queryByTestId('delete-pending-note')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    chooseInAlert('Delete account');
+    expect(await screen.findByTestId('delete-pending-note')).toBeTruthy();
+
+    await act(async () => {
+      finish({ ok: false, error: DELETE_FAILED_MESSAGE });
+    });
+    expect(screen.queryByTestId('delete-pending-note')).toBeNull();
+    view.unmount();
+
+    seed({ signedIn: false });
+    useAuthStore.setState({ pending: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.getByTestId('delete-confirm-button')).toHaveTextContent('Erasing…');
+    expect(screen.queryByTestId('delete-pending-note')).toBeNull();
+  });
+
+  // Both failures come from src/supabase/account.ts; the screen shows the
+  // outcome's own words and stays on the confirm step, button enabled.
+  it.each([
+    ['nothing was deleted', DELETE_FAILED_MESSAGE],
+    ['no answer either way', DELETE_UNCONFIRMED_MESSAGE],
+  ])('shows the failure when %s', async (_label, message) => {
+    seed();
+    deleteAccount.mockResolvedValue({ ok: false, error: message });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    chooseInAlert('Delete account');
+
+    expect(await screen.findByTestId('delete-error')).toHaveTextContent(message);
+    expect(screen.getByTestId('delete-confirm')).toBeTruthy();
+    expect(screen.queryByTestId('delete-finished')).toBeNull();
+    expect(screen.getByTestId('delete-confirm-button')).not.toBeDisabled();
+  });
+});
+
+// Security review, 2026-11-18, round 4 (ACCOUNT_SPEC §3.2 step 5): when the
+// Apple grant may still stand (the sheet was cancelled, the server skipped or
+// failed the revoke, or its answer was never seen), the finished screen says
+// where to remove the app, in Apple's own path (support.apple.com/en-us/102571).
+describe('DeleteAccountView — Sign in with Apple not revoked', () => {
+  const REMOVE_NOTE =
+    'Sign in with Apple may still list Fairly Sure. To remove it, open Settings, tap your name, then Sign in with Apple.';
+
+  async function deleteWith(
+    outcome: { ok: true; appleNotRevoked: boolean },
+    options: { apple?: boolean; google?: boolean } = {},
+  ) {
+    seed(options);
+    deleteAccount.mockResolvedValue(outcome);
+    const view = render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('delete-confirm-button')).not.toBeDisabled());
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    chooseInAlert('Delete account');
+    expect(await screen.findByTestId('delete-finished')).toBeTruthy();
+    return view;
+  }
+
+  it('says where to remove the app when the grant was not revoked, in the secondary style', async () => {
+    await deleteWith({ ok: true, appleNotRevoked: true }, { apple: true });
+
+    const note = screen.getByTestId('delete-apple-remove-note');
+    expect(note).toHaveTextContent(REMOVE_NOTE);
+    expect(StyleSheet.flatten(note.props.style)).toMatchObject({
+      fontSize: type.subhead.fontSize,
+      color: colors.textSecondary,
+    });
+    // Under the confirmation, beside the Done button.
+    expect(screen.getByText('Your account has been deleted')).toBeTruthy();
+    expect(screen.getByTestId('delete-done')).toBeTruthy();
+  });
+
+  it('says nothing about Apple when the grant was revoked', async () => {
+    await deleteWith({ ok: true, appleNotRevoked: false }, { apple: true });
+    expect(screen.queryByTestId('delete-apple-remove-note')).toBeNull();
+    expect(screen.queryByText(/Sign in with Apple may still list/)).toBeNull();
+  });
+
+  it('says nothing about Apple to an account that never had it', async () => {
+    const emailOnly = await deleteWith({ ok: true, appleNotRevoked: false });
+    expect(screen.queryByTestId('delete-apple-remove-note')).toBeNull();
+
+    // A Google account gets no Apple line either.
+    emailOnly.unmount();
+    await deleteWith({ ok: true, appleNotRevoked: false }, { google: true });
+    expect(screen.queryByTestId('delete-apple-remove-note')).toBeNull();
+  });
+
+  // The hosting provider's logs and any backups keep some of it for up to 7
+  // days (privacy policy §7), so the screen says "deleted", not "gone".
+  it('says the account is deleted from the servers, not gone from them', async () => {
+    await deleteWith({ ok: true, appleNotRevoked: false });
+    expect(
+      screen.getByText('Your predictions and account are deleted from our servers and this phone.'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/gone from our servers/)).toBeNull();
+  });
+
+  it('never shows it after a guest erases this phone', async () => {
+    seed({ signedIn: false });
+    eraseDeviceData.mockResolvedValue({ ok: true });
+    render(<DeleteAccountView onDone={jest.fn()} onCancel={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('delete-confirm-button')).not.toBeDisabled());
+    fireEvent.press(screen.getByTestId('delete-confirm-button'));
+    chooseInAlert('Erase');
+
+    expect(await screen.findByText('Your data has been erased')).toBeTruthy();
+    expect(screen.queryByTestId('delete-apple-remove-note')).toBeNull();
   });
 });
 

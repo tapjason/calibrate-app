@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
+import { appLocked } from '@/components/ui/appLocked';
 import { Button } from '@/components/ui/Button';
 import { APP_NAME, PLUS_NAME } from '@/constants/app';
 import { colors, type } from '@/constants/theme';
@@ -60,6 +61,9 @@ export function DeleteAccountView({
 
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
+  // From the deletion's outcome: the account had a Sign in with Apple
+  // identity and the revoke wasn't confirmed (authStore.deleteAccount).
+  const [appleNotRevoked, setAppleNotRevoked] = useState(false);
   // Captured at the start: once deletion lands, status flips to guest and the
   // copy would otherwise switch to the guest version under the user's eyes.
   const [wasSignedIn] = useState(status === 'authenticated');
@@ -72,11 +76,22 @@ export function DeleteAccountView({
         </Text>
         <Text style={styles.body}>
           {wasSignedIn
-            ? 'Your predictions and account are gone from our servers and this phone.'
+            ? // "Deleted", not "gone": the hosting provider's logs and any
+              // backups keep some of it for up to 7 days (privacy policy §7).
+              'Your predictions and account are deleted from our servers and this phone.'
             : // What Erase removes, as the confirmation says: settings stay,
               // and so does an account's copy (roadmap D60).
               'What you made on this phone without an account is gone.'}
         </Text>
+        {/* ACCOUNT_SPEC §3.2 step 5: the sheet was cancelled, the server
+            skipped or failed the revoke, or its answer was never seen. Apple's
+            own path (support.apple.com/en-us/102571, read 2026-11-19). */}
+        {wasSignedIn && appleNotRevoked && (
+          <Text style={styles.muted} testID="delete-apple-remove-note">
+            Sign in with Apple may still list {APP_NAME}. To remove it, open Settings, tap your
+            name, then Sign in with Apple.
+          </Text>
+        )}
         <Button label="Done" onPress={onDone} testID="delete-done" />
       </View>
     );
@@ -90,9 +105,24 @@ export function DeleteAccountView({
       entitlement.source === 'monthly' ||
       entitlement.source === 'annual');
 
+  // Run by the confirmation's destructive button. Nothing while the app is
+  // locked: the system alert stays above the lock screen, so it can be
+  // pressed by someone who never opened the lock (security review,
+  // 2026-11-18). Checked before anything else, at the press itself.
   const onConfirm = async () => {
+    if (appLocked()) return;
     setError(null);
-    const outcome = wasSignedIn ? await deleteAccount() : await eraseDeviceData();
+    if (wasSignedIn) {
+      const outcome = await deleteAccount();
+      if (outcome.ok) {
+        setAppleNotRevoked(outcome.appleNotRevoked === true);
+        setFinished(true);
+      } else {
+        setError(outcome.error);
+      }
+      return;
+    }
+    const outcome = await eraseDeviceData();
     if (outcome.ok) setFinished(true);
     else setError(outcome.error);
   };
@@ -125,9 +155,12 @@ export function DeleteAccountView({
       </Text>
       <Text style={styles.body}>
         {wasSignedIn
-          ? 'This permanently deletes your account, every prediction and reflection, ' +
-            'your calibration history and your Warmup and practice answers, from our ' +
-            'servers and from this phone. ' +
+          ? // The Warmup's and practice's answers never leave the phone (only
+            // tallies go up, as usage counts), so they are named as removed
+            // from this phone alone (security review, 2026-11-18).
+            'This permanently deletes your account, every prediction and reflection ' +
+            'and your calibration history, from our servers and from this phone, and ' +
+            'your Warmup and practice answers from this phone. ' +
             "It happens immediately and can't be undone."
           : // Everything wipeLocalUserData and eraseDeviceData remove, named
             // (blind playtest 2026-11-13b, run 6: the old line left out
@@ -203,6 +236,15 @@ export function DeleteAccountView({
         onPress={confirmFirst}
         testID="delete-confirm-button"
       />
+      {/* The server call can wait 45 seconds, then the app asks once more
+          whether the account is gone (src/supabase/account.ts): said, so a
+          long wait doesn't read as stuck (security review, 2026-11-18). An
+          erase is on this phone alone and quick. */}
+      {pending && wasSignedIn && (
+        <Text style={styles.muted} testID="delete-pending-note">
+          This can take up to a minute.
+        </Text>
+      )}
       <Button
         label="Cancel"
         variant="secondary"

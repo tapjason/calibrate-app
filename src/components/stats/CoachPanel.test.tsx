@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 
 import { __setDeviceLocaleForTests } from '@/constants/locale';
 import { useAuthStore } from '@/store/authStore';
+import { useCategoryStore } from '@/store/categoryStore';
 import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -168,6 +169,52 @@ describe('CoachPanel — rendering insights', () => {
     expect(screen.getByTestId('coach-receipt').props.accessibilityLabel).toBe(
       '55%, came true in finance',
     );
+  });
+
+  // Security review, 2026-11-18: with the words hidden, a renamed built-in's
+  // header read "Your own category" and its drift receipt named "health".
+  it('names a drift by the same words as its header while the words are hidden', () => {
+    seed();
+    useCategoryStore.setState({
+      defs: [
+        {
+          id: 'health',
+          user_id: 'u1',
+          name: 'Fitness',
+          icon: null,
+          hidden: false,
+          position: 0,
+          created_at: '2026-11-01T00:00:00.000Z',
+        },
+      ],
+    });
+    useSettingsStore.setState({ hideTitles: true });
+    useCoachStore.setState({
+      insights: [
+        {
+          ...INSIGHT,
+          category: 'health',
+          message: 'Your recent calls here sit closer to the line than your early ones.',
+          evidence: 6,
+          suggestion: 'Keep logging the same kinds of calls.',
+          evidence_source: { field: 'pattern', scope: 'overall', value: 6, kind: 'drift_health' },
+        },
+      ],
+      lastAnsweredAt: '2026-08-29T12:00:00.000Z',
+    });
+    try {
+      render(<CoachPanel />);
+
+      const card = screen.getByTestId('coach-insight-health');
+      expect(card).toHaveTextContent(/Your own category/);
+      expect(screen.getByTestId('coach-receipt').props.accessibilityLabel).toBe(
+        '+6, change in your own category score, earlier to recent',
+      );
+      expect(card).not.toHaveTextContent(/health|Fitness/);
+    } finally {
+      useSettingsStore.setState({ hideTitles: false });
+      useCategoryStore.setState({ defs: [] });
+    }
   });
 
   it('leaves the receipt off when the figure is ambiguous', () => {

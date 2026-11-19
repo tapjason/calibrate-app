@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { countUnsyncedEvents, enqueueEvent } from '@/db/analytics';
+import { countUnsyncedEvents, enqueueEvent, listUnsyncedEvents } from '@/db/analytics';
 import { setDbForTests } from '@/db/client';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import { createTestDb } from '@/db/testing';
@@ -19,7 +19,8 @@ interface WireRow {
   created_at: string;
 }
 
-type InsertMock = jest.Mock<Promise<{ error: unknown }>, [WireRow[]]>;
+/** supabase-js answers with the error and the HTTP status (0 for no response). */
+type InsertMock = jest.Mock<Promise<{ error: unknown; status?: number }>, [WireRow[]]>;
 
 /** A Supabase client stub exposing only .from(...).insert(...). */
 function fakeClient(insert: InsertMock): SupabaseClient {
@@ -201,6 +202,128 @@ describe('flushEvents', () => {
   });
 });
 
+// Security review, 2026-11-18, round 3: migration 010 refuses a guest insert
+// of more than 100 rows (PT413) or past the table's day budget (PT429), and
+// either table refuses a row that breaks a CHECK (23514). A refusal the
+// server will repeat isn't retried row by row, and a row it can never take
+// isn't kept.
+describe('flushEvents: refusals the server will repeat', () => {
+  const refusing = (error: Record<string, unknown>, status: number): InsertMock =>
+    jest.fn(async (_rows: WireRow[]) => ({ error: error as unknown, status }));
+
+  it.each([
+    ['PT429, the day budget', { code: 'PT429', message: "today's budget is used up" }, 429],
+    ['PT413, too many rows', { code: 'PT413', message: 'at most 100 rows per insert' }, 413],
+    ['25006, a read-only database', { code: '25006', message: 'cannot execute INSERT in a read-only transaction' }, 405],
+    ['HTTP 402 with no code', { message: 'Service restricted' }, 402],
+    ['HTTP 429 with no code', { message: 'Too Many Requests' }, 429],
+  ])('stops the sweep on %s, with one request and every row kept', async (_label, error, status) => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(3);
+    const insert = refusing(error, status);
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(0);
+
+    expect(insert).toHaveBeenCalledTimes(1);
+    await expect(countUnsyncedEvents()).resolves.toBe(3);
+  });
+
+  it('stops mid-way when a row meets the day budget, keeping it and the rest', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(4);
+    const insert: InsertMock = jest.fn(async (rows: WireRow[]) => {
+      if (rows.length > 1) return { error: { code: '23514', message: 'violates check constraint' }, status: 400 };
+      if (rows[0]!.id === 'e0') return { error: null, status: 201 };
+      return { error: { code: 'PT429', message: "today's budget is used up" }, status: 429 };
+    });
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(1);
+
+    // The batch, e0, then e1 refused: e2 and e3 are never tried.
+    expect(insert).toHaveBeenCalledTimes(3);
+    const left = await listUnsyncedEvents(USER, 10);
+    expect(left.map((e) => e.id)).toEqual(['e1', 'e2', 'e3']);
+  });
+
+  it('drops a row that breaks a CHECK (23514), sends the rest, and logs only the code', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(3);
+    const refusal = {
+      code: '23514',
+      message: 'new row for relation "analytics_events" violates check constraint "analytics_events_props_allowed"',
+      details: `Failing row contains (e1, ${USER}, share_completed).`,
+      hint: null,
+    };
+    const insert: InsertMock = jest.fn(async (rows: WireRow[]) =>
+      rows.length > 1 || rows[0]!.id === 'e1'
+        ? { error: refusal as unknown, status: 400 }
+        : { error: null, status: 201 },
+    );
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(2);
+
+    await expect(countUnsyncedEvents()).resolves.toBe(0);
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain('23514');
+    expect(logged).not.toContain('violates check constraint');
+    expect(logged).not.toContain('Failing row');
+    expect(logged).not.toContain(USER);
+  });
+
+  it.each([
+    ['22P02', `invalid input syntax for type uuid: "${USER}"`],
+    ['22007', 'invalid input syntax for type timestamp with time zone: "yesterday-ish"'],
+    ['22008', 'date/time field value out of range: "2026-13-45T00:00:00Z"'],
+  ])('drops a row refused with invalid input (%s), logging only the code', async (code, message) => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(2);
+    const insert: InsertMock = jest.fn(async (rows: WireRow[]) =>
+      rows.length > 1 || rows[0]!.id === 'e0'
+        ? { error: { code, message } as unknown, status: 400 }
+        : { error: null, status: 201 },
+    );
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(1);
+
+    await expect(countUnsyncedEvents()).resolves.toBe(0);
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain(code);
+    expect(logged).not.toContain(message.slice(message.indexOf('"')));
+  });
+
+  it('keeps every row when there was no response at all', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(2);
+    const insert = refusing({ code: '', message: 'TypeError: Network request failed' }, 0);
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(0);
+
+    await expect(countUnsyncedEvents()).resolves.toBe(2);
+  });
+
+  it('keeps a row refused for any other reason, as before', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(2);
+    const insert = refusing({ code: '42501', message: 'new row violates row-level security policy' }, 403);
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(0);
+
+    await expect(countUnsyncedEvents()).resolves.toBe(2);
+  });
+
+  // Migration 010's ceiling: a guest insert of more than 100 rows is refused.
+  it('never sends more than 100 rows in one insert', async () => {
+    await seed(150);
+    const insert = ok();
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(100);
+
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(insert.mock.calls[0]![0]).toHaveLength(100);
+    await expect(countUnsyncedEvents()).resolves.toBe(50);
+  });
+});
+
 // Roadmap D43 (decided 2026-11-03): a guest's funnel events count, with no id.
 // Security review, 2026-11-18: release builds keep console.warn in the device
 // log, and a Postgres error's details repeat the failing row.
@@ -298,5 +421,48 @@ describe('flushEvents for a guest', () => {
     ).resolves.toBe(0);
     expect(insert).not.toHaveBeenCalled();
     await expect(countUnsyncedEvents()).resolves.toBe(4);
+  });
+
+  // Migration 010 (security review, 2026-11-18, round 3).
+  it.each([
+    ['PT429', "guest_analytics_events: today's budget is used up; try again after midnight UTC", 429],
+    ['PT413', 'guest_analytics_events: at most 100 rows per insert', 413],
+  ])('stops on %s with one request and keeps the funnel events', async (code, message, status) => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const insert: InsertMock = jest.fn(async (_rows: WireRow[]) => ({
+      error: { code, message, details: null, hint: null } as unknown,
+      status,
+    }));
+
+    await expect(
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert) }),
+    ).resolves.toBe(0);
+
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(tables).toEqual(['guest_analytics_events']);
+    await expect(countUnsyncedEvents()).resolves.toBe(4);
+  });
+
+  it("drops a funnel event the props rule refuses (23514), and sends the others", async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const insert: InsertMock = jest.fn(async (rows: WireRow[]) =>
+      rows.length > 1 || rows[0]!.id === 'g2'
+        ? {
+            error: {
+              code: '23514',
+              message:
+                'new row for relation "guest_analytics_events" violates check constraint "guest_analytics_events_props_allowed"',
+            } as unknown,
+            status: 400,
+          }
+        : { error: null, status: 201 },
+    );
+
+    await expect(
+      flushEvents(LOCAL_GUEST_USER_ID, { client: guestClient(insert) }),
+    ).resolves.toBe(2);
+
+    // Only the paywall view is left: it waits for an account, as before.
+    await expect(countUnsyncedEvents()).resolves.toBe(1);
   });
 });

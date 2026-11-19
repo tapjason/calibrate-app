@@ -4,8 +4,10 @@ import { Text } from 'react-native';
 import { palettes } from '@/constants/theme';
 import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
 
+import { AppLockGate } from './AppLockGate';
 import { LaunchButton, launchInk, LaunchLine, LaunchPage, MARK_SIZE } from './LaunchPage';
 import { LAUNCH_HOLD_MS, LAUNCH_OUT_MS, LaunchScreen } from './LaunchScreen';
+import { SPLASH_MAX_MS } from './useLaunchSplash';
 
 // The mark, and the whole launch overlay, are hidden from VoiceOver.
 const HIDDEN = { includeHiddenElements: true };
@@ -80,13 +82,49 @@ describe('LaunchScreen', () => {
     __resetLockStoreForTests();
   });
 
-  it('stays up until the app is ready, however long that takes', () => {
+  // It used to stay up "however long that takes": a routing step that hung
+  // left it over the app, taking its taps, for good (security review,
+  // 2026-11-18). Now it waits as long as the native splash may, no longer.
+  it('stays up while the app gets ready, up to the splash’s limit', () => {
     render(<LaunchScreen started={false} />);
     act(() => {
-      jest.advanceTimersByTime(10_000);
+      jest.advanceTimersByTime(SPLASH_MAX_MS - 1);
     });
     expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();
+    expect(screen.getByTestId('launch-screen', HIDDEN).props.pointerEvents).toBe('auto');
     expect(screen.getByText('Fairly Sure', HIDDEN)).toBeTruthy();
+  });
+
+  it('lets the app through after the limit when the launch never says it is ready', () => {
+    render(<LaunchScreen started={false} />);
+    act(() => {
+      jest.advanceTimersByTime(SPLASH_MAX_MS);
+    });
+    // Then the usual hold and fade, as if it had.
+    act(() => {
+      jest.advanceTimersByTime(LAUNCH_HOLD_MS);
+    });
+    expect(screen.getByTestId('launch-screen', HIDDEN).props.pointerEvents).toBe('none');
+    act(() => {
+      jest.advanceTimersByTime(LAUNCH_OUT_MS);
+    });
+    expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull();
+  });
+
+  it('does not hold again when "ready" comes after the limit', () => {
+    const view = render(<LaunchScreen started={false} />);
+    act(() => {
+      jest.advanceTimersByTime(SPLASH_MAX_MS);
+    });
+    act(() => {
+      jest.advanceTimersByTime(LAUNCH_HOLD_MS - 1);
+    });
+    // The routing finished late, a moment before the page was due to go.
+    view.rerender(<LaunchScreen started />);
+    act(() => {
+      jest.advanceTimersByTime(1 + LAUNCH_OUT_MS);
+    });
+    expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull();
   });
 
   it('holds about a second once the app is ready, then goes', () => {
@@ -120,5 +158,48 @@ describe('LaunchScreen', () => {
     const view = render(<LaunchScreen started={false} />);
     view.rerender(<LaunchScreen started />);
     expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull();
+  });
+
+  // The limit is the launch page's alone: the lock (AppLockGate) shares its
+  // look, not its timers, and stays until it is opened.
+  it('leaves the lock up when the launch page goes at the limit', () => {
+    useLockStore.setState({ locked: true });
+    const view = render(
+      <>
+        <LaunchScreen started={false} />
+        <AppLockGate />
+      </>,
+    );
+    act(() => {
+      jest.advanceTimersByTime(SPLASH_MAX_MS + LAUNCH_HOLD_MS + LAUNCH_OUT_MS + 60_000);
+    });
+    expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull();
+    expect(screen.getByTestId('app-lock')).toBeTruthy();
+    expect(useLockStore.getState().locked).toBe(true);
+    view.unmount();
+  });
+
+  it('leaves the lock up when the app is ready after a hang, too', () => {
+    useLockStore.setState({ locked: true });
+    const view = render(
+      <>
+        <LaunchScreen started={false} />
+        <AppLockGate />
+      </>,
+    );
+    act(() => {
+      jest.advanceTimersByTime(SPLASH_MAX_MS);
+    });
+    view.rerender(
+      <>
+        <LaunchScreen started />
+        <AppLockGate />
+      </>,
+    );
+    act(() => {
+      jest.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByTestId('app-lock')).toBeTruthy();
+    view.unmount();
   });
 });

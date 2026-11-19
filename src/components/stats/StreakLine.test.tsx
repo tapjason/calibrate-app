@@ -150,6 +150,40 @@ describe('StreakLine, clearer (step 193)', () => {
     );
   });
 
+  // Security review, 2026-11-18: at AX5 the figure, capped at 1.6×, came out
+  // about half the size of its uncapped " day streak". Both now share the cap,
+  // so the figure (title3) stays the larger at every size.
+  it('caps the words beside the count as the count is capped, so the count stays larger', () => {
+    render(<StreakLine status={running({})} />);
+    const count = screen.getByTestId('streak-line-count');
+    const headline = screen.getByTestId('streak-line-headline');
+    expect(count.props.maxFontSizeMultiplier).toBe(DISPLAY_MAX_SCALE);
+    expect(headline.props.maxFontSizeMultiplier).toBe(DISPLAY_MAX_SCALE);
+    expect(headline.props.maxFontSizeMultiplier).toBe(count.props.maxFontSizeMultiplier);
+    // The same base sizes, so the same cap keeps the figure the larger.
+    expect(StyleSheet.flatten(count.props.style).fontSize).toBeGreaterThan(
+      StyleSheet.flatten(headline.props.style).fontSize as number,
+    );
+    // The spoken sentence is as it was.
+    expect(screen.getByTestId('streak-line').props.accessibilityLabel).toBe(
+      '149-day streak. One prediction today makes it 150.',
+    );
+  });
+
+  it('keeps the same cap while the count rolls up on a checkpoint', () => {
+    render(
+      <StreakLine
+        status={running({ streak: 7, today: 1, todayCounts: true, checkpoint: 7 })}
+        moment={{ days: 7, play: true }}
+      />,
+    );
+    const count = screen.getByTestId('streak-line-count');
+    expect(count.props.maxFontSizeMultiplier).toBe(DISPLAY_MAX_SCALE);
+    expect(screen.getByTestId('streak-line-headline').props.maxFontSizeMultiplier).toBe(
+      DISPLAY_MAX_SCALE,
+    );
+  });
+
   it('names the goal dots under them, hidden from VoiceOver with the dots', () => {
     render(<StreakLine status={running({ streak: 150, today: 2, todayCounts: true })} />);
     expect(screen.queryByTestId('streak-line-goal-name')).toBeNull();

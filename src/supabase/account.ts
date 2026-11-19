@@ -12,20 +12,39 @@
 // after any call that doesn't confirm, the client asks the auth server
 // whether the user still exists, and only its definite "no such user" counts
 // as done. Anything ambiguous leaves this phone untouched.
+//
+// A done outcome also says whether the server confirmed revoking the
+// account's Sign in with Apple grant (`appleRevoked`, security review
+// 2026-11-18, round 4): when it didn't, the finished screen tells the person
+// where to remove the app themselves (docs/ACCOUNT_SPEC.md §3.2 step 5).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getSupabaseClient, isSupabaseConfigured } from './client';
 
-export type DeleteAccountOutcome = { ok: true } | { ok: false; error: string };
+export type DeleteAccountOutcome =
+  | {
+      ok: true;
+      /**
+       * True only when an Apple code was sent and the function's own 200 says
+       * the grant was revoked (`appleRevokedIn`). False when no code was
+       * sent, when the server says it skipped or failed the revoke, when its
+       * answer can't be read, and when the deletion was confirmed by the
+       * "already deleted" check, whose answer says nothing about Apple.
+       */
+      appleRevoked: boolean;
+    }
+  | { ok: false; error: string };
 
 export interface DeleteAccountDeps {
   /** Override the client (tests). Null means "no client available". */
   client?: SupabaseClient | null;
   /**
    * How long to wait for the function. Default 45 s, above its worst case:
-   * three upstream calls with 8 s ceilings each (Apple's token exchange and
-   * revoke, RevenueCat's delete), then the delete itself.
+   * the Apple leg (token exchange and revoke) and RevenueCat's delete run at
+   * the same time, each cut off at 20 s (LEG_DEADLINE_MS in
+   * supabase/functions/delete-account/deletionPlan.ts), then the delete of
+   * the user itself.
    */
   timeoutMs?: number;
   /** How long to wait for the session read and the follow-up question. Default 10 s. */
@@ -92,7 +111,10 @@ export async function deleteAccountOnServer(
     // Only an explicit ok counts. Anything else is not proof the account is
     // gone, and the caller wipes the device only on proof.
     if (!result.error && (result.data as { ok?: unknown } | null)?.ok === true) {
-      return { ok: true };
+      return {
+        ok: true,
+        appleRevoked: appleAuthorizationCode !== null && appleRevokedIn(result.data),
+      };
     }
     answered = finishedAnswer(result);
     // eslint-disable-next-line no-console
@@ -103,10 +125,37 @@ export async function deleteAccountOnServer(
   }
 
   const probe = await probeAccount(client, asked, probeTimeoutMs);
-  // The account is gone: done, whichever call did it.
-  if (probe === 'gone') return { ok: true };
+  // The account is gone: done, whichever call did it. The function's answer
+  // was never read, so nothing says Apple's grant was revoked.
+  if (probe === 'gone') return { ok: true, appleRevoked: false };
   if (probe === 'exists' && answered) return { ok: false, error: DELETE_FAILED_MESSAGE };
   return { ok: false, error: DELETE_UNCONFIRMED_MESSAGE };
+}
+
+/** How every RevenueCat reason in the function's `skipped` list starts. */
+const REVENUECAT_REASON = 'revenuecat:';
+
+/**
+ * Whether the function's 200 says the Apple grant was revoked: its `skipped`
+ * list can be read and names nothing but RevenueCat. A revoke adds no entry;
+ * every reason it didn't happen starts "apple:", in the function as deployed
+ * before the security review (no code, no key, the revoke failed) and after it
+ * (also: the account's identities unread, no Apple identity, no usable
+ * id_token from Apple, a different Apple ID than the account's, a timeout;
+ * `APPLE_SKIPPED` in supabase/functions/delete-account/deletionPlan.ts).
+ *
+ * Read the other way round on purpose: a missing or malformed list, an entry
+ * that isn't a string, or a reason this client doesn't know all count as not
+ * revoked. Being wrong that way only shows the line on where to remove the
+ * app, which costs nothing if Apple's grant was gone after all.
+ */
+function appleRevokedIn(data: unknown): boolean {
+  if (typeof data !== 'object' || data === null) return false;
+  const { skipped } = data as { skipped?: unknown };
+  if (!Array.isArray(skipped)) return false;
+  return skipped.every(
+    (reason) => typeof reason === 'string' && reason.startsWith(REVENUECAT_REASON),
+  );
 }
 
 /** The parts of functions-js's invoke result read here. */

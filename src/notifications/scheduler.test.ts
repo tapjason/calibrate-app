@@ -1424,6 +1424,78 @@ describe('scheduler: reminder actions', () => {
     warn.mockRestore();
   });
 
+  // Security review, 2026-11-18, round 3: the read after a saved answer threw,
+  // and the answer was reported as failed.
+  it('reports a saved answer as recorded when reading it back throws', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+    const realGetState = usePredictionStore.getState.bind(usePredictionStore);
+    let readsAfterTheAnswer = 0;
+    const spy = jest.spyOn(usePredictionStore, 'getState').mockImplementation(() => {
+      const state = realGetState();
+      return {
+        ...state,
+        // Reads fine while the prediction is open; throws once it's answered.
+        getById: async (id: string) => {
+          const row = await state.getById(id);
+          if (id === p.id && row?.status !== 'pending') {
+            readsAfterTheAnswer += 1;
+            throw new Error('disk I/O error');
+          }
+          return row;
+        },
+      };
+    });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      await expect(notifications.triggerAction(p.id, 'happened')).resolves.toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(readsAfterTheAnswer).toBe(1);
+    expect((await getPrediction(p.id))?.status).toBe('resolved_yes');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}?answer=happened`]);
+    expect(warn).toHaveBeenCalledWith(
+      '[notifications] answer saved; reading it back failed:',
+      'disk I/O error',
+    );
+    warn.mockRestore();
+  });
+
+  it('opens the question when the answer saved but the row now reads as missing', async () => {
+    const notifications = makeFakeNotifications(true);
+    const navigator = makeFakeNavigator();
+    __setDepsForTests({ notifications, navigator });
+    await initNotifications();
+    const p = await pending();
+    const realGetState = usePredictionStore.getState.bind(usePredictionStore);
+    const spy = jest.spyOn(usePredictionStore, 'getState').mockImplementation(() => {
+      const state = realGetState();
+      return {
+        ...state,
+        // Missing, or not this user's, once answered: null, not a throw.
+        getById: async (id: string) => {
+          const row = await state.getById(id);
+          return id === p.id && row?.status !== 'pending' ? null : row;
+        },
+      };
+    });
+
+    try {
+      await notifications.triggerAction(p.id, 'didnt');
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+    expect(navigator.pushed).toEqual([`/resolve/${p.id}`]);
+  });
+
   it('records a cold-start action even when notification permission is off', async () => {
     const p = await pending();
     const notifications = makeFakeNotifications(false, {

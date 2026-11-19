@@ -63,11 +63,26 @@ const INITIAL = {
   lastFailure: null as CoachFailure | null,
 };
 
+/**
+ * Which request may still write (security review, 2026-11-18). Each request
+ * takes the next number when it starts; reset() (another account, Erase,
+ * account deletion, Coach turned off in You) moves it on too. A request whose
+ * number is no longer the latest when its answer comes back writes nothing:
+ * its cards, or its support screen, were about an account or a choice that
+ * no longer holds, and a newer request's answer is the one to show. Not
+ * state: nothing renders it.
+ */
+let generation = 0;
+
 export const useCoachStore = create<CoachState>((set) => ({
   ...INITIAL,
 
   requestInsights: async (request, deps) => {
     const { userStat, resolved, isPlus, enabled } = request;
+    // Taken before anything else, so a request still running when this one
+    // starts, gated or not, can no longer write.
+    const mine = ++generation;
+    const superseded = () => mine !== generation;
 
     // Gate before anything else. Turning Coach off must clear what is on
     // screen, not just stop future refreshes — leaving stale cards up after
@@ -95,6 +110,12 @@ export const useCoachStore = create<CoachState>((set) => ({
         freetext:
           deps?.freetext ?? resolved.flatMap((p) => [p.title, p.reflection]),
       });
+
+      // The account changed, the Coach was turned off, or a newer request
+      // started while this one ran: nothing of this answer is written, not
+      // even `loading`, which the reset or the newer request owns now. No
+      // analytics either: the event would go under whoever is signed in now.
+      if (superseded()) return;
 
       if (!result.ok) {
         // No answer. Keep the last-good insights rather than blanking the
@@ -132,10 +153,15 @@ export const useCoachStore = create<CoachState>((set) => ({
       // fetchCoachInsights already swallows its own errors; this is belt and
       // braces so a store action can never reject into a component.
       // eslint-disable-next-line no-console
-      console.warn('[coach] request failed:', e);
+      console.warn('[coach] request failed:', e instanceof Error ? e.message : 'unknown error');
+      if (superseded()) return;
       set({ loading: false, lastRequestFailed: true, lastFailure: null });
     }
   },
 
-  reset: () => set({ ...INITIAL }),
+  reset: () => {
+    // First, so a request still running can't write after the wipe.
+    generation += 1;
+    set({ ...INITIAL });
+  },
 }));

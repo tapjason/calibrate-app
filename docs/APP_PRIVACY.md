@@ -1,6 +1,12 @@
 # Fairly Sure — App Privacy declarations
 
-**As of:** 2026-11-16 (checked against the code after step 187; policy audit of step 180 on 2026-11-15; first written 2026-09-24) · Derived from the code, not from intent.
+**As of:** 2026-11-18 (revised after the security and policy review of 2026-11-18; checked against the code after step 187; policy audit of step 180 on 2026-11-15; first written 2026-09-24) · Derived from the code, not from intent.
+
+**Two answers below depend on owner steps not yet confirmed** (2026-11-18): the Name row
+is **No** only once Supabase's "Write audit logs to the database" is off and
+`auth.audit_log_entries` is purged, and the guest counts carry a hashed id and day-only
+times only once migration 010 is applied. The privacy policy's header lists the same
+steps.
 
 This is the answer sheet for App Store Connect → App Privacy, and the source
 for the privacy policy text. Every row cites the file that proves it. If a
@@ -18,7 +24,11 @@ The short version:
   SQLite, and sync has nothing to sync. Eight funnel events go up to
   `guest_analytics_events` with no user, install or device id (D43;
   `src/analytics/flush.ts`, `GUEST_EVENT_NAMES`), since step 186 applied
-  migration 007 on 2026-11-16; before that nothing left a guest's phone.
+  migration 007 on 2026-11-16; before that nothing left a guest's phone. Once
+  migration 010 is applied, the server replaces each event id with a hash and
+  keeps only the UTC day. Not "unlinkable": the request arrives with an IP
+  address (the hosting provider's logs), and Postgres internals can still group
+  one batch's rows (§3).
 - **Freetext never reaches the AI.** The one feature that would have sent it,
   Refine, is cut from v1 (2026-09-24). The Coach sends numbers only.
 
@@ -29,10 +39,11 @@ The short version:
 | Apple data type | Collected | Linked to identity | Tracking | Purpose | Evidence |
 |---|---|---|---|---|---|
 | Contact Info → **Email address** | Yes | Yes | No | App Functionality (account + sync) | `src/supabase/auth.ts` — email/password, Sign in with Apple (the email scope only) and Continue with Google (step 192, the system sign-in sheet, no Google SDK) |
-| Contact Info → **Name** | **No** | — | — | — | Google sends a name and a picture URL with the email and Supabase can't be told not to ask. Two triggers remove those keys as the row is written (`supabase/migrations/009_strip_provider_profile.sql`; both confirmed on the live project 2026-11-18). A test Google sign-in after build 4 confirms the keys are gone (`HUMAN_VERIFICATION.md` A6); if they ever stay, this row becomes Yes, Linked, App Functionality |
+| Contact Info → **Name** | **No, on a condition** (until it's met: **Yes, Linked, App Functionality**) | — | — | — | Google sends a name and a picture URL with the email and Supabase can't be told not to ask. Two triggers remove those keys from `auth.users` and `auth.identities` as the row is written (`supabase/migrations/009_strip_provider_profile.sql`; both confirmed on the live project 2026-11-18). **The condition:** Supabase Auth's audit log, written to the database by default, stores each sign-in's `actor_name` from `full_name` (the security review, 2026-11-18), and nothing deletes those rows. This row is No only after the owner turns off Authentication → Configuration → Audit Logs → "Write audit logs to the database" and purges `auth.audit_log_entries`. **Owner's call even then:** the audit events still go to Supabase's own log storage, kept 24 hours on Free and 7 days on Pro; Apple counts data as collected when it stays accessible "longer than what is necessary to service the transmitted request in real time" ([App privacy details](https://developer.apple.com/app-store/app-privacy-details/)), so a stricter reading says Yes, Linked, App Functionality. A test Google sign-in after build 4 confirms the keys are gone from the tables (`HUMAN_VERIFICATION.md` A6); if they ever stay, this row becomes Yes, Linked, App Functionality |
 | User Content → **Other User Content** (prediction titles, reflections) | Yes | Yes | No | App Functionality | `PredictionWireRow` (`src/types/index.ts`); `src/supabase/sync.ts` |
 | Identifiers → **User ID** | Yes | Yes | No | App Functionality, Analytics | Supabase auth user id; Google's account id for a Google sign-in (`auth.identities.provider_id`); passed to RevenueCat as `appUserID`, `src/billing/revenuecat.ts` (`configureBilling`) |
-| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics, App Functionality (the Coach's per-account request count, `supabase/migrations/002_coach_usage.sql`) | `src/analytics/events.ts` — closed catalogue, numeric properties only. A guest's funnel events carry no id (D43), but Apple asks per data type, and a signed-in person's are linked, so answer **linked** |
+| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics, App Functionality (the Coach's per-account request count, `supabase/migrations/002_coach_usage.sql`) | `src/analytics/events.ts` — closed catalogue: numbers, yes/no values and fixed labels (`PAYWALL_SOURCES`, `SHARE_SURFACES`); `warmup_completed` carries the Warm-up's 0–100 score and `practice_completed` the number right, guests included. A guest's funnel events carry no account, device or install id (D43), but Apple asks per data type, and a signed-in person's are linked, so answer **linked** |
+| **IP address** (not a data type of its own) | **Owner's call; see the note** | Yes (where stored with an account) | No | App Functionality (security, keeping the service running) | Stored in three places (2026-11-18): Supabase's request and sign-in logs (1 day on Free, 7 on Pro; auth audit logs 24 hours on Free); and, linked to the account for as long as each session lives, `auth.sessions.ip` with `user_agent`, written on every token refresh (supabase/auth migration `20231027141322_add_session_refresh_columns`; `RefreshTokenGrant` in `internal/tokens/service.go`); sessions last until a sign-out with a connection or the account's deletion ([Supabase sessions](https://supabase.com/docs/guides/auth/sessions): "By default, it lasts indefinitely"). Apple: "You collect and store IP address from your users. Declare the relevant data types based on how you use IP address, such as precise location, coarse location, device ID, or diagnostics." Nothing in the app or its functions derives a location from it or uses it for ads or tracking. Candidate answer, for the owner (or `policy-auditor`) to settle: **Diagnostics → Other Diagnostic Data**, or **Other Data Types**, Collected, Linked, App Functionality. RevenueCat's SDK requests also arrive with an IP address (RevenueCat's own records) |
 | Purchases → **Purchase History** | Yes | Yes | No | App Functionality, Analytics (`purchase_completed` carries the plan and trial flags, `src/analytics/events.ts`; RevenueCat's guidance says both) | Apple IAP via RevenueCat; `supabase/functions/revenuecat-webhook/` |
 | Identifiers → Device ID / Advertising | **No** | — | — | — | no ad or attribution SDK in `package.json` |
 | Diagnostics (crash, performance) | **No** | — | — | — | no crash reporter in `package.json` |
@@ -45,6 +56,16 @@ reads no accounts, no HealthKit, no transactions.
 
 The age band is not a collected data type. Apple's nutrition label counts data
 that leaves the device. The band does not: see §4a.
+
+**The Coach's summary, for the owner to weigh (2026-11-18).** Our server stores none of
+it (only the daily count, `coach_usage`), and OpenAI receives no account id
+(`supabase/functions/coach/index.ts`, the `messages` it sends). But OpenAI keeps
+abuse-monitoring logs of API use "for up to 30 days" ([Data controls in the OpenAI
+platform](https://developers.openai.com/api/docs/guides/your-data), read 2026-11-18),
+which is longer than serving the request. If that counts as collection by a third-party
+partner, the summary (scores, counts and rates derived from the person's predictions) would
+be a row of its own, for example Other Data Types or Other User Content, Collected, **Not
+Linked**, App Functionality. Not settled here.
 
 ---
 
@@ -63,7 +84,7 @@ Analytics events land in `public.analytics_events`, scoped to the user id.
 | Feature | What is sent | Trigger |
 |---|---|---|
 | ✨ **Refine**: not shipped (`REFINE_ENABLED = false`, the function not deployed). Declare nothing for it. | If it ever returns: the title just typed, nothing else. | An explicit tap. |
-| **Coach** (Plus) | **Aggregated numbers only** — `CoachContext` is a calibration rating, per-category resolved counts / scores / rates, and deterministic pattern values. Its only strings are a built-in category id and an engine pattern key (such as `weakest_day_of_week`): a category the person added (`c-…`, named in their own words) is left out before the call (`src/ai/coachContext.ts`), and the server rejects any other category and any key that isn't a short lowercase machine key (`supabase/functions/coach/index.ts`). | An explicit "Get feedback" tap. **Off by default** (`coachEnabled: false`, `src/store/settingsStore.ts`). |
+| **Coach** (Plus) | **Aggregated numbers only** — `CoachContext` is a calibration rating, per-category resolved counts / scores / rates, and deterministic pattern values. Its only strings are a built-in category id and an engine pattern key (such as `weakest_day_of_week`): a category the person added (`c-…`, named in their own words) is left out before the call (`src/ai/coachContext.ts`), and the server rejects any other category and any pattern key but the four the app sends (`weakest_day_of_week`, `weakest_day_score`, `weakest_day_answers`, `drift_<built-in>`; `parseContext` in `supabase/functions/coach/contract.ts`; until 2026-11-18 any short lowercase key got through). No account id or email goes to OpenAI (`supabase/functions/coach/index.ts`, the `messages` it sends). | An explicit "Get feedback" tap. **Off by default** (`coachEnabled: false`, `src/store/settingsStore.ts`). |
 
 Both calls go through Supabase Edge Functions that verify the caller's JWT;
 the API key is server-side only and never ships in the binary
@@ -108,9 +129,16 @@ relay address — the app treats it as any other email).
   event, correctly or by accident, because there is no field shaped like one.
 - The queue is local (migration `006_analytics`), capped, push-then-delete, and
   flushes on foreground alongside sync. A guest's eight funnel events go to
-  `guest_analytics_events` with an event id (random, `track.ts`), the name,
-  its numbers and the time, and nothing else: no user, install or device id,
-  so two rows can't be tied to one person (D43). Their other events move to the account on sign-in
+  `guest_analytics_events` with an event id (`track.ts`: the millisecond in
+  base 36, then random), the name, its props and the time, and no user,
+  install or device id (D43). Once migration 010 is applied, a trigger
+  replaces the id with `h_` and 32 hex characters of its SHA-256 and cuts
+  `created_at` and `received_at` to the UTC day, and rows already stored are
+  rewritten the same way. **Don't claim the rows can't be linked to each
+  other:** Postgres internals can still group one insert's rows, and each
+  request reaches the hosting provider with an IP address (its logs: 1 day on
+  Free, 7 on Pro). What is true: no account, device or install id, and nothing
+  finer than the day. Their other events move to the account on sign-in
   (`migrateGuestDataToUser`), so they are sent then; the policy says so.
   Turning usage stats off clears the queue first and sends nothing more.
 - Users can turn it off: You → "Usage stats" (default on). Renamed from
@@ -182,8 +210,10 @@ The privacy policy URL App Store Connect requires must at minimum say:
 2. That AI features are optional, and exactly what each sends: refine sends the
    prediction text the user typed; the Coach sends aggregated statistics only
    and never prediction text or reflections.
-3. That usage analytics are numeric-only, tied to the account, and switchable
-   off in You.
+3. That usage analytics are numbers, yes/no values and fixed labels, tied to
+   the account, and switchable off in You; that a guest's few funnel counts go
+   up with no account, device or install id; and that the Warm-up's score and practice's tally are sent,
+   though the answers aren't.
 4. That subscriptions are processed by Apple and managed via RevenueCat.
 5. How to delete an account and its data.
 6. That on iOS 26 or later the app may keep an age band from Apple on the
@@ -195,8 +225,13 @@ The privacy policy URL App Store Connect requires must at minimum say:
 is configured), deletes the RevenueCat customer (when a write key is), and
 deletes the auth user, whose rows cascade from every public table. The device
 is wiped only after the server confirms. Guests get "Erase your data on this
-phone". Deployed 2026-10-02; the keys were set on 2026-11-16, and the RevenueCat
-leg waits on one misspelled secret's rename (`docs/HUMAN_VERIFICATION.md` Batch E).
+phone". Deployed 2026-10-02; the keys were set on 2026-11-16, the RevenueCat one
+under its right name, `REVENUECAT_DELETE_KEY` (renamed that day;
+`docs/ACCOUNT_SPEC.md` §3.3). The RevenueCat leg is best effort: the account is
+deleted even when it fails, and the policy says so. Since 2026-11-18 Apple is
+revoked only when the code's Apple ID is the account's own (`supabase/README.md`,
+delete-account; live once the function is redeployed), and a call that doesn't confirm is followed by a check of whether
+the user still exists (`src/supabase/account.ts`).
 
 **In-app disclosure for the Coach (Guideline 5.1.2(i), added 2025-11-13).**
 Apple now requires apps to "clearly disclose where personal data will be shared

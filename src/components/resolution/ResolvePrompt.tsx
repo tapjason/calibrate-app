@@ -437,6 +437,61 @@ export function ResolvePrompt({
     [],
   );
 
+  /**
+   * After an answer `resolve` saved, when the read of the row after it
+   * failed: the answer as given, and nothing that read would have backed. No
+   * range line, no rating move, no badge, no checkpoint; what the stores hold
+   * for this answer is cleared, so it can't land on a later acknowledgement.
+   * The same for Yes and No (rule 0.4).
+   */
+  const recordedUnread = (outcome: ResolvedStatus, ratingBefore: number | null) => {
+    if (!prediction) return;
+    const store = usePredictionStore.getState();
+    // The lists held here, if their reload after the answer went through, can
+    // still show the row holding something else than this answer since it was
+    // opened: a reminder or another phone got there first and `resolve` left
+    // it as it was. Then that is shown, as the read's copy would have been.
+    const held = [...store.pending, ...store.resolved].find((p) => p.id === prediction.id);
+    if (held && held.status !== outcome && held.status !== prediction.status) {
+      setPrediction(held);
+      return;
+    }
+    useStatsStore.getState().clearMilestone();
+    if (store.streakCheckpointFrom === 'answer') store.clearStreakCheckpoint();
+    haptics.resolve();
+    if (outcome === 'skipped') {
+      AccessibilityInfo.announceForAccessibility('Recorded: can’t tell.');
+      onResolved?.('skipped');
+      return;
+    }
+    // Whether it was answered the day it was logged (D41) is known without the
+    // read: the row as it was opened, answered now. Said, so a same-day
+    // answer isn't taken for a scored one.
+    const sameDay = answeredSameDay({
+      ...prediction,
+      status: outcome,
+      resolved_at: new Date().toISOString(),
+    });
+    setAnswered({
+      outcome,
+      line: sameDay
+        ? rewordedLater(prediction)
+          ? SAME_DAY_REWORDED_LINE
+          : SAME_DAY_LINE
+        : null,
+      note: null,
+      // Known before the answer, and only ever used to decide whether a
+      // correction says the rating follows it (no figures, D50).
+      ratingBefore,
+      milestone: null,
+      tierDrop: null,
+      checkpoint: null,
+      unlocked: false,
+    });
+    onAnswered?.();
+    AccessibilityInfo.announceForAccessibility(recordedText(outcome));
+  };
+
   const submit = async (outcome: ResolvedStatus) => {
     if (!prediction) return;
     setError(null);
@@ -451,7 +506,16 @@ export function ResolvePrompt({
       await usePredictionStore
         .getState()
         .resolve(prediction.id, outcome, undefined, { answeringSkip });
-      const landed = await usePredictionStore.getState().getById(prediction.id);
+      // The answer is saved once `resolve` returns. A read after it that
+      // fails must not show an error, which invites answering again (security
+      // review, 2026-11-18): the answer is shown from what is known instead.
+      let landed: Prediction | null;
+      try {
+        landed = await usePredictionStore.getState().getById(prediction.id);
+      } catch {
+        recordedUnread(outcome, ratingBefore);
+        return;
+      }
       // A reminder action may have recorded this already. Don't celebrate an
       // outcome the row doesn't have, and don't leave on a skip that didn't land.
       if (!landed || landed.status !== outcome) {

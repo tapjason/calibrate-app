@@ -284,8 +284,9 @@ export interface TimelineStep {
 /**
  * The honest trial timeline (DESIGN_SYSTEM §7.6), or null when the selected
  * plan has no trial. The middle step, the reminder two days before it renews
- * (roadmap D16), shows only while notifications are on: with them off the
- * app sends nothing, so the screen doesn't promise it.
+ * (roadmap D16), shows only while the app would send it: the caller passes
+ * `reminder` only with the Notifications switch on and iOS permission granted
+ * (PaywallView). Otherwise nothing is sent, so the screen doesn't promise it.
  */
 export function trialTimeline(
   plan: PlusPlan,

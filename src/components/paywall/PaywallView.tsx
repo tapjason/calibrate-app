@@ -73,9 +73,15 @@ export function PaywallView({ onClose }: { onClose?: () => void }) {
   const ordered = sortPlans(plans);
   const selected =
     ordered.find((p) => p.packageId === selectedId) ?? defaultPlan(ordered);
-  // The reminder step only while the app would send it (roadmap D16).
-  const remindersOn = useSettingsStore((s) => s.notificationsEnabled);
-  const timeline = selected ? trialTimeline(selected, { reminder: remindersOn }) : null;
+  // The reminder step only while the app would send it (roadmap D16): the
+  // Notifications switch on AND iOS permission granted, without which
+  // nothing is scheduled (src/notifications/trialReminder.ts). Not yet read
+  // (null), denied or not asked: no step, since a promise not made is the
+  // safe side (security review, 2026-11-18, round 4).
+  const reminderComes = useSettingsStore(
+    (s) => s.notificationsEnabled && s.notificationPermission === 'granted',
+  );
+  const timeline = selected ? trialTimeline(selected, { reminder: reminderComes }) : null;
 
   const busy = purchasing !== null || restoring;
   const message = noticeText(notice);

@@ -10,6 +10,7 @@ import Animated, {
 
 import { dueWithin } from '@/components/prediction/dueGroups';
 import { chartVerdict } from '@/components/stats/chartTakeaway';
+import { useStreakNow } from '@/components/stats/useStreakNow';
 import { haptics } from '@/components/ui/haptics';
 import { colors, space, type } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
@@ -97,6 +98,10 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
   const isPlus = useEntitlementStore((s) => s.isPlus);
   const cardThemeId = useSettingsStore((s) => s.cardThemeId);
   const streakShown = useSettingsStore((s) => s.streakShown);
+  // The streak as it stands now, as Today reads it: the stored one waits for
+  // a write, so the recap kept a streak that had ended (record audit,
+  // 2026-11-18).
+  const streak = useStreakNow().streak;
   useCategoryStore((s) => s.defs); // re-render on a rename (roadmap D39)
   const userStat = useStatsStore((s) => s.userStat);
   const categoryStats = useStatsStore((s) => s.categoryStats);
@@ -187,7 +192,7 @@ export function WrappedPanel({ span }: WrappedPanelProps) {
                     resolved: userStat.total_resolved,
                     provisional: userStat.rating_is_provisional,
                     // None on the recap while it's off in You (step 173).
-                    streak: streakShown ? userStat.current_streak : 0,
+                    streak: streakShown ? streak : 0,
                     // Insights' read, for the week's card to set beside its own.
                     lean: chartVerdict(buckets, userStat.rating_is_provisional)?.title ?? null,
                     // The year's card carries the rating (D62).

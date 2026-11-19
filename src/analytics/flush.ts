@@ -4,7 +4,10 @@
 // per-row, swallow every error, and never let the network decide whether the
 // app works. It differs in one way — a row that lands is deleted locally
 // rather than flagged, because a second copy of someone's usage history on
-// their own device serves nobody.
+// their own device serves nobody. A refusal the server would repeat for every
+// row (a budget, a size limit, a read-only database) ends the sweep with
+// nothing retried, and a row the server can never accept is dropped (see
+// outcomeOf below).
 //
 // A guest's funnel events go up with no id of any kind (roadmap D43, decided
 // 2026-11-03), to their own table, so the funnel counts people who never sign
@@ -25,7 +28,12 @@ import { getSupabaseClient, isSupabaseConfigured } from '@/supabase/client';
 
 import { GUEST_EVENT_NAMES } from './events';
 
-/** Rows per request. Small — these are tiny rows and this is background work. */
+/**
+ * Rows per request. Small — these are tiny rows and this is background work.
+ * Never above 100: migration 010 (supabase/migrations/010_public_key_limits.sql)
+ * refuses a guest insert of more than 100 rows with PT413, and a batch it
+ * refuses for its size is never sent again row by row (below).
+ */
 const BATCH_SIZE = 100;
 
 export interface FlushDeps {
@@ -105,37 +113,64 @@ async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
     // is not a log. Idempotency comes from the client-generated primary key
     // instead: a retry of a row the server already has fails with a duplicate
     // key, which is success as far as this queue is concerned.
-    const insert = async (batch: Array<EventWireRow | GuestWireRow>) => {
-      const { error } = await client.from(table).insert(batch);
-      if (error) throw error;
+    //
+    // Null when the server took the rows; otherwise what it said. Never throws.
+    const insert = async (batch: Array<EventWireRow | GuestWireRow>): Promise<Refusal | null> => {
+      try {
+        const { error, status } = await client.from(table).insert(batch);
+        return error ? refusalOf(error, status) : null;
+      } catch (e) {
+        return refusalOf(e, undefined);
+      }
     };
 
-    try {
-      await insert(rows);
+    const batchRefusal = await insert(rows);
+    if (!batchRefusal) {
       await deleteEvents(rows.map((r) => r.id));
       return rows.length;
-    } catch (batchErr) {
-      // eslint-disable-next-line no-console
-      console.warn('[analytics] batch push failed, falling back to per-row:', errorForLog(batchErr));
-      let pushed = 0;
-      const done: string[] = [];
-      for (const row of rows) {
-        try {
-          await insert([row]);
-          done.push(row.id);
-          pushed += 1;
-        } catch (rowErr) {
-          if (isDuplicate(rowErr)) {
-            // Already delivered; a response we never saw. Drop it locally.
-            done.push(row.id);
-          }
-          // Anything else stays queued. The next sweep retries, and the queue
-          // is capped so it cannot grow without bound.
-        }
-      }
-      await deleteEvents(done);
-      return pushed;
     }
+    if (outcomeOf(batchRefusal) === 'stop') {
+      // The server would refuse each row the same way: no row-by-row retry,
+      // which would only spend a hundred requests on the same answer.
+      // Everything stays queued for a later sweep.
+      // eslint-disable-next-line no-console
+      console.warn('[analytics] push refused for now; events stay queued:', refusalForLog(batchRefusal));
+      return 0;
+    }
+
+    // eslint-disable-next-line no-console
+    console.warn('[analytics] batch push failed, falling back to per-row:', batchRefusalForLog(batchRefusal));
+    let pushed = 0;
+    const done: string[] = [];
+    for (const row of rows) {
+      const refusal = await insert([row]);
+      if (!refusal) {
+        done.push(row.id);
+        pushed += 1;
+        continue;
+      }
+      const outcome = outcomeOf(refusal);
+      if (outcome === 'stop') {
+        // This row and the rest stay queued; what landed is cleared below.
+        // eslint-disable-next-line no-console
+        console.warn('[analytics] push refused for now; events stay queued:', refusalForLog(refusal));
+        break;
+      }
+      if (outcome === 'delivered') {
+        // Already delivered; a response we never saw. Drop it locally.
+        done.push(row.id);
+      } else if (outcome === 'drop') {
+        // The server will refuse this row every time. Only the code goes to
+        // the log: a refused row's details repeat the row.
+        // eslint-disable-next-line no-console
+        console.warn('[analytics] dropped an event the server can never accept:', refusalForLog(refusal));
+        done.push(row.id);
+      }
+      // Anything else stays queued. The next sweep retries, and the queue is
+      // capped so it cannot grow without bound.
+    }
+    await deleteEvents(done);
+    return pushed;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[analytics] flush failed:', errorForLog(e));
@@ -157,9 +192,83 @@ function errorForLog(e: unknown): string {
   return parts.length > 0 ? parts.join(' ') : 'unknown error';
 }
 
+/**
+ * What the server said when it didn't take an insert: the error's code (the
+ * Postgres SQLSTATE, or PostgREST's PTxyz / PGRSTxxx) and message, and the
+ * HTTP status when there was a response. Never the error's details or hint,
+ * which can repeat the row.
+ */
+interface Refusal {
+  code: string | null;
+  message: string | null;
+  status: number | null;
+}
+
+function refusalOf(error: unknown, status: unknown): Refusal {
+  const { code, message } =
+    typeof error === 'object' && error !== null
+      ? (error as { code?: unknown; message?: unknown })
+      : {};
+  return {
+    code: typeof code === 'string' && code.length > 0 ? code : null,
+    message: typeof message === 'string' ? message : null,
+    // supabase-js reports 0 when there was no response at all.
+    status: typeof status === 'number' && status > 0 ? status : null,
+  };
+}
+
+/** The code, or the HTTP status when there is no code, for the log. */
+function refusalForLog(refusal: Refusal): string {
+  if (refusal.code) return refusal.code;
+  if (refusal.status !== null) return `HTTP ${refusal.status}`;
+  return 'unknown error';
+}
+
+/**
+ * A refused batch for the log: its code and message, or the code alone when
+ * the message can quote a row's own values (a Postgres data exception, class
+ * 22: `invalid input syntax for type uuid: "…"`) or a row will be dropped.
+ */
+function batchRefusalForLog(refusal: Refusal): string {
+  const quotesInput = refusal.code !== null && refusal.code.startsWith('22');
+  return quotesInput || outcomeOf(refusal) === 'drop' ? refusalForLog(refusal) : errorForLog(refusal);
+}
+
+/**
+ * The server will refuse anything sent now, so this sweep stops and every row
+ * stays queued:
+ *   PT413  more than 100 rows in one guest insert (migration 010);
+ *   PT429  the guest table's daily budget is used up, until midnight UTC
+ *          (migration 010);
+ *   25006  the database is read-only (Postgres read_only_sql_transaction;
+ *          Supabase does this at 95% disk use, or as a usage restriction).
+ */
+const STOP_CODES: ReadonlySet<string> = new Set(['PT413', 'PT429', '25006']);
+
+/**
+ * The same, by HTTP status: 402, Supabase's answer to every API request while
+ * a project is restricted under its Fair Use Policy, and 429, a rate limit in
+ * front of the database (PT429 also arrives as 429).
+ */
+const STOP_STATUSES: ReadonlySet<number> = new Set([402, 429]);
+
+/**
+ * This row can never be accepted, so it is dropped from the queue:
+ *   23514  a CHECK the row breaks (the props rule, the event name's shape or
+ *          list, the id's length: migrations 005, 007 and 010);
+ *   22P02  invalid input for a column's type (a user id that isn't a uuid);
+ *   22007  a created_at that isn't a timestamp;
+ *   22008  a created_at out of range.
+ */
+const DROP_CODES: ReadonlySet<string> = new Set(['23514', '22P02', '22007', '22008']);
+
 /** Postgres unique-violation, i.e. this row is already on the server. */
-function isDuplicate(e: unknown): boolean {
-  return (
-    typeof e === 'object' && e !== null && (e as { code?: string }).code === '23505'
-  );
+const DUPLICATE_CODE = '23505';
+
+function outcomeOf(refusal: Refusal): 'stop' | 'delivered' | 'drop' | 'retry' {
+  if (refusal.code !== null && STOP_CODES.has(refusal.code)) return 'stop';
+  if (refusal.status !== null && STOP_STATUSES.has(refusal.status)) return 'stop';
+  if (refusal.code === DUPLICATE_CODE) return 'delivered';
+  if (refusal.code !== null && DROP_CODES.has(refusal.code)) return 'drop';
+  return 'retry';
 }

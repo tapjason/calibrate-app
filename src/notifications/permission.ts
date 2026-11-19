@@ -11,6 +11,7 @@
 // the current state rather than throwing.
 
 import { activateDigest } from './digest';
+import { refreshNotificationPermission } from './permissionState';
 import {
   reminderPermission,
   reminderTimeFor,
@@ -20,9 +21,16 @@ import {
 
 export { reminderPermission, reminderTimeFor, type ReminderPermission };
 
-/** Show the system alert; on a yes, start reminders and the weekly digest. */
+/**
+ * Show the system alert; on a yes, start reminders and the weekly digest.
+ * Either way the answer is read back into settingsStore
+ * (`notificationPermission`), so a screen that promises a notification, the
+ * paywall's trial timeline, follows it at once.
+ */
 export async function askForReminders(): Promise<ReminderPermission> {
   const result = await requestReminderPermission();
+  // Never throws, and read whatever the answer: iOS has it now.
+  await refreshNotificationPermission();
   if (result === 'granted') {
     await activateDigest().catch((e: unknown) => {
       // eslint-disable-next-line no-console

@@ -3,6 +3,8 @@ import { useNavigation } from 'expo-router';
 import { useRef } from 'react';
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 
+import { appLocked } from '@/components/ui/appLocked';
+
 export const LOG_GUARD_OPTIONS = ['Discard prediction', 'Keep editing'] as const;
 /** An open prediction's Edit (playtest 2026-11-08b, finding 20). */
 export const EDIT_GUARD_OPTIONS = ['Discard changes', 'Keep editing'] as const;
@@ -51,7 +53,11 @@ function useDraftGuard(unsaved: boolean, words: GuardWords, onDiscard?: () => vo
     const leave = () => navigation.dispatch(data.action);
     // "Discard" chosen on purpose: the kept draft goes too (step 173). A close
     // that wasn't asked about (the web build, or after Save) keeps it.
+    // Nothing while the app is locked: the choice is a system sheet or alert,
+    // which someone who never opened the lock could press (security review,
+    // 2026-11-18). The draft and the sheet stay as they are.
     const discard = () => {
+      if (appLocked()) return;
       onDiscard?.();
       leave();
     };

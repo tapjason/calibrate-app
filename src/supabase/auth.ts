@@ -418,8 +418,11 @@ export async function signUpWithEmail(
 /**
  * How a sign-out ended. `localOnly`: the session ended on this phone, but the
  * server never took the sign-out (no connection, or it refused), so the
- * session's refresh token stays valid on the server until it expires or is
- * revoked. Nothing on this phone holds it any more.
+ * session stays open on the server. Supabase's refresh tokens don't expire
+ * (each can be used only once) and sessions have no time limit unless the
+ * project sets one (a Pro setting), so it stays open until the next sign-out
+ * with a connection, whose global scope ends every session, or until the
+ * account is deleted. Nothing on this phone holds it any more.
  */
 export type SignOutOutcome = { ok: true; localOnly?: true } | { ok: false; error: string };
 

@@ -160,30 +160,39 @@ export default function RootLayout() {
     if (!ready || !navState?.key || launchRouted.current) return;
     launchRouted.current = true;
     (async () => {
-      await routeFromLaunchNotification().catch((e) => {
+      // `launched` in a finally: a step below that throws must still let the
+      // launch page go (security review, 2026-11-18). One that hangs is
+      // covered by the launch page's own limit (LaunchScreen).
+      try {
+        await routeFromLaunchNotification().catch((e) => {
+          // eslint-disable-next-line no-console
+          console.warn('[notifications] launch deep link failed:', e);
+        });
+        // First run: nobody has taken the Warmup, so onboarding owns the first
+        // screen. Sequenced after the deep link rather than racing it — though
+        // the two can't realistically collide, since a pending resolution
+        // notification only exists for someone who is already past onboarding.
+        //
+        // "No Warmup record" is NOT sufficient on its own. An install upgrading
+        // past migration 005 has no warmup_results row, and warmupStore.hydrate()
+        // deliberately swallows read errors and reports "not taken" — either
+        // would drop a user with months of history into an unskippable quiz with
+        // no route back to their own data. Existing predictions are proof this
+        // is not a first run, whatever the Warmup table says.
+        const { pending, resolved } = usePredictionStore.getState();
+        const isFirstRun = pending.length === 0 && resolved.length === 0;
+        // A development build opened on /dev (the playtest profiles) stays
+        // there: a profile is how an empty device gets its start state.
+        const onDevRoute = __DEV__ && pathnameRef.current.startsWith('/dev');
+        if (isFirstRun && !onDevRoute && !selectHasCompletedWarmup(useWarmupStore.getState())) {
+          router.replace('/warmup' as never);
+        }
+      } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('[notifications] launch deep link failed:', e);
-      });
-      // First run: nobody has taken the Warmup, so onboarding owns the first
-      // screen. Sequenced after the deep link rather than racing it — though
-      // the two can't realistically collide, since a pending resolution
-      // notification only exists for someone who is already past onboarding.
-      //
-      // "No Warmup record" is NOT sufficient on its own. An install upgrading
-      // past migration 005 has no warmup_results row, and warmupStore.hydrate()
-      // deliberately swallows read errors and reports "not taken" — either
-      // would drop a user with months of history into an unskippable quiz with
-      // no route back to their own data. Existing predictions are proof this
-      // is not a first run, whatever the Warmup table says.
-      const { pending, resolved } = usePredictionStore.getState();
-      const isFirstRun = pending.length === 0 && resolved.length === 0;
-      // A development build opened on /dev (the playtest profiles) stays
-      // there: a profile is how an empty device gets its start state.
-      const onDevRoute = __DEV__ && pathnameRef.current.startsWith('/dev');
-      if (isFirstRun && !onDevRoute && !selectHasCompletedWarmup(useWarmupStore.getState())) {
-        router.replace('/warmup' as never);
+        console.warn('[launch] first-screen routing failed:', e);
+      } finally {
+        setLaunched(true);
       }
-      setLaunched(true);
     })();
   }, [ready, navState?.key, router]);
 

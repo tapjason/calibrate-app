@@ -721,22 +721,49 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
   const email = useAuthStore((s) => s.email);
   const pending = useAuthStore((s) => s.pending);
   const signOut = useAuthStore((s) => s.signOut);
+  // Sign-out can wait about 15 seconds with no connection (the server's
+  // turn, then this phone's own), so the row says it's working, as the
+  // export row does, and a failure is said rather than dropped.
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
 
   if (!accountsAvailable) return null;
+
+  const onSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      const outcome = await signOut();
+      // Ended on this phone, whether or not the server heard (`localOnly`):
+      // nothing to say, the screen moves to signed out by itself.
+      if (outcome.ok) return;
+      // Even this phone's copy of the session stayed: still signed in.
+      setSignOutError(outcome.error);
+      AccessibilityInfo.announceForAccessibility(outcome.error);
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   if (status === 'authenticated') {
     return (
       <View testID="settings-account">
         <Group footer={`${describeAccount(email)} Your predictions are backed up.`}>
           <NavRow
-            label="Sign out"
-            onPress={() => void signOut()}
+            label={signingOut ? 'Signing out…' : 'Sign out'}
+            onPress={() => void onSignOut()}
             chevron={false}
             tone="action"
-            disabled={pending}
+            disabled={pending || signingOut}
             testID="settings-sign-out"
           />
         </Group>
+        {signOutError && (
+          <Text style={styles.error} testID="settings-sign-out-error">
+            {signOutError}
+          </Text>
+        )}
       </View>
     );
   }
@@ -822,10 +849,12 @@ function ToggleRow({
 
 /**
  * What the Usage stats switch covers. Since D43 (2026-11-03) a guest's funnel
- * counts go up with no id.
+ * counts go up with no account, device or install id. Each row still has a
+ * random id of its own, so the server can drop a retried copy, which is why
+ * it no longer says "no id at all" (policy audit F7, 2026-11-18).
  */
 export const USAGE_STATS_DESCRIPTION =
-  "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no id at all; once you sign in, they're tied to your account. Turning this off deletes what's queued.";
+  "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no account, device or install id; once you sign in, they're tied to your account. Turning this off deletes what's queued.";
 
 const styles = StyleSheet.create({
   wrap: { gap: space.xxl, padding: space.lg, paddingBottom: space.huge },
@@ -840,6 +869,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   footer: { ...type.footnote, color: colors.textSecondary, paddingHorizontal: space.lg },
+  // The app's error style (Sign in, Delete account), under its group and
+  // inset as the group's footer is. 5.2:1 on canvas in light.
+  error: {
+    ...type.subhead,
+    color: colors.destructive,
+    marginTop: space.sm,
+    paddingHorizontal: space.lg,
+  },
   row: {
     alignItems: 'center',
     borderBottomColor: colors.hairline,

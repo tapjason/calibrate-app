@@ -4,11 +4,22 @@ import { Icon } from '@/components/ui/Icon';
 import { colors, space, type } from '@/constants/theme';
 import { MIN_PASSWORD_LENGTH, passwordRules, type PasswordRules } from '@/supabase/auth';
 
-const RULES: ReadonlyArray<{ key: keyof PasswordRules; label: string }> = [
-  { key: 'length', label: `${MIN_PASSWORD_LENGTH} or more characters` },
-  { key: 'upper', label: 'An uppercase letter' },
-  { key: 'lower', label: 'A lowercase letter' },
-  { key: 'digit', label: 'A number' },
+/**
+ * Each rule as shown and as VoiceOver says it. The letters and digits that
+ * count are only A–Z, a–z and 0–9, as on the server (`passwordRules`), so
+ * each row names its range: "Éxample1" left "An uppercase letter" unmet
+ * with nothing to say why (security review, 2026-11-18). Spoken with "to",
+ * so the dash isn't read out.
+ */
+const RULES: ReadonlyArray<{ key: keyof PasswordRules; label: string; spoken: string }> = [
+  {
+    key: 'length',
+    label: `${MIN_PASSWORD_LENGTH} or more characters`,
+    spoken: `${MIN_PASSWORD_LENGTH} or more characters`,
+  },
+  { key: 'upper', label: 'An uppercase letter (A–Z)', spoken: 'An uppercase letter, A to Z' },
+  { key: 'lower', label: 'A lowercase letter (a–z)', spoken: 'A lowercase letter, a to z' },
+  { key: 'digit', label: 'A number (0–9)', spoken: 'A number, 0 to 9' },
 ];
 
 /** The rows' icon, set on the first line of its row. */
@@ -37,7 +48,7 @@ export function PasswordChecklist({ password }: { password: string }) {
             testID={`account-password-rule-${rule.key}`}
             accessible
             accessibilityRole="text"
-            accessibilityLabel={`${rule.label}, ${ok ? 'met' : 'not met'}`}
+            accessibilityLabel={`${rule.spoken}, ${ok ? 'met' : 'not met'}`}
           >
             <View style={styles.iconBox}>
               <Icon

@@ -44,6 +44,47 @@ describe('settingsStore: defaults', () => {
   });
 });
 
+// Security review, 2026-11-18, round 4: the phone's notification permission,
+// held for the paywall's trial timeline. The phone's state, not a setting.
+describe('settingsStore: notificationPermission', () => {
+  it('is unknown (null) until it has been read', () => {
+    __setPersistenceForTests(makeFakePersistence().persistence);
+    expect(useSettingsStore.getState().notificationPermission).toBeNull();
+  });
+
+  it('is held in memory and never stored', async () => {
+    const { persistence, saved } = makeFakePersistence();
+    __setPersistenceForTests(persistence);
+
+    useSettingsStore.getState().setNotificationPermission('granted');
+    expect(useSettingsStore.getState().notificationPermission).toBe('granted');
+    expect(saved).toHaveLength(0);
+
+    // A setting saved afterwards stores its snapshot without it.
+    await useSettingsStore.getState().setStreakShown(false);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).not.toHaveProperty('notificationPermission');
+
+    useSettingsStore.getState().setNotificationPermission(null);
+    expect(useSettingsStore.getState().notificationPermission).toBeNull();
+  });
+
+  it('is left alone by hydrate and by a reset of the settings, whatever was stored', async () => {
+    __setPersistenceForTests(
+      makeFakePersistence({ notificationPermission: 'granted' } as Partial<StoredSettings>)
+        .persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    // A stored value is never read: the phone is asked instead.
+    expect(useSettingsStore.getState().notificationPermission).toBeNull();
+
+    useSettingsStore.getState().setNotificationPermission('denied');
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().resetToDefaults();
+    expect(useSettingsStore.getState().notificationPermission).toBe('denied');
+  });
+});
+
 describe('settingsStore: hydrate', () => {
   it('keeps defaults and marks hydrated when nothing is stored', async () => {
     __setPersistenceForTests(makeFakePersistence(null).persistence);
@@ -460,6 +501,177 @@ describe('settingsStore: a settings record that cannot be read', () => {
 
     it('a readable record is read', async () => {
       await expect(hydrateFrom('{"appLock":false}')).resolves.toEqual({ appLock: false, loadFailed: false });
+    });
+  });
+});
+
+// Security review, 2026-11-18, round 3: after a record that couldn't be read,
+// "Hide the words" fell back to off and usage stats to on, so someone who had
+// hidden their words saw them, and someone who had opted out was recorded
+// again (and the next write of any setting stored that). Each privacy choice
+// now takes its private side, as the lock does.
+describe('settingsStore: privacy choices after a record that cannot be read', () => {
+  const PRIVATE = { appLock: true, hideTitles: true, reminderWords: false, analyticsEnabled: false };
+  const FRESH = { appLock: false, hideTitles: false, reminderWords: false, analyticsEnabled: true };
+
+  const privacy = () => {
+    const s = useSettingsStore.getState();
+    return {
+      appLock: s.appLock,
+      hideTitles: s.hideTitles,
+      reminderWords: s.reminderWords,
+      analyticsEnabled: s.analyticsEnabled,
+      loadFailed: s.loadFailed,
+    };
+  };
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('a fresh install, with no record, keeps the defaults', async () => {
+    __setPersistenceForTests(makeFakePersistence(null).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(privacy()).toEqual({ ...FRESH, loadFailed: false });
+  });
+
+  it('a record that reads fine keeps every choice as stored, opt-ins included', async () => {
+    __setPersistenceForTests(
+      makeFakePersistence({ hideTitles: false, reminderWords: true, analyticsEnabled: true, appLock: false })
+        .persistence,
+    );
+    await useSettingsStore.getState().hydrate();
+    expect(privacy()).toEqual({
+      appLock: false,
+      hideTitles: false,
+      reminderWords: true,
+      analyticsEnabled: true,
+      loadFailed: false,
+    });
+  });
+
+  it('a read that throws twice takes the private side of each', async () => {
+    let calls = 0;
+    __setPersistenceForTests({
+      load: async () => {
+        calls += 1;
+        throw new Error('read failed');
+      },
+      save: async () => {},
+    });
+    await useSettingsStore.getState().hydrate();
+    expect(calls).toBe(2);
+    expect(privacy()).toEqual({ ...PRIVATE, loadFailed: true });
+    expect(useSettingsStore.getState().hydrated).toBe(true);
+  });
+
+  it.each([
+    ['a string', 'hideTitles: true'],
+    ['a list', [true]],
+    ['a number', 7],
+  ])('a record that is %s takes the private side of each', async (_label, stored) => {
+    __setPersistenceForTests(makeFakePersistence(stored as unknown as Partial<StoredSettings>).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(privacy()).toEqual({ ...PRIVATE, loadFailed: true });
+  });
+
+  it('a read that fails once, then works, reads the record and nothing else changes', async () => {
+    let calls = 0;
+    __setPersistenceForTests({
+      load: async () => {
+        calls += 1;
+        if (calls === 1) throw new Error('busy');
+        return { analyticsEnabled: true, hideTitles: false, reminderWords: true };
+      },
+      save: async () => {},
+    });
+    await useSettingsStore.getState().hydrate();
+    expect(calls).toBe(2);
+    expect(privacy()).toEqual({
+      appLock: false,
+      hideTitles: false,
+      reminderWords: true,
+      analyticsEnabled: true,
+      loadFailed: false,
+    });
+  });
+
+  it('a later write of another setting stores the private sides, not the defaults', async () => {
+    const { persistence, saved } = makeFakePersistence(null, { loadThrows: true });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().setCardFormat('story');
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toMatchObject({ ...PRIVATE, cardFormat: 'story' });
+  });
+
+  it('each switch can then be changed as usual, and is stored', async () => {
+    const { persistence, saved } = makeFakePersistence(null, { loadThrows: true });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+
+    await useSettingsStore.getState().setAnalyticsEnabled(true);
+    expect(useSettingsStore.getState().analyticsEnabled).toBe(true);
+    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, hideTitles: true, reminderWords: false });
+
+    await useSettingsStore.getState().setHideTitles(false);
+    expect(useSettingsStore.getState().hideTitles).toBe(false);
+    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, hideTitles: false, reminderWords: false });
+
+    await useSettingsStore.getState().setReminderWords(true);
+    expect(useSettingsStore.getState().reminderWords).toBe(true);
+    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, hideTitles: false, reminderWords: true });
+
+    await useSettingsStore.getState().setHideTitles(true);
+    await useSettingsStore.getState().setReminderWords(false);
+    expect(saved.at(-1)).toMatchObject({ hideTitles: true, reminderWords: false });
+  });
+
+  // The real persistence: AsyncStorage's text, parsed.
+  describe('through AsyncStorage', () => {
+    async function hydrateFrom(raw: string | null) {
+      let state: ReturnType<typeof privacy> | null = null;
+      await jest.isolateModulesAsync(async () => {
+        jest.doMock('@react-native-async-storage/async-storage', () => ({
+          __esModule: true,
+          default: { getItem: jest.fn(async () => raw), setItem: jest.fn(async () => {}) },
+        }));
+        const { useSettingsStore: store } = require('./settingsStore') as typeof import('./settingsStore');
+        await store.getState().hydrate();
+        const s = store.getState();
+        state = {
+          appLock: s.appLock,
+          hideTitles: s.hideTitles,
+          reminderWords: s.reminderWords,
+          analyticsEnabled: s.analyticsEnabled,
+          loadFailed: s.loadFailed,
+        };
+      });
+      return state!;
+    }
+
+    it('no record is a fresh install', async () => {
+      await expect(hydrateFrom(null)).resolves.toEqual({ ...FRESH, loadFailed: false });
+    });
+
+    it('a record cut short takes the private side of each', async () => {
+      await expect(hydrateFrom('{"analyticsEnabled":false,"hideTi')).resolves.toEqual({
+        ...PRIVATE,
+        loadFailed: true,
+      });
+    });
+
+    it('a readable record is read as it is', async () => {
+      await expect(
+        hydrateFrom('{"analyticsEnabled":true,"hideTitles":false,"reminderWords":true}'),
+      ).resolves.toEqual({
+        appLock: false,
+        hideTitles: false,
+        reminderWords: true,
+        analyticsEnabled: true,
+        loadFailed: false,
+      });
     });
   });
 });

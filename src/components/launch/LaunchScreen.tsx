@@ -3,6 +3,7 @@ import { Animated, StyleSheet } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { InFront, LaunchPage } from '@/components/launch/LaunchPage';
+import { SPLASH_MAX_MS } from '@/components/launch/useLaunchSplash';
 import { useLockStore } from '@/store/lockStore';
 
 /** The name fades in this long after the native splash starts to go. */
@@ -31,16 +32,28 @@ interface LaunchScreenProps {
  * is there from the start and the page is cut.
  *
  * The timers decide when it goes; the animations only decorate, so a dropped
- * animation callback can't leave the page up.
+ * animation callback can't leave the page up. Nor can a launch that never says
+ * it's ready: after `SPLASH_MAX_MS` the page goes as if it had.
  */
 export function LaunchScreen({ started }: LaunchScreenProps) {
   const reduceMotion = useReducedMotion();
   const [phase, setPhase] = useState<'up' | 'leaving' | 'gone'>('up');
   const name = useRef(new Animated.Value(0)).current;
   const page = useRef(new Animated.Value(1)).current;
+  // The most it waits for the app to say it's ready: the native splash's own
+  // limit. A routing step that hung or threw left the page up, over the app
+  // and taking its taps, for good (security review, 2026-11-18). The app
+  // lock is its own screen (AppLockGate) and has no time limit of any kind.
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const limit = setTimeout(() => setTimedOut(true), SPLASH_MAX_MS);
+    return () => clearTimeout(limit);
+  }, []);
+  // Once true it stays true, so a late "ready" doesn't start the hold again.
+  const go = started || timedOut;
 
   useEffect(() => {
-    if (!started) return undefined;
+    if (!go) return undefined;
     if (useLockStore.getState().locked) {
       setPhase('gone');
       return undefined;
@@ -69,7 +82,7 @@ export function LaunchScreen({ started }: LaunchScreenProps) {
       clearTimeout(leave);
       clearTimeout(done);
     };
-  }, [started, reduceMotion, name, page]);
+  }, [go, reduceMotion, name, page]);
 
   if (phase === 'gone') return null;
 

@@ -180,7 +180,7 @@ $30–40 a year.
   five downloads and a day of age. ✅ That counts installs per share surface for every
   user, signed in or not, without an SDK or an identifier, which the app's own
   analytics can't do: they don't know where an install came from, and a guest's counts
-  carry no id at all (D43, `APP_PRIVACY.md`).
+  carry no account, device or install id (D43, `APP_PRIVACY.md`).
 - **What a share can carry today:** the text share carries the link (step 1). An
   image share can't: the share sheet gets a bare PNG. Its way back is the name on the
   card, Fairly Sure, which is why the name mattered here as much as in the listing.

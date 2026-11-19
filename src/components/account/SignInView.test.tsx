@@ -174,11 +174,14 @@ describe('SignInView', () => {
   // Step 190 (owner): Create account asks for more than 8 characters. The
   // rules are listed under the field from the start and tick off as typed.
   describe("Create account's password checklist", () => {
+    // Each row as shown, then as VoiceOver says it. The ranges since the
+    // security review, 2026-11-18: only A–Z, a–z and 0–9 count, as on the
+    // server, and "Éxample1" left the uppercase row unmet with no reason.
     const RULES = [
-      ['length', '8 or more characters'],
-      ['upper', 'An uppercase letter'],
-      ['lower', 'A lowercase letter'],
-      ['digit', 'A number'],
+      ['length', '8 or more characters', '8 or more characters'],
+      ['upper', 'An uppercase letter (A–Z)', 'An uppercase letter, A to Z'],
+      ['lower', 'A lowercase letter (a–z)', 'A lowercase letter, a to z'],
+      ['digit', 'A number (0–9)', 'A number, 0 to 9'],
     ] as const;
 
     function row(key: string) {
@@ -191,10 +194,10 @@ describe('SignInView', () => {
     }
     /** Which rules read as met, by their spoken label. */
     function metKeys() {
-      return RULES.filter(([key, label]) => {
+      return RULES.filter(([key, , said]) => {
         const spoken = row(key).props.accessibilityLabel;
-        if (spoken === `${label}, met`) return true;
-        expect(spoken).toBe(`${label}, not met`);
+        if (spoken === `${said}, met`) return true;
+        expect(spoken).toBe(`${said}, not met`);
         return false;
       }).map(([key]) => key);
     }
@@ -225,8 +228,8 @@ describe('SignInView', () => {
       fireEvent.press(screen.getByTestId('account-mode-signUp'));
 
       expect(metKeys()).toEqual([]);
-      for (const [key, label] of RULES) {
-        expect(row(key).props.accessibilityLabel).toBe(`${label}, not met`);
+      for (const [key, , said] of RULES) {
+        expect(row(key).props.accessibilityLabel).toBe(`${said}, not met`);
         expect(row(key).props.accessibilityRole).toBe('text');
         expect(row(key).props.accessible).toBe(true);
         expect(icon(key).props.name).toBe('circle');
@@ -248,8 +251,8 @@ describe('SignInView', () => {
       expect(metKeys()).toEqual(['upper', 'lower', 'digit']);
       typed('aB3defgh');
       expect(metKeys()).toEqual(['length', 'upper', 'lower', 'digit']);
-      for (const [key, label] of RULES) {
-        expect(screen.getByLabelText(`${label}, met`)).toBe(row(key));
+      for (const [key, , said] of RULES) {
+        expect(screen.getByLabelText(`${said}, met`)).toBe(row(key));
         expect(icon(key).props.name).toBe('checkmark.circle.fill');
         expect(icon(key).props.fallback.props.name).toBe('checkmark-circle');
       }
@@ -260,6 +263,20 @@ describe('SignInView', () => {
       typed('');
       expect(metKeys()).toEqual([]);
       expect(icon('length').props.name).toBe('circle');
+    });
+
+    it('says which letters count, so "Éxample1" shows why the uppercase rule is unmet', () => {
+      render(<SignInView onDone={jest.fn()} />);
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+      fireEvent.changeText(screen.getByTestId('account-password'), 'Éxample1');
+
+      expect(metKeys()).toEqual(['length', 'lower', 'digit']);
+      expect(row('upper')).toHaveTextContent('An uppercase letter (A–Z)');
+      expect(row('upper').props.accessibilityLabel).toBe('An uppercase letter, A to Z, not met');
+      expect(row('lower')).toHaveTextContent('A lowercase letter (a–z)');
+      expect(row('digit')).toHaveTextContent('A number (0–9)');
+      // The length rule names no range.
+      expect(row('length')).toHaveTextContent('8 or more characters');
     });
 
     it('announces nothing as the password is typed', () => {
@@ -331,6 +348,79 @@ describe('SignInView', () => {
     });
   });
 
+  // Security review, 2026-11-18: accessibilityRole="alert" posts nothing on
+  // iOS, so a refusal was never spoken. Each one is announced as it shows.
+  describe('errors said aloud', () => {
+    let announce: jest.SpyInstance;
+    beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { AccessibilityInfo } = require('react-native') as typeof import('react-native');
+      announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    });
+    afterEach(() => announce.mockRestore());
+
+    it('announces a refused sign-in, word for word, once', async () => {
+      signInWithEmail.mockResolvedValue({ ok: false, error: 'Invalid login credentials' });
+      render(<SignInView onDone={jest.fn()} />);
+
+      fill('a@b.co', 'wrong');
+      fireEvent.press(screen.getByTestId('account-submit'));
+
+      expect(await screen.findByTestId('account-error')).toHaveTextContent(
+        'Invalid login credentials',
+      );
+      expect(announce).toHaveBeenCalledTimes(1);
+      expect(announce).toHaveBeenCalledWith('Invalid login credentials');
+    });
+
+    it('announces a refused sign-up', async () => {
+      signUpWithEmail.mockResolvedValue({
+        ok: false,
+        error: 'Your password needs an uppercase letter.',
+      });
+      render(<SignInView onDone={jest.fn()} />);
+
+      fireEvent.press(screen.getByTestId('account-mode-signUp'));
+      fill('a@b.co', 'hunter22');
+      fireEvent.press(screen.getByTestId('account-submit'));
+
+      expect(await screen.findByTestId('account-error')).toHaveTextContent(
+        'Your password needs an uppercase letter.',
+      );
+      expect(announce).toHaveBeenCalledWith('Your password needs an uppercase letter.');
+    });
+
+    it('announces a failed Sign in with Apple', async () => {
+      const original = Platform.OS;
+      Platform.OS = 'ios';
+      try {
+        signInWithApple.mockResolvedValue({ ok: false, error: 'Apple sign-in failed.' });
+        render(<SignInView onDone={jest.fn()} />);
+
+        fireEvent.press(screen.getByTestId('account-apple'));
+
+        expect(await screen.findByTestId('account-error')).toHaveTextContent(
+          'Apple sign-in failed.',
+        );
+        expect(announce).toHaveBeenCalledWith('Apple sign-in failed.');
+      } finally {
+        Platform.OS = original;
+      }
+    });
+
+    it('announces nothing when signing in works', async () => {
+      signInWithEmail.mockResolvedValue({ ok: true });
+      const onDone = jest.fn();
+      render(<SignInView onDone={onDone} />);
+
+      fill('a@b.co', 'hunter22');
+      fireEvent.press(screen.getByTestId('account-submit'));
+
+      await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+      expect(announce).not.toHaveBeenCalled();
+    });
+  });
+
   it('disables submit while an action is in flight', () => {
     useAuthStore.setState({ pending: true });
     render(<SignInView onDone={jest.fn()} />);
@@ -376,8 +466,19 @@ describe('SignInView — what signing in sends', () => {
   it('says usage counts go with the account, and how to turn them off', () => {
     render(<SignInView onDone={jest.fn()} />);
     expect(screen.getByTestId('account-usage-note')).toHaveTextContent(
-      'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers and yes/no values, never the words of your predictions or notes. You can turn that off in You, under Usage stats.',
+      'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn that off in You, under Usage stats.',
     );
+  });
+
+  // Policy audit F7 (2026-11-18): the paywall's and the share events carry a
+  // fixed label (which screen, which card; src/analytics/events.ts), so
+  // "numbers and yes/no values" alone wasn't true.
+  it('names the fixed labels the counts carry, and no words of your own', () => {
+    render(<SignInView onDone={jest.fn()} />);
+    const note = screen.getByTestId('account-usage-note');
+    expect(note).toHaveTextContent(/fixed labels such as which screen/);
+    expect(note).toHaveTextContent(/never the words of your predictions or notes/);
+    expect(note).not.toHaveTextContent(/numbers and yes\/no values,/);
   });
 
   it('says nothing about them once they are off', () => {

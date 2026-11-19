@@ -54,6 +54,17 @@ Context Builder (client)    → assembles a minimal, aggregated snapshot (Sectio
 Extends the existing `refine` proxy pattern. Same rule: **API keys live only in the
 Edge Function, never in the client.**
 
+**Where the contract lives (as built, 2026-11-18).** The server's half is
+`supabase/functions/coach/contract.ts`: the request parser (`parseContext`), the output
+validator (`validateOutput`), the prompt (`SYSTEM_PROMPT`, `userMessage`) and the body cap
+(`readBodyCapped`), plain TypeScript with no Deno imports so Jest tests it
+(`contract.test.ts`); `index.ts` only wires it to auth, the Plus gate, the limits and
+OpenAI. The client's validator, `src/ai/coachValidate.ts`, is its port: the rules are
+written twice on purpose (Deno can't import from the app bundle), with the same names and
+order, and `src/ai/coachLockstep.test.ts` runs one fixture set through both, so a rule
+added to one side and not the other fails the tests. An insight is shown only if both
+pass it.
+
 ---
 
 ## 4. Input Contract — What the Coach Sees
@@ -72,10 +83,28 @@ type CoachContext = {
     actual_rate: number;
     direction: 'overconfident' | 'underconfident' | 'calibrated';
   }>;
-  patterns: Array<{ kind: string; value: number }>; // deterministic, from L3 (e.g. day-of-week)
+  patterns: Array<{ kind: string; value: number }>; // deterministic, from L3 (below)
   // NOTE: raw prediction titles / reflections are NOT included by default.
 }
 ```
+
+**The patterns, as built** (`src/ai/coachPatterns.ts`, `src/ai/coachContext.ts`). Four
+kinds, and the server accepts no other (`parseContext` in
+`supabase/functions/coach/contract.ts`; until 2026-11-18 any `^[a-z0-9_]{1,40}$` key got
+through, a channel for words of a caller's own):
+
+| Kind | Value | Sent when | Citable |
+|---|---|---|---|
+| `weakest_day_of_week` | the weekday whose answers calibrate worst, 0 = Sunday … 6 = Saturday | `total_resolved` ≥ `MIN_N_OVERALL` (20) and that day has `WEEKDAY_MIN_N` (10, the app's `MIN_N_BAND`) scored answers | never: a day, not a figure; the model names it in words |
+| `weakest_day_score` | that day's 0–100 score | with the day | only past both gates |
+| `weakest_day_answers` | scored answers on that day (added 2026-11-18) | with the day | never: it is there so both validators can check the day's floor |
+| `drift_<built-in>` | the category's newer half's score minus its older half's | the category has `MIN_N_CATEGORY` (20) scored answers | only past that gate |
+
+Only patterns that could ever be cited are sent (security review, 2026-11-18): before it
+the weekday went from 5 answers on a day with no overall floor, and a drift from 4. A
+build from before 2026-11-18 sends no `weakest_day_answers`; the function still accepts
+its payload, and never lets its weekday score be cited, since the day's floor can't be
+checked.
 
 **Freetext rule:** prediction titles and reflections are excluded by default. If a
 future feature needs them, they are opt-in, minimized, and pass through the safety
@@ -95,7 +124,12 @@ count in `overall` and the weekday pattern, which name no category.
 - The model may reference **only** figures present in `CoachContext`. Every returned
   insight must include an `evidence` field naming the number it rests on.
 - **Validator rejects** any insight whose `evidence` doesn't match a value in the input
-  (numeric tolerance check). Rejected insights are dropped, not shown.
+  (numeric tolerance check). Rejected insights are dropped, not shown. As built
+  (2026-11-18), every number written in the message or suggestion is checked too, and
+  each must be a figure the app would itself show as a number: the overall rating only
+  from `MIN_N_OVERALL`, a category's figures only from `MIN_N_CATEGORY` in it, the weekday
+  score only past both of its gates, the weekday index never; a lean is named only for a
+  category whose `direction` says exactly that (contract.ts's header lists every rule).
 - Low temperature. System prompt requires "if the data is insufficient, say so" rather
   than filling gaps.
 - **Minimum-N gating:** the Coach does not opine on any category with fewer than 20 (`MIN_N_CATEGORY`, D46)
@@ -129,9 +163,10 @@ count in `overall` and the weekday pattern, which name no category.
 - **No numeric health coaching.** It never issues diet, weight, calorie, or exercise
   targets off health/fitness predictions — that content can reinforce disordered
   patterns and is out of scope entirely.
-- **Enforced in the validator, not only the prompt.** `src/ai/coachValidate.ts` drops
-  any insight carrying substantive medical, financial, or legal direction or a numeric
-  health target. Grounding alone does not cover this: "move 40% into bonds" cites a
+- **Enforced in the validator, not only the prompt.** Both validators
+  (`supabase/functions/coach/contract.ts` on the server, `src/ai/coachValidate.ts` in the
+  app) drop any insight carrying substantive medical, financial, or legal direction or a
+  numeric health target. Grounding alone does not cover this: "move 40% into bonds" cites a
   real number whenever 40 appears in the context, so it would otherwise pass. A prompt
   is a request; a validator is a guarantee.
 
@@ -160,7 +195,14 @@ count in `overall` and the weekday pattern, which name no category.
 ### 5.6 Privacy & data minimization
 - Prefer aggregates; minimize freetext egress (Section 4).
 - Server-side key; disable provider training/retention on submitted data via the API
-  settings; set a short retention window.
+  settings; set a short retention window. **As built (2026-11-18):** training is off by
+  OpenAI's default for API data ("not used to train or improve OpenAI models" unless the
+  customer opts in), but retention isn't shortened: OpenAI keeps abuse-monitoring logs of
+  API use "for up to 30 days", and Zero Data Retention needs OpenAI's prior approval,
+  which the repo doesn't record ([Data controls in the OpenAI
+  platform](https://developers.openai.com/api/docs/guides/your-data), read 2026-11-18).
+  The request carries no account id or email (`index.ts`, the `messages` it sends), and
+  the privacy policy §3 states the 30 days.
 - The Coach is fully **disableable** in Settings, clearly labeled as AI, and off by
   default until the user opts in.
 
@@ -202,7 +244,10 @@ pattern `kind`). A match in the insight's own category wins; if the number still
 more than one figure, no source is set. It is never read from the model's output,
 and it changes nothing about what is accepted or dropped. The card uses it to lead
 with the receipt ("55% · came true in finance", DESIGN_SYSTEM §7.13). The Edge
-Function doesn't need it, so its duplicated rules are unchanged.
+Function doesn't need it, so the annotation is client-only. The rules that accept or drop
+an insight are not: they are written in both validators and changed in both
+(`supabase/functions/coach/contract.ts`, `src/ai/coachValidate.ts`; the security review
+of 2026-11-18 changed both), and `src/ai/coachLockstep.test.ts` keeps them the same.
 
 ---
 
@@ -219,10 +264,13 @@ Function doesn't need it, so its duplicated rules are unchanged.
 > encouragement to keep logging instead of a verdict. Output only valid JSON matching the
 > schema. Be candid and useful, never flattering and never harsh.
 
-As built, the prompt is `SYSTEM_PROMPT` in `supabase/functions/coach/index.ts`: this
-sketch with the two thresholds written in (`MIN_N_CATEGORY` and `MIN_N_OVERALL`, both
-20) and the JSON shape spelled out. The call is `gpt-4o-mini`, temperature 0.2,
-`max_tokens` 400, `response_format: json_object`.
+As built, the prompt is `SYSTEM_PROMPT` in `supabase/functions/coach/contract.ts`
+(`index.ts` imports it): this sketch with a glossary of every field the context carries,
+the thresholds written in (`MIN_N_OVERALL` and `MIN_N_CATEGORY`, both 20, and the
+weekday's `WEEKDAY_MIN_N`, 10), when a lean may be named, the rules about numbers (copied
+as digits, never computed or spelled out), and the JSON shape spelled out. The user turn is
+`userMessage`: the parsed context as JSON inside `<user_data>`. The call is `gpt-4o-mini`,
+temperature 0.2, `max_tokens` 400, `response_format: json_object`.
 
 ---
 

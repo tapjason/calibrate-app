@@ -660,8 +660,26 @@ async function writeReminderAnswer(
     // For Resolve's "Your rating moved from…" line, which opens after this.
     useStatsStore.getState().noteRatingBefore(predictionId);
     await usePredictionStore.getState().resolve(predictionId, outcome);
-    const after = await usePredictionStore.getState().getById(predictionId);
-    // The SQL guard (`AND status = 'pending'`) makes a lost race a no-op.
+    // The answer is saved by now (resolve throws when the write fails). The
+    // read below only tells this write from a lost race, which the SQL guard
+    // (`AND status = 'pending'`) makes a no-op. A read that throws can't tell,
+    // and must not report a saved answer as failed (security review,
+    // 2026-11-18): Resolve would open without the answer just recorded, and a
+    // retry of the response would not know it had landed. It reports what
+    // the write did. Resolve shows the answered state only when the stored
+    // answer is this one (ResolvePrompt reads the row again), so a lost race
+    // still shows what was stored.
+    let after: Prediction | null;
+    try {
+      after = await usePredictionStore.getState().getById(predictionId);
+    } catch (readError) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[notifications] answer saved; reading it back failed:',
+        readError instanceof Error ? readError.message : 'unknown error',
+      );
+      return 'recorded';
+    }
     // Only the write that landed opens the resolved state.
     if (after?.status !== outcome) return 'unchanged';
     return 'recorded';

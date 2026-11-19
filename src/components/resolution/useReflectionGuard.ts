@@ -3,6 +3,7 @@ import { useNavigation } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 
+import { appLocked } from '@/components/ui/appLocked';
 import { usePredictionStore } from '@/store/predictionStore';
 
 export const GUARD_OPTIONS = ['Save reflection', 'Discard reflection', 'Keep editing'] as const;
@@ -81,7 +82,12 @@ export function useReflectionGuard(predictionId: string, draft: string) {
       void saveAndLeave();
       return;
     }
+    // Nothing while the app is locked, neither the save nor the discard: the
+    // choice is a system sheet or alert, which someone who never opened the
+    // lock could press (security review, 2026-11-18). The reflection and the
+    // sheet stay as they are.
     const choose = (index: number) => {
+      if (appLocked()) return;
       if (index === 0) void saveAndLeave();
       else if (index === 1) leave();
     };

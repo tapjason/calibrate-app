@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { PRIVACY_POLICY_URL } from '@/constants/app';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { FREE_ENTITLEMENT } from '@/types';
 
 import { PaywallView } from './PaywallView';
@@ -238,6 +239,63 @@ describe('PaywallView', () => {
     expect(screen.queryByText('How the free trial works')).toBeNull();
     fireEvent.press(screen.getByTestId('plan-annual'));
     expect(screen.getByText('How the free trial works')).toBeTruthy();
+  });
+
+  // Roadmap D16 and the security review, 2026-11-18, round 4: the reminder
+  // two days before is promised only while the app would send it, with the
+  // Notifications switch on AND iOS permission granted. Unread (null),
+  // denied or not asked: no promise.
+  describe('the reminder step in the trial timeline', () => {
+    const REMINDER = 'A notification with the date it renews and the price.';
+
+    afterEach(() => {
+      useSettingsStore.setState({ notificationsEnabled: true, notificationPermission: null });
+    });
+
+    it('shows with the switch on and permission granted', () => {
+      seed();
+      useSettingsStore.setState({ notificationsEnabled: true, notificationPermission: 'granted' });
+      render(<PaywallView />);
+      expect(screen.getByText('Two days before')).toBeTruthy();
+      expect(screen.getByText(REMINDER)).toBeTruthy();
+    });
+
+    it.each([
+      ['denied', 'denied'],
+      ['not asked yet', 'undetermined'],
+      ['not read yet', null],
+    ] as const)('hides while permission is %s', (_label, permission) => {
+      seed();
+      useSettingsStore.setState({ notificationsEnabled: true, notificationPermission: permission });
+      render(<PaywallView />);
+      // The rest of the timeline stays.
+      expect(screen.getByTestId('paywall-timeline')).toBeTruthy();
+      expect(screen.queryByText('Two days before')).toBeNull();
+      expect(screen.queryByText(REMINDER)).toBeNull();
+      expect(screen.queryByText(/notification/i)).toBeNull();
+    });
+
+    it('hides with the switch off, even with permission granted', () => {
+      seed();
+      useSettingsStore.setState({ notificationsEnabled: false, notificationPermission: 'granted' });
+      render(<PaywallView />);
+      expect(screen.queryByText('Two days before')).toBeNull();
+    });
+
+    // A grant from the app's own ask, or one made in iOS Settings and read on
+    // the return to the foreground, reaches an open paywall.
+    it('follows the permission while the paywall is open', () => {
+      seed();
+      useSettingsStore.setState({ notificationsEnabled: true, notificationPermission: null });
+      render(<PaywallView />);
+      expect(screen.queryByText('Two days before')).toBeNull();
+
+      act(() => useSettingsStore.getState().setNotificationPermission('granted'));
+      expect(screen.getByText('Two days before')).toBeTruthy();
+
+      act(() => useSettingsStore.getState().setNotificationPermission('denied'));
+      expect(screen.queryByText('Two days before')).toBeNull();
+    });
   });
 
   it('puts the plans in annual, monthly, lifetime order whatever the store sends', () => {

@@ -157,7 +157,7 @@ describe('authStore.deleteAccount', () => {
     usePracticeStore.setState({ clear: jest.fn(async () => { order.push('practice'); }) });
     server.deleteAccountOnServer.mockImplementation(async () => {
       order.push('server');
-      return { ok: true };
+      return { ok: true, appleRevoked: false };
     });
     wipe.mockImplementation(async () => {
       order.push('wipe');
@@ -172,7 +172,7 @@ describe('authStore.deleteAccount', () => {
     (dismissDeliveredNotifications as jest.Mock).mockImplementationOnce(async () => {
       order.push('dismiss');
     });
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     // Reminders already on the lock screen were about the account that's gone;
     // clearing them comes last, after the data and the session.
     expect(order).toEqual(['server', 'wipe', 'warmup', 'practice', 'signOut', 'dismiss']);
@@ -202,7 +202,7 @@ describe('authStore.deleteAccount', () => {
   it('re-authenticates an account with an Apple identity and forwards the code for revocation', async () => {
     signedIn(true);
     mocked.reauthenticateWithApple.mockResolvedValue('c1.fresh');
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: true });
 
     await useAuthStore.getState().deleteAccount();
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
@@ -213,19 +213,20 @@ describe('authStore.deleteAccount', () => {
   it('still deletes an Apple account when re-auth is declined', async () => {
     signedIn(true);
     mocked.reauthenticateWithApple.mockResolvedValue(null);
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    // Nothing was revoked, so the finished screen says where to remove it.
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: true });
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
   });
 
   // Once the server has deleted the account, "try again" would be a lie.
   it('reports success even if the local wipe fails afterwards', async () => {
     signedIn(false);
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
     wipe.mockRejectedValue(new Error('disk'));
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.signOutLocal).toHaveBeenCalled();
   });
 
@@ -240,11 +241,11 @@ describe('authStore.deleteAccount', () => {
   // screen, so a native call that never settled would have kept the data.
   it("finishes even if clearing the lock screen never settles, and when the wipe fails", async () => {
     signedIn(false);
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
     const { dismissDeliveredNotifications } = jest.requireMock('@/notifications/scheduler');
     (dismissDeliveredNotifications as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(wipe).toHaveBeenCalledWith('user-1');
     expect(mocked.signOutLocal).toHaveBeenCalled();
     expect(useAuthStore.getState().pending).toBe(false);
@@ -253,8 +254,88 @@ describe('authStore.deleteAccount', () => {
     (dismissDeliveredNotifications as jest.Mock).mockClear();
     signedIn(false);
     wipe.mockRejectedValue(new Error('disk'));
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(dismissDeliveredNotifications).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Security review, 2026-11-18, round 4 (ACCOUNT_SPEC §3.2 step 5): when an
+// account with an Apple identity is deleted without its grant revoked, the
+// finished screen says where to remove the app. Unsure reads as not revoked.
+describe('authStore.deleteAccount: whether Sign in with Apple may still list the app', () => {
+  const signedIn = (hasAppleIdentity: boolean) =>
+    useAuthStore.setState({
+      userId: 'user-1',
+      email: 'a@b.co',
+      status: 'authenticated',
+      hasAppleIdentity,
+    });
+
+  beforeEach(() => {
+    mocked.signOutLocal.mockResolvedValue({ ok: true });
+    wipe.mockResolvedValue(undefined);
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+  });
+
+  it('is false for an Apple account whose grant the server revoked', async () => {
+    signedIn(true);
+    mocked.reauthenticateWithApple.mockResolvedValue('c1.fresh');
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: true });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({
+      ok: true,
+      appleNotRevoked: false,
+    });
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
+  });
+
+  it('is true when the Apple sheet was cancelled, so no code was sent', async () => {
+    signedIn(true);
+    mocked.reauthenticateWithApple.mockResolvedValue(null);
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({
+      ok: true,
+      appleNotRevoked: true,
+    });
+    expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
+  });
+
+  // A different Apple ID, a failed or timed-out leg, an unreadable answer, or
+  // a deletion confirmed by the "already deleted" check: the client reports
+  // each as not revoked (src/supabase/account.test.ts).
+  it('is true when a code was sent but the server did not confirm the revoke', async () => {
+    signedIn(true);
+    mocked.reauthenticateWithApple.mockResolvedValue('c1.other-apple-id');
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({
+      ok: true,
+      appleNotRevoked: true,
+    });
+  });
+
+  it('is false for an account with no Apple identity, which is never asked', async () => {
+    signedIn(false);
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({
+      ok: true,
+      appleNotRevoked: false,
+    });
+    expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
+  });
+
+  it('carries nothing about Apple when the deletion failed', async () => {
+    signedIn(true);
+    mocked.reauthenticateWithApple.mockResolvedValue(null);
+    server.deleteAccountOnServer.mockResolvedValue({ ok: false, error: 'nope' });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({
+      ok: false,
+      error: 'nope',
+    });
   });
 });
 
@@ -343,7 +424,11 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     usePracticeStore.setState({ clear: jest.fn(async () => {}) });
     mocked.signOutLocal.mockResolvedValue({ ok: true });
     wipe.mockResolvedValue(undefined);
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    // As the function answers: revoked when a code was sent, as here.
+    server.deleteAccountOnServer.mockImplementation(async (code) => ({
+      ok: true,
+      appleRevoked: code !== null,
+    }));
     mocked.reauthenticateWithApple.mockResolvedValue('c1.fresh');
   });
 
@@ -356,7 +441,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     await signInWith(EMAIL_LINKED_TO_APPLE);
     expect(useAuthStore.getState().hasAppleIdentity).toBe(true);
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
   });
@@ -365,7 +450,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     await signInWith(APPLE_FIRST);
     expect(useAuthStore.getState().hasAppleIdentity).toBe(true);
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith('c1.fresh');
   });
@@ -374,7 +459,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     await signInWith(EMAIL_ONLY);
     expect(useAuthStore.getState().hasAppleIdentity).toBe(false);
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
   });
@@ -399,7 +484,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     expect(useAuthStore.getState().hasGoogleIdentity).toBe(true);
     expect(useAuthStore.getState().hasAppleIdentity).toBe(false);
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(mocked.reauthenticateWithApple).not.toHaveBeenCalled();
     expect(mocked.signInWithGoogle).not.toHaveBeenCalled();
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
@@ -435,7 +520,7 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
     mocked.reauthenticateWithApple.mockResolvedValue(null);
     await signInWith(EMAIL_LINKED_TO_APPLE);
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: true });
     expect(mocked.reauthenticateWithApple).toHaveBeenCalledTimes(1);
     expect(server.deleteAccountOnServer).toHaveBeenCalledWith(null);
   });
@@ -561,14 +646,14 @@ describe('the checkpoint moment after Erase and account deletion', () => {
 
   it('is forgotten when the account is deleted', async () => {
     useAuthStore.setState({ userId: 'user-1', email: 'a@b.co', status: 'authenticated', hasAppleIdentity: false });
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
     wipe.mockResolvedValue(undefined);
     mocked.signOutLocal.mockResolvedValue({ ok: true });
     useWarmupStore.setState({ retake: jest.fn(async () => {}) });
     usePracticeStore.setState({ clear: jest.fn(async () => {}) });
     useSettingsStore.setState({ streakMomentDay: PLAYED });
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(useSettingsStore.getState().streakMomentDay).toBeNull();
   });
 });
@@ -762,9 +847,9 @@ describe('authStore.deleteAccount: what goes with the account', () => {
 
   it("clears the account's sync cursor, the cached copies and the Coach, and becomes the guest", async () => {
     coachShowing();
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(clearCursor()).toHaveBeenCalledWith('user-1');
     for (const sweep of sweeps()) expect(sweep).toHaveBeenCalledTimes(1);
     expect(coachInsights()).toEqual([]);
@@ -772,10 +857,10 @@ describe('authStore.deleteAccount: what goes with the account', () => {
   });
 
   it('still clears them when the wipe fails', async () => {
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
     wipe.mockRejectedValue(new Error('disk'));
 
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(clearCursor()).toHaveBeenCalledWith('user-1');
     for (const sweep of sweeps()) expect(sweep).toHaveBeenCalledTimes(1);
   });
@@ -797,11 +882,11 @@ describe('authStore.deleteAccount: what goes with the account', () => {
   });
 
   it('stays signed in on this phone only when even the local sign-out failed', async () => {
-    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
     mocked.signOutLocal.mockResolvedValue({ ok: false, error: "Couldn't sign you out on this phone. Try again." });
 
     // The account is gone and the phone wiped: still a success.
-    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
     expect(wipe).toHaveBeenCalledWith('user-1');
   });
 });

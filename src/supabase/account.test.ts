@@ -2,6 +2,10 @@ import { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError } from '
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
+  APPLE_SKIPPED,
+  REVENUECAT_SKIPPED,
+} from '../../supabase/functions/delete-account/deletionPlan';
+import {
   DELETE_FAILED_MESSAGE,
   DELETE_UNCONFIRMED_MESSAGE,
   deleteAccountOnServer,
@@ -70,7 +74,11 @@ afterEach(() => {
 describe('deleteAccountOnServer', () => {
   it('succeeds only on an explicit ok from the function, without asking again', async () => {
     const { client, getUser } = fakeClient({ data: { ok: true, skipped: [] }, error: null });
-    await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({ ok: true });
+    // No code was sent, so nothing about Apple was revoked.
+    await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
+      ok: true,
+      appleRevoked: false,
+    });
     expect(getUser).not.toHaveBeenCalled();
   });
 
@@ -122,7 +130,7 @@ describe('deleteAccountOnServer', () => {
       const { client, getUser } = fakeClient(NEVER(), { kind: 'gone' });
       await expect(
         deleteAccountOnServer(null, { client, timeoutMs: 10 }),
-      ).resolves.toEqual({ ok: true });
+      ).resolves.toEqual({ ok: true, appleRevoked: false });
       // Asked about the same user, with the token read before the call.
       expect(getUser).toHaveBeenCalledWith(TOKEN);
     });
@@ -132,7 +140,10 @@ describe('deleteAccountOnServer', () => {
         { data: null, error: { message: 'Edge Function returned a non-2xx status code' }, response: { status: 401 } },
         { kind: 'gone' },
       );
-      await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({ ok: true });
+      await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
+        ok: true,
+        appleRevoked: false,
+      });
     });
 
     it('a 401 while the user still exists deletes nothing, and says so', async () => {
@@ -246,6 +257,93 @@ describe('deleteAccountOnServer', () => {
     expect(logged).not.toContain(TOKEN);
     expect(logged).not.toContain('c1.secret-code');
     expect(logged).not.toContain('row');
+  });
+});
+
+// Security review, 2026-11-18, round 4 (ACCOUNT_SPEC §3.2 step 5): a done
+// outcome says whether the server confirmed revoking the Apple grant. Only a
+// readable `skipped` list naming nothing but RevenueCat, after a code was
+// sent, counts; anything else reads as not revoked.
+describe('deleteAccountOnServer: whether the Apple grant was revoked', () => {
+  const CODE = 'c1.fresh';
+  /** The reasons planDeletion adds itself (deletionPlan.ts), not exported as constants. */
+  const PLAN_NO_CODE =
+    'apple: no authorization code (not an Apple account, or the user declined re-auth)';
+  const PLAN_NO_KEY = 'apple: Sign in with Apple key not configured';
+  const PLAN_NO_REVENUECAT_KEY = 'revenuecat: write-scoped key not configured';
+
+  const answered = (body: unknown) => fakeClient({ data: body, error: null });
+
+  it.each([
+    ['an empty skipped list', []],
+    ['only a RevenueCat key not configured', [PLAN_NO_REVENUECAT_KEY]],
+    ['only a RevenueCat failure and timeout', [REVENUECAT_SKIPPED.failed, REVENUECAT_SKIPPED.timedOut]],
+  ])('revoked, after a code, with %s', async (_label, skipped) => {
+    const { client } = answered({ ok: true, skipped });
+    await expect(deleteAccountOnServer(CODE, { client })).resolves.toEqual({
+      ok: true,
+      appleRevoked: true,
+    });
+  });
+
+  // Every reason the Apple leg can give, the identity mismatch included, in
+  // the function's own words, so a reason added there is covered here.
+  it.each([
+    ...Object.entries(APPLE_SKIPPED),
+    ['the plan: no code', PLAN_NO_CODE],
+    ['the plan: no Sign in with Apple key', PLAN_NO_KEY],
+  ])('not revoked when the server skipped Apple: %s', async (_label, reason) => {
+    const { client } = answered({ ok: true, skipped: [PLAN_NO_REVENUECAT_KEY, reason] });
+    await expect(deleteAccountOnServer(CODE, { client })).resolves.toEqual({
+      ok: true,
+      appleRevoked: false,
+    });
+  });
+
+  it('names the identity mismatch among the reasons it covers', () => {
+    expect(APPLE_SKIPPED.otherAppleId).toMatch(/^apple: .*different Apple ID/);
+  });
+
+  // The function as deployed before the security review returned the same
+  // shape; one that returned none, or something malformed, can't confirm.
+  it.each([
+    ['no skipped field', { ok: true }],
+    ['skipped as a string', { ok: true, skipped: 'apple: revocation failed' }],
+    ['skipped as null', { ok: true, skipped: null }],
+    ['an entry that is not a string', { ok: true, skipped: [42] }],
+    ['a reason this client does not know', { ok: true, skipped: ['something new'] }],
+  ])('not revoked when the answer is unreadable: %s', async (_label, body) => {
+    const { client } = answered(body);
+    await expect(deleteAccountOnServer(CODE, { client })).resolves.toEqual({
+      ok: true,
+      appleRevoked: false,
+    });
+  });
+
+  it('not revoked when no code was sent, whatever the list says', async () => {
+    const { client } = answered({ ok: true, skipped: [] });
+    await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
+      ok: true,
+      appleRevoked: false,
+    });
+  });
+
+  // The function may have revoked and deleted, then lost its 200: the client
+  // never saw its answer, so it can't say Apple's grant went.
+  it('not revoked when the deletion was confirmed by the "already deleted" check', async () => {
+    const lost = fakeClient(NEVER(), { kind: 'gone' });
+    await expect(
+      deleteAccountOnServer(CODE, { client: lost.client, timeoutMs: 10 }),
+    ).resolves.toEqual({ ok: true, appleRevoked: false });
+
+    const retried = fakeClient(
+      { data: null, error: { message: 'non-2xx' }, response: { status: 401 } },
+      { kind: 'gone' },
+    );
+    await expect(deleteAccountOnServer(CODE, { client: retried.client })).resolves.toEqual({
+      ok: true,
+      appleRevoked: false,
+    });
   });
 });
 

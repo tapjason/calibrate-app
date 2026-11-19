@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { useAuthStore } from '@/store/authStore';
 
@@ -93,6 +94,26 @@ describe('SignInView — Continue with Google', () => {
       "Google sign-in isn't available right now.",
     );
     expect(onDone).not.toHaveBeenCalled();
+  });
+
+  // Security review, 2026-11-18: said aloud, as the other refusals are.
+  it('announces its error to VoiceOver', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    try {
+      signInWithGoogle.mockResolvedValue({
+        ok: false,
+        error: "Google sign-in isn't available right now.",
+      });
+      render(<SignInView onDone={jest.fn()} />);
+
+      fireEvent.press(screen.getByTestId('account-google'));
+
+      expect(await screen.findByTestId('account-error')).toBeTruthy();
+      expect(announce).toHaveBeenCalledTimes(1);
+      expect(announce).toHaveBeenCalledWith("Google sign-in isn't available right now.");
+    } finally {
+      announce.mockRestore();
+    }
   });
 
   it("clears an earlier error when it's tapped again", async () => {

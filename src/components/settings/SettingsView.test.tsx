@@ -1,11 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 
+import { colors, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
 import { FREE_ENTITLEMENT } from '@/types';
 
-import { reminderWordsLine, SettingsView } from './SettingsView';
+import { reminderWordsLine, SettingsView, USAGE_STATS_DESCRIPTION } from './SettingsView';
 
 // Refine is CUT from the release (`REFINE_ENABLED = false`), so these tests
 // force the flag on. The behavior stays covered while the feature is dormant,
@@ -158,6 +160,20 @@ describe('SettingsView', () => {
     expect(hint()).toMatch(/^When you ask for feedback/);
   });
 
+  // Policy audit F7 (2026-11-18): every row has a random event id, so a
+  // guest's counts don't go up with "no id at all"; none names an account, a
+  // device or an install.
+  it('says what a guest’s counts carry no id of, and only that', () => {
+    render(<SettingsView />);
+    expect(USAGE_STATS_DESCRIPTION).toBe(
+      "Counts of which features get used — never your predictions, reflections, or any text. Before you sign in, a few counts go up with no account, device or install id; once you sign in, they're tied to your account. Turning this off deletes what's queued.",
+    );
+    expect(USAGE_STATS_DESCRIPTION).not.toMatch(/no id at all/);
+    expect(screen.getByTestId('toggle-analytics-row').props.accessibilityHint).toBe(
+      USAGE_STATS_DESCRIPTION,
+    );
+  });
+
   // Roadmap step 41: a bare Switch was an unnamed "switch, on" to VoiceOver.
   it('names each switch by its row, with the description as the hint', () => {
     render(<SettingsView />);
@@ -265,6 +281,110 @@ describe('SettingsView — account', () => {
     expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
     fireEvent.press(screen.getByTestId('settings-sign-out'));
     expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  // Security review, 2026-11-18: the store returns how the sign-out ended.
+  describe('what sign-out says', () => {
+    const SIGN_OUT_FAILED = "Couldn't sign you out on this phone. Try again.";
+    let announce: jest.SpyInstance;
+
+    beforeEach(() => {
+      announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    });
+    afterEach(() => announce.mockRestore());
+
+    /** A sign-out that waits until `finish` is called with its outcome. */
+    function slowSignOut() {
+      let finish!: (outcome: unknown) => void;
+      const fn = jest.fn(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      return { fn, finish: (outcome: unknown) => finish(outcome) };
+    }
+
+    function signedIn(fn: jest.Mock) {
+      useAuthStore.setState({
+        accountsAvailable: true,
+        status: 'authenticated',
+        email: 'a@b.co',
+        pending: false,
+        signOut: fn,
+      });
+    }
+
+    it('shows that it is working and takes no second tap until it ends', async () => {
+      const slow = slowSignOut();
+      signedIn(slow.fn);
+      render(<SettingsView />);
+
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+      await waitFor(() =>
+        expect(screen.getByTestId('settings-sign-out')).toHaveTextContent('Signing out…'),
+      );
+      expect(screen.getByTestId('settings-sign-out')).toBeDisabled();
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+      expect(slow.fn).toHaveBeenCalledTimes(1);
+
+      await act(async () => slow.finish({ ok: false, error: SIGN_OUT_FAILED }));
+      expect(screen.getByTestId('settings-sign-out')).toHaveTextContent('Sign out');
+      expect(screen.getByTestId('settings-sign-out')).toBeEnabled();
+    });
+
+    it("shows the store's words in the error style, and says them, when it fails", async () => {
+      const signOut = jest.fn().mockResolvedValue({ ok: false, error: SIGN_OUT_FAILED });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+
+      const error = await screen.findByTestId('settings-sign-out-error');
+      expect(error).toHaveTextContent(SIGN_OUT_FAILED);
+      expect(StyleSheet.flatten(error.props.style)).toMatchObject({
+        fontSize: type.subhead.fontSize,
+        color: colors.destructive,
+      });
+      expect(announce).toHaveBeenCalledWith(SIGN_OUT_FAILED);
+      // Still signed in, and free to try again.
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+      expect(screen.getByTestId('settings-sign-out')).toBeEnabled();
+    });
+
+    it('clears the error on the next try', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, error: SIGN_OUT_FAILED })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+      expect(await screen.findByTestId('settings-sign-out-error')).toBeTruthy();
+      await waitFor(() => expect(screen.getByTestId('settings-sign-out')).toBeEnabled());
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+      await waitFor(() => expect(signOut).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.queryByTestId('settings-sign-out-error')).toBeNull());
+    });
+
+    it.each([
+      ['the server took it', { ok: true }],
+      ['it ended on this phone alone', { ok: true, localOnly: true }],
+    ])('says nothing when %s', async (_label, outcome) => {
+      const signOut = jest.fn().mockResolvedValue(outcome);
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      fireEvent.press(screen.getByTestId('settings-sign-out'));
+
+      await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(screen.getByTestId('settings-sign-out')).toHaveTextContent('Sign out'),
+      );
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+      expect(announce).not.toHaveBeenCalled();
+    });
   });
 
   // An Apple private relay address is one the user has usually never seen.

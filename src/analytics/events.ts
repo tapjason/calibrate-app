@@ -109,7 +109,18 @@ export type ShareSurface = (typeof SHARE_SURFACES)[number];
  */
 export type EventPropValue = number | boolean | PaywallSource | ShareSurface;
 
-/** The properties each event may carry. Anything else is dropped. */
+/**
+ * The properties each event may carry. Anything else is dropped.
+ *
+ * The server holds the same rules (migration 010): `analytics_props_ok` takes
+ * at most 4 props on an event, each one of the 15 keys declared here, each
+ * value a boolean, a number from -1e9 to 1e9, or one of the 10 words in
+ * PAYWALL_SOURCES and SHARE_SURFACES; `analytics_events_name_shape` takes a
+ * name matching `^[a-z][a-z0-9_]{0,47}$`. A new key or enum word, a fifth
+ * prop, a larger number or a name outside that shape needs a new migration
+ * first (and a new guest event, `guest_analytics_events_known_name` from
+ * migration 007), or the server refuses those rows and the flush drops them.
+ */
 export const EVENT_PROPS = {
   warmup_started: [],
   warmup_completed: ['score', 'question_count'],

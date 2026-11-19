@@ -12,11 +12,42 @@ import {
 import { holdRanges } from '@/components/ui/holdRanges';
 import { colors, space, type } from '@/constants/theme';
 import { useCategoryStore } from '@/store/categoryStore';
+import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import type { CalibrationResult, Category, CategoryStat, UserStat } from '@/types';
+import type { CalibrationResult, Category, CategoryStat, Prediction, UserStat } from '@/types';
 import { MIN_N_CATEGORY } from '@/types';
 
 const EMPTY_CAL: CalibrationResult = { rating: 0, buckets: [] };
+
+/**
+ * One prediction logged a day, `days` days in a row, the last of them
+ * `lastDaysAgo` days before `now` (0 = today). Open, due well after: only
+ * the days they were logged matter to the streak.
+ */
+function loggedDaily(days: number, lastDaysAgo = 0, now = new Date()): Prediction[] {
+  return Array.from({ length: days }, (_, i) => {
+    const back = lastDaysAgo + i;
+    const at = new Date(now);
+    at.setDate(at.getDate() - back);
+    // Earlier days at noon; today at the moment itself, never later.
+    if (back > 0) at.setHours(12, 0, 0, 0);
+    const due = new Date(now);
+    due.setDate(due.getDate() + 30);
+    return {
+      id: `daily-${back}`,
+      user_id: 'u1',
+      title: `Logged ${back} days ago`,
+      category: 'work',
+      confidence: 70,
+      created_at: at.toISOString(),
+      due_date: due.toISOString(),
+      status: 'pending',
+      resolved_at: null,
+      reflection: null,
+      integrity_bonus: false,
+    };
+  });
+}
 
 const userStat = (overrides: Partial<UserStat> = {}): UserStat => ({
   user_id: 'u1',
@@ -898,6 +929,9 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
   });
 
   it('spaces the count the same with the streak hidden in You', () => {
+    // The streak beside the count is the live one (record audit, 2026-11-18):
+    // nine days logged in a row, ending today, as the stored 9 says.
+    usePredictionStore.setState({ pending: loggedDaily(9), resolved: [] });
     useSettingsStore.setState({ streakShown: false });
     try {
       show();
@@ -907,8 +941,12 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
     } finally {
       act(() => useSettingsStore.setState({ streakShown: true }));
     }
-    expect(screen.getByText(/^153 scored/)).toHaveTextContent('153 scored, 9-day streak');
-    expect(countStyle().marginTop).toBe(space.md);
+    try {
+      expect(screen.getByText(/^153 scored/)).toHaveTextContent('153 scored, 9-day streak');
+      expect(countStyle().marginTop).toBe(space.md);
+    } finally {
+      usePredictionStore.setState({ pending: [], resolved: [] });
+    }
   });
 
   it('is unchanged with the words hidden', () => {
@@ -922,6 +960,107 @@ describe('CalibrationView, the lines under the rating in groups (D68)', () => {
     } finally {
       act(() => useSettingsStore.setState({ hideTitles: false }));
     }
+  });
+
+  // Record audit, 2026-11-18 (R11): the count line read the stored streak,
+  // which waits for a write, so it outlived a streak Today showed as ended.
+  describe('the streak beside the count, as Today reads it', () => {
+    afterEach(() => {
+      usePredictionStore.setState({ pending: [], resolved: [] });
+      act(() => useSettingsStore.setState({ streakShown: true }));
+    });
+
+    it('shows no streak once it has ended, whatever the stored one says', () => {
+      // Five days in a row, the last ten days ago: no rest day saved, so it
+      // ended nine days ago. The stored figure still says 5.
+      usePredictionStore.setState({ pending: loggedDaily(5, 10), resolved: [] });
+      render(
+        <CalibrationView
+          userStat={userStat({
+            total_resolved: 153,
+            rating_is_provisional: false,
+            calibration_rating: 86,
+            current_streak: 5,
+          })}
+          calibration={{ rating: 86, buckets: [] }}
+          categoryStats={[]}
+          nextBadges={{}}
+        />,
+      );
+      expect(screen.getByText(/^153 scored/)).toHaveTextContent(/^153 scored$/);
+      expect(screen.queryByText(/day streak/)).toBeNull();
+    });
+
+    it('shows the running one, though the stored one lags behind', () => {
+      usePredictionStore.setState({ pending: loggedDaily(9), resolved: [] });
+      render(
+        <CalibrationView
+          userStat={userStat({
+            total_resolved: 153,
+            rating_is_provisional: false,
+            calibration_rating: 86,
+            current_streak: 0,
+          })}
+          calibration={{ rating: 86, buckets: [] }}
+          categoryStats={[]}
+          nextBadges={{}}
+        />,
+      );
+      expect(screen.getByText(/^153 scored/)).toHaveTextContent('153 scored, 9-day streak');
+    });
+
+    it('still hides it while the streak is off in You', () => {
+      usePredictionStore.setState({ pending: loggedDaily(9), resolved: [] });
+      useSettingsStore.setState({ streakShown: false });
+      render(
+        <CalibrationView
+          userStat={userStat({
+            total_resolved: 153,
+            rating_is_provisional: false,
+            calibration_rating: 86,
+            current_streak: 9,
+          })}
+          calibration={{ rating: 86, buckets: [] }}
+          categoryStats={[]}
+          nextBadges={{}}
+        />,
+      );
+      expect(screen.getByText(/^153 scored/)).toHaveTextContent(/^153 scored$/);
+    });
+
+    it('lets it go when the days pass with nothing written, as Today does', () => {
+      const start = new Date(2026, 10, 18, 15, 0, 0);
+      jest.useFakeTimers({ now: start });
+      try {
+        usePredictionStore.setState({ pending: loggedDaily(5, 0, start), resolved: [] });
+        render(
+          <CalibrationView
+            userStat={userStat({
+              total_resolved: 153,
+              rating_is_provisional: false,
+              calibration_rating: 86,
+              current_streak: 5,
+            })}
+            calibration={{ rating: 86, buckets: [] }}
+            categoryStats={[]}
+            nextBadges={{}}
+          />,
+        );
+        expect(screen.getByText(/^153 scored/)).toHaveTextContent('153 scored, 5-day streak');
+
+        // The next day stands on yesterday; the one after, it has ended.
+        act(() => {
+          jest.advanceTimersByTime(24 * 60 * 60 * 1000);
+        });
+        expect(screen.getByText(/^153 scored/)).toHaveTextContent('153 scored, 5-day streak');
+        act(() => {
+          jest.advanceTimersByTime(24 * 60 * 60 * 1000);
+        });
+        expect(screen.getByText(/^153 scored/)).toHaveTextContent(/^153 scored$/);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   it('leaves the calibrating state as it was', () => {
