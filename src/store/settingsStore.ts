@@ -163,6 +163,14 @@ export interface SettingsPersistence {
 interface SettingsState extends StoredSettings {
   /** True once hydrate() has run (whether or not stored values existed). */
   hydrated: boolean;
+  /**
+   * True when hydrate() found a settings record it couldn't read (the read
+   * threw twice, or what came back wasn't a settings object). Not set for a
+   * fresh install, which has no record. The app lock then reads as on
+   * (security review, 2026-11-18): the person may have chosen it, and a lock
+   * that opens with Face ID or the passcode is the safe way to be wrong.
+   */
+  loadFailed: boolean;
   /** Load persisted settings into the store. Safe to call once at startup. */
   hydrate: () => Promise<void>;
   /**
@@ -256,7 +264,15 @@ function defaultPersistence(): SettingsPersistence {
       const AsyncStorage = require('@react-native-async-storage/async-storage')
         .default as typeof import('@react-native-async-storage/async-storage').default;
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Partial<StoredSettings>) : null;
+      // No record: a fresh install. Anything stored was written as an object
+      // by save() below, so a record that doesn't parse, or parses to
+      // anything else ("null" or "" included), throws: it can't be read.
+      if (raw === null || raw === undefined) return null;
+      const parsed: unknown = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error('the stored settings are not a settings object');
+      }
+      return parsed as Partial<StoredSettings>;
     },
     async save(settings) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -275,7 +291,39 @@ export function __setPersistenceForTests(next: SettingsPersistence | null): void
     throw new Error('__setPersistenceForTests is only allowed when NODE_ENV=test');
   }
   persistence = next ?? defaultPersistence();
-  useSettingsStore.setState({ ...DEFAULTS, hydrated: false });
+  useSettingsStore.setState({ ...DEFAULTS, hydrated: false, loadFailed: false });
+}
+
+/**
+ * Read the stored settings: null for no record, the record, or a throw for
+ * one that can't be read. What comes back must be a settings object: `null`
+ * parsed from the text "null", a string, a number or a list is a record that
+ * can't be read, not a fresh install.
+ */
+async function loadStored(): Promise<Partial<StoredSettings> | null> {
+  const stored: unknown = await persistence.load();
+  if (stored === null || stored === undefined) return null;
+  if (typeof stored !== 'object' || Array.isArray(stored)) {
+    throw new Error('the stored settings are not a settings object');
+  }
+  return stored as Partial<StoredSettings>;
+}
+
+/**
+ * Drop the Coach's cards (fix 5): turning Coach off must clear what is on
+ * screen, not just stop the next request. Lazy, because coachStore →
+ * analytics/track → authStore → settingsStore would be a require cycle at
+ * module load. Never throws.
+ */
+function resetCoach(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useCoachStore } = require('./coachStore') as typeof import('./coachStore');
+    useCoachStore.getState().reset();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[settings] could not clear the Coach:', e instanceof Error ? e.message : 'unknown error');
+  }
 }
 
 /** Persist the current toggle values, swallowing storage errors. */
@@ -294,10 +342,18 @@ async function persist(settings: StoredSettings): Promise<void> {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULTS,
   hydrated: false,
+  loadFailed: false,
 
   hydrate: async () => {
     try {
-      const stored = await persistence.load();
+      let stored: Partial<StoredSettings> | null;
+      try {
+        stored = await loadStored();
+      } catch {
+        // Once more: a storage read can fail for a moment. A record that
+        // doesn't parse fails again, and that is the failed read below.
+        stored = await loadStored();
+      }
       if (stored) {
         set({
           notificationsEnabled:
@@ -350,16 +406,27 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         });
       }
     } catch (e) {
-      // Fall back to defaults — never block startup on a settings read.
+      // Fall back to defaults — never block startup on a settings read. But
+      // not for the lock: the record that couldn't be read may have had it
+      // on, and `appLock: false` here would be written over that record by
+      // the next change of any setting. On, it locks at launch where this
+      // build can (lockStore.arm: Face ID or the passcode opens it; a build
+      // without the module never locks), the switch in You shows it on, and
+      // turning it off is the usual check with the phone.
       // eslint-disable-next-line no-console
-      console.warn('[settings] load failed; using defaults:', e);
+      console.warn(
+        '[settings] load failed; using defaults with the app lock on:',
+        e instanceof Error ? e.message : 'unknown error',
+      );
+      set({ loadFailed: true, appLock: true });
     } finally {
       set({ hydrated: true });
     }
   },
 
   resetToDefaults: async () => {
-    set({ ...DEFAULTS });
+    // A fresh record, written whole: nothing unreadable is left to protect.
+    set({ ...DEFAULTS, loadFailed: false });
     await persist(snapshot(get()));
   },
 
@@ -420,6 +487,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setCoachEnabled: async (enabled) => {
     set({ coachEnabled: enabled });
+    // Off clears the cards on screen at once, before the write.
+    if (!enabled) resetCoach();
     await persist(snapshot(get()));
   },
 

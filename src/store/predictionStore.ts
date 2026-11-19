@@ -226,6 +226,69 @@ function requireUserId(): string {
   return userId;
 }
 
+/**
+ * Run a list reload and say whether it worked, never throwing: for the reads
+ * around a save or an answer, which must never fail it (code review,
+ * 2026-11-18).
+ */
+async function readSucceeds(load: () => Promise<void>): Promise<boolean> {
+  try {
+    await load();
+    return true;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[predictions] a list reload around a save failed:', e);
+    return false;
+  }
+}
+
+/**
+ * An answer's write with its stats recompute, in one transaction. The
+ * recompute sets the stats held in memory, with any milestone or badge fall,
+ * before the commit; if the write then fails and rolls back (a failed COMMIT),
+ * memory would be ahead of the database, and the next "Your rating moved
+ * from…" would start from a rating that includes the rolled-back answer. So
+ * on failure nothing of it is claimed, and the stats are read again from the
+ * database, in their own transaction (code review, 2026-11-18). The write's
+ * error still reaches the caller: nothing was recorded, so trying again is
+ * safe.
+ */
+async function writeWithStats(userId: string, write: () => Promise<void>): Promise<void> {
+  try {
+    await withTransaction(write);
+  } catch (e) {
+    useStatsStore.getState().clearMilestone();
+    try {
+      await withTransaction(() => useStatsStore.getState().loadForUser(userId));
+    } catch (reloadError) {
+      // eslint-disable-next-line no-console
+      console.warn('[predictions] reloading the stats after a failed write failed:', reloadError);
+    }
+    throw e;
+  }
+}
+
+/**
+ * This user's prediction from the database (getById applies the owner
+ * filter), or, if that read fails, the copy in the lists held here, which
+ * only ever hold this user's rows. With neither, the read's error stands:
+ * nothing has been written, so trying again is safe.
+ */
+async function getByIdOrHeld(
+  get: () => PredictionState,
+  id: string,
+): Promise<Prediction | null> {
+  try {
+    return await get().getById(id);
+  } catch (e) {
+    const held = [...get().pending, ...get().resolved].find((p) => p.id === id);
+    if (!held) throw e;
+    // eslint-disable-next-line no-console
+    console.warn('[predictions] read failed; using the copy held here:', e);
+    return held;
+  }
+}
+
 export const usePredictionStore = create<PredictionState>((set, get) => ({
   pending: [],
   resolved: [],
@@ -272,9 +335,15 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const prediction = newPredictionRow(input, userId);
     // The streak before this log, from the database as `resolve` takes it: a
     // sync can write rows the lists here haven't seen, and the log would then
-    // be credited with a checkpoint those rows reached (step 194).
-    await Promise.all([get().loadPending(), get().loadResolved()]);
-    const before = get().streakNow();
+    // be credited with a checkpoint those rows reached (step 194). A save
+    // never depends on a read (code review, 2026-11-18): if a read fails, the
+    // lists already held stand in, and no checkpoint is claimed, since lists
+    // that missed a sync's rows could credit this log with theirs.
+    const [pendingRead, resolvedRead] = await Promise.all([
+      readSucceeds(get().loadPending),
+      readSucceeds(get().loadResolved),
+    ]);
+    const before = pendingRead && resolvedRead ? get().streakNow() : null;
     // Atomic: insert + stats recompute go together so total_predictions and
     // per-category predictions_made never lag behind the prediction list.
     await withTransaction(async () => {
@@ -282,12 +351,16 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       await useStatsStore.getState().recomputeForUser(userId);
     });
     // Reload instead of appending: the DB query sorts by due_date, and the
-    // newly-inserted row may belong before existing entries.
-    await get().loadPending();
+    // newly-inserted row may belong before existing entries. Saved by now, so
+    // a failed reload is logged rather than reported as a failed save (which
+    // would invite saving it twice); the next load brings it.
+    const reloaded = await readSucceeds(get().loadPending);
     // A log that made today count on a checkpoint day earned it, as an answer
     // does (step 194); a second log the same day reaches nothing. Kept until
-    // Today shows it, so "Save and log another" doesn't lose it.
-    const reached = checkpointReached(before, get().streakNow());
+    // Today shows it, so "Save and log another" doesn't lose it. Only with
+    // both sides read from the database.
+    const reached =
+      before !== null && reloaded ? checkpointReached(before, get().streakNow()) : null;
     // For Today, once the sheet closes (D48).
     set({
       justSavedId: prediction.id,
@@ -320,7 +393,10 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       const userId = requireUserId();
       let reopenFirst = false;
       if (options?.answeringSkip && outcome !== 'skipped') {
-        const target = await get().getById(id);
+        // The skip's week (D45) is checked on the row, or on the copy held
+        // here if that read fails (code review, 2026-11-18): the reopen below
+        // only touches a row still skipped, whatever the copy says.
+        const target = await getByIdOrHeld(get, id);
         if (target?.status === 'skipped') {
           if (!canAnswerSkip(target, new Date())) throw new Error(SKIP_CLOSED);
           reopenFirst = true;
@@ -329,23 +405,40 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       // The streak before this answer, from the database rather than the lists
       // held here: a sync can write rows those lists haven't seen, and the
       // reload after the answer would then credit this answer with a
-      // checkpoint those rows reached.
-      await Promise.all([get().loadPending(), get().loadResolved()]);
-      const before = get().streakNow();
-      // Atomic: if stats recompute throws, the resolution rolls back too.
-      await withTransaction(async () => {
+      // checkpoint those rows reached. The answer never waits on these reads
+      // (code review, 2026-11-18): if one fails, the lists held stand in and
+      // no checkpoint is claimed.
+      const [pendingRead, resolvedRead] = await Promise.all([
+        readSucceeds(get().loadPending),
+        readSucceeds(get().loadResolved),
+      ]);
+      const before = pendingRead && resolvedRead ? get().streakNow() : null;
+      // Atomic: if stats recompute throws, the resolution rolls back too. The
+      // milestone and a badge's fall are found inside it, on the same reads
+      // as the answer's stats, so they stand or fall with the answer.
+      await writeWithStats(userId, async () => {
         // Only a row still skipped: a sync between the check above and here
         // may have brought an answer from another phone (review, 2026-11-08).
         if (reopenFirst) await unskipPrediction(id);
         await resolvePrediction(id, outcome, reflection);
         await useStatsStore.getState().recomputeForUser(userId);
       });
-      // Refresh local lists from the source of truth.
-      await Promise.all([get().loadPending(), get().loadResolved()]);
-      // Kept until shown, like an uncelebrated milestone.
-      const reached = checkpointReached(before, get().streakNow());
+      // Refresh local lists from the source of truth. The answer is saved by
+      // now: a failed reload is logged, never reported as a failed answer,
+      // which could lead the person to answer again.
+      const [pendingAfter, resolvedAfter] = await Promise.all([
+        readSucceeds(get().loadPending),
+        readSucceeds(get().loadResolved),
+      ]);
+      // Kept until shown, like an uncelebrated milestone. Only with both
+      // sides read from the database.
+      const reached =
+        before !== null && pendingAfter && resolvedAfter
+          ? checkpointReached(before, get().streakNow())
+          : null;
       if (reached !== null) set({ streakCheckpoint: reached, streakCheckpointFrom: 'answer' });
-      const resolvedPrediction = get().resolved.find((p) => p.id === id);
+      // Only from a fresh list: whether this write landed is read there.
+      const resolvedPrediction = resolvedAfter ? get().resolved.find((p) => p.id === id) : undefined;
       if (resolvedPrediction && resolvedPrediction.status === outcome) {
         void track('prediction_resolved', {
           confidence: resolvedPrediction.confidence,
@@ -360,13 +453,18 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   correct: async (id, outcome) => {
     const userId = requireUserId();
-    await requireCorrectable(get().getById, id);
-    await withTransaction(async () => {
+    // The window (D34) on the row, or on the copy held here if that read
+    // fails (code review, 2026-11-18); the switch itself only touches a Yes
+    // or No.
+    await requireCorrectable((rid) => getByIdOrHeld(get, rid), id);
+    await writeWithStats(userId, async () => {
       await correctPredictionOutcome(id, outcome);
       await useStatsStore.getState().recomputeForUser(userId);
     });
     useStatsStore.getState().clearMilestone();
-    await get().loadResolved();
+    // Saved by now: a failed reload is logged, not reported as a failed
+    // switch, which could lead the person to switch it again.
+    await readSucceeds(get().loadResolved);
   },
 
   refile: async (id, category) => {
@@ -448,18 +546,21 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   remove: async (id) => {
     const userId = requireUserId();
+    // Only this user's own prediction (getById applies the owner filter): a
+    // missing row or another account's is left alone (code review,
+    // 2026-11-18), since deletePrediction itself deletes by id.
+    const target = await get().getById(id);
+    if (!target) return;
     // An answered one only within the correction window (roadmap D34); an
     // open one or a skip any time.
-    const target = await get().getById(id);
     if (
-      target &&
       (target.status === 'resolved_yes' || target.status === 'resolved_no') &&
       !canCorrect(target, new Date())
     ) {
       throw new Error(PAST_WINDOW);
     }
     // Counted on Insights when it hides something scored or due (D45).
-    const counted = target ? deletionCounts(target, new Date()) : false;
+    const counted = deletionCounts(target, new Date());
     // Deleting a resolved prediction changes calibration, streak, and per-
     // category counts — recompute inside the same transaction so the stats
     // never reflect a ghost prediction.

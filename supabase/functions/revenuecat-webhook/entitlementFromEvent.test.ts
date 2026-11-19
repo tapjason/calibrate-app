@@ -36,12 +36,19 @@ describe('granting', () => {
     });
   });
 
-  it.each(['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE'])(
-    'grants on %s',
-    (type) => {
-      expect(decideFromEvent(event({ type }), NOW)).toMatchObject({ isPlus: true });
-    },
-  );
+  it.each([
+    'INITIAL_PURCHASE',
+    'RENEWAL',
+    'UNCANCELLATION',
+    'PRODUCT_CHANGE',
+    'NON_RENEWING_PURCHASE',
+    'SUBSCRIPTION_EXTENDED',
+  ])('grants on %s', (type) => {
+    expect(decideFromEvent(event({ type }), NOW)).toMatchObject({
+      action: 'write',
+      isPlus: true,
+    });
+  });
 
   it('maps each product to its source', () => {
     for (const [source, product_id] of Object.entries(PRODUCT_IDS)) {
@@ -66,14 +73,31 @@ describe('granting', () => {
     });
   });
 
-  it('treats a null expiry as a non-expiring grant', () => {
+  it('treats a null expiry on a non-renewing purchase as a lifetime grant', () => {
     expect(
       decideFromEvent(
-        event({ product_id: PRODUCT_IDS.lifetime, expiration_at_ms: null }),
+        event({
+          type: 'NON_RENEWING_PURCHASE',
+          product_id: PRODUCT_IDS.lifetime,
+          expiration_at_ms: null,
+        }),
         NOW,
       ),
-    ).toMatchObject({ isPlus: true, source: 'lifetime', expiresAt: null });
+    ).toMatchObject({ action: 'write', isPlus: true, source: 'lifetime', expiresAt: null });
   });
+
+  // Security review, 2026-11-18: a subscription event with no expiry can't be
+  // told from a malformed one, and believing it would write Plus for ever.
+  it.each(['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'BILLING_ISSUE', 'SUBSCRIPTION_EXTENDED'])(
+    'looks up a %s with no expiry instead of granting for ever',
+    (type) => {
+      const d = decideFromEvent(
+        event({ type, product_id: PRODUCT_IDS.lifetime, expiration_at_ms: null }),
+        NOW,
+      );
+      expect(d).toMatchObject({ action: 'lookup', isPlus: false, lookupUserIds: [USER] });
+    },
+  );
 
   it('falls back to the product when the event carries no entitlement ids', () => {
     const e = event({ entitlement_ids: undefined });
@@ -87,8 +111,8 @@ describe('granting', () => {
 });
 
 describe('revoking', () => {
-  it.each(['EXPIRATION', 'REFUND', 'SUBSCRIPTION_PAUSED'])('revokes on %s', (type) => {
-    expect(decideFromEvent(event({ type }), NOW)).toMatchObject({
+  it('revokes on EXPIRATION', () => {
+    expect(decideFromEvent(event({ type: 'EXPIRATION' }), NOW)).toMatchObject({
       action: 'write',
       userId: USER,
       isPlus: false,
@@ -97,12 +121,25 @@ describe('revoking', () => {
     });
   });
 
+  // RevenueCat never sends REFUND (a refund is a CANCELLATION), and says of
+  // SUBSCRIPTION_PAUSED: "Don't revoke access on this event. Revoke access
+  // only on EXPIRATION".
+  it.each(['REFUND', 'SUBSCRIPTION_PAUSED'])('neither revokes nor grants on %s', (type) => {
+    expect(decideFromEvent(event({ type }), NOW)).toMatchObject({
+      action: 'ignore',
+      userId: null,
+      isPlus: false,
+    });
+  });
+
   // Turning off auto-renew is not the end of access. Revoking here would take
-  // away weeks the user already paid for — and it is the single most likely
-  // way to get this wrong.
-  it('does NOT revoke on CANCELLATION while the term is still running', () => {
+  // away weeks the user already paid for; granting from it is how a refund
+  // stayed Plus. So RevenueCat is asked.
+  it('neither revokes nor grants on CANCELLATION: it is looked up', () => {
     expect(decideFromEvent(event({ type: 'CANCELLATION' }), NOW)).toMatchObject({
-      isPlus: true,
+      action: 'lookup',
+      isPlus: false,
+      lookupUserIds: [USER],
     });
   });
 
@@ -121,13 +158,129 @@ describe('revoking', () => {
   });
 });
 
+// Security review, 2026-11-18. RevenueCat has no REFUND event: a refund
+// arrives as CANCELLATION with cancel_reason CUSTOMER_SUPPORT, for a
+// subscription or a lifetime purchase, and a lifetime's expiration_at_ms is
+// null. Until then a CANCELLATION went down the grant path, where a null
+// expiry read as non-expiring, so a refunded Lifetime was written as Plus for
+// ever.
+describe('CANCELLATION and the other looked-up events', () => {
+  const refund = (expiration_at_ms: number | null) =>
+    event({
+      type: 'CANCELLATION',
+      cancel_reason: 'CUSTOMER_SUPPORT',
+      product_id: expiration_at_ms === null ? PRODUCT_IDS.lifetime : PRODUCT_IDS.annual,
+      expiration_at_ms,
+    });
+
+  it.each([
+    ['a null expiry (a refunded Lifetime)', null],
+    ['a past expiry', PAST],
+    ['a future expiry', FUTURE],
+  ])('looks up a refund with %s, and writes free if the lookup fails', (_label, expiry) => {
+    expect(decideFromEvent(refund(expiry), NOW)).toMatchObject({
+      action: 'lookup',
+      isPlus: false,
+      userId: null,
+      lookupUserIds: [USER],
+      failClosed: true,
+      eventMs: NOW,
+    });
+  });
+
+  it('reads cancel_reason in any case', () => {
+    const d = decideFromEvent(
+      event({ type: 'CANCELLATION', cancel_reason: 'customer_support' }),
+      NOW,
+    );
+    expect(d.failClosed).toBe(true);
+  });
+
+  // Auto-renew off: access runs to the expiry, which the lookup says. A
+  // failed lookup must not take that away, so nothing is written then.
+  it('looks up an ordinary cancellation of a running subscription without failing closed', () => {
+    expect(
+      decideFromEvent(
+        event({ type: 'CANCELLATION', cancel_reason: 'UNSUBSCRIBE', expiration_at_ms: FUTURE }),
+        NOW,
+      ),
+    ).toMatchObject({ action: 'lookup', lookupUserIds: [USER], failClosed: false });
+  });
+
+  it.each([
+    ['no expiry', null],
+    ['an expiry already past', PAST],
+  ])('fails closed on any cancellation with %s', (_label, expiration_at_ms) => {
+    const d = decideFromEvent(
+      event({ type: 'CANCELLATION', cancel_reason: 'UNSUBSCRIBE', expiration_at_ms }),
+      NOW,
+    );
+    expect(d).toMatchObject({ action: 'lookup', failClosed: true });
+  });
+
+  it.each(['REFUND_REVERSED', 'TEMPORARY_ENTITLEMENT_GRANT', 'PURCHASE_REDEEMED'])(
+    'looks up %s and never grants from its payload',
+    (type) => {
+      expect(decideFromEvent(event({ type, expiration_at_ms: null }), NOW)).toMatchObject({
+        action: 'lookup',
+        isPlus: false,
+        lookupUserIds: [USER],
+        failClosed: false,
+      });
+    },
+  );
+
+  it('ignores a looked-up event whose app_user_id is not a Supabase user id', () => {
+    expect(
+      decideFromEvent(event({ type: 'CANCELLATION', app_user_id: '$RCAnonymousID:x' }), NOW),
+    ).toMatchObject({ action: 'ignore', lookupUserIds: [] });
+  });
+
+  it('is ignored with the other sandbox events when configured to', () => {
+    expect(
+      decideFromEvent(event({ type: 'CANCELLATION', environment: 'SANDBOX' }), NOW, {
+        ignoreSandbox: true,
+      }),
+    ).toMatchObject({ action: 'ignore' });
+  });
+});
+
 describe('ignoring', () => {
   it.each([
     ['a test event', event({ type: 'TEST' })],
     ['an alias event', event({ type: 'SUBSCRIBER_ALIAS' })],
     ['an invoice event', event({ type: 'INVOICE_ISSUANCE' })],
+    ['a virtual currency event', event({ type: 'VIRTUAL_CURRENCY_TRANSACTION' })],
+    ['an experiment event', event({ type: 'EXPERIMENT_ENROLLMENT' })],
+    ['a price increase event', event({ type: 'PRICE_INCREASE_CONSENT_REQUIRED' })],
+    ['an approved price increase', event({ type: 'PRICE_INCREASE_CONSENT_APPROVED' })],
   ])('ignores %s', (_label, payload) => {
     expect(decideFromEvent(payload, NOW).action).toBe('ignore');
+  });
+
+  // A closed list: an event type RevenueCat adds later can't grant Plus by
+  // carrying a product id and no expiry.
+  it('ignores an event type it does not know, whatever it carries', () => {
+    const d = decideFromEvent(
+      event({ type: 'SOMETHING_NEW', product_id: PRODUCT_IDS.lifetime, expiration_at_ms: null }),
+      NOW,
+    );
+    expect(d).toMatchObject({ action: 'ignore', userId: null, isPlus: false, lookupUserIds: [] });
+    expect(d.reason).toBe('unknown event type SOMETHING_NEW');
+  });
+
+  // RevenueCat ids are case-sensitive, Postgres uuids aren't, and Supabase
+  // writes lowercase (security review, 2026-11-18).
+  it('ignores an app_user_id in uppercase, and takes the same id in lowercase', () => {
+    const lower = 'abcdef01-2345-4789-abcd-ef0123456789';
+    expect(decideFromEvent(event({ app_user_id: lower.toUpperCase() }), NOW)).toMatchObject({
+      action: 'ignore',
+      userId: null,
+    });
+    expect(decideFromEvent(event({ app_user_id: lower }), NOW)).toMatchObject({
+      action: 'write',
+      userId: lower,
+    });
   });
 
   // A purchase made before sign-in is on an anonymous RevenueCat id. There is

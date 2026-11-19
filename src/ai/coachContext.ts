@@ -15,7 +15,23 @@
 import { categoryDrift, classifyDirection, weakestDayOfWeek } from '@/engine/patterns';
 import { computeCalibrationPoints } from '@/engine/calibration';
 import { isSameDayAnswer } from '@/engine/sameDay';
-import { isBuiltInCategory, type CoachContext, type Category, type Prediction, type UserStat } from '@/types';
+import {
+  isBuiltInCategory,
+  MIN_N_CATEGORY,
+  MIN_N_OVERALL,
+  type CoachContext,
+  type Category,
+  type Prediction,
+  type UserStat,
+} from '@/types';
+
+import {
+  DRIFT_PREFIX,
+  WEEKDAY_ANSWERS_KIND,
+  WEEKDAY_KIND,
+  WEEKDAY_MIN_N,
+  WEEKDAY_SCORE_KIND,
+} from './coachPatterns';
 
 /** Predictions that count: yes/no outcomes, not given the day they were logged (D41). */
 function isYesNo(p: Prediction): boolean {
@@ -79,31 +95,41 @@ export function buildCoachContext(
       total_resolved: userStat.total_resolved,
     },
     by_category: categories,
-    patterns: buildPatterns(yesNo, byCategory),
+    patterns: buildPatterns(yesNo, byCategory, userStat.total_resolved),
   };
 }
 
 /**
  * The deterministic patterns from L3. `kind` is a stable key the prompt
- * explains; `value` is the only thing the model may cite, and the validator
- * checks every citation against these numbers.
+ * explains (./coachPatterns.ts); the validator checks every citation against
+ * these numbers.
+ *
+ * Only patterns that could ever be cited are sent (security review,
+ * 2026-11-18): the weekday from MIN_N_OVERALL scored answers and WEEKDAY_MIN_N
+ * on that day (it ran from 5 on a day, with no overall floor), a category's
+ * drift from MIN_N_CATEGORY in it (it ran from 4). Below those the figures
+ * are provisional, and a figure the model can't see is one it can't cite.
+ * The validators hold the same gates for builds that still send them.
  */
 function buildPatterns(
   yesNo: readonly Prediction[],
   byCategory: ReadonlyMap<Category, Prediction[]>,
+  totalResolved: number,
 ): CoachContext['patterns'] {
   const patterns: CoachContext['patterns'] = [];
 
-  const weakest = weakestDayOfWeek(yesNo);
+  const weakest = totalResolved >= MIN_N_OVERALL ? weakestDayOfWeek(yesNo, WEEKDAY_MIN_N) : null;
   if (weakest) {
-    patterns.push({ kind: 'weakest_day_of_week', value: weakest.day });
-    patterns.push({ kind: 'weakest_day_score', value: weakest.score });
+    patterns.push({ kind: WEEKDAY_KIND, value: weakest.day });
+    patterns.push({ kind: WEEKDAY_SCORE_KIND, value: weakest.score });
+    patterns.push({ kind: WEEKDAY_ANSWERS_KIND, value: weakest.resolved });
   }
 
   for (const [category, list] of byCategory) {
+    if (list.length < MIN_N_CATEGORY) continue;
     const drift = categoryDrift(list);
     if (drift) {
-      patterns.push({ kind: `drift_${category}`, value: drift.delta });
+      patterns.push({ kind: `${DRIFT_PREFIX}${category}`, value: drift.delta });
     }
   }
 

@@ -12,10 +12,20 @@
 //
 // On matching: coaching is suppressed entirely and the caller shows the
 // support surface. False positives are the acceptable direction to err — a
-// suppressed insight costs the user nothing they can't get by tapping again
-// tomorrow; a missed signal costs something real. So the patterns below are
-// phrase-shaped rather than keyword-shaped: "kill" alone would fire on "I'll
-// kill this presentation", which is both useless and alarming.
+// missed signal costs something real — but they aren't free: the store scans
+// every answered prediction's title and note on each request
+// (src/store/coachStore.ts), and an answered title can't be edited, so a
+// match keeps the Coach replaced by the support card for as long as that
+// prediction is in the record (a note can be changed or removed). So the
+// patterns below are phrase-shaped rather than keyword-shaped: "kill" alone
+// would fire on "I'll kill this presentation", which is both useless and
+// alarming. A few idioms that matched are carved out (security review,
+// 2026-11-18), each only where the words can't be the distress reading.
+//
+// Every text is read as typed and again with the iPhone's curly apostrophes
+// and dashes made plain, whitespace collapsed and NFKC applied, and a match in
+// any reading counts: those readings only ever add matches. iOS types "can’t"
+// (U+2019) by default, which "can'?t" missed.
 
 import { deviceRegion } from '@/constants/locale';
 
@@ -30,32 +40,79 @@ export interface CrisisScan {
 
 const SAFE: CrisisScan = { safe: true, topic: null };
 
+// The carve-outs (security review, 2026-11-18). Each is a negative lookahead
+// on one phrase, never a change to the rest of its pattern, and each keeps the
+// distress readings of the same words: "beats me at home", "cutting myself
+// again", "breaking down in tears", "not eating for days" all still match.
+//
+//   "beats me" at a game ("Sam beats me at chess"), "to it", "by 3".
+const BEATS_ME =
+  'beats me(?!\\s+(?:at|in)\\s+(?:chess|checkers|tennis|squash|badminton|golf|pool|darts|cards|poker|scrabble|wordle|trivia|ping[\\s-]?pong|pickleball|basketball|soccer|football|bowling|racing|races?|running|video games?|board games?|games?|sports?)\\b|\\s+to\\s+it\\b|\\s+by\\s+\\d)';
+//   "cut myself (some) slack".
+const CUT_MYSELF = 'cut(ting)? myself(?!\\s+(?:some\\s+)?slack\\b)';
+//   "breaking down" with a thing as its object ("breaking down the moving
+//   boxes", "breaking down the problem"). Intransitive uses all still match.
+const BREAKING_DOWN =
+  'breaking down(?!\\s+(?:(?:the|these|those|my|our|all|some|old|moving|cardboard|big|large|empty)\\s+)*(?:boxes|box|cardboard|tasks?|projects?|problems?|steps|goals?|data|numbers|costs?|budget|barriers|walls?|recipes?)\\b)';
+//   "not eating for" a fasting window of up to 20 hours ("for 16 hours").
+//   Days, weeks, "a while", or 21 hours and more still match.
+const NOT_EATING_FOR = 'not eat(ing)? (?:for(?!\\s+(?:[1-9]|1\\d|20)\\s*(?:hours?|hrs?|h)\\b)|at all)';
+
 // Ordered: the more specific topics are tested first so the support surface
 // points at the most appropriate resource rather than the generic one.
 const PATTERNS: ReadonlyArray<{ topic: CrisisTopic; pattern: RegExp }> = [
   {
     topic: 'self_harm',
-    pattern:
-      /\b(kill(ing)? myself|end(ing)? (my life|it all)|take my own life|want(ed)? to die|better off dead|suicid(e|al)|self[-\s]?harm|hurt(ing)? myself|cut(ting)? myself|no reason to (live|go on))\b/i,
+    pattern: new RegExp(
+      `\\b(kill(ing)? myself|end(ing)? (my life|it all)|take my own life|want(ed)? to die|better off dead|suicid(e|al)|self[-\\s]?harm|hurt(ing)? myself|${CUT_MYSELF}|no reason to (live|go on))\\b`,
+      'i',
+    ),
   },
   {
     topic: 'eating_disorder',
-    pattern:
-      /\b(starv(e|ing) myself|make myself (throw up|vomit|sick)|purg(e|ing) after|binge and purge|stop eating (entirely|completely)|not eat(ing)? (for|at all)|hate my body so much)\b/i,
+    pattern: new RegExp(
+      `\\b(starv(e|ing) myself|make myself (throw up|vomit|sick)|purg(e|ing) after|binge and purge|stop eating (entirely|completely)|${NOT_EATING_FOR}|hate my body so much)\\b`,
+      'i',
+    ),
   },
   {
     topic: 'abuse',
-    pattern:
-      /\b(hits me|beats me|hurts me|abus(es|ing) me|being abused|afraid of (him|her|them|my partner)|threatens to hurt me)\b/i,
+    pattern: new RegExp(
+      `\\b(hits me|${BEATS_ME}|hurts me|abus(es|ing) me|being abused|afraid of (him|her|them|my partner)|threatens to hurt me)\\b`,
+      'i',
+    ),
   },
   {
     // "cannot" and "can not" are spelled out at least as often as "can't" in
     // written reflections, so all three forms have to match.
     topic: 'distress',
-    pattern:
-      /\b(can'?t|cannot|can not) (go on|take (this|it) any\s?more|do this any\s?more)\b|\b(breaking down|falling apart completely|hopeless about everything|nothing matters any\s?more)\b/i,
+    pattern: new RegExp(
+      `\\b(can'?t|cannot|can not) (go on|take (this|it) any\\s?more|do this any\\s?more)\\b|\\b(${BREAKING_DOWN}|falling apart completely|hopeless about everything|nothing matters any\\s?more)\\b`,
+      'i',
+    ),
   },
 ];
+
+/**
+ * The ways one text is read: as typed; with curly or modifier apostrophes and
+ * the dash family made plain and whitespace collapsed; and the same after
+ * NFKC (fullwidth letters, no-break spaces, ligatures). A pattern matching any
+ * reading is a match, so a reading can only add matches, never lose one.
+ */
+function readings(text: string): string[] {
+  const plain = (s: string) =>
+    s
+      .replace(/[‘’‛ʼ′´`＇]/g, "'")
+      .replace(/[‐‑‒–—−]/g, '-')
+      .replace(/\s+/g, ' ');
+  const out = [text, plain(text)];
+  try {
+    out.push(plain(text.normalize('NFKC')));
+  } catch {
+    // No normaliser: the first two readings still stand.
+  }
+  return out;
+}
 
 /**
  * Scan freetext for distress signals. Any match suppresses coaching for the
@@ -68,10 +125,10 @@ const PATTERNS: ReadonlyArray<{ topic: CrisisTopic; pattern: RegExp }> = [
 export function scanForCrisis(
   texts: ReadonlyArray<string | null | undefined>,
 ): CrisisScan {
+  const read = texts.map((text) => (text ? readings(text) : []));
   for (const { topic, pattern } of PATTERNS) {
-    for (const text of texts) {
-      if (!text) continue;
-      if (pattern.test(text)) return { safe: false, topic };
+    for (const forms of read) {
+      if (forms.some((form) => pattern.test(form))) return { safe: false, topic };
     }
   }
   return SAFE;

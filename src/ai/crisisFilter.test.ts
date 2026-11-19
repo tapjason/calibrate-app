@@ -71,6 +71,150 @@ describe('scanForCrisis', () => {
   });
 });
 
+// Security review 2026-11-18, finding 14: iOS types a curly apostrophe
+// (U+2019) by default, and "can'?t" missed "I can’t go on".
+describe('scanForCrisis — text as an iPhone types it', () => {
+  it.each([
+    ['I can’t go on', 'distress'],
+    ['I can’t take this anymore', 'distress'],
+    ['I can‘t do this any more', 'distress'],
+    ['I canʼt go on', 'distress'],
+    ['I can`t go on', 'distress'],
+    ['ｓｕｉｃｉｄｅ', 'self_harm'],
+    ['thinking about killing myself', 'self_harm'],
+    ['I want  to die', 'self_harm'],
+    ['I want to\ndie', 'self_harm'],
+    ['self‐harm again', 'self_harm'],
+    ['self–harm again', 'self_harm'],
+    ['he hits me', 'abuse'],
+  ])('flags %p', (text, topic) => {
+    expect(scanForCrisis([text])).toEqual({ safe: false, topic });
+  });
+});
+
+// Finding 15: idioms that replaced the Coach with a support card on every tap.
+// Each carve-out is narrow, and the distress reading of the same words still
+// matches.
+describe('scanForCrisis — idioms that are not distress', () => {
+  it.each([
+    'Sam beats me at chess',
+    'My sister beats me in tennis every week',
+    'Dad beats me at cards',
+    'She always beats me to it',
+    'He beats me by 3 points',
+    'Cut myself some slack this week',
+    'cutting myself some slack on the diet',
+    'Finish breaking down the moving boxes',
+    'Breaking down the problem into steps',
+    'breaking down tasks for the sprint',
+    'Not eating for 16 hours today',
+    'not eat for 12 hours before the blood test',
+    'not eating for 20 hrs on Friday',
+    'Not eating for 18h',
+  ])('lets %p through', (text) => {
+    expect(scanForCrisis([text])).toEqual({ safe: true, topic: null });
+  });
+
+  it.each([
+    ['he beats me', 'abuse'],
+    ['My husband beats me at home', 'abuse'],
+    ['she beats me when she drinks', 'abuse'],
+    ['he beats me to a pulp', 'abuse'],
+    ['he beats me in front of the kids', 'abuse'],
+    ['I keep cutting myself', 'self_harm'],
+    ['I cut myself again last night', 'self_harm'],
+    ['cut myself off from everyone', 'self_harm'],
+    ['I keep breaking down', 'distress'],
+    ['breaking down in tears at work', 'distress'],
+    ['breaking down all the time', 'distress'],
+    ['breaking down every day', 'distress'],
+    ['breaking down', 'distress'],
+    ['not eating for days', 'eating_disorder'],
+    ['not eating for a week', 'eating_disorder'],
+    ['not eating for 3 days', 'eating_disorder'],
+    ['not eating for 24 hours', 'eating_disorder'],
+    ['not eating for as long as I can', 'eating_disorder'],
+    ['not eat at all', 'eating_disorder'],
+  ])('still flags %p', (text, topic) => {
+    expect(scanForCrisis([text])).toEqual({ safe: false, topic });
+  });
+});
+
+// The patterns as they were before 2026-11-18, copied verbatim. Everything
+// they caught is still caught, except the four idioms above.
+describe('scanForCrisis — never catches less than before', () => {
+  const OLD: ReadonlyArray<{ topic: string; pattern: RegExp }> = [
+    {
+      topic: 'self_harm',
+      pattern:
+        /\b(kill(ing)? myself|end(ing)? (my life|it all)|take my own life|want(ed)? to die|better off dead|suicid(e|al)|self[-\s]?harm|hurt(ing)? myself|cut(ting)? myself|no reason to (live|go on))\b/i,
+    },
+    {
+      topic: 'eating_disorder',
+      pattern:
+        /\b(starv(e|ing) myself|make myself (throw up|vomit|sick)|purg(e|ing) after|binge and purge|stop eating (entirely|completely)|not eat(ing)? (for|at all)|hate my body so much)\b/i,
+    },
+    {
+      topic: 'abuse',
+      pattern:
+        /\b(hits me|beats me|hurts me|abus(es|ing) me|being abused|afraid of (him|her|them|my partner)|threatens to hurt me)\b/i,
+    },
+    {
+      topic: 'distress',
+      pattern:
+        /\b(can'?t|cannot|can not) (go on|take (this|it) any\s?more|do this any\s?more)\b|\b(breaking down|falling apart completely|hopeless about everything|nothing matters any\s?more)\b/i,
+    },
+  ];
+  const oldScan = (text: string) => OLD.find(({ pattern }) => pattern.test(text))?.topic ?? null;
+
+  // Every phrase each old pattern names, alone and inside a sentence.
+  const PHRASES = [
+    'kill myself', 'killing myself', 'end my life', 'ending it all', 'take my own life',
+    'want to die', 'wanted to die', 'better off dead', 'suicide', 'suicidal', 'self harm',
+    'self-harm', 'selfharm', 'hurt myself', 'hurting myself', 'cut myself', 'cutting myself',
+    'no reason to live', 'no reason to go on',
+    'starve myself', 'starving myself', 'make myself throw up', 'make myself vomit',
+    'make myself sick', 'purge after', 'purging after', 'binge and purge',
+    'stop eating entirely', 'stop eating completely', 'not eat for', 'not eating for',
+    'not eat at all', 'not eating at all', 'hate my body so much',
+    'hits me', 'beats me', 'hurts me', 'abuses me', 'abusing me', 'being abused',
+    'afraid of him', 'afraid of her', 'afraid of them', 'afraid of my partner',
+    'threatens to hurt me',
+    "can't go on", 'cant go on', 'cannot go on', 'can not go on', "can't take this anymore",
+    'cannot take it any more', "can't do this anymore", 'can not do this any more',
+    'breaking down', 'falling apart completely', 'hopeless about everything',
+    'nothing matters anymore', 'nothing matters any more',
+  ];
+  const CORPUS = PHRASES.flatMap((p) => [
+    p,
+    p.toUpperCase(),
+    `Honestly ${p} lately.`,
+    `I think ${p}, and then ${p}`,
+    `${p} again`,
+    `${p} at home`,
+    `${p} for days`,
+  ]);
+
+  it.each(CORPUS)('%p', (text) => {
+    const before = oldScan(text);
+    if (before === null) return;
+    expect(scanForCrisis([text])).toEqual({ safe: false, topic: before });
+  });
+
+  it('loses exactly the four idioms', () => {
+    const idioms = [
+      'Sam beats me at chess',
+      'cut myself some slack',
+      'Finish breaking down the moving boxes',
+      'Not eating for 16 hours today',
+    ];
+    for (const text of idioms) {
+      expect(oldScan(text)).not.toBeNull();
+      expect(scanForCrisis([text]).safe).toBe(true);
+    }
+  });
+});
+
 describe('supportResource', () => {
   // A US phone, whatever the machine running the tests is set to.
   beforeEach(() => __setDeviceLocaleForTests('en-US'));

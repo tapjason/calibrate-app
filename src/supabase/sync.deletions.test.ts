@@ -98,7 +98,11 @@ function fakeClient(opts: { rows?: PredictionWireRow[]; failDelete?: string[] } 
       return Promise.resolve({ error: null });
     },
   });
-  return { client: { from } as unknown as SupabaseClient, calls, deleted };
+  // The client holds USER's session: a sweep checks it before each request.
+  const auth = {
+    getSession: async () => ({ data: { session: { user: { id: USER } } }, error: null }),
+  };
+  return { client: { from, auth } as unknown as SupabaseClient, calls, deleted };
 }
 
 beforeEach(async () => {
@@ -142,6 +146,32 @@ describe('pushDeletions', () => {
     expect(kept[0].pushed_at).not.toBeNull();
     // A second sweep has nothing left to push.
     expect(await pushDeletions(USER, client)).toBe(0);
+  });
+
+  // Security review, 2026-11-18: a sweep started for one account sends
+  // nothing once the phone holds another's session.
+  it('stops at the delete where the account changed', async () => {
+    await insertPrediction(prediction({ id: 'a' }));
+    await insertPrediction(prediction({ id: 'b' }));
+    await deletePrediction('a');
+    await deletePrediction('b');
+    const { client, deleted } = fakeClient();
+    const checks = [true, false];
+    expect(await pushDeletions(USER, client, async () => checks.shift() ?? false)).toBe(1);
+    expect(deleted).toHaveLength(1);
+    expect(await listPendingDeletions(USER)).toHaveLength(1);
+  });
+
+  it("deletes nothing by default when the client's session is someone else's", async () => {
+    await insertPrediction(prediction());
+    await deletePrediction('p1');
+    const { client, deleted } = fakeClient();
+    (client as unknown as { auth: unknown }).auth = {
+      getSession: async () => ({ data: { session: { user: { id: 'user-bbb' } } }, error: null }),
+    };
+    expect(await pushDeletions(USER, client)).toBe(0);
+    expect(deleted).toEqual([]);
+    expect(await listPendingDeletions(USER)).toEqual(['p1']);
   });
 
   it('keeps a tombstone whose delete failed, for the next sweep', async () => {

@@ -1,5 +1,10 @@
-import { setDbForTests } from '@/db/client';
-import { insertPrediction } from '@/db/predictions';
+import { getDb, setDbForTests } from '@/db/client';
+import {
+  getPrediction,
+  insertPrediction,
+  listDeletions,
+  listPendingPredictions,
+} from '@/db/predictions';
 import { getUserStat, listCategoryStats } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 
@@ -496,6 +501,333 @@ describe('predictionStore.streakNow', () => {
     expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
     expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
   });
+
+  // Code review 2026-11-18: step 194 put the reads before the insert, and a
+  // read that threw lost the person's prediction.
+  describe('when a read around a save or an answer fails', () => {
+    let warn: jest.SpyInstance;
+    const real = () => ({
+      loadPending: usePredictionStore.getState().loadPending,
+      loadResolved: usePredictionStore.getState().loadResolved,
+    });
+    let restore: ReturnType<typeof real>;
+
+    beforeEach(() => {
+      warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      restore = real();
+    });
+
+    afterEach(() => {
+      usePredictionStore.setState(restore);
+      warn.mockRestore();
+    });
+
+    it('still saves the prediction, and claims no checkpoint', async () => {
+      const userId = useAuthStore.getState().userId!;
+      const failing = async () => {
+        throw new Error('read failed');
+      };
+      usePredictionStore.setState({ loadPending: failing, loadResolved: failing });
+
+      const saved = await log('saved anyway');
+
+      expect(saved.title).toBe('saved anyway');
+      const stored = await listPendingPredictions(userId);
+      expect(stored.map((p) => p.id)).toEqual([saved.id]);
+      expect(useStatsStore.getState().userStat?.total_predictions).toBe(1);
+      expect(usePredictionStore.getState()).toMatchObject({
+        justSavedId: saved.id,
+        streakCheckpoint: null,
+        streakCheckpointFrom: null,
+      });
+      expect(warn).toHaveBeenCalledWith(
+        '[predictions] a list reload around a save failed:',
+        expect.any(Error),
+      );
+    });
+
+    // The lists held here missed a sync's rows; the reload after the save
+    // sees them. Comparing the two would credit this log with the checkpoint
+    // those rows reached.
+    it("doesn't credit the log with a checkpoint when the read before it failed", async () => {
+      const userId = useAuthStore.getState().userId!;
+      await sixCountedDays(userId);
+      await insertPrediction({
+        id: 'synced-today',
+        user_id: userId,
+        title: 'synced',
+        category: 'work',
+        confidence: 60,
+        created_at: new Date().toISOString(),
+        due_date: '2099-06-01T12:00:00.000Z',
+        status: 'pending',
+        resolved_at: null,
+        reflection: null,
+        integrity_bonus: true,
+      });
+      // Nothing loaded here yet: the lists held are empty.
+      expect(usePredictionStore.getState().pending).toEqual([]);
+      let calls = 0;
+      usePredictionStore.setState({
+        loadPending: async () => {
+          calls += 1;
+          if (calls === 1) throw new Error('read failed');
+          await restore.loadPending();
+        },
+      });
+
+      const saved = await log('logged here');
+
+      // The reload after the save worked, and the streak is at its checkpoint…
+      expect(usePredictionStore.getState().pending.map((p) => p.id)).toContain(saved.id);
+      expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
+      // …which the synced row reached, not this log.
+      expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+    });
+
+    // Code review 2026-11-18, the same for an answer: the reads around it
+    // must never stop it being recorded, or claim what they didn't see.
+    describe('answering', () => {
+      const failing = async () => {
+        throw new Error('read failed');
+      };
+      let realGetById: ReturnType<typeof usePredictionStore.getState>['getById'];
+      beforeEach(() => {
+        realGetById = usePredictionStore.getState().getById;
+      });
+      afterEach(() => {
+        usePredictionStore.setState({ getById: realGetById });
+      });
+
+      const statusOf = async (id: string) => (await getPrediction(id))?.status;
+
+      // The reminder's Happened / Didn't calls resolve with no options.
+      it("records a reminder's answer once when every read around it fails, and claims nothing", async () => {
+        const p = await loggedEarlier(() => log('answered from the lock screen'));
+        usePredictionStore.setState({ loadPending: failing, loadResolved: failing });
+
+        await expect(usePredictionStore.getState().resolve(p.id, 'resolved_yes')).resolves.toBeUndefined();
+        expect(await statusOf(p.id)).toBe('resolved_yes');
+        // A second answer is a no-op: it was recorded once.
+        await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+        expect(await statusOf(p.id)).toBe('resolved_yes');
+
+        // The stats moved with it, inside its transaction…
+        expect((await getUserStat(p.user_id))?.total_resolved).toBe(1);
+        // …and nothing else is claimed.
+        expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+        expect(useStatsStore.getState().milestone).toBeNull();
+        expect(useStatsStore.getState().tierDrop).toBeNull();
+      });
+
+      it("doesn't credit the answer with a checkpoint when the read before it failed", async () => {
+        const userId = useAuthStore.getState().userId!;
+        await sixCountedDays(userId);
+        await usePredictionStore.getState().loadPending();
+        // Today's first arrives from another device after the lists loaded.
+        await insertPrediction({
+          id: 'synced-today',
+          user_id: userId,
+          title: 'synced',
+          category: 'work',
+          confidence: 60,
+          created_at: new Date().toISOString(),
+          due_date: '2099-06-01T12:00:00.000Z',
+          status: 'pending',
+          resolved_at: null,
+          reflection: null,
+          integrity_bonus: true,
+        });
+        let calls = 0;
+        usePredictionStore.setState({
+          loadPending: async () => {
+            calls += 1;
+            if (calls === 1) throw new Error('read failed');
+            await restore.loadPending();
+          },
+        });
+
+        await usePredictionStore.getState().resolve('d6-0', 'resolved_yes');
+
+        expect(await statusOf('d6-0')).toBe('resolved_yes');
+        expect(usePredictionStore.getState().streakNow()).toMatchObject({ streak: 7, checkpoint: 7 });
+        // The synced row reached it, not this answer.
+        expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+      });
+
+      it("doesn't reject or claim a checkpoint when the reload after the answer fails", async () => {
+        const userId = useAuthStore.getState().userId!;
+        await sixCountedDays(userId);
+        let calls = 0;
+        usePredictionStore.setState({
+          loadResolved: async () => {
+            calls += 1;
+            if (calls > 1) throw new Error('read failed');
+            await restore.loadResolved();
+          },
+        });
+
+        await expect(
+          usePredictionStore.getState().resolve('d6-0', 'resolved_no'),
+        ).resolves.toBeUndefined();
+
+        expect(await statusOf('d6-0')).toBe('resolved_no');
+        expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+      });
+
+      /** A "Can't tell" given `back` days ago on a prediction due then. */
+      const skipped = async (id: string, back: number) => {
+        const userId = useAuthStore.getState().userId!;
+        await insertPrediction({
+          id,
+          user_id: userId,
+          title: 'Hard to say',
+          category: 'work',
+          confidence: 60,
+          created_at: daysAgo(back + 2),
+          due_date: daysAgo(back),
+          status: 'skipped',
+          resolved_at: daysAgo(back),
+          reflection: null,
+          integrity_bonus: true,
+        });
+      };
+
+      it("answers a Can't tell inside its week from the copy held here when its read fails", async () => {
+        await skipped('skip-1', 1);
+        await usePredictionStore.getState().loadResolved();
+        usePredictionStore.setState({ getById: failing });
+
+        await usePredictionStore
+          .getState()
+          .resolve('skip-1', 'resolved_yes', undefined, { answeringSkip: true });
+
+        expect(await statusOf('skip-1')).toBe('resolved_yes');
+        expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+      });
+
+      it("keeps a Can't tell past its week closed on the copy held here", async () => {
+        await skipped('skip-old', 20);
+        await usePredictionStore.getState().loadResolved();
+        usePredictionStore.setState({ getById: failing });
+
+        await expect(
+          usePredictionStore
+            .getState()
+            .resolve('skip-old', 'resolved_yes', undefined, { answeringSkip: true }),
+        ).rejects.toThrow(/more than a week past its due day/);
+        expect(await statusOf('skip-old')).toBe('skipped');
+      });
+
+      // The recompute sets the stats in memory before the commit: a commit
+      // that then fails must leave no milestone and no rating ahead of the
+      // database, or the next "moved from…" line would start from it.
+      it('claims nothing, and holds the stats as stored, when the answer fails to commit', async () => {
+        const userId = useAuthStore.getState().userId!;
+        // Nineteen scored answers: the twentieth unlocks the rating.
+        for (let i = 0; i < 19; i += 1) {
+          await insertPrediction({
+            id: `a${i}`,
+            user_id: userId,
+            title: `answered #${i}`,
+            category: 'work',
+            confidence: 70,
+            created_at: daysAgo(3),
+            due_date: daysAgo(1),
+            status: i % 10 < 7 ? 'resolved_yes' : 'resolved_no',
+            resolved_at: daysAgo(1),
+            reflection: null,
+            integrity_bonus: false,
+          });
+        }
+        await insertPrediction({
+          id: 'twentieth',
+          user_id: userId,
+          title: 'the twentieth',
+          category: 'work',
+          confidence: 70,
+          created_at: daysAgo(3),
+          due_date: daysAgo(1),
+          status: 'pending',
+          resolved_at: null,
+          reflection: null,
+          integrity_bonus: false,
+        });
+        await useStatsStore.getState().recomputeForUser(userId);
+        useStatsStore.getState().clearMilestone();
+        expect(useStatsStore.getState().userStat).toMatchObject({
+          total_resolved: 19,
+          rating_is_provisional: true,
+        });
+
+        // The first transaction runs its body, then fails to commit.
+        const db = getDb();
+        const realTransaction = db.transaction.bind(db);
+        let calls = 0;
+        db.transaction = async <T,>(fn: () => Promise<T>) => {
+          calls += 1;
+          if (calls > 1) return realTransaction(fn);
+          return realTransaction(async () => {
+            await fn();
+            throw new Error('commit failed');
+          });
+        };
+
+        try {
+          await expect(
+            usePredictionStore.getState().resolve('twentieth', 'resolved_yes'),
+          ).rejects.toThrow('commit failed');
+        } finally {
+          db.transaction = realTransaction;
+        }
+
+        expect(await statusOf('twentieth')).toBe('pending');
+        expect(useStatsStore.getState().milestone).toBeNull();
+        expect(useStatsStore.getState().tierDrop).toBeNull();
+        expect(useStatsStore.getState().userStat).toMatchObject({
+          total_resolved: 19,
+          rating_is_provisional: true,
+        });
+
+        // Answered again once the database works, the unlock is this answer's.
+        await usePredictionStore.getState().resolve('twentieth', 'resolved_yes');
+        expect(await statusOf('twentieth')).toBe('resolved_yes');
+        expect(useStatsStore.getState().milestone).toMatchObject({ kind: 'rating_unlocked' });
+      });
+
+      it("writes nothing when a Can't tell's read fails and no copy is held", async () => {
+        await skipped('skip-1', 1);
+        usePredictionStore.setState({ getById: failing });
+
+        await expect(
+          usePredictionStore
+            .getState()
+            .resolve('skip-1', 'resolved_yes', undefined, { answeringSkip: true }),
+        ).rejects.toThrow('read failed');
+        expect(await statusOf('skip-1')).toBe('skipped');
+      });
+    });
+
+    it('reports the save as done when only the reload after it fails', async () => {
+      const userId = useAuthStore.getState().userId!;
+      await sixCountedDays(userId);
+      let calls = 0;
+      usePredictionStore.setState({
+        loadPending: async () => {
+          calls += 1;
+          if (calls > 1) throw new Error('read failed');
+          await restore.loadPending();
+        },
+      });
+
+      const saved = await log('day seven');
+
+      expect((await listPendingPredictions(userId)).map((p) => p.id)).toContain(saved.id);
+      expect(usePredictionStore.getState().justSavedId).toBe(saved.id);
+      // Without the reload there is no fresh side to compare: no claim.
+      expect(usePredictionStore.getState().streakCheckpoint).toBeNull();
+    });
+  });
 });
 
 // Roadmap D25: an open prediction can be edited (never its confidence) and
@@ -585,6 +917,31 @@ describe('predictionStore.update and remove', () => {
     expect(usePredictionStore.getState().pending).toHaveLength(0);
     const stat = await getUserStat(p.user_id);
     expect(stat?.total_predictions).toBe(0);
+  });
+
+  // Code review 2026-11-18: deletePrediction deletes by id, so remove must
+  // only reach it for this user's own row.
+  it("leaves another account's prediction, and a missing one, alone", async () => {
+    await insertPrediction({
+      id: 'foreign',
+      user_id: 'someone-else',
+      title: 'Theirs',
+      category: 'work',
+      confidence: 50,
+      created_at: '2026-01-01T00:00:00.000Z',
+      due_date: '2099-06-01T12:00:00.000Z',
+      status: 'pending',
+      resolved_at: null,
+      reflection: null,
+      integrity_bonus: true,
+    });
+
+    await usePredictionStore.getState().remove('foreign');
+    await usePredictionStore.getState().remove('missing');
+
+    expect(await getPrediction('foreign')).toMatchObject({ id: 'foreign', user_id: 'someone-else' });
+    expect(await listDeletions('someone-else')).toEqual([]);
+    expect(await listDeletions(useAuthStore.getState().userId!)).toEqual([]);
   });
 });
 
@@ -705,6 +1062,90 @@ describe('predictionStore.correct, refile and remove within the window', () => {
     await usePredictionStore.getState().loadResolved();
     return 'old-1';
   };
+
+  // Code review 2026-11-18: "Change answer" never depends on a read either.
+  describe('when a read around the switch fails', () => {
+    const failing = async () => {
+      throw new Error('read failed');
+    };
+    let real: Pick<ReturnType<typeof usePredictionStore.getState>, 'getById' | 'loadResolved'>;
+    let warn: jest.SpyInstance;
+    beforeEach(() => {
+      const s = usePredictionStore.getState();
+      real = { getById: s.getById, loadResolved: s.loadResolved };
+      warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    });
+    afterEach(() => {
+      usePredictionStore.setState(real);
+      warn.mockRestore();
+    });
+
+    it('switches it once, from the copy held here, without rejecting or claiming', async () => {
+      const p = await answer('resolved_no');
+      usePredictionStore.setState({ getById: failing, loadResolved: failing });
+
+      await expect(usePredictionStore.getState().correct(p.id, 'resolved_yes')).resolves.toBeUndefined();
+      expect((await getPrediction(p.id))?.status).toBe('resolved_yes');
+      // The same switch again changes nothing.
+      await usePredictionStore.getState().correct(p.id, 'resolved_yes');
+      const after = await getPrediction(p.id);
+      expect(after?.status).toBe('resolved_yes');
+      expect(after?.resolved_at).toBe(p.resolved_at);
+      // The stats followed it inside its transaction; nothing is claimed.
+      expect(useStatsStore.getState().calibration.buckets[0]?.resolved_yes).toBe(1);
+      expect(useStatsStore.getState().milestone).toBeNull();
+      expect(useStatsStore.getState().tierDrop).toBeNull();
+    });
+
+    it('keeps the window closed on the copy held here', async () => {
+      const id = await oldAnswer();
+      usePredictionStore.setState({ getById: failing });
+
+      await expect(usePredictionStore.getState().correct(id, 'resolved_yes')).rejects.toThrow(
+        /part of the record/,
+      );
+      expect((await getPrediction(id))?.status).toBe('resolved_no');
+    });
+
+    it('holds the stats as stored when the switch fails to commit', async () => {
+      const p = await answer('resolved_no');
+      expect(useStatsStore.getState().calibration.buckets[0]?.resolved_yes).toBe(0);
+      const db = getDb();
+      const realTransaction = db.transaction.bind(db);
+      let calls = 0;
+      db.transaction = async <T,>(fn: () => Promise<T>) => {
+        calls += 1;
+        if (calls > 1) return realTransaction(fn);
+        return realTransaction(async () => {
+          await fn();
+          throw new Error('commit failed');
+        });
+      };
+
+      try {
+        await expect(usePredictionStore.getState().correct(p.id, 'resolved_yes')).rejects.toThrow(
+          'commit failed',
+        );
+      } finally {
+        db.transaction = realTransaction;
+      }
+
+      expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+      // Not the rolled-back Yes the recompute had set in memory.
+      expect(useStatsStore.getState().calibration.buckets[0]?.resolved_yes).toBe(0);
+      expect(useStatsStore.getState().milestone).toBeNull();
+    });
+
+    it('writes nothing when the read fails and no copy is held', async () => {
+      const p = await answer('resolved_no');
+      usePredictionStore.setState({ resolved: [], pending: [], getById: failing });
+
+      await expect(usePredictionStore.getState().correct(p.id, 'resolved_yes')).rejects.toThrow(
+        'read failed',
+      );
+      expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+    });
+  });
 
   it('switches No to Yes in place, keeping when it was answered', async () => {
     const before = await answer('resolved_no');

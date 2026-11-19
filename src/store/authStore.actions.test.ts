@@ -20,11 +20,17 @@ jest.mock('@/supabase/account', () => ({ deleteAccountOnServer: jest.fn() }));
 // A signed-in session starts a sync; none of these tests is about it.
 jest.mock('@/supabase/sync', () => ({
   syncNow: jest.fn().mockResolvedValue({ pulled: 0, pushed: 0 }),
+  clearSyncCursor: jest.fn(async () => {}),
 }));
 jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn() }));
 jest.mock('@/notifications/scheduler', () => ({
   dismissDeliveredNotifications: jest.fn(async () => {}),
+  dismissDeliveredReminderWords: jest.fn(async () => {}),
 }));
+// The cache sweeps after a wipe (security review, 2026-11-18).
+jest.mock('@/export/file', () => ({ sweepExportFiles: jest.fn(async () => {}) }));
+jest.mock('@/share/export', () => ({ sweepShareCaptures: jest.fn(async () => {}) }));
+jest.mock('@/media/iconImage', () => ({ sweepIconImageFiles: jest.fn(async () => {}) }));
 
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
@@ -36,8 +42,11 @@ import { setSupabaseClientForTests } from '@/supabase/client';
 
 import { useAuthStore } from './authStore';
 import { useCategoryStore } from './categoryStore';
+import { useCoachStore } from './coachStore';
+import { useLogDraftStore } from './logDraftStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
+import { useResolveRunStore } from './resolveRunStore';
 import { useStatsStore } from './statsStore';
 import { useSettingsStore } from './settingsStore';
 import { useWarmupStore } from './warmupStore';
@@ -432,16 +441,21 @@ describe('authStore.deleteAccount: the Apple leg follows the account identities'
   });
 });
 
-// The account still exists after a sign-out, so what it was reminded of stays.
+// The account still exists after a sign-out, so what it was reminded of stays,
+// except a reminder showing a prediction's words (security review,
+// 2026-11-18): the person asked to leave, and the phone may change hands.
 describe('authStore.signOut', () => {
-  it('leaves delivered reminders on the lock screen', async () => {
+  it('takes reminders showing words off the lock screen, and leaves the rest', async () => {
     useAuthStore.setState({ userId: 'user-1', status: 'authenticated', hasAppleIdentity: false });
     mocked.signOut.mockResolvedValue({ ok: true });
-    const { dismissDeliveredNotifications } = jest.requireMock('@/notifications/scheduler');
+    const { dismissDeliveredNotifications, dismissDeliveredReminderWords } =
+      jest.requireMock('@/notifications/scheduler');
     (dismissDeliveredNotifications as jest.Mock).mockClear();
+    (dismissDeliveredReminderWords as jest.Mock).mockClear();
 
     await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
     expect(dismissDeliveredNotifications).not.toHaveBeenCalled();
+    expect(dismissDeliveredReminderWords).toHaveBeenCalled();
   });
 });
 
@@ -556,5 +570,256 @@ describe('the checkpoint moment after Erase and account deletion', () => {
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
     expect(useSettingsStore.getState().streakMomentDay).toBeNull();
+  });
+});
+
+// ----------------------------------------------------------------------------
+// Security review, 2026-11-18
+// ----------------------------------------------------------------------------
+
+const scheduler = () =>
+  jest.requireMock('@/notifications/scheduler') as {
+    dismissDeliveredNotifications: jest.Mock;
+    dismissDeliveredReminderWords: jest.Mock;
+  };
+const sweeps = () => [
+  (jest.requireMock('@/export/file') as { sweepExportFiles: jest.Mock }).sweepExportFiles,
+  (jest.requireMock('@/share/export') as { sweepShareCaptures: jest.Mock }).sweepShareCaptures,
+  (jest.requireMock('@/media/iconImage') as { sweepIconImageFiles: jest.Mock }).sweepIconImageFiles,
+];
+const clearCursor = () =>
+  (jest.requireMock('@/supabase/sync') as { clearSyncCursor: jest.Mock }).clearSyncCursor;
+
+/** A Coach card on screen, as if the signed-in account had asked. */
+function coachShowing(): void {
+  useCoachStore.setState({
+    insights: [{ kind: 'pattern', text: 'x', evidence: 1 } as never],
+    lastAnsweredAt: '2026-11-18T10:00:00.000Z',
+  });
+}
+const coachInsights = () => useCoachStore.getState().insights;
+
+function sessionFor(userId: string): Session {
+  return {
+    access_token: 't',
+    refresh_token: 'r',
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    token_type: 'bearer',
+    user: {
+      id: userId,
+      email: 'a@b.co',
+      aud: 'authenticated',
+      created_at: '2026-11-01T00:00:00.000Z',
+      app_metadata: { provider: 'email', providers: ['email'] },
+      user_metadata: {},
+    },
+  } as unknown as Session;
+}
+
+/** Signs in the way the app does, and returns a way to send session events. */
+async function signedInAs(userId: string) {
+  let listener: ((event: string, s: Session | null) => void) | null = null;
+  setSupabaseClientForTests({
+    auth: {
+      getSession: async () => ({ data: { session: sessionFor(userId) } }),
+      onAuthStateChange: (cb: (event: string, s: Session | null) => void) => {
+        listener = cb;
+        return { data: { subscription: { unsubscribe: () => (listener = null) } } };
+      },
+    },
+  } as unknown as SupabaseClient);
+  await useAuthStore.getState().initialize();
+  expect(useAuthStore.getState().userId).toBe(userId);
+  return async (event: string, session: Session | null) => {
+    listener?.(event, session);
+    await new Promise((r) => setImmediate(r));
+  };
+}
+
+describe('authStore.signOut always ends the session on this phone', () => {
+  let clearDraft: jest.Mock;
+  let clearRun: jest.Mock;
+
+  beforeEach(() => {
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    usePredictionStore.setState({
+      loadPending: jest.fn(async () => {}),
+      loadResolved: jest.fn(async () => {}),
+    });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    clearDraft = jest.fn(async () => {});
+    useLogDraftStore.setState({ clear: clearDraft });
+    clearRun = jest.fn();
+    useResolveRunStore.setState({ clear: clearRun });
+  });
+
+  afterEach(() => {
+    useAuthStore.getState().reset();
+    setSupabaseClientForTests(null);
+  });
+
+  it.each([
+    ['online', { ok: true } as const],
+    ['offline, ended on this phone alone', { ok: true, localOnly: true } as const],
+  ])('%s: the app becomes the guest and runs everything a sign-out runs', async (_label, result) => {
+    await signedInAs('user-1');
+    coachShowing();
+    mocked.signOut.mockResolvedValue(result);
+    scheduler().dismissDeliveredReminderWords.mockClear();
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual(result);
+    expect(useAuthStore.getState()).toMatchObject({
+      userId: LOCAL_GUEST_USER_ID,
+      status: 'guest',
+      email: null,
+      pending: false,
+    });
+    // The account's half-typed draft and answer run, its Coach cards, and
+    // reminders on the lock screen showing its words.
+    expect(clearDraft).toHaveBeenCalled();
+    expect(clearRun).toHaveBeenCalled();
+    expect(coachInsights()).toEqual([]);
+    expect(scheduler().dismissDeliveredReminderWords).toHaveBeenCalled();
+    expect(scheduler().dismissDeliveredNotifications).not.toHaveBeenCalled();
+  });
+
+  it('when even this phone could not end it, stays signed in and says so', async () => {
+    await signedInAs('user-1');
+    mocked.signOut.mockResolvedValue({
+      ok: false,
+      error: "Couldn't sign you out on this phone. Try again.",
+    });
+    scheduler().dismissDeliveredReminderWords.mockClear();
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      error: "Couldn't sign you out on this phone. Try again.",
+    });
+    expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
+    expect(clearDraft).not.toHaveBeenCalled();
+    // The words still leave the lock screen: the person asked to leave.
+    expect(scheduler().dismissDeliveredReminderWords).toHaveBeenCalled();
+  });
+
+  it("a session that ends without a tap (one that expired) also takes the words off the lock screen", async () => {
+    const emit = await signedInAs('user-1');
+    scheduler().dismissDeliveredReminderWords.mockClear();
+    await emit('SIGNED_OUT', null);
+    expect(useAuthStore.getState().status).toBe('guest');
+    expect(scheduler().dismissDeliveredReminderWords).toHaveBeenCalled();
+  });
+});
+
+describe("the Coach's cards follow the signed-in account", () => {
+  beforeEach(() => {
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    usePredictionStore.setState({
+      loadPending: jest.fn(async () => {}),
+      loadResolved: jest.fn(async () => {}),
+    });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    useLogDraftStore.setState({ clear: jest.fn(async () => {}) });
+  });
+
+  afterEach(() => {
+    useAuthStore.getState().reset();
+    setSupabaseClientForTests(null);
+  });
+
+  it('go when another account signs in', async () => {
+    const emit = await signedInAs('user-1');
+    coachShowing();
+    await emit('SIGNED_IN', sessionFor('user-2'));
+    expect(useAuthStore.getState().userId).toBe('user-2');
+    expect(coachInsights()).toEqual([]);
+  });
+
+  it('stay through a token refresh for the same account', async () => {
+    const emit = await signedInAs('user-1');
+    coachShowing();
+    await emit('TOKEN_REFRESHED', sessionFor('user-1'));
+    expect(coachInsights()).toHaveLength(1);
+  });
+});
+
+describe('authStore.deleteAccount: what goes with the account', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ userId: 'user-1', email: 'a@b.co', status: 'authenticated', hasAppleIdentity: false });
+    mocked.signOutLocal.mockResolvedValue({ ok: true });
+    wipe.mockResolvedValue(undefined);
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    usePredictionStore.setState({
+      loadPending: jest.fn(async () => {}),
+      loadResolved: jest.fn(async () => {}),
+    });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    clearCursor().mockClear();
+    for (const sweep of sweeps()) sweep.mockClear();
+  });
+
+  it("clears the account's sync cursor, the cached copies and the Coach, and becomes the guest", async () => {
+    coachShowing();
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    expect(clearCursor()).toHaveBeenCalledWith('user-1');
+    for (const sweep of sweeps()) expect(sweep).toHaveBeenCalledTimes(1);
+    expect(coachInsights()).toEqual([]);
+    expect(useAuthStore.getState()).toMatchObject({ userId: LOCAL_GUEST_USER_ID, status: 'guest' });
+  });
+
+  it('still clears them when the wipe fails', async () => {
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    wipe.mockRejectedValue(new Error('disk'));
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    expect(clearCursor()).toHaveBeenCalledWith('user-1');
+    for (const sweep of sweeps()) expect(sweep).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["the server's own failure", "Couldn't delete your account right now. Nothing has been deleted. Try again in a moment."],
+    ['no answer either way', "Couldn't confirm whether your account was deleted. Check your connection and try again."],
+  ])('on %s, touches nothing on this phone', async (_label, error) => {
+    coachShowing();
+    server.deleteAccountOnServer.mockResolvedValue({ ok: false, error });
+
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: false, error });
+    expect(wipe).not.toHaveBeenCalled();
+    expect(clearCursor()).not.toHaveBeenCalled();
+    for (const sweep of sweeps()) expect(sweep).not.toHaveBeenCalled();
+    expect(mocked.signOutLocal).not.toHaveBeenCalled();
+    expect(coachInsights()).toHaveLength(1);
+    expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
+  });
+
+  it('stays signed in on this phone only when even the local sign-out failed', async () => {
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true });
+    mocked.signOutLocal.mockResolvedValue({ ok: false, error: "Couldn't sign you out on this phone. Try again." });
+
+    // The account is gone and the phone wiped: still a success.
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true });
+    expect(wipe).toHaveBeenCalledWith('user-1');
+  });
+});
+
+describe('authStore.eraseDeviceData: the cached copies and the Coach', () => {
+  it('sweeps the cache and drops the Coach', async () => {
+    useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', hasAppleIdentity: false });
+    wipe.mockResolvedValue(undefined);
+    useWarmupStore.setState({ retake: jest.fn(async () => {}) });
+    usePracticeStore.setState({ clear: jest.fn(async () => {}) });
+    usePredictionStore.setState({ loadPending: jest.fn(async () => {}), loadResolved: jest.fn(async () => {}) });
+    useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
+    useCategoryStore.setState({ load: jest.fn(async () => {}) });
+    for (const sweep of sweeps()) sweep.mockClear();
+    coachShowing();
+
+    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
+    for (const sweep of sweeps()) expect(sweep).toHaveBeenCalledTimes(1);
+    expect(coachInsights()).toEqual([]);
   });
 });

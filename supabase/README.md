@@ -23,6 +23,362 @@ Each script is idempotent (`create table if not exists`, `drop policy if
 exists` before re-creating), so re-running on a project that already has the
 schema is safe.
 
+## 2026-11-18: migration 010 and two redeploys
+
+From the security review of 2026-11-18. Nothing here has been applied or deployed by an
+agent, and no Postgres was available to run 010 against: it was checked by reading only,
+so steps 1 and 2 are how it gets checked for real. Every query in step 1 and step 2's
+checks only reads; each test statement in step 2 undoes itself. Run each block in
+**Supabase dashboard → SQL Editor → New query**, one at a time.
+
+### 1. Look first (read-only)
+
+**1a. Row counts.** Note them; step 2 compares.
+
+```sql
+select 'predictions' as table_name, count(*) as row_count from public.predictions
+union all select 'analytics_events', count(*) from public.analytics_events
+union all select 'guest_analytics_events', count(*) from public.guest_analytics_events
+union all select 'entitlements', count(*) from public.entitlements
+union all select 'coach_usage', count(*) from public.coach_usage;
+```
+
+**1b. The longest values.** Expect props under 100 characters, titles under 2,400,
+reflections under 6,000, ids under 40. The new limits are 8,000 (title), 20,000
+(reflection), 128 (prediction id) and 64 (event id).
+
+```sql
+select 'analytics_events.props' as what, max(length(props::text)) as longest from public.analytics_events
+union all select 'guest_analytics_events.props', max(length(props::text)) from public.guest_analytics_events
+union all select 'analytics_events.id', max(length(id)) from public.analytics_events
+union all select 'predictions.id', max(length(id)) from public.predictions
+union all select 'predictions.title', max(length(title)) from public.predictions
+union all select 'predictions.reflection', max(length(reflection)) from public.predictions;
+```
+
+**1c. Rows the new checks would refuse.** Expect **no rows** from each of the two queries.
+They show ids and event props only, never a title or reflection. A row here doesn't stop
+010 (that constraint is left unvalidated and step 2 names it), but tell the agent before
+applying: it may be a shape the app sends that the rule missed.
+
+```sql
+select b.table_name, b.id, b.name, b.props
+  from (
+    select 'analytics_events' as table_name, id, name, props from public.analytics_events
+    union all
+    select 'guest_analytics_events', id, name, props from public.guest_analytics_events
+  ) as b
+ where (select count(*) from jsonb_object_keys(b.props)) > 4
+    or exists (
+      select 1
+        from jsonb_each(b.props) as e
+       where e.key not in ('score', 'question_count', 'surface', 'confidence',
+                           'integrity_bonus', 'correct', 'source', 'plan_annual',
+                           'plan_monthly', 'plan_lifetime', 'trial', 'buckets_used',
+                           'hour', 'insight_count', 'row_count')
+          or not (case jsonb_typeof(e.value)
+                    when 'boolean' then true
+                    when 'number' then abs((e.value)::numeric) <= 1000000000
+                    when 'string' then (e.value #>> '{}') in ('stats', 'stats_coach',
+                      'stats_trends', 'share_theme', 'settings', 'deep_link', 'card',
+                      'weekly', 'yearly', 'warmup')
+                    else false
+                  end)
+    );
+```
+
+```sql
+select 'predictions' as table_name, id from public.predictions
+ where length(id) not between 1 and 128
+    or length(title) > 8000
+    or length(coalesce(reflection, '')) > 20000
+union all
+select 'analytics_events', id from public.analytics_events
+ where length(id) not between 1 and 64
+    or name !~ '^[a-z][a-z0-9_]{0,47}$';
+```
+
+**1d. Guest ids already in the hashed shape.** Expect `0` (before 010 is first applied).
+
+```sql
+select count(*) as guest_ids_already_hashed
+  from public.guest_analytics_events
+ where id ~ '^h_[0-9a-f]{32}$';
+```
+
+**1e. Today's grants. Save this output** (a screenshot is fine): step 5 uses it if a grant
+ever has to be put back.
+
+```sql
+select t.table_name, r.role_name,
+       has_table_privilege(r.role_name, 'public.' || t.table_name, 'select')   as sel,
+       has_table_privilege(r.role_name, 'public.' || t.table_name, 'insert')   as ins,
+       has_table_privilege(r.role_name, 'public.' || t.table_name, 'update')   as upd,
+       has_table_privilege(r.role_name, 'public.' || t.table_name, 'delete')   as del,
+       has_table_privilege(r.role_name, 'public.' || t.table_name, 'truncate') as trunc
+  from (values ('predictions'), ('entitlements'), ('coach_usage'),
+               ('analytics_events'), ('guest_analytics_events')) as t(table_name)
+ cross join (values ('anon'), ('authenticated')) as r(role_name)
+ order by 1, 2;
+```
+
+**A backup?** 010 changes the data of one table only: it rewrites `guest_analytics_events`
+(about two dozen rows) so each id is a hash and each time is cut to its day. Every row and
+every count stays. That rewrite is one-way on purpose (it is what makes the rows
+unlinkable), so if you want the original first, use Table Editor → `guest_analytics_events`
+→ Export to CSV, and delete the file once step 2 passes. Every other table only gains
+checks and loses grants; step 5 undoes those.
+
+### 2. Apply 010, then check it
+
+Open `supabase/migrations/010_public_key_limits.sql`, paste the **whole file** into a new
+query and run it. It runs as one transaction: all of it applies, or none of it.
+**Expected:** "Success. No rows returned", and no NOTICE. A NOTICE that says "Constraint …
+left NOT VALID" means rows already stored break that rule (1c lists them); everything else
+applied, and the rule still holds for every new row.
+
+(The CLI's migration history won't list 010 after the SQL editor. A later
+`npx supabase db push --remote` will run it again, which is safe: it is idempotent.)
+
+**2a. The triggers.** Expect 2 rows, `guest_analytics_events_limits` and
+`guest_analytics_events_normalize`, each with `tgenabled` `O`.
+
+```sql
+select tgname, tgenabled
+  from pg_trigger
+ where tgrelid = 'public.guest_analytics_events'::regclass and not tgisinternal
+ order by 1;
+```
+
+**2b. The new constraints.** Expect 7 rows, every `convalidated` `true`.
+
+```sql
+select conrelid::regclass as on_table, conname, convalidated
+  from pg_constraint
+ where conname in ('guest_analytics_events_props_allowed', 'analytics_events_id_length',
+                   'analytics_events_name_shape', 'analytics_events_props_allowed',
+                   'predictions_id_length', 'predictions_title_length',
+                   'predictions_reflection_length')
+ order by 1, 2;
+```
+
+**2c. The guest rows.** Expect `rows` equal to 1a's count and three zeros.
+
+```sql
+select count(*) as rows,
+       count(*) filter (where id !~ '^h_[0-9a-f]{32}$') as ids_not_hashed,
+       count(*) filter (where created_at  <> date_trunc('day', created_at, 'UTC'))  as created_not_day,
+       count(*) filter (where received_at <> date_trunc('day', received_at, 'UTC')) as received_not_day
+  from public.guest_analytics_events;
+```
+
+**2d. The grants.** Run 1e again. Expect exactly these `true`s, every other cell `false`:
+
+| table | anon | authenticated |
+|---|---|---|
+| analytics_events | — | sel, ins |
+| coach_usage | — | — |
+| entitlements | — | sel |
+| guest_analytics_events | ins | — |
+| predictions | — | sel, ins, upd, del |
+
+**2e. Who owns the day's count.** Expect `table_owner` and `limits_owner` to be the same
+role (`postgres`). If they differ, `owner_bypasses_rls` must be `true`, or the day's budget
+counts nothing; tell the agent.
+
+```sql
+select (select relowner::regrole from pg_class
+         where oid = 'public.guest_analytics_events'::regclass) as table_owner,
+       p.proowner::regrole as limits_owner,
+       r.rolbypassrls as owner_bypasses_rls
+  from pg_proc p join pg_roles r on r.oid = p.proowner
+ where p.oid = 'public.guest_analytics_events_limits()'::regprocedure;
+```
+
+**2f. The props rule on every shape the app sends.** Expect 15 rows, all `ok` `true`.
+
+```sql
+select shape, public.analytics_props_ok(shape::jsonb) as ok
+  from (values
+    ('{}'),
+    ('{"score": 63.333333333333336, "question_count": 10}'),
+    ('{"surface": "card"}'), ('{"surface": "weekly"}'),
+    ('{"surface": "yearly"}'), ('{"surface": "warmup"}'),
+    ('{"confidence": 70, "integrity_bonus": false}'),
+    ('{"confidence": 85, "correct": true}'),
+    ('{"source": "stats_coach"}'),
+    ('{"plan_annual": true, "plan_monthly": false, "plan_lifetime": false, "trial": true}'),
+    ('{"buckets_used": 3}'),
+    ('{"correct": 2, "question_count": 3}'),
+    ('{"hour": 20}'),
+    ('{"insight_count": 3}'),
+    ('{"row_count": 148}')
+  ) as t(shape);
+```
+
+And on shapes it must refuse: expect 8 rows, all `ok` `false`.
+
+```sql
+select shape, public.analytics_props_ok(shape::jsonb) as ok
+  from (values
+    ('{"title": "I will finish the report"}'),
+    ('{"surface": "I will finish the report"}'),
+    ('{"confidence": "70"}'),
+    ('{"score": 1, "question_count": 2, "confidence": 3, "correct": true, "hour": 5}'),
+    ('{"row_count": 10000000000}'),
+    ('{"surface": null}'),
+    ('{"surface": ["card"]}'),
+    ('[]')
+  ) as t(shape);
+```
+
+**Test statements.** Each runs as `anon` (the role a guest's phone uses), inserts into the
+live table, and then raises an error on purpose so that everything it did is rolled back:
+**an error is the expected result**, and the message says whether it passed. Nothing stays
+in the table.
+
+**T1, the app's own batch of 100 goes in.** Expected:
+`ERROR: P0001: PASS: 100 rows accepted as anon, then rolled back`.
+
+```sql
+do $$
+begin
+  set local role anon;
+  insert into public.guest_analytics_events (id, name, props, created_at)
+  select 'verify-' || g, 'prediction_logged',
+         '{"confidence": 70, "integrity_bonus": false}'::jsonb, now()
+    from generate_series(1, 100) as g;
+  raise exception 'PASS: 100 rows accepted as anon, then rolled back';
+end $$;
+```
+
+**T2, 101 rows in one insert are refused.** Expected:
+`ERROR: PT413: guest_analytics_events: at most 100 rows per insert`.
+
+```sql
+do $$
+begin
+  set local role anon;
+  insert into public.guest_analytics_events (id, name, props, created_at)
+  select 'verify-' || g, 'warmup_started', '{}'::jsonb, now()
+    from generate_series(1, 101) as g;
+  raise exception 'FAIL: 101 rows went in (rolled back)';
+end $$;
+```
+
+**T3, a prop with words in it is refused.** Expected: `ERROR: 23514: new row for relation
+"guest_analytics_events" violates check constraint "guest_analytics_events_props_allowed"`.
+
+```sql
+do $$
+begin
+  set local role anon;
+  insert into public.guest_analytics_events (id, name, props, created_at)
+  values ('verify-props', 'share_opened', '{"surface": "my secret plan"}'::jsonb, now());
+  raise exception 'FAIL: a free-text prop went in (rolled back)';
+end $$;
+```
+
+**T4 (optional, a few seconds), the day's budget trips.** Inserts batches of 100 until the
+budget refuses one. Expected: `ERROR: P0001: PASS: the day budget refused batch N, then
+everything was rolled back`, with N about 200 minus a hundredth of the guest rows received
+today. It leaves about 20,000 dead rows that Postgres's autovacuum clears by itself.
+
+```sql
+do $$
+declare
+  batch integer;
+begin
+  set local role anon;
+  for batch in 1..250 loop
+    begin
+      insert into public.guest_analytics_events (id, name, props, created_at)
+      select 'budget-' || batch || '-' || g, 'warmup_started', '{}'::jsonb, now()
+        from generate_series(1, 100) as g;
+    exception
+      when sqlstate 'PT429' then
+        raise exception 'PASS: the day budget refused batch %, then everything was rolled back', batch;
+    end;
+  end loop;
+  raise exception 'FAIL: 25,000 rows went in without the budget refusing (rolled back)';
+end $$;
+```
+
+Then 1a again: the counts are unchanged.
+
+### 3. Redeploy two functions
+
+```sh
+npx supabase functions deploy revenuecat-webhook --no-verify-jwt
+npx supabase functions deploy delete-account
+```
+
+`--no-verify-jwt` is required for the webhook only (RevenueCat sends the shared secret, not a
+user token); `delete-account` keeps JWT verification on. Confirm with
+`npx supabase functions list`: `revenuecat-webhook` and `delete-account` each one version
+higher than before (13 and 11 on 2026-11-18), updated today. Then RevenueCat → Project
+settings → Integrations → Webhooks → **Send test event**: expect 200 with
+`{"ok":true,"action":"ignored",…}`. And `curl -i -X POST https://<project-ref>.functions.supabase.co/delete-account`
+with no token: expect 401.
+
+`coach` is not redeployed in this step: it follows in a later one. It also bundles
+`_shared/revenuecatLookup.ts`, so until then the live Coach keeps its current copy (where a
+RevenueCat 404 reads as "no Plus", which for the Coach only means a 403). Steps 2 and 3 can
+go in either order.
+
+### 4. A stopgap, if you want guest inserts closed before applying 010
+
+One statement closes the anonymous insert (phones keep their guest counts queued, capped at
+2,000 each, and send them once it's back):
+
+```sql
+drop policy "guests insert events" on public.guest_analytics_events;
+```
+
+To put it back (010 doesn't, so do this after applying 010 if you used the stopgap):
+
+```sql
+create policy "guests insert events"
+  on public.guest_analytics_events for insert
+  to anon
+  with check (true);
+```
+
+### 5. Undo 010, if something goes wrong
+
+The checks, triggers, functions and index come off with this, in one run:
+
+```sql
+drop trigger if exists guest_analytics_events_limits on public.guest_analytics_events;
+drop trigger if exists guest_analytics_events_normalize on public.guest_analytics_events;
+alter table public.guest_analytics_events
+  drop constraint if exists guest_analytics_events_props_allowed;
+alter table public.analytics_events
+  drop constraint if exists analytics_events_id_length,
+  drop constraint if exists analytics_events_name_shape,
+  drop constraint if exists analytics_events_props_allowed;
+alter table public.predictions
+  drop constraint if exists predictions_id_length,
+  drop constraint if exists predictions_title_length,
+  drop constraint if exists predictions_reflection_length;
+drop function if exists public.guest_analytics_events_limits();
+drop function if exists public.guest_analytics_events_normalize();
+drop function if exists public.analytics_props_ok(jsonb);
+drop index if exists public.idx_guest_analytics_events_received_day;
+alter table public.guest_analytics_events alter column received_at set default now();
+```
+
+The grants: put back only what something needs. If the app reports "permission denied"
+(SQLSTATE 42501) after 010, grant that one privilege back from 1e's saved output, for
+example `grant update on table public.analytics_events to authenticated;`. The blanket reset to
+Supabase's defaults, as a last resort:
+`grant all on table public.predictions, public.entitlements, public.coach_usage, public.analytics_events, public.guest_analytics_events to anon, authenticated;`.
+The explicit `execute` grants on `apply_entitlement_event` and `bump_coach_usage` are
+correct either way and stay. The guest rows stay rewritten (that can't be undone, and
+nothing needs it undone).
+
+To undo a function deploy, deploy it again from `master`.
+
 ## Files
 
 - `migrations/001_predictions.sql` — `public.predictions` table + RLS policies.
@@ -64,21 +420,30 @@ schema is safe.
   either way. The file ends with the queries that check it. Applied 2026-11-18, and
   both triggers are enabled (`pg_trigger`, the owner's screenshot); the file's own
   header still says "not applied", left as it was pushed.
+- `migrations/010_public_key_limits.sql` — limits on what the public key can
+  write (security review, 2026-11-18): at most 100 rows per guest insert and
+  20,000 guest rows a day; analytics `props` limited to the declared keys and
+  values; guest rows kept to the day with a hashed id, so they can't be tied
+  together by time; size limits on prediction and event ids and text; each
+  role's table grants cut to what the app uses. **Not applied yet**: the steps
+  are in "2026-11-18: migration 010 and two redeploys" below.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
-  keeps `public.entitlements` current. Its decision logic lives in
-  `entitlementFromEvent.ts`, plain TypeScript with no Deno imports so Jest can
-  test it (`entitlementFromEvent.test.ts`, 42 cases).
+  keeps `public.entitlements` current. Its decisions live in
+  `entitlementFromEvent.ts` and its flow (look up, write, answer) in
+  `handleEvent.ts`, plain TypeScript with no Deno imports so Jest can test them
+  (`entitlementFromEvent.test.ts`, `handleEvent.test.ts`).
 - `functions/_shared/revenuecatLookup.ts` — asks RevenueCat (API v2) whether a
   user has Plus right now. Used by `coach` when its entitlements row doesn't
-  say Plus, and by `revenuecat-webhook` on a `TRANSFER` (step 189). Plain
-  TypeScript, Jest-tested (`revenuecatLookup.test.ts`). The `_shared` folder is
-  Supabase's convention for code several functions import; each deploy bundles
-  it.
+  say Plus, and by `revenuecat-webhook` for the events it looks up (step 189;
+  2026-11-18). Plain TypeScript, Jest-tested (`revenuecatLookup.test.ts`). The
+  `_shared` folder is Supabase's convention for code several functions import;
+  each deploy bundles it, so a function keeps the copy it was deployed with.
 - `functions/delete-account/index.ts` — deletes the caller's account (App Store
-  Guideline 5.1.1(v)): revokes Sign in with Apple, deletes the RevenueCat
-  customer, then `auth.admin.deleteUser`, whose rows cascade out of every
-  public table. Called from `src/supabase/account.ts`. Decision logic in
-  `deletionPlan.ts`, Jest-tested (`deletionPlan.test.ts`).
+  Guideline 5.1.1(v)): revokes Sign in with Apple (only the account's own Apple
+  ID) and deletes the RevenueCat customer at the same time, then
+  `auth.admin.deleteUser`, whose rows cascade out of every public table. Called
+  from `src/supabase/account.ts`. Decision logic in `deletionPlan.ts`,
+  Jest-tested (`deletionPlan.test.ts`).
 - `functions/coach/index.ts` — Edge Function that interprets calibration stats
   into grounded insights. Called from `src/ai/coach.ts`. Its validation logic
   is deliberately duplicated from `src/ai/coachValidate.ts` (Deno cannot import
@@ -124,8 +489,11 @@ npx supabase functions deploy revenuecat-webhook --no-verify-jwt
 It is a separate key from `REVENUECAT_DELETE_KEY` on purpose: the delete key can write.
 Without the read key, or with a permission missing, every lookup is an error and both
 functions fail closed: the Coach answers 403 to anyone without a Plus row (as before step
-189), and the webhook answers 500 to a `TRANSFER`, so RevenueCat retries it and its
-dashboard shows the failure. The key is never logged.
+189), and the webhook answers 500 to every event it looks up (`TRANSFER`, and since
+2026-11-18 `CANCELLATION`, `REFUND_REVERSED` and a few others; a refund is written as free
+first), so RevenueCat retries it and its dashboard shows the failure. The key is never
+logged. Since 2026-11-18 `project_configuration:entitlements:read` is also what lets a
+customer 404 mean "no Plus": without it, a 404 is an error too.
 
 ### refine
 
@@ -233,20 +601,44 @@ RevenueCat's "Send test event" button should return 200 with
 nothing. A real sandbox purchase should then produce a row in
 `public.entitlements` with `is_plus = true`.
 
-**What it does and does not revoke**
+**What it does and does not revoke** (changed 2026-11-18, security review)
 
-`EXPIRATION`, `REFUND` and `SUBSCRIPTION_PAUSED` revoke. `CANCELLATION` does
-**not** — that fires when someone turns off auto-renew, often weeks before
-their access ends, and revoking on it would take away time they paid for.
-`BILLING_ISSUE` doesn't revoke either, because access continues through the
-grace period. Everything else is decided by the expiry: a grant whose
-`expiration_at_ms` has already passed writes free.
+A closed list (`entitlementFromEvent.ts`); any other event type is answered 200 and writes
+nothing, so a type RevenueCat adds later can't grant Plus.
+
+- **Grants, decided by the expiry:** `INITIAL_PURCHASE`, `RENEWAL`, `UNCANCELLATION`,
+  `NON_RENEWING_PURCHASE`, `PRODUCT_CHANGE`, `BILLING_ISSUE` (access continues through the
+  grace period, whose end is the expiry), `SUBSCRIPTION_EXTENDED`. A grant whose
+  `expiration_at_ms` has passed writes free. No expiry is believed only on
+  `NON_RENEWING_PURCHASE` (the lifetime product); on the others it is looked up.
+- **Revokes:** `EXPIRATION`.
+- **Looked up in RevenueCat and written as it says now:** `CANCELLATION`,
+  `REFUND_REVERSED`, `TEMPORARY_ENTITLEMENT_GRANT`, `PURCHASE_REDEEMED`. RevenueCat has no
+  `REFUND` event: a refund is a `CANCELLATION` with `cancel_reason` `CUSTOMER_SUPPORT`, and a
+  refunded Lifetime has no expiry. Until 2026-11-18 a `CANCELLATION` was decided from its own
+  payload, where no expiry read as "never expires", so a refunded Lifetime stayed Plus for
+  ever. A `CANCELLATION` can also be auto-renew turned off (access runs to the expiry); only
+  RevenueCat's answer tells them apart. If the lookup fails, the function answers 500 so
+  RevenueCat retries, and for a `CANCELLATION` that reads as the end of access (a refund, no
+  expiry, or an expiry already past) it writes free first; the retry's lookup writes the truth.
+- **Ignored:** `TEST`, `SUBSCRIBER_ALIAS`, `INVOICE_ISSUANCE`, `SUBSCRIPTION_PAUSED`
+  (RevenueCat: "Don't revoke access on this event"), `VIRTUAL_CURRENCY_TRANSACTION`,
+  `EXPERIMENT_ENROLLMENT`, the two `PRICE_INCREASE_CONSENT_*`.
+
+Every write carries the event's `event_timestamp_ms` as the cursor (migration 004), so a
+retried delivery is idempotent and an older event delivered late can't overwrite a newer one.
 
 **`TRANSFER`** (step 189) carries no entitlement, only `transferred_from` and
 `transferred_to`. Each Supabase user id in them (anonymous ids are skipped) is looked up in
 RevenueCat with `REVENUECAT_READ_KEY` and written as RevenueCat says, Plus with its expiry or
 free, with the event's timestamp as the cursor. A lookup that fails answers 500, so
-RevenueCat retries.
+RevenueCat retries, and writes nothing.
+
+**A customer 404** from RevenueCat means "no Plus" only once a project-level call (the
+entitlements list) has succeeded with the same key and project id; RevenueCat answers 404
+for a wrong project id too, and a mistyped `REVENUECAT_PROJECT_ID` would otherwise write free
+rows over real subscribers. Without that, it is an error (the webhook answers 500, the Coach
+403). User ids are accepted in lowercase only, as Supabase writes them.
 
 **A deleted user.** `apply_entitlement_event` catches a foreign-key violation itself
 (migration 004) and returns normally. If the live function ever reports one instead
@@ -292,6 +684,15 @@ curl -i -X POST https://<project-ref>.functions.supabase.co/delete-account
 A 200 always means the auth user is gone. Anything else means it isn't, and
 the app leaves the device untouched so the user can retry. The body's
 `skipped` array lists any best-effort leg that didn't run, and why.
+
+Since 2026-11-18 (security review): the Apple and RevenueCat legs run at the same time, each
+cut off at 20 seconds, and the user is deleted only after both have settled, so the worst
+case before the delete is about 20 seconds instead of three 8-second calls in a row. The
+Apple leg revokes only the account's own grant: it reads the account's Apple identity with
+the service role, exchanges the code, and compares the `sub` in the id_token Apple returns.
+On a different Apple ID (the phone signed into another one) nothing is revoked, and
+`skipped` says "apple: the code is for a different Apple ID than the account's; not
+revoked". An account with no Apple identity never sends the code to Apple.
 
 Smoke-tested locally under Deno 2 on 2026-09-25 against the live project's
 auth: 401 without a header, 401 for a bogus token, 405 for GET.

@@ -9,7 +9,7 @@
 // lazy-required at call time so unit tests for the email/password path don't
 // have to mock them.
 
-import type { User } from '@supabase/supabase-js';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
 import { getSupabaseClient } from './client';
@@ -415,30 +415,152 @@ export async function signUpWithEmail(
   }
 }
 
-export async function signOut(): Promise<AuthOutcome> {
-  try {
-    const { error } = await getSupabaseClient().auth.signOut();
-    if (error) return { ok: false, error: authErrorText(error.message) };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: errMessage(e) };
-  }
+/**
+ * How a sign-out ended. `localOnly`: the session ended on this phone, but the
+ * server never took the sign-out (no connection, or it refused), so the
+ * session's refresh token stays valid on the server until it expires or is
+ * revoked. Nothing on this phone holds it any more.
+ */
+export type SignOutOutcome = { ok: true; localOnly?: true } | { ok: false; error: string };
+
+/** What the person sees when even this phone's copy of the session couldn't be removed. */
+export const SIGN_OUT_FAILED = "Couldn't sign you out on this phone. Try again.";
+
+/** How long the server gets to take a sign-out before this phone ends it alone. */
+const SIGN_OUT_TIMEOUT_MS = 10_000;
+/** How long the read-back after clearing the stored session may wait on the client. */
+const SESSION_CHECK_TIMEOUT_MS = 5_000;
+
+/**
+ * Sign out everywhere (Supabase's default scope), and in any case on this
+ * phone. supabase-js keeps the session when the server can't be reached, so
+ * a sign-out with no connection used to do nothing (security review,
+ * 2026-11-18); `endSession` then ends it here alone.
+ */
+export async function signOut(): Promise<SignOutOutcome> {
+  return await endSession('global');
 }
 
 /**
  * Sign out of this device only. Used after account deletion: the server has
- * already deleted the user and with it every session, so a global sign-out
- * would call the server about a user that no longer exists. This just drops
- * the stored session; onAuthStateChange takes the app back to guest.
+ * already deleted the user and with it every session. The server answers the
+ * sign-out with a 401 or 403, which supabase-js takes as signed out; with no
+ * connection this phone ends the session alone, as `signOut` does.
  */
-export async function signOutLocal(): Promise<AuthOutcome> {
+export async function signOutLocal(): Promise<SignOutOutcome> {
+  return await endSession('local');
+}
+
+/**
+ * Ask the server to end the session, then make sure it has ended on this
+ * phone whatever the server said.
+ *
+ * auth-js 2.106.2 POSTs /logout for every scope, `local` included
+ * (GoTrueAdminApi.signOut), and removes the stored session only after an
+ * answer, or a 401, 403 or 404 (GoTrueClient `_signOut`). A network failure
+ * (AuthRetryableFetchError, status 0), any other error, or a session it
+ * couldn't refresh returns `{ error }` and keeps the session. There is no
+ * public call that drops the session without the server, so that case falls
+ * to `clearStoredSession`.
+ *
+ * Never throws. When the session ended here alone, the caller has to move the
+ * app on itself: supabase-js sends no SIGNED_OUT for it.
+ */
+async function endSession(scope: 'global' | 'local'): Promise<SignOutOutcome> {
+  let client: SupabaseClient;
   try {
-    const { error } = await getSupabaseClient().auth.signOut({ scope: 'local' });
-    if (error) return { ok: false, error: authErrorText(error.message) };
-    return { ok: true };
+    client = getSupabaseClient();
   } catch (e) {
     return { ok: false, error: errMessage(e) };
   }
+  try {
+    const { error } = await withTimeout(
+      scope === 'global' ? client.auth.signOut() : client.auth.signOut({ scope: 'local' }),
+      SIGN_OUT_TIMEOUT_MS,
+    );
+    if (!error) return { ok: true };
+  } catch {
+    // A timeout or a throw: the same as an error, the session may still be stored.
+  }
+  return (await clearStoredSession(client))
+    ? { ok: true, localOnly: true }
+    : { ok: false, error: SIGN_OUT_FAILED };
+}
+
+/** The keys auth-js's own sign-out removes (`_removeSession`), after the storage key. */
+const SESSION_KEY_SUFFIXES = ['', '-code-verifier', '-user'] as const;
+
+interface RemovableStorage {
+  removeItem(key: string): unknown;
+}
+
+function isRemovableStorage(storage: unknown): storage is RemovableStorage {
+  return (
+    typeof storage === 'object' &&
+    storage !== null &&
+    typeof (storage as { removeItem?: unknown }).removeItem === 'function'
+  );
+}
+
+/**
+ * Remove the stored session from this phone without the server, the way
+ * auth-js's own sign-out does: the same keys, from the same storage. With
+ * `persistSession` on, the client reads the session from that storage on
+ * every `getSession`, every request's token and every auto-refresh tick
+ * (GoTrueClient `__loadSession`), so nothing is left to refresh or send, and
+ * an app restart finds no session. The storage and its key are read off the
+ * client (`storageKey` and `storage`, protected fields of GoTrueClient: no
+ * public route exists), so this follows whatever key the client was made
+ * with.
+ *
+ * A token refresh already under way when the keys go could write the session
+ * back when it lands. `getSession` waits for the client's lock, which that
+ * refresh holds, then reads storage again; a session found there is removed
+ * once more. Only a read-back that can't run in time (a sign-out still
+ * waiting on the network holds the lock: it writes nothing when it fails) is
+ * taken as done.
+ *
+ * Returns whether the session is gone. Never throws.
+ */
+async function clearStoredSession(client: SupabaseClient): Promise<boolean> {
+  const authClient = client.auth;
+  const { storageKey, storage } = authClient as unknown as {
+    storageKey?: unknown;
+    storage?: unknown;
+  };
+  if (typeof storageKey !== 'string' || storageKey === '' || !isRemovableStorage(storage)) {
+    return false;
+  }
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      for (const suffix of SESSION_KEY_SUFFIXES) await storage.removeItem(storageKey + suffix);
+    } catch {
+      return false;
+    }
+    try {
+      const { data } = await withTimeout(authClient.getSession(), SESSION_CHECK_TIMEOUT_MS);
+      if (!data?.session) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
 }
 
 /** The provider name Supabase gives a Sign in with Apple identity. */

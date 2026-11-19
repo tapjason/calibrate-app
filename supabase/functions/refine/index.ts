@@ -1,6 +1,34 @@
 // Refine Edge Function. Rewrites a user-typed prediction into a concise,
 // yes/no-resolvable form via OpenAI. Runs on Supabase Edge Runtime (Deno).
 //
+// ===========================================================================
+// DORMANT, AND NOT SAFE TO DEPLOY AS WRITTEN (security review, 2026-11-18).
+// Refine is cut from v1 (REFINE_ENABLED = false in src/constants/app.ts) and
+// this function is not deployed. Unlike the Coach, it sends the person's own
+// words to the model. Before it is ever deployed it needs, at least:
+//   1. A system/user split: the instructions in a system message, the
+//      prediction in the user message inside delimiters (<prediction>…
+//      </prediction>), with the system message saying that text is data and
+//      never instructions, and the delimiters stripped from the input. Today
+//      the title is pasted into the instruction text itself (PROMPT below), so
+//      "ignore the above and …" is read as an instruction.
+//   2. A durable per-user daily ceiling (like the Coach's coach_usage ledger,
+//      failing closed), not only the per-isolate burst limiter below, which
+//      resets whenever an isolate is recycled and multiplies across isolates.
+//   3. A body cap read before parsing: Content-Length checked, the stream
+//      counted (see coach/contract.ts readBodyCapped). req.json() below reads
+//      a body of any size before the 500-character check.
+//   4. The crisis pre-filter (src/ai/crisisFilter.ts) run on the client
+//      before any title is sent, as the Coach runs it before its call
+//      (COACH_AGENT.md §5.5): distress text must never reach the model.
+//   5. Output checks before the reply is shown: one line, no links,
+//      addresses, phone numbers or markup, no invented specifics (a number or
+//      a date the input didn't hold), as the Coach's validator does.
+//   6. A policy review: titles are personal text sent to a third party, which
+//      the privacy policy, the App Store privacy labels and the in-app
+//      disclosure must all say before the first one leaves the phone.
+// ===========================================================================
+//
 // Contract — kept in lockstep with src/ai/refine.ts:
 //   Request:   POST { prediction: string }      // 1..500 chars after trim
 //              Authorization: Bearer <user JWT>  // a real signed-in user

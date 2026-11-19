@@ -170,9 +170,98 @@ describe('lookupPlus — not Plus', () => {
     expect(calls.map((c) => c.url)).toEqual([ACTIVE]);
   });
 
-  it('says none for a customer RevenueCat has never seen (404)', async () => {
-    const { fetch } = routes({ status: 404, body: { type: 'resource_missing' } });
+  it('says none for a customer RevenueCat has never seen (404), once the project answers', async () => {
+    const { fetch, calls } = routes({ status: 404, body: { type: 'resource_missing' } });
     await expect(lookupPlus(USER, CONFIG, deps(fetch))).resolves.toEqual({ status: 'none' });
+    // The entitlements list is what shows the 404 is about the customer.
+    expect(calls.map((c) => c.url)).toEqual([ACTIVE, ENTITLEMENTS]);
+  });
+});
+
+// Security review, 2026-11-18. RevenueCat answers 404 for an unknown customer
+// and, assumed since undocumented, for a wrong project id. A 404 read as
+// "none" on a misconfigured REVENUECAT_PROJECT_ID would have the webhook write
+// free rows over every subscriber it looked up.
+describe('lookupPlus — a customer 404', () => {
+  const OTHER = '66666666-7777-8888-9999-000000000000';
+  const OTHER_ACTIVE = activeEntitlementsUrl(PROJECT, OTHER);
+
+  it.each([404, 401, 403, 500])(
+    'is an error, never none, when the project call answers %i',
+    async (status) => {
+      const { fetch, calls } = routes({ status: 404 }, { status });
+      await expect(lookupPlus(USER, CONFIG, deps(fetch))).resolves.toEqual({
+        status: 'error',
+        reason: `http_${status}`,
+      });
+      expect(calls.map((c) => c.url)).toEqual([ACTIVE, ENTITLEMENTS]);
+    },
+  );
+
+  it('is an error when the project call fails on the network', async () => {
+    const { fetch } = makeFetch((url) => {
+      if (url === ACTIVE) return { status: 404 };
+      throw new TypeError('fetch failed');
+    });
+    await expect(lookupPlus(USER, CONFIG, deps(fetch))).resolves.toEqual({
+      status: 'error',
+      reason: 'network',
+    });
+  });
+
+  it('is an error when the project call answers a body that is not a list', async () => {
+    const { fetch } = routes({ status: 404 }, ok({ object: 'error' }));
+    await expect(lookupPlus(USER, CONFIG, deps(fetch))).resolves.toEqual({
+      status: 'error',
+      reason: 'bad_response',
+    });
+  });
+
+  it('says none when the project answers but has no plus entitlement', async () => {
+    // The key and the project id work, so the 404 is about the customer.
+    const { fetch } = routes({ status: 404 }, list([{ id: 'entlzzzz', lookup_key: 'pro' }]));
+    await expect(lookupPlus(USER, CONFIG, deps(fetch))).resolves.toEqual({ status: 'none' });
+  });
+
+  it('trusts a project call this isolate already made with the same key', async () => {
+    const { fetch, calls } = makeFetch((url) => {
+      if (url === ACTIVE) return list([active(PLUS_ID, FUTURE)]);
+      if (url === OTHER_ACTIVE) return { status: 404 };
+      if (url === ENTITLEMENTS) return ENTITLEMENT_LIST;
+      return { status: 599 };
+    });
+    const shared = deps(fetch);
+
+    await expect(lookupPlus(USER, CONFIG, shared)).resolves.toMatchObject({ status: 'plus' });
+    await expect(lookupPlus(OTHER, CONFIG, shared)).resolves.toEqual({ status: 'none' });
+
+    expect(calls.map((c) => c.url)).toEqual([ACTIVE, ENTITLEMENTS, OTHER_ACTIVE]);
+  });
+
+  it('asks the project again when the key has changed', async () => {
+    const { fetch, calls } = makeFetch((url) => {
+      if (url === ACTIVE) return list([active(PLUS_ID, FUTURE)]);
+      if (url === OTHER_ACTIVE) return { status: 404 };
+      if (url === ENTITLEMENTS) return ENTITLEMENT_LIST;
+      return { status: 599 };
+    });
+    const shared = deps(fetch);
+
+    await lookupPlus(USER, CONFIG, shared);
+    await expect(
+      lookupPlus(OTHER, { ...CONFIG, apiKey: 'sk_another_key' }, shared),
+    ).resolves.toEqual({ status: 'none' });
+
+    expect(calls.map((c) => c.url)).toEqual([ACTIVE, ENTITLEMENTS, OTHER_ACTIVE, ENTITLEMENTS]);
+    expect(calls[3].headers.Authorization).toBe('Bearer sk_another_key');
+  });
+
+  it('does not keep a project list that names no plus, so a fixed dashboard is read again', async () => {
+    const { fetch, calls } = routes({ status: 404 }, list([{ id: 'entlzzzz', lookup_key: 'pro' }]));
+    const shared = deps(fetch);
+    await lookupPlus(USER, CONFIG, shared);
+    await lookupPlus(USER, CONFIG, shared);
+    expect(calls.filter((c) => c.url === ENTITLEMENTS)).toHaveLength(2);
   });
 });
 
@@ -290,7 +379,17 @@ describe('lookupPlus — failures', () => {
     expect(log).toHaveBeenCalledWith(expect.stringContaining('not_configured'));
   });
 
-  it.each(['$RCAnonymousID:abc123', '../../projects/other', '', 'not-a-uuid', `${USER}/x`])(
+  // Uppercase too (security review, 2026-11-18): RevenueCat ids are
+  // case-sensitive and Postgres uuids aren't, and Supabase writes lowercase.
+  it.each([
+    '$RCAnonymousID:abc123',
+    '../../projects/other',
+    '',
+    'not-a-uuid',
+    `${USER}/x`,
+    'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE',
+    '11111111-2222-3333-4444-55555555555A',
+  ])(
     'is an error, and makes no call, for the id %p',
     async (id) => {
       const { fetch, calls } = routes(list([active(PLUS_ID, FUTURE)]));

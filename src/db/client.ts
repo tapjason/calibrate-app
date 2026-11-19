@@ -37,6 +37,33 @@ export interface DbAdapter {
 let db: DbAdapter | null = null;
 let initPromise: Promise<DbAdapter> | null = null;
 
+/**
+ * Deleted words don't stay in the file (security review, 2026-11-18). By
+ * default SQLite only marks deleted rows free, and their text stays in the
+ * file (`Documents/SQLite/calibrate.db`), which goes into the phone's
+ * backups. With `secure_delete` on, SQLite overwrites deleted content with
+ * zeros. The setting belongs to the connection (neither the iOS build of
+ * expo-sqlite nor the web one turns it on at compile time), so it is set on
+ * every open, before anything else runs.
+ *
+ * Never throws: a failure is logged and the database opens anyway, since the
+ * app works without it.
+ */
+export async function enableSecureDelete(adapter: DbAdapter): Promise<void> {
+  try {
+    // The pragma answers with the setting now in force. No row means a build
+    // of SQLite that doesn't know it (an unknown pragma is silently ignored).
+    const row = await adapter.get<{ secure_delete: number }>('PRAGMA secure_delete = ON');
+    if (!row || Number(row.secure_delete) !== 1) {
+      // eslint-disable-next-line no-console
+      console.warn('[db] secure_delete is not on for this connection');
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[db] could not turn on secure_delete:', e);
+  }
+}
+
 async function createExpoAdapter(): Promise<DbAdapter> {
   // Lazy require so Jest never tries to load the native module.
   // openDatabaseAsync (not Sync): on web, the sync API depends on
@@ -70,6 +97,8 @@ async function createExpoAdapter(): Promise<DbAdapter> {
       }
     },
   };
+  // Per connection, so here where the connection is opened.
+  await enableSecureDelete(adapter);
   return adapter;
 }
 
@@ -111,15 +140,52 @@ export function getDb(): DbAdapter {
  * starting the next is the only safe option on a single-connection adapter.
  */
 let txQueue: Promise<unknown> = Promise.resolve();
-export function withTransaction<T>(fn: () => Promise<T>): Promise<T> {
+
+/** Run `fn` after every transaction queued before it has settled. */
+function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   const next = txQueue.then(
-    () => getDb().transaction(fn),
-    () => getDb().transaction(fn),
+    () => fn(),
+    () => fn(),
   );
   // Swallow errors on the queue head so one failed transaction doesn't
   // poison the chain — each caller still sees its own error via `next`.
   txQueue = next.catch(() => undefined);
   return next;
+}
+
+export function withTransaction<T>(fn: () => Promise<T>): Promise<T> {
+  return enqueue(() => getDb().transaction(fn));
+}
+
+/**
+ * After a wipe (Erase, account deletion; security review 2026-11-18): fold
+ * the write-ahead log back into the file and truncate it to nothing, so no
+ * copy of a deleted page waits there. Today the database keeps SQLite's
+ * default rollback journal, which is deleted at every commit, and this is a
+ * no-op; it holds if the journal mode ever becomes WAL. `secure_delete`
+ * (above) is what zeroes the deleted rows in the file itself.
+ *
+ * SQLite refuses a checkpoint inside a transaction ("database table is
+ * locked"), so it takes its turn in the transaction queue: every queued
+ * transaction has settled before it runs. Never call it from inside a
+ * `withTransaction` callback, which would wait on itself.
+ *
+ * Never throws: a failure or a busy log is logged, and the wipe still counts
+ * as done.
+ */
+export function checkpointAfterWipe(): Promise<void> {
+  return enqueue(async () => {
+    try {
+      const row = await getDb().get<{ busy: number }>('PRAGMA wal_checkpoint(TRUNCATE)');
+      if (row && Number(row.busy) !== 0) {
+        // eslint-disable-next-line no-console
+        console.warn('[db] the checkpoint after a wipe was blocked; the next one folds the log in');
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[db] the checkpoint after a wipe failed:', e);
+    }
+  });
 }
 
 /**

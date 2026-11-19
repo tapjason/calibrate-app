@@ -38,3 +38,12 @@ screenshots/
 
 # Apple keys (App Store Connect API, In-App Purchase, Sign in with Apple): never commit
 *.p8
+
+# Signing certificates, provisioning profiles and PEM keys: never commit
+*.p12
+*.mobileprovision
+*.pem
+
+# Firebase / Google service configs (carry project keys): never commit
+GoogleService-Info.plist
+google-services.json

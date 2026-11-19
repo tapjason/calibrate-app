@@ -85,6 +85,85 @@ describe('lockStore: at launch', () => {
   });
 });
 
+// Security review, 2026-11-18: a settings record that couldn't be read
+// turned the lock off. Launch now locks where the build can, the way
+// app/_layout.tsx runs it: hydrate, then arm.
+describe('lockStore: at launch after the settings', () => {
+  async function launchWith(load: () => Promise<unknown>) {
+    const saved: Array<{ appLock: boolean }> = [];
+    __setPersistenceForTests({
+      load: load as () => Promise<null>,
+      save: async (settings) => {
+        saved.push(settings);
+      },
+    });
+    await useSettingsStore.getState().hydrate();
+    lock().arm();
+    return saved;
+  }
+
+  it('a fresh install, with no settings yet, opens with no lock', async () => {
+    await launchWith(async () => null);
+    expect(lock().locked).toBe(false);
+    lock().appPhaseChanged('active');
+    expect(authenticateAsync).not.toHaveBeenCalled();
+  });
+
+  it('a corrupt settings record locks, and Face ID or the passcode opens it', async () => {
+    await launchWith(async () => 'not a settings object');
+    expect(lock().locked).toBe(true);
+    lock().appPhaseChanged('active');
+    await settle();
+    expect(authenticateAsync.mock.calls[0][0].promptMessage).toBe(UNLOCK_REASON);
+    expect(lock().locked).toBe(false);
+  });
+
+  it('a read that throws locks', async () => {
+    await launchWith(async () => {
+      throw new Error('storage unavailable');
+    });
+    expect(lock().locked).toBe(true);
+  });
+
+  it('never locks after a failed read on a build without the module', async () => {
+    __setLockDepsForTests(null);
+    await launchWith(async () => {
+      throw new Error('storage unavailable');
+    });
+    expect(lock().locked).toBe(false);
+  });
+
+  it('turning the lock off afterwards works as usual, and is stored', async () => {
+    const saved = await launchWith(async () => {
+      throw new Error('storage unavailable');
+    });
+    lock().appPhaseChanged('active');
+    await settle();
+    expect(lock().locked).toBe(false);
+
+    expect(await lock().setEnabled(false)).toBe('changed');
+    expect(authenticateAsync.mock.calls[1][0].promptMessage).toBe(LOCK_OFF_REASON);
+    expect(useSettingsStore.getState().appLock).toBe(false);
+    expect(saved[saved.length - 1].appLock).toBe(false);
+    // And leaving the app no longer locks it.
+    lock().appPhaseChanged('background');
+    expect(lock().locked).toBe(false);
+  });
+
+  it('a phone with no passcode is offered Continue, as when its passcode was removed', async () => {
+    answers = [{ success: false, error: 'passcode_not_set' }];
+    await launchWith(async () => {
+      throw new Error('storage unavailable');
+    });
+    lock().appPhaseChanged('active');
+    await settle();
+    expect(lock().notice).toBe('no_passcode');
+    await lock().continueWithoutLock();
+    expect(lock().locked).toBe(false);
+    expect(useSettingsStore.getState().appLock).toBe(false);
+  });
+});
+
 describe('lockStore: in and out of the foreground', () => {
   it('covers on inactive without locking, and uncovers on return', () => {
     on();

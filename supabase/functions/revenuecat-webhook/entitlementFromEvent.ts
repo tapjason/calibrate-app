@@ -7,19 +7,35 @@
 // (its test file sits beside it) even though the function around it only
 // ever runs on Deno.
 //
-// Shape of the truth this encodes: **the expiry decides, not the event name.**
-// RevenueCat sends CANCELLATION the moment someone turns off auto-renew, which
-// is weeks before their access should end; it sends BILLING_ISSUE during a
-// grace period in which access continues. Revoking on either would take away
-// something the user has paid for. So the only events that revoke outright are
-// the ones that mean access is gone right now, and everything else is decided
-// by whether the entitlement's expiry is still in the future.
+// Shape of the truth this encodes: **a closed list of event types, each with
+// one way to be decided** (security review, 2026-11-18).
 //
-// One event carries no entitlement at all: TRANSFER (a purchase moving from
-// one app user id to another) names only the users, in `transferred_from` and
-// `transferred_to`. For it the decision is `lookup`: the function asks
-// RevenueCat what each named Supabase user owns now (../_shared/
-// revenuecatLookup.ts) and writes that (step 189).
+//   - Grants (INITIAL_PURCHASE, RENEWAL, …): the expiry decides. A grant whose
+//     expiry has passed writes free. A grant with NO expiry is believed only
+//     from NON_RENEWING_PURCHASE (the lifetime product); on any other type a
+//     missing expiry can't be told from a malformed event, so it is looked up.
+//   - EXPIRATION revokes: access is gone now.
+//   - CANCELLATION, REFUND_REVERSED, TEMPORARY_ENTITLEMENT_GRANT and
+//     PURCHASE_REDEEMED are looked up: the function asks RevenueCat what the
+//     user owns now (../_shared/revenuecatLookup.ts) and writes exactly that.
+//     CANCELLATION is the reason. RevenueCat has no REFUND event: a refund
+//     arrives as CANCELLATION with cancel_reason CUSTOMER_SUPPORT, for a
+//     subscription or a lifetime purchase alike, and a lifetime's
+//     expiration_at_ms is null. Decided from its payload, a refunded lifetime
+//     read as a non-expiring grant and was written as Plus for ever. A
+//     CANCELLATION can also be auto-renew turned off, with access running to
+//     the expiry, and a refund can leave a subscription running; only
+//     RevenueCat's answer now tells them apart.
+//   - TRANSFER names users, not an entitlement: each named Supabase user is
+//     looked up (step 189).
+//   - Everything else, known or not, is acknowledged and writes nothing. An
+//     event type added to RevenueCat later can't grant Plus by carrying a
+//     product id.
+//
+// A lookup that fails answers 500, so RevenueCat retries. For a CANCELLATION
+// that looks like the end of access (a refund, or no expiry left), the
+// function writes free first: a refund must not stay Plus because RevenueCat's
+// API was down (`failClosed`).
 
 // The .ts extension is required by Deno and rejected by the project's
 // tsconfig (TS5097); the types still resolve, and Jest resolves the path
@@ -65,6 +81,11 @@ export interface RevenueCatEvent {
   transferred_from?: unknown;
   /** TRANSFER only: the app user ids the purchase moved to. */
   transferred_to?: unknown;
+  /**
+   * CANCELLATION only: UNSUBSCRIBE, BILLING_ERROR, DEVELOPER_INITIATED,
+   * PRICE_INCREASE, CUSTOMER_SUPPORT (a refund) or UNKNOWN.
+   */
+  cancel_reason?: unknown;
 }
 
 export interface DecisionOptions {
@@ -83,7 +104,7 @@ export interface EntitlementDecision {
   /**
    * `write` upserts the row; `ignore` acknowledges the event and does nothing;
    * `lookup` asks RevenueCat about each of `lookupUserIds` and writes what it
-   * says (TRANSFER).
+   * says (TRANSFER, CANCELLATION and the other looked-up types).
    */
   action: 'write' | 'ignore' | 'lookup';
   /** Why — logged server-side, and the assertion surface for tests. */
@@ -101,20 +122,74 @@ export interface EntitlementDecision {
    * `lookup`.
    */
   lookupUserIds: string[];
+  /**
+   * `lookup` only. When a lookup fails, write free for that user before
+   * answering 500 (RevenueCat retries, and the retry's lookup writes the
+   * truth). Set for a CANCELLATION that looks like the end of access, so a
+   * refund can't stay Plus through a RevenueCat outage. Otherwise a failed
+   * lookup writes nothing.
+   */
+  failClosed: boolean;
 }
 
 /**
- * Events that mean access is gone *now*.
- *
- * Deliberately excluded:
- *   - CANCELLATION — auto-renew off; access continues until the expiry.
- *   - BILLING_ISSUE — grace period; access continues while RevenueCat retries.
- *   - PRODUCT_CHANGE — a plan switch, with a new expiry attached.
+ * Events that mean access is gone *now*. Not SUBSCRIPTION_PAUSED (Google Play
+ * only; RevenueCat: "Don't revoke access on this event. Revoke access only on
+ * EXPIRATION") and not REFUND, which RevenueCat never sends (a refund is a
+ * CANCELLATION, looked up below).
  */
-const REVOKING_TYPES = new Set(['EXPIRATION', 'REFUND', 'SUBSCRIPTION_PAUSED']);
+const REVOKING_TYPES = new Set(['EXPIRATION']);
 
-/** Acknowledged and skipped: nothing about entitlement state to record. */
-const IGNORED_TYPES = new Set(['TEST', 'SUBSCRIBER_ALIAS', 'INVOICE_ISSUANCE']);
+/**
+ * Decided by the payload's expiry. BILLING_ISSUE is here because access
+ * continues through a grace period, whose end is its expiry; once that has
+ * passed it writes free.
+ */
+const GRANTING_TYPES = new Set([
+  'INITIAL_PURCHASE',
+  'RENEWAL',
+  'UNCANCELLATION',
+  'NON_RENEWING_PURCHASE',
+  'PRODUCT_CHANGE',
+  'BILLING_ISSUE',
+  'SUBSCRIPTION_EXTENDED',
+]);
+
+/**
+ * The only type whose payload is believed without an expiry: a non-renewing
+ * purchase (the lifetime product) has none. RevenueCat: expiration_at_ms "can
+ * be null for non-subscription purchases or lifetime products".
+ */
+const NON_EXPIRING_GRANT_TYPES = new Set(['NON_RENEWING_PURCHASE']);
+
+/**
+ * Decided by asking RevenueCat what the app user owns now.
+ *   - CANCELLATION: a refund (cancel_reason CUSTOMER_SUPPORT) or auto-renew
+ *     off; the payload can't say whether access continues.
+ *   - REFUND_REVERSED: access may be back; the payload doesn't say for what.
+ *   - TEMPORARY_ENTITLEMENT_GRANT: a grant of at most 24 hours during a store
+ *     outage, with "less information than a regular purchase event".
+ *   - PURCHASE_REDEEMED: a web purchase attached to an app user id; the app
+ *     sells none, so whatever it carries is checked first.
+ */
+const LOOKUP_TYPES = new Set([
+  'CANCELLATION',
+  'REFUND_REVERSED',
+  'TEMPORARY_ENTITLEMENT_GRANT',
+  'PURCHASE_REDEEMED',
+]);
+
+/** Known, acknowledged and skipped: nothing about entitlement state to record. */
+const IGNORED_TYPES = new Set([
+  'TEST',
+  'SUBSCRIBER_ALIAS',
+  'INVOICE_ISSUANCE',
+  'SUBSCRIPTION_PAUSED',
+  'VIRTUAL_CURRENCY_TRANSACTION',
+  'EXPERIMENT_ENROLLMENT',
+  'PRICE_INCREASE_CONSENT_REQUIRED',
+  'PRICE_INCREASE_CONSENT_APPROVED',
+]);
 
 const ignore = (reason: string, eventMs = 0): EntitlementDecision => ({
   action: 'ignore',
@@ -125,6 +200,41 @@ const ignore = (reason: string, eventMs = 0): EntitlementDecision => ({
   expiresAt: null,
   eventMs,
   lookupUserIds: [],
+  failClosed: false,
+});
+
+const lookup = (
+  reason: string,
+  userIds: string[],
+  eventMs: number,
+  failClosed = false,
+): EntitlementDecision => ({
+  action: 'lookup',
+  reason,
+  userId: null,
+  isPlus: false,
+  source: 'none',
+  expiresAt: null,
+  eventMs,
+  lookupUserIds: userIds,
+  failClosed,
+});
+
+const write = (
+  reason: string,
+  userId: string,
+  eventMs: number,
+  grant: { isPlus: true; source: EntitlementSource; expiresAt: string | null } | null,
+): EntitlementDecision => ({
+  action: 'write',
+  reason,
+  userId,
+  isPlus: grant !== null,
+  source: grant?.source ?? 'none',
+  expiresAt: grant?.expiresAt ?? null,
+  eventMs,
+  lookupUserIds: [],
+  failClosed: false,
 });
 
 function num(value: unknown): number | null {
@@ -213,16 +323,18 @@ export function decideFromEvent(
       ...new Set([...supabaseIds(event.transferred_to), ...supabaseIds(event.transferred_from)]),
     ];
     if (ids.length === 0) return ignore('TRANSFER names no Supabase user id', eventMs);
-    return {
-      action: 'lookup',
-      reason: `TRANSFER: look up ${ids.length} user${ids.length === 1 ? '' : 's'} in RevenueCat`,
-      userId: null,
-      isPlus: false,
-      source: 'none',
-      expiresAt: null,
+    return lookup(
+      `TRANSFER: look up ${ids.length} user${ids.length === 1 ? '' : 's'} in RevenueCat`,
+      ids,
       eventMs,
-      lookupUserIds: ids,
-    };
+    );
+  }
+
+  // A closed list. A type this function doesn't know (RevenueCat adds them)
+  // is acknowledged and writes nothing, whatever product or entitlement it
+  // carries: an unknown event must never be a way to Plus.
+  if (!GRANTING_TYPES.has(type) && !REVOKING_TYPES.has(type) && !LOOKUP_TYPES.has(type)) {
+    return ignore(`unknown event type ${type}`, eventMs);
   }
 
   // The app configures RevenueCat with the Supabase user id, so a well-formed
@@ -240,46 +352,44 @@ export function decideFromEvent(
   const expiresAt = expiresAtMs === null ? null : new Date(expiresAtMs).toISOString();
 
   if (REVOKING_TYPES.has(type)) {
-    return {
-      action: 'write',
-      reason: `revoked by ${type}`,
-      userId: appUserId,
-      isPlus: false,
-      source: 'none',
-      expiresAt: null,
-      eventMs,
-      lookupUserIds: [],
-    };
+    return write(`revoked by ${type}`, appUserId, eventMs, null);
   }
 
+  if (LOOKUP_TYPES.has(type)) {
+    // Never granted from its own payload. For a CANCELLATION that reads as the
+    // end of access (a refund, no expiry, or an expiry already past), a lookup
+    // that fails writes free before RevenueCat is asked to retry.
+    const refundLike =
+      type === 'CANCELLATION' &&
+      ((typeof event.cancel_reason === 'string' &&
+        event.cancel_reason.toUpperCase() === 'CUSTOMER_SUPPORT') ||
+        expiresAtMs === null ||
+        expiresAtMs <= now);
+    return lookup(`${type}: look up in RevenueCat`, [appUserId], eventMs, refundLike);
+  }
+
+  // GRANTING_TYPES from here.
   if (!grantsPlus(event)) {
     return ignore('event does not concern the plus entitlement', eventMs);
+  }
+
+  // No expiry is believed only from a non-renewing (lifetime) purchase. On a
+  // subscription event it can't be told from a malformed one, and believing
+  // it would write Plus for ever, so RevenueCat is asked instead.
+  if (expiresAtMs === null && !NON_EXPIRING_GRANT_TYPES.has(type)) {
+    return lookup(`${type} with no expiry: look up in RevenueCat`, [appUserId], eventMs);
   }
 
   // A grant whose expiry has already passed is not a grant. This is what makes
   // a late-delivered RENEWAL for a period that has since ended harmless.
   const active = expiresAtMs === null || expiresAtMs > now;
   if (!active) {
-    return {
-      action: 'write',
-      reason: `${type} with an expiry in the past`,
-      userId: appUserId,
-      isPlus: false,
-      source: 'none',
-      expiresAt: null,
-      eventMs,
-      lookupUserIds: [],
-    };
+    return write(`${type} with an expiry in the past`, appUserId, eventMs, null);
   }
 
-  return {
-    action: 'write',
-    reason: `granted by ${type}`,
-    userId: appUserId,
+  return write(`granted by ${type}`, appUserId, eventMs, {
     isPlus: true,
     source: sourceFor(event, expiresAtMs),
     expiresAt,
-    eventMs,
-    lookupUserIds: [],
-  };
+  });
 }

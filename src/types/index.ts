@@ -439,7 +439,14 @@ export interface PredictionWireRow {
   resolved_at: string | null;
   reflection: string | null;
   integrity_bonus: boolean;
-  /** Roadmap D45. Absent from a server without migration 008. */
+  /**
+   * Roadmap D45: when the words were last changed. Travels with the words it
+   * belongs to: every row pushed states it, null included (a batch upsert
+   * writes NULL for a key a row leaves out), and a pulled row that wins
+   * brings its own, null included. A row read without the key (only a server
+   * without Supabase migration 008, which is live) counts as null. Optional
+   * so rows built without it still type-check.
+   */
   title_edited_at?: string | null;
   updated_at: string;
 }

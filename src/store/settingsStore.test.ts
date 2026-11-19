@@ -355,14 +355,129 @@ describe('settingsStore: the app lock', () => {
     expect(saved[saved.length - 1].appLock).toBe(true);
   });
 
-  // A lock nobody chose must not appear because storage failed, and a failed
-  // read must not strand a person behind one: it reads as off.
-  it('reads as off when the stored settings cannot be read', async () => {
+  // Security review, 2026-11-18, reversing step 180's choice: a failed read
+  // turned the lock off, and the next write of any setting stored that over
+  // a record that may have had it on. It now reads as on; Face ID or the
+  // passcode opens it, and a phone without one is offered Continue
+  // (lockStore.test.ts), so nobody is stranded.
+  it('reads as on when the stored settings cannot be read', async () => {
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     __setPersistenceForTests(makeFakePersistence({ appLock: true }, { loadThrows: true }).persistence);
     await useSettingsStore.getState().hydrate();
-    expect(useSettingsStore.getState().appLock).toBe(false);
+    expect(useSettingsStore.getState().appLock).toBe(true);
+    expect(useSettingsStore.getState().loadFailed).toBe(true);
     jest.restoreAllMocks();
+  });
+});
+
+// Security review, 2026-11-18: a settings record that can't be read must not
+// turn the app lock off, now or at the next write.
+describe('settingsStore: a settings record that cannot be read', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('a fresh install, with no record, stays unlocked', async () => {
+    __setPersistenceForTests(makeFakePersistence(null).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState()).toMatchObject({ appLock: false, loadFailed: false, hydrated: true });
+  });
+
+  it.each([
+    ['a string', 'appLock: true'],
+    ['a list', [true]],
+    ['a number', 7],
+  ])('a record that is %s reads as unreadable, with the lock on', async (_label, stored) => {
+    __setPersistenceForTests(makeFakePersistence(stored as unknown as Partial<StoredSettings>).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState()).toMatchObject({ appLock: true, loadFailed: true, hydrated: true });
+  });
+
+  it('a read that fails once, then works, reads the record', async () => {
+    let calls = 0;
+    __setPersistenceForTests({
+      load: async () => {
+        calls += 1;
+        if (calls === 1) throw new Error('busy');
+        return { appLock: false, hideTitles: true };
+      },
+      save: async () => {},
+    });
+    await useSettingsStore.getState().hydrate();
+    expect(calls).toBe(2);
+    expect(useSettingsStore.getState()).toMatchObject({ appLock: false, hideTitles: true, loadFailed: false });
+  });
+
+  it('a later write of another setting stores the lock on, not off', async () => {
+    const { persistence, saved } = makeFakePersistence({ appLock: true }, { loadThrows: true });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().setStreakShown(false);
+    expect(saved[saved.length - 1]).toMatchObject({ appLock: true, streakShown: false });
+  });
+
+  it('turning the lock off afterwards is stored as usual', async () => {
+    const { persistence, saved } = makeFakePersistence(null, { loadThrows: true });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().setAppLock(false);
+    expect(useSettingsStore.getState().appLock).toBe(false);
+    expect(saved[saved.length - 1].appLock).toBe(false);
+  });
+
+  // The real persistence: AsyncStorage's text, parsed.
+  describe('through AsyncStorage', () => {
+    async function hydrateFrom(raw: string | null) {
+      let state: { appLock: boolean; loadFailed: boolean } | null = null;
+      await jest.isolateModulesAsync(async () => {
+        jest.doMock('@react-native-async-storage/async-storage', () => ({
+          __esModule: true,
+          default: { getItem: jest.fn(async () => raw), setItem: jest.fn(async () => {}) },
+        }));
+        const { useSettingsStore: store } = require('./settingsStore') as typeof import('./settingsStore');
+        await store.getState().hydrate();
+        state = { appLock: store.getState().appLock, loadFailed: store.getState().loadFailed };
+      });
+      return state!;
+    }
+
+    it('no record is a fresh install', async () => {
+      await expect(hydrateFrom(null)).resolves.toEqual({ appLock: false, loadFailed: false });
+    });
+
+    it('a record cut short locks', async () => {
+      await expect(hydrateFrom('{"appLock":')).resolves.toEqual({ appLock: true, loadFailed: true });
+    });
+
+    it('a record of the text null locks', async () => {
+      await expect(hydrateFrom('null')).resolves.toEqual({ appLock: true, loadFailed: true });
+    });
+
+    it('an empty record locks', async () => {
+      await expect(hydrateFrom('')).resolves.toEqual({ appLock: true, loadFailed: true });
+    });
+
+    it('a readable record is read', async () => {
+      await expect(hydrateFrom('{"appLock":false}')).resolves.toEqual({ appLock: false, loadFailed: false });
+    });
+  });
+});
+
+// Fix 5 (security review, 2026-11-18): Coach off clears the cards on screen.
+describe('settingsStore: turning Coach off', () => {
+  it("drops the Coach's cards, and turning it on keeps them", async () => {
+    const { useCoachStore } = require('./coachStore') as typeof import('./coachStore');
+    __setPersistenceForTests(makeFakePersistence().persistence);
+    const card = { kind: 'pattern', text: 'x', evidence: 1 } as never;
+
+    useCoachStore.setState({ insights: [card], lastAnsweredAt: '2026-11-18T10:00:00.000Z' });
+    await useSettingsStore.getState().setCoachEnabled(true);
+    expect(useCoachStore.getState().insights).toHaveLength(1);
+
+    await useSettingsStore.getState().setCoachEnabled(false);
+    expect(useCoachStore.getState().insights).toEqual([]);
+    expect(useCoachStore.getState().lastAnsweredAt).toBeNull();
   });
 });
 

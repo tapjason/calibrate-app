@@ -202,6 +202,44 @@ describe('flushEvents', () => {
 });
 
 // Roadmap D43 (decided 2026-11-03): a guest's funnel events count, with no id.
+// Security review, 2026-11-18: release builds keep console.warn in the device
+// log, and a Postgres error's details repeat the failing row.
+describe('what a failed flush writes to the log', () => {
+  it("carries the error's code and message, never its details or the row", async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(1);
+    const error = {
+      code: '23503',
+      message: 'insert or update on table "analytics_events" violates foreign key constraint',
+      details: `Key (user_id)=(${USER}) is not present in table "users".`,
+      hint: null,
+    };
+    const insert = jest.fn(async (_rows: WireRow[]) => ({ error: error as unknown }));
+
+    await flushEvents(USER, { client: fakeClient(insert) });
+
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain('23503');
+    expect(logged).toContain('violates foreign key constraint');
+    expect(logged).not.toContain(USER);
+    expect(logged).not.toContain('Key (user_id)');
+  });
+
+  it('logs only the message of a thrown error', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await seed(1);
+    const insert = jest.fn(async (_rows: WireRow[]): Promise<{ error: unknown }> => {
+      throw Object.assign(new Error('socket closed'), { details: `row of ${USER}` });
+    });
+
+    await flushEvents(USER, { client: fakeClient(insert) });
+
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain('socket closed');
+    expect(logged).not.toContain(USER);
+  });
+});
+
 describe('flushEvents for a guest', () => {
   const tables: string[] = [];
   const guestClient = (insert: InsertMock): SupabaseClient =>

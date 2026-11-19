@@ -18,6 +18,15 @@
 // anything actually changed. The app's callers go through authStore's
 // syncForUser, which also reloads the prediction lists. Every failure is logged with console.warn and
 // swallowed — sync is non-critical and must never break the offline loop.
+// The log carries an error's code and message only: a Postgres constraint
+// error's details repeat the failing row, title and reflection included, and
+// release builds keep console.warn in the device log (security review,
+// 2026-11-18).
+//
+// A sweep belongs to the account it started for. Before the pull, each push
+// and each delete it checks that the client's session is still that
+// account's, and stops if not: a sign-out or a switch mid-sweep must not send
+// one account's rows under the next one's session.
 //
 // Layer rule: L5. Imports @/db, @/supabase, @/types, and @/store. The
 // store-imports cross L4 only in `defaultRecompute` (which uses the
@@ -59,6 +68,8 @@ export interface SyncResult {
 export interface CursorStore {
   get(userId: string): Promise<string | null>;
   set(userId: string, cursor: string): Promise<void>;
+  /** Forget the user's cursor (account deletion). Optional so older fakes still fit. */
+  remove?(userId: string): Promise<void>;
 }
 
 export interface SyncDeps {
@@ -68,6 +79,11 @@ export interface SyncDeps {
   cursorStore?: CursorStore;
   /** Recompute derived stats after sync — defaults to statsStore.recomputeForUser. */
   recompute?: (userId: string) => Promise<void>;
+  /**
+   * Whose session the client holds now, or null for none. Defaults to the
+   * client's own `auth.getSession()`.
+   */
+  sessionUserId?: () => Promise<string | null>;
 }
 
 const ZERO: SyncResult = { pulled: 0, pushed: 0 };
@@ -99,6 +115,74 @@ function defaultCursorStore(): CursorStore {
         .default as typeof import('@react-native-async-storage/async-storage').default;
       await AsyncStorage.setItem(cursorKey(userId), cursor);
     },
+    async remove(userId) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const AsyncStorage = require('@react-native-async-storage/async-storage')
+        .default as typeof import('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.removeItem(cursorKey(userId));
+    },
+  };
+}
+
+/**
+ * Forget a user's pull cursor, `calibrate:sync_cursor:<user id>`
+ * (docs/ACCOUNT_SPEC.md §3.4: after account deletion's wipe). Never throws: a
+ * cursor left behind holds only a timestamp, under a deleted account's id.
+ */
+export async function clearSyncCursor(
+  userId: string,
+  cursorStore: CursorStore = defaultCursorStore(),
+): Promise<void> {
+  try {
+    await cursorStore.remove?.(userId);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[sync] could not clear the sync cursor:', errorForLog(e));
+  }
+}
+
+/**
+ * An error as the device log may carry it: its code and message. Never the
+ * object: a Postgres error's `details` repeat the failing row and its `hint`
+ * can quote values.
+ */
+function errorForLog(e: unknown): string {
+  if (typeof e !== 'object' || e === null) return 'unknown error';
+  const { code, message } = e as { code?: unknown; message?: unknown };
+  const parts: string[] = [];
+  if (typeof code === 'string' || typeof code === 'number') parts.push(`[${code}]`);
+  if (typeof message === 'string') parts.push(message);
+  return parts.length > 0 ? parts.join(' ') : 'unknown error';
+}
+
+/** Whose session `client` holds, or null for none or when it can't be read. */
+async function clientSessionUserId(client: SupabaseClient): Promise<string | null> {
+  try {
+    const { data } = await client.auth.getSession();
+    const id = data?.session?.user?.id;
+    return typeof id === 'string' && id !== '' ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A check that the client's session is still `userId`'s, for a sweep that
+ * started for it. Fails safe: a session that can't be read reads as someone
+ * else's, and the sweep stops.
+ */
+function sessionStillFor(
+  userId: string,
+  client: SupabaseClient,
+  sessionUserId?: () => Promise<string | null>,
+): () => Promise<boolean> {
+  return async () => {
+    try {
+      const current = sessionUserId ? await sessionUserId() : await clientSessionUserId(client);
+      return current === userId;
+    } catch {
+      return false;
+    }
   };
 }
 
@@ -110,6 +194,7 @@ interface ResolvedDeps {
   client: SupabaseClient | null;
   cursorStore: CursorStore;
   recompute: (userId: string) => Promise<void>;
+  sessionUserId?: () => Promise<string | null>;
 }
 
 function resolveDeps(deps?: SyncDeps): ResolvedDeps {
@@ -123,6 +208,7 @@ function resolveDeps(deps?: SyncDeps): ResolvedDeps {
     client,
     cursorStore: deps?.cursorStore ?? defaultCursorStore(),
     recompute: deps?.recompute ?? defaultRecompute,
+    sessionUserId: deps?.sessionUserId,
   };
 }
 
@@ -204,13 +290,18 @@ export async function pullRemote(
  * like any other, carrying only the category's id: the names stay on each
  * phone. The date a prediction was reworded (`title_edited_at`, D45) goes up
  * with the row.
+ *
+ * Each request first checks that the client's session is still `userId`'s
+ * (`stillCurrent`, by default the client's own session) and stops if not.
  */
 export async function pushDirty(
   userId: string,
   client: SupabaseClient,
+  stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<number> {
   const dirty = await listDirtyPredictions(userId);
   if (dirty.length === 0) return 0;
+  if (!(await stillCurrent())) return 0;
 
   const upsertBatch = async (rows: PredictionWireRow[]) => {
     const { error } = await client
@@ -227,16 +318,17 @@ export async function pushDirty(
     return dirty.length;
   } catch (batchErr) {
     // eslint-disable-next-line no-console
-    console.warn('[sync] batch push failed, falling back to per-row:', batchErr);
+    console.warn('[sync] batch push failed, falling back to per-row:', errorForLog(batchErr));
     let pushed = 0;
     for (const row of dirty) {
+      if (!(await stillCurrent())) break;
       try {
         await upsertBatch([row]);
         await markPredictionSynced(row.id, row.updated_at);
         pushed += 1;
       } catch (rowErr) {
         // eslint-disable-next-line no-console
-        console.warn(`[sync] push failed for ${row.id}:`, rowErr);
+        console.warn(`[sync] push failed for ${row.id}:`, errorForLog(rowErr));
       }
     }
     return pushed;
@@ -246,15 +338,18 @@ export async function pushDirty(
 /**
  * Delete on the server every prediction this device deleted (roadmap D25),
  * then mark each tombstone pushed (kept, so it is still counted, D45). Per row, so one failure leaves only that
- * tombstone for the next sweep. Returns how many reached the server.
+ * tombstone for the next sweep. Returns how many reached the server. Each
+ * delete first checks the session is still `userId`'s, as pushDirty does.
  */
 export async function pushDeletions(
   userId: string,
   client: SupabaseClient,
+  stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<number> {
   const ids = await listPendingDeletions(userId);
   let done = 0;
   for (const id of ids) {
+    if (!(await stillCurrent())) break;
     try {
       const { error } = await client
         .from('predictions')
@@ -266,7 +361,7 @@ export async function pushDeletions(
       done += 1;
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn(`[sync] delete failed for ${id}:`, e);
+      console.warn(`[sync] delete failed for ${id}:`, errorForLog(e));
     }
   }
   return done;
@@ -303,6 +398,7 @@ export function syncNow(
 async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
   const resolved = resolveDeps(deps);
   if (!resolved.client) return ZERO;
+  const stillCurrent = sessionStillFor(userId, resolved.client, resolved.sessionUserId);
 
   let pulled = 0;
   let pushed = 0;
@@ -311,24 +407,28 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
   // anything is pulled. Already reflected in local stats, so they don't count
   // toward a recompute.
   try {
-    await pushDeletions(userId, resolved.client);
+    await pushDeletions(userId, resolved.client, stillCurrent);
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[sync] delete push failed:', e);
+    console.warn('[sync] delete push failed:', errorForLog(e));
   }
+
+  // The account changed while the deletions went: the rest of this sweep
+  // belongs to an account that is no longer signed in.
+  if (!(await stillCurrent())) return ZERO;
 
   try {
     pulled = await pullRemote(userId, resolved.client, resolved.cursorStore);
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[sync] pull failed:', e);
+    console.warn('[sync] pull failed:', errorForLog(e));
   }
 
   try {
-    pushed = await pushDirty(userId, resolved.client);
+    pushed = await pushDirty(userId, resolved.client, stillCurrent);
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[sync] push failed:', e);
+    console.warn('[sync] push failed:', errorForLog(e));
   }
 
   if (pulled + pushed > 0) {
@@ -336,7 +436,7 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
       await resolved.recompute(userId);
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn('[sync] recompute failed:', e);
+      console.warn('[sync] recompute failed:', errorForLog(e));
     }
   }
 

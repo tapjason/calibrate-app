@@ -214,17 +214,28 @@ describe('title_edited_at across sync', () => {
     });
   });
 
-  it('is never cleared by a pull from a server without it', async () => {
+  // Record audit 2026-11-18: this test said "is never cleared by a pull from
+  // a server without it", the rule for a server before migration 008. A
+  // newer remote row now wins whole: its words come with its own date, here
+  // none, never with this phone's date for other words.
+  it('comes down with the newer row that wins, null included', async () => {
     await insertPrediction(samplePrediction({ title_edited_at: EDITED }));
     await upsertPredictionFromRemote(
-      sampleWire({ id: 'p1', title: 'Edited elsewhere', updated_at: '2099-01-01T00:00:00.000Z' }),
+      sampleWire({
+        id: 'p1',
+        title: 'Edited elsewhere',
+        title_edited_at: null,
+        updated_at: '2099-01-01T00:00:00.000Z',
+      }),
     );
     const after = await getPrediction('p1');
     expect(after?.title).toBe('Edited elsewhere');
-    expect(after?.title_edited_at).toBe(EDITED);
+    expect(after).not.toHaveProperty('title_edited_at');
   });
 
-  it('keeps the later of the two dates', async () => {
+  // Record audit 2026-11-18: this test said "keeps the later of the two
+  // dates". The date is the winning row's, earlier or later.
+  it("takes the winning row's date, earlier or later than this phone's", async () => {
     await insertPrediction(samplePrediction({ title_edited_at: EDITED }));
     await upsertPredictionFromRemote(
       sampleWire({ id: 'p1', title_edited_at: '2026-05-12T09:00:00+00:00', updated_at: '2099-01-01T00:00:00.000Z' }),
@@ -233,7 +244,77 @@ describe('title_edited_at across sync', () => {
     await upsertPredictionFromRemote(
       sampleWire({ id: 'p1', title_edited_at: '2026-05-02T09:00:00+00:00', updated_at: '2099-01-02T00:00:00.000Z' }),
     );
-    expect((await getPrediction('p1'))?.title_edited_at).toBe('2026-05-12T09:00:00+00:00');
+    expect((await getPrediction('p1'))?.title_edited_at).toBe('2026-05-02T09:00:00+00:00');
+  });
+
+  // The record auditor's case: phone B rewords P on Tuesday and isn't opened
+  // again; phone A, with the old words, answers Yes that evening and syncs; B
+  // opens on Wednesday and pulls A's newer row. B must hold exactly A's row,
+  // so both phones judge the answer the same way (scored on both).
+  it('leaves both phones holding the same words and date after a pull', async () => {
+    const LOGGED = '2026-05-04T09:00:00.000Z'; // Monday
+    const TUESDAY_REWORD = '2026-05-05T08:00:00.000Z';
+    // Phone B's copy: reworded on Tuesday, not yet pushed.
+    await insertPrediction(
+      samplePrediction({
+        title: 'Ship the prototype by Friday',
+        created_at: LOGGED,
+        due_date: '2026-05-05T12:00:00.000Z',
+        title_edited_at: TUESDAY_REWORD,
+      }),
+    );
+    // Phone A's row as the server holds it: the old words, answered Yes on
+    // Tuesday evening, never reworded.
+    const fromA = sampleWire({
+      id: 'p1',
+      title: 'Ship the prototype',
+      category: 'work',
+      confidence: 70,
+      created_at: LOGGED,
+      due_date: '2026-05-05T12:00:00.000Z',
+      status: 'resolved_yes',
+      resolved_at: '2026-05-05T20:00:00.000Z',
+      title_edited_at: null,
+      updated_at: '2026-05-05T20:00:00.000Z',
+    });
+
+    await upsertPredictionFromRemote(fromA);
+
+    const onB = await getPrediction('p1');
+    expect(onB).toEqual({
+      id: 'p1',
+      user_id: 'u1',
+      title: 'Ship the prototype',
+      category: 'work',
+      confidence: 70,
+      created_at: LOGGED,
+      due_date: '2026-05-05T12:00:00.000Z',
+      status: 'resolved_yes',
+      resolved_at: '2026-05-05T20:00:00.000Z',
+      reflection: null,
+      integrity_bonus: false,
+    });
+    // And when B next pushes, it states the same (null) date A has.
+    await getDb().run(`UPDATE predictions SET dirty = 1 WHERE id = 'p1'`);
+    const [up] = await listDirtyPredictions('u1');
+    expect(up.title_edited_at).toBeNull();
+  });
+
+  // Security review 2026-11-18: postgrest-js names the union of a batch's
+  // keys as the columns, and a row without one was written with NULL for it.
+  it('is on every row that goes up, null included, so no row takes another’s', async () => {
+    await insertPrediction(samplePrediction({ id: 'reworded', title_edited_at: EDITED }));
+    await insertPrediction(samplePrediction({ id: 'never' }));
+
+    const batch = await listDirtyPredictions('u1');
+    const byId = Object.fromEntries(batch.map((r) => [r.id, r]));
+    expect(byId.reworded.title_edited_at).toBe(EDITED);
+    expect(byId.never).toHaveProperty('title_edited_at', null);
+
+    // What postgrest-js sends as `columns` for a batch upsert: every key any
+    // row has. Each row carries every one of them itself.
+    const union = new Set(batch.flatMap((r) => Object.keys(r)));
+    for (const row of batch) expect(new Set(Object.keys(row))).toEqual(union);
   });
 
   it('reads as absent on a row never reworded', async () => {

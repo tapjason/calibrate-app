@@ -2,8 +2,9 @@
 // predictionStore via Zustand's subscribe API and reacts. The prediction store
 // has zero knowledge that notifications exist; that one-way dependency keeps
 // the offline core loop functional even when this module is absent or broken.
-// (authStore calls one function here, dismissDeliveredNotifications, after a
-// wipe; nothing at this module's top level reads a store.)
+// (authStore calls two functions here: dismissDeliveredNotifications after a
+// wipe, dismissDeliveredReminderWords on sign-out; nothing at this module's
+// top level reads a store.)
 //
 // Lifecycle:
 //   1. initNotifications() is called once at app start (after auth init).
@@ -184,6 +185,9 @@ type ActionResult = 'recorded' | 'unchanged' | 'missing' | 'failed' | 'stale';
 
 let storeUnsub: (() => void) | null = null;
 let settingsUnsub: (() => void) | null = null;
+// Watches the words switch and the app lock from launch, permission or not:
+// reminders delivered before permission was withdrawn can still be showing.
+let privacyUnsub: (() => void) | null = null;
 let listenerSub: { remove: () => void } | null = null;
 
 function defaultNavigator(): Navigator {
@@ -295,6 +299,10 @@ export function __setDepsForTests(next: Deps | null): void {
   if (settingsUnsub) {
     settingsUnsub();
     settingsUnsub = null;
+  }
+  if (privacyUnsub) {
+    privacyUnsub();
+    privacyUnsub = null;
   }
   if (listenerSub) {
     listenerSub.remove();
@@ -644,9 +652,11 @@ async function writeReminderAnswer(
     if (staleReminder(before, shown)) return 'stale';
     // A milestone or checkpoint left from an earlier answer belongs to that
     // answer. Clear both so this one celebrates only what it crossed, the
-    // same order as answering on the Resolve screen.
+    // same order as answering on the Resolve screen. A log's checkpoint
+    // stays: it waits for Today, which shows it (step 194), as Resolve keeps it.
     useStatsStore.getState().clearMilestone();
-    usePredictionStore.getState().clearStreakCheckpoint();
+    const leftover = usePredictionStore.getState();
+    if (leftover.streakCheckpointFrom === 'answer') leftover.clearStreakCheckpoint();
     // For Resolve's "Your rating moved from…" line, which opens after this.
     useStatsStore.getState().noteRatingBefore(predictionId);
     await usePredictionStore.getState().resolve(predictionId, outcome);
@@ -814,6 +824,15 @@ export async function initNotifications(): Promise<void> {
     return;
   }
 
+  // Words switched off, or the app lock switched on: reminders already on the
+  // lock screen that show a prediction's words go too, or the switch would
+  // cover only the ones still to come (security review, 2026-11-18).
+  privacyUnsub = useSettingsStore.subscribe((state, prev) => {
+    const wordsOff = prev.reminderWords && !state.reminderWords;
+    const lockOn = !prev.appLock && state.appLock;
+    if (wordsOff || lockOn) void dismissDeliveredReminderWords();
+  });
+
   // Foreground display behavior. Safe to call before permission check.
   deps.notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -851,6 +870,41 @@ export async function initNotifications(): Promise<void> {
  * stop for it.
  */
 export async function dismissDeliveredNotifications(): Promise<void> {
+  await dismissDelivered((data) => data?.kind !== 'trial');
+}
+
+/** The kinds of notification that never carry a prediction's words. */
+const KINDS_WITHOUT_WORDS: ReadonlySet<unknown> = new Set(['digest', 'practice', 'trial']);
+
+/**
+ * Whether a delivered notification may show a prediction's words: a due-day
+ * reminder (it carries `predictionId`) unless its `words` says false (one from
+ * before D60 has no `words`, and showed them), and anything with no data to
+ * tell by. The digest shows a count, the practice reminder that day's
+ * question and the trial notice a date: none of them the person's words.
+ */
+function mayShowWords(data: Record<string, unknown> | null | undefined): boolean {
+  if (!data) return true;
+  if (KINDS_WITHOUT_WORDS.has(data.kind)) return false;
+  if (typeof data.predictionId === 'string') return shownWords(data.words);
+  return true;
+}
+
+/**
+ * Take off the lock screen and Notification Center the delivered reminders
+ * that may show a prediction's words, and leave the rest (security review,
+ * 2026-11-18). For sign-out, "Show the words in reminders" turned off, and
+ * the app lock turned on: a reminder already delivered kept the words those
+ * changes were meant to hide. Never throws.
+ */
+export async function dismissDeliveredReminderWords(): Promise<void> {
+  await dismissDelivered(mayShowWords);
+}
+
+/** Dismiss every delivered notification `shouldGo` picks. Never throws. */
+async function dismissDelivered(
+  shouldGo: (data: Record<string, unknown> | null | undefined) => boolean,
+): Promise<void> {
   const api = deps?.notifications;
   if (!api?.getPresentedNotificationsAsync || !api.dismissNotificationAsync) return;
   let presented: Awaited<ReturnType<typeof api.getPresentedNotificationsAsync>>;
@@ -862,7 +916,7 @@ export async function dismissDeliveredNotifications(): Promise<void> {
     return;
   }
   for (const delivered of presented) {
-    if (delivered.content.data?.kind === 'trial') continue;
+    if (!shouldGo(delivered.content.data)) continue;
     try {
       await api.dismissNotificationAsync(delivered.identifier);
     } catch (e) {

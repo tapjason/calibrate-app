@@ -16,11 +16,15 @@
 // half-deleted outcome to report.
 //
 // Order (see ./deletionPlan.ts for why):
-//   1. Sign in with Apple token revocation — best effort
-//   2. RevenueCat customer deletion        — best effort
-//   3. auth.admin.deleteUser               — mandatory, last. Cascades to
-//      predictions, coach_usage, entitlements and analytics_events, all of
-//      which declare `on delete cascade` (supabase/migrations/).
+//   1. Sign in with Apple token revocation — best effort, and only when the
+//      code's Apple ID is the one linked to this account
+//   2. RevenueCat customer deletion        — best effort, at the same time as 1
+//   3. auth.admin.deleteUser               — mandatory, last, after 1 and 2
+//      have both settled. Cascades to predictions, coach_usage, entitlements
+//      and analytics_events, all of which declare `on delete cascade`
+//      (supabase/migrations/).
+// Worst case before the delete: the slower of the two legs, each cut off at
+// LEG_DEADLINE_MS (20 s); it used to be three 8-second calls in a row.
 //
 // Deploy:
 //   npx supabase functions deploy delete-account
@@ -38,15 +42,18 @@ import { importPKCS8, SignJWT } from 'npm:jose@5';
 // The .ts extension is required by Deno and rejected by the project's
 // tsconfig (TS5097), the same conflict as in revenuecat-webhook. The module is
 // typechecked through its Jest test.
-import type { AppleConfig } from './deletionPlan.ts';
+import type { AppleConfig, AppleTokens, RevenueCatConfig } from './deletionPlan.ts';
 import {
   MAX_BODY_BYTES,
+  REVENUECAT_SKIPPED,
   appleClientSecretClaims,
   classifyRevenueCat,
   parseRequest,
   planDeletion,
   readConfig,
   revenueCatCustomerUrl,
+  runAppleLeg,
+  runDeletion,
   // @ts-expect-error — Deno module resolution, not TypeScript's.
 } from './deletionPlan.ts';
 
@@ -93,50 +100,89 @@ async function fetchWithTimeout(url: string, init: RequestInit): Promise<Respons
   }
 }
 
-/**
- * Exchange the fresh authorization code for a refresh token, then revoke it.
- * Revoking the refresh token ends the app's Sign in with Apple grant, which is
- * what Apple asks for; the code alone can't be revoked.
- */
-async function revokeApple(config: AppleConfig, code: string): Promise<void> {
+const form = (fields: Record<string, string>) =>
+  ({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(fields).toString(),
+  }) satisfies RequestInit;
+
+/** The Sign in with Apple client secret: an ES256 JWT signed with the .p8 key. */
+async function appleClientSecret(config: AppleConfig): Promise<string> {
   const key = await importPKCS8(config.privateKey, 'ES256');
-  const clientSecret = await new SignJWT(
-    appleClientSecretClaims(config, Math.floor(Date.now() / 1000)),
-  )
+  return await new SignJWT(appleClientSecretClaims(config, Math.floor(Date.now() / 1000)))
     .setProtectedHeader({ alg: 'ES256', kid: config.keyId })
     .sign(key);
+}
 
-  const form = (fields: Record<string, string>) =>
-    ({
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(fields).toString(),
-    }) satisfies RequestInit;
+/**
+ * The Apple leg's calls. Exchanging the fresh authorization code yields a
+ * refresh token and an id_token; revoking the refresh token ends the app's
+ * Sign in with Apple grant, which is what Apple asks for (the code alone can't
+ * be revoked). Which grant may be revoked is decided in ./deletionPlan.ts
+ * (`runAppleLeg`): only the account's own.
+ */
+function appleLeg(
+  config: AppleConfig,
+  code: string,
+  readIdentities: () => Promise<unknown>,
+): () => Promise<string[]> {
+  return () => {
+    let secret: Promise<string> | null = null;
+    const clientSecret = () => (secret ??= appleClientSecret(config));
+    return runAppleLeg({
+      readIdentities,
+      exchangeCode: async (): Promise<AppleTokens> => {
+        const res = await fetchWithTimeout(
+          'https://appleid.apple.com/auth/token',
+          form({
+            client_id: config.clientId,
+            client_secret: await clientSecret(),
+            code,
+            grant_type: 'authorization_code',
+          }),
+        );
+        if (!res.ok) throw new Error(`apple token exchange: HTTP ${res.status}`);
+        return (await res.json()) as AppleTokens;
+      },
+      revokeToken: async (token: string, hint: 'refresh_token' | 'access_token') => {
+        const res = await fetchWithTimeout(
+          'https://appleid.apple.com/auth/revoke',
+          form({
+            client_id: config.clientId,
+            client_secret: await clientSecret(),
+            token,
+            token_type_hint: hint,
+          }),
+        );
+        if (!res.ok) throw new Error(`apple revoke: HTTP ${res.status}`);
+      },
+      log: (message: string) => console.warn(message),
+    });
+  };
+}
 
-  const tokenRes = await fetchWithTimeout(
-    'https://appleid.apple.com/auth/token',
-    form({
-      client_id: config.clientId,
-      client_secret: clientSecret,
-      code,
-      grant_type: 'authorization_code',
-    }),
-  );
-  if (!tokenRes.ok) throw new Error(`apple token exchange: HTTP ${tokenRes.status}`);
-  const tokens = (await tokenRes.json()) as { refresh_token?: string; access_token?: string };
-  const token = tokens.refresh_token ?? tokens.access_token;
-  if (!token) throw new Error('apple token exchange: no token in response');
-
-  const revokeRes = await fetchWithTimeout(
-    'https://appleid.apple.com/auth/revoke',
-    form({
-      client_id: config.clientId,
-      client_secret: clientSecret,
-      token,
-      token_type_hint: tokens.refresh_token ? 'refresh_token' : 'access_token',
-    }),
-  );
-  if (!revokeRes.ok) throw new Error(`apple revoke: HTTP ${revokeRes.status}`);
+/**
+ * The RevenueCat leg: delete the customer. Does NOT cancel an App Store
+ * subscription; the client warns about that before calling us.
+ */
+function revenueCatLeg(config: RevenueCatConfig, userId: string): () => Promise<string[]> {
+  return async () => {
+    try {
+      const res = await fetchWithTimeout(revenueCatCustomerUrl(config.projectId, userId), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+      if (classifyRevenueCat(res.status) === 'failed') {
+        console.error('[delete-account] revenuecat delete: HTTP', res.status);
+        return [REVENUECAT_SKIPPED.failed];
+      }
+      return [];
+    } catch (e) {
+      console.error('[delete-account] revenuecat delete failed:', e instanceof Error ? e.name : 'error');
+      return [REVENUECAT_SKIPPED.failed];
+    }
+  };
 }
 
 // @ts-expect-error — Deno.serve is the Edge Runtime entry point.
@@ -181,51 +227,43 @@ Deno.serve(async (req: Request) => {
 
   const config = readConfig((name: string) => env.get(name));
   const plan = planDeletion(config, request);
-  const skipped = [...plan.skipped];
 
-  // --- 1. Apple (best effort). ---
-  if (plan.revokeApple && config.apple && request.appleAuthorizationCode) {
-    try {
-      await revokeApple(config.apple, request.appleAuthorizationCode);
-    } catch (e) {
-      console.error('[delete-account] apple revocation failed:', e);
-      skipped.push('apple: revocation failed');
-    }
-  }
-
-  // --- 2. RevenueCat (best effort). Does NOT cancel an App Store
-  //        subscription; the client warns about that before calling us. ---
-  if (plan.deleteRevenueCat && config.revenuecat) {
-    try {
-      const res = await fetchWithTimeout(
-        revenueCatCustomerUrl(config.revenuecat.projectId, user.id),
-        {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${config.revenuecat.apiKey}` },
-        },
-      );
-      if (classifyRevenueCat(res.status) === 'failed') {
-        console.error('[delete-account] revenuecat delete: HTTP', res.status);
-        skipped.push('revenuecat: delete failed');
-      }
-    } catch (e) {
-      console.error('[delete-account] revenuecat delete failed:', e);
-      skipped.push('revenuecat: delete failed');
-    }
-  }
-
-  // --- 3. The account itself. Hard delete: the row goes, sessions die, and
-  //        every public table's rows cascade with it. ---
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
-  if (deleteError) {
-    console.error('[delete-account] deleteUser failed:', deleteError);
-    return json({ error: 'internal' }, 500);
-  }
+  const userId: string = user.id;
+  const apple = config.apple;
+  const appleCode = request.appleAuthorizationCode;
+  const revenuecat = config.revenuecat;
 
+  // --- 1 and 2 at once (best effort), then 3, the account itself: a hard
+  //     delete, after both have settled. The row goes, sessions die, and every
+  //     public table's rows cascade with it. ---
+  const result = await runDeletion({
+    apple:
+      plan.revokeApple && apple && appleCode
+        ? appleLeg(apple, appleCode, async () => {
+            // The account's identities, read with the service role: the Apple
+            // identity whose grant may be revoked.
+            const { data, error } = await admin.auth.admin.getUserById(userId);
+            if (error || !data?.user) throw new Error('getUserById failed');
+            return data.user.identities;
+          })
+        : null,
+    revenuecat: plan.deleteRevenueCat && revenuecat ? revenueCatLeg(revenuecat, userId) : null,
+    deleteUser: async () => {
+      const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+      if (deleteError) {
+        console.error('[delete-account] deleteUser failed:', deleteError);
+        return false;
+      }
+      return true;
+    },
+  });
+  if (!result.deleted) return json({ error: 'internal' }, 500);
+
+  const skipped = [...plan.skipped, ...result.skipped];
   if (skipped.length > 0) console.log('[delete-account] skipped:', skipped);
-  console.log('[delete-account] deleted', user.id);
+  console.log('[delete-account] deleted', userId);
   return json({ ok: true, skipped });
 });

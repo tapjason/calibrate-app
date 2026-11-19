@@ -22,6 +22,7 @@ import { useStatsStore } from '@/store/statsStore';
 import {
   __setDepsForTests,
   dismissDeliveredNotifications,
+  dismissDeliveredReminderWords,
   initNotifications,
   REMINDER_HOUR,
   reminderTimeFor,
@@ -1666,5 +1667,154 @@ describe('scheduler: reminders while the app lock is on', () => {
     __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
     await initNotifications();
     expect(Array.from(notifications.scheduled.keys())).toEqual(['os-old']);
+  });
+});
+
+// Security review, 2026-11-18: a reminder already delivered kept the words
+// that signing out, the words switch or the app lock were meant to hide.
+describe('scheduler: dismissDeliveredReminderWords', () => {
+  const delivered = (identifier: string, data: Record<string, unknown> | null) => ({
+    identifier,
+    content: { data },
+  });
+
+  const PRESENTED = [
+    delivered('words-on', { predictionId: 'p1', words: true }),
+    // Before D60 a reminder had no `words`, and showed them.
+    delivered('pre-d60', { predictionId: 'p2' }),
+    // iOS may hand a stored boolean back as 1 or 0.
+    delivered('words-one', { predictionId: 'p3', words: 1 }),
+    delivered('words-off', { predictionId: 'p4', words: false }),
+    delivered('words-zero', { predictionId: 'p5', words: 0 }),
+    delivered('digest', { kind: 'digest' }),
+    delivered('practice', { kind: 'practice' }),
+    delivered('trial', { kind: 'trial' }),
+    // Nothing to tell by: it may show words.
+    delivered('no-data', null),
+    delivered('unknown', { something: 'else' }),
+  ];
+
+  function install(dismiss: jest.Mock, granted = true) {
+    const notifications = {
+      ...makeFakeNotifications(granted),
+      getPresentedNotificationsAsync: async () => PRESENTED,
+      dismissNotificationAsync: dismiss,
+    };
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    return notifications;
+  }
+
+  afterEach(() => useSettingsStore.setState({ appLock: false, reminderWords: true }));
+
+  it('takes off only the ones that may show words', async () => {
+    const dismiss = jest.fn(async (_id: string) => {});
+    install(dismiss);
+    await dismissDeliveredReminderWords();
+    expect(dismiss.mock.calls.map(([id]) => id)).toEqual([
+      'words-on',
+      'pre-d60',
+      'words-one',
+      'no-data',
+      'unknown',
+    ]);
+  });
+
+  it('runs when the words are switched off, even without notification permission', async () => {
+    const dismiss = jest.fn(async (_id: string) => {});
+    install(dismiss, false);
+    await initNotifications();
+    useSettingsStore.setState({ reminderWords: false });
+    await flush();
+    expect(dismiss.mock.calls.map(([id]) => id)).toContain('words-on');
+    expect(dismiss.mock.calls.map(([id]) => id)).not.toContain('digest');
+  });
+
+  it('runs when the app lock is switched on', async () => {
+    const dismiss = jest.fn(async (_id: string) => {});
+    install(dismiss);
+    await initNotifications();
+    useSettingsStore.setState({ appLock: true });
+    await flush();
+    expect(dismiss.mock.calls.map(([id]) => id)).toContain('words-on');
+    expect(dismiss.mock.calls.map(([id]) => id)).not.toContain('trial');
+  });
+
+  it('leaves the lock screen alone when the words go on or the lock goes off', async () => {
+    useSettingsStore.setState({ reminderWords: false, appLock: true });
+    const dismiss = jest.fn(async (_id: string) => {});
+    install(dismiss);
+    await initNotifications();
+    useSettingsStore.setState({ reminderWords: true });
+    useSettingsStore.setState({ appLock: false });
+    useSettingsStore.setState({ dueReminderTime: { hour: 20, minute: 0 } });
+    await flush();
+    expect(dismiss).not.toHaveBeenCalled();
+  });
+
+  it('never throws, and does nothing on web', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    __setDepsForTests({
+      notifications: {
+        ...makeFakeNotifications(true),
+        getPresentedNotificationsAsync: async () => {
+          throw new Error('no module');
+        },
+        dismissNotificationAsync: async () => {},
+      },
+      navigator: makeFakeNavigator(),
+    });
+    await expect(dismissDeliveredReminderWords()).resolves.toBeUndefined();
+    __setDepsForTests({ notifications: null, navigator: makeFakeNavigator() });
+    await expect(dismissDeliveredReminderWords()).resolves.toBeUndefined();
+    warn.mockRestore();
+  });
+});
+
+// Security review, 2026-11-18: a reminder's Happened / Didn't discarded a
+// checkpoint a log had reached and Today hadn't shown yet.
+describe('scheduler: a streak checkpoint waiting for Today', () => {
+  async function pending() {
+    return await loggedEarlier(() =>
+      usePredictionStore.getState().create({
+        title: 'Ship the prototype',
+        category: 'work',
+        confidence: 70,
+        due_date: '2099-06-01T12:00:00.000Z',
+      }),
+    );
+  }
+
+  it("keeps a log's checkpoint through a reminder's Happened", async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const p = await pending();
+    usePredictionStore.setState({ streakCheckpoint: 7, streakCheckpointFrom: 'log' });
+
+    await notifications.triggerAction(p.id, 'happened');
+    await flush();
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_yes');
+    expect(usePredictionStore.getState()).toMatchObject({
+      streakCheckpoint: 7,
+      streakCheckpointFrom: 'log',
+    });
+  });
+
+  it("clears an earlier answer's leftover checkpoint, as Resolve does", async () => {
+    const notifications = makeFakeNotifications(true);
+    __setDepsForTests({ notifications, navigator: makeFakeNavigator() });
+    await initNotifications();
+    const p = await pending();
+    usePredictionStore.setState({ streakCheckpoint: 7, streakCheckpointFrom: 'answer' });
+
+    await notifications.triggerAction(p.id, 'didnt');
+    await flush();
+
+    expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+    expect(usePredictionStore.getState()).toMatchObject({
+      streakCheckpoint: null,
+      streakCheckpointFrom: null,
+    });
   });
 });

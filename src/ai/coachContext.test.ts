@@ -1,4 +1,11 @@
-import type { Category, Prediction, UserStat } from '@/types';
+import {
+  MIN_N_BAND,
+  MIN_N_CATEGORY,
+  MIN_N_OVERALL,
+  type Category,
+  type Prediction,
+  type UserStat,
+} from '@/types';
 
 import { buildCoachContext } from './coachContext';
 
@@ -126,23 +133,64 @@ describe('buildCoachContext', () => {
     );
   });
 
-  it('emits deterministic patterns as plain kind/value pairs', () => {
-    // weakestDayOfWeek needs at least five resolutions landing on one weekday,
-    // so these are spaced a week apart rather than on consecutive days.
-    const sameWeekday = Array.from({ length: 6 }, (_, i) =>
+  /** n answers on one weekday (Mondays from 2026-08-03), a week apart. */
+  function sameWeekday(n: number, category: Category = 'work'): Prediction[] {
+    return Array.from({ length: n }, (_, i) =>
       prediction({
-        category: 'work' as Category,
-        status: i < 3 ? 'resolved_yes' : 'resolved_no',
-        resolved_at: `2026-08-${String(3 + i * 7).padStart(2, '0')}T00:00:00.000Z`,
+        category,
+        status: i % 2 === 0 ? 'resolved_yes' : 'resolved_no',
+        resolved_at: new Date(Date.UTC(2026, 7, 3 + i * 7)).toISOString(),
       }),
     );
-    const ctx = buildCoachContext(USER_STAT, sameWeekday);
+  }
+
+  // The weekday ran from 5 answers on a day, with no overall floor, until
+  // 2026-11-18 (security review, finding 1); this test then asserted 6 were
+  // enough. It now needs MIN_N_BAND (10) on the day and MIN_N_OVERALL scored.
+  it('emits deterministic patterns as plain kind/value pairs', () => {
+    const ctx = buildCoachContext(USER_STAT, sameWeekday(MIN_N_BAND));
 
     for (const p of ctx.patterns) {
       expect(typeof p.kind).toBe('string');
       expect(Number.isFinite(p.value)).toBe(true);
     }
-    expect(ctx.patterns.some((p) => p.kind === 'weakest_day_of_week')).toBe(true);
+    expect(ctx.patterns).toEqual(
+      expect.arrayContaining([
+        { kind: 'weakest_day_of_week', value: 1 },
+        { kind: 'weakest_day_score', value: expect.any(Number) },
+        { kind: 'weakest_day_answers', value: MIN_N_BAND },
+      ]),
+    );
+  });
+
+  it('leaves out a weekday with fewer than MIN_N_BAND answers on it', () => {
+    const ctx = buildCoachContext(USER_STAT, sameWeekday(MIN_N_BAND - 1));
+    expect(ctx.patterns.filter((p) => p.kind.startsWith('weakest_day'))).toEqual([]);
+  });
+
+  it('leaves out the weekday while the overall rating is provisional', () => {
+    const ctx = buildCoachContext(
+      { ...USER_STAT, total_resolved: MIN_N_OVERALL - 1 },
+      sameWeekday(MIN_N_BAND),
+    );
+    expect(ctx.patterns.filter((p) => p.kind.startsWith('weakest_day'))).toEqual([]);
+  });
+
+  // A category's drift ran from 4 answers (finding 1): a 50-point "fall"
+  // between two halves of 2.
+  it('sends a category’s drift only from MIN_N_CATEGORY answers in it', () => {
+    const thin = buildCoachContext(USER_STAT, run(MIN_N_CATEGORY - 1, 10, { category: 'health' as Category }));
+    expect(thin.patterns.some((p) => p.kind === 'drift_health')).toBe(false);
+    // Still carried as a category, with its count, so "keep logging" can be said.
+    expect(thin.by_category[0]).toMatchObject({ category: 'health', resolved: MIN_N_CATEGORY - 1 });
+
+    const past = buildCoachContext(USER_STAT, run(MIN_N_CATEGORY, 10, { category: 'health' as Category }));
+    expect(past.patterns.some((p) => p.kind === 'drift_health')).toBe(true);
+  });
+
+  it('never sends a pattern for a category the person added', () => {
+    const ctx = buildCoachContext(USER_STAT, run(30, 15, { category: 'c-abcd1234' as Category }));
+    expect(JSON.stringify(ctx)).not.toMatch(/c-abcd1234/);
   });
 
   it('handles a user with nothing resolved', () => {

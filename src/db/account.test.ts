@@ -4,7 +4,13 @@ import { wipeLocalUserData } from './account';
 import { getAgeBucket, saveAgeBucket } from './ageBucket';
 import { enqueueEvent, listUnsyncedEvents } from './analytics';
 import { getDb, setDbForTests } from './client';
-import { countRefiles, insertPrediction, listPendingPredictions, noteRefile } from './predictions';
+import {
+  countRefiles,
+  insertPrediction,
+  listPendingPredictions,
+  noteRefile,
+  refilePrediction,
+} from './predictions';
 import { getUserStat, listCategoryStats, upsertCategoryStat, upsertUserStat } from './stats';
 import { createTestDb } from './testing';
 import { getWarmupProgress, getWarmupRecord, saveWarmupProgress, saveWarmupRecord } from './warmup';
@@ -115,10 +121,93 @@ describe('wipeLocalUserData', () => {
 
   // Step 184: the count of answers moved between categories goes too.
   it('removes the count of moved answers, and only this account’s', async () => {
-    await noteRefile('me-a', 'me', 'work', 'health');
-    await noteRefile('them-a', 'them', 'work', 'health');
+    // A move is noted only once it has landed on an answered prediction.
+    await moveAnswer('me-a', 'me');
+    await moveAnswer('them-a', 'them');
     await wipeLocalUserData('me');
     expect(await countRefiles('me')).toBe(0);
     expect(await countRefiles('them')).toBe(1);
   });
+
+  // Security review 2026-11-18: deleted words don't wait in a write-ahead log.
+  it('ends with a checkpoint that truncates the log, after the deletes commit', async () => {
+    await seedUser('me');
+    const db = getDb();
+    const events: string[] = [];
+    let inTx = false;
+    const realTransaction = db.transaction.bind(db);
+    const realGet = db.get.bind(db);
+    db.transaction = async <T,>(fn: () => Promise<T>) => {
+      const result = await realTransaction(async () => {
+        inTx = true;
+        try {
+          return await fn();
+        } finally {
+          inTx = false;
+        }
+      });
+      events.push('committed');
+      return result;
+    };
+    db.get = async <T,>(sql: string, params?: unknown[]) => {
+      if (sql.includes('wal_checkpoint')) events.push(`${sql}${inTx ? ' (inside)' : ''}`);
+      return realGet<T>(sql, params);
+    };
+
+    await wipeLocalUserData('me');
+
+    expect(events).toEqual(['committed', 'PRAGMA wal_checkpoint(TRUNCATE)']);
+    await expect(listPendingPredictions('me')).resolves.toEqual([]);
+  });
+
+  it('finishes the wipe when the checkpoint fails', async () => {
+    await seedUser('me');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const db = getDb();
+    const realGet = db.get.bind(db);
+    db.get = async <T,>(sql: string, params?: unknown[]) => {
+      if (sql.includes('wal_checkpoint')) throw new Error('database table is locked');
+      return realGet<T>(sql, params);
+    };
+
+    await expect(wipeLocalUserData('me')).resolves.toBeUndefined();
+    db.get = realGet;
+
+    await expect(listPendingPredictions('me')).resolves.toEqual([]);
+    await expect(getUserStat('me')).resolves.toBeNull();
+    expect(warn).toHaveBeenCalledWith('[db] the checkpoint after a wipe failed:', expect.any(Error));
+    warn.mockRestore();
+  });
+
+  it('runs no checkpoint when the wipe rolled back', async () => {
+    await seedUser('me');
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    const realGet = db.get.bind(db);
+    const checkpoints: string[] = [];
+    db.run = async (sql, params) => {
+      if (sql.includes('DELETE FROM analytics_events')) throw new Error('forced failure');
+      return realRun(sql, params);
+    };
+    db.get = async <T,>(sql: string, params?: unknown[]) => {
+      if (sql.includes('wal_checkpoint')) checkpoints.push(sql);
+      return realGet<T>(sql, params);
+    };
+
+    await expect(wipeLocalUserData('me')).rejects.toThrow(/forced failure/);
+    db.run = realRun;
+    db.get = realGet;
+    expect(checkpoints).toEqual([]);
+  });
 });
+
+/** An answered prediction moved from work to health, with the move noted (step 184). */
+async function moveAnswer(id: string, userId: string): Promise<void> {
+  await insertPrediction({
+    ...p(id, userId),
+    status: 'resolved_no',
+    resolved_at: '2026-02-02T12:00:00.000Z',
+  });
+  await refilePrediction(id, 'health');
+  await noteRefile(id, userId, 'work', 'health');
+}

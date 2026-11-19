@@ -68,6 +68,14 @@ function rowToPrediction(r: PredictionRow): Prediction {
   };
 }
 
+/**
+ * A row as it goes up. `title_edited_at` is always there, null included
+ * (security review, 2026-11-18): postgrest-js names the union of a batch's
+ * keys as the columns, so a row left without the key, in a batch where
+ * another row had it, was written with NULL, whatever date the server held
+ * for it. Each row now states its own date, so the words and their date go
+ * up together.
+ */
 function rowToWire(r: PredictionRow): PredictionWireRow {
   return {
     id: r.id,
@@ -81,7 +89,7 @@ function rowToWire(r: PredictionRow): PredictionWireRow {
     resolved_at: r.resolved_at,
     reflection: r.reflection,
     integrity_bonus: r.integrity_bonus === 1,
-    ...rewordedField(r),
+    title_edited_at: r.title_edited_at ?? null,
     updated_at: r.updated_at,
   };
 }
@@ -272,7 +280,13 @@ export async function countPostponements(userId: string): Promise<number> {
  * elsewhere keeps that origin, and a move back to it removes the row, so the
  * count is of answers now filed somewhere other than where they were
  * answered. Device-local, never synced. No transaction of its own: the store
- * calls it beside the update.
+ * calls it beside the update, after `refilePrediction`.
+ *
+ * Only a move that landed is noted: every statement here requires this
+ * user's prediction to be an answer now filed under `toCategory`, which is
+ * what the move just wrote. A prediction deleted between the store's check
+ * and its transaction (the delete counted it once already) or no longer a
+ * Yes or No leaves the count alone (code review, 2026-11-18).
  */
 export async function noteRefile(
   predictionId: string,
@@ -281,6 +295,12 @@ export async function noteRefile(
   toCategory: string,
 ): Promise<void> {
   const db = getDb();
+  // The condition is in each statement, not read beforehand, so nothing can
+  // change the prediction between the check and the write.
+  const landed = `EXISTS (SELECT 1 FROM predictions
+       WHERE id = ? AND user_id = ? AND category = ?
+         AND status IN ('resolved_yes', 'resolved_no'))`;
+  const landedParams = [predictionId, userId, toCategory];
   const row = await db.get<{ from_category: string }>(
     `SELECT from_category FROM prediction_refiles WHERE prediction_id = ?`,
     [predictionId],
@@ -289,18 +309,23 @@ export async function noteRefile(
     if (fromCategory === toCategory) return;
     await db.run(
       `INSERT INTO prediction_refiles (prediction_id, user_id, moved_at, from_category, to_category)
-         VALUES (?, ?, ?, ?, ?)`,
-      [predictionId, userId, nowIso(), fromCategory, toCategory],
+         SELECT ?, ?, ?, ?, ?
+         WHERE ${landed}`,
+      [predictionId, userId, nowIso(), fromCategory, toCategory, ...landedParams],
     );
     return;
   }
   if (row.from_category === toCategory) {
-    await db.run(`DELETE FROM prediction_refiles WHERE prediction_id = ?`, [predictionId]);
+    await db.run(
+      `DELETE FROM prediction_refiles WHERE prediction_id = ? AND ${landed}`,
+      [predictionId, ...landedParams],
+    );
     return;
   }
   await db.run(
-    `UPDATE prediction_refiles SET to_category = ?, moved_at = ? WHERE prediction_id = ?`,
-    [toCategory, nowIso(), predictionId],
+    `UPDATE prediction_refiles SET to_category = ?, moved_at = ?
+       WHERE prediction_id = ? AND ${landed}`,
+    [toCategory, nowIso(), predictionId, ...landedParams],
   );
 }
 
@@ -426,6 +451,17 @@ export async function getPredictionUpdatedAt(
 /**
  * Write a remote row into local storage with `dirty = 0`. Used by pull when
  * the remote copy is strictly newer than the local one (or local has no row).
+ *
+ * The remote row wins whole, `title_edited_at` included, null too (record
+ * audit, 2026-11-18): the date belongs to the words it came with. Keeping the
+ * later of the two dates kept this phone's rewording date beside another
+ * phone's newer row with the old words, so an answer scored on one phone was
+ * same-day and unscored on the other, and the two never agreed. That rule was
+ * for a server without Supabase migration 008, which is live. Builds from
+ * before step 186 leave the column out of their upserts, and an upsert leaves
+ * a column it doesn't name as it was, so they can't clear a date either. When
+ * this phone's row is the newer one, pull doesn't call this at all, and its
+ * own words and date stand.
  */
 export async function upsertPredictionFromRemote(
   row: PredictionWireRow,
@@ -447,16 +483,8 @@ export async function upsertPredictionFromRemote(
        resolved_at     = excluded.resolved_at,
        reflection      = excluded.reflection,
        integrity_bonus = excluded.integrity_bonus,
-       -- The later of the two (D45): a server without migration 008 sends
-       -- none, and a rewording is never undone, so a missing or older value
-       -- never clears this phone's.
-       title_edited_at = CASE
-         WHEN excluded.title_edited_at IS NULL THEN predictions.title_edited_at
-         WHEN predictions.title_edited_at IS NULL THEN excluded.title_edited_at
-         WHEN julianday(excluded.title_edited_at) > julianday(predictions.title_edited_at)
-           THEN excluded.title_edited_at
-         ELSE predictions.title_edited_at
-       END,
+       -- With the words it came with (D45), null included: see above.
+       title_edited_at = excluded.title_edited_at,
        updated_at      = excluded.updated_at,
        dirty           = 0`,
     [

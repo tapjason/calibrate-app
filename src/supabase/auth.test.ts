@@ -1,6 +1,7 @@
 // The system web sign-in sheet, which Google sign-in opens (step 192).
 jest.mock('expo-web-browser', () => ({ openAuthSessionAsync: jest.fn() }));
 
+import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 
 import {
@@ -13,8 +14,11 @@ import {
   passwordRules,
   passwordRulesError,
   readAuthRedirect,
+  SIGN_OUT_FAILED,
   signInWithEmail,
   signInWithGoogle,
+  signOut,
+  signOutLocal,
   signUpWithEmail,
   WEAK_PASSWORD_TEXT,
 } from './auth';
@@ -804,5 +808,129 @@ describe("a sign-in provider's own tokens", () => {
       .filter((file) => field.test(readFileSync(file, 'utf8')))
       .map((file) => relative(root, file));
     expect(readers).toEqual([]);
+  });
+});
+
+// Security review, 2026-11-18: auth-js 2.106 POSTs /logout for every scope
+// and keeps the stored session when that fails, so a sign-out with no
+// connection did nothing. The phone now always ends it.
+describe('signOut and signOutLocal', () => {
+  const KEY = 'sb-project-auth-token';
+
+  /** A client whose storage holds a session under KEY. */
+  function fakeAuthClient(opts: {
+    signOutError?: unknown;
+    signOutThrows?: boolean;
+    signOutHangs?: boolean;
+    /** What getSession reads back after the clear, in turn; the last repeats. */
+    readBack?: Array<'none' | 'session'>;
+    removeThrows?: boolean;
+    noStorageKey?: boolean;
+  } = {}) {
+    const store = new Map<string, string>([
+      [KEY, '{"access_token":"a","refresh_token":"r"}'],
+      [`${KEY}-code-verifier`, 'v'],
+      [`${KEY}-user`, '{}'],
+      ['calibrate:settings', '{}'],
+    ]);
+    const removed: string[] = [];
+    const readBack = [...(opts.readBack ?? ['none'])];
+    const signOut = jest.fn((_options?: { scope: string }) => {
+      if (opts.signOutHangs) return new Promise(() => {});
+      if (opts.signOutThrows) return Promise.reject(new Error('boom'));
+      if (opts.signOutError) return Promise.resolve({ error: opts.signOutError });
+      // What auth-js does on success: the stored session goes.
+      store.delete(KEY);
+      return Promise.resolve({ error: null });
+    });
+    const getSession = jest.fn(async () => {
+      const next = readBack.length > 1 ? readBack.shift()! : readBack[0];
+      if (next === 'session') store.set(KEY, '{"access_token":"b"}');
+      return { data: { session: store.has(KEY) ? { access_token: 'b' } : null }, error: null };
+    });
+    const auth = {
+      signOut,
+      getSession,
+      storageKey: opts.noStorageKey ? undefined : KEY,
+      storage: {
+        removeItem: async (key: string) => {
+          if (opts.removeThrows) throw new Error('storage');
+          removed.push(key);
+          store.delete(key);
+        },
+      },
+    };
+    setSupabaseClientForTests({ auth } as unknown as Parameters<typeof setSupabaseClientForTests>[0]);
+    return { store, removed, signOut, getSession };
+  }
+
+  const offline = () => new AuthRetryableFetchError('Network request failed', 0);
+
+  it('online: signs out everywhere, through Supabase, and touches no storage itself', async () => {
+    const { removed, signOut: supabaseSignOut } = fakeAuthClient();
+    await expect(signOut()).resolves.toEqual({ ok: true });
+    expect(supabaseSignOut).toHaveBeenCalledWith();
+    expect(removed).toEqual([]);
+  });
+
+  it('after deletion: signs out on this phone, through Supabase', async () => {
+    const { signOut: supabaseSignOut } = fakeAuthClient();
+    await expect(signOutLocal()).resolves.toEqual({ ok: true });
+    expect(supabaseSignOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it.each([
+    ['signOut', () => signOut()],
+    ['signOutLocal', () => signOutLocal()],
+  ])('%s offline: removes the stored session here, and says only this phone heard', async (_label, run) => {
+    const { store, removed } = fakeAuthClient({ signOutError: offline() });
+    await expect(run()).resolves.toEqual({ ok: true, localOnly: true });
+    // The keys auth-js's own sign-out removes, and nothing else.
+    expect(removed).toEqual([KEY, `${KEY}-code-verifier`, `${KEY}-user`]);
+    expect(store.has('calibrate:settings')).toBe(true);
+  });
+
+  it('ends it here too when Supabase throws, or refuses for another reason', async () => {
+    fakeAuthClient({ signOutThrows: true });
+    await expect(signOut()).resolves.toEqual({ ok: true, localOnly: true });
+    fakeAuthClient({ signOutError: new AuthApiError('rate limited', 429, 'over_request_rate_limit') });
+    await expect(signOut()).resolves.toEqual({ ok: true, localOnly: true });
+  });
+
+  it('removes it again when a token refresh in flight wrote it back', async () => {
+    const { removed } = fakeAuthClient({ signOutError: offline(), readBack: ['session', 'none'] });
+    await expect(signOut()).resolves.toEqual({ ok: true, localOnly: true });
+    expect(removed.filter((k) => k === KEY)).toHaveLength(2);
+  });
+
+  it('says it failed when the session keeps coming back', async () => {
+    fakeAuthClient({ signOutError: offline(), readBack: ['session'] });
+    await expect(signOut()).resolves.toEqual({ ok: false, error: SIGN_OUT_FAILED });
+  });
+
+  it('says it failed when the stored session cannot be removed', async () => {
+    fakeAuthClient({ signOutError: offline(), removeThrows: true });
+    await expect(signOut()).resolves.toEqual({ ok: false, error: SIGN_OUT_FAILED });
+    fakeAuthClient({ signOutError: offline(), noStorageKey: true });
+    await expect(signOut()).resolves.toEqual({ ok: false, error: SIGN_OUT_FAILED });
+  });
+
+  it('does not wait forever on a sign-out the network never answers', async () => {
+    jest.useFakeTimers();
+    try {
+      const { removed } = fakeAuthClient({ signOutHangs: true });
+      const outcome = signOut();
+      await jest.advanceTimersByTimeAsync(10_000);
+      await expect(outcome).resolves.toEqual({ ok: true, localOnly: true });
+      expect(removed).toContain(KEY);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reads a build without Supabase as a failure, as before', async () => {
+    setSupabaseClientForTests(null);
+    const outcome = await signOut();
+    expect(outcome.ok).toBe(false);
   });
 });

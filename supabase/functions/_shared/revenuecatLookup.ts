@@ -22,9 +22,10 @@
 //       permission project_configuration:entitlements:read
 // The second exists because an active entitlement names RevenueCat's own
 // entitlement id (documented as "entla1b2c3d4e5"), not the lookup key the app
-// and the webhook use ('plus'). It runs only when the customer has an active
-// entitlement that isn't literally 'plus', and its answer is cached for the
-// isolate's life.
+// and the webhook use ('plus'), and because its success shows the key and the
+// project id work (the 404 rule below). It runs when the customer has an
+// active entitlement that isn't literally 'plus', or when the customer call
+// answers 404, and an answer that names plus is cached for the isolate's life.
 //
 // Secrets: REVENUECAT_READ_KEY (a v2 secret key with exactly those two read
 // permissions) and REVENUECAT_PROJECT_ID (shared with delete-account). With
@@ -33,11 +34,19 @@
 // logged.
 //
 // Fail closed, always. Only a 200 that names an active plus entitlement is
-// Plus. A 404 for the customer means RevenueCat has no such customer: none.
-// Everything else (401, 403, 429, 5xx, a network error, the 5-second timeout,
-// a body that isn't JSON or isn't the documented shape) is an error, never
-// Plus, and never "none" either: the webhook writes "none" as a revocation, so
-// an unreadable answer must not look like one.
+// Plus. Everything else (401, 403, 429, 5xx, a network error, the 5-second
+// timeout, a body that isn't JSON or isn't the documented shape) is an error,
+// never Plus, and never "none" either: the webhook writes "none" as a
+// revocation, so an unreadable answer must not look like one.
+//
+// A 404 for the customer is "none" only once the key and the project id are
+// known to work (security review, 2026-11-18). RevenueCat answers 404 "Not
+// found" for a customer it has never seen, and, undocumented, so assumed, for
+// a project id that is wrong. A mistyped REVENUECAT_PROJECT_ID would then read
+// every subscriber as "none", and the webhook would write free rows over real
+// subscriptions. So a customer 404 is "none" only when a project-level call
+// (the entitlements list, below) has succeeded with the same key and project
+// id, in this isolate or in this lookup; otherwise it is an error.
 
 /** Mirrors EntitlementSource in src/types/index.ts. */
 export type EntitlementSource = 'none' | 'trial' | 'monthly' | 'annual' | 'lifetime';
@@ -45,8 +54,14 @@ export type EntitlementSource = 'none' | 'trial' | 'monthly' | 'annual' | 'lifet
 /** The entitlement's lookup key. Mirrors PLUS_ENTITLEMENT_ID in src/billing/revenuecat.ts. */
 export const PLUS_ENTITLEMENT_ID = 'plus';
 
-/** A Supabase user id. The app configures RevenueCat with it as the app user id. */
-export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * A Supabase user id. The app configures RevenueCat with it as the app user
+ * id (`session.user.id`, src/billing/init.ts), and Supabase writes user ids in
+ * lowercase. Lowercase only (security review, 2026-11-18): RevenueCat app user
+ * ids are case-sensitive and Postgres uuids aren't, so an uppercase spelling
+ * would name a different RevenueCat customer and the same Supabase row.
+ */
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export const REVENUECAT_API_ORIGIN = 'https://api.revenuecat.com';
 
@@ -115,16 +130,28 @@ export type FetchLike = (
   init: { method: 'GET'; headers: Record<string, string>; signal: AbortSignal },
 ) => Promise<FetchResponseLike>;
 
+/** A project-level call that succeeded: the key and the project id work. */
+interface ProjectInfo {
+  /**
+   * The key the call succeeded with. An entry counts only for that key, so a
+   * changed key proves itself again. Held in memory only, never logged.
+   */
+  apiKey: string;
+  /** RevenueCat's own id for the 'plus' lookup key, or null if the project has none. */
+  plusId: string | null;
+}
+
 /**
- * Per-isolate memory of each project's plus entitlement id. The caller keeps
- * one at module level, so the entitlements list is read once per isolate.
+ * Per-isolate memory of each project's entitlements list. The caller keeps one
+ * at module level, so the list is read once per isolate. Only a list that
+ * names plus is kept: a project fixed in the dashboard is read again.
  */
 export interface LookupCache {
-  plusEntitlementIds: Map<string, string>;
+  projects: Map<string, ProjectInfo>;
 }
 
 export function createLookupCache(): LookupCache {
-  return { plusEntitlementIds: new Map() };
+  return { projects: new Map() };
 }
 
 export interface LookupDeps {
@@ -172,7 +199,8 @@ function nextPageUrl(nextPage: unknown): string | null {
 
 /**
  * Every item of a v2 list, following `next_page`. Null when the first page is
- * a 404 and `notFoundIsNone` is set (no such customer).
+ * a 404 and `notFoundIsNone` is set: a customer 404, which the caller still
+ * has to check against the project before it means "no such customer".
  */
 async function listItems(
   firstUrl: string,
@@ -237,24 +265,43 @@ function parseActiveEntitlement(item: unknown): ActiveEntitlement {
   throw new LookupFailure('bad_response');
 }
 
+/**
+ * The project's entitlements list: a project-level call that, by succeeding,
+ * shows the key and the project id work, and the place RevenueCat's own id
+ * for 'plus' is read from. Throws a LookupFailure when the call fails (a wrong
+ * project id answers 404 here too, and is an error, never "none").
+ */
+async function readProject(
+  config: LookupConfig,
+  deps: LookupDeps,
+  signal: AbortSignal,
+): Promise<ProjectInfo> {
+  const cached = deps.cache?.projects.get(config.projectId);
+  if (cached && cached.apiKey === config.apiKey) return cached;
+
+  const items = await listItems(entitlementsUrl(config.projectId), config, deps, signal, false);
+  let plusId: string | null = null;
+  for (const item of items ?? []) {
+    if (typeof item !== 'object' || item === null) continue;
+    const e = item as { id?: unknown; lookup_key?: unknown };
+    if (e.lookup_key === PLUS_ENTITLEMENT_ID && typeof e.id === 'string' && e.id !== '') {
+      plusId = e.id;
+      break;
+    }
+  }
+  const info: ProjectInfo = { apiKey: config.apiKey, plusId };
+  if (plusId !== null) deps.cache?.projects.set(config.projectId, info);
+  return info;
+}
+
 async function plusEntitlementId(
   config: LookupConfig,
   deps: LookupDeps,
   signal: AbortSignal,
 ): Promise<string> {
-  const cached = deps.cache?.plusEntitlementIds.get(config.projectId);
-  if (cached) return cached;
-
-  const items = await listItems(entitlementsUrl(config.projectId), config, deps, signal, false);
-  for (const item of items ?? []) {
-    if (typeof item !== 'object' || item === null) continue;
-    const e = item as { id?: unknown; lookup_key?: unknown };
-    if (e.lookup_key === PLUS_ENTITLEMENT_ID && typeof e.id === 'string' && e.id !== '') {
-      deps.cache?.plusEntitlementIds.set(config.projectId, e.id);
-      return e.id;
-    }
-  }
-  throw new LookupFailure('plus_entitlement_not_found');
+  const { plusId } = await readProject(config, deps, signal);
+  if (plusId === null) throw new LookupFailure('plus_entitlement_not_found');
+  return plusId;
 }
 
 async function runLookup(
@@ -270,7 +317,14 @@ async function runLookup(
     signal,
     true,
   );
-  if (items === null) return { status: 'none' };
+  if (items === null) {
+    // A customer 404. "No such customer" only if the key and the project id
+    // are shown to work; a wrong project id 404s the same way, and reading
+    // that as "none" would revoke real subscribers. readProject throws on any
+    // failure, which makes this an error.
+    await readProject(config, deps, signal);
+    return { status: 'none' };
+  }
 
   const now = deps.now();
   const active = items

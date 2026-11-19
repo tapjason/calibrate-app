@@ -12,7 +12,9 @@
 //      Without this, users would lose their pre-signin data.
 //
 // Layer rule: L4 (state). May import from L2 (db) and L5 (services): the
-// Supabase client, and one function of the reminder scheduler after a wipe.
+// Supabase client, two functions of the reminder scheduler (after a wipe, and
+// on leaving an account), and the cache sweeps of the share, export and icon
+// modules (after a wipe).
 //
 // Tests inject a fake Supabase client via setSupabaseClientForTests, then
 // call initialize() and exercise the onAuthStateChange callback directly.
@@ -29,15 +31,18 @@ import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
 } from '@/db/migrateGuestData';
-import { dismissDeliveredNotifications } from '@/notifications/scheduler';
+import {
+  dismissDeliveredNotifications,
+  dismissDeliveredReminderWords,
+} from '@/notifications/scheduler';
 import { deleteAccountOnServer } from '@/supabase/account';
 import * as auth from '@/supabase/auth';
-import type { AuthOutcome, SignUpOutcome } from '@/supabase/auth';
+import type { AuthOutcome, SignOutOutcome, SignUpOutcome } from '@/supabase/auth';
 import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '@/supabase/client';
-import { syncNow } from '@/supabase/sync';
+import { clearSyncCursor, syncNow } from '@/supabase/sync';
 
 import { useCategoryStore } from './categoryStore';
 import { useLogDraftStore } from './logDraftStore';
@@ -100,8 +105,14 @@ interface AuthState {
    * Sign out. Local predictions stay on the device under the account's id —
    * the app drops back to an empty guest view, and signing back in shows
    * everything again. Nothing is lost, so nothing asks for confirmation.
+   *
+   * Always ends the session on this phone when it can: with no connection
+   * the server never hears, and the outcome says `localOnly`. `{ ok: false }`
+   * only when even this phone's copy couldn't be removed; the app then stays
+   * signed in. Reminders already delivered that show a prediction's words
+   * leave the lock screen either way.
    */
-  signOut: () => Promise<AuthOutcome>;
+  signOut: () => Promise<SignOutOutcome>;
   /**
    * Delete the signed-in account (docs/ACCOUNT_SPEC.md §3.2). The server
    * deletes first; only on its confirmation is this device wiped and the
@@ -121,6 +132,60 @@ interface AuthState {
 let authSubscription: Subscription | null = null;
 let didInitialize = false;
 let lastUserId: string | null = null;
+
+/**
+ * An error as the device log may carry it: its code and message, never the
+ * object (security review, 2026-11-18).
+ */
+function errorForLog(e: unknown): string {
+  if (typeof e !== 'object' || e === null) return 'unknown error';
+  const { code, message } = e as { code?: unknown; message?: unknown };
+  const parts: string[] = [];
+  if (typeof code === 'string' || typeof code === 'number') parts.push(`[${code}]`);
+  if (typeof message === 'string') parts.push(message);
+  return parts.length > 0 ? parts.join(' ') : 'unknown error';
+}
+
+/**
+ * Drop the Coach's cards and its last answer: they were about the account
+ * that was signed in (security review, 2026-11-18). Lazy, because coachStore
+ * → analytics/track → authStore would be a fourth require cycle at module
+ * load (docs/tooling-notes.md). Never throws.
+ */
+function resetCoach(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { useCoachStore } = require('./coachStore') as typeof import('./coachStore');
+    useCoachStore.getState().reset();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not clear the Coach:', errorForLog(e));
+  }
+}
+
+/**
+ * Delete the copies this app leaves in the phone's cache folders: CSV exports
+ * (every title and reflection), share-card images, and the icon picker's
+ * pictures (security review, 2026-11-18). For Erase and account deletion.
+ * Not awaited: no wipe waits on the file system, and each sweep swallows its
+ * own errors. Lazy, so the native image modules load only when used.
+ */
+function sweepCachedCopies(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { sweepExportFiles } = require('@/export/file') as typeof import('@/export/file');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { sweepShareCaptures } = require('@/share/export') as typeof import('@/share/export');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { sweepIconImageFiles } = require('@/media/iconImage') as typeof import('@/media/iconImage');
+    for (const sweep of [sweepExportFiles, sweepShareCaptures, sweepIconImageFiles]) {
+      void sweep().catch(() => {});
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] could not sweep the cache:', errorForLog(e));
+  }
+}
 
 /**
  * Reload the predictions and stats stores for the newly-active user. Called
@@ -192,6 +257,10 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
   const prevUserId = lastUserId;
   lastUserId = next.userId;
 
+  // Another account, or none: the Coach's cards go before the new state
+  // shows, so one account's never draw under the next one's.
+  if (prevUserId !== next.userId) resetCoach();
+
   // Guest→authenticated transition: move local rows over to the real id
   // before reloading the stores, so the reload sees the merged data.
   if (
@@ -210,7 +279,7 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
       // Don't block sign-in on migration failure — the session is valid,
       // we just couldn't carry guest data forward.
       // eslint-disable-next-line no-console
-      console.warn('[auth] guest data migration failed:', e);
+      console.warn('[auth] guest data migration failed:', errorForLog(e));
     }
   }
 
@@ -223,6 +292,10 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
     // draft is that person's words, not the next one's (step 173; code review
     // 2026-11-12). A guest signing in keeps it, as their predictions go along.
     if (prevUserId && prevUserId !== LOCAL_GUEST_USER_ID) {
+      // And reminders on the lock screen showing its words go too, however
+      // the session ended: a sign-out, or one that expired (security review,
+      // 2026-11-18). Not awaited, and never throws.
+      void dismissDeliveredReminderWords().catch(() => {});
       await useLogDraftStore.getState().clear();
       useResolveRunStore.getState().clear();
     }
@@ -230,7 +303,7 @@ async function handleSession(session: Session | null, set: (s: Partial<AuthState
       await reloadForUser(next.userId);
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn('[auth] post-signin store reload failed:', e);
+      console.warn('[auth] post-signin store reload failed:', errorForLog(e));
     }
   }
 
@@ -282,7 +355,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Shouldn't happen given isSupabaseConfigured passed, but if it does,
       // degrade gracefully to guest mode so the offline loop still works.
       // eslint-disable-next-line no-console
-      console.warn('[auth] Supabase client unavailable, running as guest:', e);
+      console.warn('[auth] Supabase client unavailable, running as guest:', errorForLog(e));
       lastUserId = LOCAL_GUEST_USER_ID;
       set({ ...GUEST_STATE });
       return;
@@ -328,7 +401,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     withPending(set, () => auth.signUpWithEmail(email, password)),
   signInWithApple: () => withPending(set, () => auth.signInWithApple()),
   signInWithGoogle: () => withPending(set, () => auth.signInWithGoogle()),
-  signOut: () => withPending(set, () => auth.signOut()),
+  signOut: () =>
+    withPending(set, async (): Promise<SignOutOutcome> => {
+      const outcome = await auth.signOut();
+      if (outcome.ok) {
+        // The session is gone from this phone. Supabase has usually said so
+        // already (SIGNED_OUT, then handleSession); when only this phone
+        // could end it, nothing did. Either way the app follows now: billing
+        // logs out and drops to free, reminders still to come are cancelled
+        // with the reload, the Log draft and the answer run are cleared.
+        // handleSession does nothing twice for the same id.
+        try {
+          await handleSession(null, set);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[auth] moving to the guest after sign-out failed:', errorForLog(e));
+        }
+      }
+      // Whatever happened, reminders on the lock screen showing a
+      // prediction's words go: the person asked to leave.
+      void dismissDeliveredReminderWords().catch(() => {});
+      return outcome;
+    }),
 
   deleteAccount: () =>
     withPending(set, async (): Promise<AuthOutcome> => {
@@ -345,9 +439,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const outcome = await deleteAccountOnServer(appleCode);
       if (!outcome.ok) return outcome;
 
-      // The account is gone. From here nothing may report failure — the
+      // The account is gone: the function said so, or the auth server said
+      // afterwards that the user no longer exists (src/supabase/account.ts).
+      // From here nothing may report failure — the
       // user's request has been carried out, and "try again" would hit a
       // deleted account. A local step that fails is logged and passed over.
+      // The Coach's cards first: they were about the account.
+      resetCoach();
       try {
         // The categories left off the card were about the erased record:
         // any can be left off now, so a kept choice could empty a new card
@@ -365,13 +463,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         useResolveRunStore.getState().clear();
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('[auth] local wipe after account deletion failed:', e);
+        console.warn('[auth] local wipe after account deletion failed:', errorForLog(e));
       }
-      // Local, not global: every server session died with the user. This
-      // fires onAuthStateChange, which returns the app to an empty guest and
-      // lets billing log out and drop Plus.
+      // Outside the wipe's try, so a failed wipe still clears them: the
+      // per-user sync cursor (ACCOUNT_SPEC §3.4) and the copies in the cache.
+      await clearSyncCursor(userId);
+      sweepCachedCopies();
+      // Local, not global: every server session died with the user. The
+      // server answers it with a 401 or 403, which supabase-js takes as
+      // signed out; with no connection the session is removed here alone
+      // (src/supabase/auth.ts). Then the app follows: an empty guest, and
+      // billing logs out and drops Plus.
       const signedOut = await auth.signOutLocal();
-      if (!signedOut.ok) {
+      if (signedOut.ok) {
+        try {
+          await handleSession(null, set);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[auth] moving to the guest after deletion failed:', errorForLog(e));
+        }
+      } else {
         // eslint-disable-next-line no-console
         console.warn('[auth] local sign-out after account deletion failed:', signedOut.error);
       }
@@ -404,10 +515,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // reload, which cancels the reminders still to come, and not awaited:
         // Erase never waits on the lock screen (code review, 2026-11-15).
         void dismissDeliveredNotifications().catch(() => {});
+        // So were the copies in the cache folders, and anything the Coach
+        // still showed. Neither is waited on.
+        sweepCachedCopies();
+        resetCoach();
         return { ok: true };
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('[auth] erase failed:', e);
+        console.warn('[auth] erase failed:', errorForLog(e));
         return { ok: false, error: "Couldn't finish erasing your data. Try again." };
       }
     }),

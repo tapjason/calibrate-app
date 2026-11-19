@@ -116,7 +116,7 @@ async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
       return rows.length;
     } catch (batchErr) {
       // eslint-disable-next-line no-console
-      console.warn('[analytics] batch push failed, falling back to per-row:', batchErr);
+      console.warn('[analytics] batch push failed, falling back to per-row:', errorForLog(batchErr));
       let pushed = 0;
       const done: string[] = [];
       for (const row of rows) {
@@ -138,9 +138,23 @@ async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
     }
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[analytics] flush failed:', e);
+    console.warn('[analytics] flush failed:', errorForLog(e));
     return 0;
   }
+}
+
+/**
+ * An error as the device log may carry it: its code and message. Never the
+ * object: a Postgres error's `details` repeat the failing row, the user id
+ * included (security review, 2026-11-18).
+ */
+function errorForLog(e: unknown): string {
+  if (typeof e !== 'object' || e === null) return 'unknown error';
+  const { code, message } = e as { code?: unknown; message?: unknown };
+  const parts: string[] = [];
+  if (typeof code === 'string' || typeof code === 'number') parts.push(`[${code}]`);
+  if (typeof message === 'string') parts.push(message);
+  return parts.length > 0 ? parts.join(' ') : 'unknown error';
 }
 
 /** Postgres unique-violation, i.e. this row is already on the server. */

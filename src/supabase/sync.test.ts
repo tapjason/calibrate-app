@@ -20,6 +20,7 @@ import type { Prediction, PredictionWireRow } from '@/types';
 import {
   CursorStore,
   __resetSyncStateForTests,
+  clearSyncCursor,
   pullRemote,
   pushDirty,
   syncNow,
@@ -142,9 +143,23 @@ function makeFakeClient(opts: {
   };
 
   return {
-    client: { from } as unknown as SupabaseClient,
+    client: { from, auth: sessionOf('user-aaa') } as unknown as SupabaseClient,
     upsertCalls,
     selectCalls,
+  };
+}
+
+/**
+ * The client's auth, holding `userId`'s session: a sweep checks it is still
+ * the account it started for before each request (security review,
+ * 2026-11-18).
+ */
+function sessionOf(userId: string | null) {
+  return {
+    getSession: async () => ({
+      data: { session: userId ? { user: { id: userId } } : null },
+      error: null,
+    }),
   };
 }
 
@@ -429,6 +444,7 @@ describe('syncNow', () => {
 
     const upsertCalls: PredictionWireRow[][] = [];
     const client = {
+      auth: sessionOf('user-aaa'),
       from: () => ({
         select: () => ({
           eq: () => ({
@@ -483,5 +499,176 @@ describe('sync integration with the predictions table', () => {
 
     const pending = await listPendingPredictions('user-aaa');
     expect(pending.map((p) => p.id)).toContain('pulled');
+  });
+});
+
+// ----------------------------------------------------------------------------
+// Security review, 2026-11-18: a sweep belongs to the account it started for
+// ----------------------------------------------------------------------------
+
+describe('a sweep whose account changes mid-way', () => {
+  /** The session's user for each check, in order; the last one repeats. */
+  function sessionsInTurn(...ids: Array<string | null>) {
+    const seen: Array<string | null> = [];
+    return {
+      seen,
+      sessionUserId: jest.fn(async () => {
+        const id = ids.length > 1 ? ids.shift()! : ids[0];
+        seen.push(id);
+        return id;
+      }),
+    };
+  }
+
+  it('sends nothing more once the session is another account', async () => {
+    await insertPrediction(localPrediction({ id: 'l1' }));
+    const remote = wire({ id: 'r1', updated_at: '2026-05-20T00:00:00.000Z' });
+    const { client, upsertCalls, selectCalls } = makeFakeClient({
+      selectResult: { data: [remote], error: null },
+    });
+    const recompute = jest.fn().mockResolvedValue(undefined);
+    // user-aaa started it; by the pull, the phone holds user-bbb's session.
+    const { sessionUserId } = sessionsInTurn('user-bbb');
+
+    const result = await syncNow('user-aaa', {
+      client,
+      cursorStore: makeInMemoryCursorStore(),
+      recompute,
+      sessionUserId,
+    });
+
+    expect(result).toEqual({ pulled: 0, pushed: 0 });
+    expect(upsertCalls).toHaveLength(0);
+    expect(selectCalls[0].limit).toBeUndefined();
+    expect(recompute).not.toHaveBeenCalled();
+    // Still dirty, for user-aaa's next sweep.
+    expect((await listDirtyPredictions('user-aaa')).map((r) => r.id)).toEqual(['l1']);
+  });
+
+  it('stops after a sign-out, when the session is gone', async () => {
+    await insertPrediction(localPrediction({ id: 'l1' }));
+    const { client, upsertCalls } = makeFakeClient();
+    const { sessionUserId } = sessionsInTurn('user-aaa', null);
+
+    await syncNow('user-aaa', {
+      client,
+      cursorStore: makeInMemoryCursorStore(),
+      recompute: jest.fn(),
+      sessionUserId,
+    });
+    expect(upsertCalls).toHaveLength(0);
+  });
+
+  it('stops the per-row fallback at the row where the account changed', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await insertPrediction(localPrediction({ id: 'a' }));
+    await insertPrediction(localPrediction({ id: 'b' }));
+    const { client, upsertCalls } = makeFakeClient({
+      upsertResults: [{ error: { message: 'batch failed' } }, { error: null }, { error: null }],
+    });
+    // The batch and the first row go under user-aaa; then the session changes.
+    const checks = ['user-aaa', 'user-aaa', 'user-bbb'];
+    const stillCurrent = jest.fn(async () => checks.shift() === 'user-aaa');
+
+    const pushed = await pushDirty('user-aaa', client, stillCurrent);
+    expect(pushed).toBe(1);
+    // The batch, then one row: nothing after the change.
+    expect(upsertCalls).toHaveLength(2);
+    expect(await listDirtyPredictions('user-aaa')).toHaveLength(1);
+    jest.restoreAllMocks();
+  });
+
+  it("pushes nothing by default when the client's session is someone else's", async () => {
+    await insertPrediction(localPrediction({ id: 'a' }));
+    const { client, upsertCalls } = makeFakeClient();
+    (client as unknown as { auth: unknown }).auth = sessionOf('user-bbb');
+
+    expect(await pushDirty('user-aaa', client)).toBe(0);
+    expect(upsertCalls).toHaveLength(0);
+  });
+
+  it('reads a session that cannot be read as someone else’s', async () => {
+    await insertPrediction(localPrediction({ id: 'a' }));
+    const { client, upsertCalls } = makeFakeClient();
+    (client as unknown as { auth: unknown }).auth = {
+      getSession: async () => {
+        throw new Error('storage');
+      },
+    };
+
+    expect(await pushDirty('user-aaa', client)).toBe(0);
+    expect(upsertCalls).toHaveLength(0);
+  });
+});
+
+describe('what a failed push writes to the log', () => {
+  it("carries the error's code and message, never its details, hint or the row", async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await insertPrediction(localPrediction({ id: 'a', title: 'See Dr. Patel about the lump' }));
+    const postgresError = {
+      code: '23514',
+      message: 'new row for relation "predictions" violates check constraint "predictions_confidence_check"',
+      details: 'Failing row contains (a, user-aaa, See Dr. Patel about the lump, health, 101, ...).',
+      hint: 'value: See Dr. Patel about the lump',
+    };
+    const { client } = makeFakeClient({
+      upsertResults: [{ error: postgresError }, { error: postgresError }],
+    } as never);
+
+    await pushDirty('user-aaa', client);
+
+    const logged = JSON.stringify(warn.mock.calls);
+    expect(logged).toContain('23514');
+    expect(logged).toContain('violates check constraint');
+    expect(logged).not.toContain('Patel');
+    expect(logged).not.toContain('Failing row');
+    expect(logged).not.toContain('user-aaa');
+    jest.restoreAllMocks();
+  });
+});
+
+describe('clearSyncCursor', () => {
+  it("forgets the user's cursor and no one else's", async () => {
+    const store = makeInMemoryCursorStore();
+    const withRemove: CursorStore = {
+      ...store,
+      async remove(userId) {
+        store.storage.delete(userId);
+      },
+    };
+    await withRemove.set('user-aaa', '2026-05-20T00:00:00.000Z');
+    await withRemove.set('user-bbb', '2026-05-21T00:00:00.000Z');
+
+    await clearSyncCursor('user-aaa', withRemove);
+    expect(store.storage.has('user-aaa')).toBe(false);
+    expect(store.storage.get('user-bbb')).toBe('2026-05-21T00:00:00.000Z');
+  });
+
+  it('removes the AsyncStorage key the pull writes, by default', async () => {
+    const removeItem = jest.fn(async () => {});
+    await jest.isolateModulesAsync(async () => {
+      jest.doMock('@react-native-async-storage/async-storage', () => ({
+        __esModule: true,
+        default: { getItem: jest.fn(), setItem: jest.fn(), removeItem },
+      }));
+      const sync = require('./sync') as typeof import('./sync');
+      await sync.clearSyncCursor('user-aaa');
+    });
+    expect(removeItem).toHaveBeenCalledWith('calibrate:sync_cursor:user-aaa');
+  });
+
+  it('never throws', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const failing: CursorStore = {
+      get: async () => null,
+      set: async () => {},
+      remove: async () => {
+        throw new Error('storage');
+      },
+    };
+    await expect(clearSyncCursor('user-aaa', failing)).resolves.toBeUndefined();
+    // A store without remove (an older fake) is a no-op.
+    await expect(clearSyncCursor('user-aaa', makeInMemoryCursorStore())).resolves.toBeUndefined();
+    jest.restoreAllMocks();
   });
 });

@@ -6,9 +6,11 @@
 // Contract:
 //   POST { event: RevenueCatEvent }
 //   Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>   // shared secret
-//   200 { ok: true, action }   — handled, or deliberately ignored
+//   200 { ok: true, action }   — handled, or deliberately ignored (exactly
+//                                200: RevenueCat counts anything else as failed)
 //   401 { error }              — missing or wrong secret
 //   400 { error }              — unparseable body
+//   413 { error }              — body over 32 KB
 //   500 { error }              — misconfigured, a RevenueCat lookup failed, or
 //                                the write failed (RevenueCat retries)
 //
@@ -24,17 +26,20 @@
 //   # then paste the function URL + the same secret into
 //   # RevenueCat -> Project settings -> Integrations -> Webhooks
 //
-// TRANSFER (step 189): the event names users but carries no entitlement, so
-// each Supabase user it names is looked up in RevenueCat
-// (../_shared/revenuecatLookup.ts) and written as RevenueCat says. That needs
+// Lookups: a TRANSFER (step 189), a CANCELLATION, a REFUND_REVERSED and a few
+// others (security review, 2026-11-18; ./entitlementFromEvent.ts says which and
+// why) are decided by asking RevenueCat what each Supabase user owns now
+// (../_shared/revenuecatLookup.ts) and writing that. That needs
 // REVENUECAT_READ_KEY (a v2 secret key with customer_information:customers:read
 // and project_configuration:entitlements:read, nothing else) and
-// REVENUECAT_PROJECT_ID. Without them a TRANSFER answers 500, so RevenueCat
-// retries and its dashboard shows the failure.
+// REVENUECAT_PROJECT_ID. Without them those events answer 500, so RevenueCat
+// retries and its dashboard shows the failure; a refund is written as free
+// first.
 //
-// Everything decided here is decided in ./entitlementFromEvent.ts, which is
-// plain TypeScript with no Deno imports so Jest can test it. This file is the
-// transport: check the secret, parse, look up when told to, write, answer.
+// Everything decided here is decided in ./entitlementFromEvent.ts and run by
+// ./handleEvent.ts, plain TypeScript with no Deno imports so Jest can test
+// them. This file is the transport: check the secret, cap and parse the body,
+// hand over the real lookup and the real write, answer.
 
 // @ts-expect-error — Deno-only import; the Supabase Edge Runtime resolves it.
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -43,8 +48,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 // project's tsconfig (TS5097), the same shape of conflict as the npm: imports
 // above. The module itself is fully typechecked — it is imported without the
 // extension by its Jest test.
+import type { WriteOutcome } from './handleEvent.ts';
 // @ts-expect-error — Deno module resolution, not TypeScript's.
-import { decideFromEvent } from './entitlementFromEvent.ts';
+import { handleWebhookEvent } from './handleEvent.ts';
 import type { EntitlementWrite } from '../_shared/revenuecatLookup.ts';
 import {
   createLookupCache,
@@ -52,7 +58,6 @@ import {
   lookupPlus,
   readLookupConfig,
   toRpcArgs,
-  writeFromLookup,
   // @ts-expect-error — Deno module resolution, not TypeScript's.
 } from '../_shared/revenuecatLookup.ts';
 
@@ -61,7 +66,10 @@ const env = Deno.env;
 
 const MAX_BODY_BYTES = 32_000;
 
-/** The plus entitlement's RevenueCat id, read once per isolate. */
+/**
+ * The project's entitlements list (the plus entitlement's RevenueCat id, and
+ * proof the key and project id work), read once per isolate.
+ */
 const lookupCache = createLookupCache();
 
 const json = (body: unknown, status = 200) =>
@@ -111,89 +119,46 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'bad_request' }, 400);
   }
 
-  const decision = decideFromEvent(body, Date.now(), {
-    ignoreSandbox: env.get('REVENUECAT_IGNORE_SANDBOX') === 'true',
-  });
-
-  // An ignored event is a success. Returning anything else makes RevenueCat
-  // retry a delivery that will never do anything, forever.
-  if (decision.action === 'ignore') {
-    console.log('[revenuecat] ignored:', decision.reason);
-    return json({ ok: true, action: 'ignored', reason: decision.reason });
+  const supabaseUrl = env.get('SUPABASE_URL');
+  const serviceRoleKey = env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('[revenuecat] Supabase env vars not set');
+    return json({ error: 'not_configured' }, 500);
   }
+  // Made on first use: an ignored event never needs it.
+  let admin: ReturnType<typeof createClient> | null = null;
+  const lookupConfig = readLookupConfig((name: string) => env.get(name));
 
-  // The writes to make: one straight from the event, or, for a TRANSFER, one
-  // per user named, each as RevenueCat says now.
-  let writes: EntitlementWrite[];
-  if (decision.action === 'lookup') {
-    // Every lookup first, so a failure writes nothing and the retry starts
-    // clean. The event's own timestamp is the cursor for all of them.
-    const config = readLookupConfig((name: string) => env.get(name));
-    writes = [];
-    for (const userId of decision.lookupUserIds) {
-      const result = await lookupPlus(userId, config, {
+  const reply = await handleWebhookEvent(body, {
+    now: Date.now,
+    options: { ignoreSandbox: env.get('REVENUECAT_IGNORE_SANDBOX') === 'true' },
+    lookup: (userId: string) =>
+      lookupPlus(userId, lookupConfig, {
         fetch,
         now: Date.now,
         cache: lookupCache,
         log: (message: string) => console.error(message),
-      });
-      if (result.status === 'error') {
-        // 500 so RevenueCat retries: a lookup that couldn't answer says
-        // nothing about what this user owns.
-        console.error(`[revenuecat] ${decision.reason}: lookup failed (${result.reason})`);
-        return json({ error: 'lookup_failed' }, 500);
-      }
-      writes.push(writeFromLookup(userId, result, decision.eventMs));
-    }
-  } else if (decision.userId) {
-    writes = [
-      {
-        userId: decision.userId,
-        isPlus: decision.isPlus,
-        source: decision.source,
-        expiresAt: decision.expiresAt,
-        eventMs: decision.eventMs,
-      },
-    ];
-  } else {
-    console.log('[revenuecat] ignored: a write with no user');
-    return json({ ok: true, action: 'ignored', reason: 'no user' });
-  }
-
-  const admin = createClient(
-    env.get('SUPABASE_URL')!,
-    env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
-
-  let written = 0;
-  for (const write of writes) {
+      }),
     // Upsert guarded by the event cursor (migration 004): an event older than
     // the one that last wrote this row is dropped. RevenueCat retries and does
     // not promise ordering, so a late RENEWAL must not resurrect an entitlement
     // that a newer EXPIRATION already ended.
-    const { error } = await admin.rpc('apply_entitlement_event', toRpcArgs(write));
+    write: async (write: EntitlementWrite): Promise<WriteOutcome> => {
+      admin ??= createClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { error } = await admin.rpc('apply_entitlement_event', toRpcArgs(write));
+      // The user is not in auth.users: a deleted account. (Migration 004's
+      // function catches this itself; this covers a live function that doesn't.)
+      if (error && isForeignKeyViolation(error)) return 'no_user';
+      if (error) {
+        console.error('[revenuecat] apply_entitlement_event failed', error);
+        return 'failed';
+      }
+      return 'written';
+    },
+    log: (message: string) => console.log(message),
+  });
 
-    if (error && isForeignKeyViolation(error)) {
-      // The user is not in auth.users: a deleted account. Retrying can never
-      // succeed, so acknowledge it. (Migration 004's function catches this
-      // itself; this covers a live function that doesn't.)
-      console.log(`[revenuecat] no such user ${write.userId}; nothing written`);
-      continue;
-    }
-    if (error) {
-      // 500 so RevenueCat retries. A dropped event here is a subscriber who
-      // paid and can't use what they bought.
-      console.error('[revenuecat] write failed', error);
-      return json({ error: 'write_failed' }, 500);
-    }
-    written++;
-    console.log(
-      `[revenuecat] ${decision.reason} for ${write.userId} (is_plus=${write.isPlus})`,
-    );
-  }
-
-  if (written === 0) {
-    return json({ ok: true, action: 'ignored', reason: 'no such user' });
-  }
-  return json({ ok: true, action: 'written', reason: decision.reason });
+  return json(reply.body, reply.status);
 });

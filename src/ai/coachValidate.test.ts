@@ -4,7 +4,8 @@ import { validateCoachOutput } from './coachValidate';
 
 /**
  * A user with a well-populated finance category (over MIN_N_CATEGORY) and a
- * thin health one, overall past MIN_N_OVERALL.
+ * thin health one, overall past MIN_N_OVERALL. The weekday carries its answer
+ * count (12, past WEEKDAY_MIN_N), as the app sends it from 2026-11-18.
  */
 const CONTEXT: CoachContext = {
   overall: { calibration_rating: 72, total_resolved: 40 },
@@ -29,6 +30,7 @@ const CONTEXT: CoachContext = {
   patterns: [
     { kind: 'weakest_day_of_week', value: 1 },
     { kind: 'weakest_day_score', value: 58 },
+    { kind: 'weakest_day_answers', value: 12 },
   ],
 };
 
@@ -102,11 +104,15 @@ describe('validateCoachOutput — shape', () => {
     expect(out.insights).toEqual([]);
   });
 
+  // Until 2026-11-18 the kept suggestion here was "Try shading finance calls
+  // down by 15." — a figure the context doesn't hold, accepted because only
+  // `evidence` was checked (security review, finding 2). It now drops the
+  // insight (below); the kept one carries no number.
   it('keeps a valid suggestion and drops a malformed one without losing the insight', () => {
     const out = validateCoachOutput(
       {
         insights: [
-          { ...GOOD_INSIGHT, suggestion: 'Try shading finance calls down by 15.' },
+          { ...GOOD_INSIGHT, suggestion: 'Try shading finance calls down a little.' },
           { ...GOOD_INSIGHT, suggestion: 42 },
         ],
         safe: true,
@@ -114,8 +120,25 @@ describe('validateCoachOutput — shape', () => {
       CONTEXT,
     );
     expect(out.insights).toHaveLength(2);
-    expect(out.insights[0].suggestion).toBe('Try shading finance calls down by 15.');
+    expect(out.insights[0].suggestion).toBe('Try shading finance calls down a little.');
     expect(out.insights[1].suggestion).toBeUndefined();
+  });
+
+  it('drops the insight when its suggestion invents a figure', () => {
+    const out = validateCoachOutput(
+      { insights: [{ ...GOOD_INSIGHT, suggestion: 'Try shading finance calls down by 15.' }], safe: true },
+      CONTEXT,
+    );
+    expect(out.insights).toEqual([]);
+  });
+
+  it('keeps an over-long suggestion out without losing the insight', () => {
+    const out = validateCoachOutput(
+      { insights: [{ ...GOOD_INSIGHT, suggestion: 'y'.repeat(241) }], safe: true },
+      CONTEXT,
+    );
+    expect(out.insights).toHaveLength(1);
+    expect(out.insights[0].suggestion).toBeUndefined();
   });
 });
 
@@ -477,15 +500,28 @@ describe('validateCoachOutput — out of domain', () => {
     expect(out.insights).toEqual([]);
   });
 
+  // The suggestion was "Try stating finance calls 15 points lower." until
+  // 2026-11-18: 15 is in no figure (security review, finding 2), so that one
+  // now drops the insight, and the kept note carries no invented number.
   it('keeps a calibration note about a sensitive category', () => {
     const out = validateCoachOutput(
       insight(
         'Your finance predictions run overconfident — 80% stated, 55% actual.',
-        { suggestion: 'Try stating finance calls 15 points lower.' },
+        { suggestion: 'Try stating finance calls lower when you feel very sure. Not a substitute for professional advice.' },
       ),
       CONTEXT,
     );
     expect(out.insights).toHaveLength(1);
+  });
+
+  it('drops a calibration note whose suggestion invents a gap', () => {
+    const out = validateCoachOutput(
+      insight('Your finance predictions run overconfident — 80% stated, 55% actual.', {
+        suggestion: 'Try stating finance calls 15 points lower.',
+      }),
+      CONTEXT,
+    );
+    expect(out.insights).toEqual([]);
   });
 
   it('does not trip on ordinary calibration language containing numbers', () => {
@@ -559,5 +595,79 @@ describe('validateCoachOutput — evidence source', () => {
     // Still grounded and still shown — just without a receipt line.
     expect(out.insights).toHaveLength(1);
     expect(out.insights[0].evidence_source).toBeUndefined();
+  });
+
+  // Security review 2026-11-18, finding 4: the weekday index is a day, not a
+  // figure, so it grounds nothing and is never a receipt.
+  it('never names the weekday index as a source', () => {
+    const out = validateCoachOutput(
+      {
+        insights: [
+          { type: 'pattern', category: 'overall', message: 'Mondays calibrate worst.', evidence: 1 },
+        ],
+        safe: true,
+      },
+      CONTEXT,
+    );
+    expect(out.insights).toEqual([]);
+  });
+});
+
+// The words are checked as they render (NFKC), and shown as they were checked.
+describe('validateCoachOutput — normalised text', () => {
+  it('returns the message as checked: fullwidth digits read and shown as plain digits', () => {
+    const out = validateCoachOutput(
+      {
+        insights: [
+          { ...GOOD_INSIGHT, message: 'Your finance predictions run overconfident — ８０% stated.' },
+        ],
+        safe: true,
+      },
+      CONTEXT,
+    );
+    expect(out.insights).toHaveLength(1);
+    expect(out.insights[0].message).toBe('Your finance predictions run overconfident — 80% stated.');
+  });
+
+  it('checks a fullwidth figure like any other: an invented one drops the insight', () => {
+    const out = validateCoachOutput(
+      { insights: [{ ...GOOD_INSIGHT, message: 'Finance runs overconfident: ３０% happened.' }], safe: true },
+      CONTEXT,
+    );
+    expect(out.insights).toEqual([]);
+  });
+});
+
+// A build from before 2026-11-18 sends no weekday answer count, and its
+// weekday came from as few as 5 answers on the day: its score is never cited.
+describe('validateCoachOutput — a context from an older build', () => {
+  const older: CoachContext = {
+    ...CONTEXT,
+    patterns: [
+      { kind: 'weakest_day_of_week', value: 1 },
+      { kind: 'weakest_day_score', value: 58 },
+    ],
+  };
+
+  it('does not cite the weekday score without the day’s count', () => {
+    const out = validateCoachOutput(
+      {
+        insights: [
+          {
+            type: 'pattern',
+            category: 'overall',
+            message: 'Your Monday resolutions calibrate worst, at 58.',
+            evidence: 58,
+          },
+        ],
+        safe: true,
+      },
+      older,
+    );
+    expect(out.insights).toEqual([]);
+  });
+
+  it('still takes everything else', () => {
+    expect(validateCoachOutput({ insights: [GOOD_INSIGHT], safe: true }, older).insights).toHaveLength(1);
   });
 });

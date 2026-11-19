@@ -13,7 +13,7 @@ import {
   listPendingDeletions,
   listPendingPredictions,
 } from './predictions';
-import { countRefiles, noteRefile } from './predictions';
+import { countRefiles, noteRefile, refilePrediction } from './predictions';
 import { upsertUserStat, getUserStat, upsertCategoryStat } from './stats';
 import { createTestDb } from './testing';
 
@@ -176,8 +176,14 @@ describe('migrateGuestDataToUser', () => {
 
   // Step 184: the count of answers moved between categories follows them.
   it("moves the guest's count of moved answers", async () => {
-    await insertPrediction(p({ id: 'moved' }));
+    // An answer moved from work to health: a move is noted only once it has
+    // landed on an answered prediction (code review, 2026-11-18).
+    await insertPrediction(
+      p({ id: 'moved', status: 'resolved_no', resolved_at: '2026-02-02T12:00:00.000Z' }),
+    );
+    await refilePrediction('moved', 'health');
     await noteRefile('moved', LOCAL_GUEST_USER_ID, 'work', 'health');
+    expect(await countRefiles(LOCAL_GUEST_USER_ID)).toBe(1);
     await migrateGuestDataToUser('real-user');
     expect(await countRefiles('real-user')).toBe(1);
     expect(await countRefiles(LOCAL_GUEST_USER_ID)).toBe(0);

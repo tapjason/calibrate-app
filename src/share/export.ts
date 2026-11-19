@@ -8,6 +8,11 @@
 //
 // Deps are injectable so tests exercise the real control flow without the
 // native modules, matching the pattern in notifications/scheduler.ts.
+//
+// The PNG is deleted once the share sheet has closed, however it closed
+// (security review, 2026-11-18): a recap card can carry a prediction's words
+// ("Surest call that happened"). Erase and account deletion sweep any left
+// behind (`sweepShareCaptures`).
 
 import type { RefObject } from 'react';
 import { Platform, Share } from 'react-native';
@@ -27,6 +32,31 @@ export interface ShareDeps {
   share(uri: string): Promise<void>;
   /** Open the share sheet on plain text. Optional so older fakes still fit. */
   shareText?(message: string): Promise<void>;
+  /** Delete a captured PNG (react-native-view-shot's releaseCapture). Optional, as above. */
+  release?(uri: string): Promise<void>;
+  /** The files in react-native-view-shot's capture folder. Optional, as above. */
+  listCaptures?(): Promise<Array<{ name: string; uri: string }>>;
+  /** Delete one file `listCaptures` returned. Optional, as above. */
+  deleteCapture?(uri: string): Promise<void>;
+}
+
+/**
+ * The name react-native-view-shot gives a capture on iOS (`result:
+ * 'tmpfile'`): React Native's RCTTempFilePath, a fresh UUID plus the format's
+ * extension, in `tmp/ReactNative/`. The sweep deletes only these.
+ */
+export const CAPTURE_FILE_NAME =
+  /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\.png$/i;
+
+/**
+ * Where react-native-view-shot writes a capture on iOS, from the app's cache
+ * directory: NSTemporaryDirectory() is the container's `tmp/`, beside
+ * `Library/Caches/`, and RCTTempFilePath writes in its `ReactNative/` folder.
+ * Null for any other layout, and then nothing is swept.
+ */
+export function captureDirectoryUri(cacheUri: string): string | null {
+  const match = /^(file:\/\/\/.+\/)Library\/Caches\/?$/.exec(cacheUri);
+  return match ? `${match[1]}tmp/ReactNative/` : null;
 }
 
 let deps: ShareDeps | null = null;
@@ -65,6 +95,37 @@ function defaultDeps(): ShareDeps {
         UTI: 'public.png',
         dialogTitle: 'Share your calibration',
       });
+    },
+    async release(uri) {
+      // The web build has no capture file.
+      if (Platform.OS === 'web') return;
+      // The library's own delete: it removes only a file inside its capture
+      // folder (RNViewShot.mm checks the path).
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { releaseCapture } = require('react-native-view-shot') as {
+        releaseCapture: (uri: string) => void;
+      };
+      releaseCapture(uri);
+    },
+    async listCaptures() {
+      if (Platform.OS === 'web') return [];
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { Directory, File, Paths } = require('expo-file-system') as typeof import('expo-file-system');
+      const dirUri = captureDirectoryUri(Paths.cache.uri);
+      if (!dirUri) return [];
+      const dir = new Directory(dirUri);
+      if (!dir.exists) return [];
+      return dir
+        .list()
+        .filter((entry): entry is InstanceType<typeof File> => entry instanceof File)
+        .map((file) => ({ name: file.name, uri: file.uri }));
+    },
+    async deleteCapture(uri) {
+      if (Platform.OS === 'web') return;
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { File } = require('expo-file-system') as typeof import('expo-file-system');
+      const file = new File(uri);
+      if (file.exists) file.delete();
     },
   };
 }
@@ -150,5 +211,50 @@ export async function shareCard(ref: RefObject<unknown>): Promise<ShareOutcome> 
     // eslint-disable-next-line no-console
     console.warn('[share] share sheet failed:', e);
     return 'failed';
+  } finally {
+    // Once the sheet has closed, sent, cancelled or failed: expo-sharing
+    // resolves `shareAsync` from the sheet's completion handler on iOS, so
+    // the app the person chose has the image by then.
+    await releaseQuietly(d, uri);
   }
+}
+
+/**
+ * Delete every capture left in react-native-view-shot's folder
+ * (`captureDirectoryUri`): files named as `CAPTURE_FILE_NAME` says, nothing
+ * else. For Erase and account deletion. Never throws.
+ */
+export async function sweepShareCaptures(): Promise<void> {
+  const d = getDeps();
+  let files: Array<{ name: string; uri: string }>;
+  try {
+    files = (await d.listCaptures?.()) ?? [];
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[share] could not list captures:', messageOf(e));
+    return;
+  }
+  for (const file of files) {
+    if (!CAPTURE_FILE_NAME.test(file.name)) continue;
+    try {
+      await d.deleteCapture?.(file.uri);
+    } catch (e) {
+      // One that won't go doesn't keep the rest.
+      // eslint-disable-next-line no-console
+      console.warn('[share] could not delete a capture:', messageOf(e));
+    }
+  }
+}
+
+async function releaseQuietly(d: ShareDeps, uri: string): Promise<void> {
+  try {
+    await d.release?.(uri);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[share] could not delete the card image:', messageOf(e));
+  }
+}
+
+function messageOf(e: unknown): string {
+  return e instanceof Error ? e.message : 'unknown error';
 }
