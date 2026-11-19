@@ -248,7 +248,11 @@ badges, the chart, the Brier line, the patterns, Wrapped and the Coach. Logging 
 sure thing, answering it at once and repeating it with "Log it again" bought a
 badge in three minutes, and the share card showed nothing of it (blind playtests
 2026-11-01 run 6 and 2026-11-03 run 4). Derived on every read from `created_at` and
-`resolved_at`, never stored. A correction keeps the first answer's time (D34), so
+`resolved_at`, never stored. **Judged in the zone the prediction was logged in** (D69 f):
+both days are read in the UTC offset stored when it was logged (or reworded, D45), so
+changing the phone's zone before answering can't score a same-day answer; a row with no
+stored offset is read in the phone's zone. The offset syncs once migration 011 is applied
+and `UTC_OFFSET_SYNC` is on. A correction keeps the first answer's time (D34), so
 it can't move an answer to another day. The earliest due date "Pick a date"
 offers is the day after logging; Insights and History say when an answer isn't
 scored. It raises the cost of padding, it doesn't end it: a sure
@@ -463,17 +467,27 @@ many answers were "Can't tell", which the rating leaves out, under "More about y
 - **Answers moved to another category are counted** (D65). Each category's score follows
   where an answer is filed, so a scored Yes or No left in a different category from the
   one it was answered in (`refileCounts`) is counted on Insights under "More about your
-  record" ("1 scored answer was moved to another category after it was answered. Only this
-  phone keeps this count."), on this phone only (`prediction_refiles`, SQLite migration
+  record" ("1 scored answer was moved to another category, before or after it was
+  answered. Only this phone keeps this count.", D69 e), on this phone only (`prediction_refiles`, SQLite migration
   017, never synced). One moved back isn't counted; one deleted after a move is counted
   once, as a deletion. The answer's details say so under the category chips, before a
-  move. A same-day answer or a "Can't tell" isn't counted: neither was scored.
+  move ("Insights counts a scored answer that ends up in a different category from the one
+  it had at the end of the day it was made."). A same-day answer or a "Can't tell" isn't counted: neither was scored.
+- **Category changes on open predictions are counted** (D69 e). From the eve of the due
+  day, on the late-changes line beside date moves and rewordings; earlier ones, when the
+  prediction is then answered in a different category from the one it had before its first
+  change after the day it was made, with the moved answers (`prediction_category_origins`,
+  SQLite migration 019, never synced). A prediction is never counted twice for one move.
+  Edit says so before Save. Sign-out keeps all of these counts (they hold ids and dates,
+  no words); Erase and account deletion clear them.
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
   after its due day, and never less than the correction window after the skip, so
   a mis-tap can still be undone. After that it stays "Can't tell". A Yes or No
   given to it later is an answer like any other: it gets its own 24-hour
   correction window, counted from that answer. There is no way to put any answer back
-  to open.
+  to open, sync included: a stale phone's open copy never reopens an answer given
+  elsewhere (the pull keeps the answered row whole; migration 011's trigger does the same
+  on the server), and its delete can't remove one (the server delete is conditional).
 - **The phone's clock is the clock**: the skip week, the correction window and same-day
   answers are judged by the device's time, which the app accepts, so it works offline; the
   rules raise the cost of padding, they don't end it (D41).
@@ -701,6 +715,23 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
 - On Today as one row under the streak, from the first logged prediction on (not on
   Day 0, where the next thing is the first real prediction). Before the first answer
   it reads "While you wait: today's practice" (D62). Erase clears it.
+
+### 10. Accounts and the data on the phone (D69, security review 2026-11-18/19)
+- **Sign-out removes the account's data from this phone.** It pushes once more, then
+  asks first ("Sign out anyway?") if any change hasn't reached the server or any category
+  the person added or changed lives only on this phone, recounting just before the wipe.
+  The Warm-up, practice, the age range, settings and this phone's integrity counts stay.
+  Signing back in brings the predictions back. `docs/ACCOUNT_SPEC.md` §2 is the detail.
+- **The session lives in the iPhone Keychain** (`expo-secure-store`, this device only,
+  cleared on reinstall), and Sign in with Apple carries a nonce (`expo-crypto`).
+- **Create account is hidden** until a custom mail sender works in Supabase
+  (`EMAIL_SIGN_UP_ENABLED`); Apple, Google and email sign-in for existing accounts stay.
+- **Usage counts wait for consent**: a guest's counts go up only after the Warm-up's first
+  screen has shown its line and switch (`usageNoticeShownAt`); the switch is in You too.
+  Kept on the server 13 months (migration 012).
+- **Server limits** (migrations 010–012): what the public key can write, per-account write
+  limits and a 25 MB text budget, and no answer put back to open. The owner applies them
+  in order from `supabase/README.md`'s checklist.
 
 ---
 

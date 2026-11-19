@@ -11,7 +11,8 @@ step with the app's screens.
 
 HOLD (2026-11-19): this page publishes with the privacy policy (docs/PRIVACY_POLICY.md)
 and carries the same "within 7 days" claim ("Delete my data"), and its sign-out and
-sign-up entries describe round 5's build. Push it only together with the policy, after
+sign-up entries describe the build that carries rounds 5 and 6 (the policy's header,
+step 7). Push it only together with the policy, after
 the owner steps in the policy's header comment are done.
 -->
 
@@ -53,8 +54,9 @@ EMAIL_SIGN_UP_ENABLED = false (src/components/account/emailSignUp.ts; roadmap D6
 Remove or rewrite them when it returns. -->
 
 **Signing out.** You → Sign out first tries to back up anything not yet on our
-server (if something can't be sent, the app asks before going on), then removes
-your account's predictions from this phone. Signing back in brings back what was
+server (if something can't be sent, or you have categories that live only on
+this phone, the app asks before going on), then removes your account's
+predictions from this phone. Signing back in brings back what was
 backed up. Names, icons and hiding you set for categories are kept only on the
 phone, so set them again after signing back in.
 

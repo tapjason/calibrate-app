@@ -88,6 +88,14 @@ export async function migrateGuestDataToUser(
       [newUserId, LOCAL_GUEST_USER_ID],
     );
 
+    // And the category each open prediction had at its first move after the
+    // day it was made (review round 6), so an answer given after signing in
+    // is still counted against it.
+    await db.run(
+      `UPDATE OR IGNORE prediction_category_origins SET user_id = ? WHERE user_id = ?`,
+      [newUserId, LOCAL_GUEST_USER_ID],
+    );
+
     // The guest's own categories (roadmap D39) move with the predictions
     // filed under them; one the account already has keeps the account's.
     await db.run(

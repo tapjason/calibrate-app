@@ -9,10 +9,15 @@ Published at https://tapjason.github.io/calibrate-app/privacy/
 If the app's name changes, update it here. Not legal advice.
 
 DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE ALL OF THESE (revised 2026-11-18
-after the security and policy review, and 2026-11-19 after its round 5). The text below
-is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6 are not
-true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true only of
-the build in step 7.
+after the security and policy review, and 2026-11-19 after its rounds 5 and 6). The text
+below is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6
+are not true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true
+only of the build in step 7.
+
+The owner's database steps are one checklist: supabase/README.md, section "2026-11-19:
+migrations 011 and 012, three redeploys, and the sandbox Plus rows", "Every owner step, in
+order" (it includes the 2026-11-18 section's steps). Steps 1-3b below are its items 1-10
+(steps 1 and 2 are its item 1).
 
 1. Supabase dashboard → Authentication → Configuration → Audit Logs: turn OFF "Write
    audit logs to the database". While it is on, every sign-in writes the person's email,
@@ -20,15 +25,23 @@ the build in step 7.
    nothing ever deletes those rows.
 2. Purge what is already stored: SQL Editor, `delete from auth.audit_log_entries;`, then
    `select count(*) from auth.audit_log_entries;` must return 0.
-3. Apply migration 010 (supabase/README.md, "2026-11-18: migration 010 and two
-   redeploys"). It hashes each guest event id and cuts guest times to the UTC day, which
-   §2 describes.
-3a. Then apply migration 011, after 010 and 010's checks (supabase/README.md, "2026-11-19:
-   migration 011, two redeploys, and the sandbox Plus rows"; 011 refuses to run without
-   010). It adds the three UTC-offset columns §2.2 mentions. §2.2 is worded to be true
-   whether or not they are backed up yet (the app sends them only once UTC_OFFSET_SYNC in
-   src/constants/app.ts is turned on, after 011 is live). When a build with it on ships,
-   §2.2's "If your version of the app backs them up" can become a plain statement.
+3. Apply migration 010 and check it (the checklist's items 2-3, which point at the
+   README's 2026-11-18 section). It hashes each guest event id and cuts guest times to the
+   UTC day, which §2 describes.
+3a. Then apply migration 011 and check it (the checklist's items 4-6; 011 refuses to run
+   without 010). It adds the two UTC-offset columns §2.2 mentions (when a prediction was
+   made, and when it was last reworded). §2.2, "What we never collect" and §7 are worded
+   to be true whether or not they are backed up yet (the app sends them only once
+   UTC_OFFSET_SYNC in src/constants/app.ts is turned on, after 011 is live). When a build
+   with it on ships, the "if your version of the app backs ... up" clauses in §2.2 and
+   "What we never collect" can become plain statements, and the App Privacy form gains the
+   offsets' row (docs/APP_PRIVACY.md, §1). §7's clause about the offsets then needs new
+   words rather than going: turning the flag on re-sends nothing, so a prediction backed up
+   before it, and not changed since, has none on the server to bring back.
+3b. Enable pg_cron, then apply migration 012 and check it (the checklist's items 7-10,
+   with step 7e the day after). §6's "13 months" for usage counts is true only while 012's
+   daily job (purge-old-usage-counts) runs: nothing else deletes them. Keep pg_cron enabled
+   (Supabase: "Disabling the pg_cron extension will permanently delete all Jobs").
 4. Confirm the Supabase plan. "Within 7 days" for logs and backups (§6, §7) is true on
    Free (API logs 1 day, auth logs 24 h, no automatic backups) and on Pro (7 days each)
    without the Point-in-Time Recovery add-on. On Team (14-day backups, 28-day logs) or
@@ -39,20 +52,24 @@ the build in step 7.
 7. Timing: the on-phone claims (sign-out without a connection still ending the session
    on the phone, Erase and deletion clearing the cached exports, card images and
    pictures, the database overwriting deleted text) are true of builds from commit
-   c7bf083 on; TestFlight 1.0.0 build 2 predates them. Round 5's (2026-11-19, uncommitted
-   when this was written) are true only of a build that carries it: sign-out removing the
-   account's data from the phone (§7), the session in the Keychain (§10), and guest counts
-   waiting for the warm-up's notice (§2). The Keychain needs expo-secure-store and the Apple
-   nonce expo-crypto, both native, so that is a new development and TestFlight build.
-   Publish with, or after, that build. Redeploying delete-account (same README section) is
-   not needed for any sentence here, but makes the Apple revocation check live.
-8. The warm-up notice (§2, "only after the warm-up's first screen has shown you a line
-   saying so"): src/components/warmup/usageNotice.ts usageCountsMayGoUp. As written on
-   2026-11-19 it stands in for a saved "notice shown" flag with the Warm-up's own record (a
-   finished Warm-up, an answered question, a kept choice), so a phone that finished the
-   Warm-up on a build from before the notice (TestFlight build 2) counts as having seen
-   it and sends after the update without showing it. A saved flag was being built the same
-   day. Publish only with a build where a phone that never drew the notice sends nothing.
+   c7bf083 on; TestFlight 1.0.0 build 2 predates them. Round 5's (commit 7b5b0ea) and
+   round 6's (2026-11-19, uncommitted when this was written) are true only of a build that
+   carries both: sign-out removing the account's data from the phone, asking first about
+   categories kept only on the phone, and keeping the counts (§7); the session in the
+   Keychain (§10); and guest counts waiting for the warm-up's notice (§2). The Keychain
+   needs expo-secure-store and the Apple nonce expo-crypto, both native, so that is a new
+   development and TestFlight build. Publish with, or after, that build. Redeploying
+   delete-account (the checklist's item 11) is not needed for any sentence here, but makes
+   the Apple revocation check live.
+8. Settled 2026-11-19 (policy re-audit L4; kept so the numbering holds). The warm-up
+   notice (§2, "only after the warm-up's first screen has shown you a line saying so") is
+   a saved stamp: UsageStatsNotice writes usageNoticeShownAt in the settings store when it
+   is drawn, and src/components/warmup/usageNotice.ts usageCountsMayGoUp lets a guest's
+   counts go up only once it is set (commit 7b5b0ea). A phone that finished the Warm-up on
+   an older build (TestFlight build 2) has no stamp, since the notice is on the Warm-up's
+   first screen only, so it sends nothing until it signs in; its queued events then go
+   with the account, as §2.3 says. Erase and account deletion clear the stamp. Nothing to
+   do beyond step 7's build.
 9. Sign-out (§7) removes an account's data only on builds that carry round 5. Rows an
    account left on a phone by signing out on an earlier build (TestFlight build 2 and
    later builds before round 5) stay under that account, out of view, until it signs in
@@ -74,12 +91,14 @@ src/db/account.ts and src/db/client.ts:40-64 (secure_delete), src/age/ageRange.t
 (asks each launch until a band is stored), supabase/migrations/009 (name and picture
 stripped from auth.users and auth.identities).
 Round 5 (2026-11-19): src/store/authStore.ts signOut and eraseAccountHere (push, count
-what's unsynced, ask, end the session, wipe with deviceData: false), src/db/predictions.ts
+what's unsynced, ask, end the session, wipe with deviceData: false; round 6 wipes first,
+below), src/db/predictions.ts
 countUnsynced (dirty predictions and unpushed deletions), src/db/account.ts
 PER_USER_TABLES (what the wipe removes) and src/db/client.ts vacuumAfterWipe,
 src/supabase/authMarkers.ts (a wipe that didn't finish is retried at the next launch),
 src/components/settings/SettingsView.tsx unsyncedSignOutLine ("Signing out removes
-them from this phone"), src/supabase/sessionStorage.ts and client.ts loadKeychain
+them from this phone"; round 6: "…haven't reached the server yet and won't if you sign
+out now." and "…live only on this phone and will be removed."), src/supabase/sessionStorage.ts and client.ts loadKeychain
 (Keychain, AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY, AsyncStorage when the Keychain can't be
 used; a Keychain copy from an earlier install is cleared before the client reads it),
 src/db/migrations/018_utc_offsets.ts and src/constants/app.ts UTC_OFFSET_SYNC (false:
@@ -87,6 +106,20 @@ offsets stored on the phone, not sent), src/components/warmup/UsageStatsNotice.t
 usageNotice.ts with app/_layout.tsx (no flush before the notice), src/db/migrateGuestData.ts
 (queued guest events move to the account at sign-in), src/ai/coachContext.ts (added
 categories left out of by_category; their answers in overall and the weekday pattern).
+Round 6 (2026-11-19): src/engine/sameDay.ts and src/types/index.ts Prediction (two
+offsets, the logging's and the rewording's; no answer offset), src/db/predictions.ts
+(neither offset is pushed while UTC_OFFSET_SYNC is off; a pulled row's are ignored),
+supabase/migrations/011 (two offset columns), src/store/authStore.ts signOut (push, read
+what would be lost, ask, read it again just before the wipe, wipe with
+keepIntegrityCounts, then end the session; keepAccount reloads and syncs when the session
+couldn't end), src/supabase/signOutCheck.ts readAtStake (unsynced changes and
+countLocalOnlyCategories in src/db/categories.ts: added, renamed, given an icon or
+hidden), src/db/account.ts INTEGRITY_COUNT_TABLES (prediction_deletions,
+prediction_postponements, prediction_refiles, prediction_category_origins: ids, dates and
+category ids; kept by sign-out, removed by account deletion, and the guest's by Erase),
+src/db/migrations/019_category_origins.ts, supabase/migrations/012 (a daily pg_cron job
+deletes analytics_events and guest_analytics_events rows received more than 13 months
+before, by the server's received_at; at most 100,000 analytics_events rows per account).
 Public pages read 2026-11-19:
 - Apple, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
   (developer.apple.com/documentation/security/ksecattraccessibleafterfirstunlockthisdeviceonly):
@@ -103,8 +136,16 @@ Public pages read 2026-11-19:
   share crash reports with you, regardless of the device settings".
 - Apple, App privacy details: "You are not responsible for disclosing data collected by
   Apple."
-- §2's and §6's "the country a request came from" in our hosting provider's logs is the
-  policy re-audit's finding N4 (2026-11-19), not a page read here; it is worded as "can".
+- Supabase, "Log sources and fields"
+  (https://supabase.com/docs/guides/observability/log-field-reference): the API gateway's
+  edge_logs carry metadata.request.headers.cf_ipcountry (the cf-ipcountry request header),
+  and "a field is not necessarily populated on every event". That is "the country a
+  request came from" in §2 and §6 (policy re-audit N4), worded "can record".
+- Supabase Cron (https://supabase.com/docs/guides/cron/install): "Disabling the pg_cron
+  extension will permanently delete all Jobs" (step 3b; migration 012 cites the rest).
+- Wikipedia, "UTC+05:45" (https://en.wikipedia.org/wiki/UTC%2B05:45): "The Nepal Standard
+  Time, used in Nepal is based on it", and it lists no other place using that offset
+  ("What we never collect": "some, such as Nepal's, are used by only one country").
 Public pages read 2026-11-18:
 - Supabase sessions (https://supabase.com/docs/guides/auth/sessions): refresh tokens
   "never expire but can only be used once"; sessions last indefinitely by default.
@@ -217,10 +258,12 @@ name you gave it), the confidence you gave it, its due date, how it resolved,
 any reflection you wrote, and when it was made, answered and last changed. We
 store these so you can restore them on another device. We don't read, analyze,
 or share them. On your phone, the app also keeps with each prediction how far
-your phone's time zone was from UTC (in minutes) when you made, answered and
-last reworded it, so that moving to another time zone doesn't change which
-answers count. If your version of the app backs these up, they're stored with
-the prediction on our server too. Your warm-up and daily practice answers are not predictions:
+your phone's time zone was from UTC (in minutes) when you made it and when you
+last reworded it. An answer given on the day you made the prediction doesn't
+count toward your score, and that day is judged where you made it, so moving to
+another time zone doesn't change which answers count. If your version of the
+app backs these offsets up, they're stored with the prediction on our server
+too. Your warm-up and daily practice answers are not predictions:
 the answers themselves stay on your device, signed in or not. What is sent is a
 tally: when you finish the warm-up, its 0–100 score and how many questions it
 had; when you finish a day's practice, how many you got right out of how many
@@ -256,7 +299,12 @@ enforce usage limits.
 Location, contacts, health or fitness data, financial accounts, photos, or your
 device's advertising identifier. The app never asks for your location, and we
 don't work out where you are from your IP address; our hosting provider's
-request logs can record the country a request came from (§6). The app has no
+request logs can record the country a request came from (§6). If your version
+of the app backs up the time-zone offsets in §2.2, our server stores them with
+your predictions. An offset from UTC says roughly where in the world your
+phone's clock was set, and some, such as Nepal's, are used by only one
+country. We use them only to tell which day a prediction was made on, for the
+app's scoring rules, and nothing works out a place from them. The app has no
 crash reporter of its own. Apple may share a report with us when the app
 crashes: for TestFlight testers, and otherwise only if you've chosen in your
 iPhone's settings to share analytics with app developers. A picture you pick as
@@ -329,14 +377,18 @@ only if you turn on **You → Show the words in reminders**. The weekly digest s
 
 ## 6. How long we keep it
 
-- **Your account, backed-up predictions, usage events, purchase status and
-  Coach usage count:** as long as your account exists. Deleting your account
-  deletes them (§7).
+- **Your account, backed-up predictions, purchase status and Coach usage
+  count:** as long as your account exists. Deleting your account deletes them
+  (§7).
+- **Usage events sent with your account (§2.3):** 13 months from when our
+  server receives them; a daily job then deletes them. Deleting your account
+  deletes them sooner (§7).
 - **Sign-in sessions** (with the IP address and user agent in §2.1): until you
   sign out with a connection, which ends every session of your account, or
   delete your account.
-- **Usage counts sent without an account (§2):** kept with no set end date.
-  They carry no account, device or install identifier.
+- **Usage counts sent without an account (§2):** 13 months from when our server
+  receives them; the same daily job then deletes them. They carry no account,
+  device or install identifier.
 - **Our hosting provider's logs:** Supabase keeps logs of requests to our
   server and of sign-ins, which can include your email address, your IP address,
   the country a request came from and the time (and, for a Google sign-in, your
@@ -351,20 +403,11 @@ only if you turn on **You → Show the words in reminders**. The weekly digest s
   without an account, under a random install identifier, stays at RevenueCat.
   Neither holds your email or anything you wrote.
 - **On your phone:** until you delete it (§7), sign out of the account it
-  belongs to (§7), or delete the app. If you delete the app while signed in, iOS
-  may keep your sign-in session in the Keychain (§10); if you install the app
-  again, it doesn't use that session and deletes it.
-
-<!-- OWNER: "kept with no set end date" for the guest counts is what the server does
-today (no job deletes guest_analytics_events). If you'd rather keep them for a set time
-(for example 24 months), schedule the delete first, then change this line. -->
-
-<!-- OWNER: "the country a request came from" in the hosting provider's logs (here and in
-§2) is the policy re-audit's finding N4 (2026-11-19). No public Supabase page read that day
-names the field (supabase.com/docs/guides/telemetry/logs and advanced-log-filtering were
-checked).
-It is worded "can record", so it discloses rather than promises; confirm it from the
-dashboard's log explorer (an edge log's request metadata) or keep it as is. -->
+  belongs to (§7; the counts that only this phone keeps stay until you delete
+  your account on this phone or delete the app), or delete the app. If you
+  delete the app while signed in, iOS may keep your sign-in session in the
+  Keychain (§10); if you install the app again, it doesn't use that session and
+  deletes it.
 
 ## 7. Deleting your account, and signing out
 
@@ -374,9 +417,9 @@ In the app: **You → Delete account** (at the bottom). This permanently deletes
 - all backed-up predictions and reflections,
 - your usage events, purchase status and Coach usage count on our server,
 - and this phone's copy of your data: predictions, categories and their icons,
-  warm-up and practice answers, the age band, a prediction you were still
-  typing, and the exported files, card images and pictures the app left in the
-  phone's cache. Your settings (switches and reminder times), which hold
+  the counts of deleted, late-changed and moved predictions, warm-up and
+  practice answers, the age band, a prediction you were still typing, and the
+  exported files, card images and pictures the app left in the phone's cache. Your settings (switches and reminder times), which hold
   nothing you wrote, stay.
 
 We also ask RevenueCat to delete its record for your account. That step is
@@ -388,11 +431,14 @@ A few copies outlast the deletion for a short time. Our hosting provider's logs
 (including a record of the deletion with your email address) and any backups
 are deleted automatically within 7 days (§6). If you used the Coach, OpenAI may
 keep its copies of your statistics summaries, which carry no account id, for up
-to 30 days (§3). Usage counts sent before you signed in stay, since they carry
-no account, device or install identifier to find them by. Apple keeps its own
-records of your App Store purchases. If your account is also signed in on
-another phone, or its session there ended without signing out there (see
-"Signing out", below), that phone keeps its copy until you delete the app there.
+to 30 days (§3). Usage counts sent before you signed in stay until they're 13
+months old (§6), since they carry no account, device or install identifier to
+find them by. Apple keeps its own records of your App Store purchases. If your
+account is also signed in on another phone, or its session there ended without
+signing out there (see "Signing out", below), that phone keeps its copy until
+you delete the app there. A phone you signed out on keeps the account's counts
+of deleted, late-changed and moved predictions (see "Signing out"), which hold
+no words, until you delete the app there.
 
 If your account uses Sign in with Apple, you're asked to confirm with Apple,
 and our server then revokes Fairly Sure's access to that Apple ID. If you
@@ -409,25 +455,36 @@ will point you there.
 
 **Signing out** (You → Sign out) first tries to send our server any changes
 this phone hasn't backed up yet. If some can't be sent, for example without a
-connection, the app says how many and asks before going on; if you go on, those
-changes are lost.
+connection, or if you have categories that are kept only on this phone (ones
+you added, renamed, gave an icon or hid), the app says how many and asks before
+going on. If you go on, those categories are removed, and those changes don't
+reach our server: a prediction, answer, edit or note that wasn't sent is lost, and a
+deletion that wasn't sent waits on this phone until you sign in to the account
+here again. If anything more of that kind appears before your data is removed,
+the app stops and asks again.
+
+Then your account's data is removed from this phone: its predictions and
+reflections, the categories you added and any names, icons or hiding you set
+for categories, and usage events not yet sent, along with the exported files,
+card images and pictures the app left in the phone's cache. If that can't
+finish at once, the app tries again the next time it opens. The counts of
+deleted, late-changed and moved predictions that only this phone keeps (they
+hold no words) stay on the phone, so signing out and back in doesn't clear them.
 
 It then ends your session on this phone. With a connection, it also ends your
 sessions on every other device. Without one, our server isn't told, but this
 phone no longer holds anything that could use the session; it ends the next
-time you sign out with a connection, or when you delete your account.
+time you sign out with a connection, or when you delete your account. If even
+this phone can't end the session, you stay signed in, and what was backed up
+comes back from our server.
 
-Then your account's data leaves this phone: its predictions and reflections,
-the categories you added and any names, icons or hiding you set for categories,
-the counts of deleted, late-changed and moved predictions that only this phone
-keeps, and usage events not yet sent, along with the exported files, card
-images and pictures the app left in the phone's cache. If that can't finish at
-once, the app tries again the next time it opens. Signing back in brings back
-your predictions and reflections from our server. Category names, icons and
-hiding, and those counts, are kept only on the phone, so they don't come back.
-Your warm-up, daily practice and age band belong to the phone rather than the
-account, and stay, as do your settings. Reminders for the account's predictions
-stop, and any on the lock screen showing a prediction's words are cleared.
+Signing back in brings back your predictions and reflections from our server.
+Category names, icons and hiding are kept only on the phone, so they don't come
+back, and neither do the time-zone offsets in §2.2 unless your version of the
+app backs them up. Your warm-up, daily practice and age band belong to the
+phone rather than the account, and stay, as do your settings. Reminders for the
+account's predictions stop, and any on the lock screen showing a prediction's
+words are cleared.
 
 When a phone's session ends some other way, for example because you signed
 out on a different phone, that phone keeps its copy of your data, out of view,
@@ -437,8 +494,8 @@ Without an account, **You → Erase your data on this phone** removes
 everything made on this device without an account, along with the exported
 files, card images and pictures the app left in the phone's cache. Your
 settings (switches and reminder times) stay, and hold nothing you wrote. Erase
-doesn't touch an account's data, which leaves the phone when the account signs
-out, as above.
+doesn't touch an account's data, which is removed from the phone when the
+account signs out, as above, all but the counts that stay.
 
 You can also email tapjason-dev@gmail.com to request deletion or a copy of your data.
 
@@ -487,8 +544,10 @@ version.
 
 <!-- OWNER: this version adds disclosures (sign-in logs, session IP addresses, retention,
 the warm-up and practice tallies; on 2026-11-19 the warm-up notice, the time-zone offsets,
-Apple's crash reports and the country in request logs) and changes what signing out does
-(it now removes the account's data from the phone). The app isn't on the App Store yet, so
+Apple's crash reports, the country in request logs, and after round 6 the 13 months for
+usage counts and what an offset can say about where you are) and changes what signing out
+does (it now removes the account's data from the phone, all but the counts only the phone
+keeps, and asks first about categories kept only there). The app isn't on the App Store yet, so
 no in-app notice seems needed for it; confirm, and remember that §11 promises one for
 later changes. -->
 

@@ -8,11 +8,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { setDbForTests } from '@/db/client';
-import { countUnsynced, insertPrediction, listDirtyPredictions } from '@/db/predictions';
+import {
+  countUnsynced,
+  insertPrediction,
+  listDirtyPredictions,
+  resolvePrediction,
+} from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
 import type { Prediction, PredictionWireRow } from '@/types';
 
-import { __resetSyncStateForTests, PUSH_BATCH_SIZE, pushDirty, pushNow } from './sync';
+import {
+  __resetSyncStateForTests,
+  AT_CAP_RETRY_MS,
+  PUSH_BATCH_SIZE,
+  pushDirty,
+  pushNow,
+} from './sync';
 
 const USER = 'user-aaa';
 
@@ -195,5 +206,81 @@ describe('item 8: a statement refused for a limit (PT429)', () => {
     const { client } = fakeClient({ refused: new Set([idOf(0), idOf(2)]) });
     await expect(pushNow(USER, { client })).resolves.toBe(1);
     expect(await countUnsynced(USER)).toBe(2);
+  });
+});
+
+// Round 6, server re-review LOW-I: a row refused at an account cap was sent
+// again in every sweep, with no backoff. Now it waits an hour (in memory, per
+// account) unless it changes, and stays dirty and counted meanwhile.
+describe('a row refused at an account cap waits before it is sent again', () => {
+  const HOUR = 60 * 60_000;
+
+  it('is not sent again within the hour, and is still counted for sign-out', async () => {
+    await dirtyRows(3);
+    const { client, upserts } = fakeClient({ refused: new Set([idOf(1)]) });
+    await expect(pushDirty(USER, client, async () => true)).resolves.toBe(2);
+    expect(AT_CAP_RETRY_MS).toBe(HOUR);
+
+    upserts.length = 0;
+    await expect(pushDirty(USER, client, async () => true)).resolves.toBe(0);
+    expect(upserts).toEqual([]);
+    expect(await countUnsynced(USER)).toBe(1);
+    // Sign-out's push holds it back too, so the person is asked about it.
+    await expect(pushNow(USER, { client })).resolves.toBe(0);
+    expect(upserts).toEqual([]);
+    expect(await countUnsynced(USER)).toBe(1);
+  });
+
+  it('is sent again once the hour is over', async () => {
+    await dirtyRows(1);
+    const { client, upserts } = fakeClient({ refused: new Set([idOf(0)]) });
+    await pushDirty(USER, client, async () => true);
+    upserts.length = 0;
+
+    const later = Date.now() + HOUR + 1_000;
+    jest.spyOn(Date, 'now').mockReturnValue(later);
+    await pushDirty(USER, client, async () => true);
+    // Sent again (as a batch of one, then alone: a refused batch is always
+    // tried row by row).
+    expect(upserts.length).toBeGreaterThan(0);
+    expect(new Set(upserts.flat().map((r) => r.id))).toEqual(new Set([idOf(0)]));
+  });
+
+  it('is sent again at once when it has changed since', async () => {
+    await dirtyRows(1);
+    const { client, upserts } = fakeClient({ refused: new Set([idOf(0)]) });
+    await pushDirty(USER, client, async () => true);
+    upserts.length = 0;
+
+    // A new updated_at: answered since.
+    await new Promise((r) => setTimeout(r, 5));
+    await resolvePrediction(idOf(0), 'resolved_yes');
+    await pushDirty(USER, client, async () => true);
+    expect(upserts.length).toBeGreaterThan(0);
+    expect(upserts.flat().every((r) => r.id === idOf(0) && r.status === 'resolved_yes')).toBe(true);
+  });
+
+  it('only a cap (PT429) holds a row back; one refused as too large (PT413) is tried at the next push', async () => {
+    await dirtyRows(1);
+    const { client, upserts } = fakeClient({ refused: new Set([idOf(0)]), refusal: tooMany });
+    await pushDirty(USER, client, async () => true);
+    upserts.length = 0;
+    await pushDirty(USER, client, async () => true);
+    expect(upserts.length).toBeGreaterThan(0);
+  });
+
+  it('a row that goes through is no longer held', async () => {
+    await dirtyRows(1);
+    const refused = new Set([idOf(0)]);
+    const { client, upserts } = fakeClient({ refused });
+    await pushDirty(USER, client, async () => true);
+    // The budget freed up, and the hour passed.
+    refused.clear();
+    jest.spyOn(Date, 'now').mockReturnValue(Date.now() + HOUR + 1_000);
+    await expect(pushDirty(USER, client, async () => true)).resolves.toBe(1);
+    expect(await countUnsynced(USER)).toBe(0);
+    upserts.length = 0;
+    await expect(pushDirty(USER, client, async () => true)).resolves.toBe(0);
+    expect(upserts).toEqual([]);
   });
 });

@@ -53,9 +53,13 @@ const SAFE: CrisisScan = { safe: true, topic: null };
 //
 //   "beats me" at or in a named game ("Sam beats me at chess"). A short,
 //   explicit list: never "game", "games" or "sports", which can be a place
-//   or a time ("he beats me at game night").
-const BEATS_ME =
-  'beats me(?!\\s+(?:at|in)\\s+(?:chess|checkers|tennis|padel|squash|badminton|golf|darts|cards|poker|scrabble|wordle|ping[\\s-]?pong|pickleball|mario\\s+kart|catan)\\b)';
+//   or a time ("he beats me at game night"); and never when a place or a
+//   time follows the game ("he beats me at poker night", "at chess club",
+//   "at tennis practice", "at cards at home"), which those words can be the
+//   distress reading of (round 6, 2026-11-19).
+const GAME_THEN_PLACE_OR_TIME =
+  '(?:\\s+|\\s*-\\s*)(?:(?:at|after|before|during|on|in|every|each|last|this|that)\\s+)?(?:nights?|tonight|clubs?|practices?|class(?:es)?|camps?|lessons?|home|work|school)\\b';
+const BEATS_ME = `beats me(?!\\s+(?:at|in)\\s+(?:chess|checkers|tennis|padel|squash|badminton|golf|darts|cards|poker|scrabble|wordle|ping[\\s-]?pong|pickleball|mario\\s+kart|catan)\\b(?!${GAME_THEN_PLACE_OR_TIME}))`;
 //   "cut myself (some) slack".
 const CUT_MYSELF = 'cut(ting)? myself(?!\\s+(?:some\\s+)?slack\\b)';
 //   "breaking down" with a thing as its object ("breaking down the moving

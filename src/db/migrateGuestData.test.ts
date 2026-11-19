@@ -13,7 +13,13 @@ import {
   listPendingDeletions,
   listPendingPredictions,
 } from './predictions';
-import { countRefiles, noteRefile, refilePrediction } from './predictions';
+import {
+  countRefiles,
+  listCategoryOrigins,
+  noteRefile,
+  refilePrediction,
+  rememberCategoryOrigin,
+} from './predictions';
 import { upsertUserStat, getUserStat, upsertCategoryStat } from './stats';
 import { createTestDb } from './testing';
 
@@ -187,5 +193,17 @@ describe('migrateGuestDataToUser', () => {
     await migrateGuestDataToUser('real-user');
     expect(await countRefiles('real-user')).toBe(1);
     expect(await countRefiles(LOCAL_GUEST_USER_ID)).toBe(0);
+  });
+
+  // Review round 6: the category remembered at an open prediction's first
+  // move goes with it, so an answer given after signing in is still counted.
+  it("moves the guest's remembered categories", async () => {
+    await insertPrediction(p({ id: 'moved', category: 'health' }));
+    await rememberCategoryOrigin('moved', LOCAL_GUEST_USER_ID, 'work', 'health', false);
+    await migrateGuestDataToUser('real-user');
+    expect(await listCategoryOrigins('real-user')).toEqual([
+      expect.objectContaining({ prediction_id: 'moved', from_category: 'work' }),
+    ]);
+    expect(await listCategoryOrigins(LOCAL_GUEST_USER_ID)).toEqual([]);
   });
 });

@@ -1,13 +1,16 @@
 # Fairly Sure — App Privacy declarations
 
-**As of:** 2026-11-19 (revised after round 5 of the security review, whose code was uncommitted on `builder/review-2026-11-18` that day; revised after the security and policy review of 2026-11-18; checked against the code after step 187; policy audit of step 180 on 2026-11-15; first written 2026-09-24) · Derived from the code, not from intent.
+**As of:** 2026-11-19 (revised after round 6 of the security review, whose code was uncommitted on `builder/review-2026-11-18` that day, and after round 5, commit `7b5b0ea`; revised after the security and policy review of 2026-11-18; checked against the code after step 187; policy audit of step 180 on 2026-11-15; first written 2026-09-24) · Derived from the code, not from intent.
 
 **Answers that depend on owner steps or a build** (2026-11-19): the guest counts carry a
 hashed id and day-only times only once migration 010 is applied, and wait for the
-Warm-up's notice only in the build that carries round 5; the UTC offsets are sent only
-once migration 011 is applied and `UTC_OFFSET_SYNC` is turned on in a shipped build. The
-Name row is now proposed as **Yes** either way (below; the audit-log steps still matter for
-the privacy policy). The privacy policy's header lists the same steps.
+Warm-up's notice only in the build that carries round 5; the two UTC offsets (the
+logging's and the rewording's) are sent only once migration 011 is applied and
+`UTC_OFFSET_SYNC` is turned on in a shipped build, and from that build the form gains
+their row (§1, the offsets row: Coarse Location is the recommended answer); usage counts
+are deleted after 13 months only once migration 012 is applied and its pg_cron job runs.
+The Name row is now proposed as **Yes** either way (below; the audit-log steps still
+matter for the privacy policy). The privacy policy's header lists the same steps.
 
 This is the answer sheet for App Store Connect → App Privacy, and the source
 for the privacy policy text. Every row cites the file that proves it. If a
@@ -30,10 +33,12 @@ The short version:
   `src/analytics/flush.ts`, `GUEST_EVENT_NAMES`), since step 186 applied
   migration 007 on 2026-11-16; before that nothing left a guest's phone. From
   round 5's build, only after the Warm-up's first screen has shown the line about
-  them and the Usage stats switch (D69 (b); `UsageStatsNotice`,
-  `usageCountsMayGoUp` in `src/components/warmup/usageNotice.ts`, checked before
-  every flush in `app/_layout.tsx`). Once migration 010 is applied, the server
-  replaces each event id with a hash and keeps only the UTC day. Not
+  them and the Usage stats switch (D69 (b); `UsageStatsNotice` saves
+  `usageNoticeShownAt` when it is drawn, and `usageCountsMayGoUp` in
+  `src/components/warmup/usageNotice.ts`, checked before every flush in
+  `app/_layout.tsx`, waits for it). Once migration 010 is applied, the server
+  replaces each event id with a hash and keeps only the UTC day; once migration 012
+  is, a daily job deletes them 13 months after the server received them. Not
   "unlinkable": the request arrives with an IP address (the hosting provider's
   logs), and Postgres internals can still group one batch's rows (§3).
 - **Freetext never reaches the AI.** The one feature that would have sent it,
@@ -48,14 +53,14 @@ The short version:
 | Contact Info → **Email address** | Yes | Yes | No | App Functionality (account + sync) | `src/supabase/auth.ts` — email/password, Sign in with Apple (the email scope only) and Continue with Google (step 192, the system sign-in sheet, no Google SDK) |
 | Contact Info → **Name** | **Proposed: Yes** (the owner's answer to enter) | Yes | No | App Functionality | Google sends a name and a picture URL with the email and Supabase can't be told not to ask. Two triggers remove those keys from `auth.users` and `auth.identities` as the row is written (`supabase/migrations/009_strip_provider_profile.sql`; both confirmed on the live project 2026-11-18). **Why Yes anyway (2026-11-19):** Supabase Auth's audit log stores each sign-in's `actor_name` from `full_name` (the security review, 2026-11-18). Written to the database by default, where nothing deletes it; and **even with "Write audit logs to the database" off** (Authentication → Configuration → Audit Logs) and `auth.audit_log_entries` purged, the audit events still go to Supabase's own log storage, kept 24 hours on Free and 7 days on Pro. Apple counts data as collected when it stays accessible "longer than what is necessary to service the transmitted request in real time" ([App privacy details](https://developer.apple.com/app-store/app-privacy-details/), read 2026-11-19), and a day or a week is longer than that. Linked: the entry carries the account's email and id. Purpose: only signing in; nothing reads the name. Turning the database writes off and purging the table still matters for the privacy policy's "until those are deleted" (§6 there). A test Google sign-in after build 4 confirms the keys are gone from the tables (`HUMAN_VERIFICATION.md` A6) |
 | User Content → **Other User Content** (prediction titles, reflections) | Yes | Yes | No | App Functionality | `PredictionWireRow` (`src/types/index.ts`); `src/supabase/sync.ts` |
-| The **UTC offsets** stored with each prediction (minutes from UTC when it was logged, answered and reworded; D69 (f)) | **Not yet: proposed for when they're sent** (the owner's answer to enter) | Yes | No | App Functionality | Stored on the phone since round 5 (SQLite migration `018_utc_offsets`, `created_utc_offset_min`, `resolved_utc_offset_min`, `title_edited_utc_offset_min`); sent only once Supabase migration 011 adds the columns and `UTC_OFFSET_SYNC` (`src/constants/app.ts`, **false** on 2026-11-19) is turned on in a shipped build, and then in the same `PredictionWireRow` as the prediction. Used only by the same-day rule (`src/engine/sameDay.ts`). **Proposed:** no row of its own, as part of the prediction record under Other User Content (like its timestamps, which no row names); if the owner or `policy-auditor` reads a time-zone offset as a data type of its own, **Other Data Types**, Collected, Linked, App Functionality, and Coarse Location is the stricter reading still. Nothing derives a place from it |
+| Location → **Coarse Location**: the two **UTC offsets** stored with each prediction (minutes from UTC when it was logged and when it was reworded; D69 (f), as refined in round 6) | **No until they're sent; then Yes: the recommended answer** (the owner's to enter, from the build that turns `UTC_OFFSET_SYNC` on) | Yes | No | App Functionality | Stored on the phone (SQLite migration `018_utc_offsets`: `created_utc_offset_min` and `title_edited_utc_offset_min` are written; the column `resolved_utc_offset_min` stays, unused since round 6, and is never sent). Sent only once Supabase migration 011 adds the two columns and `UTC_OFFSET_SYNC` (`src/constants/app.ts`, **false** on 2026-11-19) is turned on in a shipped build, and then in the same `PredictionWireRow` as the prediction, under the account (`src/db/predictions.ts`). Used only by the same-day rule (`src/engine/sameDay.ts`, judged in the zone the prediction was made in) and the late-change exemptions (`src/engine/corrections.ts`); nothing derives a place from them. **Why Coarse Location (the policy auditor's strict reading, 2026-11-19):** some offsets are used by only one country (UTC+05:45, Nepal: the privacy policy's header cites the page), and Apple defines Coarse Location as "Information that describes the location of a user or device with lower resolution than a latitude and longitude with three or more decimal places, such as Approximate Location Services" ([App privacy details](https://developer.apple.com/app-store/app-privacy-details/), read 2026-11-19). Linked: stored with the account's predictions. Purpose: App Functionality ("enable features", Apple's definition), nothing else. The lighter reading, folding them into Other User Content like the prediction's timestamps, is set aside: an offset says more about where the person is than a timestamp does. The privacy policy says so under "What we never collect" while the offsets aren't sent and once they are. Until that build ships, nothing to declare: they stay on the phone |
 | Identifiers → **User ID** | Yes | Yes | No | App Functionality, Analytics | Supabase auth user id; Apple's user identifier for a Sign in with Apple account (the identity token's `sub`, stored as `auth.identities.provider_id`; the privacy policy's "an identifier for your Apple ID"; delete-account compares it with the `sub` Apple returns, `supabase/functions/delete-account/`); Google's account id for a Google sign-in (`auth.identities.provider_id`); passed to RevenueCat as `appUserID`, `src/billing/revenuecat.ts` (`configureBilling`) |
-| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics, App Functionality (the Coach's per-account request count, `supabase/migrations/002_coach_usage.sql`) | `src/analytics/events.ts` — closed catalogue: numbers, yes/no values and fixed labels (`PAYWALL_SOURCES`, `SHARE_SURFACES`); `warmup_completed` carries the Warm-up's 0–100 score and `practice_completed` the number right, guests included. A guest's funnel events carry no account, device or install id (D43), and from round 5's build are sent only after the Warm-up's first screen has shown the notice and switch (D69 (b), `usageCountsMayGoUp`); queued ones move to the account at sign-in (`migrateGuestDataToUser`). Apple asks per data type, and a signed-in person's are linked, so answer **linked** |
-| **IP address** (not a data type of its own) | **Owner's call; see the note** | Yes (where stored with an account) | No | App Functionality (security, keeping the service running) | Stored in three places (2026-11-18): Supabase's request and sign-in logs (1 day on Free, 7 on Pro; auth audit logs 24 hours on Free); and, linked to the account and kept while each session lasts, `auth.sessions.ip` with `user_agent`, written on every token refresh (supabase/auth migration `20231027141322_add_session_refresh_columns`; `RefreshTokenGrant` in `internal/tokens/service.go`); sessions last until a sign-out with a connection or the account's deletion ([Supabase sessions](https://supabase.com/docs/guides/auth/sessions): "By default, it lasts indefinitely"). Supabase's request logs can also record the country a request came from (policy re-audit N4, 2026-11-19; the privacy policy says so); nothing in the app or its functions reads it. Apple: "You collect and store IP address from your users. Declare the relevant data types based on how you use IP address, such as precise location, coarse location, device ID, or diagnostics." Nothing in the app or its functions derives a location from it or uses it for ads or tracking. Candidate answer, kept as proposed, for the owner (or `policy-auditor`) to settle: **Diagnostics → Other Diagnostic Data**, or **Other Data Types**, Collected, Linked, App Functionality; whether the logs' country makes it Coarse Location is part of the same call. RevenueCat's SDK requests also arrive with an IP address (RevenueCat's own records) |
+| Usage Data → **Product Interaction** | Yes | Yes | No | Analytics, App Functionality (the Coach's per-account request count, `supabase/migrations/002_coach_usage.sql`) | `src/analytics/events.ts` — closed catalogue: numbers, yes/no values and fixed labels (`PAYWALL_SOURCES`, `SHARE_SURFACES`); `warmup_completed` carries the Warm-up's 0–100 score and `practice_completed` the number right, guests included. A guest's funnel events carry no account, device or install id (D43), and from round 5's build are sent only after the Warm-up's first screen has shown the notice and switch (D69 (b), `usageCountsMayGoUp`); queued ones move to the account at sign-in (`migrateGuestDataToUser`). Apple asks per data type, and a signed-in person's are linked, so answer **linked**. Kept 13 months (D69, owner 2026-11-19): once migration 012 is applied, a daily `pg_cron` job deletes rows of `analytics_events` and `guest_analytics_events` received more than 13 months earlier, by the server's `received_at`, and an account holds at most 100,000 rows of `analytics_events` (a refused insert, `PT429`, leaves the phone's queue in place; `supabase/migrations/012_usage_counts_retention.sql`) |
+| **IP address** (not a data type of its own) | **Owner's call; see the note** | Yes (where stored with an account) | No | App Functionality (security, keeping the service running) | Stored in three places (2026-11-18): Supabase's request and sign-in logs (1 day on Free, 7 on Pro; auth audit logs 24 hours on Free); and, linked to the account and kept while each session lasts, `auth.sessions.ip` with `user_agent`, written on every token refresh (supabase/auth migration `20231027141322_add_session_refresh_columns`; `RefreshTokenGrant` in `internal/tokens/service.go`); sessions last until a sign-out with a connection or the account's deletion ([Supabase sessions](https://supabase.com/docs/guides/auth/sessions): "By default, it lasts indefinitely"). Supabase's request logs can also record the country a request came from: the API gateway's `edge_logs` carry `metadata.request.headers.cf_ipcountry`, "not necessarily populated on every event" ([Log sources and fields](https://supabase.com/docs/guides/observability/log-field-reference), read 2026-11-19; policy re-audit N4; the privacy policy says so); nothing in the app or its functions reads it. Apple: "You collect and store IP address from your users. Declare the relevant data types based on how you use IP address, such as precise location, coarse location, device ID, or diagnostics." Nothing in the app or its functions derives a location from it or uses it for ads or tracking. Candidate answer, kept as proposed, for the owner (or `policy-auditor`) to settle: **Diagnostics → Other Diagnostic Data**, or **Other Data Types**, Collected, Linked, App Functionality; whether the logs' country makes it Coarse Location is part of the same call (once the offsets are sent, Coarse Location is declared anyway, Linked, App Functionality, the offsets row above, and the logs' country fits under it). RevenueCat's SDK requests also arrive with an IP address (RevenueCat's own records) |
 | Purchases → **Purchase History** | Yes | Yes | No | App Functionality, Analytics (`purchase_completed` carries the plan and trial flags, `src/analytics/events.ts`; RevenueCat's guidance says both) | Apple IAP via RevenueCat; `supabase/functions/revenuecat-webhook/` |
 | Identifiers → Device ID / Advertising | **No** | — | — | — | no ad or attribution SDK in `package.json` |
 | Diagnostics (crash, performance) | **No** | — | — | — | no crash reporter in `package.json`. Apple's own crash reports reach App Store Connect from TestFlight testers ("automatically … regardless of the device settings") and from customers who share analytics with app developers ([Acquiring crash reports](https://developer.apple.com/documentation/xcode/acquiring-crash-reports-and-diagnostic-logs), read 2026-11-19); that is data Apple collects, and Apple: "You are not responsible for disclosing data collected by Apple." The privacy policy says Apple may share them (§2 there) |
-| Health, Financial Info, Location, Contacts, Browsing History, Sensitive Info | **No** | — | — | — | never requested, never collected |
+| Health, Financial Info, Location, Contacts, Browsing History, Sensitive Info | **No** (Location: until the UTC offsets are sent; then Coarse Location, the offsets row above. Precise Location stays No) | — | — | — | never requested, never collected; the app asks for no location permission |
 | Other Data → age range | **No** | — | — | — | Asked of Apple on iOS 26+; only the band is stored on the device and never transmitted (`src/age/ageRange.ts`) |
 
 "Finance" and "health" are *prediction categories the user picks* — a label on
@@ -83,19 +88,28 @@ Linked**, App Functionality. Not settled here.
 Only after sign-in. Predictions sync as `PredictionWireRow` — **including the
 title and the reflection**, because they are the user's own record and have to
 survive a reinstall — and, once migration 011 is applied and `UTC_OFFSET_SYNC` is
-on in a shipped build, the three UTC offsets (§1). Local SQLite stays the source
+on in a shipped build, the two UTC offsets (§1). Local SQLite stays the source
 of truth; sync is last-write-wins, except that an answered prediction never goes
 back to open (the pull merge in `src/db/predictions.ts`, and a trigger in
-migration 011), and every failure is swallowed (`src/supabase/sync.ts`).
+migration 011), and a phone that deleted a prediction without having heard of an
+answer given to it elsewhere doesn't remove that answer: the server delete is
+conditional (only an open row, or one answered no later than the deletion), and the
+deleting phone restores the answered row and drops its tombstone (round 6;
+`pushDeletions` in `src/supabase/sync.ts`, `reconcileTombstoneWithRemote` in
+`src/db/predictions.ts`). Every failure is swallowed (`src/supabase/sync.ts`).
 
-Signing out (round 5, D69 (a)) pushes once more, asks if anything is still
-unsynced, ends the session and then deletes the account's rows from the phone
-(`authStore.signOut`, `docs/ACCOUNT_SPEC.md` §2); signing back in pulls them
-again. The session itself is in the iPhone Keychain (`src/supabase/sessionStorage.ts`,
-`AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`), AsyncStorage on web or when the Keychain
-can't be used. None of that changes what is sent.
+Signing out (rounds 5 and 6, D69 (a)) pushes once more, asks if anything would be
+lost for good (changes not yet on the server, categories only this phone has),
+checks again just before the wipe, deletes the account's rows from the phone except
+this phone's integrity counts (counted deletions, late changes, moved answers and the
+categories remembered for them: ids, dates and category ids, never synced), and then
+ends the session (`authStore.signOut`, `docs/ACCOUNT_SPEC.md` §2); signing back in
+pulls the rows again. The session itself is in the iPhone Keychain
+(`src/supabase/sessionStorage.ts`, `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`), AsyncStorage
+on web or when the Keychain can't be used. None of that changes what is sent.
 
-Analytics events land in `public.analytics_events`, scoped to the user id.
+Analytics events land in `public.analytics_events`, scoped to the user id, kept 13
+months once migration 012 is applied (§1, Product Interaction).
 
 ### OpenAI — two features, both optional, both off the critical path
 
@@ -152,7 +166,8 @@ relay address — the app treats it as any other email).
   install or device id (D43). Once migration 010 is applied, a trigger
   replaces the id with `h_` and 32 hex characters of its SHA-256 and cuts
   `created_at` and `received_at` to the UTC day, and rows already stored are
-  rewritten the same way. **Don't claim the rows can't be linked to each
+  rewritten the same way. Once migration 012 is applied, the daily job deletes
+  them, with signed-in rows, 13 months after `received_at`. **Don't claim the rows can't be linked to each
   other:** Postgres internals can still group one insert's rows, and each
   request reaches the hosting provider with an IP address (its logs: 1 day on
   Free, 7 on Pro). What is true: no account, device or install id, and nothing
@@ -166,11 +181,12 @@ relay address — the app treats it as any other email).
   first screen carries "Fairly Sure sends a few usage counts with no account or
   device id. You can turn this off here or in You." with the Usage stats switch
   (`UsageStatsNotice`), and the root layout flushes only when
-  `usageCountsMayGoUp()` says so: signed in, or the notice seen. Until a saved
-  "notice shown" flag exists (being built 2026-11-19), "seen" is read from the
-  Warm-up's own record (finished, a question answered, a choice kept) or the
-  screen drawn this launch, so a Warm-up finished on a build from before the
-  notice counts as seen; the privacy policy's header holds publishing on that.
+  `usageCountsMayGoUp()` says so: signed in, or the notice seen. "Seen" is a saved
+  stamp, `usageNoticeShownAt` in the settings store, written when the notice is
+  drawn (commit `7b5b0ea`). A phone that finished the Warm-up on an older build
+  (TestFlight build 2) has no stamp, and the notice is on the Warm-up's first
+  screen only, so it sends nothing until it signs in (policy re-audit L4). Erase
+  and account deletion clear the stamp.
 - Users can turn it off: You → "Usage stats" (default on), and on that Warm-up
   screen. Renamed from "Anonymous usage stats" on 2026-10-04: the events are
   linked to the account, so "anonymous" contradicted this sheet.
@@ -243,13 +259,18 @@ The privacy policy URL App Store Connect requires must at minimum say:
 3. That usage analytics are numbers, yes/no values and fixed labels, tied to
    the account, and switchable off in You; that a guest's few funnel counts go
    up with no account, device or install id, only after the Warm-up's first
-   screen has said so with a switch; and that the Warm-up's score and
-   practice's tally are sent, though the answers aren't.
+   screen has said so with a switch; that the Warm-up's score and
+   practice's tally are sent, though the answers aren't; and that usage counts
+   are kept 13 months (once migration 012 runs).
 4. That subscriptions are processed by Apple and managed via RevenueCat.
 5. How to delete an account and its data.
 6. That on iOS 26 or later the app may keep an age band from Apple on the
    device, and that the band is not sent off the device or used to lock a
    feature. The draft in `docs/PRIVACY_POLICY.md` says so.
+7. That the time-zone offsets stored with each prediction go to the server once
+   the app backs them up, and that an offset can say roughly where the person
+   is, though nothing works out a place from it (the Coarse Location row, §1).
+   The draft says so under "What we never collect", conditionally.
 
 **Item 5 is built (2026-09-25).** You → Delete account calls the
 `delete-account` Edge Function, which revokes Sign in with Apple (when its key

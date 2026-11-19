@@ -38,6 +38,23 @@ describe('scoringCopy (roadmap step 29)', () => {
     );
   });
 
+  // Step 184 (D65), widened in review round 6: a scored answer moved to
+  // another category is counted, before or after it was answered, unless
+  // moved back. Said before the day-made sentence, which exempts a category
+  // fixed on the day a prediction was made from this count too.
+  it('names the moved answers Insights counts, before the slip the day it was made', () => {
+    const sentence =
+      "A scored answer moved to another category is counted too, before or after it was answered, unless it's moved back.";
+    const slip = "A change on the day a prediction was made isn't counted while it isn't due yet: that's fixing a slip.";
+    const counted = scoringSections()
+      .find((s) => s.title === "What doesn't count")
+      ?.paragraphs.find((p) => p.includes(sentence));
+    expect(counted).toBeDefined();
+    expect(counted).toContain(
+      `that close to the due day. ${sentence} ${slip} Only this phone keeps these counts.`,
+    );
+  });
+
   // Roadmap D60: badges follow the record both ways, and the page says so
   // (blind playtest 2026-11-13c, finding 16: two testers had to guess).
   it('says a badge can go back', () => {

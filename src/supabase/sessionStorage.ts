@@ -5,8 +5,11 @@
 // phone's backups. On iOS it is now the Keychain (`expo-secure-store`), with
 // `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`: readable once the phone has been
 // unlocked after a restart (a reminder's action can run with the phone locked),
-// never in a backup and never restored onto another phone. Web has no
-// Keychain and keeps AsyncStorage, as before.
+// and, in Apple's words for that attribute, items that "do not migrate to a
+// new device. Thus, after restoring from a backup of a different device, these
+// items will not be present." (Apple does not say they are left out of a
+// backup itself, only that a restore onto another phone doesn't bring them.)
+// Web has no Keychain and keeps AsyncStorage, as before.
 //
 // Three things the Keychain needs that AsyncStorage didn't:
 //
@@ -27,11 +30,23 @@
 //      build: the session there and no marker) is copied into the Keychain and
 //      then removed from AsyncStorage, so nobody is signed out by the update.
 //      An upgrade has the AsyncStorage session; a reinstall has neither.
+//      With the marker set, a session in AsyncStorage means an older build
+//      ran in between and signed in (a TestFlight downgrade), or removing the
+//      copy after a move failed. Then both stores may hold one, and the one
+//      that expires later is kept (client re-review N3, 2026-11-19); one that
+//      can't be read loses. The AsyncStorage copy no longer wins blindly: a
+//      stale copy left by a failed cleanup would sign the phone back into an
+//      older session, or another account.
 //
 // The Keychain is used only once the marker is written, so nothing is
 // decided on a read that failed: if the marker or the old session can't be
 // read, or the copy or the marker can't be written, this run keeps using
 // AsyncStorage as earlier builds did, and the next launch decides again.
+//
+// `expo-secure-store` ignores what the Keychain answers to a delete
+// (SecureStoreModule.swift: `SecItemDelete`'s status is dropped), so a refused
+// delete looks like success (client re-review N5). Every removal reads the
+// value's keys back afterwards, and one still there counts as refused.
 //
 // Layer rule: L5. No imports: the native modules are handed in by the client
 // (src/supabase/client.ts), so this module and its tests never load them.
@@ -115,6 +130,46 @@ export function supabaseStorageKey(url: string): string {
   const trimmed = url.trim();
   const base = new URL(trimmed.endsWith('/') ? trimmed : `${trimmed}/`);
   return `sb-${base.hostname.split('.')[0]}-auth-token`;
+}
+
+/**
+ * When a stored session expires (`expires_at`, seconds since the epoch), or
+ * null when `raw` isn't one auth-js could use: not JSON, not an object, or
+ * without an access token, a refresh token and a positive, finite
+ * `expires_at` (auth-js's own `_isValidSession` asks for the three). Never
+ * throws. Exported for tests.
+ */
+export function storedSessionExpiry(raw: string | null | undefined): number | null {
+  if (typeof raw !== 'string' || raw === '') return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  const {
+    access_token: access,
+    refresh_token: refresh,
+    expires_at: expiresAt,
+  } = data as { access_token?: unknown; refresh_token?: unknown; expires_at?: unknown };
+  if (typeof access !== 'string' || access === '') return null;
+  if (typeof refresh !== 'string' || refresh === '') return null;
+  if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt) || expiresAt <= 0) return null;
+  return expiresAt;
+}
+
+/**
+ * Of two stored sessions, whether the AsyncStorage one should replace the
+ * Keychain's: it can be read, and the Keychain's can't (or there is none) or
+ * expires earlier. A tie keeps the Keychain's, this build's own copy.
+ */
+function asyncCopyWins(asyncRaw: string | null, keychainRaw: string | null): boolean {
+  const asyncExpiry = storedSessionExpiry(asyncRaw);
+  if (asyncExpiry === null) return false;
+  const keychainExpiry = storedSessionExpiry(keychainRaw);
+  if (keychainExpiry === null) return true;
+  return asyncExpiry > keychainExpiry;
 }
 
 /**
@@ -236,19 +291,31 @@ export function createSessionStorage(deps: SessionStorageDeps): SessionStorage {
   };
 
   /**
-   * Remove a value: every chunk of both slots, then the header. A key that
-   * shows nothing (no header, no first chunk in either slot) costs three
-   * reads. Throws when the Keychain refuses a delete.
+   * Whether anything of a value is in the Keychain: its header, or the first
+   * chunk of either slot (a value is written from chunk 0 and deleted down to
+   * it). Throws when the Keychain does.
+   */
+  const anyOfValueHeld = async (key: string): Promise<boolean> => {
+    const [header, a0, b0] = await Promise.all([
+      store.getItemAsync(key, options),
+      store.getItemAsync(chunkKey(key, 'a', 0), options),
+      store.getItemAsync(chunkKey(key, 'b', 0), options),
+    ]);
+    return typeof header === 'string' || typeof a0 === 'string' || typeof b0 === 'string';
+  };
+
+  /**
+   * Remove a value: every chunk of both slots, then the header, then read
+   * back. A key that shows nothing (no header, no first chunk in either slot)
+   * costs three reads before and three after. Throws when the Keychain
+   * refuses a delete: the module reports none (`SecItemDelete`'s answer is
+   * dropped), so a value still there afterwards, or a read-back that fails,
+   * counts as refused (N5).
    */
   const removeValue = async (key: string): Promise<void> => {
     let present = true;
     try {
-      const [header, a0, b0] = await Promise.all([
-        store.getItemAsync(key, options),
-        store.getItemAsync(chunkKey(key, 'a', 0), options),
-        store.getItemAsync(chunkKey(key, 'b', 0), options),
-      ]);
-      present = typeof header === 'string' || typeof a0 === 'string' || typeof b0 === 'string';
+      present = await anyOfValueHeld(key);
     } catch {
       present = true;
     }
@@ -257,9 +324,16 @@ export function createSessionStorage(deps: SessionStorageDeps): SessionStorage {
       await deleteChunks(key, 'b', maxChunks);
     }
     await store.deleteItemAsync(key, options);
+    if (await anyOfValueHeld(key)) {
+      throw new Error('the Keychain kept the value it was asked to delete');
+    }
   };
 
-  /** Remove every session key from the Keychain. True when every delete went through. */
+  /**
+   * Remove every session key from the Keychain. True only when every value is
+   * gone, read back (`removeValue`); false when any is still there or can't
+   * be read.
+   */
   const clearKeychain = async (): Promise<boolean> => {
     let ok = true;
     for (const key of keys) {
@@ -288,13 +362,22 @@ export function createSessionStorage(deps: SessionStorageDeps): SessionStorage {
    * The launch check. Runs once, before the first read or write.
    *
    *   marker set, nothing in AsyncStorage → the usual launch: the Keychain.
-   *   otherwise (a fresh install, a reinstall, the first launch of this
-   *   build, or an older build ran in between and signed in) → clear what
-   *   the Keychain holds, copy in any AsyncStorage session (the newer one),
-   *   write the marker, then remove the AsyncStorage copy.
+   *   marker set, a session in AsyncStorage too (an older build ran in
+   *   between and signed in, or removing the copy after a move failed) → the
+   *   one that expires later stays (`asyncCopyWins`): the Keychain's, and the
+   *   AsyncStorage copy is removed; or the AsyncStorage one, moved in as below.
+   *   If the Keychain's can't be read this run, nothing is changed and this run
+   *   uses the Keychain (no session, as any failed Keychain read is), so the
+   *   AsyncStorage copy, which may be stale, is never used on a guess; the
+   *   next launch decides again.
+   *   no marker (a fresh install, a reinstall, the first launch of this
+   *   build) → clear what the Keychain holds, copy in any AsyncStorage
+   *   session, write the marker, then remove the AsyncStorage copy.
    *
    * Any read or write that fails before the marker is written leaves this
-   * run on AsyncStorage, with nothing there changed.
+   * run on AsyncStorage, with nothing there changed. So does a Keychain clear
+   * whose deletes didn't take (read back, N5): the Keychain's old values are
+   * never read in that mode.
    */
   const decideMode = async (): Promise<SessionStorageMode> => {
     let marker: string | null;
@@ -311,9 +394,25 @@ export function createSessionStorage(deps: SessionStorageDeps): SessionStorage {
 
     if (marker === KEYCHAIN_MARKER_VALUE && oldCopies.length === 0) return 'keychain';
 
+    if (marker === KEYCHAIN_MARKER_VALUE) {
+      // Both may hold a session. The Keychain's is this install's own.
+      let keychainSession: string | null;
+      try {
+        keychainSession = await readValue(storageKey);
+      } catch {
+        return 'keychain';
+      }
+      const asyncSession = oldCopies.find(([key]) => key === storageKey)?.[1] ?? null;
+      if (!asyncCopyWins(asyncSession, keychainSession)) {
+        await removeOldCopies();
+        return 'keychain';
+      }
+    }
+
     // What the Keychain holds under these keys is from before: an install
     // that was deleted, an attempt cut short, or a session an older build
-    // has since replaced.
+    // has since replaced with one that expires later. A clear that didn't
+    // take (read back) keeps this run on AsyncStorage, and the marker unwritten.
     if (!(await clearKeychain())) return 'asyncStorage';
     try {
       for (const [key, value] of oldCopies) await writeValue(key, value);

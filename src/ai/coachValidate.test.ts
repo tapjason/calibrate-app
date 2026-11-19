@@ -580,13 +580,21 @@ describe('validateCoachOutput — evidence source', () => {
     expect(sourceOf({ evidence: 0.55 })?.field).toBe('actual_rate');
   });
 
+  // Round 6: these took GOOD_INSIGHT's message, finance's 80% stated beside
+  // its 55% hit rate. In a pattern card that is a lean the card type doesn't
+  // carry (only an over/under card may set the two side by side), so each
+  // now says something of its own; the sources asserted are unchanged.
   it('names overall figures and patterns for an overall insight', () => {
-    expect(sourceOf({ type: 'pattern', category: 'overall', evidence: 40 })).toEqual({
+    expect(
+      sourceOf({ type: 'pattern', category: 'overall', message: 'You have 40 scored answers in total.', evidence: 40 }),
+    ).toEqual({
       field: 'total_resolved',
       scope: 'overall',
       value: 40,
     });
-    expect(sourceOf({ type: 'pattern', category: 'overall', evidence: 58 })).toEqual({
+    expect(
+      sourceOf({ type: 'pattern', category: 'overall', message: 'Your Monday answers calibrate worst, at 58.', evidence: 58 }),
+    ).toEqual({
       field: 'pattern',
       scope: 'overall',
       value: 58,
@@ -650,9 +658,11 @@ describe('validateCoachOutput — normalised text', () => {
 });
 
 // Item 14 (2026-11-19): a runtime without NFKC used to drop every card. It
-// now checks the raw text, held to plain ASCII, which NFKC would leave as it
-// is. The validator checks for NFKC once, when it loads, so each case loads a
-// fresh copy with String.prototype.normalize changed first.
+// now checks the raw text, held to ALLOWED_CHARACTERS, every one of which
+// NFKC leaves as it is (coachThresholds.test.ts). Until round 6 it was held
+// to plain ASCII, so a curly apostrophe or an em dash dropped the card. The
+// validator checks for NFKC once, when it loads, so each case loads a fresh
+// copy with String.prototype.normalize changed first.
 describe('validateCoachOutput — without NFKC', () => {
   const original = Object.getOwnPropertyDescriptor(String.prototype, 'normalize')!;
   afterEach(() => Object.defineProperty(String.prototype, 'normalize', original));
@@ -683,10 +693,23 @@ describe('validateCoachOutput — without NFKC', () => {
     expect(run(validate, ascii.message)).toEqual([expect.objectContaining({ message: ascii.message })]);
   });
 
+  // Round 6, item 8: these two were dropped (outside ASCII). They are allowed
+  // characters, which NFKC leaves as they are, so they are kept now.
+  it.each([
+    ['a curly apostrophe', 'Finance’s calls run overconfident: 80% stated.'],
+    ['an em dash', 'Finance runs overconfident — 80% stated.'],
+    ['curly quotes and an en dash', 'Finance runs “overconfident” – 80% stated.'],
+  ])('keeps %s, an allowed character', (_name, message) => {
+    const validate = validatorWith(undefined);
+    expect(run(validate, message)).toEqual([expect.objectContaining({ message })]);
+  });
+
   it.each([
     ['a fullwidth digit, which NFKC would have read', 'Finance runs overconfident: ８０% stated.'],
-    ['a curly apostrophe, outside ASCII', 'Finance’s calls run overconfident: 80% stated.'],
-    ['an em dash, outside ASCII', 'Finance runs overconfident — 80% stated.'],
+    ['a ligature, which NFKC would have opened', 'Finance runs overconﬁdent: 80% stated.'],
+    ['a no-break space, which NFKC would have made plain', 'Finance runs overconfident: 80% stated.'],
+    ['a zero-width space', 'Finance runs over​confident: 80% stated.'],
+    ['a letter from another script', 'Finance runs оverconfident: 80% stated.'],
   ])('drops %s', (_name, message) => {
     const validate = validatorWith(undefined);
     expect(run(validate, message)).toEqual([]);

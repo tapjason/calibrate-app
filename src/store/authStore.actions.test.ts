@@ -30,12 +30,19 @@ jest.mock('@/supabase/sync', () => ({
   pushNow: jest.fn(async () => 0),
   stopSyncFor: jest.fn(async () => {}),
   resumeSyncFor: jest.fn(),
+  // Round 6 (N2): what sign-out reads again just before the wipe.
+  unsyncedRows: jest.fn(async () => new Map()),
 }));
 jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn() }));
 // Round 5: sign-out counts what the server doesn't have yet.
 jest.mock('@/db/predictions', () => ({
   ...jest.requireActual('@/db/predictions'),
   countUnsynced: jest.fn(async () => 0),
+}));
+// Round 6 (N1): sign-out also counts the categories only this phone has.
+jest.mock('@/db/categories', () => ({
+  ...jest.requireActual('@/db/categories'),
+  countLocalOnlyCategories: jest.fn(async () => 0),
 }));
 jest.mock('@/notifications/scheduler', () => ({
   dismissDeliveredNotifications: jest.fn(async () => {}),

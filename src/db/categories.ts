@@ -45,6 +45,28 @@ export async function listCategoryDefs(userId: string): Promise<CategoryDef[]> {
   return rows.map(toDef).filter((d): d is CategoryDef => d !== null);
 }
 
+/**
+ * How many of `userId`'s categories hold something only this phone has
+ * (review round 6, for the sign-out question): one the person added (its id
+ * and name never sync, D39), renamed, gave an emoji or picture (D40), or hid.
+ * A built-in's row with none of those (renamed back to its own word, icon
+ * reset to the default, shown again) has nothing to lose and isn't counted.
+ * An empty name or icon reads as none, as `toDef` and `toIcon` read them.
+ */
+export async function countLocalOnlyCategories(userId: string): Promise<number> {
+  const row = await getDb().get<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM categories
+       WHERE user_id = ?
+         AND (id GLOB 'c-?*'
+              OR COALESCE(name, '') != ''
+              OR COALESCE(icon_emoji, '') != ''
+              OR COALESCE(icon_image, '') != ''
+              OR hidden = 1)`,
+    [userId],
+  );
+  return Number(row?.n ?? 0);
+}
+
 /** Write one row whole: a new category, a rename, a hide or an icon. */
 export async function upsertCategoryDef(def: CategoryDef): Promise<void> {
   await getDb().run(

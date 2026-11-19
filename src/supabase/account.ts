@@ -34,7 +34,21 @@ export type DeleteAccountOutcome =
        */
       appleRevoked: boolean;
     }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /**
+       * Set only with `DELETE_FAILED_MESSAGE` when the auth server itself said
+       * the account still exists after a call that ran none of the work: when
+       * (ms since the epoch, the phone's clock) that question was sent, so
+       * the answer is about the account at that time or later. An earlier
+       * request that couldn't be confirmed can be ruled out by it once it is
+       * late enough (`deletionCanNoLongerLand`; client re-review N4). Absent
+       * when no request was sent at all (no client, no session, another
+       * account's session): nothing was asked of the server then.
+       */
+      stillExistsAt?: number;
+    };
 
 export interface DeleteAccountDeps {
   /** Override the client (tests). Null means "no client available". */
@@ -60,6 +74,31 @@ export interface DeleteAccountDeps {
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_PROBE_TIMEOUT_MS = 10_000;
+
+/**
+ * How long after a deletion request was sent it may still delete the account
+ * on the server. Not the client's 45 s wait: the function's Apple and
+ * RevenueCat legs are cut off at 20 s, but its last step, deleting the user,
+ * has no deadline of its own, and a worker keeps running after the gateway's
+ * 150 s idle timeout until the platform's wall-clock limit, 400 s on paid
+ * plans and 150 s on the free one (Supabase, Edge Functions limits, read
+ * 2026-11-19). Ten minutes is past both, with the probe's 10 s and room for
+ * the phone's clock being set a little.
+ */
+export const DELETION_CAN_LAND_WITHIN_MS = 10 * 60_000;
+
+/**
+ * Whether a deletion request sent at `askedAt` can no longer delete the
+ * account, given the auth server said it still exists in an answer to a
+ * question sent at `stillExistsAt` (both by the phone's clock). False when
+ * `askedAt` isn't known, and when the clock reads backwards between the two.
+ */
+export function deletionCanNoLongerLand(askedAt: number | null, stillExistsAt: number): boolean {
+  if (askedAt === null || !Number.isFinite(askedAt) || !Number.isFinite(stillExistsAt)) {
+    return false;
+  }
+  return stillExistsAt - askedAt > DELETION_CAN_LAND_WITHIN_MS;
+}
 
 /**
  * Nothing was deleted: the function refused before it started (a 4xx: every
@@ -149,11 +188,16 @@ export async function deleteAccountOnServer(
     console.warn('[account] delete-account got no answer:', messageOf(e));
   }
 
+  // Before the question goes: its answer is about the account at this time
+  // or later.
+  const probedAt = Date.now();
   const probe = await probeAccount(client, asked, probeTimeoutMs);
   // The account is gone: done, whichever call did it. The function's answer
   // was never read, so nothing says Apple's grant was revoked.
   if (probe === 'gone') return { ok: true, appleRevoked: false };
-  if (probe === 'exists' && nothingRan) return { ok: false, error: DELETE_FAILED_MESSAGE };
+  if (probe === 'exists' && nothingRan) {
+    return { ok: false, error: DELETE_FAILED_MESSAGE, stillExistsAt: probedAt };
+  }
   return { ok: false, error: DELETE_UNCONFIRMED_MESSAGE };
 }
 

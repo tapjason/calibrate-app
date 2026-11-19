@@ -1,10 +1,13 @@
 import { wipeLocalUserData } from '@/db/account';
 import { getDb, setDbForTests } from '@/db/client';
 import {
+  countRefiles,
   getPrediction,
   insertPrediction,
+  listCategoryOrigins,
   listDeletions,
   listPendingPredictions,
+  upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { getUserStat, listCategoryStats } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
@@ -13,7 +16,10 @@ import { __setTimeZoneForTests } from '@/engine/localTime';
 import { useAuthStore } from './authStore';
 import {
   answerNowIsSameDay,
+  canRenumber,
+  categoryChangeCountedIfAnswered,
   categoryChangeIsCounted,
+  moveIsCounted,
   openRepeatOf,
   openTwinFor,
   rewordedLater,
@@ -32,6 +38,7 @@ beforeEach(async () => {
     deletedCount: 0,
     postponedCount: 0,
     refiledCount: 0,
+    categoryOrigins: {},
     streakCheckpoint: null,
     streakCheckpointFrom: null,
     justSavedId: null,
@@ -1632,6 +1639,27 @@ describe('rewordedLater', () => {
     };
     expect(rewordedLater(travelled)).toBe(true);
   });
+
+  // Round 6: the same-day rule reads both in the rewording's zone, so the
+  // rewording note is used whenever "You logged this today" could be untrue
+  // in either reading.
+  it("says reworded when the rewording's zone puts the two on different days", () => {
+    // Logged Thu 07:00 in Tokyo (Wed 22:00 UTC), reworded Thu 00:30 in
+    // London: one Thursday where each happened, Wednesday and Thursday in
+    // London, where an answer is now judged.
+    const p = {
+      ...base,
+      created_at: '2026-11-18T22:00:00.000Z',
+      created_utc_offset_min: 540,
+      title_edited_at: '2026-11-19T00:30:00.000Z',
+      title_edited_utc_offset_min: 0,
+    };
+    expect(rewordedLater(p)).toBe(true);
+    // The same day in both readings: logged and reworded Thursday in London.
+    expect(
+      rewordedLater({ ...p, created_at: '2026-11-19T00:10:00.000Z', created_utc_offset_min: 0 }),
+    ).toBe(false);
+  });
 });
 
 /** Run `fn` with the clock (Date only) at `iso`, as loggedEarlier does. */
@@ -1663,9 +1691,10 @@ async function atTime<T>(iso: string, fn: () => Promise<T>): Promise<T> {
 }
 
 // Owner decision 2026-11-19 (record audit: 20 answers given the day they
-// were logged in New York all counted once the phone was in London). Each
-// moment is stored with the phone's UTC offset, and the same-day rule reads
-// each where it happened.
+// were logged in New York all counted once the phone was in London). The
+// logging and the rewording are stored with the phone's UTC offset, and the
+// same-day rule reads both days in that one (review round 6: never in the
+// zone the answer was given in).
 describe('same-day answers across a time-zone change', () => {
   afterEach(() => __setTimeZoneForTests(null));
 
@@ -1692,10 +1721,10 @@ describe('same-day answers across a time-zone change', () => {
         usePredictionStore.getState().resolve(id, 'resolved_yes'),
       );
     }
-    expect(await getPrediction(ids[0])).toMatchObject({
-      created_utc_offset_min: -300,
-      resolved_utc_offset_min: -300,
-    });
+    const first = await getPrediction(ids[0]);
+    expect(first).toMatchObject({ created_utc_offset_min: -300 });
+    // No answer offset since round 6.
+    expect(first).not.toHaveProperty('resolved_utc_offset_min');
     expect(scored()).toBe(0);
 
     __setTimeZoneForTests('Europe/London');
@@ -1705,11 +1734,89 @@ describe('same-day answers across a time-zone change', () => {
 
     // The same rows without offsets, as every row before this build: read
     // in London as before, they count (the reading kept for old rows).
-    await getDb().run(
-      `UPDATE predictions SET created_utc_offset_min = NULL, resolved_utc_offset_min = NULL`,
-    );
+    await getDb().run(`UPDATE predictions SET created_utc_offset_min = NULL`);
     await useStatsStore.getState().recomputeForUser(userId());
     expect(scored()).toBe(20);
+  });
+
+  // Review round 6, the record auditor's padding route: 20 sure things logged
+  // at 08:00 in New York, the phone set to UTC+14 (already 03:00 the next day
+  // there), answered at once. Round 5 scored all twenty.
+  it("scores none of the auditor's 20, logged in New York and answered at once at UTC+14", async () => {
+    __setTimeZoneForTests('America/New_York');
+    const ids: string[] = [];
+    for (let i = 0; i < 20; i += 1) {
+      ids.push((await atTime('2026-11-18T13:00:00.000Z', () => log(`Sure ${i}`))).id);
+    }
+    __setTimeZoneForTests('Pacific/Kiritimati');
+    const p = (await getPrediction(ids[0]))!;
+    expect(answerNowIsSameDay(p, new Date('2026-11-18T13:05:00.000Z'))).toBe(true);
+    for (const id of ids) {
+      await atTime('2026-11-18T13:05:00.000Z', () =>
+        usePredictionStore.getState().resolve(id, 'resolved_yes'),
+      );
+    }
+    expect(scored()).toBe(0);
+    expect(useStatsStore.getState().userStat?.rating_is_provisional).toBe(true);
+    // Read anywhere, still none.
+    for (const zone of ['America/New_York', 'Europe/London', 'Pacific/Kiritimati']) {
+      __setTimeZoneForTests(zone);
+      await useStatsStore.getState().recomputeForUser(userId());
+      expect({ zone, scored: scored() }).toEqual({ zone, scored: 0 });
+    }
+  });
+
+  it('leaves a traveller unscored until the next day has begun where it was logged, then scores', async () => {
+    __setTimeZoneForTests('America/New_York');
+    // Wed Nov 18 at 20:00 in New York, twice.
+    const early = await atTime('2026-11-19T01:00:00.000Z', () => log('Lands on time'));
+    const late = await atTime('2026-11-19T01:00:00.000Z', () => log('Bags arrive'));
+    __setTimeZoneForTests('Europe/London');
+    // Thu 03:00 in London is Wed 22:00 in New York: still the day it was logged.
+    expect(answerNowIsSameDay(early, new Date('2026-11-19T03:00:00.000Z'))).toBe(true);
+    await atTime('2026-11-19T03:00:00.000Z', () =>
+      usePredictionStore.getState().resolve(early.id, 'resolved_yes'),
+    );
+    expect(scored()).toBe(0);
+    // Thu 05:30 in London is Thu 00:30 in New York: scored.
+    expect(answerNowIsSameDay(late, new Date('2026-11-19T05:30:00.000Z'))).toBe(false);
+    await atTime('2026-11-19T05:30:00.000Z', () =>
+      usePredictionStore.getState().resolve(late.id, 'resolved_yes'),
+    );
+    expect(scored()).toBe(1);
+  });
+
+  // Record audit (round 6): "Use another number" refused an hour after
+  // logging, and a fix 30 minutes after logging was counted, for a traveller.
+  it("keeps a traveller's day of logging for Use another number and the late-change exemption", async () => {
+    __setTimeZoneForTests('America/New_York');
+    // Wed Nov 18 at 23:00 in New York, due Fri Nov 20.
+    const p = await atTime('2026-11-19T04:00:00.000Z', () =>
+      usePredictionStore.getState().create({
+        title: 'Train is on time',
+        category: 'work',
+        confidence: 70,
+        due_date: '2026-11-20T17:00:00.000Z',
+      }),
+    );
+    __setTimeZoneForTests('Europe/London');
+    // Thu 04:30 in London, the eve of the due day there; 23:30 Wednesday in
+    // New York, still the day it was logged.
+    const halfHour = new Date('2026-11-19T04:30:00.000Z');
+    expect(canRenumber(p, halfHour)).toBe(true);
+    expect(moveIsCounted(p, '2026-11-23T17:00:00.000Z', p.title, halfHour)).toBe(false);
+    await atTime(halfHour.toISOString(), () =>
+      usePredictionStore.getState().update(p.id, {
+        title: p.title,
+        category: 'work',
+        due_date: '2026-11-23T17:00:00.000Z',
+      }),
+    );
+    await usePredictionStore.getState().loadResolved();
+    expect(usePredictionStore.getState().postponedCount).toBe(0);
+    // Thu 05:30 in London is Thursday in New York too: closed, and counted.
+    const moved = (await usePredictionStore.getState().getById(p.id))!;
+    expect(canRenumber(moved, new Date('2026-11-19T05:30:00.000Z'))).toBe(false);
   });
 
   it('and keeps 20 scored in London scored once the phone is in New York', async () => {
@@ -1745,14 +1852,16 @@ describe('same-day answers across a time-zone change', () => {
     await atTime('2026-11-19T09:00:00.000Z', () =>
       usePredictionStore.getState().resolve(p.id, 'resolved_yes'),
     );
-    expect(await getPrediction(p.id)).toMatchObject({
+    const answered = await getPrediction(p.id);
+    expect(answered).toMatchObject({
       created_utc_offset_min: -300,
-      resolved_utc_offset_min: 0,
+      resolved_at: '2026-11-19T09:00:00.000Z',
     });
+    expect(answered).not.toHaveProperty('resolved_utc_offset_min');
     expect(scored()).toBe(1);
   });
 
-  it("keeps the first answer's offset through a correction in another zone (D34)", async () => {
+  it("keeps the first answer's time through a correction in another zone (D34)", async () => {
     __setTimeZoneForTests('America/New_York');
     const p = await atTime('2026-11-18T14:00:00.000Z', () => log('Same-day one'));
     await atTime('2026-11-19T03:00:00.000Z', () =>
@@ -1765,28 +1874,29 @@ describe('same-day answers across a time-zone change', () => {
     expect(await getPrediction(p.id)).toMatchObject({
       status: 'resolved_no',
       resolved_at: '2026-11-19T03:00:00.000Z',
-      resolved_utc_offset_min: -300,
     });
-    // Still the day it was logged where it was answered: not scored.
+    // Still the day it was logged, read where it was logged: not scored.
     expect(scored()).toBe(0);
   });
 
-  it("gives a Can't tell answered later in another zone that answer's offset", async () => {
+  it("gives a Can't tell answered later in another zone that answer's time, read where it was logged", async () => {
     __setTimeZoneForTests('America/New_York');
     const p = await atTime('2026-11-18T14:00:00.000Z', () => log('Hard to say'));
     await atTime('2026-11-21T23:00:00.000Z', () =>
       usePredictionStore.getState().resolve(p.id, 'skipped'),
     );
-    expect((await getPrediction(p.id))?.resolved_utc_offset_min).toBe(-300);
     __setTimeZoneForTests('Europe/London');
     await atTime('2026-11-23T10:00:00.000Z', () =>
       usePredictionStore.getState().resolve(p.id, 'resolved_yes', undefined, { answeringSkip: true }),
     );
-    expect(await getPrediction(p.id)).toMatchObject({
+    const answered = await getPrediction(p.id);
+    expect(answered).toMatchObject({
       status: 'resolved_yes',
       resolved_at: '2026-11-23T10:00:00.000Z',
-      resolved_utc_offset_min: 0,
     });
+    expect(answered).not.toHaveProperty('resolved_utc_offset_min');
+    // Monday in New York, days after it was logged: scored.
+    expect(scored()).toBe(1);
   });
 
   it('dates new words with the offset they were written in (D45)', async () => {
@@ -1918,5 +2028,216 @@ describe('late category changes', () => {
     await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
     const answered = (await usePredictionStore.getState().getById(p.id))!;
     expect(categoryChangeIsCounted(answered, 'personal')).toBe(false);
+  });
+});
+
+// Review round 6 (owner decision 2026-11-19, widening D69 (e); record audit:
+// a move two days early, then "Answer it now", left no trace). The category
+// a prediction had at its first move after the day it was made is
+// remembered, and a scored answer given elsewhere is counted with the moved
+// answers (refiledCount, D65), once.
+describe('a category change counted at the answer', () => {
+  const DAY = 86_400_000;
+  const create = (dueInDays: number, title = 'Knee is fine by Friday') =>
+    usePredictionStore.getState().create({
+      title,
+      category: 'health',
+      confidence: 80,
+      due_date: new Date(Date.now() + dueInDays * DAY).toISOString(),
+    });
+  type Movable = { id: string; title: string; due_date: string };
+  const moveTo = (p: Movable, category: 'health' | 'personal' | 'work', title = p.title) =>
+    usePredictionStore.getState().update(p.id, { title, category, due_date: p.due_date });
+  const counts = async () => {
+    await usePredictionStore.getState().loadResolved();
+    const s = usePredictionStore.getState();
+    return { moved: s.refiledCount, late: s.postponedCount, deleted: s.deletedCount };
+  };
+  const tomorrow = () => new Date(Date.now() + DAY).toISOString();
+
+  it("counts the auditor's sequence once: two days early, moved, Answer it now, No", async () => {
+    // Logged yesterday, due in three days: today is not its eve.
+    const p = await loggedEarlier(() => create(4));
+    expect(categoryChangeIsCounted(p, 'personal')).toBe(false);
+    expect(categoryChangeCountedIfAnswered(p, 'personal', null)).toBe(true);
+    await moveTo(p, 'personal');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]).toMatchObject({
+      from_category: 'health',
+      counted_late: false,
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+  });
+
+  it('counts nothing when it is moved back before the answer', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    const moved = (await usePredictionStore.getState().getById(p.id))!;
+    const origin = usePredictionStore.getState().categoryOrigins[p.id] ?? null;
+    expect(categoryChangeCountedIfAnswered(moved, 'health', origin)).toBe(false);
+    expect(categoryChangeCountedIfAnswered(moved, 'work', origin)).toBe(true);
+    await moveTo(p, 'health');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+  });
+
+  it('counts nothing for a move on the day it was made, answered the next day', async () => {
+    const p = await create(4);
+    expect(categoryChangeCountedIfAnswered(p, 'personal', null)).toBe(false);
+    await moveTo(p, 'personal');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]).toBeUndefined();
+    await atTime(tomorrow(), () => usePredictionStore.getState().resolve(p.id, 'resolved_no'));
+    expect((await usePredictionStore.getState().getById(p.id))?.status).toBe('resolved_no');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+  });
+
+  // Never twice: the eve's change is on the late-changes line (D69 (e)), and
+  // its answer isn't added to the moved answers.
+  it('counts a change on the eve once only, as a late change, after the answer too', async () => {
+    const p = await loggedEarlier(() => create(2));
+    expect(categoryChangeIsCounted(p, 'personal')).toBe(true);
+    expect(categoryChangeCountedIfAnswered(p, 'personal', null)).toBe(false);
+    await moveTo(p, 'personal');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]).toMatchObject({
+      from_category: 'health',
+      counted_late: true,
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+  });
+
+  it('counts an early move then an eve move once only, as a late change', async () => {
+    // Logged two days ago, due tomorrow. Moved yesterday, two days before the
+    // due day (remembered, not late), then again today, the eve (late).
+    const p = await loggedEarlier(() => create(3), 2);
+    await atTime(new Date(Date.now() - DAY).toISOString(), () => moveTo(p, 'personal'));
+    expect(usePredictionStore.getState().categoryOrigins[p.id]?.counted_late).toBe(false);
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+    const now = (await usePredictionStore.getState().getById(p.id))!;
+    expect(categoryChangeIsCounted(now, 'work')).toBe(true);
+    await moveTo(p, 'work');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]).toMatchObject({
+      from_category: 'health',
+      counted_late: true,
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+  });
+
+  it('counts nothing for a same-day answer: it was never scored', async () => {
+    // Logged two days ago, moved today, and reworded in the same edit: the
+    // new words make it a prediction made today (D45), so an answer today
+    // isn't scored.
+    const p = await loggedEarlier(() => create(5), 2);
+    await moveTo(p, 'personal', 'Knee still hurts by Friday');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]?.from_category).toBe('health');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    const answered = (await usePredictionStore.getState().getById(p.id))!;
+    expect(answerNowIsSameDay(answered)).toBe(true);
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+  });
+
+  it("counts nothing for a Can't tell, and counts the Yes it is later answered with", async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().resolve(p.id, 'skipped');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+    await atTime(tomorrow(), () =>
+      usePredictionStore.getState().resolve(p.id, 'resolved_yes', undefined, { answeringSkip: true }),
+    );
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+  });
+
+  it('counts a moved answer that is then deleted once, as a deletion (D65)', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+    await usePredictionStore.getState().remove(p.id);
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 1 });
+    expect(await listCategoryOrigins(useAuthStore.getState().userId!)).toEqual([]);
+  });
+
+  it('takes a moved answer off the count when it is moved back after the answer (D65)', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    await usePredictionStore.getState().refile(p.id, 'work');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+    await usePredictionStore.getState().refile(p.id, 'health');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+  });
+
+  it('counts nothing when the answer came from another phone, not this one', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    const here = (await usePredictionStore.getState().getById(p.id))!;
+    // Answered on another phone and pulled before this phone's answer.
+    await upsertPredictionFromRemote({
+      ...here,
+      status: 'resolved_no',
+      resolved_at: new Date(Date.now() - 60_000).toISOString(),
+      title_edited_at: null,
+      updated_at: '2099-01-01T00:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(p.id, 'resolved_yes');
+    expect((await usePredictionStore.getState().getById(p.id))?.status).toBe('resolved_no');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+  });
+
+  it('still loads the open list when reading what is remembered fails, and still counts the answer', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const db = getDb();
+    const realAll = db.all.bind(db);
+    db.all = async <T,>(sql: string, params?: unknown[]) => {
+      if (sql.includes('FROM prediction_category_origins')) throw new Error('forced failure');
+      return realAll<T>(sql, params);
+    };
+    try {
+      usePredictionStore.setState({ pending: [], categoryOrigins: {} });
+      await usePredictionStore.getState().loadPending();
+      expect(usePredictionStore.getState().pending.map((x) => x.id)).toEqual([p.id]);
+      expect(usePredictionStore.getState().categoryOrigins).toEqual({});
+      // The answer reads what is remembered itself, inside its transaction.
+      await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    } finally {
+      db.all = realAll;
+      warn.mockRestore();
+    }
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+  });
+
+  // Main session decision 2026-11-19: sign-out keeps this phone's counts.
+  it('keeps the counts and what is remembered through sign-out; Erase clears them', async () => {
+    const userId = useAuthStore.getState().userId!;
+    const answered = await loggedEarlier(() => create(4, 'Answered one'));
+    await moveTo(answered, 'personal');
+    await usePredictionStore.getState().resolve(answered.id, 'resolved_no');
+    const open = await loggedEarlier(() => create(4, 'Open one'));
+    await moveTo(open, 'work');
+    const openRow = (await usePredictionStore.getState().getById(open.id))!;
+
+    await wipeLocalUserData(userId, { deviceData: false, keepIntegrityCounts: true });
+    expect(await listPendingPredictions(userId)).toEqual([]);
+    expect(await countRefiles(userId)).toBe(1);
+    expect((await listCategoryOrigins(userId)).map((o) => o.prediction_id).sort()).toEqual(
+      [answered.id, open.id].sort(),
+    );
+
+    // Signed back in: the open one comes back from the server, still moved,
+    // and its answer is counted against what this phone remembered.
+    await upsertPredictionFromRemote({
+      ...openRow,
+      title_edited_at: null,
+      updated_at: '2099-01-01T00:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve(open.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 2, late: 0, deleted: 0 });
+
+    await wipeLocalUserData(userId);
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+    expect(await listCategoryOrigins(userId)).toEqual([]);
   });
 });

@@ -161,6 +161,33 @@ const FINANCE_CALIBRATED: CoachContext = {
   ),
 };
 
+// --- Round 6 (2026-11-19) ---
+/**
+ * The record re-review's case (R4): finance at 21 answers, 80% said and 70%
+ * happened, inside luck, so Insights says "No clear lean", 10 points apart.
+ */
+const FINANCE_NO_LEAN_21 = withCategory(CTX, 'finance', {
+  resolved: 21,
+  calibration_score: 82,
+  actual_rate: 0.7,
+  direction: 'calibrated',
+});
+/** A rating of 82.5, which the screen shows as 83 (ratingHeadline, Math.round). */
+const RATING_HALF = withPatterns(CTX.patterns, { calibration_rating: 82.5, total_resolved: 81 });
+/**
+ * Figures on a half, each shown rounded up: finance's score 61.5 (62),
+ * social's stated 60.5 (61%), work's hit rate 0.775 (78%).
+ */
+const HALVES = withCategory(
+  withCategory(withCategory(CTX, 'finance', { calibration_score: 61.5 }), 'social', { mean_stated_confidence: 60.5 }),
+  'work',
+  { actual_rate: 0.775 },
+);
+/** Health at 12 answers, its provisional score 12.5: a number near it still blocks. */
+const HEALTH_SCORE_HALF = withCategory(CTX, 'health', { resolved: 12, calibration_score: 12.5 });
+/** The same with a provisional score nowhere near the count. */
+const HEALTH_SCORE_FAR = withCategory(CTX, 'health', { resolved: 12, calibration_score: 72 });
+
 // ---------------------------------------------------------------------------
 // The fixtures
 // ---------------------------------------------------------------------------
@@ -233,9 +260,13 @@ const KEEP: Fixture[] = [
   },
   { name: 'one line break', insight: over('Finance runs overconfident.\n80% stated, 55% happened.') },
   { name: 'a curly apostrophe', insight: over('Finance’s calls run overconfident — 80% stated.') },
+  // Round 6: this was "…77 percent of the time against 75 percent stated.",
+  // and "against N% stated" is a contrast now, allowed only in an over/under
+  // card (it moved to DROP, item 1). The same numbers without it are kept:
+  // work's said and happened are within 5 points.
   {
     name: 'percent written out',
-    insight: { type: 'strength', category: 'work', message: 'Work came true 77 percent of the time against 75 percent stated.', evidence: 77 },
+    insight: { type: 'strength', category: 'work', message: 'Work came true 77 percent of the time, and you said 75 percent.', evidence: 77 },
   },
   {
     name: 'a fractional score, rounded',
@@ -289,9 +320,13 @@ const KEEP: Fixture[] = [
     name: 'what happened and what was said, each by its own word (the swap’s twin)',
     insight: over('You were right 55% of the time in finance, though you felt 80% sure.'),
   },
+  // Round 6, item 6: "…below your rating of 72." moved to DROP. In a sentence
+  // that names a category only "overall", "in total" or "across all" make a
+  // number the overall figure ("In finance, your rating is 72." is read as
+  // finance's).
   {
-    name: 'a category’s score beside the overall rating, named as the rating',
-    insight: { type: 'strength', category: 'finance', message: 'Finance scores 61, below your rating of 72.', evidence: 61 },
+    name: 'a category’s score beside the overall rating, named as the overall rating',
+    insight: { type: 'strength', category: 'finance', message: 'Finance scores 61, below your overall rating of 72.', evidence: 61 },
   },
   {
     name: 'two categories in two clauses',
@@ -430,10 +465,13 @@ const KEEP: Fixture[] = [
   { name: 'shift your number', insight: over(BASE, { suggestion: 'Shift your number toward 55%.' }) },
 
   // --- Item 9: floating point ---
+  // Round 6, item 4: this was 58%, kept since 0.575 is 57.5% on paper. The
+  // app shows Math.round(0.575 × 100) = 57% (coachReceipt, on this very card),
+  // so a whole number must be that; 58% moved to DROP.
   {
-    name: '58% for a rate of 0.575',
+    name: '57% for a rate of 0.575, as the card’s receipt shows it',
     context: FLOAT_EDGE,
-    insight: { type: 'strength', category: 'finance', message: 'Finance came true 58% of the time.', evidence: 58 },
+    insight: { type: 'strength', category: 'finance', message: 'Finance came true 57% of the time.', evidence: 57 },
   },
 
   // --- Item 10: the disclaimers ---
@@ -445,6 +483,169 @@ const KEEP: Fixture[] = [
     name: 'exactly 988 scored answers',
     context: TOTAL_988,
     insight: { type: 'pattern', category: 'overall', message: 'You have 988 scored answers in total.', evidence: 988 },
+  },
+
+  // === Round 6 (2026-11-19). Each has a dropped twin below. ===
+
+  // --- R6.1: what was said beside what happened, only where the app backs it ---
+  {
+    name: 'R6.1 a category with no clear lean: what was said, alone',
+    context: FINANCE_NO_LEAN_21,
+    insight: { type: 'strength', category: 'finance', message: 'In finance you said 80% on average.', evidence: 82 },
+  },
+  {
+    name: 'R6.1 a category with no clear lean: what happened, alone',
+    context: FINANCE_NO_LEAN_21,
+    insight: { type: 'strength', category: 'finance', message: 'In finance, 70% of your calls came true.', evidence: 82 },
+  },
+  {
+    name: 'R6.1 a category with no clear lean, called so',
+    context: FINANCE_NO_LEAN_21,
+    insight: { type: 'strength', category: 'finance', message: 'Finance shows no clear lean, with a score of 82.', evidence: 82 },
+  },
+  {
+    name: 'R6.1 both, for a category within 5 points',
+    insight: { type: 'strength', category: 'work', message: 'In work you said 75% on average, and 77% happened.', evidence: 88 },
+  },
+  {
+    name: 'R6.1 both, in a pattern card, with only what was said in the words and a score as evidence',
+    insight: { type: 'pattern', category: 'finance', message: 'You said 80% on average in finance.', evidence: 61 },
+  },
+  { name: 'R6.1 "but only" in an overconfidence card', insight: over('In finance you said 80% on average, but only 55% happened.') },
+  { name: 'R6.1 "didn’t come true as often as you said" in an overconfidence card', insight: over('Finance calls didn’t come true as often as you said.') },
+  { name: 'R6.1 "often miss" in an overconfidence card', insight: over('Your surest finance calls often miss.') },
+  {
+    name: 'R6.1 "as often as you said" for a category within 5 points',
+    insight: { type: 'strength', category: 'work', message: 'Work calls came true about as often as you said.', evidence: 88 },
+  },
+  // What was said as a noun, and "less often" with no "than" (round 6,
+  // found beside R4): in a card the direction backs.
+  { name: 'R6.1 "below your stated confidence" in an overconfidence card', insight: over('Finance outcomes came in below your stated confidence.') },
+  { name: 'R6.1 "compared with your confidence" in an overconfidence card', insight: over('Compared with your confidence, finance came true less often.') },
+  { name: 'R6.1 "came true less often" in an overconfidence card', insight: over('Finance calls came true less often.') },
+  {
+    name: 'R6.1 "more often than your numbers" in an underconfidence card',
+    insight: { type: 'underconfidence', category: 'social', message: 'Social calls came true more often than your numbers.', evidence: 82 },
+  },
+  { name: 'R6.1 "go over your numbers" is advice, not a lean', insight: over(BASE, { suggestion: 'Go over your numbers before each finance call.' }) },
+  ...[
+    'Finance results didn’t live up to your confidence.',
+    'Your finance calls run too hopeful.',
+    'Finance calls came true less frequently.',
+    'Your surest finance calls often didn’t come true.',
+  ].map((message) => ({ name: `R6.1 an overconfident lean in an overconfidence card: "${message}"`, insight: over(message) })),
+  {
+    name: 'R6.1 "more often than not" is no lean',
+    insight: { type: 'strength', category: 'work', message: 'Your work calls came true more often than not, with a score of 88.', evidence: 88 },
+  },
+
+  // --- R6.2: a drift with the way it went ---
+  {
+    name: 'R6.2 a negative drift that fell',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score fell 6.5 points.', evidence: -6.5 },
+  },
+  {
+    name: 'R6.2 a positive drift that rose',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Work rose 7.3 points.', evidence: 7.3 },
+  },
+  {
+    name: 'R6.2 a positive drift, higher',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Your recent work answers score 7.3 points higher than your older ones.', evidence: 7.3 },
+  },
+  {
+    name: 'R6.2 a negative drift as the evidence, the message saying it slipped',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped recently.', evidence: -6.5 },
+  },
+  {
+    name: 'R6.2 a drift as the evidence of a card about something else',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance runs overconfident.', evidence: -6.5 },
+  },
+  {
+    name: 'R6.2 a negative drift, down',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance is down 6.5 points from your older answers to your newer ones.', evidence: -6.5 },
+  },
+
+  // --- R6.3: a count is how many were answered ---
+  { name: 'R6.3 a count of answers', insight: { type: 'strength', category: 'finance', message: 'Finance has 25 scored answers.', evidence: 25 } },
+  {
+    name: 'R6.3 a count beside a share that came true',
+    insight: { type: 'pattern', category: 'finance', message: 'Your 25 finance calls came true 55% of the time.', evidence: 25 },
+  },
+  {
+    name: 'R6.3 a count that a share is of',
+    insight: { type: 'pattern', category: 'finance', message: '55% of your 25 finance answers came true.', evidence: 25 },
+  },
+
+  // --- R6.4: a whole number is the app's rounding ---
+  {
+    name: 'R6.4 a rating of 82.5 cited as 83, as the screen shows it',
+    context: RATING_HALF,
+    insight: { type: 'pattern', category: 'overall', message: 'Your rating is 83 overall.', evidence: 82.5 },
+  },
+  {
+    name: 'R6.4 a rating of 82.5 cited with its decimal',
+    context: RATING_HALF,
+    insight: { type: 'pattern', category: 'overall', message: 'Your rating is 82.5 overall.', evidence: 82.5 },
+  },
+  { name: 'R6.4 a score of 61.5 cited as 62', context: HALVES, insight: { type: 'strength', category: 'finance', message: 'Finance scores 62.', evidence: 61.5 } },
+  {
+    name: 'R6.4 a stated 60.5% cited as 61%',
+    context: HALVES,
+    insight: { type: 'underconfidence', category: 'social', message: 'Your social calls run underconfident: you said 61% and 82% happened.', evidence: 82 },
+  },
+  { name: 'R6.4 a hit rate of 0.775 cited as 78%', context: HALVES, insight: { type: 'strength', category: 'work', message: 'Work came true 78% of the time.', evidence: 88 } },
+  {
+    name: 'R6.4 a drift of −6.5 cited as 6, as the receipt shows it (−6)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6 points.', evidence: -6.5 },
+  },
+  { name: 'R6.4 a drift of 7.3 cited as 7', context: RICH, insight: { type: 'pattern', category: 'work', message: 'Work improved by 7 points.', evidence: 7.3 } },
+  {
+    name: 'R6.4 a count beside a provisional score nowhere near it',
+    context: HEALTH_SCORE_FAR,
+    insight: { type: 'encouragement', category: 'overall', message: 'Health has 12 scored answers so far.', evidence: 81 },
+  },
+
+  // --- R6.5: a unit narrows, never decides alone ---
+  { name: 'R6.5 a score in points', context: RICH, insight: { type: 'strength', category: 'work', message: 'Work scores 88 points.', evidence: 88 } },
+  {
+    name: 'R6.5 "score 7.3 points better": the unit says what can’t be both',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Work: score 7.3 points better than your earlier answers.', evidence: 7.3 },
+  },
+
+  // --- R6.6: overall in so many words, in a sentence that names a category ---
+  {
+    name: 'R6.6 "your overall rating" in a sentence that names finance',
+    insight: { type: 'strength', category: 'finance', message: 'In finance, your overall rating is 72.', evidence: 61 },
+  },
+
+  // --- R6.7: badge names only as badges; "80% finance calls" ---
+  { name: 'R6.7 "your 80% finance calls" read as what was said', insight: over('Your 80% finance calls came true 55% of the time.') },
+  {
+    name: 'R6.7 "just getting started" about a category under 20',
+    insight: { type: 'encouragement', category: 'health', message: 'Keep logging: you’re just getting started in health, with 4 answers.', evidence: 4 },
+  },
+  {
+    name: 'R6.7 "getting started" as a phrase about a category under 20 (a drop until round 6)',
+    insight: { type: 'encouragement', category: 'health', message: 'You are getting started in health with 4 answers.', evidence: 4 },
+  },
+  {
+    name: 'R6.7 "a sharp drop"',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance saw a sharp drop of 6.5 points.', evidence: -6.5 },
+  },
+  { name: 'R6.7 "a sharp eye"', insight: over(BASE, { suggestion: 'Keep a sharp eye on your surest finance calls.' }) },
+  {
+    name: 'R6.7 "Sharp drops" opening a line',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points.\nSharp drops can follow very sure calls.', evidence: -6.5 },
   },
 ];
 
@@ -828,7 +1029,10 @@ const DROP: Fixture[] = [
   { name: '"a pair"', insight: over('A pair of finance calls ran overconfident.') },
   { name: '"a fifth"', insight: over('A fifth of finance calls ran overconfident.') },
   { name: 'a badge: Sharp', insight: { type: 'strength', category: 'work', message: 'Work is sharp at 88.', evidence: 88 } },
-  { name: 'a badge: Getting started', insight: { type: 'encouragement', category: 'health', message: 'You are getting started in health with 4 answers.', evidence: 4 } },
+  // Round 6, item 7: "You are getting started in health with 4 answers." was
+  // here. It is the plain phrase, about a category under 20 answers, where
+  // the first tier's name is true too, so it moved to KEEP; the tier label
+  // and the phrase about a category past 20 are below.
   { name: 'a badge: Guesser', insight: { type: 'strength', category: 'work', message: 'Work is past Guesser at 88.', evidence: 88 } },
   { name: 'hire an accountant', insight: over(BASE, { suggestion: 'Hire an accountant for finance calls.' }) },
   { name: 'find a therapist', insight: over(BASE, { suggestion: 'Find a therapist.' }) },
@@ -836,6 +1040,182 @@ const DROP: Fixture[] = [
     name: '988 as a line to call',
     context: TOTAL_988,
     insight: { type: 'pattern', category: 'overall', message: 'You have 988 scored answers. Call 988 if this feels heavy.', evidence: 988 },
+  },
+
+  // === Round 6 (2026-11-19). The twins of the round-6 KEEP fixtures. ===
+
+  // --- R6.1 (BLOCKER, R4): a contrast where the app says "No clear lean" ---
+  ...[
+    'In finance you said 80% on average, but only 70% happened.',
+    'In finance you said 80%; just 70% came true.',
+    'Your surest finance calls often miss.',
+    // No contrast word: the two numbers side by side are the lean.
+    'In finance you said 80% on average, and 70% happened.',
+    'Finance calls didn’t come true as often as you said.',
+    'Finance came true, but not as often as you said.',
+    'Finance came true 70% of the time against 80% stated.',
+    'In finance there is a gap between what you said and what happened.',
+    'What happened in finance trails what you said.',
+    'In finance what you said and what happened don’t line up.',
+    'Your finance calls miss more than you would think.',
+    'Finance came true a long way from what you said.',
+    'Finance shows a mismatch between your numbers and outcomes.',
+  ].map((message) => ({
+    name: `R6.1 a contrast for a category with no clear lean: "${message}"`,
+    context: FINANCE_NO_LEAN_21,
+    insight: { type: 'strength', category: 'finance', message, evidence: 82 },
+  })),
+  {
+    name: 'R6.1 what was said in the words, what happened as the evidence (its receipt shows on the card)',
+    context: FINANCE_NO_LEAN_21,
+    insight: { type: 'strength', category: 'finance', message: 'In finance you said 80% on average.', evidence: 0.7 },
+  },
+  {
+    name: 'R6.1 both in a pattern card, for a category that leans (only an over/under card)',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance: 80% stated, 55% happened.', evidence: 80 },
+  },
+  {
+    name: 'R6.1 what happened as the evidence of a pattern card that says what was said',
+    insight: { type: 'pattern', category: 'finance', message: 'You said 80% on average in finance.', evidence: 0.55 },
+  },
+  {
+    name: 'R6.1 "didn’t come true as often as" is never calibrated wording',
+    insight: { type: 'strength', category: 'work', message: 'Work calls didn’t come true as often as you said.', evidence: 88 },
+  },
+  {
+    name: 'R6.1 "against 75 percent stated" in a strength card (kept until round 6)',
+    insight: { type: 'strength', category: 'work', message: 'Work came true 77 percent of the time against 75 percent stated.', evidence: 77 },
+  },
+  // What was said as a noun, and "less often" with no "than", where the
+  // app says "No clear lean".
+  ...[
+    'Finance outcomes came in below your stated confidence.',
+    'Compared with your confidence, finance came true less often.',
+    'Finance calls came true less often.',
+    'Finance calls came true more often than your numbers.',
+    'Finance results didn’t live up to your confidence.',
+    'Your finance calls run too hopeful.',
+    'Finance calls came true less frequently.',
+    'Your surest finance calls often didn’t come true.',
+  ].map((message) => ({
+    name: `R6.1 what was said as a noun, for a category with no clear lean: "${message}"`,
+    context: FINANCE_NO_LEAN_21,
+    insight: { type: 'strength', category: 'finance', message, evidence: 82 },
+  })),
+  {
+    name: 'R6.1 "came true less often" in an underconfidence card (the wrong way)',
+    insight: { type: 'underconfidence', category: 'social', message: 'Social calls came true less often.', evidence: 82 },
+  },
+
+  // --- R6.2: a drift's direction ---
+  {
+    name: 'R6.2 a negative drift said to improve',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score improved by 6.5 points.', evidence: -6.5 },
+  },
+  {
+    name: 'R6.2 a drift with no direction',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score moved 6.5 points.', evidence: -6.5 },
+  },
+  {
+    name: 'R6.2 a positive drift said to slip',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Work slipped by 7.3 points.', evidence: 7.3 },
+  },
+  {
+    name: 'R6.2 a negative drift as the evidence, the message saying it improved (its receipt shows −6)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score improved recently.', evidence: -6.5 },
+  },
+  {
+    name: 'R6.2 a positive drift as the evidence, the message saying it fell',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Your work score fell lately.', evidence: 7.3 },
+  },
+  {
+    name: 'R6.2 a drift with both directions beside it',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Your work score rose 7.3 points from a lower start.', evidence: 7.3 },
+  },
+
+  // --- R6.3: a count shown as the number that came true ---
+  { name: 'R6.3 "25 predictions came true"', insight: { type: 'strength', category: 'finance', message: 'In finance, 25 predictions came true.', evidence: 25 } },
+  { name: 'R6.3 "81 of your predictions came true"', insight: { type: 'pattern', category: 'overall', message: '81 of your predictions came true.', evidence: 81 } },
+  { name: 'R6.3 "came true 25 times"', insight: { type: 'strength', category: 'finance', message: 'Finance came true 25 times.', evidence: 25 } },
+  {
+    name: 'R6.3 a count beside "came true" with a share not pressed against it',
+    insight: { type: 'pattern', category: 'finance', message: '25 finance calls came true at 55%.', evidence: 25 },
+  },
+
+  // --- R6.4: a whole number a point off the screen ---
+  {
+    name: 'R6.4 a rating of 82.5 cited as 82, a point below the screen’s 83',
+    context: RATING_HALF,
+    insight: { type: 'pattern', category: 'overall', message: 'Your rating is 82 overall.', evidence: 82.5 },
+  },
+  { name: 'R6.4 a score of 61.5 cited as 61', context: HALVES, insight: { type: 'strength', category: 'finance', message: 'Finance scores 61.', evidence: 61.5 } },
+  {
+    name: 'R6.4 a stated 60.5% cited as 60%',
+    context: HALVES,
+    insight: { type: 'underconfidence', category: 'social', message: 'Your social calls run underconfident: you said 60% and 82% happened.', evidence: 82 },
+  },
+  { name: 'R6.4 a hit rate of 0.775 cited as 77%', context: HALVES, insight: { type: 'strength', category: 'work', message: 'Work came true 77% of the time.', evidence: 88 } },
+  {
+    name: 'R6.4 58% for a rate of 0.575, which the card shows as 57% (kept until round 6)',
+    context: FLOAT_EDGE,
+    insight: { type: 'strength', category: 'finance', message: 'Finance came true 58% of the time.', evidence: 58 },
+  },
+  {
+    name: 'R6.4 a drift of −6.5 cited as 7, which the receipt shows as −6',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 7 points.', evidence: -6.5 },
+  },
+  {
+    name: 'R6.4 a count within the tolerance of a provisional score still blocks (12 beside 12.5)',
+    context: HEALTH_SCORE_HALF,
+    insight: { type: 'encouragement', category: 'overall', message: 'Health has 12 scored answers so far.', evidence: 81 },
+  },
+
+  // --- R6.5: a unit no longer decides alone ---
+  { name: 'R6.5 "improved by 88 points" with 88 the score', context: RICH, insight: { type: 'strength', category: 'work', message: 'Work improved by 88 points.', evidence: 88 } },
+  {
+    name: 'R6.5 "improved by about 88 points": a change word in reach makes it a drift',
+    context: RICH,
+    insight: { type: 'strength', category: 'work', message: 'Work improved by about 88 points.', evidence: 88 },
+  },
+
+  // --- R6.6: "your rating" and a weekday don't switch a named category's sentence to overall ---
+  { name: 'R6.6 "In finance, your rating is 72."', insight: { type: 'strength', category: 'finance', message: 'In finance, your rating is 72.', evidence: 61 } },
+  {
+    name: 'R6.6 "below your rating of 72" beside finance’s score (kept until round 6)',
+    insight: { type: 'strength', category: 'finance', message: 'Finance scores 61, below your rating of 72.', evidence: 61 },
+  },
+  {
+    name: 'R6.6 a weekday beside the number, in a sentence that names finance',
+    insight: { type: 'pattern', category: 'finance', message: 'In finance, your Monday answers score 58.', evidence: 61 },
+  },
+
+  // --- R6.7: badges as badges ---
+  { name: 'R6.7 "your 80% finance calls came true 80%": the second is a hit rate', insight: over('Your 80% finance calls came true 80% of the time.') },
+  { name: 'R6.7 Sharp capitalised in a sentence', insight: { type: 'strength', category: 'work', message: 'Work is Sharp at 88.', evidence: 88 } },
+  { name: 'R6.7 "sharp" with no ordinary noun after it', insight: { type: 'strength', category: 'finance', message: 'Finance is sharp, with a score of 61.', evidence: 61 } },
+  { name: 'R6.7 "Sharp in work"', insight: { type: 'strength', category: 'work', message: 'Sharp in work at 88.', evidence: 88 } },
+  {
+    name: 'R6.7 "Getting started" as a tier label',
+    insight: { type: 'encouragement', category: 'health', message: 'You are at Getting started in health with 4 answers.', evidence: 4 },
+  },
+  {
+    name: 'R6.7 "the getting started badge"',
+    insight: { type: 'encouragement', category: 'health', message: 'Health has the getting started badge with 4 answers.', evidence: 4 },
+  },
+  {
+    name: 'R6.7 "still getting started" about a category past 20',
+    insight: { type: 'encouragement', category: 'finance', message: 'You are still getting started in finance with 25 answers.', evidence: 25 },
+  },
+  {
+    name: 'R6.7 "just getting started" about a record past 20',
+    insight: { type: 'encouragement', category: 'overall', message: 'You are just getting started with 81 answers.', evidence: 81 },
   },
 ];
 
@@ -871,6 +1251,11 @@ describe('Coach lockstep — fixtures the server accepts as input', () => {
     ['WORK_4_APART', WORK_4_APART],
     ['FLOAT_EDGE', FLOAT_EDGE],
     ['TOTAL_988', TOTAL_988],
+    ['FINANCE_NO_LEAN_21', FINANCE_NO_LEAN_21],
+    ['RATING_HALF', RATING_HALF],
+    ['HALVES', HALVES],
+    ['HEALTH_SCORE_HALF', HEALTH_SCORE_HALF],
+    ['HEALTH_SCORE_FAR', HEALTH_SCORE_FAR],
   ])('%s is a payload the function takes', (_name, context) => {
     expect(parseContext(context)).toEqual(context);
   });

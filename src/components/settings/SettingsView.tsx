@@ -712,18 +712,52 @@ function DeleteGroup({ onOpenDelete }: { onOpenDelete: () => void }) {
   );
 }
 
-/** The question sign-out asks when this phone holds changes the server doesn't (D69 (a)). */
+/**
+ * The question sign-out asks when signing out would lose something for good
+ * (D69 (a)): changes the server doesn't have, or categories only this phone
+ * has (round 6, N1, N2).
+ */
 export const SIGN_OUT_ANYWAY_TITLE = 'Sign out anyway?';
 
 /**
- * What that question says: how many changes would leave the phone with the
- * account and be lost, since only what reached the server comes back on
- * signing in. Exported for tests.
+ * What that question says, naming only the counts above zero. `unsynced`
+ * counts every change the server doesn't have yet: a log, an answer, an edit
+ * or a note, and a deletion. An edit not yet sent goes with the account's
+ * rows and never reaches the server; a deletion not yet sent stays on this
+ * phone (its record is one of the integrity counts) and is sent when the same
+ * account signs in here again. So "removes it from this phone" was untrue of
+ * a deletion, and "won't reach the server" untrue of one whose account comes
+ * back here: "may not" is true of both (main session, round 6).
+ * `localCategories`: the categories added, renamed, given an icon or hidden,
+ * which never sync and go with the account's rows. The store asks only with
+ * one above zero; with neither, it still says something is at stake rather
+ * than nothing. Exported for tests.
  */
-export function unsyncedSignOutLine(count: number): string {
-  return count === 1
-    ? "1 change hasn't reached the server yet. Signing out removes it from this phone."
-    : `${localCount(count)} changes haven't reached the server yet. Signing out removes them from this phone.`;
+export function unsyncedSignOutLine({
+  unsynced,
+  localCategories,
+}: {
+  unsynced: number;
+  localCategories: number;
+}): string {
+  const lines: string[] = [];
+  if (unsynced > 0) {
+    lines.push(
+      unsynced === 1
+        ? "1 change hasn't reached the server yet and may not if you sign out now."
+        : `${localCount(unsynced)} changes haven't reached the server yet and may not if you sign out now.`,
+    );
+  }
+  if (localCategories > 0) {
+    lines.push(
+      localCategories === 1
+        ? '1 category you added or changed lives only on this phone and will be removed.'
+        : `${localCount(localCategories)} categories you added or changed live only on this phone and will be removed.`,
+    );
+  }
+  return lines.length > 0
+    ? lines.join(' ')
+    : "Something on this phone hasn't reached the server yet and may not if you sign out now.";
 }
 
 /**
@@ -731,10 +765,12 @@ export function unsyncedSignOutLine(count: number): string {
  * Signed in: who you are, and a way out. Sign-out takes the account's
  * predictions off this phone after one more sync (owner decision 2026-11-19,
  * D69 (a)); signing back in brings back everything the server has. So it
- * asks first only when something couldn't reach the server: those changes
- * would be lost. The footer also says what never reaches the server and so
- * goes for good: categories added or changed (D39, D40) and the counts only
- * this phone keeps (`PER_USER_TABLES` in src/db/account.ts).
+ * asks first only when signing out would lose something for good: changes
+ * that couldn't reach the server, or categories only this phone has. The
+ * footer also says what never reaches the server and so goes for good:
+ * categories added or changed (D39, D40). The counts only this phone keeps
+ * stay on it through a sign-out (`INTEGRITY_COUNT_TABLES` in
+ * src/db/account.ts; round 6), so the footer no longer names them.
  */
 function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
   const accountsAvailable = useAuthStore((s) => s.accountsAvailable);
@@ -763,8 +799,10 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
         // Nothing changed yet: still signed in, every row still here. Asked
         // in a system alert, whose destructive button does nothing while the
         // app is locked (the alert sits above the lock screen; security
-        // review, 2026-11-18). Confirming goes again, discarding them.
-        askToConfirm(SIGN_OUT_ANYWAY_TITLE, unsyncedSignOutLine(outcome.unsynced), 'Sign out', () => {
+        // review, 2026-11-18). Confirming goes again, discarding what it
+        // named; if more is at stake by then, the store asks again with the
+        // new counts and so does this, each time (round 6, N2).
+        askToConfirm(SIGN_OUT_ANYWAY_TITLE, unsyncedSignOutLine(outcome), 'Sign out', () => {
           if (appLocked()) return;
           void onSignOut(true);
         });
@@ -783,7 +821,7 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
     return (
       <View testID="settings-account">
         <Group
-          footer={`${describeAccount(email)} Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed, and the counts only this phone keeps, aren't backed up, so signing out removes them.`}
+          footer={`${describeAccount(email)} Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed live only on this phone, so signing out removes them.`}
         >
           <NavRow
             label={signingOut ? 'Signing out…' : 'Sign out'}

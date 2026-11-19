@@ -5,12 +5,14 @@ import {
   __resetAuthMarkersForTests,
   addOwedWipe,
   AUTH_MARKERS_KEY,
+  deletionAskedAt,
   forgetSignedOutHere,
   isSignedOutHere,
   loadAuthMarkers,
   owedWipeFor,
   owedWipes,
   rememberSignedOutHere,
+  restoreDeletionAskedAt,
   settleOwedWipe,
   type MarkerStorage,
 } from './authMarkers';
@@ -153,5 +155,120 @@ describe('accounts signed out here alone', () => {
       owed: [{ userId: 'user-1', reason: 'signOut' }],
       signedOutHere: ['user-1'],
     });
+  });
+});
+
+// Round 6, client re-review N4: a deletion's mark keeps when the last request
+// that may have run was sent, so a later definite "still exists" can settle it.
+describe("a deletion mark's time", () => {
+  const T0 = 1_900_000_000_000;
+
+  it('is stamped by every deletion request, kept across a restart, and goes with the mark', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(T0);
+    await addOwedWipe('user-1', 'deletion');
+    expect(deletionAskedAt('user-1')).toBe(T0);
+    now.mockReturnValue(T0 + 5_000);
+    // Not added again, but stamped again: this request may run too.
+    await expect(addOwedWipe('user-1', 'deletion')).resolves.toBe(false);
+    expect(deletionAskedAt('user-1')).toBe(T0 + 5_000);
+
+    restart();
+    await loadAuthMarkers();
+    expect(deletionAskedAt('user-1')).toBe(T0 + 5_000);
+    // The list keeps its shape.
+    expect(owedWipes()).toEqual([{ userId: 'user-1', reason: 'deletion' }]);
+
+    await settleOwedWipe('user-1');
+    expect(deletionAskedAt('user-1')).toBeNull();
+    restart();
+    await loadAuthMarkers();
+    expect(deletionAskedAt('user-1')).toBeNull();
+  });
+
+  it("a sign-out's mark has none; a deletion asked over it gets one", async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(T0);
+    await addOwedWipe('user-1', 'signOut');
+    expect(deletionAskedAt('user-1')).toBeNull();
+    await addOwedWipe('user-1', 'deletion');
+    expect(owedWipeFor('user-1')).toBe('deletion');
+    expect(deletionAskedAt('user-1')).toBe(T0);
+    // And a sign-out's mark over a deletion's changes neither.
+    await addOwedWipe('user-1', 'signOut');
+    expect(deletionAskedAt('user-1')).toBe(T0);
+  });
+
+  it('can be put back, for a request that certainly ran nothing', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(T0);
+    await addOwedWipe('user-1', 'deletion');
+    now.mockReturnValue(T0 + 60_000);
+    await addOwedWipe('user-1', 'deletion');
+    await restoreDeletionAskedAt('user-1', T0);
+    expect(deletionAskedAt('user-1')).toBe(T0);
+    restart();
+    await loadAuthMarkers();
+    expect(deletionAskedAt('user-1')).toBe(T0);
+    await restoreDeletionAskedAt('user-1', null);
+    expect(deletionAskedAt('user-1')).toBeNull();
+    // Nothing happens for an account owed no deletion.
+    await restoreDeletionAskedAt('user-2', T0);
+    expect(deletionAskedAt('user-2')).toBeNull();
+    expect(owedWipeFor('user-2')).toBeNull();
+  });
+
+  it('is stored apart, as ids and times only, and read leniently', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(T0);
+    await addOwedWipe('user-1', 'deletion');
+    await addOwedWipe('user-2', 'signOut');
+    expect(JSON.parse(storage.data.get(AUTH_MARKERS_KEY)!)).toEqual({
+      v: 1,
+      owed: [
+        { userId: 'user-1', reason: 'deletion' },
+        { userId: 'user-2', reason: 'signOut' },
+      ],
+      signedOutHere: [],
+      deletionAskedAt: { 'user-1': T0 },
+    });
+
+    restart();
+    storage.data.set(
+      AUTH_MARKERS_KEY,
+      JSON.stringify({
+        v: 1,
+        owed: [
+          { userId: 'ok', reason: 'deletion' },
+          { userId: 'bad', reason: 'deletion' },
+          { userId: 'neg', reason: 'deletion' },
+          { userId: 'so', reason: 'signOut' },
+        ],
+        signedOutHere: [],
+        deletionAskedAt: { ok: T0, bad: 'soon', neg: -5, so: T0, stray: T0 },
+      }),
+    );
+    await loadAuthMarkers();
+    expect(deletionAskedAt('ok')).toBe(T0);
+    expect(deletionAskedAt('bad')).toBeNull();
+    expect(deletionAskedAt('neg')).toBeNull();
+    expect(deletionAskedAt('so')).toBeNull();
+    expect(deletionAskedAt('stray')).toBeNull();
+    expect(owedWipeFor('bad')).toBe('deletion');
+
+    restart();
+    storage.data.set(
+      AUTH_MARKERS_KEY,
+      JSON.stringify({ v: 1, owed: [{ userId: 'a', reason: 'deletion' }], signedOutHere: [], deletionAskedAt: [T0] }),
+    );
+    await loadAuthMarkers();
+    expect(owedWipeFor('a')).toBe('deletion');
+    expect(deletionAskedAt('a')).toBeNull();
+  });
+
+  it('a request stamped in this run before the stored markers were read keeps the later time', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(T0);
+    await addOwedWipe('user-1', 'deletion');
+    restart();
+    now.mockReturnValue(T0 + 90_000);
+    // No loadAuthMarkers first: the change waits for it, and its time wins.
+    await addOwedWipe('user-1', 'deletion');
+    expect(deletionAskedAt('user-1')).toBe(T0 + 90_000);
   });
 });

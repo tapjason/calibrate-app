@@ -11,9 +11,12 @@ import { track } from '@/analytics/track';
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
 import {
+  answeredAwayFromOrigin,
   canAnswerSkip,
   canCorrect,
+  categoryChangeCountedIfAnswered as categoryChangeCountedIfAnsweredRule,
   categoryChangeCounts,
+  categoryChangeRemembered,
   correctableUntil,
   deletionCounts,
   postponementCounts,
@@ -39,13 +42,17 @@ import {
   countPostponements,
   countRefiles,
   deletePrediction,
+  getCategoryOrigin,
   getPrediction,
   insertPrediction,
+  listCategoryOrigins,
   listDeletions,
   listPendingPredictions,
   listResolvedPredictions,
+  noteAnswerAwayFromOrigin,
   noteRefile,
   recordPostponement,
+  rememberCategoryOrigin,
   resolvePrediction,
   refilePrediction,
   answerSkippedPrediction,
@@ -55,6 +62,7 @@ import {
 import type {
   AnswerTally,
   Category,
+  CategoryOrigin,
   PastOutcomes,
   Prediction,
   PredictionEdit,
@@ -89,10 +97,18 @@ interface PredictionState {
    */
   postponedCount: number;
   /**
-   * Scored answers now filed in another category than they were answered in,
-   * on this phone (step 184, D65).
+   * Scored answers now filed in another category than they belong to, on
+   * this phone: moved after they were answered (step 184, D65), or moved
+   * before, after the day they were made, and answered elsewhere than the
+   * category they had at that first move (review round 6). Each once.
    */
   refiledCount: number;
+  /**
+   * The category this phone remembers for each open prediction moved after
+   * the day it was made (review round 6), by prediction id; loaded with the
+   * open list. For Edit's note (`categoryChangeCountedIfAnswered`).
+   */
+  categoryOrigins: Readonly<Record<string, CategoryOrigin>>;
   loadPending: () => Promise<void>;
   loadResolved: () => Promise<void>;
   /**
@@ -305,12 +321,32 @@ async function getByIdOrHeld(
   }
 }
 
+/**
+ * Inside an answer's transaction, after the write (review round 6): count the
+ * answer with the moved answers when it was given in another category than
+ * the one this phone remembers from its first move after the day it was made
+ * (`answeredAwayFromOrigin`: a scored Yes or No, not already counted as a
+ * late change). Only this answer: the row must be this user's, answered at
+ * `at`, which a resolve that changed nothing (a row already answered from
+ * another phone) isn't. The reads are inside the transaction, like the
+ * recompute's: a failure rolls the answer back and the person can try again.
+ */
+async function countAnswerAwayFromOrigin(userId: string, id: string, at: string): Promise<void> {
+  const origin = await getCategoryOrigin(id, userId);
+  if (!origin) return;
+  const answered = await getPrediction(id);
+  if (!answered || answered.user_id !== userId || answered.resolved_at !== at) return;
+  if (!answeredAwayFromOrigin(answered, origin)) return;
+  await noteAnswerAwayFromOrigin(id, userId, origin.from_category, answered.category, at);
+}
+
 export const usePredictionStore = create<PredictionState>((set, get) => ({
   pending: [],
   resolved: [],
   deletedCount: 0,
   postponedCount: 0,
   refiledCount: 0,
+  categoryOrigins: {},
   justSavedId: null,
   clearJustSaved: () => set({ justSavedId: null }),
   streakCheckpoint: null,
@@ -320,7 +356,21 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
 
   loadPending: async () => {
     const userId = requireUserId();
-    set({ pending: await listPendingPredictions(userId) });
+    const [pending, origins] = await Promise.all([
+      listPendingPredictions(userId),
+      // Only for Edit's note: a failed read leaves the open list loading and
+      // the note unsaid. Whether an answer is counted is read from the
+      // database inside the answer's own transaction, never from this.
+      listCategoryOrigins(userId).catch((e: unknown) => {
+        // eslint-disable-next-line no-console
+        console.warn('[predictions] reading the remembered categories failed:', e);
+        return [];
+      }),
+    ]);
+    set({
+      pending,
+      categoryOrigins: Object.fromEntries(origins.map((o) => [o.prediction_id, o])),
+    });
   },
 
   loadResolved: async () => {
@@ -433,20 +483,22 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       // milestone and a badge's fall are found inside it, on the same reads
       // as the answer's stats, so they stand or fall with the answer.
       await writeWithStats(userId, async () => {
-        // When it was answered and the phone's UTC offset then, from one
-        // clock reading (owner decision 2026-11-19): the same-day rule reads
-        // the answer's day where it was given.
-        const at = new Date();
-        const when = { at: at.toISOString(), utcOffsetMin: utcOffsetMinutes(at) };
+        // When it was answered, stated here so the count below can tell this
+        // answer landed. No offset (round 6): the same-day rule reads the
+        // answer's day in the zone the prediction was made in.
+        const at = new Date().toISOString();
         if (answerSkip && outcome !== 'skipped') {
           // Skipped straight to the answer in one statement, never through
           // open (review round 5), and only a row still skipped: a sync
           // between the check above and here may have brought an answer from
           // another phone (review, 2026-11-08).
-          await answerSkippedPrediction(id, outcome, reflection, when);
+          await answerSkippedPrediction(id, outcome, reflection, { at });
         } else {
-          await resolvePrediction(id, outcome, reflection, when);
+          await resolvePrediction(id, outcome, reflection, { at });
         }
+        // Moved to another category before it was answered (round 6): beside
+        // the answer, so the count and the answer can't part.
+        if (outcome !== 'skipped') await countAnswerAwayFromOrigin(userId, id, at);
         await useStatsStore.getState().recomputeForUser(userId);
       });
       // Refresh local lists from the source of truth. The answer is saved by
@@ -563,6 +615,8 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // So is another category from the eve on (owner decision 2026-11-19): a
     // likely miss moved out before it was answered took its category's score
     // with it, uncounted.
+    const categoryMoved = current.status === 'pending' && edit.category !== current.category;
+    const categoryLate = categoryMoved && categoryChangeCounts(current, now);
     const late =
       current.status === 'pending' &&
       (postponementCounts(
@@ -573,7 +627,12 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
         scoredFromOffset(current),
       ) ||
         (rewordedAt !== undefined && rewordingCounts(current, now)) ||
-        (edit.category !== current.category && categoryChangeCounts(current, now)));
+        categoryLate);
+    // Any move after the day it was made is remembered (round 6), so an
+    // answer given in another category than it had then is counted with the
+    // moved answers, however early the move; one counted late here is marked
+    // so, and its answer is left to the late-changes line.
+    const remembers = categoryMoved && categoryChangeRemembered(current, now);
     await withTransaction(async () => {
       await updatePrediction(
         id,
@@ -581,6 +640,9 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
         { rewordedAt, rewordedUtcOffsetMin },
       );
       if (late) await recordPostponement(id, userId, current.due_date, due_date);
+      if (remembers) {
+        await rememberCategoryOrigin(id, userId, current.category, edit.category, categoryLate);
+      }
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await get().loadPending();
@@ -710,14 +772,15 @@ export function latestDueFor(now: Date = new Date()): Date {
 
 /**
  * Whether an answer given at `now` would be a same-day one, not scored (D41):
- * the answer as `resolve` would store it, with the phone's offset now.
+ * the answer as `resolve` would store it, judged as every answer is, in the
+ * zone the prediction was made in (round 6). For a traveller east of where
+ * it was made, true until the next day has begun there.
  */
 export function answerNowIsSameDay(p: Prediction, now: Date = new Date()): boolean {
   return isSameDayAnswer({
     ...p,
     status: 'resolved_yes',
     resolved_at: now.toISOString(),
-    resolved_utc_offset_min: utcOffsetMinutes(now),
   });
 }
 
@@ -753,13 +816,29 @@ export function openTwinFor(
  * Whether the words were changed on a later day than the prediction was
  * logged. On the day itself new words change nothing it could be told: it
  * already counts as made today (blind playtest 2026-11-14, finding 15).
+ *
+ * It picks the words of a note ("You changed its words today" rather than
+ * "You logged this today"), so it is true when either reading puts the two
+ * on different days: both in the rewording's zone, as the same-day rule
+ * reads them (round 6), or each where it happened. Logged on Wednesday
+ * evening in New York and reworded on Thursday morning in London is one
+ * London day, and "You logged this today" would be untrue to the person; the
+ * rewording note is true in both. Without stored offsets both readings are
+ * the phone's zone, as before.
  */
 export function rewordedLater(p: Prediction): boolean {
-  // Each day read where it happened, as the same-day rule reads them.
-  const made = dayNumberAt(new Date(scoredFrom(p)), scoredFromOffset(p));
-  const logged = dayNumberAt(new Date(p.created_at), p.created_utc_offset_min);
-  if (Number.isNaN(made) || Number.isNaN(logged)) return false;
-  return made !== logged;
+  const madeAtIso = scoredFrom(p);
+  if (madeAtIso === p.created_at) return false;
+  const offset = scoredFromOffset(p);
+  const made = dayNumberAt(new Date(madeAtIso), offset);
+  if (Number.isNaN(made)) return false;
+  const created = new Date(p.created_at);
+  const loggedThere = dayNumberAt(created, offset);
+  const loggedWhereLogged = dayNumberAt(created, p.created_utc_offset_min);
+  return (
+    (!Number.isNaN(loggedThere) && made !== loggedThere) ||
+    (!Number.isNaN(loggedWhereLogged) && made !== loggedWhereLogged)
+  );
 }
 
 /**
@@ -868,9 +947,13 @@ function newPredictionRow(
  */
 export function canRenumber(p: Prediction, now: Date = new Date()): boolean {
   if (p.status !== 'pending') return false;
-  // The day it was logged, read where it was logged (2026-11-19).
-  const made = dayNumberAt(new Date(p.created_at), p.created_utc_offset_min);
-  return !Number.isNaN(made) && made === localDayNumber(now);
+  // The day it was logged and today, both read where it was logged (round
+  // 6), so a traveller's day doesn't end early (record audit: refused an
+  // hour after logging after a zone change); the phone's zone without a
+  // stored offset, as before.
+  const offset = p.created_utc_offset_min;
+  const made = dayNumberAt(new Date(p.created_at), offset);
+  return !Number.isNaN(made) && made === dayNumberAt(now, offset);
 }
 
 const RENUMBER_CLOSED =
@@ -931,6 +1014,28 @@ export function categoryChangeIsCounted(
 ): boolean {
   if (p.status !== 'pending') return false;
   return category !== p.category && categoryChangeCounts(p, now);
+}
+
+/**
+ * For Edit's note on an early move (review round 6): whether moving open
+ * prediction `p` to `category` now would be counted on Insights once it is
+ * answered there with a scored Yes or No, on the moved-answers line (D65).
+ * `origin` is the category this phone remembers for it:
+ * `usePredictionStore.getState().categoryOrigins[p.id] ?? null`. Never true
+ * when `categoryChangeIsCounted` is (that move is counted now, on the
+ * late-changes line), nor for a move back to the remembered category, nor
+ * on the day it was made with nothing remembered. Whether the answer will be
+ * scored (not the day it was made, not "Can't tell") isn't known yet, so the
+ * note says "if it's answered there". The rule is the engine's
+ * (`categoryChangeCountedIfAnswered`); `update` and `resolve` record it.
+ */
+export function categoryChangeCountedIfAnswered(
+  p: Prediction,
+  category: Category,
+  origin: CategoryOrigin | null,
+  now: Date = new Date(),
+): boolean {
+  return categoryChangeCountedIfAnsweredRule(p, category, origin, now);
 }
 
 /**

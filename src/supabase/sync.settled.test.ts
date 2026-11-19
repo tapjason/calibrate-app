@@ -43,15 +43,18 @@ function fakeClient() {
       return Promise.resolve({ error: null });
     },
     delete() {
+      // Round 6 (item 6): conditional, sent by `.select('id')`, answering
+      // with what it removed. Was: sent at the second eq.
       const filters: Record<string, unknown> = {};
       const q = {
         eq(col: string, val: unknown) {
           filters[col] = val;
-          if ('id' in filters && 'user_id' in filters) {
-            deletes.push(String(filters.id));
-            return Promise.resolve({ error: null });
-          }
           return q;
+        },
+        or: () => q,
+        select: () => {
+          deletes.push(String(filters.id));
+          return Promise.resolve({ data: [{ id: filters.id }], error: null });
         },
       };
       return q;

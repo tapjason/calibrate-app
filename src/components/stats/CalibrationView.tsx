@@ -76,7 +76,11 @@ interface CalibrationViewProps {
   answeredCount?: number;
   /** Due dates moved later on the eve or after, on this phone (step 173). */
   postponedCount?: number;
-  /** Scored answers now filed in another category than they were answered in (step 184). */
+  /**
+   * Scored answers now filed in another category than they belong to: moved
+   * after they were answered (step 184), or before, after the day they were
+   * made, and answered elsewhere (review round 6).
+   */
   refiledCount?: number;
   /**
    * Answers given the day they were logged, which aren't scored (roadmap
@@ -538,15 +542,21 @@ export function postponedLine(count: number): string {
 }
 
 /**
- * "1 scored answer was moved to another category after it was answered."
- * (step 184, D65). A category's score follows where an answer is filed, so a
- * miss moved out leaves it; counted as a late delete and a late move are, on
- * this phone only. One moved back isn't counted.
+ * "1 scored answer was moved to another category, before or after it was
+ * answered." (step 184, D65; before it was answered since review round 6). A
+ * category's score follows where an answer is filed, so a miss moved out
+ * leaves it; counted as a late delete and a late move are, on this phone
+ * only. Counted after the answer, or before it (after the day it was made,
+ * then answered in another category than the one it had at that first move).
+ * One moved back isn't counted. Every case counted is a move to another
+ * category, so the line names the move, not where the prediction started: a
+ * category fixed on the day it was made isn't remembered, so "the one it
+ * started in" could be the very category it ends up in.
  */
 export function refiledLine(count: number): string {
   return count === 1
-    ? '1 scored answer was moved to another category after it was answered. Only this phone keeps this count.'
-    : `${count} scored answers were moved to another category after they were answered. Only this phone keeps this count.`;
+    ? '1 scored answer was moved to another category, before or after it was answered. Only this phone keeps this count.'
+    : `${count} scored answers were moved to another category, before or after they were answered. Only this phone keeps this count.`;
 }
 
 /**

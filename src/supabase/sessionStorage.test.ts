@@ -8,12 +8,25 @@ import {
   KEYCHAIN_MARKER_KEY,
   sessionKeys,
   splitUtf8,
+  storedSessionExpiry,
   type KeyValueStorage,
   type SecureStoreLike,
 } from './sessionStorage';
 
 const KEY = 'sb-project-auth-token';
 const ACCESSIBLE = 7; // stands in for AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY
+
+/** A session as auth-js stores it, for `who`, expiring at `expiresAt` (seconds). */
+function session(who: string, expiresAt: number): string {
+  return JSON.stringify({
+    access_token: `access-${who}`,
+    refresh_token: `refresh-${who}`,
+    expires_in: 3600,
+    expires_at: expiresAt,
+    token_type: 'bearer',
+    user: { id: who },
+  });
+}
 
 /** A large session: about 6 KB of JSON, with characters of every UTF-8 length. */
 function bigSession(): string {
@@ -64,8 +77,14 @@ class FakeKeychain implements SecureStoreLike {
     this.data.set(key, value);
     this.accessibility.set(key, options?.keychainAccessible);
   }
+  /**
+   * Like the native module (node_modules/expo-secure-store/ios/
+   * SecureStoreModule.swift, `deleteValueWithKeyAsync`): `SecItemDelete`'s
+   * answer is dropped, so a delete the Keychain refuses resolves as if it
+   * went, and leaves the item (round 6, N5; it used to throw here).
+   */
   async deleteItemAsync(key: string) {
-    if (this.failDelete?.(key)) throw new Error('keychain delete');
+    if (this.failDelete?.(key)) return;
     this.data.delete(key);
     this.accessibility.delete(key);
   }
@@ -296,12 +315,15 @@ describe('the launch check', () => {
     await expect(relaunch(asyncStorage, keychain).getItem(KEY)).resolves.toBe('{"current":true}');
   });
 
+  // Round 6 (N3): "newer" is now read from the sessions themselves, the one
+  // that expires later; the values were placeholders with no expiry, which
+  // no longer win blindly.
   it('an older build ran in between and signed in: its newer AsyncStorage session wins', async () => {
     const first = setup();
-    await first.storage.setItem(KEY, '{"before":true}');
-    first.asyncStorage.data.set(KEY, '{"older-build":true}');
+    await first.storage.setItem(KEY, session('before', 1_900_000_000));
+    first.asyncStorage.data.set(KEY, session('older-build', 1_900_003_600));
     const storage = relaunch(first.asyncStorage, first.keychain);
-    await expect(storage.getItem(KEY)).resolves.toBe('{"older-build":true}');
+    await expect(storage.getItem(KEY)).resolves.toBe(session('older-build', 1_900_003_600));
     expect(first.asyncStorage.data.has(KEY)).toBe(false);
   });
 
@@ -411,5 +433,206 @@ describe('web, or a build without the Keychain module', () => {
       keychain: { store: keychain, accessible: ACCESSIBLE },
     });
     await expect(storage.mode()).resolves.toBe('asyncStorage');
+  });
+});
+
+// Round 6, client re-review N3 (b): with the marker set, a session found in
+// AsyncStorage no longer replaces the Keychain's blindly. The one that
+// expires later stays; one that can't be read loses.
+describe('both stores hold a session (N3)', () => {
+  /** This build signed in: the Keychain holds `who`, expiring at `expiresAt`, the marker set. */
+  async function signedInHere(who: string, expiresAt: number) {
+    const first = setup();
+    await first.storage.setItem(KEY, session(who, expiresAt));
+    return first;
+  }
+
+  it('a TestFlight downgrade that signed in on the older build: its later session moves in', async () => {
+    const first = await signedInHere('here', 1_900_000_000);
+    // The older build reads and writes AsyncStorage only.
+    first.asyncStorage.data.set(KEY, session('older-build', 1_900_007_200));
+    const storage = relaunch(first.asyncStorage, first.keychain);
+    await expect(storage.getItem(KEY)).resolves.toBe(session('older-build', 1_900_007_200));
+    await expect(storage.mode()).resolves.toBe('keychain');
+    expect(first.asyncStorage.data.has(KEY)).toBe(false);
+  });
+
+  it('a downgrade that left an older AsyncStorage session: the Keychain keeps its own, and the copy goes', async () => {
+    const first = await signedInHere('here', 1_900_007_200);
+    first.asyncStorage.data.set(KEY, session('stale', 1_900_000_000));
+    first.asyncStorage.data.set(`${KEY}-code-verifier`, '"v-old"');
+    const storage = relaunch(first.asyncStorage, first.keychain);
+    await expect(storage.getItem(KEY)).resolves.toBe(session('here', 1_900_007_200));
+    await expect(storage.mode()).resolves.toBe('keychain');
+    expect(first.asyncStorage.data.has(KEY)).toBe(false);
+    expect(first.asyncStorage.data.has(`${KEY}-code-verifier`)).toBe(false);
+    // The marker stays.
+    expect(first.asyncStorage.data.get(KEYCHAIN_MARKER_KEY)).toBe('1');
+  });
+
+  it('a cleanup failure during the move, then a refresh in the Keychain: the next launch never goes back to the stale copy', async () => {
+    const asyncStorage = new FakeAsyncStorage();
+    const keychain = new FakeKeychain();
+    asyncStorage.data.set(KEY, session('me', 1_900_000_000));
+    // The move: copied in, marker written, removing the old copy fails.
+    asyncStorage.failRemove = true;
+    const moved = relaunch(asyncStorage, keychain);
+    await expect(moved.getItem(KEY)).resolves.toBe(session('me', 1_900_000_000));
+    await expect(moved.mode()).resolves.toBe('keychain');
+    expect(asyncStorage.data.get(KEY)).toBe(session('me', 1_900_000_000));
+    // auth-js refreshes the session; only the Keychain gets the new one.
+    await moved.setItem(KEY, session('me', 1_900_003_600));
+
+    asyncStorage.failRemove = false;
+    const next = relaunch(asyncStorage, keychain);
+    await expect(next.getItem(KEY)).resolves.toBe(session('me', 1_900_003_600));
+    await expect(next.mode()).resolves.toBe('keychain');
+    // And the stale copy is gone now.
+    expect(asyncStorage.data.has(KEY)).toBe(false);
+  });
+
+  it('a cleanup failure, then another account signed in here: the stale copy never signs the phone back into the first', async () => {
+    const asyncStorage = new FakeAsyncStorage();
+    const keychain = new FakeKeychain();
+    asyncStorage.data.set(KEY, session('first', 1_900_000_000));
+    asyncStorage.failRemove = true;
+    const moved = relaunch(asyncStorage, keychain);
+    await moved.mode();
+    // Signed out (the AsyncStorage copy can't be removed either), then in as another account.
+    await expect(moved.removeItem(KEY)).resolves.toBeUndefined();
+    await moved.setItem(KEY, session('second', 1_900_050_000));
+
+    const next = relaunch(asyncStorage, keychain);
+    await expect(next.getItem(KEY)).resolves.toBe(session('second', 1_900_050_000));
+  });
+
+  it('a tie keeps the Keychain copy', async () => {
+    const first = await signedInHere('keychain', 1_900_000_000);
+    first.asyncStorage.data.set(KEY, session('async', 1_900_000_000));
+    await expect(relaunch(first.asyncStorage, first.keychain).getItem(KEY)).resolves.toBe(
+      session('keychain', 1_900_000_000),
+    );
+  });
+
+  it.each([
+    ['not JSON', 'not json'],
+    ['no expiry', JSON.stringify({ access_token: 'a', refresh_token: 'r' })],
+    ['an expiry that is not a number', JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_at: '2100' })],
+    ['no refresh token', JSON.stringify({ access_token: 'a', expires_at: 2_000_000_000 })],
+    ['a list', '[1,2]'],
+  ])('an AsyncStorage copy that cannot be read (%s) loses', async (_label, raw) => {
+    const first = await signedInHere('here', 1_800_000_000);
+    first.asyncStorage.data.set(KEY, raw);
+    const storage = relaunch(first.asyncStorage, first.keychain);
+    await expect(storage.getItem(KEY)).resolves.toBe(session('here', 1_800_000_000));
+    expect(first.asyncStorage.data.has(KEY)).toBe(false);
+  });
+
+  it('a readable AsyncStorage session wins over a Keychain value that cannot be read, or none', async () => {
+    const unreadable = await signedInHere('here', 1_900_000_000);
+    // A piece of the Keychain value is missing: it reads as no value.
+    const piece = unreadable.keychain.sessionEntries().find((k) => k !== KEY)!;
+    unreadable.keychain.data.delete(piece);
+    unreadable.asyncStorage.data.set(KEY, session('async', 1_800_000_000));
+    await expect(relaunch(unreadable.asyncStorage, unreadable.keychain).getItem(KEY)).resolves.toBe(
+      session('async', 1_800_000_000),
+    );
+
+    const none = setup();
+    await none.storage.mode(); // marker written, Keychain empty
+    none.asyncStorage.data.set(KEY, session('async', 1_800_000_000));
+    await expect(relaunch(none.asyncStorage, none.keychain).getItem(KEY)).resolves.toBe(
+      session('async', 1_800_000_000),
+    );
+  });
+
+  it('a Keychain that cannot be read this run: nothing changes, the AsyncStorage copy is not used, the next launch decides', async () => {
+    const first = await signedInHere('here', 1_900_007_200);
+    first.asyncStorage.data.set(KEY, session('stale', 1_900_000_000));
+    first.keychain.failGet = () => true;
+    const storage = relaunch(first.asyncStorage, first.keychain);
+    await expect(storage.mode()).resolves.toBe('keychain');
+    // No session this run, as any failed Keychain read is.
+    await expect(storage.getItem(KEY)).resolves.toBeNull();
+    expect(first.asyncStorage.data.get(KEY)).toBe(session('stale', 1_900_000_000));
+
+    first.keychain.failGet = null;
+    const next = relaunch(first.asyncStorage, first.keychain);
+    await expect(next.getItem(KEY)).resolves.toBe(session('here', 1_900_007_200));
+    expect(first.asyncStorage.data.has(KEY)).toBe(false);
+  });
+
+  it('reads expiries defensively', () => {
+    expect(storedSessionExpiry(session('x', 1_900_000_000))).toBe(1_900_000_000);
+    const unreadable = [
+      null,
+      undefined,
+      '',
+      'null',
+      '7',
+      '"s"',
+      '{}',
+      JSON.stringify({ access_token: '', refresh_token: 'r', expires_at: 1 }),
+      JSON.stringify({ access_token: 'a', refresh_token: 'r', expires_at: -5 }),
+    ];
+    for (const raw of unreadable) expect(storedSessionExpiry(raw)).toBeNull();
+  });
+});
+
+// Round 6, client re-review N5: expo-secure-store drops the answer to
+// SecItemDelete, so a refused delete looked like success. Every removal reads
+// back.
+describe('a Keychain delete that silently does nothing (N5)', () => {
+  it('a reinstall whose old session cannot be cleared stays on AsyncStorage, unmarked, and never reads it', async () => {
+    const first = setup();
+    await first.storage.setItem(KEY, session('deleted-install', 1_900_000_000));
+    first.keychain.failDelete = () => true;
+    const freshAsync = new FakeAsyncStorage();
+    const storage = relaunch(freshAsync, first.keychain);
+    await expect(storage.mode()).resolves.toBe('asyncStorage');
+    await expect(storage.getItem(KEY)).resolves.toBeNull();
+    expect(freshAsync.data.has(KEYCHAIN_MARKER_KEY)).toBe(false);
+    // Still there: the next launch tries again.
+    expect(first.keychain.sessionEntries().length).toBeGreaterThan(0);
+
+    first.keychain.failDelete = null;
+    const next = relaunch(freshAsync, first.keychain);
+    await expect(next.getItem(KEY)).resolves.toBeNull();
+    await expect(next.mode()).resolves.toBe('keychain');
+    expect(first.keychain.sessionEntries()).toEqual([]);
+  });
+
+  it('only the header refusing to go is caught too', async () => {
+    const first = setup();
+    await first.storage.setItem(KEY, bigSession());
+    first.keychain.failDelete = (key) => key === KEY;
+    const storage = relaunch(new FakeAsyncStorage(), first.keychain);
+    await expect(storage.mode()).resolves.toBe('asyncStorage');
+  });
+
+  it('an upgrade over a Keychain that keeps a stale session moves nothing and keeps the AsyncStorage session in use', async () => {
+    const keychain = new FakeKeychain();
+    await relaunch(new FakeAsyncStorage(), keychain).setItem(KEY, session('stale', 1_800_000_000));
+    keychain.failDelete = () => true;
+    const asyncStorage = new FakeAsyncStorage();
+    asyncStorage.data.set(KEY, session('current', 1_900_000_000));
+    const storage = relaunch(asyncStorage, keychain);
+    await expect(storage.mode()).resolves.toBe('asyncStorage');
+    await expect(storage.getItem(KEY)).resolves.toBe(session('current', 1_900_000_000));
+    expect(asyncStorage.data.has(KEYCHAIN_MARKER_KEY)).toBe(false);
+  });
+
+  it('a removal whose read-back fails is reported, as a refusal is', async () => {
+    const { storage, keychain } = setup();
+    await storage.setItem(KEY, '{"a":1}');
+    let deletes = 0;
+    const realDelete = keychain.deleteItemAsync.bind(keychain);
+    keychain.deleteItemAsync = async (key: string) => {
+      deletes += 1;
+      await realDelete(key);
+      keychain.failGet = () => true;
+    };
+    await expect(storage.removeItem(KEY)).rejects.toThrow();
+    expect(deletes).toBeGreaterThan(0);
   });
 });

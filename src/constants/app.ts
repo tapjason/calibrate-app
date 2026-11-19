@@ -63,24 +63,40 @@ export const REFINE_ENABLED = false;
 export const GOOGLE_SIGN_IN_ENABLED = true;
 
 /**
- * Whether the UTC offsets stored with each prediction (when it was logged,
- * answered and reworded: `created_utc_offset_min`, `resolved_utc_offset_min`,
+ * Whether the UTC offsets stored with each prediction (when it was logged and
+ * when it was reworded: `created_utc_offset_min`,
  * `title_edited_utc_offset_min`; owner decision 2026-11-19) go up to Supabase
- * and come down from it.
+ * and come down from it. There is no answer offset (review round 6): the
+ * same-day rule reads the answer's day in the logging's.
  *
- * **Off until the owner applies the Supabase migration that adds the three
- * columns to `public.predictions`.** Before it, an upsert naming an unknown
- * column fails the whole batch on every sync. With this off, no pushed row
- * names them (`listDirtyPredictions` leaves them out), and a pulled row's are
- * ignored: this phone keeps its own offset for a moment the pulled row
- * shares, and a moment that came from another phone is read in this phone's
- * zone, as every row was before. The same pattern as `TITLE_EDIT_SYNC`
- * before Supabase migration 008 (commits e55eb11, 47a0ffb).
+ * **Off until the owner applies the Supabase migration that adds the two
+ * columns to `public.predictions` (011).** Before it, an upsert naming an
+ * unknown column fails the whole batch on every sync. With this off, no
+ * pushed row names them (`listDirtyPredictions` leaves them out), and a
+ * pulled row's are ignored: this phone keeps its own offset for a moment the
+ * pulled row shares, and a moment that came from another phone has none, so
+ * its days are read in this phone's zone, as every row was before. The same
+ * pattern as `TITLE_EDIT_SYNC` before Supabase migration 008 (commits
+ * e55eb11, 47a0ffb).
  *
- * Turned on, every pushed row carries all three, null included, so no row
- * in a batch upsert writes NULL over another's (postgrest-js names the union
- * of a batch's keys), and a pulled row that wins brings its own, null
- * included.
+ * Turned on, every pushed row carries both, null included, so no row in a
+ * batch upsert writes NULL over another's (postgrest-js names the union of a
+ * batch's keys). A pulled row that wins brings its own offset when it has
+ * one; when it has none (an older build's row, or one pushed before the
+ * flag), this phone keeps its own for the same moment, so a null from the
+ * server never erases a known zone (`upsertPredictionFromRemote`, review
+ * round 6). And once per account, the first sweeps with the flag on fill in
+ * the offsets that rows pushed before it reached the server without
+ * (`backfillOffsets`, src/supabase/sync.ts): only the offsets, each with the
+ * moment it belongs to (`listOffsetBackfill`), as update-only requests that
+ * never insert or re-push a row. The server fills an offset only while its
+ * own is still null and only for the same instant it holds (`created_at` or
+ * `title_edited_at`, compared as timestamptz), so a prediction deleted on
+ * another phone stays deleted and a newer copy there isn't overwritten.
+ * `updated_at` doesn't move, here or on the server. Once every row has gone
+ * without a failure, `markOffsetBackfillDone` records it (SQLite migration
+ * 020's `sync_markers`), and it never runs again for that account on this
+ * phone.
  */
 export const UTC_OFFSET_SYNC = false;
 

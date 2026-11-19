@@ -15,10 +15,12 @@
 //      the guest's rows (security review round 5, client reviewer LOW-A).
 //
 // Sign-out takes the account's rows off the phone (owner decision
-// 2026-11-19, D69 (a)): one more push, then, if anything is still unsynced
-// and the person hasn't said to discard it, nothing happens and the screen
-// asks; otherwise the session ends and the rows go. The guest's Warm-up and
-// practice stay.
+// 2026-11-19, D69 (a)): one more push, then, if anything would be lost for
+// good (changes not yet on the server, categories only this phone has) and
+// the person hasn't agreed to lose it, nothing happens and the screen asks;
+// otherwise the rows go, checked once more just before, and the session
+// ends. The guest's Warm-up and practice stay, and so do this phone's
+// integrity counts (round 6).
 //
 // Layer rule: L4 (state). May import from L2 (db) and L5 (services): the
 // Supabase client, auth, account and sync modules and the account markers,
@@ -41,12 +43,15 @@ import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
 } from '@/db/migrateGuestData';
-import { countUnsynced } from '@/db/predictions';
 import {
   dismissDeliveredNotifications,
   dismissDeliveredReminderWords,
 } from '@/notifications/scheduler';
-import { DELETE_FAILED_MESSAGE, deleteAccountOnServer } from '@/supabase/account';
+import {
+  DELETE_FAILED_MESSAGE,
+  deleteAccountOnServer,
+  deletionCanNoLongerLand,
+} from '@/supabase/account';
 import * as auth from '@/supabase/auth';
 import type {
   AuthOutcome,
@@ -59,6 +64,12 @@ import {
   getSupabaseClient,
   isSupabaseConfigured,
 } from '@/supabase/client';
+import {
+  agreedCovers,
+  NOTHING_AT_STAKE,
+  readAtStake,
+  type AtStake,
+} from '@/supabase/signOutCheck';
 import {
   clearSyncCursor,
   pushNow,
@@ -91,9 +102,14 @@ export type DeleteAccountResult =
 /** Options for `signOut`. */
 export interface SignOutOptions {
   /**
-   * The person has been told how many changes haven't reached the server
-   * (`{ ok: false, unsynced }`) and chose to sign out anyway: the account's
-   * rows leave the phone with them.
+   * The person has been told what signing out would lose (`{ ok: false,
+   * unsynced, localCategories }`: changes that haven't reached the server,
+   * categories only this phone has) and chose to sign out anyway: those go
+   * with the account's rows. It covers what they were told and nothing more:
+   * anything new by the time of the wipe, or since they were asked, stops the
+   * sign-out and they are asked again (round 6, N2). With no question asked
+   * for the account in this run, it covers what is there when this call
+   * counts.
    */
   discardUnsynced?: boolean;
 }
@@ -159,21 +175,28 @@ interface AuthState {
   /**
    * Sign out, and take the account's rows off this phone (D69 (a)).
    *
-   * 1. One more push. 2. Anything still unsynced, and `discardUnsynced`
-   * isn't set: `{ ok: false, unsynced }`, and nothing changes (still signed
-   * in, every row here). 3. Otherwise the session ends, online or on this
-   * phone alone as before (`localOnly`), then the account's rows are wiped
-   * (its predictions, stats, categories, counts; not the Warm-up, the age
-   * band or practice), its sync cursor cleared and the cached copies swept,
-   * then everything a sign-out did before: the guest, billing logged out and
+   * 1. One more push. 2. What signing out would lose for good: changes not
+   * on the server and categories only this phone has. Anything the person
+   * hasn't agreed to lose (`discardUnsynced` covers only what they were told):
+   * `{ ok: false, unsynced, localCategories }`, and nothing changes (still
+   * signed in, every row here). 3. The account's sync stops, and the same is
+   * read again: anything new since stops the sign-out the same way, the
+   * account kept as it was (round 6, N2). 4. The account's rows are wiped
+   * (its predictions, stats and categories; not this phone's integrity counts,
+   * the Warm-up, the age band or practice), its sync cursor cleared and the
+   * cached copies swept. 5. The session ends, online or on this phone alone
+   * as before (`localOnly`), and the account is remembered as signed out
+   * here, so a stale copy of its session coming back is ignored. 6. Then
+   * everything a sign-out did before: the guest, billing logged out and
    * dropped to free, reminders still to come cancelled with the reload,
    * reminders showing words dismissed, the Coach, the Log draft and the
    * answer run cleared.
    *
    * `{ ok: false, error }` when the session couldn't be ended even on this
-   * phone (still signed in, nothing wiped; reminders showing words still
-   * leave the lock screen), or when what's unsynced couldn't be counted
-   * (`SIGN_OUT_CHECK_FAILED`; nothing changed). A wipe that fails after the
+   * phone (still signed in; the rows wiped in step 4 come back from the server
+   * at the next sync, which is started; reminders showing words still leave
+   * the lock screen), or when what would be lost couldn't be read
+   * (`SIGN_OUT_CHECK_FAILED`; nothing changed). A wipe that fails before the
    * session ended is retried at the next launch.
    */
   signOut: (opts?: SignOutOptions) => Promise<SignOutOutcome>;
@@ -206,6 +229,12 @@ let pendingHolds = 0;
  * SIGNED_OUT the Supabase client sends meanwhile doesn't start a second one.
  */
 const wipesInHand = new Set<string>();
+/**
+ * What the last sign-out question in this run told the person signing out
+ * would lose, and for which account: what `discardUnsynced` agrees to lose
+ * (round 6, N2). Forgotten when the app leaves the account.
+ */
+let askedAbout: { account: string; atStake: AtStake } | null = null;
 
 /** The event handleSession gets when the app's own sign-out or deletion ends a session. */
 const APP_SIGN_OUT = 'APP_SIGN_OUT';
@@ -268,18 +297,29 @@ function sweepCachedCopies(): void {
 /**
  * What `eraseAccountHere` takes.
  *
- *   'accountRows': the account's rows only (`deviceData: false`). The
- *   Warm-up, the age band and practice belong to this phone, not to the
- *   account, and stay (main session, 2026-11-19). For sign-out (D69 (a)) and
- *   for every owed wipe: a sign-out's that didn't finish, and an unconfirmed
- *   deletion's once its session has ended.
+ *   'signOut': the account's rows but this phone's integrity counts
+ *   (`deviceData: false, keepIntegrityCounts: true`): the counted deletions,
+ *   late changes and moved answers stay, so signing out and back in can't
+ *   empty Insights' "Only this phone keeps this count" lines (main session,
+ *   2026-11-19; round 6, N1). The Warm-up, the age band and practice belong
+ *   to this phone, not to the account, and stay too. For sign-out (D69 (a))
+ *   and for a sign-out's wipe that didn't finish, retried at launch.
+ *   'accountRows': the account's rows, its integrity counts included
+ *   (`deviceData: false`). For an unconfirmed deletion's owed wipe, once its
+ *   session has ended by itself: the person asked for the account to be
+ *   deleted, and it likely was. The Warm-up, the age band and practice stay.
  *   'confirmedDeletion': a confirmed deletion's local half (ACCOUNT_SPEC
  *   §3.4), as before: the card's left-off categories, the streak moment
  *   day and when the line about usage counts was shown (D69 (b)), the
  *   account's rows, the Warm-up and the age band (the wipe's
  *   default), then the Warm-up and practice stores.
  */
-type EraseKind = 'accountRows' | 'confirmedDeletion';
+type EraseKind = 'signOut' | 'accountRows' | 'confirmedDeletion';
+
+/** The wipe an owed mark asks for: a sign-out's keeps the integrity counts. */
+function eraseKindFor(reason: markers.WipeReason): EraseKind {
+  return reason === 'signOut' ? 'signOut' : 'accountRows';
+}
 
 /**
  * Take an account's rows off this phone. Never throws; returns whether the
@@ -310,9 +350,12 @@ async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolea
   let wiped = false;
   try {
     // A confirmed deletion's wipe is the call it always was (device data
-    // included, the default); every other leaves the Warm-up and the age band.
+    // included, the default); every other leaves the Warm-up and the age band,
+    // and a sign-out's also this phone's integrity counts.
     if (kind === 'confirmedDeletion') await wipeLocalUserData(userId);
-    else await wipeLocalUserData(userId, { deviceData: false });
+    else if (kind === 'signOut') {
+      await wipeLocalUserData(userId, { deviceData: false, keepIntegrityCounts: true });
+    } else await wipeLocalUserData(userId, { deviceData: false });
     wiped = true;
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -442,8 +485,12 @@ async function handleSession(
   lastUserId = next.userId;
 
   // Another account, or none: the Coach's cards go before the new state
-  // shows, so one account's never draw under the next one's.
-  if (prevUserId !== next.userId) resetCoach();
+  // shows, so one account's never draw under the next one's. And what a
+  // sign-out question told the person was about the account left.
+  if (prevUserId !== next.userId) {
+    resetCoach();
+    askedAbout = null;
+  }
 
   if (next.status === 'authenticated' && prevUserId !== next.userId) {
     resumeSyncFor(next.userId);
@@ -495,10 +542,8 @@ async function handleSession(
     prevUserId !== next.userId &&
     !wipesInHand.has(prevUserId)
   ) {
-    if (
-      markers.owedWipeFor(prevUserId) !== null &&
-      (await eraseAccountHere(prevUserId, 'accountRows'))
-    ) {
+    const reason = markers.owedWipeFor(prevUserId);
+    if (reason !== null && (await eraseAccountHere(prevUserId, eraseKindFor(reason)))) {
       await markers.settleOwedWipe(prevUserId);
     }
   }
@@ -651,7 +696,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (reason === 'signOut') await markers.settleOwedWipe(userId);
         continue;
       }
-      if (await eraseAccountHere(userId, 'accountRows')) await markers.settleOwedWipe(userId);
+      if (await eraseAccountHere(userId, eraseKindFor(reason))) {
+        await markers.settleOwedWipe(userId);
+      }
     }
     await handleSession('INITIAL_SESSION', session, set);
 
@@ -677,6 +724,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     signInsInFlight = 0;
     pendingHolds = 0;
     wipesInHand.clear();
+    askedAbout = null;
     markers.__resetAuthMarkersForTests();
     set({
       userId: null,
@@ -703,64 +751,111 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         status === 'authenticated' && userId && userId !== LOCAL_GUEST_USER_ID ? userId : null;
 
       let addedOwed = false;
+      let wiped = false;
+      /** What the person agreed to lose: nothing, unless they were asked and said so. */
+      let agreed: AtStake = NOTHING_AT_STAKE;
       if (account) {
-        // 1. One more push, so as little as possible is left unsynced.
+        // 1. One more push, so as little as possible is left to lose.
         await pushNow(account);
-        // 2. What signing out would lose. Unless the person has already said
-        // to discard it, anything left means nothing happens yet.
-        if (!opts?.discardUnsynced) {
-          let unsynced: number;
-          try {
-            unsynced = await countUnsynced(account);
-          } catch (e) {
-            // eslint-disable-next-line no-console
-            console.warn('[auth] could not count what is unsynced:', errorForLog(e));
-            return { ok: false, error: SIGN_OUT_CHECK_FAILED };
-          }
-          if (unsynced > 0) return { ok: false, unsynced };
+        // 2. What signing out would lose for good (changes not on the server,
+        // categories only this phone has), and whether the person agreed to
+        // lose it: `discardUnsynced` agrees to what they were told when asked
+        // in this run (N2), or with no question asked for this account, to
+        // what is here now. Anything more, and nothing happens yet.
+        let atStake: AtStake;
+        try {
+          atStake = await readAtStake(account);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[auth] could not count what signing out would lose:', errorForLog(e));
+          return { ok: false, error: SIGN_OUT_CHECK_FAILED };
         }
+        if (opts?.discardUnsynced) {
+          agreed = askedAbout?.account === account ? askedAbout.atStake : atStake;
+        }
+        if (!agreedCovers(agreed, atStake)) return askAbout(account, atStake);
+        // What may go from here: what is still here of what was agreed.
+        agreed = atStake;
         // 3. Its rows are owed a wipe from here (retried at the next launch if
-        // it doesn't finish), and its sync stops, the running sweep waited for.
+        // the wipe doesn't go), and its sync stops, a running sweep or push
+        // waited for.
         addedOwed = await markers.addOwedWipe(account, 'signOut');
         await stopSyncFor(account);
         wipesInHand.add(account);
       }
 
       try {
-        // 4. End the session: online, or on this phone alone (`localOnly`).
+        let rememberedHere = false;
+        if (account) {
+          // 4. Once more, immediately before the wipe, while the account can
+          // still be kept as it was (N2): a change made since the question or
+          // since step 2 (a reminder's Happened, a log while "Signing out…"
+          // showed) stops it here, and the person is asked again.
+          let atStake: AtStake;
+          try {
+            atStake = await readAtStake(account);
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[auth] could not count what signing out would lose:', errorForLog(e));
+            await keepAccount(account, addedOwed, false);
+            return { ok: false, error: SIGN_OUT_CHECK_FAILED };
+          }
+          if (!agreedCovers(agreed, atStake)) {
+            await keepAccount(account, addedOwed, false);
+            return askAbout(account, atStake);
+          }
+          // 5. The account's rows leave the phone, but its integrity counts
+          // (round 6, N1); the Warm-up, the age band and practice stay too.
+          // Before the session ends, so step 4 is the last moment anything
+          // could be added unasked. A wipe that went settles the mark this
+          // sign-out made (a deletion's waits for the session to end, below);
+          // one that failed stays owed for the launch.
+          wiped = await eraseAccountHere(account, 'signOut');
+          if (wiped && addedOwed) await markers.settleOwedWipe(account);
+          // Remembered as signed out here before the session ends (N3): a
+          // token refresh under way can write the session back as the
+          // sign-out lands, online or not, and it is ignored when it does
+          // (handleSession, and at launch).
+          if (!markers.isSignedOutHere(account)) {
+            await markers.rememberSignedOutHere(account);
+            rememberedHere = true;
+          }
+        }
+
+        // 6. End the session: online, or on this phone alone (`localOnly`).
         let outcome: SessionEndOutcome;
         try {
           outcome = await auth.signOut();
         } catch (e) {
-          if (account) await keepAccount(account, addedOwed);
+          if (account) {
+            if (rememberedHere) await markers.forgetSignedOutHere(account);
+            await keepAccount(account, addedOwed, wiped);
+          }
           throw e;
         }
         if (!outcome.ok) {
-          // Still signed in: the account and its rows stay, and it syncs again.
-          if (account) await keepAccount(account, addedOwed);
+          // Still signed in: the account stays and syncs again; rows the wipe
+          // took come back from the server.
+          if (account) {
+            if (rememberedHere) await markers.forgetSignedOutHere(account);
+            await keepAccount(account, addedOwed, wiped);
+          }
           // The words still leave the lock screen: the person asked to leave.
           void dismissDeliveredReminderWords().catch(() => {});
           return outcome;
         }
 
-        if (account) {
-          // A token refresh under way can still write this session back:
-          // it is ignored when it lands (handleSession).
-          if (outcome.localOnly) await markers.rememberSignedOutHere(account);
-          // 5. The account's rows leave the phone (the Warm-up, the age band
-          // and practice stay), and with them any wipe owed for it, a
-          // deletion's included.
-          if (await eraseAccountHere(account, 'accountRows')) {
-            await markers.settleOwedWipe(account);
-          }
-        }
+        // The session ended and the rows went: nothing is owed for the
+        // account any more, an unconfirmed deletion's mark included.
+        if (account && wiped) await markers.settleOwedWipe(account);
 
-        // 6. Everything a sign-out did before. Supabase has usually moved the
+        // 7. Everything a sign-out did before. Supabase has usually moved the
         // app already (SIGNED_OUT, then handleSession); when only this phone
         // could end it, nothing did. Either way the app follows now: billing
         // logs out and drops to free, reminders still to come are cancelled
         // with the reload, the Log draft and the answer run are cleared.
         // handleSession does nothing twice for the same id.
+        askedAbout = null;
         try {
           await handleSession(APP_SIGN_OUT, null, set);
         } catch (e) {
@@ -787,19 +882,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // or unavailable; the server then skips revocation.
       const appleCode = hasAppleIdentity ? await auth.reauthenticateWithApple() : null;
 
+      // An earlier request that couldn't be confirmed, and when it was sent.
+      const earlierDeletion = markers.owedWipeFor(userId) === 'deletion';
+      const earlierAskedAt = markers.deletionAskedAt(userId);
       // Before the call (client reviewer, HIGH 2): if the account is deleted
       // without this phone hearing, its rows still leave the phone when its
-      // session ends by itself.
+      // session ends by itself. Stamped with now: this request may run on the
+      // server until well after it.
       const addedOwed = await markers.addOwedWipe(userId, 'deletion');
       // Sent only if the session is this account's (src/supabase/account.ts).
       const outcome = await deleteAccountOnServer(appleCode, { expectedUserId: userId });
       if (!outcome.ok) {
-        // Nothing was deleted, for certain: the mark goes, unless an earlier
-        // attempt that couldn't be confirmed set it.
-        if (outcome.error === DELETE_FAILED_MESSAGE && addedOwed) {
-          await markers.settleOwedWipe(userId);
+        // Nothing was deleted by this request, for certain.
+        if (outcome.error === DELETE_FAILED_MESSAGE) {
+          if (addedOwed) {
+            // No earlier request: the mark goes.
+            await markers.settleOwedWipe(userId);
+          } else if (earlierDeletion) {
+            // An earlier request couldn't be confirmed. The auth server
+            // saying the account still exists, asked after that request can
+            // no longer delete anything, rules it out too (round 6, N4); else
+            // the mark stays, with that request's time, the one that may
+            // still run.
+            if (
+              outcome.stillExistsAt !== undefined &&
+              deletionCanNoLongerLand(earlierAskedAt, outcome.stillExistsAt)
+            ) {
+              await markers.settleOwedWipe(userId);
+            } else if (earlierAskedAt !== null) {
+              await markers.restoreDeletionAskedAt(userId, earlierAskedAt);
+            }
+            // With no time for the earlier request (an older build marked
+            // it), the one just stamped stays: that request was sent before
+            // now, so it is a later bound, and a definite answer that much
+            // later still settles the mark.
+          }
         }
-        return outcome;
+        return { ok: false, error: outcome.error };
       }
 
       // Whether the person removes the app from Sign in with Apple themselves
@@ -896,11 +1015,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 }));
 
 /**
- * The session didn't end after all: the account stays signed in with its
- * rows, so it syncs again, and the wipe this sign-out marked as owed is
- * dropped (one a deletion marked earlier stays).
+ * The sign-out stops, or the session didn't end after all: the account stays
+ * signed in, so it syncs again, and the wipe this sign-out marked as owed is
+ * dropped (one a deletion marked earlier stays). When its rows were already
+ * wiped (`wiped`, the session's end failed after the wipe), what reached the
+ * server comes back with a sync, which starts now (the wipe cleared the
+ * cursor, so it pulls everything), and the lists show the account meanwhile.
+ * Nothing unsynced was lost: the wipe only ran on what the person agreed to.
+ * Never throws.
  */
-async function keepAccount(userId: string, addedOwed: boolean): Promise<void> {
+async function keepAccount(userId: string, addedOwed: boolean, wiped: boolean): Promise<void> {
   resumeSyncFor(userId);
   if (addedOwed) await markers.settleOwedWipe(userId);
+  if (!wiped) return;
+  try {
+    await reloadForUser(userId);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] reload after a sign-out that did not end failed:', errorForLog(e));
+  }
+  void syncForUser(userId);
+}
+
+/**
+ * The question sign-out returns: what signing out would lose for good, both
+ * counts. Remembered for this account, so the answer, `discardUnsynced`,
+ * agrees to exactly that (N2).
+ */
+function askAbout(
+  account: string,
+  atStake: AtStake,
+): { ok: false; unsynced: number; localCategories: number } {
+  askedAbout = { account, atStake };
+  return { ok: false, unsynced: atStake.unsynced, localCategories: atStake.localCategories };
 }

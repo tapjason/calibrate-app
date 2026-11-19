@@ -17,11 +17,18 @@ jest.mock('@/supabase/sync', () => ({
   pushNow: jest.fn(async () => 0),
   stopSyncFor: jest.fn(async () => {}),
   resumeSyncFor: jest.fn(),
+  // Round 6 (N2): what sign-out reads again just before the wipe.
+  unsyncedRows: jest.fn(async () => new Map()),
 }));
 jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn(async () => {}) }));
 jest.mock('@/db/predictions', () => ({
   ...jest.requireActual('@/db/predictions'),
   countUnsynced: jest.fn(async () => 0),
+}));
+// Round 6 (N1): sign-out also counts the categories only this phone has.
+jest.mock('@/db/categories', () => ({
+  ...jest.requireActual('@/db/categories'),
+  countLocalOnlyCategories: jest.fn(async () => 0),
 }));
 jest.mock('@/db/migrateGuestData', () => ({
   ...jest.requireActual('@/db/migrateGuestData'),
@@ -212,7 +219,8 @@ async function signedOutOffline() {
   await expect(outcome).resolves.toEqual({ ok: true, localOnly: true });
   expect(useAuthStore.getState()).toMatchObject({ userId: LOCAL_GUEST_USER_ID, status: 'guest' });
   expect(fake.storage.has(KEY)).toBe(false);
-  expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false });
+  // Round 6 (N1): this phone's integrity counts stay through a sign-out.
+  expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
   return fake;
 }
 

@@ -1,16 +1,24 @@
--- Answer zones, answers that stay answered, and per-account write limits
--- (security review, round 5, 2026-11-19). Apply AFTER 010: the block below
--- refuses to run without 010's functions.
+-- Logging zones, answers that stay answered, and per-account write limits
+-- (security review, rounds 5 and 6, 2026-11-19). Apply AFTER 010: the block
+-- below refuses to run without 010's functions.
 --
---   1. predictions gains three nullable columns: the phone's UTC offset, in
+--   1. predictions gains two nullable columns: the phone's UTC offset, in
 --      minutes east of UTC (-getTimezoneOffset(), src/types/index.ts), when
---      the prediction was logged, answered and reworded. The owner decided
---      2026-11-19 that a same-day answer (D41) is judged on the calendar day
---      where each moment happened (src/engine/sameDay.ts). Older rows and
---      older builds leave them null. The app sends them only once
---      UTC_OFFSET_SYNC (src/constants/app.ts) is turned on, after this
---      migration is live: an upsert naming a column the server doesn't have
---      fails whole, so the flag must wait for the columns.
+--      the prediction was logged and when it was reworded. The owner decided
+--      2026-11-19 (D69 (f), as refined after the re-review) that a same-day
+--      answer (D41) is judged only in the zone the prediction was logged in,
+--      or reworded in (D45), so moving the phone to another zone before
+--      answering can't turn a same-day answer into a scored one
+--      (src/engine/sameDay.ts). The answer's own offset is not kept: there
+--      is no column for it. Older rows and older builds leave both null. The
+--      app sends them only once UTC_OFFSET_SYNC (src/constants/app.ts) is
+--      turned on, after this migration is live: an upsert naming a column
+--      the server doesn't have fails whole, so the flag must wait for the
+--      columns, and the build that turns it on must name only these two. A
+--      push that names an offset as null, for the same moment as the stored
+--      row's, keeps the stored offset (section 1, predictions_keep_offsets):
+--      a null says the phone doesn't know the zone, never that there was
+--      none.
 --   2. No answer goes back to open through sync (CLAUDE.md: "There is no way
 --      to put any answer back to open"; a Yes or No never becomes "Can't
 --      tell", D34). A phone that hadn't pulled could push its open copy of a
@@ -35,16 +43,15 @@
 --     sweep ends, every row stays queued for a later sweep, and the queue is
 --     capped at 2,000 rows (oldest dropped first). The app sends at most 100
 --     rows a request, so PT413 never reaches it; PT429 lifts at midnight UTC.
---   - Predictions (src/supabase/sync.ts, pushDirty): any refused batch falls
---     back to one request per row, and a row refused alone stays dirty for
---     the next sweep. pushDirty sends every dirty row in one upsert today (no
---     batch size), so more than 100 dirty rows are refused as a batch with
---     PT413 and then all arrive one request each: slower, nothing lost. Past
---     the 50,000 cap, each new row is refused (PT429) on every sweep and
---     stays on the phone; changes to existing rows still go through. Past
---     the 25 MB text budget, a row that adds text is refused (PT429) on every
---     sweep and stays on the phone; answers and other changes that add no
---     text still go through.
+--   - Predictions (src/supabase/sync.ts, pushDirty): at most 100 rows per
+--     upsert (PUSH_BATCH_SIZE), oldest change first, so PT413 never reaches
+--     it. Any refused batch is tried once more one row at a time, and a row
+--     refused alone stays dirty for the next sweep (sign-out counts it as
+--     unsynced and asks before discarding it). Past the 50,000 cap, each new
+--     row is refused (PT429) on every sweep and stays on the phone; changes
+--     to existing rows still go through. Past the 25 MB text budget, a row
+--     that adds text is refused (PT429) on every sweep and stays on the
+--     phone; answers and other changes that add no text still go through.
 --
 -- Safe on a live database: the new columns are nullable with no default (no
 -- table rewrite); every new CHECK is added NOT VALID, then validated in its
@@ -79,18 +86,17 @@ $$;
 -- 1. The UTC offsets
 -- ---------------------------------------------------------------------------
 
+-- The logging and rewording moments only: same-day is judged in that zone
+-- alone, so no offset is kept for the moment of the answer (header, 1).
 -- Nullable, no default: adding them rewrites nothing and older builds, which
 -- never name them, leave them as they are (an upsert only sets the columns
 -- it names).
 alter table public.predictions
   add column if not exists created_utc_offset_min      integer,
-  add column if not exists resolved_utc_offset_min     integer,
   add column if not exists title_edited_utc_offset_min integer;
 
 comment on column public.predictions.created_utc_offset_min is
   'Minutes east of UTC on the phone when the prediction was logged; null when unknown. Migration 011.';
-comment on column public.predictions.resolved_utc_offset_min is
-  'Minutes east of UTC on the phone when resolved_at was set; null when unknown. Migration 011.';
 comment on column public.predictions.title_edited_utc_offset_min is
   'Minutes east of UTC on the phone when title_edited_at was set; null when unknown. Migration 011.';
 
@@ -103,16 +109,78 @@ alter table public.predictions
   check (created_utc_offset_min between -840 and 840) not valid;
 
 alter table public.predictions
-  drop constraint if exists predictions_resolved_utc_offset_min_range;
-alter table public.predictions
-  add constraint predictions_resolved_utc_offset_min_range
-  check (resolved_utc_offset_min between -840 and 840) not valid;
-
-alter table public.predictions
   drop constraint if exists predictions_title_edited_utc_offset_min_range;
 alter table public.predictions
   add constraint predictions_title_edited_utc_offset_min_range
   check (title_edited_utc_offset_min between -840 and 840) not valid;
+
+-- Before each update of a prediction: a null offset sent over a stored one,
+-- for the same moment, keeps the stored one. Once UTC_OFFSET_SYNC is on, the
+-- app names both columns on every row it pushes, null included (rowToWire,
+-- src/db/predictions.ts). A phone that doesn't hold a moment's offset (a row
+-- it pulled while the app sent none, or one logged before the app kept them)
+-- then pushes the whole row with that offset null, and last-write-wins would
+-- erase the offset another phone sent for that very moment, so a same-day
+-- answer (D41) would be read in whatever zone each phone is in. A null says
+-- the sender doesn't know the zone, never that the moment had none: the same
+-- rule as the app's pull (upsertPredictionFromRemote, src/db/predictions.ts).
+-- Each offset is judged on its own moment:
+--   - created_utc_offset_min, when the update leaves created_at the same
+--     instant. timestamptz compares instants, so '...10:00+01:00' and
+--     '...09:00Z' are the same moment however a phone writes it; created_at
+--     is NOT NULL (migration 001), so = is exact. The app never moves
+--     created_at. A push that does (defined, not expected) is another moment,
+--     and the null it brings lands.
+--   - title_edited_utc_offset_min, when title_edited_at is not distinct from
+--     the stored one (null and null included). New words come with their own
+--     date (D45), another moment: a null with them lands, since the stored
+--     zone was the old words'.
+-- A known offset always lands, as every column does (last write wins). A
+-- build that doesn't name the columns at all never needed this: an upsert
+-- sets only the columns it names. Never raises, and writes nothing but the
+-- two offsets: updated_at and every other column stay as the update set
+-- them. Applies to every role, as predictions_keep_answer does; to clear an
+-- offset by hand, the README's step 12 says how.
+--
+-- Firing order: Postgres fires the BEFORE ROW triggers of one event in name
+-- order, each given the row the one before it returned, so this one runs
+-- after predictions_keep_answer (section 2; '_keep_a' sorts before
+-- '_keep_o'). The order changes nothing, so it is not relied on. When
+-- keep_answer keeps an answered row, it hands on the stored row, all but
+-- updated_at: its offsets are the stored ones, so wherever one is null the
+-- stored one is null too, and this one changes nothing. Run the other way
+-- round, keep_answer would replace whatever this one did with the stored row
+-- anyway. And keep_answer reads only status, which this one never writes, so
+-- neither decides whether the other acts.
+--
+-- Invoker's rights: it reads no table.
+create or replace function public.predictions_keep_offsets()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.created_utc_offset_min is null
+     and new.created_at = old.created_at then
+    new.created_utc_offset_min := old.created_utc_offset_min;
+  end if;
+  if new.title_edited_utc_offset_min is null
+     and new.title_edited_at is not distinct from old.title_edited_at then
+    new.title_edited_utc_offset_min := old.title_edited_utc_offset_min;
+  end if;
+  return new;
+end;
+$$;
+
+comment on function public.predictions_keep_offsets() is
+  'BEFORE UPDATE on predictions: a null UTC offset sent over a stored one keeps '
+  'the stored one while its moment is unchanged (created_at the same instant; '
+  'title_edited_at not distinct). Never raises; writes nothing else. Migration 011.';
+
+drop trigger if exists predictions_keep_offsets on public.predictions;
+create trigger predictions_keep_offsets
+  before update on public.predictions
+  for each row execute function public.predictions_keep_offsets();
 
 -- ---------------------------------------------------------------------------
 -- 2. No answer back to open
@@ -123,7 +191,7 @@ alter table public.predictions
 -- and the update would make it "Can't tell", the update comes from a phone
 -- that hadn't pulled the answer, and none of it lands: the whole row stays as
 -- it was (status, resolved_at, reflection, title, category, due_date,
--- title_edited_at, the three offsets, every column), all but updated_at
+-- title_edited_at, the two offsets, every column), all but updated_at
 -- (main session decision, 2026-11-19, the same rule as the app's pull merge,
 -- upsertPredictionFromRemote in src/db/predictions.ts). An open copy's edits
 -- never reach an answered prediction: the app itself lets no answered
@@ -704,7 +772,6 @@ begin
     select t.tbl, t.con
       from (values
         ('public.predictions',            'predictions_created_utc_offset_min_range'),
-        ('public.predictions',            'predictions_resolved_utc_offset_min_range'),
         ('public.predictions',            'predictions_title_edited_utc_offset_min_range'),
         ('public.predictions',            'predictions_title_bytes'),
         ('public.predictions',            'predictions_reflection_bytes'),

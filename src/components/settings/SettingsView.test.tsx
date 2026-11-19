@@ -302,8 +302,9 @@ describe('SettingsView — account', () => {
   // D69 (a): sign-out takes the account's predictions off this phone, and
   // signing back in brings back what the server has. The row says so, and
   // nothing says they stay. What never syncs goes for good (the categories
-  // table, D39 and D40, and the on-phone counts), and the row says that too
-  // (round 5, 2026-11-19: it promised everything came back).
+  // table, D39 and D40), and the row says that too (round 5, 2026-11-19: it
+  // promised everything came back). Round 6: sign-out keeps the counts only
+  // this phone keeps, so the row no longer says it removes them.
   it('says signing out removes the predictions from this phone and signing in brings them back', () => {
     useAuthStore.setState({
       accountsAvailable: true,
@@ -315,10 +316,11 @@ describe('SettingsView — account', () => {
 
     expect(
       screen.getByText(
-        "Signed in as a@b.co. Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed, and the counts only this phone keeps, aren't backed up, so signing out removes them.",
+        'Signed in as a@b.co. Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed live only on this phone, so signing out removes them.',
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/stay on this phone|kept on this phone/)).toBeNull();
+    expect(screen.queryByText(/counts only this phone keeps/)).toBeNull();
   });
 
   // Security review, 2026-11-18: the store returns how the sign-out ended.
@@ -443,8 +445,9 @@ describe('SettingsView — account', () => {
   });
 
   // D69 (a): sign-out takes the account's rows off this phone. When this
-  // phone holds changes the server doesn't have, the store changes nothing
-  // and says how many; the screen asks before going on.
+  // phone holds changes the server doesn't have, or categories only it has
+  // (round 6, N1), the store changes nothing and says how many of each; the
+  // screen asks before going on.
   describe('when changes have not reached the server', () => {
     let alertSpy: jest.SpyInstance<void, Parameters<typeof Alert.alert>>;
     let announce: jest.SpyInstance;
@@ -496,7 +499,7 @@ describe('SettingsView — account', () => {
     }
 
     it('asks first, in a system alert with Cancel and a destructive Sign out', async () => {
-      const signOut = jest.fn().mockResolvedValue({ ok: false, unsynced: 3 });
+      const signOut = jest.fn().mockResolvedValue({ ok: false, unsynced: 3, localCategories: 0 });
       signedIn(signOut);
       render(<SettingsView />);
 
@@ -505,9 +508,7 @@ describe('SettingsView — account', () => {
       const { title, message, buttons } = lastAlert();
       expect(title).toBe('Sign out anyway?');
       expect(title).toBe(SIGN_OUT_ANYWAY_TITLE);
-      expect(message).toBe(
-        "3 changes haven't reached the server yet. Signing out removes them from this phone.",
-      );
+      expect(message).toBe("3 changes haven't reached the server yet and may not if you sign out now.");
       expect(buttons.map(({ text, style }) => ({ text, style }))).toEqual([
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign out', style: 'destructive' },
@@ -523,14 +524,14 @@ describe('SettingsView — account', () => {
     it('signs out discarding them once Sign out is chosen, and says nothing when that works', async () => {
       const signOut = jest
         .fn()
-        .mockResolvedValueOnce({ ok: false, unsynced: 1 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 1, localCategories: 0 })
         .mockResolvedValueOnce({ ok: true });
       signedIn(signOut);
       render(<SettingsView />);
 
       await pressSignOutAndWaitForAlert();
       expect(lastAlert().message).toBe(
-        "1 change hasn't reached the server yet. Signing out removes it from this phone.",
+        "1 change hasn't reached the server yet and may not if you sign out now.",
       );
       chooseInAlert('Sign out');
 
@@ -549,7 +550,7 @@ describe('SettingsView — account', () => {
     it("shows and says the confirmed sign-out's error, as for any sign-out", async () => {
       const signOut = jest
         .fn()
-        .mockResolvedValueOnce({ ok: false, unsynced: 2 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 2, localCategories: 0 })
         .mockResolvedValueOnce({ ok: false, error: SIGN_OUT_FAILED_CONST });
       signedIn(signOut);
       render(<SettingsView />);
@@ -567,7 +568,7 @@ describe('SettingsView — account', () => {
     });
 
     it('changes nothing when Cancel is chosen', async () => {
-      const signOut = jest.fn().mockResolvedValue({ ok: false, unsynced: 4 });
+      const signOut = jest.fn().mockResolvedValue({ ok: false, unsynced: 4, localCategories: 0 });
       signedIn(signOut);
       render(<SettingsView />);
 
@@ -589,7 +590,7 @@ describe('SettingsView — account', () => {
     it('does nothing when Sign out is pressed while the app is locked', async () => {
       const signOut = jest
         .fn()
-        .mockResolvedValueOnce({ ok: false, unsynced: 2 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 2, localCategories: 0 })
         .mockResolvedValueOnce({ ok: true });
       signedIn(signOut);
       render(<SettingsView />);
@@ -609,7 +610,7 @@ describe('SettingsView — account', () => {
     it('works as before once the lock is open again', async () => {
       const signOut = jest
         .fn()
-        .mockResolvedValueOnce({ ok: false, unsynced: 2 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 2, localCategories: 0 })
         .mockResolvedValueOnce({ ok: true });
       signedIn(signOut);
       render(<SettingsView />);
@@ -623,15 +624,185 @@ describe('SettingsView — account', () => {
       expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
     });
 
-    it('pluralises the count, grouping large ones', () => {
-      expect(unsyncedSignOutLine(1)).toBe(
-        "1 change hasn't reached the server yet. Signing out removes it from this phone.",
+    // Round 6, N1: categories only this phone has go with the account's rows,
+    // so they are asked about too, alone when nothing else is at stake.
+    it('names the categories that live only on this phone when no change is unsynced', async () => {
+      const signOut = jest.fn().mockResolvedValue({ ok: false, unsynced: 0, localCategories: 3 });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+
+      const { title, message, buttons } = lastAlert();
+      expect(title).toBe(SIGN_OUT_ANYWAY_TITLE);
+      expect(message).toBe(
+        '3 categories you added or changed live only on this phone and will be removed.',
       );
-      expect(unsyncedSignOutLine(2)).toBe(
-        "2 changes haven't reached the server yet. Signing out removes them from this phone.",
+      expect(message).not.toMatch(/server|change hasn|changes haven/);
+      expect(buttons.map(({ text, style }) => ({ text, style }))).toEqual([
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive' },
+      ]);
+      expect(signOut).toHaveBeenCalledTimes(1);
+      expect(signOut).toHaveBeenCalledWith();
+    });
+
+    it('names both, the changes first, when both are at stake', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 2, localCategories: 1 })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      expect(lastAlert().message).toBe(
+        "2 changes haven't reached the server yet and may not if you sign out now. 1 category you added or changed lives only on this phone and will be removed.",
       );
-      expect(unsyncedSignOutLine(1234)).toBe(
-        "1,234 changes haven't reached the server yet. Signing out removes them from this phone.",
+      chooseInAlert('Sign out');
+
+      await waitFor(() => expect(signOut).toHaveBeenCalledTimes(2));
+      expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    // Round 6, N2: anything new by the time of the confirmed sign-out stops
+    // it, and the store asks again with the new counts. The screen asks again
+    // each time, with those counts, until a sign-out goes or the person
+    // cancels.
+    it('asks again, with the new counts, each time the store asks again', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 1, localCategories: 0 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 2, localCategories: 1 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 0, localCategories: 2 })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      expect(lastAlert().message).toBe(
+        "1 change hasn't reached the server yet and may not if you sign out now.",
+      );
+      chooseInAlert('Sign out');
+
+      await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(2));
+      expect(lastAlert().title).toBe(SIGN_OUT_ANYWAY_TITLE);
+      expect(lastAlert().message).toBe(
+        "2 changes haven't reached the server yet and may not if you sign out now. 1 category you added or changed lives only on this phone and will be removed.",
+      );
+      expect(lastAlert().buttons.map(({ text, style }) => ({ text, style }))).toEqual([
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive' },
+      ]);
+      await waitFor(() =>
+        expect(screen.getByTestId('settings-sign-out')).toHaveTextContent('Sign out'),
+      );
+      chooseInAlert('Sign out');
+
+      await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(3));
+      expect(lastAlert().message).toBe(
+        '2 categories you added or changed live only on this phone and will be removed.',
+      );
+      chooseInAlert('Sign out');
+
+      await waitFor(() => expect(signOut).toHaveBeenCalledTimes(4));
+      expect(signOut).toHaveBeenNthCalledWith(1);
+      expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+      expect(signOut).toHaveBeenNthCalledWith(3, { discardUnsynced: true });
+      expect(signOut).toHaveBeenNthCalledWith(4, { discardUnsynced: true });
+      await waitFor(() =>
+        expect(screen.getByTestId('settings-sign-out')).toHaveTextContent('Sign out'),
+      );
+      // The sign-out went: no fourth question, no error, nothing said.
+      expect(alertSpy).toHaveBeenCalledTimes(3);
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+      expect(announce).not.toHaveBeenCalled();
+    });
+
+    it('changes nothing more when the repeated question is cancelled', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 1, localCategories: 0 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 2, localCategories: 0 })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      chooseInAlert('Sign out');
+      await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(2));
+      expect(lastAlert().message).toBe(
+        "2 changes haven't reached the server yet and may not if you sign out now.",
+      );
+      chooseInAlert('Cancel');
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(signOut).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+      await waitFor(() => expect(screen.getByTestId('settings-sign-out')).toBeEnabled());
+    });
+
+    it('does nothing when the repeated question is confirmed while the app is locked', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 0, localCategories: 1 })
+        .mockResolvedValueOnce({ ok: false, unsynced: 1, localCategories: 1 })
+        .mockResolvedValueOnce({ ok: true });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      chooseInAlert('Sign out');
+      await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(2));
+      act(() => useLockStore.setState({ locked: true }));
+      chooseInAlert('Sign out');
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(signOut).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+      expect(screen.queryByTestId('settings-sign-out-error')).toBeNull();
+    });
+
+    it('names only what is above zero, with plurals, grouping large counts', () => {
+      const line = (unsynced: number, localCategories: number) =>
+        unsyncedSignOutLine({ unsynced, localCategories });
+      expect(line(1, 0)).toBe("1 change hasn't reached the server yet and may not if you sign out now.");
+      expect(line(2, 0)).toBe("2 changes haven't reached the server yet and may not if you sign out now.");
+      expect(line(1234, 0)).toBe(
+        "1,234 changes haven't reached the server yet and may not if you sign out now.",
+      );
+      expect(line(0, 1)).toBe(
+        '1 category you added or changed lives only on this phone and will be removed.',
+      );
+      expect(line(0, 2)).toBe(
+        '2 categories you added or changed live only on this phone and will be removed.',
+      );
+      expect(line(0, 1001)).toBe(
+        '1,001 categories you added or changed live only on this phone and will be removed.',
+      );
+      expect(line(1, 1)).toBe(
+        "1 change hasn't reached the server yet and may not if you sign out now. 1 category you added or changed lives only on this phone and will be removed.",
+      );
+      expect(line(5, 3)).toBe(
+        "5 changes haven't reached the server yet and may not if you sign out now. 3 categories you added or changed live only on this phone and will be removed.",
+      );
+      // A deletion not yet sent stays on this phone through a sign-out and is
+      // sent when the same account signs in here again: "removes them from
+      // this phone" was untrue of it, and so would "won't" be.
+      expect(line(2, 0)).not.toMatch(/removes|won't/);
+    });
+
+    // The store asks only with one count above zero; were it ever to ask with
+    // neither, the question still says something is at stake.
+    it('never asks with an empty question', () => {
+      expect(unsyncedSignOutLine({ unsynced: 0, localCategories: 0 })).toBe(
+        "Something on this phone hasn't reached the server yet and may not if you sign out now.",
       );
     });
 
@@ -658,7 +829,7 @@ describe('SettingsView — account', () => {
         confirm.mockReturnValue(ok);
         const signOut = jest
           .fn()
-          .mockResolvedValueOnce({ ok: false, unsynced: 5 })
+          .mockResolvedValueOnce({ ok: false, unsynced: 5, localCategories: 0 })
           .mockResolvedValueOnce({ ok: true });
         signedIn(signOut);
         render(<SettingsView />);
@@ -668,7 +839,7 @@ describe('SettingsView — account', () => {
 
         await waitFor(() =>
           expect(confirm).toHaveBeenCalledWith(
-            "Sign out anyway?\n\n5 changes haven't reached the server yet. Signing out removes them from this phone.",
+            "Sign out anyway?\n\n5 changes haven't reached the server yet and may not if you sign out now.",
           ),
         );
         expect(alertSpy).not.toHaveBeenCalled();

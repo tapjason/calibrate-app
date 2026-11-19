@@ -8,7 +8,9 @@ import {
 import {
   DELETE_FAILED_MESSAGE,
   DELETE_UNCONFIRMED_MESSAGE,
+  DELETION_CAN_LAND_WITHIN_MS,
   deleteAccountOnServer,
+  deletionCanNoLongerLand,
 } from './account';
 
 const USER = 'user-1';
@@ -111,9 +113,11 @@ describe('deleteAccountOnServer', () => {
     ['an empty body', { data: null, error: null }],
   ])('fails on %s', async (_label, result) => {
     const { client } = fakeClient(result as InvokeResult);
+    // Round 6 (N4): the auth server's "still there" carries when it was asked.
     await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
       ok: false,
       error: DELETE_FAILED_MESSAGE,
+      stillExistsAt: expect.any(Number),
     });
   });
 
@@ -162,6 +166,7 @@ describe('deleteAccountOnServer', () => {
       await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
         ok: false,
         error: DELETE_FAILED_MESSAGE,
+        stillExistsAt: expect.any(Number),
       });
     });
 
@@ -391,6 +396,7 @@ describe('deleteAccountOnServer: what is sent, and what a failure says', () => {
       await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
         ok: false,
         error: DELETE_FAILED_MESSAGE,
+        stillExistsAt: expect.any(Number),
       });
     },
   );
@@ -452,5 +458,76 @@ describe('deleteAccountOnServer: what is sent, and what a failure says', () => {
       deleteAccountOnServer(null, { client: hangs.client, probeTimeoutMs: 10 }),
     ).resolves.toEqual({ ok: false, error: DELETE_FAILED_MESSAGE });
     expect(hangs.invoke).not.toHaveBeenCalled();
+  });
+});
+
+// Round 6, client re-review N4: a "deletion asked" mark survived a definite
+// "nothing was deleted". A definite "still exists" now says when it was
+// asked, so the caller can rule out an earlier unconfirmed request once that
+// request can no longer delete anything.
+describe('deleteAccountOnServer: when the server said the account still exists', () => {
+  it('stamps the time the question was sent, after the call came back', async () => {
+    const { client, getUser, invoke } = fakeClient(
+      { data: null, error: { message: 'non-2xx' }, response: { status: 401 } },
+      { kind: 'exists' },
+    );
+    const now = jest.spyOn(Date, 'now');
+    now.mockReturnValue(1_000_000);
+    invoke.mockImplementationOnce(async () => {
+      now.mockReturnValue(1_005_000);
+      return { data: null, error: { message: 'non-2xx' }, response: { status: 401 } };
+    });
+    getUser.mockImplementationOnce(async () => {
+      // The answer comes later still; the stamp is the question's.
+      now.mockReturnValue(1_009_000);
+      return { data: { user: { id: USER } }, error: null };
+    });
+    await expect(deleteAccountOnServer(null, { client })).resolves.toEqual({
+      ok: false,
+      error: DELETE_FAILED_MESSAGE,
+      stillExistsAt: 1_005_000,
+    });
+  });
+
+  it('carries no stamp when nothing was asked of the server, or the answer was not definite', async () => {
+    const outcomes = [
+      await deleteAccountOnServer(null, { client: null }),
+      await deleteAccountOnServer(null, { client: fakeClient(NEVER(), { kind: 'gone' }, null).client, timeoutMs: 10 }),
+      await deleteAccountOnServer(null, {
+        client: fakeClient({ data: { ok: true }, error: null }).client,
+        expectedUserId: 'someone-else',
+      }),
+      await deleteAccountOnServer(null, {
+        client: fakeClient(NEVER(), { kind: 'exists' }).client,
+        timeoutMs: 10,
+      }),
+      await deleteAccountOnServer(null, {
+        client: fakeClient({ data: null, error: { message: 'x' }, response: { status: 500 } }, { kind: 'exists' }).client,
+      }),
+    ];
+    for (const outcome of outcomes) {
+      expect(outcome.ok).toBe(false);
+      expect('stillExistsAt' in outcome).toBe(false);
+    }
+  });
+});
+
+describe('deletionCanNoLongerLand', () => {
+  it('is past the platform wall-clock limit (400 s), not the client wait (45 s)', () => {
+    expect(DELETION_CAN_LAND_WITHIN_MS).toBeGreaterThan(400_000 + 10_000);
+  });
+
+  it('only when the answer was asked more than the window after the request', () => {
+    const asked = 5_000_000;
+    expect(deletionCanNoLongerLand(asked, asked + DELETION_CAN_LAND_WITHIN_MS + 1)).toBe(true);
+    expect(deletionCanNoLongerLand(asked, asked + DELETION_CAN_LAND_WITHIN_MS)).toBe(false);
+    expect(deletionCanNoLongerLand(asked, asked + 120_000)).toBe(false);
+    expect(deletionCanNoLongerLand(asked, asked + 1_000)).toBe(false);
+  });
+
+  it('never when the request time is unknown, or the clock reads backwards', () => {
+    expect(deletionCanNoLongerLand(null, Number.MAX_SAFE_INTEGER)).toBe(false);
+    expect(deletionCanNoLongerLand(10_000_000, 1_000)).toBe(false);
+    expect(deletionCanNoLongerLand(Number.NaN, 10_000_000)).toBe(false);
   });
 });

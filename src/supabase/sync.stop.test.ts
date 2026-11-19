@@ -21,6 +21,7 @@ import {
   resumeSyncFor,
   stopSyncFor,
   syncNow,
+  unsyncedRows,
   type CursorStore,
 } from './sync';
 
@@ -81,6 +82,11 @@ function fakeClient(opts: { pullRows?: PredictionWireRow[]; hangPush?: boolean }
           await pullAnswered;
           return { data: opts.pullRows ?? [], error: null };
         },
+        // Round 6 (item 6): the read of a row after a conditional delete
+        // that removed nothing. The server holds none here.
+        async in() {
+          return { data: [], error: null };
+        },
       };
       return q;
     },
@@ -90,15 +96,18 @@ function fakeClient(opts: { pullRows?: PredictionWireRow[]; hangPush?: boolean }
       return Promise.resolve({ error: null });
     },
     delete() {
+      // Round 6 (item 6): conditional, sent by `.select('id')`, answering
+      // with what it removed. Was: sent at the second eq.
       const filters: Record<string, unknown> = {};
       const q = {
         eq(col: string, val: unknown) {
           filters[col] = val;
-          if ('id' in filters && 'user_id' in filters) {
-            calls.push(`delete:${String(filters.id)}`);
-            return Promise.resolve({ error: null });
-          }
           return q;
+        },
+        or: () => q,
+        select: () => {
+          calls.push(`delete:${String(filters.id)}`);
+          return Promise.resolve({ data: [{ id: filters.id }], error: null });
         },
       };
       return q;
@@ -255,5 +264,53 @@ describe('stopSyncFor (before the account leaves the phone)', () => {
     } as unknown as SupabaseClient;
     await syncNow('user-bbb', { client: otherClient, cursorStore: cursorStore(), recompute: async () => {} });
     expect(other.calls).toContain('pull');
+  });
+});
+
+// Round 6: what sign-out's recount reads (N2), and a stop that also waits for
+// sign-out's one more push when that push outlasted its own wait.
+describe('round 6', () => {
+  it('stopSyncFor waits for a pushNow still running after its own wait', async () => {
+    await insertPrediction(prediction({ id: 'dirty-1' }));
+    let answerUpsert: () => void = () => {};
+    const upsertAnswered = new Promise<void>((r) => (answerUpsert = r));
+    const client = {
+      from: () => ({
+        upsert: async () => {
+          await upsertAnswered;
+          return { error: null };
+        },
+      }),
+      auth: {
+        getSession: async () => ({ data: { session: { user: { id: USER } } }, error: null }),
+      },
+    } as unknown as SupabaseClient;
+
+    // Its own wait ends; the upsert is still on the network.
+    await expect(pushNow(USER, { client }, 20)).resolves.toBe(0);
+
+    let stopped = false;
+    const stopping = (async () => {
+      await stopSyncFor(USER);
+      stopped = true;
+    })();
+    for (let i = 0; i < 10; i += 1) await new Promise((r) => setImmediate(r));
+    expect(stopped).toBe(false);
+
+    answerUpsert();
+    await stopping;
+    expect(stopped).toBe(true);
+  });
+
+  it('unsyncedRows: each dirty row with its updated_at, and no deletion (the wipe keeps those)', async () => {
+    await insertPrediction(prediction({ id: 'dirty-1' }));
+    await insertPrediction(prediction({ id: 'dirty-2' }));
+    await insertPrediction(prediction({ id: 'gone-1' }));
+    await deletePrediction('gone-1');
+    const rows = await unsyncedRows(USER);
+    expect([...rows.keys()].sort()).toEqual(['dirty-1', 'dirty-2']);
+    for (const value of rows.values()) expect(typeof value).toBe('string');
+    // Another account's rows aren't in it.
+    await expect(unsyncedRows('user-bbb')).resolves.toEqual(new Map());
   });
 });

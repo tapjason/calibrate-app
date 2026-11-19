@@ -269,21 +269,28 @@ export interface Prediction {
   title_edited_at?: string | null;
   /**
    * The UTC offset, in minutes east of UTC (`-getTimezoneOffset()`), the
-   * phone was in when it was logged (owner decision 2026-11-19). Same-day
-   * answers (D41) are judged on each moment's own calendar day where it
-   * happened, so moving the phone to another zone re-scores nothing. Absent
-   * or null on rows written before SQLite migration 018, and on rows from
-   * another phone on an older build: that side is read in the phone's current
-   * zone, as every row was before. Range −840…840 (`UTC_OFFSET_LIMIT_MIN`).
+   * phone was in when it was logged (owner decision 2026-11-19, D69 (f)).
+   * Same-day answers (D41) are judged in the zone the prediction was made in
+   * (owner decision 2026-11-19, round 6): the day it was made and the day of
+   * the answer are both read in this offset, or in the rewording's when the
+   * words are the later moment (D45), never in the zone the answer was given
+   * in, so moving the phone to another zone neither re-scores the past nor
+   * scores a same-day answer. Absent or null on rows written before SQLite
+   * migration 018, and on rows from another phone on an older build: then
+   * both days are read in the phone's current zone, as every row was before.
+   * Range −840…840 (`UTC_OFFSET_LIMIT_MIN`).
    */
   created_utc_offset_min?: number | null;
   /**
-   * The offset when `resolved_at` was set. A correction keeps the first
-   * answer's time (D34), and so its offset; a "Can't tell" answered later
-   * takes the new answer's.
+   * The offset when `title_edited_at` was set (D45): when the words are the
+   * later moment, the same-day rule reads both days in this one.
+   *
+   * There is no answer offset. Round 5 stored one and read the answer's day
+   * in it, which scored 20 answers logged in New York and answered at once
+   * after the phone was set to UTC+14 (record audit 2026-11-19); round 6
+   * stopped writing and reading it. The SQLite column
+   * (`resolved_utc_offset_min`, migration 018) stays, unused.
    */
-  resolved_utc_offset_min?: number | null;
-  /** The offset when `title_edited_at` was set (D45). */
   title_edited_utc_offset_min?: number | null;
 }
 
@@ -319,6 +326,31 @@ export interface PredictionDeletion {
    * deleted on or after its due day. Decided at delete time by the engine.
    */
   counted: boolean;
+}
+
+/**
+ * The category an open prediction had when it was first moved to another
+ * one after the day it was made (owner decision 2026-11-19, review round 6,
+ * widening D69 (e)). A scored Yes or No given in a category other than this
+ * one is counted with the moved answers (D65), whenever the move happened,
+ * unless a category change on it was already counted as a late change.
+ * Device-local and never synced (SQLite migration 019); kept by sign-out
+ * with the other counts, cleared by Erase and account deletion. No words: an
+ * id, a category id and dates.
+ */
+export interface CategoryOrigin {
+  prediction_id: string;
+  user_id: string;
+  /** The category before that first move. */
+  from_category: Category;
+  /** When that first move was saved. */
+  changed_at: string;
+  /**
+   * Whether a category change on this prediction was counted as a late
+   * change (from the eve of its due day, D69 (e)). Then its answer is never
+   * counted as moved as well: the late-changes line already holds it.
+   */
+  counted_late: boolean;
 }
 
 export interface UserStat {
@@ -484,16 +516,47 @@ export interface PredictionWireRow {
    */
   title_edited_at?: string | null;
   /**
-   * The three UTC offsets (owner decision 2026-11-19), each with the moment
-   * it belongs to. Only while `UTC_OFFSET_SYNC` is on (it waits for the
-   * Supabase migration that adds the columns): then every row pushed carries
-   * all three, null included, and a pulled row that wins brings its own.
-   * While it's off, no row pushed names them and a pulled row's are ignored.
+   * The two UTC offsets (owner decision 2026-11-19), each with the moment it
+   * belongs to: the logging's and the rewording's. Only while
+   * `UTC_OFFSET_SYNC` is on (it waits for the Supabase migration that adds
+   * the columns): then every row pushed carries both, null included. A
+   * pulled row that wins brings its offset when it has one; when it has none
+   * (null or no key: an older build's row, or one pushed before the flag),
+   * this phone keeps its own for a moment the pulled row shares (the same
+   * instant, however the server wrote it) and has none for a moment the
+   * pulled row changed: a null from the server never erases a known zone.
+   * An answered row this phone keeps against a stale open copy keeps its own
+   * offsets with it (`upsertPredictionFromRemote`). While it's off, no row
+   * pushed names them and a pulled row's are ignored, this phone keeping its
+   * own for a shared moment as above. Offsets pushed before the flag go up
+   * once on their own (`OffsetBackfillRow`). There is no answer offset (round
+   * 6): the same-day rule reads the answer's day in the logging's.
    */
   created_utc_offset_min?: number | null;
-  resolved_utc_offset_min?: number | null;
   title_edited_utc_offset_min?: number | null;
   updated_at: string;
+}
+
+/**
+ * One row of the one-time UTC offset backfill (review round 6, 2026-11-19;
+ * `listOffsetBackfill` in src/db/predictions.ts, sent by sync once per
+ * account when `UTC_OFFSET_SYNC` is on). Rows pushed while the flag was off
+ * reached the server without their offsets. This carries only a
+ * prediction's two offsets, each beside the moment it belongs to, so the
+ * server can fill one it lacks for the same instant it holds; no other
+ * column goes up, so no prediction deleted on another phone comes back and
+ * no newer answer given there is overwritten.
+ *
+ * An offset is null when this phone doesn't know it or it isn't usable
+ * (`isUtcOffsetMinutes`); the rewording's is null whenever `title_edited_at`
+ * is. At least one of the two is set.
+ */
+export interface OffsetBackfillRow {
+  id: string;
+  created_at: string;
+  created_utc_offset_min: number | null;
+  title_edited_at: string | null;
+  title_edited_utc_offset_min: number | null;
 }
 
 /** Per-bucket result produced by the calibration engine. */
@@ -882,26 +945,24 @@ export type ListPendingPredictions = (userId: string) => Promise<Prediction[]>;
 export type ListResolvedPredictions = (userId: string) => Promise<Prediction[]>;
 /**
  * Record an answer on an open prediction; a no-op on one already answered.
- * `at` is when it was answered (now when omitted) and `utcOffsetMin` the
- * phone's UTC offset then (the device's at `at` when omitted; an unusable
- * value is stored as null).
+ * `at` is when it was answered (now when omitted). No offset is stored with
+ * it (round 6): the same-day rule reads its day in the logging's.
  */
 export type ResolvePrediction = (
   id: string,
   outcome: ResolvedStatus,
   reflection?: string,
-  opts?: { at?: string; utcOffsetMin?: number | null },
+  opts?: { at?: string },
 ) => Promise<void>;
 /**
  * Answer a "Can't tell" with a Yes or No (D45) in one statement; a no-op on a
- * row that isn't a "Can't tell". `at` and `utcOffsetMin` as for
- * ResolvePrediction.
+ * row that isn't a "Can't tell". `at` as for ResolvePrediction.
  */
 export type AnswerSkippedPrediction = (
   id: string,
   outcome: 'resolved_yes' | 'resolved_no',
   reflection?: string,
-  opts?: { at?: string; utcOffsetMin?: number | null },
+  opts?: { at?: string },
 ) => Promise<void>;
 /**
  * Delete and leave a tombstone (D25). `counted` is the engine's call on

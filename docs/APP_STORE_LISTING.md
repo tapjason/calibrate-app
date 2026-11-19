@@ -254,8 +254,8 @@ Google SDK is in the app)." The age-range lines follow `src/age/ageRange.ts` (on
 process, nothing stored on a decline); whether iOS shows its sheet again after a decline
 is iOS's decision, so say "asks", not "shows". The usage-count lines (2026-11-19) quote
 `WARMUP_USAGE_NOTE` (`src/components/warmup/UsageStatsNotice.tsx`) and hold only for a
-build that carries round 5 with the saved "notice shown" flag (the privacy policy's header,
-step 8); check the quote against that build. The sign-in and sign-out lines hold from the
+build that carries round 5 (commit `7b5b0ea`, which saves the "notice shown" stamp; the
+privacy policy's header, step 8); check the quote against that build. The sign-in and sign-out lines hold from the
 same build (`EMAIL_SIGN_UP_ENABLED = false`, D69 (a) and (c)).
 >
 > Optional app lock: You → Lock with Face ID (off by default; named Lock with

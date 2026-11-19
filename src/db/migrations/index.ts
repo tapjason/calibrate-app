@@ -35,6 +35,8 @@ import { MIGRATION_015 } from './015_postponements';
 import { MIGRATION_016 } from './016_warmup_result_order';
 import { MIGRATION_017 } from './017_refiles';
 import { MIGRATION_018 } from './018_utc_offsets';
+import { MIGRATION_019 } from './019_category_origins';
+import { MIGRATION_020 } from './020_sync_markers';
 
 export interface Migration {
   id: string;
@@ -61,6 +63,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: '016_warmup_result_order', sql: MIGRATION_016 },
   { id: '017_refiles', sql: MIGRATION_017 },
   { id: '018_utc_offsets', sql: MIGRATION_018 },
+  { id: '019_category_origins', sql: MIGRATION_019 },
+  { id: '020_sync_markers', sql: MIGRATION_020 },
 ];
 
 const APPLIED_AT_NOW = (): string => new Date().toISOString();

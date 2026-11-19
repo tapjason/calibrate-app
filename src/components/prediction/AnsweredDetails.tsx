@@ -76,9 +76,22 @@ export const REFILED_NOTE =
  * and after: a count nobody was told about reads as being caught, so it is
  * said first, as a delete's is. True whichever way the answer was last
  * moved, since one moved back is off the count.
+ *
+ * Since review round 6 an answer is also counted when it was moved before it
+ * was answered, after the day it was made, and answered in another category
+ * than the one it had before that move (`answeredAwayFromOrigin`); moved back
+ * there after the answer, it comes off. "The one it was answered in" was
+ * untrue of that answer, and "the one it had before it was moved" of the
+ * common slip fixed on the day it was made (never remembered, so never
+ * counted). The category it had at the end of that day is the one both rules
+ * go by: with no move after it, that's where it was answered; with one, it's
+ * the category remembered. The two cases this misses are rare: an answer
+ * whose category was already counted as a late change (from the eve), then
+ * moved back after the answer, is counted again; and new words after an
+ * early move start a new made day while the remembered category stays.
  */
 export const REFILE_COUNTED_HINT =
-  'Insights counts a scored answer left in a different category from the one it was answered in.';
+  'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was made.';
 
 /** Whether switching this answer can move a rating or a badge on screen. */
 export function correctionMoves(prediction: Prediction): boolean {

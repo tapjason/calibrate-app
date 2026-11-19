@@ -27,11 +27,18 @@ jest.mock('@/supabase/sync', () => ({
   pushNow: jest.fn(async () => 0),
   stopSyncFor: jest.fn(async () => {}),
   resumeSyncFor: jest.fn(),
+  // Round 6 (N2): what sign-out reads again just before the wipe.
+  unsyncedRows: jest.fn(async () => new Map()),
 }));
 jest.mock('@/db/account', () => ({ wipeLocalUserData: jest.fn(async () => {}) }));
 jest.mock('@/db/predictions', () => ({
   ...jest.requireActual('@/db/predictions'),
   countUnsynced: jest.fn(async () => 0),
+}));
+// Round 6 (N1): sign-out also counts the categories only this phone has.
+jest.mock('@/db/categories', () => ({
+  ...jest.requireActual('@/db/categories'),
+  countLocalOnlyCategories: jest.fn(async () => 0),
 }));
 jest.mock('@/db/migrateGuestData', () => ({
   ...jest.requireActual('@/db/migrateGuestData'),
@@ -59,6 +66,8 @@ import * as auth from '@/supabase/auth';
 import {
   __resetAuthMarkersForTests,
   addOwedWipe,
+  AUTH_MARKERS_KEY,
+  deletionAskedAt,
   isSignedOutHere,
   owedWipeFor,
   type MarkerStorage,
@@ -207,7 +216,12 @@ describe('sign-out with changes the server does not have yet', () => {
     coachShowing();
     countUnsynced.mockResolvedValue(3);
 
-    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: false, unsynced: 3 });
+    // Round 6 (N1): the question also says how many categories only this phone has.
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      unsynced: 3,
+      localCategories: 0,
+    });
 
     expect(sync().pushNow).toHaveBeenCalledWith('user-1');
     expect(countUnsynced).toHaveBeenCalledWith('user-1');
@@ -237,7 +251,8 @@ describe('sign-out with changes the server does not have yet', () => {
     });
     // One more push even so: what can still reach the server does.
     expect(sync().pushNow).toHaveBeenCalledWith('user-1');
-    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false });
+    // Round 6 (N1): this phone's integrity counts stay.
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
     expect(useAuthStore.getState()).toMatchObject({ userId: LOCAL_GUEST_USER_ID, status: 'guest' });
   });
 
@@ -291,9 +306,13 @@ describe('sign-out with everything backed up', () => {
 
     await expect(useAuthStore.getState().signOut()).resolves.toEqual(result);
 
-    expect(order).toEqual(['push', 'count', 'stopSync', 'endSession', 'wipe', 'cursor', 'draft']);
-    // The account's rows only: the Warm-up and the age band stay.
-    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false });
+    // Round 6 (N2): the rows go before the session ends, so the recount just
+    // before the wipe is made while the account can still be kept. Was:
+    // 'endSession' before 'wipe' and 'cursor'.
+    expect(order).toEqual(['push', 'count', 'stopSync', 'wipe', 'cursor', 'endSession', 'draft']);
+    // The account's rows only: the Warm-up, the age band and this phone's
+    // integrity counts stay (round 6, N1).
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
     expect(retake).not.toHaveBeenCalled();
     expect(clearPractice).not.toHaveBeenCalled();
     expect(sync().clearSyncCursor).toHaveBeenCalledWith('user-1');
@@ -311,7 +330,9 @@ describe('sign-out with everything backed up', () => {
     expect(scheduler().dismissDeliveredNotifications).not.toHaveBeenCalled();
     // Nothing left owed.
     expect(owedWipeFor('user-1')).toBeNull();
-    expect(isSignedOutHere('user-1')).toBe('localOnly' in result);
+    // Round 6 (N3): remembered on every sign-out, online too (was: only when
+    // this phone ended the session alone).
+    expect(isSignedOutHere('user-1')).toBe(true);
   });
 
   it("keeps the card's settings, which are the phone's", async () => {
@@ -322,14 +343,25 @@ describe('sign-out with everything backed up', () => {
     expect(setHidden).not.toHaveBeenCalled();
   });
 
-  it('when even this phone could not end it: still signed in, nothing wiped, its sync back on', async () => {
+  // Round 6 (N2): the rows now go just before the session ends, so when even
+  // this phone can't end it they have gone already: only what reached the
+  // server, or what the person agreed to lose, and the first comes back with
+  // the sync that starts at once (the cursor was cleared). Was: 'nothing
+  // wiped', expect(wipe).not.toHaveBeenCalled().
+  it('when even this phone could not end it: still signed in, its sync back on, and the wiped rows pulled again', async () => {
     await launch(sessionFor('user-1'));
     mockedAuth.signOut.mockResolvedValue({ ok: false, error: auth.SIGN_OUT_FAILED ?? 'x' });
+    sync().syncNow.mockClear();
 
     const outcome = await useAuthStore.getState().signOut();
     expect(outcome.ok).toBe(false);
-    expect(wipe).not.toHaveBeenCalled();
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
+    expect(sync().clearSyncCursor).toHaveBeenCalledWith('user-1');
     expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
+    expect(sync().syncNow).toHaveBeenCalledWith('user-1', expect.anything());
+    expect(usePredictionStore.getState().loadPending).toHaveBeenCalled();
+    // Its sessions count again: not remembered as signed out here.
+    expect(isSignedOutHere('user-1')).toBe(false);
     expect(owedWipeFor('user-1')).toBeNull();
     expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
     // The words still leave the lock screen.
@@ -340,8 +372,12 @@ describe('sign-out with everything backed up', () => {
     await launch(sessionFor('user-1'));
     mockedAuth.signOut.mockRejectedValue(new Error('boom'));
     await expect(useAuthStore.getState().signOut()).rejects.toThrow('boom');
-    expect(wipe).not.toHaveBeenCalled();
+    // Round 6 (N2): the wipe ran first (was: not called); what reached the
+    // server comes back with the sync that resumes.
+    expect(wipe).toHaveBeenCalledTimes(1);
     expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
+    expect(isSignedOutHere('user-1')).toBe(false);
+    expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
     expect(owedWipeFor('user-1')).toBeNull();
     expect(useAuthStore.getState().pending).toBe(false);
   });
@@ -358,7 +394,8 @@ describe('sign-out with everything backed up', () => {
     restart();
     wipe.mockClear();
     await launch(null);
-    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false });
+    // A sign-out's wipe, retried: the integrity counts stay (round 6, N1).
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
     expect(owedWipeFor('user-1')).toBeNull();
   });
 
@@ -502,7 +539,8 @@ describe('a deletion asked for and not confirmed (client reviewer HIGH 2)', () =
     await addOwedWipe('user-1', 'deletion');
     await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
     expect(wipe).toHaveBeenCalledTimes(1);
-    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false });
+    // A sign-out's wipe: the integrity counts stay (round 6, N1).
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
     expect(retake).not.toHaveBeenCalled();
     expect(clearPractice).not.toHaveBeenCalled();
     expect(owedWipeFor('user-1')).toBeNull();
@@ -524,5 +562,432 @@ describe('a deletion asked for and not confirmed (client reviewer HIGH 2)', () =
     await emit('SIGNED_OUT', null);
     expect(wipe).not.toHaveBeenCalledWith('user-2', expect.anything());
     expect(wipe).not.toHaveBeenCalledWith('user-2');
+  });
+});
+
+// ----------------------------------------------------------------------------
+// Round 6 (client re-review N1-N4, 2026-11-19)
+// ----------------------------------------------------------------------------
+
+const countLocalCategories = () =>
+  (jest.requireMock('@/db/categories') as { countLocalOnlyCategories: jest.Mock })
+    .countLocalOnlyCategories;
+const unsyncedRows = () =>
+  (jest.requireMock('@/supabase/sync') as { unsyncedRows: jest.Mock }).unsyncedRows;
+
+/** What the phone holds unsynced from now on: these dirty rows (id → updated_at), counted. */
+function unsyncedNow(rows: Record<string, string>, extraCount = 0): void {
+  unsyncedRows().mockResolvedValue(new Map(Object.entries(rows)));
+  countUnsynced.mockResolvedValue(Object.keys(rows).length + extraCount);
+}
+
+describe('N1: categories only this phone has', () => {
+  beforeEach(() => {
+    countLocalCategories().mockResolvedValue(0);
+    unsyncedRows().mockResolvedValue(new Map());
+  });
+
+  it('are asked about even with nothing unsynced, and nothing changes', async () => {
+    await launch(sessionFor('user-1'));
+    countLocalCategories().mockResolvedValue(2);
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      unsynced: 0,
+      localCategories: 2,
+    });
+    expect(countLocalCategories()).toHaveBeenCalledWith('user-1');
+    expect(mockedAuth.signOut).not.toHaveBeenCalled();
+    expect(wipe).not.toHaveBeenCalled();
+    expect(sync().stopSyncFor).not.toHaveBeenCalled();
+    expect(owedWipeFor('user-1')).toBeNull();
+    expect(useAuthStore.getState().status).toBe('authenticated');
+
+    // Agreed: they go with the account's rows; the integrity counts stay.
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: true,
+    });
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
+  });
+
+  it("can't be counted: says so, and nothing changes", async () => {
+    await launch(sessionFor('user-1'));
+    countLocalCategories().mockRejectedValue(new Error('disk'));
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      error: SIGN_OUT_CHECK_FAILED,
+    });
+    expect(wipe).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().status).toBe('authenticated');
+  });
+
+  it("only sign-out keeps this phone's integrity counts: an unconfirmed deletion's wipe and a confirmed one take them", async () => {
+    const emit = await launch(sessionFor('user-1'));
+    mockedAuth.reauthenticateWithApple.mockResolvedValue(null);
+    server.deleteAccountOnServer.mockResolvedValue({ ok: false, error: DELETE_UNCONFIRMED_MESSAGE });
+    await useAuthStore.getState().deleteAccount();
+    await emit('SIGNED_OUT', null);
+    expect(wipe).toHaveBeenLastCalledWith('user-1', { deviceData: false });
+
+    restart();
+    wipe.mockClear();
+    await launch(sessionFor('user-2'));
+    server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
+    await useAuthStore.getState().deleteAccount();
+    expect(wipe).toHaveBeenCalledWith('user-2');
+  });
+});
+
+describe('N2: a change made while sign-out runs is never wiped unasked', () => {
+  beforeEach(() => {
+    countLocalCategories().mockResolvedValue(0);
+    unsyncedNow({});
+  });
+
+  it('one made while the question is open is asked about again, and nothing changes', async () => {
+    await launch(sessionFor('user-1'));
+    unsyncedNow({ a: 't1' });
+    await expect(useAuthStore.getState().signOut()).resolves.toMatchObject({ unsynced: 1 });
+
+    // A reminder's Happened lands while the alert is up.
+    unsyncedNow({ a: 't1', b: 't2' });
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: false,
+      unsynced: 2,
+      localCategories: 0,
+    });
+    expect(sync().stopSyncFor).not.toHaveBeenCalled();
+    expect(wipe).not.toHaveBeenCalled();
+    expect(mockedAuth.signOut).not.toHaveBeenCalled();
+    expect(owedWipeFor('user-1')).toBeNull();
+
+    // Asked again and agreed: now it goes.
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: true,
+    });
+    expect(wipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('the same count with a different change is asked about again (one reached the server, another was made)', async () => {
+    await launch(sessionFor('user-1'));
+    unsyncedNow({ a: 't1' });
+    await useAuthStore.getState().signOut();
+    unsyncedNow({ b: 't2' });
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: false,
+      unsynced: 1,
+      localCategories: 0,
+    });
+    expect(wipe).not.toHaveBeenCalled();
+  });
+
+  it('an edit to a change already counted is asked about again', async () => {
+    await launch(sessionFor('user-1'));
+    unsyncedNow({ a: 't1' });
+    await useAuthStore.getState().signOut();
+    unsyncedNow({ a: 't9' });
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toMatchObject({
+      ok: false,
+      unsynced: 1,
+    });
+    expect(wipe).not.toHaveBeenCalled();
+  });
+
+  it('a change that reached the server meanwhile needs no new question', async () => {
+    await launch(sessionFor('user-1'));
+    unsyncedNow({ a: 't1', b: 't2' });
+    await useAuthStore.getState().signOut();
+    unsyncedNow({ a: 't1' });
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: true,
+    });
+  });
+
+  it('a category added while the question is open is asked about again', async () => {
+    await launch(sessionFor('user-1'));
+    countLocalCategories().mockResolvedValue(1);
+    await useAuthStore.getState().signOut();
+    countLocalCategories().mockResolvedValue(2);
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: false,
+      unsynced: 0,
+      localCategories: 2,
+    });
+    expect(wipe).not.toHaveBeenCalled();
+  });
+
+  it('one made after the sync stopped, just before the wipe, stops it there: the account is kept as it was', async () => {
+    await launch(sessionFor('user-1'));
+    const order: string[] = [];
+    let stopped = false;
+    sync().stopSyncFor.mockImplementationOnce(async () => {
+      order.push('stopSync');
+      // A log on another tab while "Signing out…" shows.
+      stopped = true;
+    });
+    unsyncedRows().mockImplementation(async () => {
+      order.push('read');
+      return new Map(stopped ? [['late', 't3']] : []);
+    });
+    countUnsynced.mockImplementation(async () => (stopped ? 1 : 0));
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      unsynced: 1,
+      localCategories: 0,
+    });
+    // Read, stop, read again: then nothing more.
+    expect(order).toEqual(['read', 'stopSync', 'read']);
+    expect(wipe).not.toHaveBeenCalled();
+    expect(mockedAuth.signOut).not.toHaveBeenCalled();
+    expect(sync().clearSyncCursor).not.toHaveBeenCalled();
+    expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
+    expect(owedWipeFor('user-1')).toBeNull();
+    expect(isSignedOutHere('user-1')).toBe(false);
+    expect(useAuthStore.getState()).toMatchObject({
+      userId: 'user-1',
+      status: 'authenticated',
+      pending: false,
+    });
+
+    // The person agrees to that one too: it goes.
+    unsyncedNow({ late: 't3' });
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: true,
+    });
+    expect(wipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('a category added just before the wipe stops it too', async () => {
+    await launch(sessionFor('user-1'));
+    sync().stopSyncFor.mockImplementationOnce(async () => {
+      countLocalCategories().mockResolvedValue(1);
+    });
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      unsynced: 0,
+      localCategories: 1,
+    });
+    expect(wipe).not.toHaveBeenCalled();
+    expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
+  });
+
+  it('when the check just before the wipe fails: says so, and the account is kept as it was', async () => {
+    await launch(sessionFor('user-1'));
+    sync().stopSyncFor.mockImplementationOnce(async () => {
+      countUnsynced.mockRejectedValue(new Error('disk'));
+    });
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      error: SIGN_OUT_CHECK_FAILED,
+    });
+    expect(wipe).not.toHaveBeenCalled();
+    expect(mockedAuth.signOut).not.toHaveBeenCalled();
+    expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
+    expect(owedWipeFor('user-1')).toBeNull();
+    expect(useAuthStore.getState().status).toBe('authenticated');
+  });
+
+  it('what the person agreed to lose is forgotten when the app leaves the account', async () => {
+    const emit = await launch(sessionFor('user-1'));
+    unsyncedNow({ a: 't1' });
+    await useAuthStore.getState().signOut();
+    // Signed out elsewhere, then signed in here as the same account again.
+    await emit('SIGNED_OUT', null);
+    mockedAuth.signInWithEmail.mockImplementationOnce(async () => {
+      await emit('SIGNED_IN', sessionFor('user-1'));
+      return { ok: true };
+    });
+    await useAuthStore.getState().signInWithEmail('a@b.co', 'pw');
+    expect(useAuthStore.getState().userId).toBe('user-1');
+    unsyncedNow({ a: 't1', b: 't2' });
+    // No question asked for it in this sign-in: it covers what is here now.
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: true,
+    });
+  });
+});
+
+describe('N3: remembered as signed out here on every sign-out', () => {
+  beforeEach(() => {
+    countLocalCategories().mockResolvedValue(0);
+    unsyncedNow({});
+  });
+
+  it('online: a token refresh landing as the sign-out does is ignored, and taken off the phone', async () => {
+    const emit = await launch(sessionFor('user-1'));
+    mockedAuth.signOut.mockImplementationOnce(async () => {
+      await emit('SIGNED_OUT', null);
+      await emit('TOKEN_REFRESHED', sessionFor('user-1'));
+      return { ok: true };
+    });
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
+    expect(useAuthStore.getState()).toMatchObject({ userId: LOCAL_GUEST_USER_ID, status: 'guest' });
+    expect(mockedAuth.discardStoredSession).toHaveBeenCalled();
+    expect(isSignedOutHere('user-1')).toBe(true);
+  });
+
+  it('online: a copy of its session found at the next launch is discarded', async () => {
+    await launch(sessionFor('user-1'));
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
+    restart();
+    mockedAuth.discardStoredSession.mockClear();
+    await launch(sessionFor('user-1'));
+    expect(useAuthStore.getState()).toMatchObject({ userId: LOCAL_GUEST_USER_ID, status: 'guest' });
+    expect(mockedAuth.discardStoredSession).toHaveBeenCalled();
+  });
+
+  it('a sign-in the person starts to that account counts again', async () => {
+    const emit = await launch(sessionFor('user-1'));
+    await useAuthStore.getState().signOut();
+    mockedAuth.signInWithEmail.mockImplementationOnce(async () => {
+      await emit('SIGNED_IN', sessionFor('user-1'));
+      return { ok: true };
+    });
+    await useAuthStore.getState().signInWithEmail('a@b.co', 'pw');
+    expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
+    expect(isSignedOutHere('user-1')).toBe(false);
+  });
+});
+
+describe('N4: an unconfirmed deletion, settled by a later definite "still exists"', () => {
+  const T0 = 1_900_000_000_000;
+  const MIN = 60_000;
+  let now: jest.SpyInstance;
+
+  beforeEach(() => {
+    mockedAuth.reauthenticateWithApple.mockResolvedValue(null);
+    now = jest.spyOn(Date, 'now').mockReturnValue(T0);
+  });
+
+  const unconfirmed = () =>
+    server.deleteAccountOnServer.mockResolvedValueOnce({ ok: false, error: DELETE_UNCONFIRMED_MESSAGE });
+  const stillExists = (at: number) =>
+    server.deleteAccountOnServer.mockResolvedValueOnce({
+      ok: false,
+      error: DELETE_FAILED_MESSAGE,
+      stillExistsAt: at,
+    });
+
+  it('asked after the earlier request can no longer delete anything: the mark goes', async () => {
+    await launch(sessionFor('user-1'));
+    unconfirmed();
+    await useAuthStore.getState().deleteAccount();
+    expect(deletionAskedAt('user-1')).toBe(T0);
+
+    now.mockReturnValue(T0 + 11 * MIN);
+    stillExists(T0 + 11 * MIN + 500);
+    await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({
+      ok: false,
+      error: DELETE_FAILED_MESSAGE,
+    });
+    expect(owedWipeFor('user-1')).toBeNull();
+    expect(wipe).not.toHaveBeenCalled();
+  });
+
+  it('asked while the earlier request may still run: the mark stays, with that request\'s time', async () => {
+    await launch(sessionFor('user-1'));
+    unconfirmed();
+    await useAuthStore.getState().deleteAccount();
+
+    now.mockReturnValue(T0 + 2 * MIN);
+    stillExists(T0 + 2 * MIN);
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBe('deletion');
+    expect(deletionAskedAt('user-1')).toBe(T0);
+
+    // The time outlasts a restart.
+    restart();
+    await launch(sessionFor('user-1'));
+    expect(deletionAskedAt('user-1')).toBe(T0);
+    now.mockReturnValue(T0 + 11 * MIN);
+    stillExists(T0 + 11 * MIN);
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBeNull();
+  });
+
+  it('a failure with nothing asked of the server keeps the mark and its time', async () => {
+    await launch(sessionFor('user-1'));
+    unconfirmed();
+    await useAuthStore.getState().deleteAccount();
+    now.mockReturnValue(T0 + 30 * MIN);
+    server.deleteAccountOnServer.mockResolvedValueOnce({ ok: false, error: DELETE_FAILED_MESSAGE });
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBe('deletion');
+    expect(deletionAskedAt('user-1')).toBe(T0);
+  });
+
+  it('another unconfirmed request moves the time on: the window runs from the latest', async () => {
+    await launch(sessionFor('user-1'));
+    unconfirmed();
+    await useAuthStore.getState().deleteAccount();
+    now.mockReturnValue(T0 + 5 * MIN);
+    unconfirmed();
+    await useAuthStore.getState().deleteAccount();
+    expect(deletionAskedAt('user-1')).toBe(T0 + 5 * MIN);
+
+    now.mockReturnValue(T0 + 11 * MIN);
+    stillExists(T0 + 11 * MIN);
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBe('deletion');
+
+    now.mockReturnValue(T0 + 16 * MIN);
+    stillExists(T0 + 16 * MIN);
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBeNull();
+  });
+
+  it('a mark an older build left with no time is settled once a definite answer is that much later than this attempt', async () => {
+    markerStorage.data.set(
+      AUTH_MARKERS_KEY,
+      JSON.stringify({ v: 1, owed: [{ userId: 'user-1', reason: 'deletion' }], signedOutHere: [] }),
+    );
+    await launch(sessionFor('user-1'));
+    expect(owedWipeFor('user-1')).toBe('deletion');
+    expect(deletionAskedAt('user-1')).toBeNull();
+
+    stillExists(T0 + 1_000);
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBe('deletion');
+    expect(deletionAskedAt('user-1')).toBe(T0);
+
+    now.mockReturnValue(T0 + 11 * MIN);
+    stillExists(T0 + 11 * MIN);
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBeNull();
+  });
+
+  it('a request with no earlier mark still clears its own on a definite failure, as before', async () => {
+    await launch(sessionFor('user-1'));
+    stillExists(T0);
+    await useAuthStore.getState().deleteAccount();
+    expect(owedWipeFor('user-1')).toBeNull();
+  });
+});
+
+describe('round 6: the wipe now comes before the session ends', () => {
+  beforeEach(() => {
+    countLocalCategories().mockResolvedValue(0);
+    unsyncedNow({});
+  });
+
+  it('a sign-out whose session could not end keeps the mark of an earlier unconfirmed deletion', async () => {
+    await launch(sessionFor('user-1'));
+    await addOwedWipe('user-1', 'deletion');
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+    await useAuthStore.getState().signOut();
+    expect(wipe).toHaveBeenCalledTimes(1);
+    expect(owedWipeFor('user-1')).toBe('deletion');
+    expect(useAuthStore.getState().status).toBe('authenticated');
+  });
+
+  it('a wipe that fails, then a session that could not end: the account is kept, nothing owed', async () => {
+    await launch(sessionFor('user-1'));
+    wipe.mockRejectedValueOnce(new Error('disk'));
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+    await useAuthStore.getState().signOut();
+    expect(owedWipeFor('user-1')).toBeNull();
+    expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
+    expect(useAuthStore.getState().status).toBe('authenticated');
   });
 });

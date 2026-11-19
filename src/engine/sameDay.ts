@@ -8,20 +8,36 @@
 // 2026-11-03). The streak still counts the answer, as it counts the logging.
 //
 // Derived on every read, never stored as a verdict. A correction keeps the
-// first answer's time (D34), and its offset, so it can't move an answer to
-// another day.
+// first answer's time (D34), so it can't move an answer to another day.
 //
-// Each moment is read on its own calendar day where it happened (owner
-// decision 2026-11-19): the prediction stores the UTC offset the phone was in
-// when it was logged, answered and reworded, and a day is taken in that
-// offset. It was the phone's zone at the time of reading, so moving the phone
-// to another zone re-scored past answers (record audit 2026-11-19: 20
-// same-day answers in New York all counted once the phone was in London).
-// A moment with no stored offset (every row from before SQLite migration
-// 018, and one that came from another phone on an older build) is read in the
-// phone's current zone, as before; with one side known and one not, each
-// side is read its own way. A traveller who logs in New York in the evening
-// and answers the next morning in London answered on the next day.
+// **Judged in the zone the prediction was made in** (owner decision
+// 2026-11-19, review round 6, refining D69 (f)). The prediction stores the
+// UTC offset the phone was in when it was logged, and when it was reworded
+// (D45); "the same day" is read in the offset stored with `scoredFrom`'s
+// moment, for both sides: the day it was made, and the day of the answer.
+// Never in the zone the answer was given in. Round 5 read each moment in its
+// own offset, and the record auditor scored 20 sure things logged at 08:00 in
+// New York and answered at once after setting the phone to UTC+14, a badge in
+// minutes. Before round 5 every day was read in the phone's zone at the time
+// of reading, so moving the phone re-scored past answers (20 same-day answers
+// in New York all counted once the phone was in London).
+//
+// A traveller who answers early abroad is unscored until the next day has
+// begun where the prediction was made (the fail-safe direction): logged
+// Wednesday evening in New York, an answer at 03:00 Thursday in London is
+// 22:00 Wednesday in New York, the day it was made.
+//
+// With no stored offset for that moment (every row from before SQLite
+// migration 018, a row pulled from another phone before sync carries it, or
+// an offset that isn't usable), both sides are read in the phone's current
+// zone, exactly as before D69.
+//
+// Known limit of storing an offset rather than a zone: across a daylight
+// saving change between the two moments, the boundary moves by the change.
+// After clocks go forward the first hour of the next day still reads as the
+// day it was made (unscored, the safe side). On the day clocks go back, a
+// prediction logged in the night before the change (at the summer offset)
+// and answered in that day's last hour reads as answered the next day.
 //
 // A reworded prediction counts as logged when it was reworded (roadmap D45,
 // decided 2026-11-06): "The Fed holds rates" at 70% turned into "The Fed
@@ -39,9 +55,9 @@ const MINUTE_MS = 60_000;
 
 /**
  * The calendar day of an instant, as a day number (days since the epoch, the
- * scale `localDayNumber` counts on), read where it happened: in the UTC
- * offset stored with it, or in the phone's current zone when there is none
- * (or it isn't usable). NaN for an unreadable date.
+ * scale `localDayNumber` counts on), read in the UTC offset given, or in the
+ * phone's current zone when there is none (or it isn't usable). NaN for an
+ * unreadable date.
  */
 export function dayNumberAt(date: Date, utcOffsetMin?: number | null): number {
   const t = date.getTime();
@@ -79,7 +95,8 @@ export function scoredFrom(p: Pick<Prediction, 'created_at' | 'title_edited_at'>
 
 /**
  * The UTC offset stored with `scoredFrom`'s moment: the logging's, or the
- * rewording's when that's the later one. Null when none was stored.
+ * rewording's when that's the later one. Null when none was stored. Every
+ * day the same-day rule reads for this prediction is read in it.
  */
 export function scoredFromOffset(p: MadeFields): number | null {
   const offset = editedIsLater(p) ? p.title_edited_utc_offset_min : p.created_utc_offset_min;
@@ -87,24 +104,43 @@ export function scoredFromOffset(p: MadeFields): number | null {
 }
 
 /**
+ * The calendar day of `at` as this prediction's days are read: in the offset
+ * stored with `scoredFrom`'s moment (round 6), or in the phone's current zone
+ * without one. NaN for an unreadable date.
+ */
+export function dayNumberWhereMade(p: MadeFields, at: Date): number {
+  return dayNumberAt(at, scoredFromOffset(p));
+}
+
+/**
  * The calendar day the prediction, as it now reads, was made, where it was
  * made (`scoredFrom` in its own offset). NaN when unreadable.
  */
 export function madeDayNumber(p: MadeFields): number {
-  return dayNumberAt(new Date(scoredFrom(p)), scoredFromOffset(p));
+  return dayNumberWhereMade(p, new Date(scoredFrom(p)));
+}
+
+/**
+ * Whether `at` falls on the calendar day the prediction (as it now reads)
+ * was made, both read where it was made (`dayNumberWhereMade`). False when
+ * either is unreadable. The one test behind same-day answers and the "made
+ * today" exemptions (D61, D62).
+ */
+export function isOnMadeDay(p: MadeFields, at: Date): boolean {
+  const made = madeDayNumber(p);
+  const day = dayNumberWhereMade(p, at);
+  if (Number.isNaN(made) || Number.isNaN(day)) return false;
+  return made === day;
 }
 
 /**
  * A Yes or No given on the calendar day the prediction was logged, or
- * reworded (D45), each day read where it happened.
+ * reworded (D45), both days read in the zone it was made in (round 6).
  */
 export function isSameDayAnswer(p: Prediction): boolean {
   if (p.status !== 'resolved_yes' && p.status !== 'resolved_no') return false;
   if (!p.resolved_at) return false;
-  const answered = dayNumberAt(new Date(p.resolved_at), p.resolved_utc_offset_min);
-  const logged = madeDayNumber(p);
-  if (Number.isNaN(answered) || Number.isNaN(logged)) return false;
-  return answered === logged;
+  return isOnMadeDay(p, new Date(p.resolved_at));
 }
 
 /** The scored answers that are scored: all but same-day answers. */
@@ -122,10 +158,12 @@ export function sameDayCount(resolved: readonly Prediction[]): number {
  * midnight: the next day, since one answered on the day it was logged isn't
  * scored. Never earlier than today, so an edit can't set a past date.
  *
- * With the offset stored for `createdAt`, "the next day" follows the calendar
- * day it was made on where it was made, as the same-day rule does, so a date
- * offered here is scored when answered on it even after the phone has moved
- * to another zone. At logging the two agree: the offset is the phone's own.
+ * With the offset stored for `createdAt`, "the next day" is the calendar date
+ * after the one it was made on where it was made, taken as that date on the
+ * phone. At logging the two agree, the offset being the phone's own. After
+ * the phone has moved east, an answer early on that date can still fall on
+ * the day it was made where it was made, and isn't scored (round 6); the
+ * same-day rule decides at the answer, never this floor.
  */
 export function earliestDueDay(createdAt: Date, now: Date, utcOffsetMin?: number | null): Date {
   let next: Date;
@@ -188,9 +226,9 @@ export function clampDueDate(
  * Open predictions that are due today or earlier and would be scored if
  * answered now: not logged or reworded today (D41, D45). Today's unlock
  * estimate is dropped when these alone would unlock the rating (blind
- * playtest 2026-11-13c, finding 19). An answer now is given in the phone's
- * zone, so today is read there; the day it was made, where it was made, as
- * isSameDayAnswer reads it.
+ * playtest 2026-11-13c, finding 19). "Due today or earlier" is the phone's
+ * day, as every list shows a due date; "scored now" is the same-day rule's
+ * reading, both days where it was made (round 6).
  */
 export function readyScoredCount(pending: readonly Prediction[], now: Date): number {
   const today = localDayNumber(now);
@@ -199,6 +237,6 @@ export function readyScoredCount(pending: readonly Prediction[], now: Date): num
     const due = new Date(p.due_date);
     const made = madeDayNumber(p);
     if (Number.isNaN(due.getTime()) || Number.isNaN(made)) return false;
-    return localDayNumber(due) <= today && made !== today;
+    return localDayNumber(due) <= today && made !== dayNumberWhereMade(p, now);
   }).length;
 }

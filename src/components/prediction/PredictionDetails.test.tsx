@@ -2,7 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { AccessibilityInfo } from 'react-native';
 
 import { setDbForTests } from '@/db/client';
-import { getPrediction, insertPrediction, listPendingDeletions } from '@/db/predictions';
+import {
+  countPostponements,
+  getPrediction,
+  insertPrediction,
+  listPendingDeletions,
+} from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
 import { usePredictionStore } from '@/store/predictionStore';
@@ -10,7 +15,9 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
 import type { Prediction } from '@/types';
 
+import { REFILE_COUNTED_HINT } from './AnsweredDetails';
 import {
+  CATEGORY_COUNTED_IF_ANSWERED,
   categoryCountedNote,
   EDIT_NUMBER_FIX,
   EDIT_NUMBER_NOTE,
@@ -38,7 +45,7 @@ const open = (overrides: Partial<Prediction> = {}): Prediction => ({
 beforeEach(async () => {
   setDbForTests(await createTestDb());
   useAuthStore.getState().reset();
-  usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null });
+  usePredictionStore.setState({ pending: [], resolved: [], streakCheckpoint: null, categoryOrigins: {} });
   useStatsStore.setState({ userStat: null, categoryStats: [], calibration: { rating: 0, buckets: [] } });
   useSettingsStore.setState({ notificationsEnabled: true });
   await useAuthStore.getState().initialize();
@@ -262,7 +269,10 @@ describe('PredictionDetails (roadmap D25)', () => {
       await waitFor(() => expect(screen.getByTestId('answered-window')).toBeTruthy());
       expect(screen.queryByTestId('answered-refiled')).toBeNull();
       // Said before the move (step 184, D65), and still there after it.
-      expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent('Insights counts a scored answer left in a different category from the one it was answered in.');
+      expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent(REFILE_COUNTED_HINT);
+      expect(REFILE_COUNTED_HINT).toBe(
+        'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was made.',
+      );
       fireEvent.press(screen.getByTestId('category-health'));
       await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
       await waitFor(() => expect(screen.getByTestId('answered-refiled')).toHaveTextContent(moved));
@@ -274,6 +284,37 @@ describe('PredictionDetails (roadmap D25)', () => {
       announce.mockRestore();
       useStatsStore.setState({ recomputeForUser: real, userStat: null });
     }
+  });
+
+  // Review round 6: the hint says what Insights counts for an answer moved
+  // before it was answered too. Made days ago in work, moved to personal
+  // early (work remembered), answered in personal: counted at once. Back in
+  // work, the category it had at the end of the day it was made, it comes
+  // off; in personal again, where it was answered, it's counted again.
+  it('says what Insights counts for an answer moved before it was answered', async () => {
+    await insertPrediction(open());
+    await usePredictionStore.getState().update('p1', {
+      title: 'Ship the beta',
+      category: 'personal',
+      due_date: '2099-10-16T12:00:00.000Z',
+    });
+    await usePredictionStore.getState().resolve('p1', 'resolved_no');
+    expect(usePredictionStore.getState().refiledCount).toBe(1);
+
+    renderDetails();
+    await waitFor(() =>
+      expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent(REFILE_COUNTED_HINT),
+    );
+
+    fireEvent.press(screen.getByTestId('category-work'));
+    await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Work'));
+    await waitFor(() => expect(usePredictionStore.getState().refiledCount).toBe(0));
+
+    fireEvent.press(screen.getByTestId('category-personal'));
+    await waitFor(() =>
+      expect(screen.getByTestId('answered-category')).toHaveTextContent('Personal'),
+    );
+    await waitFor(() => expect(usePredictionStore.getState().refiledCount).toBe(1));
   });
 
   // Record audit of step 181: before the rating unlocks nothing on screen can
@@ -334,6 +375,8 @@ describe('PredictionDetails (roadmap D25)', () => {
       const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
       await insertPrediction(open({ due_date: tomorrow }));
       const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      // The setup's mock keeps calls from earlier tests: only this one's count.
+      announce.mockClear();
       try {
         renderDetails();
         await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
@@ -348,6 +391,10 @@ describe('PredictionDetails (roadmap D25)', () => {
             'Changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.',
           ),
         );
+        // Counted now, so never the note for a move counted at the answer
+        // (review round 6), on screen or aloud.
+        expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
+        expect(announce).not.toHaveBeenCalledWith(CATEGORY_COUNTED_IF_ANSWERED);
         // Back to its own category: nothing to count, nothing said.
         fireEvent.press(screen.getByTestId('category-work'));
         expect(screen.queryByTestId('details-category-counted')).toBeNull();
@@ -364,13 +411,17 @@ describe('PredictionDetails (roadmap D25)', () => {
       }
     });
 
-    it('says nothing when it is further off', async () => {
+    // Further off, the move isn't counted now; since review round 6 it is
+    // counted if a scored answer comes in the new category, which the other
+    // note says (below).
+    it('has no eve note when it is further off', async () => {
       await insertPrediction(open());
       renderDetails();
       await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
       fireEvent.press(screen.getByTestId('details-edit-button'));
       fireEvent.press(screen.getByTestId('category-personal'));
       expect(screen.queryByTestId('details-category-counted')).toBeNull();
+      expect(screen.getByTestId('details-category-counted-if-answered')).toBeTruthy();
     });
 
     // A change on the day it was made is a slip fixed (D62), even due tomorrow.
@@ -382,6 +433,7 @@ describe('PredictionDetails (roadmap D25)', () => {
       fireEvent.press(screen.getByTestId('details-edit-button'));
       fireEvent.press(screen.getByTestId('category-personal'));
       expect(screen.queryByTestId('details-category-counted')).toBeNull();
+      expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
     });
 
     it('names the day as the late move does', () => {
@@ -391,6 +443,137 @@ describe('PredictionDetails (roadmap D25)', () => {
       expect(categoryCountedNote(-3)).toBe(
         'It’s past its due day, so changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.',
       );
+    });
+  });
+
+  // Review round 6, widening D69 (e): a move after the day it was made and
+  // before the eve is counted with the moved answers if a scored answer comes
+  // in the new category. Edit says so before Save, under the chips, in the
+  // eve note's style, and never beside it.
+  describe('an earlier category change, counted if answered there', () => {
+    const origin = (from: Prediction['category'], countedLate = false) => ({
+      p1: {
+        prediction_id: 'p1',
+        user_id: USER,
+        from_category: from,
+        changed_at: '2026-10-06T12:00:00.000Z',
+        counted_late: countedLate,
+      },
+    });
+
+    it('is the eve note’s kind of sentence, and says a scored answer', () => {
+      expect(CATEGORY_COUNTED_IF_ANSWERED).toBe(
+        'If it gets a scored answer in this category, the move is counted on Insights. It doesn’t change your score.',
+      );
+    });
+
+    it('is said under the chips, aloud too, and goes when the category goes back', async () => {
+      await insertPrediction(open());
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      announce.mockClear();
+      try {
+        renderDetails();
+        await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+        fireEvent.press(screen.getByTestId('details-edit-button'));
+        expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
+        expect(announce).not.toHaveBeenCalledWith(CATEGORY_COUNTED_IF_ANSWERED);
+
+        fireEvent.press(screen.getByTestId('category-personal'));
+        const note = screen.getByTestId('details-category-counted-if-answered');
+        expect(note).toHaveTextContent(CATEGORY_COUNTED_IF_ANSWERED);
+        // Announced as the eve note is, and set as a live region like it.
+        expect(note.props.accessibilityLiveRegion).toBe('polite');
+        await waitFor(() => expect(announce).toHaveBeenCalledWith(CATEGORY_COUNTED_IF_ANSWERED));
+        expect(screen.queryByTestId('details-category-counted')).toBeNull();
+
+        // Back to its own category: not a move, nothing to say.
+        fireEvent.press(screen.getByTestId('category-work'));
+        expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
+      } finally {
+        announce.mockRestore();
+      }
+    });
+
+    it('is said against the category Save remembers, and not for a move back to it', async () => {
+      await insertPrediction(open());
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      fireEvent.press(screen.getByTestId('category-personal'));
+      await waitFor(() => expect(screen.getByTestId('details-save')).toBeEnabled());
+      fireEvent.press(screen.getByTestId('details-save'));
+      await waitFor(() => expect(screen.getByTestId('details')).toBeTruthy());
+      // Not counted at Save: further off than the eve.
+      expect(await countPostponements(USER)).toBe(0);
+      expect(usePredictionStore.getState().categoryOrigins.p1).toMatchObject({
+        from_category: 'work',
+        counted_late: false,
+      });
+
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      // Now in personal: back to work, where it was, is nothing to count.
+      fireEvent.press(screen.getByTestId('category-work'));
+      expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
+      // Anywhere else still is.
+      fireEvent.press(screen.getByTestId('category-health'));
+      expect(screen.getByTestId('details-category-counted-if-answered')).toHaveTextContent(
+        CATEGORY_COUNTED_IF_ANSWERED,
+      );
+    });
+
+    it('reads the remembered category from the store', async () => {
+      await insertPrediction(open());
+      usePredictionStore.setState({ categoryOrigins: origin('health') });
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      // Filed in work now, remembered from health: health is a move back.
+      fireEvent.press(screen.getByTestId('category-health'));
+      expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
+      fireEvent.press(screen.getByTestId('category-personal'));
+      expect(screen.getByTestId('details-category-counted-if-answered')).toBeTruthy();
+    });
+
+    it('is not said when a category change on it was already counted as late', async () => {
+      await insertPrediction(open());
+      usePredictionStore.setState({ categoryOrigins: origin('health', true) });
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      announce.mockClear();
+      try {
+        renderDetails();
+        await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+        fireEvent.press(screen.getByTestId('details-edit-button'));
+        fireEvent.press(screen.getByTestId('category-personal'));
+        expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
+        expect(screen.queryByTestId('details-category-counted')).toBeNull();
+        expect(announce).not.toHaveBeenCalledWith(CATEGORY_COUNTED_IF_ANSWERED);
+      } finally {
+        announce.mockRestore();
+      }
+    });
+
+    // From the eve the move is counted at once, which the eve note says; a
+    // remembered category doesn't bring the other note beside it.
+    it('gives way to the eve note, even with a category remembered', async () => {
+      const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+      await insertPrediction(open({ due_date: tomorrow }));
+      usePredictionStore.setState({ categoryOrigins: origin('health') });
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details-edit-button')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-edit-button'));
+      for (const id of ['category-personal', 'category-health', 'category-finance']) {
+        fireEvent.press(screen.getByTestId(id));
+        expect(screen.getByTestId('details-category-counted')).toBeTruthy();
+        expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
+      }
+    });
+
+    it('is not said outside Edit', async () => {
+      await insertPrediction(open());
+      usePredictionStore.setState({ categoryOrigins: origin('health') });
+      renderDetails();
+      await waitFor(() => expect(screen.getByTestId('details')).toBeTruthy());
+      expect(screen.queryByTestId('details-category-counted-if-answered')).toBeNull();
     });
   });
 

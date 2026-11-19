@@ -84,3 +84,29 @@ describe('"well calibrated" follows the chart’s closeToSaid', () => {
     expect(client.closeToSaid(75, 0.794 * 100)).toBe(true);
   });
 });
+
+// Round 6, item 8: without NFKC, both validators check the raw text against
+// ALLOWED_CHARACTERS, which is only as strict as NFKC if NFKC leaves every
+// allowed character as it is. Every UTF-16 unit the class takes is checked
+// (no character outside the Basic Multilingual Plane can match: its two
+// surrogates are outside the class).
+describe('the characters a Coach card may hold', () => {
+  it('are the same on both sides', () => {
+    expect(server.ALLOWED_CHARACTERS.source).toBe(client.ALLOWED_CHARACTERS.source);
+    expect(server.ALLOWED_CHARACTERS.flags).toBe(client.ALLOWED_CHARACTERS.flags);
+  });
+
+  it('are each left unchanged by NFKC, so the check without it is no looser', () => {
+    const allowed: string[] = [];
+    for (let unit = 0; unit <= 0xffff; unit += 1) {
+      const ch = String.fromCharCode(unit);
+      if (client.ALLOWED_CHARACTERS.test(ch)) allowed.push(ch);
+    }
+    // Printable ASCII, the line break, and the 15 typographic marks.
+    expect(allowed).toHaveLength(95 + 1 + 15);
+    for (const ch of allowed) expect([ch, ch.normalize('NFKC')]).toEqual([ch, ch]);
+    // And as a run, so nothing composes with its neighbour.
+    const all = allowed.join('');
+    expect(all.normalize('NFKC')).toBe(all);
+  });
+});

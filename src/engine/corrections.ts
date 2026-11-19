@@ -4,10 +4,10 @@
 //
 // Layer rule: L3, imports from @/types and sibling engine modules only.
 
-import type { Prediction } from '@/types';
+import type { Category, CategoryOrigin, Prediction } from '@/types';
 
 import { localDayNumber, localMidnight, localParts } from './localTime';
-import { dayNumberAt, isSameDayAnswer, madeDayNumber } from './sameDay';
+import { dayNumberAt, isOnMadeDay, isSameDayAnswer } from './sameDay';
 
 /**
  * For this long after a Yes or No, its details can change the answer, move it
@@ -108,9 +108,14 @@ export function refileCounts(p: Prediction): boolean {
  * eve of it unless it was made (or reworded) today. The window shared by a
  * counted delete (D61), a counted due-date move and a counted rewording
  * (D62): by then the outcome may be known, while a change on the day it was
- * made is a slip fixed, not a hidden outcome. The day it was made is read
- * where it was made, as the same-day rule reads it (2026-11-19); today, where
- * the phone is now.
+ * made is a slip fixed, not a hidden outcome.
+ *
+ * The window (the eve, the due day) is the phone's day, as the due date is
+ * shown. "Made today" is the same-day rule's reading (`isOnMadeDay`): the day
+ * it was made and today both read in the zone it was made in (owner decision
+ * 2026-11-19, round 6), so a traveller's day doesn't end early (record
+ * audit: a fix 30 minutes after logging was counted after a zone change). An
+ * unreadable made time doesn't exempt it.
  */
 function lateForOpen(p: Prediction, now: Date): boolean {
   if (p.status !== 'pending') return false;
@@ -120,8 +125,7 @@ function lateForOpen(p: Prediction, now: Date): boolean {
   const dueDay = localDayNumber(due);
   if (today >= dueDay) return true;
   if (today !== dueDay - 1) return false;
-  const made = madeDayNumber(p);
-  return Number.isNaN(made) || made < today;
+  return !isOnMadeDay(p, now);
 }
 
 /**
@@ -135,9 +139,11 @@ function lateForOpen(p: Prediction, now: Date): boolean {
  * minutes after logging read as "being called a cheat"), the same exemption
  * as a delete (D61); `madeIso` is when it counts as made before this edit
  * (`scoredFrom`), so a rewording on the due day still counts its move, and
- * `madeUtcOffsetMin` the offset stored for it (`scoredFromOffset`), so that
- * day is read where it was made (2026-11-19). Days by the phone's clock, as
- * for the other rules (D45).
+ * `madeUtcOffsetMin` the offset stored for it (`scoredFromOffset`). The
+ * window is the phone's day, as the due date is shown; "made today" reads
+ * the day it was made and today both in that offset, as the same-day rule
+ * does (round 6), or both in the phone's zone without one. Days by the
+ * phone's clock, as for the other rules (D45).
  */
 export function postponementCounts(
   oldDueIso: string,
@@ -149,11 +155,10 @@ export function postponementCounts(
   const oldDay = localDayNumber(new Date(oldDueIso));
   const newDay = localDayNumber(new Date(newDueIso));
   if (newDay <= oldDay) return false;
-  const today = localDayNumber(now);
-  if (today < oldDay - 1) return false;
+  if (localDayNumber(now) < oldDay - 1) return false;
   if (madeIso === undefined) return true;
   const made = dayNumberAt(new Date(madeIso), madeUtcOffsetMin);
-  return Number.isNaN(made) || made !== today;
+  return Number.isNaN(made) || made !== dayNumberAt(now, madeUtcOffsetMin);
 }
 
 /**
@@ -161,21 +166,93 @@ export function postponementCounts(
  * Insights (owner decision 2026-11-19; record audit: a likely miss moved out
  * of its category before it was answered left no trace, while the same move
  * after the answer is counted, D65). The window and exemption of a counted
- * due-date move: on or after the day before its due day, by when the outcome
- * may be known, and not on the day it was made (`madeDayNumber`: logged, or
- * last reworded), when a change is a slip fixed (D62). Counted beside the late
- * moves and rewordings, once per prediction. The caller decides whether the
- * category changed. An unreadable due date isn't counted; an unreadable made
- * time doesn't exempt it, as for a move.
+ * due-date move: on or after the day before its due day (the phone's day),
+ * by when the outcome may be known, and not on the day it was made (logged,
+ * or last reworded; `isOnMadeDay`, read where it was made, round 6), when a
+ * change is a slip fixed (D62). Counted beside the late moves and rewordings,
+ * once per prediction. The caller decides whether the category changed. An
+ * unreadable due date isn't counted; an unreadable made time doesn't exempt
+ * it, as for a move.
  */
 export function categoryChangeCounts(p: Prediction, now: Date): boolean {
   if (p.status !== 'pending') return false;
   const due = new Date(p.due_date);
   if (Number.isNaN(due.getTime())) return false;
-  const today = localDayNumber(now);
-  if (today < localDayNumber(due) - 1) return false;
-  const made = madeDayNumber(p);
-  return Number.isNaN(made) || made !== today;
+  if (localDayNumber(now) < localDayNumber(due) - 1) return false;
+  return !isOnMadeDay(p, now);
+}
+
+// ---- A category change counted at the answer (owner decision 2026-11-19,
+// review round 6, widening D69 (e)) ----
+//
+// D69 (e) counts a category change from the eve of the due day. A change two
+// or more days early, then "Answer it now", left no trace (reproduced): a
+// likely miss moved out of its category took that category's score with it.
+// So this phone remembers the category an open prediction had when it was
+// first moved after the day it was made (`CategoryOrigin`), and a scored Yes
+// or No given in another category is counted with the moved answers (D65),
+// whenever the move happened. Moved back before the answer, nothing is
+// counted. Never twice: a prediction whose category change was already
+// counted as a late change is left to that line.
+
+/**
+ * Whether moving an open prediction to another category now makes this
+ * phone remember the category it had: any move after the day it was made
+ * (logged, or last reworded; `isOnMadeDay`, read where it was made). A move
+ * on that day is a slip fixed, as for every late change (D62), and remembers
+ * nothing. Only the first remembered category is kept. The caller decides
+ * whether the category changed. An unreadable made time remembers it, the
+ * side that counts.
+ */
+export function categoryChangeRemembered(p: Prediction, now: Date): boolean {
+  if (p.status !== 'pending') return false;
+  return !isOnMadeDay(p, now);
+}
+
+/**
+ * Whether an answer is counted as moved to another category before it was
+ * answered: a scored Yes or No (`refileCounts`: not a "Can't tell", not a
+ * same-day answer) filed in a category other than the one remembered at its
+ * first move after the day it was made, unless a category change on it was
+ * already counted as a late change (`counted_late`), which counts the
+ * prediction once, on that line. Counted on the moved-answers line (D65),
+ * which from then on treats the remembered category as where it was
+ * answered: moved back there after the answer, it comes off the count.
+ */
+export function answeredAwayFromOrigin(
+  p: Prediction,
+  origin: Pick<CategoryOrigin, 'from_category' | 'counted_late'> | null,
+): boolean {
+  if (!origin || origin.counted_late) return false;
+  return refileCounts(p) && p.category !== origin.from_category;
+}
+
+/**
+ * For Edit (round 6): whether moving open prediction `p` to `category` now
+ * would be counted once it is answered there with a scored Yes or No (on the
+ * moved-answers line). `origin` is the category this phone remembers for it,
+ * or null. False when the move would be counted now instead, as a late
+ * change (`categoryChangeCounts`, which Edit already says), when a category
+ * change on it was counted that way before, when it isn't a move, when the
+ * category is the remembered one (moved back), and on the day it was made
+ * with nothing remembered (a slip fixed). An answer given the day it was
+ * made, or "Can't tell", is never counted; Edit can't know which it will be.
+ */
+export function categoryChangeCountedIfAnswered(
+  p: Prediction,
+  category: Category,
+  origin: Pick<CategoryOrigin, 'from_category' | 'counted_late'> | null,
+  now: Date,
+): boolean {
+  if (p.status !== 'pending' || category === p.category) return false;
+  if (categoryChangeCounts(p, now)) return false;
+  if (origin?.counted_late) return false;
+  const from = origin
+    ? origin.from_category
+    : categoryChangeRemembered(p, now)
+      ? p.category
+      : null;
+  return from !== null && category !== from;
 }
 
 /**

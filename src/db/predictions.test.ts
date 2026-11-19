@@ -5,14 +5,19 @@ import {
   countPostponements,
   countRefiles,
   deletePrediction,
+  getCategoryOrigin,
   getPrediction,
   insertPrediction,
+  listCategoryOrigins,
   listPendingPredictions,
   listResolvedPredictions,
+  noteAnswerAwayFromOrigin,
   noteRefile,
   recordPostponement,
   refilePrediction,
+  rememberCategoryOrigin,
   resolvePrediction,
+  updatePrediction,
 } from './predictions';
 import { createTestDb } from './testing';
 
@@ -251,5 +256,97 @@ describe('prediction_postponements', () => {
     await recordPostponement('missing', 'u1', DUE, DUE);
     expect(await countPostponements('u1')).toBe(0);
     expect(await countPostponements('u2')).toBe(0);
+  });
+});
+
+// Review round 6 (widening D69 (e)): the category at the first move after
+// the day it was made, and an answer counted against it with the moved
+// answers.
+describe('prediction_category_origins', () => {
+  const AT = '2026-06-02T19:00:00.000Z';
+  /** What the store does on Edit: the move, then what is remembered beside it. */
+  const moveOpen = async (
+    from: Prediction['category'],
+    to: Prediction['category'],
+    countedLate = false,
+    id = 'p1',
+  ) => {
+    await updatePrediction(id, {
+      title: 'Ship the prototype',
+      category: to,
+      due_date: '2026-06-03T00:00:00.000Z',
+    });
+    await rememberCategoryOrigin(id, 'u1', from, to, countedLate);
+  };
+
+  it('keeps the first category remembered, and only ever raises counted_late', async () => {
+    await insertPrediction(samplePrediction());
+    await moveOpen('work', 'health');
+    await moveOpen('health', 'finance');
+    expect(await getCategoryOrigin('p1', 'u1')).toMatchObject({
+      from_category: 'work',
+      counted_late: false,
+    });
+    await moveOpen('finance', 'social', true);
+    expect(await getCategoryOrigin('p1', 'u1')).toMatchObject({
+      from_category: 'work',
+      counted_late: true,
+    });
+    await moveOpen('social', 'work', false);
+    expect((await getCategoryOrigin('p1', 'u1'))?.counted_late).toBe(true);
+    expect(await listCategoryOrigins('u1')).toHaveLength(1);
+  });
+
+  it('remembers nothing for a move that did not land: answered, not this user’s, or another category', async () => {
+    await insertPrediction(samplePrediction({ id: 'answered' }));
+    await resolvePrediction('answered', 'resolved_no');
+    await rememberCategoryOrigin('answered', 'u1', 'work', 'health', false);
+    await insertPrediction(samplePrediction({ id: 'theirs', user_id: 'u2', category: 'health' }));
+    await rememberCategoryOrigin('theirs', 'u1', 'work', 'health', false);
+    await insertPrediction(samplePrediction({ id: 'stayed' }));
+    await rememberCategoryOrigin('stayed', 'u1', 'work', 'health', false);
+    expect(await listCategoryOrigins('u1')).toEqual([]);
+    expect(await listCategoryOrigins('u2')).toEqual([]);
+    expect(await getCategoryOrigin('theirs', 'u2')).toBeNull();
+  });
+
+  it('counts an answer given elsewhere with the moved answers, once, only the one that landed', async () => {
+    await insertPrediction(samplePrediction());
+    await moveOpen('work', 'health');
+    await resolvePrediction('p1', 'resolved_no', undefined, { at: AT });
+    // Another answer time (a resolve that changed nothing) notes nothing.
+    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', '2026-06-02T20:00:00.000Z');
+    expect(await countRefiles('u1')).toBe(0);
+    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', AT);
+    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', AT);
+    expect(await countRefiles('u1')).toBe(1);
+    // And a move back after the answer takes it off, as for D65.
+    await refilePrediction('p1', 'work');
+    await noteRefile('p1', 'u1', 'health', 'work');
+    expect(await countRefiles('u1')).toBe(0);
+  });
+
+  it('notes nothing against a wrong or late-counted origin, in the same category, or for a skip', async () => {
+    await insertPrediction(samplePrediction());
+    await moveOpen('work', 'health', true);
+    await resolvePrediction('p1', 'resolved_no', undefined, { at: AT });
+    // Counted late already: never twice.
+    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', AT);
+    // Not the remembered category.
+    await noteAnswerAwayFromOrigin('p1', 'u1', 'finance', 'health', AT);
+    // The same category.
+    await noteAnswerAwayFromOrigin('p1', 'u1', 'health', 'health', AT);
+    await insertPrediction(samplePrediction({ id: 'skip' }));
+    await moveOpen('work', 'health', false, 'skip');
+    await resolvePrediction('skip', 'skipped', undefined, { at: AT });
+    await noteAnswerAwayFromOrigin('skip', 'u1', 'work', 'health', AT);
+    expect(await countRefiles('u1')).toBe(0);
+  });
+
+  it('forgets the remembered category when the prediction is deleted', async () => {
+    await insertPrediction(samplePrediction());
+    await moveOpen('work', 'health');
+    await deletePrediction('p1', { counted: true });
+    expect(await listCategoryOrigins('u1')).toEqual([]);
   });
 });

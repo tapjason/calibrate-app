@@ -1,9 +1,12 @@
 import type { Prediction } from '@/types';
 
 import {
+  answeredAwayFromOrigin,
   canAnswerSkip,
   canCorrect,
+  categoryChangeCountedIfAnswered,
   categoryChangeCounts,
+  categoryChangeRemembered,
   correctableUntil,
   CORRECTION_WINDOW_HOURS,
   deletionCounts,
@@ -297,5 +300,159 @@ describe('the day made, read in its stored offset', () => {
     expect(postponementCounts(legacy.due_date, '2026-11-25T12:00:00.000Z', now, legacy.created_at)).toBe(
       false,
     );
+  });
+
+  // Review round 6 (record audit: a fix 30 minutes after logging was counted
+  // for a traveller): "made today" reads today in the zone it was made in
+  // too, so the day doesn't end early when the phone has moved east.
+  it('exempts a change 30 minutes after logging for a traveller, and counts it once the day there has passed', () => {
+    __setTimeZoneForTests('Europe/London');
+    // Logged Wed Nov 18 at 23:00 in New York (Thu 04:00 UTC), due Fri Nov 20.
+    const p: Prediction = {
+      ...answered(),
+      status: 'pending',
+      resolved_at: null,
+      created_at: '2026-11-19T04:00:00.000Z',
+      created_utc_offset_min: -300,
+      due_date: '2026-11-20T12:00:00.000Z',
+    };
+    const later = '2026-11-25T12:00:00.000Z';
+    // Thu 04:30 in London, the eve of the due day there; 23:30 Wednesday in
+    // New York, the day it was made.
+    const halfHour = new Date('2026-11-19T04:30:00.000Z');
+    expect(postponementCounts(p.due_date, later, halfHour, p.created_at, -300)).toBe(false);
+    expect(categoryChangeCounts(p, halfHour)).toBe(false);
+    expect(rewordingCounts(p, halfHour)).toBe(false);
+    expect(deletionCounts(p, halfHour)).toBe(false);
+    // Thu 05:30 in London is 00:30 Thursday in New York: counted.
+    const nextDay = new Date('2026-11-19T05:30:00.000Z');
+    expect(postponementCounts(p.due_date, later, nextDay, p.created_at, -300)).toBe(true);
+    expect(categoryChangeCounts(p, nextDay)).toBe(true);
+    expect(rewordingCounts(p, nextDay)).toBe(true);
+    expect(deletionCounts(p, nextDay)).toBe(true);
+    // The window itself is the phone's day: two days before the due day in
+    // London, nothing counts, made-day or not.
+    const early = { ...p, due_date: '2026-11-21T12:00:00.000Z' };
+    expect(categoryChangeCounts(early, nextDay)).toBe(false);
+    expect(deletionCounts(early, nextDay)).toBe(false);
+  });
+});
+
+// Review round 6 (owner decision 2026-11-19, widening D69 (e)): a move to
+// another category after the day it was made is remembered, and a scored
+// answer given elsewhere is counted with the moved answers.
+describe('a category change counted at the answer', () => {
+  const open = (over: Partial<Prediction> = {}): Prediction => ({
+    ...answered(),
+    status: 'pending',
+    resolved_at: null,
+    category: 'health',
+    created_at: new Date('2026-11-10T09:00:00').toISOString(),
+    due_date: new Date('2026-11-14T12:00:00').toISOString(),
+    ...over,
+  });
+  const twoDaysEarly = new Date('2026-11-12T10:00:00');
+  const eve = new Date('2026-11-13T10:00:00');
+  const origin = (from_category: Prediction['category'], counted_late = false) => ({
+    from_category,
+    counted_late,
+  });
+
+  describe('categoryChangeRemembered', () => {
+    it('remembers a move after the day it was made, however early before the due day', () => {
+      expect(categoryChangeRemembered(open(), twoDaysEarly)).toBe(true);
+      expect(categoryChangeRemembered(open(), eve)).toBe(true);
+    });
+
+    it('remembers nothing on the day it was made, or last reworded (D62)', () => {
+      expect(categoryChangeRemembered(open(), new Date('2026-11-10T20:00:00'))).toBe(false);
+      const rewordedToday = open({ title_edited_at: new Date('2026-11-12T08:00:00').toISOString() });
+      expect(categoryChangeRemembered(rewordedToday, twoDaysEarly)).toBe(false);
+    });
+
+    it('never for an answered one; an unreadable made time remembers it', () => {
+      expect(categoryChangeRemembered(answered(), twoDaysEarly)).toBe(false);
+      expect(categoryChangeRemembered(open({ created_at: 'nope' }), twoDaysEarly)).toBe(true);
+    });
+  });
+
+  describe('answeredAwayFromOrigin', () => {
+    const scored = (over: Partial<Prediction> = {}) =>
+      answered({
+        category: 'personal',
+        created_at: new Date('2026-11-10T09:00:00').toISOString(),
+        resolved_at: new Date('2026-11-13T19:00:00').toISOString(),
+        ...over,
+      });
+
+    it('counts a scored Yes or No filed elsewhere than the remembered category', () => {
+      expect(answeredAwayFromOrigin(scored(), origin('health'))).toBe(true);
+      expect(answeredAwayFromOrigin(scored({ status: 'resolved_yes' }), origin('health'))).toBe(true);
+    });
+
+    it('not when answered in the remembered category, or with none remembered', () => {
+      expect(answeredAwayFromOrigin(scored({ category: 'health' }), origin('health'))).toBe(false);
+      expect(answeredAwayFromOrigin(scored(), null)).toBe(false);
+    });
+
+    it('never twice: not when a category change on it was counted as a late change', () => {
+      expect(answeredAwayFromOrigin(scored(), origin('health', true))).toBe(false);
+    });
+
+    it('not for a same-day answer, a "Can\'t tell" or an open one: none was scored (D65)', () => {
+      const sameDay = scored({ resolved_at: new Date('2026-11-10T20:00:00').toISOString() });
+      expect(answeredAwayFromOrigin(sameDay, origin('health'))).toBe(false);
+      expect(answeredAwayFromOrigin(scored({ status: 'skipped' }), origin('health'))).toBe(false);
+      expect(
+        answeredAwayFromOrigin(scored({ status: 'pending', resolved_at: null }), origin('health')),
+      ).toBe(false);
+    });
+  });
+
+  describe('categoryChangeCountedIfAnswered (Edit)', () => {
+    it('is true for an early move with nothing remembered: the first move is remembered', () => {
+      expect(categoryChangeCountedIfAnswered(open(), 'personal', null, twoDaysEarly)).toBe(true);
+    });
+
+    it('is false for no move, a move on the day it was made, or a move back where it was', () => {
+      expect(categoryChangeCountedIfAnswered(open(), 'health', null, twoDaysEarly)).toBe(false);
+      expect(
+        categoryChangeCountedIfAnswered(open(), 'personal', null, new Date('2026-11-10T20:00:00')),
+      ).toBe(false);
+      // Moved health to personal earlier: moving it back to health clears it.
+      const moved = open({ category: 'personal' });
+      expect(categoryChangeCountedIfAnswered(moved, 'health', origin('health'), twoDaysEarly)).toBe(
+        false,
+      );
+      // And on to a third category it is still away from health.
+      expect(categoryChangeCountedIfAnswered(moved, 'work', origin('health'), twoDaysEarly)).toBe(
+        true,
+      );
+    });
+
+    it('is true on the day it was reworded when an earlier move is remembered', () => {
+      const reworded = open({
+        category: 'personal',
+        title_edited_at: new Date('2026-11-12T08:00:00').toISOString(),
+      });
+      expect(categoryChangeCountedIfAnswered(reworded, 'work', origin('health'), twoDaysEarly)).toBe(
+        true,
+      );
+      expect(
+        categoryChangeCountedIfAnswered(reworded, 'health', origin('health'), twoDaysEarly),
+      ).toBe(false);
+    });
+
+    it('is false when the move is counted now, as a late change, or one was before', () => {
+      expect(categoryChangeCounts(open(), eve)).toBe(true);
+      expect(categoryChangeCountedIfAnswered(open(), 'personal', null, eve)).toBe(false);
+      expect(
+        categoryChangeCountedIfAnswered(open({ category: 'personal' }), 'work', origin('health', true), twoDaysEarly),
+      ).toBe(false);
+    });
+
+    it('is false for an answered prediction', () => {
+      expect(categoryChangeCountedIfAnswered(answered(), 'personal', null, twoDaysEarly)).toBe(false);
+    });
   });
 });

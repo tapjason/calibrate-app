@@ -25,20 +25,28 @@ calibratable(p)  ⇔  p.status ∈ { 'resolved_yes', 'resolved_no' }
 "don't score this," so letting it count would reward dismissing one's own
 predictions — against the honesty-first design.
 
-**Same-day answers aren't scored** (D41). A Yes or No given on the local day the
-prediction was logged (`isSameDayAnswer`) stays in History but counts toward nothing
-calibrated. The stats store drops them first (`scoredOnly`), so every row below
-marked "scored" excludes them. "Logged" means `scoredFrom(p)`: `created_at`, or
+**Same-day answers aren't scored** (D41). A Yes or No given on the calendar day the
+prediction was logged (`isSameDayAnswer`; which day, below) stays in History but counts
+toward nothing calibrated. The stats store drops them first (`scoredOnly`), so every row
+below marked "scored" excludes them. "Logged" means `scoredFrom(p)`: `created_at`, or
 `title_edited_at` when the words changed later (D45), since new words are a new
-prediction. Derived on every read, never stored as a verdict. **Each moment's day is
-read where it happened** (D69 (f), 2026-11-19): the prediction stores the phone's UTC
-offset when it was logged, answered and reworded (`created_utc_offset_min`,
-`resolved_utc_offset_min`, `title_edited_utc_offset_min`, SQLite migration 018), and
-`dayNumberAt` takes each moment's calendar day in its own offset, so moving the phone to
-another zone doesn't re-score past answers. A moment with no stored offset (rows from
-before migration 018, or one from another phone on an older build) is read in the phone's
-current zone, as before. The offsets sync only once Supabase migration 011 is applied and
-`UTC_OFFSET_SYNC` is on.
+prediction. Derived on every read, never stored as a verdict. **Judged in the zone the
+prediction was made in** (D69 (f), as refined 2026-11-19): the prediction stores the
+phone's UTC offset when it was logged and when it was reworded (`created_utc_offset_min`,
+`title_edited_utc_offset_min`, SQLite migration 018), and both days the rule compares, the
+day it was made and the day of the answer, are read in the offset stored with
+`scoredFrom`'s moment (`scoredFromOffset`, `isOnMadeDay`), never in the zone the answer
+was given in. So moving the phone to another zone neither re-scores past answers nor turns
+a same-day answer into a scored one, and someone who answers early after travelling east is
+unscored until the next day has begun where the prediction was made. No offset is kept for
+the answer (migration 018's `resolved_utc_offset_min` column stays, unused). With no
+stored offset (rows from before migration 018, or one pulled from another phone while the
+offsets don't sync), both days are read in the phone's current zone, as before. An offset
+is not a zone: across a daylight-saving change between the two moments the day boundary
+moves by the change (`src/engine/sameDay.ts`). The same reading decides "made today" for
+the late-change exemptions (`src/engine/corrections.ts`); their window, the eve and the due
+day, is the phone's day, as the due date is shown. The offsets sync only once Supabase
+migration 011 is applied and `UTC_OFFSET_SYNC` is on.
 
 | Aggregate | Counts pending? | Counts skipped? | Counts yes/no? |
 |-----------|:---:|:---:|:---:|

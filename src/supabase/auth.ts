@@ -480,13 +480,18 @@ export async function signUpWithEmail(
 export type SessionEndOutcome = { ok: true; localOnly?: true } | { ok: false; error: string };
 
 /**
- * How the app's sign-out ended (`authStore.signOut`): the session's end, or
- * `unsynced`, when this phone still holds that many changes the server
- * doesn't have and the person hasn't said to discard them. Nothing was
- * changed then: still signed in, every row still here (owner decision
- * 2026-11-19, D69 (a)).
+ * How the app's sign-out ended (`authStore.signOut`): the session's end, or a
+ * question for the person. `unsynced` and `localCategories`: signing out
+ * would take that many changes the server doesn't have, and that many
+ * categories only this phone has (added, renamed, given an icon or hidden),
+ * off the phone for good, and the person hasn't agreed to lose them (or more
+ * have appeared since they did). Nothing was changed then: still signed in,
+ * every row still here (owner decision 2026-11-19, D69 (a); round 6, N1, N2).
+ * At least one of the two is above zero.
  */
-export type SignOutOutcome = SessionEndOutcome | { ok: false; unsynced: number };
+export type SignOutOutcome =
+  | SessionEndOutcome
+  | { ok: false; unsynced: number; localCategories: number };
 
 /** What the person sees when even this phone's copy of the session couldn't be removed. */
 export const SIGN_OUT_FAILED = "Couldn't sign you out on this phone. Try again.";

@@ -72,11 +72,14 @@ Status: filled in 2026-11-08
   (recomputed in the same transaction as every change), the streak and rest days (derived on every
   read, never stored), practice and Warmup answers (never synced), categories, names and icons (not
   synced, D39, D40), settings, the age band, the entitlement mirror, deletion tombstones, the counts of late moves
-  and of answers moved between categories (never synced), and each prediction's UTC offsets
-  (synced only once `UTC_OFFSET_SYNC` is on, D69 (f)). All in
+  and of answers moved between categories, with the category each prediction had at its first
+  move after the day it was made (never synced; round 6), and each prediction's two UTC
+  offsets, the logging's and the rewording's (synced only once `UTC_OFFSET_SYNC` is on,
+  D69 (f)). All in
   SQLite (`calibrate.db`); the app is complete offline with no account. The sign-in session is
   in the iPhone Keychain (`src/supabase/sessionStorage.ts`, D69 (d)). Sign-out takes the
-  account's rows off the phone (D69 (a), `docs/ACCOUNT_SPEC.md` §2).
+  account's rows off the phone, all but those integrity counts (D69 (a), round 6,
+  `docs/ACCOUNT_SPEC.md` §2).
 - **Supabase owns (after sign-in):** Auth (email sign-in, with Create account hidden, D69 (c); Sign in with Apple through `signInWithIdToken`, with a nonce; Google through the system sheet and `exchangeCodeForSession`, behind `GOOGLE_SIGN_IN_ENABLED`),
   the synced copy of predictions (last-write-wins, except that an answered prediction never goes back to open, D69; deletions as tombstones), entitlements written by
   the `revenuecat-webhook` Edge Function, Coach usage and rate limits, analytics events from
@@ -140,7 +143,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 | R2 | Never a number built on noise: below `MIN_N_OVERALL` (20) no headline rating, below `MIN_N_CATEGORY` (20, D46, step 157) no category score; progress toward the gate instead. No badge above Tracker while provisional. | Minimum-N gating |
 | R3 | A tier is earned at its low end (score minus its give-or-take clears the bar) and with its resolution minimum (20 / 50 / 100). Today and the share card name only tiers past the count gate (D27). | Badge Levels, D35 |
 | R4 | One lean rule everywhere: over or under only outside the central 80% of luck (`chanceRange`, `LEAN_MASS`) and by at least 5 points; no lean word or mark for a range under 10 (`MIN_N_BAND`, D58). The chart's grey bars show that 80%. | D35, D58 |
-| R5 | Same-day answers aren't scored (`isSameDayAnswer`, `scoredFrom`); the earliest picked due date is the next day. | D41 |
+| R5 | Same-day answers aren't scored (`isSameDayAnswer`, `scoredFrom`), both days read in the UTC offset stored when the prediction was logged or reworded, never in the zone of the answer (`isOnMadeDay`; with no stored offset, the phone's zone); the earliest picked due date is the next day. | D41, D69 (f) |
 | R6 | The score holes stay closed: new words are a new prediction (`title_edited_at`); deleted calls are counted (`deletionCounts`); a scored answer moved to another category is counted (`refileCounts`, D65); a "Can't tell" can be answered until 7 days after its due day (`SKIP_ANSWER_DAYS`), or to the end of the day after the skip if that's later (`skipLastDay`). | D45 |
 | R7 | Corrections: Yes ↔ No within 24 hours of the first answer (`CORRECTION_WINDOW_HOURS`); a Yes or No never becomes "Can't tell"; the confidence is never editable. | D34, D25 |
 | R8 | Reward calibration, not correctness: Yes and No look, move and buzz the same; green means calibrated, never correct; red never marks an outcome; nothing rewards a particular confidence (D23). | DESIGN_SYSTEM §0.4 |

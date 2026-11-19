@@ -646,16 +646,23 @@ describe('CalibrationView step 173', () => {
     expect(view.queryByTestId('stats-postponed')).toBeNull();
   });
 
-  // Step 184 (D65).
+  // Step 184 (D65). Review round 6: a move before the answer is counted on
+  // the same line (answered in another category than the one it had at its
+  // first move after the day it was made), so the line says before or after.
   it('counts scored answers moved to another category on this phone', () => {
     expect(refiledLine(1)).toBe(
-      '1 scored answer was moved to another category after it was answered. Only this phone keeps this count.',
+      '1 scored answer was moved to another category, before or after it was answered. Only this phone keeps this count.',
     );
+    expect(refiledLine(2)).toBe(
+      '2 scored answers were moved to another category, before or after they were answered. Only this phone keeps this count.',
+    );
+    // Not "after it was answered" alone, which a move before the answer belied.
+    expect(refiledLine(1)).not.toMatch(/category after it was answered/);
     const view = fine(render(
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} refiledCount={3} />,
     ));
     expect(view.getByTestId('stats-refiled')).toHaveTextContent(
-      '3 scored answers were moved to another category after they were answered. Only this phone keeps this count.',
+      '3 scored answers were moved to another category, before or after they were answered. Only this phone keeps this count.',
     );
     view.rerender(
       <CalibrationView userStat={unlocked} calibration={{ rating: 86, buckets: [] }} categoryStats={[]} nextBadges={{}} />,

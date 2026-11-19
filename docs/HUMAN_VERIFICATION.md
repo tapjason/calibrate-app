@@ -857,6 +857,8 @@ Added 2026-11-15 (step 184, moved answers counted; in build 2):
       different category from the one it was answered in." Move it to another category, then
       Insights → More about your record: "1 scored answer was moved to another category after
       it was answered. Only this phone keeps this count." Move it back: the line is gone.
+      (From round 6's build the line reads "1 scored answer was moved to another category,
+      before or after it was answered. Only this phone keeps this count.", `refiledLine`.)
 
 Added 2026-11-15 (step 182, TestFlight hardening, and the TestFlight prep; in build 2):
 

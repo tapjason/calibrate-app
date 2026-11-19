@@ -25,10 +25,45 @@ export const PER_USER_TABLES = [
   'prediction_postponements',
   // And the answers moved between categories (step 184).
   'prediction_refiles',
+  // And the category each open prediction had at its first move after the
+  // day it was made (review round 6).
+  'prediction_category_origins',
   // The person's own categories and icons (roadmap D39, D40) go with the
   // predictions in them.
   'categories',
+  // The one-time sync jobs done for the account here (SQLite migration 020).
+  'sync_markers',
 ] as const;
+
+/**
+ * The tables behind Insights' "Only this phone keeps this count" lines: the
+ * counted deletions (D45; the same rows are sync's tombstones), the late
+ * changes (step 173, D62, D69 (e)), the moved answers (D65) and the
+ * remembered categories they are counted against (round 6). Ids, dates and
+ * category ids; no words. Sign-out keeps them (`keepIntegrityCounts`), so
+ * signing out and back in can't empty those lines (main session decision
+ * 2026-11-19; D45: a miss can't disappear without a trace).
+ */
+export const INTEGRITY_COUNT_TABLES = [
+  'prediction_deletions',
+  'prediction_postponements',
+  'prediction_refiles',
+  'prediction_category_origins',
+] as const satisfies readonly (typeof PER_USER_TABLES)[number][];
+
+/**
+ * What sign-out leaves of an account (`keepIntegrityCounts`): the integrity
+ * counts, and the one-time sync jobs done for it here (`sync_markers`,
+ * SQLite migration 020: an account id, a job name and a date). A job's marker
+ * stays so it never runs again for the account: the offset backfill
+ * (`markOffsetBackfillDone`) has already sent this phone's offsets, and
+ * signing back in brings the rows down with what the server holds (review
+ * round 6, 2026-11-19).
+ */
+export const SIGN_OUT_KEPT_TABLES = [
+  ...INTEGRITY_COUNT_TABLES,
+  'sync_markers',
+] as const satisfies readonly (typeof PER_USER_TABLES)[number][];
 
 export interface WipeOptions {
   /**
@@ -39,14 +74,32 @@ export interface WipeOptions {
    * call; `false` leaves them.
    */
   deviceData?: boolean;
+  /**
+   * Leave this account's rows in `INTEGRITY_COUNT_TABLES` as they are, the
+   * tombstones' `counted` and `pushed_at` included, and its sync markers
+   * (`SIGN_OUT_KEPT_TABLES`): for sign-out (main session decision
+   * 2026-11-19). Off by default: Erase and confirmed account deletion remove
+   * them with everything else.
+   *
+   * A kept tombstone still waiting to be pushed stays waiting under its own
+   * account: sync reads and deletes per `user_id` (`listPendingDeletions`,
+   * and the server delete filters on it too), so another account signed in
+   * here never pushes it, and this account pushes it when it next syncs. The
+   * pull goes on skipping a tombstoned id, unless the server's copy was
+   * answered after the deletion (`reconcileTombstoneWithRemote`).
+   */
+  keepIntegrityCounts?: boolean;
 }
 
 /**
  * Delete every row this device holds for `userId`: predictions, the stats
  * derived from them, queued analytics events, tombstones, the counted late
- * changes and moved answers, and the person's categories
- * (`PER_USER_TABLES`). One transaction, so a failure leaves everything in
- * place rather than a record with its history half gone.
+ * changes and moved answers with the categories remembered for them, the
+ * person's categories and the one-time sync jobs done for them
+ * (`PER_USER_TABLES`); with `keepIntegrityCounts`, all but the counts' tables
+ * and the sync markers (`SIGN_OUT_KEPT_TABLES`). One transaction, so a
+ * failure leaves everything in place rather than a record with its history
+ * half gone.
  *
  * Scoped to one user on purpose. A shared phone can hold another account's
  * rows, and wiping yours must not delete theirs.
@@ -71,11 +124,13 @@ export interface WipeOptions {
  */
 export async function wipeLocalUserData(
   userId: string,
-  { deviceData = true }: WipeOptions = {},
+  { deviceData = true, keepIntegrityCounts = false }: WipeOptions = {},
 ): Promise<void> {
+  const kept: ReadonlySet<string> = new Set(keepIntegrityCounts ? SIGN_OUT_KEPT_TABLES : []);
   await withTransaction(async () => {
     const db = getDb();
     for (const table of PER_USER_TABLES) {
+      if (kept.has(table)) continue;
       await db.run(`DELETE FROM ${table} WHERE user_id = ?`, [userId]);
     }
     if (deviceData) {

@@ -326,33 +326,69 @@ describe('SYSTEM_PROMPT', () => {
     expect(SYSTEM_PROMPT).toMatch(pattern);
   });
 
+  // Round 6: what the validators now also hold the words to.
+  it.each([
+    ['contrast words only in an over/under card', /"but only", "a gap", "against 80% stated"\)\nonly in an overconfidence or underconfidence card/],
+    ['stated beside happened only where the app backs it', /mean_stated_confidence and its actual_rate in the same insight only in an\noverconfidence or underconfidence card, or when the two are less than 5 points apart/],
+    ['no count of what came true', /Never say how many\npredictions happened, came true, were right or hit: the data has no such count/],
+    ['a drift with its direction', /Write a drift with the way it went beside it[^]*"slipped", "fell", "down" or "lower" when it is negative/],
+    ['a drift copied with its decimals', /Copy a drift with its decimals/],
+    ['the app’s rounding', /half up \(82\.5 is 83\)/],
+    ['"your overall rating" beside a named category', /that names a category, call the whole record's rating "your overall rating"/],
+  ])('says %s', (_name, pattern) => {
+    expect(SYSTEM_PROMPT).toMatch(pattern);
+  });
+
   it('allows §5.4’s professional-advice note', () => {
     expect(SYSTEM_PROMPT).toMatch(/"not a\s+substitute for professional advice" note is fine/);
   });
 });
 
 // Item 14: the server checks for NFKC once, as the app does. Deno has it; if
-// a runtime ever didn't, the raw text is checked, held to plain ASCII.
+// a runtime ever didn't, the raw text is checked, held to ALLOWED_CHARACTERS
+// (plain ASCII until round 6, item 8), every one of which NFKC leaves as it is.
 describe('validateOutput — without NFKC', () => {
   const original = Object.getOwnPropertyDescriptor(String.prototype, 'normalize')!;
   afterEach(() => Object.defineProperty(String.prototype, 'normalize', original));
 
-  it('keeps a plain-ASCII card and drops what NFKC would have changed', () => {
+  function validatorWithout(): typeof validateOutput {
     Object.defineProperty(String.prototype, 'normalize', { ...original, value: undefined });
     let validate: typeof validateOutput | undefined;
     jest.isolateModules(() => {
       validate = (require('./contract') as typeof import('./contract')).validateOutput;
     });
-    const card = (message: string) => ({ type: 'overconfidence', category: 'finance', message, evidence: 80 });
+    return validate!;
+  }
+  const card = (message: string) => ({ type: 'overconfidence', category: 'finance', message, evidence: 80 });
+
+  it('keeps a plain-ASCII card and drops what NFKC would have changed', () => {
+    const validate = validatorWithout();
     const ascii = 'Finance runs overconfident: 80% stated against a 55% hit rate.';
-    expect(validate!({ insights: [card(ascii)], safe: true }, VALID).insights).toEqual([
+    expect(validate({ insights: [card(ascii)], safe: true }, VALID).insights).toEqual([
       expect.objectContaining({ message: ascii }),
     ]);
-    expect(validate!({ insights: [card('Finance runs overconfident: ８０% stated.')], safe: true }, VALID)).toEqual({
+    expect(validate({ insights: [card('Finance runs overconfident: ８０% stated.')], safe: true }, VALID)).toEqual({
       insights: [],
       safe: true,
       dropped: 1,
     });
+  });
+
+  it.each([
+    'Finance’s calls run overconfident: 80% stated.',
+    'Finance runs overconfident — 80% stated.',
+  ])('keeps %p: a curly apostrophe or an em dash is an allowed character', (message) => {
+    const validate = validatorWithout();
+    expect(validate({ insights: [card(message)], safe: true }, VALID).insights).toEqual([
+      expect.objectContaining({ message }),
+    ]);
+  });
+
+  it('still drops a ligature and a zero-width space', () => {
+    const validate = validatorWithout();
+    for (const message of ['Finance runs overconﬁdent: 80% stated.', 'Finance runs over​confident: 80% stated.']) {
+      expect(validate({ insights: [card(message)], safe: true }, VALID).insights).toEqual([]);
+    }
   });
 });
 

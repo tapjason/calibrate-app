@@ -13,6 +13,26 @@
 //                 tombstone. Runs first, and pull skips any id still
 //                 tombstoned, so a delete never comes back from the server.
 //                 Another device keeps its copy until it is deleted there.
+//                 One exception both make (round 6, item 6): a row this phone
+//                 deleted that the server holds answered, with an answer
+//                 given after the deletion (on another phone that hadn't
+//                 heard of it), is restored here and its tombstone dropped
+//                 (`reconcileTombstoneWithRemote`, src/db), never deleted on
+//                 the server. The server delete is conditional (open, or
+//                 answered no later than the deletion), so this holds in a
+//                 sweep and in sign-out's push, which pulls nothing, with no
+//                 gap between a check and the delete.
+//
+//   backfillOffsets — once per account with `UTC_OFFSET_SYNC` on (review
+//                 round 6, 2026-11-19): fill the UTC offsets the server never
+//                 got for rows pushed before the flag. Update-only requests,
+//                 one row and one column each, that write a column only while
+//                 the server's is still null and only for the same moment;
+//                 nothing is inserted, no row is re-pushed whole and no
+//                 `updated_at` moves. Last in a sweep, at most
+//                 `OFFSET_BACKFILL_MAX_REQUESTS` (200) a sweep, going on at
+//                 the next; marked done (`markOffsetBackfillDone`, src/db)
+//                 once every row has gone without a failure.
 //
 // `syncNow` orchestrates pull → push, then asks statsStore to recompute iff
 // anything actually changed. The app's callers go through authStore's
@@ -49,18 +69,27 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { UTC_OFFSET_SYNC } from '@/constants/app';
 import {
   getPredictionUpdatedAt,
   isDeletedHere,
   listDirtyPredictionsSettled,
-  listPendingDeletionsSettled,
+  listOffsetBackfill,
+  listPendingTombstonesSettled,
   markDeletionPushed,
+  markOffsetBackfillDone,
   markPredictionSynced,
+  offsetBackfillDone,
+  reconcileTombstoneWithRemote,
   upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import { useStatsStore } from '@/store/statsStore';
-import type { PredictionWireRow } from '@/types';
+import {
+  isUtcOffsetMinutes,
+  type OffsetBackfillRow,
+  type PredictionWireRow,
+} from '@/types';
 
 import { getSupabaseClient, isSupabaseConfigured } from './client';
 
@@ -127,6 +156,50 @@ export const PUSH_BATCH_SIZE = 100;
  * is handled the same way if it ever does).
  */
 const LIMIT_CODES: ReadonlySet<string> = new Set(['PT429', 'PT413']);
+
+/** The account-cap refusal, after which a row waits before it is sent again. */
+const AT_CAP_CODE = 'PT429';
+
+/**
+ * How long a row refused alone at an account cap (PT429) waits before a push
+ * sends it again (round 6, server re-review LOW-I: it was retried every
+ * sweep). It stays dirty meanwhile, so sign-out still counts it.
+ */
+export const AT_CAP_RETRY_MS = 60 * 60_000;
+
+/**
+ * Rows refused alone at an account cap, by account: the `updated_at` that was
+ * refused and until when it waits. In memory only, so a new run tries again.
+ * A row changed since (a new `updated_at`) is sent at the next push.
+ */
+const heldAtCap = new Map<string, Map<string, { updatedAt: string; until: number }>>();
+
+/** Whether `row` is waiting out a refusal at an account cap; forgets one that is over. */
+function isHeldAtCap(userId: string, row: PredictionWireRow, now: number): boolean {
+  const held = heldAtCap.get(userId);
+  const entry = held?.get(row.id);
+  if (!held || !entry) return false;
+  if (entry.updatedAt === row.updated_at && entry.until > now) return true;
+  held.delete(row.id);
+  if (held.size === 0) heldAtCap.delete(userId);
+  return false;
+}
+
+function holdAtCap(userId: string, row: PredictionWireRow): void {
+  let held = heldAtCap.get(userId);
+  if (!held) {
+    held = new Map();
+    heldAtCap.set(userId, held);
+  }
+  held.set(row.id, { updatedAt: row.updated_at, until: Date.now() + AT_CAP_RETRY_MS });
+}
+
+function releaseAtCap(userId: string, rowId: string): void {
+  const held = heldAtCap.get(userId);
+  if (!held) return;
+  held.delete(rowId);
+  if (held.size === 0) heldAtCap.delete(userId);
+}
 
 /** The limit a push was refused for, or null for any other failure. */
 function limitCode(e: unknown): string | null {
@@ -300,10 +373,18 @@ export async function pullRemote(
 
     // Deleted here (roadmap D25): don't resurrect it, whether or not the
     // server has the deletion yet. The cursor still moves past it;
-    // pushDeletions removes the server copy.
+    // pushDeletions removes the server copy. Unless the server's copy was
+    // answered after this phone deleted it (round 6, item 6): then the answer
+    // stands, the tombstone goes and the row is written here.
     if (await isDeletedHere(remote.id)) {
-      if (remote.updated_at > lastSeen) lastSeen = remote.updated_at;
-      continue;
+      if (stoppedUsers.has(userId)) return written;
+      const reconciled = await reconcileTombstoneWithRemote(remote);
+      if (reconciled === 'restored') written += 1;
+      if (reconciled !== 'none') {
+        if (remote.updated_at > lastSeen) lastSeen = remote.updated_at;
+        continue;
+      }
+      // 'none': the tombstone went meanwhile; the row is pulled as any is.
     }
 
     const localUpdatedAt = await getPredictionUpdatedAt(remote.id);
@@ -352,6 +433,10 @@ export async function pullRemote(
  * dirty for the next sweep, and sign-out counts it as unsynced, so the person
  * is asked before it is discarded. For a limit, only its code (and how many
  * rows) is logged.
+ *
+ * A row refused alone at an account cap (PT429) isn't sent again for an hour
+ * (`AT_CAP_RETRY_MS`, in memory, per account) unless it changes; it stays
+ * dirty and counted meanwhile (round 6, server re-review LOW-I).
  */
 export async function pushDirty(
   userId: string,
@@ -362,7 +447,10 @@ export async function pushDirty(
   // unqueued read on the one connection sees a transaction's uncommitted
   // writes, and one pushed that then rolled back would come back on the next
   // pull.
-  const dirty = await listDirtyPredictionsSettled(userId);
+  const now = Date.now();
+  const dirty = (await listDirtyPredictionsSettled(userId)).filter(
+    (row) => !isHeldAtCap(userId, row, now),
+  );
   if (dirty.length === 0) return 0;
 
   const upsertBatch = async (rows: PredictionWireRow[]) => {
@@ -395,12 +483,15 @@ export async function pushDirty(
         if (!(await stillCurrent())) return pushed;
         try {
           await upsertBatch([row]);
+          releaseAtCap(userId, row.id);
           await markPredictionSynced(row.id, row.updated_at);
           pushed += 1;
         } catch (rowErr) {
           const rowLimit = limitCode(rowErr);
           if (rowLimit) {
             refusedAtLimit.set(rowLimit, (refusedAtLimit.get(rowLimit) ?? 0) + 1);
+            // At a cap: sending it again soon would be refused again.
+            if (rowLimit === AT_CAP_CODE) holdAtCap(userId, row);
           } else {
             // eslint-disable-next-line no-console
             console.warn(`[sync] push failed for ${row.id}:`, errorForLog(rowErr));
@@ -421,32 +512,390 @@ export async function pushDirty(
  * then mark each tombstone pushed (kept, so it is still counted, D45). Per row, so one failure leaves only that
  * tombstone for the next sweep. Returns how many reached the server. Each
  * delete first checks the session is still `userId`'s, as pushDirty does.
+ *
+ * The delete is conditional (round 6, item 6): it removes the server's row
+ * only while it is open, or answered no later than this phone's deletion
+ * (`openOrAnsweredBy`), the rule `reconcileTombstoneWithRemote` follows, in
+ * the same statement, so no answer given elsewhere can land between a check
+ * and the delete. When it removes nothing, the row is read: none on the
+ * server, and the deletion is done; one answered after the deletion goes to
+ * `reconcileTombstoneWithRemote`, which restores it here and drops the
+ * tombstone. A tombstone whose time can't be read is never sent.
  */
 export async function pushDeletions(
   userId: string,
   client: SupabaseClient,
   stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
 ): Promise<number> {
+  return (await pushDeletionsCounted(userId, client, stillCurrent)).deleted;
+}
+
+/** An instant as the phone writes one (`nowIso`): no character PostgREST reserves but `:` and `.`. */
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * The PostgREST `or` filter for a delete that may go: the row is open, or was
+ * answered no later than `deletedAt`. The time is double-quoted, as PostgREST
+ * asks for a value holding `:` or `.` inside a logical filter
+ * (`@supabase/postgrest-js` passes `or()` through as written). Null when
+ * `deletedAt` isn't such an instant: nothing is sent then.
+ */
+export function openOrAnsweredBy(deletedAt: string): string | null {
+  if (typeof deletedAt !== 'string' || !ISO_INSTANT.test(deletedAt)) return null;
+  if (Number.isNaN(Date.parse(deletedAt))) return null;
+  return `status.eq.pending,resolved_at.lte."${deletedAt}"`;
+}
+
+/** `pushDeletions`, also saying how many rows it restored here (for the recompute). */
+async function pushDeletionsCounted(
+  userId: string,
+  client: SupabaseClient,
+  stillCurrent: () => Promise<boolean>,
+): Promise<{ deleted: number; restored: number }> {
   // Settled, as pushDirty's read is: a delete that rolls back is never sent.
-  const ids = await listPendingDeletionsSettled(userId);
-  let done = 0;
-  for (const id of ids) {
+  const tombstones = await listPendingTombstonesSettled(userId);
+  let deleted = 0;
+  let restored = 0;
+  for (const { id, deleted_at: deletedAt } of tombstones) {
+    const allowed = openOrAnsweredBy(deletedAt);
+    if (!allowed) {
+      // eslint-disable-next-line no-console
+      console.warn(`[sync] a deletion with no readable time stays on this phone: ${id}`);
+      continue;
+    }
     if (!(await stillCurrent())) break;
     try {
-      const { error } = await client
+      const { data, error } = await client
         .from('predictions')
         .delete()
         .eq('id', id)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .or(allowed)
+        .select('id');
       if (error) throw error;
-      await markDeletionPushed(id);
-      done += 1;
+      if (Array.isArray(data) && data.some((row: { id?: unknown } | null) => row?.id === id)) {
+        await markDeletionPushed(id);
+        deleted += 1;
+        continue;
+      }
+
+      // Nothing removed: the server holds no such row, or holds it answered
+      // after this deletion. Read it, under this account's session only (under
+      // another's it would read as missing).
+      if (!(await stillCurrent())) break;
+      const { data: rows, error: readError } = await client
+        .from('predictions')
+        .select('*')
+        .eq('user_id', userId)
+        .in('id', [id]);
+      if (readError) throw readError;
+      const remote = (Array.isArray(rows) ? (rows as PredictionWireRow[]) : []).find(
+        (row) => row?.id === id && row?.user_id === userId,
+      );
+      if (!remote) {
+        // Not on the server: the deletion is done there.
+        await markDeletionPushed(id);
+        deleted += 1;
+        continue;
+      }
+      // The account is leaving the phone: nothing more is written to it.
+      if (stoppedUsers.has(userId)) return { deleted, restored };
+      const reconciled = await reconcileTombstoneWithRemote(remote);
+      if (reconciled === 'restored') {
+        restored += 1;
+      } else if (reconciled === 'kept') {
+        // The server kept a row the deletion should have removed (an answer
+        // with no time, say): the tombstone stays for the next sweep.
+        // eslint-disable-next-line no-console
+        console.warn(`[sync] the server kept ${id}; its deletion stays on this phone`);
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn(`[sync] delete failed for ${id}:`, errorForLog(e));
     }
   }
-  return done;
+  return { deleted, restored };
+}
+
+/**
+ * What this phone holds for `userId` that the server doesn't and that a
+ * sign-out's wipe would take: each dirty row's id and `updated_at`. Read once
+ * every queued transaction has settled. Sign-out compares it with what the
+ * person was told (authStore, client re-review N2): a change made since shows
+ * as an id, or an `updated_at`, not in it. Deletions not yet pushed aren't
+ * here: the wipe keeps them (`keepIntegrityCounts`, src/db/account.ts) and
+ * they go up at the account's next sync. Throws when the read does.
+ */
+export async function unsyncedRows(userId: string): Promise<Map<string, string>> {
+  const dirty = await listDirtyPredictionsSettled(userId);
+  return new Map(dirty.map((row) => [row.id, row.updated_at]));
+}
+
+// ----------------------------------------------------------------------------
+// The UTC offset backfill (review round 6, 2026-11-19)
+// ----------------------------------------------------------------------------
+
+/**
+ * The most requests one sweep's offset backfill sends; it goes on from there
+ * at the next sweep. One row and one column per request, so migration 011's
+ * 100-changed-rows-per-statement ceiling is never near.
+ */
+export const OFFSET_BACKFILL_MAX_REQUESTS = 200;
+
+/**
+ * Rows per batch in the backfill. The session is checked before the first
+ * batch and after each one; a batch's rows count as sent only when it was
+ * still this account's after them.
+ */
+export const OFFSET_BACKFILL_BATCH_ROWS = 25;
+
+/**
+ * Rows whose offsets went up without a failure in this run of the app, by
+ * account, so a later sweep goes on from where one stopped. In memory only:
+ * after a restart the backfill starts over, which only repeats requests that
+ * fill nothing (a column the server already holds is never written).
+ */
+const offsetBackfillSent = new Map<string, Set<string>>();
+
+/** One server column to fill, with the moment its offset belongs to. */
+interface OffsetFill {
+  column: 'created_utc_offset_min' | 'title_edited_utc_offset_min';
+  moment: 'created_at' | 'title_edited_at';
+  offset: number;
+  at: string;
+}
+
+/**
+ * A moment as the backfill's filter sends it: an ISO instant carrying its own
+ * offset ('Z' or '±hh:mm'), to at most microseconds, Postgres's precision.
+ *
+ * How the server compares it: postgrest-js appends the filter as written
+ * (`eq.<value>`, `PostgrestFilterBuilder.eq`; URLSearchParams percent-encodes
+ * a '+', so it arrives as '+', not a space, as the pull's `gt` on a pulled
+ * `updated_at` already relies on), and PostgREST hands the value to Postgres as an
+ * untyped literal that takes the column's type, timestamptz. So the server
+ * compares instants, not text: '…14:00:00.120Z' (this phone's own writing)
+ * and '…14:00:00.12+00:00' (the server's, kept on a row pulled from it) both
+ * match the same stored value. The string therefore goes as it is stored,
+ * not re-written through `Date`: that would cut a pulled time's microseconds,
+ * and the filter would then match nothing. Carrying its own offset, the
+ * session's time zone can't move it. Anything else isn't sent.
+ */
+const FILTER_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/;
+
+function isFilterInstant(value: unknown): value is string {
+  if (typeof value !== 'string' || !FILTER_INSTANT.test(value)) return false;
+  // Parsed on its milliseconds alone: an engine may read no more than three digits.
+  return !Number.isNaN(Date.parse(value.replace(/(\.\d{3})\d+/, '$1')));
+}
+
+/** What `row` has to fill on the server: each usable offset with a readable moment. */
+function offsetFills(row: OffsetBackfillRow): OffsetFill[] {
+  const fills: OffsetFill[] = [];
+  if (isUtcOffsetMinutes(row.created_utc_offset_min) && isFilterInstant(row.created_at)) {
+    fills.push({
+      column: 'created_utc_offset_min',
+      moment: 'created_at',
+      offset: row.created_utc_offset_min,
+      at: row.created_at,
+    });
+  }
+  if (
+    row.title_edited_at !== null &&
+    isUtcOffsetMinutes(row.title_edited_utc_offset_min) &&
+    isFilterInstant(row.title_edited_at)
+  ) {
+    fills.push({
+      column: 'title_edited_utc_offset_min',
+      moment: 'title_edited_at',
+      offset: row.title_edited_utc_offset_min,
+      at: row.title_edited_at,
+    });
+  }
+  return fills;
+}
+
+/**
+ * Refusals that would refuse every row alike, after which the backfill stops
+ * for the sweep, as on a transport error: the column isn't on the server yet
+ * (PGRST204, 42703: the flag on before migration 011 is applied), or the
+ * request's session or role was refused (PGRST301–303, 42501).
+ */
+const OFFSET_BACKFILL_STOP_CODES: ReadonlySet<string> = new Set([
+  'PGRST204',
+  '42703',
+  'PGRST301',
+  'PGRST302',
+  'PGRST303',
+  '42501',
+]);
+
+type FillOutcome = { ok: true } | { ok: false; stop: boolean; code: string };
+
+/**
+ * Send one fill: an update, never an insert, of one column of one row, only
+ * while the server's value is still null and only for the same moment. A row
+ * the server doesn't hold (deleted on another phone), or holds with that
+ * column filled or another moment, matches nothing, and nothing changes. The
+ * body is that column alone, so `updated_at` stays as it is (no trigger moves
+ * it: migration 011's keep-answer trigger acts only on a status change), and
+ * no phone pulls the row again or sees it win a merge.
+ *
+ * A failure is told apart by what it would do to the next request: one with
+ * no code (the network, a gateway's page), a 401, 403 or 5xx, or a code that
+ * would refuse every row (`OFFSET_BACKFILL_STOP_CODES`) stops the sweep's
+ * backfill; any other (PT429, say) is this row's alone. Never throws.
+ */
+async function sendOffsetFill(
+  client: SupabaseClient,
+  userId: string,
+  id: string,
+  fill: OffsetFill,
+): Promise<FillOutcome> {
+  try {
+    const { error, status } = await client
+      .from('predictions')
+      .update({ [fill.column]: fill.offset })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .is(fill.column, null)
+      .eq(fill.moment, fill.at);
+    if (!error) return { ok: true };
+    const rawCode: unknown = (error as { code?: unknown }).code;
+    const code = typeof rawCode === 'string' && rawCode !== '' ? rawCode : null;
+    const httpStatus = typeof status === 'number' ? status : 0;
+    if (code === null) {
+      return { ok: false, stop: true, code: httpStatus > 0 ? `HTTP ${httpStatus}` : 'network' };
+    }
+    const stop =
+      OFFSET_BACKFILL_STOP_CODES.has(code) ||
+      httpStatus === 0 ||
+      httpStatus === 401 ||
+      httpStatus === 403 ||
+      httpStatus >= 500;
+    return { ok: false, stop, code };
+  } catch {
+    return { ok: false, stop: true, code: 'network' };
+  }
+}
+
+export interface OffsetBackfillResult {
+  /** Requests sent in this call. */
+  sent: number;
+  /** Whether the backfill is done for the account: marked now, or before. */
+  done: boolean;
+}
+
+/**
+ * Fill on the server the UTC offsets rows reached it without (review round
+ * 6): rows this phone pushed while `UTC_OFFSET_SYNC` was off went up without
+ * them. Once per account, with the flag on, for the signed-in account while
+ * its sync isn't stopped; a sweep runs it last, after the pull and the push.
+ *
+ * Each row from `listOffsetBackfill` sends at most two update-only requests
+ * (`sendOffsetFill`), one column each:
+ *
+ *   update { created_utc_offset_min } where id, user_id, created_utc_offset_min
+ *     is null, created_at = the row's created_at
+ *   update { title_edited_utc_offset_min } where id, user_id,
+ *     title_edited_utc_offset_min is null, title_edited_at = the row's
+ *     (only when both are known here)
+ *
+ * Never an insert or an upsert, never another column, never `updated_at`
+ * (here or on the server). It replaced a whole-row re-push, which could put
+ * back predictions deleted on another phone and write an older copy over a
+ * newer one.
+ *
+ * Paced: at most `OFFSET_BACKFILL_MAX_REQUESTS` (200) requests a call, one at
+ * a time, in batches of `OFFSET_BACKFILL_BATCH_ROWS` rows with the session
+ * checked before the first and after each (an update under another account's
+ * session matches nothing and would read as done). A row counts as sent once
+ * all its requests went without a failure and its batch was still this
+ * account's; the next call goes on with the rest. It stops early, to go on at
+ * the next sweep, on a transport error or a refusal that would refuse every
+ * row, when the account is being stopped (`stopSyncFor`), or when a sign-out
+ * push is waiting (`pushNow`). A refusal of one row (PT429, say) leaves that
+ * row for the next sweep and the others go on. `markOffsetBackfillDone` only
+ * once every listed row has been sent; then never again for the account on
+ * this phone.
+ *
+ * Logs only codes and counts, never an id or a value. Throws only when the
+ * phone's own reads or the marker's write do (a sweep logs it and goes on).
+ */
+export async function backfillOffsets(
+  userId: string,
+  client: SupabaseClient,
+  stillCurrent: () => Promise<boolean> = sessionStillFor(userId, client),
+): Promise<OffsetBackfillResult> {
+  if (!UTC_OFFSET_SYNC || userId === LOCAL_GUEST_USER_ID || stoppedUsers.has(userId)) {
+    return { sent: 0, done: false };
+  }
+  if (await offsetBackfillDone(userId)) {
+    offsetBackfillSent.delete(userId);
+    return { sent: 0, done: true };
+  }
+  const rows = await listOffsetBackfill(userId);
+  const sentRows = offsetBackfillSent.get(userId) ?? new Set<string>();
+  offsetBackfillSent.set(userId, sentRows);
+  const waiting = rows.filter((row) => !sentRows.has(row.id));
+
+  let sent = 0;
+  let halted = false;
+  let pausedOn: string | null = null;
+  const refused = new Map<string, number>();
+
+  if (!(await stillCurrent())) return { sent, done: false };
+  for (let start = 0; start < waiting.length && !halted; start += OFFSET_BACKFILL_BATCH_ROWS) {
+    const batchSent: string[] = [];
+    batch: for (const row of waiting.slice(start, start + OFFSET_BACKFILL_BATCH_ROWS)) {
+      const fills = offsetFills(row);
+      if (sent + fills.length > OFFSET_BACKFILL_MAX_REQUESTS) {
+        halted = true;
+        break;
+      }
+      let rowSent = true;
+      for (const fill of fills) {
+        // The account is leaving the phone, or sign-out's push waits for this sweep.
+        if (stoppedUsers.has(userId) || pushesRunning.has(userId)) {
+          halted = true;
+          break batch;
+        }
+        sent += 1;
+        const outcome = await sendOffsetFill(client, userId, row.id, fill);
+        if (outcome.ok) continue;
+        if (outcome.stop) {
+          pausedOn = outcome.code;
+          halted = true;
+          break batch;
+        }
+        rowSent = false;
+        refused.set(outcome.code, (refused.get(outcome.code) ?? 0) + 1);
+      }
+      if (rowSent) batchSent.push(row.id);
+    }
+    // Counted only while the session is still this account's.
+    if (!(await stillCurrent())) {
+      halted = true;
+      break;
+    }
+    for (const id of batchSent) sentRows.add(id);
+  }
+
+  for (const [code, count] of refused) {
+    // eslint-disable-next-line no-console
+    console.warn(`[sync] offset backfill: ${count} request(s) refused (${code}); tried again at the next sweep`);
+  }
+  if (pausedOn !== null) {
+    // eslint-disable-next-line no-console
+    console.warn(`[sync] offset backfill paused (${pausedOn}); it goes on at the next sweep`);
+  }
+
+  if (halted || stoppedUsers.has(userId) || !rows.every((row) => sentRows.has(row.id))) {
+    return { sent, done: false };
+  }
+  await markOffsetBackfillDone(userId);
+  offsetBackfillSent.delete(userId);
+  return { sent, done: true };
 }
 
 // ----------------------------------------------------------------------------
@@ -487,9 +936,10 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
 
   // Deletions first (roadmap D25), so the server stops holding them before
   // anything is pulled. Already reflected in local stats, so they don't count
-  // toward a recompute.
+  // toward a recompute; a row restored instead (answered after this phone
+  // deleted it, item 6) does.
   try {
-    await pushDeletions(userId, resolved.client, stillCurrent);
+    pulled += (await pushDeletionsCounted(userId, resolved.client, stillCurrent)).restored;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[sync] delete push failed:', errorForLog(e));
@@ -500,7 +950,7 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
   if (!(await stillCurrent())) return ZERO;
 
   try {
-    pulled = await pullRemote(userId, resolved.client, resolved.cursorStore);
+    pulled += await pullRemote(userId, resolved.client, resolved.cursorStore);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[sync] pull failed:', errorForLog(e));
@@ -522,6 +972,17 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
       // eslint-disable-next-line no-console
       console.warn('[sync] recompute failed:', errorForLog(e));
     }
+  }
+
+  // The offsets pushes left out before UTC_OFFSET_SYNC (round 6): after the
+  // pull and the push, and after the recompute, so the stores aren't kept
+  // waiting on its requests. It changes nothing on this phone but its marker,
+  // so it adds nothing to the result. Does nothing with the flag off.
+  try {
+    await backfillOffsets(userId, resolved.client, stillCurrent);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[sync] offset backfill failed:', errorForLog(e));
   }
 
   return { pulled, pushed };
@@ -578,7 +1039,7 @@ export async function pushNow(
     if (!resolved.client) return;
     const stillCurrent = sessionStillFor(userId, resolved.client, resolved.sessionUserId);
     try {
-      pushed += await pushDeletions(userId, resolved.client, stillCurrent);
+      pushed += (await pushDeletionsCounted(userId, resolved.client, stillCurrent)).deleted;
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[sync] delete push failed:', errorForLog(e));
@@ -590,23 +1051,42 @@ export async function pushNow(
       console.warn('[sync] push failed:', errorForLog(e));
     }
   })();
+  // A stop waits for it too, should it outlast this wait.
+  const tracked = pushesRunning.get(userId) ?? new Set<Promise<void>>();
+  tracked.add(run);
+  pushesRunning.set(userId, tracked);
+  void (async () => {
+    try {
+      await run;
+    } finally {
+      tracked.delete(run);
+      if (tracked.size === 0 && pushesRunning.get(userId) === tracked) pushesRunning.delete(userId);
+    }
+  })();
   await settleWithin(run, maxWaitMs);
   return pushed;
 }
 
+/** `pushNow` runs not yet finished, by account: `stopSyncFor` waits for them too. */
+const pushesRunning = new Map<string, Set<Promise<void>>>();
+
 /**
  * Stop syncing `userId` before its rows leave the phone: no sweep starts for
  * it, a running one writes nothing more to the phone (no pulled row, no
- * cursor, no recompute) and sends nothing more, and this waits for it to
- * finish, at most `maxWaitMs` (default 10 s). A sweep still waiting on the
- * network after that writes nothing when its answer comes. Undone by
- * `resumeSyncFor` (the session didn't end after all, or the account signed in
- * again). Never throws.
+ * cursor, no recompute) and sends nothing more, and this waits for it, and for
+ * a `pushNow` still running, to finish, at most `maxWaitMs` (default 10 s)
+ * altogether. One still waiting on the network after that writes nothing to
+ * the phone when its answer comes, but for marking what it sent as sent.
+ * Undone by `resumeSyncFor` (the session didn't end after all, or the account
+ * signed in again). Never throws.
  */
 export async function stopSyncFor(userId: string, maxWaitMs: number = DEFAULT_WAIT_MS): Promise<void> {
   stoppedUsers.add(userId);
-  const running = inflight.get(userId);
-  if (running) await settleWithin(running, maxWaitMs);
+  const running: Promise<unknown>[] = [];
+  const sweep = inflight.get(userId);
+  if (sweep) running.push(sweep);
+  for (const push of pushesRunning.get(userId) ?? []) running.push(push);
+  if (running.length > 0) await settleWithin(Promise.allSettled(running), maxWaitMs);
 }
 
 /** Let `userId` sync again (`stopSyncFor`). */
@@ -624,4 +1104,7 @@ export function __resetSyncStateForTests(): void {
   }
   inflight.clear();
   stoppedUsers.clear();
+  heldAtCap.clear();
+  pushesRunning.clear();
+  offsetBackfillSent.clear();
 }

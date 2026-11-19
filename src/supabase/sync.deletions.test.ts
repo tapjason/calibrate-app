@@ -60,36 +60,51 @@ function fakeClient(opts: { rows?: PredictionWireRow[]; failDelete?: string[] } 
   const deleted: string[] = [];
   const from = () => ({
     delete() {
+      // Round 6 (item 6): the delete is conditional and asks for what it
+      // removed (`.or(...)`, then `.select('id')`, which sends it); the
+      // rows here are open, so it removes the row. Was: sent at the second eq.
       const filters: Record<string, unknown> = {};
       const q = {
         eq(col: string, val: unknown) {
           filters[col] = val;
-          if ('id' in filters && 'user_id' in filters) {
-            const id = filters.id as string;
-            calls.push(`delete:${id}`);
-            if (opts.failDelete?.includes(id)) {
-              return Promise.resolve({ error: { message: 'nope' } });
-            }
-            deleted.push(id);
-            return Promise.resolve({ error: null });
-          }
           return q;
+        },
+        or: () => q,
+        select: () => {
+          const id = filters.id as string;
+          calls.push(`delete:${id}`);
+          if (opts.failDelete?.includes(id)) {
+            return Promise.resolve({ data: null, error: { message: 'nope' } });
+          }
+          deleted.push(id);
+          return Promise.resolve({ data: [{ id }], error: null });
         },
       };
       return q;
     },
     select() {
-      calls.push('select');
+      // Round 6 (item 6): the pull's read is recorded as 'select' when it
+      // goes (at `limit`); the read of one row after a conditional delete
+      // that removed nothing (`in`) as 'recheck'. Was: 'select' for any read.
       const q = {
         eq: () => q,
         gt: () => q,
         order: () => q,
         // Like the server: a row deleted there isn't returned.
-        limit: () =>
-          Promise.resolve({
+        limit: () => {
+          calls.push('select');
+          return Promise.resolve({
             data: (opts.rows ?? []).filter((r) => !deleted.includes(r.id)),
             error: null,
-          }),
+          });
+        },
+        in: (_col: string, ids: string[]) => {
+          calls.push('recheck');
+          return Promise.resolve({
+            data: (opts.rows ?? []).filter((r) => ids.includes(r.id) && !deleted.includes(r.id)),
+            error: null,
+          });
+        },
       };
       return q;
     },

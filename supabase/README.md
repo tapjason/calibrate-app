@@ -308,6 +308,10 @@ Then 1a again: the counts are unchanged.
 
 ### 3. Redeploy two functions
 
+**Working down the checklist at the top of the 2026-11-19 section? Skip this step:** that
+section's step 8 deploys the same two functions from the branch's final commit, and each needs
+deploying only once.
+
 ```sh
 npx supabase functions deploy revenuecat-webhook --no-verify-jwt
 npx supabase functions deploy delete-account
@@ -321,10 +325,10 @@ settings → Integrations → Webhooks → **Send test event**: expect 200 with
 `{"ok":true,"action":"ignored",…}`. And `curl -i -X POST https://<project-ref>.functions.supabase.co/delete-account`
 with no token: expect 401.
 
-`coach` is not redeployed in this step: it follows in a later one. It also bundles
-`_shared/revenuecatLookup.ts`, so until then the live Coach keeps its current copy (where a
-RevenueCat 404 reads as "no Plus", which for the Coach only means a 403). Steps 2 and 3 can
-go in either order.
+`coach` is not redeployed in this step: the 2026-11-19 section's step 9 does it. It also
+bundles `_shared/revenuecatLookup.ts`, so until then the live Coach keeps its current copy
+(where a RevenueCat 404 reads as "no Plus", which for the Coach only means a 403). Steps 2 and
+3 can go in either order.
 
 ### 4. A stopgap, if you want guest inserts closed before applying 010
 
@@ -379,20 +383,58 @@ nothing needs it undone).
 
 To undo a function deploy, deploy it again from `master`.
 
-## 2026-11-19: migration 011, two redeploys, and the sandbox Plus rows
+## 2026-11-19: migrations 011 and 012, three redeploys, and the sandbox Plus rows
 
-From round 5 of the security review. Nothing here has been applied or deployed by an agent,
-and no Postgres was available to run 011 against (no psql, Docker or Deno on this machine,
-and WSL's virtual machine platform isn't enabled): it was checked by reading only, so steps
-1 and 3 are how it gets checked for real. **Apply it only after 010** and 010's checks (the
-2026-11-18 section above); 011 refuses to run without 010's functions and changes nothing if
-so. What 011 does:
+From rounds 5 and 6 of the security review. Nothing here has been applied or deployed by an
+agent, and no Postgres was available to run 011 or 012 against (no psql, Docker or Deno on this
+machine, and WSL can't start because virtualization isn't enabled; checked again in round 6):
+both were checked by reading only, so steps 1, 3, 5 and 7 are how they get checked for real.
 
-- `predictions` gains `created_utc_offset_min`, `resolved_utc_offset_min` and
-  `title_edited_utc_offset_min`: the phone's offset from UTC, in minutes east, when the
-  prediction was logged, answered and reworded (the owner's decision of 2026-11-19: a
-  same-day answer is judged on the day where each moment happened). Nullable, each held to
-  −840…840.
+### Every owner step, in order
+
+Work down this list, top to bottom; each line says where its details are. It includes the
+2026-11-18 section above, so nothing there needs doing separately.
+
+1. **Audit logs off, and purged.** Supabase dashboard → Authentication → Configuration → Audit
+   Logs: turn off "Write audit logs to the database". Then in the SQL Editor run
+   `delete from auth.audit_log_entries;`, then `select count(*) from auth.audit_log_entries;`,
+   which must return `0` (`docs/PRIVACY_POLICY.md`, the list at its top, items 1 and 2).
+2. **010, look first:** the 2026-11-18 section, step 1 (1a–1e; save 1e's output).
+3. **Apply 010 and check it:** the 2026-11-18 section, step 2 (2a–2f, then T1–T3; T4 is
+   optional).
+4. **011, look first:** step 1 below.
+5. **Apply 011:** step 2 below.
+6. **Check 011:** step 3 below (3a–3f, then T5, T6, T8, T10, T11 and T12; T7 and T9 are
+   optional).
+7. **Enable pg_cron:** step 4 below.
+8. **012, look first:** step 5 below.
+9. **Apply 012:** step 6 below.
+10. **Check 012:** step 7 below (7a–7d; T13 is optional), then 7e the day after.
+11. **Redeploy `delete-account` and `revenuecat-webhook`** from this branch's final commit: step
+    8 below. This is also the 2026-11-18 section's step 3 (the same two functions): deploy each
+    once, from the final commit.
+12. **Redeploy `coach`** from the same commit: step 9 below. **Never from commit `6830354`.**
+13. **Tell the agent "011 is live":** step 10 below. The agent turns on `UTC_OFFSET_SYNC` in a
+    later build.
+
+Left out on purpose: the 2026-11-18 section's step 4 (a stopgap for before 010, not needed
+once 010 is in); step 11 below (the sandbox Plus rows: after App Store approval, a separate
+sitting); steps 12 and 13 (undo, only if something goes wrong).
+
+### What 011 does
+
+**Apply it only after 010** and 010's checks (the 2026-11-18 section above); 011 refuses to run
+without 010's functions and changes nothing if so.
+
+- `predictions` gains `created_utc_offset_min` and `title_edited_utc_offset_min`: the phone's
+  offset from UTC, in minutes east, when the prediction was logged and when it was reworded.
+  Your decision of 2026-11-19, as refined after the re-review: a same-day answer is judged
+  only in the zone the prediction was logged (or reworded) in, so the answer's own offset
+  isn't kept and has no column. Nullable, each held to −840…840. A push that sends an offset
+  as null (a phone that never had it, such as one that pulled the row before the app sent
+  offsets) keeps the one already stored for the same moment: a null means the phone doesn't
+  know. A push that changes the moment (new words with their own date) takes what it brings,
+  null included.
 - No answer goes back to open through sync: an update that would turn an answered row (Yes,
   No or "Can't tell") into open, or a Yes or No into "Can't tell", comes from a phone that
   hadn't pulled the answer, and none of it lands. The whole row stays as it was (status,
@@ -411,10 +453,28 @@ so. What 011 does:
   inserts stop once the table's estimated rows pass 500,000; and on both analytics tables a
   number in `props` is at most 24 characters long (010 allowed hundreds of digits).
 
-Every query in steps 1 and 3 only reads; each test statement undoes itself. Run each block in
-**Supabase dashboard → SQL Editor → New query**, one at a time.
+### What 012 does
 
-### 1. Look first (read-only)
+**Apply it only after 011**, and after enabling pg_cron (step 4); 012 refuses to run without
+either and changes nothing if so.
+
+- Usage counts are kept for 13 months (your decision of 2026-11-19). A daily `pg_cron` job,
+  `purge-old-usage-counts`, at 09:17 UTC, deletes rows of `analytics_events` and
+  `guest_analytics_events` once they are more than 13 months old by `received_at`, the
+  server's clock. It deletes in batches of 5,000 rows, each committed on its own, at most 200
+  batches or 25 seconds per table a night, so a large backlog is spread over days and no lock
+  is held for long. The app doesn't change. "Kept for 13 months" is true only while this job
+  runs; step 7e checks that it does.
+- At most 100,000 rows of `analytics_events` per account (the public key's roles only, like
+  011's limits): an insert past it is refused with `PT429`, and the phone keeps its counts
+  queued. 011's day cap alone let one account add about 2.75 MB a day for ever.
+- An index on `analytics_events (received_at)`, so the job finds the oldest rows without
+  reading the whole table.
+
+Every query in steps 1, 3, 4, 5 and 7 only reads; each test statement undoes itself. Run each
+block in **Supabase dashboard → SQL Editor → New query**, one at a time.
+
+### 1. Look first at 011 (read-only)
 
 **1a. 010 is in.** Expect `true` and `true`. If either is `false`, apply 010 first (the
 section above).
@@ -471,8 +531,8 @@ select
   (select count(*) from public.guest_analytics_events) as guest_rows;
 ```
 
-**A backup?** 011 rewrites no row. It adds three empty columns, checks, triggers and an index,
-and replaces two functions; step 7 takes them off again.
+**A backup?** 011 rewrites no row. It adds two empty columns, checks, triggers and an index,
+and replaces two functions; step 12 takes them off again.
 
 ### 2. Apply 011
 
@@ -488,39 +548,43 @@ query and run it. It runs as one transaction: all of it applies, or none of it.
   than 10 seconds; nothing was applied. Run it again a minute later.
 
 (As with 010, the CLI's migration history won't list 011 after the SQL editor; a later
-`npx supabase db push --remote` runs 010 and then 011 again, which is safe. **Never run 010
-alone after 011**: it would put back 010's looser props rule. If you do, run 011 again.)
+`npx supabase db push --remote` runs 010, 011 and 012 again, in that order, which is safe.
+**Never run 010 alone after 011**: it would put back 010's looser props rule. If you do, run 011
+again.)
 
-### 3. Check it
+### 3. Check 011
 
-**3a. The columns.** Expect 3 rows, each `integer` and `YES`.
+**3a. The columns.** Expect exactly 2 rows, `created_utc_offset_min` and
+`title_edited_utc_offset_min`, each `integer` and `YES`. A third row,
+`resolved_utc_offset_min`, would mean an earlier draft of 011 ran somewhere: tell the agent.
 
 ```sql
 select column_name, data_type, is_nullable
   from information_schema.columns
  where table_schema = 'public' and table_name = 'predictions'
-   and column_name in ('created_utc_offset_min', 'resolved_utc_offset_min', 'title_edited_utc_offset_min')
+   and column_name like '%utc%offset%'
  order by 1;
 ```
 
-**3b. The constraints.** Expect 7 rows, every `convalidated` `true`.
+**3b. The constraints.** Expect 6 rows, every `convalidated` `true`.
 
 ```sql
 select conrelid::regclass as on_table, conname, convalidated
   from pg_constraint
  where conname in ('predictions_created_utc_offset_min_range',
-                   'predictions_resolved_utc_offset_min_range',
                    'predictions_title_edited_utc_offset_min_range',
                    'predictions_title_bytes', 'predictions_reflection_bytes',
                    'analytics_events_props_allowed', 'guest_analytics_events_props_allowed')
  order by conrelid::regclass::text, conname;
 ```
 
-**3c. The triggers.** Expect these 9 rows, each `tgenabled` `O`: on `analytics_events`,
+**3c. The triggers.** Expect these 10 rows, each `tgenabled` `O`: on `analytics_events`,
 `analytics_events_limits` and `analytics_events_stamp_received`; on `guest_analytics_events`,
 `guest_analytics_events_count_rows`, `guest_analytics_events_limits`,
 `guest_analytics_events_normalize` and `guest_analytics_events_reset_count`; on `predictions`,
-`predictions_insert_limits`, `predictions_keep_answer` and `predictions_update_limits`.
+`predictions_insert_limits`, `predictions_keep_answer`, `predictions_keep_offsets` and
+`predictions_update_limits`. (Run after 012, it shows an eleventh:
+`analytics_events_account_cap` on `analytics_events`.)
 
 ```sql
 select tgrelid::regclass as on_table, tgname, tgenabled
@@ -599,9 +663,9 @@ select shape, public.analytics_props_ok(shape::jsonb) as ok
 
 **Test statements.** Each writes to the live tables and then raises an error on purpose, so
 everything it did is rolled back: **an error is the expected result**, and its message says
-PASS or FAIL. Nothing stays, and no other session ever sees the rows. T5–T9 act as a signed-in
-phone of the oldest account (most likely yours): they set the session's JWT claims and the
-`authenticated` role, exactly as the API does. T10 acts as a guest (`anon`).
+PASS or FAIL. Nothing stays, and no other session ever sees the rows. T5–T9, T11 and T12 act
+as a signed-in phone of the oldest account (most likely yours): they set the session's JWT
+claims and the `authenticated` role, exactly as the API does. T10 acts as a guest (`anon`).
 
 **T5, answered rows stay as they were.** A stale phone's open copy, pushed over a Yes and
 over a "Can't tell", and a Yes pushed as "Can't tell", each leave every field of the row as it
@@ -623,25 +687,24 @@ begin
   -- A Yes, as a phone pushes it.
   insert into public.predictions
     (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, reflection,
-     title_edited_at, created_utc_offset_min, resolved_utc_offset_min, title_edited_utc_offset_min, updated_at)
+     title_edited_at, created_utc_offset_min, title_edited_utc_offset_min, updated_at)
   values
     ('verify-011-yes', uid, 'Verify 011', 'work', 70, now() - interval '3 days', now() - interval '1 day',
-     'resolved_yes', now() - interval '1 day', 'kept', null, 60, 60, null, '2026-11-19T10:00:00.000Z');
+     'resolved_yes', now() - interval '1 day', 'kept', null, 60, null, '2026-11-19T10:00:00.000Z');
   select * into before_row from public.predictions where id = 'verify-011-yes';
 
   -- An older phone's open copy, reworded, re-dated and re-filed, pushed later
   -- with a later time: the upsert the app sends, every column named.
   insert into public.predictions
     (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, reflection,
-     title_edited_at, created_utc_offset_min, resolved_utc_offset_min, title_edited_utc_offset_min, updated_at)
+     title_edited_at, created_utc_offset_min, title_edited_utc_offset_min, updated_at)
   values
     ('verify-011-yes', uid, 'Verify 011, reworded', 'health', 70, now() - interval '3 days', now() + interval '5 days',
-     'pending', null, null, now(), -300, null, -300, '2026-11-19T10:05:00.000Z')
+     'pending', null, null, now(), -300, -300, '2026-11-19T10:05:00.000Z')
   on conflict (id) do update set
     title = excluded.title, category = excluded.category, due_date = excluded.due_date,
     status = excluded.status, resolved_at = excluded.resolved_at, reflection = excluded.reflection,
     title_edited_at = excluded.title_edited_at, created_utc_offset_min = excluded.created_utc_offset_min,
-    resolved_utc_offset_min = excluded.resolved_utc_offset_min,
     title_edited_utc_offset_min = excluded.title_edited_utc_offset_min, updated_at = excluded.updated_at;
 
   select * into after_row from public.predictions where id = 'verify-011-yes';
@@ -933,6 +996,91 @@ begin
 end $$;
 ```
 
+**T12, a null offset doesn't erase a stored one.** A prediction logged at UTC+1 and reworded
+at UTC+9 is answered by a phone that knows neither offset, which pushes the whole row with both
+offsets null and the two moments written in another zone (the same instants): both stored
+offsets stay, and the rest of the push (the answer, its `updated_at`) lands as sent. Then a
+known offset replaces a stored one; a logging time moved by an hour (the app never does this)
+takes the null it brings while the reword's offset, its moment unchanged, stays; and new words
+with their own date take their null. `updated_at` is never touched. Expected:
+`ERROR: P0001: PASS: a null push kept both stored offsets and the rest landed; a known offset replaced one; a moved logging time and new words with their own date let the null through; updated_at untouched; rolled back`.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  r public.predictions;
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+
+  -- Logged at UTC+1, reworded at UTC+9, as a phone with the offsets on pushes it.
+  insert into public.predictions
+    (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, reflection,
+     title_edited_at, created_utc_offset_min, title_edited_utc_offset_min, updated_at)
+  values
+    ('verify-011-offsets', uid, 'Verify 011 offsets', 'work', 70, '2026-11-16T09:00:00.000Z',
+     '2026-11-22T12:00:00.000Z', 'pending', null, null, '2026-11-17T09:00:00.000Z', 60, 540,
+     '2026-11-19T10:00:00.000Z');
+
+  -- A phone that knows neither offset answers it and pushes the whole row:
+  -- both offsets null, the same two moments written in other zones.
+  insert into public.predictions
+    (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, reflection,
+     title_edited_at, created_utc_offset_min, title_edited_utc_offset_min, updated_at)
+  values
+    ('verify-011-offsets', uid, 'Verify 011 offsets', 'work', 70, '2026-11-16T10:00:00.000+01:00',
+     '2026-11-22T12:00:00.000Z', 'resolved_yes', '2026-11-19T10:04:00.000Z', null,
+     '2026-11-17T18:00:00.000+09:00', null, null, '2026-11-19T10:05:00.000Z')
+  on conflict (id) do update set
+    title = excluded.title, category = excluded.category, confidence = excluded.confidence,
+    created_at = excluded.created_at, due_date = excluded.due_date, status = excluded.status,
+    resolved_at = excluded.resolved_at, reflection = excluded.reflection,
+    title_edited_at = excluded.title_edited_at, created_utc_offset_min = excluded.created_utc_offset_min,
+    title_edited_utc_offset_min = excluded.title_edited_utc_offset_min, updated_at = excluded.updated_at;
+  select * into r from public.predictions where id = 'verify-011-offsets';
+  if r.created_utc_offset_min is distinct from 60 or r.title_edited_utc_offset_min is distinct from 540
+     or r.status <> 'resolved_yes' or r.updated_at <> '2026-11-19T10:05:00.000Z'::timestamptz then
+    raise exception 'FAIL: after the null push: logged offset %, reworded offset %, status %, updated_at % (expected 60, 540, resolved_yes, 2026-11-19 10:05 UTC; rolled back)',
+      r.created_utc_offset_min, r.title_edited_utc_offset_min, r.status, r.updated_at;
+  end if;
+
+  -- A known offset still replaces the stored one.
+  update public.predictions set created_utc_offset_min = 120 where id = 'verify-011-offsets';
+  select * into r from public.predictions where id = 'verify-011-offsets';
+  if r.created_utc_offset_min is distinct from 120 then
+    raise exception 'FAIL: a known offset did not replace the stored one: % (expected 120; rolled back)',
+      r.created_utc_offset_min;
+  end if;
+
+  -- A moved logging time takes its null; the reword's moment is unchanged, so its offset stays.
+  update public.predictions
+     set created_at = created_at - interval '1 hour', created_utc_offset_min = null,
+         title_edited_utc_offset_min = null
+   where id = 'verify-011-offsets';
+  select * into r from public.predictions where id = 'verify-011-offsets';
+  if r.created_utc_offset_min is not null or r.title_edited_utc_offset_min is distinct from 540 then
+    raise exception 'FAIL: after moving the logging time: logged offset %, reworded offset % (expected null and 540; rolled back)',
+      r.created_utc_offset_min, r.title_edited_utc_offset_min;
+  end if;
+
+  -- New words with their own date take their null.
+  update public.predictions
+     set title = 'Verify 011 offsets, reworded', title_edited_at = '2026-11-18T09:00:00.000Z',
+         title_edited_utc_offset_min = null
+   where id = 'verify-011-offsets';
+  select * into r from public.predictions where id = 'verify-011-offsets';
+  if r.title_edited_utc_offset_min is not null
+     or r.updated_at <> '2026-11-19T10:05:00.000Z'::timestamptz then
+    raise exception 'FAIL: after new words: reworded offset %, updated_at % (expected null and 2026-11-19 10:05 UTC; rolled back)',
+      r.title_edited_utc_offset_min, r.updated_at;
+  end if;
+
+  raise exception 'PASS: a null push kept both stored offsets and the rest landed; a known offset replaced one; a moved logging time and new words with their own date let the null through; updated_at untouched; rolled back';
+end $$;
+```
+
 After 011, 010's T2 answers with this new message instead of its own; 010's T1, T3 and T4 are
 unchanged. Then run 1d again: the numbers are the same as before the tests.
 
@@ -945,14 +1093,245 @@ select (select reltuples::bigint from pg_class where oid = 'public.guest_analyti
        500000 as ceiling;
 ```
 
-### 4. Then turn the offsets on in the app
+### 4. Enable pg_cron
 
-Tell the agent "011 is live" (3a's three rows are enough). The agent then turns on
-`UTC_OFFSET_SYNC` in `src/constants/app.ts`, in a later build. **Not before:** a phone that
-names those columns while the server doesn't have them fails every sync. And once a build
-with it on is installed anywhere, the columns must stay (step 7).
+Supabase dashboard → **Integrations → Cron**, and enable the `pg_cron` extension (Supabase's
+[install page](https://supabase.com/docs/guides/cron/install), read 2026-11-19). The same page
+gives a SQL route that does the same: `create extension pg_cron with schema pg_catalog;`, then
+`grant usage on schema cron to postgres;` and
+`grant all privileges on all tables in schema cron to postgres;`.
 
-### 5. Redeploy delete-account and revenuecat-webhook
+Then check it (read-only). Expect 1 row: `pg_cron`, its version, and `true`.
+
+```sql
+select e.extname, e.extversion, has_schema_privilege('cron', 'usage') as can_use_cron
+  from pg_extension as e
+ where e.extname = 'pg_cron';
+```
+
+Keep it enabled from now on. The same page warns that "Disabling the `pg_cron` extension will
+permanently delete all Jobs", and without the job nothing deletes old usage counts.
+
+### 5. Look first at 012 (read-only)
+
+**5a. The most usage counts any one account holds.** Expect far under 100,000, the new cap.
+
+```sql
+select coalesce(max(n), 0) as most_events_one_account
+  from (select count(*) as n from public.analytics_events group by user_id) as s;
+```
+
+**5b. What the first run would delete.** The same rule as the job, written out: rows received
+before midnight UTC 13 months ago (on 2026-11-19, before `2025-10-19 00:00:00+00`). Expect
+`would_delete` `0` on both rows: `oldest` is in 2026 on both, and nothing is deleted until 13
+months after it. A number above 0 is a row whose `received_at` was set before 011 made it the
+server's clock; tell the agent before applying 012 if you see one.
+
+```sql
+with c as (
+  select ((date_trunc('day', now(), 'UTC') at time zone 'UTC') - interval '13 months')
+         at time zone 'UTC' as cutoff
+)
+select 'analytics_events' as table_name, c.cutoff as deletes_received_before,
+       count(a.id) filter (where a.received_at < c.cutoff) as would_delete,
+       count(a.id) as rows_now, min(a.received_at) as oldest
+  from c left join public.analytics_events as a on true
+ group by c.cutoff
+union all
+select 'guest_analytics_events', c.cutoff,
+       count(g.id) filter (where g.received_at < c.cutoff),
+       count(g.id), min(g.received_at)
+  from c left join public.guest_analytics_events as g on true
+ group by c.cutoff;
+```
+
+**A backup?** 012 itself rewrites and deletes no row. The job it schedules deletes only rows
+more than 13 months old, and 5b shows there are none yet.
+
+### 6. Apply 012
+
+Open `supabase/migrations/012_usage_counts_retention.sql`, paste the **whole file** into a new
+query and run it. It runs as one transaction: all of it applies, or none of it.
+**Expected:** "Success. No rows returned".
+
+- `ERROR: P0001: Migration 012 needs migration 011 first…`: nothing was applied. Apply 011
+  (steps 1–3), then 012.
+- `ERROR: P0001: Migration 012 needs the pg_cron extension…`: nothing was applied. Do step 4,
+  then run 012 again.
+- `ERROR: P0001: Migration 012: pg_cron is enabled, but the role … cannot use the cron
+  schema…`: nothing was applied. Run the two `grant` lines the message gives (step 4's SQL
+  route), then 012 again.
+- `ERROR: P0001: Migration 012 schedules a job that runs as the role applying it…`: nothing was
+  applied. Run it from the SQL editor (role `postgres`); if it says this there, tell the agent.
+- `ERROR: 55P03: canceling statement due to lock timeout`: nothing was applied. Run it again a
+  minute later.
+
+The job is live from here. Its first run is the next 09:17 UTC.
+
+(As with 010 and 011, the CLI's migration history won't list 012 after the SQL editor; a later
+`npx supabase db push --remote` runs it again, which is safe: it unschedules its job and
+schedules it again. If that push stops at 012 with the message about the role, apply 012 from
+the SQL editor instead.)
+
+### 7. Check 012
+
+**7a. The job.** Expect a row with `jobname` `purge-old-usage-counts`, `schedule`
+`17 9 * * *`, `command` `call public.purge_old_usage_counts()`, `username` `postgres` and
+`active` `true` (and any job you made yourself; there were none before).
+
+```sql
+select * from cron.job;
+```
+
+**7b. The rest of 012.** Expect 5 rows, every `ok` `true`. The third matters most: Postgres lets
+a procedure commit between batches only when it has no `SET` clause and isn't `SECURITY
+DEFINER`.
+
+```sql
+select 'trigger analytics_events_account_cap' as what,
+       exists (select 1 from pg_trigger
+                where tgrelid = 'public.analytics_events'::regclass
+                  and tgname = 'analytics_events_account_cap' and tgenabled = 'O') as ok
+union all
+select 'index idx_analytics_events_received',
+       to_regclass('public.idx_analytics_events_received') is not null
+union all
+select 'the purge can commit between batches',
+       exists (select 1 from pg_proc
+                where oid = 'public.purge_old_usage_counts()'::regprocedure
+                  and prokind = 'p' and not prosecdef and proconfig is null)
+union all
+select 'the cap function belongs to the table owner',
+       (select proowner from pg_proc where oid = 'public.analytics_events_account_cap()'::regprocedure)
+         = (select relowner from pg_class where oid = 'public.analytics_events'::regclass)
+union all
+select 'anon and authenticated can run neither the purge nor the cutoff',
+       not has_function_privilege('anon', 'public.purge_old_usage_counts()', 'execute')
+       and not has_function_privilege('authenticated', 'public.purge_old_usage_counts()', 'execute')
+       and not has_function_privilege('anon', 'public.usage_counts_cutoff(timestamptz)', 'execute')
+       and not has_function_privilege('authenticated', 'public.usage_counts_cutoff(timestamptz)', 'execute');
+```
+
+If Supabase's Security Advisor lists `purge_old_usage_counts` under "Function Search Path
+Mutable", that is expected: a procedure that commits can't carry a `SET search_path`, so it
+names every table and function by schema instead, and only you (the owner) can run it.
+
+**7c. Where 13 months ends.** Expect 4 columns, all `true`: the middle of a month; the day
+after a leap February; a month too short for the day (it ends at the month's last day); and a
+moment that is already the next day in Tokyo but not in UTC (the UTC day counts).
+
+```sql
+select public.usage_counts_cutoff('2026-11-19 12:00+00') = '2025-10-19 00:00+00' as mid_month,
+       public.usage_counts_cutoff('2028-03-01 09:17+00') = '2027-02-01 00:00+00' as after_leap_february,
+       public.usage_counts_cutoff('2027-12-31 23:59+00') = '2026-11-30 00:00+00' as short_month,
+       public.usage_counts_cutoff('2027-01-01 03:00+09') = '2025-11-30 00:00+00' as utc_day;
+```
+
+**7d. What the first run will delete,** by the job's own rule. Expect the same numbers as 5b.
+(After 09:17 UTC the first run is tomorrow's, with a cutoff a day later; rows received in that
+one day, 13 months ago, are the only possible difference.)
+
+```sql
+with c as (select public.usage_counts_cutoff(now()) as cutoff)
+select 'analytics_events' as table_name, c.cutoff as deletes_received_before,
+       count(a.id) filter (where a.received_at < c.cutoff) as would_delete,
+       count(a.id) as rows_now
+  from c left join public.analytics_events as a on true
+ group by c.cutoff
+union all
+select 'guest_analytics_events', c.cutoff,
+       count(g.id) filter (where g.received_at < c.cutoff),
+       count(g.id)
+  from c left join public.guest_analytics_events as g on true
+ group by c.cutoff;
+```
+
+**T13 (optional, up to a minute), the 100,000 cap.** As the phone of the oldest account (most
+likely yours): 100 events go in under the cap; then, as you (not limited), the account is
+filled to exactly 100,000; then, as the phone, one more is refused; then, as you, one more goes
+in. Everything is then rolled back. Expected:
+`ERROR: P0001: PASS: 100 events went in under the cap; at 100,000 one more was refused (PT429); your own insert past it wasn't limited; rolled back`.
+It leaves about 100,000 dead rows that autovacuum clears by itself. If the editor times out
+first, that says nothing about the cap; skip it. If your phone sends usage counts during the
+test, the counts shift and it can fail: run it again.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  had bigint;
+  had_today bigint;
+  under_cap text := 'not run';
+  over_cap text := 'not refused';
+  owner_past_cap boolean;
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  select count(*) into had from public.analytics_events where user_id = uid;
+  select count(*) into had_today from public.analytics_events
+   where user_id = uid and received_at >= date_trunc('day', now(), 'UTC');
+  if had > 99800 or had_today > 4800 then
+    raise exception 'SKIP: the account holds % events, % of them today; the test needs fewer', had, had_today;
+  end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+
+  -- The phone, under the cap: 100 events go in.
+  set local role authenticated;
+  begin
+    insert into public.analytics_events (id, user_id, name, props, created_at)
+    select 'verify-012-under-' || g, uid, 'warmup_started', '{}'::jsonb, now()
+      from generate_series(1, 100) as g;
+    under_cap := 'accepted';
+  exception when sqlstate 'PT429' or sqlstate 'PT413' then under_cap := sqlerrm;
+  end;
+
+  -- You, not limited: the account filled to exactly 100,000 events.
+  set local role none;
+  insert into public.analytics_events (id, user_id, name, props, created_at)
+  select 'verify-012-fill-' || g, uid, 'warmup_started', '{}'::jsonb, now()
+    from generate_series(1, 100000 - had - 100) as g;
+
+  -- The phone, at the cap: one more is refused.
+  set local role authenticated;
+  begin
+    insert into public.analytics_events (id, user_id, name, props, created_at)
+    values ('verify-012-over', uid, 'warmup_started', '{}'::jsonb, now());
+  exception when sqlstate 'PT429' then over_cap := sqlerrm;
+  end;
+
+  -- You again: past the cap, not limited.
+  set local role none;
+  insert into public.analytics_events (id, user_id, name, props, created_at)
+  values ('verify-012-owner', uid, 'warmup_started', '{}'::jsonb, now());
+  owner_past_cap := (select count(*) from public.analytics_events where user_id = uid) = 100001;
+
+  if under_cap = 'accepted'
+     and over_cap = 'analytics_events: an account holds at most 100000 events'
+     and owner_past_cap then
+    raise exception 'PASS: 100 events went in under the cap; at 100,000 one more was refused (PT429); your own insert past it wasn''t limited; rolled back';
+  end if;
+  raise exception 'FAIL: under the cap: %; at the cap: %; your insert past it counted: % (rolled back)',
+    under_cap, over_cap, owner_past_cap;
+end $$;
+```
+
+Then 5a again: the number is the same as before the test.
+
+**7e. The day after: the first run.** Expect one row per 09:17 UTC since you applied 012, each
+with `status` `succeeded`. Until you have seen one, the 13 months isn't confirmed. A `failed`
+row's `return_message` says why: tell the agent. A run that fails part-way keeps the batches it
+had already committed and rolls back only the one in progress; the next night carries on.
+
+```sql
+select status, return_message, start_time, end_time
+  from cron.job_run_details
+ where jobid = (select jobid from cron.job where jobname = 'purge-old-usage-counts')
+ order by start_time desc
+ limit 5;
+```
+
+### 8. Redeploy delete-account and revenuecat-webhook
+
+From this branch's final commit:
 
 ```sh
 npx supabase functions deploy delete-account
@@ -969,9 +1348,44 @@ Check as on 2026-11-18: `npx supabase functions list` shows each one version hig
 today; RevenueCat → Project settings → Integrations → Webhooks → **Send test event** gives 200
 with `{"ok":true,"action":"ignored",…}`; and
 `curl -i -X POST https://<project-ref>.functions.supabase.co/delete-account` with no token gives
-401. Step 5 doesn't depend on steps 2–4.
+401. Steps 8 and 9 don't depend on 011 or 012; the checklist puts them after the migrations so
+that one list does everything. To undo either deploy, deploy it again from `master`.
 
-### 6. Sandbox Plus rows, after App Store approval (separate, later)
+### 9. Redeploy coach
+
+From the same final commit as step 8, with JWT verification on (no flag):
+
+```sh
+npx supabase functions deploy coach
+```
+
+**Never deploy `coach` from commit `6830354`** (round 4 of the review). That version rejects
+the app's new pattern kinds, so the Coach would show "unavailable" to the most engaged users.
+The live version 16 (deployed 2026-11-18) and this branch's final version both work with the
+new app: if anything about the commit is in doubt, leaving version 16 live is safe, and
+deploying from `6830354` is not. The deploy also gives `coach` the current
+`_shared/revenuecatLookup.ts` (the 2026-11-18 section's step 3 says why that waited).
+
+Check: `npx supabase functions list` shows `coach` one version higher than before (16 on
+2026-11-18), updated today; `curl -i -X POST https://<project-ref>.functions.supabase.co/coach`
+with no token gives 401; and in the app, signed in with Plus and with at least one scored
+answer, Insights → Get feedback answers instead of saying it's unavailable.
+
+To undo it, deploy `coach` again from `master`: that is step 189's code, which version 16 was
+deployed from (`HANDOFF.md`; only comments changed on `master` since), and `6830354` is not on
+`master`.
+
+### 10. Then turn the offsets on in the app
+
+Tell the agent "011 is live" once step 3's checks pass (3a's two rows are enough). The agent
+then turns on `UTC_OFFSET_SYNC` in `src/constants/app.ts`, in a later build, and makes sure
+that build sends only `created_utc_offset_min` and `title_edited_utc_offset_min`: 011 has no
+`resolved_utc_offset_min` (the answer's offset isn't kept), and an upsert naming a column the
+server doesn't have fails the whole batch. **Not before:** a phone that names those columns
+while the server doesn't have them fails every sync. And once a build with it on is installed
+anywhere, the columns must stay (step 12).
+
+### 11. Sandbox Plus rows, after App Store approval (separate, later)
 
 Your decision of 2026-11-19: TestFlight testers keep sandbox Plus through the beta. After App
 Store approval you set RevenueCat → Project settings → **Sandbox Testing Access** to "Allowed
@@ -988,9 +1402,9 @@ reviewer who isn't on the list gets no entitlement from that purchase. **Before 
 Sandbox Testing Access, get RevenueCat's confirmation in writing that App Review purchases
 still grant entitlements under "Allowed App User IDs only"** (their page doesn't say so). If
 they don't confirm it, don't switch, and clear leftover TestFlight Lifetime rows only with the
-explicit-list statement in 6a–6c.
+explicit-list statement in 11a–11c.
 
-**6a. List them (read-only).** One row per account the server counts as Plus for ever.
+**11a. List them (read-only).** One row per account the server counts as Plus for ever.
 
 ```sql
 select user_id, source, updated_at, last_event_ms
@@ -999,7 +1413,7 @@ select user_id, source, updated_at, last_event_ms
  order by updated_at;
 ```
 
-**6b. Check each against RevenueCat first.** The table can't tell a sandbox purchase from a
+**11b. Check each against RevenueCat first.** The table can't tell a sandbox purchase from a
 real one. For every `user_id`, open RevenueCat → Customers, search that id (the App User ID is
 the Supabase user id) and look at its purchases. **Keep every real Lifetime buyer off the
 list**: a production Lifetime purchase is someone who paid $79.99. Only an id whose plus
@@ -1007,7 +1421,7 @@ entitlement came from sandbox purchases alone goes on the list. If RevenueCat st
 as active for an id, leave it off: the Coach asks RevenueCat when its row doesn't say Plus,
 and would write Plus back the next time that person asks it.
 
-**6c. Clear them.** Paste the ids you checked between the brackets, each in single quotes,
+**11c. Clear them.** Paste the ids you checked between the brackets, each in single quotes,
 separated by commas. It touches only those ids, and only while they are still Lifetime Plus;
 it never takes "all rows". The cursor moves to now, so a retry of an old sandbox event can't
 write Plus back, and anything RevenueCat sends from now on still applies. It returns one row
@@ -1034,12 +1448,15 @@ nothing. To put one back (a mistake): RevenueCat is the source of truth, so a re
 next Coach request writes their row again from RevenueCat; or set it directly with
 `update public.entitlements set is_plus = true, source = 'lifetime' where user_id = '…';`.
 
-### 7. Undo 011, if something goes wrong
+### 12. Undo 011, if something goes wrong
 
-The triggers, functions, byte limits and index come off with this, in one run:
+If 012 is in and both are coming off, undo 012 first (step 13): its job deletes by
+`received_at`, which only 011 keeps to the server's clock. The triggers, functions, byte limits
+and index of 011 come off with this, in one run:
 
 ```sql
 drop trigger if exists predictions_keep_answer on public.predictions;
+drop trigger if exists predictions_keep_offsets on public.predictions;
 drop trigger if exists predictions_insert_limits on public.predictions;
 drop trigger if exists predictions_update_limits on public.predictions;
 drop trigger if exists analytics_events_stamp_received on public.analytics_events;
@@ -1047,6 +1464,7 @@ drop trigger if exists analytics_events_limits on public.analytics_events;
 drop trigger if exists guest_analytics_events_count_rows on public.guest_analytics_events;
 drop trigger if exists guest_analytics_events_reset_count on public.guest_analytics_events;
 drop function if exists public.predictions_keep_answer();
+drop function if exists public.predictions_keep_offsets();
 drop function if exists public.predictions_write_limits();
 drop function if exists public.analytics_events_stamp_received();
 drop function if exists public.analytics_events_limits();
@@ -1058,11 +1476,14 @@ alter table public.predictions
 drop index if exists public.idx_analytics_events_user_received;
 ```
 
-- **The three columns stay** (with their range checks): they're empty until the app sends
+- **The two columns stay** (with their range checks): they're empty until the app sends
   them, and once a build with `UTC_OFFSET_SYNC` on is installed, dropping them fails every
   sync from it. Only if no build ever had it on:
-  `alter table public.predictions drop column if exists created_utc_offset_min, drop column if exists resolved_utc_offset_min, drop column if exists title_edited_utc_offset_min;`
+  `alter table public.predictions drop column if exists created_utc_offset_min, drop column if exists title_edited_utc_offset_min;`
   (their checks go with them).
+- **`predictions_keep_offsets` can stay with the columns**: it only stops a push that sends an
+  offset as null from erasing one stored for the same moment. To keep it, leave out its
+  `drop trigger` and `drop function` lines above.
 - **The props rule** can stay: it refuses only numbers longer than 24 characters, which the
   app never sends. To put 010's back, run 010's first `create or replace function` again (lines
   67–121 of `010_public_key_limits.sql`); the CHECKs need nothing, since 010's rule takes
@@ -1070,6 +1491,34 @@ drop index if exists public.idx_analytics_events_user_received;
 
 To change one answer by hand on purpose (the trigger keeps it otherwise), in one run:
 `begin; alter table public.predictions disable trigger predictions_keep_answer; update …; alter table public.predictions enable trigger predictions_keep_answer; commit;`.
+To clear a stored offset by hand (an update that sets one to null for the same moment keeps
+the stored value otherwise), the same with `predictions_keep_offsets`; setting one to a number
+needs no such step.
+
+### 13. Undo 012, if something goes wrong
+
+The job, the cap, the procedure, the cutoff function and the index come off with this, in one
+run. The job goes first, so no run can call a procedure that is gone:
+
+```sql
+select cron.unschedule(jobid) from cron.job where jobname = 'purge-old-usage-counts';
+drop trigger if exists analytics_events_account_cap on public.analytics_events;
+drop function if exists public.analytics_events_account_cap();
+drop procedure if exists public.purge_old_usage_counts();
+drop function if exists public.usage_counts_cutoff(timestamptz);
+drop index if exists public.idx_analytics_events_received;
+```
+
+- If pg_cron has been disabled since, leave out the first line: disabling it deleted the job
+  (and `cron.job` no longer exists, so the line would stop the run).
+- Rows the job already deleted don't come back; each was more than 13 months old, which is
+  what the job is for.
+- To take off only the cap, run the second and third lines.
+- To pause the job instead of removing it (Supabase's quickstart):
+  `select cron.alter_job(job_id := (select jobid from cron.job where jobname = 'purge-old-usage-counts'), active := false);`,
+  and `active := true` to resume. While it's paused or gone, nothing deletes old usage counts,
+  so "kept for 13 months" isn't true; a resumed job catches up in its batches.
+- pg_cron itself can stay enabled.
 
 ## Files
 
@@ -1119,17 +1568,25 @@ To change one answer by hand on purpose (the trigger keeps it otherwise), in one
   together by time; size limits on prediction and event ids and text; each
   role's table grants cut to what the app uses. **Not applied yet**: the steps
   are in "2026-11-18: migration 010 and two redeploys" above.
-- `migrations/011_offsets_answers_limits.sql` — security review round 5
-  (2026-11-19), applied after 010: the three `*_utc_offset_min` columns on
-  `predictions` (the app sends them once `UTC_OFFSET_SYNC` is on); a trigger
+- `migrations/011_offsets_answers_limits.sql` — security review rounds 5 and 6
+  (2026-11-19), applied after 010: two `*_utc_offset_min` columns on
+  `predictions`, the offsets when a prediction was logged and reworded (the app
+  sends them once `UTC_OFFSET_SYNC` is on), with a trigger that keeps a stored
+  offset when a push sends it as null for the same moment; a trigger
   that keeps an answered prediction whole when a stale phone pushes it back as
   open (or a Yes or No as "Can't tell"), with a later `updated_at`; per-account
   limits on signed-in writes (100 rows a request, 50,000 predictions, 25 MB of
   titles and notes, 5,000 events a UTC day, byte limits on title and
   reflection); a guest insert that
   stops at row 101 and a 500,000-row guest ceiling; numbers in `props` at most
-  24 characters. **Not applied yet**: the steps are in "2026-11-19: migration
-  011, two redeploys, and the sandbox Plus rows" above.
+  24 characters. **Not applied yet**: the steps are in "2026-11-19: migrations
+  011 and 012, three redeploys, and the sandbox Plus rows" above.
+- `migrations/012_usage_counts_retention.sql` — security review round 6
+  (2026-11-19), applied after 011 and once `pg_cron` is enabled: a daily
+  `pg_cron` job (09:17 UTC) that deletes usage counts (`analytics_events`,
+  `guest_analytics_events`) once they are more than 13 months old by
+  `received_at`, in committed batches; at most 100,000 `analytics_events` rows
+  per account. **Not applied yet**: same section.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decisions live in
   `entitlementFromEvent.ts` and its flow (look up, write, answer) in
@@ -1160,7 +1617,9 @@ deployed 2026-11-15), `revenuecat-webhook` (JWT off, shared secret; last redeplo
 2026-11-03) and `delete-account` (JWT on, version 11, deployed 2026-11-15). Both 2026-11-15
 deploys postdate the last change to their code. **Step 189 (2026-11-17) changed `coach` and
 `revenuecat-webhook`:** both need the new secret `REVENUECAT_READ_KEY` (below) and a
-redeploy. `refine` is deliberately not deployed. The free-tier
+redeploy. Since then, for step 189 (2026-11-18, `HANDOFF.md`): `coach` version 16 and
+`revenuecat-webhook` version 13 were deployed; the 2026-11-19 section's steps 8 and 9 redeploy
+all three. `refine` is deliberately not deployed. The free-tier
 project pauses when idle; `projects list` shows `INACTIVE` when it has, and it is restored
 from the dashboard only.
 

@@ -1,8 +1,14 @@
 import type { Prediction } from '@/types';
 
-import { PER_USER_TABLES, wipeLocalUserData } from './account';
+import {
+  INTEGRITY_COUNT_TABLES,
+  PER_USER_TABLES,
+  SIGN_OUT_KEPT_TABLES,
+  wipeLocalUserData,
+} from './account';
 import { getAgeBucket, saveAgeBucket } from './ageBucket';
 import { enqueueEvent, listUnsyncedEvents } from './analytics';
+import { listCategoryDefs } from './categories';
 import { getDb, setDbForTests } from './client';
 import {
   countPostponements,
@@ -10,11 +16,17 @@ import {
   countUnsynced,
   deletePrediction,
   insertPrediction,
+  listCategoryOrigins,
   listDeletions,
+  listPendingDeletions,
+  listPendingDeletionsSettled,
   listPendingPredictions,
+  markDeletionPushed,
   noteRefile,
+  OFFSET_BACKFILL_MARKER,
   recordPostponement,
   refilePrediction,
+  rememberCategoryOrigin,
 } from './predictions';
 import { getUserStat, listCategoryStats, upsertCategoryStat, upsertUserStat } from './stats';
 import { createTestDb } from './testing';
@@ -337,6 +349,146 @@ describe('wipeLocalUserData', () => {
     db.run = realRun;
     db.exec = realExec;
     expect(vacuums).toEqual([]);
+  });
+});
+
+// Main session decision 2026-11-19 (client review, record audit): sign-out's
+// wipe emptied the tables behind every "Only this phone keeps this count"
+// line, so signing out and back in zeroed them.
+describe('wipeLocalUserData with keepIntegrityCounts (sign-out)', () => {
+  /**
+   * One of everything Insights counts for `userId`: a counted deletion still
+   * waiting to be pushed, an uncounted one already pushed, a late change, a
+   * moved answer and a remembered category; plus a category of their own.
+   */
+  async function seedCounts(userId: string): Promise<void> {
+    await seedUser(userId);
+    await insertPrediction(p(`${userId}-del-waiting`, userId));
+    await deletePrediction(`${userId}-del-waiting`, { counted: true });
+    await insertPrediction(p(`${userId}-del-pushed`, userId));
+    await deletePrediction(`${userId}-del-pushed`);
+    await markDeletionPushed(`${userId}-del-pushed`);
+    await insertPrediction(p(`${userId}-late`, userId));
+    await recordPostponement(`${userId}-late`, userId, '2026-02-01T00:00:00.000Z', '2026-02-03T00:00:00.000Z');
+    await moveAnswer(`${userId}-moved`, userId);
+    await insertPrediction({ ...p(`${userId}-origin`, userId), category: 'health' });
+    await rememberCategoryOrigin(`${userId}-origin`, userId, 'work', 'health', false);
+    await getDb().run(
+      `INSERT INTO categories (id, user_id, name, hidden, position, created_at)
+         VALUES ('c-mine', ?, 'Thesis', 0, 0, '2026-01-01T00:00:00.000Z')`,
+      [userId],
+    );
+  }
+
+  it('names exactly the four count tables, all of them per-user', () => {
+    expect([...INTEGRITY_COUNT_TABLES].sort()).toEqual([
+      'prediction_category_origins',
+      'prediction_deletions',
+      'prediction_postponements',
+      'prediction_refiles',
+    ]);
+    for (const table of INTEGRITY_COUNT_TABLES) expect(PER_USER_TABLES).toContain(table);
+  });
+
+  // Review round 6: the one-time offset backfill's marker stays too, so it
+  // is never sent again for the account (src/db/predictions.ts).
+  it('keeps the counts and the sync markers, nothing else', () => {
+    expect([...SIGN_OUT_KEPT_TABLES].sort()).toEqual(
+      [...INTEGRITY_COUNT_TABLES, 'sync_markers'].sort(),
+    );
+    for (const table of SIGN_OUT_KEPT_TABLES) expect(PER_USER_TABLES).toContain(table);
+  });
+
+  it("keeps the account's sync markers through sign-out, and Erase removes them", async () => {
+    await seedCounts('me');
+    await seedCounts('them');
+    for (const userId of ['me', 'them']) {
+      await getDb().run(
+        `INSERT INTO sync_markers (user_id, marker, done_at) VALUES (?, ?, '2026-11-19T12:00:00.000Z')`,
+        [userId, OFFSET_BACKFILL_MARKER],
+      );
+    }
+    const markers = async (userId: string) =>
+      (await getDb().get<{ n: number }>(`SELECT COUNT(*) AS n FROM sync_markers WHERE user_id = ?`, [userId]))?.n;
+
+    await wipeLocalUserData('me', { deviceData: false, keepIntegrityCounts: true });
+    expect(await markers('me')).toBe(1);
+
+    await wipeLocalUserData('me');
+    expect(await markers('me')).toBe(0);
+    expect(await markers('them')).toBe(1);
+  });
+
+  it('keeps the counts, the counted flags and what waits to be pushed; removes the rest', async () => {
+    await seedCounts('me');
+    const deletionsBefore = await listDeletions('me');
+    expect(deletionsBefore).toHaveLength(2);
+
+    await wipeLocalUserData('me', { deviceData: false, keepIntegrityCounts: true });
+
+    // The record and everything else of the account's is gone.
+    await expect(listPendingPredictions('me')).resolves.toEqual([]);
+    await expect(getUserStat('me')).resolves.toBeNull();
+    await expect(listCategoryStats('me')).resolves.toEqual([]);
+    await expect(listUnsyncedEvents('me', 10)).resolves.toEqual([]);
+    await expect(listCategoryDefs('me')).resolves.toEqual([]);
+    for (const table of PER_USER_TABLES) {
+      if ((SIGN_OUT_KEPT_TABLES as readonly string[]).includes(table)) continue;
+      const row = await getDb().get<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM ${table} WHERE user_id = 'me'`,
+      );
+      expect({ table, n: row?.n }).toEqual({ table, n: 0 });
+    }
+    // The counts stand, the tombstones exactly as they were.
+    expect(await listDeletions('me')).toEqual(deletionsBefore);
+    expect((await listDeletions('me')).filter((d) => d.counted)).toHaveLength(1);
+    expect(await countPostponements('me')).toBe(1);
+    expect(await countRefiles('me')).toBe(1);
+    expect((await listCategoryOrigins('me')).map((o) => o.prediction_id)).toEqual(['me-origin']);
+    // The deletion still waiting is still waiting, for this account only.
+    expect(await listPendingDeletions('me')).toEqual(['me-del-waiting']);
+  });
+
+  it("never lists a kept tombstone under the next account to sign in", async () => {
+    await seedCounts('me');
+    await wipeLocalUserData('me', { deviceData: false, keepIntegrityCounts: true });
+    await seedUser('next');
+    expect(await listPendingDeletions('next')).toEqual([]);
+    expect(await listPendingDeletionsSettled('next')).toEqual([]);
+    expect(await countUnsynced('next')).toBe(1); // its own seeded prediction only
+    expect(await listDeletions('next')).toEqual([]);
+    expect(await countRefiles('next')).toBe(0);
+    expect(await countPostponements('next')).toBe(0);
+  });
+
+  it("leaves another account's counts alone either way", async () => {
+    await seedCounts('me');
+    await seedCounts('them');
+    await wipeLocalUserData('me', { deviceData: false, keepIntegrityCounts: true });
+    await wipeLocalUserData('me');
+    expect(await listDeletions('them')).toHaveLength(2);
+    expect(await countRefiles('them')).toBe(1);
+    expect(await listCategoryOrigins('them')).toHaveLength(1);
+    // Their open ones: the seeded one, the late one and the moved one.
+    await expect(listPendingPredictions('them')).resolves.toHaveLength(3);
+  });
+
+  it('Erase and confirmed deletion (the default) still remove them, remembered categories too', async () => {
+    await seedCounts('me');
+    await wipeLocalUserData('me', { deviceData: false, keepIntegrityCounts: true });
+    await wipeLocalUserData('me');
+    expect(await listDeletions('me')).toEqual([]);
+    expect(await countPostponements('me')).toBe(0);
+    expect(await countRefiles('me')).toBe(0);
+    expect(await listCategoryOrigins('me')).toEqual([]);
+    expect(await countUnsynced('me')).toBe(0);
+  });
+
+  it('removes them with keepIntegrityCounts false', async () => {
+    await seedCounts('me');
+    await wipeLocalUserData('me', { deviceData: false, keepIntegrityCounts: false });
+    expect(await listDeletions('me')).toEqual([]);
+    expect(await listCategoryOrigins('me')).toEqual([]);
   });
 });
 

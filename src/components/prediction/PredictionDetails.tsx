@@ -18,6 +18,7 @@ import {
   answeredBefore,
   answerNowIsSameDay,
   canRenumber,
+  categoryChangeCountedIfAnswered,
   categoryChangeIsCounted,
   deleteIsCounted,
   earliestDueForEdit,
@@ -98,6 +99,18 @@ export function categoryCountedNote(daysLeft: number): string {
     daysLeft >= 1 ? 'It’s due tomorrow' : daysLeft === 0 ? 'It’s due today' : 'It’s past its due day';
   return `${when}, so changing its category is counted on Insights: the outcome may already be known. It doesn’t change your score.`;
 }
+
+/**
+ * Edit's note under the category chips for an earlier move (review round 6):
+ * one made after the day it was made, earlier than the eve, is counted with
+ * the moved answers if the prediction gets a scored answer in the new
+ * category (`categoryChangeCountedIfAnswered`). Never shown beside
+ * `categoryCountedNote`, whose move is counted at once. "A scored answer",
+ * not "answered": a Can't tell, or an answer the day its words change, isn't
+ * scored and isn't counted. Read aloud as written. Exported for tests.
+ */
+export const CATEGORY_COUNTED_IF_ANSWERED =
+  'If it gets a scored answer in this category, the move is counted on Insights. It doesn’t change your score.';
 
 /**
  * Edit's line under the number. The number can't change. On the day it was
@@ -209,6 +222,20 @@ export function PredictionDetails({
   useEffect(() => {
     if (categoryCountedNow) AccessibilityInfo.announceForAccessibility(CATEGORY_COUNTED_SPOKEN);
   }, [categoryCountedNow]);
+  // An earlier move, counted if a scored answer comes in the new category
+  // (review round 6), against the category this phone remembers for it.
+  // Never with the eve note: the store's rule excludes it, and so does this.
+  const categoryOrigin = usePredictionStore((s) => s.categoryOrigins[predictionId] ?? null);
+  const categoryCountedIfAnsweredNow =
+    editing &&
+    category !== null &&
+    !categoryCountedNow &&
+    categoryChangeCountedIfAnswered(prediction, category, categoryOrigin);
+  useEffect(() => {
+    if (categoryCountedIfAnsweredNow) {
+      AccessibilityInfo.announceForAccessibility(CATEGORY_COUNTED_IF_ANSWERED);
+    }
+  }, [categoryCountedIfAnsweredNow]);
 
   if (loading) {
     return (
@@ -426,6 +453,17 @@ export function PredictionDetails({
         {categoryCountedNow && (
           <Text style={styles.note} testID="details-category-counted" accessibilityLiveRegion="polite">
             {categoryCountedNote(daysLeft)}
+          </Text>
+        )}
+        {/* Earlier than the eve, counted only once a scored answer comes in
+            this category (review round 6), said in the same place and style. */}
+        {categoryCountedIfAnsweredNow && (
+          <Text
+            style={styles.note}
+            testID="details-category-counted-if-answered"
+            accessibilityLiveRegion="polite"
+          >
+            {CATEGORY_COUNTED_IF_ANSWERED}
           </Text>
         )}
         <Text style={[styles.label, styles.spaced]}>Due date</Text>

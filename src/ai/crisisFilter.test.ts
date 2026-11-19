@@ -138,6 +138,23 @@ describe('scanForCrisis — idioms that are not distress', () => {
     ['breaking down a lot lately', 'distress'],
     ['breaking down this week', 'distress'],
     ['breaking down that night', 'distress'],
+    // Round 6 (2026-11-19): a named game followed by a place or a time.
+    ['he beats me at poker night', 'abuse'],
+    ['she beats me at chess club', 'abuse'],
+    ['he beats me at tennis practice', 'abuse'],
+    ['he beats me at poker nights', 'abuse'],
+    ['he beats me at poker tonight', 'abuse'],
+    ['he beats me at cards at home', 'abuse'],
+    ['he beats me at poker after work', 'abuse'],
+    ['he beats me at darts every night', 'abuse'],
+    ['she beats me at golf lessons', 'abuse'],
+    ['he beats me at chess in class', 'abuse'],
+    ['he beats me at scrabble camp', 'abuse'],
+    ['he beats me at chess school', 'abuse'],
+    ['he beats me at ping-pong club', 'abuse'],
+    ['he beats me at Mario Kart night', 'abuse'],
+    ['she beats me in tennis classes', 'abuse'],
+    ['he beats me at poker-night', 'abuse'],
     ['he beats me', 'abuse'],
     ['My husband beats me at home', 'abuse'],
     ['she beats me when she drinks', 'abuse'],
@@ -256,6 +273,7 @@ describe('scanForCrisis — without NFKC', () => {
     expect(scanForCrisis(['self–harm again'])).toEqual({ safe: false, topic: 'self_harm' });
     expect(scanForCrisis(['I want  to\ndie'])).toEqual({ safe: false, topic: 'self_harm' });
     expect(scanForCrisis(['he beats me at game night'])).toEqual({ safe: false, topic: 'abuse' });
+    expect(scanForCrisis(['he beats me at poker night'])).toEqual({ safe: false, topic: 'abuse' });
     expect(scanForCrisis(['Ship the prototype by Friday'])).toEqual({ safe: true, topic: null });
   });
 });

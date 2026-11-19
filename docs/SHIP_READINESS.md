@@ -107,7 +107,10 @@ through them yourself, using best app developer judgement"). **Still open:** 2 (
    switch on that screen before an EU launch.
 10. **Moving an answer to another category.** Built 2026-11-15 as step 184 (roadmap D65), the
     agent's call: Insights counts a scored answer left in a different category from the one
-    it was answered in, on this phone only; one moved back isn't counted.
+    it was answered in, on this phone only; one moved back isn't counted. Since round 6 of
+    the security review (2026-11-19, widening D69 (e)) it also counts a scored answer given
+    in a different category from the one the prediction had when it was first moved after
+    the day it was made (`answeredAwayFromOrigin`, SQLite migration 019).
 11. **Uninstall `expo-auth-session`.** Answered yes; uninstalled with step 180.
 12. **A password reset.** There is none: someone with an email account who forgets the
     password can't sign in again; their backup stays on the server, and a phone still signed
