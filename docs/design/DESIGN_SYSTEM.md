@@ -438,6 +438,15 @@ The four tabs are *Today*, *Insights*, *History* and *You*, and Log is a sheet (
   rating and sets half the spread of the middle 80% either side of it
   (`statsStore.ratingRange`); centred on the rating because resampling only adds
   error, so percentiles would sit below a calibrated user's own score.
+- **The lines under the rating on Insights** (D68, step 196): three groups, 12 apart
+  and 4 within, after the marks caption, which stays with the bar. What the number
+  means: the points line ("Range by range, …") leads in `subhead` ink, with the
+  perfect-calibration line under it, whose endings answer its figure. How firm it is:
+  the give-or-take, then since last week. Then the count ("153 scored, 9-day streak").
+  All but the lead stay `footnote` in `textSecondary`. Whichever line of a group comes
+  first takes the 12, and a group with none shown leaves no gap. Margins on the lines
+  themselves, no wrapper, so VoiceOver's order and stops are as before. Six equal lines
+  4 apart read as a wall in five playtest rounds.
 - **Brier score** (D24): on Insights only, from 50 scored answers (`BRIER_MIN_N`, D62),
   one `footnote` line in `textSecondary` under "More about your record": "Brier score
   0.22, lower is better. Saying 64% every time, how often your calls came true, would
@@ -941,8 +950,12 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   Today list by date ("Ready to answer", "Next 7 days", "Later"; roadmap step 67) and
   let the group header carry the state. No amber, no "Overdue" label, no warning colour.
 - **Order** (D22, step 115): the score or its progress; then, when anything is
-  ready, "Ready to answer" with **Answer all N**; then the streak row, the
-  reminder card and today's practice; then "Next 7 days" and "Later". With nothing
+  ready, "Ready to answer" with **Answer all N**; then the daily rows, the streak
+  row and today's practice 8 apart as a pair, and the backup card after them (D68,
+  step 196; it sat between the two); then "Next 7 days" and "Later". The pair's 8
+  needs both rows: either alone keeps 16 to what follows, and the block keeps 16
+  above and below. The streak row is drawn above the rows after it, so a
+  checkpoint's confetti falls over the practice row (step 194). With nothing
   ready the open predictions still come first and the daily rows follow "Later"
   (D48, step 159): at 320 × 568 the score, streak and practice rows filled the
   screen and a card just saved couldn't be seen; with nothing open they follow the
@@ -977,7 +990,8 @@ The most frequent meaningful moment in the app. Fast, neutral, honest, in that o
   leaves out: "2 answers are Can't tell, so they aren't scored.", or "No answers are
   Can't tell."
 - **Back it up** (D31, 2026-10-10): on Today, once the oldest prediction on the phone
-  is 30 days old and nobody is signed in, a quiet sunken card under the daily rows:
+  is 30 days old and nobody is signed in, a quiet sunken card under the daily rows
+  (after the practice row since step 196):
   "Your predictions live only on this phone" over "Sign in to keep them if it's lost
   or replaced.", with a secondary **Sign in** (opens Account) and **Not now** (30
   days' quiet). Never before 30 days, never once signed in.

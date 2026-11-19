@@ -208,6 +208,8 @@ export function CalibrationView({
         giveOrTake: categoryRanges?.[furthestStat.category]?.giveOrTake ?? 0,
       }
     : null;
+  // The give-or-take line opens "how firm it is" when it's there (D68).
+  const hasRange = !!ratingRange && ratingRange.giveOrTake > 0;
   const spread = userStat
     ? spreadThinLine(
         userStat.total_resolved,
@@ -245,11 +247,17 @@ export function CalibrationView({
                 <Text style={styles.ratingLabel}>calibration rating</Text>
               </View>
               <ScoreBar score={headline.rating} range={ratingRange} caption testID="stats-score-bar" />
-              {/* What the number means, in points (step 173). */}
-              <Text style={styles.subtle} testID="stats-rating-meaning">
+              {/* The lines under the rating in three groups, 12 apart and 4
+                  within (D68; "a wall" in five playtest rounds as six equal
+                  lines): what the number means, how firm it is, the count.
+                  Margins on the lines themselves, so nothing is wrapped and
+                  VoiceOver's order and stops stay as they were. */}
+              {/* What the number means, in points (step 173): the lead. */}
+              <Text style={styles.lead} testID="stats-rating-meaning">
                 {ratingMeaningLine(headline.rating)}
               </Text>
-              {/* How much of that gap luck alone gives (D62). */}
+              {/* How much of that gap luck alone gives (D62): with the lead,
+                  whose figure its endings answer ("above that"). */}
               {perfect && (
                 <Text style={styles.subtle} testID="stats-perfect">
                   {perfectLine(
@@ -260,15 +268,19 @@ export function CalibrationView({
                   )}
                 </Text>
               )}
-              {ratingRange && ratingRange.giveOrTake > 0 && (
-                <Text style={styles.subtle} testID="stats-rating-range">
+              {/* How firm it is: whichever of the two comes first opens it. */}
+              {ratingRange && hasRange && (
+                <Text style={[styles.subtle, styles.groupStart]} testID="stats-rating-range">
                   Give or take {ratingRange.giveOrTake}{' '}
                   {ratingRange.giveOrTake === 1 ? 'point' : 'points'} with this many predictions.
                 </Text>
               )}
               {/* Free (roadmap D37): nothing free showed change over time. */}
               {weekChange && (
-                <Text style={styles.subtle} testID="stats-week-change">
+                <Text
+                  style={[styles.subtle, !hasRange && styles.groupStart]}
+                  testID="stats-week-change"
+                >
                   {weekChangeLine(weekChange, ratingRange?.giveOrTake ?? 0)}
                 </Text>
               )}
@@ -279,7 +291,8 @@ export function CalibrationView({
               wall). One tap shows them all, and each is the line it was. */}
           {/* The progress bar already counts resolutions while provisional. */}
           {!headline.provisional && (
-            <Text style={styles.subtle}>
+            // The third group (D68): 12 below the line before it.
+            <Text style={[styles.subtle, styles.groupStart]}>
               {localCount(userStat.total_resolved)} scored
               {userStat.current_streak > 0 && streakShown
                 ? `, ${localCount(userStat.current_streak)}-day streak`
@@ -447,6 +460,12 @@ const styles = StyleSheet.create({
   ratingLabel: { ...type.subhead, color: colors.textSecondary, flexShrink: 1 },
   ratingGroup: { alignItems: 'baseline', flexDirection: 'row', gap: space.md },
   subtle: { ...type.footnote, color: colors.textSecondary, marginTop: space.xs },
+  // What the number means leads the lines under the rating (D68): a step up
+  // and in ink. Scales freely with Dynamic Type, as `subtle` and the chart's
+  // subtitle (also `subhead`) do.
+  lead: { ...type.subhead, color: colors.textPrimary, marginTop: space.md },
+  // The first line of a group under the rating (D68): within a group 4, between 12.
+  groupStart: { marginTop: space.md },
   sectionGap: { marginTop: space.xl },
   // Apart from the chart's key above it, which it otherwise read as a line of.
   empty: { ...type.subhead, color: colors.textSecondary, marginTop: space.md },

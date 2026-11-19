@@ -1,4 +1,5 @@
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet, type TextStyle } from 'react-native';
 
 import {
   CalibrationView,
@@ -9,7 +10,9 @@ import {
   skippedLine,
 } from '@/components/stats/CalibrationView';
 import { holdRanges } from '@/components/ui/holdRanges';
+import { colors, space, type } from '@/constants/theme';
 import { useCategoryStore } from '@/store/categoryStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import type { CalibrationResult, Category, CategoryStat, UserStat } from '@/types';
 import { MIN_N_CATEGORY } from '@/types';
 
@@ -718,5 +721,225 @@ describe('CalibrationView with the words hidden', () => {
       useSettingsStore.setState({ hideTitles: false });
       useCategoryStore.setState({ defs: [] });
     }
+  });
+});
+
+// D68 (Insights A): the six equal lines under the rating, "a wall" in five
+// playtest rounds, become three groups, 12 apart and 4 within, with what the
+// number means as their lead. No words change, and nothing moves.
+describe('CalibrationView, the lines under the rating in groups (D68)', () => {
+  type Shown = { range?: boolean; week?: boolean; perfect?: boolean; rating?: number };
+  const unlocked = (rating: number) =>
+    userStat({
+      total_resolved: 153,
+      rating_is_provisional: false,
+      calibration_rating: rating,
+      current_streak: 9,
+    });
+  const show = ({ range = true, week = true, perfect = true, rating = 86 }: Shown = {}) =>
+    render(
+      <CalibrationView
+        userStat={unlocked(rating)}
+        calibration={{ rating, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={range ? { giveOrTake: 3, low: rating - 3, high: rating + 3 } : null}
+        weekChange={week ? { before: 84, now: 86, answered: 6 } : null}
+        perfect={perfect ? { typical: 92, low: 89, high: 95 } : null}
+        answeredCount={160}
+        onExplain={() => {}}
+      />,
+    );
+  const style = (id: string): TextStyle => StyleSheet.flatten(screen.getByTestId(id).props.style);
+  // The count has no testID of its own: found by its words.
+  const countStyle = (): TextStyle =>
+    StyleSheet.flatten(screen.getByText(/^153 scored/).props.style);
+  const quiet = (s: TextStyle) => {
+    expect(s.fontSize).toBe(type.footnote.fontSize);
+    expect(s.lineHeight).toBe(type.footnote.lineHeight);
+    expect(s.fontWeight).toBe(type.footnote.fontWeight);
+    expect(s.color).toEqual(colors.textSecondary);
+  };
+
+  /** Every line under the rating, and the rows around them, in render order. */
+  function renderOrder(): string[] {
+    const watched = new Set([
+      'stats-rating-group',
+      'stats-score-bar',
+      'stats-score-bar-caption',
+      'stats-rating-meaning',
+      'stats-perfect',
+      'stats-rating-range',
+      'stats-week-change',
+      'stats-fine-toggle',
+      'stats-explain',
+      'chart-takeaway',
+    ]);
+    type Node = { type?: string; props?: { testID?: string }; children?: Node[] | null } | string;
+    const textOf = (n: Node): string =>
+      typeof n === 'string' ? n : (n.children ?? []).map(textOf).join('');
+    const out: string[] = [];
+    const walk = (n: Node | Node[] | null): void => {
+      if (n === null || typeof n === 'string') return;
+      if (Array.isArray(n)) return n.forEach(walk);
+      const id = n.props?.testID;
+      if (id && watched.has(id)) out.push(id);
+      else if (!id && n.type === 'Text' && /^153 scored/.test(textOf(n))) out.push('count');
+      (n.children ?? []).forEach(walk);
+    };
+    walk(screen.toJSON() as Node | Node[] | null);
+    return out;
+  }
+
+  it('leads with what the number means, a step up and in ink', () => {
+    show();
+    const lead = style('stats-rating-meaning');
+    expect(lead.fontSize).toBe(type.subhead.fontSize);
+    expect(lead.lineHeight).toBe(type.subhead.lineHeight);
+    expect(lead.fontWeight).toBe(type.subhead.fontWeight);
+    expect(lead.fontFamily).toBe(type.subhead.fontFamily);
+    expect(lead.color).toEqual(colors.textPrimary);
+    // Scales with Dynamic Type as its neighbours do: no cap of its own.
+    expect(screen.getByTestId('stats-rating-meaning').props.maxFontSizeMultiplier).toBeUndefined();
+    expect(screen.getByTestId('stats-perfect').props.maxFontSizeMultiplier).toBeUndefined();
+  });
+
+  it('keeps the other four lines quiet, as they were', () => {
+    show();
+    quiet(style('stats-perfect'));
+    quiet(style('stats-rating-range'));
+    quiet(style('stats-week-change'));
+    quiet(countStyle());
+  });
+
+  it('sets 12 before each group and 4 within, with every line shown', () => {
+    show();
+    // What the number means: the lead, then the perfect-calibration line.
+    expect(style('stats-rating-meaning').marginTop).toBe(space.md);
+    expect(style('stats-perfect').marginTop).toBe(space.xs);
+    // How firm it is: the give-or-take, then since last week.
+    expect(style('stats-rating-range').marginTop).toBe(space.md);
+    expect(style('stats-week-change').marginTop).toBe(space.xs);
+    // The count.
+    expect(countStyle().marginTop).toBe(space.md);
+    expect([space.md, space.xs]).toEqual([12, 4]);
+  });
+
+  it('closes up when there is no week change', () => {
+    show({ week: false });
+    expect(screen.queryByTestId('stats-week-change')).toBeNull();
+    expect(style('stats-rating-range').marginTop).toBe(space.md);
+    expect(countStyle().marginTop).toBe(space.md);
+  });
+
+  it('opens the group with the week change when there is no give-or-take', () => {
+    show({ range: false });
+    expect(screen.queryByTestId('stats-rating-range')).toBeNull();
+    expect(style('stats-week-change').marginTop).toBe(space.md);
+    expect(countStyle().marginTop).toBe(space.md);
+  });
+
+  it('leaves no gap behind when neither is shown', () => {
+    show({ range: false, week: false });
+    expect(screen.queryByTestId('stats-rating-range')).toBeNull();
+    expect(screen.queryByTestId('stats-week-change')).toBeNull();
+    // The count follows the first group by 12, not 24.
+    expect(style('stats-perfect').marginTop).toBe(space.xs);
+    expect(countStyle().marginTop).toBe(space.md);
+  });
+
+  it('keeps the give-or-take opening its group without the perfect line', () => {
+    show({ perfect: false });
+    expect(screen.queryByTestId('stats-perfect')).toBeNull();
+    expect(style('stats-rating-meaning').marginTop).toBe(space.md);
+    expect(style('stats-rating-range').marginTop).toBe(space.md);
+  });
+
+  it('treats a give-or-take of 0 as no give-or-take', () => {
+    render(
+      <CalibrationView
+        userStat={unlocked(86)}
+        calibration={{ rating: 86, buckets: [] }}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={{ giveOrTake: 0, low: 86, high: 86 }}
+        weekChange={{ before: 84, now: 86, answered: 6 }}
+      />,
+    );
+    expect(screen.queryByTestId('stats-rating-range')).toBeNull();
+    expect(style('stats-week-change').marginTop).toBe(space.md);
+  });
+
+  it('keeps every line in its old order', () => {
+    show();
+    expect(renderOrder()).toEqual([
+      'stats-rating-group',
+      'stats-score-bar',
+      'stats-score-bar-caption',
+      'stats-rating-meaning',
+      'stats-perfect',
+      'stats-rating-range',
+      'stats-week-change',
+      'count',
+      'stats-fine-toggle',
+      'stats-explain',
+      'chart-takeaway',
+    ]);
+  });
+
+  it('styles the other wording at 100 the same way', () => {
+    show({ rating: 100 });
+    expect(screen.getByTestId('stats-rating-meaning')).toHaveTextContent(
+      'Range by range, what you said matched how often those things happened.',
+    );
+    expect(style('stats-rating-meaning').fontSize).toBe(type.subhead.fontSize);
+    expect(style('stats-rating-meaning').color).toEqual(colors.textPrimary);
+    expect(style('stats-rating-meaning').marginTop).toBe(space.md);
+  });
+
+  it('spaces the count the same with the streak hidden in You', () => {
+    useSettingsStore.setState({ streakShown: false });
+    try {
+      show();
+      expect(screen.getByText(/^153 scored$/)).toBeTruthy();
+      quiet(countStyle());
+      expect(countStyle().marginTop).toBe(space.md);
+    } finally {
+      act(() => useSettingsStore.setState({ streakShown: true }));
+    }
+    expect(screen.getByText(/^153 scored/)).toHaveTextContent('153 scored, 9-day streak');
+    expect(countStyle().marginTop).toBe(space.md);
+  });
+
+  it('is unchanged with the words hidden', () => {
+    useSettingsStore.setState({ hideTitles: true });
+    try {
+      show();
+      expect(style('stats-rating-meaning').color).toEqual(colors.textPrimary);
+      expect(style('stats-rating-range').marginTop).toBe(space.md);
+      expect(style('stats-week-change').marginTop).toBe(space.xs);
+      expect(countStyle().marginTop).toBe(space.md);
+    } finally {
+      act(() => useSettingsStore.setState({ hideTitles: false }));
+    }
+  });
+
+  it('leaves the calibrating state as it was', () => {
+    render(
+      <CalibrationView
+        userStat={userStat({ total_resolved: 12, calibration_rating: 80 })}
+        calibration={EMPTY_CAL}
+        categoryStats={[]}
+        nextBadges={{}}
+        ratingRange={{ giveOrTake: 3, low: 77, high: 83 }}
+        weekChange={{ before: 78, now: 80, answered: 4 }}
+        perfect={{ typical: 86, low: 80, high: 91 }}
+      />,
+    );
+    expect(screen.getByTestId('rating-provisional')).toBeTruthy();
+    for (const id of ['stats-rating-meaning', 'stats-perfect', 'stats-rating-range', 'stats-week-change']) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+    expect(screen.queryByText(/^12 scored/)).toBeNull();
   });
 });

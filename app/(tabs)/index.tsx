@@ -208,30 +208,41 @@ export default function TodayScreen() {
   // come first (D48, 2026-11-06): on a small phone the hero, streak and
   // practice rows filled the screen, and a card just saved couldn't be seen.
   const hasReady = groups.some((g) => g.key === 'ready');
+  // A reason to open the app on a day nothing comes due (roadmap step 88).
+  // Not before the first prediction: on Day 0 the Warmup has just asked ten
+  // questions, and the next thing is the first real one.
+  const practiceShown = pending.length + resolvedCount > 0;
+  // The streak and practice rows as a pair, 8 apart, then the backup card
+  // (D68; DESIGN_SYSTEM §7.11 had it "under the daily rows", the code between
+  // them). Each row keeps its own space below, so a row that isn't shown
+  // leaves no gap.
   const daily = (
     <>
       {/* The daily streak (roadmap D2): one logged or answered a day keeps
           it, three is the day's goal (D17). Measured for the checkpoint's
-          moment (step 194). */}
-      <View ref={streakMoment.streakBox} collapsable={false} testID="home-streak-box">
+          moment (step 194), and drawn above the rows after it, so the
+          moment's confetti falls over the practice row, not under it. */}
+      <View
+        ref={streakMoment.streakBox}
+        collapsable={false}
+        style={styles.streakBox}
+        testID="home-streak-box"
+      >
         <StreakLine
           status={streak}
           moment={streakMoment.moment}
+          paired={practiceShown}
           onPress={() => router.push('/scoring?section=streak' as never)}
         />
       </View>
-      {/* After 30 days on one phone without an account (roadmap D31). */}
-      <BackupNudge onSignIn={() => router.push('/account' as never)} />
-      {/* A reason to open the app on a day nothing comes due (roadmap
-          step 88). Not before the first prediction: on Day 0 the Warmup
-          has just asked ten questions, and the next thing is the first
-          real one. */}
-      {pending.length + resolvedCount > 0 && (
+      {practiceShown && (
         <PracticeCard
           onOpen={() => router.push('/practice' as never)}
           beforeFirstAnswer={resolvedCount === 0}
         />
       )}
+      {/* After 30 days on one phone without an account (roadmap D31). */}
+      <BackupNudge onSignIn={() => router.push('/account' as never)} />
     </>
   );
 
@@ -471,6 +482,9 @@ const styles = StyleSheet.create({
   dailyAfterReady: { marginTop: space.lg },
   // And after the open ones, when nothing is ready (D48).
   dailyAfterOpen: { marginTop: space.lg },
+  // Above the practice row and the backup card, so the checkpoint's confetti
+  // and spring aren't drawn under them (step 194, D68). Layout is unchanged.
+  streakBox: { zIndex: 1 },
   hero: { marginBottom: space.xxxl, marginTop: space.sm },
   // Left-aligned, like everything below it (roadmap D33).
   rated: { alignItems: 'stretch' },

@@ -1,8 +1,10 @@
 # Handoff
 
-**Branch:** `master`, with steps 1–194, the cleanup and the two studies merged and pushed
-(steps 190–194 on 2026-11-18, the owner's word). **Build 4 is next**, from `master`; the
-owner builds and submits it. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
+**Branch:** `builder/hierarchy` (step 196), stacked on `builder/sunken-contrast` (step 195).
+Neither is merged or pushed: both are JS only, for build 5, and step 196 waits on the
+owner's pick for D68. `master` has steps 1–194, the cleanup and the two studies, merged and
+pushed (steps 190–194 on 2026-11-18); the owner reports build 4 merged and pushed the same
+day. **Build 3** (1.0.0 (3), from `d7691ec`) finished on EAS 2026-11-18; the owner
 submits it. `check.sh --release` passes on that commit (expo-doctor 20/20, no drift, iOS
 export 7.32 MB, both public pages 200). This file is the
 current state, overwritten each PR. The history is in `docs/design/BUILT_LOG.md` (rows 157–188
@@ -71,13 +73,29 @@ cover the last stretch) and in git; it isn't repeated here.
   checklist; Sign in is unchanged. JS only, for build 4. The owner sets the matching rule in
   Supabase (`HUMAN_VERIFICATION.md` A5). Check: 190 suites, 2,585 tests. Not reviewed.
 
-- **Colour study (2026-11-18, D67, open):** the owner asked whether the app should carry more
-  colour, "for example a more clearer fire streak". Research and measurements are in
-  `docs/design/research/colour-2026-11.md`; six directions drawn on Today, light and dark, are
-  at https://claude.ai/artifact/5wvN6NgASDwyLpMkLzcWRu (private to him). Recommended: a
-  clearer streak in ink and the checkpoint moment; raspberry as a colour for showing up is
-  his call after seeing it on the phone; not an orange flame (it is `over`'s orange), not a
-  brand colour, not warm neutrals. Nothing is built; waiting on his answer.
+- **Colour study (2026-11-18):** `docs/design/research/colour-2026-11.md`; its mocks are at
+  https://claude.ai/artifact/5wvN6NgASDwyLpMkLzcWRu (private to the owner). Decided as D67
+  (below). Its leftovers are steps 195 and 196.
+- **Step 195 (`builder/sunken-contrast`, commit `90358fa`, BUILT_LOG row 195):** the study's
+  contrast leftovers. `controlBorder` is 2.93:1 on light `surfaceSunken`, so every edge drawn
+  there takes `textTertiary` (4.66:1; 4.92:1 dark): a secondary button on the coverage,
+  reminder and backup nudges (`onSunken` on `Button`), the practice offer's chips, the
+  sign-in switch, Share's tabs and an empty coverage range. The chart's zone words sit on a
+  canvas halo (4.62:1; "Overconfident" was 4.27:1 over its tint). A chosen moment chip stays
+  ink while pressed (it was 1.19:1). DESIGN_SYSTEM's two wrong figures are corrected. No hex
+  changed. Not built, the builder's alternative: darkening `controlBorder` itself (light
+  `#7F838D`, dark `#727680`) clears every fill and would let the swaps go; the owner's call.
+  Web build: every change measured at 393 and 320, light and dark; all pass.
+- **D68, hierarchy on Insights and Today (open):** the study's other leftover. Mocks at true
+  size, light and dark: https://claude.ai/artifact/6jdUjs8pnVtftkTjdPWVot (private to the
+  owner). **Step 196 (`builder/hierarchy`, BUILT_LOG row 196) builds the two recommended
+  options on the agent's call:** under Insights' rating the lines keep their words and
+  order in three groups 12 pt apart, with the points line as the lead (`subhead`, ink); on
+  Today the streak and practice rows sit 8 pt apart and the backup card follows them. Styles
+  and one reorder. **Waiting on the owner:** keep A and A, or Insights B (the luck line at
+  the lead's size) or C (the 70 / 85 / 90 marks and caption off the overall bar; reverses
+  D54 (b) and D59 (a), and goes through `record-auditor`), and Today B (daily rows flat) once
+  A is on the phone in dark. Web build: every gap measured in every state; all match.
 
 - **Step 191 (same branch, BUILT_LOG row 191):** deleting an account that Supabase linked to
   Apple after an email sign-up now revokes Sign in with Apple (`hasAppleIdentity`; the app read
@@ -146,7 +164,7 @@ cover the last stretch) and in git; it isn't repeated here.
 
 Reviews are the owner's call (2026-11-15): no reviewer agents after each feature; he asks for
 them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), steps 183–187
-(`6222465..2636ff2`), the cleanup branch and steps 188–194. When he calls for it: `record-auditor` for step
+(`6222465..2636ff2`), the cleanup branch and steps 188–196. When he calls for it: `record-auditor` for step
 184 and step 180's reminder change, `code-reviewer` for the rest.
 
 ## Owner to-dos, in order
@@ -156,6 +174,11 @@ them after several. Not reviewed yet: step 180's round-2 fixes (in `b30235d`), s
 2. Build 3: `npx eas build --profile production --platform ios`, then
    `npx eas submit --profile production --platform ios`.
 3. Sessions 2 and 3.
+4. D68: pick on the mock page (above); then steps 195 and 196 merge for build 5.
+5. On build 5, or a reload of the development build: the chart's zone words at 12 pt and the
+   darker edges (backup nudge, practice offer, sign-in switch, Share's tabs), both
+   appearances; on Today with VoiceOver, streak, practice, then the backup card; a
+   checkpoint's confetti over the practice row; the Insights lead line at the largest text.
 
 Done: the secret rename, both function deploys and the trial move (above).
 
@@ -197,7 +220,8 @@ and delegation are done by Fable (the main session), which doesn't implement dir
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run on this branch
-  (2026-11-16): 188 suites, 2,437 tests; `check.sh --release` passed too. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
+  (2026-11-18, step 196): 198 suites, 2,824 tests. `check.sh --release` hasn't been run on steps 195–196; run it
+  before build 5. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;
   restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED` (it does on this branch).

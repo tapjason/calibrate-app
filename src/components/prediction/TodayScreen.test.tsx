@@ -1,14 +1,16 @@
 // The Today screen (app/(tabs)/index.tsx). It lives here because a test file
 // under app/ would be a route to Expo Router.
 import { act, render, screen } from "@testing-library/react-native";
-import { SectionList, View } from "react-native";
+import { SectionList, StyleSheet, View } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 
 import type { CheckpointMoment } from "@/components/stats/checkpointMoment";
 import { localDayKey } from "@/components/ui/useLocalDay";
+import { space } from "@/constants/theme";
+import { useAuthStore } from "@/store/authStore";
 import { usePredictionStore } from "@/store/predictionStore";
 import { __setPersistenceForTests, useSettingsStore } from "@/store/settingsStore";
-import type { Prediction } from "@/types";
+import type { Prediction, StreakStatus } from "@/types";
 
 import TodayScreen from "../../../app/(tabs)/index";
 
@@ -35,9 +37,17 @@ jest.mock("react-native-reanimated", () => {
 jest.mock("@/store/ratingStore", () => ({
   useRatingStore: { getState: () => ({ askIfDue: jest.fn() }) },
 }));
-// The daily rows stand in as one marker each: this is about their place.
+// The daily rows stand in as one marker each: this is about their place. The
+// spacing tests (D68) set `mockRealRows` and get the real rows instead.
+let mockRealRows = false;
 jest.mock("@/components/practice/PracticeCard", () => ({
-  PracticeCard: () => {
+  PracticeCard: (props: object) => {
+    if (mockRealRows) {
+      const { PracticeCard: Real } = jest.requireActual<
+        typeof import("@/components/practice/PracticeCard")
+      >("@/components/practice/PracticeCard");
+      return <Real {...(props as Parameters<typeof Real>[0])} />;
+    }
     const { Text: T } =
       jest.requireActual<typeof import("react-native")>("react-native");
     return <T>daily-practice</T>;
@@ -48,6 +58,12 @@ const mockStreakLine = jest.fn();
 jest.mock("@/components/stats/StreakLine", () => ({
   StreakLine: (props: { moment?: unknown }) => {
     mockStreakLine(props);
+    if (mockRealRows) {
+      const { StreakLine: Real } = jest.requireActual<
+        typeof import("@/components/stats/StreakLine")
+      >("@/components/stats/StreakLine");
+      return <Real {...(props as Parameters<typeof Real>[0])} />;
+    }
     const { Text: T } =
       jest.requireActual<typeof import("react-native")>("react-native");
     return <T>daily-streak</T>;
@@ -61,7 +77,13 @@ jest.mock("@/components/prediction/ReminderPrompt", () => ({
   },
 }));
 jest.mock("@/components/settings/BackupNudge", () => ({
-  BackupNudge: () => null,
+  BackupNudge: (props: object) => {
+    if (!mockRealRows) return null;
+    const { BackupNudge: Real } = jest.requireActual<
+      typeof import("@/components/settings/BackupNudge")
+    >("@/components/settings/BackupNudge");
+    return <Real {...(props as Parameters<typeof Real>[0])} />;
+  },
 }));
 jest.mock("@/components/prediction/WelcomeBackCard", () => ({
   WelcomeBackCard: () => null,
@@ -171,6 +193,176 @@ describe("Today, the order (roadmap D22, D48)", () => {
     const [empty, streak] = order("Nothing open.", "daily-streak");
     expect(empty).toBeGreaterThan(-1);
     expect(streak).toBeGreaterThan(empty);
+  });
+});
+
+// D68 (Today A): the streak and practice rows 8 apart as a pair, then the
+// backup card, as DESIGN_SYSTEM §7.11 says ("under the daily rows"); it sat
+// between them. Everything else keeps its distance. With the real rows.
+describe("Today, the daily rows as a pair (D68)", () => {
+  const realStreakNow = usePredictionStore.getState().streakNow;
+  const auth = useAuthStore.getState();
+  const running = (s: Partial<StreakStatus> = {}): StreakStatus => ({
+    streak: 12,
+    today: 1,
+    todayCounts: true,
+    checkpoint: null,
+    nextCheckpoint: 30,
+    restDays: 1,
+    restUsed: 0,
+    restEarnedToday: false,
+    nextRestAt: 14,
+    ...s,
+  });
+  const streakIs = (status: StreakStatus) =>
+    usePredictionStore.setState({ streakNow: () => status });
+  // Old enough for the backup card (30 days, roadmap D31), due in 3 days.
+  const OLD = 31 * DAY_MS;
+
+  beforeEach(() => {
+    mockRealRows = true;
+    mockStreakLine.mockClear();
+    useAuthStore.setState({ accountsAvailable: true, status: "guest" });
+    useSettingsStore.setState({ streakShown: true, backupNudgeDismissedAt: null });
+    streakIs(running());
+  });
+  afterEach(() => {
+    mockRealRows = false;
+    // The screen is still mounted here (the renderer's cleanup comes after).
+    act(() => {
+      usePredictionStore.setState({ streakNow: realStreakNow });
+      useAuthStore.setState({ accountsAvailable: auth.accountsAvailable, status: auth.status });
+      useSettingsStore.setState({ streakShown: true });
+    });
+  });
+
+  const ROWS: Record<string, string> = {
+    "streak-line-moment": "streak",
+    "practice-card": "practice",
+    "backup-nudge": "nudge",
+  };
+  type Instance = ReturnType<typeof screen.getByTestId>;
+  const margins = (el: Instance) => {
+    const s = StyleSheet.flatten(el.props.style) ?? {};
+    return { top: Number(s.marginTop ?? 0), bottom: Number(s.marginBottom ?? 0) };
+  };
+  /**
+   * The daily block's rows in order, and the space above each and after the
+   * last: the block's own top margin, then each row's margins, which add up
+   * (no collapsing in Yoga).
+   */
+  function daily(containerId: string): { order: string[]; gaps: number[] } {
+    const box = screen.getByTestId(containerId);
+    const rows = box.findAll(
+      (n: Instance) =>
+        typeof n.type === "string" && typeof n.props.testID === "string" && n.props.testID in ROWS,
+    );
+    const gaps: number[] = [];
+    let above = margins(box).top;
+    for (const row of rows) {
+      gaps.push(above + margins(row).top);
+      above = margins(row).bottom;
+    }
+    gaps.push(above + margins(box).bottom);
+    return { order: rows.map((r: Instance) => ROWS[r.props.testID as string]!), gaps };
+  }
+  const PAIR = space.sm;
+  const APART = space.lg;
+
+  it("sets the pair 8 apart and the backup card after it, after the open ones", () => {
+    usePredictionStore.setState({ pending: [open("a", 3, OLD)] });
+    render(<TodayScreen />);
+    expect(daily("home-daily-after-open")).toEqual({
+      order: ["streak", "practice", "nudge"],
+      gaps: [APART, PAIR, APART, APART],
+    });
+    expect([PAIR, APART]).toEqual([8, 16]);
+  });
+
+  it("does the same after what is ready", () => {
+    usePredictionStore.setState({ pending: [open("due", -1, OLD), open("later", 10)] });
+    render(<TodayScreen />);
+    expect(screen.queryByTestId("home-daily-after-open")).toBeNull();
+    expect(daily("home-daily-after-ready")).toEqual({
+      order: ["streak", "practice", "nudge"],
+      gaps: [APART, PAIR, APART, APART],
+    });
+  });
+
+  it("starts with the practice row where the streak row would, with the streak off in You", () => {
+    useSettingsStore.setState({ streakShown: false });
+    usePredictionStore.setState({ pending: [open("a", 3, OLD)] });
+    render(<TodayScreen />);
+    expect(daily("home-daily-after-open")).toEqual({
+      order: ["practice", "nudge"],
+      gaps: [APART, APART, APART],
+    });
+  });
+
+  it("ends the block 16 after the practice row with no backup card", () => {
+    useAuthStore.setState({ status: "authenticated" });
+    usePredictionStore.setState({ pending: [open("a", 3, OLD)] });
+    const first = render(<TodayScreen />);
+    expect(daily("home-daily-after-open")).toEqual({
+      order: ["streak", "practice"],
+      gaps: [APART, PAIR, APART],
+    });
+    first.unmount();
+    // Nor under 30 days, after what is ready.
+    useAuthStore.setState({ status: "guest" });
+    usePredictionStore.setState({ pending: [open("due", -1), open("later", 10)] });
+    render(<TodayScreen />);
+    expect(daily("home-daily-after-ready")).toEqual({
+      order: ["streak", "practice"],
+      gaps: [APART, PAIR, APART],
+    });
+  });
+
+  it("keeps 16 under the streak row when no practice row follows it", () => {
+    // Day 0, before the first prediction: no practice row (nor, really, a
+    // streak; one is forced here to show the pair's 8 needs both rows).
+    render(<TodayScreen />);
+    expect(daily("home-daily-after-open")).toEqual({ order: ["streak"], gaps: [APART, APART] });
+    expect(mockStreakLine.mock.calls.at(-1)?.[0]).toMatchObject({ paired: false });
+  });
+
+  it("shows nothing in the block on Day 0", () => {
+    usePredictionStore.setState({ streakNow: realStreakNow });
+    render(<TodayScreen />);
+    expect(daily("home-daily-after-open").order).toEqual([]);
+  });
+
+  it("keeps the pair for a streak that ended, and on a checkpoint day", () => {
+    usePredictionStore.setState({ pending: [open("a", 3, OLD)] });
+    streakIs(running({ streak: 0, ended: { days: 151, on: "2026-11-12T00:00:00", ago: 1 } }));
+    const first = render(<TodayScreen />);
+    expect(screen.getByTestId("streak-line-headline")).toHaveTextContent(/streak ended/);
+    expect(daily("home-daily-after-open").gaps).toEqual([APART, PAIR, APART, APART]);
+    first.unmount();
+    streakIs(running({ streak: 7, checkpoint: 7, nextCheckpoint: 30 }));
+    render(<TodayScreen />);
+    expect(screen.getByTestId("streak-line-detail")).toHaveTextContent(/^A full week\./);
+    expect(daily("home-daily-after-open")).toEqual({
+      order: ["streak", "practice", "nudge"],
+      gaps: [APART, PAIR, APART, APART],
+    });
+  });
+
+  // Step 194: the checkpoint's spring and confetti, 8 above the practice row.
+  it("draws the streak row above the rows after it, without moving it", () => {
+    usePredictionStore.setState({ pending: [open("a", 3, OLD)] });
+    render(<TodayScreen />);
+    const box = StyleSheet.flatten(screen.getByTestId("home-streak-box").props.style);
+    expect(box.zIndex).toBe(1);
+    // No margin or padding of its own: the box measures the row and its
+    // space below, as the scroll into view (D48) expects.
+    expect(box.marginTop ?? 0).toBe(0);
+    expect(box.marginBottom ?? 0).toBe(0);
+    expect(box.paddingTop ?? box.padding ?? 0).toBe(0);
+    const practice = StyleSheet.flatten(screen.getByTestId("practice-card").props.style);
+    expect(practice.zIndex ?? 0).toBeLessThan(1);
+    const nudge = StyleSheet.flatten(screen.getByTestId("backup-nudge").props.style);
+    expect(nudge.zIndex ?? 0).toBeLessThan(1);
   });
 });
 

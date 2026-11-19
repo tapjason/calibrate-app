@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { colors, DISPLAY_MAX_SCALE, type } from '@/constants/theme';
+import { colors, DISPLAY_MAX_SCALE, space, type } from '@/constants/theme';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { StreakStatus } from '@/types';
 
@@ -179,6 +179,26 @@ describe('StreakLine, clearer (step 193)', () => {
     // And a hollow dot's edge, 2.8:1 there in controlBorder, under the 3:1 floor.
     const pip = StyleSheet.flatten(screen.getByTestId('streak-line-pip-1', HIDDEN).props.style);
     expect(pip.borderColor).toEqual(colors.textTertiary);
+  });
+
+  // D68 (Today A): on Today the practice row follows as the streak row's pair.
+  it('keeps 16 below on its own and 8 as the practice row’s pair, on the row itself', () => {
+    const below = () =>
+      StyleSheet.flatten(screen.getByTestId('streak-line-moment').props.style).marginBottom;
+    const view = render(<StreakLine status={running({})} />);
+    expect(below()).toBe(space.lg);
+    view.rerender(<StreakLine status={running({})} paired />);
+    expect(below()).toBe(space.sm);
+    // The same on a checkpoint day and for a streak that ended.
+    view.rerender(<StreakLine status={running({ streak: 7, today: 1, todayCounts: true, checkpoint: 7, nextCheckpoint: 30 })} paired />);
+    expect(below()).toBe(space.sm);
+    view.rerender(
+      <StreakLine status={running({ streak: 0, ended: { days: 151, on: '2026-11-12T00:00:00', ago: 1 } })} paired />,
+    );
+    expect(below()).toBe(space.sm);
+    // Hidden, it leaves nothing behind, so no gap either.
+    view.rerender(<StreakLine status={running({ streak: 0 })} paired />);
+    expect(screen.queryByTestId('streak-line-moment')).toBeNull();
   });
 
   it('keeps the sentence of a streak that ended, with a quiet outline flame and no goal', () => {

@@ -28,6 +28,12 @@ interface StreakLineProps {
    * doesn't show and then roll back; the moment runs once it turns true.
    */
   moment?: CheckpointMoment | null;
+  /**
+   * Today's practice row follows as its pair (D68): 8 below instead of 16.
+   * The space lives on the row, so with the row hidden (off in You, or no
+   * streak) none is left behind.
+   */
+  paired?: boolean;
 }
 
 /** "149 day streak": the figure held to its words. */
@@ -61,6 +67,7 @@ export function StreakLine({
   testID = 'streak-line',
   onPress,
   moment = null,
+  paired = false,
 }: StreakLineProps) {
   const copy = streakCopy(status);
   // Off in You (step 173): the row, its goal dots and its rest days go, and
@@ -98,7 +105,10 @@ export function StreakLine({
 
   return (
     // The moment's spring scales the whole row; the margin stays outside it.
-    <Animated.View style={[styles.wrap, celebration.whole]} testID={`${testID}-moment`}>
+    <Animated.View
+      style={[paired ? styles.wrapPaired : styles.wrap, celebration.whole]}
+      testID={`${testID}-moment`}
+    >
       <Pressable
         onPress={onPress}
         disabled={!onPress}
@@ -198,6 +208,8 @@ const PIP = 10;
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: space.lg },
+  // With the practice row under it on Today, the two read as a pair (D68).
+  wrapPaired: { marginBottom: space.sm },
   pressed: { opacity: 0.6 },
   row: {
     alignItems: 'center',
