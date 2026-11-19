@@ -16,9 +16,9 @@ import {
 import {
   countRefiles,
   listCategoryOrigins,
-  noteRefile,
   refilePrediction,
   rememberCategoryOrigin,
+  setRefileCounted,
 } from './predictions';
 import { upsertUserStat, getUserStat, upsertCategoryStat } from './stats';
 import { createTestDb } from './testing';
@@ -188,7 +188,7 @@ describe('migrateGuestDataToUser', () => {
       p({ id: 'moved', status: 'resolved_no', resolved_at: '2026-02-02T12:00:00.000Z' }),
     );
     await refilePrediction('moved', 'health');
-    await noteRefile('moved', LOCAL_GUEST_USER_ID, 'work', 'health');
+    await setRefileCounted('moved', LOCAL_GUEST_USER_ID, true, 'work', 'health');
     expect(await countRefiles(LOCAL_GUEST_USER_ID)).toBe(1);
     await migrateGuestDataToUser('real-user');
     expect(await countRefiles('real-user')).toBe(1);

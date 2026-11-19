@@ -13,15 +13,15 @@
 //                 tombstone. Runs first, and pull skips any id still
 //                 tombstoned, so a delete never comes back from the server.
 //                 Another device keeps its copy until it is deleted there.
-//                 One exception both make (round 6, item 6): a row this phone
-//                 deleted that the server holds answered, with an answer
-//                 given after the deletion (on another phone that hadn't
-//                 heard of it), is restored here and its tombstone dropped
-//                 (`reconcileTombstoneWithRemote`, src/db), never deleted on
-//                 the server. The server delete is conditional (open, or
-//                 answered no later than the deletion), so this holds in a
-//                 sweep and in sign-out's push, which pulls nothing, with no
-//                 gap between a check and the delete.
+//                 One exception both make (round 6, item 6; round 7): a row
+//                 the server holds answered differently from what this phone
+//                 deleted (answered on another phone that hadn't heard of
+//                 the delete, before it or after) is restored here and its
+//                 tombstone dropped (`reconcileTombstoneWithRemote`, src/db),
+//                 never deleted on the server. The server delete is
+//                 conditional (`deletionMatch`: the row as this phone deleted
+//                 it), so this holds in a sweep and in sign-out's push, which
+//                 pulls nothing, with no gap between a check and the delete.
 //
 //   backfillOffsets — once per account with `UTC_OFFSET_SYNC` on (review
 //                 round 6, 2026-11-19): fill the UTC offsets the server never
@@ -88,6 +88,7 @@ import { useStatsStore } from '@/store/statsStore';
 import {
   isUtcOffsetMinutes,
   type OffsetBackfillRow,
+  type PendingTombstone,
   type PredictionWireRow,
 } from '@/types';
 
@@ -374,8 +375,9 @@ export async function pullRemote(
     // Deleted here (roadmap D25): don't resurrect it, whether or not the
     // server has the deletion yet. The cursor still moves past it;
     // pushDeletions removes the server copy. Unless the server's copy was
-    // answered after this phone deleted it (round 6, item 6): then the answer
-    // stands, the tombstone goes and the row is written here.
+    // answered differently from what this phone deleted (round 6, item 6;
+    // round 7): then the answer stands, the tombstone goes and the row is
+    // written here.
     if (await isDeletedHere(remote.id)) {
       if (stoppedUsers.has(userId)) return written;
       const reconciled = await reconcileTombstoneWithRemote(remote);
@@ -509,17 +511,20 @@ export async function pushDirty(
 
 /**
  * Delete on the server every prediction this device deleted (roadmap D25),
- * then mark each tombstone pushed (kept, so it is still counted, D45). Per row, so one failure leaves only that
- * tombstone for the next sweep. Returns how many reached the server. Each
+ * then mark each tombstone pushed (kept, so it is still counted, D45). Per
+ * row, so one failure leaves only that tombstone for the next sweep. Returns how many reached the server. Each
  * delete first checks the session is still `userId`'s, as pushDirty does.
  *
- * The delete is conditional (round 6, item 6): it removes the server's row
- * only while it is open, or answered no later than this phone's deletion
- * (`openOrAnsweredBy`), the rule `reconcileTombstoneWithRemote` follows, in
- * the same statement, so no answer given elsewhere can land between a check
- * and the delete. When it removes nothing, the row is read: none on the
- * server, and the deletion is done; one answered after the deletion goes to
- * `reconcileTombstoneWithRemote`, which restores it here and drops the
+ * The delete is conditional (round 6, item 6; round 7): it removes the
+ * server's row only as this phone deleted it (`deletionMatch`: open, or the
+ * same answer with the same `resolved_at`), in the same statement, so no
+ * answer given elsewhere, before this phone's delete or after, is removed,
+ * and none can land between a check and the delete. Round 6 removed any row
+ * answered no later than the deletion, which took an answer given on another
+ * phone days before from a phone that still held the prediction open. When
+ * it removes nothing, the row is read: none on the server, and the deletion
+ * is done; one there goes to `reconcileTombstoneWithRemote`, which restores a
+ * row answered differently from what was deleted here and drops the
  * tombstone. A tombstone whose time can't be read is never sent.
  */
 export async function pushDeletions(
@@ -530,20 +535,64 @@ export async function pushDeletions(
   return (await pushDeletionsCounted(userId, client, stillCurrent)).deleted;
 }
 
-/** An instant as the phone writes one (`nowIso`): no character PostgREST reserves but `:` and `.`. */
+/** An instant as the phone writes one (`nowIso`). */
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/;
 
+/** Whether a tombstone's `deleted_at` reads as an instant: one that doesn't is never sent. */
+function isDeletionTime(deletedAt: unknown): deletedAt is string {
+  return typeof deletedAt === 'string' && ISO_INSTANT.test(deletedAt) && !Number.isNaN(Date.parse(deletedAt));
+}
+
+/** The statuses of an answered row: Yes, No and Can't tell. */
+const ANSWERED_STATUSES: ReadonlySet<string> = new Set(['resolved_yes', 'resolved_no', 'skipped']);
+
 /**
- * The PostgREST `or` filter for a delete that may go: the row is open, or was
- * answered no later than `deletedAt`. The time is double-quoted, as PostgREST
- * asks for a value holding `:` or `.` inside a logical filter
- * (`@supabase/postgrest-js` passes `or()` through as written). Null when
- * `deletedAt` isn't such an instant: nothing is sent then.
+ * Which server row a deletion may remove (review round 7): the row as this
+ * phone deleted it, never one an answer given elsewhere has changed. The
+ * server-side half of `tombstoneCovers` (src/db), the rule the read-back's
+ * `reconcileTombstoneWithRemote` keeps a tombstone by, so a row this filter
+ * leaves on the server is one the reconcile restores (the server compares
+ * times to the microsecond, `tombstoneCovers` to the millisecond; every
+ * stored time was written by a phone in milliseconds or copied from the
+ * server as it was). Takes the tombstone's snapshot (`PendingTombstone`) and
+ * reads it defensively: a value that isn't one it knows counts as no
+ * snapshot.
+ *
+ *   'open': this phone deleted it open (`deleted_status` 'pending'), or the
+ *     tombstone has no snapshot it can read (one written before the snapshot
+ *     was kept, a status it doesn't know, an answer with no readable time),
+ *     which counts as deleted open: only a row still open on the server
+ *     goes (`status = pending`). An answer the server holds stays, whenever
+ *     it was given.
+ *   'answered': this phone deleted it answered (Yes, No or Can't tell): only
+ *     a row with the same status and the same `resolved_at`, or one still
+ *     open on the server (this phone's answer never reached it: an open row
+ *     holds no answer, and the server never puts an answer back to open,
+ *     migration 011), so the deletion can't wait on that row forever. `filter`
+ *     is the PostgREST `or` for that: the time double-quoted, as PostgREST
+ *     asks for a value holding `:` or `.` inside a logical filter
+ *     (`@supabase/postgrest-js` 2.106 passes `or()` through as written), and
+ *     compared by the server as an instant (an untyped literal takes the
+ *     column's type, timestamptz). The time goes as stored, never re-written
+ *     through `Date` (a pulled time's microseconds would go, and nothing would
+ *     match), and only in the shape `isFilterInstant` accepts, which has no
+ *     character that could leave the quotes.
  */
-export function openOrAnsweredBy(deletedAt: string): string | null {
-  if (typeof deletedAt !== 'string' || !ISO_INSTANT.test(deletedAt)) return null;
-  if (Number.isNaN(Date.parse(deletedAt))) return null;
-  return `status.eq.pending,resolved_at.lte."${deletedAt}"`;
+export type DeletionMatch = { kind: 'open' } | { kind: 'answered'; filter: string };
+
+export function deletionMatch(tombstone: {
+  deleted_status?: string | null;
+  deleted_resolved_at?: string | null;
+}): DeletionMatch {
+  const status = tombstone.deleted_status;
+  const resolvedAt = tombstone.deleted_resolved_at;
+  if (typeof status !== 'string' || !ANSWERED_STATUSES.has(status) || !isFilterInstant(resolvedAt)) {
+    return { kind: 'open' };
+  }
+  return {
+    kind: 'answered',
+    filter: `status.eq.pending,and(status.eq.${status},resolved_at.eq."${resolvedAt}")`,
+  };
 }
 
 /** `pushDeletions`, also saying how many rows it restored here (for the recompute). */
@@ -553,25 +602,23 @@ async function pushDeletionsCounted(
   stillCurrent: () => Promise<boolean>,
 ): Promise<{ deleted: number; restored: number }> {
   // Settled, as pushDirty's read is: a delete that rolls back is never sent.
-  const tombstones = await listPendingTombstonesSettled(userId);
+  const tombstones: PendingTombstone[] = await listPendingTombstonesSettled(userId);
   let deleted = 0;
   let restored = 0;
-  for (const { id, deleted_at: deletedAt } of tombstones) {
-    const allowed = openOrAnsweredBy(deletedAt);
-    if (!allowed) {
+  for (const tombstone of tombstones) {
+    const { id, deleted_at: deletedAt } = tombstone;
+    if (!isDeletionTime(deletedAt)) {
       // eslint-disable-next-line no-console
       console.warn(`[sync] a deletion with no readable time stays on this phone: ${id}`);
       continue;
     }
     if (!(await stillCurrent())) break;
     try {
-      const { data, error } = await client
-        .from('predictions')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId)
-        .or(allowed)
-        .select('id');
+      const match = deletionMatch(tombstone);
+      const request = client.from('predictions').delete().eq('id', id).eq('user_id', userId);
+      const { data, error } = await (
+        match.kind === 'open' ? request.eq('status', 'pending') : request.or(match.filter)
+      ).select('id');
       if (error) throw error;
       if (Array.isArray(data) && data.some((row: { id?: unknown } | null) => row?.id === id)) {
         await markDeletionPushed(id);
@@ -580,8 +627,8 @@ async function pushDeletionsCounted(
       }
 
       // Nothing removed: the server holds no such row, or holds it answered
-      // after this deletion. Read it, under this account's session only (under
-      // another's it would read as missing).
+      // differently from what this phone deleted. Read it, under this
+      // account's session only (under another's it would read as missing).
       if (!(await stillCurrent())) break;
       const { data: rows, error: readError } = await client
         .from('predictions')
@@ -604,8 +651,9 @@ async function pushDeletionsCounted(
       if (reconciled === 'restored') {
         restored += 1;
       } else if (reconciled === 'kept') {
-        // The server kept a row the deletion should have removed (an answer
-        // with no time, say): the tombstone stays for the next sweep.
+        // The server kept a row this deletion covers (`tombstoneCovers`), which
+        // the delete should have removed: the tombstone stays for the next
+        // sweep, and nothing is restored.
         // eslint-disable-next-line no-console
         console.warn(`[sync] the server kept ${id}; its deletion stays on this phone`);
       }

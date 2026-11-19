@@ -11,8 +11,10 @@ import {
   type Category,
   type CategoryOrigin,
   type OffsetBackfillRow,
+  type PendingTombstone,
   type Prediction,
   type PredictionDeletion,
+  type PredictionStatus,
   type PredictionWireRow,
   type InsertPrediction,
   type GetPrediction,
@@ -159,6 +161,18 @@ function nowIso(): string {
 /** A usable offset (a whole number of minutes, −840…840), else null. */
 function offsetOrNull(value: unknown): number | null {
   return isUtcOffsetMinutes(value) ? value : null;
+}
+
+const STATUSES: readonly PredictionStatus[] = ['pending', 'resolved_yes', 'resolved_no', 'skipped'];
+
+/** A prediction status, else null (a tombstone's copy, review round 7). */
+function statusOrNull(value: unknown): PredictionStatus | null {
+  return STATUSES.find((s) => s === value) ?? null;
+}
+
+/** Yes, No or Can't tell: the statuses that carry an answer. */
+function isAnswer(status: unknown): boolean {
+  return status === 'resolved_yes' || status === 'resolved_no' || status === 'skipped';
 }
 
 /**
@@ -369,7 +383,7 @@ export const updatePrediction: UpdatePrediction = async (id, edit, opts) => {
  * Only an edit that landed is recorded: the statement requires this user's
  * prediction to be still open, as the update just required. One answered
  * from another phone between the store's check and its transaction (the
- * update then changed nothing) leaves the count alone, as `noteRefile` does.
+ * update then changed nothing) leaves the count alone, as `setRefileCounted` does.
  */
 export async function recordPostponement(
   predictionId: string,
@@ -400,67 +414,83 @@ export async function countPostponements(userId: string): Promise<number> {
 }
 
 /**
- * Note that a scored answer moved to another category (step 184, D65). One
- * row per prediction, holding where it was when first moved: a later move
- * elsewhere keeps that origin, and a move back to it removes the row, so the
- * count is of answers now filed somewhere other than where they were
- * answered. Device-local, never synced. No transaction of its own: the store
- * calls it beside the update, after `refilePrediction`.
+ * A scored answer's place on the moved-answers line (step 184, D65; review
+ * rounds 6 and 7), set to match `counted`: one row per prediction while it
+ * is counted, none while it isn't. Whether it is counted is the engine's
+ * (`answerCountedAsMoved`), worked out by the store afresh from where the
+ * answer is now, at the answer and after every move of it, so the count
+ * follows where an answer ends up and never the path it took (round 7: it
+ * was kept by adding and updating the row move by move, and passing through
+ * the remembered category on the way back left one counted). The row holds
+ * `answeredIn`, the category it was answered in, as `from_category` (read
+ * back by `getRefileFrom`), and where it is now as `to_category`.
+ * Device-local, never synced. No transaction of its own: the store calls it
+ * beside the move or the answer, after the write.
  *
- * Only a move that landed is noted: every statement here requires this
- * user's prediction to be an answer now filed under `toCategory`, which is
- * what the move just wrote. A prediction deleted between the store's check
- * and its transaction (the delete counted it once already) or no longer a
- * Yes or No leaves the count alone (code review, 2026-11-18).
+ * Only a write that landed changes anything: each statement requires this
+ * user's prediction to be a Yes or No filed under `toCategory`, which is
+ * what the move or the answer just wrote. A prediction deleted between the
+ * store's check and its transaction (the delete counted it once already) or
+ * no longer a Yes or No leaves the count alone (code review, 2026-11-18).
+ * The condition is in each statement, not read beforehand, so nothing can
+ * change the prediction between the check and the write.
  */
-export async function noteRefile(
+export async function setRefileCounted(
   predictionId: string,
   userId: string,
-  fromCategory: string,
-  toCategory: string,
+  counted: boolean,
+  answeredIn: Category,
+  toCategory: Category,
 ): Promise<void> {
-  const db = getDb();
-  // The condition is in each statement, not read beforehand, so nothing can
-  // change the prediction between the check and the write.
   const landed = `EXISTS (SELECT 1 FROM predictions
        WHERE id = ? AND user_id = ? AND category = ?
          AND status IN ('resolved_yes', 'resolved_no'))`;
   const landedParams = [predictionId, userId, toCategory];
-  const row = await db.get<{ from_category: string }>(
-    `SELECT from_category FROM prediction_refiles WHERE prediction_id = ?`,
-    [predictionId],
-  );
-  if (!row) {
-    if (fromCategory === toCategory) return;
-    await db.run(
-      `INSERT INTO prediction_refiles (prediction_id, user_id, moved_at, from_category, to_category)
-         SELECT ?, ?, ?, ?, ?
-         WHERE ${landed}`,
-      [predictionId, userId, nowIso(), fromCategory, toCategory, ...landedParams],
+  if (!counted) {
+    await getDb().run(
+      `DELETE FROM prediction_refiles WHERE prediction_id = ? AND user_id = ? AND ${landed}`,
+      [predictionId, userId, ...landedParams],
     );
     return;
   }
-  if (row.from_category === toCategory) {
-    await db.run(
-      `DELETE FROM prediction_refiles WHERE prediction_id = ? AND ${landed}`,
-      [predictionId, ...landedParams],
-    );
-    return;
-  }
-  await db.run(
-    `UPDATE prediction_refiles SET to_category = ?, moved_at = ?
-       WHERE prediction_id = ? AND ${landed}`,
-    [toCategory, nowIso(), predictionId, ...landedParams],
+  await getDb().run(
+    `INSERT INTO prediction_refiles (prediction_id, user_id, moved_at, from_category, to_category)
+       SELECT ?, ?, ?, ?, ?
+       WHERE ${landed}
+     ON CONFLICT(prediction_id) DO UPDATE SET
+       moved_at = excluded.moved_at,
+       from_category = excluded.from_category,
+       to_category = excluded.to_category
+       WHERE prediction_refiles.user_id = excluded.user_id`,
+    [predictionId, userId, nowIso(), answeredIn, toCategory, ...landedParams],
   );
 }
 
 /**
+ * Where a counted moved answer was answered (its row's `from_category`,
+ * `setRefileCounted`), or null while it isn't counted. For
+ * `answeredCategory`, with nothing remembered for it.
+ */
+export async function getRefileFrom(
+  predictionId: string,
+  userId: string,
+): Promise<Category | null> {
+  const row = await getDb().get<{ from_category: Category }>(
+    `SELECT from_category FROM prediction_refiles WHERE prediction_id = ? AND user_id = ?`,
+    [predictionId, userId],
+  );
+  return row?.from_category ?? null;
+}
+
+/**
  * How many scored answers on this phone sit in another category than the
- * one they belong to: moved after they were answered (step 184, D65), or
- * moved before, after the day they were made, and answered elsewhere than
- * the category they had at that first move (round 6,
- * `noteAnswerAwayFromOrigin`). Each prediction once; one moved back comes
- * off the count, and one deleted is counted as a deletion instead.
+ * one they belong to, the one they had at the end of the day they were
+ * logged (step 184, D65; review rounds 6 and 7, `setRefileCounted`): moved
+ * after they were answered, or moved while open, after that day, and
+ * answered elsewhere. Each prediction once; one back where it belongs comes
+ * off the count, one whose change was counted as a late change isn't counted
+ * again unless moved on to a third category, and one deleted is counted as a
+ * deletion instead.
  */
 export async function countRefiles(userId: string): Promise<number> {
   const row = await getDb().get<{ n: number }>(
@@ -551,80 +581,113 @@ export async function listCategoryOrigins(userId: string): Promise<CategoryOrigi
 }
 
 /**
- * Count an answer given in another category than the one remembered for it
- * (round 6): a row in `prediction_refiles` from the remembered category to
- * the one it was answered in, so the moved-answers line (D65) covers moves
- * before the answer as well as after, and a move back there after the answer
- * takes it off the count (`noteRefile`). The engine decides whether it
- * counts (`answeredAwayFromOrigin`: a scored Yes or No, not counted late);
- * this keeps the first note if one exists. No transaction of its own: the
- * store calls it beside the answer, after the write.
+ * Write where a prediction with a remembered category was answered (review
+ * round 7, SQLite migration 022), on that row, for `answeredCategory`: it
+ * has to outlast a move of the answer back to the remembered category, which
+ * takes the moved-answers row away. Written once, the first value kept: the
+ * store calls it beside the answer, and at a move of the answer when nothing
+ * was written then (an answer from another phone, or one from before 022).
+ * Nothing for a prediction with no remembered category: its moved-answers
+ * row holds where it was answered while it is counted, and while it isn't it
+ * is still there. No transaction of its own.
  *
- * Only the answer that just landed is counted: the statement requires this
- * user's prediction to be a Yes or No answered at `answeredAt`, filed under
- * `toCategory`, and the remembered category to be `fromCategory`, so an
- * answer from another phone, or a resolve that changed nothing, notes
- * nothing.
+ * Only a write that landed is recorded: the statement requires this user's
+ * prediction to be a Yes or No filed under `category`, and with `answeredAt`
+ * answered then, so a resolve that changed nothing (a row answered from
+ * another phone first) writes nothing.
  */
-export async function noteAnswerAwayFromOrigin(
+export async function recordAnsweredCategory(
   predictionId: string,
   userId: string,
-  fromCategory: Category,
-  toCategory: Category,
-  answeredAt: string,
+  category: Category,
+  answeredAt?: string,
 ): Promise<void> {
-  if (fromCategory === toCategory) return;
   await getDb().run(
-    `INSERT OR IGNORE INTO prediction_refiles
-       (prediction_id, user_id, moved_at, from_category, to_category)
-       SELECT ?, ?, ?, ?, ?
-       WHERE EXISTS (SELECT 1 FROM predictions
-                       WHERE id = ? AND user_id = ? AND category = ? AND resolved_at = ?
-                         AND status IN ('resolved_yes', 'resolved_no'))
-         AND EXISTS (SELECT 1 FROM prediction_category_origins
-                       WHERE prediction_id = ? AND user_id = ? AND from_category = ?
-                         AND counted_late = 0)`,
+    `UPDATE prediction_category_origins SET answered_category = ?
+       WHERE prediction_id = ? AND user_id = ? AND answered_category IS NULL
+         AND EXISTS (SELECT 1 FROM predictions
+                       WHERE id = ? AND user_id = ? AND category = ?
+                         AND status IN ('resolved_yes', 'resolved_no')
+                         AND (? IS NULL OR resolved_at = ?))`,
     [
+      category,
       predictionId,
       userId,
-      answeredAt,
-      fromCategory,
-      toCategory,
       predictionId,
       userId,
-      toCategory,
-      answeredAt,
-      predictionId,
-      userId,
-      fromCategory,
+      category,
+      answeredAt ?? null,
+      answeredAt ?? null,
     ],
   );
 }
 
 /**
+ * Where this phone wrote that `predictionId` was answered
+ * (`recordAnsweredCategory`), or null: nothing remembered for it, or nothing
+ * written yet.
+ */
+export async function getAnsweredCategory(
+  predictionId: string,
+  userId: string,
+): Promise<Category | null> {
+  const row = await getDb().get<{ answered_category: Category | null }>(
+    `SELECT answered_category FROM prediction_category_origins
+       WHERE prediction_id = ? AND user_id = ?`,
+    [predictionId, userId],
+  );
+  return row?.answered_category ?? null;
+}
+
+/**
  * Delete a prediction and leave a tombstone (roadmap D25), so sync can delete
  * it on the server and pull won't bring it back. The tombstone stays after
- * the push, with whether Insights counts it (D45). Two statements and no
+ * the push, with whether Insights counts it (D45). Several statements and no
  * transaction of its own: the caller (predictionStore.remove) wraps it with
  * the stats recompute, and SQLite doesn't nest transactions.
+ *
+ * **The tombstone remembers what it deleted** (review round 7, SQLite
+ * migration 021): the status and `resolved_at` of the prediction as this
+ * phone held it when it decided to delete: `opts.seen` when the caller states
+ * it (the store passes the copy it checked), else the row as read here, first.
+ * Sync's delete then removes only that from the server (an open row, or the
+ * same answer: `tombstoneCovers`), and an answer given on another phone that
+ * this one never saw is restored here instead (`reconcileTombstoneWithRemote`).
+ *
+ * Read before anything is written, so a change landing in between (a pull's
+ * writes don't queue behind a transaction) can only make the copy recorded
+ * differ from what was deleted, and a differing copy only ever restores,
+ * never removes, an answer. A `seen.status` that isn't a status is recorded
+ * as none, read as "deleted open". Tombstone first, then the row: a pull in
+ * between finds the tombstone and leaves the row to the reconcile.
  */
 export const deletePrediction: DeletePrediction = async (id, opts) => {
   const db = getDb();
-  const row = await db.get<{ user_id: string }>(
-    `SELECT user_id FROM predictions WHERE id = ?`,
-    [id],
-  );
+  const row = await db.get<{
+    user_id: string;
+    status: string;
+    resolved_at: string | null;
+  }>(`SELECT user_id, status, resolved_at FROM predictions WHERE id = ?`, [id]);
   if (!row) return;
+  const seen = opts?.seen ?? row;
+  await db.run(
+    `INSERT OR REPLACE INTO prediction_deletions
+       (id, user_id, deleted_at, pushed_at, counted, deleted_status, deleted_resolved_at)
+       VALUES (?, ?, ?, NULL, ?, ?, ?)`,
+    [
+      id,
+      row.user_id,
+      nowIso(),
+      opts?.counted ? 1 : 0,
+      statusOrNull(seen.status),
+      typeof seen.resolved_at === 'string' ? seen.resolved_at : null,
+    ],
+  );
   await db.run(`DELETE FROM predictions WHERE id = ?`, [id]);
   // A moved answer that is then deleted is counted once, as a deletion.
   await db.run(`DELETE FROM prediction_refiles WHERE prediction_id = ?`, [id]);
   // Its remembered category (round 6) has nothing left to be compared with.
   await db.run(`DELETE FROM prediction_category_origins WHERE prediction_id = ?`, [id]);
-  await db.run(
-    `INSERT OR REPLACE INTO prediction_deletions (id, user_id, deleted_at, pushed_at, counted)
-       VALUES (?, ?, ?, NULL, ?)`,
-    [id, row.user_id, nowIso(), opts?.counted ? 1 : 0],
-  );
 };
 
 /**
@@ -821,24 +884,68 @@ export async function listPendingDeletionsSettled(userId: string): Promise<strin
 }
 
 /**
- * The deletions not yet pushed for `userId` with when each was made, oldest
- * first, read as `listPendingDeletionsSettled` reads (review round 6). For a
- * push that must not delete an answer given elsewhere after this phone's
- * delete (`reconcileTombstoneWithRemote`'s rule): the server delete can be
- * limited to a row that is open, or answered no later than `deleted_at`.
- * Never call it inside a `withTransaction` callback.
+ * The deletions not yet pushed for `userId`, oldest first, each with when it
+ * was made and what it deleted (`PendingTombstone`: the status and
+ * `resolved_at` of this phone's copy, review round 7), read as
+ * `listPendingDeletionsSettled` reads. For the deletion push, which must
+ * remove from the server only what this phone deleted (`tombstoneCovers`):
+ * a row that is open, or, when `deleted_status` is an answer (Yes, No or
+ * Can't tell), one with that status and the same `resolved_at` instant.
+ * `deleted_status` is null for a tombstone from before SQLite migration 021
+ * (or one holding a value that isn't a status): "deleted open", an open row
+ * only. Never call it inside a `withTransaction` callback.
  */
-export async function listPendingTombstonesSettled(
-  userId: string,
-): Promise<{ id: string; deleted_at: string }[]> {
-  return await afterQueuedTransactions(() =>
-    getDb().all<{ id: string; deleted_at: string }>(
-      `SELECT id, deleted_at FROM prediction_deletions
+export async function listPendingTombstonesSettled(userId: string): Promise<PendingTombstone[]> {
+  const rows = await afterQueuedTransactions(() =>
+    getDb().all<{
+      id: string;
+      deleted_at: string;
+      deleted_status: string | null;
+      deleted_resolved_at: string | null;
+    }>(
+      `SELECT id, deleted_at, deleted_status, deleted_resolved_at FROM prediction_deletions
          WHERE user_id = ? AND pushed_at IS NULL
          ORDER BY deleted_at ASC`,
       [userId],
     ),
   );
+  return rows.map((r) => ({
+    id: r.id,
+    deleted_at: r.deleted_at,
+    deleted_status: statusOrNull(r.deleted_status),
+    deleted_resolved_at: typeof r.deleted_resolved_at === 'string' ? r.deleted_resolved_at : null,
+  }));
+}
+
+/**
+ * Whether this phone's deletion covers the server's copy of the prediction
+ * as it now is (review round 7): the copy is open, or it is the very answer
+ * this phone deleted. The one rule behind both halves of a deletion's sync:
+ * the push may remove a server row only when this is true (the services
+ * builder turns it into the delete's filter), and the pull keeps the
+ * tombstone only when this is true (`reconcileTombstoneWithRemote`).
+ *
+ *   - An open copy (`pending`) is always covered: it carries no answer, so
+ *     deleting it removes none, whatever this phone's copy was.
+ *   - A Yes, No or Can't tell is covered only when this phone deleted an
+ *     answer (`deleted_status` Yes, No or Can't tell) with the same status
+ *     and the same `resolved_at` instant (read as `isoMs` reads it, so
+ *     `Z` / `+00:00` and microseconds don't matter).
+ *   - Anything else is an answer this deletion never saw: a tombstone that
+ *     deleted an open copy (or has no copy recorded, from before migration
+ *     021), another status, another answer time, or a time that can't be
+ *     read on either side. Never covered, whatever the times: the answer
+ *     outranks the deletion.
+ */
+export function tombstoneCovers(
+  tomb: Pick<PendingTombstone, 'deleted_status' | 'deleted_resolved_at'>,
+  remote: Pick<PredictionWireRow, 'status' | 'resolved_at'>,
+): boolean {
+  if (remote.status === 'pending') return true;
+  if (!isAnswer(tomb.deleted_status) || remote.status !== tomb.deleted_status) return false;
+  const deleted = isoMs(tomb.deleted_resolved_at);
+  const now = isoMs(remote.resolved_at);
+  return !Number.isNaN(deleted) && !Number.isNaN(now) && deleted === now;
 }
 
 /**
@@ -1022,19 +1129,27 @@ function isoMs(iso: string | null | undefined): number {
 }
 
 /**
- * For the pull, a row this phone may have deleted (review round 6, server
- * review). A phone that hadn't pulled could delete its open copy of a
- * prediction another phone had since answered, and the deletion, pushed,
- * took the answer off the server for every phone. Now: when the pulled row
- * is **answered** (Yes, No or Can't tell) with a `resolved_at` later than
- * this phone's deletion time, the answer was given without knowing of the
- * delete and outranks it. The tombstone is dropped, pushed or not (so it is
- * neither pushed nor counted, D45), and the pulled row is written here as a
- * pull writes any row (`upsertPredictionFromRemote`, `dirty = 0`), in one
- * transaction with the drop. An open pulled row, or an answer given before
- * the delete (this phone deleted it knowing of it, or at least after it),
- * leaves the tombstone standing ('kept'), as does a tombstone under another
- * account or a time that can't be read (the deletion stays counted).
+ * For the pull (and the deletion push's read-back), a row this phone may have
+ * deleted (review rounds 6 and 7). A phone that hadn't pulled could delete
+ * its open copy of a prediction another phone had answered, and the
+ * deletion, pushed, took the answer off the server for every phone, whether
+ * the answer came before the delete or after (round 6 only caught after).
+ *
+ * Now the tombstone remembers what this phone deleted (SQLite migration 021),
+ * and the rule is `tombstoneCovers`: when the pulled row is an answer (Yes,
+ * No or Can't tell) other than the one this phone deleted (it deleted an open
+ * copy, or has no copy recorded, from before 021; or the status or the
+ * `resolved_at` instant differ), the answer was given without this deletion
+ * seeing it and outranks it, **whatever the times**. The tombstone is dropped,
+ * pushed or not (so it is neither pushed nor counted, D45), and the pulled
+ * row is written here as a pull writes any row (`upsertPredictionFromRemote`,
+ * `dirty = 0`), in one transaction with the drop ('restored').
+ *
+ * The tombstone stands ('kept') for an open pulled row (it carries no answer:
+ * the deletion outranks it, whatever this phone's copy was), for the very
+ * answer this phone deleted (a deliberate delete of an answer it saw), for a
+ * tombstone under another account, and for a pulled row whose status isn't
+ * one at all (nothing to restore).
  *
  * Its own transaction: never call it inside a `withTransaction` callback,
  * which would wait on itself.
@@ -1044,20 +1159,22 @@ export async function reconcileTombstoneWithRemote(
 ): Promise<TombstoneReconcile> {
   return await withTransaction(async () => {
     const db = getDb();
-    const tomb = await db.get<{ user_id: string; deleted_at: string }>(
-      `SELECT user_id, deleted_at FROM prediction_deletions WHERE id = ?`,
+    const tomb = await db.get<{
+      user_id: string;
+      deleted_status: string | null;
+      deleted_resolved_at: string | null;
+    }>(
+      `SELECT user_id, deleted_status, deleted_resolved_at FROM prediction_deletions WHERE id = ?`,
       [row.id],
     );
     if (!tomb) return 'none';
     if (tomb.user_id !== row.user_id) return 'kept';
-    const answered =
-      row.status === 'resolved_yes' || row.status === 'resolved_no' || row.status === 'skipped';
-    if (!answered) return 'kept';
-    const resolvedMs = isoMs(row.resolved_at);
-    const deletedMs = isoMs(tomb.deleted_at);
-    if (Number.isNaN(resolvedMs) || Number.isNaN(deletedMs) || resolvedMs <= deletedMs) {
-      return 'kept';
-    }
+    if (!isAnswer(row.status)) return 'kept';
+    const copy = {
+      deleted_status: statusOrNull(tomb.deleted_status),
+      deleted_resolved_at: tomb.deleted_resolved_at,
+    };
+    if (tombstoneCovers(copy, row)) return 'kept';
     await db.run(`DELETE FROM prediction_deletions WHERE id = ? AND user_id = ?`, [
       row.id,
       row.user_id,

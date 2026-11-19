@@ -457,7 +457,9 @@ describe('CalibrationView same-day answers', () => {
   });
 });
 
-// Roadmap D45: deletions after an answer or the due day, said beside the rating.
+// Roadmap D45: counted deletions, said beside the rating. Since review round 7
+// an open one is counted on any day after the day it was logged, not only
+// within a day of its due day, so the line names each case the store counts.
 describe('CalibrationView deleted predictions', () => {
   const view = (deletedCount: number, total: number) =>
     fine(render(
@@ -472,7 +474,7 @@ describe('CalibrationView deleted predictions', () => {
 
   it('says how many, and that only this phone keeps the count, before the rating unlocks too', () => {
     expect(view(2, 161).getByTestId('stats-deleted')).toHaveTextContent(
-      '2 predictions were deleted after they were answered, or within a day of their due day. Only this phone keeps this count.',
+      '2 predictions were deleted after they were answered, after the day they were logged, or once they were due. Only this phone keeps this count.',
     );
     expect(view(1, 4).getByTestId('stats-deleted')).toBeTruthy();
     expect(view(0, 161).queryByTestId('stats-deleted')).toBeNull();
@@ -480,8 +482,18 @@ describe('CalibrationView deleted predictions', () => {
 
   it('words one', () => {
     expect(deletedLine(1)).toBe(
-      '1 prediction was deleted after it was answered, or within a day of its due day. Only this phone keeps this count.',
+      '1 prediction was deleted after it was answered, after the day it was logged, or once it was due. Only this phone keeps this count.',
     );
+  });
+
+  // The old rule's words are gone: a call deleted days before its due day is
+  // counted too (round 7), so "within a day of its due day" was untrue of it.
+  it('no longer limits the count to the days around the due day', () => {
+    for (const n of [1, 3]) {
+      expect(deletedLine(n)).not.toMatch(/within a day of/);
+      expect(deletedLine(n)).toMatch(/Only this phone keeps this count\.$/);
+    }
+    expect(deletedLine(3)).toMatch(/^3 predictions were deleted /);
   });
 });
 

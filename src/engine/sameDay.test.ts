@@ -7,6 +7,7 @@ import {
   dayNumberAt,
   dayNumberWhereMade,
   earliestDueDay,
+  isOnLoggedDay,
   isOnMadeDay,
   isSameDayAnswer,
   latestDueDay,
@@ -491,6 +492,34 @@ describe('same-day answers judged in the zone the prediction was made in', () =>
     expect(isOnMadeDay(p, new Date('2026-11-19T05:00:00.000Z'))).toBe(false);
     expect(isOnMadeDay(p, new Date('nope'))).toBe(false);
     expect(isOnMadeDay({ ...p, created_at: 'nope' }, new Date('2026-11-19T04:00:00.000Z'))).toBe(false);
+  });
+
+  // Review round 7 (owner decision 2026-11-19): the day it was logged, which
+  // new words don't move, for the delete and category-move exemptions.
+  it('reads the day it was logged with isOnLoggedDay, in the logging offset, never the rewording', () => {
+    // Logged Wed Nov 18 at 20:00 in New York; reworded Thu Nov 19 at 13:10 in
+    // Tokyo (04:10 UTC, 23:10 Wednesday in New York).
+    const p = prediction({
+      created_at: '2026-11-19T01:00:00.000Z',
+      created_utc_offset_min: NEW_YORK,
+      title_edited_at: '2026-11-19T04:10:00.000Z',
+      title_edited_utc_offset_min: 540,
+    });
+    __setTimeZoneForTests('Asia/Tokyo');
+    // 23:59 Wednesday in New York: still the day it was logged.
+    expect(isOnLoggedDay(p, new Date('2026-11-19T04:59:00.000Z'))).toBe(true);
+    // 00:00 Thursday in New York: the next day, though it is the day of the
+    // rewording where it was reworded (isOnMadeDay reads that one).
+    expect(isOnLoggedDay(p, new Date('2026-11-19T05:00:00.000Z'))).toBe(false);
+    expect(isOnMadeDay(p, new Date('2026-11-19T05:00:00.000Z'))).toBe(true);
+    // Unreadable on either side: not that day.
+    expect(isOnLoggedDay(p, new Date('nope'))).toBe(false);
+    expect(isOnLoggedDay({ ...p, created_at: 'nope' }, new Date('2026-11-19T04:00:00.000Z'))).toBe(false);
+    // No stored offset: both read in the phone's zone (Tokyo here, where the
+    // logging was Thu 10:00).
+    const legacy = prediction({ created_at: '2026-11-19T01:00:00.000Z' });
+    expect(isOnLoggedDay(legacy, new Date('2026-11-19T14:59:00.000Z'))).toBe(true);
+    expect(isOnLoggedDay(legacy, new Date('2026-11-19T15:00:00.000Z'))).toBe(false);
   });
 
   it('counts what is ready and scored now by the day it was made, where it was made', () => {

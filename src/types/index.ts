@@ -323,20 +323,28 @@ export interface PredictionDeletion {
   pushed_at: string | null;
   /**
    * Whether Insights counts it (D45): a scored Yes or No, or an open one
-   * deleted on or after its due day. Decided at delete time by the engine.
+   * deleted on any day after the day it was logged, or already due (owner
+   * decision 2026-11-19, `deletionCounts`). Decided at delete time by the
+   * engine.
    */
   counted: boolean;
 }
 
 /**
  * The category an open prediction had when it was first moved to another
- * one after the day it was made (owner decision 2026-11-19, review round 6,
- * widening D69 (e)). A scored Yes or No given in a category other than this
- * one is counted with the moved answers (D65), whenever the move happened,
- * unless a category change on it was already counted as a late change.
+ * one after the day it was logged (owner decision 2026-11-19, review round 6,
+ * widening D69 (e); "logged", not "made": a rewording doesn't move that day,
+ * round 7). It is the category it had at the end of the day it was logged. A
+ * scored answer sitting in a category other than this one is counted with
+ * the moved answers (D65), whenever the move happened, unless a category
+ * change on it was already counted as a late change and it sits where it was
+ * answered; back in this one, it isn't counted there. Worked out from where
+ * the answer is, never from the path it took (`answerCountedAsMoved`, round
+ * 7). The same row holds where it was answered (`answered_category`, SQLite
+ * migration 022), read through `getAnsweredCategory`, not this type.
  * Device-local and never synced (SQLite migration 019); kept by sign-out
  * with the other counts, cleared by Erase and account deletion. No words: an
- * id, a category id and dates.
+ * id, category ids and dates.
  */
 export interface CategoryOrigin {
   prediction_id: string;
@@ -557,6 +565,33 @@ export interface OffsetBackfillRow {
   created_utc_offset_min: number | null;
   title_edited_at: string | null;
   title_edited_utc_offset_min: number | null;
+}
+
+/**
+ * A deletion this phone hasn't pushed yet, with what it deleted (review round
+ * 7, 2026-11-19; SQLite migration 021; `listPendingTombstonesSettled` in
+ * src/db/predictions.ts, read by sync's deletion push).
+ *
+ * A stale phone could delete its open copy of a prediction another phone had
+ * already answered, and the deletion took that answer off the server. So the
+ * tombstone remembers the row as this phone held it when it was deleted, and
+ * a deletion only ever removes what it saw (`tombstoneCovers`): an open row,
+ * or the very answer it deleted (the same status and the same `resolved_at`
+ * instant). Anything else on the server is an answer it never saw, which
+ * outranks it (`reconcileTombstoneWithRemote` restores it here).
+ *
+ *   deleted_status      — the status this phone's copy had when deleted. Null
+ *                         for a tombstone from before migration 021 (or one
+ *                         holding a value that isn't a status): read as
+ *                         "deleted open", so it never removes an answer.
+ *   deleted_resolved_at — that copy's `resolved_at`, as stored (null for an
+ *                         open one, and on every tombstone before 021).
+ */
+export interface PendingTombstone {
+  id: string;
+  deleted_at: string;
+  deleted_status: PredictionStatus | null;
+  deleted_resolved_at: string | null;
 }
 
 /** Per-bucket result produced by the calibration engine. */
@@ -966,9 +1001,16 @@ export type AnswerSkippedPrediction = (
 ) => Promise<void>;
 /**
  * Delete and leave a tombstone (D25). `counted` is the engine's call on
- * whether Insights counts the deletion (D45); false when omitted.
+ * whether Insights counts the deletion (D45); false when omitted. `seen` is
+ * the prediction as the caller held it when it decided to delete (review
+ * round 7): the tombstone records its status and `resolved_at`, and sync's
+ * delete removes only that from the server (`PendingTombstone`). The row as
+ * read at the start of the delete when omitted.
  */
-export type DeletePrediction = (id: string, opts?: { counted?: boolean }) => Promise<void>;
+export type DeletePrediction = (
+  id: string,
+  opts?: { counted?: boolean; seen?: Pick<Prediction, 'status' | 'resolved_at'> },
+) => Promise<void>;
 /**
  * What an open prediction's details let you change (roadmap D25): never the
  * confidence, which is the record (FUTURE_UI A7), and never an outcome.

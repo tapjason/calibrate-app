@@ -9,7 +9,8 @@ Published at https://tapjason.github.io/calibrate-app/privacy/
 If the app's name changes, update it here. Not legal advice.
 
 DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE ALL OF THESE (revised 2026-11-18
-after the security and policy review, and 2026-11-19 after its rounds 5 and 6). The text
+after the security and policy review, and 2026-11-19 after its rounds 5, 6 and 7 and the
+policy re-audit's W1-W4). The text
 below is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6
 are not true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true
 only of the build in step 7.
@@ -17,7 +18,8 @@ only of the build in step 7.
 The owner's database steps are one checklist: supabase/README.md, section "2026-11-19:
 migrations 011 and 012, three redeploys, and the sandbox Plus rows", "Every owner step, in
 order" (it includes the 2026-11-18 section's steps). Steps 1-3b below are its items 1-10
-(steps 1 and 2 are its item 1).
+(steps 1 and 2 are its item 1); its weekly check, step 7f, is not numbered there and is
+in step 3b below.
 
 1. Supabase dashboard → Authentication → Configuration → Audit Logs: turn OFF "Write
    audit logs to the database". While it is on, every sign-in writes the person's email,
@@ -36,12 +38,24 @@ order" (it includes the 2026-11-18 section's steps). Steps 1-3b below are its it
    with it on ships, the "if your version of the app backs ... up" clauses in §2.2 and
    "What we never collect" can become plain statements, and the App Privacy form gains the
    offsets' row (docs/APP_PRIVACY.md, §1). §7's clause about the offsets then needs new
-   words rather than going: turning the flag on re-sends nothing, so a prediction backed up
-   before it, and not changed since, has none on the server to bring back.
+   words rather than going: a build with the flag on fills in, once per account on each
+   phone, the offsets the server lacks for every prediction that phone still holds with them
+   (backfillOffsets in src/supabase/sync.ts: update-only requests that write an offset only
+   where the server's is still empty), but a prediction no phone holds with its offsets
+   (one pulled from the server, or signed out of before that build's backfill reached it:
+   sign-out's last push, pushNow, doesn't run it) has none on the server to bring back.
 3b. Enable pg_cron, then apply migration 012 and check it (the checklist's items 7-10,
    with step 7e the day after). §6's "13 months" for usage counts is true only while 012's
-   daily job (purge-old-usage-counts) runs: nothing else deletes them. Keep pg_cron enabled
-   (Supabase: "Disabling the pg_cron extension will permanently delete all Jobs").
+   daily job (purge-old-usage-counts) runs: nothing else deletes them. The job deletes
+   them once they're more than 13 months old by the server's time of receipt, in batches
+   (at most 200 batches of 5,000 or 25 seconds per table a night, so a large backlog takes
+   more than one night). Then, every week for as long as the project runs, the README's
+   step 7f (not numbered in the checklist): its read-only queries show the purge's and the
+   storage ceiling's last 7 runs succeeded, and the ceiling not reached. Keep pg_cron
+   enabled (Supabase: "Disabling the pg_cron extension will permanently delete all Jobs").
+   No sentence below depends on the storage ceiling, the second job 012 schedules: while
+   it holds (400 MB, checked every 5 minutes), new predictions, changes that add text and
+   usage counts wait on the phone, which changes nothing the policy says.
 4. Confirm the Supabase plan. "Within 7 days" for logs and backups (§6, §7) is true on
    Free (API logs 1 day, auth logs 24 h, no automatic backups) and on Pro (7 days each)
    without the Point-in-Time Recovery add-on. On Team (14-day backups, 28-day logs) or
@@ -58,7 +72,10 @@ order" (it includes the 2026-11-18 section's steps). Steps 1-3b below are its it
    categories kept only on the phone, and keeping the counts (§7); the session in the
    Keychain (§10); and guest counts waiting for the warm-up's notice (§2). The Keychain
    needs expo-secure-store and the Apple nonce expo-crypto, both native, so that is a new
-   development and TestFlight build. Publish with, or after, that build. Redeploying
+   development and TestFlight build. Round 7's (2026-11-19, uncommitted when this was
+   written; JavaScript only) adds §7's "the app says so" when the session can't end after
+   the data was removed, and §2's account of what the warm-up's line says; the same build
+   carries it if it is built from the final commit. Publish with, or after, that build. Redeploying
    delete-account (the checklist's item 11) is not needed for any sentence here, but makes
    the Apple revocation check live.
 8. Settled 2026-11-19 (policy re-audit L4; kept so the numbering holds). The warm-up
@@ -120,7 +137,25 @@ category ids; kept by sign-out, removed by account deletion, and the guest's by 
 src/db/migrations/019_category_origins.ts, supabase/migrations/012 (a daily pg_cron job
 deletes analytics_events and guest_analytics_events rows received more than 13 months
 before, by the server's received_at; at most 100,000 analytics_events rows per account).
+Round 7 and the policy re-audit (2026-11-19): src/store/authStore.ts signOut
+(discardUnsynced agrees to nothing unless the question was asked for the account in this
+run; SIGN_OUT_FAILED_AFTER_WIPE, "Couldn't finish signing you out, so you're still signed
+in. Your backed-up predictions will come back to this phone; anything you agreed to lose
+is gone.", shown and announced by src/components/settings/SettingsView.tsx),
+src/components/warmup/UsageStatsNotice.tsx WARMUP_USAGE_NOTE ("Fairly Sure sends a few usage
+counts, with no account or device id, to see how the app is used. You can turn this off
+here or in You.": §2's "and what they're for"; policy re-audit L1), supabase/
+migrations/012 section 3 (the storage ceiling: no sentence here depends on it),
+src/supabase/sync.ts backfillOffsets (header step 3a), "What we never collect" opening on
+"Precise location" (W1: once sent, the offsets are Coarse Location, docs/APP_PRIVACY.md
+§1, and the request logs can record a country), node_modules/react-native-purchases
+10.9.0 and node_modules/@revenuecat (no time zone named anywhere in them; the native iOS
+SDK, PurchasesHybridCommon 18.33.1, comes through CocoaPods and isn't in node_modules).
 Public pages read 2026-11-19:
+- RevenueCat, Apple App Privacy (https://www.revenuecat.com/docs/platform-resources/
+  apple-platform-resources/apple-app-privacy): "RevenueCat does not collect precise or
+  coarse location data, only locale and currency code". Hence §2 and §4 no longer say
+  "time zone" (policy re-audit W4).
 - Apple, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
   (developer.apple.com/documentation/security/ksecattraccessibleafterfirstunlockthisdeviceonly):
   "After the first unlock, the data remains accessible until the next restart … Items
@@ -209,9 +244,9 @@ them, as it does any app's data.)
 Usage events (§2.3) are recorded on the device. A few of them, those that
 count how many people start and finish the warm-up, log, answer, share and
 practise, are sent to us, but only after the warm-up's first screen has shown
-you a line saying so, with a switch to turn them off (the same switch as You →
-Usage stats). Until then they wait on the phone. They carry the event's details
-(§2.3) and no account, device or install identifier. Our server replaces each
+you a line saying so and what they're for (to see how the app is used), with a
+switch to turn them off (the same switch as You → Usage stats). Until then they
+wait on the phone. They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
 event's own id with a one-way scrambled version of it and keeps only the day the
 event happened, not the time. Like any request over the internet, they reach our
 hosting provider with your IP address, which its logs may keep for up to 7 days
@@ -226,8 +261,8 @@ To know whether you have Fairly Sure Plus, the app asks RevenueCat, the
 service that manages subscriptions, each time it starts. Without an account
 that request carries a random identifier RevenueCat makes for this install,
 not your name, email or anything you typed, along with the technical details
-any app request carries (such as your IP address, the app version, language
-and time zone). None of your predictions are sent.
+any app request carries (such as your IP address, the app version and
+language). None of your predictions are sent.
 
 On an iPhone running iOS 26 or later, the app may ask Apple for an age range
 once its first screen is up, at each launch until you share one. If you share
@@ -296,7 +331,7 @@ see your payment details.
 enforce usage limits.
 
 ### What we never collect
-Location, contacts, health or fitness data, financial accounts, photos, or your
+Precise location, contacts, health or fitness data, financial accounts, photos, or your
 device's advertising identifier. The app never asks for your location, and we
 don't work out where you are from your IP address; our hosting provider's
 request logs can record the country a request came from (§6). If your version
@@ -346,7 +381,7 @@ contacting the Coach. That check never sends your text anywhere.
 |---|---|---|
 | **Supabase** (database, sign-in and our server functions; servers in the United States) | Everything in §2.1–2.5, the guest usage counts in §2, and the IP address each request arrives with | Stores your account and backed-up predictions, and runs our server |
 | **OpenAI** | The statistics summary in §3, only when you request Coach feedback, without your account id or email | Generates Coach feedback |
-| **RevenueCat** | An account identifier (a random one for this install if you haven't signed in), your App Store purchase records, and the technical details of each request (such as IP address, app version, language and time zone) | Manages subscriptions |
+| **RevenueCat** | An account identifier (a random one for this install if you haven't signed in), your App Store purchase records, and the technical details of each request (such as IP address, app version and language) | Manages subscriptions |
 | **Apple** | Payments, and sign-in if you use Sign in with Apple. When you delete an account that uses Sign in with Apple, our server asks Apple to revoke the app's access | App Store billing and authentication |
 | **Google** | Nothing from the app. If you use Continue with Google, Google knows you signed in to Fairly Sure | Authentication |
 
@@ -475,8 +510,9 @@ It then ends your session on this phone. With a connection, it also ends your
 sessions on every other device. Without one, our server isn't told, but this
 phone no longer holds anything that could use the session; it ends the next
 time you sign out with a connection, or when you delete your account. If even
-this phone can't end the session, you stay signed in, and what was backed up
-comes back from our server.
+this phone can't end the session, you stay signed in, and the app says so. If
+your data had already been removed from the phone, what was backed up comes
+back from our server; what you agreed to lose, above, doesn't.
 
 Signing back in brings back your predictions and reflections from our server.
 Category names, icons and hiding are kept only on the phone, so they don't come
@@ -545,7 +581,8 @@ version.
 <!-- OWNER: this version adds disclosures (sign-in logs, session IP addresses, retention,
 the warm-up and practice tallies; on 2026-11-19 the warm-up notice, the time-zone offsets,
 Apple's crash reports, the country in request logs, and after round 6 the 13 months for
-usage counts and what an offset can say about where you are) and changes what signing out
+usage counts and what an offset can say about where you are; after the policy re-audit,
+"Precise location" in "What we never collect", and no "time zone" for RevenueCat) and changes what signing out
 does (it now removes the account's data from the phone, all but the counts only the phone
 keeps, and asks first about categories kept only there). The app isn't on the App Store yet, so
 no in-app notice seems needed for it; confirm, and remember that §11 promises one for

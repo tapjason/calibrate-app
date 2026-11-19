@@ -385,10 +385,11 @@ To undo a function deploy, deploy it again from `master`.
 
 ## 2026-11-19: migrations 011 and 012, three redeploys, and the sandbox Plus rows
 
-From rounds 5 and 6 of the security review. Nothing here has been applied or deployed by an
-agent, and no Postgres was available to run 011 or 012 against (no psql, Docker or Deno on this
-machine, and WSL can't start because virtualization isn't enabled; checked again in round 6):
-both were checked by reading only, so steps 1, 3, 5 and 7 are how they get checked for real.
+From rounds 5 and 6 of the security review and the final server re-review. Nothing here has
+been applied or deployed by an agent, and no Postgres was available to run 011 or 012 against
+(no psql, Docker or Deno on this machine, and WSL can't start because virtualization isn't
+enabled; checked again in round 6 and in the final re-review): both were checked by reading
+only, so steps 1, 3, 5 and 7 are how they get checked for real.
 
 ### Every owner step, in order
 
@@ -399,6 +400,15 @@ Work down this list, top to bottom; each line says where its details are. It inc
    Logs: turn off "Write audit logs to the database". Then in the SQL Editor run
    `delete from auth.audit_log_entries;`, then `select count(*) from auth.audit_log_entries;`,
    which must return `0` (`docs/PRIVACY_POLICY.md`, the list at its top, items 1 and 2).
+   **The delete is permanent:** it removes the database's whole sign-in audit trail (every
+   event it has recorded, sign-ups and sign-ins included, with the person's email, IP address
+   and, for Google, their name), and nothing brings it back. Supabase's own Logs (dashboard →
+   Logs, the Logs Explorer) keeps its copy of auth logs only for the plan's log retention (1
+   day on Free, 7 on Pro), and a Pro project's daily backups keep the old rows for their 7
+   days; after that there is no record of past sign-ins anywhere you can reach. It is what
+   makes the privacy policy true where it says the database removes the name and picture
+   Google sends "as they arrive" (§2.1): until the rows are gone, each sign-in's entry still
+   holds that name. Turn the setting off first, so no new rows arrive after the delete.
 2. **010, look first:** the 2026-11-18 section, step 1 (1a–1e; save 1e's output).
 3. **Apply 010 and check it:** the 2026-11-18 section, step 2 (2a–2f, then T1–T3; T4 is
    optional).
@@ -409,13 +419,19 @@ Work down this list, top to bottom; each line says where its details are. It inc
 7. **Enable pg_cron:** step 4 below.
 8. **012, look first:** step 5 below.
 9. **Apply 012:** step 6 below.
-10. **Check 012:** step 7 below (7a–7d; T13 is optional), then 7e the day after.
+10. **Check 012:** step 7 below (7a–7d, then T14; T13 is optional), then 7e the day after.
 11. **Redeploy `delete-account` and `revenuecat-webhook`** from this branch's final commit: step
     8 below. This is also the 2026-11-18 section's step 3 (the same two functions): deploy each
     once, from the final commit.
 12. **Redeploy `coach`** from the same commit: step 9 below. **Never from commit `6830354`.**
 13. **Tell the agent "011 is live":** step 10 below. The agent turns on `UTC_OFFSET_SYNC` in a
     later build.
+
+**Then every week, for as long as the project runs** (not numbered, so the numbers above stay as
+other documents cite them): step 7f below. Three read-only queries: the daily purge's last 7
+runs and the storage ceiling's last 7 runs must each show `succeeded`, and the ceiling's row
+must show `reached` `false` and a size well under the 400 MB ceiling. "Kept for 13 months"
+(the privacy policy, §6) and the ceiling both hold only while those two jobs run.
 
 Left out on purpose: the 2026-11-18 section's step 4 (a stopgap for before 010, not needed
 once 010 is in); step 11 below (the sandbox Plus rows: after App Store approval, a separate
@@ -443,12 +459,14 @@ without 010's functions and changes nothing if so.
   answered row. Yes ↔ No and "Can't tell" → Yes or No still go through. It never raises an
   error.
 - Per account (the public key's roles only; your own statements in the SQL editor aren't
-  limited): at most 100 new and 100 changed predictions per request and 50,000 predictions
-  per account; at most 25 MB of titles and notes per account (a statement that adds text past
-  it is refused; one that adds none, such as an answer, always goes through); at most 100
-  events per request and 5,000 per UTC day on `analytics_events`, whose `received_at` is now
-  always the server's clock; a title at most 8,000 bytes and a reflection 20,000 (010 counted
-  characters, which can be 4 bytes each).
+  limited): at most 100 rows per request on `predictions` (an upsert counts each row it sends
+  once, and an update each row it changes) and 50,000 predictions per account; at most 25 MB
+  of titles and notes per account (a statement that adds text past it is refused; one that
+  adds none, such as an answer, always goes through); at most 100 events per request and
+  5,000 per UTC day on `analytics_events`, whose `received_at` is now always the server's
+  clock; a title at most 8,000 bytes and a reflection 20,000 (010 counted characters, which
+  can be 4 bytes each). A request of more than 100 rows on either table stops at row 101,
+  before the rest is written (the final re-review); the app sends at most 100.
 - Guest table: an insert of more than 100 rows stops at row 101, before the rest is written;
   inserts stop once the table's estimated rows pass 500,000; and on both analytics tables a
   number in `props` is at most 24 characters long (010 allowed hundreds of digits).
@@ -464,12 +482,31 @@ either and changes nothing if so.
   server's clock. It deletes in batches of 5,000 rows, each committed on its own, at most 200
   batches or 25 seconds per table a night, so a large backlog is spread over days and no lock
   is held for long. The app doesn't change. "Kept for 13 months" is true only while this job
-  runs; step 7e checks that it does.
+  runs; step 7e checks that it does, and 7f every week after.
 - At most 100,000 rows of `analytics_events` per account (the public key's roles only, like
   011's limits): an insert past it is refused with `PT429`, and the phone keeps its counts
   queued. 011's day cap alone let one account add about 2.75 MB a day for ever.
 - An index on `analytics_events (received_at)`, so the job finds the oldest rows without
   reading the whole table.
+- **A storage ceiling for the whole database** (the final re-review: about 60 accounts, each at
+  011's caps, could take the free plan's 2 GB disk to the 95% at which Supabase makes the
+  database read-only for everyone, and far fewer could push it past the free plan's 500 MB
+  database quota, which Supabase judges on the month's average across your organization's
+  projects and, past it, can answer every request with HTTP 402). A second job,
+  `refresh-storage-ceiling`, every 5 minutes, sets a one-row flag, `public.storage_ceiling`,
+  from the database's size against **400 MB**: 100 MB under the quota, 1.5 GB under
+  read-only. While it is set, the app's requests that add rows or text are refused with
+  `PT429`: new predictions, a longer title or note, usage counts (signed in and guest).
+  Answers, category moves and deletions still go through; an answer that brings a new note
+  waits. On the phone everything still works, and what was refused stays queued or unsynced
+  until there is room, exactly as at 011's caps. Your own statements in the SQL editor aren't
+  refused. The flag clears only when the database is back under 400 MB (deleting rows rarely
+  shrinks it; see 7f) or the threshold is raised. Real use is far below it (a heavy account
+  adds a few MB a year); when it nears 400 MB the plan has to grow anyway, and the threshold
+  goes up with it. Any other project in the same Supabase organization counts against the
+  same 500 MB, so the 100 MB margin assumes there's none.
+- The daily job also trims the two jobs' run history (`cron.job_run_details`, which pg_cron
+  never cleans) to 30 days: the ceiling's job adds 288 rows a day.
 
 Every query in steps 1, 3, 4, 5 and 7 only reads; each test statement undoes itself. Run each
 block in **Supabase dashboard → SQL Editor → New query**, one at a time.
@@ -578,13 +615,16 @@ select conrelid::regclass as on_table, conname, convalidated
  order by conrelid::regclass::text, conname;
 ```
 
-**3c. The triggers.** Expect these 10 rows, each `tgenabled` `O`: on `analytics_events`,
-`analytics_events_limits` and `analytics_events_stamp_received`; on `guest_analytics_events`,
+**3c. The triggers.** Expect these 14 rows, each `tgenabled` `O`: on `analytics_events`,
+`analytics_events_count_rows`, `analytics_events_limits`, `analytics_events_reset_count` and
+`analytics_events_stamp_received`; on `guest_analytics_events`,
 `guest_analytics_events_count_rows`, `guest_analytics_events_limits`,
 `guest_analytics_events_normalize` and `guest_analytics_events_reset_count`; on `predictions`,
-`predictions_insert_limits`, `predictions_keep_answer`, `predictions_keep_offsets` and
-`predictions_update_limits`. (Run after 012, it shows an eleventh:
-`analytics_events_account_cap` on `analytics_events`.)
+`predictions_count_rows`, `predictions_insert_limits`, `predictions_keep_answer`,
+`predictions_keep_offsets`, `predictions_reset_counts` and `predictions_update_limits`. (Run
+after 012, it shows 19: also `analytics_events_account_cap` and `analytics_events_ceiling` on
+`analytics_events`, `guest_analytics_events_ceiling` on `guest_analytics_events`, and
+`predictions_insert_ceiling` and `predictions_update_ceiling` on `predictions`.)
 
 ```sql
 select tgrelid::regclass as on_table, tgname, tgenabled
@@ -756,13 +796,22 @@ begin
 end $$;
 ```
 
-**T6, a request holds at most 100 new and 100 changed predictions.** Expected:
-`ERROR: P0001: PASS: 101 predictions went in as 100 and 1; 101 new and 101 changed in one statement were refused (PT413); rolled back`.
+**T6, a request holds at most 100 predictions, and a larger one stops at row 101.** 101
+predictions go in as 100 and 1; the app's push of 100 rows that already exist (an upsert, where
+each row is counted once as sent and once as changed) goes through; an insert of 101 and an
+update of 101 each stop at row 101, before the rest is written. Expected:
+`ERROR: P0001: PASS: 101 predictions went in as 100 and 1; the app's upsert of 100 existing rows went through; an insert of 101 and an update of 101 stopped at row 101 (PT413); rolled back`.
+If the FAIL message names "at most 100 new rows" or "at most 100 changed rows" instead, the early
+stop didn't work and only the exact check after the statement caught it; if it says the upsert
+wasn't 100, the two counts aren't kept apart. Either way tell the agent (the limit of 100 still
+holds).
 
 ```sql
 do $$
 declare
   uid uuid := (select id from auth.users order by created_at limit 1);
+  upserted bigint;
+  upsert_refused text := 'not refused';
   new_refused text := 'not refused';
   changed_refused text := 'not refused';
 begin
@@ -776,6 +825,16 @@ begin
   insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
   values ('verify-011-101', uid, 'Verify 011', 'work', 70, now(), now() + interval '1 day', 'pending', now());
 
+  -- The app's push: an upsert of 100 rows that all exist already.
+  begin
+    insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+    select 'verify-011-' || g, uid, 'Verify 011', 'health', 70, now(), now() + interval '1 day', 'pending', now()
+      from generate_series(1, 100) as g
+    on conflict (id) do update set category = excluded.category, updated_at = excluded.updated_at;
+  exception when sqlstate 'PT413' then upsert_refused := sqlerrm;
+  end;
+  select count(*) into upserted from public.predictions where id like 'verify-011-%' and category = 'health';
+
   begin
     insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
     select 'verify-011-big-' || g, uid, 'Verify 011', 'work', 70, now(), now() + interval '1 day', 'pending', now()
@@ -788,11 +847,13 @@ begin
   exception when sqlstate 'PT413' then changed_refused := sqlerrm;
   end;
 
-  if new_refused = 'predictions: at most 100 new rows in one request'
-     and changed_refused = 'predictions: at most 100 changed rows in one request' then
-    raise exception 'PASS: 101 predictions went in as 100 and 1; 101 new and 101 changed in one statement were refused (PT413); rolled back';
+  if upserted = 100
+     and new_refused = 'predictions: stopped at row 101; at most 100 rows in one request'
+     and changed_refused = 'predictions: stopped at row 101; at most 100 changed rows in one request' then
+    raise exception 'PASS: 101 predictions went in as 100 and 1; the app''s upsert of 100 existing rows went through; an insert of 101 and an update of 101 stopped at row 101 (PT413); rolled back';
   end if;
-  raise exception 'FAIL: 101 new rows: %; 101 changed rows: % (rolled back)', new_refused, changed_refused;
+  raise exception 'FAIL: upsert changed % of 100 (%); 101 new rows: %; 101 changed rows: % (rolled back)',
+    upserted, upsert_refused, new_refused, changed_refused;
 end $$;
 ```
 
@@ -829,8 +890,11 @@ begin
 end $$;
 ```
 
-**T8, events: 100 a request, and the server's clock.** Expected:
-`ERROR: P0001: PASS: 100 events went in, the server set received_at, 101 were refused (PT413); rolled back`.
+**T8, events: 100 a request, a larger one stopped at row 101, and the server's clock.**
+Expected:
+`ERROR: P0001: PASS: 100 events went in, the server set received_at, an insert of 101 stopped at row 101 (PT413); rolled back`.
+If the FAIL message names "at most 100 rows per insert" without "stopped at row 101", the early
+stop didn't work and only the exact check caught it: tell the agent (the limit still holds).
 
 ```sql
 do $$
@@ -859,8 +923,8 @@ begin
   exception when sqlstate 'PT413' then refused := sqlerrm;
   end;
 
-  if stamped = now() and refused = 'analytics_events: at most 100 rows per insert' then
-    raise exception 'PASS: 100 events went in, the server set received_at, 101 were refused (PT413); rolled back';
+  if stamped = now() and refused = 'analytics_events: stopped at row 101; at most 100 rows per insert' then
+    raise exception 'PASS: 100 events went in, the server set received_at, an insert of 101 stopped at row 101 (PT413); rolled back';
   end if;
   raise exception 'FAIL: received_at %, 101 rows: % (rolled back)', stamped, refused;
 end $$;
@@ -1145,8 +1209,24 @@ select 'guest_analytics_events', c.cutoff,
  group by c.cutoff;
 ```
 
-**A backup?** 012 itself rewrites and deletes no row. The job it schedules deletes only rows
-more than 13 months old, and 5b shows there are none yet.
+**5c. The database's size against the ceiling.** Expect `size_bytes` far under the ceiling's
+400,000,000 (a project this young holds tens of MB) and `at_or_over_ceiling` `false`.
+`all_databases` is the figure Supabase's usage page reports against the free plan's 500 MB
+quota (it adds the cluster's other databases); expect it well under 500 MB, and less than
+100 MB more than `size`. **If `at_or_over_ceiling` is `true`, or `size_bytes` is over
+300,000,000, don't apply 012: tell the agent.** 012 sets the flag as it applies, and from that
+moment every new prediction and usage count would be refused.
+
+```sql
+select pg_database_size(current_database()) as size_bytes,
+       pg_size_pretty(pg_database_size(current_database())) as size,
+       pg_database_size(current_database()) >= 400000000 as at_or_over_ceiling,
+       (select pg_size_pretty(sum(pg_database_size(datname))) from pg_database) as all_databases;
+```
+
+**A backup?** 012 itself rewrites and deletes no row (it adds one row to its own new table).
+The daily job it schedules deletes only rows more than 13 months old, and 5b shows there are
+none yet; the ceiling's job only writes that one row.
 
 ### 6. Apply 012
 
@@ -1161,31 +1241,51 @@ query and run it. It runs as one transaction: all of it applies, or none of it.
 - `ERROR: P0001: Migration 012: pg_cron is enabled, but the role … cannot use the cron
   schema…`: nothing was applied. Run the two `grant` lines the message gives (step 4's SQL
   route), then 012 again.
-- `ERROR: P0001: Migration 012 schedules a job that runs as the role applying it…`: nothing was
+- `ERROR: P0001: Migration 012 schedules jobs that run as the role applying it…`: nothing was
   applied. Run it from the SQL editor (role `postgres`); if it says this there, tell the agent.
 - `ERROR: 55P03: canceling statement due to lock timeout`: nothing was applied. Run it again a
   minute later.
 
-The job is live from here. Its first run is the next 09:17 UTC.
+Both jobs are live from here. The purge's first run is the next 09:17 UTC; the ceiling's job
+runs every 5 minutes, and 012 has already set the flag once as it applied.
 
 (As with 010 and 011, the CLI's migration history won't list 012 after the SQL editor; a later
-`npx supabase db push --remote` runs it again, which is safe: it unschedules its job and
-schedules it again. If that push stops at 012 with the message about the role, apply 012 from
-the SQL editor instead.)
+`npx supabase db push --remote` runs it again, which is safe: it unschedules its jobs and
+schedules them again, and sets the flag again from the size at that moment. If that push stops
+at 012 with the message about the role, apply 012 from the SQL editor instead.)
 
 ### 7. Check 012
 
-**7a. The job.** Expect a row with `jobname` `purge-old-usage-counts`, `schedule`
-`17 9 * * *`, `command` `call public.purge_old_usage_counts()`, `username` `postgres` and
-`active` `true` (and any job you made yourself; there were none before).
+**7a. The jobs, and where the ceiling stands.** Expect two rows, each with `username`
+`postgres` and `active` `true` (and any job you made yourself; there were none before):
+`purge-old-usage-counts` with `schedule` `17 9 * * *` and `command`
+`call public.purge_old_usage_counts()`; and `refresh-storage-ceiling` with `schedule`
+`*/5 * * * *` and `command` `select public.refresh_storage_ceiling()`.
 
 ```sql
 select * from cron.job;
 ```
 
-**7b. The rest of 012.** Expect 5 rows, every `ok` `true`. The third matters most: Postgres lets
-a procedure commit between batches only when it has no `SET` clause and isn't `SECURITY
-DEFINER`.
+Then the ceiling (read-only; also part of 7f's weekly check). Expect 1 row: `reached` `false`;
+`threshold_bytes` `400000000`; `size_at_check` close to `size_now` (tens of MB, well under
+400 MB); `checked_at` within the last 5 minutes (or the moment you applied 012);
+`all_databases` well under 500 MB. No row, or a `checked_at` older than about 10 minutes once
+012 has been in for that long, means the job isn't running: look at 7f's second query and tell
+the agent.
+
+```sql
+select s.reached,
+       s.threshold_bytes,
+       pg_size_pretty(s.database_bytes) as size_at_check,
+       s.checked_at,
+       pg_size_pretty(pg_database_size(current_database())) as size_now,
+       (select pg_size_pretty(sum(pg_database_size(datname))) from pg_database) as all_databases
+  from public.storage_ceiling as s;
+```
+
+**7b. The rest of 012.** Expect 8 rows, every `ok` `true`. The third matters most for the
+purge: Postgres lets a procedure commit between batches only when it has no `SET` clause and
+isn't `SECURITY DEFINER`. The last three are the ceiling's.
 
 ```sql
 select 'trigger analytics_events_account_cap' as what,
@@ -1205,16 +1305,44 @@ select 'the cap function belongs to the table owner',
        (select proowner from pg_proc where oid = 'public.analytics_events_account_cap()'::regprocedure)
          = (select relowner from pg_class where oid = 'public.analytics_events'::regclass)
 union all
-select 'anon and authenticated can run neither the purge nor the cutoff',
+select 'anon and authenticated can run none of the purge, the cutoff and the ceiling''s refresh',
        not has_function_privilege('anon', 'public.purge_old_usage_counts()', 'execute')
        and not has_function_privilege('authenticated', 'public.purge_old_usage_counts()', 'execute')
        and not has_function_privilege('anon', 'public.usage_counts_cutoff(timestamptz)', 'execute')
-       and not has_function_privilege('authenticated', 'public.usage_counts_cutoff(timestamptz)', 'execute');
+       and not has_function_privilege('authenticated', 'public.usage_counts_cutoff(timestamptz)', 'execute')
+       and not has_function_privilege('anon', 'public.refresh_storage_ceiling()', 'execute')
+       and not has_function_privilege('authenticated', 'public.refresh_storage_ceiling()', 'execute')
+union all
+select 'the four ceiling triggers',
+       (select count(*) from pg_trigger
+         where not tgisinternal and tgenabled = 'O'
+           and ((tgrelid = 'public.analytics_events'::regclass and tgname = 'analytics_events_ceiling')
+             or (tgrelid = 'public.guest_analytics_events'::regclass and tgname = 'guest_analytics_events_ceiling')
+             or (tgrelid = 'public.predictions'::regclass
+                 and tgname in ('predictions_insert_ceiling', 'predictions_update_ceiling')))) = 4
+union all
+select 'the ceiling functions belong to the owner of storage_ceiling',
+       (select count(*) from pg_proc
+         where oid in ('public.storage_ceiling_refuse_rows()'::regprocedure,
+                       'public.predictions_storage_ceiling()'::regprocedure)
+           and prosecdef
+           and proowner = (select relowner from pg_class where oid = 'public.storage_ceiling'::regclass)) = 2
+union all
+select 'storage_ceiling: RLS on, nothing for anon, authenticated or service_role',
+       (select relrowsecurity from pg_class where oid = 'public.storage_ceiling'::regclass)
+       and not has_table_privilege('anon', 'public.storage_ceiling',
+                                   'select, insert, update, delete, truncate, references, trigger')
+       and not has_table_privilege('authenticated', 'public.storage_ceiling',
+                                   'select, insert, update, delete, truncate, references, trigger')
+       and not has_table_privilege('service_role', 'public.storage_ceiling',
+                                   'select, insert, update, delete, truncate, references, trigger');
 ```
 
 If Supabase's Security Advisor lists `purge_old_usage_counts` under "Function Search Path
 Mutable", that is expected: a procedure that commits can't carry a `SET search_path`, so it
-names every table and function by schema instead, and only you (the owner) can run it.
+names every table and function by schema instead, and only you (the owner) can run it. If it
+lists `storage_ceiling` under "RLS Enabled No Policy", that is expected too: no one but you is
+meant to reach it.
 
 **7c. Where 13 months ends.** Expect 4 columns, all `true`: the middle of a month; the day
 after a leap February; a month too short for the day (it ends at the month's last day); and a
@@ -1316,6 +1444,111 @@ end $$;
 
 Then 5a again: the number is the same as before the test.
 
+**T14, the storage ceiling.** It can't wait for 400 MB of data, so it sets the flag by hand,
+inside its own transaction: no other session ever sees the change, and the closing error rolls
+it back with everything else. Below the ceiling, as the phone of the oldest account (most
+likely yours), two predictions go in. At the ceiling, as the phone: a new prediction, a note
+added to an answer and a usage count are refused (`PT429`); an answer pushed as the app pushes
+it, a category move and a deletion go through. As a guest, a usage count is refused. As you,
+an insert goes through. Expected:
+`ERROR: P0001: PASS: at the ceiling a new prediction, a new note and usage counts (signed in and guest) were refused (PT429); an answer, a category move and a deletion went through; your own insert wasn't limited; rolled back`.
+If the ceiling's job runs during the test, it waits a moment for the test to finish.
+
+```sql
+do $$
+declare
+  uid uuid := (select id from auth.users order by created_at limit 1);
+  new_prediction text := 'not refused';
+  new_note text := 'not refused';
+  new_event text := 'not refused';
+  guest_event text := 'not refused';
+  answered boolean;
+  moved boolean;
+  deleted boolean;
+  owner_insert boolean;
+begin
+  if uid is null then raise exception 'SKIP: no account to test with'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+
+  -- Below the ceiling (the flag cleared in this transaction only), as the phone.
+  update public.storage_ceiling set reached = false;
+  if not found then raise exception 'FAIL: public.storage_ceiling has no row (see 7a; rolled back)'; end if;
+  set local role authenticated;
+  insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+  values ('verify-012-ceiling-a', uid, 'Verify 012', 'work', 70, now() - interval '2 days', now() - interval '1 day', 'pending', now()),
+         ('verify-012-ceiling-b', uid, 'Verify 012', 'work', 70, now() - interval '2 days', now() - interval '1 day', 'pending', now());
+
+  -- At the ceiling (the flag set in this transaction only).
+  set local role none;
+  update public.storage_ceiling set reached = true;
+  set local role authenticated;
+
+  -- A new prediction is refused.
+  begin
+    insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+    values ('verify-012-ceiling-new', uid, 'Verify 012', 'work', 70, now(), now() + interval '1 day', 'pending', now());
+  exception when sqlstate 'PT429' then new_prediction := sqlerrm;
+  end;
+
+  -- An answer, pushed as the app pushes it (an upsert of the row it already sent), goes through.
+  insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, resolved_at, updated_at)
+  values ('verify-012-ceiling-a', uid, 'Verify 012', 'work', 70, now() - interval '2 days', now() - interval '1 day',
+          'resolved_yes', now(), now())
+  on conflict (id) do update set
+    status = excluded.status, resolved_at = excluded.resolved_at, updated_at = excluded.updated_at;
+  answered := (select status from public.predictions where id = 'verify-012-ceiling-a') = 'resolved_yes';
+
+  -- A category move goes through.
+  update public.predictions set category = 'health' where id = 'verify-012-ceiling-a';
+  moved := (select category from public.predictions where id = 'verify-012-ceiling-a') = 'health';
+
+  -- A note adds text and is refused.
+  begin
+    update public.predictions set reflection = 'A note that adds text' where id = 'verify-012-ceiling-a';
+  exception when sqlstate 'PT429' then new_note := sqlerrm;
+  end;
+
+  -- A deletion goes through.
+  delete from public.predictions where id = 'verify-012-ceiling-b';
+  deleted := not exists (select 1 from public.predictions where id = 'verify-012-ceiling-b');
+
+  -- A usage count is refused.
+  begin
+    insert into public.analytics_events (id, user_id, name, props, created_at)
+    values ('verify-012-ceiling', uid, 'warmup_started', '{}'::jsonb, now());
+  exception when sqlstate 'PT429' then new_event := sqlerrm;
+  end;
+
+  -- A guest's usage count is refused.
+  set local role anon;
+  begin
+    insert into public.guest_analytics_events (id, name, props, created_at)
+    values ('verify-012-ceiling', 'warmup_started', '{}'::jsonb, now());
+  exception when sqlstate 'PT429' then guest_event := sqlerrm;
+  end;
+
+  -- You, in the SQL editor, aren't limited.
+  set local role none;
+  insert into public.predictions (id, user_id, title, category, confidence, created_at, due_date, status, updated_at)
+  values ('verify-012-ceiling-owner', uid, 'Verify 012', 'work', 70, now(), now() + interval '1 day', 'pending', now());
+  owner_insert := exists (select 1 from public.predictions where id = 'verify-012-ceiling-owner');
+
+  if new_prediction = 'predictions: the database is at its storage ceiling; new predictions wait until there is room'
+     and answered and moved
+     and new_note = 'predictions: the database is at its storage ceiling; changes that add text wait until there is room'
+     and deleted
+     and new_event = 'analytics_events: the database is at its storage ceiling; new rows wait until there is room'
+     and guest_event = 'guest_analytics_events: the database is at its storage ceiling; new rows wait until there is room'
+     and owner_insert then
+    raise exception 'PASS: at the ceiling a new prediction, a new note and usage counts (signed in and guest) were refused (PT429); an answer, a category move and a deletion went through; your own insert wasn''t limited; rolled back';
+  end if;
+  raise exception 'FAIL: new prediction: %; answer went through: %; category move: %; new note: %; deletion: %; usage count: %; guest usage count: %; your insert: % (rolled back)',
+    new_prediction, answered, moved, new_note, deleted, new_event, guest_event, owner_insert;
+end $$;
+```
+
+Then 7a's ceiling query again: `reached` is as it was before the test.
+
 **7e. The day after: the first run.** Expect one row per 09:17 UTC since you applied 012, each
 with `status` `succeeded`. Until you have seen one, the 13 months isn't confirmed. A `failed`
 row's `return_message` says why: tell the agent. A run that fails part-way keeps the batches it
@@ -1328,6 +1561,63 @@ select status, return_message, start_time, end_time
  order by start_time desc
  limit 5;
 ```
+
+**7f. Every week, for as long as the project runs.** Three read-only queries. "Kept for 13
+months" (the privacy policy, §6) is true only while the purge runs, and the storage ceiling
+only works while its job runs; if pg_cron is ever disabled, both jobs are deleted with it.
+
+The purge, once a day: expect 7 rows, one per day for the last 7 days, each `status`
+`succeeded`.
+
+```sql
+select status, start_time from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'purge-old-usage-counts') order by start_time desc limit 7;
+```
+
+The storage ceiling, every 5 minutes: expect 7 rows from the last half hour or so, each
+`status` `succeeded`.
+
+```sql
+select status, start_time from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'refresh-storage-ceiling') order by start_time desc limit 7;
+```
+
+Then 7a's ceiling query: `reached` `false`, `checked_at` within the last 5 minutes,
+`size_now` well under the 400 MB ceiling, and `all_databases` under 500 MB.
+
+- A `failed` row, no rows, or a newest row older than its schedule: run the same query with
+  `return_message, end_time` added after `start_time` (7e's form) and tell the agent.
+- `size_now` over about 300 MB, or a jump of tens of MB since last week: tell the agent. Real
+  use grows by a few MB a year per heavy account, so either means a fill, or that the plan and
+  the ceiling need to grow before new predictions start waiting.
+- `all_databases` near 500 MB while `size_now` is under 400 MB: tell the agent. Supabase judges
+  the plan's 500 MB quota on all of the project's databases (and every project in your
+  organization), and past it can answer every request with HTTP 402.
+- `reached` `true`: the next paragraph.
+
+**If the ceiling is reached.** Nothing breaks on the phones: new predictions, new notes and
+usage counts wait there (answers, category moves and deletions still sync) until there is room.
+Tell the agent before deleting anything. This read-only query shows which tables grew:
+
+```sql
+select c.oid::regclass as table_name,
+       pg_size_pretty(pg_total_relation_size(c.oid)) as total_size
+  from pg_class as c
+  join pg_namespace as n on n.oid = c.relnamespace
+ where c.relkind in ('r', 'm')
+   and n.nspname not in ('pg_catalog', 'information_schema')
+ order by pg_total_relation_size(c.oid) desc
+ limit 10;
+```
+
+The flag clears at the first check after the database's size is under 400 MB, or after the
+threshold is raised. Deleting rows alone seldom gets there: Postgres reuses the room inside its
+files but rarely gives it back, so the size only falls after `VACUUM FULL` of the tables that
+grew (it holds each table while it runs). Raising the threshold (after an upgrade, never past
+the new plan's quota) means editing it in `refresh_storage_ceiling`
+(`012_usage_counts_retention.sql`, section 3b) and running that `create or replace function`
+again. Either way, `select public.refresh_storage_ceiling();` then sets the flag at once
+instead of within 5 minutes. Clearing the flag by hand
+(`update public.storage_ceiling set reached = false;`) lasts only until the next check while the
+size is still over.
 
 ### 8. Redeploy delete-account and revenuecat-webhook
 
@@ -1457,16 +1747,24 @@ and index of 011 come off with this, in one run:
 ```sql
 drop trigger if exists predictions_keep_answer on public.predictions;
 drop trigger if exists predictions_keep_offsets on public.predictions;
+drop trigger if exists predictions_count_rows on public.predictions;
+drop trigger if exists predictions_reset_counts on public.predictions;
 drop trigger if exists predictions_insert_limits on public.predictions;
 drop trigger if exists predictions_update_limits on public.predictions;
 drop trigger if exists analytics_events_stamp_received on public.analytics_events;
+drop trigger if exists analytics_events_count_rows on public.analytics_events;
+drop trigger if exists analytics_events_reset_count on public.analytics_events;
 drop trigger if exists analytics_events_limits on public.analytics_events;
 drop trigger if exists guest_analytics_events_count_rows on public.guest_analytics_events;
 drop trigger if exists guest_analytics_events_reset_count on public.guest_analytics_events;
 drop function if exists public.predictions_keep_answer();
 drop function if exists public.predictions_keep_offsets();
+drop function if exists public.predictions_count_rows();
+drop function if exists public.predictions_reset_counts();
 drop function if exists public.predictions_write_limits();
 drop function if exists public.analytics_events_stamp_received();
+drop function if exists public.analytics_events_count_rows();
+drop function if exists public.analytics_events_reset_count();
 drop function if exists public.analytics_events_limits();
 drop function if exists public.guest_analytics_events_count_rows();
 drop function if exists public.guest_analytics_events_reset_count();
@@ -1497,27 +1795,44 @@ needs no such step.
 
 ### 13. Undo 012, if something goes wrong
 
-The job, the cap, the procedure, the cutoff function and the index come off with this, in one
-run. The job goes first, so no run can call a procedure that is gone:
+The jobs, the cap, the ceiling, the procedure, the cutoff function and the index come off with
+this, in one run. The jobs go first, so no run can call a function that is gone, and the
+ceiling's triggers before its table:
 
 ```sql
-select cron.unschedule(jobid) from cron.job where jobname = 'purge-old-usage-counts';
+select cron.unschedule(jobid) from cron.job
+ where jobname in ('purge-old-usage-counts', 'refresh-storage-ceiling');
 drop trigger if exists analytics_events_account_cap on public.analytics_events;
 drop function if exists public.analytics_events_account_cap();
+drop trigger if exists analytics_events_ceiling on public.analytics_events;
+drop trigger if exists guest_analytics_events_ceiling on public.guest_analytics_events;
+drop trigger if exists predictions_insert_ceiling on public.predictions;
+drop trigger if exists predictions_update_ceiling on public.predictions;
+drop function if exists public.storage_ceiling_refuse_rows();
+drop function if exists public.predictions_storage_ceiling();
+drop function if exists public.refresh_storage_ceiling();
+drop table if exists public.storage_ceiling;
 drop procedure if exists public.purge_old_usage_counts();
 drop function if exists public.usage_counts_cutoff(timestamptz);
 drop index if exists public.idx_analytics_events_received;
 ```
 
-- If pg_cron has been disabled since, leave out the first line: disabling it deleted the job
-  (and `cron.job` no longer exists, so the line would stop the run).
+- If pg_cron has been disabled since, leave out the first statement (its two lines): disabling
+  it deleted the jobs (and `cron.job` no longer exists, so the statement would stop the run).
 - Rows the job already deleted don't come back; each was more than 13 months old, which is
-  what the job is for.
-- To take off only the cap, run the second and third lines.
-- To pause the job instead of removing it (Supabase's quickstart):
+  what the job is for. Nor do the run history rows it trimmed (older than 30 days).
+- To take off only the cap, run the `analytics_events_account_cap` lines (the trigger, then
+  its function).
+- To take off only the ceiling: `select cron.unschedule(jobid) from cron.job where jobname = 'refresh-storage-ceiling';`,
+  then the four `drop trigger … _ceiling` lines, the three ceiling functions and the table, in
+  the order above. Dropping the table alone, by mistake, doesn't stop any write: its triggers
+  then do nothing.
+- To pause a job instead of removing it (Supabase's quickstart):
   `select cron.alter_job(job_id := (select jobid from cron.job where jobname = 'purge-old-usage-counts'), active := false);`,
-  and `active := true` to resume. While it's paused or gone, nothing deletes old usage counts,
-  so "kept for 13 months" isn't true; a resumed job catches up in its batches.
+  and `active := true` to resume; the same with `'refresh-storage-ceiling'`. While the purge is
+  paused or gone, nothing deletes old usage counts, so "kept for 13 months" isn't true; a
+  resumed job catches up in its batches. While the ceiling's job is paused, the flag keeps its
+  last value: if it was set, writes that add stay refused until the job runs again.
 - pg_cron itself can stay enabled.
 
 ## Files
@@ -1575,18 +1890,24 @@ drop index if exists public.idx_analytics_events_received;
   offset when a push sends it as null for the same moment; a trigger
   that keeps an answered prediction whole when a stale phone pushes it back as
   open (or a Yes or No as "Can't tell"), with a later `updated_at`; per-account
-  limits on signed-in writes (100 rows a request, 50,000 predictions, 25 MB of
-  titles and notes, 5,000 events a UTC day, byte limits on title and
-  reflection); a guest insert that
-  stops at row 101 and a 500,000-row guest ceiling; numbers in `props` at most
-  24 characters. **Not applied yet**: the steps are in "2026-11-19: migrations
-  011 and 012, three redeploys, and the sandbox Plus rows" above.
-- `migrations/012_usage_counts_retention.sql` — security review round 6
-  (2026-11-19), applied after 011 and once `pg_cron` is enabled: a daily
-  `pg_cron` job (09:17 UTC) that deletes usage counts (`analytics_events`,
-  `guest_analytics_events`) once they are more than 13 months old by
-  `received_at`, in committed batches; at most 100,000 `analytics_events` rows
-  per account. **Not applied yet**: same section.
+  limits on signed-in writes (100 rows a request, a larger request stopped at
+  row 101 before the rest is written, 50,000 predictions, 25 MB of titles and
+  notes, 5,000 events a UTC day, byte limits on title and reflection); a guest
+  insert that stops at row 101 and a 500,000-row guest ceiling; numbers in
+  `props` at most 24 characters. **Not applied yet**: the steps are in
+  "2026-11-19: migrations 011 and 012, three redeploys, and the sandbox Plus
+  rows" above.
+- `migrations/012_usage_counts_retention.sql` — security review round 6 and the
+  final server re-review (2026-11-19), applied after 011 and once `pg_cron` is
+  enabled: a daily `pg_cron` job (09:17 UTC) that deletes usage counts
+  (`analytics_events`, `guest_analytics_events`) once they are more than 13
+  months old by `received_at`, in committed batches, and trims the two jobs'
+  run history to 30 days; at most 100,000 `analytics_events` rows per account;
+  a storage ceiling for the whole database: a second job, every 5 minutes,
+  sets the one-row flag `public.storage_ceiling` from the database's size
+  against 400 MB (under the free plan's 500 MB quota), and while it is set the
+  app's writes that add rows or text are refused (`PT429`). **Not applied
+  yet**: same section.
 - `functions/revenuecat-webhook/index.ts` — receives RevenueCat events and
   keeps `public.entitlements` current. Its decisions live in
   `entitlementFromEvent.ts` and its flow (look up, write, answer) in

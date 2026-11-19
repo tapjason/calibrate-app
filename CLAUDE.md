@@ -451,9 +451,11 @@ many answers were "Can't tell", which the rating leaves out, under "More about y
   prediction.
 - **Deleted calls are counted.** Tombstones are kept after the push, marked
   `counted` when the deletion hid something: a scored Yes or No (inside its
-  24-hour window), or an open prediction deleted from the day before its due day (D61),
-  except on the day it was made while it isn't due yet (one made today and already due is
-  counted) (`deletionCounts`). Insights says how many, and that only this phone keeps the
+  24-hour window), or an open prediction deleted on any day after the day it was made
+  (D69, 2026-11-19; D61 counted only from the eve: with "Answer it now" an outcome can be
+  known at any time), except on the day it was logged (read in its logging offset) while it
+  isn't due yet (one logged today and already due is counted); a rewording doesn't restart
+  that day (`deletionCounts`, `isOnLoggedDay`). Insights says how many, and that only this phone keeps the
   count. The delete confirmation says so first.
 - **Late due-date moves are counted** (D59). Moving an open prediction's due date later
   on or after the day before its due day (`postponementCounts`) is counted on Insights,
@@ -472,12 +474,16 @@ many answers were "Can't tell", which the rating leaves out, under "More about y
   017, never synced). One moved back isn't counted; one deleted after a move is counted
   once, as a deletion. The answer's details say so under the category chips, before a
   move ("Insights counts a scored answer that ends up in a different category from the one
-  it had at the end of the day it was made."). A same-day answer or a "Can't tell" isn't counted: neither was scored.
+  it had at the end of the day it was logged. A category change made while it was open,
+  from the day before its due day but not on the day it was logged, is counted once, as a
+  late change."). A same-day answer or a "Can't tell" isn't counted: neither was scored.
 - **Category changes on open predictions are counted** (D69 e). From the eve of the due
   day, on the late-changes line beside date moves and rewordings; earlier ones, when the
   prediction is then answered in a different category from the one it had before its first
   change after the day it was made, with the moved answers (`prediction_category_origins`,
-  SQLite migration 019, never synced). A prediction is never counted twice for one move.
+  SQLite migration 019, never synced). A prediction is never counted twice for one move: an
+  answer moved back to the category it had at the end of the day it was logged comes off
+  the moved-answers line, and an eve change stays on the late-changes line only.
   Edit says so before Save. Sign-out keeps all of these counts (they hold ids and dates,
   no words); Erase and account deletion clear them.
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
@@ -730,7 +736,8 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   screen has shown its line and switch (`usageNoticeShownAt`); the switch is in You too.
   Kept on the server 13 months (migration 012).
 - **Server limits** (migrations 010–012): what the public key can write, per-account write
-  limits and a 25 MB text budget, and no answer put back to open. The owner applies them
+  limits and a 25 MB text budget, no answer put back to open, and a storage ceiling (400 MB,
+  checked every 5 minutes) past which the app's writes that add rows or text wait. The owner applies them
   in order from `supabase/README.md`'s checklist.
 
 ---

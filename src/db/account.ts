@@ -85,8 +85,10 @@ export interface WipeOptions {
    * account: sync reads and deletes per `user_id` (`listPendingDeletions`,
    * and the server delete filters on it too), so another account signed in
    * here never pushes it, and this account pushes it when it next syncs. The
-   * pull goes on skipping a tombstoned id, unless the server's copy was
-   * answered after the deletion (`reconcileTombstoneWithRemote`).
+   * pull goes on skipping a tombstoned id, unless the server's copy is an
+   * answer the deletion never saw (`reconcileTombstoneWithRemote`, review
+   * round 7: the tombstone keeps what it deleted, migration 021, and sign-out
+   * keeps that with it).
    */
   keepIntegrityCounts?: boolean;
 }

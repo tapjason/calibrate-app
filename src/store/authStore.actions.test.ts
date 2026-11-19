@@ -61,7 +61,7 @@ import * as serverAccount from '@/supabase/account';
 import * as auth from '@/supabase/auth';
 import { setSupabaseClientForTests } from '@/supabase/client';
 
-import { useAuthStore } from './authStore';
+import { SIGN_OUT_FAILED_AFTER_WIPE, useAuthStore } from './authStore';
 import { useCategoryStore } from './categoryStore';
 import { useCoachStore } from './coachStore';
 import { useLogDraftStore } from './logDraftStore';
@@ -834,6 +834,10 @@ describe('authStore.signOut always ends the session on this phone', () => {
     expect(scheduler().dismissDeliveredNotifications).not.toHaveBeenCalled();
   });
 
+  // Round 7 (L3): the account's rows go before the session ends (round 6),
+  // so here the error says they went (`SIGN_OUT_FAILED_AFTER_WIPE`). Was: the
+  // session's own error, "Couldn't sign you out on this phone. Try again.",
+  // which a wipe that didn't go still returns (authStore.signOut.test.ts).
   it('when even this phone could not end it, stays signed in and says so', async () => {
     await signedInAs('user-1');
     mocked.signOut.mockResolvedValue({
@@ -844,8 +848,9 @@ describe('authStore.signOut always ends the session on this phone', () => {
 
     await expect(useAuthStore.getState().signOut()).resolves.toEqual({
       ok: false,
-      error: "Couldn't sign you out on this phone. Try again.",
+      error: SIGN_OUT_FAILED_AFTER_WIPE,
     });
+    expect(wipe).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
     expect(clearDraft).not.toHaveBeenCalled();
     // The words still leave the lock screen: the person asked to leave.

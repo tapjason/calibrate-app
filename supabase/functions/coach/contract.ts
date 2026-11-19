@@ -37,7 +37,16 @@
 //     was said, nor as the number that came true (the context holds no such
 //     count). A unit right after a number narrows what the words beside it
 //     say; a change word makes it a drift, and a drift is said with the way
-//     it went, which agrees with its sign. Whose number, from the category
+//     it went, which agrees with its sign; a negated change word ("didn't
+//     improve") says the other way, a negated comparison or noun ("never
+//     been better", "no improvement") either way. A change word right before
+//     "to" and a number ("fell to 61") makes the number the level reached,
+//     not the change, and a score beside a change word says it moved: a
+//     citable drift of its scope must back that, said the way the drift went
+//     (round 7); so must a score, rating or calibration said to have moved
+//     with no number at all ("your finance calibration has been improving").
+//     A count is never what "worked out", "paid off" or "went your way"
+//     either. Whose number, from the category
 //     named in its clause, else its sentence, else the label; overall figures
 //     only beside a word that says overall where no category is named, or
 //     beside "overall", "in total" or "across all" where the sentence names
@@ -46,7 +55,8 @@
 //     says exactly that, past MIN_N_CATEGORY, and a comparison or contrast
 //     with what was said ("but only", "a gap"), or a category's stated
 //     confidence beside its hit rate, only in an over/under card (the latter
-//     also within CLOSE_TO_SAID_POINTS); "well calibrated" only for a
+//     also within CLOSE_TO_SAID_POINTS); "well calibrated" (and, round 7,
+//     "no gap between what you said and what happened") only for a
 //     `calibrated` category within CLOSE_TO_SAID_POINTS; never overall.
 //   - No links, addresses, phone numbers, markup, invisible or unusual
 //     characters, spelled-out numbers, badge names (as badges: "a sharp drop"
@@ -541,8 +551,9 @@ const NEGATION = String.raw`\b(?:not|no longer|hardly|barely|isn't|aren't|wasn't
  *     lean (~over~), never calibrated wording (round 6; "as often as" read
  *     as close wording until then);
  *   - "neither overconfident nor underconfident", "isn't overconfident",
- *     "not too sure", "no overconfidence": calibrated wording (~close~), held
- *     to the same rule as "well calibrated";
+ *     "not too sure", "no overconfidence", and (round 7) "no gap" or "not a
+ *     big gap": calibrated wording (~close~), held to the same rule as "well
+ *     calibrated" ("a gap" alone is a contrast, COMPARE_WORDS);
  *   - "not well calibrated", "isn't accurate", "poorly calibrated": a miss
  *     with no direction (~miss~), allowed only where the app names a lean;
  *   - "worst calibrated", "less calibrated", "a calibrated forecaster": a
@@ -556,6 +567,10 @@ const TURNED_LEANS: ReadonlyArray<[RegExp, string]> = [
   [new RegExp(String.raw`\bneither\s+(?:${OVER_CORE}|${UNDER_CORE})\s+nor\s+(?:${OVER_CORE}|${UNDER_CORE})`, 'g'), ' ~close~ '],
   [new RegExp(`${NEGATION}(?:${OVER_CORE}|${UNDER_CORE})`, 'g'), ' ~close~ '],
   [/\bno\s+(?:clear\s+|real\s+|obvious\s+|sign\s+of\s+)?(?:over|under)[\s-]?confidence\b/g, ' ~close~ '],
+  [
+    /\b(?:no|(?:not|isn't|wasn't|aren't|weren't|without)\s+(?:a|any))\s+(?:(?:real|clear|big|large|meaningful|notable|obvious|visible)\s+)?(?:gaps?|mismatch(?:es)?)\b/g,
+    ' ~close~ ',
+  ],
   [new RegExp(`${NEGATION}${CLOSE_CORE}`, 'g'), ' ~miss~ '],
   [/\b(?:doesn't|didn't|don't|does not|did not|do not)\s+match\b/g, ' ~miss~ '],
   [/\b(?:less|least|more|most|better|best|worse|worst)\s+(?:well[\s-])?calibrated\b/g, ' '],
@@ -575,16 +590,33 @@ function turnLeans(scan: string): string {
   return out;
 }
 
-/** What was said, expected or thought, as a comparison ends ("than you said"). */
-const SAID = String.raw`(?:the\s+)?(?:\d+(?:\.\d+)?\s?%\s+)?(?:you\s+|you'd\s+|what\s+you\s+)?(?:said|say|stated|state|expected|expect|thought|predicted|guessed|felt|believed|claimed|estimated|figured|forecast)\b`;
+/**
+ * What was said, expected or thought, as a comparison ends ("than you said",
+ * and since round 7 "than you hoped", "than you'd think", "than you would
+ * have imagined").
+ */
+const SAID = String.raw`(?:the\s+)?(?:\d+(?:\.\d+)?\s?%\s+)?(?:what\s+)?(?:you(?:'d|\s+(?:would|might|could|may|had|did))?\s+(?:have\s+)?)?(?:said|say|stated|state|expected|expect|expects|thought|think|thinks|predicted|guessed|felt|believed|believe|believes|hoped|hope|hopes|imagined|imagine|imagines|claimed|estimated|figured|forecast)\b`;
 /**
  * What was said, as a noun ("below your stated confidence", "than your
  * numbers"), round 6. Read only after the words of a comparison, never after
  * "over": "go over your numbers" is advice.
  */
 const SAID_NOUN = String.raw`(?:your|the)\s+(?:(?:stated|average|expected)\s+)?(?:confidence|numbers?|estimates?|expectations?)\b`;
-/** What happened, as a verb ("just 70% came true", "came true less often"). */
-const HAPPENED_VERB = String.raw`(?:happened|happen|happens|came true|come true|comes true|occurred|landed|panned out|turned out)`;
+/**
+ * What was said, as the object of "outpaced" or "trails" ("outpaced your
+ * stated confidence", "trails what you said"), round 7: with it, the way the
+ * lean goes is read; without it ("your confidence outpaced the outcomes",
+ * "was outpaced by"), it can't be, and both leans are named.
+ */
+const SAID_OBJECT = String.raw`(?:what\s+you\s+(?:said|stated|expected|thought|predicted)\b|your\s+(?:stated|expected|predicted)\b|${SAID_NOUN}|${SAID})`;
+/** "trails", "lagged": what happened behind what was said, when what was said is the object. */
+const TRAIL = String.raw`\b(?:trail|trails|trailed|trailing|lag|lags|lagged|lagging)\b`;
+/**
+ * What happened, as a verb ("just 70% came true", "came true less often"),
+ * and since round 7 "worked out", "succeeded", "went your way", "resolved
+ * yes", "proved true", "paid off".
+ */
+const HAPPENED_VERB = String.raw`(?:happened|happen|happens|came true|come true|comes true|occurred|landed|panned out|turned out|work(?:s|ed)? out|succeed(?:s|ed)?|(?:went|go|goes) your way|resolved (?:as )?yes|prov(?:ed|en|es) (?:true|right|correct)|(?:paid|pays|pay) off)`;
 /**
  * A bare "optimistic", "cautious", "conservative" or "pessimistic" names a
  * lean when it describes the calls or numbers ("your calls run cautious",
@@ -616,6 +648,13 @@ const OVER_WORDS = new RegExp(
     String.raw`\b(?:fewer|less|lower)\b[^.;:!?\n]{0,40}?\bthan\s+${SAID_NOUN}`,
     String.raw`\b(?:below|under|beneath|behind|short of|shy of)\s+${SAID_NOUN}`,
     String.raw`\b${HAPPENED_VERB}\s+(?:(?:a lot|much|far|a little|slightly|somewhat|a bit)\s+)?less (?:often|frequently)\b(?!\s+than\s+not\b)`,
+    // Round 7: "fewer than that came true" after what was said; "trails"
+    // and "lags" always (what happened behind what was said, or, without
+    // what was said as the object, either way: UNDER_WORDS names it too);
+    // "outpaced" unless what was said is its object.
+    String.raw`\b(?:fewer|less|lower)\b[^.;:!?\n]{0,40}?\bthan\s+that\b`,
+    TRAIL,
+    String.raw`\boutpac\w*\b(?!\s+${SAID_OBJECT})`,
   ].join('|'),
 );
 /** Words that name underconfidence. */
@@ -629,7 +668,7 @@ const UNDER_WORDS = new RegExp(
     String.raw`\b(?:more|higher|greater)\b(?!\s+(?:sure|confident|certain)\b)[^.;:!?\n]{0,40}?\bthan\s+${SAID}`,
     String.raw`\bunder[\s-]?(?:stat(?:e|ed|es|ing|ement|ements)|rat(?:e|ed|es|ing))\b`,
     String.raw`\bnot (?:confident|sure|certain|bold) enough\b`,
-    String.raw`\b(?:beat|beats|exceeded|exceeds|outpaced|outran)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted))\b`,
+    String.raw`\b(?:beat|beats|exceeded|exceeds|outpac\w*|outran)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted)|${SAID_NOUN})\b`,
     String.raw`\b(?:above|over|beyond|ahead of)\s+${SAID}`,
     String.raw`${DESCRIBED}(?:cautious|conservative|pessimistic)\b`,
     String.raw`${DESCRIBED_BEFORE}(?:cautious|conservative|pessimistic)${DESCRIBED_NOUN}`,
@@ -638,6 +677,13 @@ const UNDER_WORDS = new RegExp(
     String.raw`\b(?:more|higher|greater)\b(?!\s+(?:sure|confident|certain)\b)[^.;:!?\n]{0,40}?\bthan\s+${SAID_NOUN}`,
     String.raw`\b(?:above|beyond|ahead of)\s+${SAID_NOUN}`,
     String.raw`\b${HAPPENED_VERB}\s+(?:(?:a lot|much|far|a little|slightly|somewhat|a bit)\s+)?more (?:often|frequently)\b(?!\s+than\s+not\b)`,
+    // Round 7: "more than that came true" after what was said; "outpaced"
+    // always (what happened ahead of what was said, or, without what was
+    // said as the object, either way: OVER_WORDS names it too); "trails" and
+    // "lags" unless what was said is their object.
+    String.raw`\b(?:more|higher|greater)\b(?!\s+(?:sure|confident|certain)\b)[^.;:!?\n]{0,40}?\bthan\s+that\b`,
+    String.raw`\boutpac\w*\b`,
+    String.raw`${TRAIL}(?!(?:\s+behind)?\s+${SAID_OBJECT})`,
   ].join('|'),
 );
 /**
@@ -654,7 +700,7 @@ const COMPARE_WORDS = new RegExp(
     String.raw`\b(?:compared|relative)\s+(?:to|with)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted))\b`,
     String.raw`\b(?:versus|vs|against)\s+what\s+you\s+(?:said|stated|expected|thought|predicted)\b`,
     String.raw`\b(?:short|shy)\s+of\s+what\s+you\s+(?:said|stated|expected|thought|predicted)\b`,
-    String.raw`\b(?:beat|beats|exceeded|exceeds|outpaced|missed|undershot|overshot)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted))\b`,
+    String.raw`\b(?:beat|beats|exceeded|exceeds|outpac\w*|missed|undershot|overshot)\s+(?:what\s+you\s+(?:said|stated|expected|thought|predicted)|your\s+(?:stated|expected|predicted)|${SAID_NOUN})\b`,
     String.raw`\b(?:below|under|beneath|behind|above|over|beyond|ahead of)\s+${SAID}`,
     String.raw`~over~\s+(?:${SAID}|${SAID_NOUN})`,
     String.raw`\bthan\s+${SAID_NOUN}`,
@@ -673,7 +719,10 @@ const COMPARE_WORDS = new RegExp(
     String.raw`\ba long way (?:from|off)\b`,
     String.raw`\b(?:stated|said|expected)\s+(?:against|versus|vs)\b`,
     String.raw`\b(?:against|versus|vs)\s+(?:(?:an?|the|your)\s+)?(?:\d+(?:\.\d+)?\s?(?:%|percent|per cent|pct)\s+)?(?:stated|said|expected|confidence)\b`,
-    String.raw`\b(?:trail|trails|trailed|trailing|lag|lags|lagged|lagging)\b`,
+    TRAIL,
+    // Round 7: "than that" after what was said, and "outpaced" in any form.
+    String.raw`\bthan\s+that\b`,
+    String.raw`\boutpac\w*\b`,
   ].join('|'),
 );
 /** Words that say what was said matched what happened (rule: closeToSaid). */
@@ -1115,6 +1164,13 @@ interface Cue {
   unit?: true;
 }
 
+/**
+ * Between a change word and the number, "to" (and at most a word of
+ * approximation): "fell to 61", "rose to about 88". The number is the level
+ * reached, not the change (round 7).
+ */
+const LEVEL_AFTER_CHANGE = /^\s+to\s+(?:(?:about|around|roughly|nearly|almost|just|approximately|a|an)\s+)?$/;
+
 /** Between a percentage and "calls", a built-in's word only: "your 80% finance calls". */
 const CATEGORY_WORD_ONLY = /^\s*(?:work|health|finance|finances|financial|money|social|personal)\s*$/;
 
@@ -1167,23 +1223,29 @@ const CUES: readonly Cue[] = [
   { pattern: /\b(?:points?|pts)\b/, roles: (percent) => (percent ? [] : ['score', 'drift']), unit: true },
   // A change: "slipped by 6.5", "improved 7.3 points". Within a number's
   // reach, with no other number between, it makes a number that could be a
-  // drift one (rolesFor).
+  // drift one (rolesFor). Right before "to" and the number ("fell to 61")
+  // the number is the level reached, a score (round 7); a score beside a
+  // change word needs a drift that backs it (claimsChange).
   {
     pattern:
       /\b(?:slipped|slips?|fell|falls?|fallen|dropped|drops?|rose|rises?|risen|improved|improves?|improving|climbed|climbs?|gained|gains?|declined|declines?|worsened|worsens?|increased|increases?|decreased|decreases?|dipped|dips?|jumped|jumps?|grew|grows?|sank|slid|changed|changes?|shifted|moved|drift(?:ed|s)?|trend(?:ed|ing|s)?)\b/,
-    roles: (percent) => (percent ? null : ['drift']),
+    roles: (percent, side, _distance, _word, between) =>
+      percent ? null : side === 'left' && LEVEL_AFTER_CHANGE.test(between) ? ['score'] : ['drift'],
   },
   { pattern: /\bby\b/, roles: (percent, side, distance) => (!percent && side === 'left' && distance === 0 ? ['drift'] : null) },
-  // What was said: "you said 80%", "80% sure".
+  // What was said: "you said 80%", "80% sure", and since round 7 "you hoped
+  // for 80%", "you think", "you believed", "you imagined".
   {
     pattern:
-      /\b(?:average\s+confidence|said|say|says|saying|stated|state|states|stating|sure|confident|confidence|certain|felt|feel|feels|feeling|expected|expect|expects|expecting|thought|gave|give|giving|called|likely)\b/,
+      /\b(?:average\s+confidence|said|say|says|saying|stated|state|states|stating|sure|confident|confidence|certain|felt|feel|feels|feeling|expected|expect|expects|expecting|thought|think|thinks|thinking|hoped|hope|hopes|hoping|believed|believe|believes|believing|imagined|imagine|imagines|imagining|gave|give|giving|called|likely)\b/,
     roles: () => ['stated'],
   },
-  // What happened: "55% happened", "a 0.55 hit rate" (a plain number takes only the 0-1 rate).
+  // What happened: "55% happened", "a 0.55 hit rate" (a plain number takes
+  // only the 0-1 rate), and since round 7 "worked out", "succeeded", "went
+  // your way", "resolved yes", "proved true", "paid off".
   {
     pattern:
-      /\b(?:hit\s+rate|rate|happened|happen|happens|happening|came\s+true|come\s+true|comes\s+true|coming\s+true|right|correct|hits?|of\s+the\s+time|occurred|occurs?|turned\s+out|actually|actual|landed|panned\s+out)\b/,
+      /\b(?:hit\s+rate|rate|happened|happen|happens|happening|came\s+true|come\s+true|comes\s+true|coming\s+true|right|correct|hits?|of\s+the\s+time|occurred|occurs?|turned\s+out|actually|actual|landed|panned\s+out|work(?:s|ed|ing)?\s+out|succeed(?:s|ed|ing)?|(?:went|go|goes|going|gone)\s+your\s+way|resolved\s+(?:as\s+)?yes|prov(?:ed|en|es|ing)\s+(?:true|right|correct)|(?:paid|pays|pay|paying)\s+off)\b/,
     roles: () => ['hit'],
   },
 ];
@@ -1312,9 +1374,13 @@ function rolesFor(
   return roles;
 }
 
-/** A cue word that says something happened (not "hit rate", nor "about right"). */
+/**
+ * A cue word that says something happened (not "hit rate", nor "about
+ * right"); since round 7 "worked out", "succeeded", "went your way",
+ * "resolved yes", "proved true" and "paid off" too.
+ */
 const HAPPENED_CUE =
-  /^(?:happened|happen|happens|happening|came\s+true|come\s+true|comes\s+true|coming\s+true|right|correct|hits?|occurred|occurs?|turned\s+out|landed|panned\s+out)$/;
+  /^(?:happened|happen|happens|happening|came\s+true|come\s+true|comes\s+true|coming\s+true|right|correct|hits?|occurred|occurs?|turned\s+out|landed|panned\s+out|work(?:s|ed|ing)?\s+out|succeed(?:s|ed|ing)?|(?:went|go|goes|going|gone)\s+your\s+way|resolved\s+(?:as\s+)?yes|prov(?:ed|en|es|ing)\s+(?:true|right|correct)|(?:paid|pays|pay|paying)\s+off)$/;
 /** "55% of your 25 ...": the count right after it is what a share is of. */
 const SHARE_OF = /\d+(?:\.\d+)?\s?(?:%|percent\b|per cent\b|pct\b)\s+of\s+(?:all\s+(?:of\s+)?)?(?:(?:your|the|those|these)\s+)?$/;
 
@@ -1353,24 +1419,110 @@ function countCameTrue(
   );
 }
 
-/** The way a drift went, in words: up for a positive one, down for a negative one. */
-const UP_WORDS =
-  /\b(?:improved|improves|improve|improving|improvement|rose|rises|rise|risen|rising|gained|gains|gain|gaining|climbed|climbs|climb|climbing|increased|increases|increase|increasing|grew|grows|grow|growing|jumped|jumps|jump|up(?!\s+(?:to|until|till)\b)|upward|upwards|better|higher|above)\b/;
-const DOWN_WORDS =
-  /\b(?:slipped|slips|slip|slipping|fell|falls|fall|fallen|falling|dropped|drops|drop|dropping|declined|declines|decline|declining|decreased|decreases|decrease|decreasing|dipped|dips|dip|dipping|sank|sunk|slid|worsened|worsens|worsen|worsening|down|downward|downwards|worse|lower|below)\b/;
+/**
+ * The way a drift went, in words: up for a positive one, down for a negative
+ * one. The verbs apart from the rest, since a negation turns a verb the
+ * other way ("didn't improve") but leaves a comparison or a noun unsure
+ * ("never been better" is the best yet; "no improvement" may be flat).
+ */
+const UP_VERB = String.raw`(?:improved|improves|improve|improving|rose|rises|rise|risen|rising|gained|gains|gain|gaining|climbed|climbs|climb|climbing|increased|increases|increase|increasing|grew|grows|grow|growing|jumped|jumps|jump)`;
+const UP_OTHER = String.raw`(?:improvement|up(?!\s+(?:to|until|till)\b)|upward|upwards|better|higher|above)`;
+const DOWN_VERB = String.raw`(?:slipped|slips|slip|slipping|fell|falls|fall|fallen|falling|dropped|drops|drop|dropping|declined|declines|decline|declining|decreased|decreases|decrease|decreasing|dipped|dips|dip|dipping|sank|sunk|slid|worsened|worsens|worsen|worsening)`;
+const DOWN_OTHER = String.raw`(?:down|downward|downwards|worse|lower|below)`;
+const UP_WORDS = new RegExp(String.raw`\b(?:${UP_VERB}|${UP_OTHER})\b`);
+const DOWN_WORDS = new RegExp(String.raw`\b(?:${DOWN_VERB}|${DOWN_OTHER})\b`);
+/**
+ * A negation right before a direction word, a word or two of filler allowed
+ * ("didn't improve", "hasn't really risen", "isn't getting better", "failed
+ * to rise", "without slipping"). Round 7: until then "Work didn't improve by
+ * 7.3 points" read as an improvement.
+ */
+const DIRECTION_NEGATION = String.raw`\b(?:not|never|no longer|didn't|doesn't|don't|hasn't|haven't|hadn't|isn't|aren't|wasn't|weren't|won't|wouldn't|can't|cannot|couldn't|shouldn't|didnt|doesnt|dont|hasnt|havent|hadnt|isnt|arent|wasnt|werent|wouldnt|cant|couldnt|shouldnt|fail(?:s|ed)?\s+to|without)\s+(?:(?:really|actually|yet|quite|much|any|been|be|go|gone|going|goes|went|move|moved|moving|moves|come|came|coming|comes|get|got|gotten|getting|gets)\s+){0,2}`;
+/** A negated verb, read the other way: "didn't improve" says down, "hasn't slipped" up. */
+const TURNED_UP = new RegExp(String.raw`${DIRECTION_NEGATION}${UP_VERB}\b`, 'g');
+const TURNED_DOWN = new RegExp(String.raw`${DIRECTION_NEGATION}${DOWN_VERB}\b`, 'g');
+/** A negated comparison or noun, and "no rise", "nor fell": either way. */
+const EITHER_WAY = new RegExp(
+  String.raw`(?:${DIRECTION_NEGATION}|\b(?:no|nor|neither)\s+(?:(?:real|clear|big|much|any|further|more)\s+)?)(?:${UP_VERB}|${UP_OTHER}|${DOWN_VERB}|${DOWN_OTHER})\b`,
+  'g',
+);
+
+/** Which ways the words say something went, negations read (round 7). */
+function directionsIn(words: string): { up: boolean; down: boolean } {
+  let up = false;
+  let down = false;
+  const rest = words
+    .replace(TURNED_UP, () => {
+      down = true;
+      return ' ';
+    })
+    .replace(TURNED_DOWN, () => {
+      up = true;
+      return ' ';
+    })
+    .replace(EITHER_WAY, () => {
+      up = true;
+      down = true;
+      return ' ';
+    });
+  return { up: up || UP_WORDS.test(rest), down: down || DOWN_WORDS.test(rest) };
+}
 
 /**
  * Whether the words in a drift's reach say the way it went, and that way is
  * its sign (round 6, R12): "improved", "rose", "up", "higher" for a
  * positive drift; "slipped", "fell", "down", "lower" for a negative one.
  * None, both, or the wrong one: dropped. A drift of 0 went neither way.
+ * Negations are read (directionsIn).
  */
 function saysDirection(words: string, value: number): boolean {
-  const up = UP_WORDS.test(words);
-  const down = DOWN_WORDS.test(words);
+  const { up, down } = directionsIn(words);
   if (up === down) return false;
   return value > 0 ? up : value < 0 ? down : false;
 }
+
+/**
+ * The words that say a figure moved: the change cue's (CUES), with their
+ * -ing forms ("slipping", "rising"), which the cue doesn't read. Not
+ * "improvement": "room for improvement" claims no move.
+ */
+const CHANGE_WORD =
+  /\b(?:slipped|slips?|slipping|fell|falls?|fallen|falling|dropped|drops?|dropping|rose|rises?|risen|rising|improved|improves?|improving|climbed|climbs?|climbing|gained|gains?|gaining|declined|declines?|declining|worsened|worsens?|worsening|increased|increases?|increasing|decreased|decreases?|decreasing|dipped|dips?|dipping|jumped|jumps?|jumping|grew|grows?|growing|sank|sinking|slid|sliding|changed|changes?|changing|shifted|shifting|moved|moving|drift(?:ed|s|ing)?|trend(?:ed|ing|s)?)\b/g;
+/** "is down to 61", "is up to 88": the words say a figure moved to the number after them. */
+const MOVED_TO = /\b(?:up|down)\s+to\s+(?:(?:about|around|roughly|nearly|almost|just|approximately|a|an)\s+)?$/;
+
+/**
+ * Whether the words in a number's reach say a figure moved (round 7): a
+ * change word on either side with no other number between ("Your finance
+ * score fell to 61", "Finance scores 61 after slipping"), or "down to" / "up
+ * to" right before it. Said of a score, that needs a drift to back it.
+ */
+function claimsChange(token: NumberToken, tokens: readonly NumberToken[], reach: Span, scan: string): boolean {
+  const noNumber = (from: number, to: number) => !tokens.some((o) => o !== token && o.start >= from && o.end <= to);
+  const re = new RegExp(CHANGE_WORD.source, 'g');
+  for (let m = re.exec(scan); m !== null; m = re.exec(scan)) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (start < reach[0] || end > reach[1]) continue;
+    if (end <= token.start ? noNumber(end, token.start) : start >= token.unitEnd && noNumber(token.unitEnd, start)) {
+      return true;
+    }
+  }
+  return MOVED_TO.test(scan.slice(reach[0], token.start));
+}
+
+/**
+ * A score, rating or calibration said to have moved, a number beside it or
+ * not ("Your finance calibration has been improving lately", "your work
+ * score hasn't improved"), round 7: until then a trend said with no number
+ * was checked only when the drift was the evidence. A subject comes first,
+ * so advice about the numbers ("try increasing your social numbers") isn't
+ * one.
+ */
+const TREND_CLAIM = new RegExp(
+  String.raw`\b(?:scores?|ratings?|calibration|accuracy)\s+(?:(?:has|have|had|is|was|were|are|keeps|kept|did|does|hasn't|haven't|hadn't|isn't|wasn't|weren't|aren't|didn't|doesn't|not|never|really|actually|been|also|still|recently|lately)\s+){0,3}${CHANGE_WORD.source}`,
+  'g',
+);
 
 /** Whether a figure is one a number with these roles may be. */
 function fits(f: Figure, token: NumberToken, roles: ReadonlySet<Role>): boolean {
@@ -1545,22 +1697,43 @@ function judgeInsight(
     );
     if (hits === null) return null;
     // A drift is written by its size, so the words say which way it went.
+    const words = scan.slice(reach[0], reach[1]);
     const drift = hits.find((f) => f.role === 'drift');
-    if (drift !== undefined && !saysDirection(scan.slice(reach[0], reach[1]), drift.value)) return null;
+    if (drift !== undefined && !saysDirection(words, drift.value)) return null;
     if (drift !== undefined) writtenDrifts.add(drift);
+    // A score the words say moved ("Your finance score fell to 61") claims
+    // a change only a drift can back (round 7): a citable drift of the same
+    // scope, said the way it went. None (the rating, a weekday, a drift
+    // under its gate) or the wrong way: dropped.
+    if (drift === undefined && hits.some((f) => f.role === 'score') && claimsChange(token, tokens, reach, scan)) {
+      const backing = figures.filter((f) => f.role === 'drift' && f.state === 'citable' && f.scope === bound);
+      if (backing.length === 0 || !backing.every((f) => saysDirection(words, f.value))) return null;
+    }
     hits.forEach(cite);
   }
 
   // A drift as the evidence, not written in the words: its receipt shows it
-  // with its sign ("−6"), so a message that says the other way ("improved
-  // recently" beside a negative drift) contradicts the card.
+  // with its sign ("−6"), so words that say the other way ("improved
+  // recently" beside a negative drift), in the message or (round 7) the
+  // suggestion, contradict the card. Negations are read (directionsIn).
   const evidenceDrift = evidenceHits.find((f) => f.role === 'drift');
   if (evidenceDrift !== undefined && !writtenDrifts.has(evidenceDrift)) {
-    const words = scanForm(message);
-    const up = UP_WORDS.test(words);
-    const down = DOWN_WORDS.test(words);
+    const { up, down } = directionsIn(scan);
     const wrong = evidenceDrift.value > 0 ? down : evidenceDrift.value < 0 ? up : up || down;
     if (wrong) return null;
+  }
+
+  // A score said to have moved, with or without a number (TREND_CLAIM):
+  // only where every category the card is about has a citable drift, and the
+  // claim's clause says the way each went. About none: the context holds no
+  // overall drift, so never.
+  const trendScopes = about.size > 0 ? [...about] : ['overall'];
+  const trends = new RegExp(TREND_CLAIM.source, 'g');
+  for (let m = trends.exec(scan); m !== null; m = trends.exec(scan)) {
+    const [from, to] = segment(m.index, m.index + m[0].length, clauseBreaks, scan.length);
+    const backing = figures.filter((f) => f.role === 'drift' && f.state === 'citable' && trendScopes.includes(f.scope));
+    if (trendScopes.some((s) => !backing.some((f) => f.scope === s))) return null;
+    if (!backing.every((f) => saysDirection(scan.slice(from, to), f.value))) return null;
   }
 
   // What was said set beside what happened names a lean whatever the words
@@ -1621,8 +1794,8 @@ export function validateOutput(raw: unknown, context: CoachContext): CoachOutput
 export const SYSTEM_PROMPT = [
   "You are the Fairly Sure Coach. You interpret one person's forecasting-calibration statistics",
   'and return 0-3 short, specific observations about the data, never about the person.',
-  'Use ONLY numbers that appear in the data, copied as given; you may round to a whole number',
-  'or a whole percent. Never compute, add, subtract, combine or estimate a figure. Write every',
+  'Use ONLY numbers that appear in the data, copied as given with their decimals (the rule on',
+  'decimals is below). Never compute, add, subtract, combine or estimate a figure. Write every',
   'number as digits copied from the data; never spell a number out.',
   'Reward calibration, not correctness - never treat a wrong outcome as failure.',
   'Do not diagnose, infer mental states or personality, or give medical, financial, legal, or',
@@ -1679,7 +1852,11 @@ export const SYSTEM_PROMPT = [
   'predictions happened, came true, were right or hit: the data has no such count.',
   '- Write a drift with the way it went beside it: "improved", "rose", "up" or "higher" when it is',
   'positive, "slipped", "fell", "down" or "lower" when it is negative. Copy a drift with its decimals.',
-  '- Round any other figure to a whole number half up (82.5 is 83), or copy it with its decimals.',
+  '- Copy every figure exactly as given, with its decimals; never round it (82.5 stays 82.5, never',
+  '82 or 83). In the message and suggestion, keep at most two decimals: cut any after the second',
+  '(73.3333 is 73.33), never to a whole number, and write an actual_rate as a percent by moving its',
+  'decimal point two places (0.575 is 57.5%, 0.5714 is 57.14%). The evidence field is the figure',
+  'exactly as in the data, every decimal kept.',
   "- Name one category per sentence, and use only that category's numbers in it. In a sentence",
   'that names a category, call the whole record\'s rating "your overall rating".',
   '- When the data is below the thresholds, return an "encouragement" to keep logging that cites',

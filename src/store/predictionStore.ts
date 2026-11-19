@@ -11,7 +11,8 @@ import { track } from '@/analytics/track';
 import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
 import {
-  answeredAwayFromOrigin,
+  answerCountedAsMoved,
+  answeredCategory,
   canAnswerSkip,
   canCorrect,
   categoryChangeCountedIfAnswered as categoryChangeCountedIfAnsweredRule,
@@ -30,6 +31,7 @@ import {
   clampDueDate,
   dayNumberAt,
   earliestDueDay,
+  isOnLoggedDay,
   isSameDayAnswer,
   latestDueDay,
   scoredFrom,
@@ -42,21 +44,23 @@ import {
   countPostponements,
   countRefiles,
   deletePrediction,
+  getAnsweredCategory,
   getCategoryOrigin,
   getPrediction,
+  getRefileFrom,
   insertPrediction,
   listCategoryOrigins,
   listDeletions,
   listPendingPredictions,
   listResolvedPredictions,
-  noteAnswerAwayFromOrigin,
-  noteRefile,
+  recordAnsweredCategory,
   recordPostponement,
   rememberCategoryOrigin,
   resolvePrediction,
   refilePrediction,
   answerSkippedPrediction,
   setPredictionReflection,
+  setRefileCounted,
   updatePrediction,
 } from '@/db/predictions';
 import type {
@@ -86,8 +90,8 @@ interface PredictionState {
   resolved: Prediction[];
   /**
    * Deletions Insights counts (roadmap D45): scored answers, and open ones
-   * deleted on or after their due day. This phone's only; loaded with the
-   * resolved list.
+   * deleted on any day after the day they were logged, or already due (owner
+   * decision 2026-11-19). This phone's only; loaded with the resolved list.
    */
   deletedCount: number;
   /**
@@ -97,15 +101,18 @@ interface PredictionState {
    */
   postponedCount: number;
   /**
-   * Scored answers now filed in another category than they belong to, on
-   * this phone: moved after they were answered (step 184, D65), or moved
-   * before, after the day they were made, and answered elsewhere than the
-   * category they had at that first move (review round 6). Each once.
+   * Scored answers now filed in another category than the one they had at
+   * the end of the day they were logged, on this phone (step 184, D65;
+   * review rounds 6 and 7, `answerCountedAsMoved`): moved after they were
+   * answered, or moved while open, after that day, and answered elsewhere.
+   * Each once, by where it is now, never by the path it took; one whose
+   * change was counted as a late change isn't counted again unless moved on
+   * to a third category.
    */
   refiledCount: number;
   /**
    * The category this phone remembers for each open prediction moved after
-   * the day it was made (review round 6), by prediction id; loaded with the
+   * the day it was logged (review round 6), by prediction id; loaded with the
    * open list. For Edit's note (`categoryChangeCountedIfAnswered`).
    */
   categoryOrigins: Readonly<Record<string, CategoryOrigin>>;
@@ -143,8 +150,16 @@ interface PredictionState {
   /**
    * Delete a prediction (roadmap D25). Leaves a tombstone so sync deletes it
    * on the server too; stats recompute in the same transaction.
+   *
+   * `seen` is the prediction as the screen showed it when the person
+   * confirmed (review round 7): the tombstone records its status and
+   * `resolved_at`, and sync removes from the server only that, an open copy
+   * or the same answer. An answer that reached this phone after the screen
+   * was drawn (a pull from another phone) is then restored on the next sync
+   * instead of being deleted everywhere. The copy this store reads at the
+   * start of the delete when omitted.
    */
-  remove: (id: string) => Promise<void>;
+  remove: (id: string, seen?: Pick<Prediction, 'status' | 'resolved_at'>) => Promise<void>;
   /**
    * Edit an open prediction's title, category or due date (roadmap D25).
    * Never the confidence. A no-op on an answered one. Stats recompute with it,
@@ -167,11 +182,12 @@ interface PredictionState {
   reflect: (id: string, reflection: string) => Promise<void>;
   /**
    * "Use another number" (D62): save `input` as a new prediction and delete
-   * the open one it replaces, which must have been made today (by
-   * `scoredFrom`, so a rewording today counts). The new one is saved first,
+   * the open one it replaces, which must have been logged today
+   * (`canRenumber`: by `created_at`, read where it was logged; one logged
+   * earlier and reworded today doesn't qualify). The new one is saved first,
    * so a failure leaves the original, and the streak never sees a gap. The
-   * delete isn't counted (D61's day-made exemption). Throws once the day has
-   * passed: from then the number is the record.
+   * delete isn't counted (the day-logged exemption, `deletionCounts`).
+   * Throws once the day has passed: from then the number is the record.
    */
   renumber: (id: string, input: CreatePredictionInput) => Promise<Prediction>;
   /**
@@ -322,22 +338,70 @@ async function getByIdOrHeld(
 }
 
 /**
- * Inside an answer's transaction, after the write (review round 6): count the
- * answer with the moved answers when it was given in another category than
- * the one this phone remembers from its first move after the day it was made
- * (`answeredAwayFromOrigin`: a scored Yes or No, not already counted as a
- * late change). Only this answer: the row must be this user's, answered at
- * `at`, which a resolve that changed nothing (a row already answered from
- * another phone) isn't. The reads are inside the transaction, like the
- * recompute's: a failure rolls the answer back and the person can try again.
+ * Inside an answer's transaction, after the write (review rounds 6 and 7):
+ * for a prediction this phone remembers a category for, write where it was
+ * answered and put it on the moved-answers line when it was given in another
+ * category than the one it had at the end of the day it was logged
+ * (`answerCountedAsMoved`: a scored Yes or No, not already counted as a late
+ * change). With nothing remembered there is nothing to write: it was
+ * answered where it was at the end of that day. Only this answer: the row
+ * must be this user's, answered at `at`, which a resolve that changed
+ * nothing (a row already answered from another phone) isn't. The reads are
+ * inside the transaction, like the recompute's: a failure rolls the answer
+ * back and the person can try again.
  */
 async function countAnswerAwayFromOrigin(userId: string, id: string, at: string): Promise<void> {
   const origin = await getCategoryOrigin(id, userId);
   if (!origin) return;
   const answered = await getPrediction(id);
   if (!answered || answered.user_id !== userId || answered.resolved_at !== at) return;
-  if (!answeredAwayFromOrigin(answered, origin)) return;
-  await noteAnswerAwayFromOrigin(id, userId, origin.from_category, answered.category, at);
+  if (answered.status !== 'resolved_yes' && answered.status !== 'resolved_no') return;
+  await recordAnsweredCategory(id, userId, answered.category, at);
+  await setRefileCounted(
+    id,
+    userId,
+    answerCountedAsMoved(answered, answered.category, origin),
+    answered.category,
+    answered.category,
+  );
+}
+
+/**
+ * Inside a move's transaction, after the write (review round 7): work out
+ * afresh whether the answer, filed where the move put it, is on the
+ * moved-answers line (`answerCountedAsMoved`), from where it is now, where
+ * it was answered (`answeredCategory`) and the category this phone
+ * remembers for it, and set its one row to match. The moves before don't
+ * enter, so the count follows where the answer ends up, not the path it took
+ * there. `before` is its category before this move.
+ *
+ * Only a move that landed changes anything: the row must be this user's
+ * Yes or No, filed under `category`. A prediction deleted in between (its
+ * delete counted it once already) or changed by a pull leaves the count
+ * alone, and the writes require the same (`setRefileCounted`).
+ */
+async function recountMovedAnswer(
+  userId: string,
+  id: string,
+  before: Category,
+  category: Category,
+): Promise<void> {
+  const moved = await getPrediction(id);
+  if (!moved || moved.user_id !== userId || moved.category !== category) return;
+  if (!refileCounts(moved)) return;
+  const origin = await getCategoryOrigin(id, userId);
+  const recorded = origin ? await getAnsweredCategory(id, userId) : null;
+  const answeredIn = answeredCategory(before, recorded, await getRefileFrom(id, userId));
+  // Written once, so a move back to the remembered category, which takes the
+  // moved-answers row away, can't lose where it was answered.
+  if (origin && recorded === null) await recordAnsweredCategory(id, userId, answeredIn);
+  await setRefileCounted(
+    id,
+    userId,
+    answerCountedAsMoved(moved, answeredIn, origin),
+    answeredIn,
+    category,
+  );
 }
 
 export const usePredictionStore = create<PredictionState>((set, get) => ({
@@ -549,10 +613,14 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const userId = requireUserId();
     const current = await requireCorrectable(get().getById, id);
     await withTransaction(async () => {
+      // Its category just before the move, read inside the transaction, as
+      // the count below reads everything else.
+      const before = (await getPrediction(id))?.category ?? current.category;
       await refilePrediction(id, category);
       // Counted on Insights when a score follows it (step 184, D65): beside
-      // the move, so the count and the category can't part.
-      if (refileCounts(current)) await noteRefile(id, userId, current.category, category);
+      // the move, so the count and the category can't part, and worked out
+      // afresh from where the answer now is (review round 7).
+      if (refileCounts(current)) await recountMovedAnswer(userId, id, before, category);
       await useStatsStore.getState().recomputeForUser(userId);
     });
     useStatsStore.getState().clearMilestone();
@@ -578,9 +646,10 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     // delete is uncounted by the rule just checked, not re-read past midnight.
     await withTransaction(async () => {
       await insertPrediction(prediction);
-      // deletionCounts is false for an open one on the day it was made
+      // deletionCounts is false for an open one on the day it was logged
       // (D61), which canRenumber just checked: the one rule, not a literal.
-      await deletePrediction(id, { counted: deletionCounts(current, now) });
+      // The tombstone records the open copy checked (review round 7).
+      await deletePrediction(id, { counted: deletionCounts(current, now), seen: current });
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await get().loadPending();
@@ -628,10 +697,11 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       ) ||
         (rewordedAt !== undefined && rewordingCounts(current, now)) ||
         categoryLate);
-    // Any move after the day it was made is remembered (round 6), so an
-    // answer given in another category than it had then is counted with the
-    // moved answers, however early the move; one counted late here is marked
-    // so, and its answer is left to the late-changes line.
+    // Any move after the day it was logged is remembered (round 6; a
+    // rewording doesn't move that day, round 7), so an answer given in
+    // another category than it had then is counted with the moved answers,
+    // however early the move; one counted late here is marked so, and its
+    // answer is left to the late-changes line.
     const remembers = categoryMoved && categoryChangeRemembered(current, now);
     await withTransaction(async () => {
       await updatePrediction(
@@ -649,7 +719,7 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     if (late) set({ postponedCount: await countPostponements(userId) });
   },
 
-  remove: async (id) => {
+  remove: async (id, seen) => {
     const userId = requireUserId();
     // Only this user's own prediction (getById applies the owner filter): a
     // missing row or another account's is left alone (code review,
@@ -664,13 +734,16 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     ) {
       throw new Error(PAST_WINDOW);
     }
-    // Counted on Insights when it hides something scored or due (D45).
+    // Counted on Insights when it hides something scored, or an open call
+    // from a day after it was logged (D45, owner decision 2026-11-19).
     const counted = deletionCounts(target, new Date());
     // Deleting a resolved prediction changes calibration, streak, and per-
     // category counts — recompute inside the same transaction so the stats
-    // never reflect a ghost prediction.
+    // never reflect a ghost prediction. The tombstone records what the
+    // person saw, or the copy just checked (review round 7): sync removes
+    // only that from the server.
     await withTransaction(async () => {
-      await deletePrediction(id, { counted });
+      await deletePrediction(id, { counted, seen: seen ?? target });
       await useStatsStore.getState().recomputeForUser(userId);
     });
     await Promise.all([get().loadPending(), get().loadResolved()]);
@@ -892,7 +965,16 @@ export function skipAnswerBy(p: Prediction, now: Date = new Date()): Date | null
   return canAnswerSkip(p, now) ? skipLastDay(p) : null;
 }
 
-/** Whether deleting this one now would be counted on Insights (D45). */
+/**
+ * Whether deleting this one now would be counted on Insights (D45), for the
+ * delete confirmation to say so first. The engine's rule (`deletionCounts`):
+ * a scored Yes or No (not a same-day answer, not "Can't tell"); an open one
+ * deleted on any day after the day it was logged (owner decision
+ * 2026-11-19), read where it was logged, a rewording since changing nothing;
+ * or an open one already due, even on the day it was logged. For an open
+ * one, `!canRenumber(p, now)` says which: true means it was logged before
+ * today; false (still the day it was logged) means it is already due.
+ */
 export function deleteIsCounted(p: Prediction, now: Date = new Date()): boolean {
   return deletionCounts(p, now);
 }
@@ -950,10 +1032,9 @@ export function canRenumber(p: Prediction, now: Date = new Date()): boolean {
   // The day it was logged and today, both read where it was logged (round
   // 6), so a traveller's day doesn't end early (record audit: refused an
   // hour after logging after a zone change); the phone's zone without a
-  // stored offset, as before.
-  const offset = p.created_utc_offset_min;
-  const made = dayNumberAt(new Date(p.created_at), offset);
-  return !Number.isNaN(made) && made === dayNumberAt(now, offset);
+  // stored offset, as before. The same day a delete is uncounted on
+  // (`deletionCounts`, round 7), so the replacement's delete never counts.
+  return isOnLoggedDay(p, now);
 }
 
 const RENUMBER_CLOSED =
@@ -1003,9 +1084,10 @@ export function moveIsCounted(
  * Whether moving an open prediction to `category` now would be counted on
  * Insights (owner decision 2026-11-19), for Edit to say so before Save, as
  * moveIsCounted does for a date: another category on the eve of its due day
- * or after, except on the day it was made (or last reworded). The rule is
- * the engine's (`categoryChangeCounts`); `update` records it, once per
- * prediction, beside the late moves and rewordings.
+ * or after, except on the day it was logged (a rewording since doesn't move
+ * that day, round 7). The rule is the engine's (`categoryChangeCounts`);
+ * `update` records it, once per prediction, beside the late moves and
+ * rewordings.
  */
 export function categoryChangeIsCounted(
   p: Prediction,
@@ -1024,7 +1106,7 @@ export function categoryChangeIsCounted(
  * `usePredictionStore.getState().categoryOrigins[p.id] ?? null`. Never true
  * when `categoryChangeIsCounted` is (that move is counted now, on the
  * late-changes line), nor for a move back to the remembered category, nor
- * on the day it was made with nothing remembered. Whether the answer will be
+ * on the day it was logged with nothing remembered. Whether the answer will be
  * scored (not the day it was made, not "Can't tell") isn't known yet, so the
  * note says "if it's answered there". The rule is the engine's
  * (`categoryChangeCountedIfAnswered`); `update` and `resolve` record it.

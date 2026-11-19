@@ -1407,6 +1407,12 @@ sheet with the round ×:
 - **Delete** (text button in `destructive`): a confirmation sheet, "Delete this
   prediction? It won't count anywhere, and it can't be undone." with **Delete** as an
   outlined destructive capsule and **Cancel** beneath (§7.20). Synced as a deletion.
+  When Insights will count the delete (`deleteIsCounted`; security review round 7), the
+  sheet says why instead: "Delete this prediction? You logged it before today, so
+  Insights will count it as deleted. This can’t be undone." on any day after the day it
+  was logged (new words don't move that day), and "Delete this prediction? It’s due, so
+  Insights will count it as deleted. This can’t be undone." on the day it was logged once
+  it is already due (`canRenumber` tells the two apart, on one clock).
 - **Answer it now** (text button, `actionText`): opens Resolve after one line, "It's due
   Fri, Oct 16. Answering early is fine; just answer what you know now." with
   **Answer now** and **Not yet**. Early answers count like any other. **On the day it

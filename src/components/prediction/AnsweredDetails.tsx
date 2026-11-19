@@ -77,21 +77,28 @@ export const REFILED_NOTE =
  * said first, as a delete's is. True whichever way the answer was last
  * moved, since one moved back is off the count.
  *
- * Since review round 6 an answer is also counted when it was moved before it
- * was answered, after the day it was made, and answered in another category
- * than the one it had before that move (`answeredAwayFromOrigin`); moved back
- * there after the answer, it comes off. "The one it was answered in" was
- * untrue of that answer, and "the one it had before it was moved" of the
- * common slip fixed on the day it was made (never remembered, so never
- * counted). The category it had at the end of that day is the one both rules
- * go by: with no move after it, that's where it was answered; with one, it's
- * the category remembered. The two cases this misses are rare: an answer
- * whose category was already counted as a late change (from the eve), then
- * moved back after the answer, is counted again; and new words after an
- * early move start a new made day while the remembered category stays.
+ * The rule (review round 7, `answerCountedAsMoved` in
+ * src/engine/corrections.ts), which depends only on where the answer ends
+ * up, never on the path it took there: a scored answer is on the
+ * moved-answers line while it sits in a different category from the one it
+ * had at the end of the day it was logged (the category this phone
+ * remembers from its first move after that day, else where it was
+ * answered). A category change made while it was open, from the day before
+ * its due day but not on the day it was logged, is counted once, on the
+ * late-changes line, and the answer isn't counted again for it: not where it
+ * was answered, and not back in that end-of-day category (case C: moved on
+ * the eve, answered, moved back: one late change). Only a move to a third
+ * category, neither of those two, adds a moved answer beside it. So the
+ * first sentence holds in every case (an answer left where it was answered
+ * after an eve change is counted, as that late change), and the second says
+ * "once" of the change. "While it was open": a move of the answer itself,
+ * after the due day too, is never a late change. "But not on the day it was
+ * logged": a slip fixed that day, the due-tomorrow default included, isn't
+ * counted at all. "Logged", not "made" (until round 7): new words don't move
+ * that day.
  */
 export const REFILE_COUNTED_HINT =
-  'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was made.';
+  'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged. A category change made while it was open, from the day before its due day but not on the day it was logged, is counted once, as a late change.';
 
 /** Whether switching this answer can move a rating or a badge on screen. */
 export function correctionMoves(prediction: Prediction): boolean {
@@ -213,7 +220,10 @@ export function AnsweredDetails({
 
   const remove = () =>
     run(async () => {
-      await usePredictionStore.getState().remove(prediction.id);
+      // The answer this screen showed (review round 7): sync removes only
+      // that from the server, so another phone's different answer since
+      // comes back instead of being deleted everywhere.
+      await usePredictionStore.getState().remove(prediction.id, prediction);
       onClose();
     }, "Couldn't delete that. Try again.");
 

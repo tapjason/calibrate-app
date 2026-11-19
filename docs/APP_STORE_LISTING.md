@@ -240,8 +240,9 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > again at the next launch. Declining changes nothing.
 >
 > Usage counts: before any is sent from a phone without an account, the Warm-up's
-> first screen says "Fairly Sure sends a few usage counts with no account or
-> device id. You can turn this off here or in You." with a switch (also in You →
+> first screen says "Fairly Sure sends a few usage counts, with no account or
+> device id, to see how the app is used. You can turn this off here or in You."
+> with a switch (also in You →
 > Usage stats). Without an account they carry no account, device or install id;
 > the sign-in screen says what goes with an account.
 
@@ -255,7 +256,8 @@ process, nothing stored on a decline); whether iOS shows its sheet again after a
 is iOS's decision, so say "asks", not "shows". The usage-count lines (2026-11-19) quote
 `WARMUP_USAGE_NOTE` (`src/components/warmup/UsageStatsNotice.tsx`) and hold only for a
 build that carries round 5 (commit `7b5b0ea`, which saves the "notice shown" stamp; the
-privacy policy's header, step 8); check the quote against that build. The sign-in and sign-out lines hold from the
+privacy policy's header, step 8); the words "to see how the app is used" only for one that
+carries round 7 (2026-11-19, the policy re-audit's L1); check the quote against that build. The sign-in and sign-out lines hold from the
 same build (`EMAIL_SIGN_UP_ENABLED = false`, D69 (a) and (c)).
 >
 > Optional app lock: You → Lock with Face ID (off by default; named Lock with

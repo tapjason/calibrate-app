@@ -1,17 +1,23 @@
-// Round 6, item 6: a stale phone's deletion must not remove an answer given
-// elsewhere. Phone A deletes its open copy of a prediction; phone B, which
-// hadn't heard of the delete, answers it afterwards. Before, A's deletion
-// went to the server first in every sweep (and in sign-out's push, which
-// pulls nothing) and took B's answer off it for every phone; and A's pull
-// skipped the answered row for good.
+// Round 6, item 6, and round 7: a stale phone's deletion must not remove an
+// answer given elsewhere. Phone A deletes its open copy of a prediction;
+// phone B, which hadn't heard of the delete, has answered it. Before round 6,
+// A's deletion went to the server first in every sweep (and in sign-out's
+// push, which pulls nothing) and took B's answer off it for every phone; and
+// A's pull skipped the answered row for good. Round 6 made the delete
+// conditional on the row being open or answered no later than A's deletion,
+// which still removed an answer B gave before A deleted its stale open copy
+// (the review's round 7 blocker).
 //
-// Now the pull hands such a row to `reconcileTombstoneWithRemote` (src/db),
-// and the server delete is conditional: it removes the row only while it is
-// open or answered no later than A's deletion, in the same statement, so no
-// answer can land between a check and the delete. When it removes nothing,
-// the row is read and reconciled: answered after the deletion, it is
-// restored here and the tombstone dropped. Real SQLite (the test database);
-// a fake server that applies the delete's filter as PostgREST would.
+// Now each tombstone carries what this phone deleted (`deleted_status`,
+// `deleted_resolved_at`), and the server delete removes only that row
+// (`deletionMatch`): deleted open, only a row still open; deleted answered,
+// only the same answer at the same time (or a row still open, which holds no
+// answer). In the same statement, so no answer can land between a check and
+// the delete. When it removes nothing, the row is read and handed to
+// `reconcileTombstoneWithRemote` (src/db), which restores a row answered
+// differently from what was deleted and drops the tombstone; the pull does
+// the same. Real SQLite (the test database); a fake server that applies the
+// delete's filter as PostgREST would.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -24,13 +30,14 @@ import {
   isDeletedHere,
   listDeletions,
   listPendingDeletions,
+  listPendingTombstonesSettled,
 } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
 import type { Prediction, PredictionWireRow } from '@/types';
 
 import {
   __resetSyncStateForTests,
-  openOrAnsweredBy,
+  deletionMatch,
   pullRemote,
   pushDeletions,
   pushNow,
@@ -58,6 +65,8 @@ const prediction = (overrides: Partial<Prediction> = {}): Prediction => ({
 
 /** A minute after now: an answer given after this phone's deletion, which is stamped now. */
 const afterTheDeletion = () => new Date(Date.now() + 60_000).toISOString();
+/** Two days before now: an answer given before this phone's deletion, which is stamped now. */
+const twoDaysBefore = () => new Date(Date.now() - 2 * 86_400_000).toISOString();
 const longBefore = '2026-05-02T09:00:00.000Z';
 
 /** The server's copy of p1, answered Yes at `resolvedAt` (or still open). */
@@ -85,18 +94,44 @@ function cursorStore(): CursorStore & { storage: Map<string, string> } {
   };
 }
 
-/** The delete's `or` filter, applied as PostgREST would. Throws on any other shape. */
-function passesFilter(row: PredictionWireRow, filter: string): boolean {
-  const match = /^status\.eq\.pending,resolved_at\.lte\."([^"]+)"$/.exec(filter);
-  if (!match) throw new Error(`unexpected filter: ${filter}`);
+/** An ISO time in microseconds, as Postgres compares timestamptz values. */
+function instantMicros(iso: string): number {
+  const fraction = (/\.(\d+)/.exec(iso)?.[1] ?? '').padEnd(6, '0').slice(0, 6);
+  return Date.parse(iso.replace(/\.\d+/, '')) * 1000 + Number(fraction);
+}
+
+/**
+ * The delete's condition, applied as PostgREST would: `status=eq.<s>`, or the
+ * `or` filter `deletionMatch` builds for an answered deletion. Throws on any
+ * other shape, and on a delete with no condition or two.
+ */
+function passesDelete(
+  row: PredictionWireRow,
+  status: unknown,
+  orFilter: string | null,
+): boolean {
+  if ((status === undefined) === (orFilter === null)) {
+    throw new Error('a delete must carry exactly one condition');
+  }
+  if (orFilter === null) return row.status === status;
+  const match =
+    /^status\.eq\.pending,and\(status\.eq\.(resolved_yes|resolved_no|skipped),resolved_at\.eq\."([^"]+)"\)$/.exec(
+      orFilter,
+    );
+  if (!match) throw new Error(`unexpected filter: ${orFilter}`);
   if (row.status === 'pending') return true;
-  return row.resolved_at !== null && Date.parse(row.resolved_at) <= Date.parse(match[1]);
+  return (
+    row.status === match[1] &&
+    row.resolved_at !== null &&
+    instantMicros(row.resolved_at) === instantMicros(match[2])
+  );
 }
 
 /**
  * A server holding `rows`, recording every request in order: `delete:<id>`
  * for each delete sent, `recheck` for a read of rows by id, `pull` for the
- * pull. `failRead` makes a read by id fail.
+ * pull. `filtersSent` holds each delete's condition (`status=eq.pending`, or
+ * `or=(…)`). `failRead` makes a read by id fail.
  */
 function fakeServer(opts: { rows?: PredictionWireRow[]; failRead?: boolean } = {}) {
   const calls: string[] = [];
@@ -132,22 +167,25 @@ function fakeServer(opts: { rows?: PredictionWireRow[]; failRead?: boolean } = {
     },
     delete() {
       const filters: Record<string, unknown> = {};
-      let allowed = '';
+      let orFilter: string | null = null;
       const q = {
         eq(col: string, val: unknown) {
+          if (col !== 'id' && col !== 'user_id' && col !== 'status') {
+            throw new Error(`unexpected delete filter on ${col}`);
+          }
           filters[col] = val;
           return q;
         },
         or(filter: string) {
-          allowed = filter;
+          orFilter = filter;
           return q;
         },
         select() {
           const id = String(filters.id);
           calls.push(`delete:${id}`);
-          filtersSent.push(allowed);
+          filtersSent.push(orFilter !== null ? `or=(${orFilter})` : `status=eq.${String(filters.status)}`);
           const row = held.get(id);
-          if (row && row.user_id === filters.user_id && passesFilter(row, allowed)) {
+          if (row && row.user_id === filters.user_id && passesDelete(row, filters.status, orFilter)) {
             held.delete(id);
             return Promise.resolve({ data: [{ id }], error: null });
           }
@@ -188,21 +226,89 @@ async function deletedHere(): Promise<void> {
   expect(await listPendingDeletions(USER)).toEqual(['p1']);
 }
 
+/**
+ * p1 answered here (`status` at `resolvedAt`), then deleted here (now), the
+ * deletion not yet pushed: its tombstone keeps that answer (round 7).
+ */
+async function deletedHereAnswered(
+  status: 'resolved_yes' | 'resolved_no' | 'skipped',
+  resolvedAt: string,
+): Promise<void> {
+  await insertPrediction(prediction({ status, resolved_at: resolvedAt }));
+  await deletePrediction('p1', { counted: true });
+  expect(await listPendingTombstonesSettled(USER)).toEqual([
+    expect.objectContaining({ id: 'p1', deleted_status: status, deleted_resolved_at: resolvedAt }),
+  ]);
+}
+
 const always = async () => true;
 
-describe('openOrAnsweredBy', () => {
-  it('limits the delete to an open row, or one answered no later than the deletion, the time double-quoted', () => {
-    expect(openOrAnsweredBy('2026-11-19T10:00:00.000Z')).toBe(
-      'status.eq.pending,resolved_at.lte."2026-11-19T10:00:00.000Z"',
-    );
-    expect(openOrAnsweredBy('2026-11-19T10:00:00+05:30')).toBe(
-      'status.eq.pending,resolved_at.lte."2026-11-19T10:00:00+05:30"',
-    );
+// Round 7: replaces `openOrAnsweredBy` (round 6), whose filter let a delete
+// remove any row answered no later than the deletion. Its two tests are
+// carried over below: the time double-quoted and sent as written, and no
+// filter built from a time that can't be read or would break out of the
+// quotes (now such a tombstone counts as deleted open, and only an open row
+// can go, where it used to send nothing).
+describe('deletionMatch', () => {
+  it('deleted open: only a row still open on the server', () => {
+    expect(deletionMatch({ deleted_status: 'pending', deleted_resolved_at: null })).toEqual({
+      kind: 'open',
+    });
   });
 
-  it('gives nothing for a time it cannot read, or one that would break out of the quotes', () => {
-    for (const bad of ['', 'soon', '2026-13-45T10:00:00.000Z', '2026-11-19T10:00:00.000Z"),id.neq.("', '2026-11-19 10:00:00']) {
-      expect(openOrAnsweredBy(bad)).toBeNull();
+  it('a tombstone from before the snapshot counts as deleted open', () => {
+    expect(deletionMatch({})).toEqual({ kind: 'open' });
+    expect(deletionMatch({ deleted_status: null, deleted_resolved_at: null })).toEqual({ kind: 'open' });
+    expect(deletionMatch({ deleted_status: null, deleted_resolved_at: '2026-11-19T10:00:00.000Z' })).toEqual({
+      kind: 'open',
+    });
+  });
+
+  it('deleted answered: the same answer at the same time, or still open, the time double-quoted and sent as written', () => {
+    expect(
+      deletionMatch({ deleted_status: 'resolved_yes', deleted_resolved_at: '2026-11-19T10:00:00.000Z' }),
+    ).toEqual({
+      kind: 'answered',
+      filter: 'status.eq.pending,and(status.eq.resolved_yes,resolved_at.eq."2026-11-19T10:00:00.000Z")',
+    });
+    expect(
+      deletionMatch({ deleted_status: 'resolved_no', deleted_resolved_at: '2026-11-19T10:00:00+05:30' }),
+    ).toEqual({
+      kind: 'answered',
+      filter: 'status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."2026-11-19T10:00:00+05:30")',
+    });
+    // A time pulled from the server keeps its microseconds: re-written
+    // through Date it would lose them, and match nothing.
+    expect(
+      deletionMatch({ deleted_status: 'skipped', deleted_resolved_at: '2026-11-19T10:00:00.123456+00:00' }),
+    ).toEqual({
+      kind: 'answered',
+      filter: 'status.eq.pending,and(status.eq.skipped,resolved_at.eq."2026-11-19T10:00:00.123456+00:00")',
+    });
+  });
+
+  it('builds no filter from a time it cannot read, or one that would break out of the quotes: deleted open', () => {
+    for (const bad of [
+      '',
+      'soon',
+      '2026-13-45T10:00:00.000Z',
+      '2026-11-19T10:00:00.000Z"),id.neq.("',
+      '2026-11-19T10:00:00.000Z),or(id.neq.x',
+      '2026-11-19 10:00:00',
+      null,
+      undefined,
+    ]) {
+      expect(deletionMatch({ deleted_status: 'resolved_yes', deleted_resolved_at: bad })).toEqual({
+        kind: 'open',
+      });
+    }
+  });
+
+  it('a status it does not know counts as deleted open, and never reaches the filter', () => {
+    for (const status of ['resolved_maybe', 'resolved_yes,id.neq.x', '']) {
+      expect(deletionMatch({ deleted_status: status, deleted_resolved_at: '2026-11-19T10:00:00.000Z' })).toEqual({
+        kind: 'open',
+      });
     }
   });
 });
@@ -223,8 +329,22 @@ describe('the pull, for a row deleted here', () => {
     expect(await countUnsynced(USER)).toBe(0);
   });
 
-  it('answered before the deletion: the deletion stands', async () => {
+  // Round 7. Was 'answered before the deletion: the deletion stands' (0
+  // written, p1 gone, its deletion still waiting): the rule that let the
+  // delete remove that answer from the server. This phone deleted an open
+  // copy; the answer the server holds was given elsewhere without knowing of
+  // the delete, before it or after, so it stands.
+  it('answered elsewhere before this phone deleted its open copy: restored, the tombstone dropped', async () => {
     await deletedHere();
+    const { client } = fakeServer({ rows: [serverCopy(longBefore)] });
+    await expect(pullRemote(USER, client, cursorStore())).resolves.toBe(1);
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: longBefore });
+    expect(await isDeletedHere('p1')).toBe(false);
+    expect(await countUnsynced(USER)).toBe(0);
+  });
+
+  it('deleted answered here, the same answer on the server: the deletion stands', async () => {
+    await deletedHereAnswered('resolved_yes', longBefore);
     const { client } = fakeServer({ rows: [serverCopy(longBefore)] });
     await expect(pullRemote(USER, client, cursorStore())).resolves.toBe(0);
     expect(await getPrediction('p1')).toBeNull();
@@ -252,25 +372,131 @@ describe('the pull, for a row deleted here', () => {
 });
 
 describe('the conditional delete', () => {
-  it("sends this phone's deletion time, double-quoted, and removes an open row", async () => {
+  // Round 7. Was "sends this phone's deletion time, double-quoted": the
+  // filter was `status.eq.pending,resolved_at.lte."<deleted_at>"`. A
+  // deletion of an open copy now asks for an open row and nothing else.
+  it('deleted open: removes the row only while it is open on the server', async () => {
     await deletedHere();
-    const [{ deleted_at: deletedAt }] = await listDeletions(USER);
     const { client, calls, filtersSent, held } = fakeServer({ rows: [serverCopy(null)] });
 
     await expect(pushDeletions(USER, client, always)).resolves.toBe(1);
     expect(calls).toEqual(['delete:p1']);
-    expect(filtersSent).toEqual([`status.eq.pending,resolved_at.lte."${deletedAt}"`]);
+    expect(filtersSent).toEqual(['status=eq.pending']);
     expect(held.has('p1')).toBe(false);
     expect(await listPendingDeletions(USER)).toEqual([]);
     // The tombstone stays, pushed (D45).
     expect(await isDeletedHere('p1')).toBe(true);
   });
 
-  it('removes a row answered before the deletion, as it always did', async () => {
+  // Round 7, the review's blocker. Was 'removes a row answered before the
+  // deletion, as it always did' (resolves 1, nothing left on the server):
+  // a phone that still held the prediction open, and deleted it, took off the
+  // server an answer another phone had given before that delete, for every
+  // phone. That answer was never this phone's to delete: it deleted an open
+  // copy. Now nothing is removed, and the answer comes back here.
+  it('never removes an answer given elsewhere before this phone deleted its open copy: read, restored here, the tombstone dropped', async () => {
     await deletedHere();
-    const { client, held } = fakeServer({ rows: [serverCopy(longBefore)] });
+    const { client, calls, held } = fakeServer({ rows: [serverCopy(longBefore)] });
+    await expect(pushDeletions(USER, client, always)).resolves.toBe(0);
+    expect(calls).toEqual(['delete:p1', 'recheck']);
+    expect(held.get('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: longBefore });
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: longBefore });
+    expect(await listPendingDeletions(USER)).toEqual([]);
+    expect(await isDeletedHere('p1')).toBe(false);
+  });
+
+  it('two phones: B answered two days ago, A deletes its stale open copy later: nothing is removed on the server, and A restores the answer', async () => {
+    // Phone A logged it and synced it; it is open here and on the server.
+    await insertPrediction(prediction());
+    // Phone B answered it two days ago; A never pulled since.
+    const answeredOnB = twoDaysBefore();
+    const onB = serverCopy(answeredOnB, { status: 'resolved_no', reflection: 'From phone B' });
+    const { client, calls, held } = fakeServer({ rows: [onB] });
+    // A deletes its stale open copy now (inside the day, uncounted or not).
+    await deletePrediction('p1', { counted: true });
+    expect(await listPendingDeletions(USER)).toEqual(['p1']);
+
+    // A's next sweep: its deletion goes first.
+    const recompute = jest.fn(async () => {});
+    await syncNow(USER, { client, cursorStore: cursorStore(), recompute });
+
+    // The server keeps B's answer, untouched, for every phone.
+    expect(calls[0]).toBe('delete:p1');
+    expect(calls[1]).toBe('recheck');
+    expect(held.get('p1')).toEqual(onB);
+    // A has it back as B answered it, with nothing left to push or delete.
+    expect(await getPrediction('p1')).toMatchObject({
+      status: 'resolved_no',
+      resolved_at: answeredOnB,
+      reflection: 'From phone B',
+    });
+    expect(await isDeletedHere('p1')).toBe(false);
+    expect(await listDeletions(USER)).toEqual([]);
+    expect(await countUnsynced(USER)).toBe(0);
+    expect(recompute).toHaveBeenCalledWith(USER);
+  });
+
+  it('deleted answered here: removes the row with the same answer at the same time', async () => {
+    const answeredAt = '2026-06-01T19:30:00.000Z';
+    await deletedHereAnswered('resolved_yes', answeredAt);
+    const { client, calls, filtersSent, held } = fakeServer({ rows: [serverCopy(answeredAt)] });
+
     await expect(pushDeletions(USER, client, always)).resolves.toBe(1);
-    expect(held.size).toBe(0);
+    expect(calls).toEqual(['delete:p1']);
+    expect(filtersSent).toEqual([
+      `or=(status.eq.pending,and(status.eq.resolved_yes,resolved_at.eq."${answeredAt}"))`,
+    ]);
+    expect(held.has('p1')).toBe(false);
+    expect(await listPendingDeletions(USER)).toEqual([]);
+    expect(await isDeletedHere('p1')).toBe(true);
+  });
+
+  it('deleted answered here with a time pulled from the server: sent as written, microseconds and all, and it matches', async () => {
+    const pulled = '2026-06-01T19:30:00.123456+00:00';
+    await deletedHereAnswered('resolved_no', pulled);
+    const { client, filtersSent, held } = fakeServer({
+      rows: [serverCopy(pulled, { status: 'resolved_no' })],
+    });
+    await expect(pushDeletions(USER, client, always)).resolves.toBe(1);
+    expect(filtersSent).toEqual([
+      `or=(status.eq.pending,and(status.eq.resolved_no,resolved_at.eq."${pulled}"))`,
+    ]);
+    expect(held.has('p1')).toBe(false);
+  });
+
+  it('deleted answered here, changed elsewhere since (Yes became No, its time kept): not removed, and the change comes back here', async () => {
+    const answeredAt = '2026-06-01T19:30:00.000Z';
+    await deletedHereAnswered('resolved_yes', answeredAt);
+    const changed = serverCopy(answeredAt, { status: 'resolved_no', updated_at: '2026-06-01T20:00:00.000Z' });
+    const { client, calls, held } = fakeServer({ rows: [changed] });
+
+    await expect(pushDeletions(USER, client, always)).resolves.toBe(0);
+    expect(calls).toEqual(['delete:p1', 'recheck']);
+    expect(held.get('p1')?.status).toBe('resolved_no');
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
+    expect(await isDeletedHere('p1')).toBe(false);
+  });
+
+  it("deleted as a Can't tell here, answered elsewhere since: not removed, and the answer comes back here", async () => {
+    await deletedHereAnswered('skipped', '2026-06-02T19:00:00.000Z');
+    const answeredLater = serverCopy('2026-06-04T08:00:00.000Z');
+    const { client, held } = fakeServer({ rows: [answeredLater] });
+
+    await expect(pushDeletions(USER, client, always)).resolves.toBe(0);
+    expect(held.get('p1')?.status).toBe('resolved_yes');
+    expect(await getPrediction('p1')).toMatchObject({
+      status: 'resolved_yes',
+      resolved_at: '2026-06-04T08:00:00.000Z',
+    });
+  });
+
+  it("deleted answered here before the answer reached the server: the server's open copy is removed", async () => {
+    await deletedHereAnswered('resolved_yes', '2026-06-01T19:30:00.000Z');
+    const { client, calls, held } = fakeServer({ rows: [serverCopy(null)] });
+    await expect(pushDeletions(USER, client, always)).resolves.toBe(1);
+    expect(calls).toEqual(['delete:p1']);
+    expect(held.has('p1')).toBe(false);
+    expect(await listPendingDeletions(USER)).toEqual([]);
   });
 
   it('never removes an answer given after the deletion: the row is read, restored here, and the tombstone dropped', async () => {
@@ -318,14 +544,50 @@ describe('the conditional delete', () => {
     expect(await getPrediction('p1')).toBeNull();
   });
 
-  it('a row the server kept though the deletion should have gone (an answer with no time) leaves the tombstone waiting', async () => {
+  // Round 7. Was 'a row the server kept though the deletion should have gone
+  // (an answer with no time) leaves the tombstone waiting': under round 6 an
+  // answer whose time couldn't be read was kept on the server but not
+  // restored, so the deletion waited for good. An open copy's deletion now
+  // never removes an answered row, and an answer it never saw outranks it
+  // whatever its time (`tombstoneCovers`, src/db): restored here.
+  it('an answer with no time, this phone having deleted its open copy: not removed, and restored here', async () => {
     await deletedHere();
-    const { client, held } = fakeServer({
+    const { client, calls, held } = fakeServer({
       rows: [serverCopy(null, { status: 'resolved_yes', resolved_at: null })],
     });
     await expect(pushDeletions(USER, client, always)).resolves.toBe(0);
+    expect(calls).toEqual(['delete:p1', 'recheck']);
     expect(held.has('p1')).toBe(true);
+    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+    expect(await listPendingDeletions(USER)).toEqual([]);
+    expect(await isDeletedHere('p1')).toBe(false);
+  });
+
+  // The read-back keeps the tombstone only for a row this deletion covers,
+  // which the delete would have removed; one left there anyway (a server
+  // that answered nothing to the delete, say) leaves the tombstone waiting
+  // for the next sweep, and nothing is restored.
+  it('a covered row the delete left anyway leaves the tombstone waiting', async () => {
+    await deletedHere();
+    // A server whose delete removes nothing and says so, and whose read
+    // still finds the row open.
+    const deleteQuery = {
+      eq: () => deleteQuery,
+      or: () => deleteQuery,
+      select: async () => ({ data: [], error: null }),
+    };
+    const readQuery = {
+      eq: () => readQuery,
+      in: async () => ({ data: [serverCopy(null)], error: null }),
+    };
+    const client = {
+      from: () => ({ delete: () => deleteQuery, select: () => readQuery }),
+    } as unknown as SupabaseClient;
+
+    await expect(pushDeletions(USER, client, always)).resolves.toBe(0);
+    expect(await getPrediction('p1')).toBeNull();
     expect(await listPendingDeletions(USER)).toEqual(['p1']);
+    expect(await isDeletedHere('p1')).toBe(true);
   });
 
   it('a deletion whose time cannot be read is never sent', async () => {

@@ -110,7 +110,13 @@ through them yourself, using best app developer judgement"). **Still open:** 2 (
     it was answered in, on this phone only; one moved back isn't counted. Since round 6 of
     the security review (2026-11-19, widening D69 (e)) it also counts a scored answer given
     in a different category from the one the prediction had when it was first moved after
-    the day it was made (`answeredAwayFromOrigin`, SQLite migration 019).
+    the day it was logged (`answerCountedAsMoved`, SQLite migrations 019 and 022). Since round 7
+    (owner decision 2026-11-19) the rule is one sentence: a scored answer is counted when it
+    ends up in a different category from the one it had at the end of the day it was logged
+    (a rewording doesn't move that day), and a category change made while it was open, from
+    the day before its due day but not on the day it was logged, is counted once, as a late
+    change. Round 7 also counts an open prediction deleted on any day
+    after the day it was logged (`deletionCounts`; from the eve of its due day until then).
 11. **Uninstall `expo-auth-session`.** Answered yes; uninstalled with step 180.
 12. **A password reset.** There is none: someone with an email account who forgets the
     password can't sign in again; their backup stays on the server, and a phone still signed

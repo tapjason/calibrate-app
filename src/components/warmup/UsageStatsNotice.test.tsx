@@ -45,9 +45,10 @@ afterEach(() => {
 });
 
 describe('UsageStatsNotice', () => {
-  it('says what goes up, word for word, in the secondary style', () => {
+  // Policy re-audit L1 (2026-11-19): the line says what the counts are for.
+  it('says what goes up and why, word for word, in the secondary style', () => {
     expect(WARMUP_USAGE_NOTE).toBe(
-      'Fairly Sure sends a few usage counts with no account or device id. You can turn this off here or in You.',
+      'Fairly Sure sends a few usage counts, with no account or device id, to see how the app is used. You can turn this off here or in You.',
     );
     render(<UsageStatsNotice />);
     const line = screen.getByTestId('warmup-usage-note');

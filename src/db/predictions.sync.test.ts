@@ -3,7 +3,7 @@
 // markPredictionSynced, getPredictionUpdatedAt). The public CRUD paths
 // already have their own tests in predictions.test.ts.
 
-import type { Prediction, PredictionWireRow } from '@/types';
+import type { PendingTombstone, Prediction, PredictionWireRow } from '@/types';
 
 import { getDb, setDbForTests, withTransaction } from './client';
 
@@ -27,6 +27,7 @@ import {
   markPredictionSynced,
   reconcileTombstoneWithRemote,
   resolvePrediction,
+  tombstoneCovers,
   updatePrediction,
   upsertPredictionFromRemote,
 } from './predictions';
@@ -931,23 +932,138 @@ describe('reconcileTombstoneWithRemote', () => {
     expect(await listPendingDeletions('u1')).toEqual(['p1']);
   });
 
-  it('keeps the tombstone for an answer given before the delete, or at the same moment', async () => {
+  // Review round 7 (client reviewer and record auditor, a blocker): this
+  // phone deleted its open copy, so it never saw any answer. Round 6 kept the
+  // tombstone for an answer given before the delete, and the push took that
+  // answer off the server. Whatever the times, the answer now outranks it.
+  it('restores an answer given before the delete, or at the same moment: it deleted an open copy', async () => {
     await deletedHere();
-    expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: BEFORE }))).toBe('kept');
-    const [tomb] = await listDeletions('u1');
-    expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: tomb.deleted_at }))).toBe(
-      'kept',
+    expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: BEFORE }))).toBe(
+      'restored',
     );
-    expect(await getPrediction('p1')).toBeNull();
-    expect(await isDeletedHere('p1')).toBe(true);
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no', resolved_at: BEFORE });
+    expect(await listDeletions('u1')).toEqual([]);
+
+    await deletePrediction('p1', { counted: true, seen: { status: 'pending', resolved_at: null } });
+    const [tomb] = await listDeletions('u1');
+    expect(
+      await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: tomb.deleted_at })),
+    ).toBe('restored');
+    expect(await isDeletedHere('p1')).toBe(false);
   });
 
-  it('keeps the tombstone when a time cannot be read: the deletion stays counted', async () => {
+  it("restores an answer whose time can't be read: an open copy's deletion never saw it", async () => {
     await deletedHere();
     expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: 'not a date' }))).toBe(
-      'kept',
+      'restored',
     );
-    expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: null }))).toBe('kept');
+    expect(await isDeletedHere('p1')).toBe(false);
+    await deletePrediction('p1', { seen: { status: 'pending', resolved_at: null } });
+    expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: null }))).toBe(
+      'restored',
+    );
+    expect(await isDeletedHere('p1')).toBe(false);
+  });
+
+  // A deliberate delete of an answer this phone saw (inside its window, D34)
+  // still deletes it: the server's copy is that very answer.
+  describe('a deleted answer', () => {
+    const ANSWERED_AT = '2099-01-01T08:00:00.000Z';
+    async function deletedAnswer(status: 'resolved_yes' | 'resolved_no' | 'skipped' = 'resolved_no') {
+      await insertPrediction(samplePrediction({ status, resolved_at: ANSWERED_AT }));
+      await deletePrediction('p1', { counted: status !== 'skipped' });
+    }
+
+    it('keeps the tombstone for the same answer, however the server writes the time', async () => {
+      await deletedAnswer();
+      for (const resolvedAt of [
+        ANSWERED_AT,
+        '2099-01-01T08:00:00+00:00',
+        '2099-01-01T08:00:00.000456+00:00',
+        '2099-01-01T09:00:00+01:00',
+      ]) {
+        expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: resolvedAt }))).toBe(
+          'kept',
+        );
+      }
+      expect(await getPrediction('p1')).toBeNull();
+      expect(await listDeletions('u1')).toEqual([expect.objectContaining({ id: 'p1', counted: true })]);
+    });
+
+    it('keeps the tombstone for an open copy: it carries no answer', async () => {
+      await deletedAnswer();
+      const open = answeredElsewhere({ status: 'pending', resolved_at: null });
+      expect(await reconcileTombstoneWithRemote(open)).toBe('kept');
+      expect(await isDeletedHere('p1')).toBe(true);
+    });
+
+    it('restores another answer: switched elsewhere (D34), or given at another time', async () => {
+      await deletedAnswer('resolved_no');
+      const switched = answeredElsewhere({ status: 'resolved_yes', resolved_at: ANSWERED_AT });
+      expect(await reconcileTombstoneWithRemote(switched)).toBe('restored');
+      expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: ANSWERED_AT });
+      expect(await listDeletions('u1')).toEqual([]);
+
+      await deletePrediction('p1', { counted: true });
+      const later = answeredElsewhere({ status: 'resolved_yes', resolved_at: '2099-01-01T08:00:01.000Z' });
+      expect(await reconcileTombstoneWithRemote(later)).toBe('restored');
+      expect(await isDeletedHere('p1')).toBe(false);
+    });
+
+    it("restores a Yes or No given elsewhere to a Can't tell this phone deleted", async () => {
+      await deletedAnswer('skipped');
+      expect(
+        await reconcileTombstoneWithRemote(answeredElsewhere({ status: 'resolved_yes', resolved_at: AFTER })),
+      ).toBe('restored');
+      expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+    });
+
+    it("restores the same status when either time can't be read: never removed unseen", async () => {
+      await deletedAnswer();
+      expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: 'not a date' }))).toBe(
+        'restored',
+      );
+      await deletePrediction('p1', { counted: true });
+      await getDb().run(`UPDATE prediction_deletions SET deleted_resolved_at = 'garbled' WHERE id = 'p1'`);
+      expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: ANSWERED_AT }))).toBe(
+        'restored',
+      );
+    });
+  });
+
+  // Tombstones from before SQLite migration 021 have no copy recorded: read
+  // as "deleted open", so they never remove an answer.
+  describe('a tombstone from before migration 021', () => {
+    async function legacyTombstone(deletedStatus: string | null = null) {
+      await getDb().run(
+        `INSERT INTO prediction_deletions (id, user_id, deleted_at, pushed_at, counted, deleted_status, deleted_resolved_at)
+           VALUES ('p1', 'u1', '2099-06-01T00:00:00.000Z', NULL, 1, ?, NULL)`,
+        [deletedStatus],
+      );
+    }
+
+    it('restores any answer, before the deletion or after, and keeps it against an open copy', async () => {
+      await legacyTombstone();
+      expect(
+        await reconcileTombstoneWithRemote(answeredElsewhere({ status: 'pending', resolved_at: null })),
+      ).toBe('kept');
+      expect(await reconcileTombstoneWithRemote(answeredElsewhere({ resolved_at: BEFORE }))).toBe(
+        'restored',
+      );
+      expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no', resolved_at: BEFORE });
+      expect(await listDeletions('u1')).toEqual([]);
+    });
+
+    it('reads a value that is not a status as no copy at all', async () => {
+      await legacyTombstone('resolved_maybe');
+      expect(await reconcileTombstoneWithRemote(answeredElsewhere())).toBe('restored');
+    });
+  });
+
+  it('keeps the tombstone for a pulled row whose status is no status at all', async () => {
+    await deletedHere();
+    const odd = answeredElsewhere({ status: 'archived' as PredictionWireRow['status'] });
+    expect(await reconcileTombstoneWithRemote(odd)).toBe('kept');
     expect(await isDeletedHere('p1')).toBe(true);
   });
 
@@ -1012,5 +1128,197 @@ describe('listPendingTombstonesSettled', () => {
       }),
     ).rejects.toThrow('rolled back');
     expect(await listPendingTombstonesSettled('u1')).toEqual([]);
+  });
+
+  // Review round 7 (SQLite migration 021): what each deletion deleted.
+  it('lists what each deletion deleted: the copy as this phone held it', async () => {
+    await insertPrediction(samplePrediction({ id: 'open' }));
+    await insertPrediction(
+      samplePrediction({ id: 'no', status: 'resolved_no', resolved_at: '2026-05-30T19:00:00.000Z' }),
+    );
+    await insertPrediction(
+      samplePrediction({ id: 'skip', status: 'skipped', resolved_at: '2026-06-02T19:00:00.000Z' }),
+    );
+    await deletePrediction('open');
+    await deletePrediction('no', { counted: true });
+    await deletePrediction('skip');
+    const byId = Object.fromEntries((await listPendingTombstonesSettled('u1')).map((t) => [t.id, t]));
+    expect(byId.open).toEqual({
+      id: 'open',
+      deleted_at: expect.any(String),
+      deleted_status: 'pending',
+      deleted_resolved_at: null,
+    });
+    expect(byId.no).toMatchObject({ deleted_status: 'resolved_no', deleted_resolved_at: '2026-05-30T19:00:00.000Z' });
+    expect(byId.skip).toMatchObject({ deleted_status: 'skipped', deleted_resolved_at: '2026-06-02T19:00:00.000Z' });
+  });
+
+  it('records the copy the caller saw, not the row a pull wrote since', async () => {
+    await insertPrediction(samplePrediction());
+    const seen = await getPrediction('p1');
+    // Answered on another phone and pulled after the screen was drawn.
+    await upsertPredictionFromRemote(
+      sampleWire({ id: 'p1', status: 'resolved_no', resolved_at: '2026-05-30T19:00:00.000Z', updated_at: '2099-01-01T00:00:00.000Z' }),
+    );
+    await deletePrediction('p1', { counted: true, seen: seen! });
+    expect(await listPendingTombstonesSettled('u1')).toEqual([
+      expect.objectContaining({ id: 'p1', deleted_status: 'pending', deleted_resolved_at: null }),
+    ]);
+  });
+
+  it('records a status that is no status as none, and lists a tombstone from before 021 with none', async () => {
+    await insertPrediction(samplePrediction({ id: 'odd' }));
+    await deletePrediction('odd', {
+      seen: { status: 'archived' as Prediction['status'], resolved_at: 42 as unknown as string },
+    });
+    await getDb().run(
+      `INSERT INTO prediction_deletions (id, user_id, deleted_at, pushed_at, counted)
+         VALUES ('legacy', 'u1', '2026-06-01T00:00:00.000Z', NULL, 0)`,
+    );
+    const byId = Object.fromEntries((await listPendingTombstonesSettled('u1')).map((t) => [t.id, t]));
+    expect(byId.odd).toMatchObject({ deleted_status: null, deleted_resolved_at: null });
+    expect(byId.legacy).toMatchObject({ deleted_status: null, deleted_resolved_at: null });
+  });
+});
+
+// Review round 7: the one rule a deletion's push and pull share.
+describe('tombstoneCovers', () => {
+  const T = '2026-11-17T19:00:00.000Z';
+  const tomb = (deleted_status: PendingTombstone['deleted_status'], deleted_resolved_at: string | null = null) => ({
+    deleted_status,
+    deleted_resolved_at,
+  });
+  const remote = (status: PredictionWireRow['status'], resolved_at: string | null = null) => ({
+    status,
+    resolved_at,
+  });
+
+  it('covers an open server copy, whatever this phone deleted', () => {
+    for (const t of [tomb('pending'), tomb(null), tomb('resolved_yes', T), tomb('skipped', T)]) {
+      expect(tombstoneCovers(t, remote('pending'))).toBe(true);
+    }
+  });
+
+  it('covers only the very answer this phone deleted', () => {
+    expect(tombstoneCovers(tomb('resolved_yes', T), remote('resolved_yes', T))).toBe(true);
+    expect(tombstoneCovers(tomb('resolved_no', T), remote('resolved_no', '2026-11-17T19:00:00.000999+00:00'))).toBe(true);
+    expect(tombstoneCovers(tomb('skipped', T), remote('skipped', '2026-11-17T20:00:00+01:00'))).toBe(true);
+    expect(tombstoneCovers(tomb('resolved_yes', T), remote('resolved_no', T))).toBe(false);
+    expect(tombstoneCovers(tomb('skipped', T), remote('resolved_yes', T))).toBe(false);
+    expect(tombstoneCovers(tomb('resolved_yes', T), remote('resolved_yes', '2026-11-17T19:00:00.001Z'))).toBe(false);
+  });
+
+  it('never covers an answer when it deleted an open copy or has no copy recorded', () => {
+    for (const status of ['resolved_yes', 'resolved_no', 'skipped'] as const) {
+      expect(tombstoneCovers(tomb('pending'), remote(status, T))).toBe(false);
+      expect(tombstoneCovers(tomb(null), remote(status, T))).toBe(false);
+      expect(tombstoneCovers(tomb(null, T), remote(status, T))).toBe(false);
+    }
+  });
+
+  it("never covers an answer when a time can't be read on either side", () => {
+    expect(tombstoneCovers(tomb('resolved_yes', null), remote('resolved_yes', null))).toBe(false);
+    expect(tombstoneCovers(tomb('resolved_yes', 'soon'), remote('resolved_yes', 'soon'))).toBe(false);
+    expect(tombstoneCovers(tomb('resolved_yes', T), remote('resolved_yes', null))).toBe(false);
+    expect(tombstoneCovers(tomb('resolved_yes', null), remote('resolved_yes', T))).toBe(false);
+  });
+});
+
+// Review round 7 (the record auditor's two-phone sequence). The server is a
+// map; its delete applies `tombstoneCovers`, the filter sync's push must send
+// (the services side builds the PostgREST form), and a delete that removes
+// nothing reads the row back and reconciles it, as sync does.
+describe('a deletion across two phones', () => {
+  const DUE = '2099-06-10T12:00:00.000Z';
+  const B_ANSWERED = '2099-06-08T19:00:00.000Z'; // two days before the due day
+
+  async function pushDeletionsTo(server: Map<string, PredictionWireRow>): Promise<void> {
+    for (const tomb of await listPendingTombstonesSettled('u1')) {
+      const row = server.get(tomb.id);
+      if (!row) {
+        await markDeletionPushed(tomb.id);
+      } else if (tombstoneCovers(tomb, row)) {
+        server.delete(tomb.id);
+        await markDeletionPushed(tomb.id);
+      } else {
+        await reconcileTombstoneWithRemote(row);
+      }
+    }
+  }
+
+  const onServer = (over: Partial<PredictionWireRow>): PredictionWireRow =>
+    sampleWire({ id: 'p1', title: 'Ship the prototype', category: 'work', due_date: DUE, ...over });
+
+  it('B answers No two days before due; A, not pulled, deletes its open copy later: the answer survives and A restores it', async () => {
+    // A holds its open copy, synced.
+    await insertPrediction(samplePrediction({ due_date: DUE }));
+    await markPredictionSynced('p1', (await getRawRow('p1'))!.updated_at);
+    // B answered No; A hasn't pulled.
+    const server = new Map([
+      ['p1', onServer({ status: 'resolved_no', resolved_at: B_ANSWERED, updated_at: B_ANSWERED })],
+    ]);
+    // A deletes later (its clock is now, after B's answer), counted.
+    await deletePrediction('p1', { counted: true });
+    expect(await listPendingTombstonesSettled('u1')).toEqual([
+      expect.objectContaining({ deleted_status: 'pending', deleted_resolved_at: null }),
+    ]);
+
+    await pushDeletionsTo(server);
+
+    expect(server.get('p1')).toMatchObject({ status: 'resolved_no', resolved_at: B_ANSWERED });
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no', resolved_at: B_ANSWERED });
+    expect(await listDeletions('u1')).toEqual([]);
+    expect(await countUnsynced('u1')).toBe(0);
+  });
+
+  it('the same on a pull before the push: restored, and nothing left to push', async () => {
+    await insertPrediction(samplePrediction({ due_date: DUE }));
+    await deletePrediction('p1', { counted: true });
+    const answered = onServer({ status: 'resolved_no', resolved_at: B_ANSWERED, updated_at: B_ANSWERED });
+    expect(await reconcileTombstoneWithRemote(answered)).toBe('restored');
+    expect(await listPendingTombstonesSettled('u1')).toEqual([]);
+    expect((await getPrediction('p1'))?.status).toBe('resolved_no');
+  });
+
+  it('a deliberate delete of an answer this phone saw still deletes it on the server, counted', async () => {
+    await insertPrediction(samplePrediction({ due_date: DUE, status: 'resolved_yes', resolved_at: B_ANSWERED }));
+    const server = new Map([
+      // The server wrote the time its own way.
+      ['p1', onServer({ status: 'resolved_yes', resolved_at: '2099-06-08T19:00:00+00:00', updated_at: B_ANSWERED })],
+    ]);
+    await deletePrediction('p1', { counted: true });
+
+    await pushDeletionsTo(server);
+
+    expect(server.has('p1')).toBe(false);
+    expect(await getPrediction('p1')).toBeNull();
+    expect(await listPendingTombstonesSettled('u1')).toEqual([]);
+    expect(await listDeletions('u1')).toEqual([expect.objectContaining({ id: 'p1', counted: true })]);
+    // A later pull has nothing to bring back.
+    expect(await isDeletedHere('p1')).toBe(true);
+  });
+
+  it('an answer switched on the other phone after this one deleted its copy stays, and comes back', async () => {
+    await insertPrediction(samplePrediction({ due_date: DUE, status: 'resolved_yes', resolved_at: B_ANSWERED }));
+    const server = new Map([
+      ['p1', onServer({ status: 'resolved_no', resolved_at: B_ANSWERED, updated_at: '2099-06-08T20:00:00.000Z' })],
+    ]);
+    await deletePrediction('p1', { counted: true });
+
+    await pushDeletionsTo(server);
+
+    expect(server.get('p1')?.status).toBe('resolved_no');
+    expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_no' });
+    expect(await listDeletions('u1')).toEqual([]);
+  });
+
+  it('an open copy on the server is deleted, whatever this phone deleted', async () => {
+    await insertPrediction(samplePrediction({ due_date: DUE, status: 'resolved_no', resolved_at: B_ANSWERED }));
+    // This phone's answer never reached the server.
+    const server = new Map([['p1', onServer({ status: 'pending', resolved_at: null })]]);
+    await deletePrediction('p1', { counted: true });
+    await pushDeletionsTo(server);
+    expect(server.has('p1')).toBe(false);
+    expect(await listDeletions('u1')).toEqual([expect.objectContaining({ id: 'p1', counted: true })]);
   });
 });

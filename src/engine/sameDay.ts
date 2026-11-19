@@ -123,14 +123,41 @@ export function madeDayNumber(p: MadeFields): number {
 /**
  * Whether `at` falls on the calendar day the prediction (as it now reads)
  * was made, both read where it was made (`dayNumberWhereMade`). False when
- * either is unreadable. The one test behind same-day answers and the "made
- * today" exemptions (D61, D62).
+ * either is unreadable. The test behind same-day answers (D41, D45) and the
+ * "made today" exemption of a late rewording (D62; a late due-date move reads
+ * the same day through `postponementCounts`' own arguments); a delete and a
+ * category move go by the day it was logged instead (`isOnLoggedDay`,
+ * round 7).
  */
 export function isOnMadeDay(p: MadeFields, at: Date): boolean {
   const made = madeDayNumber(p);
   const day = dayNumberWhereMade(p, at);
   if (Number.isNaN(made) || Number.isNaN(day)) return false;
   return made === day;
+}
+
+/**
+ * Whether `at` falls on the calendar day the prediction was logged
+ * (`created_at`), both read in the offset stored when it was logged, or in
+ * the phone's current zone without one. False when either is unreadable.
+ *
+ * Unlike `isOnMadeDay`, new words don't move this day (owner decision
+ * 2026-11-19, review round 7): it is the exemption for a delete or a
+ * category move "on the day it was made", when nothing has happened since it
+ * was logged. A rewording later on is a change to an existing prediction,
+ * and it didn't reset the exemption: rewording, moving it the same day and
+ * answering the next left the move uncounted (the record auditor's route E).
+ * Also the day "Use another number" stays open (D62, `canRenumber`).
+ */
+export function isOnLoggedDay(
+  p: Pick<Prediction, 'created_at' | 'created_utc_offset_min'>,
+  at: Date,
+): boolean {
+  const offset = p.created_utc_offset_min;
+  const logged = dayNumberAt(new Date(p.created_at), offset);
+  const day = dayNumberAt(at, offset);
+  if (Number.isNaN(logged) || Number.isNaN(day)) return false;
+  return logged === day;
 }
 
 /**

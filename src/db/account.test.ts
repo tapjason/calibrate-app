@@ -22,11 +22,11 @@ import {
   listPendingDeletionsSettled,
   listPendingPredictions,
   markDeletionPushed,
-  noteRefile,
   OFFSET_BACKFILL_MARKER,
   recordPostponement,
   refilePrediction,
   rememberCategoryOrigin,
+  setRefileCounted,
 } from './predictions';
 import { getUserStat, listCategoryStats, upsertCategoryStat, upsertUserStat } from './stats';
 import { createTestDb } from './testing';
@@ -500,5 +500,5 @@ async function moveAnswer(id: string, userId: string): Promise<void> {
     resolved_at: '2026-02-02T12:00:00.000Z',
   });
   await refilePrediction(id, 'health');
-  await noteRefile(id, userId, 'work', 'health');
+  await setRefileCounted(id, userId, true, 'work', 'health');
 }

@@ -108,8 +108,9 @@ export interface SignOutOptions {
    * with the account's rows. It covers what they were told and nothing more:
    * anything new by the time of the wipe, or since they were asked, stops the
    * sign-out and they are asked again (round 6, N2). With no question asked
-   * for the account in this run, it covers what is there when this call
-   * counts.
+   * for the account in this run, it agrees to nothing: anything at stake is
+   * asked about first (round 7, client re-review L1; it used to agree to
+   * whatever was there when the call counted).
    */
   discardUnsynced?: boolean;
 }
@@ -120,6 +121,20 @@ export interface SignOutOptions {
  */
 export const SIGN_OUT_CHECK_FAILED =
   "Couldn't check whether everything on this phone is backed up, so you're still signed in. Try again.";
+
+/**
+ * The account's rows left this phone, but even this phone's copy of the
+ * session couldn't be removed (round 7, client re-review L3): still signed
+ * in. What the server has comes back with the sync that starts at once (the
+ * wipe cleared the cursor, so it pulls everything), or at the next one with a
+ * connection. What the person agreed to lose (changes the server didn't have,
+ * categories only this phone had) went with the wipe and doesn't come back;
+ * with nothing at stake they agreed to nothing, and nothing is lost. Only for
+ * a session's end that failed after the wipe went: one that failed with the
+ * rows still here returns the session's own error.
+ */
+export const SIGN_OUT_FAILED_AFTER_WIPE =
+  "Couldn't finish signing you out, so you're still signed in. Your backed-up predictions will come back to this phone; anything you agreed to lose is gone.";
 
 interface AuthState {
   /**
@@ -193,9 +208,11 @@ interface AuthState {
    * answer run cleared.
    *
    * `{ ok: false, error }` when the session couldn't be ended even on this
-   * phone (still signed in; the rows wiped in step 4 come back from the server
-   * at the next sync, which is started; reminders showing words still leave
-   * the lock screen), or when what would be lost couldn't be read
+   * phone (still signed in; reminders showing words still leave the lock
+   * screen): `SIGN_OUT_FAILED_AFTER_WIPE` when the rows had already gone in
+   * step 4 (what the server has comes back with the sync, which is started;
+   * what the person agreed to lose is gone), else the session's own error
+   * (nothing removed). Or when what would be lost couldn't be read
    * (`SIGN_OUT_CHECK_FAILED`; nothing changed). A wipe that fails before the
    * session ended is retried at the next launch.
    */
@@ -760,8 +777,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // 2. What signing out would lose for good (changes not on the server,
         // categories only this phone has), and whether the person agreed to
         // lose it: `discardUnsynced` agrees to what they were told when asked
-        // in this run (N2), or with no question asked for this account, to
-        // what is here now. Anything more, and nothing happens yet.
+        // in this run (N2), and with no question asked for this account, to
+        // nothing (round 7, L1). Anything more, and nothing happens yet.
         let atStake: AtStake;
         try {
           atStake = await readAtStake(account);
@@ -770,8 +787,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           console.warn('[auth] could not count what signing out would lose:', errorForLog(e));
           return { ok: false, error: SIGN_OUT_CHECK_FAILED };
         }
-        if (opts?.discardUnsynced) {
-          agreed = askedAbout?.account === account ? askedAbout.atStake : atStake;
+        if (opts?.discardUnsynced && askedAbout?.account === account) {
+          agreed = askedAbout.atStake;
         }
         if (!agreedCovers(agreed, atStake)) return askAbout(account, atStake);
         // What may go from here: what is still here of what was agreed.
@@ -842,6 +859,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
           // The words still leave the lock screen: the person asked to leave.
           void dismissDeliveredReminderWords().catch(() => {});
+          // The rows already went (round 7, L3): the error says so, not that
+          // nothing changed.
+          if (account && wiped) {
+            // eslint-disable-next-line no-console
+            console.warn('[auth] the session did not end after the wipe:', outcome.error);
+            return { ok: false, error: SIGN_OUT_FAILED_AFTER_WIPE };
+          }
           return outcome;
         }
 
@@ -1021,8 +1045,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  * wiped (`wiped`, the session's end failed after the wipe), what reached the
  * server comes back with a sync, which starts now (the wipe cleared the
  * cursor, so it pulls everything), and the lists show the account meanwhile.
- * Nothing unsynced was lost: the wipe only ran on what the person agreed to.
- * Never throws.
+ * Nothing unsynced was lost unasked: the wipe only ran on what the person
+ * agreed to (the caller says so, `SIGN_OUT_FAILED_AFTER_WIPE`). Never throws.
  */
 async function keepAccount(userId: string, addedOwed: boolean, wiped: boolean): Promise<void> {
   resumeSyncFor(userId);

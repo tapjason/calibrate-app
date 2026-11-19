@@ -5,18 +5,20 @@ import {
   countPostponements,
   countRefiles,
   deletePrediction,
+  getAnsweredCategory,
   getCategoryOrigin,
   getPrediction,
+  getRefileFrom,
   insertPrediction,
   listCategoryOrigins,
   listPendingPredictions,
   listResolvedPredictions,
-  noteAnswerAwayFromOrigin,
-  noteRefile,
+  recordAnsweredCategory,
   recordPostponement,
   refilePrediction,
   rememberCategoryOrigin,
   resolvePrediction,
+  setRefileCounted,
   updatePrediction,
 } from './predictions';
 import { createTestDb } from './testing';
@@ -120,7 +122,9 @@ describe('db transactions', () => {
   });
 });
 
-// Step 184 (D65): answers left in another category than they were answered in.
+// Step 184 (D65), review round 7: one row per scored answer while the store
+// (from the engine's `answerCountedAsMoved`) says it is counted, none while
+// it isn't.
 describe('prediction_refiles', () => {
   /** An answered prediction, filed under `category`. */
   const answered = (id: string, category: Prediction['category'] = 'work') =>
@@ -132,44 +136,60 @@ describe('prediction_refiles', () => {
         resolved_at: '2026-06-01T20:00:00.000Z',
       }),
     );
-  /** What the store does: the move, then the note beside it. */
-  const move = async (id: string, from: Prediction['category'], to: Prediction['category']) => {
+  /** The move, then the row set beside it, as the store does once it has decided. */
+  const move = async (
+    id: string,
+    to: Prediction['category'],
+    counted: boolean,
+    answeredIn: Prediction['category'] = 'work',
+  ) => {
     await refilePrediction(id, to);
-    await noteRefile(id, 'u1', from, to);
+    await setRefileCounted(id, 'u1', counted, answeredIn, to);
   };
+  const row = (id = 'p1') =>
+    getDb().get<{ from_category: string; to_category: string }>(
+      `SELECT from_category, to_category FROM prediction_refiles WHERE prediction_id = ?`,
+      [id],
+    );
 
-  it('counts a move once, however many categories it passes through', async () => {
+  it('keeps one row per prediction, however often it is set', async () => {
     await answered('p1');
     await answered('p2');
-    await move('p1', 'work', 'health');
+    await move('p1', 'health', true);
     expect(await countRefiles('u1')).toBe(1);
-    await move('p1', 'health', 'finance');
+    await move('p1', 'finance', true);
     expect(await countRefiles('u1')).toBe(1);
-    await move('p2', 'work', 'social');
+    expect(await row()).toEqual({ from_category: 'work', to_category: 'finance' });
+    await move('p2', 'social', true);
     expect(await countRefiles('u1')).toBe(2);
     expect(await countRefiles('someone-else')).toBe(0);
   });
 
-  it('takes a move back to where it started off the count', async () => {
+  it('takes it off when set uncounted, and puts it back when counted again', async () => {
     await answered('p1');
-    await move('p1', 'work', 'health');
-    await move('p1', 'health', 'finance');
-    await move('p1', 'finance', 'work');
+    await move('p1', 'health', true);
+    await move('p1', 'work', false);
     expect(await countRefiles('u1')).toBe(0);
-    // And it can be counted again after that.
-    await move('p1', 'work', 'health');
+    // Harmless with nothing counted.
+    await move('p1', 'work', false);
+    expect(await countRefiles('u1')).toBe(0);
+    await move('p1', 'health', true);
     expect(await countRefiles('u1')).toBe(1);
   });
 
-  it('writes nothing for a move to the same category', async () => {
-    await answered('p1');
-    await move('p1', 'work', 'work');
-    expect(await countRefiles('u1')).toBe(0);
+  it('reads back where it was answered while counted, and nothing otherwise', async () => {
+    await answered('p1', 'personal');
+    expect(await getRefileFrom('p1', 'u1')).toBeNull();
+    await move('p1', 'health', true, 'personal');
+    expect(await getRefileFrom('p1', 'u1')).toBe('personal');
+    expect(await getRefileFrom('p1', 'u2')).toBeNull();
+    await move('p1', 'personal', false, 'personal');
+    expect(await getRefileFrom('p1', 'u1')).toBeNull();
   });
 
   it('drops the row when the prediction is deleted: that is counted as a deletion', async () => {
     await answered('p1');
-    await move('p1', 'work', 'health');
+    await move('p1', 'health', true);
     expect(await countRefiles('u1')).toBe(1);
     await deletePrediction('p1', { counted: true });
     expect(await countRefiles('u1')).toBe(0);
@@ -181,7 +201,7 @@ describe('prediction_refiles', () => {
     await answered('p1');
     await deletePrediction('p1', { counted: true });
 
-    await move('p1', 'work', 'health');
+    await move('p1', 'health', true);
 
     expect(await countRefiles('u1')).toBe(0);
     const deletions = await getDb().all<{ id: string; counted: number }>(
@@ -194,12 +214,12 @@ describe('prediction_refiles', () => {
   it('notes nothing for a prediction that is not an answer, or not this user’s', async () => {
     // Open: refilePrediction leaves it where it was.
     await insertPrediction(samplePrediction({ id: 'open' }));
-    await move('open', 'work', 'health');
+    await move('open', 'health', true);
     // A "Can't tell": never scored, and refilePrediction leaves it too.
     await insertPrediction(
       samplePrediction({ id: 'skip', status: 'skipped', resolved_at: '2026-06-01T20:00:00.000Z' }),
     );
-    await move('skip', 'work', 'health');
+    await move('skip', 'health', true);
     // Another user's answer, even once it sits under the new category.
     await insertPrediction(
       samplePrediction({
@@ -210,24 +230,31 @@ describe('prediction_refiles', () => {
         resolved_at: '2026-06-01T20:00:00.000Z',
       }),
     );
-    await noteRefile('theirs', 'u1', 'work', 'health');
+    await setRefileCounted('theirs', 'u1', true, 'work', 'health');
 
     expect(await countRefiles('u1')).toBe(0);
     expect(await countRefiles('u2')).toBe(0);
   });
 
-  it('leaves an existing note alone when a later move changed no row', async () => {
+  it('leaves an existing row alone when a later move changed no row', async () => {
     await answered('p1');
-    await move('p1', 'work', 'health');
+    await move('p1', 'health', true);
     // The answer stops being one behind the store's back (a sync, say): a
-    // move back or onward now lands nowhere, and the note stays as it was.
+    // move back or onward now lands nowhere, and the row stays as it was.
     await getDb().run(`UPDATE predictions SET status = 'skipped' WHERE id = 'p1'`);
-    await move('p1', 'health', 'work');
-    await move('p1', 'health', 'finance');
-    const note = await getDb().get<{ from_category: string; to_category: string }>(
-      `SELECT from_category, to_category FROM prediction_refiles WHERE prediction_id = 'p1'`,
-    );
-    expect(note).toEqual({ from_category: 'work', to_category: 'health' });
+    await move('p1', 'work', false);
+    await move('p1', 'finance', true);
+    await setRefileCounted('p1', 'u1', false, 'work', 'health');
+    expect(await row()).toEqual({ from_category: 'work', to_category: 'health' });
+  });
+
+  it('never touches another user’s row', async () => {
+    await answered('p1');
+    await move('p1', 'health', true);
+    await setRefileCounted('p1', 'u2', false, 'work', 'health');
+    await setRefileCounted('p1', 'u2', true, 'finance', 'health');
+    expect(await row()).toEqual({ from_category: 'work', to_category: 'health' });
+    expect(await countRefiles('u2')).toBe(0);
   });
 });
 
@@ -310,43 +337,89 @@ describe('prediction_category_origins', () => {
     expect(await getCategoryOrigin('theirs', 'u2')).toBeNull();
   });
 
-  it('counts an answer given elsewhere with the moved answers, once, only the one that landed', async () => {
-    await insertPrediction(samplePrediction());
-    await moveOpen('work', 'health');
-    await resolvePrediction('p1', 'resolved_no', undefined, { at: AT });
-    // Another answer time (a resolve that changed nothing) notes nothing.
-    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', '2026-06-02T20:00:00.000Z');
-    expect(await countRefiles('u1')).toBe(0);
-    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', AT);
-    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', AT);
-    expect(await countRefiles('u1')).toBe(1);
-    // And a move back after the answer takes it off, as for D65.
-    await refilePrediction('p1', 'work');
-    await noteRefile('p1', 'u1', 'health', 'work');
-    expect(await countRefiles('u1')).toBe(0);
-  });
-
-  it('notes nothing against a wrong or late-counted origin, in the same category, or for a skip', async () => {
+  // Review round 7 (SQLite migration 022): where it was answered outlasts a
+  // move back to the remembered category.
+  it('writes where it was answered once, only for the answer that landed', async () => {
     await insertPrediction(samplePrediction());
     await moveOpen('work', 'health', true);
+    expect(await getAnsweredCategory('p1', 'u1')).toBeNull();
+    // Still open: nothing.
+    await recordAnsweredCategory('p1', 'u1', 'health', AT);
+    expect(await getAnsweredCategory('p1', 'u1')).toBeNull();
     await resolvePrediction('p1', 'resolved_no', undefined, { at: AT });
-    // Counted late already: never twice.
-    await noteAnswerAwayFromOrigin('p1', 'u1', 'work', 'health', AT);
-    // Not the remembered category.
-    await noteAnswerAwayFromOrigin('p1', 'u1', 'finance', 'health', AT);
-    // The same category.
-    await noteAnswerAwayFromOrigin('p1', 'u1', 'health', 'health', AT);
+    // Another answer time (a resolve that changed nothing), another
+    // category, another user: nothing.
+    await recordAnsweredCategory('p1', 'u1', 'health', '2026-06-02T20:00:00.000Z');
+    await recordAnsweredCategory('p1', 'u1', 'finance', AT);
+    await recordAnsweredCategory('p1', 'u2', 'health', AT);
+    expect(await getAnsweredCategory('p1', 'u1')).toBeNull();
+    await recordAnsweredCategory('p1', 'u1', 'health', AT);
+    expect(await getAnsweredCategory('p1', 'u1')).toBe('health');
+    expect(await getAnsweredCategory('p1', 'u2')).toBeNull();
+    // The first kept: a later write, even at a move, changes nothing.
+    await refilePrediction('p1', 'work');
+    await recordAnsweredCategory('p1', 'u1', 'work');
+    expect(await getAnsweredCategory('p1', 'u1')).toBe('health');
+    // The remembered category and its flag are untouched.
+    expect(await getCategoryOrigin('p1', 'u1')).toMatchObject({
+      from_category: 'work',
+      counted_late: true,
+    });
+  });
+
+  it('writes nothing for a prediction with no remembered category, or a skip', async () => {
+    await insertPrediction(samplePrediction({ id: 'plain' }));
+    await resolvePrediction('plain', 'resolved_no', undefined, { at: AT });
+    await recordAnsweredCategory('plain', 'u1', 'work', AT);
+    expect(await getAnsweredCategory('plain', 'u1')).toBeNull();
+    expect(await listCategoryOrigins('u1')).toEqual([]);
     await insertPrediction(samplePrediction({ id: 'skip' }));
     await moveOpen('work', 'health', false, 'skip');
     await resolvePrediction('skip', 'skipped', undefined, { at: AT });
-    await noteAnswerAwayFromOrigin('skip', 'u1', 'work', 'health', AT);
-    expect(await countRefiles('u1')).toBe(0);
+    await recordAnsweredCategory('skip', 'u1', 'health', AT);
+    expect(await getAnsweredCategory('skip', 'u1')).toBeNull();
   });
 
   it('forgets the remembered category when the prediction is deleted', async () => {
     await insertPrediction(samplePrediction());
     await moveOpen('work', 'health');
+    await resolvePrediction('p1', 'resolved_no', undefined, { at: AT });
+    await recordAnsweredCategory('p1', 'u1', 'health', AT);
     await deletePrediction('p1', { counted: true });
     expect(await listCategoryOrigins('u1')).toEqual([]);
+    expect(await getAnsweredCategory('p1', 'u1')).toBeNull();
+  });
+});
+
+// Review round 7 (SQLite migration 021): the tombstone remembers what it deleted.
+describe('deletePrediction remembers what it deleted', () => {
+  const tomb = () =>
+    getDb().get<{ deleted_status: string | null; deleted_resolved_at: string | null; counted: number }>(
+      `SELECT deleted_status, deleted_resolved_at, counted FROM prediction_deletions WHERE id = 'p1'`,
+    );
+
+  it('records an open copy as open, and an answer with its time', async () => {
+    await insertPrediction(samplePrediction());
+    await deletePrediction('p1');
+    expect(await tomb()).toEqual({ deleted_status: 'pending', deleted_resolved_at: null, counted: 0 });
+
+    await insertPrediction(samplePrediction({ status: 'resolved_yes', resolved_at: '2026-06-01T19:00:00.000Z' }));
+    await deletePrediction('p1', { counted: true });
+    expect(await tomb()).toEqual({
+      deleted_status: 'resolved_yes',
+      deleted_resolved_at: '2026-06-01T19:00:00.000Z',
+      counted: 1,
+    });
+  });
+
+  it('records the copy the caller states when it does', async () => {
+    await insertPrediction(samplePrediction({ status: 'resolved_no', resolved_at: '2026-06-01T19:00:00.000Z' }));
+    await deletePrediction('p1', { seen: { status: 'pending', resolved_at: null } });
+    expect(await tomb()).toMatchObject({ deleted_status: 'pending', deleted_resolved_at: null });
+  });
+
+  it('writes no tombstone for a row that is not there', async () => {
+    await deletePrediction('p1', { seen: { status: 'pending', resolved_at: null } });
+    expect(await tomb()).toBeNull();
   });
 });

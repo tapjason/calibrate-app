@@ -1,7 +1,8 @@
 import type { Prediction } from '@/types';
 
 import {
-  answeredAwayFromOrigin,
+  answerCountedAsMoved,
+  answeredCategory,
   canAnswerSkip,
   canCorrect,
   categoryChangeCountedIfAnswered,
@@ -106,8 +107,10 @@ describe('which deletions are counted (roadmap D45)', () => {
     expect(deletionCounts(answered({ status: 'skipped' }), now)).toBe(false);
   });
 
-  // D61 (record audit 2026-11-13): from the eve, as a counted due-date move.
-  it('counts an open one from the day before its due day, not earlier', () => {
+  // Owner decision 2026-11-19 (review round 7): an open one is counted on any
+  // day after the day it was logged, however far off its due day. D61
+  // counted it only from the eve, so open(7) and open(30) were uncounted.
+  it('counts an open one deleted on any day after the day it was logged', () => {
     const open = (day: number) =>
       answered({
         status: 'pending',
@@ -115,10 +118,30 @@ describe('which deletions are counted (roadmap D45)', () => {
         created_at: local(1, 9).toISOString(),
         due_date: local(day, 12).toISOString(),
       });
-    expect(deletionCounts(open(7), now)).toBe(false);
+    expect(deletionCounts(open(30), now)).toBe(true);
+    expect(deletionCounts(open(7), now)).toBe(true);
     expect(deletionCounts(open(6), now)).toBe(true);
     expect(deletionCounts(open(5), now)).toBe(true);
     expect(deletionCounts(open(2), now)).toBe(true);
+    // The day after it was logged, first thing.
+    expect(deletionCounts(open(30), local(2, 0))).toBe(true);
+    // Still the day it was logged, last thing: not counted.
+    expect(deletionCounts(open(30), new Date(2026, 10, 1, 23, 59, 59, 999))).toBe(false);
+  });
+
+  it('counts one whose logging time or due date cannot be read, the side that counts', () => {
+    const open = answered({
+      status: 'pending',
+      resolved_at: null,
+      created_at: local(1, 9).toISOString(),
+      due_date: local(30, 12).toISOString(),
+    });
+    expect(deletionCounts({ ...open, created_at: 'nope' }, now)).toBe(true);
+    expect(deletionCounts({ ...open, due_date: 'never' }, now)).toBe(true);
+    // Logged today with an unreadable due date: nothing says it is due.
+    expect(
+      deletionCounts({ ...open, created_at: local(5, 9).toISOString(), due_date: 'never' }, now),
+    ).toBe(false);
   });
 
   // Record audit, 2026-11-15: the day-made exemption is for the eve only. One
@@ -135,7 +158,7 @@ describe('which deletions are counted (roadmap D45)', () => {
     expect(rewordingCounts(dueToday, now)).toBe(true);
   });
 
-  it("doesn't count one deleted on the eve the day it was made, or reworded", () => {
+  it("doesn't count one deleted the day it was logged, reworded that day or not", () => {
     const fresh = answered({
       status: 'pending',
       resolved_at: null,
@@ -143,8 +166,23 @@ describe('which deletions are counted (roadmap D45)', () => {
       due_date: local(6, 12).toISOString(),
     });
     expect(deletionCounts(fresh, now)).toBe(false);
-    const reworded = { ...fresh, created_at: local(1, 9).toISOString(), title_edited_at: local(5, 10).toISOString() };
-    expect(deletionCounts(reworded, now)).toBe(false);
+    expect(deletionCounts({ ...fresh, due_date: local(30, 12).toISOString() }, now)).toBe(false);
+    expect(deletionCounts({ ...fresh, title_edited_at: local(5, 10).toISOString() }, now)).toBe(false);
+  });
+
+  // Owner decision 2026-11-19 (review round 7): new words don't reset the
+  // exemption for a delete. It did (D61 read "made" as logged or reworded),
+  // so rewording a call made days ago bought an uncounted delete that day.
+  it('counts one logged earlier and reworded today: new words do not move the day it was logged', () => {
+    const reworded = answered({
+      status: 'pending',
+      resolved_at: null,
+      created_at: local(1, 9).toISOString(),
+      title_edited_at: local(5, 10).toISOString(),
+      due_date: local(6, 12).toISOString(),
+    });
+    expect(deletionCounts(reworded, now)).toBe(true);
+    expect(deletionCounts({ ...reworded, due_date: local(30, 12).toISOString() }, now)).toBe(true);
   });
 });
 
@@ -244,14 +282,25 @@ describe('categoryChangeCounts', () => {
     expect(categoryChangeCounts(open(), new Date('2026-11-12T23:00:00'))).toBe(false);
   });
 
-  it('leaves a change on the day it was made, or last reworded, alone (D62)', () => {
+  it('leaves a change on the day it was logged alone (D62)', () => {
     const madeOnEve = open({ created_at: new Date('2026-11-13T09:00:00').toISOString() });
     expect(categoryChangeCounts(madeOnEve, new Date('2026-11-13T20:00:00'))).toBe(false);
-    const rewordedToday = open({ title_edited_at: new Date('2026-11-13T10:00:00').toISOString() });
-    expect(categoryChangeCounts(rewordedToday, new Date('2026-11-13T20:00:00'))).toBe(false);
+    // Logged and reworded the same day: still that day.
+    const loggedAndReworded = open({
+      created_at: new Date('2026-11-13T09:00:00').toISOString(),
+      title_edited_at: new Date('2026-11-13T10:00:00').toISOString(),
+    });
+    expect(categoryChangeCounts(loggedAndReworded, new Date('2026-11-13T20:00:00'))).toBe(false);
     // As for a late move, the exemption holds on the due day too.
     const madeOnDueDay = open({ created_at: new Date('2026-11-14T07:00:00').toISOString() });
     expect(categoryChangeCounts(madeOnDueDay, new Date('2026-11-14T08:00:00'))).toBe(false);
+  });
+
+  // Owner decision 2026-11-19 (review round 7): a rewording no longer resets
+  // the exemption, so a move on the eve the day of new words is counted.
+  it('counts a change on the eve the day it was reworded, when it was logged earlier', () => {
+    const rewordedToday = open({ title_edited_at: new Date('2026-11-13T10:00:00').toISOString() });
+    expect(categoryChangeCounts(rewordedToday, new Date('2026-11-13T20:00:00'))).toBe(true);
   });
 
   it('never counts an answered one, and not on an unreadable due date', () => {
@@ -331,10 +380,38 @@ describe('the day made, read in its stored offset', () => {
     expect(rewordingCounts(p, nextDay)).toBe(true);
     expect(deletionCounts(p, nextDay)).toBe(true);
     // The window itself is the phone's day: two days before the due day in
-    // London, nothing counts, made-day or not.
+    // London, a category change isn't counted, made-day or not. A delete is
+    // counted on any day after the day it was logged (round 7), whatever
+    // the due day.
     const early = { ...p, due_date: '2026-11-21T12:00:00.000Z' };
     expect(categoryChangeCounts(early, nextDay)).toBe(false);
-    expect(deletionCounts(early, nextDay)).toBe(false);
+    expect(deletionCounts(early, nextDay)).toBe(true);
+    expect(deletionCounts(early, halfHour)).toBe(false);
+  });
+
+  // Review round 7: the delete's exemption is the day it was logged, in the
+  // offset stored when it was logged, never the rewording's.
+  it('reads the day it was logged in the logging offset, whatever the rewording offset says', () => {
+    __setTimeZoneForTests('Europe/London');
+    // Logged Wed Nov 18 at 23:00 in New York (Thu 04:00 UTC), reworded at
+    // Thu 04:10 UTC with the phone at UTC+9 (Thu 13:10 there).
+    const p: Prediction = {
+      ...answered(),
+      status: 'pending',
+      resolved_at: null,
+      created_at: '2026-11-19T04:00:00.000Z',
+      created_utc_offset_min: -300,
+      title_edited_at: '2026-11-19T04:10:00.000Z',
+      title_edited_utc_offset_min: 540,
+      due_date: '2026-11-25T12:00:00.000Z',
+    };
+    // 23:30 Wednesday in New York: the day it was logged, uncounted.
+    expect(deletionCounts(p, new Date('2026-11-19T04:30:00.000Z'))).toBe(false);
+    expect(categoryChangeRemembered(p, new Date('2026-11-19T04:30:00.000Z'))).toBe(false);
+    // 00:30 Thursday in New York: counted, though it's still the day of the
+    // rewording wherever it was reworded.
+    expect(deletionCounts(p, new Date('2026-11-19T05:30:00.000Z'))).toBe(true);
+    expect(categoryChangeRemembered(p, new Date('2026-11-19T05:30:00.000Z'))).toBe(true);
   });
 });
 
@@ -364,10 +441,17 @@ describe('a category change counted at the answer', () => {
       expect(categoryChangeRemembered(open(), eve)).toBe(true);
     });
 
-    it('remembers nothing on the day it was made, or last reworded (D62)', () => {
+    it('remembers nothing on the day it was logged (D62)', () => {
       expect(categoryChangeRemembered(open(), new Date('2026-11-10T20:00:00'))).toBe(false);
+      const loggedAndReworded = open({ title_edited_at: new Date('2026-11-10T12:00:00').toISOString() });
+      expect(categoryChangeRemembered(loggedAndReworded, new Date('2026-11-10T20:00:00'))).toBe(false);
+    });
+
+    // Owner decision 2026-11-19 (review round 7; the record auditor's route
+    // E: reword, move the same day, answer the next day, uncounted).
+    it('remembers a move the day it was reworded, when it was logged earlier', () => {
       const rewordedToday = open({ title_edited_at: new Date('2026-11-12T08:00:00').toISOString() });
-      expect(categoryChangeRemembered(rewordedToday, twoDaysEarly)).toBe(false);
+      expect(categoryChangeRemembered(rewordedToday, twoDaysEarly)).toBe(true);
     });
 
     it('never for an answered one; an unreadable made time remembers it', () => {
@@ -376,7 +460,9 @@ describe('a category change counted at the answer', () => {
     });
   });
 
-  describe('answeredAwayFromOrigin', () => {
+  // Review round 7: the moved-answers line as a function of where the
+  // answer ends up, never of the path it took.
+  describe('answerCountedAsMoved', () => {
     const scored = (over: Partial<Prediction> = {}) =>
       answered({
         category: 'personal',
@@ -384,28 +470,71 @@ describe('a category change counted at the answer', () => {
         resolved_at: new Date('2026-11-13T19:00:00').toISOString(),
         ...over,
       });
+    const filedIn = (category: Prediction['category']) => scored({ category });
 
-    it('counts a scored Yes or No filed elsewhere than the remembered category', () => {
-      expect(answeredAwayFromOrigin(scored(), origin('health'))).toBe(true);
-      expect(answeredAwayFromOrigin(scored({ status: 'resolved_yes' }), origin('health'))).toBe(true);
+    it('at the answer: counts a scored Yes or No given elsewhere than the remembered category', () => {
+      expect(answerCountedAsMoved(scored(), 'personal', origin('health'))).toBe(true);
+      expect(answerCountedAsMoved(scored({ status: 'resolved_yes' }), 'personal', origin('health'))).toBe(
+        true,
+      );
+      expect(answerCountedAsMoved(filedIn('health'), 'health', origin('health'))).toBe(false);
+      // Nothing remembered: it is where it was at the end of the day it was logged.
+      expect(answerCountedAsMoved(scored(), 'personal', null)).toBe(false);
     });
 
-    it('not when answered in the remembered category, or with none remembered', () => {
-      expect(answeredAwayFromOrigin(scored({ category: 'health' }), origin('health'))).toBe(false);
-      expect(answeredAwayFromOrigin(scored(), null)).toBe(false);
+    it('never twice at the answer: not when a category change was counted as a late change', () => {
+      expect(answerCountedAsMoved(scored(), 'personal', origin('health', true))).toBe(false);
     });
 
-    it('never twice: not when a category change on it was counted as a late change', () => {
-      expect(answeredAwayFromOrigin(scored(), origin('health', true))).toBe(false);
+    it('with nothing remembered, D65 alone: counted while away from where it was answered', () => {
+      expect(answerCountedAsMoved(filedIn('work'), 'personal', null)).toBe(true);
+      expect(answerCountedAsMoved(filedIn('personal'), 'personal', null)).toBe(false);
+    });
+
+    it('remembered, not late: counted while away from the remembered category, wherever answered', () => {
+      // Answered in personal, remembered health.
+      expect(answerCountedAsMoved(filedIn('work'), 'personal', origin('health'))).toBe(true);
+      expect(answerCountedAsMoved(filedIn('health'), 'personal', origin('health'))).toBe(false);
+      // Answered in health (moved back before the answer), then moved after it.
+      expect(answerCountedAsMoved(filedIn('work'), 'health', origin('health'))).toBe(true);
+      expect(answerCountedAsMoved(filedIn('health'), 'health', origin('health'))).toBe(false);
+    });
+
+    it('late (case C and the third category): counted only away from both where answered and home', () => {
+      const late = origin('work', true);
+      // Answered in personal, the late change took it from work.
+      expect(answerCountedAsMoved(filedIn('personal'), 'personal', late)).toBe(false);
+      expect(answerCountedAsMoved(filedIn('work'), 'personal', late)).toBe(false);
+      expect(answerCountedAsMoved(filedIn('health'), 'personal', late)).toBe(true);
+    });
+
+    it('depends only on where it is: the same inputs give the same answer, whatever came before', () => {
+      // The screens builder's two paths both end in personal.
+      const late = origin('work', true);
+      const viaHealth = ['health', 'personal'] as const;
+      const viaWorkAndHealth = ['work', 'health', 'personal'] as const;
+      const last = (path: readonly Prediction['category'][]) =>
+        answerCountedAsMoved(filedIn(path[path.length - 1]), 'personal', late);
+      expect(last(viaHealth)).toBe(false);
+      expect(last(viaWorkAndHealth)).toBe(false);
     });
 
     it('not for a same-day answer, a "Can\'t tell" or an open one: none was scored (D65)', () => {
-      const sameDay = scored({ resolved_at: new Date('2026-11-10T20:00:00').toISOString() });
-      expect(answeredAwayFromOrigin(sameDay, origin('health'))).toBe(false);
-      expect(answeredAwayFromOrigin(scored({ status: 'skipped' }), origin('health'))).toBe(false);
+      const sameDay = scored({ category: 'work', resolved_at: new Date('2026-11-10T20:00:00').toISOString() });
+      expect(answerCountedAsMoved(sameDay, 'personal', origin('health'))).toBe(false);
+      expect(answerCountedAsMoved(sameDay, 'personal', null)).toBe(false);
+      expect(answerCountedAsMoved(scored({ status: 'skipped' }), 'work', origin('health'))).toBe(false);
       expect(
-        answeredAwayFromOrigin(scored({ status: 'pending', resolved_at: null }), origin('health')),
+        answerCountedAsMoved(scored({ status: 'pending', resolved_at: null }), 'work', origin('health')),
       ).toBe(false);
+    });
+  });
+
+  describe('answeredCategory', () => {
+    it('prefers what was written beside the answer, then the counted row, then where it was', () => {
+      expect(answeredCategory('work', 'personal', 'health')).toBe('personal');
+      expect(answeredCategory('work', null, 'health')).toBe('health');
+      expect(answeredCategory('work', null, null)).toBe('work');
     });
   });
 
@@ -428,6 +557,17 @@ describe('a category change counted at the answer', () => {
       expect(categoryChangeCountedIfAnswered(moved, 'work', origin('health'), twoDaysEarly)).toBe(
         true,
       );
+    });
+
+    // Review round 7 (route E): a rewording doesn't move the day it was logged.
+    it('is true on the day it was reworded with nothing remembered, when it was logged earlier', () => {
+      const reworded = open({ title_edited_at: new Date('2026-11-12T08:00:00').toISOString() });
+      expect(categoryChangeCountedIfAnswered(reworded, 'personal', null, twoDaysEarly)).toBe(true);
+      // Logged and reworded the same day: a slip fixed.
+      const sameDay = open({ title_edited_at: new Date('2026-11-10T12:00:00').toISOString() });
+      expect(
+        categoryChangeCountedIfAnswered(sameDay, 'personal', null, new Date('2026-11-10T20:00:00')),
+      ).toBe(false);
     });
 
     it('is true on the day it was reworded when an earlier move is remembered', () => {

@@ -7,6 +7,8 @@ import {
   listCategoryOrigins,
   listDeletions,
   listPendingPredictions,
+  listPendingTombstonesSettled,
+  reconcileTombstoneWithRemote,
   upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { getUserStat, listCategoryStats } from '@/db/stats';
@@ -2239,5 +2241,635 @@ describe('a category change counted at the answer', () => {
     await wipeLocalUserData(userId);
     expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
     expect(await listCategoryOrigins(userId)).toEqual([]);
+  });
+
+  // Review round 7 (owner decision 2026-11-19; the record auditor's route E):
+  // a rewording no longer moves the day a category move is exempt on.
+  it('counts route E: new words, a move the same day, an answer the next day', async () => {
+    // Logged two days ago, due in three days: today is not its eve.
+    const p = await loggedEarlier(() => create(5), 2);
+    await moveTo(p, 'health', 'Knee still hurts by Friday');
+    const reworded = (await usePredictionStore.getState().getById(p.id))!;
+    expect(reworded.title_edited_at).toBeTruthy();
+    expect(categoryChangeCountedIfAnswered(reworded, 'personal', null)).toBe(true);
+    await moveTo(reworded, 'personal');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]).toMatchObject({
+      from_category: 'health',
+      counted_late: false,
+    });
+    await atTime(tomorrow(), () => usePredictionStore.getState().resolve(p.id, 'resolved_no'));
+    expect((await usePredictionStore.getState().getById(p.id))?.status).toBe('resolved_no');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+  });
+
+  it('counts new words on the eve and a move later that day once, as a late change', async () => {
+    // Logged yesterday, due tomorrow: today is its eve.
+    const p = await loggedEarlier(() => create(2));
+    await moveTo(p, 'health', 'Knee still hurts by Friday');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+    const reworded = (await usePredictionStore.getState().getById(p.id))!;
+    expect(categoryChangeIsCounted(reworded, 'personal')).toBe(true);
+    await moveTo(reworded, 'personal');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]).toMatchObject({
+      from_category: 'health',
+      counted_late: true,
+    });
+    await atTime(tomorrow(), () => usePredictionStore.getState().resolve(p.id, 'resolved_no'));
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+  });
+
+  // Kept strict (review round 7): new words after an early move don't reset
+  // the category remembered.
+  it('counts an early move, then new words, then an answer in the new category, against the remembered one', async () => {
+    // Logged two days ago, due in four days. Moved yesterday, reworded today.
+    const p = await loggedEarlier(() => create(6), 2);
+    await atTime(new Date(Date.now() - DAY).toISOString(), () => moveTo(p, 'personal'));
+    const moved = (await usePredictionStore.getState().getById(p.id))!;
+    await moveTo(moved, 'personal', 'Knee still hurts by Friday');
+    expect(usePredictionStore.getState().categoryOrigins[p.id]?.from_category).toBe('health');
+    await atTime(tomorrow(), () => usePredictionStore.getState().resolve(p.id, 'resolved_no'));
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+  });
+});
+
+// Review round 7 (the record auditor's case C and "No double counting"): an
+// answer moved back after it was answered to the category it had at the end
+// of the day it was logged is never counted again.
+describe('an answer moved back to the category it had at the end of the day it was logged', () => {
+  const DAY = 86_400_000;
+  const create = (dueInDays: number, title = 'Knee is fine by Friday') =>
+    usePredictionStore.getState().create({
+      title,
+      category: 'health',
+      confidence: 80,
+      due_date: new Date(Date.now() + dueInDays * DAY).toISOString(),
+    });
+  type Movable = { id: string; title: string; due_date: string };
+  const moveTo = (p: Movable, category: 'health' | 'personal' | 'work') =>
+    usePredictionStore.getState().update(p.id, { title: p.title, category, due_date: p.due_date });
+  const refile = (id: string, category: 'health' | 'personal' | 'work') =>
+    usePredictionStore.getState().refile(id, category);
+  const counts = async () => {
+    await usePredictionStore.getState().loadResolved();
+    const s = usePredictionStore.getState();
+    return { moved: s.refiledCount, late: s.postponedCount, deleted: s.deletedCount };
+  };
+
+  it('case C: moved on the eve (counted late), a No, moved back within the day: counted once', async () => {
+    // Logged yesterday, due tomorrow: today is its eve.
+    const p = await loggedEarlier(() => create(2));
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+    await refile(p.id, 'health');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+    expect((await usePredictionStore.getState().getById(p.id))?.category).toBe('health');
+  });
+
+  it('after a late change, a move of the answer to a third category is counted as moved, and comes off back home', async () => {
+    const p = await loggedEarlier(() => create(2));
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    await refile(p.id, 'work');
+    expect(await counts()).toEqual({ moved: 1, late: 1, deleted: 0 });
+    // Back where it was answered: off.
+    await refile(p.id, 'personal');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+    await refile(p.id, 'work');
+    expect(await counts()).toEqual({ moved: 1, late: 1, deleted: 0 });
+    // Back to the category it had at the end of the day it was logged: off,
+    // though its count started from personal.
+    await refile(p.id, 'health');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+  });
+
+  it('an early move then an eve move, answered, moved back home: counted once, as a late change', async () => {
+    // Logged two days ago, due tomorrow. Moved yesterday (remembered), again
+    // today, the eve (late).
+    const p = await loggedEarlier(() => create(3), 2);
+    await atTime(new Date(Date.now() - DAY).toISOString(), () => moveTo(p, 'personal'));
+    await moveTo((await usePredictionStore.getState().getById(p.id))!, 'work');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+    await refile(p.id, 'health');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+  });
+
+  it('an early move answered away (counted as moved), moved back home: off; then away again: on', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+    await refile(p.id, 'health');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+    await refile(p.id, 'work');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+  });
+
+  it('an answer from another phone moved here: home is not counted, a third category is', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await moveTo(p, 'personal');
+    const here = (await usePredictionStore.getState().getById(p.id))!;
+    await upsertPredictionFromRemote({
+      ...here,
+      status: 'resolved_no',
+      resolved_at: new Date(Date.now() - 60_000).toISOString(),
+      title_edited_at: null,
+      updated_at: '2099-01-01T00:00:00.000Z',
+    });
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+    await refile(p.id, 'work');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+    await refile(p.id, 'health');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+  });
+
+  it('with nothing remembered, D65 alone: counted away from where it was answered', async () => {
+    const p = await loggedEarlier(() => create(4));
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    await refile(p.id, 'personal');
+    expect(await counts()).toEqual({ moved: 1, late: 0, deleted: 0 });
+    await refile(p.id, 'health');
+    expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+  });
+});
+
+// Review round 7 (reproduced by the screens builder): the moved-answers count
+// is a function of where the answer ends up, never of the path it took.
+describe('the moved-answers count follows where the answer ends up', () => {
+  type Cat = 'health' | 'personal' | 'work' | 'finance';
+  /**
+   * Local wall-clock time `days` from today at `hour` (past 23 rolls into
+   * the next day), so no step crosses a midnight by accident.
+   */
+  const at = (days: number, hour: number): string => {
+    const t = new Date();
+    return new Date(t.getFullYear(), t.getMonth(), t.getDate() + days, hour).toISOString();
+  };
+  const store = () => usePredictionStore.getState();
+  /** Logged three days ago at noon in `category`, due today at noon. */
+  const logged = (title: string, category: Cat) => {
+    // Read on the real clock, before it is set back.
+    const due = at(0, 12);
+    return atTime(at(-3, 12), () => store().create({ title, category, confidence: 80, due_date: due }));
+  };
+  /** An open move (Edit) at `iso`. */
+  const moveOpen = (id: string, category: Cat, iso: string, title?: string) =>
+    atTime(iso, async () => {
+      const cur = (await store().getById(id))!;
+      await store().update(id, { title: title ?? cur.title, category, due_date: cur.due_date });
+    });
+  const idsIn = async (table: string, column = 'prediction_id', where = '') =>
+    (await getDb().all<{ id: string }>(`SELECT ${column} AS id FROM ${table} ${where}`)).map(
+      (r) => r.id,
+    );
+  const counts = async () => {
+    await store().loadResolved();
+    const s = store();
+    return { moved: s.refiledCount, late: s.postponedCount, deleted: s.deletedCount };
+  };
+
+  // Logged in work, moved to personal on the eve (a late change), a No in
+  // personal, then within its window back to personal by two routes.
+  it.each([
+    ['personal → health → personal', ['health', 'personal']],
+    ['personal → work → health → personal', ['work', 'health', 'personal']],
+  ] as const)("the screens builder's path %s: one late change, no moved answer", async (_name, route) => {
+    const p = await logged('Ship the deck', 'work');
+    await moveOpen(p.id, 'personal', at(-1, 12));
+    await atTime(at(0, 12), () => store().resolve(p.id, 'resolved_no'));
+    let hour = 13;
+    for (const c of route) await atTime(at(0, hour++), () => store().refile(p.id, c));
+    expect((await store().getById(p.id))?.category).toBe('personal');
+    expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+  });
+
+  type When = 'logged day' | 'early' | 'eve';
+  const WHEN: Record<When, [number, number]> = {
+    // The day it was logged (day -3), later that afternoon.
+    'logged day': [-3, 14],
+    // After that day, two or more days before the due day.
+    early: [-2, 12],
+    // The day before the due day.
+    eve: [-1, 12],
+  };
+  interface Path {
+    name: string;
+    from: Cat;
+    /** Moves while open, in order (logged-day moves first). */
+    open?: [When, Cat][];
+    /** New words the early day, an hour after its moves: the answer that day isn't scored. */
+    sameDay?: boolean;
+    answer?: 'resolved_yes' | 'resolved_no' | 'skipped';
+    /** Moves of the answer within its window, in order. */
+    after?: Cat[];
+    /** Deleted after the last move, within its window. */
+    deleted?: boolean;
+    /** What Insights shows for it, written out by hand. */
+    want: { moved: 0 | 1; late: 0 | 1; deleted?: 0 | 1 };
+  }
+
+  /**
+   * The answered hint's statement, applied to the path on its own: "Insights
+   * counts a scored answer that ends up in a different category from the one
+   * it had at the end of the day it was logged. A category change made while
+   * it was open, from the day before its due day but not on the day it was
+   * logged, is counted once, as a late change." The second sentence keeps
+   * the answer off the moved-answers line while it sits where the open moves
+   * left it (the late-changes line holds that); a deleted answer is counted
+   * once, as a deletion (D65).
+   */
+  function statement(path: Path): { moved: 0 | 1; late: 0 | 1; deleted: 0 | 1 } {
+    let cat = path.from;
+    let late = false;
+    let endOfLoggedDay = path.from;
+    for (const [when, to] of path.open ?? []) {
+      if (when === 'eve' && to !== cat) late = true;
+      cat = to;
+      if (when === 'logged day') endOfLoggedDay = cat;
+    }
+    const answeredIn = cat;
+    const answer = path.answer ?? 'resolved_no';
+    const scored = answer !== 'skipped' && !path.sameDay;
+    const end = path.after?.length ? path.after[path.after.length - 1] : answeredIn;
+    const away = scored && end !== endOfLoggedDay && !(late && end === answeredIn);
+    const deleted = path.deleted ? 1 : 0;
+    return { moved: away && !path.deleted ? 1 : 0, late: late ? 1 : 0, deleted };
+  }
+
+  const PATHS: Path[] = [
+    // The record auditor's "no double counting" list and case C.
+    { name: 'eve move, answered', from: 'work', open: [['eve', 'personal']], want: { moved: 0, late: 1 } },
+    {
+      name: 'case C: eve move, answered, moved back home',
+      from: 'work',
+      open: [['eve', 'personal']],
+      after: ['work'],
+      want: { moved: 0, late: 1 },
+    },
+    {
+      name: 'eve move, answered, personal → health → personal',
+      from: 'work',
+      open: [['eve', 'personal']],
+      after: ['health', 'personal'],
+      want: { moved: 0, late: 1 },
+    },
+    {
+      name: 'eve move, answered, personal → work → health → personal',
+      from: 'work',
+      open: [['eve', 'personal']],
+      after: ['work', 'health', 'personal'],
+      want: { moved: 0, late: 1 },
+    },
+    {
+      name: 'the same with a Yes',
+      from: 'work',
+      open: [['eve', 'personal']],
+      answer: 'resolved_yes',
+      after: ['work', 'health', 'personal'],
+      want: { moved: 0, late: 1 },
+    },
+    {
+      name: 'eve move, answered, moved to a third category',
+      from: 'work',
+      open: [['eve', 'personal']],
+      after: ['health'],
+      want: { moved: 1, late: 1 },
+    },
+    {
+      name: 'eve move, answered, third category, then home',
+      from: 'work',
+      open: [['eve', 'personal']],
+      after: ['health', 'work'],
+      want: { moved: 0, late: 1 },
+    },
+    {
+      name: 'eve move, answered, home, then a third category',
+      from: 'work',
+      open: [['eve', 'personal']],
+      after: ['work', 'health'],
+      want: { moved: 1, late: 1 },
+    },
+    {
+      name: 'eve move and back the same day, answered home, then moved',
+      from: 'work',
+      open: [
+        ['eve', 'personal'],
+        ['eve', 'work'],
+      ],
+      after: ['personal'],
+      want: { moved: 1, late: 1 },
+    },
+    {
+      name: 'early move then eve move, answered',
+      from: 'work',
+      open: [
+        ['early', 'personal'],
+        ['eve', 'health'],
+      ],
+      want: { moved: 0, late: 1 },
+    },
+    {
+      name: 'early move then eve move, answered, moved home',
+      from: 'work',
+      open: [
+        ['early', 'personal'],
+        ['eve', 'health'],
+      ],
+      after: ['work'],
+      want: { moved: 0, late: 1 },
+    },
+    {
+      name: 'early move then eve move, answered, moved to where the early move put it',
+      from: 'work',
+      open: [
+        ['early', 'personal'],
+        ['eve', 'health'],
+      ],
+      after: ['personal'],
+      want: { moved: 1, late: 1 },
+    },
+    {
+      name: 'early move then eve move, answered, there and back',
+      from: 'work',
+      open: [
+        ['early', 'personal'],
+        ['eve', 'health'],
+      ],
+      after: ['personal', 'health'],
+      want: { moved: 0, late: 1 },
+    },
+    // Round 6: an early move, then an answer elsewhere, is counted.
+    { name: 'early move, answered away', from: 'work', open: [['early', 'personal']], want: { moved: 1, late: 0 } },
+    {
+      name: 'early move, answered away, moved home',
+      from: 'work',
+      open: [['early', 'personal']],
+      after: ['work'],
+      want: { moved: 0, late: 0 },
+    },
+    {
+      name: 'early move, answered away, home, then away again',
+      from: 'work',
+      open: [['early', 'personal']],
+      after: ['work', 'health'],
+      want: { moved: 1, late: 0 },
+    },
+    {
+      name: 'early move, answered away, home, then back where it was answered',
+      from: 'work',
+      open: [['early', 'personal']],
+      after: ['work', 'personal'],
+      want: { moved: 1, late: 0 },
+    },
+    {
+      name: 'early move and back before the answer',
+      from: 'work',
+      open: [
+        ['early', 'personal'],
+        ['early', 'work'],
+      ],
+      want: { moved: 0, late: 0 },
+    },
+    {
+      name: 'early move and back, answered home, moved and back',
+      from: 'work',
+      open: [
+        ['early', 'personal'],
+        ['early', 'work'],
+      ],
+      after: ['health', 'personal', 'work'],
+      want: { moved: 0, late: 0 },
+    },
+    // D65 alone: nothing moved it after the day it was logged.
+    { name: 'never moved, answered', from: 'work', want: { moved: 0, late: 0 } },
+    { name: 'never moved, answer moved', from: 'work', after: ['personal'], want: { moved: 1, late: 0 } },
+    {
+      name: 'never moved, answer moved twice',
+      from: 'work',
+      after: ['personal', 'health'],
+      want: { moved: 1, late: 0 },
+    },
+    {
+      name: 'never moved, answer moved away and back by a long way',
+      from: 'work',
+      after: ['personal', 'health', 'finance', 'work'],
+      want: { moved: 0, late: 0 },
+    },
+    // A move the day it was logged is a slip fixed: that day's end is after it.
+    {
+      name: 'logged-day move, answered',
+      from: 'work',
+      open: [['logged day', 'personal']],
+      want: { moved: 0, late: 0 },
+    },
+    {
+      name: 'logged-day move, answer moved back to where it was logged',
+      from: 'work',
+      open: [['logged day', 'personal']],
+      after: ['work'],
+      want: { moved: 1, late: 0 },
+    },
+    {
+      name: 'logged-day move, then an early move, answered away',
+      from: 'work',
+      open: [
+        ['logged day', 'personal'],
+        ['early', 'health'],
+      ],
+      want: { moved: 1, late: 0 },
+    },
+    {
+      name: 'logged-day move, then an early move, answer moved to that day’s end',
+      from: 'work',
+      open: [
+        ['logged day', 'personal'],
+        ['early', 'health'],
+      ],
+      after: ['personal'],
+      want: { moved: 0, late: 0 },
+    },
+    // Only a scored answer.
+    {
+      name: 'early move, Can’t tell',
+      from: 'work',
+      open: [['early', 'personal']],
+      answer: 'skipped',
+      want: { moved: 0, late: 0 },
+    },
+    {
+      name: 'early move, new words, answered the same day, then moved',
+      from: 'work',
+      open: [['early', 'personal']],
+      sameDay: true,
+      after: ['health'],
+      want: { moved: 0, late: 0 },
+    },
+    // Deleted after a move: counted once, as a deletion (D65).
+    {
+      name: 'early move, answered away, moved, deleted',
+      from: 'work',
+      open: [['early', 'personal']],
+      after: ['health'],
+      deleted: true,
+      want: { moved: 0, late: 0, deleted: 1 },
+    },
+    {
+      name: 'eve move, answered, third category, deleted',
+      from: 'work',
+      open: [['eve', 'personal']],
+      after: ['health'],
+      deleted: true,
+      want: { moved: 0, late: 1, deleted: 1 },
+    },
+  ];
+
+  it('every path: the statement and the hand-written count agree', () => {
+    for (const path of PATHS) {
+      expect({ name: path.name, ...statement(path) }).toEqual({
+        name: path.name,
+        deleted: 0,
+        ...path.want,
+      });
+    }
+  });
+
+  it('every path: what Insights counts is what the statement says', async () => {
+    const want = { moved: 0, late: 0, deleted: 0 };
+    for (const path of PATHS) {
+      const p = await logged(path.name, path.from);
+      // The timeline the WHEN table assumes: logged day -3, due day 0.
+      expect(p.due_date).toBe(at(0, 12));
+      for (const [when, to] of path.open ?? []) {
+        const [day, hour] = WHEN[when];
+        await moveOpen(p.id, to, at(day, hour));
+      }
+      // Answered on the due day, or with new words the early day, that day.
+      let [day, hour] = [0, 12];
+      if (path.sameDay) {
+        const cur = (await store().getById(p.id))!;
+        await moveOpen(p.id, cur.category as Cat, at(-2, 13), `${path.name}, reworded`);
+        [day, hour] = [-2, 18];
+      }
+      await atTime(at(day, hour), () => store().resolve(p.id, path.answer ?? 'resolved_no'));
+      for (const c of path.after ?? []) {
+        hour += 1;
+        await atTime(at(day, hour), () => store().refile(p.id, c));
+      }
+      if (path.deleted) await atTime(at(day, hour + 1), () => store().remove(p.id));
+
+      const got = {
+        name: path.name,
+        moved: (await idsIn('prediction_refiles')).includes(p.id) ? 1 : 0,
+        late: (await idsIn('prediction_postponements')).includes(p.id) ? 1 : 0,
+        deleted: (await idsIn('prediction_deletions', 'id', 'WHERE counted = 1')).includes(p.id) ? 1 : 0,
+      };
+      const said = statement(path);
+      expect(got).toEqual({ name: path.name, ...said });
+      want.moved += said.moved;
+      want.late += said.late;
+      want.deleted += said.deleted;
+    }
+    // Insights' lines are the sums, each prediction once per line.
+    expect(await counts()).toEqual(want);
+  });
+});
+
+// Owner decision 2026-11-19 (review round 7): an open prediction deleted on
+// any day after the day it was logged is counted; a rewording doesn't move
+// that day.
+describe('which deletes are counted', () => {
+  const DAY = 86_400_000;
+  const create = (title: string, dueInDays: number) =>
+    usePredictionStore.getState().create({
+      title,
+      category: 'work',
+      confidence: 70,
+      due_date: new Date(Date.now() + dueInDays * DAY).toISOString(),
+    });
+  const deleted = async () => {
+    await usePredictionStore.getState().loadResolved();
+    return usePredictionStore.getState().deletedCount;
+  };
+
+  it('counts an open one deleted the day after it was logged, however far off its due day', async () => {
+    const p = await loggedEarlier(() => create('Far off', 30));
+    await usePredictionStore.getState().remove(p.id);
+    expect(await deleted()).toBe(1);
+  });
+
+  it("doesn't count one deleted the day it was logged, new words or not", async () => {
+    const p = await create('Fresh one', 30);
+    await usePredictionStore.getState().update(p.id, {
+      title: 'Fresh words entirely',
+      category: 'work',
+      due_date: p.due_date,
+    });
+    await usePredictionStore.getState().remove(p.id);
+    expect(await deleted()).toBe(0);
+  });
+
+  it('counts one logged earlier and reworded today', async () => {
+    const p = await loggedEarlier(() => create('Old words', 30));
+    await usePredictionStore.getState().update(p.id, {
+      title: 'New words entirely',
+      category: 'work',
+      due_date: p.due_date,
+    });
+    await usePredictionStore.getState().remove(p.id);
+    expect(await deleted()).toBe(1);
+  });
+
+  // Review round 7: the tombstone records what the person saw, so an answer
+  // that reached this phone after the screen was drawn comes back.
+  it('records in the tombstone the copy the screen showed, so an answer pulled since comes back', async () => {
+    const userId = useAuthStore.getState().userId!;
+    const p = await loggedEarlier(() => create('Seen open', 30));
+    const shown = (await usePredictionStore.getState().getById(p.id))!;
+    const answer = {
+      ...shown,
+      status: 'resolved_no' as const,
+      resolved_at: new Date(Date.now() - 60_000).toISOString(),
+      title_edited_at: null,
+      updated_at: '2099-01-01T00:00:00.000Z',
+    };
+    await upsertPredictionFromRemote(answer);
+    await usePredictionStore.getState().remove(p.id, shown);
+    expect(await listPendingTombstonesSettled(userId)).toEqual([
+      expect.objectContaining({ id: p.id, deleted_status: 'pending', deleted_resolved_at: null }),
+    ]);
+    expect(await reconcileTombstoneWithRemote(answer)).toBe('restored');
+    expect((await getPrediction(p.id))?.status).toBe('resolved_no');
+    expect(await deleted()).toBe(0);
+  });
+
+  it('records the copy it checked when the screen states none', async () => {
+    const userId = useAuthStore.getState().userId!;
+    const p = await loggedEarlier(() => create('Answered one', 30));
+    await usePredictionStore.getState().resolve(p.id, 'resolved_no');
+    const answered = (await usePredictionStore.getState().getById(p.id))!;
+    await usePredictionStore.getState().remove(p.id);
+    expect(await listPendingTombstonesSettled(userId)).toEqual([
+      expect.objectContaining({
+        id: p.id,
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: answered.resolved_at,
+      }),
+    ]);
+  });
+
+  it('records the open copy "Use another number" replaced', async () => {
+    const userId = useAuthStore.getState().userId!;
+    const p = await create('Another number', 30);
+    await usePredictionStore.getState().renumber(p.id, {
+      title: p.title,
+      category: 'work',
+      confidence: 40,
+      due_date: p.due_date,
+    });
+    expect(await listPendingTombstonesSettled(userId)).toEqual([
+      expect.objectContaining({ id: p.id, deleted_status: 'pending', deleted_resolved_at: null }),
+    ]);
+    expect(await deleted()).toBe(0);
   });
 });

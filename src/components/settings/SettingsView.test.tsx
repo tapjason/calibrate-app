@@ -2,7 +2,11 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { AccessibilityInfo, Alert, Platform, StyleSheet } from 'react-native';
 
 import { colors, type } from '@/constants/theme';
-import { SIGN_OUT_CHECK_FAILED, useAuthStore } from '@/store/authStore';
+import {
+  SIGN_OUT_CHECK_FAILED,
+  SIGN_OUT_FAILED_AFTER_WIPE,
+  useAuthStore,
+} from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { __resetLockStoreForTests, useLockStore } from '@/store/lockStore';
 import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
@@ -426,11 +430,14 @@ describe('SettingsView — account', () => {
       expect(announce).not.toHaveBeenCalled();
     });
 
-    // Round 5: what's unsynced couldn't be counted, so nothing changed. Both
-    // failures are the store's own words, shown and said the same way.
+    // Round 5: what's unsynced couldn't be counted, so nothing changed. Round
+    // 7: the session stayed after the account's rows had left the phone, and
+    // the store's words say what's gone. Every failure is the store's own
+    // words, shown and said the same way.
     it.each([
       ['the session could not be ended', SIGN_OUT_FAILED_CONST],
       ['what is unsynced could not be counted', SIGN_OUT_CHECK_FAILED],
+      ['the session stayed after the wipe', SIGN_OUT_FAILED_AFTER_WIPE],
     ])('shows and says the error when %s', async (_label, message) => {
       const signOut = jest.fn().mockResolvedValue({ ok: false, error: message });
       signedIn(signOut);
@@ -563,6 +570,34 @@ describe('SettingsView — account', () => {
       );
       expect(announce).toHaveBeenCalledWith(SIGN_OUT_FAILED_CONST);
       expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+      expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
+      await waitFor(() => expect(screen.getByTestId('settings-sign-out')).toBeEnabled());
+    });
+
+    // Round 7: agreed to, the wipe ran, and then even this phone's copy of the
+    // session stayed. The store's words say what's gone; the screen shows them
+    // in the error style and says them, as for any sign-out error.
+    it('shows and says what is gone when the session stays after the wipe', async () => {
+      const signOut = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, unsynced: 2, localCategories: 1 })
+        .mockResolvedValueOnce({ ok: false, error: SIGN_OUT_FAILED_AFTER_WIPE });
+      signedIn(signOut);
+      render(<SettingsView />);
+
+      await pressSignOutAndWaitForAlert();
+      chooseInAlert('Sign out');
+
+      const error = await screen.findByTestId('settings-sign-out-error');
+      expect(error).toHaveTextContent(SIGN_OUT_FAILED_AFTER_WIPE);
+      expect(StyleSheet.flatten(error.props.style)).toMatchObject({
+        fontSize: type.subhead.fontSize,
+        color: colors.destructive,
+      });
+      expect(announce).toHaveBeenCalledWith(SIGN_OUT_FAILED_AFTER_WIPE);
+      expect(signOut).toHaveBeenNthCalledWith(2, { discardUnsynced: true });
+      // Asked once; still signed in, and free to try again.
+      expect(alertSpy).toHaveBeenCalledTimes(1);
       expect(screen.getByText(/Signed in as a@b\.co\./)).toBeTruthy();
       await waitFor(() => expect(screen.getByTestId('settings-sign-out')).toBeEnabled());
     });

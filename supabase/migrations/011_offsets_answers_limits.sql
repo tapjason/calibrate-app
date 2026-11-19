@@ -28,10 +28,11 @@
 --   3. Limits on what one signed-in account can write (server re-review
 --      MEDIUM-A: one account could upsert enough rows to push a free-plan
 --      database to read-only for everyone): at most 100 rows per request on
---      predictions and analytics_events, at most 50,000 predictions per
---      account, at most 25 MB of titles and notes per account, at most 5,000
---      events per account per UTC day, and byte limits on a title and a
---      reflection.
+--      predictions and analytics_events, a larger request stopped at row 101
+--      before the rest is written (final server re-review, K), at most 50,000
+--      predictions per account, at most 25 MB of titles and notes per account,
+--      at most 5,000 events per account per UTC day, and byte limits on a
+--      title and a reflection.
 --   4. The guest table (server re-review LOW-C, D, F): an oversized insert
 --      stops at row 101 before doing the work, the whole table has a ceiling,
 --      and a number in props is at most 24 characters long.
@@ -274,15 +275,135 @@ alter table public.predictions
   add constraint predictions_reflection_bytes
   check (reflection is null or octet_length(reflection) <= 20000) not valid;
 
+-- Before each row an insert or update statement writes: count the
+-- statement's rows in a transaction-local setting and stop at row 101,
+-- before that row is checked, changed or written (final server re-review,
+-- K). The AFTER triggers below refuse more than 100 rows too, but only once
+-- every row is written: a request of 10,000 rows did all of that work first.
+--
+-- Inserts and updates are counted apart, in fs.prediction_inserts and
+-- fs.prediction_updates. The app's push is an upsert (INSERT ... ON CONFLICT
+-- DO UPDATE), and Postgres fires BEFORE INSERT for every row the statement
+-- proposes, one that then meets its conflict included ("the effects of all
+-- per-row BEFORE INSERT triggers are reflected in excluded values", the
+-- INSERT page), then BEFORE UPDATE for each row that takes the update. One
+-- count would reach 200 on the app's batch of 100 rows it had pushed before.
+-- So an upsert stops at its 101st row, new or not, and an update at its
+-- 101st changed row. The app sends at most 100 rows a request
+-- (PUSH_BATCH_SIZE, src/supabase/sync.ts), so neither stop reaches it. An
+-- upsert of 101 rows that the AFTER triggers alone would have let through
+-- (some new, some changed, neither over 100) is now refused: the app never
+-- sends one.
+--
+-- The counts start again at each statement (predictions_reset_counts, below)
+-- and are gone at the end of the transaction; a refused statement's count is
+-- rolled back with it. A value that isn't a plain count reads as no count, as
+-- for the guest table (section 4): the AFTER triggers stay the exact check
+-- either way. The setting each call writes is not the one its SET clause
+-- names (search_path), so it outlives the call, to the end of the
+-- transaction, as section 4 says of fs.guest_rows.
+--
+-- The same exemption as the AFTER triggers below: the owner's statements in
+-- the SQL editor and the service role's are not counted, so a backfill over
+-- every row isn't stopped and the README's tests can fill an account as the
+-- owner. An exempt row is handed on unchanged (a BEFORE ROW trigger that
+-- returned null would skip it).
+--
+-- Fires first among the BEFORE ROW triggers of each event (name order:
+-- '_count_rows' sorts before '_keep_answer' and '_keep_offsets'), so row 101
+-- is stopped before either runs. Invoker's rights: it reads no table.
+create or replace function public.predictions_count_rows()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  max_rows_per_statement constant integer := 100;
+  setting_name text;
+  counted text;
+  seen integer;
+begin
+  if pg_catalog.current_setting('role', true) in ('none', 'service_role') then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    setting_name := 'fs.prediction_inserts';
+  else
+    setting_name := 'fs.prediction_updates';
+  end if;
+
+  counted := pg_catalog.current_setting(setting_name, true);
+  if counted is not null and counted ~ '^[0-9]{1,9}$' then
+    seen := counted::integer + 1;
+  else
+    seen := 1;
+  end if;
+
+  if seen > max_rows_per_statement then
+    raise exception using
+      errcode = 'PT413',
+      message = format('predictions: stopped at row %s; at most %s %s in one request',
+                       seen, max_rows_per_statement,
+                       case when tg_op = 'INSERT' then 'rows' else 'changed rows' end);
+  end if;
+
+  perform pg_catalog.set_config(setting_name, seen::text, true);
+  return new;
+end;
+$$;
+
+comment on function public.predictions_count_rows() is
+  'BEFORE INSERT OR UPDATE (per row) on predictions: stops a statement at its '
+  '101st proposed row (insert or upsert) or 101st changed row (PT413), before '
+  'that row is written; inserts and updates counted apart. Not for the owner '
+  'or the service role. Migration 011.';
+
+-- After each insert or update statement: that event's count starts again, so
+-- a transaction with several statements (the README's tests) has each
+-- counted alone. An upsert fires both (AFTER UPDATE, then AFTER INSERT, per
+-- Postgres's trigger page), so both counts start again after it. When an
+-- AFTER trigger refuses the statement, the settings are rolled back with it.
+create or replace function public.predictions_reset_counts()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    perform pg_catalog.set_config('fs.prediction_inserts', '0', true);
+  else
+    perform pg_catalog.set_config('fs.prediction_updates', '0', true);
+  end if;
+  return null;
+end;
+$$;
+
+comment on function public.predictions_reset_counts() is
+  'AFTER INSERT OR UPDATE (per statement) on predictions: the matching count of '
+  'predictions_count_rows starts again. Migration 011.';
+
+drop trigger if exists predictions_count_rows on public.predictions;
+create trigger predictions_count_rows
+  before insert or update on public.predictions
+  for each row execute function public.predictions_count_rows();
+
+drop trigger if exists predictions_reset_counts on public.predictions;
+create trigger predictions_reset_counts
+  after insert or update on public.predictions
+  for each statement execute function public.predictions_reset_counts();
+
 -- After each insert or update statement on predictions:
---   - at most 100 rows in it. Postgres hands an INSERT trigger only the rows
---     inserted and an UPDATE trigger only the rows updated, and refuses one
---     trigger with a transition table on both events, so an upsert (the
---     app's push is INSERT ... ON CONFLICT DO UPDATE) is held to at most 100
---     new rows and at most 100 changed ones. 100 is the analytics batch
---     (BATCH_SIZE, src/analytics/flush.ts); one request then carries at most
---     100 x 28 KB of text. See the header for what the app's push does with
---     a refusal today.
+--   - at most 100 rows in it (predictions_count_rows, above, stops a larger
+--     statement at row 101 first; this stays as the exact count of the rows
+--     actually inserted or changed). Postgres hands an INSERT trigger only
+--     the rows inserted and an UPDATE trigger only the rows updated, and
+--     refuses one trigger with a transition table on both events, so an
+--     upsert (the app's push is INSERT ... ON CONFLICT DO UPDATE) is held to
+--     at most 100 new rows and at most 100 changed ones. 100 is the
+--     analytics batch (BATCH_SIZE, src/analytics/flush.ts); one request then
+--     carries at most 100 x 28 KB of text. See the header for what the app's
+--     push does with a refusal today.
 --   - on insert, at most 50,000 predictions per account, this statement's
 --     included. Counted on idx_predictions_user_updated (migration 001,
 --     user_id first), and only up to 50,001, so a count never reads more
@@ -452,6 +573,85 @@ create trigger analytics_events_stamp_received
   before insert on public.analytics_events
   for each row execute function public.analytics_events_stamp_received();
 
+-- Before each row an insert writes: count the statement's rows in a
+-- transaction-local setting, fs.event_rows, and stop at row 101, before that
+-- row is stamped or written (final server re-review, K), as
+-- predictions_count_rows (3a) and the guest table's counter (section 4) do.
+-- Every proposed row is counted, one that then meets a duplicate key
+-- included (the app's flush inserts, and counts a duplicate as delivered).
+-- The app sends at most 100 rows a request (BATCH_SIZE,
+-- src/analytics/flush.ts), so this stop never reaches it. The count starts
+-- again at each statement (analytics_events_reset_count, below), is rolled
+-- back with a refused statement, and reads a value that isn't a plain count
+-- as no count; analytics_events_limits, below, stays the exact check. The
+-- same exemption as analytics_events_limits (the owner and the service
+-- role), so the README's tests can fill an account as the owner. Fires
+-- before analytics_events_stamp_received (name order: '_count_rows' sorts
+-- first). Invoker's rights: it reads no table.
+create or replace function public.analytics_events_count_rows()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  max_rows_per_insert constant integer := 100;
+  counted text;
+  seen integer;
+begin
+  if pg_catalog.current_setting('role', true) in ('none', 'service_role') then
+    return new;
+  end if;
+
+  counted := pg_catalog.current_setting('fs.event_rows', true);
+  if counted is not null and counted ~ '^[0-9]{1,9}$' then
+    seen := counted::integer + 1;
+  else
+    seen := 1;
+  end if;
+
+  if seen > max_rows_per_insert then
+    raise exception using
+      errcode = 'PT413',
+      message = format('analytics_events: stopped at row %s; at most %s rows per insert',
+                       seen, max_rows_per_insert);
+  end if;
+
+  perform pg_catalog.set_config('fs.event_rows', seen::text, true);
+  return new;
+end;
+$$;
+
+comment on function public.analytics_events_count_rows() is
+  'BEFORE INSERT (per row) on analytics_events: stops a statement at row 101 '
+  '(PT413), before that row is written. Not for the owner or the service role. '
+  'Migration 011.';
+
+-- After each insert statement: the count starts again.
+create or replace function public.analytics_events_reset_count()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  perform pg_catalog.set_config('fs.event_rows', '0', true);
+  return null;
+end;
+$$;
+
+comment on function public.analytics_events_reset_count() is
+  'AFTER INSERT (per statement) on analytics_events: the row count of '
+  'analytics_events_count_rows starts again. Migration 011.';
+
+drop trigger if exists analytics_events_count_rows on public.analytics_events;
+create trigger analytics_events_count_rows
+  before insert on public.analytics_events
+  for each row execute function public.analytics_events_count_rows();
+
+drop trigger if exists analytics_events_reset_count on public.analytics_events;
+create trigger analytics_events_reset_count
+  after insert on public.analytics_events
+  for each statement execute function public.analytics_events_reset_count();
+
 -- Makes the day's count below an index scan over one account's rows from
 -- today. The table is small (the beta); building it holds inserts for a
 -- moment, inside this transaction.
@@ -460,8 +660,10 @@ create index if not exists idx_analytics_events_user_received
 
 -- After each insert statement on analytics_events: at most 100 rows in it
 -- (the app's BATCH_SIZE, src/analytics/flush.ts, never more since the first
--- analytics build), and at most 5,000 rows received today (UTC) per account,
--- this statement's included, counted only up to 5,001.
+-- analytics build; analytics_events_count_rows, above, stops a larger
+-- statement at row 101 first, and this stays as the exact count), and at
+-- most 5,000 rows received today (UTC) per account, this statement's
+-- included, counted only up to 5,001.
 --
 -- The day's cap. The catalogue (src/analytics/events.ts) has 16 events, and
 -- most fire once per thing a person does: prediction_logged and
@@ -555,8 +757,9 @@ create trigger analytics_events_limits
 -- its three indexes takes about 0.3 KB as the app writes it (a 34-character
 -- hashed id, a short name, a props object of a few dozen bytes, two
 -- timestamps) and at most about 0.4 KB (four of the longest keys, numbers
--- of 24 characters), so about 150 MB, 200 MB at worst; the free plan's whole
--- database is 500 MB. The estimate is refreshed by autovacuum and
+-- of 24 characters), so about 150 MB, 200 MB at worst; the free plan's
+-- database size quota is 500 MB (a billing quota on a 2 GB disk; migration
+-- 012, section 3, says more). The estimate is refreshed by autovacuum and
 -- autoanalyze and can trail the true count by about a fifth (autovacuum's
 -- default insert threshold is 20% of the table), so inserts stop somewhere
 -- between 500,000 and about 600,000 rows (240 MB at worst). At 010's day

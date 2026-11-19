@@ -828,6 +828,38 @@ Added 2026-10-07 (evening pass, roadmap steps 91–96; all web-verified):
       "I’ll"): the line under the field gives its counts. After an answer, "Log it
       again" shows it at once, and VoiceOver reads it right after the Prediction field.
 
+Added 2026-11-19 (security review round 7; JavaScript only, so a reload of a development
+build that carries it, or a TestFlight build from the final commit):
+
+- [ ] **A delete counted from the day after it was logged:** log a prediction due in a week.
+      The next day open it → Delete: "Delete this prediction? You logged it before today,
+      so Insights will count it as deleted. This can’t be undone." Delete it; Insights →
+      More about your record: "1 prediction was deleted after it was answered, after the day
+      it was logged, or once it was due. Only this phone keeps this count." One logged and
+      deleted the same day, not yet due: "Delete this prediction? It won't count anywhere,
+      and it can't be undone.", and the count doesn't move.
+- [ ] **New words don't reset that day:** log one in one category, due in a week. The next
+      day, Edit: change its words and its category, Save. The day after, Answer it now, Yes:
+      Insights → More about your record: "1 scored answer was moved to another category,
+      before or after it was answered. Only this phone keeps this count." (Until round 7 the
+      rewording made that day count as the day it was made, and nothing was counted.)
+- [ ] **Moved back home, counted once:** on the eve of the due day of a prediction logged on
+      an earlier day, move it to another category (Edit says it's counted), Answer it now,
+      then within the day move the
+      answer back to the first category: Insights shows the late change once and no moved
+      answer. Under an answer's category chips the hint reads "Insights counts a scored
+      answer that ends up in a different category from the one it had at the end of the day
+      it was logged. A category change made while it was open, from the day before its due
+      day but not on the day it was logged, is counted once, as a late change."
+- [ ] **Two phones, a delete that saw no answer (optional):** two phones signed in to the
+      same account, one prediction open on both. On phone B, answer it and let it sync. On
+      phone A, in Airplane Mode, delete its open copy; then reconnect A and pull to sync: the
+      prediction comes back on A with B's answer, and the row is still in the Supabase
+      dashboard. (Round 6 would have removed it from the server.)
+- [ ] **The Warm-up's line says what the counts are for:** on a fresh install, the Warm-up's
+      first screen reads "Fairly Sure sends a few usage counts, with no account or device id,
+      to see how the app is used. You can turn this off here or in You." above its switch.
+
 Added 2026-11-16 (step 187, the launch page; in build 3):
 
 - [ ] **The launch page (step 187):** swipe the app away and open it: the dark splash with
@@ -858,7 +890,9 @@ Added 2026-11-15 (step 184, moved answers counted; in build 2):
       Insights → More about your record: "1 scored answer was moved to another category after
       it was answered. Only this phone keeps this count." Move it back: the line is gone.
       (From round 6's build the line reads "1 scored answer was moved to another category,
-      before or after it was answered. Only this phone keeps this count.", `refiledLine`.)
+      before or after it was answered. Only this phone keeps this count.", `refiledLine`,
+      and from round 7's the hint under Category is the two sentences quoted in the
+      2026-11-19 block above, `REFILE_COUNTED_HINT`.)
 
 Added 2026-11-15 (step 182, TestFlight hardening, and the TestFlight prep; in build 2):
 
@@ -1007,7 +1041,8 @@ Added 2026-11-13 (step 178, D62, the calls after round 21; a reload is enough):
 - [ ] **Another number:** log one, open it, Edit: "You made it today, so you can still use another
       number." and "Use another number"; it opens "Another number" with the words, category and date,
       and the number empty. Save: Today shows one card, with the new number; Insights counts no
-      delete. With unsaved changes in Edit, the sheet asks first. A day later the button is gone.
+      delete. With unsaved changes in Edit, the sheet asks first. A day later the button is gone
+      (from round 7's build, a delete that day is counted: the 2026-11-19 block).
 - [ ] **Before 20:** at 10–19 scored answers, Today and Insights show "First look: you said
       about …% on average, and … of your … scored predictions happened. Too few to rate yet." Before
       the first answer, the practice row reads "While you wait: today's practice".

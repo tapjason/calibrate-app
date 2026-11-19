@@ -333,10 +333,31 @@ describe('SYSTEM_PROMPT', () => {
     ['no count of what came true', /Never say how many\npredictions happened, came true, were right or hit: the data has no such count/],
     ['a drift with its direction', /Write a drift with the way it went beside it[^]*"slipped", "fell", "down" or "lower" when it is negative/],
     ['a drift copied with its decimals', /Copy a drift with its decimals/],
-    ['the app’s rounding', /half up \(82\.5 is 83\)/],
     ['"your overall rating" beside a named category', /that names a category, call the whole record's rating "your overall rating"/],
   ])('says %s', (_name, pattern) => {
     expect(SYSTEM_PROMPT).toMatch(pattern);
+  });
+
+  // Round 7: the prompt asked for "half up (82.5 is 83)", but the app rounds
+  // the stored float (0.575 × 100 is 57.49999…, shown as 57), so a model that
+  // followed it was dropped. Every figure is now copied with its decimals,
+  // which the validators match within each figure's tolerance, cut after the
+  // second: a figure copied whole from the context (73.33333333333333) has
+  // seven digits in a run and reads as a phone number (src/ai/coachRounding.test.ts).
+  it.each([
+    ['numbers copied with their decimals', /copied as given with their decimals \(the rule on\ndecimals is below\)/],
+    ['every figure copied, never rounded', /- Copy every figure exactly as given, with its decimals; never round it \(82\.5 stays 82\.5, never\n82 or 83\)/],
+    ['at most two decimals in the words, never cut to a whole number', /In the message and suggestion, keep at most two decimals: cut any after the second\n\(73\.3333 is 73\.33\), never to a whole number/],
+    ['a rate as a percent with its decimals', /write an actual_rate as a percent by moving its\ndecimal point two places \(0\.575 is 57\.5%, 0\.5714 is 57\.14%\)/],
+    // A cut 0–1 rate as the evidence (0.5757… as 0.57) is outside the rate's
+    // tolerance (0.005) on both validators and the one on phones.
+    ['the evidence copied whole', /The evidence field is the figure\nexactly as in the data, every decimal kept/],
+  ])('says %s', (_name, pattern) => {
+    expect(SYSTEM_PROMPT).toMatch(pattern);
+  });
+
+  it('no longer asks for a figure rounded to a whole number', () => {
+    expect(SYSTEM_PROMPT).not.toMatch(/half up|82\.5 is 83|you may round|Round any other figure/i);
   });
 
   it('allows §5.4’s professional-advice note', () => {

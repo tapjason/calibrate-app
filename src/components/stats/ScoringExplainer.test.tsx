@@ -31,28 +31,42 @@ describe('scoringCopy (roadmap step 29)', () => {
   });
 
   // D69 (e): another category close to the due day is counted on Insights,
-  // beside a late move and new words, so the page names all three.
+  // beside a late move and new words, so the page names all three. Round 7:
+  // "that close" pointed back at the delete's old window, which is gone, so
+  // the window is named.
   it('names every late change Insights counts', () => {
     expect(allText()).toContain(
-      'The same goes for a due date moved later, new words or another category, that close to the due day.',
+      'The same goes for a due date moved later, new words or another category, from the day before the due day.',
     );
   });
 
-  // Step 184 (D65), widened in review round 6: a scored answer moved to
-  // another category is counted, before or after it was answered, unless
-  // moved back. Said before the day-made sentence, which exempts a category
-  // fixed on the day a prediction was made from this count too.
-  it('names the moved answers Insights counts, before the slip the day it was made', () => {
+  // Review round 7 (owner decision 2026-11-19): an open prediction deleted on
+  // any day after the day it was logged is counted, not only from the eve;
+  // and, on the day it was logged too, one already due (`deletionCounts`).
+  it('says which deletions Insights counts, by the round 7 rule', () => {
+    const text = allText();
+    expect(text).toContain(
+      "If it had a scored answer, or was still open and either logged before the day it was deleted or already due, Insights says how many were, so a miss can't disappear without a trace.",
+    );
+    expect(text).not.toContain('was due that day or the next');
+  });
+
+  // Step 184 (D65), widened in review rounds 6 and 7: the store's rule, in
+  // the answered hint's words. Said before the day-logged sentence, which
+  // exempts a category fixed on the day a prediction was logged from this
+  // count too. "Logged", not "made": new words don't move that day (round 7).
+  it('names the moved answers Insights counts, before the slip the day it was logged', () => {
     const sentence =
-      "A scored answer moved to another category is counted too, before or after it was answered, unless it's moved back.";
-    const slip = "A change on the day a prediction was made isn't counted while it isn't due yet: that's fixing a slip.";
+      'Insights also counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged; a category change made while it was open, that close to the due day, is counted once, as a late change.';
+    const slip = "A change on the day a prediction was logged isn't counted while it isn't due yet: that's fixing a slip.";
     const counted = scoringSections()
       .find((s) => s.title === "What doesn't count")
       ?.paragraphs.find((p) => p.includes(sentence));
     expect(counted).toBeDefined();
     expect(counted).toContain(
-      `that close to the due day. ${sentence} ${slip} Only this phone keeps these counts.`,
+      `from the day before the due day. ${sentence} ${slip} Only this phone keeps these counts.`,
     );
+    expect(allText()).not.toMatch(/day a prediction was made/);
   });
 
   // Roadmap D60: badges follow the record both ways, and the page says so

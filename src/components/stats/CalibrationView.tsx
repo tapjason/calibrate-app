@@ -516,15 +516,21 @@ export function skippedLine(skipped: number, _scored?: number): string {
 }
 
 /**
- * "2 predictions were deleted after they were answered, or within a day of
- * their due day." (roadmap D45; from the eve since D61). A miss could be deleted within a day of its answer, or an open call
- * just before it missed, and nothing showed it. Tombstones don't sync, so the
- * count is this phone's, and the line says so.
+ * "2 predictions were deleted after they were answered, after the day they
+ * were logged, or once they were due." (roadmap D45). A miss could be deleted
+ * within a day of its answer, or an open call once its outcome was in sight,
+ * and nothing showed it. Each case the store counts (`deletionCounts`): a
+ * scored answer (inside its 24-hour window); an open one on any day after the
+ * day it was logged (owner decision 2026-11-19, review round 7; from the eve
+ * of its due day until then, D61), a rewording since changing nothing; or an
+ * open one already due, even on the day it was logged (a time-zone change, a
+ * synced row). Tombstones don't sync, so the count is this phone's, and the
+ * line says so.
  */
 export function deletedLine(count: number): string {
   return count === 1
-    ? '1 prediction was deleted after it was answered, or within a day of its due day. Only this phone keeps this count.'
-    : `${count} predictions were deleted after they were answered, or within a day of their due day. Only this phone keeps this count.`;
+    ? '1 prediction was deleted after it was answered, after the day it was logged, or once it was due. Only this phone keeps this count.'
+    : `${count} predictions were deleted after they were answered, after the day they were logged, or once they were due. Only this phone keeps this count.`;
 }
 
 /**

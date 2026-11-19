@@ -301,7 +301,10 @@ export function PredictionDetails({
     setBusy(true);
     setError(null);
     try {
-      await usePredictionStore.getState().remove(prediction.id);
+      // The copy this screen showed (review round 7): sync then removes only
+      // that from the server, and an answer given on another phone since
+      // comes back instead of being deleted everywhere.
+      await usePredictionStore.getState().remove(prediction.id, prediction);
       onClose();
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -334,11 +337,19 @@ export function PredictionDetails({
             ? ' For something you do every day, log the next one the evening before.'
             : ''
         }`;
-  // Deleting a due one hides an outcome that may be known, so it is counted.
-  // Counted from the eve, as a due-date move is (D61).
-  const deleteText = deleteIsCounted(prediction)
-    ? `Delete this prediction? It’s due${daysLeft === 1 ? ' tomorrow' : ''}, so Insights will count it as deleted. This can’t be undone.`
-    : "Delete this prediction? It won't count anywhere, and it can't be undone.";
+  // A delete is counted on any day after the day it was logged (owner
+  // decision 2026-11-19, review round 7; from the eve until then, D61): with
+  // "Answer it now" an outcome can be known on any day. A rewording doesn't
+  // move that day. On the day it was logged, only once it's due. The text
+  // gives the reason that holds, told apart as the store's contract says:
+  // counted and still the day it was logged (`canRenumber`) means it's due.
+  // One clock for both, so midnight can't fall between them.
+  const deleteNow = new Date();
+  const deleteText = !deleteIsCounted(prediction, deleteNow)
+    ? "Delete this prediction? It won't count anywhere, and it can't be undone."
+    : canRenumber(prediction, deleteNow)
+      ? 'Delete this prediction? It’s due, so Insights will count it as deleted. This can’t be undone.'
+      : 'Delete this prediction? You logged it before today, so Insights will count it as deleted. This can’t be undone.';
   const answerEarly = () => {
     setMode('early');
     // The warning appears in place of the button; a screen reader hears it

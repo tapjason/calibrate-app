@@ -13,7 +13,10 @@ when this was written) wipes before the session ends, keeps this phone's integri
 asks about categories only this phone has and checks again just before the wipe (§2),
 keeps the later-expiring session when both stores hold one and reads Keychain deletes back
 (§2.1), and lets a later "the account still exists" settle an unconfirmed deletion (§3.2).
-The Keychain needs `expo-secure-store` and the nonce `expo-crypto`, both native: a new
+Round 7 (the same day, also uncommitted then) makes a deletion remove from the server only
+what this phone saw (§2 step 1, SQLite migration 021), lets `discardUnsynced` agree to
+nothing without a question asked first (step 2) and says so when the session can't end
+after the wipe (`SIGN_OUT_FAILED_AFTER_WIPE`, step 6); JavaScript only. The Keychain needs `expo-secure-store` and the nonce `expo-crypto`, both native: a new
 development and TestFlight build. Google sign-in (step 192) is on since 2026-11-18, after the owner's setup
 (`HUMAN_VERIFICATION.md` A6); `GOOGLE_SIGN_IN_ENABLED` turns it off again. Not yet run on
 a device.
@@ -158,11 +161,17 @@ decision.
    recompute, since the rows are about to go. Each request checks that the session is still
    the account's, as a sweep's do. At most 10 s in all; a push still running then carries
    on alone (step 3 waits for it), and step 2 counts what is left. Each deletion is a
-   conditional delete (round 6): it removes the server's row only while it is open, or
-   answered no later than this phone's deletion, so a phone that hadn't heard of an answer
-   given elsewhere can't remove it; when the server holds it answered later, this phone
-   restores the row and drops its tombstone (`reconcileTombstoneWithRemote`,
-   `src/db/predictions.ts`). A row refused alone at an account cap (`PT429`) isn't sent
+   conditional delete (rounds 6 and 7): its tombstone remembers the status and
+   `resolved_at` of the prediction as this phone held it when deleted (`deleted_status`,
+   `deleted_resolved_at`, SQLite migration 021), and the delete removes the server's row
+   only while it is open, or while it holds that same answer with the same `resolved_at`
+   (`deletionMatch`, `src/supabase/sync.ts`; the rule is `tombstoneCovers`,
+   `src/db/predictions.ts`). A tombstone from before 021 reads as "deleted open". So a
+   phone that hadn't heard of an answer given elsewhere, before its delete or after, can't
+   remove it; when the server holds the row answered differently, this phone restores the
+   row and drops its tombstone (`reconcileTombstoneWithRemote`). Round 6 allowed any row
+   answered no later than the deletion, which still let a stale phone remove an answer
+   given before its delete. A row refused alone at an account cap (`PT429`) isn't sent
    again for an hour unless it changes (`AT_CAP_RETRY_MS`, in memory, per account), so this
    push skips it, but it stays dirty and step 2 counts it.
 2. **What signing out would lose for good.** `readAtStake(account)`
@@ -190,7 +199,9 @@ decision.
      true })`; it does nothing while the app is locked (`appLocked()`: the alert sits above
      the lock screen). `discardUnsynced` agrees to what the person was told and nothing
      more (`agreedCovers`: neither count higher, and no dirty row new or changed since);
-     with no question asked for the account in this run, to what is there when it counts.
+     with no question asked for the account in this run, to nothing (round 7, client
+     re-review L1; it used to agree to whatever was there when it counted): anything at
+     stake is asked about first. With nothing at stake, nothing needs agreeing to.
    - The read fails: `{ ok: false, error: SIGN_OUT_CHECK_FAILED }` ("Couldn't check
      whether everything on this phone is backed up, so you're still signed in. Try
      again."), nothing changed.
@@ -236,15 +247,22 @@ decision.
      inactivity limits need the Pro plan
      ([Sessions](https://supabase.com/docs/guides/auth/sessions), read 2026-11-18). It ends
      at the account's next sign-out with a connection (scope `global`), or with the account.
-   - **Even this phone's copy couldn't be removed:** `{ ok: false, error: SIGN_OUT_FAILED }`
-     ("Couldn't sign you out on this phone. Try again."). The account stays signed in: the
+   - **Even this phone's copy couldn't be removed:** the account stays signed in: the
      "signed out here" mark step 5 added is taken back, its sync resumes, and the owed wipe
      this sign-out marked is dropped (`keepAccount`; one a deletion marked earlier stays).
-     Its rows were already wiped in step 5, so the lists are reloaded and a sync starts at
-     once (the wipe cleared the cursor, so it pulls everything): what reached the server
-     comes back. What the person agreed to lose in step 2 (unsynced changes, categories only
-     this phone had) doesn't; nothing else was wiped. Delivered reminders showing a
-     prediction's words still leave the lock screen: the person asked to leave.
+     When the wipe in step 5 went (the usual case), the outcome is `{ ok: false, error:
+     SIGN_OUT_FAILED_AFTER_WIPE }` (round 7, client re-review L3; `src/store/authStore.ts`):
+     "Couldn't finish signing you out, so you're still signed in. Your backed-up
+     predictions will come back to this phone; anything you agreed to lose is gone." The
+     lists are reloaded and a sync starts at once (the wipe cleared the cursor, so it pulls
+     everything): what reached the server comes back. What the person agreed to lose in
+     step 2 (unsynced changes, categories only this phone had) doesn't; nothing else was
+     wiped. When the wipe hadn't gone, nothing was removed and the session's own error is
+     returned, `SIGN_OUT_FAILED` ("Couldn't sign you out on this phone. Try again.",
+     `src/supabase/auth.ts`). Until round 7 that line was shown after a wipe too, as if
+     nothing had changed. You shows the error under Sign out and announces it. Delivered
+     reminders showing a prediction's words still leave the lock screen: the person asked
+     to leave.
    - The session ended and the rows went: nothing is owed for the account any more, an
      unconfirmed deletion's mark included (settled now).
 7. **Then everything a sign-out did before.** `handleSession('APP_SIGN_OUT', null)` moves
@@ -564,7 +582,8 @@ keepIntegrityCounts = false })`, in one `withTransaction`:
   tombstones (`prediction_deletions`), the counted late changes (`prediction_postponements`:
   date moves, rewordings and, since D69 (e), category changes), the counted category moves
   of answers (`prediction_refiles`: moved after the answer, D65, or, since round 6, answered
-  in another category than the one remembered at its first move after the day it was made),
+  in another category than the one remembered at its first move after the day it was
+  logged; round 7: a rewording doesn't move that day),
   the categories remembered for that (`prediction_category_origins`, SQLite migration 019,
   round 6; never synced) and the person's categories with their icons (`categories`). A
   table added with a `user_id` belongs on the list; the wipe's test checks it against the
@@ -572,9 +591,11 @@ keepIntegrityCounts = false })`, in one `withTransaction`:
 - **With `keepIntegrityCounts`** (round 6; sign-out only, §2 step 5, and a sign-out's owed
   wipe at launch), the four tables in `INTEGRITY_COUNT_TABLES` (`prediction_deletions`,
   `prediction_postponements`, `prediction_refiles`, `prediction_category_origins`) are left
-  as they are, the tombstones' `counted` and `pushed_at` included. A kept tombstone not yet
+  as they are, the tombstones' `counted` and `pushed_at` included, and what each deleted
+  (`deleted_status`, `deleted_resolved_at`, round 7). A kept tombstone not yet
   pushed stays waiting under its own account: sync reads and deletes per `user_id`, so
-  another account signed in here never pushes it. Erase and confirmed or owed deletion
+  another account signed in here never pushes it, and when this account pushes it, it
+  removes only what it saw (§2 step 1). Erase and confirmed or owed deletion
   wipes leave the option off and remove them.
 - **With `deviceData` (the default), clear** the Warmup rows (`warmup_results`,
   `warmup_progress`) and the age band, device-wide: they have no `user_id` but are the
@@ -637,16 +658,19 @@ RevenueCat doesn't retry.
   returns 500.
 - `wipeLocalUserData` removes only that user's rows, against the sql.js adapter, and
   leaves the Warm-up and the age band with `deviceData: false`.
-- Sign-out (rounds 5 and 6): `src/store/authStore.signOut.test.ts` (the push, the
-  question that changes nothing, the discard covering only what was asked, the check just
-  before the wipe, the wipe keeping the integrity counts, a session that couldn't end, the
-  owed wipe retried at launch), `src/supabase/signOutCheck.test.ts` (`agreedCovers`), and
+- Sign-out (rounds 5 to 7): `src/store/authStore.signOut.test.ts` (the push, the
+  question that changes nothing, the discard covering only what was asked and, with no
+  question asked, nothing, the check just before the wipe, the wipe keeping the integrity
+  counts, a session that couldn't end, before or after the wipe, the owed wipe retried at
+  launch), `src/supabase/signOutCheck.test.ts` (`agreedCovers`), and
   `src/store/authStore.races.test.ts` (a late refresh, a sign-out still settling, a
   session that wasn't the person's sign-in); `src/db/account.test.ts` (what
   `keepIntegrityCounts` keeps); the session storage, both copies and the delete read-back,
   in `src/supabase/sessionStorage.test.ts`; the deletion mark's time in
   `src/supabase/authMarkers.test.ts` and `src/supabase/account.test.ts`; the nonce in
-  `src/supabase/auth.nonce.test.ts`.
+  `src/supabase/auth.nonce.test.ts`; a deletion removing only what this phone saw, two
+  phones included, in `src/supabase/sync.tombstones.test.ts` (`deletionMatch`) and
+  `src/db/predictions.sync.test.ts`.
 - The delete screen: a subscriber sees the billing warning and a lifetime
   holder doesn't; a failed call leaves the stores untouched; success routes to
   a fresh guest.

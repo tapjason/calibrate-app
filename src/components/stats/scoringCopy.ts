@@ -133,11 +133,17 @@ export function scoringSections(): ScoringSection[] {
         '"Can\'t tell / doesn\'t apply" answers, which stay out of the score, the streak and your recaps. If you can tell later, you can answer one until a week after its due day, or until the end of the day after you chose Can\'t tell, if that\'s later; after that it stays Can\'t tell. An answer you give it then can be changed for a day, like any other. And the Warmup and the daily practice, which are practice and kept apart from your real record.',
         "An answer given the same day the prediction was logged. It stays in History and keeps your streak, but it isn't scored: a call made and settled in one day says little, and it made the score easy to pad. So the earliest due date is tomorrow.",
         "Changing a prediction's words makes it a new prediction from that day, with the same number: an answer that day isn't scored, and its due date is tomorrow at the earliest. Otherwise a call could be turned into its opposite once the outcome was known. Fixing case or a full stop doesn't count.",
-        // The moved answers (step 184, D65; moved before the answer since
-        // review round 6) sit before the day-made sentence on purpose: a
-        // category fixed on the day a prediction was made is never counted,
-        // and that sentence says so for them too.
-        "A deleted prediction leaves the score. If it was already answered, or was due that day or the next, Insights says how many were, so a miss can't disappear without a trace. The same goes for a due date moved later, new words or another category, that close to the due day. A scored answer moved to another category is counted too, before or after it was answered, unless it's moved back. A change on the day a prediction was made isn't counted while it isn't due yet: that's fixing a slip. Only this phone keeps these counts.",
+        // Review round 7: an open prediction deleted on any day after the day
+        // it was logged is counted (from the eve of its due day until then),
+        // and the day-logged exemption isn't moved by new words, so the slip
+        // sentence says "logged", not "made". The moved answers say the
+        // store's rule as the answered hint does (`REFILE_COUNTED_HINT`), and
+        // sit before the slip sentence on purpose: a category fixed on the day
+        // a prediction was logged is never counted, and that sentence says so
+        // for them too. A due date moved, or new words, on the day of a later
+        // rewording isn't counted either; left unsaid, which only ever warns
+        // of more than is counted (Edit says it exactly, before Save).
+        "A deleted prediction leaves the score. If it had a scored answer, or was still open and either logged before the day it was deleted or already due, Insights says how many were, so a miss can't disappear without a trace. The same goes for a due date moved later, new words or another category, from the day before the due day. Insights also counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged; a category change made while it was open, that close to the due day, is counted once, as a late change. A change on the day a prediction was logged isn't counted while it isn't due yet: that's fixing a slip. Only this phone keeps these counts.",
       ],
     },
   ];

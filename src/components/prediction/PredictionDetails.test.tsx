@@ -6,7 +6,10 @@ import {
   countPostponements,
   getPrediction,
   insertPrediction,
+  listDeletions,
   listPendingDeletions,
+  listPendingTombstonesSettled,
+  upsertPredictionFromRemote,
 } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
@@ -59,6 +62,13 @@ const renderDetails = (props: Partial<React.ComponentProps<typeof PredictionDeta
   render(
     <PredictionDetails predictionId="p1" onClose={jest.fn()} onAnswer={jest.fn()} {...props} />,
   );
+
+// The open delete's confirmation, one per reason (review round 7).
+const DELETE_LOGGED_EARLIER =
+  'Delete this prediction? You logged it before today, so Insights will count it as deleted. This can’t be undone.';
+const DELETE_DUE =
+  'Delete this prediction? It’s due, so Insights will count it as deleted. This can’t be undone.';
+const DELETE_UNCOUNTED = "Delete this prediction? It won't count anywhere, and it can't be undone.";
 
 describe('PredictionDetails (roadmap D25)', () => {
   it('says what you said first, then the title and the due date', async () => {
@@ -175,13 +185,100 @@ describe('PredictionDetails (roadmap D25)', () => {
     await waitFor(() => expect(screen.getByTestId('details-delete')).toBeTruthy());
 
     fireEvent.press(screen.getByTestId('details-delete'));
-    expect(screen.getByTestId('details-delete-confirm')).toHaveTextContent(/can't be undone/);
+    // Logged on Oct 4, before today, so since review round 7 the delete is
+    // counted, though it isn't due until 2099; the confirmation says so, and
+    // why, before anything happens.
+    expect(screen.getByTestId('details-delete-text')).toHaveTextContent(DELETE_LOGGED_EARLIER);
+    expect(screen.getByTestId('details-delete-confirm')).toHaveTextContent(/This can’t be undone\./);
     expect(await getPrediction('p1')).not.toBeNull();
 
     fireEvent.press(screen.getByTestId('details-delete-yes'));
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(await getPrediction('p1')).toBeNull();
     expect(await listPendingDeletions(USER)).toEqual(['p1']);
+    // What it said is what the store recorded.
+    expect(await listDeletions(USER)).toEqual([
+      expect.objectContaining({ id: 'p1', counted: true }),
+    ]);
+  });
+
+  // Review round 7 (owner decision 2026-11-19): an open prediction deleted on
+  // any day after the day it was logged is counted, not only from the eve of
+  // its due day; on the day it was logged, only once it's due. The
+  // confirmation gives the reason that holds, and what it says is what the
+  // store records.
+  describe('the delete confirmation', () => {
+    const askToDelete = async () => {
+      await waitFor(() => expect(screen.getByTestId('details-delete')).toBeTruthy());
+      fireEvent.press(screen.getByTestId('details-delete'));
+    };
+    const deleteAndReadCounted = async () => {
+      fireEvent.press(screen.getByTestId('details-delete-yes'));
+      await waitFor(async () => expect(await getPrediction('p1')).toBeNull());
+      const [tombstone] = await listDeletions(USER);
+      return tombstone?.counted;
+    };
+
+    it('says it was logged before today when its words changed today: new words don’t move that day', async () => {
+      await insertPrediction(open({ title_edited_at: new Date().toISOString() }));
+      renderDetails();
+      await askToDelete();
+      expect(screen.getByTestId('details-delete-text')).toHaveTextContent(DELETE_LOGGED_EARLIER);
+      expect(await deleteAndReadCounted()).toBe(true);
+    });
+
+    // Both reasons hold; the store's contract tells them apart by the day it
+    // was logged (`canRenumber`), so this one gives that reason.
+    it('gives the logged-before reason when it is also due', async () => {
+      await insertPrediction(open({ due_date: new Date().toISOString() }));
+      renderDetails();
+      await askToDelete();
+      expect(screen.getByTestId('details-delete-text')).toHaveTextContent(DELETE_LOGGED_EARLIER);
+      expect(await deleteAndReadCounted()).toBe(true);
+    });
+
+    // Logged today and already due: 'says a delete is counted once the
+    // prediction is due', below.
+
+    // A slip fixed on the day it was logged, before it's due, counts nowhere.
+    it('says it counts nowhere on the day it was logged, before it is due', async () => {
+      await insertPrediction(
+        open({
+          created_at: new Date().toISOString(),
+          due_date: new Date(Date.now() + 86_400_000).toISOString(),
+        }),
+      );
+      renderDetails();
+      await askToDelete();
+      expect(screen.getByTestId('details-delete-text')).toHaveTextContent(DELETE_UNCOUNTED);
+      expect(screen.queryByText(/Insights will count it/)).toBeNull();
+      expect(await deleteAndReadCounted()).toBe(false);
+    });
+
+    // Review round 7: the delete records the copy this screen showed, so an
+    // answer that reached this phone from another one while the confirmation
+    // was up comes back with the next sync instead of being deleted
+    // everywhere. Without it, the store would record the answer it read.
+    it('records the open copy it showed, not an answer pulled since', async () => {
+      const shown = open();
+      await insertPrediction(shown);
+      const onClose = jest.fn();
+      renderDetails({ onClose });
+      await askToDelete();
+      await upsertPredictionFromRemote({
+        ...shown,
+        status: 'resolved_no',
+        resolved_at: new Date(Date.now() - 60_000).toISOString(),
+        updated_at: '2099-01-01T00:00:00.000Z',
+      });
+      expect((await getPrediction('p1'))?.status).toBe('resolved_no');
+
+      fireEvent.press(screen.getByTestId('details-delete-yes'));
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(await listPendingTombstonesSettled(USER)).toEqual([
+        expect.objectContaining({ id: 'p1', deleted_status: 'pending', deleted_resolved_at: null }),
+      ]);
+    });
   });
 
   // Step 181 (blind playtest 2026-11-14, finding 15): on the day it was logged
@@ -270,8 +367,11 @@ describe('PredictionDetails (roadmap D25)', () => {
       expect(screen.queryByTestId('answered-refiled')).toBeNull();
       // Said before the move (step 184, D65), and still there after it.
       expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent(REFILE_COUNTED_HINT);
+      // Review round 7: the store's rule, "logged" not "made" (new words don't
+      // move that day), and an eve change before the answer counted once, as
+      // a late change, never on the day it was logged.
       expect(REFILE_COUNTED_HINT).toBe(
-        'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was made.',
+        'Insights counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged. A category change made while it was open, from the day before its due day but not on the day it was logged, is counted once, as a late change.',
       );
       fireEvent.press(screen.getByTestId('category-health'));
       await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
@@ -287,9 +387,9 @@ describe('PredictionDetails (roadmap D25)', () => {
   });
 
   // Review round 6: the hint says what Insights counts for an answer moved
-  // before it was answered too. Made days ago in work, moved to personal
+  // before it was answered too. Logged days ago in work, moved to personal
   // early (work remembered), answered in personal: counted at once. Back in
-  // work, the category it had at the end of the day it was made, it comes
+  // work, the category it had at the end of the day it was logged, it comes
   // off; in personal again, where it was answered, it's counted again.
   it('says what Insights counts for an answer moved before it was answered', async () => {
     await insertPrediction(open());
@@ -315,6 +415,41 @@ describe('PredictionDetails (roadmap D25)', () => {
       expect(screen.getByTestId('answered-category')).toHaveTextContent('Personal'),
     );
     await waitFor(() => expect(usePredictionStore.getState().refiledCount).toBe(1));
+  });
+
+  // Review round 7, case C: moved on the eve of its due day (counted then, as
+  // a late change), answered, then moved back to the category it had at the
+  // end of the day it was logged. The hint's second sentence: counted once,
+  // as a late change, and nothing on the moved-answers line. Moved on to a
+  // category that is neither, the first sentence: a moved answer too.
+  it('says a category change on the eve is counted once, as a late change (case C)', async () => {
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    await insertPrediction(open({ due_date: tomorrow }));
+    await usePredictionStore.getState().update('p1', {
+      title: 'Ship the beta',
+      category: 'personal',
+      due_date: tomorrow,
+    });
+    expect(usePredictionStore.getState().postponedCount).toBe(1);
+    await usePredictionStore.getState().resolve('p1', 'resolved_no');
+    // Answered in personal, away from work: left to the late-changes line.
+    expect(usePredictionStore.getState().refiledCount).toBe(0);
+
+    renderDetails();
+    await waitFor(() =>
+      expect(screen.getByTestId('answered-refile-hint')).toHaveTextContent(REFILE_COUNTED_HINT),
+    );
+    expect(REFILE_COUNTED_HINT).toMatch(/is counted once, as a late change/);
+
+    fireEvent.press(screen.getByTestId('category-work'));
+    await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Work'));
+    expect(usePredictionStore.getState().refiledCount).toBe(0);
+    expect(await countPostponements(USER)).toBe(1);
+
+    fireEvent.press(screen.getByTestId('category-health'));
+    await waitFor(() => expect(screen.getByTestId('answered-category')).toHaveTextContent('Health'));
+    await waitFor(() => expect(usePredictionStore.getState().refiledCount).toBe(1));
+    expect(await countPostponements(USER)).toBe(1);
   });
 
   // Record audit of step 181: before the rating unlocks nothing on screen can
@@ -577,12 +712,21 @@ describe('PredictionDetails (roadmap D25)', () => {
     });
   });
 
+  // Logged today, so the only reason it's counted is that it's due (a
+  // time-zone change, a synced row). Review round 7: logged before today, as
+  // this fixture was, it is counted for that, and says so instead.
   it('says a delete is counted once the prediction is due', async () => {
-    await insertPrediction(open({ due_date: new Date().toISOString() }));
+    const now = new Date().toISOString();
+    await insertPrediction(open({ created_at: now, due_date: now }));
     renderDetails();
     await waitFor(() => expect(screen.getByTestId('details-delete')).toBeTruthy());
     fireEvent.press(screen.getByTestId('details-delete'));
-    expect(screen.getByTestId('details-delete-text')).toHaveTextContent(/Insights will count it/);
+    expect(screen.getByTestId('details-delete-text')).toHaveTextContent(DELETE_DUE);
+    fireEvent.press(screen.getByTestId('details-delete-yes'));
+    await waitFor(async () => expect(await getPrediction('p1')).toBeNull());
+    expect(await listDeletions(USER)).toEqual([
+      expect.objectContaining({ id: 'p1', counted: true }),
+    ]);
   });
 
   it('cancels a delete', async () => {
@@ -747,6 +891,37 @@ describe('PredictionDetails, answered (roadmap D34)', () => {
     fireEvent.press(screen.getByTestId('answered-delete-yes'));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(await getPrediction('p1')).toBeNull();
+  });
+
+  // Review round 7: the delete records the answer this screen showed, so a
+  // different answer given on another phone while the confirmation was up
+  // comes back with the next sync instead of being deleted everywhere.
+  // Without it, the store would record the answer it read.
+  it('records the answer it showed, not another phone’s switch since', async () => {
+    const shown = answered(2);
+    await insertPrediction(shown);
+    const onClose = jest.fn();
+    renderDetails({ onClose });
+    await waitFor(() => expect(screen.getByTestId('answered-delete')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('answered-delete'));
+    // Switched to Yes elsewhere; a correction keeps when it was answered.
+    await upsertPredictionFromRemote({
+      ...shown,
+      status: 'resolved_yes',
+      updated_at: '2099-01-01T00:00:00.000Z',
+    });
+    expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+
+    fireEvent.press(screen.getByTestId('answered-delete-yes'));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(await getPrediction('p1')).toBeNull();
+    expect(await listPendingTombstonesSettled(USER)).toEqual([
+      expect.objectContaining({
+        id: 'p1',
+        deleted_status: 'resolved_no',
+        deleted_resolved_at: shown.resolved_at,
+      }),
+    ]);
   });
 
   it('says an answer older than a day is the record, and offers nothing to change', async () => {

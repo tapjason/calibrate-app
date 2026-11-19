@@ -808,8 +808,12 @@ function AccountGroup({ onOpenAccount }: { onOpenAccount?: () => void }) {
         });
         return;
       }
-      // Even this phone's copy of the session stayed, or what's unsynced
-      // couldn't be counted: still signed in, nothing changed.
+      // Still signed in, and the store's own words say what happened: what's
+      // unsynced couldn't be counted, or even this phone's copy of the session
+      // stayed (nothing changed then), or it stayed after the account's rows
+      // had left this phone (`SIGN_OUT_FAILED_AFTER_WIPE`, round 7: the
+      // backed-up ones come back, what the person agreed to lose is gone).
+      // Shown and said alike.
       setSignOutError(outcome.error);
       AccessibilityInfo.announceForAccessibility(outcome.error);
     } finally {

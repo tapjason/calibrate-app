@@ -44,9 +44,33 @@ stored offset (rows from before migration 018, or one pulled from another phone 
 offsets don't sync), both days are read in the phone's current zone, as before. An offset
 is not a zone: across a daylight-saving change between the two moments the day boundary
 moves by the change (`src/engine/sameDay.ts`). The same reading decides "made today" for
-the late-change exemptions (`src/engine/corrections.ts`); their window, the eve and the due
-day, is the phone's day, as the due date is shown. The offsets sync only once Supabase
+a late rewording and a late due-date move (`src/engine/corrections.ts`: `isOnMadeDay`,
+and `postponementCounts` with `scoredFrom` and its offset); their window, the eve and the
+due day, is the phone's day, as the due date is shown. The offsets sync only once Supabase
 migration 011 is applied and `UTC_OFFSET_SYNC` is on.
+
+**A delete or a category move goes by the day it was logged** (owner decision 2026-11-19,
+security review round 7): `isOnLoggedDay` reads `created_at` and now, both in
+`created_utc_offset_min` (the phone's zone without one), and new words never move that day,
+unlike `scoredFrom`. On Insights, under "More about your record" (this phone only):
+
+- **Deletions** (`deletionCounts`): a scored Yes or No (not a same-day answer, not "Can't
+  tell"), or an open prediction deleted on any day after the day it was logged, however
+  far off its due day; on that day only once it is already due. Until round 7 an open one
+  counted only from the eve of its due day (D61), so one deleted two days early left no
+  trace. One logged earlier and reworded today is counted. "Use another number" (D62)
+  works only on the day it was logged (`canRenumber`, the same `isOnLoggedDay`), so its
+  delete is never counted.
+- **Category moves**: a scored answer (not a same-day answer, not "Can't tell") is counted
+  on the moved-answers line when it ends up in a different category from the one it had at
+  the end of the day it was logged; the phone remembers that category from the first change
+  after that day (`categoryChangeRemembered`, SQLite migration 019; `answerCountedAsMoved`,
+  SQLite migration 022 for where it was answered). A category change made while it was open, from the eve of its
+  due day but not on the day it was logged, is counted once, on the late-changes line
+  instead (`categoryChangeCounts`), so a prediction moved on the eve, answered and moved
+  back is counted once (the record auditor's case C, round 7). Until round 7 a rewording
+  reset the day it counts from, so rewording, moving and answering the next day went
+  uncounted.
 
 | Aggregate | Counts pending? | Counts skipped? | Counts yes/no? |
 |-----------|:---:|:---:|:---:|

@@ -188,6 +188,15 @@ const HEALTH_SCORE_HALF = withCategory(CTX, 'health', { resolved: 12, calibratio
 /** The same with a provisional score nowhere near the count. */
 const HEALTH_SCORE_FAR = withCategory(CTX, 'health', { resolved: 12, calibration_score: 72 });
 
+// --- Round 7 (2026-11-19) ---
+/** As RICH, with work's drift negative: its recent answers score 7.3 points lower. */
+const WORK_DOWN: CoachContext = {
+  ...RICH,
+  patterns: RICH.patterns.map((p) => (p.kind === 'drift_work' ? { ...p, value: -7.3 } : p)),
+};
+/** Finance came true 19 times in 33: a share with decimals that never end (0.5757…). */
+const RATE_19_33 = withCategory(CTX, 'finance', { resolved: 33, actual_rate: 19 / 33 });
+
 // ---------------------------------------------------------------------------
 // The fixtures
 // ---------------------------------------------------------------------------
@@ -646,6 +655,128 @@ const KEEP: Fixture[] = [
     name: 'R6.7 "Sharp drops" opening a line',
     context: RICH,
     insight: { type: 'pattern', category: 'finance', message: 'Your finance score slipped by 6.5 points.\nSharp drops can follow very sure calls.', evidence: -6.5 },
+  },
+
+  // === Round 7 (2026-11-19, final Coach re-review). Each has a dropped twin below. ===
+
+  // --- R7.1 (L2): the new words for what happened, beside a share (a count beside them drops) ---
+  ...[
+    'In finance, 55% of your calls worked out.',
+    'In finance, 55% of your calls succeeded.',
+    'In finance, 55% of your calls went your way.',
+    'In finance, 55% of your calls resolved yes.',
+    'In finance, 55% of your calls proved true.',
+    'In finance, 55% of your calls paid off.',
+  ].map((message) => ({
+    name: `R7.1 a share beside a word for what happened: "${message}"`,
+    insight: { type: 'pattern', category: 'finance', message, evidence: 0.55 },
+  })),
+
+  // --- R7.2 (L1): a negated change word reads the other way ---
+  {
+    name: 'R7.2 "hasn’t improved" as the words of a drift that slipped (its receipt shows −7)',
+    context: WORK_DOWN,
+    insight: { type: 'pattern', category: 'work', message: 'Your work score hasn’t improved lately.', evidence: -7.3 },
+  },
+  {
+    name: 'R7.2 "didn’t improve by 7.3 points" beside a drift that slipped by that much',
+    context: WORK_DOWN,
+    insight: { type: 'pattern', category: 'work', message: 'Work didn’t improve by 7.3 points.', evidence: -7.3 },
+  },
+  {
+    name: 'R7.2 the suggestion says the way the evidence drift went',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance runs overconfident.', suggestion: 'Its score has slipped lately.', evidence: -6.5 },
+  },
+
+  // --- R7.3 (L3): leans the lists missed, in a card the direction backs ---
+  ...[
+    'Fewer finance calls came true than you hoped.',
+    'Fewer finance calls happened than you imagined.',
+    'You said 80% in finance. Fewer than that came true.',
+    'Finance outcomes trail your numbers.',
+    'Finance outcomes lag behind what you said.',
+  ].map((message) => ({ name: `R7.3 an overconfident lean in an overconfidence card: "${message}"`, insight: over(message) })),
+  ...[
+    'More social calls happened than you would think.',
+    'More social calls happened than you’d think.',
+    'You said 60% in social. More than that came true.',
+    'Social outcomes are outpacing your stated confidence.',
+    'What happened in social outpaces what you said.',
+  ].map((message) => ({
+    name: `R7.3 an underconfident lean in an underconfidence card: "${message}"`,
+    insight: { type: 'underconfidence', category: 'social', message, evidence: 82 },
+  })),
+
+  // --- R7.4: a figure copied with its decimals, as the prompt now asks ---
+  {
+    name: 'R7.4 57.5% for a rate of 0.575 (the prompt asked for 58% until round 7, which drops)',
+    context: FLOAT_EDGE,
+    insight: { type: 'strength', category: 'finance', message: 'Finance came true 57.5% of the time.', evidence: 0.575 },
+  },
+  {
+    name: 'R7.4 a rate of 0.5757… cut to 57.57% in the words, copied whole as the evidence',
+    context: RATE_19_33,
+    insight: over('Finance came true 57.57% of the time.', { evidence: 19 / 33 }),
+  },
+
+  // --- R7.5: a change word before "to" and a number: the level reached, backed by a drift ---
+  {
+    name: 'R7.5 "fell to 61" for a score whose drift slipped (dropped until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score fell to 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 "improved to 88" for a score whose drift rose',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Work improved to 88.', evidence: 88 },
+  },
+  {
+    name: 'R7.5 "rose to about 88" for a score whose drift rose',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Work rose to about 88.', evidence: 88 },
+  },
+  {
+    name: 'R7.5 "is down to 61" for a score whose drift slipped',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score is down to 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 "fell to a score of 61" for a score whose drift slipped',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance fell to a score of 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 a score beside "after slipping", whose drift slipped',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance scores 61 after slipping recently.', evidence: 61 },
+  },
+
+  // --- R7.6: "no gap" is calibrated wording ---
+  {
+    name: 'R7.6 "no gap between what you said and what happened" for a category within 5 points (dropped until round 7)',
+    insight: { type: 'strength', category: 'work', message: 'In work there is no gap between what you said and what happened.', evidence: 88 },
+  },
+  {
+    name: 'R7.6 "not a big gap" for a category within 5 points',
+    insight: { type: 'strength', category: 'work', message: 'In work there is not a big gap between what you said and what happened.', evidence: 88 },
+  },
+
+  // --- R7.7: a trend said with no number, backed by the drift ---
+  {
+    name: 'R7.7 "has been slipping" for a category whose drift slipped, a score as evidence',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance calibration has been slipping lately.', evidence: 61 },
+  },
+  {
+    name: 'R7.7 "hasn’t improved" for a category whose drift slipped, a score as evidence',
+    context: WORK_DOWN,
+    insight: { type: 'pattern', category: 'work', message: 'Your work score hasn’t improved lately.', evidence: 88 },
+  },
+  {
+    name: 'R7.7 advice to raise the numbers is no trend',
+    context: RICH,
+    insight: { type: 'underconfidence', category: 'social', message: 'Social runs underconfident.', suggestion: 'Try increasing your social numbers a little.', evidence: 82 },
   },
 ];
 
@@ -1217,6 +1348,162 @@ const DROP: Fixture[] = [
     name: 'R6.7 "just getting started" about a record past 20',
     insight: { type: 'encouragement', category: 'overall', message: 'You are just getting started with 81 answers.', evidence: 81 },
   },
+
+  // === Round 7 (2026-11-19). The twins of the round-7 KEEP fixtures. ===
+
+  // --- R7.1 (L2): a count shown as what worked out (25 is finance's answer count) ---
+  ...[
+    'In finance, 25 predictions worked out.',
+    'In finance, 25 predictions succeeded.',
+    '25 of your finance calls went your way.',
+    'In finance, 25 predictions resolved yes.',
+    'In finance, 25 predictions proved true.',
+    'In finance, 25 predictions paid off.',
+  ].map((message) => ({
+    name: `R7.1 a count shown as what came true (kept until round 7): "${message}"`,
+    insight: { type: 'strength', category: 'finance', message, evidence: 25 },
+  })),
+
+  // --- R7.2 (L1): a negated change word, and the suggestion, against the drift ---
+  {
+    name: 'R7.2 "didn’t improve by 7.3 points" beside a drift that rose (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Work didn’t improve by 7.3 points.', evidence: 7.3 },
+  },
+  {
+    name: 'R7.2 "hasn’t improved" as the words of a drift that rose (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Your work score hasn’t improved lately.', evidence: 7.3 },
+  },
+  {
+    name: 'R7.2 the suggestion says the other way from the evidence drift (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Finance runs overconfident.', suggestion: 'Its score has improved lately.', evidence: -6.5 },
+  },
+  {
+    name: 'R7.2 "no improvement" beside a drift that rose: a negated noun reads either way (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Work shows no improvement lately.', evidence: 7.3 },
+  },
+  {
+    name: 'R7.2 "never been better" beside a drift that slipped: a negated comparison reads either way, never turned',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score has never been better.', evidence: -6.5 },
+  },
+
+  // --- R7.3 (L3): the same leans where the direction doesn't back them ---
+  ...[
+    'In work, fewer calls came true than you hoped.',
+    'Fewer work calls happened than you imagined.',
+    'Fewer work calls happened than you believe.',
+    'More work calls happened than you’d think.',
+    'You said 75% in work. Fewer than that came true.',
+    'You said 75% in work. More than that came true.',
+    'Work outcomes are outpacing your stated confidence.',
+    'What happened in work outpaces what you said.',
+    'Your work confidence outpaced the outcomes.',
+  ].map((message) => ({
+    name: `R7.3 a lean for a category with no lean (kept until round 7): "${message}"`,
+    insight: { type: 'strength', category: 'work', message, evidence: 88 },
+  })),
+  {
+    name: 'R7.3 "trail your numbers" in an underconfidence card, the wrong way (kept until round 7)',
+    insight: { type: 'underconfidence', category: 'social', message: 'Social outcomes trail your numbers.', evidence: 82 },
+  },
+  {
+    name: 'R7.3 "outpacing your stated confidence" in an overconfidence card, the wrong way (kept until round 7)',
+    insight: over('Finance outcomes are outpacing your stated confidence.'),
+  },
+  {
+    name: 'R7.3 "outpaced" with no said object reads either way (kept until round 7)',
+    insight: { type: 'underconfidence', category: 'social', message: 'Your social confidence outpaced the outcomes.', evidence: 82 },
+  },
+  {
+    name: 'R7.3 "more than that came true" in an overconfidence card, the wrong way (kept until round 7)',
+    insight: over('You said 80% in finance. More than that came true.'),
+  },
+
+  // --- R7.4: why the prompt keeps the evidence whole ---
+  {
+    name: 'R7.4 a rate of 0.5757… cut to 0.57 as the evidence: outside the rate’s tolerance of 0.005',
+    context: RATE_19_33,
+    insight: over('Finance came true 57.57% of the time.', { evidence: 0.57 }),
+  },
+
+  // --- R7.5: a score said to have moved, with no drift to back it or the wrong way ---
+  {
+    name: 'R7.5 "fell to 61" with the drift under its gate',
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score fell to 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 "rose to 61" for a score whose drift slipped',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score rose to 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 "moved to 61": no way said',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score moved to 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 "is up to 61": "up to" says no way (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score is up to 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 the rating said to fall: the context holds no overall drift',
+    context: RICH,
+    insight: { type: 'pattern', category: 'overall', message: 'Your rating fell to 72.', evidence: 72 },
+  },
+  {
+    name: 'R7.5 the weekday score said to fall: the context holds no drift for it',
+    context: RICH,
+    insight: { type: 'pattern', category: 'overall', message: 'Your Monday answers fell to 58.', evidence: 58 },
+  },
+  {
+    name: 'R7.5 "is down to 61" with the drift under its gate (kept until round 7)',
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance score is down to 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 "fell to a score of 61" with the drift under its gate (kept until round 7)',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance fell to a score of 61.', evidence: 61 },
+  },
+  {
+    name: 'R7.5 a score beside "after slipping" with the drift under its gate (kept until round 7)',
+    insight: { type: 'pattern', category: 'finance', message: 'Finance scores 61 after slipping recently.', evidence: 61 },
+  },
+
+  // --- R7.6: "no gap" where the app doesn't say well calibrated ---
+  {
+    name: 'R7.6 "no gap" for a category with no clear lean, 10 points apart',
+    context: FINANCE_NO_LEAN_21,
+    insight: { type: 'strength', category: 'finance', message: 'In finance there is no gap between what you said and what happened.', evidence: 82 },
+  },
+  {
+    name: 'R7.6 "no gap" in an overconfidence card (kept until round 7)',
+    insight: over('In finance there is no gap between what you said and what happened.'),
+  },
+
+  // --- R7.7: a trend said with no number, against the drift or with none to back it ---
+  {
+    name: 'R7.7 "has been improving" for a category whose drift slipped, a score as evidence (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance calibration has been improving lately.', evidence: 61 },
+  },
+  {
+    name: 'R7.7 "has been slipping" with the drift under its gate (kept until round 7)',
+    insight: { type: 'pattern', category: 'finance', message: 'Your finance calibration has been slipping lately.', evidence: 61 },
+  },
+  {
+    name: 'R7.7 "hasn’t improved" for a category whose drift rose, a score as evidence (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'work', message: 'Your work score hasn’t improved lately.', evidence: 88 },
+  },
+  {
+    name: 'R7.7 the rating said to improve: the context holds no overall drift (kept until round 7)',
+    context: RICH,
+    insight: { type: 'pattern', category: 'overall', message: 'Your rating has improved lately.', evidence: 72.4 },
+  },
 ];
 
 /** What a validator kept, without the client's receipt annotation. */
@@ -1256,6 +1543,8 @@ describe('Coach lockstep — fixtures the server accepts as input', () => {
     ['HALVES', HALVES],
     ['HEALTH_SCORE_HALF', HEALTH_SCORE_HALF],
     ['HEALTH_SCORE_FAR', HEALTH_SCORE_FAR],
+    ['WORK_DOWN', WORK_DOWN],
+    ['RATE_19_33', RATE_19_33],
   ])('%s is a payload the function takes', (_name, context) => {
     expect(parseContext(context)).toEqual(context);
   });

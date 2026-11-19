@@ -7,8 +7,12 @@ import { colors, space, type } from '@/constants/theme';
 import { useLockStore } from '@/store/lockStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
-/** What the Warm-up's first screen says about usage counts (D69 (b)). */
-export const WARMUP_USAGE_NOTE = `${APP_NAME} sends a few usage counts with no account or device id. You can turn this off here or in You.`;
+/**
+ * What the Warm-up's first screen says about usage counts (D69 (b)), with
+ * what they're for (policy re-audit L1, 2026-11-19: consent asked without the
+ * purpose isn't informed).
+ */
+export const WARMUP_USAGE_NOTE = `${APP_NAME} sends a few usage counts, with no account or device id, to see how the app is used. You can turn this off here or in You.`;
 
 /**
  * The line about usage counts on the Warm-up's first screen, with the same

@@ -129,7 +129,8 @@ count in `overall` and the weekday pattern, which name no category.
   insight must include an `evidence` field naming the number it rests on.
 - **Validator rejects** any insight whose `evidence` doesn't match a value in the input
   (numeric tolerance check). Rejected insights are dropped, not shown. As built
-  (2026-11-18, tightened twice on 2026-11-19, in the security review's rounds 5 and 6),
+  (2026-11-18, tightened three times on 2026-11-19, in the security review's rounds 5, 6
+  and 7),
   both validators hold the message and suggestion to these rules too; contract.ts's header
   lists them, and an insight the validator is unsure about is dropped (§5.8):
   - **Which numbers.** Every number written, as well as the `evidence`, must be a figure
@@ -144,15 +145,26 @@ count in `overall` and the weekday pattern, which name no category.
     the app's own rounding of that figure, `Math.round`, as every screen shows it (82.5 is
     shown as 83, so 82 is dropped); only a number written with decimals is matched within
     the figure's tolerance. The `evidence` field is still matched within each figure's
-    tolerance.
+    tolerance. **What the prompt asks for** (round 7): every figure copied with its
+    decimals, cut after the second in the message and suggestion and never to a whole
+    number, the `evidence` copied whole (§7). Its round-6 line, "half up (82.5 is 83)", lost
+    cards: the app rounds the stored float (0.575 × 100 is 57.4999…, shown as 57), so a
+    model that rounded half up to 58 was dropped. The cut is needed because a figure copied
+    with all its decimals (73.33333333333333) holds seven digits in a run, which the
+    phone-number check drops (`src/ai/coachRounding.test.ts`).
   - **What kind of number** (2026-11-19, widened in round 6). The words beside a number say
     what it is: "score" or "rating" for a 0–100 score, "points" for a drift, "answers" for a
-    count, "said" or "stated" for the stated confidence, "happened" or "came true" for the
-    hit rate. A count is never passed as a score, nor a hit rate as what was said.
+    count, "said" or "stated" for the stated confidence (since round 7 also "think",
+    "hope", "believe" and "imagine" in their forms: "you hoped for 80%"), "happened" or
+    "came true" for the hit rate. A count is never passed as a score, nor a hit rate as
+    what was said.
     - **A count is never what came true.** The context holds how many were answered, not
       how many happened, so a count beside a word that says something happened ("25
       predictions came true", "Finance came true 25 times") is dropped; a count that a share
-      is "of" ("55% of your 25 finance answers came true") passes.
+      is "of" ("55% of your 25 finance answers came true") passes. Since round 7 the words
+      that say something happened include "worked out", "succeeded", "went your way",
+      "resolved yes", "proved true" (or right, correct) and "paid off", here and wherever
+      the validators read what happened.
     - **Units narrow.** A unit right after a number ("88 points", "81 answers") is as near
       as a word gets: it narrows what an equally near word on the other side says, and where
       the two can't both hold, the unit says what the number counts. Until round 6 a unit
@@ -164,8 +176,29 @@ count in `overall` and the weekday pattern, which name no category.
       needs a direction word that agrees with its sign: "improved", "rose", "up", "higher" or
       "better" for a positive drift, "slipped", "fell", "down", "lower" or "worse" for a
       negative one. None, both, or the wrong one: dropped. A drift cited only as the
-      `evidence`, whose receipt shows its sign, is dropped when the message's words say the
-      other way.
+      `evidence`, whose receipt shows its sign, is dropped when the words say the other
+      way, in the message or, since round 7, the suggestion.
+    - **Negations are read** (round 7). A negation right before a direction verb, a word
+      or two of filler allowed, turns it the other way: "didn't improve", "hasn't really
+      risen", "failed to rise" say down; "hasn't slipped" says up. A negated comparison or
+      noun ("never been better", "isn't getting better", "no improvement", "no rise", "nor
+      fell") says either way, so it is dropped beside a drift. Until round 7 "Work didn't
+      improve by 7.3 points" read as an improvement.
+    - **A level is not a change** (round 7). A change word right before "to" and the
+      number ("fell to 61", "rose to about 88") makes the number the level reached, a
+      score, not the drift. A score the words say moved (a change word on either side of it
+      with no other number between, or "up to" / "down to" right before it: "Your finance
+      score fell to 61", "Finance scores 61 after slipping") needs a citable drift of the
+      same scope, said the way it went; none (the rating or the weekday, which have no
+      drift, or a drift under its gate) or the wrong way: dropped.
+    - **A trend with no number** (round 7, `TREND_CLAIM`). A score, rating, calibration or
+      accuracy said to have moved, a number beside it or not ("Your finance calibration has
+      been improving lately", "your work score hasn't improved"), needs a citable drift for
+      every category the card is about, and the claim's clause must say the way each went.
+      About no category it is never allowed: the context holds no overall drift. A subject
+      comes first, so advice about the numbers ("try increasing your social numbers") is
+      not a claim. Until round 7 a trend without a number was checked only when the drift
+      was the evidence.
     - **Whose number.** The category named in its clause; else, where its sentence names a
       category, that category, unless its clause says "overall", "in total", "across all"
       or "across every category" ("In finance, your rating is 72." is finance's, as a
@@ -183,12 +216,23 @@ count in `overall` and the weekday pattern, which name no category.
     than your numbers"). "Came true less often" with no "than" names overconfidence, "more
     often" underconfidence; "didn't come true as often as", "not as often as" and "didn't
     live up to" name overconfidence (until round 6 "as often as" read as calibrated
-    wording). **Stated beside happened** (round 6): an insight that cites a category's
+    wording). Since round 7 a comparison can end on "than you hoped", "than you'd think",
+    "than you would have imagined" (and believed, imagined, hoped in their forms) as well as
+    "than you said", or on "than that" after what was said ("you said 80%; fewer than that
+    came true" names overconfidence, "more than that" underconfidence); "outpaced" in any
+    form ("outpaces", "outpacing") names underconfidence when what was said is its object
+    ("outpaced your stated confidence"), and "trails" or "lags" overconfidence when it is
+    ("trails what you said"); without that object ("your confidence outpaced the
+    outcomes"), the way can't be read, both leans are named, and since no category leans
+    both ways the insight is dropped. All of these are comparisons too, held to the
+    over/under-card rule above. **Stated beside happened** (round 6): an insight that cites a category's
     stated confidence and its hit rate, the `evidence` included, names a lean whatever the
     words around them, so it passes only in an over/under card the category's direction
     backs, or when the two are within 5 points (`closeToSaid`), where the app itself says
     "well calibrated". "Well calibrated" (or accurate, about right, spot on, in line with
-    what happened) only for a `calibrated` category whose stated confidence and hit rate,
+    what happened, and since round 7 "no gap", "not a big gap", "no real mismatch" or
+    "without any gap": a gap denied is calibrated wording, while "a gap" alone stays a
+    contrast) only for a `calibrated` category whose stated confidence and hit rate,
     each rounded to a whole percent, are less than 5 points apart (`CLOSE_TO_SAID_POINTS`,
     the chart's rule, D57); a `calibrated` category further apart is "no clear lean".
   - **No badge names as badges.** The context carries no badge, so any tier named is a
@@ -353,7 +397,7 @@ with the receipt ("55% · came true in finance", DESIGN_SYSTEM §7.13). The Edge
 Function doesn't need it, so the annotation is client-only. The rules that accept or drop
 an insight are not: they are written in both validators and changed in both
 (`supabase/functions/coach/contract.ts`, `src/ai/coachValidate.ts`; the security review
-of 2026-11-18 and its rounds 5 and 6 of 2026-11-19 changed both), and
+of 2026-11-18 and its rounds 5, 6 and 7 of 2026-11-19 changed both), and
 `src/ai/coachLockstep.test.ts` keeps them the same.
 
 ---
@@ -375,9 +419,10 @@ As built, the prompt is `SYSTEM_PROMPT` in `supabase/functions/coach/contract.ts
 (`index.ts` imports it): this sketch with a glossary of every field the context carries,
 the thresholds written in (`MIN_N_OVERALL` and `MIN_N_CATEGORY`, both 20, and
 `WEEKDAY_MIN_N` and `DRIFT_HALF_MIN_N`, both 20 since 2026-11-19), when a lean may be
-named, the rules about numbers (copied as digits, never computed or spelled out), and the
-JSON shape spelled out. The lines added on 2026-11-19 (rounds 5 and 6 of the security
-review), so the model writes what the validators (§5.1) let through:
+named, the rules about numbers (copied as digits with their decimals, never computed,
+rounded or spelled out), and the JSON shape spelled out. The lines added on 2026-11-19
+(rounds 5, 6 and 7 of the security review), so the model writes what the validators (§5.1)
+let through:
 
 - the badge words by name: "never use the words Getting started, Tracker, Forecaster,
   Sharp or Oracle";
@@ -402,10 +447,25 @@ review), so the model writes what the validators (§5.1) let through:
 - (round 6) a drift written with the way it went beside it, "improved", "rose", "up" or
   "higher" when positive, "slipped", "fell", "down" or "lower" when negative, and copied
   with its decimals;
-- (round 6) any other figure rounded to a whole number half up ("82.5 is 83"), or copied
-  with its decimals;
+- (round 7, replacing round 6's "rounded to a whole number half up (82.5 is 83)", which
+  the app's own rounding contradicted, §5.1) every figure copied exactly as given, with
+  its decimals, never rounded ("82.5 stays 82.5, never 82 or 83"); in the message and
+  suggestion at most two decimals, any after the second cut ("73.3333 is 73.33"), never
+  to a whole number; an `actual_rate` written as a percent by moving its decimal point two
+  places ("0.575 is 57.5%, 0.5714 is 57.14%"); and the `evidence` field the figure exactly
+  as in the data, every decimal kept. The opening line says the same: "copied as given
+  with their decimals", where it used to allow rounding to a whole number or percent;
 - one category per sentence, with only that category's numbers in it, and (round 6) in a
   sentence that names a category, the whole record's rating called "your overall rating".
+
+Round 7's other rules (§5.1: the further "came true" verbs, negations before direction
+words, "think", "hope", "believe" and "imagine" read as what was said, "than that",
+"outpaced", "trails" and "lags", "fell to 61" as a level and a moved score backed by a
+drift, "no gap" as calibrated wording, and `TREND_CLAIM`) added no line to the prompt
+(`SYSTEM_PROMPT`'s round-7 change is the decimals rule alone): they are checks on wordings
+that slipped past the validators, and the prompt's existing lines (a drift with the way it
+went, comparisons only in an over/under card, "well calibrated" only within 5 points, a
+count never what came true) point the same way.
 
 The user turn is `userMessage`: the parsed context as JSON inside `<user_data>`. The call
 is `gpt-4o-mini`, temperature 0.2, `max_tokens` 400, `response_format: json_object`.

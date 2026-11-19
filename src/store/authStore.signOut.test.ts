@@ -74,7 +74,7 @@ import {
 } from '@/supabase/authMarkers';
 import { setSupabaseClientForTests } from '@/supabase/client';
 
-import { SIGN_OUT_CHECK_FAILED, useAuthStore } from './authStore';
+import { SIGN_OUT_CHECK_FAILED, SIGN_OUT_FAILED_AFTER_WIPE, useAuthStore } from './authStore';
 import { useCategoryStore } from './categoryStore';
 import { useCoachStore } from './coachStore';
 import { useLogDraftStore } from './logDraftStore';
@@ -242,10 +242,18 @@ describe('sign-out with changes the server does not have yet', () => {
     for (const sweep of sweeps()) expect(sweep).not.toHaveBeenCalled();
   });
 
+  // Round 7 (L1): the question comes first, as on the screen; a confirmed
+  // discard with none asked agrees to nothing (tested below). Was: the
+  // confirmed call alone, with no question before it.
   it('signs out and takes the rows when the person says to discard them', async () => {
     await launch(sessionFor('user-1'));
     countUnsynced.mockResolvedValue(3);
 
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      unsynced: 3,
+      localCategories: 0,
+    });
     await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
       ok: true,
     });
@@ -355,6 +363,8 @@ describe('sign-out with everything backed up', () => {
 
     const outcome = await useAuthStore.getState().signOut();
     expect(outcome.ok).toBe(false);
+    // Round 7 (L3): the error says the rows went, not that nothing changed.
+    expect(outcome).toEqual({ ok: false, error: SIGN_OUT_FAILED_AFTER_WIPE });
     expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
     expect(sync().clearSyncCursor).toHaveBeenCalledWith('user-1');
     expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
@@ -788,6 +798,12 @@ describe('N2: a change made while sign-out runs is never wiped unasked', () => {
     expect(useAuthStore.getState().status).toBe('authenticated');
   });
 
+  // Round 7 (L1): a confirmed discard with no question for the account now
+  // agrees to nothing, so the old ending (more at stake after signing in
+  // again, then `ok: true` because it "covers what is here now") no longer
+  // tells a forgotten question from a remembered one: both would ask. Now
+  // the same change is at stake after signing in again; a question still
+  // remembered would cover it, and a forgotten one asks again.
   it('what the person agreed to lose is forgotten when the app leaves the account', async () => {
     const emit = await launch(sessionFor('user-1'));
     unsyncedNow({ a: 't1' });
@@ -800,11 +816,51 @@ describe('N2: a change made while sign-out runs is never wiped unasked', () => {
     });
     await useAuthStore.getState().signInWithEmail('a@b.co', 'pw');
     expect(useAuthStore.getState().userId).toBe('user-1');
-    unsyncedNow({ a: 't1', b: 't2' });
-    // No question asked for it in this sign-in: it covers what is here now.
+    unsyncedNow({ a: 't1' });
+    // No question asked for it in this sign-in: it agrees to nothing.
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: false,
+      unsynced: 1,
+      localCategories: 0,
+    });
+    expect(wipe).not.toHaveBeenCalled();
+    // Asked in this sign-in and agreed: now it goes.
     await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
       ok: true,
     });
+    expect(wipe).toHaveBeenCalledTimes(1);
+  });
+
+  // Round 7, client re-review L1.
+  it('a confirmed discard with no question asked for the account agrees to nothing: it asks first, and nothing changes', async () => {
+    await launch(sessionFor('user-1'));
+    unsyncedNow({ a: 't1' });
+    countLocalCategories().mockResolvedValue(1);
+
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: false,
+      unsynced: 1,
+      localCategories: 1,
+    });
+    expect(sync().stopSyncFor).not.toHaveBeenCalled();
+    expect(wipe).not.toHaveBeenCalled();
+    expect(mockedAuth.signOut).not.toHaveBeenCalled();
+    expect(owedWipeFor('user-1')).toBeNull();
+    expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
+
+    // That was the question: confirming it now signs out.
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: true,
+    });
+    expect(wipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('a confirmed discard with nothing at stake signs out without a question', async () => {
+    await launch(sessionFor('user-1'));
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: true,
+    });
+    expect(wipe).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -989,5 +1045,53 @@ describe('round 6: the wipe now comes before the session ends', () => {
     expect(owedWipeFor('user-1')).toBeNull();
     expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
     expect(useAuthStore.getState().status).toBe('authenticated');
+  });
+});
+
+describe('round 7 (L3): a session that could not end after the wipe says what went', () => {
+  beforeEach(() => {
+    countLocalCategories().mockResolvedValue(0);
+    unsyncedNow({});
+  });
+
+  it('after agreeing to lose a change: still signed in, the error says so, and what the server has is pulled again', async () => {
+    await launch(sessionFor('user-1'));
+    unsyncedNow({ a: 't1' });
+    countLocalCategories().mockResolvedValue(1);
+    await expect(useAuthStore.getState().signOut()).resolves.toMatchObject({ ok: false, unsynced: 1 });
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+    sync().syncNow.mockClear();
+
+    await expect(useAuthStore.getState().signOut({ discardUnsynced: true })).resolves.toEqual({
+      ok: false,
+      error: SIGN_OUT_FAILED_AFTER_WIPE,
+    });
+    expect(wipe).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
+    expect(sync().resumeSyncFor).toHaveBeenCalledWith('user-1');
+    expect(sync().syncNow).toHaveBeenCalledWith('user-1', expect.anything());
+  });
+
+  it('with nothing at stake, the same: the rows went, and come back', async () => {
+    await launch(sessionFor('user-1'));
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      error: SIGN_OUT_FAILED_AFTER_WIPE,
+    });
+    expect(wipe).toHaveBeenCalledTimes(1);
+  });
+
+  it("when the wipe didn't go either: the session's own error, every row still here", async () => {
+    await launch(sessionFor('user-1'));
+    wipe.mockRejectedValueOnce(new Error('disk'));
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: false, error: 'x' });
+    expect(useAuthStore.getState().status).toBe('authenticated');
+  });
+
+  it('is plain text', () => {
+    expect(SIGN_OUT_FAILED_AFTER_WIPE).not.toMatch(new RegExp(String.fromCharCode(0x2014)));
+    expect(SIGN_OUT_FAILED_AFTER_WIPE).not.toMatch(/[‘’“”]/);
   });
 });
