@@ -7,6 +7,7 @@ import {
   supportResource,
   TERRITORY_FALLBACK_CONTACT,
   TERRITORY_LIFELINE_CONTACT,
+  US_LIFELINE_CONTACT,
 } from './crisisFilter';
 
 describe('scanForCrisis', () => {
@@ -355,15 +356,17 @@ describe('supportResource', () => {
     expect(supportResource({ safe: true, topic: null })).toBeNull();
   });
 
-  it('points eating-disorder signals at the right helpline', () => {
-    const r = supportResource({ safe: false, topic: 'eating_disorder' });
-    expect(r?.contact).toMatch(/Eating Disorders/);
-  });
-
-  it('points self-harm signals at the crisis lifeline', () => {
-    const r = supportResource({ safe: false, topic: 'self_harm' });
-    expect(r?.contact).toMatch(/988/);
-  });
+  // The owner, 2026-11-20: 988 on every topic on a US phone, as on a
+  // territory's, open at all hours; no line of its own for any topic.
+  it.each(['self_harm', 'eating_disorder', 'abuse', 'distress'] as const)(
+    'points %s signals at the crisis lifeline',
+    (topic) => {
+      const r = supportResource({ safe: false, topic });
+      expect(r?.contact).toBe(
+        '988 Suicide & Crisis Lifeline — call or text 988 (US)\nOutside the US: search for a crisis line in your country, or call your local emergency number.',
+      );
+    },
+  );
 
   // §5.5: gentle, non-clinical, and no categorical promises.
   it('keeps the copy non-clinical and free of guarantees', () => {
@@ -407,9 +410,11 @@ describe('supportResource by region', () => {
   // (decision 13): 988 on every topic there, the one line confirmed in all
   // five territories and one for any emotional distress (SAMHSA's 988 FAQ,
   // 988lifeline.org), and a second line that says neither "the US" nor "your
-  // country". The other two numbers still aren't shown there.
+  // country". The owner, 2026-11-20: 988 on every topic on a US phone too,
+  // and the eating-disorder and domestic-violence numbers out of the app.
   const territory =
     "988 Suicide & Crisis Lifeline — call or text 988\nIf 988 doesn't connect where you are: search for a local crisis line, or call your local emergency number.";
+  const usPhone = `988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`;
 
   it('pins the territory lines', () => {
     expect(TERRITORY_LIFELINE_CONTACT).toBe('988 Suicide & Crisis Lifeline — call or text 988');
@@ -417,6 +422,11 @@ describe('supportResource by region', () => {
       "If 988 doesn't connect where you are: search for a local crisis line, or call your local emergency number.",
     );
     expect(TERRITORY_FALLBACK_CONTACT).not.toMatch(/the US|your country|\.com|\.org|https?:|www\./i);
+  });
+
+  it('pins the US line: the territory line with "(US)"', () => {
+    expect(US_LIFELINE_CONTACT).toBe('988 Suicide & Crisis Lifeline — call or text 988 (US)');
+    expect(US_LIFELINE_CONTACT).toBe(`${TERRITORY_LIFELINE_CONTACT} (US)`);
   });
 
   describe.each(['PR', 'GU', 'VI', 'AS', 'MP'])('on a phone set to %s', (region) => {
@@ -439,34 +449,70 @@ describe('supportResource by region', () => {
     expect(supportResource({ safe: false, topic: 'eating_disorder' })!.contact).toBe(territory);
   });
 
-  // The US and other-region wording doesn't change, character for character.
-  it('keeps every US and other-region line exactly as it was', () => {
-    const expected = {
-      US: {
-        self_harm: `988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`,
-        eating_disorder: `National Alliance for Eating Disorders — 1-866-662-1235 (US)\n${elsewhere}`,
-        abuse: `National Domestic Violence Hotline — 1-800-799-7233 (US)\n${elsewhere}`,
-        distress: `988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`,
-      },
-      GB: { self_harm: elsewhere, eating_disorder: elsewhere, abuse: elsewhere, distress: elsewhere },
-    } as const;
-    for (const region of ['US', 'GB'] as const) {
-      for (const topic of ['self_harm', 'eating_disorder', 'abuse', 'distress'] as const) {
-        expect({ region, topic, contact: supportResource({ safe: false, topic }, region)!.contact }).toEqual({
-          region,
-          topic,
-          contact: expected[region][topic],
-        });
-      }
-    }
-    expect(supportResource({ safe: false, topic: 'eating_disorder' }, null)!.contact).toBe(
-      expected.US.eating_disorder,
-    );
+  // Every topic, every kind of region, character for character: the contact
+  // by region alone (the owner, 2026-11-20), and each topic's own title and
+  // body under it, as they were.
+  const TOPIC_WORDS = {
+    self_harm: {
+      title: 'Support is available',
+      body: 'If you are going through something heavy, talking to someone can help. Trained people are there to listen.',
+    },
+    eating_disorder: {
+      title: 'Support is available',
+      body: 'If your relationship with food or your body is weighing on you, there are people who can help.',
+    },
+    abuse: {
+      title: 'Support is available',
+      body: 'If someone is hurting you or you feel unsafe, there are people you can talk to.',
+    },
+    distress: {
+      title: 'Support is available',
+      body: 'If things feel like a lot right now, talking to someone can help.',
+    },
+  } as const;
+  const CONTACT_BY_REGION: ReadonlyArray<[string | null, string]> = [
+    ['US', usPhone],
+    [null, usPhone],
+    ['PR', territory],
+    ['GU', territory],
+    ['VI', territory],
+    ['AS', territory],
+    ['MP', territory],
+    ['CA', elsewhere],
+  ];
+
+  describe.each(['self_harm', 'eating_disorder', 'abuse', 'distress'] as const)('for %s', (topic) => {
+    it.each(CONTACT_BY_REGION)('on a phone set to %p, gives exactly its contact', (region, contact) => {
+      expect(supportResource({ safe: false, topic }, region)).toEqual({ ...TOPIC_WORDS[topic], contact });
+    });
   });
 
   it('gives both when the region cannot be read', () => {
     const r = supportResource({ safe: false, topic: 'abuse' }, null)!;
-    expect(r.contact).toBe(`National Domestic Violence Hotline — 1-800-799-7233 (US)\n${elsewhere}`);
+    expect(r.contact).toBe(`988 Suicide & Crisis Lifeline — call or text 988 (US)\n${elsewhere}`);
+  });
+
+  // The owner, 2026-11-20: the National Alliance for Eating Disorders'
+  // helpline and the National Domestic Violence Hotline left the app. Neither
+  // number, in any spacing, nor either name, on any topic in any region: every
+  // two-letter region, two UN M.49 ones (as in "es-419"), and none.
+  it('names neither removed helpline on any topic in any region', () => {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const regions: Array<string | null> = [null, '419', '001'];
+    for (const a of letters) for (const b of letters) regions.push(a + b);
+    for (const topic of ['self_harm', 'eating_disorder', 'abuse', 'distress'] as const) {
+      for (const region of regions) {
+        const r = supportResource({ safe: false, topic }, region)!;
+        const shown = `${r.title}\n${r.body}\n${r.contact}`;
+        const digits = shown.replace(/\D/g, '');
+        expect({ topic, region, removedNumber: /8666621235|8007997233/.test(digits) }).toEqual({
+          topic,
+          region,
+          removedNumber: false,
+        });
+        expect(shown).not.toMatch(/1-866|1-800|662-1235|799-7233|Eating Disorders|Domestic Violence|Hotline/i);
+      }
+    }
   });
 
   it('reads the region from the phone when none is passed', () => {
@@ -479,12 +525,15 @@ describe('supportResource by region', () => {
   });
 
   // COACH_AGENT.md §5.5: no categorical promise about confidentiality, hours
-  // or outcome, on any topic.
+  // or outcome, on any topic. The contact too: 988 is on every topic for its
+  // hours (the owner, 2026-11-20), but the card doesn't promise them.
   it('promises nothing about confidentiality or hours', () => {
     for (const topic of ['self_harm', 'eating_disorder', 'abuse', 'distress'] as const) {
-      for (const region of ['US', 'GB', null]) {
+      for (const region of ['US', 'GB', 'PR', null]) {
         const r = supportResource({ safe: false, topic }, region)!;
-        expect(`${r.title} ${r.body}`).not.toMatch(/confidential|any time|24\/7|always|guarantee/i);
+        expect(`${r.title} ${r.body} ${r.contact}`).not.toMatch(
+          /confidential|any time|24\/7|24 hours|always|guarantee/i,
+        );
       }
     }
   });

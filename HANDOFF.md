@@ -3,7 +3,7 @@
 **Branch:** `builder/owner-list-19-30`, on top of `master` (`44612ca`). **Not merged, not
 pushed.** It holds D72: three of the owner's-list items the owner agreed to on 2026-11-19
 ("Agree with the entire owners list"; then "Start building your items and I will work on
-mine in parallel"), built 2026-11-20 as steps 202 to 204 and **unreviewed**:
+mine in parallel"), built 2026-11-20 as steps 202 to 205 and **unreviewed**:
 - **202, D72 (a):** deleting a "Can't tell" is counted like deleting an open prediction.
   No screen offers that delete; the route that existed was a details sheet left open on a
   copy another phone then marked "Can't tell".
@@ -12,6 +12,11 @@ mine in parallel"), built 2026-11-20 as steps 202 to 204 and **unreviewed**:
   publishing to a build that carries it and to the device check (the app reads the region
   from the JS engine's locale; no iPhone has shown that it follows the Region setting).
 - **204, D72 (c):** the local-only Plus page says where a subscription is managed.
+- **205, D72 (d):** a US phone's support card names 988 on every topic; the two specialist
+  numbers are gone from the app. The owner dropped items 23 and 27 (no emergency-number
+  line, no helpline page in You, no line per country) and messages 1 to 3 in
+  `docs/OWNER_MESSAGES.md`: "The purpose of my app is not to connect people to these
+  helplines" (2026-11-20).
 
 **Before this branch, `master`:** `builder/owner-decisions` is merged into it (fast-forward) and
 pushed, 2026-11-19, on the owner's words that day: "Use all your recommendations for the
@@ -23,22 +28,15 @@ D70/D71 review is **finished**: three rounds, the most allowed.
 
 **What the next session does first, in order**
 
-1. **The support card, items 23 and 27: wait for the owner's answer.** He agreed to the
-   list, then said on 2026-11-20: "The purpose of my app is not to connect people to these
-   helplines". The main session's recommendation, put to him and not yet answered: drop
-   both items, leave the card as built (988 on a US phone, the line with no number
-   elsewhere), and mark messages 1 to 3 in `docs/OWNER_MESSAGES.md` as not needed. A
-   `design-analyst` run on the two items was started before he said it; nothing is built
-   from its report unless he says so.
-2. **The server checklist, with him** (`supabase/README.md`). The agent runs the read-only
+1. **The server checklist, with him** (`supabase/README.md`). The agent runs the read-only
    checks through `npx supabase db query --remote --read-only`; he applies the migrations
    and runs the test statements (they write and roll back), unless he tells the agent to.
    Done 2026-11-20: 010 applied by him; its 2a to 2f all pass (72 guest rows, all hashed
    and cut to the day); 011's "look first" 1a to 1d all clear. Open: 010's T1 to T3; apply
    011 and its checks; pg_cron; 012 and its checks; the three redeploys.
-3. **A review of this branch, when he calls it**, with item 30's billing fix inside it.
+2. **A review of this branch, when he calls it**, with item 30's billing fix inside it.
    Then merge, and the web build's look at step 204's line at 320 pt.
-4. The next builds are his: a new development build and TestFlight build from `master`
+3. The next builds are his: a new development build and TestFlight build from `master`
    (`expo-secure-store` and `expo-crypto` are native), after `supabase/README.md`'s
    checklist. The public pages stay as they are: the hold below still applies, and
    nothing in this merge touched the `include` list in `docs/_config.yml`.
@@ -135,7 +133,7 @@ D70/D71 review is **finished**: three rounds, the most allowed.
   counsel; a few smaller ones), and 26 to 30 by its third (Utah and Louisiana; helplines
   for Canada, Australia and New Zealand; the age-rating answer for the support card; a
   Plus subscriber on a local-only phone; the two billing races).
-  `docs/OWNER_MESSAGES.md` has the four messages only he can send. JS only: no new native
+  `docs/OWNER_MESSAGES.md` has what only he can send: since 2026-11-20 only message 4 (RevenueCat) and the OpenAI addendum. JS only: no new native
   package beyond the earlier review's two.
 
 **Before that merge, `master` was `d1c23cf`:** the security and code review of 2026-11-18/19
@@ -390,7 +388,7 @@ judgment work and for the reviews he calls, Sonnet for well-specified, low-stake
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run
-  (2026-11-20, on `builder/owner-list-19-30` with steps 202 to 204): 250 suites, 5,887
+  (2026-11-20, on `builder/owner-list-19-30` with steps 202 to 205): 250 suites, 5,923
   tests, exit 0. `check.sh --release` last
   passed on the review's round 7 tree with the two new native packages: expo-doctor 20/20, iOS export
   7.58 MB (bundle 7.17 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a

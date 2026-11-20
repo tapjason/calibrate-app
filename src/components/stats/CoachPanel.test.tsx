@@ -83,6 +83,14 @@ function seed({
 
 afterEach(() => __setDeviceLocaleForTests(null));
 
+/** The support card's contact on a US phone, on every topic (the owner, 2026-11-20). */
+const US_SUPPORT_CONTACT =
+  '988 Suicide & Crisis Lifeline — call or text 988 (US)\nOutside the US: search for a crisis line in your country, or call your local emergency number.';
+/** The eating-disorder and abuse cards' own words, above that contact. */
+const EATING_DISORDER_BODY =
+  'If your relationship with food or your body is weighing on you, there are people who can help.';
+const ABUSE_BODY = 'If someone is hurting you or you feel unsafe, there are people you can talk to.';
+
 describe('CoachPanel — gating', () => {
   it('shows an upsell and no ask button for a free user', () => {
     seed({ isPlus: false });
@@ -447,16 +455,20 @@ describe('CoachPanel — crisis path', () => {
     }
   });
 
-  it('points at the resource matching the topic', () => {
+  // The topic's own words, and 988 under them on a US phone whatever the
+  // topic (the owner, 2026-11-20).
+  it.each([
+    ['eating_disorder', EATING_DISORDER_BODY],
+    ['abuse', ABUSE_BODY],
+  ] as const)('shows the %s card’s own words over the 988 line', (topic, body) => {
     seed();
     // A US phone, whatever the machine running the tests is set to.
     __setDeviceLocaleForTests('en-US');
-    useCoachStore.setState({ crisisTopic: 'eating_disorder' });
+    useCoachStore.setState({ crisisTopic: topic });
     render(<CoachPanel />);
 
-    expect(screen.getByTestId('support-contact').props.children).toMatch(
-      /Eating Disorders/,
-    );
+    expect(screen.getByText(body)).toBeTruthy();
+    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
   });
 
   it('offers no statistic or suggestion on the support surface', () => {
@@ -694,7 +706,7 @@ describe('CoachPanel — setting the support card aside', () => {
   // 'updated': other words matched too, of a topic not yet shown; the store
   // has put that card up instead, and nothing was set aside.
   it('says when other words changed the card, above the button, until the card changes again', async () => {
-    // A US phone, so the contact line names the topic's own resource.
+    // A US phone, so the contact line is 988 and the line for elsewhere.
     __setDeviceLocaleForTests('en-US');
     const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
       useCoachStore.setState({ crisisTopic: 'eating_disorder' });
@@ -717,9 +729,11 @@ describe('CoachPanel — setting the support card aside', () => {
       fontSize: typeTokens.subhead.fontSize,
       color: colors.textPrimary,
     });
-    // The new topic's card, still up, under the same heading; the button
-    // offered again, above which the line sits; no ask button.
-    expect(screen.getByTestId('support-contact').props.children).toMatch(/Eating Disorders/);
+    // The new topic's card, still up, under the same heading: its own words,
+    // over the same 988 line; the button offered again, above which the line
+    // sits; no ask button.
+    expect(screen.getByText(EATING_DISORDER_BODY)).toBeTruthy();
+    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
     await waitFor(() => expect(back().props.accessibilityState.disabled).toBe(false));
     const order = drawnOrder();
     expect(order).toEqual(
@@ -744,6 +758,8 @@ describe('CoachPanel — setting the support card aside', () => {
     // The card changes again: the line goes with the change, and the button
     // rests its second for that change too, wherever it came from.
     act(() => useCoachStore.setState({ crisisTopic: 'abuse' }));
+    expect(screen.getByText(ABUSE_BODY)).toBeTruthy();
+    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
     expect(screen.queryByTestId('support-updated-note')).toBeNull();
     expect(screen.queryByTestId('support-aside-failed')).toBeNull();
     expect(back().props.accessibilityState.disabled).toBe(true);
@@ -768,7 +784,8 @@ describe('CoachPanel — setting the support card aside', () => {
       fireEvent.press(back());
       await act(async () => {});
       expect(screen.getByTestId('support-updated-note')).toBeTruthy();
-      expect(screen.getByTestId('support-contact').props.children).toMatch(/Eating Disorders/);
+      expect(screen.getByText(EATING_DISORDER_BODY)).toBeTruthy();
+      expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
 
       // Focus is on the title at once: the new card is read from its top.
       expect(focus).toHaveBeenCalledTimes(1);
@@ -809,6 +826,7 @@ describe('CoachPanel — setting the support card aside', () => {
   it('says nothing when the card goes inside that moment: its timer goes with it', async () => {
     jest.useFakeTimers();
     try {
+      __setDeviceLocaleForTests('en-US');
       const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
         useCoachStore.setState({ crisisTopic: 'eating_disorder' });
         return 'updated';
@@ -819,6 +837,7 @@ describe('CoachPanel — setting the support card aside', () => {
       fireEvent.press(back());
       await act(async () => {});
       expect(focus).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
       // The card goes before the line is said (the words were removed elsewhere).
       act(() => useCoachStore.setState({ crisisTopic: null }));
       expect(screen.queryByTestId('coach-support-surface')).toBeNull();
@@ -831,6 +850,7 @@ describe('CoachPanel — setting the support card aside', () => {
   });
 
   it('says it again when another tap changes the card again', async () => {
+    __setDeviceLocaleForTests('en-US');
     const topics = ['eating_disorder', 'abuse'] as const;
     let next = 0;
     const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
@@ -850,6 +870,9 @@ describe('CoachPanel — setting the support card aside', () => {
     await expectCardReadFromTheTop(2);
     expect(screen.getByTestId('support-updated-note')).toBeTruthy();
     expect(announce).not.toHaveBeenCalled();
+    // The abuse card's own words, over the same 988 line.
+    expect(screen.getByText(ABUSE_BODY)).toBeTruthy();
+    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
   });
 
   // The store's own 'updated': a card for distress is up, and the record

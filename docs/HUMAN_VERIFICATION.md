@@ -1616,6 +1616,12 @@ this section has been run on the iPhone.
       you manage it in the Settings app: tap your name, then Subscriptions.", then
       Close. With VoiceOver: title, paragraph, that line, Close, in that order. At the
       largest text size nothing is cut off.
+- [ ] **988 on every topic (D72 (d)):** with the Region on the United States, repeat
+      D5's two-topic check: on the "someone is hurting you" card and on the "things
+      feel like a lot" card alike, the contact reads "988 Suicide & Crisis Lifeline —
+      call or text 988 (US)" and then "Outside the US: search for a crisis line in
+      your country, or call your local emergency number." No other number appears on
+      any card.
 - [ ] **A stale sheet's delete is counted (D72 (a)), two phones only:** skip unless a
       second signed-in device is to hand. Open an open prediction's details on phone
       A (logged on an earlier day) and leave the sheet up; on phone B answer it

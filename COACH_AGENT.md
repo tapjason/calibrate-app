@@ -307,21 +307,24 @@ count in `overall` and the weekday pattern, which name no category.
 - If any freetext that reaches the pipeline signals self-harm, suicidal ideation,
   abuse, or acute distress, the Coach **does not generate feedback on it.** The insight
   is suppressed and the app surfaces a gentle, non-clinical support message pointing to
-  region-appropriate professional resources (US example: 988 Suicide & Crisis Lifeline;
-  for eating-disorder signals, the National Alliance for Eating Disorders helpline —
-  localize per region). As built (step 182): on a phone whose locale's region is US, or
-  unreadable, the US line and then "Outside the US: search for a crisis line in your
-  country, or call your local emergency number."; on any other phone that sentence
-  alone. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988 line on every
+  region-appropriate professional resources. As built (step 182, and D72 (d),
+  2026-11-20): on a phone whose locale's region is US, or unreadable, "988 Suicide &
+  Crisis Lifeline — call or text 988 (US)" on every topic and then "Outside the US: search
+  for a crisis line in your country, or call your local emergency number."; on any other
+  phone that sentence alone. Until D72 (d) a US phone's eating-disorder and abuse topics
+  each named a specialist line alone; the eating-disorder line's own site gives weekday
+  hours, so the card could point at a line nobody was answering, and the owner wants
+  fewer helplines in the app, not more. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988 line on every
   topic (D71 (c), 2026-11-19): SAMHSA's 988 FAQ answers "Yes" to whether it is available "in all
   states and all five territories", and says that "there are many reasons that people connect with the 988
-  Lifeline beyond suicide" (read 2026-11-19). The domestic-violence and eating-disorder
-  numbers aren't confirmed there, so they stay off a territory phone until those
-  organisations answer the owner (`docs/OWNER_MESSAGES.md`). Its second line reads "If 988
+  Lifeline beyond suicide" (read 2026-11-19). Its second line reads "If 988
   doesn't connect where you are: search for a local crisis line, or call your local
   emergency number.", with neither "the US" nor "your country". No number per country (a wrong one costs more than a missing one) and no named
-  directory: Find A Helpline's terms need written permission for commercial use, which
-  is the owner's to ask for (`docs/SHIP_READINESS.md`).
+  directory. Both stay that way by the owner's decision of 2026-11-20: lines for Canada,
+  Australia and New Zealand, an emergency-number line on the abuse topic and a helpline
+  page in You were designed and checked against the organisations' own pages, then
+  dropped; the app's purpose isn't to connect people to helplines, and each number would
+  have to be re-read before every release.
 - The agent never attempts to counsel, assess risk, or diagnose. It steps back and
   points to humans. The support surface makes no categorical promises about
   confidentiality or outcomes.

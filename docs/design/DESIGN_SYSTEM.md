@@ -1104,7 +1104,8 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   `surfaceSunken` block, `radius.md`, no border: the title in `headline`, the body in
   `subhead` `textSecondary`, the contact lines in `subhead` `textPrimary` at weight 600,
   selectable. A US-territory phone's contact is 988 and its own second line on every
-  topic (D71 (c)).
+  topic (D71 (c)); a US phone's is 988 and the line for elsewhere on every topic (D72 (d)),
+  so only the title and body differ between topics.
 - **The way back to Coach** (D71 (b), 2026-11-19): under the contact lines, one note in
   `footnote` `textSecondary`, "This came up because of words in one of your predictions
   or notes, checked on this phone. If it doesn't fit, you can go back to Coach."
@@ -1122,8 +1123,9 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   message changed." (`SUPPORT_UPDATED_NOTE`); it goes with the next change of card. The
   tap couldn't be done: "Couldn't go back to Coach. Try again." (`SUPPORT_ASIDE_FAILED`),
   cleared by the next tap. The button is offered again in both.
-- **When the card changes under the button** (the re-review's round two): the new card may
-  name another helpline while VoiceOver is still on the button. So VoiceOver's focus is
+- **When the card changes under the button** (the re-review's round two): the new card has
+  other words (the contact is the same on every topic since D72 (d)) while VoiceOver is
+  still on the button. So VoiceOver's focus is
   moved to the card's title ("Support is available"), the new card is read from the top,
   and "Other words matched too, so this message changed." is announced after it, queued
   behind what is being read (600 ms after the focus move, `ANNOUNCE_AFTER_FOCUS_MS`). And

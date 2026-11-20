@@ -121,8 +121,9 @@ export function SupportSurface({ topic, onSetAside }: SupportSurfaceProps) {
     return () => clearTimeout(timer);
   }, [holding, changes]);
 
-  // After 'updated' the card says something else, perhaps with another
-  // helpline, while VoiceOver is still on the button: it is moved to the
+  // After 'updated' the card says something else (the new topic's words; the
+  // contact line is the same on every topic since 2026-11-20), while
+  // VoiceOver is still on the button: it is moved to the
   // card's title, so the new card is read from the top before the button can
   // be reached again, and the line about other words is said a moment later,
   // queued behind what is being read. Counted, so each 'updated' runs this

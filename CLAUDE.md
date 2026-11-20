@@ -851,14 +851,17 @@ Hard constraints carried here for visibility:
   diet or exercise targets.
 - Freetext (titles, reflections) is **not** sent by default.
 - Distress-signalling freetext is caught by a pre-filter *before* any coaching call and
-  routed to a support surface, never to the model. The surface shows US helplines on a
-  US phone, and for anywhere else a line that names no number and no website (alone on a
-  phone set to another region; after the US lines on a US phone or when the region can't
-  be read) (step 182). A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988
+  routed to a support surface, never to the model. The surface names one helpline,
+  988, on a US phone on every topic (D72 (d), 2026-11-20: the owner wants fewer helplines
+  in the app, whose purpose isn't to connect people to them, and the eating-disorder line
+  it named alone is staffed on weekdays only), and for anywhere else a line that names no
+  number and no website (alone on a phone set to another region; after the 988 line on a
+  US phone or when the region can't be read) (step 182). No emergency-number line, no
+  helpline page in You and no line per country: asked for by a policy audit, costed, and
+  dropped by the owner the same day. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988
   line on every topic, the one line confirmed there, and then "If 988 doesn't connect
   where you are: search for a local crisis line, or call your local emergency number."
-  (D71 (c)); the domestic-violence and eating-disorder numbers stay off a territory phone
-  until those organisations answer the owner. **The card can be set aside** (D71 (b)): it
+  (D71 (c)). **The card can be set aside** (D71 (b)): it
   says why it came up and offers "Back to Coach", which sets aside the predictions that
   matched (ids and a hash, on this phone only); new matching words bring it back. The tap
   checks again first: a topic whose card hasn't been shown yet gets its card ("Other words

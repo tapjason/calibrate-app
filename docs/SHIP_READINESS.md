@@ -115,7 +115,9 @@ list" below.
    country, or call your local emergency number". Naming findahelpline.com would be more
    useful, but its terms require written permission for commercial use.
    **Recommendation:** email ThroughLine (the contact is on findahelpline.com/terms) and
-   name it once they agree. Until then the app names nothing.
+   name it once they agree. Until then the app names nothing. **Closed 2026-11-20 by the
+   owner:** no directory is named and the message isn't sent ("The purpose of my app is
+   not to connect people to these helplines").
 9. **Usage stats at sign-in: notice, or a switch.** The sign-in screen now says what is
    sent and how to turn it off (notice and opt-out). Guideline 5.1.1(ii) says "secure user
    consent"; the policy audit reads the notice as enough for App Review and can't settle it
@@ -267,6 +269,8 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
 13. **Helplines (decisions 8 and 13).** *Recommendation: send the three messages in
     `docs/OWNER_MESSAGES.md` (ThroughLine, the domestic-violence hotline, the eating-disorder
     alliance). Nothing waits on the answers: the app names nothing it hasn't confirmed.*
+    **Closed 2026-11-20 by the owner:** none of the three is sent. A US phone's card names
+    988 on every topic (D72 (d)), so neither organisation's number is in the app.
 14. **The name.** *Recommendation: have counsel run the clearance search before screenshots
     and the listing are made, since a rename after that costs the most.*
 15. **Screenshots.** *Recommendation: marketing frames composed from the web build at
@@ -298,7 +302,8 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
 22. **In App Store Connect:** declare trader status as "not a trader" (still required
     without the EU), and check where App Store server notifications are sent (Apple's
     notice of revoked parental consent may be going to RevenueCat's address).
-23. **Two referral calls on the support card** (the policy audit): a line "If you're in
+23. **Dropped 2026-11-20 by the owner** ("The purpose of my app is not to connect people
+    to these helplines"; D72 (d)). **Two referral calls on the support card** (the policy audit): a line "If you're in
     danger now, call 911." on the abuse topic for US and territory phones, and a permanent
     "Support resources" entry in You so the helplines can be found again after "Back to
     Coach". *Recommendation: yes to both, after the wording and 911's coverage of the five
@@ -323,7 +328,10 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     the nine points, and plan as if both apply to the US launch.* The same audit notes
     that Apple's notice of revoked parental consent and its significant-change consent
     aren't handled by the app; both are already inside counsel's points.
-27. **National helplines for Canada, Australia and New Zealand.** A phone set to any of
+27. **Dropped 2026-11-20 by the owner, with item 23** (D72 (d)). A design run that day
+    read each line on its organisation's own page and counted what building it would
+    take: five numbers to re-read before every release, a gap in Canada's 911 (Nunavut
+    has none), and a change to the age-rating answer. **National helplines for Canada, Australia and New Zealand.** A phone set to any of
     the three gets only the line that names no number. That was the right call while the
     storefront list was open ("a wrong one costs more"); with four storefronts it is
     weaker. The policy audit confirmed on the organisations' own sites Canada's 9-8-8

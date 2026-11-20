@@ -221,7 +221,7 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   takes the card away with nothing stored, and a topic whose card hasn't been shown gets
   its card first ("Other words matched too, so this message changed."), nothing set aside
   (`useCoachStore.backToCoach`); that holds per topic even inside one note, and "Back to
-  Coach" rests for about a second after the card changes. A US-territory phone gets 988 on every topic (D71 (c)).
+  Coach" rests for about a second after the card changes. A US-territory phone gets 988 on every topic (D71 (c)), and so does a US phone (D72 (d)): 988 is the only helpline the app names.
   The Coach is off on a local-only phone (D70).
 - **Social:** cooperative only, after v1 (D44): nothing ranks, scores one person against another
   or names a winner.

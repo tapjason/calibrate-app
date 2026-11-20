@@ -185,9 +185,9 @@ export interface SupportResource {
 }
 
 /**
- * Outside the US. The lines below are US numbers, and the app is sold in
- * other English-language storefronts, where a US number can't be called
- * (policy audit, 2026-11-14; §5.5 asks for region-appropriate resources).
+ * Outside the US. 988, below, is a US line, and the app is sold in other
+ * English-language storefronts, where a US number can't be called (policy
+ * audit, 2026-11-14; §5.5 asks for region-appropriate resources).
  * No number per country: a wrong one costs more than a missing one. And no
  * named directory: Find A Helpline's terms require written permission for
  * commercial use, which a paid feature is (policy audit of step 182,
@@ -196,30 +196,28 @@ export interface SupportResource {
 export const INTERNATIONAL_CONTACT =
   'Outside the US: search for a crisis line in your country, or call your local emergency number.';
 
-// Deliberately non-clinical, and makes no categorical promise about
-// confidentiality, hours or outcome (§5.5): the words sit above services the
-// app can't vouch for. These are US resources; a phone set to another region
-// gets the line above, and a US territory's phone 988 on every topic (below).
-const RESOURCES: Record<CrisisTopic, SupportResource> = {
+// Each topic's own title and body, the same on every phone. Deliberately
+// non-clinical, and makes no categorical promise about confidentiality, hours
+// or outcome (§5.5): the words sit above services the app can't vouch for.
+// The contact under them is the same for every topic and follows the phone's
+// region (`supportResource`): 988 first on a US or US-territory phone, or one
+// whose region can't be read; the line above alone anywhere else.
+const RESOURCES: Record<CrisisTopic, Omit<SupportResource, 'contact'>> = {
   self_harm: {
     title: 'Support is available',
     body: 'If you are going through something heavy, talking to someone can help. Trained people are there to listen.',
-    contact: '988 Suicide & Crisis Lifeline — call or text 988 (US)',
   },
   eating_disorder: {
     title: 'Support is available',
     body: 'If your relationship with food or your body is weighing on you, there are people who can help.',
-    contact: 'National Alliance for Eating Disorders — 1-866-662-1235 (US)',
   },
   abuse: {
     title: 'Support is available',
     body: 'If someone is hurting you or you feel unsafe, there are people you can talk to.',
-    contact: 'National Domestic Violence Hotline — 1-800-799-7233 (US)',
   },
   distress: {
     title: 'Support is available',
     body: 'If things feel like a lot right now, talking to someone can help.',
-    contact: '988 Suicide & Crisis Lifeline — call or text 988 (US)',
   },
 };
 
@@ -256,11 +254,30 @@ const US_TERRITORIES: ReadonlySet<string> = new Set(['PR', 'GU', 'VI', 'AS', 'MP
  *     loneliness."
  *
  * No "(US)": on a territory phone it would read as a line for somewhere
- * else. The domestic-violence and eating-disorder numbers still aren't shown
- * there (not confirmed for every territory; the owner is asking both
- * organisations), so a territory phone gets 988 for those topics too.
+ * else. A US phone's first line is the same with "(US)" (`US_LIFELINE_CONTACT`).
  */
 export const TERRITORY_LIFELINE_CONTACT = '988 Suicide & Crisis Lifeline — call or text 988';
+
+/**
+ * A US phone's first line, on every topic, and the first line when the
+ * region can't be read (the owner, 2026-11-20): 988, as on a territory phone,
+ * with "(US)", since the line for elsewhere follows it (someone with a US
+ * phone may be abroad).
+ *
+ * Until then only the self-harm and distress topics named 988 here: the
+ * eating-disorder topic named the National Alliance for Eating Disorders'
+ * helpline alone, and the abuse topic the National Domestic Violence
+ * Hotline's alone. The owner's reasons: the Alliance's own site gives its
+ * helpline hours as weekdays 9 am to 7 pm Eastern, so outside them the card
+ * pointed at a line nobody answers, while 988 is there "for anyone 24/7" and
+ * takes calls about any emotional distress, "intimate partner violence" among
+ * the reasons the Lifeline lists (SAMHSA and the 988 Lifeline, quoted above);
+ * and he wants fewer helplines in the app, not more, since its purpose isn't
+ * to connect people to helplines. Both numbers and both names left the app
+ * that day, on every phone, so there is nothing left to ask either
+ * organisation about the territories either.
+ */
+export const US_LIFELINE_CONTACT = `${TERRITORY_LIFELINE_CONTACT} (US)`;
 
 /**
  * A territory phone's second line, on every topic: what to do if 988 doesn't
@@ -272,12 +289,13 @@ export const TERRITORY_FALLBACK_CONTACT =
 
 /**
  * The support content for a scan result, or null when the scan was clean.
- * Each topic keeps its own title and body everywhere; the contact follows the
- * phone's region:
- *   - a US phone, or a region that can't be read: the topic's US line, then
- *     the line for elsewhere (someone with a US phone may be abroad);
- *   - a US territory's phone: 988 and the territory's fallback line, on
- *     every topic (`TERRITORY_LIFELINE_CONTACT`, `TERRITORY_FALLBACK_CONTACT`);
+ * Each topic keeps its own title and body everywhere; the contact is the same
+ * for every topic and follows the phone's region:
+ *   - a US phone, or a region that can't be read: 988, then the line for
+ *     elsewhere (someone with a US phone may be abroad) (`US_LIFELINE_CONTACT`,
+ *     `INTERNATIONAL_CONTACT`);
+ *   - a US territory's phone: 988 and the territory's fallback line
+ *     (`TERRITORY_LIFELINE_CONTACT`, `TERRITORY_FALLBACK_CONTACT`);
  *   - any other phone: the line for elsewhere alone.
  */
 export function supportResource(
@@ -285,13 +303,13 @@ export function supportResource(
   region: string | null = deviceRegion(),
 ): SupportResource | null {
   if (!scan.topic) return null;
-  const us = RESOURCES[scan.topic];
+  const words = RESOURCES[scan.topic];
   if (region !== null && US_TERRITORIES.has(region)) {
-    return { ...us, contact: `${TERRITORY_LIFELINE_CONTACT}\n${TERRITORY_FALLBACK_CONTACT}` };
+    return { ...words, contact: `${TERRITORY_LIFELINE_CONTACT}\n${TERRITORY_FALLBACK_CONTACT}` };
   }
   const showUsLine = region === 'US' || region === null;
   return {
-    ...us,
-    contact: showUsLine ? `${us.contact}\n${INTERNATIONAL_CONTACT}` : INTERNATIONAL_CONTACT,
+    ...words,
+    contact: showUsLine ? `${US_LIFELINE_CONTACT}\n${INTERNATIONAL_CONTACT}` : INTERNATIONAL_CONTACT,
   };
 }
