@@ -32,9 +32,12 @@ const MODE_MAX_SCALE = 1.6;
 /**
  * What signing in sends besides the predictions, in You's own words for it,
  * while Usage stats is on. The switch is beside it (decision 9, 2026-11-19).
+ * What the counts are for is said where the choice is made (review
+ * 2026-11-19), in the Warm-up line's own words for it ("to see how the app is
+ * used", `WARMUP_USAGE_NOTE`), so the two agree.
  */
 export const USAGE_NOTE =
-  'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn this off here or in You, under Usage stats.';
+  'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account, to see how the app is used: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn this off here or in You, under Usage stats.';
 
 /** The same line while Usage stats is off. */
 export const USAGE_OFF_NOTE =

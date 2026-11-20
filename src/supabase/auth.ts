@@ -12,8 +12,11 @@
 // The under-13 rule (roadmap D70, 2026-11-19): every exported sign-in and
 // sign-up function (signInWithApple, signInWithGoogle, signInWithEmail,
 // signUpWithEmail) starts with `refuseWhenLocalOnly()`, which refuses with
-// `LOCAL_ONLY_SIGN_IN` before any client, nonce or native sheet is touched:
-// defence in depth under authStore's own refusal. src/age/egress.test.ts
+// `LOCAL_ONLY_SIGN_IN` before any client, nonce or native sheet is touched,
+// and with `AGE_PENDING_SIGN_IN` while Apple's age answer is still pending
+// after its wait: defence in depth under authStore's own refusal. The sign-ins
+// that open a sheet ask again once it closes, before anything reaches
+// Supabase (Apple's answer may land while the sheet is up). src/age/egress.test.ts
 // checks every exported `sign(In|Up)…` function starts with it. Deliberately
 // left open, because they remove data: `signOut` and `signOutLocal` (and the
 // local `discardStoredSession`), and `reauthenticateWithApple`, used only by
@@ -28,6 +31,7 @@ import {
   AGE_ANSWER_WAIT_MS,
   isLocalOnly,
   LOCAL_ONLY_SIGN_IN,
+  uploadsMayStart,
   useAgeStore,
   whenAgeSettled,
 } from '@/store/ageStore';
@@ -173,8 +177,20 @@ function signUpErrorText(e: unknown): string {
 // The under-13 rule (D70)
 // ----------------------------------------------------------------------------
 
-/** What a sign-in or sign-up returns while the rule applies. */
+/** What a sign-in or sign-up returns while the rule applies, or while Apple's answer is pending. */
 export type LocalOnlyRefusal = { ok: false; error: string };
+
+/**
+ * What a sign-in or sign-up returns when Apple's age answer is still pending
+ * after the wait (policy audit, 2026-11-19): no account may be made or opened
+ * before the app knows whether the rule applies, since the privacy policy
+ * promises nothing is created under 13. Temporary: once the answer is in, the
+ * same tap goes on (or meets `LOCAL_ONLY_SIGN_IN`). Here, in the auth service,
+ * because the age store (where `LOCAL_ONLY_SIGN_IN` lives) is another layer's
+ * file; authStore can read it as `auth.AGE_PENDING_SIGN_IN`, and meanwhile
+ * returns it from this service as it does every refusal. Names no age.
+ */
+export const AGE_PENDING_SIGN_IN = "Sign-in isn't ready yet. Try again in a moment.";
 
 /**
  * When the age store last began waiting for Apple's answer (`settled` turned
@@ -188,16 +204,23 @@ useAgeStore.subscribe((state, prev) => {
 });
 
 /**
- * The first statement of every exported sign-in and sign-up function: null to
- * go on, or the refusal while the phone is local-only. Before any client,
- * nonce or native sheet is touched.
+ * The first statement of every exported sign-in and sign-up function, and
+ * asked again after a native sheet closes: null to go on, or a refusal. Before
+ * any client, nonce or native sheet is touched.
+ *
+ *   - `LOCAL_ONLY_SIGN_IN` while the phone is local-only.
+ *   - `AGE_PENDING_SIGN_IN` while Apple's age answer is still pending once the
+ *     wait is over: no account goes ahead before the app knows (policy audit,
+ *     2026-11-19; until then it went on as today after 5 s, so an account
+ *     could be made and only then frozen).
  *
  * On a launch that asks Apple, it waits for the answer for what is left of
- * `AGE_ANSWER_WAIT_MS` (5 s) since the age store began waiting, then goes on
- * as today (call 2). Measured from then, not from this call, so it never adds
- * a second wait after authStore's own (`accountSignIn` waits up to 5 s from
- * the tap first). Anywhere the question isn't asked it resolves at once. Never
- * rejects.
+ * `AGE_ANSWER_WAIT_MS` (5 s) since the age store began waiting. Measured from
+ * then, not from this call, so it never adds a second wait after authStore's
+ * own (`accountSignIn` waits up to 5 s from the tap first). Anywhere the
+ * question isn't asked, or isn't waited for (web, Jest, iOS before 26, a
+ * stored band of 13 or over, whose ask runs in the background), the store is
+ * settled from the start and it resolves at once, as before. Never rejects.
  */
 export async function refuseWhenLocalOnly(): Promise<LocalOnlyRefusal | null> {
   try {
@@ -205,7 +228,9 @@ export async function refuseWhenLocalOnly(): Promise<LocalOnlyRefusal | null> {
       const left = ageWaitStartedAt + AGE_ANSWER_WAIT_MS - Date.now();
       if (left > 0) await whenAgeSettled(left);
     }
-    return isLocalOnly() ? { ok: false, error: LOCAL_ONLY_SIGN_IN } : null;
+    if (isLocalOnly()) return { ok: false, error: LOCAL_ONLY_SIGN_IN };
+    if (!useAgeStore.getState().settled) return { ok: false, error: AGE_PENDING_SIGN_IN };
+    return null;
   } catch {
     // The age store can't be read: refuse, the safe side.
     return { ok: false, error: LOCAL_ONLY_SIGN_IN };
@@ -228,9 +253,10 @@ function refreshLog(e: unknown): string {
  *
  * Waits for the client's own start first: auth-js starts its refresh timer at
  * the end of it, which would undo a stop made before. A `resumeSessionRefresh`
- * called meanwhile wins. What stays (disclosed): a `getSession()` on a session
- * within its expiry margin still refreshes it, which Sign out and Delete
- * account rely on.
+ * called meanwhile wins. What stays (disclosed): any read of a session within
+ * its expiry margin still refreshes it, supabase-js's own INITIAL_SESSION read
+ * as the client is made included (src/supabase/client.ts), which Sign out and
+ * Delete account rely on.
  */
 export async function pauseSessionRefresh(): Promise<void> {
   const mine = ++refreshGeneration;
@@ -247,18 +273,31 @@ export async function pauseSessionRefresh(): Promise<void> {
 }
 
 /**
- * Start the session's background token refresh again once the rule no longer
- * applies. Never makes the client, never throws and never rejects. Does
- * nothing if a later pause came in, or if the rule applies again by the time
- * the client has started.
+ * Start the session's background token refresh once uploads may start
+ * (`uploadsMayStart`: Apple has answered on a launch that asks, and the rule
+ * doesn't apply), called by src/age/localOnly.ts at that moment. A client made
+ * before then was made with the refresh off (src/supabase/client.ts). Never
+ * makes the client, never throws and never rejects. Does nothing (and leaves
+ * a pause under way to finish) while uploads may not start, and nothing if a
+ * later pause came in, or if uploads may no longer start by the time the
+ * client has started.
+ *
+ * A session that expired or is near expiry meanwhile is refreshed at once:
+ * auth-js 2.106.2's `startAutoRefresh` runs its first tick on the next turn of
+ * the event loop (`_startAutoRefresh`), and the tick refreshes a session within
+ * 90 s of expiry (`_autoRefreshTokenTick`, through `__loadSession`), then every
+ * 30 s (checked against the installed library in auth.localOnly.test.ts).
  */
 export async function resumeSessionRefresh(): Promise<void> {
+  // Before anything, the bump included: while uploads may not start, a pause
+  // still under way must win.
+  if (!uploadsMayStart()) return;
   const mine = ++refreshGeneration;
   try {
     const client = peekSupabaseClient();
     if (!client) return;
     await client.auth.initialize();
-    if (mine !== refreshGeneration || isLocalOnly()) return;
+    if (mine !== refreshGeneration || !uploadsMayStart()) return;
     await client.auth.startAutoRefresh();
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -329,12 +368,22 @@ export async function signInWithApple(): Promise<AuthOutcome> {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const AppleAuthentication = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
 
+    // The under-13 rule (D70) again before the sheet opens: Apple's age
+    // answer may have landed while the nonce was made.
+    const beforeSheet = await refuseWhenLocalOnly();
+    if (beforeSheet) return beforeSheet;
+
     const credential = await AppleAuthentication.signInAsync({
       // The email only: nothing uses a name, and asking for one is data the
       // task doesn't need (5.1.1(iii); policy audit, 2026-11-14).
       requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL],
       nonce: nonce.hashed,
     });
+
+    // And once it closes, before the identity token reaches Supabase: the age
+    // answer may have landed while the sheet was up.
+    const afterSheet = await refuseWhenLocalOnly();
+    if (afterSheet) return afterSheet;
 
     if (!credential.identityToken) {
       return { ok: false, error: 'Apple did not return an identity token.' };
@@ -504,7 +553,24 @@ export async function signInWithGoogle(): Promise<AuthOutcome> {
     if (error) return { ok: false, error: googleFailureText(error.message, errorCode(error)) };
     if (!data?.url) return { ok: false, error: GOOGLE_UNAVAILABLE };
 
+    // The under-13 rule (D70) again before the sheet opens: inside it the
+    // phone talks to Supabase and Google directly. (`signInWithOAuth` above
+    // only builds the address and keeps the PKCE verifier on the phone; auth-js
+    // 2.106.2 sends nothing for it.)
+    const beforeSheet = await refuseWhenLocalOnly();
+    if (beforeSheet) return beforeSheet;
+
     const result = await WebBrowser.openAuthSessionAsync(data.url, GOOGLE_REDIRECT_URL);
+
+    // And once it closes, before the code is exchanged: Apple's age answer may
+    // have landed while the sheet was up. What this can't undo: by now
+    // Supabase has already made (or found) the user at its own callback,
+    // inside the sheet, before handing back the code. Refusing here keeps the
+    // session off the phone and the code unexchanged (it expires unused), but
+    // the account already exists on the server.
+    const afterSheet = await refuseWhenLocalOnly();
+    if (afterSheet) return afterSheet;
+
     if (result.type === 'cancel' || result.type === 'dismiss') {
       return { ok: false, error: CANCELLED };
     }

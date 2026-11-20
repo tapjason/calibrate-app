@@ -81,3 +81,34 @@ describe('resolveRunStore, the edges (code review, step 179)', () => {
     expect(useResolveRunStore.getState().run?.startedAt).toBe(now.toISOString());
   });
 });
+
+// Re-review round two, 2026-11-19: Erase waits for the removal and reports a
+// failed one, which `clear` (fire and forget) can't.
+describe('resolveRunStore.forget (Erase)', () => {
+  const now = new Date('2026-11-14T20:00:00.000Z');
+
+  it('removes a stored run even when none is held, and says it did', async () => {
+    stored = { queue: ['a'], answered: [], startedAt: now.toISOString() };
+    expect(useResolveRunStore.getState().run).toBeNull();
+    await expect(useResolveRunStore.getState().forget()).resolves.toBe(true);
+    expect(stored).toBeNull();
+  });
+
+  it('drops the held run, and reports a removal that failed', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    useResolveRunStore.getState().start(['a', 'b'], now);
+    await Promise.resolve();
+    __setResolveRunPersistenceForTests({
+      load: async () => stored,
+      save: async () => {
+        throw new Error('storage');
+      },
+    });
+    useResolveRunStore.setState({ run: { queue: ['a', 'b'], answered: [], startedAt: now.toISOString() } });
+
+    await expect(useResolveRunStore.getState().forget()).resolves.toBe(false);
+    expect(useResolveRunStore.getState().run).toBeNull();
+    expect(stored).not.toBeNull();
+    warn.mockRestore();
+  });
+});

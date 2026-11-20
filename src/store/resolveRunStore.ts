@@ -79,6 +79,16 @@ interface ResolveRunState {
   markAnswered: (id: string) => void;
   /** The run ended (caught up, closed or dismissed). */
   clear: () => void;
+  /**
+   * Erase's drop (re-review round two, 2026-11-19): the run out of memory
+   * and out of storage, whether or not one is held here (a stored run this
+   * launch never loaded goes too), waiting for the write. True once the
+   * stored copy is removed; false when that write failed, and the run's ids
+   * are still on the phone for up to `RUN_KEEP_HOURS`. Never throws. The
+   * screens keep calling `clear`, which returns nothing and writes only
+   * when a run is held.
+   */
+  forget: () => Promise<boolean>;
 }
 
 function write(run: KeptRun | null): void {
@@ -130,5 +140,17 @@ export const useResolveRunStore = create<ResolveRunState>((set, get) => ({
     if (get().run === null) return;
     set({ run: null });
     write(null);
+  },
+
+  forget: async () => {
+    if (get().run !== null) set({ run: null });
+    try {
+      await persistence.save(null);
+      return true;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[resolve-run] could not remove the kept run:', e);
+      return false;
+    }
   },
 }));

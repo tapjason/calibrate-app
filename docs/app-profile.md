@@ -42,9 +42,11 @@ Status: filled in 2026-11-08
   then the counts and a read of *these ten*, D18) → "Make a real prediction" → Log, with the due
   date on Tomorrow and starter ideas that resolve by then. No account and no permission prompt
   first; Apple's age-range sheet may appear after the first screen is up (D4 in
-  `docs/HUMAN_VERIFICATION.md`). No band, or a decline, changes nothing; a band that includes
-  ages under 13 makes the phone local-only (D70: no sign-in, sync, usage counts, Coach or
-  RevenueCat, no Plus offered, no rating prompt; everything else as usual).
+  `docs/HUMAN_VERIFICATION.md`). No band, or a decline, changes nothing; a band that can
+  include someone under 13 makes the phone local-only (D70: no sign-in, sync, usage counts,
+  Coach or RevenueCat, no Plus offered, no rating prompt; everything else as usual). Apple
+  is asked at every launch; until it has answered on a launch with no band of 13 or over
+  stored, sign-in and the Plus plans wait (§3, the under-13 bullet).
 - **Log** (a page sheet from the "+" in the title bar of Today, Insights and History, D21): title,
   confidence (starts empty, D13), category (starts empty, D29), due date (starts on Tomorrow, D55).
   Save waits for a title, a number and a category, and names the date ("Save, due Sunday", D55).
@@ -84,17 +86,27 @@ Status: filled in 2026-11-08
   account's rows off the phone, all but those integrity counts (D69 (a), round 6,
   `docs/ACCOUNT_SPEC.md` §2); a guest's Erase takes every account id's rows, those counts
   included, with the age band, the Warm-up and practice; settings and the entitlement mirror
-  stay (D71 (a), `wipeEverythingOnDevice`). The support card's set-asides
+  stay (D71 (a), `wipeEverythingOnDevice`), and so does the install id RevenueCat's SDK
+  keeps. The support card's set-asides
   (an id and a hash of the words per prediction, D71 (b)) live in the settings record,
-  never synced.
+  never synced; a key goes when its prediction's words change or it is deleted.
 - **The under-13 rule (D70) decides whether anything leaves the phone:** one predicate
-  (`isUnder13Band`, `src/engine/ageBand.ts`), one field (`useAgeStore.localOnly`,
+  (`isUnder13Band`, `src/engine/ageBand.ts`: any band that can include someone under 13,
+  so (none, 15) and (none, 17) count too), one field (`useAgeStore.localOnly`,
   `src/store/ageStore.ts`), read by every upload path; `src/age/egress.test.ts` fails when a
-  file that can send over the network isn't listed and gated. Account deletion and sign-out
+  file that can send over the network isn't listed and gated, when a listed file gains a
+  network call, or when a gate comes after the first request. Account deletion and sign-out
   stay open (they remove data). An account signed in before the rule came on is frozen
-  (`docs/ACCOUNT_SPEC.md` §2). On a launch that asks Apple, RevenueCat and the guest flush
-  wait for the answer (a paywall open or a sign-in at most 5 s, a sync at most 60 s).
-  `docs/design/research/under-13-2026-11.md` is the spec.
+  (`docs/ACCOUNT_SPEC.md` §2). Apple is asked at every launch, whatever band is stored; a
+  stored band that can't be read keeps the gate shut. On a launch that waits for the
+  answer (no stored band, an under-13 one, or one that can't be read), RevenueCat is never
+  set up before it, with no time limit (the paywall shows that the plans couldn't load);
+  a sign-in waits 5 s and is then refused for now ("Sign-in isn't ready yet. Try again in
+  a moment."); the guest flush, the rating prompt, the Coach and the trial reminder's
+  RevenueCat read wait; a sync waits at most 60 s and then goes on. With a stored band of 13 or over the ask is in the background and nothing
+  waits. `docs/design/research/under-13-2026-11.md` is the spec, and lists the residuals
+  (a frozen account's sign-in renewed each time the app starts with it expired, among
+  them).
 - **Supabase owns (after sign-in):** Auth (email sign-in, with Create account hidden, D69 (c); Sign in with Apple through `signInWithIdToken`, with a nonce; Google through the system sheet and `exchangeCodeForSession`, behind `GOOGLE_SIGN_IN_ENABLED`),
   the synced copy of predictions (last-write-wins, except that an answered prediction never goes back to open, D69; deletions as tombstones, each removing on the server only the open row or the same answer the deleting phone saw, round 7), entitlements written by
   the `revenuecat-webhook` Edge Function, Coach usage and rate limits, analytics events from
@@ -103,7 +115,11 @@ Status: filled in 2026-11-08
 - **RevenueCat owns:** whether someone has Plus. Absence or any error reads as free, never Plus;
   `fetchEntitlement()` returns `null` for "couldn't ask" so an offline launch doesn't strip Plus.
   Never configured on a local-only phone (D70), where a Plus mirror already there is left
-  as it is.
+  as it is, nor before Apple's age answer on a launch that waits for it. A sign-out before
+  it has started sets the mirror to free, and the next signed-out start logs that account
+  out of RevenueCat before reading any entitlement (`dropCachedAccount`); if the SDK can't
+  say whether its user is anonymous, reads report "couldn't find out" and purchases
+  "unavailable" until a sign-in or the next launch.
 - **OpenAI** (through the `coach` Edge Function only): reads computed numbers, never titles or
   reflections by default (`COACH_AGENT.md`).
 - **Never on the client:** service-role keys, the OpenAI key, the RevenueCat `sk_` key, the webhook
@@ -201,7 +217,11 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   call and routes to `src/components/stats/SupportSurface.tsx`, never to the model. The card
   says why it came up and offers "Back to Coach", which sets aside the predictions that
   matched, on this phone only, until new matching words appear (D71 (b),
-  `src/engine/supportAside.ts`). A US-territory phone gets 988 on every topic (D71 (c)).
+  `src/engine/supportAside.ts`). The tap checks again first: nothing matching any more
+  takes the card away with nothing stored, and a topic whose card hasn't been shown gets
+  its card first ("Other words matched too, so this message changed."), nothing set aside
+  (`useCoachStore.backToCoach`); that holds per topic even inside one note, and "Back to
+  Coach" rests for about a second after the card changes. A US-territory phone gets 988 on every topic (D71 (c)).
   The Coach is off on a local-only phone (D70).
 - **Social:** cooperative only, after v1 (D44): nothing ranks, scores one person against another
   or names a winner.
@@ -228,7 +248,8 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   numeric values only); a sync flag on before its migration is live.
 - **Portability and deletion:** CSV export (free); account deletion in the app
   (`app/account/delete.tsx` → `delete-account`); guest Erase clears the device, whoever's
-  account the rows were under, all but settings and the entitlement mirror (D71 (a)).
+  account the rows were under, all but settings and the entitlement mirror (D71 (a)); its
+  confirmation counts the changes earlier accounts never pushed, which go for good.
 
 ## §9 Test bridge
 
@@ -248,8 +269,9 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
   (local-only)** (`dev-seed-under13`, D70: saves an under-13 band, `(null, 12)`, through the
   age store's `accept`, as Apple's answer would, so it holds across reloads and the rule's
   screens can be seen on web; status in `dev-seed-status`; pressed again it reads **Clear the
-  under-13 age range (saves 18+)** and saves `(18, null)`, which lifts the rule at once and,
-  on an iPhone, means Apple isn't asked again until Erase all data), **Go to Today**
+  under-13 age range (saves 18+)** and saves `(18, null)`, which lifts the rule at once; on
+  an iPhone Apple is asked again at the next launch all the same, since the D70/D71
+  review, and its answer replaces the seeded band if it differs), **Go to Today**
   (`dev-seed-home`); `/dev/celebrations` replays the celebration moments. A development build opened on `/dev/…`
   skips the first-run redirect to the Warm-up, and You has a "Test data and playtest profiles"
   row (`you-dev-seed`, development builds only), the way in on the iPhone.

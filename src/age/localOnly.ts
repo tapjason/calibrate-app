@@ -15,11 +15,13 @@
 //     - the session's background token refresh stops (`pauseSessionRefresh`);
 //     - the Coach's cards and last answer are dropped.
 //   Leaving (Apple's answer lifts it in a long run):
-//     - the session's refresh starts again (`resumeSessionRefresh`);
 //     - a signed-in account syncs (`syncForUser`; it waits for Apple's answer
 //       if that isn't in yet).
 //   Uploads may start (settled and not local-only, after either a lift or
 //   Apple's answer on a launch that asked):
+//     - the session's refresh starts (`resumeSessionRefresh`): a client made
+//       before this moment was made with it off (src/supabase/client.ts), and
+//       the first tick refreshes a session that expired meanwhile;
 //     - the usage counts flush, if they may (`flushEvents` checks Usage stats
 //       and, for a guest, that the line was shown);
 //     - RevenueCat starts, once (`ensureBillingStarted`; src/billing/init.ts
@@ -110,7 +112,6 @@ function enter(): void {
 
 function leave(): void {
   stopWaitingForSettings();
-  step('starting the session refresh', () => resumeSessionRefresh());
   step('syncing', () => {
     const { status, userId } = useAuthStore.getState();
     return status === 'authenticated' && userId ? syncForUser(userId) : undefined;
@@ -118,6 +119,9 @@ function leave(): void {
 }
 
 function uploadsStart(): void {
+  // Not on leaving alone: a lift that comes before Apple has settled would
+  // start the timer while the answer is still pending.
+  step('starting the session refresh', () => resumeSessionRefresh());
   step('flushing the usage counts', () => flushEvents(useAuthStore.getState().userId));
   step('starting billing', () => ensureBillingStarted(0));
 }

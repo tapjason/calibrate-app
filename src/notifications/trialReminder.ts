@@ -8,9 +8,10 @@
 // the price (DESIGN_SYSTEM §7.15). Cancelled once the trial is cancelled, the
 // trial ends, or notifications are turned off.
 //
-// Layer rule: L5. Reads the trial and the price from billing and the
-// notifications toggle from settingsStore; every failure is logged and
-// swallowed, like the other schedulers.
+// Layer rule: L5. Reads the trial and the price from billing, the
+// notifications toggle from settingsStore and the under-13 rule from the age
+// store (a leaf); every failure is logged and swallowed, like the other
+// schedulers.
 
 import { Platform } from 'react-native';
 
@@ -22,6 +23,7 @@ import {
   type PlusPlan,
   type TrialStatus,
 } from '@/billing/revenuecat';
+import { uploadsMayStart } from '@/store/ageStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 import { trackNotificationPermission } from './permissionState';
@@ -185,6 +187,11 @@ export function initTrialReminder(): void {
  * under-13 rule, D70) RevenueCat is never asked, so no reminder is scheduled
  * there; one scheduled before the rule came on stays (it tells the truth about
  * a real trial) until its time, the trial's end, or notifications going off.
+ * Nor is it asked while Apple's answer is pending on a launch that asks
+ * (`uploadsMayStart`; review round 2, item 4): RevenueCat hasn't started then
+ * either (src/billing/init.ts), and a scheduled reminder is left as it is,
+ * as when RevenueCat can't be reached. The next entitlement refresh, once
+ * RevenueCat starts, brings it in step.
  */
 export async function refreshTrialReminder(): Promise<void> {
   try {
@@ -192,6 +199,7 @@ export async function refreshTrialReminder(): Promise<void> {
       await syncTrialReminder(null, [], { enabled: false });
       return;
     }
+    if (!uploadsMayStart()) return;
     const status = await fetchTrialStatus();
     if (status === undefined) return;
     const plans = status ? await fetchPlans() : [];

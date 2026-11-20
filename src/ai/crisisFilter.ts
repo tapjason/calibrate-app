@@ -16,17 +16,18 @@
 // every answered prediction's title and note on each request
 // (src/store/coachStore.ts), so a match replaces the Coach with the support
 // card on every request until the person sets the card aside ("Back to
-// Coach", D71 (b)). `useCoachStore.setSupportAside` then remembers each
+// Coach", D71 (b)). `useCoachStore.backToCoach` then remembers each
 // prediction that matched by its id and a hash of its title and note
-// (src/engine/supportAside.ts), on this phone only, and `requestInsights`
-// leaves those out of the scan. A new matching prediction, or a changed title
-// or note on one set aside, brings the card back; words a caller passes in are
-// screened whole. Setting it aside is a step the person has to take each time
-// it comes back, so the patterns below are still phrase-shaped rather than
-// keyword-shaped: "kill" alone would fire on "I'll kill this presentation",
-// which is both useless and alarming. A few idioms that matched are carved out
-// (security review, 2026-11-18; narrowed 2026-11-19), each only where the
-// words can't be the distress reading.
+// (src/engine/supportAside.ts), on this phone only, once the card of every
+// topic its words match has been shown (`crisisTopicsIn`), and
+// `requestInsights` leaves those out of the scan. A new matching prediction,
+// or a changed title or note on one set aside, brings the card back; words a
+// caller passes in are screened whole. Setting it aside is a step the person
+// has to take each time it comes back, so the patterns below are still
+// phrase-shaped rather than keyword-shaped: "kill" alone would fire on "I'll
+// kill this presentation", which is both useless and alarming. A few idioms
+// that matched are carved out (security review, 2026-11-18; narrowed
+// 2026-11-19), each only where the words can't be the distress reading.
 //
 // Every text is read as typed and again with the iPhone's curly apostrophes
 // and dashes made plain, whitespace collapsed and NFKC applied, and a match in
@@ -131,6 +132,16 @@ function readings(text: string): string[] {
   return out;
 }
 
+/** Every reading of every text; null and empty entries have none. */
+function readAll(texts: ReadonlyArray<string | null | undefined>): string[][] {
+  return texts.map((text) => (text ? readings(text) : []));
+}
+
+/** Whether `pattern` matches any reading of any text. */
+function matchesAny(pattern: RegExp, read: ReadonlyArray<readonly string[]>): boolean {
+  return read.some((forms) => forms.some((form) => pattern.test(form)));
+}
+
 /**
  * Scan freetext for distress signals. Any match suppresses coaching for the
  * whole request — the pipeline is not granular enough to safely coach around
@@ -142,13 +153,28 @@ function readings(text: string): string[] {
 export function scanForCrisis(
   texts: ReadonlyArray<string | null | undefined>,
 ): CrisisScan {
-  const read = texts.map((text) => (text ? readings(text) : []));
+  const read = readAll(texts);
   for (const { topic, pattern } of PATTERNS) {
-    for (const forms of read) {
-      if (forms.some((form) => pattern.test(form))) return { safe: false, topic };
-    }
+    if (matchesAny(pattern, read)) return { safe: false, topic };
   }
   return SAFE;
+}
+
+/**
+ * Every topic the texts trip, in the filter's own rank order (the order
+ * `scanForCrisis` tries them, so its topic is always the first here), each
+ * once; empty when the scan is clean. The same readings and the same
+ * patterns, carve-outs included, as `scanForCrisis`: a topic is here exactly
+ * when that scan would name it with every higher-ranked pattern taken away.
+ * For "Back to Coach" (src/store/coachStore.ts, review 2026-11-19): one note
+ * can match two topics ("he hits me when he drinks and I can't go on"), and
+ * the card of each must be shown before those words are set aside.
+ *
+ * Null and empty entries are skipped, as by `scanForCrisis`. Pure.
+ */
+export function crisisTopicsIn(texts: ReadonlyArray<string | null | undefined>): CrisisTopic[] {
+  const read = readAll(texts);
+  return PATTERNS.filter(({ pattern }) => matchesAny(pattern, read)).map(({ topic }) => topic);
 }
 
 export interface SupportResource {

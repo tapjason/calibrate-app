@@ -59,8 +59,28 @@ describe('useLogDraftStore', () => {
     useLogDraftStore.setState({ draft: null });
     await useLogDraftStore.getState().hydrate(now);
     expect(useLogDraftStore.getState().draft?.title).toBe('Rain by Friday');
-    await useLogDraftStore.getState().clear();
+    await expect(useLogDraftStore.getState().clear()).resolves.toBe(true);
     expect(m.read()).toBeNull();
+  });
+
+  // Re-review round two, 2026-11-19: Erase reads whether the words left the
+  // phone; `clear` swallowed a failed removal and said nothing.
+  it('says when the stored draft could not be removed, leaving it for the next launch', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const kept = draft();
+    __setLogDraftPersistenceForTests({
+      load: async () => kept,
+      save: async () => {
+        throw new Error('storage');
+      },
+    });
+    useLogDraftStore.setState({ draft: kept });
+
+    await expect(useLogDraftStore.getState().clear()).resolves.toBe(false);
+    expect(useLogDraftStore.getState().draft).toBeNull();
+    await useLogDraftStore.getState().hydrate(now);
+    expect(useLogDraftStore.getState().draft?.title).toBe('Rain by Friday');
+    warn.mockRestore();
   });
 
   it('a blank title clears it, and a stale one is dropped on load', async () => {

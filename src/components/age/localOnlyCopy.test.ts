@@ -16,6 +16,7 @@ describe('localOnlyCopy', () => {
         'LOCAL_ONLY_ACCOUNT_TITLE',
         'LOCAL_ONLY_CLOSE',
         'LOCAL_ONLY_COACH',
+        'LOCAL_ONLY_FROZEN_ACCOUNT_TITLE',
         'LOCAL_ONLY_FROZEN_FOOTER',
         'LOCAL_ONLY_GUEST_FOOTER',
         'LOCAL_ONLY_GUEST_ROW',
@@ -34,13 +35,20 @@ describe('localOnlyCopy', () => {
     expect(text.length).toBeGreaterThan(0);
   });
 
+  // DESIGN_SYSTEM: no "→" in text.
+  it.each(strings)('%s has no arrow', (_name, text) => {
+    expect(text).not.toMatch(/→/);
+  });
+
   it('says the spec’s words, word for word', () => {
     expect(copy.LOCAL_ONLY_GUEST_ROW).toBe('Kept on this phone');
     expect(copy.LOCAL_ONLY_GUEST_FOOTER).toBe(
       'Because of the age range this iPhone shares with Fairly Sure, everything you log stays on this phone. Accounts, backup, usage counts, Coach and Plus are off. Your predictions, score, badges and cards work as usual, and Export predictions keeps a copy.',
     );
+    // In words, as Delete account gives Sign in with Apple's path: no "→" in
+    // the app's text (review 2026-11-19).
     expect(copy.LOCAL_ONLY_GUEST_WHERE).toBe(
-      "The age range comes from this iPhone's Apple Account. To see it: Settings → your name → Personal Information → Age Range for Apps.",
+      "The age range comes from this iPhone's Apple Account. To see it, open Settings, tap your name, then Personal Information, then Age Range for Apps.",
     );
     expect(copy.LOCAL_ONLY_FROZEN_FOOTER).toBe(
       'Backup is off on this phone because of the age range it shares with Fairly Sure, so new changes stay here. What was backed up before stays on our server until you delete the account. Signing out removes your predictions from this phone, so export them first if you want a copy.',
@@ -56,6 +64,9 @@ describe('localOnlyCopy', () => {
     expect(copy.LOCAL_ONLY_ACCOUNT_BODY).toBe(
       'Because of the age range this iPhone shares with Fairly Sure, your predictions stay on this phone. To keep a copy, use Export predictions in You.',
     );
+    // A frozen account on the account route (review 2026-11-19); its body is
+    // LOCAL_ONLY_FROZEN_FOOTER, above.
+    expect(copy.LOCAL_ONLY_FROZEN_ACCOUNT_TITLE).toBe('Backup is off on this phone');
     expect(copy.LOCAL_ONLY_CLOSE).toBe('Close');
     expect(copy.LOCAL_ONLY_SIGN_IN).toBe(
       'Accounts are off on this phone because of the age range it shares with Fairly Sure.',

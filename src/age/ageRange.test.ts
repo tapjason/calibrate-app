@@ -1,9 +1,10 @@
 import { Platform } from 'react-native';
 
+import * as ageBucketDb from '@/db/ageBucket';
 import { getAgeBucket, saveAgeBucket } from '@/db/ageBucket';
 import { getDb, setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
-import { __resetAgeStoreForTests, useAgeStore, whenAgeSettled } from '@/store/ageStore';
+import { __resetAgeStoreForTests, uploadsMayStart, useAgeStore, whenAgeSettled } from '@/store/ageStore';
 
 import {
   __setAgeRangeDepsForTests,
@@ -163,15 +164,18 @@ describe('ensureAgeBucket', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
-  it('does not ask again once a band that is not under 13 is stored', async () => {
+  // The band belongs to the install, not to the Apple Account (review
+  // 2026-11-19, item 1): a stored band of 13 or over is asked about too.
+  it('asks about a stored band of 13 or over too, once per launch, and keeps a new answer', async () => {
     await saveAgeBucket({ lowerBound: 13, upperBound: 16 });
     const request = jest.fn(async () => ({ lowerBound: 18, upperBound: null }));
     __setAgeRangeDepsForTests(deps({ request }));
 
-    await expect(ensureAgeBucket()).resolves.toEqual({ lowerBound: 13, upperBound: 16 });
+    await expect(ensureAgeBucket()).resolves.toEqual({ lowerBound: 18, upperBound: null });
     await ensureAgeBucket();
 
-    expect(request).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(await getAgeBucket()).toEqual({ lowerBound: 18, upperBound: null });
   });
 
   // The band gates uploads now (D70): a launch whose stored band can't be
@@ -193,8 +197,9 @@ describe('ensureAgeBucket', () => {
     useAgeStore.getState().load(UNDER_13, { willAsk: true });
     __setAgeRangeDepsForTests(deps({ request: async () => ADULT }));
 
-    await expect(ensureAgeBucket()).resolves.toBeNull();
-    expect(useAgeStore.getState()).toMatchObject({ localOnly: true, settled: true });
+    // The read fails, so the run goes by the band already in the store.
+    await expect(ensureAgeBucket()).resolves.toEqual(UNDER_13);
+    expect(useAgeStore.getState()).toMatchObject({ bucket: UNDER_13, localOnly: true, settled: true });
   });
 });
 
@@ -208,17 +213,15 @@ describe('the under-13 rule (D70)', () => {
     expect(useAgeStore.getState()).toMatchObject({ bucket: UNDER_13, localOnly: true, settled: false });
   });
 
-  it('a stored band that is not under 13 is settled at once and never asked about', async () => {
-    await saveAgeBucket(ADULT);
+  it('no stored band on a phone that cannot ask: settled at once, nothing asked', async () => {
     const request = jest.fn(async () => UNDER_13);
-    __setAgeRangeDepsForTests(deps({ request }));
+    __setAgeRangeDepsForTests(deps({ isAvailable: () => false, request }));
 
     await launch();
-    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
-
     await ensureAgeBucket();
+
     expect(request).not.toHaveBeenCalled();
-    expect(useAgeStore.getState().localOnly).toBe(false);
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: false, settled: true });
   });
 
   it('no stored band on a phone that can ask: unsettled until the answer', async () => {
@@ -252,8 +255,9 @@ describe('the under-13 rule (D70)', () => {
     expect(useAgeStore.getState()).toMatchObject({ localOnly: true, settled: true });
   });
 
-  it('a stored read that fails reads as no band', async () => {
-    setDbForTests(null);
+  // A read that throws is no longer read as no band (review 2026-11-19,
+  // item 4: "a stored band that can't be read" below). A missing row still is.
+  it('a missing row is no band: open, and unsettled until the answer on a phone that can ask', async () => {
     __setAgeRangeDepsForTests(deps({ request: declined() }));
 
     await launch();
@@ -395,6 +399,390 @@ describe('the under-13 rule (D70)', () => {
   });
 });
 
+// Review 2026-11-19, item 1. The band belongs to the install, not to the
+// Apple Account: a parent's phone handed to a child by switching accounts, or
+// an app restored from a backup, keeps the adult band. So a stored band of 13
+// or over is asked about too, in the background, with the store settled from
+// the start: an adult waits for nothing.
+describe('a stored band of 13 or over is asked about in the background', () => {
+  it('stored (18, null), Apple answers (null, 12): the rule comes on and the band is kept', async () => {
+    await saveAgeBucket(ADULT);
+    let answer: (v: unknown) => void = () => {};
+    const request = jest.fn(() => new Promise((resolve) => (answer = resolve)));
+    __setAgeRangeDepsForTests(deps({ request }));
+
+    await launch();
+    // Nothing waits: settled from the start, uploads may start.
+    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
+
+    const asked = ensureAgeBucket();
+    await until(() => request.mock.calls.length > 0);
+    expect(useAgeStore.getState()).toMatchObject({ localOnly: false, settled: true });
+    answer(UNDER_13);
+    await expect(asked).resolves.toEqual(UNDER_13);
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: UNDER_13, localOnly: true, settled: true });
+    expect(await getAgeBucket()).toEqual(UNDER_13);
+  });
+
+  it('stored (18, null), Apple answers (18, null): nothing changes, nothing is written, nothing waited', async () => {
+    await saveAgeBucket(ADULT);
+    __setAgeRangeDepsForTests(deps({ request: jest.fn(async () => ADULT) }));
+    await launch();
+    const notified = jest.fn();
+    const unsubscribe = useAgeStore.subscribe(notified);
+    const write = jest.spyOn(ageBucketDb, 'saveAgeBucket');
+    try {
+      await expect(ensureAgeBucket()).resolves.toEqual(ADULT);
+    } finally {
+      unsubscribe();
+    }
+
+    // markSettled on a settled store is no change either.
+    expect(notified).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();
+    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
+  });
+
+  it('stored (18, null), Apple answers another band of 13 or over: it replaces the stored one, the gate stays open', async () => {
+    await saveAgeBucket(ADULT);
+    __setAgeRangeDepsForTests(deps({ request: jest.fn(async () => TEEN) }));
+    await launch();
+
+    await expect(ensureAgeBucket()).resolves.toEqual(TEEN);
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: TEEN, localOnly: false, settled: true });
+    expect(await getAgeBucket()).toEqual(TEEN);
+  });
+
+  it.each([
+    ['a decline', declined()],
+    [
+      '"not available"',
+      jest.fn(async () => {
+        throw Object.assign(new Error('n/a'), { code: 'ERR_AGE_RANGE_NOT_AVAILABLE' });
+      }),
+    ],
+    [
+      'an error',
+      jest.fn(async () => {
+        throw new Error('boom');
+      }),
+    ],
+    ['an answer that is not a band', jest.fn(async () => ({ lowerBound: null, upperBound: null }))],
+  ])('stored (18, null), %s: the stored band stays and nothing changes', async (_name, request) => {
+    await saveAgeBucket(ADULT);
+    __setAgeRangeDepsForTests(deps({ request }));
+    await launch();
+
+    await expect(ensureAgeBucket()).resolves.toEqual(ADULT);
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
+    expect(await getAgeBucket()).toEqual(ADULT);
+  });
+
+  it('an ask that never answers delays nothing: settled, uploads may start, nothing waits', async () => {
+    await saveAgeBucket(ADULT);
+    const request = jest.fn(() => new Promise(() => {}));
+    __setAgeRangeDepsForTests(deps({ request }));
+    await launch();
+
+    void ensureAgeBucket();
+    await until(() => request.mock.calls.length > 0);
+
+    expect(useAgeStore.getState()).toMatchObject({ localOnly: false, settled: true });
+    expect(uploadsMayStart()).toBe(true);
+    let released = false;
+    await whenAgeSettled().then(() => {
+      released = true;
+    });
+    expect(released).toBe(true);
+  });
+
+  it('where the API cannot run, a stored band of 13 or over is never asked about', async () => {
+    await saveAgeBucket(ADULT);
+    const request = jest.fn(async () => UNDER_13);
+    __setAgeRangeDepsForTests(deps({ isAvailable: () => false, request }));
+    await launch();
+
+    await expect(ensureAgeBucket()).resolves.toEqual(ADULT);
+
+    expect(request).not.toHaveBeenCalled();
+    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
+  });
+});
+
+// Review 2026-11-19, item 4. A read that throws is not "no band": the row may
+// say under 13. The gate stays shut for the run unless Apple answers 13 or
+// over (lifted through `accept`, once that answer is saved). A row that isn't
+// a band (a damaged database: every write is a checked band) reads the same.
+describe("a stored band that can't be read", () => {
+  /**
+   * The next read of the stored band throws, and so does the one more read
+   * that follows it (review round 2, item 2: a read that throws is read once
+   * more before it counts as unknown).
+   */
+  function readThrowsTwice(): void {
+    jest
+      .spyOn(ageBucketDb, 'getAgeBucket')
+      .mockRejectedValueOnce(new Error('disk I/O error'))
+      .mockRejectedValueOnce(new Error('disk I/O error'));
+  }
+
+  it('closes the gate at launch, unsettled on a phone that can ask', async () => {
+    readThrowsTwice();
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+
+    await launch();
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: true, settled: false });
+    expect(uploadsMayStart()).toBe(false);
+  });
+
+  it('Apple answering 13 or over lifts it, once the answer is saved', async () => {
+    readThrowsTwice();
+    __setAgeRangeDepsForTests(deps({ request: jest.fn(async () => ADULT) }));
+    await launch();
+
+    await expect(ensureAgeBucket()).resolves.toEqual(ADULT);
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
+    expect(await getAgeBucket()).toEqual(ADULT);
+  });
+
+  it('Apple answering under 13 keeps it shut', async () => {
+    readThrowsTwice();
+    __setAgeRangeDepsForTests(deps({ request: jest.fn(async () => UNDER_13) }));
+    await launch();
+
+    await ensureAgeBucket();
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: UNDER_13, localOnly: true, settled: true });
+  });
+
+  it.each([
+    ['a decline', declined()],
+    [
+      'an error',
+      jest.fn(async () => {
+        throw new Error('boom');
+      }),
+    ],
+    ['an answer that is not a band', jest.fn(async () => ({ lowerBound: 15, upperBound: 13 }))],
+  ])('%s keeps it shut for the run', async (_name, request) => {
+    readThrowsTwice();
+    __setAgeRangeDepsForTests(deps({ request }));
+    await launch();
+
+    await expect(ensureAgeBucket()).resolves.toBeNull();
+
+    expect(useAgeStore.getState()).toMatchObject({ localOnly: true, settled: true });
+  });
+
+  // iOS 26 with the module missing: it can't ask now, but an earlier build may
+  // have stored a band, so a read that fails still closes the gate.
+  it("where the API can't run now but a band could have been stored, it stays shut for the run, and nothing waits", async () => {
+    readThrowsTwice();
+    const request = jest.fn(async () => ADULT);
+    __setAgeRangeDepsForTests(deps({ isAvailable: () => false, couldEverAsk: () => true, request }));
+
+    await launch();
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: true, settled: true });
+
+    await ensureAgeBucket();
+    expect(request).not.toHaveBeenCalled();
+    expect(useAgeStore.getState().localOnly).toBe(true);
+  });
+
+  it('no subscriber ever sees the gate open and settled on the way', async () => {
+    readThrowsTwice();
+    __setAgeRangeDepsForTests(deps({ isAvailable: () => false, couldEverAsk: () => true, request: jest.fn() }));
+    const seen: boolean[] = [];
+    const unsubscribe = useAgeStore.subscribe((s) => seen.push(s.settled && !s.localOnly));
+    try {
+      await launch();
+    } finally {
+      unsubscribe();
+    }
+
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen).not.toContain(true);
+  });
+
+  // Review round 2, item 2: was "closes the gate too". Between the launch's
+  // read and this one nothing could have added a row (`accept` runs later),
+  // so the launch's read stands.
+  it('a read that fails during the ask, after a launch read that found no row, goes by that: no band, open, and Apple is asked', async () => {
+    const request = declined();
+    __setAgeRangeDepsForTests(deps({ request }));
+    await launch();
+    expect(useAgeStore.getState().localOnly).toBe(false);
+    readThrowsTwice();
+
+    await expect(ensureAgeBucket()).resolves.toBeNull();
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: false, settled: true });
+  });
+
+  it('… but a row that is not a band, found during the ask after a launch read that found none, closes the gate', async () => {
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+    await launch();
+    await getDb().run(`INSERT INTO age_bucket (id, lower_bound, upper_bound) VALUES ('me', NULL, 500)`);
+
+    await ensureAgeBucket();
+
+    expect(useAgeStore.getState()).toMatchObject({ localOnly: true, settled: true });
+  });
+
+  it('… and a read that fails during the ask with no launch read before it closes the gate', async () => {
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+    readThrowsTwice();
+
+    await ensureAgeBucket();
+
+    expect(useAgeStore.getState()).toMatchObject({ localOnly: true, settled: true });
+  });
+
+  it('a read that fails during the ask, after the launch read found a band, goes by that band', async () => {
+    await saveAgeBucket(ADULT);
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+    await launch();
+    readThrowsTwice();
+
+    await expect(ensureAgeBucket()).resolves.toEqual(ADULT);
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
+  });
+
+  it('… and an under-13 band found at launch still applies', async () => {
+    await saveAgeBucket(UNDER_13);
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+    await launch();
+    readThrowsTwice();
+
+    await ensureAgeBucket();
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: UNDER_13, localOnly: true, settled: true });
+  });
+
+  it('a row that is not a band reads the same as one that cannot be read', async () => {
+    // The table's checks refuse an empty or reversed pair; a bound past 120
+    // gets past them but isn't a band the app would ever have written.
+    await getDb().run(`INSERT INTO age_bucket (id, lower_bound, upper_bound) VALUES ('me', NULL, 500)`);
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+
+    await launch();
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: true, settled: false });
+  });
+});
+
+// Review round 2, item 2. A momentary read failure used to count like an
+// under-13 band, and closing the gate has lasting side effects (the guest's
+// usage-notice stamp forgotten, the queue cleared, sign-in refused for the
+// run). A read that throws is now read once more; and where Apple's API can
+// never run, no band can be stored, so a failed read is no band.
+describe('a read that fails for a moment', () => {
+  function readThrowsOnce(): jest.SpyInstance {
+    return jest.spyOn(ageBucketDb, 'getAgeBucket').mockRejectedValueOnce(new Error('database is locked'));
+  }
+
+  it.each([
+    ['a stored band of 13 or over: open, settled, nothing waits', ADULT, { bucket: ADULT, localOnly: false, settled: true }],
+    ['a stored under-13 band: the rule, from the band itself', UNDER_13, { bucket: UNDER_13, localOnly: true, settled: false }],
+    ['no row: no band, open, waiting for the answer', null, { bucket: null, localOnly: false, settled: false }],
+  ])('is read once more at launch, and the row decides: %s', async (_name, stored, expected) => {
+    if (stored) await saveAgeBucket(stored);
+    const read = readThrowsOnce();
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+
+    await launch();
+
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(useAgeStore.getState()).toMatchObject(expected);
+  });
+
+  it('is read once more during the ask too: a stored band of 13 or over keeps the gate open', async () => {
+    await saveAgeBucket(ADULT);
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+    const read = readThrowsOnce();
+
+    // The run goes by the band it read the second time (a decline keeps it).
+    await expect(ensureAgeBucket()).resolves.toEqual(ADULT);
+
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(useAgeStore.getState()).toMatchObject({ localOnly: false, settled: true });
+  });
+
+  it('two failures in a row still close the gate where a band could be stored', async () => {
+    jest
+      .spyOn(ageBucketDb, 'getAgeBucket')
+      .mockRejectedValueOnce(new Error('database is locked'))
+      .mockRejectedValueOnce(new Error('database is locked'));
+    __setAgeRangeDepsForTests(deps({ request: declined() }));
+
+    await launch();
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: true, settled: false });
+  });
+});
+
+describe("where Apple's API can never run", () => {
+  function readAlwaysThrows(): void {
+    jest.spyOn(ageBucketDb, 'getAgeBucket').mockRejectedValue(new Error('disk I/O error'));
+  }
+
+  it.each([
+    ['web', 'web', '26.0'],
+    ['Android', 'android', 26],
+    ['iOS before 26', 'ios', '18.5'],
+  ] as const)('a read that fails is no band (%s): open, settled, nothing asked', async (_name, os, version) => {
+    usePlatform(os, version);
+    __setAgeRangeDepsForTests(null);
+    readAlwaysThrows();
+
+    await hydrateAgeGate();
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: false, settled: true });
+
+    await expect(ensureAgeBucket()).resolves.toBeNull();
+    expect(nativeRequest).not.toHaveBeenCalled();
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: false, settled: true });
+  });
+
+  it('the same through a seam that says it cannot ask and has no couldEverAsk', async () => {
+    readAlwaysThrows();
+    const request = jest.fn(async () => UNDER_13);
+    __setAgeRangeDepsForTests(deps({ isAvailable: () => false, request }));
+
+    await launch();
+    await ensureAgeBucket();
+
+    expect(request).not.toHaveBeenCalled();
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: false, settled: true });
+  });
+
+  it('a row that is present but is not a band still closes the gate', async () => {
+    usePlatform('ios', '18.5');
+    __setAgeRangeDepsForTests(null);
+    await getDb().run(`INSERT INTO age_bucket (id, lower_bound, upper_bound) VALUES ('me', NULL, 500)`);
+
+    await hydrateAgeGate();
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: true, settled: true });
+  });
+
+  it('on iOS 26 a read that fails twice closes the gate, whatever the module', async () => {
+    usePlatform('ios', '26.1');
+    __setAgeRangeDepsForTests(null);
+    readAlwaysThrows();
+
+    await hydrateAgeGate();
+
+    expect(useAgeStore.getState()).toMatchObject({ bucket: null, localOnly: true, settled: false });
+  });
+});
+
 describe('recheckAgeBucketIfDue', () => {
   async function underTheRuleAfterLaunch(request: jest.Mock): Promise<number> {
     await saveAgeBucket(UNDER_13);
@@ -443,8 +831,8 @@ describe('recheckAgeBucketIfDue', () => {
     expect(useAgeStore.getState()).toMatchObject({ bucket: UNDER_13, localOnly: true });
   });
 
-  it('does nothing when the rule does not apply', async () => {
-    const request = jest.fn(async () => ADULT);
+  it('does nothing with no band and no rule (a decline at launch)', async () => {
+    const request = declined();
     __setAgeRangeDepsForTests(deps({ request }));
     await launch();
     await ensureAgeBucket();
@@ -452,6 +840,45 @@ describe('recheckAgeBucketIfDue', () => {
 
     await expect(recheckAgeBucketIfDue(Date.now() + 2 * AGE_RECHECK_MIN_MS)).resolves.toBe(false);
     expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  // Review 2026-11-19, item 1: a known band of 13 or over is asked about
+  // again in a long run, the same way.
+  it('asks again about a known band of 13 or over after 24 hours, and an under-13 answer turns the rule on', async () => {
+    await saveAgeBucket(ADULT);
+    const request = jest.fn().mockResolvedValueOnce(ADULT).mockResolvedValueOnce(UNDER_13);
+    __setAgeRangeDepsForTests(deps({ request }));
+    await launch();
+    const t0 = Date.now();
+    await ensureAgeBucket();
+    expect(useAgeStore.getState().localOnly).toBe(false);
+
+    await expect(recheckAgeBucketIfDue(t0 + AGE_RECHECK_MIN_MS - 60_000)).resolves.toBe(false);
+    expect(request).toHaveBeenCalledTimes(1);
+
+    await expect(recheckAgeBucketIfDue(Date.now() + AGE_RECHECK_MIN_MS)).resolves.toBe(true);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(useAgeStore.getState()).toMatchObject({ bucket: UNDER_13, localOnly: true, settled: true });
+    expect(await getAgeBucket()).toEqual(UNDER_13);
+  });
+
+  it('a re-ask about a known band of 13 or over that comes back the same changes nothing', async () => {
+    await saveAgeBucket(ADULT);
+    const request = jest.fn(async () => ADULT);
+    __setAgeRangeDepsForTests(deps({ request }));
+    await launch();
+    await ensureAgeBucket();
+    const notified = jest.fn();
+    const unsubscribe = useAgeStore.subscribe(notified);
+    try {
+      await expect(recheckAgeBucketIfDue(Date.now() + AGE_RECHECK_MIN_MS)).resolves.toBe(true);
+    } finally {
+      unsubscribe();
+    }
+
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(notified).not.toHaveBeenCalled();
+    expect(useAgeStore.getState()).toMatchObject({ bucket: ADULT, localOnly: false, settled: true });
   });
 
   it('does nothing before the launch has asked', async () => {

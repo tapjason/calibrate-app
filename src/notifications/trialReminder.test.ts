@@ -203,6 +203,27 @@ describe('refreshTrialReminder', () => {
     expect(fake.cancelled).toEqual([]);
     expect(touched).toEqual([]);
   });
+
+  // Review round 2, item 4: RevenueCat hasn't started while Apple's answer is
+  // pending on a launch that asks; the reminder doesn't ask it either, and a
+  // scheduled one is left as it is. Off still cancels.
+  it("while Apple's answer is pending, asks RevenueCat nothing and leaves the reminder as it is", async () => {
+    const fake = fakeApi();
+    __setTrialReminderApiForTests(fake.api);
+    const { deps, touched } = throwingBilling();
+    __setBillingDepsForTests(deps);
+    useAgeStore.getState().load(null, { willAsk: true });
+
+    await refreshTrialReminder();
+    expect(fake.scheduled).toEqual([]);
+    expect(fake.cancelled).toEqual([]);
+    expect(touched).toEqual([]);
+
+    useSettingsStore.setState({ notificationsEnabled: false });
+    await refreshTrialReminder();
+    expect(fake.cancelled).toEqual([TRIAL_REMINDER_ID]);
+    expect(touched).toEqual([]);
+  });
 });
 
 // Security review, 2026-11-18, round 4: the paywall names this reminder only

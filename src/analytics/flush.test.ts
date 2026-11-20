@@ -484,3 +484,71 @@ describe('flushEvents for a guest', () => {
     await expect(countUnsyncedEvents()).resolves.toBe(1);
   });
 });
+
+// Review 2026-11-19, item 6: the Usage stats switch can be turned off on the
+// sign-in screen while a flush is reading its queue. It is checked again
+// before every request, beside the under-13 rule's check.
+describe('Usage stats turned off during a flush', () => {
+  /** listUnsyncedEvents as it is, with the switch turned off once it has read the queue. */
+  function switchOffAfterTheRead(): void {
+    const db = jest.requireActual('@/db/analytics') as typeof import('@/db/analytics');
+    const real = db.listUnsyncedEvents;
+    jest.spyOn(db, 'listUnsyncedEvents').mockImplementationOnce(async (...args) => {
+      const rows = await real(...args);
+      useSettingsStore.setState({ analyticsEnabled: false });
+      return rows;
+    });
+  }
+
+  it('a batch read just before the switch went off is not sent', async () => {
+    await seed(3);
+    switchOffAfterTheRead();
+    const insert = ok();
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(0);
+
+    expect(insert).not.toHaveBeenCalled();
+    await expect(countUnsyncedEvents()).resolves.toBe(3);
+  });
+
+  it('row by row, the flush stops before its next request once the switch goes off', async () => {
+    await seed(3);
+    const insert: InsertMock = jest.fn(async (rows: WireRow[]) => {
+      if (rows.length > 1) return { error: { code: 'XX000', message: 'refused' }, status: 500 };
+      useSettingsStore.setState({ analyticsEnabled: false });
+      return { error: null };
+    });
+
+    await expect(flushEvents(USER, { client: fakeClient(insert) })).resolves.toBe(1);
+
+    expect(insert.mock.calls.map((c) => c[0].map((r) => r.id))).toEqual([['e0', 'e1', 'e2'], ['e0']]);
+    await expect(countUnsyncedEvents()).resolves.toBe(2);
+  });
+
+  it("a guest's batch read just before the usage line's stamp was forgotten is not sent", async () => {
+    useSettingsStore.setState({ usageNoticeShownAt: '2026-11-19T09:00:00.000Z' });
+    await enqueueEvent({
+      id: 'g1',
+      user_id: LOCAL_GUEST_USER_ID,
+      name: 'warmup_started',
+      props: {},
+      created_at: new Date(1_700_000_000_000).toISOString(),
+    });
+    const db = jest.requireActual('@/db/analytics') as typeof import('@/db/analytics');
+    const real = db.listUnsyncedEvents;
+    jest.spyOn(db, 'listUnsyncedEvents').mockImplementationOnce(async (...args) => {
+      const rows = await real(...args);
+      useSettingsStore.setState({ usageNoticeShownAt: null });
+      return rows;
+    });
+    const insert = ok();
+
+    try {
+      await expect(flushEvents(LOCAL_GUEST_USER_ID, { client: fakeClient(insert) })).resolves.toBe(0);
+    } finally {
+      useSettingsStore.setState({ usageNoticeShownAt: null });
+    }
+
+    expect(insert).not.toHaveBeenCalled();
+  });
+});

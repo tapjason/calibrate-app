@@ -20,9 +20,11 @@
 //      content never becomes coaching input. Returns `safe: false` and the
 //      caller shows the support surface instead.
 //   3. The under-13 rule (roadmap D70) — on a local-only phone the Coach is
-//      off: the empty result, before any client is built. After the crisis
-//      pre-filter, which sends nothing, so the support surface still shows if
-//      a Coach panel is ever asked on such a phone.
+//      off, and on a launch that asks Apple it waits for the answer
+//      (`uploadsMayStart`, as sign-in, billing and sync do; review round 2,
+//      item 4): the empty result, before any client is built. After the
+//      crisis pre-filter, which sends nothing, so the support surface still
+//      shows if a Coach panel is ever asked on such a phone.
 //   4. Minimum-N — a user with no scored answer gets no request either
 //      (`failure: 'nothing_scored'`).
 //
@@ -31,7 +33,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { isLocalOnly } from '@/store/ageStore';
+import { uploadsMayStart } from '@/store/ageStore';
 import { getSupabaseClient, isSupabaseConfigured } from '@/supabase/client';
 import type { CoachContext, CoachOutput } from '@/types';
 
@@ -125,8 +127,9 @@ export async function fetchCoachInsights(
   }
 
   // 3. The under-13 rule (D70): nothing leaves the phone, so no request, and
-  //    no client is built.
-  if (isLocalOnly()) return empty();
+  //    no client is built; nor while Apple's answer is still pending on a
+  //    launch that asks (a fail-silent no-op, like any other absence).
+  if (!uploadsMayStart()) return empty();
 
   // 4. Nothing answered means nothing to interpret. Skipping the call here
   //    saves a round trip that could only ever return "keep logging". Named,
@@ -139,7 +142,7 @@ export async function fetchCoachInsights(
 
   try {
     // Checked once more at the call itself (D70).
-    if (isLocalOnly()) return empty();
+    if (!uploadsMayStart()) return empty();
     const result = await withTimeout(
       client.functions.invoke('coach', { body: { context } }),
       deps.timeoutMs ?? DEFAULT_TIMEOUT_MS,

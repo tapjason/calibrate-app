@@ -1240,9 +1240,22 @@ async function runSync(userId: string, deps?: SyncDeps): Promise<SyncResult> {
     console.warn('[sync] delete push failed:', errorForLog(e));
   }
 
-  // The account changed while the deletions went: the rest of this sweep
-  // belongs to an account that is no longer signed in.
-  if (!(await stillCurrent())) return ZERO;
+  // The account changed while the deletions went, or the under-13 rule came
+  // on: the rest of this sweep sends nothing. A row the deletions restored is
+  // in SQLite already, so the stats and lists are rebuilt from it here (a
+  // local recompute, no request: review round 2, item 5), as after a full
+  // sweep, and as there not for an account leaving the phone.
+  if (!(await stillCurrent())) {
+    if (pulled > 0 && !stoppedUsers.has(userId)) {
+      try {
+        await resolved.recompute(userId);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[sync] recompute failed:', errorForLog(e));
+      }
+    }
+    return ZERO;
+  }
 
   try {
     pulled += await pullRemote(userId, resolved.client, resolved.cursorStore);

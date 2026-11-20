@@ -333,10 +333,53 @@ count in `overall` and the weekday pattern, which name no category.
   it came up ("This came up because of words in one of your predictions or notes, checked
   on this phone. If it doesn't fit, you can go back to Coach.") and offers "Back to Coach".
   That sets aside the predictions that matched, each by its id and a hash of its words, on
-  this phone only (no words stored, no usage event, at most 200); a new prediction that
+  this phone only (no words stored, no usage event, at most 2,000; 200 until the
+  re-review's round two, when someone with more matching predictions than that would have
+  had the card back at every request); a new prediction that
   matches, or a changed note on one set aside, brings the card back. Sign-out, Erase and
   account deletion clear the list. The safeguard's substance is unchanged: no free text
   reaches the model in any case, so nothing is ever coached on.
+- **"Back to Coach" never sets aside words whose card the person hasn't seen** (the
+  D70/D71 review, 2026-11-19; `useCoachStore.backToCoach`, which replaced
+  `setSupportAside`). The card stays in memory while words come and go under it (a note
+  saved or pulled by sync, a note removed, a delete), so the tap first runs the on-device
+  check again over the predictions as they are then:
+  - nothing matches any more: the card goes, back to the ask button, and nothing is
+    stored;
+  - a topic matches whose card hasn't been shown since this card came up: that card is
+    shown first, the highest-ranked of them by the filter's own order, with the line
+    "Other words matched too, so this message changed.", and nothing is set aside;
+  - every matching topic's card has been shown: only then are the matching predictions
+    set aside;
+  - the check or the set-aside fails: the card stays, with "Couldn't go back to Coach. Try
+    again.", and nothing is stored.
+
+  **"Shown" is judged per topic, even inside one prediction** (the re-review's round two,
+  its one high item; `crisisTopicsIn` in `src/ai/crisisFilter.ts`). One note can match two
+  topics ("he hits me when he drinks and I can't go on"), and the scan names only the
+  higher-ranked one, so until round two the tap set that note aside with the second
+  topic's card never shown. Now every topic of every matching prediction counts, and a
+  second topic in the same note gets its card before anything is set aside. Once a
+  topic's card has been on screen, any words of that topic are set aside with the rest,
+  later ones included; only a topic not yet shown holds the set-aside back.
+
+  With VoiceOver, when the card goes, focus moves to the "Coach" heading and "Back to
+  Coach." is announced. When the card changes instead, focus moves to the card's title,
+  so the new card is read from the top, "Other words matched too, so this message
+  changed." is announced after it, and "Back to Coach" is disabled for about a second, so
+  a quick second tap can't set aside a card nobody has read (round two).
+  **No key outlives its words:** a key (`<id>#<hash>`) is dropped
+  when its prediction's title or note changes or the prediction is deleted
+  (`predictionStore`), and the list is pruned against the current predictions at every
+  request and every tap (not against an empty list there, which can't be told from one
+  not loaded yet) and, since round two, after every successful load of the answered
+  predictions, an empty one included, so a change that arrives by sync is pruned then and
+  not only at the next Coach request. Dropping a
+  key can only bring the card back. The keys are cleared on sign-out, Erase and account
+  deletion, all three the same way since round two: the stored record too, a settings
+  record that can't be read being replaced with this run's settings, privacy choices on
+  their private side, and no keys; also when that happens before the settings have loaded
+  (the erase is held and applied once they are read, or can't be).
 
 ### 5.6 Privacy & data minimization
 - Prefer aggregates; minimize freetext egress (Section 4).

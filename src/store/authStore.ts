@@ -24,10 +24,13 @@
 //
 // The under-13 rule (roadmap D70, 2026-11-19): while the age store says the
 // phone is local-only (`isLocalOnly`, ./ageStore), every sign-in and sign-up
-// action refuses with `LOCAL_ONLY_SIGN_IN` before any service is called, and
-// `syncForUser` sends nothing. An account already signed in is frozen, not
-// signed out: Sign out and Delete account work as built (deletion is the one
-// upload left open, since it removes data). Guest Erase and a confirmed
+// action refuses with `LOCAL_ONLY_SIGN_IN` before any service is called (and
+// with `auth.AGE_PENDING_SIGN_IN` while Apple's answer is still pending after
+// its 5 s wait), and `syncForUser` sends nothing. An account already signed
+// in is frozen, not signed out: Sign out and Delete account work as built
+// (deletion is the one upload left open, since it removes data; a sign-out
+// that fails after its wipe says backup is off,
+// `SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY`). Guest Erase and a confirmed
 // deletion clear the stored band, and the gate stays on for the run
 // (`forgetBand`). Stopping the session's refresh and the rest of entering or
 // leaving the rule are src/age/localOnly.ts's.
@@ -58,6 +61,7 @@ import {
   LOCAL_GUEST_USER_ID,
   migrateGuestDataToUser,
 } from '@/db/migrateGuestData';
+import { countUnsyncedForAccounts } from '@/db/predictions';
 import {
   dismissDeliveredNotifications,
   dismissDeliveredReminderWords,
@@ -159,6 +163,16 @@ export const SIGN_OUT_FAILED_AFTER_WIPE =
   "Couldn't finish signing you out, so you're still signed in. Your backed-up predictions will come back to this phone; anything you agreed to lose is gone.";
 
 /**
+ * `SIGN_OUT_FAILED_AFTER_WIPE` for a frozen account (roadmap D70): the
+ * under-13 rule applies when the error is returned, so no sync runs and the
+ * backed-up predictions don't come back while it does. They stay on the
+ * server, and come back with the first sync once the rule no longer applies.
+ * Names no age.
+ */
+export const SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY =
+  "Couldn't finish signing you out, so you're still signed in. Backup is off on this phone, so your backed-up predictions stay on our server for now; anything you agreed to lose is gone.";
+
+/**
  * What every sign-in and sign-up returns while the under-13 rule applies
  * (roadmap D70): "Accounts are off on this phone because of the age range it
  * shares with Fairly Sure." Defined in the age store, a leaf, so the auth
@@ -252,7 +266,9 @@ interface AuthState {
    * phone (still signed in; reminders showing words still leave the lock
    * screen): `SIGN_OUT_FAILED_AFTER_WIPE` when the rows had already gone in
    * step 4 (what the server has comes back with the sync, which is started;
-   * what the person agreed to lose is gone), else the session's own error
+   * what the person agreed to lose is gone), or, under the under-13 rule,
+   * `SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY` (backup is off, so it stays on the
+   * server while the rule applies), else the session's own error
    * (nothing removed). Or when what would be lost couldn't be read
    * (`SIGN_OUT_CHECK_FAILED`; nothing changed). A wipe that fails before the
    * session ended is retried at the next launch.
@@ -277,10 +293,27 @@ interface AuthState {
    * and the support card's set-asides forgotten, the stores reloaded, the lock
    * screen and the cache cleared and the Coach dropped. The "signed out here"
    * list stays (ids only; it keeps a stale session from coming back), and so
-   * do the entitlement mirror and the settings. Nothing to call — it never
-   * left the phone. Refused while a sign-in is under way.
+   * do the entitlement mirror and the settings (a settings record that can't
+   * be read, which may hold set-asides, is replaced: `eraseSupportAside`).
+   * Nothing to call — it never left the phone. Refused while a sign-in is
+   * under way.
+   *
+   * The Log draft (the person's words) goes before the wipe; every step after
+   * it runs in its own try, so one that throws can't leave the others undone
+   * (review, 2026-11-19). `{ ok: false }` when the wipe failed (nothing
+   * removed; nothing after it runs) or any other step did (the rest ran).
+   * Safe to run again: every step is.
    */
   eraseDeviceData: () => Promise<AuthOutcome>;
+  /**
+   * For Erase's confirmation, awaited just before it asks and never cached
+   * (record audit, 2026-11-19): how many changes accounts made on this phone
+   * never reached the server (`countUnsyncedForAccounts`: dirty prediction
+   * rows and deletions not yet pushed, under every account id but the
+   * guest's). Erase removes them with everything else, and they can't come
+   * back. Null when the count couldn't be read. Never throws.
+   */
+  countUnsyncedAccountChanges: () => Promise<number | null>;
   /** Test-only: drop the session. */
   reset: () => void;
 }
@@ -341,11 +374,16 @@ function resetCoach(): void {
  * Delete the copies this app leaves in the phone's cache folders: CSV exports
  * (every title and reflection), share-card images, and the icon picker's
  * pictures (security review, 2026-11-18). For Erase, sign-out and account
- * deletion. Not awaited: no wipe waits on the file system, and each sweep
- * swallows its own errors. Lazy, so the native image modules load only when
- * used.
+ * deletion. Resolves true only when every sweep found nothing left of what it
+ * removes; a sweep that resolves false or rejects counts as not done (one
+ * that resolves nothing, as an older test mock does, counts as done: the
+ * convention `eraseStep` reads). Never rejects. Guest Erase awaits it as a
+ * step, so a copy still there makes Erase say it couldn't finish and a retry
+ * sweeps again (round two, 2026-11-19); sign-out and account deletion don't
+ * wait on it (`eraseAccountHere`). Lazy, so the native image modules load
+ * only when used.
  */
-function sweepCachedCopies(): void {
+async function sweepCachedCopies(): Promise<boolean> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { sweepExportFiles } = require('@/export/file') as typeof import('@/export/file');
@@ -353,12 +391,19 @@ function sweepCachedCopies(): void {
     const { sweepShareCaptures } = require('@/share/export') as typeof import('@/share/export');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { sweepIconImageFiles } = require('@/media/iconImage') as typeof import('@/media/iconImage');
-    for (const sweep of [sweepExportFiles, sweepShareCaptures, sweepIconImageFiles]) {
-      void sweep().catch(() => {});
-    }
+    const done = await Promise.all(
+      [sweepExportFiles, sweepShareCaptures, sweepIconImageFiles].map((sweep) =>
+        sweep().then(
+          (result: unknown) => result !== false,
+          () => false,
+        ),
+      ),
+    );
+    return done.every(Boolean);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[auth] could not sweep the cache:', errorForLog(e));
+    return false;
   }
 }
 
@@ -383,8 +428,9 @@ function sweepCachedCopies(): void {
  *   default), then the age store's band (D70), the Warm-up and practice
  *   stores.
  *
- * Every kind also forgets the support card's set-asides, once the settings
- * have been read (`forgetSupportAside`).
+ * Every kind also forgets the support card's set-asides, the stored record
+ * included (an unreadable one is replaced): at once, or as soon as the
+ * settings have been read (`forgetSupportAside`).
  */
 type EraseKind = 'signOut' | 'accountRows' | 'confirmedDeletion';
 
@@ -443,7 +489,8 @@ async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolea
     // The stored age band went with the wipe (device data): the store forgets
     // it, and the under-13 gate, if on, stays on for the rest of the run
     // (D70, call 4); the next launch asks Apple again before anything goes.
-    useAgeStore.getState().forgetBand();
+    // A band an ask saved after the wipe is cleared again; never throws.
+    await useAgeStore.getState().forgetBand();
   }
   if (kind === 'confirmedDeletion') {
     try {
@@ -461,24 +508,33 @@ async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolea
   // §3.4; without it a later sign-in would pull only what changed since) and
   // the copies in the cache.
   await clearSyncCursor(userId);
-  sweepCachedCopies();
+  // Not waited on: no wipe here waits on the file system (guest Erase does).
+  void sweepCachedCopies();
   return wiped;
 }
 
 /**
- * Forget every support-card set-aside (settingsStore). Never throws.
+ * Forget every support-card set-aside (settingsStore), the stored record
+ * included: `eraseSupportAside`, as guest Erase does (re-review round two,
+ * 2026-11-19, main session's call). A settings record that can't be read,
+ * which may hold keys, is read once more and, if it still can't be, replaced
+ * with this run's settings, every privacy choice on its private side; until
+ * then `clearSupportAside` only held the clear in memory, and a record that
+ * read again after a restart brought the hashes back. Never throws.
  *
- * Only once the settings have been read: the auth store initializes before
- * they hydrate (app/_layout.tsx), and a write before then would store the
- * defaults over the person's record. So a wipe retried at launch leaves the
- * keys; the sign-out that owed it cleared them when it ran, and they are
- * keys only, no words.
+ * The auth store initializes before the settings hydrate (app/_layout.tsx),
+ * and a write before then would store the defaults over the person's record.
+ * So a wipe retried at launch (an owed sign-out's or deletion's) doesn't
+ * write: the settings store holds the erase and applies it, in the same way,
+ * as soon as it has read the record or failed to, so no key outlasts the
+ * rows.
  */
 async function forgetSupportAside(): Promise<void> {
   try {
-    const settings = useSettingsStore.getState();
-    if (!settings.hydrated) return;
-    await settings.clearSupportAside();
+    if (!(await useSettingsStore.getState().eraseSupportAside()) && useSettingsStore.getState().hydrated) {
+      // eslint-disable-next-line no-console
+      console.warn('[auth] the support card set-asides were forgotten, but the settings write did not land');
+    }
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[auth] could not forget the support card set aside:', errorForLog(e));
@@ -487,7 +543,9 @@ async function forgetSupportAside(): Promise<void> {
 
 /**
  * After a guest's Erase took every per-user row on the phone
- * (`wipeEverythingOnDevice`): what else was kept per account. Never throws.
+ * (`wipeEverythingOnDevice`): what else was kept per account. Never throws;
+ * false when something here threw, so Erase reports a step that didn't
+ * finish (re-review round two, 2026-11-19).
  *
  *   - Every wipe still owed is done: its rows went with everything else.
  *     The "signed out here" list stays: it stops a stale copy of a signed-out
@@ -495,8 +553,12 @@ async function forgetSupportAside(): Promise<void> {
  *   - The sync cursor of every account that had rows here, or was owed a
  *     wipe: a timestamp under its id, in AsyncStorage. Without one, a later
  *     sign-in pulls everything, as a person's sign-in does anyway.
+ *
+ * The marker and cursor helpers (src/supabase) swallow their own storage
+ * errors and say nothing of them, so a write of theirs that fails isn't seen
+ * here: what they hold is account ids and sync timestamps, never words.
  */
-async function forgetAccountsAfterErase(owners: readonly string[]): Promise<void> {
+async function forgetAccountsAfterErase(owners: readonly string[]): Promise<boolean> {
   try {
     await markers.loadAuthMarkers();
     const owed = markers.owedWipes().map(({ userId }) => userId);
@@ -504,9 +566,11 @@ async function forgetAccountsAfterErase(owners: readonly string[]): Promise<void
     const accounts = new Set([...owners, ...owed]);
     accounts.delete(LOCAL_GUEST_USER_ID);
     for (const userId of accounts) await clearSyncCursor(userId);
+    return true;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[auth] could not clear what Erase leaves per account:', errorForLog(e));
+    return false;
   }
 }
 
@@ -766,17 +830,22 @@ async function asPersonSignIn<T>(signIn: () => Promise<T>): Promise<T> {
   }
 }
 
-/** A sign-in or sign-up refused under the under-13 rule. */
+/** A sign-in or sign-up refused under the under-13 rule, or while Apple's answer is pending. */
 type LocalOnlyRefusal = { ok: false; error: string };
 
 /**
  * Every sign-in and sign-up action goes through here (roadmap D70): with
  * `pending` held, it waits for Apple's age answer on a launch that asks (at
- * most `AGE_ANSWER_WAIT_MS`; at once anywhere else), and refuses with
- * `LOCAL_ONLY_SIGN_IN` while the phone is local-only, before any service or
- * client is touched. Checked again just before the service is called, after
- * any sign-out still settling has been waited out. The services refuse on
- * their own too (`refuseWhenLocalOnly`, src/supabase/auth.ts).
+ * most `AGE_ANSWER_WAIT_MS`; at once anywhere else), and refuses before any
+ * service or client is touched: with `LOCAL_ONLY_SIGN_IN` while the phone is
+ * local-only, and with `auth.AGE_PENDING_SIGN_IN` ("Sign-in isn't ready yet.
+ * Try again in a moment.") while the answer is still pending after the wait,
+ * so no account goes ahead before the app knows (policy audit, 2026-11-19;
+ * until then it went on after 5 s). Both checked again just before the
+ * service is called, after any sign-out still settling has been waited out.
+ * The services refuse on their own too (`refuseWhenLocalOnly`,
+ * src/supabase/auth.ts). A launch that doesn't ask is settled from the start:
+ * no wait, no refusal.
  */
 function accountSignIn<T>(
   set: (s: Partial<AuthState>) => void,
@@ -787,8 +856,10 @@ function accountSignIn<T>(
     // same tick as the tap, as it always has.
     if (!useAgeStore.getState().settled) await whenAgeSettled(AGE_ANSWER_WAIT_MS);
     if (isLocalOnly()) return { ok: false, error: LOCAL_ONLY_SIGN_IN };
+    if (!useAgeStore.getState().settled) return { ok: false, error: auth.AGE_PENDING_SIGN_IN };
     return asPersonSignIn(async (): Promise<T | LocalOnlyRefusal> => {
       if (isLocalOnly()) return { ok: false, error: LOCAL_ONLY_SIGN_IN };
+      if (!useAgeStore.getState().settled) return { ok: false, error: auth.AGE_PENDING_SIGN_IN };
       return start();
     });
   });
@@ -1007,11 +1078,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           // The words still leave the lock screen: the person asked to leave.
           void dismissDeliveredReminderWords().catch(() => {});
           // The rows already went (round 7, L3): the error says so, not that
-          // nothing changed.
+          // nothing changed. Under the under-13 rule, read now, after
+          // `keepAccount` (whose sync it refused), backup is off and the
+          // words say the predictions stay on the server.
           if (account && wiped) {
             // eslint-disable-next-line no-console
             console.warn('[auth] the session did not end after the wipe:', outcome.error);
-            return { ok: false, error: SIGN_OUT_FAILED_AFTER_WIPE };
+            return {
+              ok: false,
+              error: isLocalOnly() ? SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY : SIGN_OUT_FAILED_AFTER_WIPE,
+            };
           }
           return outcome;
         }
@@ -1155,49 +1231,118 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // A sign-in under way would land its account's rows in the middle of a
       // wipe that takes every account's: Erase waits for another try.
       if (signInsInFlight > 0) return { ok: false, error: ERASE_FAILED };
+
+      // Log's kept draft is the person's own words (step 173), in
+      // AsyncStorage, not the database: first, so nothing after can leave it
+      // behind, and in its own try, so it can't stop the wipe. A removal that
+      // didn't land is a step that failed (`clear` resolves false).
+      const draftCleared = await eraseStep('the Log draft', () => useLogDraftStore.getState().clear());
+
+      let owners: string[];
       try {
         // Everything on the phone, whoever's it was (main session,
         // 2026-11-19): every per-user row under every account id, the age
         // band, the Warm-up and practice, in one transaction.
-        const owners = await wipeEverythingOnDevice();
-        // The stored band went with it: the store forgets it, and the
-        // under-13 gate, if on, stays on for the rest of the run (D70, call
-        // 4); the next launch asks Apple again before anything goes.
-        useAgeStore.getState().forgetBand();
-        // Owed wipes are done, and every account's sync cursor goes.
-        await forgetAccountsAfterErase(owners);
-        await useWarmupStore.getState().retake();
-        // Practice, like the Warmup, belongs to the device (roadmap step 88).
-        await usePracticeStore.getState().clear();
-        // Log's kept draft is the person's own words (step 173).
-        await useLogDraftStore.getState().clear();
-        useResolveRunStore.getState().clear();
-        // As after account deletion: the choice was about the erased record,
-        // and so was the day a streak checkpoint's moment played (step 194).
-        // A fresh start shows the line about usage counts again, with the
-        // Warm-up, before anything goes up (D69 (b)).
-        await useSettingsStore.getState().setCardHiddenCategories([]);
-        await useSettingsStore.getState().setStreakMomentDay(null);
-        await useSettingsStore.getState().forgetUsageNoticeShown();
-        // And the support card's set-asides: keys of predictions now gone.
-        await useSettingsStore.getState().clearSupportAside();
-        await reloadForUser(LOCAL_GUEST_USER_ID);
-        // And what's already on the lock screen was about it too. After the
-        // reload, which cancels the reminders still to come, and not awaited:
-        // Erase never waits on the lock screen (code review, 2026-11-15).
-        void dismissDeliveredNotifications().catch(() => {});
-        // So were the copies in the cache folders, and anything the Coach
-        // still showed. Neither is waited on.
-        sweepCachedCopies();
-        resetCoach();
-        return { ok: true };
+        owners = await wipeEverythingOnDevice();
       } catch (e) {
+        // Nothing was removed (one transaction): nothing after it runs, and
+        // trying again is safe.
         // eslint-disable-next-line no-console
         console.warn('[auth] erase failed:', errorForLog(e));
         return { ok: false, error: ERASE_FAILED };
       }
+
+      // The wipe has committed, so each step after it is owed whatever
+      // happens to the others: each in its own try (review, 2026-11-19). A
+      // step whose write didn't land resolves false, and counts as failed.
+      const steps: ReadonlyArray<readonly [string, () => unknown]> = [
+        // The stored band went with it: the store forgets it, and the
+        // under-13 gate, if on, stays on for the rest of the run (D70, call
+        // 4); the next launch asks Apple again before anything goes. A band
+        // an ask still running saved after the wipe is cleared again
+        // (`forgetBand`).
+        ['the age band', () => useAgeStore.getState().forgetBand()],
+        // Owed wipes are done, and every account's sync cursor goes.
+        ['what each account left', () => forgetAccountsAfterErase(owners)],
+        ['the Warm-up', () => useWarmupStore.getState().retake()],
+        // Practice, like the Warmup, belongs to the device (roadmap step 88).
+        ['practice', () => usePracticeStore.getState().clear()],
+        // In AsyncStorage, not the database: `forget` waits for the removal
+        // and says whether it landed (`clear`, the screens', doesn't).
+        ['the answer run', () => useResolveRunStore.getState().forget()],
+        // As after account deletion: the choice was about the erased record,
+        // and so was the day a streak checkpoint's moment played (step 194).
+        // A fresh start shows the line about usage counts again, with the
+        // Warm-up, before anything goes up (D69 (b)). These three swallow a
+        // failed write; the step after them writes the whole record and
+        // reports it, so it stands for them too.
+        ['the card choices', () => useSettingsStore.getState().setCardHiddenCategories([])],
+        ['the streak moment', () => useSettingsStore.getState().setStreakMomentDay(null)],
+        ['the usage line', () => useSettingsStore.getState().forgetUsageNoticeShown()],
+        // And the support card's set-asides: keys of predictions now gone,
+        // the record on disk too if it couldn't be read (D71 (a)). After the
+        // other settings, and last of them: its write is the whole record,
+        // the three changes above included (or, with a record that couldn't
+        // be read, replaces it with them), and it resolves false when that
+        // write didn't land.
+        ['the support card set-asides', () => useSettingsStore.getState().eraseSupportAside()],
+        ['the reload', () => reloadForUser(LOCAL_GUEST_USER_ID)],
+        // And what's already on the lock screen was about it too. After the
+        // reload, which cancels the reminders still to come, and not awaited:
+        // Erase never waits on the lock screen (code review, 2026-11-15), and
+        // waiting couldn't confirm it anyway (iOS removes a delivered
+        // notification after the call returns; round two, 2026-11-19).
+        ['the lock screen', () => void dismissDeliveredNotifications().catch(() => {})],
+        // So were the copies in the cache folders: awaited, and a copy still
+        // there (a CSV export holds every title and note) fails the step, so
+        // Erase says it couldn't finish and a retry sweeps again (round two,
+        // 2026-11-19). And anything the Coach still showed, not waited on.
+        ['the cache', () => sweepCachedCopies()],
+        ['the Coach', () => resetCoach()],
+      ];
+      let allDone = draftCleared;
+      for (const [name, step] of steps) {
+        if (!(await eraseStep(name, step))) allDone = false;
+      }
+      return allDone ? { ok: true } : { ok: false, error: ERASE_FAILED };
     }),
+
+  countUnsyncedAccountChanges: async () => {
+    try {
+      return await countUnsyncedForAccounts();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[auth] could not count what Erase would lose:', errorForLog(e));
+      return null;
+    }
+  },
 }));
+
+/**
+ * One of Erase's steps, run on its own: true when it went. A step fails when
+ * it throws, or when it resolves to `false`: the helpers that swallow their
+ * own storage errors say so that way (re-review round two, 2026-11-19: the
+ * Log draft's `clear`, the answer run's `forget`, the settings'
+ * `eraseSupportAside`, the age store's `forgetBand`, and
+ * `forgetAccountsAfterErase` here). Any other value, `undefined` included,
+ * is a step that went. A failure is logged by the step's name and the
+ * error's code and message (errorForLog), never thrown, so the next step
+ * still runs. Never throws.
+ */
+async function eraseStep(name: string, step: () => unknown): Promise<boolean> {
+  try {
+    if ((await step()) === false) {
+      // eslint-disable-next-line no-console
+      console.warn(`[auth] erase: ${name} failed: a write did not land`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`[auth] erase: ${name} failed:`, errorForLog(e));
+    return false;
+  }
+}
 
 /**
  * The sign-out stops, or the session didn't end after all: the account stays
@@ -1207,7 +1352,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  * server comes back with a sync, which starts now (the wipe cleared the
  * cursor, so it pulls everything), and the lists show the account meanwhile.
  * Nothing unsynced was lost unasked: the wipe only ran on what the person
- * agreed to (the caller says so, `SIGN_OUT_FAILED_AFTER_WIPE`). Never throws.
+ * agreed to (the caller says so, `SIGN_OUT_FAILED_AFTER_WIPE`). Under the
+ * under-13 rule the sync is refused (`syncForUser`), so nothing comes back
+ * while it applies (the caller says so too,
+ * `SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY`). Never throws.
  */
 async function keepAccount(userId: string, addedOwed: boolean, wiped: boolean): Promise<void> {
   resumeSyncFor(userId);

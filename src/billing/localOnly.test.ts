@@ -233,21 +233,243 @@ describe('initBilling and the age answer', () => {
     expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
     expect(touched).toEqual([]);
   });
+
+  // Review 2026-11-19, item 5 (b): a sign-out before RevenueCat has started
+  // used to leave the Plus mirror; if RevenueCat then couldn't be reached, the
+  // next person on the phone kept the previous account's Plus.
+  it("a sign-out while Apple's answer is pending drops the mirror to free, and RevenueCat isn't reached", async () => {
+    await upsertEntitlement(LIFETIME);
+    const { deps, touched } = throwingDeps();
+    __setBillingDepsForTests(deps);
+    useAuthStore.setState({ userId: REAL_USER, email: 'a@b.co', status: 'authenticated' });
+    useAgeStore.getState().load(null, { willAsk: true });
+    await initBilling();
+    expect(useEntitlementStore.getState().isPlus).toBe(true);
+
+    useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest' });
+    await settle();
+
+    expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
+    expect(touched).toEqual([]);
+  });
+
+  // Review 2026-11-19, round 2, item 1: RevenueCat keeps the app user id it
+  // cached, so a sign-out it never heard of left the old account in place,
+  // and its start with no one signed in read that account's Plus back into
+  // the guest's mirror (and the next person's purchases would land on it).
+  describe('a sign-out before RevenueCat started, then a start with that account still cached', () => {
+    /** An SDK that keeps a cached identity, as purchases-ios does, and logs each call. */
+    function sdkCaching(cached: string) {
+      const log: string[] = [];
+      let current = cached;
+      const anonymous = () => current.startsWith('$RCAnonymousID:');
+      const deps: BillingDeps = {
+        configure: jest.fn(async (_key: string, appUserId: string | null) => {
+          log.push('configure');
+          current = appUserId ?? current;
+        }),
+        logIn: jest.fn(async (id: string) => {
+          log.push(`logIn:${id}`);
+          current = id;
+        }),
+        logOut: jest.fn(async () => {
+          log.push('logOut');
+          if (anonymous()) throw new Error('the current user is anonymous');
+          current = '$RCAnonymousID:fresh';
+        }),
+        isAnonymous: jest.fn(async () => {
+          log.push('isAnonymous');
+          return anonymous();
+        }),
+        getOfferings: jest.fn(async () => ({ current: null })),
+        getCustomerInfo: jest.fn(async () => {
+          log.push(`getCustomerInfo:${current}`);
+          return current === REAL_USER ? PLUS_INFO : { entitlements: { active: {} } };
+        }),
+        purchasePackage: jest.fn(async () => PLUS_INFO),
+        restorePurchases: jest.fn(async () => PLUS_INFO),
+        isCancelledError: () => false,
+      };
+      return { deps, log };
+    }
+
+    it("is logged out before the first entitlement read: the guest's mirror stays free", async () => {
+      await upsertEntitlement(LIFETIME);
+      const sdk = sdkCaching(REAL_USER);
+      __setBillingDepsForTests(sdk.deps);
+      useAuthStore.setState({ userId: REAL_USER, email: 'a@b.co', status: 'authenticated' });
+      useAgeStore.getState().load(null, { willAsk: true });
+      await initBilling();
+
+      useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest' });
+      await settle();
+      expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
+      expect(sdk.log).toEqual([]);
+
+      await useAgeStore.getState().accept(ADULT);
+      useAgeStore.getState().markSettled();
+      await settle();
+
+      expect(sdk.log.slice(0, 5)).toEqual([
+        'configure',
+        'isAnonymous',
+        'logOut',
+        'isAnonymous',
+        'getCustomerInfo:$RCAnonymousID:fresh',
+      ]);
+      // Every read (the entitlement, then the trial reminder's) is the fresh id's.
+      const reads = sdk.log.filter((c) => c.startsWith('getCustomerInfo'));
+      expect(reads.length).toBeGreaterThan(0);
+      expect(reads.every((c) => c === 'getCustomerInfo:$RCAnonymousID:fresh')).toBe(true);
+      expect(sdk.deps.configure).toHaveBeenCalledWith('test_key', null);
+      expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
+    });
+
+    it('a sign-out in an earlier run is covered the same way, at a launch that never waits', async () => {
+      const sdk = sdkCaching(REAL_USER);
+      __setBillingDepsForTests(sdk.deps);
+
+      await initBilling();
+      await settle();
+
+      expect(sdk.log.slice(0, 4)).toEqual(['configure', 'isAnonymous', 'logOut', 'isAnonymous']);
+      expect(useEntitlementStore.getState().isPlus).toBe(false);
+    });
+
+    it('an anonymous install is left as it is: no log-out', async () => {
+      const sdk = sdkCaching('$RCAnonymousID:install');
+      __setBillingDepsForTests(sdk.deps);
+
+      await initBilling();
+      await settle();
+
+      expect(sdk.deps.logOut).not.toHaveBeenCalled();
+      expect(sdk.log.slice(0, 3)).toEqual(['configure', 'isAnonymous', 'getCustomerInfo:$RCAnonymousID:install']);
+      expect(sdk.log.filter((c) => !c.startsWith('getCustomerInfo:$RCAnonymousID:install'))).toEqual([
+        'configure',
+        'isAnonymous',
+      ]);
+    });
+
+    it('under the rule none of it runs: no configure, no anonymity check, no log-out', async () => {
+      await upsertEntitlement(LIFETIME);
+      const sdk = sdkCaching(REAL_USER);
+      __setBillingDepsForTests(sdk.deps);
+      useAuthStore.setState({ userId: REAL_USER, email: 'a@b.co', status: 'authenticated' });
+      useAgeStore.getState().load(null, { willAsk: true });
+      await initBilling();
+
+      useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest' });
+      await useAgeStore.getState().accept(UNDER_13);
+      useAgeStore.getState().markSettled();
+      await settle();
+      await refreshBilling();
+      await expect(ensureBillingStarted()).resolves.toBe(false);
+
+      expect(sdk.log).toEqual([]);
+      expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
+    });
+  });
+
+  it('a sign-out on a build without the SDK or a key drops the mirror to free too', async () => {
+    await upsertEntitlement(LIFETIME);
+    delete process.env[KEY_VAR];
+    useAuthStore.setState({ userId: REAL_USER, email: 'a@b.co', status: 'authenticated' });
+    await initBilling();
+    expect(useEntitlementStore.getState().isPlus).toBe(true);
+
+    useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, email: null, status: 'guest' });
+    await settle();
+
+    expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
+  });
+
+  it('a guest signing in before RevenueCat has started keeps the mirror (logIn moves a guest purchase later)', async () => {
+    await upsertEntitlement(LIFETIME);
+    const { deps, touched } = throwingDeps();
+    __setBillingDepsForTests(deps);
+    useAgeStore.getState().load(null, { willAsk: true });
+    await initBilling();
+
+    useAuthStore.setState({ userId: REAL_USER, email: 'a@b.co', status: 'authenticated' });
+    await settle();
+
+    expect(useEntitlementStore.getState().isPlus).toBe(true);
+    expect(touched).toEqual([]);
+  });
 });
 
 describe('ensureBillingStarted (the paywall)', () => {
-  it('waits at most 5 s for the answer, then goes on as today', async () => {
+  // Review 2026-11-19, item 5 (a): a cold-start deep link to the paywall
+  // starts this wait before Apple's sheet has been read, so going on after 5 s
+  // would make a RevenueCat record for a child who takes longer.
+  it('with the answer still pending after 5 s, configures nothing and resolves false', async () => {
     jest.useFakeTimers();
-    const deps = fakeDeps();
+    const { deps, touched } = throwingDeps();
     __setBillingDepsForTests(deps);
     useAgeStore.getState().load(null, { willAsk: true });
     await initBilling();
 
     const starting = ensureBillingStarted();
-    await jest.advanceTimersByTimeAsync(4_999);
-    expect(deps.configure).not.toHaveBeenCalled();
-    await jest.advanceTimersByTimeAsync(1);
+    await jest.advanceTimersByTimeAsync(5_000);
 
+    await expect(starting).resolves.toBe(false);
+    await jest.advanceTimersByTimeAsync(60_000);
+    expect(touched).toEqual([]);
+  });
+
+  it('once the answer is in, opening the paywall again starts RevenueCat', async () => {
+    jest.useFakeTimers();
+    const deps = fakeDeps();
+    __setBillingDepsForTests(deps);
+    useAgeStore.getState().load(null, { willAsk: true });
+    await initBilling();
+    const first = ensureBillingStarted();
+    await jest.advanceTimersByTimeAsync(5_000);
+    await expect(first).resolves.toBe(false);
+    expect(deps.configure).not.toHaveBeenCalled();
+
+    // The answer: RevenueCat starts on its own then (initBilling's age
+    // subscription), and a second open of the paywall finds it started.
+    await useAgeStore.getState().accept(ADULT);
+    useAgeStore.getState().markSettled();
+    await expect(ensureBillingStarted()).resolves.toBe(true);
+    expect(deps.configure).toHaveBeenCalledTimes(1);
+  });
+
+  it('a retry after the answer works even when nothing else started RevenueCat', async () => {
+    jest.useFakeTimers();
+    const deps = fakeDeps();
+    __setBillingDepsForTests(deps);
+    useAgeStore.getState().load(null, { willAsk: true });
+    await initBilling();
+    const first = ensureBillingStarted();
+    await jest.advanceTimersByTimeAsync(5_000);
+    await expect(first).resolves.toBe(false);
+    // As if the age subscription had missed it (it doesn't): the retry alone.
+    __resetBillingInitForTests();
+    useAgeStore.getState().markSettled();
+
+    await expect(ensureBillingStarted()).resolves.toBe(true);
+    expect(deps.configure).toHaveBeenCalledTimes(1);
+  });
+
+  it('a launch that never waits for Apple is unchanged: the paywall starts it at once', async () => {
+    jest.useFakeTimers();
+    const deps = fakeDeps();
+    __setBillingDepsForTests(deps);
+    // Settled from the start: a stored band of 13 or over, asked about in
+    // the background.
+    useAgeStore.getState().load(ADULT, { willAsk: false });
+
+    let done = false;
+    const starting = ensureBillingStarted().then((v) => {
+      done = true;
+      return v;
+    });
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(done).toBe(true);
     await expect(starting).resolves.toBe(true);
     expect(deps.configure).toHaveBeenCalledTimes(1);
   });

@@ -45,6 +45,7 @@ import {
   resolvePrediction,
 } from '@/db/predictions';
 import { createTestDb } from '@/db/testing';
+import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import type { PendingTombstone, Prediction, PredictionWireRow } from '@/types';
 
 import {
@@ -158,7 +159,7 @@ function passesDelete(
  * pull. `filtersSent` holds each delete's condition (`status=eq.pending`, or
  * `or=(…)`). `failRead` makes a read by id fail.
  */
-function fakeServer(opts: { rows?: PredictionWireRow[]; failRead?: boolean } = {}) {
+function fakeServer(opts: { rows?: PredictionWireRow[]; failRead?: boolean; onRecheck?: () => void } = {}) {
   const calls: string[] = [];
   const filtersSent: string[] = [];
   const held = new Map((opts.rows ?? []).map((r) => [r.id, r]));
@@ -181,6 +182,7 @@ function fakeServer(opts: { rows?: PredictionWireRow[]; failRead?: boolean } = {
         },
         in: (_col: string, ids: string[]) => {
           calls.push('recheck');
+          opts.onRecheck?.();
           if (opts.failRead) return Promise.resolve({ data: null, error: { message: 'offline' } });
           return Promise.resolve({
             data: [...held.values()].filter((r) => ids.includes(r.id) && r.user_id === filters.user_id),
@@ -811,6 +813,88 @@ describe('the conditional delete', () => {
     expect(calls).toEqual(['delete:p1', 'recheck']);
     expect(held.get('p1')?.status).toBe('resolved_yes');
     expect(await countUnsynced(USER)).toBe(0);
+  });
+
+  // Review round 2, item 5 (record audit): when the sweep stopped after the
+  // deletions (the rule came on, or the session changed), a row they restored
+  // was in SQLite but missing from the stats and lists until the next write
+  // or launch. Now they are rebuilt from it there, locally, sending nothing.
+  describe('a sweep that stops after its deletions restored a row', () => {
+    afterEach(() => {
+      __resetAgeStoreForTests();
+    });
+
+    it('the rule comes on: the stats and lists are rebuilt from the restored row, and nothing more is sent', async () => {
+      await deletedHere();
+      const answeredAt = afterTheDeletion();
+      const { client, calls } = fakeServer({
+        rows: [serverCopy(answeredAt)],
+        onRecheck: () => useAgeStore.getState().load({ lowerBound: null, upperBound: 12 }, { willAsk: false }),
+      });
+      const recompute = jest.fn(async () => {});
+
+      await expect(syncNow(USER, { client, cursorStore: cursorStore(), recompute })).resolves.toEqual({
+        pulled: 0,
+        pushed: 0,
+      });
+
+      expect(await getPrediction('p1')).toMatchObject({ status: 'resolved_yes', resolved_at: answeredAt });
+      expect(recompute).toHaveBeenCalledTimes(1);
+      expect(recompute).toHaveBeenCalledWith(USER);
+      // No pull, no push after the rule came on.
+      expect(calls).toEqual(['delete:p1', 'recheck']);
+    });
+
+    it('the session changes: rebuilt too, as a full sweep would', async () => {
+      await deletedHere();
+      const { client, calls } = fakeServer({ rows: [serverCopy(afterTheDeletion())] });
+      const recompute = jest.fn(async () => {});
+      let reads = 0;
+      // USER's for the deletions' two checks, someone else's after.
+      const sessionUserId = async () => (++reads <= 2 ? USER : 'user-bbb');
+
+      await syncNow(USER, { client, cursorStore: cursorStore(), recompute, sessionUserId });
+
+      expect(recompute).toHaveBeenCalledWith(USER);
+      expect(calls).toEqual(['delete:p1', 'recheck']);
+    });
+
+    it('not for an account leaving the phone', async () => {
+      await deletedHere();
+      const { client } = fakeServer({ rows: [serverCopy(afterTheDeletion())] });
+      const recompute = jest.fn(async () => {});
+      let reads = 0;
+      const sessionUserId = async () => {
+        reads += 1;
+        if (reads <= 2) return USER;
+        // Sign-out stops the account's sync after the row was restored.
+        void stopSyncFor(USER);
+        return null;
+      };
+
+      await syncNow(USER, { client, cursorStore: cursorStore(), recompute, sessionUserId });
+
+      expect((await getPrediction('p1'))?.status).toBe('resolved_yes');
+      expect(recompute).not.toHaveBeenCalled();
+    });
+
+    it('nothing restored: no rebuild', async () => {
+      await deletedHere();
+      // Still open on the server: the delete removes it, nothing comes back.
+      const { client } = fakeServer({
+        rows: [serverCopy(null)],
+        onRecheck: () => {
+          throw new Error('no read-back expected');
+        },
+      });
+      const recompute = jest.fn(async () => {});
+      let reads = 0;
+      const sessionUserId = async () => (++reads <= 1 ? USER : 'user-bbb');
+
+      await syncNow(USER, { client, cursorStore: cursorStore(), recompute, sessionUserId });
+
+      expect(recompute).not.toHaveBeenCalled();
+    });
   });
 });
 

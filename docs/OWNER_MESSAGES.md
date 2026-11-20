@@ -98,3 +98,11 @@ and execute the DPA (openai.com/policies/data-processing-addendum; older version
 signed through a form linked there). Keep the signed copy. Then tell the agent, and the
 privacy policy's sentence about companies that process data "on our behalf" gains OpenAI
 (the OWNER comment in `docs/PRIVACY_POLICY.md` §4).
+
+**It may already apply** (the D70/D71 review's policy audit, 2026-11-19). OpenAI's current
+addendum is reported to be incorporated into its services agreement, so it may cover the
+account without anything being signed. This comes from search results: the policy audit
+could not open OpenAI's page. So first confirm in the platform account whether the
+addendum already applies; the form linked from the page gives a countersigned copy if you
+want one on file. Either way, tell the agent what you found before the policy's sentence
+changes.

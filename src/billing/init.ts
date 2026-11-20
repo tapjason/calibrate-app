@@ -14,17 +14,20 @@
 //      and therefore the whole first paint — behind a subsystem the user may
 //      not even have a subscription in.
 //   2. **A guest is anonymous, never a placeholder id.** See appUserIdFor().
-//   3. **Never configured on a local-only phone, nor before Apple has
-//      answered on a launch that asks** (the under-13 rule, roadmap D70, the
-//      main session's call 2). Configuring makes a per-install anonymous
-//      RevenueCat record, so a child's first launch would otherwise make one
-//      before the band arrives. RevenueCat starts once the age store is
-//      settled and the phone isn't local-only: at once where the question
-//      isn't asked (web, Jest, Android, iOS before 26, a stored band that
-//      isn't under 13), exactly when it did before; after the answer on a
-//      launch that asks, with no cap; and once, on a lift, if the rule comes
-//      off in a long run. The paywall waits at most 5 s for the answer
-//      (`ensureBillingStarted`). A local entitlement mirror already on the
+//   3. **Never configured on a local-only phone, nor while Apple's answer is
+//      pending on a launch that asks** (the under-13 rule, roadmap D70, the
+//      main session's call 2), with no cap anywhere. Configuring makes a
+//      per-install anonymous RevenueCat record, so a child's first launch
+//      would otherwise make one before the band arrives. RevenueCat starts
+//      once uploads may start (`uploadsMayStart`: the age store is settled
+//      and the phone isn't local-only): at once where the question isn't
+//      waited for (web, Jest, Android, iOS before 26, a stored band of 13 or
+//      over, whose ask runs in the background), exactly when it did before;
+//      after the answer on a launch that asks; and once, on a lift, if the
+//      rule comes off in a long run. The paywall waits at most 5 s for the
+//      answer (`ensureBillingStarted`) and, with it still pending, starts
+//      nothing: it shows that the plans couldn't load, and opening it again
+//      once the answer is in works. A local entitlement mirror already on the
 //      phone is left as it is: the rule doesn't take away a Plus mirror.
 
 import {
@@ -62,8 +65,10 @@ let warnedUnavailable = false;
  * constant baked into the bundle. RevenueCat treats the app user id as the
  * account, so configuring every guest device with that string would make one
  * guest's purchase read as an active entitlement on every other guest install.
- * Null makes the SDK mint a per-install anonymous id, which logIn() later
- * aliases onto the real account when the user signs in.
+ * Null gives the install's own anonymous id, which logIn() later aliases onto
+ * the real account when the user signs in; an account id RevenueCat still
+ * holds from a sign-out it never heard of is logged out first
+ * (`configureBilling`).
  */
 function appUserIdFor(userId: string | null): string | null {
   if (!userId || userId === LOCAL_GUEST_USER_ID) return null;
@@ -81,13 +86,13 @@ async function syncIdentity(userId: string | null): Promise<void> {
 /**
  * Start RevenueCat for this run, once: configure for the current user and
  * refresh what they own, without waiting. Only after `initBilling` has read
- * the mirror, never on a local-only phone, and only on a build with the SDK
- * and a key. The caller decides whether Apple's answer has to be in first.
- * True when RevenueCat is started (now or before).
+ * the mirror, only once uploads may start (never on a local-only phone, never
+ * while Apple's answer is pending on a launch that asks), and only on a build
+ * with the SDK and a key. True when RevenueCat is started (now or before).
  */
 function startBilling(): boolean {
   if (started) return true;
-  if (!initialized || isLocalOnly()) return false;
+  if (!initialized || isLocalOnly() || !uploadsMayStart()) return false;
   if (!isBillingAvailable()) {
     if (!warnedUnavailable) {
       warnedUnavailable = true;
@@ -125,19 +130,23 @@ export async function initBilling(): Promise<void> {
   // logIn() moves it onto the Supabase user id so it follows the account.
   //
   // Sign-out: log the SDK out and drop the mirror to free, or the next person
-  // to use this device inherits the previous account's Plus. On a local-only
-  // phone RevenueCat never started, so only the mirror drops: an account
-  // frozen by the rule that signs out leaves no Plus behind. Before RevenueCat
-  // has started otherwise (Apple not yet answered, or no SDK on this build)
-  // nothing happens, as before; a start later configures whoever is signed in
-  // then.
+  // to use this device inherits the previous account's Plus. Before RevenueCat
+  // has started (a local-only phone, Apple not yet answered, or no SDK or key
+  // on this build) only the mirror drops, a local write that sends nothing:
+  // an account frozen by the rule that signs out leaves no Plus behind, and
+  // neither does one signing out before billing could start, if RevenueCat
+  // then can't be reached (`fetchEntitlement`'s null never overwrites the
+  // mirror). A start later configures whoever is signed in then; with no one
+  // signed in, `configureBilling(null)` logs out the account the SDK still
+  // has cached from that sign-out (or from one in an earlier run) before
+  // anything reads entitlements or buys (review round 2, item 1).
   authUnsub = useAuthStore.subscribe((state, prev) => {
     if (state.userId === prev.userId) return;
     const next = appUserIdFor(state.userId);
     void (async () => {
       try {
         if (!started) {
-          if (next === null && isLocalOnly()) {
+          if (next === null) {
             await useEntitlementStore.getState().setEntitlement(FREE_ENTITLEMENT);
           }
           return;
@@ -169,17 +178,23 @@ export async function initBilling(): Promise<void> {
 /**
  * For the paywall: make sure RevenueCat has started before plans load. On a
  * launch still waiting for Apple's answer, waits for it at most `maxWaitMs`
- * (5 s), then goes on as today (call 2: the age sheet is modal, so a child
- * can't open the paywall while it is up). Never on a local-only phone. Waits
- * for the configure call itself. Resolves true when RevenueCat is configured,
- * false when it isn't (local-only, no SDK or key, a configure that failed).
- * Never rejects.
+ * (5 s); if the answer is still pending then, starts nothing and resolves
+ * false (a cold-start deep link to the paywall starts this wait before Apple's
+ * sheet has been read, so going on would make a RevenueCat record for a child
+ * who takes longer). The paywall then says the plans couldn't load; opening it
+ * again once the answer is in starts RevenueCat, which also starts on its own
+ * the moment uploads may start (`initBilling`'s age subscription,
+ * src/age/localOnly.ts). Never on a local-only phone. Waits for the configure
+ * call itself. Resolves true when RevenueCat is configured, false when it
+ * isn't (local-only, the answer pending, no SDK or key, a configure that
+ * failed). Never rejects.
  */
 export async function ensureBillingStarted(maxWaitMs: number = AGE_ANSWER_WAIT_MS): Promise<boolean> {
   try {
     if (!initialized) await initBilling();
     if (isLocalOnly()) return false;
     if (!useAgeStore.getState().settled) await whenAgeSettled(maxWaitMs);
+    // `startBilling` refuses while the answer is pending or the rule applies.
     if (!startBilling()) return false;
     return (await configuring) ?? false;
   } catch (e) {

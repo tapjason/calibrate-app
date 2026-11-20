@@ -1112,6 +1112,31 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   (its edge in `textTertiary`, §2.2). No icon, no colour; disabled while it saves. It
   sets the card aside and the panel returns to its first state, Get feedback. The note
   speaks of where the words were checked, never of the person.
+- **What the tap did, when the card stays** (the D70/D71 review, 2026-11-19): the tap
+  checks the predictions again first, so the card can stay up in two cases, each said in
+  one line between the note and the button, in `subhead` `textPrimary` (the body's size,
+  full ink, so it reads over the note; no red on this card, no icon), and announced.
+  Words matched on a topic whose card hadn't been shown, a second topic of the very note
+  on screen included (the re-review's round two): that topic's card takes this
+  one's place, nothing is set aside, and the line reads "Other words matched too, so this
+  message changed." (`SUPPORT_UPDATED_NOTE`); it goes with the next change of card. The
+  tap couldn't be done: "Couldn't go back to Coach. Try again." (`SUPPORT_ASIDE_FAILED`),
+  cleared by the next tap. The button is offered again in both.
+- **When the card changes under the button** (the re-review's round two): the new card may
+  name another helpline while VoiceOver is still on the button. So VoiceOver's focus is
+  moved to the card's title ("Support is available"), the new card is read from the top,
+  and "Other words matched too, so this message changed." is announced after it, queued
+  behind what is being read (600 ms after the focus move, `ANNOUNCE_AFTER_FOCUS_MS`). And
+  **Back to Coach** is disabled for about a second after the change
+  (`SUPPORT_CHANGED_HOLD_MS`, 1000 ms; a change inside the second starts it again), so a
+  quick second tap, or VoiceOver's next double-tap, can't set the new card aside before
+  anyone has read or heard it.
+- **Focus when the card goes** (the same review): the focused button leaves with the
+  card, so VoiceOver's focus is moved to the panel's "Coach" heading, which stays mounted
+  through the change, and "Back to Coach." is announced after a short pause
+  (`BACK_TO_COACH_SPOKEN`, `CoachPanel`). The same when the tap finds nothing matching
+  any more and the card simply goes. Not confirmed on the iPhone
+  (`HUMAN_VERIFICATION.md` D5).
 
 ### 7.14 Wrapped
 
@@ -1388,7 +1413,9 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   Sure, everything you log stays on this phone. Accounts, backup, usage counts, Coach and
   Plus are off. Your predictions, score, badges and cards work as usual, and Export
   predictions keeps a copy." and "The age range comes from this iPhone's Apple Account. To
-  see it: Settings → your name → Personal Information → Age Range for Apps." An account
+  see it, open Settings, tap your name, then Personal Information, then Age Range for
+  Apps." (the path in words, as Delete account gives Sign in with Apple's: no arrows in
+  app text; the D70/D71 review). An account
   signed in before keeps its Sign out row, its footer "Signed in as …" followed by "Backup
   is off on this phone because of the age range it shares with Fairly Sure, so new changes
   stay here. What was backed up before stays on our server until you delete the account.
@@ -1402,13 +1429,28 @@ The You tab is a grouped inset list, as iOS Settings, Streaks and Todoist are: o
   title, one `subhead` `textSecondary` paragraph and one filled capsule, **Close**. Nothing
   on it offers a purchase or a sign-in. The paywall's: "Plus isn't offered on this phone" /
   "Because of the age range this iPhone shares with Fairly Sure, purchases are off here.
-  Your score, chart, badges and cards are free." The account route's: "No account on this
-  phone" / "Because of the age range this iPhone shares with Fairly Sure, your predictions
-  stay on this phone. To keep a copy, use Export predictions in You."
+  Your score, chart, badges and cards are free." The account route's, for a guest: "No
+  account on this phone" / "Because of the age range this iPhone shares with Fairly Sure,
+  your predictions stay on this phone. To keep a copy, use Export predictions in You." For
+  an account signed in before the rule came on, which only a deep link brings there:
+  "Backup is off on this phone" with You's frozen footer as the body, word for word (the
+  D70/D71 review: "No account on this phone" would be untrue of it).
 - **Erase** (D71 (a)): the guest's confirmation screen says what goes, "everything Fairly
   Sure keeps on this phone, including anything left by an account that was signed in here
-  before", then names it; the alert reads "Erase everything on this phone?" / "Nothing here
-  has another copy unless an account backed it up. This can't be undone."
+  before", then names it, and what stays: "Settings, like reminder times, and whether this
+  phone has Fairly Sure Plus stay." The alert reads "Erase everything on this phone?" /
+  "Nothing here has another copy unless an account backed it up. This can't be undone."
+  When accounts signed in here before left changes that never reached the server, the
+  alert counts them at the tap, between those two sentences: "3 changes an account made on
+  this phone never reached our server and will be lost." ("1 change an account made…" for
+  one; the D70/D71 review). While the count is read the **Erase everything** button is
+  disabled, keeping its label (not "Erasing…": nothing is erased until the question is
+  answered), and the read gives up after 3 seconds. A count that can't be read has its own
+  sentence in that place, so the alert has three messages in all (the re-review's round
+  two): "Changes an account made on this phone may not have reached our server; if so,
+  they will be lost." If Erase can't finish a step, the screen shows "Couldn't finish
+  erasing your data. Try again.", as before, and now also when a cleanup write failed
+  silently.
 - **Practice reminder** (step 89): a stacked row in the Notifications group, its
   label and one line over five chips (Off, With coffee, At lunch, After dinner, each
   with its time, and **Pick a time**, D31, which opens the time picker; once a time

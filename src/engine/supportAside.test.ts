@@ -1,6 +1,13 @@
 import { SUPPORT_ASIDE_MAX_KEYS } from '@/types';
 
-import { isSupportAsideKey, supportAsideKey, withSupportAsideKeys } from './supportAside';
+import {
+  isSupportAsideKey,
+  supportAsideKey,
+  supportAsideKeyId,
+  supportAsideKeysStandingAfter,
+  supportAsideKeysStandingWith,
+  withSupportAsideKeys,
+} from './supportAside';
 
 const p = (id: string, title: string, reflection: string | null = null) => ({ id, title, reflection });
 
@@ -64,11 +71,15 @@ describe('withSupportAsideKeys', () => {
   });
 
   it(`keeps at most ${SUPPORT_ASIDE_MAX_KEYS}, dropping the oldest`, () => {
+    expect(SUPPORT_ASIDE_MAX_KEYS).toBe(2000);
     const many = Array.from({ length: SUPPORT_ASIDE_MAX_KEYS }, (_, i) => key(i));
-    const next = withSupportAsideKeys(many, [key(1000), key(1001)]);
+    // Two keys not among the first `SUPPORT_ASIDE_MAX_KEYS`.
+    const a = key(SUPPORT_ASIDE_MAX_KEYS + 1000);
+    const b = key(SUPPORT_ASIDE_MAX_KEYS + 1001);
+    const next = withSupportAsideKeys(many, [a, b]);
     expect(next).toHaveLength(SUPPORT_ASIDE_MAX_KEYS);
     expect(next[0]).toBe(key(2));
-    expect(next.slice(-2)).toEqual([key(1000), key(1001)]);
+    expect(next.slice(-2)).toEqual([a, b]);
     expect(next).not.toContain(key(0));
     expect(next).not.toContain(key(1));
   });
@@ -80,5 +91,71 @@ describe('withSupportAsideKeys', () => {
   it('honours a smaller cap', () => {
     expect(withSupportAsideKeys([key(1), key(2), key(3)], [], 2)).toEqual([key(2), key(3)]);
     expect(withSupportAsideKeys([key(1)], [], 0)).toEqual([]);
+  });
+});
+
+describe('supportAsideKeyId', () => {
+  it('is the id a key was made for', () => {
+    expect(supportAsideKeyId(supportAsideKey(p('pred-1', 'Title')))).toBe('pred-1');
+  });
+
+  it('keeps a # inside the id', () => {
+    expect(supportAsideKeyId(supportAsideKey(p('a#b', 'Title', 'note')))).toBe('a#b');
+  });
+
+  it.each([['words'], ['a#123'], [7], [null]])('is null for %p', (value) => {
+    expect(supportAsideKeyId(value)).toBeNull();
+  });
+});
+
+// 2026-11-19: a key must not outlive the words it hashes.
+describe('supportAsideKeysStandingWith', () => {
+  it('keeps a key whose prediction is there with the same words', () => {
+    const stands = supportAsideKeysStandingWith([p('a', 'Title', 'note'), p('b', 'Other')]);
+    expect(stands(supportAsideKey(p('a', 'Title', 'note')))).toBe(true);
+    expect(stands(supportAsideKey(p('b', 'Other')))).toBe(true);
+  });
+
+  it('drops a key whose prediction is gone', () => {
+    const stands = supportAsideKeysStandingWith([p('b', 'Other')]);
+    expect(stands(supportAsideKey(p('a', 'Title')))).toBe(false);
+  });
+
+  it('drops a key whose note or title changed', () => {
+    const stands = supportAsideKeysStandingWith([p('a', 'Title', null), p('b', 'New title')]);
+    expect(stands(supportAsideKey(p('a', 'Title', 'removed note')))).toBe(false);
+    expect(stands(supportAsideKey(p('b', 'Old title')))).toBe(false);
+  });
+
+  it('keeps nothing beside an empty list', () => {
+    expect(supportAsideKeysStandingWith([])(supportAsideKey(p('a', 'Title')))).toBe(false);
+  });
+});
+
+describe('supportAsideKeysStandingAfter', () => {
+  const before = supportAsideKey(p('a', 'Title', 'hurtful note'));
+  const other = supportAsideKey(p('b', 'Other', 'note'));
+
+  it('drops the changed prediction’s old key and leaves every other', () => {
+    const stands = supportAsideKeysStandingAfter('a', { title: 'Title', reflection: null });
+    expect(stands(before)).toBe(false);
+    expect(stands(other)).toBe(true);
+  });
+
+  it('keeps its key when the words are the same', () => {
+    const stands = supportAsideKeysStandingAfter('a', { title: 'Title', reflection: 'hurtful note' });
+    expect(stands(before)).toBe(true);
+  });
+
+  it('drops every key for a prediction that is gone, or couldn’t be read', () => {
+    const stands = supportAsideKeysStandingAfter('a', null);
+    expect(stands(before)).toBe(false);
+    expect(stands(supportAsideKey(p('a', 'Some other words')))).toBe(false);
+    expect(stands(other)).toBe(true);
+  });
+
+  it('never matches an id that only starts the same', () => {
+    const stands = supportAsideKeysStandingAfter('a', null);
+    expect(stands(supportAsideKey(p('ab', 'Title')))).toBe(true);
   });
 });

@@ -214,11 +214,71 @@ describe('sweepShareCaptures', () => {
         deleteCapture,
       }),
     );
-    await expect(sweepShareCaptures()).resolves.toBeUndefined();
+    await expect(sweepShareCaptures()).resolves.toBe(false);
     expect(deleteCapture).toHaveBeenCalledTimes(2);
 
     __setShareDepsForTests(deps({ listCaptures: jest.fn(async () => { throw new Error('no dir'); }) }));
-    await expect(sweepShareCaptures()).resolves.toBeUndefined();
+    await expect(sweepShareCaptures()).resolves.toBe(false);
+  });
+
+  // Round two, 2026-11-19: Erase awaits the sweep and reports a leftover.
+  describe('what it resolves', () => {
+    const OTHER_PNG = '7C9E6679-7425-40DE-944B-E07FC1F90AE7.png';
+
+    /** A capture folder in memory: `stuck` uris a delete leaves in place without throwing. */
+    function folder(names: string[], stuck: readonly string[] = []) {
+      const files = new Map(names.map((name) => [`file:///c/tmp/ReactNative/${name}`, name]));
+      return {
+        files,
+        d: deps({
+          listCaptures: jest.fn(async () => [...files].map(([uri, name]) => ({ name, uri }))),
+          deleteCapture: jest.fn(async (uri: string) => {
+            if (!stuck.includes(uri)) files.delete(uri);
+          }),
+        }),
+      };
+    }
+
+    it('true with nothing to remove, other files left alone', async () => {
+      const { d, files } = folder(['card.png']);
+      __setShareDepsForTests(d);
+
+      await expect(sweepShareCaptures()).resolves.toBe(true);
+      expect(d.deleteCapture).not.toHaveBeenCalled();
+      expect([...files.values()]).toEqual(['card.png']);
+    });
+
+    it('true once every capture is gone', async () => {
+      const { d, files } = folder([UUID_PNG, OTHER_PNG, 'card.png']);
+      __setShareDepsForTests(d);
+
+      await expect(sweepShareCaptures()).resolves.toBe(true);
+      expect([...files.values()]).toEqual(['card.png']);
+    });
+
+    it('false when a delete returns but the file is still there, or the seam cannot delete', async () => {
+      const { d } = folder([UUID_PNG], [`file:///c/tmp/ReactNative/${UUID_PNG}`]);
+      __setShareDepsForTests(d);
+      await expect(sweepShareCaptures()).resolves.toBe(false);
+
+      __setShareDepsForTests(
+        deps({ listCaptures: jest.fn(async () => [{ name: UUID_PNG, uri: `file:///c/tmp/ReactNative/${UUID_PNG}` }]) }),
+      );
+      await expect(sweepShareCaptures()).resolves.toBe(false);
+    });
+
+    it('a failure, then a retry that works', async () => {
+      const { d, files } = folder([UUID_PNG]);
+      (d.deleteCapture as jest.Mock).mockImplementationOnce(async () => {
+        throw new Error('busy');
+      });
+      __setShareDepsForTests(d);
+
+      await expect(sweepShareCaptures()).resolves.toBe(false);
+      expect(files.size).toBe(1);
+      await expect(sweepShareCaptures()).resolves.toBe(true);
+      expect(files.size).toBe(0);
+    });
   });
 
   it('does nothing on web, where there is no capture file', async () => {
@@ -226,7 +286,7 @@ describe('sweepShareCaptures', () => {
     Object.defineProperty(Platform, 'OS', { get: () => 'web', configurable: true });
     try {
       __setShareDepsForTests(null);
-      await expect(sweepShareCaptures()).resolves.toBeUndefined();
+      await expect(sweepShareCaptures()).resolves.toBe(true);
     } finally {
       Object.defineProperty(Platform, 'OS', { get: () => original, configurable: true });
     }

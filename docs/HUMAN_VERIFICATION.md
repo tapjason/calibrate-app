@@ -906,7 +906,9 @@ Added 2026-11-15 (step 182, TestFlight hardening, and the TestFlight prep; in bu
 - [ ] **Sign-in says what it sends (step 182):** You → Sign in shows "Once you're signed in,
       a record of which features you use, including what's already on this phone, is sent
       with your account…" and a Privacy policy link that opens the policy. Turn Usage stats
-      off in You: the sentence goes, the link stays.
+      off in You: the link stays, and since D71 (d) the sentence doesn't go but changes to
+      "Usage stats are off, so no record of which features you use is sent. …" (D5 has the
+      full check; before D71 (d) the sentence went).
 - [ ] **Erase clears the lock screen (step 182):** with "Show the words in reminders" on, let a
       due-day reminder arrive and leave it in Notification Center; then You → Erase your data
       on this phone. The reminder is gone from Notification Center. Once more, locking the
@@ -1386,7 +1388,11 @@ sign, enable Declared Age Range on the App ID and rebuild. Simulator runtimes
 often don't present this API; prefer a device. Since D70 (2026-11-19, the
 under-13 rule; JS only, so a reload of the development build carries it) a band
 under 13 makes the phone local-only; any other band, or none, locks nothing
-(`docs/design/research/under-13-2026-11.md`).
+(`docs/design/research/under-13-2026-11.md`). Since the D70/D71 review (the same
+day, JS only) the app asks Apple at every launch, whatever band is stored, and
+on a launch with no band of 13 or over stored yet, sign-in and the Plus plans
+wait for Apple's answer. The checks marked "(review)" are for that; nothing in
+this section has been run on the iPhone.
 - [ ] **iOS 26, first launch:** after the splash, Apple's age-range sheet may
       appear (the app has no sheet of its own). Share a range of 13 or over:
       the Warmup or Today is usable, and nothing is locked. Force-quit and
@@ -1400,6 +1406,34 @@ under 13 makes the phone local-only; any other band, or none, locks nothing
       (no Play Age Signals call).
 - [ ] **Erase your data on this phone:** the next launch can ask again. Until
       then, predictions and the rest of the app are unchanged.
+- [ ] **A second launch with an adult band stored (review):** after sharing a
+      range of 13 or over, force-quit and reopen. Pass: no Apple sheet, and
+      nothing waits: Today is usable at once, You → Sign in opens the form and
+      a sign-in starts at the tap, and You → Fairly Sure Plus shows the plans
+      without the 5-second pause. Report it if a sheet does appear: the app now
+      asks at every launch, and whether Apple answers silently for a band
+      already shared is not confirmed by Apple's pages.
+- [ ] **After a decline, sign-in and plans still work (review):** on a fresh
+      install (or after Erase), decline Apple's sheet, then force-quit and
+      reopen, declining again if the sheet comes back. Pass: once the sheet is
+      gone, You → Sign in signs you in (it is not left at "Sign-in isn't ready
+      yet. Try again in a moment."), and You → Fairly Sure Plus loads the plans.
+      Report whether the sheet came back at the second launch.
+- [ ] **The paywall during Apple's sheet (review):** on a fresh install (or
+      after Erase), force-quit, then open the app by typing
+      `fairlysure://paywall` into Safari's address bar, so the paywall opens
+      while Apple's sheet is still unanswered. Leave the sheet up for more than
+      5 seconds, then look behind it or answer it: the paywall shows "Plus
+      plans couldn't load. Check your connection, then open this again." and no
+      plan to buy. Share a range of 13 or over, close the paywall and open it
+      again: the plans load. (If the deep link doesn't beat the sheet, open You
+      → Fairly Sure Plus as soon as the sheet is answered instead and report
+      what showed.)
+- [ ] **A request that doesn't resolve (review; report only):** if Apple's
+      sheet ever stays up, or never comes and sign-in keeps saying "Sign-in
+      isn't ready yet. Try again in a moment." for a whole session, note what
+      you did before it. Sign-in and the plans are off for that run by design;
+      a force-quit and relaunch should clear it.
 - [ ] **Under 13, in the sandbox (D70; needs Developer Mode, a Sandbox Apple
       Account and iOS 26.2 or later):** iPhone Settings → Developer → Sandbox
       Apple Account → Manage → Age Assurance → "Under 13". In the app, signed
@@ -1426,6 +1460,13 @@ under 13 makes the phone local-only; any other band, or none, locks nothing
       off on this phone because of the age range it shares with Fairly Sure, so
       new changes stay here…"; Delete account is still at the bottom; Sign out
       asks "Sign out anyway?" if anything changed since, and then works.
+- [ ] **The frozen account route by deep link (review):** in that same state
+      (signed in, under 13), before signing out, type `fairlysure://account`
+      into Safari's address bar and let it open the app. Pass: the title is
+      "Backup is off on this phone" (not "No account on this phone"), the body
+      is the same "Backup is off on this phone because of the age range it
+      shares with Fairly Sure, so new changes stay here…" paragraph You shows,
+      and one Close button; no sign-in form. Send a screenshot.
 
 ### D5. D71's four calls (2026-11-19; JS only, a reload of the development build)
 - [ ] **The support card's "Back to Coach" (D71 (b)):** signed in with Plus and
@@ -1438,21 +1479,110 @@ under 13 makes the phone local-only; any other band, or none, locks nothing
       feedback, or one of the Coach's usual lines, not the card. Change the note to
       "The car keeps breaking down again.": Get feedback shows the card again.
       Remove the note afterwards.
+- [ ] **"Back to Coach" checks again at the tap (review):** put the card up as
+      above ("The car keeps breaking down." on one answered prediction, Get
+      feedback). Leave it up, go to History and add the note "The slump hits me
+      at 3." to a different answered prediction (a second topic). Back on
+      Insights tap **Back to Coach**: the card stays but its middle line
+      changes (to "If someone is hurting you or you feel unsafe, there are
+      people you can talk to." and the matching contact line), with "Other
+      words matched too, so this message changed." above the button, and
+      nothing is set aside yet. **Back to Coach** is greyed out for about a
+      second after the change (round two): tap it at once and nothing happens.
+      Then tap **Back to Coach** again: the card goes and
+      Get feedback is back. Then the other way: put a card up, remove the note
+      that caused it in History, come back and tap **Back to Coach**: the card
+      simply goes. Remove the notes afterwards.
+- [ ] **Two topics in one note (round two):** on one answered prediction add
+      the note "he hits me when he drinks and I can't go on" (the filter reads
+      two topics in it) and Get feedback: the card's middle line is "If someone
+      is hurting you or you feel unsafe, there are people you can talk to."
+      Tap **Back to Coach**: the card stays and changes to "If things feel like
+      a lot right now, talking to someone can help.", with "Other words matched
+      too, so this message changed." above the button; nothing is set aside.
+      Wait a second, tap **Back to Coach** again: the card goes and Get
+      feedback is back; tap that: no card. Remove the note afterwards.
+- [ ] **The support card with VoiceOver (review, round two):** with VoiceOver
+      on, repeat the two-topic check (either one). After the first tap, focus
+      lands on the card's title, "Support is available" (not left on the
+      button), the new card is read from there, and "Other words matched too,
+      so this message changed." is heard after it. A double-tap on **Back to
+      Coach** within the second after the change does nothing (VoiceOver reads
+      it as dimmed). After the next double-tap once it is back, focus lands on
+      the "Coach" heading (not lost at the top of the screen) and VoiceOver
+      says "Back to Coach." If a tap ever fails, the card shows and VoiceOver
+      says "Couldn't go back to Coach. Try again." Report what was spoken, in
+      what order, and where focus landed each time.
 - [ ] **Erase removes everything (D71 (a)):** on an account whose Insights →
       More about your record shows a count only this phone keeps (for example
       "1 scored answer was moved to another category…", item 21), sign out,
-      then You → Erase your data on this phone. The alert reads "Erase
+      then You → Erase your data on this phone. The page's paragraph ends
+      "Settings, like reminder times, and whether this phone has Fairly Sure
+      Plus stay. You aren't signed in, so nothing here has another copy unless
+      an account backed it up. It can't be undone." The alert reads "Erase
       everything on this phone?" and "Nothing here has another copy unless an
       account backed it up. This can't be undone."; afterwards "Your data on
       this phone is gone, including anything left by an account that was signed
       in here before." Sign back in: the predictions come back from the server
       and the count doesn't (it lived only on this phone).
+- [ ] **The Erase alert with a count (review):** signed in, with an open
+      prediction logged on an earlier day that has already been backed up, turn
+      on Airplane Mode and delete that prediction. You → Sign out: it says a
+      change hasn't reached the server; choose to sign out anyway. Still in
+      Airplane Mode or not, You → Erase your data on this phone → Erase
+      everything. Pass: the alert reads "Nothing here has another copy unless
+      an account backed it up. 1 change an account made on this phone never
+      reached our server and will be lost. This can't be undone." (1 if that
+      deletion was the only unsent change; "N changes…" otherwise.) Cancel, tap
+      Erase everything again: the same count (it is counted at each tap). If
+      you go on, the deleted prediction comes back at that account's next
+      sign-in, since its deletion was never sent. Send a screenshot of the
+      alert.
+- [ ] **The Erase alert's three messages (round two):** the alert's middle
+      sentence has three forms. (1) Nothing unsent, the usual case: none, just
+      "Nothing here has another copy unless an account backed it up. This
+      can't be undone." (2) A count, the check above. (3) The count couldn't
+      be read, or took more than 3 seconds: "Nothing here has another copy
+      unless an account backed it up. Changes an account made on this phone
+      may not have reached our server; if so, they will be lost. This can't be
+      undone." Form 3 can't be made to happen by hand; report it if you ever
+      see it, with what the phone was doing. In every case: while the count is
+      read the **Erase everything** button is greyed out (usually too briefly
+      to see) and keeps its label, and the alert comes within about 3 seconds
+      of the tap. If Erase ever ends with "Couldn't finish erasing your data.
+      Try again.", tap it again and report it.
+- [ ] **A guest can buy and restore on a fresh install (round two):** on a
+      fresh install (or after Erase), not signed in, answer Apple's age sheet
+      with a range of 13 or over (or decline), then You → Fairly Sure Plus:
+      the plans load, a sandbox purchase goes through, and Restore purchases
+      answers (restored, or nothing to restore) rather than "unavailable".
+      Since round two the app holds purchases and restore when RevenueCat
+      can't say whether its user is anonymous, so this checks a normal phone
+      isn't caught by that. Then the case the change is for: sign in with an
+      account that has Plus, set the sandbox Age Assurance to "Under 13" and
+      relaunch (the account is frozen), sign out, set Age Assurance back,
+      Erase, relaunch and share an adult range, staying signed out. Pass: You
+      doesn't show Plus (the earlier account's Plus doesn't appear on the
+      guest), and the plans load.
 - [ ] **The sign-in screen's switch (D71 (d)):** You → Sign in: the line about
-      what goes up with the account has a switch beside it, on. Turn it off: the
+      what goes up with the account has a switch beside it, on. It reads "Once
+      you’re signed in, a record of which features you use, including what’s
+      already on this phone, is sent with your account, to see how the app is
+      used: numbers, yes/no values and fixed labels such as which screen, never
+      the words of your predictions or notes. You can turn this off here or in
+      You, under Usage stats." Turn it off: the
       line reads "Usage stats are off, so no record of which features you use is
       sent. You can turn them on here or in You, under Usage stats." and nothing
       under it moves. Back in You, Usage stats is off too. Turn it back on.
       VoiceOver hears one element, "Usage stats, switch".
+- [ ] **The sign-in usage line, narrow and large (review):** the line is longer
+      than it was. Open You → Sign in with iPhone Settings → Display &
+      Brightness → Display Zoom → Larger Text (the narrowest layout this iPhone
+      has, about 320 pt wide), then again with Settings → Accessibility →
+      Display & Text Size → Larger Text at its largest. Pass both times: the
+      whole line shows with nothing cut off or overlapping the switch, the
+      switch stays reachable, and the sign-in buttons are still reachable by
+      scrolling. Send a screenshot of each.
 - [ ] **A US-territory phone gets 988 (D71 (c)):** iPhone Settings → General →
       Language & Region → Region → Puerto Rico. Add a note "The old printer is
       breaking down." to an answered prediction (new words, so nothing set aside

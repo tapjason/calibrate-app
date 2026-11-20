@@ -46,9 +46,21 @@ describe('scoringCopy (roadmap step 29)', () => {
   it('says which deletions Insights counts, by the round 7 rule', () => {
     const text = allText();
     expect(text).toContain(
-      "If it had a scored answer, or was still open and either logged before the day it was deleted or already due, Insights says how many were, so a miss can't disappear without a trace.",
+      'If it had a scored answer, or was still open and either logged before the day it was deleted or already due, Insights says how many were, so a deleted miss is still counted.',
     );
     expect(text).not.toContain('was due that day or the next');
+  });
+
+  // Review 2026-11-19 (D71 (a)): Erase clears the integrity counts now, so
+  // the page no longer claims a miss can never disappear, and says what
+  // clears them. Account deletion clears them too (re-review 2026-11-19).
+  it('says what clears the counts, and claims no more than it keeps', () => {
+    const text = allText();
+    expect(text).not.toContain("can't disappear without a trace");
+    expect(text).toContain(
+      'Only this phone keeps these counts; erasing your data here, deleting your account or deleting the app clears them.',
+    );
+    expect(text).not.toContain('or deleting the app, clears them');
   });
 
   // Step 184 (D65), widened in review rounds 6 and 7: the store's rule, in
@@ -64,7 +76,7 @@ describe('scoringCopy (roadmap step 29)', () => {
       ?.paragraphs.find((p) => p.includes(sentence));
     expect(counted).toBeDefined();
     expect(counted).toContain(
-      `from the day before the due day. ${sentence} ${slip} Only this phone keeps these counts.`,
+      `from the day before the due day. ${sentence} ${slip} Only this phone keeps these counts; erasing your data here, deleting your account or deleting the app clears them.`,
     );
     expect(allText()).not.toMatch(/day a prediction was made/);
   });

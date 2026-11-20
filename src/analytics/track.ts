@@ -31,7 +31,12 @@ import { sanitizeProps, type EventName, type EventProps } from './events';
  */
 export async function track(name: EventName, props?: EventProps): Promise<void> {
   try {
-    // The under-13 rule (D70): nothing is queued.
+    // The under-13 rule (D70): nothing is queued. `isLocalOnly`, not
+    // `uploadsMayStart` (review round 2, item 4): queueing sends nothing, so
+    // an event recorded while Apple's answer is pending (the Warm-up's first
+    // screen is up then) stays on the phone; the flush sends only once
+    // uploads may start (flush.ts), and an under-13 answer clears the queue
+    // (src/age/localOnly.ts, `enter`), so none of it ever goes up.
     if (isLocalOnly()) return;
     if (!useSettingsStore.getState().analyticsEnabled) return;
 

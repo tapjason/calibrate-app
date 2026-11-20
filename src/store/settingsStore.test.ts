@@ -1280,6 +1280,83 @@ describe('settingsStore: what is stored while the record cannot be read', () => 
     // An empty list is left out of the record: absent reads as none.
     expect(rec.saved[rec.saved.length - 1]).not.toHaveProperty('supportAsideKeys');
   });
+
+  // 2026-11-19: a key goes with its words, the record's own keys too.
+  it('a retain held while the record cannot be read filters the record’s keys once it reads', async () => {
+    const kept = supportAsideKey({ id: 'kept', title: 'a', reflection: null });
+    const stale = supportAsideKey({ id: 'stale', title: 'b', reflection: 'removed note' });
+    const rec = flakyRecord({ notificationsEnabled: false, supportAsideKeys: [kept, stale] });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().retainSupportAsideKeys((k) => k !== stale);
+    expect(rec.saved).toHaveLength(0);
+
+    rec.heal();
+    await app.foreground();
+    expect(store()).toMatchObject({ supportAsideKeys: [kept], notificationsEnabled: false, loadFailed: false });
+    expect(rec.saved[rec.saved.length - 1]?.supportAsideKeys).toEqual([kept]);
+  });
+
+  // The launch order (D71 (a) review): a wipe retried before the settings are
+  // read, then a read that fails. The clear waits for the record either way.
+  it('a clear asked for before the first read is held over a read that fails, and applied once it reads', async () => {
+    const older = supportAsideKey({ id: 'old', title: 'a', reflection: null });
+    const rec = flakyRecord({ notificationsEnabled: false, supportAsideKeys: [older] });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+
+    await store().clearSupportAside();
+    await store().hydrate();
+    expect(store().loadFailed).toBe(true);
+    expect(rec.saved).toHaveLength(0);
+
+    rec.heal();
+    await app.foreground();
+    expect(store()).toMatchObject({ supportAsideKeys: [], notificationsEnabled: false, loadFailed: false });
+    expect(rec.saved[rec.saved.length - 1]).not.toHaveProperty('supportAsideKeys');
+  });
+
+  // Guest Erase (D71 (a)): the record can't be used and may hold keys.
+  it('Erase’s clear, on a record that reads at the second try: its settings kept, no key', async () => {
+    const older = supportAsideKey({ id: 'old', title: 'a', reflection: null });
+    const rec = flakyRecord({ notificationsEnabled: false, digestEnabled: false, supportAsideKeys: [older] });
+    watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+    expect(store().loadFailed).toBe(true);
+
+    rec.heal();
+    await store().eraseSupportAside();
+
+    expect(store()).toMatchObject({
+      loadFailed: false,
+      notificationsEnabled: false,
+      digestEnabled: false,
+      supportAsideKeys: [],
+    });
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0]).toMatchObject({ notificationsEnabled: false, digestEnabled: false });
+    expect(rec.saved[0]).not.toHaveProperty('supportAsideKeys');
+  });
+
+  it('Erase’s clear, on a record that still cannot be read: replaced, private sides on, no key', async () => {
+    const older = supportAsideKey({ id: 'old', title: 'a', reflection: null });
+    const rec = flakyRecord({ notificationsEnabled: false, supportAsideKeys: [older] });
+    const app = watchAppState();
+    __setPersistenceForTests(rec.persistence);
+    await store().hydrate();
+
+    await store().eraseSupportAside();
+
+    expect(store()).toMatchObject({ loadFailed: false, supportAsideKeys: [] });
+    expect(rec.saved).toHaveLength(1);
+    expect(rec.saved[0]).toMatchObject(PRIVATE);
+    expect(rec.stored()).not.toHaveProperty('supportAsideKeys');
+    // Nothing unreadable is left to protect, so nothing is retried.
+    expect(app.remove).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('settingsStore: the support card set aside', () => {
@@ -1310,16 +1387,19 @@ describe('settingsStore: the support card set aside', () => {
     expect(saved[saved.length - 1]?.supportAsideKeys).toEqual([key(2), key(1), key(3)]);
   });
 
-  it('keeps at most 200, dropping the oldest', async () => {
+  it(`keeps at most ${SUPPORT_ASIDE_MAX_KEYS}, dropping the oldest`, async () => {
+    expect(SUPPORT_ASIDE_MAX_KEYS).toBe(2000);
     __setPersistenceForTests(makeFakePersistence().persistence);
     await useSettingsStore.getState().hydrate();
-    await useSettingsStore.getState().addSupportAsideKeys(Array.from({ length: 199 }, (_, i) => key(i)));
-    await useSettingsStore.getState().addSupportAsideKeys([key(500), key(501), key(502)]);
+    await useSettingsStore
+      .getState()
+      .addSupportAsideKeys(Array.from({ length: SUPPORT_ASIDE_MAX_KEYS - 1 }, (_, i) => key(i)));
+    await useSettingsStore.getState().addSupportAsideKeys([key(5000), key(5001), key(5002)]);
 
     const keys = useSettingsStore.getState().supportAsideKeys;
     expect(keys).toHaveLength(SUPPORT_ASIDE_MAX_KEYS);
     expect(keys[0]).toBe(key(2));
-    expect(keys.slice(-3)).toEqual([key(500), key(501), key(502)]);
+    expect(keys.slice(-3)).toEqual([key(5000), key(5001), key(5002)]);
   });
 
   it('ignores anything that is not a key, and writes nothing for none', async () => {
@@ -1357,11 +1437,18 @@ describe('settingsStore: the support card set aside', () => {
     expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
   });
 
-  it('reads at most the newest 200 of a longer stored list', async () => {
-    const stored = Array.from({ length: 250 }, (_, i) => key(i));
+  it(`reads at most the newest ${SUPPORT_ASIDE_MAX_KEYS} of a longer stored list`, async () => {
+    const stored = Array.from({ length: SUPPORT_ASIDE_MAX_KEYS + 50 }, (_, i) => key(i));
     __setPersistenceForTests(makeFakePersistence({ supportAsideKeys: stored }).persistence);
     await useSettingsStore.getState().hydrate();
     expect(useSettingsStore.getState().supportAsideKeys).toEqual(stored.slice(50));
+  });
+
+  it('reads a stored list of 201 whole: 200 was the cap until 2026-11-19', async () => {
+    const stored = Array.from({ length: 201 }, (_, i) => key(i));
+    __setPersistenceForTests(makeFakePersistence({ supportAsideKeys: stored }).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual(stored);
   });
 
   it('holds none when the record cannot be read', async () => {
@@ -1371,6 +1458,189 @@ describe('settingsStore: the support card set aside', () => {
     );
     await useSettingsStore.getState().hydrate();
     expect(useSettingsStore.getState()).toMatchObject({ loadFailed: true, supportAsideKeys: [] });
+    jest.restoreAllMocks();
+  });
+
+  // 2026-11-19: a key goes when its words change or go.
+  it('retain drops the keys it rejects, in one write, and writes nothing when it drops none', async () => {
+    const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1), key(2), key(3)] });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+
+    await useSettingsStore.getState().retainSupportAsideKeys((k) => k !== key(2));
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([key(1), key(3)]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.supportAsideKeys).toEqual([key(1), key(3)]);
+
+    await useSettingsStore.getState().retainSupportAsideKeys(() => true);
+    expect(saved).toHaveLength(1);
+  });
+
+  it('retain drops a key its check throws on: the card comes back, the safe way', async () => {
+    const { persistence } = makeFakePersistence({ supportAsideKeys: [key(1), key(2)] });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+
+    await useSettingsStore.getState().retainSupportAsideKeys((k) => {
+      if (k === key(1)) throw new Error('cannot tell');
+      return true;
+    });
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([key(2)]);
+  });
+
+  it('retain before the record has been read touches memory only', async () => {
+    const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1)] });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().addSupportAsideKeys([key(2)]);
+    saved.length = 0;
+
+    await useSettingsStore.getState().retainSupportAsideKeys(() => false);
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(saved).toHaveLength(0);
+  });
+
+  // The auth store starts before the settings are read, and retries an owed
+  // wipe then (review, 2026-11-19): the clear waits for the record.
+  it('a clear asked for before the read writes nothing, then empties the record as soon as it is read', async () => {
+    const { persistence, saved } = makeFakePersistence({ notificationsEnabled: false, supportAsideKeys: [key(1)] });
+    __setPersistenceForTests(persistence);
+
+    await useSettingsStore.getState().clearSupportAside();
+    expect(saved).toHaveLength(0);
+
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState()).toMatchObject({ supportAsideKeys: [], notificationsEnabled: false });
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toMatchObject({ notificationsEnabled: false });
+    expect(saved[0]).not.toHaveProperty('supportAsideKeys');
+  });
+
+  it('a clear asked for before the read writes nothing at all when there is no record', async () => {
+    const { persistence, saved } = makeFakePersistence(null);
+    __setPersistenceForTests(persistence);
+
+    await useSettingsStore.getState().clearSupportAside();
+    await useSettingsStore.getState().hydrate();
+    expect(saved).toHaveLength(0);
+  });
+
+  it('a clear asked for before the read is applied once, not at every later read', async () => {
+    const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1)] });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().clearSupportAside();
+    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().addSupportAsideKeys([key(2)]);
+
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([key(2)]);
+    expect(saved[saved.length - 1]?.supportAsideKeys).toEqual([key(2)]);
+  });
+
+  it('Erase’s clear with the record read: as a clear', async () => {
+    const { persistence, saved } = makeFakePersistence({ notificationsEnabled: false, supportAsideKeys: [key(1)] });
+    __setPersistenceForTests(persistence);
+    await useSettingsStore.getState().hydrate();
+
+    await useSettingsStore.getState().eraseSupportAside();
+
+    expect(useSettingsStore.getState()).toMatchObject({ supportAsideKeys: [], notificationsEnabled: false });
+    expect(saved[saved.length - 1]).toMatchObject({ notificationsEnabled: false });
+    expect(saved[saved.length - 1]).not.toHaveProperty('supportAsideKeys');
+  });
+
+  it('Erase’s clear before the read: held, like a clear', async () => {
+    const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1)] });
+    __setPersistenceForTests(persistence);
+
+    await useSettingsStore.getState().eraseSupportAside();
+    expect(saved).toHaveLength(0);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(saved[saved.length - 1]).not.toHaveProperty('supportAsideKeys');
+  });
+
+  // Re-review round two, 2026-11-19: Erase, sign-out and account deletion
+  // read whether the record on disk lost its keys.
+  describe('eraseSupportAside says whether the record on disk holds no key', () => {
+    beforeEach(() => {
+      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it('true once written', async () => {
+      const { persistence } = makeFakePersistence({ supportAsideKeys: [key(1)] });
+      __setPersistenceForTests(persistence);
+      await useSettingsStore.getState().hydrate();
+      await expect(useSettingsStore.getState().eraseSupportAside()).resolves.toBe(true);
+    });
+
+    it('false when the write fails, the keys gone from memory all the same', async () => {
+      const { persistence } = makeFakePersistence({ supportAsideKeys: [key(1)] }, { saveThrows: true });
+      __setPersistenceForTests(persistence);
+      await useSettingsStore.getState().hydrate();
+      await expect(useSettingsStore.getState().eraseSupportAside()).resolves.toBe(false);
+      expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    });
+
+    it('false when a record that cannot be read could not be replaced either, and it stays unreadable', async () => {
+      const { persistence } = makeFakePersistence(
+        { supportAsideKeys: [key(1)] },
+        { loadThrows: true, saveThrows: true },
+      );
+      __setPersistenceForTests(persistence);
+      await useSettingsStore.getState().hydrate();
+      await expect(useSettingsStore.getState().eraseSupportAside()).resolves.toBe(false);
+      expect(useSettingsStore.getState().loadFailed).toBe(true);
+    });
+
+    it('true when a record that cannot be read was replaced', async () => {
+      const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1)] }, { loadThrows: true });
+      __setPersistenceForTests(persistence);
+      await useSettingsStore.getState().hydrate();
+      await expect(useSettingsStore.getState().eraseSupportAside()).resolves.toBe(true);
+      expect(saved[saved.length - 1]).not.toHaveProperty('supportAsideKeys');
+      expect(useSettingsStore.getState().loadFailed).toBe(false);
+    });
+
+    it('false before the record has been read: held, nothing on disk yet', async () => {
+      const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1)] });
+      __setPersistenceForTests(persistence);
+      await expect(useSettingsStore.getState().eraseSupportAside()).resolves.toBe(false);
+      expect(saved).toHaveLength(0);
+    });
+  });
+
+  // Re-review round two, 2026-11-19, item 4: a sign-out's or deletion's wipe
+  // retried at launch erases the keys as it would with the record read.
+  it('an erase held for the read replaces a record that then cannot be read', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { persistence, saved } = makeFakePersistence(
+      { notificationsEnabled: false, supportAsideKeys: [key(1)] },
+      { loadThrows: true },
+    );
+    __setPersistenceForTests(persistence);
+
+    await useSettingsStore.getState().eraseSupportAside();
+    await useSettingsStore.getState().hydrate();
+
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).not.toHaveProperty('supportAsideKeys');
+    expect(saved[0]).toMatchObject({ appLock: true, hideTitles: true, reminderWords: false, analyticsEnabled: false });
+    expect(useSettingsStore.getState().loadFailed).toBe(false);
+    jest.restoreAllMocks();
+  });
+
+  it('a clear and an erase both held for the read: the erase is what applies', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { persistence, saved } = makeFakePersistence({ supportAsideKeys: [key(1)] }, { loadThrows: true });
+    __setPersistenceForTests(persistence);
+
+    await useSettingsStore.getState().eraseSupportAside();
+    await useSettingsStore.getState().clearSupportAside();
+    await useSettingsStore.getState().hydrate();
+
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).not.toHaveProperty('supportAsideKeys');
     jest.restoreAllMocks();
   });
 });

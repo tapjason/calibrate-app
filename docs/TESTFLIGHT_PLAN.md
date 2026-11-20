@@ -97,11 +97,14 @@ Start from a fresh install.
 - The core list (`HUMAN_VERIFICATION.md` Batch C, about 30 minutes): the Warm-up to its
   result and card, a first prediction in under 15 seconds, an answer, Insights, History,
   the share sheet with a real export, You's defaults, Erase.
-- Sign in with Apple and with email; Apple's age-range sheet may appear once (after you
-  share a range of 13 or over the app doesn't ask again, and after a decline it carries
-  on); delete a throwaway account. On a build that carries D70, a band under 13 keeps
-  everything on the phone instead (no sign-in, backup, usage counts, Coach or Plus): the
-  sandbox "Under 13" check in `HUMAN_VERIFICATION.md` D4.
+- Sign in with Apple and with email; Apple's age-range sheet may appear (on a build that
+  carries the D70/D71 review the app asks Apple at every launch, so after you share a
+  range of 13 or over the sheet shouldn't show again, which D4 checks, and after a decline
+  the app carries on); delete a throwaway account. On a build that carries D70, a band
+  that includes ages under 13 keeps everything on the phone instead (no sign-in, backup,
+  usage counts, Coach or Plus), and until Apple has answered on a first launch, sign-in
+  says "Sign-in isn't ready yet. Try again in a moment." and the Plus plans don't load:
+  the sandbox "Under 13" check and the "(review)" checks in `HUMAN_VERIFICATION.md` D4.
 - Log one prediction due tomorrow so a real reminder arrives.
 
 **Day 2, about an hour:**
@@ -253,7 +256,7 @@ and another week.
 - **Done before the first build:** a "Help and support" link and the app's version in You,
   so a bug report can say which version; step 182, the hardening pass (BUILT_LOG row 182);
   step 180, the app lock; step 186, guest counts on; step 187, the launch page.
-- **On your word:** the under-13 local-only rule if you adopt it; the password reset once the
+- **On your word:** the password reset once the
   custom mail sender works.
 - **After each stage:** your device results, TestFlight feedback and survey answers turned
   into a ranked fix list (`/device-check`, then a step per batch), each with its reviews.

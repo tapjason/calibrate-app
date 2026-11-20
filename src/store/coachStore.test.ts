@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { track } from '@/analytics/track';
-import type { Category, Prediction, UserStat } from '@/types';
+import { supportAsideKey } from '@/engine/supportAside';
+import { SUPPORT_ASIDE_MAX_KEYS, type Category, type Prediction, type UserStat } from '@/types';
 
 import { useCoachStore, type CoachRequest } from './coachStore';
 import { __setPersistenceForTests, useSettingsStore } from './settingsStore';
@@ -41,6 +42,17 @@ function prediction(over: Partial<Prediction> = {}): Prediction {
 
 /** 20 finance resolutions — past MIN_N_CATEGORY, so verdicts are admissible. */
 const RESOLVED = Array.from({ length: 20 }, () => prediction());
+
+/** The store's first idle state: the panel shows its ask button. */
+const IDLE = {
+  insights: [],
+  crisisTopic: null,
+  loading: false,
+  lastAnsweredAt: null,
+  lastRequestFailed: false,
+  lastFailure: null,
+  lastDroppedAll: false,
+};
 
 const INSIGHT = {
   type: 'overconfidence',
@@ -741,9 +753,11 @@ describe('coachStore — the support card set aside', () => {
     return coach.calls;
   };
 
+  const tap = (resolved: readonly Prediction[]) => useCoachStore.getState().backToCoach(resolved);
+
   const asideKeys = () => useSettingsStore.getState().supportAsideKeys;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     saved = [];
     __setPersistenceForTests({
       load: async () => null,
@@ -751,6 +765,7 @@ describe('coachStore — the support card set aside', () => {
         saved.push({ supportAsideKeys: [...(s.supportAsideKeys ?? [])] });
       },
     });
+    await useSettingsStore.getState().hydrate();
   });
 
   afterEach(() => {
@@ -767,17 +782,9 @@ describe('coachStore — the support card set aside', () => {
     const record = [...RESOLVED, tripping('t1')];
     await ask(record);
 
-    await expect(useCoachStore.getState().setSupportAside(record)).resolves.toBe(true);
+    await expect(tap(record)).resolves.toBe('aside');
     // The first idle state: the panel shows its ask button again.
-    expect(useCoachStore.getState()).toMatchObject({
-      insights: [],
-      crisisTopic: null,
-      loading: false,
-      lastAnsweredAt: null,
-      lastRequestFailed: false,
-      lastFailure: null,
-      lastDroppedAll: false,
-    });
+    expect(useCoachStore.getState()).toMatchObject(IDLE);
     // Kept on the phone: one key, no words.
     expect(asideKeys()).toHaveLength(1);
     expect(saved[saved.length - 1]?.supportAsideKeys).toHaveLength(1);
@@ -791,62 +798,118 @@ describe('coachStore — the support card set aside', () => {
 
   it('keeps only the predictions that tripped, each on its own', async () => {
     const record = [...RESOLVED, tripping('t1'), prediction({ id: 'calm', reflection: 'Shipped it early' })];
-    await useCoachStore.getState().setSupportAside(record);
+    await ask(record);
+    await expect(tap(record)).resolves.toBe('aside');
     expect(asideKeys()).toEqual([expect.stringMatching(/^t1#[0-9a-f]{16}$/)]);
   });
 
   it('brings the card back for a second, different tripping prediction', async () => {
     const first = tripping('t1');
-    await useCoachStore.getState().setSupportAside([...RESOLVED, first]);
+    await ask([...RESOLVED, first]);
+    await expect(tap([...RESOLVED, first])).resolves.toBe('aside');
 
     const calls = await ask([...RESOLVED, first, tripping('t2', { title: 'Better off dead than late' })]);
     expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
     expect(calls).toHaveLength(0);
+    // The first is still set aside: the card is for the second.
+    expect(asideKeys()).toEqual([expect.stringMatching(/^t1#/)]);
   });
 
-  it("brings it back when the first one's note changes", async () => {
+  it("brings it back when the first one's note changes, and its old key goes", async () => {
     const first = tripping('t1');
-    await useCoachStore.getState().setSupportAside([...RESOLVED, first]);
+    await ask([...RESOLVED, first]);
+    await tap([...RESOLVED, first]);
     expect(await ask([...RESOLVED, first])).toHaveLength(1);
 
     await ask([...RESOLVED, { ...first, reflection: 'Took the weekend off' }]);
     expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(asideKeys()).toEqual([]);
   });
 
-  it("brings it back when the first one's title changes", async () => {
+  it("brings it back when the first one's title changes, and its old key goes", async () => {
     const first = tripping('t1');
-    await useCoachStore.getState().setSupportAside([...RESOLVED, first]);
+    await ask([...RESOLVED, first]);
+    await tap([...RESOLVED, first]);
 
     await ask([...RESOLVED, { ...first, title: 'I want to die before the launch' }]);
     expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(asideKeys()).toEqual([]);
   });
 
-  it('keeps at most 200 set-asides: the oldest one past the cap shows the card again', async () => {
-    const many = Array.from({ length: 201 }, (_, i) => tripping(`t${i}`));
-    await useCoachStore.getState().setSupportAside(many);
-    expect(asideKeys()).toHaveLength(200);
+  /**
+   * `n` answered predictions that trip the filter, in the order the panel
+   * holds them: newest answer first, as listResolvedPredictions sorts
+   * (`ORDER BY resolved_at DESC`). t0 is the newest.
+   */
+  const newestFirst = (n: number) => {
+    const latest = Date.parse('2026-11-18T20:00:00.000Z');
+    return Array.from({ length: n }, (_, i) =>
+      tripping(`t${i}`, { resolved_at: new Date(latest - i * 60_000).toISOString() }),
+    );
+  };
+
+  // Re-review round two, 2026-11-19 (the main session's call): the cap is
+  // 2,000, and only guards against a damaged record; each key goes once its
+  // words leave the loaded list.
+  it(`past the cap of ${SUPPORT_ASIDE_MAX_KEYS}, the newest matching prediction is the one left out, and its card alone comes back`, async () => {
+    expect(SUPPORT_ASIDE_MAX_KEYS).toBe(2000);
+    const many = newestFirst(SUPPORT_ASIDE_MAX_KEYS + 1);
+    await ask(many);
+    await expect(tap(many)).resolves.toBe('aside');
+
+    // Added in the list's order, newest first, and the cap keeps the last
+    // ones added: every one but the newest.
+    expect(asideKeys()).toHaveLength(SUPPORT_ASIDE_MAX_KEYS);
     expect(asideKeys().some((k) => k.startsWith('t0#'))).toBe(false);
+    expect(asideKeys()).toContain(supportAsideKey(many[1]!));
+    expect(asideKeys()).toContain(supportAsideKey(many[SUPPORT_ASIDE_MAX_KEYS]!));
 
-    // The newest 200 are left out of the scan; the dropped one trips again.
-    expect(await ask([...RESOLVED, ...many.slice(1)])).toHaveLength(1);
-    await ask([...RESOLVED, many[0]!]);
+    // The next request shows the card again, for the newest alone: without
+    // it, nothing in the list trips.
+    expect(await ask([...RESOLVED, ...many])).toHaveLength(0);
     expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(await ask([...RESOLVED, ...many.slice(1)])).toHaveLength(1);
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
   });
 
-  it('changes nothing when nothing in the record trips (the card came from words passed in)', async () => {
+  // Until 2026-11-19 the cap was 200: with 201 matching predictions one was
+  // always left out, and the card came back at every request.
+  it('201 matching predictions are all set aside, and the card stays away on the next request', async () => {
+    const many = newestFirst(201);
+    const record = [...RESOLVED, ...many];
+    await ask(record);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+
+    await expect(tap(record)).resolves.toBe('aside');
+    expect(asideKeys()).toHaveLength(201);
+    expect(new Set(asideKeys())).toEqual(new Set(many.map((p) => supportAsideKey(p))));
+
+    const calls = await ask(record);
+    expect(calls).toHaveLength(1);
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
+    expect(useCoachStore.getState().insights).toHaveLength(1);
+    // And again: nothing was dropped on the way.
+    expect(await ask(record)).toHaveLength(1);
+    expect(asideKeys()).toHaveLength(201);
+  });
+
+  // Review 2026-11-19: a card no word in the list trips any more (here it
+  // came from words passed in) used to stay up with no way back.
+  it('clears a card no word in the list trips any more, and sets nothing aside', async () => {
     const { client } = responds({ insights: [INSIGHT], safe: true });
     await useCoachStore.getState().requestInsights(request(), { client, freetext: ['I want to die'] });
     expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
 
-    await expect(useCoachStore.getState().setSupportAside(RESOLVED)).resolves.toBe(false);
-    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    await expect(tap(RESOLVED)).resolves.toBe('cleared');
+    expect(useCoachStore.getState()).toMatchObject(IDLE);
     expect(asideKeys()).toEqual([]);
     expect(saved).toHaveLength(0);
   });
 
   it('still screens words passed in whole, set aside or not', async () => {
     const first = tripping('t1');
-    await useCoachStore.getState().setSupportAside([first]);
+    await ask([first]);
+    await expect(tap([first])).resolves.toBe('aside');
     const { client, calls } = responds({ insights: [INSIGHT], safe: true });
     await useCoachStore.getState().requestInsights(request({ resolved: [...RESOLVED, first] }), {
       client,
@@ -858,9 +921,10 @@ describe('coachStore — the support card set aside', () => {
 
   it('lets no request still running write the card back', async () => {
     const record = [...RESOLVED, tripping('t1')];
+    await ask(record);
     const { client } = responds({ insights: [INSIGHT], safe: true });
     const running = useCoachStore.getState().requestInsights(request({ resolved: record }), { client });
-    await useCoachStore.getState().setSupportAside(record);
+    await expect(tap(record)).resolves.toBe('aside');
     await running;
 
     expect(useCoachStore.getState().crisisTopic).toBeNull();
@@ -873,7 +937,7 @@ describe('coachStore — the support card set aside', () => {
     mockTrack.mockClear();
     warnSpy.mockClear();
 
-    await useCoachStore.getState().setSupportAside(record);
+    await tap(record);
 
     expect(mockTrack).not.toHaveBeenCalled();
     expect(JSON.stringify(warnSpy.mock.calls)).not.toMatch(/die|ships|private note/);
@@ -907,8 +971,363 @@ describe('coachStore — the support card set aside', () => {
     });
     await useSettingsStore.getState().hydrate();
     const record = [...RESOLVED, tripping('t1')];
-    await useCoachStore.getState().setSupportAside(record);
+    await ask(record);
+    await expect(tap(record)).resolves.toBe('aside');
     expect(await ask(record)).toHaveLength(1);
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+// Review 2026-11-19 (HIGH): "Back to Coach" must never set aside words whose
+// card the person hasn't been shown. The card stays in memory while words
+// come and go under it, so the tap scans the list again first.
+describe('coachStore — Back to Coach with words that changed under the card', () => {
+  /** distress, the lowest-ranked topic. */
+  const distressed = (id: string, over: Partial<Prediction> = {}) =>
+    prediction({ id, title: 'Finish the tax return', reflection: 'I cannot go on like this', ...over });
+  /** abuse, ranked above distress and below self_harm. */
+  const abused = (id: string) => prediction({ id, title: 'Quiet weekend', reflection: 'he hits me when he drinks' });
+  /** self_harm, the highest-ranked topic. */
+  const selfHarm = (id: string) => prediction({ id, title: 'I want to die before this ships' });
+
+  const ask = async (resolved: readonly Prediction[]) => {
+    const coach = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request({ resolved }), { client: coach.client });
+    return coach.calls;
+  };
+  const tap = (resolved: readonly Prediction[]) => useCoachStore.getState().backToCoach(resolved);
+  const asideKeys = () => useSettingsStore.getState().supportAsideKeys;
+  const asideIds = () => asideKeys().map((k) => k.slice(0, k.indexOf('#'))).sort();
+
+  let saved: number;
+
+  beforeEach(async () => {
+    saved = 0;
+    __setPersistenceForTests({
+      load: async () => null,
+      save: async () => {
+        saved += 1;
+      },
+    });
+    await useSettingsStore.getState().hydrate();
+  });
+
+  afterEach(() => {
+    __setPersistenceForTests(null);
+  });
+
+  it('a higher-ranked topic added under the card: its card first, nothing set aside; the next tap sets both aside', async () => {
+    const a = distressed('a');
+    await ask([...RESOLVED, a]);
+    expect(useCoachStore.getState().crisisTopic).toBe('distress');
+
+    // A note like "he hits me when he drinks" is saved or pulled meanwhile.
+    const b = abused('b');
+    await expect(tap([...RESOLVED, a, b])).resolves.toBe('updated');
+    expect(useCoachStore.getState()).toMatchObject({ crisisTopic: 'abuse', insights: [], loading: false });
+    expect(asideKeys()).toEqual([]);
+    expect(saved).toBe(0);
+
+    await expect(tap([...RESOLVED, a, b])).resolves.toBe('aside');
+    expect(asideIds()).toEqual(['a', 'b']);
+    expect(useCoachStore.getState()).toMatchObject(IDLE);
+  });
+
+  it('the note that put the card up removed: the card goes, nothing stored', async () => {
+    const a = distressed('a');
+    await ask([...RESOLVED, a]);
+    expect(useCoachStore.getState().crisisTopic).toBe('distress');
+
+    await expect(tap([...RESOLVED, { ...a, reflection: null }])).resolves.toBe('cleared');
+    expect(useCoachStore.getState()).toMatchObject(IDLE);
+    expect(asideKeys()).toEqual([]);
+    expect(saved).toBe(0);
+  });
+
+  it('the prediction that put the card up deleted: the card goes, nothing stored', async () => {
+    const a = distressed('a');
+    await ask([...RESOLVED, a]);
+
+    await expect(tap(RESOLVED)).resolves.toBe('cleared');
+    expect(useCoachStore.getState().crisisTopic).toBeNull();
+    expect(asideKeys()).toEqual([]);
+  });
+
+  it('a lower-ranked topic added under the card: its card too, before anything is set aside', async () => {
+    const a = selfHarm('a');
+    await ask([...RESOLVED, a]);
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+
+    const c = abused('c');
+    await expect(tap([...RESOLVED, a, c])).resolves.toBe('updated');
+    expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+    expect(asideKeys()).toEqual([]);
+
+    // Both topics have been on screen now.
+    await expect(tap([...RESOLVED, a, c])).resolves.toBe('aside');
+    expect(asideIds()).toEqual(['a', 'c']);
+  });
+
+  it('more words of the topic on screen: set aside with the rest at once', async () => {
+    const a = selfHarm('a');
+    await ask([...RESOLVED, a]);
+
+    const a2 = prediction({ id: 'a2', title: 'Better off dead than late' });
+    await expect(tap([...RESOLVED, a, a2])).resolves.toBe('aside');
+    expect(asideIds()).toEqual(['a', 'a2']);
+  });
+
+  it('a topic already shown under this card counts as shown, whichever card is up now', async () => {
+    const a = distressed('a');
+    await ask([...RESOLVED, a]);
+    const b = abused('b');
+    await expect(tap([...RESOLVED, a, b])).resolves.toBe('updated');
+
+    // B's words go before the next tap: A's distress card was shown first.
+    await expect(tap([...RESOLVED, a])).resolves.toBe('aside');
+    expect(asideIds()).toEqual(['a']);
+  });
+
+  it('a card a request puts up starts afresh: topics shown under an earlier card count for nothing', async () => {
+    const a = distressed('a');
+    const b = abused('b');
+    await ask([...RESOLVED, a]);
+    await tap([...RESOLVED, a, b]);
+    await tap([...RESOLVED, a, b]);
+    expect(asideIds()).toEqual(['a', 'b']);
+
+    // New words: a distress card, then abuse words added under it.
+    const c = distressed('c', { title: 'Run the half marathon' });
+    await ask([...RESOLVED, a, b, c]);
+    expect(useCoachStore.getState().crisisTopic).toBe('distress');
+    const d = abused('d');
+    await expect(tap([...RESOLVED, a, b, c, d])).resolves.toBe('updated');
+    expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+    expect(asideIds()).toEqual(['a', 'b']);
+  });
+
+  it('a request still running writes nothing over the card a tap put up', async () => {
+    const a = distressed('a');
+    await ask([...RESOLVED, a]);
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    const running = useCoachStore.getState().requestInsights(request({ resolved: [...RESOLVED, a] }), { client });
+
+    await expect(tap([...RESOLVED, a, abused('b')])).resolves.toBe('updated');
+    await running;
+
+    expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+  });
+
+  it("a set-aside that can't be made: 'failed', the card stays, nothing stored", async () => {
+    const a = distressed('a');
+    await ask([...RESOLVED, a]);
+    const real = useSettingsStore.getState().addSupportAsideKeys;
+    useSettingsStore.setState({
+      addSupportAsideKeys: () => {
+        throw new Error('storage gone');
+      },
+    });
+    try {
+      await expect(tap([...RESOLVED, a])).resolves.toBe('failed');
+    } finally {
+      useSettingsStore.setState({ addSupportAsideKeys: real });
+    }
+    expect(useCoachStore.getState().crisisTopic).toBe('distress');
+    expect(asideKeys()).toEqual([]);
+  });
+
+  it('a tap with no card up shows the card first, never setting aside unseen words', async () => {
+    const a = selfHarm('a');
+    await expect(tap([...RESOLVED, a])).resolves.toBe('updated');
+    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+    expect(asideKeys()).toEqual([]);
+  });
+
+  // Re-review round two, 2026-11-19 (HIGH): one note that matches two topics
+  // was judged by its top topic alone, so the tap set it aside after the
+  // abuse card and the distress card (988) was never shown.
+  describe('one note that matches more than one topic', () => {
+    const note = (id: string, reflection: string) => prediction({ id, title: 'Quiet weekend', reflection });
+
+    it('abuse and distress: the abuse card, then the distress card, and only then set aside', async () => {
+      const both = note('both', "he hits me when he drinks and I can't go on");
+      await ask([...RESOLVED, both]);
+      expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+
+      await expect(tap([...RESOLVED, both])).resolves.toBe('updated');
+      expect(useCoachStore.getState()).toMatchObject({ crisisTopic: 'distress', insights: [], loading: false });
+      expect(asideKeys()).toEqual([]);
+      expect(saved).toBe(0);
+
+      await expect(tap([...RESOLVED, both])).resolves.toBe('aside');
+      expect(asideIds()).toEqual(['both']);
+      expect(useCoachStore.getState()).toMatchObject(IDLE);
+    });
+
+    it('typed with the iPhone’s apostrophe, the same', async () => {
+      const both = note('both', 'he hits me when he drinks and I can’t go on');
+      await ask([...RESOLVED, both]);
+      await expect(tap([...RESOLVED, both])).resolves.toBe('updated');
+      expect(useCoachStore.getState().crisisTopic).toBe('distress');
+      await expect(tap([...RESOLVED, both])).resolves.toBe('aside');
+    });
+
+    it('self-harm and abuse: the self-harm card, then the abuse card, and only then set aside', async () => {
+      const both = note('both', 'he hits me and I want to die');
+      await ask([...RESOLVED, both]);
+      expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+
+      await expect(tap([...RESOLVED, both])).resolves.toBe('updated');
+      expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+      expect(asideKeys()).toEqual([]);
+
+      await expect(tap([...RESOLVED, both])).resolves.toBe('aside');
+      expect(asideIds()).toEqual(['both']);
+    });
+
+    it('three topics: each card in rank order, one per tap, before anything is set aside', async () => {
+      const all = note('all', "I want to die, he hits me, and I can't go on");
+      await ask([...RESOLVED, all]);
+      expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
+
+      await expect(tap([...RESOLVED, all])).resolves.toBe('updated');
+      expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+      await expect(tap([...RESOLVED, all])).resolves.toBe('updated');
+      expect(useCoachStore.getState().crisisTopic).toBe('distress');
+      expect(asideKeys()).toEqual([]);
+      expect(saved).toBe(0);
+
+      await expect(tap([...RESOLVED, all])).resolves.toBe('aside');
+      expect(asideIds()).toEqual(['all']);
+    });
+
+    it('a second topic written into the note under the card holds the set-aside back too', async () => {
+      const before = note('n', 'he hits me when he drinks');
+      await ask([...RESOLVED, before]);
+      expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+
+      const after = { ...before, reflection: "he hits me when he drinks and I can't go on" };
+      await expect(tap([...RESOLVED, after])).resolves.toBe('updated');
+      expect(useCoachStore.getState().crisisTopic).toBe('distress');
+      await expect(tap([...RESOLVED, after])).resolves.toBe('aside');
+      expect(asideKeys()).toEqual([supportAsideKey(after)]);
+    });
+
+    it('the topic on screen counts as shown per topic: a note of it and another topic shown earlier needs no third card', async () => {
+      const a = distressed('a');
+      const b = abused('b');
+      await ask([...RESOLVED, a]);
+      await expect(tap([...RESOLVED, a, b])).resolves.toBe('updated');
+      expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+
+      // Both topics have been shown: a new note with both is set aside with the rest.
+      const c = note('c', "he hits me and I can't go on");
+      await expect(tap([...RESOLVED, a, b, c])).resolves.toBe('aside');
+      expect(asideIds()).toEqual(['a', 'b', 'c']);
+    });
+
+    it('the same words split across two predictions: both cards, as before', async () => {
+      const a = abused('a');
+      const b = distressed('b');
+      await ask([...RESOLVED, a, b]);
+      expect(useCoachStore.getState().crisisTopic).toBe('abuse');
+      await expect(tap([...RESOLVED, a, b])).resolves.toBe('updated');
+      expect(useCoachStore.getState().crisisTopic).toBe('distress');
+      await expect(tap([...RESOLVED, a, b])).resolves.toBe('aside');
+      expect(asideIds()).toEqual(['a', 'b']);
+    });
+  });
+});
+
+// Review 2026-11-19 (privacy): a key holds a hash of the words and says the
+// filter matched them, so none outlives the words in the loaded list.
+describe('coachStore — set-asides that no longer match the list', () => {
+  let saved: StoredKeys[];
+  type StoredKeys = string[] | undefined;
+
+  const words = (id: string, title: string, reflection: string | null = null) =>
+    prediction({ id, title, reflection });
+
+  beforeEach(async () => {
+    saved = [];
+    __setPersistenceForTests({
+      load: async () => null,
+      save: async (s) => {
+        saved.push(s.supportAsideKeys);
+      },
+    });
+    await useSettingsStore.getState().hydrate();
+  });
+
+  afterEach(() => {
+    __setPersistenceForTests(null);
+  });
+
+  const keyOf = (p: Prediction) => supportAsideKey(p);
+
+  it('a request drops a key whose prediction is gone or whose words changed, in one write', async () => {
+    const same = words('same', 'Same words', 'a note');
+    const changed = words('changed', 'Title', 'old note');
+    const goneOne = words('gone', 'Deleted since');
+    await useSettingsStore.getState().addSupportAsideKeys([keyOf(same), keyOf(changed), keyOf(goneOne)]);
+    saved = [];
+
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore
+      .getState()
+      .requestInsights(request({ resolved: [same, { ...changed, reflection: null }] }), { client });
+
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([keyOf(same)]);
+    expect(saved).toEqual([[keyOf(same)]]);
+  });
+
+  it('a request with nothing to drop writes nothing', async () => {
+    const same = words('same', 'Same words');
+    await useSettingsStore.getState().addSupportAsideKeys([keyOf(same)]);
+    saved = [];
+
+    const { client } = responds({ insights: [INSIGHT], safe: true });
+    await useCoachStore.getState().requestInsights(request({ resolved: [...RESOLVED, same] }), { client });
+
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([keyOf(same)]);
+    expect(saved).toEqual([]);
+  });
+
+  // An empty list can't be told from one not loaded yet: the keys stay (the
+  // safe direction is the card coming back, and an empty list silences nothing).
+  it('an empty list leaves the keys as they are', async () => {
+    const same = words('same', 'Same words');
+    await useSettingsStore.getState().addSupportAsideKeys([keyOf(same)]);
+    saved = [];
+
+    await useCoachStore.getState().requestInsights(request({ resolved: [] }), {
+      client: responds({ insights: [], safe: true }).client,
+    });
+    await useCoachStore.getState().backToCoach([]);
+
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([keyOf(same)]);
+    expect(saved).toEqual([]);
+  });
+
+  it('a request with the Coach off still drops keys whose words are gone', async () => {
+    const goneOne = words('gone', 'Deleted since');
+    await useSettingsStore.getState().addSupportAsideKeys([keyOf(goneOne)]);
+
+    await useCoachStore.getState().requestInsights(request({ enabled: false }), {
+      client: responds({ insights: [], safe: true }).client,
+    });
+
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+  });
+
+  it('the tap drops them too, before it scans', async () => {
+    const changed = words('changed', 'I want to die before this ships', 'old note');
+    await useSettingsStore.getState().addSupportAsideKeys([keyOf(changed)]);
+    useCoachStore.setState({ crisisTopic: 'self_harm' });
+
+    // Its note went: its key is stale, so it trips again and is set aside anew.
+    const now = { ...changed, reflection: null };
+    await expect(useCoachStore.getState().backToCoach([...RESOLVED, now])).resolves.toBe('aside');
+    expect(useSettingsStore.getState().supportAsideKeys).toEqual([keyOf(now)]);
   });
 });

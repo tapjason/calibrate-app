@@ -176,36 +176,55 @@ describe('leaving the rule', () => {
     expect(flush).toHaveBeenCalledWith(LOCAL_GUEST_USER_ID);
   });
 
-  it('a lift before Apple settles starts uploads only once it does', async () => {
+  // The session refresh too (review 2026-11-19, item 3): it starts only
+  // once uploads may start, never while the answer is pending.
+  it('a lift before Apple settles starts uploads, the session refresh included, only once it does', async () => {
     useAgeStore.getState().load(UNDER_13, { willAsk: true });
     initLocalOnly();
 
     await useAgeStore.getState().accept(TEEN);
     await settle();
-    expect(resume).toHaveBeenCalledTimes(1);
+    expect(resume).not.toHaveBeenCalled();
     expect(flush).not.toHaveBeenCalled();
 
     useAgeStore.getState().markSettled();
     await settle();
+    expect(resume).toHaveBeenCalledTimes(1);
     expect(flush).toHaveBeenCalledTimes(1);
     expect(billing).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('Apple answering on a launch that asks, with no rule', () => {
-  it('starts the deferred uploads, and nothing else', async () => {
+  // The client was made at launch with the refresh off, since the answer was
+  // pending (src/supabase/client.ts): it starts here.
+  it('starts the deferred uploads and the session refresh, and nothing else', async () => {
     useAgeStore.getState().load(null, { willAsk: true });
     initLocalOnly();
+    await settle();
+    expect(resume).not.toHaveBeenCalled();
 
     await useAgeStore.getState().accept({ lowerBound: 18, upperBound: null });
     useAgeStore.getState().markSettled();
     await settle();
 
+    expect(resume).toHaveBeenCalledTimes(1);
     expect(flush).toHaveBeenCalledTimes(1);
     expect(billing).toHaveBeenCalledTimes(1);
     expect(clear).not.toHaveBeenCalled();
     expect(pause).not.toHaveBeenCalled();
-    expect(resume).not.toHaveBeenCalled();
+  });
+
+  it('a decline starts them the same way', async () => {
+    useAgeStore.getState().load(null, { willAsk: true });
+    initLocalOnly();
+
+    useAgeStore.getState().markSettled();
+    await settle();
+
+    expect(resume).toHaveBeenCalledTimes(1);
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect(billing).toHaveBeenCalledTimes(1);
   });
 
   it('where nothing is asked, does nothing at all', async () => {
@@ -213,6 +232,32 @@ describe('Apple answering on a launch that asks, with no rule', () => {
     await settle();
 
     expect(clear).not.toHaveBeenCalled();
+    expect(resume).not.toHaveBeenCalled();
+    expect(flush).not.toHaveBeenCalled();
+    expect(billing).not.toHaveBeenCalled();
+  });
+});
+
+// Review 2026-11-19, item 1: a stored band of 13 or over is asked about in
+// the background with the store settled, so uploads already started; an
+// under-13 answer then enters the rule mid-run.
+describe('an under-13 answer to the background ask about a stored band of 13 or over', () => {
+  it('enters the rule: the queue cleared, the refresh stopped, the Coach reset; uploads never restart', async () => {
+    useAgeStore.getState().load({ lowerBound: 18, upperBound: null }, { willAsk: false });
+    await hydrateSettings();
+    initLocalOnly();
+    await settle();
+    expect(clear).not.toHaveBeenCalled();
+
+    await useAgeStore.getState().accept(UNDER_13);
+    useAgeStore.getState().markSettled();
+    await settle();
+
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(pause).toHaveBeenCalledTimes(1);
+    expect(coachReset).toHaveBeenCalledTimes(1);
+    expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
+    expect(resume).not.toHaveBeenCalled();
     expect(flush).not.toHaveBeenCalled();
     expect(billing).not.toHaveBeenCalled();
   });

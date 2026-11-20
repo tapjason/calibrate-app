@@ -60,9 +60,52 @@ export function isSupportAsideKey(value: unknown): value is string {
   return typeof value === 'string' && KEY_SHAPE.test(value);
 }
 
+/** `#` and the 16 hex digits after the id. */
+const HASH_PART_LENGTH = 17;
+
+/**
+ * The id a key was made for: everything before its `#` and 16 hex digits (an
+ * id may hold a `#` of its own). Null for anything that isn't a key.
+ */
+export function supportAsideKeyId(key: unknown): string | null {
+  if (!isSupportAsideKey(key)) return null;
+  return key.slice(0, key.length - HASH_PART_LENGTH);
+}
+
+/**
+ * Which stored keys still stand beside `predictions`, the list as loaded
+ * (2026-11-19): a key stands when it is the key of one of them, title and
+ * note as they are now. One whose prediction is gone, or whose words have
+ * changed since, doesn't: that it exists says the crisis filter matched words
+ * that are no longer there, and its hash could be searched for a short note.
+ * Dropping a key can only bring the card back, never keep a match quiet.
+ */
+export function supportAsideKeysStandingWith(
+  predictions: readonly SupportAsideSource[],
+): (key: string) => boolean {
+  const current = new Set(predictions.map((p) => supportAsideKey(p)));
+  return (key) => current.has(key);
+}
+
+/**
+ * Which stored keys still stand once the prediction `id` has changed its
+ * title or note, or been deleted (2026-11-19): a key for another prediction
+ * stands; a key for this one only when it is the key of its words now
+ * (`current`), and none when it is gone (null) or couldn't be read (pass
+ * null: the card comes back if its words still match, the safe way to be
+ * wrong).
+ */
+export function supportAsideKeysStandingAfter(
+  id: string,
+  current: Pick<SupportAsideSource, 'title' | 'reflection'> | null,
+): (key: string) => boolean {
+  const now = current ? supportAsideKey({ id, title: current.title, reflection: current.reflection }) : null;
+  return (key) => supportAsideKeyId(key) !== id || key === now;
+}
+
 /**
  * `existing` with `added` after it, each key once, oldest first; at most
- * `max` (SUPPORT_ASIDE_MAX_KEYS, 200), the oldest dropped first. A key added
+ * `max` (SUPPORT_ASIDE_MAX_KEYS, 2,000), the oldest dropped first. A key added
  * again moves to the newest end. Anything that isn't a key is left out.
  */
 export function withSupportAsideKeys(

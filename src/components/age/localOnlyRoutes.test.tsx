@@ -8,12 +8,15 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { track } from '@/analytics/track';
 import { ensureBillingStarted } from '@/billing/init';
 import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
+import { useAuthStore } from '@/store/authStore';
 
 import AccountScreen from '../../../app/account/index';
 import PaywallScreen from '../../../app/paywall';
 import {
   LOCAL_ONLY_ACCOUNT_BODY,
   LOCAL_ONLY_ACCOUNT_TITLE,
+  LOCAL_ONLY_FROZEN_ACCOUNT_TITLE,
+  LOCAL_ONLY_FROZEN_FOOTER,
   LOCAL_ONLY_PAYWALL_BODY,
   LOCAL_ONLY_PAYWALL_TITLE,
 } from './localOnlyCopy';
@@ -144,18 +147,64 @@ describe('the paywall route', () => {
 });
 
 describe('the account route', () => {
+  // A guest unless a test signs in.
+  beforeEach(() => useAuthStore.setState({ status: 'guest', userId: 'local-user-v1', email: null }));
+  afterEach(() => act(() => useAuthStore.setState({ status: 'loading', userId: null, email: null })));
+
   it('draws the local-only page under the rule and never mounts the sign-in view', () => {
     useAgeStore.setState({ localOnly: true });
     render(<AccountScreen />);
 
     expect(screen.getByTestId('account-local-only')).toBeTruthy();
     expect(screen.getByText(LOCAL_ONLY_ACCOUNT_TITLE)).toBeTruthy();
+    expect(screen.getByText(LOCAL_ONLY_ACCOUNT_TITLE).props.accessibilityRole).toBe('header');
     expect(screen.getByText(LOCAL_ONLY_ACCOUNT_BODY)).toBeTruthy();
+    expect(screen.queryByText(LOCAL_ONLY_FROZEN_ACCOUNT_TITLE)).toBeNull();
+    expect(screen.queryByText(LOCAL_ONLY_FROZEN_FOOTER)).toBeNull();
     expect(screen.queryByTestId('sign-in-view')).toBeNull();
     expect(mockSignInMounts).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId('account-local-only-close'));
     expect(mockRouter.back).toHaveBeenCalledTimes(1);
+  });
+
+  // Review 2026-11-19: an account signed in before the rule came on is
+  // frozen, not gone, so "No account on this phone" would be untrue. Only a
+  // deep link reaches this route then (You shows Sign out, not Sign in).
+  it('tells a frozen account that backup is off, in You’s words, and never mounts the sign-in view', () => {
+    useAuthStore.setState({ status: 'authenticated', userId: 'user-1', email: 'a@b.co' });
+    useAgeStore.setState({ localOnly: true });
+    render(<AccountScreen />);
+
+    expect(screen.getByTestId('account-local-only')).toBeTruthy();
+    expect(screen.getByText('Backup is off on this phone')).toBeTruthy();
+    expect(screen.getByText(LOCAL_ONLY_FROZEN_ACCOUNT_TITLE).props.accessibilityRole).toBe('header');
+    expect(screen.getByText(LOCAL_ONLY_FROZEN_FOOTER)).toBeTruthy();
+    expect(screen.queryByText(LOCAL_ONLY_ACCOUNT_TITLE)).toBeNull();
+    expect(screen.queryByText(LOCAL_ONLY_ACCOUNT_BODY)).toBeNull();
+    expect(screen.queryByTestId('sign-in-view')).toBeNull();
+    expect(mockSignInMounts).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('account-local-only-close'));
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+  });
+
+  it('follows the account: signed out while open, the guest page', () => {
+    useAuthStore.setState({ status: 'authenticated', userId: 'user-1', email: 'a@b.co' });
+    useAgeStore.setState({ localOnly: true });
+    render(<AccountScreen />);
+    expect(screen.getByText(LOCAL_ONLY_FROZEN_ACCOUNT_TITLE)).toBeTruthy();
+
+    act(() => useAuthStore.setState({ status: 'guest', userId: 'local-user-v1', email: null }));
+    expect(screen.getByText(LOCAL_ONLY_ACCOUNT_TITLE)).toBeTruthy();
+    expect(screen.queryByText(LOCAL_ONLY_FROZEN_ACCOUNT_TITLE)).toBeNull();
+  });
+
+  it('is the sign-in screen for a signed-in account without the rule', () => {
+    useAuthStore.setState({ status: 'authenticated', userId: 'user-1', email: 'a@b.co' });
+    render(<AccountScreen />);
+    expect(screen.getByTestId('sign-in-view')).toBeTruthy();
+    expect(screen.queryByTestId('account-local-only')).toBeNull();
   });
 
   it('closes to You from a cold deep link under the rule', () => {

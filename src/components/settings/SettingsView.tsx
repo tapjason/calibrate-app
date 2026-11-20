@@ -478,9 +478,10 @@ function Group({
   return (
     <View style={styles.group}>
       <View style={styles.card}>{children}</View>
-      {lines.map((line) =>
+      {/* Keyed by place: two equal lines would share a key by text. */}
+      {lines.map((line, i) =>
         line ? (
-          <Text key={line} style={styles.footer}>
+          <Text key={i} style={styles.footer}>
             {line}
           </Text>
         ) : null,

@@ -15,12 +15,14 @@
 // rest of what a guest records waits on the device: on sign-in,
 // migrateGuestDataToUser hands it to the new account with the predictions.
 //
-// When anything may go up, checked here for every caller:
+// When anything may go up, checked here for every caller, and all of it again
+// before each request (`maySend`), so a flush under way stops when any of it
+// changes:
 //   - Only while `uploadsMayStart()` (src/store/ageStore.ts; roadmap D70):
 //     Apple has answered on a launch that asks, and the phone isn't
-//     local-only under the under-13 rule. Checked again before each request,
-//     so a flush under way stops when the rule comes on.
-//   - With Usage stats on (`analyticsEnabled`).
+//     local-only under the under-13 rule.
+//   - With Usage stats on (`analyticsEnabled`): the switch can be turned off
+//     on the sign-in screen while a flush is reading its queue.
 //   - A guest's, only once the line about usage counts has been shown on this
 //     phone (`usageNoticeShownAt`, D69 (b)). The root layout checked it
 //     before each flush (`usageCountsMayGoUp`); here it holds for any caller,
@@ -84,6 +86,19 @@ const toGuestWire = (e: QueuedEvent): GuestWireRow => ({
 let inflight: Promise<number> | null = null;
 
 /**
+ * Whether this sweep may send now: uploads may start (the under-13 rule,
+ * D70), Usage stats is on, and for a guest the line about usage counts has
+ * been shown (D69 (b)). Read fresh each time: checked before the queue is
+ * read and again before every request.
+ */
+function maySend(guest: boolean): boolean {
+  if (!uploadsMayStart()) return false;
+  const { analyticsEnabled, usageNoticeShownAt } = useSettingsStore.getState();
+  if (!analyticsEnabled) return false;
+  return !(guest && usageNoticeShownAt === null);
+}
+
+/**
  * Push queued events. Returns how many were accepted by the server.
  *
  * Never throws. Returns 0 for no user, an opted-out user, an unconfigured
@@ -103,12 +118,10 @@ export function flushEvents(userId: string | null, deps?: FlushDeps): Promise<nu
 async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
   try {
     if (!userId) return 0;
-    if (!uploadsMayStart()) return 0;
     const guest = userId === LOCAL_GUEST_USER_ID;
-    if (!useSettingsStore.getState().analyticsEnabled) return 0;
     // A guest's counts go up only once the line about them has been shown on
     // this phone (D69 (b)); an account's sign-in screen says what goes up.
-    if (guest && useSettingsStore.getState().usageNoticeShownAt === null) return 0;
+    if (!maySend(guest)) return 0;
 
     const client =
       deps?.client !== undefined
@@ -143,8 +156,9 @@ async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
       }
     };
 
-    // The rule may have come on while the queue was read (D70).
-    if (!uploadsMayStart()) return 0;
+    // The rule may have come on, or Usage stats gone off, while the queue was
+    // read (D70).
+    if (!maySend(guest)) return 0;
     const batchRefusal = await insert(rows);
     if (!batchRefusal) {
       await deleteEvents(rows.map((r) => r.id));
@@ -164,9 +178,9 @@ async function run(userId: string | null, deps?: FlushDeps): Promise<number> {
     let pushed = 0;
     const done: string[] = [];
     for (const row of rows) {
-      // Stops before the next request once the rule applies (D70); what
-      // landed is cleared below, the rest stays queued.
-      if (!uploadsMayStart()) break;
+      // Stops before the next request once the rule applies (D70) or Usage
+      // stats goes off; what landed is cleared below, the rest stays queued.
+      if (!maySend(guest)) break;
       const refusal = await insert([row]);
       if (!refusal) {
         done.push(row.id);

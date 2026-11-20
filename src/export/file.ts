@@ -158,34 +158,69 @@ export async function shareTextFile(
 /**
  * Delete every export left in the cache directory: files directly in it named
  * as `EXPORT_FILE_NAME` says, nothing else. For Erase, account deletion and
- * launch. Never throws.
+ * launch. Never throws. True only when none is left (none there to begin with
+ * counts); false when the cache can't be listed, a delete fails, or one is
+ * still there afterwards. Erase awaits it and reports a false (round two,
+ * 2026-11-19); launch, sign-out and account deletion don't wait on it.
  */
-export async function sweepExportFiles(): Promise<void> {
-  await sweep(getDeps(), () => false);
+export async function sweepExportFiles(): Promise<boolean> {
+  return await sweep(getDeps(), () => false, { confirm: true });
 }
 
-/** Delete the exports in the cache, all but those `keep` names. Never throws. */
-async function sweep(d: FileExportDeps, keep: (name: string) => boolean): Promise<void> {
-  let names: string[];
+/**
+ * Delete the exports in the cache, all but those `keep` names. Never throws.
+ * True when the cache was listed and every delete went; with `confirm`, only
+ * if a second listing then finds none of them either (so a delete that did
+ * nothing isn't taken for one that worked). Without it (before a new export,
+ * whose result nobody reads) it lists once, as it always did.
+ */
+async function sweep(
+  d: FileExportDeps,
+  keep: (name: string) => boolean,
+  { confirm }: { confirm: boolean } = { confirm: false },
+): Promise<boolean> {
+  const doomed = (names: readonly string[]) => names.filter((name) => EXPORT_FILE_NAME.test(name) && !keep(name));
+  const before = await listQuietly(d);
+  if (before === null) return false;
+  const targets = doomed(before);
+  if (targets.length === 0) return true;
+  let deleted = true;
+  for (const name of targets) {
+    if (!(await discard(d, name))) deleted = false;
+  }
+  if (!deleted || !confirm) return deleted;
+  const after = await listQuietly(d);
+  return after !== null && doomed(after).length === 0;
+}
+
+/**
+ * The names in the cache directory, or null when it can't be listed. A seam
+ * with no list (an older test fake) has nothing to sweep.
+ */
+async function listQuietly(d: FileExportDeps): Promise<string[] | null> {
   try {
-    names = (await d.listCacheFiles?.()) ?? [];
+    return (await d.listCacheFiles?.()) ?? [];
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[export] could not list the cache:', messageOf(e));
-    return;
-  }
-  for (const name of names) {
-    if (EXPORT_FILE_NAME.test(name) && !keep(name)) await discard(d, name);
+    return null;
   }
 }
 
-/** Delete one export file. Never throws: one that won't go doesn't stop the rest. */
-async function discard(d: FileExportDeps, name: string): Promise<void> {
+/**
+ * Delete one export file. Never throws: one that won't go doesn't stop the
+ * rest. True when the delete went; false when it threw, or the seam can't
+ * delete.
+ */
+async function discard(d: FileExportDeps, name: string): Promise<boolean> {
+  if (!d.deleteCacheFile) return false;
   try {
-    await d.deleteCacheFile?.(name);
+    await d.deleteCacheFile(name);
+    return true;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[export] could not delete an export file:', messageOf(e));
+    return false;
   }
 }
 

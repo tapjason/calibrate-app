@@ -196,7 +196,7 @@ beforeEach(() => {
     loadResolved: jest.fn(async () => {}),
   });
   useStatsStore.setState({ loadForUser: jest.fn(async () => {}), recomputeForUser: jest.fn(async () => {}) });
-  clearDraft = jest.fn(async () => {});
+  clearDraft = jest.fn(async () => true);
   useLogDraftStore.setState({ clear: clearDraft });
   clearRun = jest.fn();
   useResolveRunStore.setState({ clear: clearRun });

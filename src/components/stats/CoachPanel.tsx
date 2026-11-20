@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LOCAL_ONLY_COACH } from '@/components/age/localOnlyCopy';
 import { Button } from '@/components/ui/Button';
 import { colors, FONT_FAMILY, radius, space, tabularNums, type } from '@/constants/theme';
 import { useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
-import { useCoachStore } from '@/store/coachStore';
+import { useCoachStore, type SupportAsideOutcome } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -20,7 +20,16 @@ import {
 } from '@/store/categoryStore';
 
 import { coachReceipt } from './coachReceipt';
-import { SupportSurface } from './SupportSurface';
+import { ANNOUNCE_AFTER_FOCUS_MS, BACK_TO_COACH_SPOKEN, SupportSurface } from './SupportSurface';
+
+/**
+ * When VoiceOver hears "Back to Coach." after the card goes: the focused
+ * button goes with it and focus moves to the heading, and a same-moment
+ * announcement was cut off by a focus move on Resolve (code review
+ * 2026-11-12), so a moment later, and queued behind what is being read. The
+ * same moment the card's own line waits after its focus move.
+ */
+export const BACK_TO_COACH_ANNOUNCE_MS = ANNOUNCE_AFTER_FOCUS_MS;
 
 /**
  * The Coach surface on Stats (COACH_AGENT.md §8, L6).
@@ -61,7 +70,7 @@ export function CoachPanel({
   const failure = useCoachStore((s) => s.lastFailure);
   const lastAnsweredAt = useCoachStore((s) => s.lastAnsweredAt);
   const requestInsights = useCoachStore((s) => s.requestInsights);
-  const setSupportAside = useCoachStore((s) => s.setSupportAside);
+  const backToCoach = useCoachStore((s) => s.backToCoach);
   // Whether the last answer had insights and lost every one to validation
   // (CoachResult.droppedAll, src/ai/coach.ts), as coachStore keeps it in
   // `lastDroppedAll`: false before any answer, after a failure and when the
@@ -73,6 +82,31 @@ export function CoachPanel({
   // whenever a new answer lands so a fresh insight is never pre-hidden.
   const [dismissed, setDismissed] = useState<ReadonlySet<number>>(new Set());
   useEffect(() => setDismissed(new Set()), [lastAnsweredAt]);
+
+  // "Back to Coach" took the support card away ('aside' or 'cleared'): the
+  // focused button went with it, so VoiceOver is moved to the panel's
+  // heading, which stays mounted through the change, and told. Counted, so
+  // each time runs the effect once, after the card's removal has committed.
+  // Only while the panel itself is drawn (the heading is there).
+  const heading = useRef<Text>(null);
+  const [wentBack, setWentBack] = useState(0);
+  useEffect(() => {
+    if (wentBack === 0) return;
+    const node = heading.current;
+    if (!node) return;
+    // Not on web, whose AccessibilityInfo has neither.
+    if (typeof AccessibilityInfo.sendAccessibilityEvent === 'function') {
+      AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
+    }
+    const timer = setTimeout(() => {
+      if (typeof AccessibilityInfo.announceForAccessibilityWithOptions === 'function') {
+        AccessibilityInfo.announceForAccessibilityWithOptions(BACK_TO_COACH_SPOKEN, { queue: true });
+      } else {
+        AccessibilityInfo.announceForAccessibility(BACK_TO_COACH_SPOKEN);
+      }
+    }, BACK_TO_COACH_ANNOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [wentBack]);
 
   if (localOnly) {
     // No upsell and no sign-in here: neither is offered on this phone.
@@ -147,6 +181,15 @@ export function CoachPanel({
   const onAsk = () =>
     void requestInsights({ userStat, resolved, isPlus, enabled: coachEnabled });
 
+  // "Back to Coach", over the same list the request scans (the panel's live
+  // list). The store takes the card away itself ('aside', 'cleared') or puts
+  // another topic's card up ('updated'); the card says what it needs to.
+  const onBackToCoach = async (): Promise<SupportAsideOutcome> => {
+    const outcome = await backToCoach(resolved);
+    if (outcome === 'aside' || outcome === 'cleared') setWentBack((n) => n + 1);
+    return outcome;
+  };
+
   // An answer with nothing to show. Past the overall gate, when the Coach did
   // write insights and none could be backed by the numbers, "keep logging"
   // told someone with 150 answers to do what they had done (Coach re-review,
@@ -159,15 +202,17 @@ export function CoachPanel({
   return (
     <View style={styles.wrap} testID="coach-panel">
       <View style={styles.header}>
-        <Text accessibilityRole="header" style={styles.heading}>Coach</Text>
+        <Text ref={heading} accessibilityRole="header" style={styles.heading}>
+          Coach
+        </Text>
         <Text style={styles.aiLabel}>AI</Text>
       </View>
 
       {crisisTopic ? (
         // "Back to Coach" sets aside the answered predictions whose words put
         // it up, the same list the request scanned; it comes back only for
-        // new matching words (useCoachStore.setSupportAside).
-        <SupportSurface topic={crisisTopic} onSetAside={() => setSupportAside(resolved)} />
+        // new matching words (useCoachStore.backToCoach).
+        <SupportSurface topic={crisisTopic} onSetAside={onBackToCoach} />
       ) : (
         <>
           {insights.map((insight, i) =>

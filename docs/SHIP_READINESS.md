@@ -70,9 +70,13 @@ Each is coded around: the app works either way. **Answered:** 1, 3, 4, 6, 7, 10 
 through them yourself, using best app developer judgement"). **Decided by the agent
 2026-11-19** (owner: "apply your smart recommendations"; each is his to overturn): 2 (built,
 D70; counsel still to be asked), 9 (the switch is on the sign-in screen, D71 (d)) and the
-interim half of 13 (988 on every topic, D71 (c)). **Still open:** 5, 8, 12 (waits on the
-mail sender from 6) and the rest of 13. Everything still his, with a recommendation for
-each, is in "The owner's list" below.
+interim half of 13 (988 on every topic, D71 (c)). **Decided by the owner 2026-11-19**
+("Use all your recommendations for the open decisions"): 2 confirmed, 5 (launch outside
+the EU first; and, as corrected after that day's policy audit, outside the UK, which
+awaits his nod: "The owner's list" item 7), 8 and the rest of 13 (send the messages; the app names nothing until an
+answer comes), 9 (the switch is enough outside the EU) and 12 (after the mail sender).
+**Nothing is left to decide;** what is left to do, and who does it, is in "The owner's
+list" below.
 
 1. **The native batch (step 180).** Answered yes; built 2026-11-15 as step 180 (roadmap D64):
    an optional lock with Face ID and the passcode, and `expo-localization` for units by Region.
@@ -81,11 +85,13 @@ each, is in "The owner's list" below.
    answer. The policy audit's suggestion: when the range is under 13, keep the app
    local-only (no sign-in, no uploads, no Coach). That gives the question a purpose and
    makes "age assurance: yes" true on the rating form. It is a legal call (COPPA, and the
-   Texas, Utah and Louisiana app-store laws in force since mid-2026).
+   state app-store laws: Texas enforceable since 2026-06-04; Alabama and California's AB 1043
+   from 2027-01-01, Utah from 2027-05-06, Louisiana from 2027-07-01; dates from secondary
+   sources read 2026-11-19, `research/under-13-2026-11.md`).
    **Recommendation:** adopt the local-only rule before a US launch; ask counsel about the
    state-law duties. **Built 2026-11-19 as D70** on `builder/owner-decisions`, the agent's
    call on the owner's delegation: `docs/design/research/under-13-2026-11.md` has the rule,
-   what it gates and the seven points for counsel. Left for the owner: the sandbox "Under
+   what it gates and the points for counsel (nine since the review). Left for the owner: the sandbox "Under
    13" check on the iPhone, and counsel.
 3. **Guest usage counts.** Answered yes; built 2026-11-16 as step 186, after the owner applied
    Supabase migrations 007 and 008. A guest's eight funnel events go up with no id, as the
@@ -168,6 +174,19 @@ Added 2026-11-15 (the second review of step 182 and its policy check):
 Written at the owner's request after the security review was merged. In order of when each
 is needed.
 
+**Adopted 2026-11-19.** The owner: "Use all your recommendations for the open decisions,
+and review, push, and merge." Every recommendation below is now the decision, and the
+review in item 3 ran the same day (`HANDOFF.md` has its result). **Two recommendations were
+wrong and are corrected below, so they still need the owner's nod:** 7 (the policy audit
+found the UK needs a UK representative and policy content the draft lacks, so the UK is
+left out with the EU) and 10 (stored IP addresses do get a line on the App Privacy form).
+What remains otherwise is doing, not deciding. Only the owner can do: 1, the domain in 4, the Pro plan in 5 (before the public
+release), the sandbox check and the lawyer in 6, 9, the messages in 12 and 13, 14 and 17.
+The agent does, when its turn comes: the page switch after 1, `eas build` in 2 on the
+owner's confirmed command, the password reset in 4 once mail works, the off-until-chosen
+switch in 8 before any EU launch, the screenshots in 15 once the name is cleared, and the
+three pins in 18 in the first maintenance release (the owner's yes is given).
+
 **Before strangers get a build (external TestFlight)**
 
 1. **The server checklist** in `supabase/README.md` (2026-11-19 section): the audit-log
@@ -196,31 +215,49 @@ is needed.
 
 6. **The under-13 rule (D70), built.** *Recommendation: keep it; run the sandbox "Under 13"
    check on the development build (`research/under-13-2026-11.md`, "What only the iPhone can
-   show"); book an hour with a lawyer who does app privacy on the seven points listed there
+   show"); book an hour with a lawyer who does app privacy on the nine points listed there (the frozen account's server data first)
    before the public US release; answer "age assurance: yes" on the rating form.*
-7. **The EU (decision 5).** *Recommendation: launch without the 27 EU storefronts; keep the
-   US, Canada, the UK, Australia and New Zealand.* The EU needs trader status (an
-   individual's address and phone number published on the listing), opt-in consent for
-   usage counts, and a look at under-16 consent ages. Revisit when the six-week gates are
-   read (GROWTH §7).
-8. **Usage-count consent (decision 9), built as a switch.** *Recommendation: enough for the
-   storefronts in 7. Before any EU launch the agent makes it off until chosen on phones set
-   to an EEA, UK or Swiss region.*
+7. **The EU and the UK (decision 5).** *Recommendation, corrected 2026-11-19 after the
+   policy audit: launch on the US, Canada, Australia and New Zealand storefronts; leave out
+   the 27 EU storefronts and the UK.* The EU needs trader status (an individual's address
+   and phone number published on the listing), opt-in consent for usage counts, and a look
+   at under-16 consent ages. Leaving the EU out does avoid that (Apple: "If you don't
+   distribute apps on the App Store in the EU … you're not acting as a trader"), but a
+   status must still be declared in App Store Connect: choose "not a trader". **The UK,
+   which the first version of this recommendation kept, wrongly:** UK GDPR Art 27 asks a
+   developer outside the UK whose app regularly handles UK residents' data to appoint a UK
+   representative (a paid service; price not checked), and Art 13 asks the policy for the
+   legal basis of each purpose, the legitimate interests behind usage counts, the transfer
+   to the US and the right to complain to the ICO, none of which the draft has. Adding the
+   UK later takes the representative, then the agent writes that section. Revisit both
+   when the six-week gates are read (GROWTH §7).
+8. **Usage-count consent (decision 9), built as a switch.** *Recommendation: enough on the
+   US, Australian and New Zealand storefronts, with the sign-in screen saying what the
+   counts are for (added in the review). Canada: Quebec's privacy act asks that privacy
+   settings start at their most private (s. 9.1; read in secondary sources), so before
+   submission the agent makes Usage stats start off, until chosen, on phones set to Canada,
+   unless counsel says the law doesn't reach this app. The same mechanism covers EEA, UK and
+   Swiss phones before any launch there.*
 9. **OpenAI's Data Processing Addendum.** *Recommendation: execute it from the platform
    account that holds the Coach's key and keep the copy (`docs/OWNER_MESSAGES.md` §5); the
    policy then names OpenAI among the companies that process data on our behalf. Don't wait
    on Zero Data Retention: the policy already states the 30 days.*
 10. **App Privacy answers** (`docs/APP_PRIVACY.md`). *Recommendation: Name: Yes (Google sends
-    it before our trigger strips it). IP address: no data type of its own, since Apple's
-    form has none and it isn't used to locate anyone; the policy discloses where it is
-    stored. The Coach's summary: count it as collected (OpenAI keeps it up to 30 days). It
+    it before our trigger strips it). IP address, corrected 2026-11-19 after the policy
+    audit: declare Diagnostics → Other Diagnostic Data, Collected, Linked, App
+    Functionality. Apple's guidance says a stored IP address is declared by how it is used,
+    and ours is stored with the account's session for security and keeping the service
+    running; the first version of this recommendation said it needed no line, which was
+    wrong. The Coach's summary: count it as collected (OpenAI keeps it up to 30 days). It
     adds no row: Other User Content is already declared, and as linked, which is the
     stricter answer. Location: No, see 11.*
 11. **Time-zone offsets (`UTC_OFFSET_SYNC`).** *Recommendation: leave it off for 1.0.* Each
     phone already judges same-day answers in the zone it logged them in. Sync only closes
     the two-phone version of that hole, and it would put "Coarse Location" on the privacy
     label of an app whose pitch is privacy. Migration 011 is still needed for its other
-    parts.
+    parts. (The 2026-11-19 policy audit reads an offset used only to tell the local day as
+    part of Other User Content, not Coarse Location; the stricter reading in
+    `docs/APP_PRIVACY.md` stays until the owner turns the flag on and picks one.)
 12. **RevenueCat's Sandbox Testing Access.** *Recommendation: leave it as it is through App
     Review; send the question in `docs/OWNER_MESSAGES.md` §4 now, and restrict it only on
     their written yes.*
@@ -242,6 +279,37 @@ is needed.
 18. **`decode-uri-component`, `jose` and `supabase/config.toml`** (the review's low items).
     *Recommendation: the agent pins all three in the first maintenance release, on the
     owner's yes to a dependency change; none is exploitable today.*
+
+**Added by the D70/D71 review (2026-11-19), not yet put to the owner one by one**
+
+19. **Items 7 and 10 as corrected** (no UK at launch; a line for stored IP addresses).
+    *They replace recommendations the owner adopted, so they need his nod.*
+20. **Deleting a "Can't tell" isn't counted** (older than this review; the record
+    re-audit). Tapping "Can't tell" and then deleting leaves no trace on either Insights
+    line, one tap round D69's count. *Recommendation: count it like deleting an open
+    prediction (`deletionCounts` in `src/engine/corrections.ts`, with the delete note and How
+    scoring works saying so), as the next small step, before the release gate.*
+21. **Usage stats on phones set to Canada.** *Recommendation: the agent makes them start
+    off until chosen there before submission (item 8), unless counsel says Quebec's s. 9.1
+    doesn't reach the app.*
+22. **In App Store Connect:** declare trader status as "not a trader" (still required
+    without the EU), and check where App Store server notifications are sent (Apple's
+    notice of revoked parental consent may be going to RevenueCat's address).
+23. **Two referral calls on the support card** (the policy audit): a line "If you're in
+    danger now, call 911." on the abuse topic for US and territory phones, and a permanent
+    "Support resources" entry in You so the helplines can be found again after "Back to
+    Coach". *Recommendation: yes to both, after the wording and 911's coverage of the five
+    territories are checked against primary sources; not built.*
+24. **The frozen account's server data** (counsel's point 2, first on the list): the FTC's
+    COPPA FAQ says to delete or get consent once a user is known to be a child; the app
+    keeps the rows until the person taps Delete account. *Recommendation: ask counsel
+    before the public US release; if deletion is required, the agent builds an offer to
+    delete the backup at the moment an account freezes.*
+25. **Smaller, for a later step:** the paywall doesn't reload on its own when billing
+    starts while it is open (reopening works); `app/paywall.tsx` imports `@/billing/init`
+    directly (a layer nit); a note saved while a sync transaction is open joins it
+    (`setPredictionReflection` writes outside the queue; older than this review); the
+    lock-screen dismissal at Erase is not awaited (the 2026-11-15 review's rule).
 
 ## What stands between here and the store
 
@@ -283,9 +351,9 @@ and the two function deploys); Google sign-in set up and on (step 192, migration
    demo account with Plus, the review notes, and the screenshots. **The screenshots need a plan:** the required set is 6.9-inch (1320 × 2868),
    the owner's iPhone 17 is not that size and there is no simulator; the web build renders
    that size as drafts (`APP_STORE_LISTING.md` §5).
-6. **Decisions due before the public release:** "The owner's list" above, items 6 to 15.
-   Decided and built 2026-11-19 on the owner's delegation: 2 (the under-13 rule, D70), 9
-   (the sign-in switch) and the interim half of 13 (D71).
+6. **Due before the public release:** "The owner's list" above, items 6 to 15, all decided
+   2026-11-19 (7 and 10 as corrected there, awaiting the owner's nod). Built that day: 2
+   (the under-13 rule, D70), 9 (the sign-in switch) and the interim half of 13 (D71).
 7. **Read the exit criteria** (`docs/TESTFLIGHT_PLAN.md`); a row in "stop and fix" gets a fix
    and another week.
 8. **The release gate** (`/release-gate`): the release, policy and record audits over the

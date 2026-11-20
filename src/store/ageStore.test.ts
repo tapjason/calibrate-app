@@ -55,6 +55,19 @@ describe('ageStore.load', () => {
     expect(uploadsMayStart()).toBe(true);
   });
 
+  // A region's own first gate can be above 13 (review call, 2026-11-19).
+  it.each([
+    ['(null, 15)', { lowerBound: null, upperBound: 15 }],
+    ['(null, 17)', { lowerBound: null, upperBound: 17 }],
+    ['(12, 15)', { lowerBound: 12, upperBound: 15 }],
+  ])('turns the rule on for %s, a band that can include someone under 13', async (_name, bucket) => {
+    age().load(bucket, { willAsk: false });
+    expect(isLocalOnly()).toBe(true);
+    __resetAgeStoreForTests();
+    await expect(age().accept(bucket)).resolves.toBe(true);
+    expect(age()).toMatchObject({ bucket, localOnly: true });
+  });
+
   it('leaves the rule off for a band of 13 or over', () => {
     age().load(TEEN, { willAsk: false });
     expect(isLocalOnly()).toBe(false);
@@ -69,6 +82,105 @@ describe('ageStore.load', () => {
     expect(age()).toMatchObject({ bucket: ADULT, localOnly: true });
     age().load(null, { willAsk: false });
     expect(isLocalOnly()).toBe(true);
+  });
+});
+
+// A stored band that couldn't be read (src/age/ageRange.ts,
+// `closeGateForUnknownBand`): the gate closes for the run, in one write.
+describe('ageStore.loadUnknown', () => {
+  it('closes the gate with no band, unsettled on a launch that will ask', () => {
+    age().loadUnknown({ willAsk: true });
+    expect(age()).toMatchObject({ bucket: null, localOnly: true, settled: false });
+    expect(isLocalOnly()).toBe(true);
+    expect(uploadsMayStart()).toBe(false);
+    age().markSettled();
+    // Settled, and still shut: Apple's answer alone lifts it.
+    expect(age()).toMatchObject({ localOnly: true, settled: true });
+    expect(uploadsMayStart()).toBe(false);
+  });
+
+  it('closes the gate, settled, on a launch that will not ask', () => {
+    age().loadUnknown({ willAsk: false });
+    expect(age()).toMatchObject({ bucket: null, localOnly: true, settled: true });
+    expect(uploadsMayStart()).toBe(false);
+  });
+
+  it('drops a band the run knew', () => {
+    age().load(ADULT, { willAsk: false });
+    age().loadUnknown({ willAsk: false });
+    expect(age()).toMatchObject({ bucket: null, localOnly: true });
+  });
+
+  it('is one write: no subscriber sees the gate open and settled on the way', () => {
+    const seen: Array<{ localOnly: boolean; settled: boolean }> = [];
+    const unsubscribe = useAgeStore.subscribe((s) => seen.push({ localOnly: s.localOnly, settled: s.settled }));
+    try {
+      age().loadUnknown({ willAsk: true });
+    } finally {
+      unsubscribe();
+    }
+    expect(seen).toEqual([{ localOnly: true, settled: false }]);
+  });
+
+  it('reading the stored band again lifts nothing', () => {
+    age().loadUnknown({ willAsk: false });
+    age().load(ADULT, { willAsk: false });
+    expect(age()).toMatchObject({ bucket: ADULT, localOnly: true });
+    age().load(null, { willAsk: false });
+    expect(isLocalOnly()).toBe(true);
+  });
+
+  it('a 13+ answer from Apple lifts it, once saved', async () => {
+    age().loadUnknown({ willAsk: true });
+    await expect(age().accept(TEEN)).resolves.toBe(true);
+    expect(age()).toMatchObject({ bucket: TEEN, localOnly: false });
+    expect(await getAgeBucket()).toEqual(TEEN);
+  });
+
+  it('an under-13 answer keeps it shut', async () => {
+    age().loadUnknown({ willAsk: true });
+    await expect(age().accept(UNDER_13)).resolves.toBe(true);
+    expect(age()).toMatchObject({ bucket: UNDER_13, localOnly: true });
+  });
+
+  it('a 13+ answer that cannot be saved lifts nothing', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    age().loadUnknown({ willAsk: true });
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    db.run = async (sql, params) => {
+      if (sql.includes('age_bucket')) throw new Error('disk full');
+      return realRun(sql, params);
+    };
+
+    await expect(age().accept(ADULT)).resolves.toBe(false);
+    db.run = realRun;
+    expect(age()).toMatchObject({ bucket: null, localOnly: true });
+  });
+
+  // It changes the band, so a 13+ save that lands after it lifts nothing.
+  it('a 13+ answer still being saved when the band turns unknown lifts nothing', async () => {
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    let release: () => void = () => {};
+    db.run = async (sql, params) => {
+      if (sql.includes('INSERT INTO age_bucket')) await new Promise<void>((r) => (release = r));
+      return realRun(sql, params);
+    };
+
+    const saving = age().accept(ADULT);
+    await flush();
+    age().loadUnknown({ willAsk: false });
+    release();
+    await expect(saving).resolves.toBe(true);
+    db.run = realRun;
+    expect(isLocalOnly()).toBe(true);
+  });
+
+  it('leaves Erase’s rule as it was: forgetting the band keeps the gate shut', () => {
+    age().loadUnknown({ willAsk: false });
+    age().forgetBand();
+    expect(age()).toMatchObject({ bucket: null, localOnly: true });
   });
 });
 
@@ -197,6 +309,120 @@ describe('ageStore.forgetBand', () => {
     age().load(ADULT, { willAsk: false });
     age().forgetBand();
     expect(age()).toMatchObject({ bucket: null, localOnly: false, settled: true });
+  });
+});
+
+// Re-review round two, 2026-11-19: Erase or account deletion while an ask is
+// in flight could write Apple's answer back after the wipe. Both orders: the
+// band forgotten before the answer arrives, and while its save runs.
+describe('ageStore: an ask in flight when the band is forgotten', () => {
+  /** Hold the band's INSERT until released; everything else runs. */
+  function holdTheSave() {
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    let release: () => void = () => {};
+    db.run = async (sql, params) => {
+      if (sql.includes('INSERT INTO age_bucket')) await new Promise<void>((r) => (release = r));
+      return realRun(sql, params);
+    };
+    return { release: () => release(), restore: () => (db.run = realRun) };
+  }
+
+  describe('forgotten before the answer arrives', () => {
+    it('a 13+ answer saves nothing and lifts nothing', async () => {
+      age().load(UNDER_13, { willAsk: true });
+      await expect(age().forgetBand()).resolves.toBe(true);
+
+      await expect(age().accept(ADULT)).resolves.toBe(false);
+      expect(await getAgeBucket()).toBeNull();
+      expect(age()).toMatchObject({ bucket: null, localOnly: true });
+    });
+
+    it('an under-13 answer closes the gate for the run and saves nothing', async () => {
+      age().load(ADULT, { willAsk: false });
+      age().forgetBand();
+      expect(isLocalOnly()).toBe(false);
+
+      await expect(age().accept(UNDER_13)).resolves.toBe(false);
+      expect(isLocalOnly()).toBe(true);
+      expect(age().bucket).toEqual(UNDER_13);
+      expect(await getAgeBucket()).toBeNull();
+    });
+
+    it('a 13+ answer leaves a phone the rule does not cover as it was', async () => {
+      age().load(ADULT, { willAsk: false });
+      age().forgetBand();
+      await expect(age().accept(TEEN)).resolves.toBe(false);
+      expect(age()).toMatchObject({ bucket: null, localOnly: false });
+      expect(await getAgeBucket()).toBeNull();
+    });
+  });
+
+  describe('forgotten while the save runs', () => {
+    it('a 13+ answer: the band it wrote is cleared again, and nothing lifts', async () => {
+      age().load(UNDER_13, { willAsk: true });
+      const held = holdTheSave();
+      try {
+        const saving = age().accept(ADULT);
+        await flush();
+        const forgetting = age().forgetBand();
+        held.release();
+        await expect(saving).resolves.toBe(false);
+        await expect(forgetting).resolves.toBe(true);
+      } finally {
+        held.restore();
+      }
+      expect(await getAgeBucket()).toBeNull();
+      expect(age()).toMatchObject({ bucket: null, localOnly: true });
+    });
+
+    it('an under-13 answer: the gate stays closed for the run, and the band it wrote is cleared again', async () => {
+      const held = holdTheSave();
+      try {
+        const saving = age().accept(UNDER_13);
+        expect(isLocalOnly()).toBe(true);
+        await flush();
+        age().forgetBand();
+        held.release();
+        await expect(saving).resolves.toBe(false);
+      } finally {
+        held.restore();
+      }
+      expect(isLocalOnly()).toBe(true);
+      expect(await getAgeBucket()).toBeNull();
+    });
+  });
+
+  it('a save that landed before the band was forgotten (after the caller’s wipe) is cleared too', async () => {
+    await expect(age().accept(TEEN)).resolves.toBe(true);
+    expect(await getAgeBucket()).toEqual(TEEN);
+
+    await expect(age().forgetBand()).resolves.toBe(true);
+    expect(await getAgeBucket()).toBeNull();
+    expect(age()).toMatchObject({ bucket: null, localOnly: false });
+  });
+
+  it('with no save in this run, forgetting touches no storage', async () => {
+    setDbForTests(null);
+    await expect(age().forgetBand()).resolves.toBe(true);
+  });
+
+  it('a clear that fails says so, and the gate is as it was', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await age().accept(UNDER_13);
+    const db = getDb();
+    const realRun = db.run.bind(db);
+    db.run = async (sql, params) => {
+      if (sql.includes('DELETE FROM age_bucket')) throw new Error('disk full');
+      return realRun(sql, params);
+    };
+    try {
+      await expect(age().forgetBand()).resolves.toBe(false);
+    } finally {
+      db.run = realRun;
+    }
+    expect(age()).toMatchObject({ bucket: null, localOnly: true });
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/12|upperBound/);
   });
 });
 

@@ -4,10 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SignInView } from '@/components/account/SignInView';
 import { LocalOnlyPage } from '@/components/age/LocalOnlyPage';
-import { LOCAL_ONLY_ACCOUNT_BODY, LOCAL_ONLY_ACCOUNT_TITLE } from '@/components/age/localOnlyCopy';
+import {
+  LOCAL_ONLY_ACCOUNT_BODY,
+  LOCAL_ONLY_ACCOUNT_TITLE,
+  LOCAL_ONLY_FROZEN_ACCOUNT_TITLE,
+  LOCAL_ONLY_FROZEN_FOOTER,
+} from '@/components/age/localOnlyCopy';
 import { CloseButton } from '@/components/ui/CloseButton';
 import { colors, space } from '@/constants/theme';
 import { useAgeStore } from '@/store/ageStore';
+import { useAuthStore } from '@/store/authStore';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -16,6 +22,11 @@ export default function AccountScreen() {
   // link included). Read from the store, so a band that arrives while this is
   // open takes the form away at once. The store's sign-in actions refuse too.
   const localOnly = useAgeStore((s) => s.localOnly);
+  // An account signed in before the rule came on is frozen, not gone: its
+  // page says backup is off, in You's words for it, not "No account". The
+  // same test as You's account group. Routes draw only once auth has
+  // initialised (the root layout's gate), so this is never 'loading' here.
+  const signedIn = useAuthStore((s) => s.status === 'authenticated');
   // Reachable from Settings and the Coach panel, both of which leave a back
   // stack; the fallback covers a cold deep link.
   const close = () =>
@@ -25,8 +36,8 @@ export default function AccountScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <LocalOnlyPage
-          title={LOCAL_ONLY_ACCOUNT_TITLE}
-          body={LOCAL_ONLY_ACCOUNT_BODY}
+          title={signedIn ? LOCAL_ONLY_FROZEN_ACCOUNT_TITLE : LOCAL_ONLY_ACCOUNT_TITLE}
+          body={signedIn ? LOCAL_ONLY_FROZEN_FOOTER : LOCAL_ONLY_ACCOUNT_BODY}
           onClose={close}
           testID="account-local-only"
         />

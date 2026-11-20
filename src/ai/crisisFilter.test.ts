@@ -1,6 +1,7 @@
 import { __setDeviceLocaleForTests } from '@/constants/locale';
 
 import {
+  crisisTopicsIn,
   INTERNATIONAL_CONTACT,
   scanForCrisis,
   supportResource,
@@ -281,6 +282,67 @@ describe('scanForCrisis — without NFKC', () => {
     expect(scanForCrisis(['he beats me at game night'])).toEqual({ safe: false, topic: 'abuse' });
     expect(scanForCrisis(['he beats me at poker night'])).toEqual({ safe: false, topic: 'abuse' });
     expect(scanForCrisis(['Ship the prototype by Friday'])).toEqual({ safe: true, topic: null });
+    expect(crisisTopicsIn(['he hits me and I can’t go on'])).toEqual(['abuse', 'distress']);
+  });
+});
+
+// Re-review round two, 2026-11-19 (HIGH): one note can match two topics, and
+// "Back to Coach" must show the card of each before it sets those words aside.
+describe('crisisTopicsIn', () => {
+  it('is empty for a clean scan, and skips null and empty entries', () => {
+    expect(crisisTopicsIn([])).toEqual([]);
+    expect(crisisTopicsIn([null, undefined, '', 'Ship the prototype by Friday'])).toEqual([]);
+    expect(crisisTopicsIn(['Sam beats me at chess', 'Cut myself some slack this week'])).toEqual([]);
+  });
+
+  it.each([
+    ['I want to die', ['self_harm']],
+    ['I will starve myself until the weigh-in', ['eating_disorder']],
+    ['he hits me when I am late', ['abuse']],
+    ['I cannot go on like this', ['distress']],
+  ])('names the one topic of %p', (text, topics) => {
+    expect(crisisTopicsIn([text])).toEqual(topics);
+  });
+
+  it('names both topics of one note, in rank order', () => {
+    expect(crisisTopicsIn(["he hits me when he drinks and I can't go on"])).toEqual(['abuse', 'distress']);
+    expect(crisisTopicsIn(['I can’t go on, he hits me when he drinks'])).toEqual(['abuse', 'distress']);
+    expect(crisisTopicsIn(['he hits me and I want to die'])).toEqual(['self_harm', 'abuse']);
+  });
+
+  it('names every topic in rank order, wherever each sits in the words', () => {
+    expect(crisisTopicsIn(['I can’t go on, he hits me, I starve myself, I want to die'])).toEqual([
+      'self_harm',
+      'eating_disorder',
+      'abuse',
+      'distress',
+    ]);
+  });
+
+  it('reads across texts, each topic once', () => {
+    expect(crisisTopicsIn(['he hits me', 'I want to die', 'he hits me again', null])).toEqual(['self_harm', 'abuse']);
+  });
+
+  it('keeps the carve-outs: an idiom adds no topic beside a real one', () => {
+    expect(crisisTopicsIn(['Sam beats me at chess and I can’t go on'])).toEqual(['distress']);
+    expect(crisisTopicsIn(['he beats me at poker night and I can’t go on'])).toEqual(['abuse', 'distress']);
+  });
+
+  // The same readings and patterns: its first topic is always the scan's.
+  it.each([
+    [['Ship the prototype']],
+    [['I want to die']],
+    [['he hits me when he drinks and I can’t go on']],
+    [['Not eating for 16 hours today', 'breaking down in tears at work']],
+    [['ｓｕｉｃｉｄｅ', 'he hits me']],
+    [['I can‘t do this any more', 'make myself throw up after dinner']],
+    [['self–harm again']],
+    [[null, 'She always beats me to it', '']],
+  ])('agrees with scanForCrisis on %p', (texts) => {
+    const topics = crisisTopicsIn(texts);
+    const scan = scanForCrisis(texts);
+    expect(topics[0] ?? null).toBe(scan.topic);
+    expect(topics.length === 0).toBe(scan.safe);
   });
 });
 

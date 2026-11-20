@@ -94,6 +94,64 @@ describe('the Coach under the rule (D70)', () => {
   });
 });
 
+// Review round 2, item 4: sign-in, billing, the rating prompt and sync wait
+// for Apple's answer on a launch that asks; the Coach and Refine checked only
+// the rule itself, so one could reach the server before a child's answer
+// arrived. Now they read `uploadsMayStart`: nothing while it is pending.
+describe("the AI clients while Apple's answer is pending", () => {
+  it('the Coach returns the empty result, touching no client, and works once the answer is in', async () => {
+    useAgeStore.getState().load(null, { willAsk: true });
+    const passed = throwingClient();
+    const own = throwingClient();
+    setSupabaseClientForTests(own.client);
+
+    await expect(fetchCoachInsights(CONTEXT, true, { client: passed.client })).resolves.toEqual(EMPTY);
+    await expect(fetchCoachInsights(CONTEXT, true)).resolves.toEqual(EMPTY);
+    expect(passed.touched).toEqual([]);
+    expect(own.touched).toEqual([]);
+
+    useAgeStore.getState().markSettled();
+    await fetchCoachInsights(CONTEXT, true, { client: passed.client });
+    expect(passed.touched).toContain('functions');
+  });
+
+  it('the Coach still shows the support surface for distress words, sending nothing', async () => {
+    useAgeStore.getState().load(null, { willAsk: true });
+    const { client, touched } = throwingClient();
+
+    const out = await fetchCoachInsights(CONTEXT, true, { client, freetext: ['I want to kill myself'] });
+
+    expect(out).toMatchObject({ safe: false, insights: [] });
+    expect(touched).toEqual([]);
+  });
+
+  it('an under-13 answer then keeps the Coach off', async () => {
+    useAgeStore.getState().load(null, { willAsk: true });
+    await useAgeStore.getState().accept(UNDER_13);
+    useAgeStore.getState().markSettled();
+    const { client, touched } = throwingClient();
+
+    await expect(fetchCoachInsights(CONTEXT, true, { client })).resolves.toEqual(EMPTY);
+    expect(touched).toEqual([]);
+  });
+
+  it('Refine returns null, touching no client, and works once the answer is in', async () => {
+    useAgeStore.getState().load(null, { willAsk: true });
+    const passed = throwingClient();
+    const own = throwingClient();
+    setSupabaseClientForTests(own.client);
+
+    await expect(refinePrediction('I will run 5k on Sunday', { client: passed.client })).resolves.toBeNull();
+    await expect(refinePrediction('I will run 5k on Sunday')).resolves.toBeNull();
+    expect(passed.touched).toEqual([]);
+    expect(own.touched).toEqual([]);
+
+    useAgeStore.getState().markSettled();
+    await refinePrediction('I will run 5k on Sunday', { client: passed.client });
+    expect(passed.touched).toContain('functions');
+  });
+});
+
 describe('Refine under the rule (D70)', () => {
   it('returns null, touching no client', async () => {
     useAgeStore.getState().load(UNDER_13, { willAsk: false });

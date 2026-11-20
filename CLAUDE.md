@@ -485,7 +485,9 @@ many answers were "Can't tell", which the rating leaves out, under "More about y
   answer moved back to the category it had at the end of the day it was logged comes off
   the moved-answers line, and an eve change stays on the late-changes line only.
   Edit says so before Save. Sign-out keeps all of these counts (they hold ids and dates,
-  no words); Erase and account deletion clear them.
+  no words); Erase and account deletion clear them, as deleting the app does, and How
+  scoring works says so ("Only this phone keeps these counts; erasing your data here, or
+  deleting the app, clears them.", the D70/D71 review, 2026-11-19).
 - **A "Can't tell" can be answered for a week.** Up to `SKIP_ANSWER_DAYS` (7)
   after its due day, and never less than the correction window after the skip, so
   a mis-tap can still be undone. After that it stays "Can't tell". A Yes or No
@@ -739,18 +741,31 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
 - **Erase means everything** (D71 (a)): guest Erase removes all that Fairly Sure keeps on
   the phone, whoever's account it was under, the counts sign-out keeps included
   (`wipeEverythingOnDevice`); settings, the Plus mirror and the ids of accounts signed out
-  here stay. Account deletion and sign-out stay scoped to their account.
-- **Under 13, the app is local-only** (D70, the main session's call; counsel before the
-  public US release). When Apple's Declared Age Range says under 13 (`isUnder13Band`),
-  there is no sign-in, sync, usage count, Coach or RevenueCat, Plus isn't offered and the
-  rating prompt isn't asked; everything else works. `useAgeStore.localOnly` is the one
-  field every gate reads, and `src/age/egress.test.ts` fails when a new upload path or
-  sign-in route forgets it. On a launch that asks Apple, RevenueCat and the guest flush
-  wait for the answer (a paywall open or sign-in at most 5 s, a sync at most 60 s). An
-  account already signed in is frozen, not signed out or deleted: Sign out and Delete
-  account still work. Asked again each launch while the rule applies. You explains it once,
-  as "the age range this iPhone shares with Fairly Sure", never an age. No band (declined,
-  unavailable, older iOS) means nothing changes. `docs/design/research/under-13-2026-11.md`.
+  here stay. When an account signed in here before left changes that never reached the
+  server, the confirmation says how many will be lost. Account deletion and sign-out stay
+  scoped to their account.
+- **Under 13, the app is local-only** (D70, the main session's call, confirmed by the
+  owner 2026-11-19; counsel before the public US release). When Apple's Declared Age Range
+  can include someone under 13 (`isUnder13Band`: an upper bound, and a lower bound that is
+  absent or below 13, so a region's "under 16" band counts too), there is no sign-in, sync,
+  usage count, Coach or RevenueCat, Plus isn't offered and the rating prompt isn't asked;
+  everything else works. `useAgeStore.localOnly` is the one field every gate reads, and
+  `src/age/egress.test.ts` fails when a new upload path or sign-in route forgets it (it
+  pins each listed file's count of network calls, so a new one needs a look). Apple is
+  asked at every launch where the API runs, whatever band is stored, because the band
+  belongs to the install and a phone can change hands; with a stored 13+ band nothing
+  waits. On a launch with no band, an under-13 band or one that couldn't be read (which
+  keeps the gate shut), nothing is set up or sent until Apple answers: RevenueCat and the
+  guest flush wait, a sign-in waits 5 s and is then refused for now ("Sign-in isn't ready
+  yet. Try again in a moment."), and only a sync goes on after 60 s. The rule is checked
+  again when Apple's or Google's sign-in sheet returns. An account already signed in is
+  frozen, not signed out or deleted: Sign out and Delete account still work, and its
+  sign-in is still renewed when the app starts with it expired (supabase-js does that
+  whatever its settings; disclosed in the policy). You explains the rule once, as "the
+  age range this iPhone shares with Fairly Sure", never an age. No band (declined,
+  unavailable, older iOS) means nothing changes.
+  `docs/design/research/under-13-2026-11.md` has the calls, the residuals and the points
+  for counsel.
 - **Server limits** (migrations 010–012): what the public key can write, per-account write
   limits and a 25 MB text budget, no answer put back to open, and a storage ceiling (400 MB,
   checked every 5 minutes) past which the app's writes that add rows or text wait. The owner applies them
@@ -834,7 +849,10 @@ Hard constraints carried here for visibility:
   (D71 (c)); the domestic-violence and eating-disorder numbers stay off a territory phone
   until those organisations answer the owner. **The card can be set aside** (D71 (b)): it
   says why it came up and offers "Back to Coach", which sets aside the predictions that
-  matched (ids and a hash, on this phone only); new matching words bring it back.
+  matched (ids and a hash, on this phone only); new matching words bring it back. The tap
+  checks again first: a topic whose card hasn't been shown yet gets its card ("Other words
+  matched too, so this message changed.") before anything is set aside, and a key goes
+  when its words change or the prediction is deleted.
 
 ### Backend Proxy Architecture
 API keys never live in the client. All AI calls go through Supabase Edge Functions, and

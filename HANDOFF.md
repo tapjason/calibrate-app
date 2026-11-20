@@ -1,19 +1,107 @@
 # Handoff
 
-**Branch:** `builder/owner-decisions`, on top of `master` (`d1c23cf`). **Not pushed or
-merged, and not reviewed.** It holds the open decisions the owner delegated on 2026-11-19
-("apply your smart recommendations"), each his to overturn:
+**Branch:** `builder/owner-decisions`, on top of `master` (`d1c23cf`). **Not merged.** Two
+commits: `e77431e` (D70 and D71 as first built) and the review commit after it (the
+D70/D71 review's fixes; `git log -2` names it). The owner's words on 2026-11-19: "Use all
+your recommendations for the open decisions, and review, push, and merge." Then, with the
+review two rounds in: "wrap up your current work towards the new session." So the review
+is **not finished**, and the merge waits for it.
 
-- **D70, the under-13 rule:** when Apple's age range says under 13 the app is local-only
-  (no sign-in, sync, usage counts, Coach or RevenueCat; Plus isn't offered).
-  `docs/design/research/under-13-2026-11.md` has the rule, every gate and the seven points
-  for counsel; `src/age/egress.test.ts` fails when a new upload path forgets the gate.
+**What the next session does first, in order**
+
+1. **Round three of the review** (the last allowed), on the round-two fixes, which no
+   reviewer has read: one `code-reviewer` and one `policy-auditor` (Opus, `xhigh`), then
+   fix what they find.
+   - Code to read: `backToCoach` and `topicsOf` in `src/store/coachStore.ts` with
+     `crisisTopicsIn` in `src/ai/crisisFilter.ts` (one note matching two topics); the
+     one-second hold and focus move in `src/components/stats/SupportSurface.tsx`;
+     `configureBilling`, `dropCachedAccount` and the `identity` promise in
+     `src/billing/revenuecat.ts` (**read this hardest:** if the SDK can't say whether its
+     user is anonymous, plans, purchases, Restore and entitlement reads are held until a
+     sign-in or the next launch; right for privacy, but it would stop every guest buying
+     if `Purchases.isAnonymous()` ever fails after `configure` on the phone);
+     `readRowTwice`, `readStoredBand` and `storedForRun` in `src/age/ageRange.ts`;
+     `accept` and `forgetBand` in `src/store/ageStore.ts` (nothing is saved or lifted after
+     an Erase in the same run); the Erase action and `eraseStep` in
+     `src/store/authStore.ts` with `sweepCachedCopies` and the three sweeps
+     (`src/export/file.ts`, `src/share/export.ts`, `src/media/iconImage.ts`);
+     `eraseSupportAside` and the held erase in `src/store/settingsStore.ts`;
+     `forgetSupportAsideNotIn` in `src/store/predictionStore.ts`; `src/supabase/sync.ts`
+     about line 1248; `uploadsMayStart()` in `src/ai/coach.ts`, `refine.ts` and
+     `src/notifications/trialReminder.ts`; `eraseConfirmMessage` and the 3 s count read in
+     `src/components/account/DeleteAccountView.tsx`.
+   - Policy to read: the held `docs/PRIVACY_POLICY.md` (§2, §3, §7, §8, §9 and its header
+     steps 10 to 12), `docs/APP_PRIVACY.md`, `docs/APP_STORE_LISTING.md` (review notes at
+     3,903 of 4,000 bytes; "PRIVATE BY DESIGN"), and the sign-in usage line, against the
+     code. Round one's policy audit was FAIL on seven paperwork items, all since edited;
+     nobody has re-audited them.
+2. `bash scripts/check.sh` and `bash scripts/check-harness.sh`, commit, then **push and
+   merge into `master`** (fast-forward) on the owner's word above; ask him first if
+   anything about that has changed. The public pages stay as they are: the hold below
+   still applies, and the merge must not touch the `include` list in `docs/_config.yml`.
+3. Put `docs/SHIP_READINESS.md` "The owner's list" items 19 to 25 to the owner.
+
+**What the branch holds**
+
+- **D70, the under-13 rule,** confirmed by the owner 2026-11-19: when Apple's age range
+  can include someone under 13 the app is local-only (no sign-in, sync, usage counts,
+  Coach or RevenueCat; Plus isn't offered). `CLAUDE.md` §10 has the rule as it stands
+  after the review; `docs/design/research/under-13-2026-11.md` has every call, the
+  residuals and nine points for counsel; `src/age/egress.test.ts` fails when a new upload
+  path forgets the gate and pins each listed file's count of network calls.
 - **D71:** Erase removes everything on the phone, whoever's account it was under; the
   Coach's support card can be set aside ("Back to Coach"); a US-territory phone gets 988 on
   every topic; the sign-in screen carries the usage-stats switch.
-- **For the owner:** `docs/SHIP_READINESS.md`, "The owner's list", has everything still
-  his with a recommendation for each; `docs/OWNER_MESSAGES.md` has the four messages only he
-  can send. JS only: no new native package beyond the review's two.
+- **The D70/D71 review (2026-11-19), rounds one and two.** Four reviewers in round one
+  (two `code-reviewer`, `record-auditor`, `policy-auditor`), three in round two (two
+  `code-reviewer`, `record-auditor`); no blocker in either. `docs/design/BUILT_LOG.md` row
+  200 lists every fix. What changed behaviour:
+  - *The age gate.* Any band that can include someone under 13 counts, a region's "under
+    16" included (the agent's call, reversing its first one; it makes 13-to-15-year-olds
+    there local-only). Apple is asked at every launch where the API runs, whatever band is
+    stored, because a phone can change hands (with a stored 13+ band nothing waits). A
+    stored band that can't be read keeps the gate shut unless Apple answers 13 or over.
+    While Apple's answer is pending nothing is set up or sent: RevenueCat, the guest
+    flush, the Coach and the rating prompt wait; a sign-in waits 5 s and is then refused
+    for now ("Sign-in isn't ready yet. Try again in a moment."); only a sync goes on after
+    60 s. The rule is checked again when Apple's or Google's sign-in sheet returns.
+  - *The support card.* The tap re-checks first: a topic whose card hasn't been shown gets
+    its card ("Other words matched too, so this message changed.", focus to the card's
+    title, the button held for a second) before anything is set aside, even when one note
+    matches two topics. A key goes when its words change, the prediction is deleted, or a
+    list load no longer has them; sign-out, Erase and account deletion clear them,
+    replacing a settings record that can't be read. The cap is 2,000.
+  - *Erase.* It reports failure, and can be retried, if any cleanup doesn't land (the Log
+    draft, the answer run, the settings, the age band, the cache of exports and images).
+    Its confirmation counts the changes other accounts never pushed and says so, or says
+    there may be some when it can't count.
+  - *Billing.* A sign-out RevenueCat never saw (possible now that it doesn't run on a
+    frozen account or while Apple's answer is pending) is applied when it next starts,
+    before Plus is read.
+  - *Copy.* How scoring works: "so a deleted miss is still counted" and "Only this phone
+    keeps these counts; erasing your data here, deleting your account or deleting the app
+    clears them." The sign-in usage line says what the counts are for.
+- **Known residuals, all in the research note's "Residuals":** supabase-js renews an
+  expired (or nearly expired) stored session when the client is made and at `getSession()`
+  whatever its settings, so a frozen account's sign-in is renewed at each start and a
+  signed-in account's can be renewed before Apple answers; with Google, Supabase has
+  created the user before the app can refuse the session; an email sign-in sent before a
+  background under-13 answer goes through; once RevenueCat's SDK is configured it keeps
+  refreshing on its own for that run; an adult whose Apple request never resolves gets no
+  plans, purchase, restore or sign-in for that run.
+- **The owner's decisions (2026-11-19):** every recommendation in
+  `docs/SHIP_READINESS.md` "The owner's list" is adopted. **Two were wrong and are
+  corrected there, awaiting his nod:** item 7 (the UK is left out with the EU, since it
+  needs a UK representative and policy content; launch storefronts are the US, Canada,
+  Australia and New Zealand) and item 10 (stored IP addresses are declared as Diagnostics →
+  Other Diagnostic Data). The agent's proposed rule after that mistake: a legal or
+  store-form recommendation gets a `policy-auditor` check before it is put to the owner.
+- **For the owner:** `docs/SHIP_READINESS.md`, "The owner's list": items 1 to 18 as
+  adopted, 19 to 25 added by the review (the two corrections; deleting a "Can't tell"
+  isn't counted; Usage stats on Canadian phones; two App Store Connect checks; two
+  referral calls on the support card; the frozen account's server data, for counsel; a few
+  smaller ones). `docs/OWNER_MESSAGES.md` has the four messages only he can send. JS only:
+  no new native package beyond the earlier review's two.
 
 **`master` = `origin/master` = `d1c23cf`:** the security and code review of 2026-11-18/19
 (eight fix rounds, commits `c7bf083`, `6830354`, `7b5b0ea`, `893d404`, `800cd2f`,
@@ -192,9 +280,11 @@ cover the last stretch) and in git; it isn't repeated here.
 Reviews are the owner's call (2026-11-15). The 2026-11-18/19 review covered steps 180–196 and
 the whole security surface (server, client, Coach, record, policy), with three re-review
 rounds on the fixes; its last round verifies round 7's deletion fix. **D70 and D71
-(`builder/owner-decisions`, BUILT_LOG rows 198 and 199) are not reviewed**; the agent
-recommends one before that build goes to anyone else (`code-reviewer` and `policy-auditor`
-on the under-13 rule, `record-auditor` on Erase). Nothing has run on a real database or on
+(`builder/owner-decisions`, BUILT_LOG rows 198 to 200) have had two of three review
+rounds** (the owner called the review 2026-11-19): round one's findings and round two's
+are fixed, **round two's fixes are unread by any reviewer, and the documents edited after
+round one's policy audit have not been re-audited** (the top of this file says what to
+read). Nothing has run on a real database or on
 the iPhone: migrations 010–012 are proven only by the README's checks, the native changes
 by the next development build, and the under-13 rule by the sandbox "Under 13" check
 (`docs/HUMAN_VERIFICATION.md` D4). In the web build the local-only screens, both routes, the
@@ -214,15 +304,19 @@ development-only control that sets an under-13 band); the support card was not.
    appearances; on Today with VoiceOver, streak, practice, then the backup card; a
    checkpoint's confetti over the practice row; the Insights lead line at the largest text,
    and in dark beside "More about your record".
-6. Then `docs/SHIP_READINESS.md`, "The owner's list": the server checklist, the new builds,
-   a review of D70 and D71 (your call), the mail sender, external TestFlight, the store
-   record, the gate.
+6. Then `docs/SHIP_READINESS.md`, "The owner's list": the server checklist, the new builds
+   (after the D70/D71 review's last round and the merge), the mail sender, external
+   TestFlight, the store record, the gate. On the next development build, the under-13
+   and support-card checks in `docs/HUMAN_VERIFICATION.md` D4 and D5; the two that matter
+   most: a guest can load plans, buy and restore on a fresh install, and a second launch
+   with an adult age range shows no Apple sheet.
 
 Done: the secret rename, both function deploys and the trial move (above).
 
 **Blocked on the owner:** the password reset (needs a custom mail sender in Supabase,
 `SHIP_READINESS.md` decisions 6 and 12); counsel and the sandbox check for the under-13
-rule; decision 5 (the EU), 8 and the rest of 13 (the messages in `docs/OWNER_MESSAGES.md`);
+rule; his nod on the two corrected recommendations (no UK at launch; the IP address line);
+the messages in `docs/OWNER_MESSAGES.md` (decisions 8 and 13);
 the beta app description and review information before outside testers. Everything open, with who does it, is in
 `docs/SHIP_READINESS.md` "Open work".
 
@@ -258,7 +352,8 @@ and delegation are done by Fable (the main session), which doesn't implement dir
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run on this branch
-  (2026-11-19, D70 and D71): 244 suites, 5,431 tests. `check.sh --release` last
+  (2026-11-19, after the D70/D71 review's round-two fixes): 247 suites, 5,776 tests, exit
+  0. `check.sh --release` last
   passed on the review's round 7 tree with the two new native packages: expo-doctor 20/20, iOS export
   7.58 MB (bundle 7.17 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;

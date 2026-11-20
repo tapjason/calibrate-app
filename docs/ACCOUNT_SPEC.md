@@ -29,7 +29,24 @@ refused (§1), an account already signed in is frozen and can still sign out or 
 for the run (§3.2 step 7, §3.5). D71: guest Erase empties every account's rows, not only the
 guest's (§3.4, §3.5); the support card's set-asides are forgotten by sign-out, Erase and
 deletion (§2 step 5, §3.2 step 7, §3.5); the sign-in screen carries the Usage stats
-switch (§1). Unit-tested; not reviewed; nothing run on the iPhone.
+switch (§1). Unit-tested; nothing run on the iPhone.
+
+**The D70/D71 review (2026-11-19, the same branch, its fixes uncommitted when this was
+written; JavaScript only)** changed what this spec says in these places: a band counts as
+under 13 whenever it can include someone under 13, (none, 15) and (none, 17) included;
+Apple is asked at every launch, whatever band is stored; while Apple's answer is pending on
+a launch that waits for it, a sign-in is refused after its 5 s wait instead of going on
+(§1), and the sign-ins that open a sheet check the rule again when it closes (§1); a
+frozen account's sign-in is renewed each time the app starts with it expired, not once
+(§2); a sign-out that fails after its wipe on a frozen account has its own words (§2 step
+6); a sign-out before billing has started sets the Plus mirror to free (§2 step 7); Erase
+clears the Log draft first, runs every later step whatever the others do, and counts in
+its confirmation what earlier accounts never pushed (§3.5). **The re-review's round two**
+(the same day) added: sign-out and deletion clear the support card's set-asides as Erase
+does, the stored record included (§2 step 5); a signed-out start logs a stale account out
+of RevenueCat before reading any entitlement (§2 step 7); a cleanup write that fails
+silently fails Erase, the cache sweep is a step Erase waits for, and Erase's alert has a
+third message for a count that can't be read (§3.5).
 
 The spec as built. It follows the layer rules in `BUILD_PLAN.md`: screens call stores, stores
 call services (`src/supabase/auth.ts`, `src/supabase/account.ts`), and nothing in the core
@@ -60,7 +77,7 @@ loop waits on any of it. The guest→account handoff is `authStore.handleSession
 |---|---|
 | Guest | "Not signed in. Your predictions live only on this phone." and **Sign in** (routes to `/account`). At the bottom of You, **Erase your data on this phone** (§3.5). |
 | Signed in | "Signed in as …", or "Signed in with Apple." for a private-relay address, then "Your predictions are backed up. Signing out removes them from this phone, and signing back in brings them back. Categories you added or changed live only on this phone, so signing out removes them." and **Sign out** (§2). (Since round 6 the counts only this phone keeps stay through a sign-out, so the footer no longer names them.) At the bottom, **Delete account**, in red. |
-| Guest, local-only (D70) | One static row, "Kept on this phone", with no chevron and nothing to tap, and two footer lines: "Because of the age range this iPhone shares with Fairly Sure, everything you log stays on this phone. Accounts, backup, usage counts, Coach and Plus are off. Your predictions, score, badges and cards work as usual, and Export predictions keeps a copy." and "The age range comes from this iPhone's Apple Account. To see it: Settings → your name → Personal Information → Age Range for Apps." (`src/components/age/localOnlyCopy.ts`). Shown on any build, accounts or not. No way to sign in. At the bottom, **Erase your data on this phone**, as for any guest. |
+| Guest, local-only (D70) | One static row, "Kept on this phone", with no chevron and nothing to tap, and two footer lines: "Because of the age range this iPhone shares with Fairly Sure, everything you log stays on this phone. Accounts, backup, usage counts, Coach and Plus are off. Your predictions, score, badges and cards work as usual, and Export predictions keeps a copy." and "The age range comes from this iPhone's Apple Account. To see it, open Settings, tap your name, then Personal Information, then Age Range for Apps." (`src/components/age/localOnlyCopy.ts`; the path is in words since the D70/D71 review, with no arrows). Shown on any build, accounts or not. No way to sign in. At the bottom, **Erase your data on this phone**, as for any guest. |
 | Signed in, local-only (frozen, D70) | "Signed in as …" (or the Apple line), then "Backup is off on this phone because of the age range it shares with Fairly Sure, so new changes stay here. What was backed up before stays on our server until you delete the account. Signing out removes your predictions from this phone, so export them first if you want a copy." and **Sign out**. **Delete account** stays at the bottom. |
 
 Under the rule You also drops the Plus row (and with it Plus's footer under Your card) and
@@ -86,19 +103,24 @@ reloads the stores and starts a sync.
 says what signing in sends besides the predictions, with the Usage stats switch beside it,
 the same setting as You's (`UsageStatsSwitch`, shared with the Warm-up's first screen). On:
 "Once you’re signed in, a record of which features you use, including what’s already on
-this phone, is sent with your account: numbers, yes/no values and fixed labels such as
-which screen, never the words of your predictions or notes. You can turn this off here or
-in You, under Usage stats." (`USAGE_NOTE`). Off: "Usage stats are off, so no record of
+this phone, is sent with your account, to see how the app is used: numbers, yes/no values
+and fixed labels such as which screen, never the words of your predictions or notes. You
+can turn this off here or in You, under Usage stats." (`USAGE_NOTE`; "to see how the app
+is used" since the D70/D71 review, the purpose the Warm-up's line already named). Off: "Usage stats are off, so no record of
 which features you use is sent. You can turn them on here or in You, under Usage stats."
 (`USAGE_OFF_NOTE`). Until then the line showed only while usage stats were on, with no
 switch.
 
 **Under the under-13 rule (D70)** the account route never mounts `SignInView`, whatever
-opened it (a deep link included): it shows "No account on this phone", "Because of the age
-range this iPhone shares with Fairly Sure, your predictions stay on this phone. To keep a
-copy, use Export predictions in You." and **Close** (`LocalOnlyPage`,
-`app/account/index.tsx`). It reads the age store, so a band that arrives while the screen
-is open takes the form away.
+opened it (a deep link included). A guest sees "No account on this phone", "Because of the
+age range this iPhone shares with Fairly Sure, your predictions stay on this phone. To keep
+a copy, use Export predictions in You." and **Close** (`LocalOnlyPage`,
+`app/account/index.tsx`). A frozen account, which only a deep link brings here, sees
+"Backup is off on this phone" (`LOCAL_ONLY_FROZEN_ACCOUNT_TITLE`) with You's frozen footer
+as the body ("Backup is off on this phone because of the age range it shares with Fairly
+Sure, so new changes stay here. …", `LOCAL_ONLY_FROZEN_FOOTER`) and **Close**: "No account
+on this phone" would be untrue of it (the D70/D71 review). The route reads the age store,
+so a band that arrives while the screen is open takes the form away.
 
 **Apple (round 5: a nonce).** `signInWithApple` (`src/supabase/auth.ts`) makes a fresh
 nonce for each sign-in (`makeAppleNonce`: 32 random bytes from `expo-crypto`'s
@@ -153,11 +175,30 @@ answer it waits for it, at most 5 s (`AGE_ANSWER_WAIT_MS`), then while the phone
 local-only (`isLocalOnly()`, `src/store/ageStore.ts`) returns `{ ok: false, error:
 LOCAL_ONLY_SIGN_IN }`, "Accounts are off on this phone because of the age range it shares
 with Fairly Sure.", before any service or client is touched; it checks again just before
-the service is called. The services refuse on their own too: every exported sign-in and
+the service is called. **While the answer is still pending after the wait, the sign-in is
+refused for now** (the D70/D71 review; until then it went on after 5 s, so an account
+could be made and only then frozen): `{ ok: false, error: AGE_PENDING_SIGN_IN }`, "Sign-in
+isn't ready yet. Try again in a moment." (`src/supabase/auth.ts`, mirrored in
+`accountSignIn`). The same tap goes on once the answer is in, or meets
+`LOCAL_ONLY_SIGN_IN`. A launch waits for the answer only with no stored band, a stored
+under-13 band or one that can't be read; with a stored band of 13 or over Apple is asked
+in the background, the age store is settled from the start, and a sign-in neither waits
+nor is refused. The services refuse on their own too: every exported sign-in and
 sign-up function in `src/supabase/auth.ts` starts with `refuseWhenLocalOnly()` (its 5 s
 counted from when the age store began waiting, so it adds no second wait), before any
-client, nonce or native sheet. `src/age/egress.test.ts` fails if one doesn't, and
-`authStore.localOnly.test.ts` lists the store's actions so a new one can't miss the gate.
+client, nonce or native sheet. **The rule is checked again around the native sheets**:
+Apple's sign-in asks before its sheet opens and again once it closes, before the identity
+token reaches Supabase, and Google's the same, before the code is exchanged (Apple's age
+answer may land while a sheet is up). Two residuals, both only on a phone whose stored
+band was 13 or over when the sign-in started: with Google, Supabase has already created
+or found the user at its own callback inside the sheet by the time it closes, so the app
+refuses the session and leaves the code unexchanged, but the server-side user exists; and
+an email sign-in sent before a background under-13 answer goes through, and the account
+is then frozen (§2). An adult whose request to Apple never resolves on a launch that
+waits can't sign in for that run; the next launch asks again. `src/age/egress.test.ts`
+fails if a sign-in function doesn't open with the refusal (it reads the opening statements
+from the syntax tree), and `authStore.localOnly.test.ts` lists the store's actions so a new
+one can't miss the gate.
 
 ### The email-confirmation decision (yours)
 
@@ -275,9 +316,18 @@ decision.
    phone keeps this count" lines), then the sync cursor cleared and the caches swept,
    whether or not the wipe went. Before the wipe, the support card's set-asides are
    forgotten (D71 (b), `forgetSupportAside`: each key holds a prediction's id and a hash of
-   its words, so none outlasts the rows), once the settings have been read. A wipe retried
-   at launch runs before they are read and leaves the keys, but the sign-out that owed it
-   had already cleared them. A wipe that went settles the mark this sign-out made (an
+   its words, so none outlasts the rows). Since the re-review's round two it clears them
+   the way guest Erase does (`eraseSupportAside`, §3.5), the stored record included: a
+   settings record that can't be read, which may hold keys, is read once more and, if it
+   still can't be, replaced with the settings this run holds, every privacy choice on its
+   private side. Before that, sign-out and deletion used `clearSupportAside`, which only
+   held the clear in memory for such a record, so one that read again after a restart
+   brought the hashes back. A wipe retried at launch runs before the settings
+   have been read, when a write would store the defaults over the person's record: the
+   settings store then holds the erase and applies it, in the same way, as soon as it has
+   read the record or failed to (the D70/D71 review; until then such a wipe left the
+   keys). A wipe
+   that went settles the mark this sign-out made (an
    earlier deletion's waits for the session to end); one that failed stays owed, and
    `initialize()` retries it at the next launch. Then the account is remembered as signed
    out here (`rememberSignedOutHere`, every sign-out since round 6, before the session
@@ -309,7 +359,12 @@ decision.
      lists are reloaded and a sync starts at once (the wipe cleared the cursor, so it pulls
      everything): what reached the server comes back. What the person agreed to lose in
      step 2 (unsynced changes, categories only this phone had) doesn't; nothing else was
-     wiped. When the wipe hadn't gone, nothing was removed and the session's own error is
+     wiped. For a frozen account (the under-13 rule, below) no sync runs, so the words are
+     `SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY` instead (the D70/D71 review): "Couldn't finish
+     signing you out, so you're still signed in. Backup is off on this phone, so your
+     backed-up predictions stay on our server for now; anything you agreed to lose is
+     gone." They come back with the first sync once the rule no longer applies. When the
+     wipe hadn't gone, nothing was removed and the session's own error is
      returned, `SIGN_OUT_FAILED` ("Couldn't sign you out on this phone. Try again.",
      `src/supabase/auth.ts`). Until round 7 that line was shown after a wipe too, as if
      nothing had changed. You shows the error under Sign out and announces it. Delivered
@@ -320,8 +375,16 @@ decision.
 7. **Then everything a sign-out did before.** `handleSession('APP_SIGN_OUT', null)` moves
    the app to the guest at once (supabase-js sends no `SIGNED_OUT` for a local-only end):
    the Coach's cards are cleared, billing logs out and drops to free (`src/billing/init.ts`
-   follows the user id; on a local-only phone RevenueCat never started, so only the mirror
-   drops to free), reminders still to come are cancelled with the reload, and Log's
+   follows the user id; before RevenueCat has started, on a local-only phone, while
+   Apple's answer is pending, or on a build with no SDK or key, only the mirror drops to
+   free, a local write that sends nothing, so a sign-out then leaves no Plus behind either:
+   the D70/D71 review. RevenueCat never hears of such a sign-out, so its SDK can still
+   hold the account. When RevenueCat next starts with nobody signed in, the app logs that
+   account out of RevenueCat before reading any entitlement, so the old account's Plus
+   can't appear on the guest and a purchase can't land on the old account; if the SDK
+   can't say whether its user is anonymous, entitlement reads report "couldn't find out"
+   and purchases "unavailable" until a sign-in or the next launch: the re-review's round
+   two, `dropCachedAccount` in `src/billing/revenuecat.ts`), reminders still to come are cancelled with the reload, and Log's
    kept draft and the answer run are cleared. Delivered reminders that show a prediction's
    words are dismissed from the lock screen (`dismissDeliveredReminderWords`), and again
    whenever a session ends by itself (an expired or revoked one).
@@ -332,7 +395,7 @@ stay; so do settings and any guest rows, and, since round 6, the account's integ
 (`INTEGRITY_COUNT_TABLES` in `src/db/account.ts`: `prediction_deletions`,
 `prediction_postponements`, `prediction_refiles`, `prediction_category_origins`; ids, dates
 and category ids, no words), under the account's id, so they count again when it signs in
-here (main session decision 2026-11-19; D45: a miss can't disappear without a trace).
+here (main session decision 2026-11-19; D45: a deleted miss is still counted).
 Since D71 (a), a guest's Erase removes them, with every other account's rows (§3.5); until
 then it took the guest's rows only. Confirmed account deletion on this phone removes them
 too. **What doesn't come back** on signing in again: what was only ever on
@@ -410,24 +473,51 @@ session (sign-out is never gated: it removes data). Delete account still calls
 `delete-account` and, for an Apple account, `reauthenticateWithApple` (§3.2): the one upload
 left open, since it removes data.
 
-**The frozen session.** A Supabase client made under the rule is made with
-`autoRefreshToken` off (`src/supabase/client.ts`), so auth-js neither refreshes a stored
-session as it starts nor runs its refresh timer; on a client made before the rule came on,
-`pauseSessionRefresh` stops the timer once the client has started (`src/supabase/auth.ts`,
-called by `src/age/localOnly.ts`), and `resumeSessionRefresh` starts it again if the rule
-lifts. **One residual, disclosed** (privacy policy §9): `getSession()` still refreshes a
-session within its expiry margin whatever the setting (auth-js 2.106, `__loadSession` calls
-`_callRefreshToken`, as read in the client's comment), and `initialize()` calls it at every
-launch, so a frozen account whose session has expired sends one token refresh when the app
-starts: the refresh token and the request's IP address, which the server writes to
-`auth.sessions` with the user agent, and no predictions. Sign out and Delete account rely on
-the same refresh. Whether supabase-js refreshes inside `getSession()` after the timer is
-stopped is on the research doc's list of what only the iPhone can show.
+**The frozen session.** The Supabase client is made with `autoRefreshToken` on only when
+uploads may start (`uploadsMayStart()`, `src/supabase/client.ts`): off under the rule, and
+off while Apple's age answer is still pending on a launch that waits for it, since the
+client is made at launch before the answer can come. With it off, auth-js doesn't run its
+refresh timer. On a client made before the rule came on, `pauseSessionRefresh` stops the
+timer once the client has started (`src/supabase/auth.ts`, called by
+`src/age/localOnly.ts`), and `resumeSessionRefresh` starts it the moment uploads may start
+(Apple's answer on a launch that waited, or a lift), its first tick refreshing a session
+that expired meanwhile. **The residual, disclosed** (privacy policy §9, and point 2 of the
+research doc's list for counsel): the setting doesn't stop every refresh. supabase-js still
+renews a stored session that has already expired, or is within 90 s of it, when the client
+is made (its constructor subscribes to `onAuthStateChange`, whose INITIAL_SESSION read goes
+through `__loadSession`, which calls `_callRefreshToken` whatever the setting) and at any
+`getSession()`, which `initialize()` calls at every launch. Confirmed against the installed
+auth-js 2.106.2 in `src/supabase/auth.localOnly.test.ts`, which pins it so a library update
+that changes it is noticed. So:
 
-**On a launch that asks Apple** (iOS 26, with no stored band or an under-13 one), a sweep
-waits for the answer, at most `AGE_SYNC_WAIT_MS` (60 s) counted from when the age store
-began waiting, then does nothing if the rule applies or goes on as before; stopping the
-account ends the wait. Sign-out's `pushNow` waits at most 5 s from its own call.
+- a frozen account's sign-in is renewed **each time the app starts with it expired** (not
+  once, as this said before the D70/D71 review): the refresh token and the request's IP
+  address, which the server writes to `auth.sessions` with the user agent, and no
+  predictions;
+- on a launch that waits for Apple's answer, a signed-in account's expired session can be
+  renewed before the answer.
+
+Sign out and Delete account rely on the same refresh.
+
+**Apple is asked at every launch** where the API can run, whatever band is stored (the
+D70/D71 review; `src/age/ageRange.ts`): the band belongs to the install, not to the Apple
+Account, so a phone handed to a child or restored from a backup kept the adult's band. With
+a stored band of 13 or over the ask runs in the background and nothing waits; an under-13
+answer then closes the gate mid-run, and the per-request checks stop a sweep or a flush
+before its next request (a request already in flight completes; when a sweep stops this
+way after a deletion's read-back had restored a row, the stats and lists are rebuilt from
+it before the sweep returns, a local recompute with no request: the re-review's round
+two). **On a launch that waits
+for the answer** (iOS 26, with no stored band, an under-13 one, or one that can't be read,
+which closes the gate for the run unless Apple answers 13 or over; a read that throws is
+tried once more first, round two), a sweep waits for the
+answer, at most `AGE_SYNC_WAIT_MS` (60 s) counted from when the age store began waiting,
+then does nothing if the rule applies or goes on as before; stopping the account ends the
+wait. Sign-out's `pushNow` waits at most 5 s from its own call, then sends only if the rule
+doesn't apply. A sign-in on such a launch is refused after its 5 s (§1), and RevenueCat
+isn't configured until the answer, with no time limit (`src/billing/init.ts`). The Coach,
+Refine and the trial-ending reminder's RevenueCat read wait for the answer too
+(`uploadsMayStart()`, round two).
 
 **If the rule lifts** (a later band of 13 or over, saved), the session's refresh resumes
 and a signed-in account syncs (`src/age/localOnly.ts`).
@@ -731,8 +821,11 @@ wipes and a confirmed deletion; guest Erase does its own, §3.5):
 - **The caches are swept**, not awaited, each sweep swallowing its own errors: CSV exports
   (`sweepExportFiles`, every title and reflection), share-card images
   (`sweepShareCaptures`) and the icon picker's pictures (`sweepIconImageFiles`). Guest
-  Erase sweeps the same three, and since round 5 the CSV exports are also swept at every
-  launch and before each new export (`app/_layout.tsx`, `src/export/file.ts`).
+  Erase sweeps the same three, but waits for them as a step since the re-review's round
+  two (`sweepCachedCopies` resolves false when a copy is still there, §3.5); sign-out and
+  account deletion still don't wait on the file system. Since round 5 the CSV exports are
+  also swept at every launch and before each new export (`app/_layout.tsx`,
+  `src/export/file.ts`).
 
 ### 3.5 Guests: "Erase your data on this phone"
 
@@ -741,32 +834,73 @@ rows went). `authStore.eraseDeviceData`, behind the same one-tap confirm, only w
 out, and refused while a sign-in is under way (a sign-in landing mid-wipe would put an
 account's rows in the middle of it: "Couldn't finish erasing your data. Try again."):
 
-1. `wipeEverythingOnDevice()` (§3.4): every per-user row under every account id, the age
-   band, the Warm-up and practice, in one transaction. A failure leaves everything in place.
-2. The age store forgets the band (`forgetBand`); the under-13 gate, if on, stays on in
-   memory for the rest of the run (D70, call 4), and the next launch asks Apple again
-   before anything can be sent.
-3. Every wipe still owed is settled (its rows went with the rest), and the sync cursor of
-   every account that had rows here or was owed a wipe is cleared
-   (`forgetAccountsAfterErase`).
-4. The Warm-up and practice stores, Log's kept draft, the answer run, the card's left-off
-   categories, the streak moment day, the usage line's stamp (so the line shows again
-   before anything goes up) and the support card's set-asides (D71 (b)) are cleared, and
-   the stores reload for the guest.
-5. Delivered notifications are dismissed, the three caches swept (§3.4) and the Coach's
-   cards cleared, none of them waited on.
+1. Log's kept draft is cleared first (the D70/D71 review: it is the person's own words, in
+   AsyncStorage and not the database, so nothing after can leave it behind), in its own
+   try, so it can't stop the wipe.
+2. `wipeEverythingOnDevice()` (§3.4): every per-user row under every account id, the age
+   band, the Warm-up and practice, in one transaction. A failure leaves everything in place
+   and nothing after it runs.
+3. Once the wipe has committed, every later step runs in its own try, so one that fails
+   can't leave the others undone (the D70/D71 review); Erase then returns "Couldn't finish
+   erasing your data. Try again." and is safe to run again. **A cleanup write that fails
+   silently counts as a failed step too** (the re-review's round two, `eraseStep`): the
+   helpers that swallow their own storage errors now say whether the write landed (the Log
+   draft's `clear`, the answer run's `forget`, the settings' `eraseSupportAside`, the age
+   store's `forgetBand`, `forgetAccountsAfterErase`), and a `false` makes Erase report
+   failure so the person can run it again. In order:
+   - the age store forgets the band (`forgetBand`); the under-13 gate, if on, stays on in
+     memory for the rest of the run (D70, call 4), and the next launch asks Apple again
+     before anything can be sent. From then on nothing Apple answers is saved in that run,
+     and a band an ask still in flight saved after the wipe is cleared again (round two);
+     an under-13 answer still closes the gate in memory;
+   - every wipe still owed is settled (its rows went with the rest), and the sync cursor
+     of every account that had rows here or was owed a wipe is cleared
+     (`forgetAccountsAfterErase`);
+   - the Warm-up and practice stores, the answer run, the card's left-off categories, the
+     streak moment day and the usage line's stamp (so the line shows again before
+     anything goes up) are cleared;
+   - the support card's set-asides (D71 (b)) are cleared, on disk too
+     (`eraseSupportAside`): a settings record that can't be read, which may hold keys, is
+     read once more and, if it still can't be, replaced with the settings this run holds,
+     every privacy choice on its private side and no keys. Its write is the whole settings
+     record, so it stands for the three settings changes before it, and a write that
+     doesn't land fails the step;
+   - the stores reload for the guest;
+   - delivered notifications are dismissed and the Coach's cards cleared, neither waited
+     on;
+   - the three caches are swept (§3.4: exported files, card images, the icon picker's
+     pictures) as a step Erase waits for, and a sweep that fails makes Erase report
+     failure like any other step (the re-review's round two).
 
 What stays: settings, the entitlement mirror, and the "signed out here" list (account ids
-only; it keeps a stale copy of a signed-out session from coming back, §2). A deletion
+only; it keeps a stale copy of a signed-out session from coming back, §2). Erase doesn't
+log RevenueCat out or reset it (a guest's Erase changes no user id, and nothing in
+`eraseDeviceData` or `src/billing/` does it), so the random install id RevenueCat's SDK
+keeps on the phone stays too; the privacy policy's §7 says so. A deletion
 another account hadn't pushed yet goes with its tombstone, so that prediction comes back
 at that account's next sign-in. The screen says what goes: "This permanently erases
 everything Fairly Sure keeps on this phone, including anything left by an account that was
 signed in here before: every prediction and reflection, your categories and their icons,
 your Warmup and practice answers, a prediction you were still typing, your age range and
-usage stats not yet sent. Settings, like reminder times, stay. You aren't signed in, so
-nothing here has another copy unless an account backed it up. It can't be undone.", the
-alert "Erase everything on this phone?" / "Nothing here has another copy unless an account
-backed it up. This can't be undone.", and after it "Your data on this phone is gone,
+usage stats not yet sent. Settings, like reminder times, and whether this phone has Fairly
+Sure Plus stay. You aren't signed in, so nothing here has another copy unless an account
+backed it up. It can't be undone." Then the alert "Erase everything on this phone?" /
+"Nothing here has another copy unless an account backed it up. This can't be undone."
+**The alert counts what would be lost for good** (the D70/D71 review's record audit): at
+the tap, never cached, `countUnsyncedAccountChanges` counts the changes accounts signed in
+here before never pushed (`countUnsyncedForAccounts`, `src/db/predictions.ts`: dirty
+prediction rows and deletions not yet pushed, under every account id but the guest's), and
+with any the alert reads "Nothing here has another copy unless an account backed it up. 3
+changes an account made on this phone never reached our server and will be lost. This
+can't be undone." ("1 change an account made…" for one). Since the re-review's round two
+the Erase button is disabled while the count is read, the read gives up after 3 seconds
+(`ERASE_COUNT_WAIT_MS`: it waits behind queued database work, and the question must not
+hang on it), and a count that can't be read no longer leaves the line out, since that
+read as "nothing to lose". The alert then says: "Nothing here has another copy unless an
+account backed it up. Changes an account made on this phone may not have reached our
+server; if so, they will be lost. This can't be undone." So the alert has three
+messages: a count of zero (the two plain sentences), a count, and a count that couldn't
+be read. After it: "Your data on this phone is gone,
 including anything left by an account that was signed in here before."
 (`DeleteAccountView`). Why everything: only this phone keeps the integrity counts sign-out
 leaves, and a reinstall already clears them, so keeping them through Erase protected nothing, while words left
@@ -810,7 +944,11 @@ RevenueCat doesn't retry.
   under the rule), `src/supabase/auth.localOnly.test.ts` (the services' refusal, the
   session refresh paused and resumed, a client made under the rule),
   `src/supabase/sync.localOnly.test.ts` (nothing sent, a sweep stopping, the wait on a
-  launch that asks), and the structural guard `src/age/egress.test.ts`.
+  launch that asks), `src/age/backgroundAsk.test.ts` (a stored band of 13 or over asked
+  about in the background, and an under-13 answer stopping a flush and a sweep in flight),
+  and the structural guard `src/age/egress.test.ts` (since the D70/D71 review it also pins
+  each listed file's count of network calls, flags any import of the Supabase client
+  outside them, and requires the gate before the first request).
 - The delete screen: a subscriber sees the billing warning and a lifetime
   holder doesn't; a failed call leaves the stores untouched; success routes to
   a fresh guest.

@@ -10,7 +10,8 @@ If the app's name changes, update it here. Not legal advice.
 
 DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE ALL OF THESE (revised 2026-11-18
 after the security and policy review, and 2026-11-19 after its rounds 5, 6 and 7, the
-policy re-audit's W1-W4, and the under-13 rule and Erase, D70 and D71). The text
+policy re-audit's W1-W4, the under-13 rule and Erase, D70 and D71, and the D70/D71
+review of the same day). The text
 below is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6
 are not true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true
 only of the build in step 7.
@@ -81,7 +82,12 @@ in step 3b below.
    builder/owner-decisions when this was written; JavaScript only, no new native package)
    are true only of a build that carries them: §1's and §2's lines on the age range,
    RevenueCat and usage counts, §2.3's switch on the sign-in screen, §3's "Back to Coach",
-   §6's and §7's Erase, and §9. Publish with, or after, that build too.
+   §6's and §7's Erase, and §9. Publish with, or after, that build too. The D70/D71
+   review's fixes (2026-11-19, uncommitted on the same branch when this was written;
+   JavaScript only) are part of what those sections say: the age range asked at every
+   launch, RevenueCat and sign-in waiting for Apple's answer with no "then goes on", the
+   check again at the tap on "Back to Coach", and the wider meaning of "under 13" in §9.
+   A build made before them doesn't match §2, §3 or §9.
 8. Settled 2026-11-19 (policy re-audit L4; kept so the numbering holds). The warm-up
    notice (§2, "only after the warm-up's first screen has shown you a line saying so") is
    a saved stamp: UsageStatsNotice writes usageNoticeShownAt in the settings store when it
@@ -101,12 +107,24 @@ in step 3b below.
    rests on legal readings the agent can't settle. Before the public US release: run the
    sandbox "Under 13" check on the iPhone (docs/HUMAN_VERIFICATION.md D4: Settings →
    Developer → Sandbox Apple Account → Manage → Age Assurance → "Under 13", then Erase in
-   the app and relaunch; You should show "Kept on this phone"), and take the seven points
+   the app and relaunch; You should show "Kept on this phone"), and take the nine points
    under "For counsel" in docs/design/research/under-13-2026-11.md to a lawyer, among them
    whether what a frozen account already has on our server must be deleted (§9 says it
-   stays until the account is deleted). If counsel changes the rule, §2's age-range
-   paragraph and §9 change with it.
-Once 1-10 are done, delete this list; the evidence notes below can stay.
+   stays until the account is deleted) and the sign-in renewals §9 discloses. If counsel
+   changes the rule, §2's age-range paragraph and §9 change with it.
+11. §8 is written for the launch storefronts the owner chose on 2026-11-19: the United
+   States, Canada, Australia and New Zealand. The 27 EU storefronts and the UK are left
+   out, so §8 has no GDPR wording. Before the UK or any EU storefront is added: appoint
+   the representative the law asks for (UK GDPR Art 27; the EU GDPR's Art 27 for the EU),
+   and add a section with the legal basis for each purpose, the legitimate interests
+   behind usage counts, the transfer of data to the United States, and the right to
+   complain to the ICO or an EU supervisory authority (UK GDPR Art 13 and its EU twin).
+12. Canada: the owner's decision of 2026-11-19 is that, before submission, Usage stats
+   start off until chosen on phones set to Canada (Quebec's s. 9.1), unless counsel says
+   otherwise. Not built when this was written. When it is, §2's and §2.3's "with a switch
+   to turn them off" need a sentence saying that on a phone set to Canada none are sent
+   until you turn them on.
+Once 1-12 are done, delete this list; the evidence notes below can stay.
 
 Evidence for each claim (2026-11-18): src/analytics/events.ts (catalogue, props),
 src/analytics/flush.ts (guest rows carry no user id), supabase/migrations/007 and 010
@@ -119,9 +137,9 @@ only), supabase/functions/coach/index.ts:282-294 (no account id sent to OpenAI),
 src/store/authStore.ts signOut/deleteAccount/eraseDeviceData, src/supabase/auth.ts
 endSession, src/supabase/account.ts, supabase/functions/delete-account/index.ts,
 src/db/account.ts and src/db/client.ts:40-64 (secure_delete), src/age/ageRange.ts
-(asks each launch until a band is stored; since D70 also while the stored band is under
-13, below), supabase/migrations/009 (name and picture stripped from auth.users and
-auth.identities).
+(asked each launch until a band was stored; since the D70/D71 review, at every launch
+whatever is stored, below), supabase/migrations/009 (name and picture stripped from
+auth.users and auth.identities).
 Round 5 (2026-11-19): src/store/authStore.ts signOut and eraseAccountHere (push, count
 what's unsynced, ask, end the session, wipe with deviceData: false; round 6 wipes first,
 below), src/db/predictions.ts
@@ -166,40 +184,99 @@ src/supabase/sync.ts backfillOffsets (header step 3a), "What we never collect" o
 §1, and the request logs can record a country), node_modules/react-native-purchases
 10.9.0 and node_modules/@revenuecat (no time zone named anywhere in them; the native iOS
 SDK, PurchasesHybridCommon 18.33.1, comes through CocoaPods and isn't in node_modules).
-2026-11-19, D70 and D71 (builder/owner-decisions, uncommitted when this was written):
-src/engine/ageBand.ts isUnder13Band (an upper bound of 13 or less, and no lower bound of
-13 or more: §9's "includes ages under 13"); src/store/ageStore.ts (localOnly, the one field
-every gate reads; uploadsMayStart; whenAgeSettled; LOCAL_ONLY_SIGN_IN); src/age/ageRange.ts
-hydrateAgeGate, ensureAgeBucket and recheckAgeBucketIfDue (asked at each launch with no
-stored band or an under-13 one, and while under 13 on a return to the app 24 hours after
-the last ask; a decline or an error keeps the stored band: §2); src/age/localOnly.ts (on
-entering the rule: queued usage events cleared, the warm-up notice's stamp forgotten, the
-session's background refresh stopped, the Coach cleared); src/age/egress.test.ts (every
-file that can send over the network is listed, and each checks the rule, account deletion
-and sign-out excepted); src/supabase/auth.ts refuseWhenLocalOnly (every sign-in and sign-up refused) and
-pauseSessionRefresh; src/supabase/client.ts (autoRefreshToken off when the client is made
-under the rule; its comment reads auth-js 2.106: GoTrueClient __loadSession still calls
-_callRefreshToken for a session within its expiry margin, so getSession at launch,
-src/store/authStore.ts initialize, can renew a frozen account's sign-in once: §9);
-src/supabase/sync.ts (syncNow, pushNow, backfillOffsets and the check before each request
-send nothing); src/analytics/track.ts and flush.ts (nothing queued, nothing sent;
-uploadsMayStart); src/components/warmup/usageNotice.ts usageCountsMayGoUp; src/ai/coach.ts
+2026-11-19, D70 and D71 (builder/owner-decisions, uncommitted when this was written), as
+amended by the D70/D71 review the same day:
+src/engine/ageBand.ts isUnder13Band (any band that can include someone under 13: an upper
+bound is set, and the lower bound is open or below 13. So (none, 12), (none, 13), (9, 12),
+(12, 13), (none, 15), (none, 17) and (12, 15) count; (13, 15), (16, 17), (18, none) and no
+band don't: §9's "includes ages under 13". Until the review an upper bound above 13 didn't
+count); src/store/ageStore.ts (localOnly, the one field every gate reads; uploadsMayStart;
+whenAgeSettled; LOCAL_ONLY_SIGN_IN; loadUnknown); src/age/ageRange.ts hydrateAgeGate,
+ensureAgeBucket and recheckAgeBucketIfDue (asked once per launch wherever the API can run,
+whatever band is stored, and again on a return to the app 24 hours after the last ask while
+the rule applies or a band of 13 or over is known; uploads wait for the answer only with no
+stored band, an under-13 one or one that can't be read, readStoredBand and
+closeGateForUnknownBand, and with a stored band of 13 or over the ask runs in the
+background; an under-13 answer closes the gate at once, a different 13-or-over answer is
+saved, and a decline, "not available" or an error keeps the stored band: §2. Round two: a
+stored-band read that fails is tried once more, and where Apple's API can never have run
+(web, Android, iOS before 26) a failed read is "no band"; after Erase or account deletion
+has cleared the band, src/store/ageStore.ts saves no answer for the rest of that run and
+lifts nothing, though an under-13 answer still closes the gate in memory; src/ai/coach.ts,
+src/ai/refine.ts and src/notifications/trialReminder.ts also wait for Apple's answer,
+uploadsMayStart);
+src/age/localOnly.ts (on entering the rule: queued usage events cleared, the warm-up
+notice's stamp forgotten, the session's background refresh stopped, the Coach cleared; once
+uploads may start: the refresh resumed, resumeSessionRefresh); src/age/egress.test.ts (every
+file that can send over the network is listed with a pinned count of each kind of network
+call, no other file may import the Supabase client, and every entry point checks the rule
+before its first request, account deletion and sign-out excepted);
+src/supabase/auth.ts refuseWhenLocalOnly (every sign-in and sign-up refused under the rule,
+and refused with AGE_PENDING_SIGN_IN, "Sign-in isn't ready yet. Try again in a moment.",
+while Apple's answer is still pending after a wait of at most 5 s; asked again after
+Apple's and Google's sheets close, before anything goes to Supabase; signInWithGoogle's
+comment: by then Supabase has already made or found the user at its own callback inside
+the sheet, §9's sentence on Google) and pauseSessionRefresh; src/supabase/client.ts
+(autoRefreshToken is on only when uploads may start; its comment and
+src/supabase/auth.localOnly.test.ts, run against the installed auth-js 2.106.2: a stored
+session already expired, or within 90 s of it, is still renewed as the client is made and
+at getSession, whatever that setting, so a frozen account's sign-in is renewed each time the
+app starts with it expired, and a signed-in account's can be renewed before Apple answers:
+§9); src/supabase/sync.ts (syncNow, pushNow, backfillOffsets and the check before each
+request send nothing under the rule; on a launch that waits, a sweep waits at most 60 s
+for the answer and then goes on); src/analytics/track.ts and flush.ts (nothing queued under
+the rule; maySend re-checks uploadsMayStart, the Usage stats switch and a guest's notice
+stamp before the queue is read and before every request);
+src/components/warmup/usageNotice.ts usageCountsMayGoUp; src/ai/coach.ts
 (no request); src/billing/revenuecat.ts apiKeyForPlatform and src/billing/init.ts
-(RevenueCat never configured on a local-only phone, and on a launch that asks Apple only
-after the answer, or after 5 s when the paywall opens, ensureBillingStarted: §2);
-src/store/ratingStore.ts (no rating prompt); src/supabase/account.ts (deletion left open:
-it removes data); src/components/age/localOnlyCopy.ts (You's words; none names an age).
+(RevenueCat never configured on a local-only phone, and on a launch that waits for Apple
+never before the answer, with no time limit: startBilling. The paywall waits at most 5 s,
+ensureBillingStarted, then shows that the plans couldn't load, and loads them once the
+answer is in. A sign-out before RevenueCat has started only sets the Plus mirror to free.
+With a stored band of 13 or over RevenueCat starts at launch as before, so an under-13
+answer that arrives later finds it configured for that run: §2. Round two,
+src/billing/revenuecat.ts dropCachedAccount and identity: when RevenueCat starts with
+nobody signed in and its SDK still holds an account from a sign-out it never saw, that
+account is logged out of RevenueCat before any entitlement is read; if the SDK can't say
+whether its user is anonymous, reads report "couldn't find out" and purchases
+"unavailable" until a sign-in or the next launch: §2);
+src/store/ratingStore.ts (no rating prompt, and none while the answer is pending);
+src/supabase/account.ts (deletion left open: it removes data);
+src/components/age/localOnlyCopy.ts (You's words; none names an age).
 D71: src/db/account.ts wipeEverythingOnDevice and src/store/authStore.ts eraseDeviceData
-(every PER_USER_TABLES table emptied for every account id, with the age band, warm-up and
-practice, in one transaction; every account's sync cursor cleared; the settings, the
-entitlement mirror and the "signed out here" list of account ids stay: §7's Erase);
-src/components/account/DeleteAccountView.tsx (Erase's words: "everything Fairly Sure keeps
-on this phone, including anything left by an account that was signed in here before");
-src/engine/supportAside.ts, src/store/coachStore.ts setSupportAside and
+(the Log draft cleared first; then every PER_USER_TABLES table emptied for every account
+id, with the age band, warm-up and practice, in one transaction; then every later step in
+its own try, so one failing doesn't stop the rest; every account's sync cursor cleared; the
+settings, the entitlement mirror and the "signed out here" list of account ids stay, and
+nothing in eraseDeviceData or src/billing/ logs RevenueCat out or resets it, so its
+anonymous install id stays: §7's Erase); src/components/account/DeleteAccountView.tsx
+(Erase's words: "everything Fairly Sure keeps on this phone, including anything left by an
+account that was signed in here before", ending "Settings, like reminder times, and whether
+this phone has Fairly Sure Plus stay."; eraseConfirmMessage and
+authStore.countUnsyncedAccountChanges: the alert counts, at the tap, changes earlier
+accounts never pushed, "N changes an account made on this phone never reached our server
+and will be lost."; round two: the read gives up after 3 s, ERASE_COUNT_WAIT_MS, and a
+count that can't be read says "Changes an account made on this phone may not have reached
+our server; if so, they will be lost."; eraseStep in authStore: a cleanup write that
+doesn't land, the Log draft's, the answer run's, the settings' or the age band's, makes
+Erase report that it couldn't finish, so it can be run again);
+src/engine/supportAside.ts, src/store/coachStore.ts backToCoach and
 src/store/settingsStore.ts supportAsideKeys (a prediction id and a 64-bit FNV-1a hash of
-its title and note per entry, at most 200, stored with the settings and never sent; cleared
-by sign-out, Erase and account deletion in authStore: §3, §7);
-src/components/stats/SupportSurface.tsx SUPPORT_ASIDE_NOTE and "Back to Coach";
+its title and note per entry, at most 2,000 (SUPPORT_ASIDE_MAX_KEYS in src/types/index.ts;
+200 until the re-review's round two), stored with the settings and never sent. The tap
+on "Back to Coach" runs the check again first: nothing matching clears the card and stores
+nothing; a topic not yet shown puts its card up and stores nothing, a second topic matched
+by the same note included (crisisTopicsIn in src/ai/crisisFilter.ts, round two); otherwise
+the matching predictions are set aside. A key goes when its prediction's words change or it
+is deleted: retainSupportAsideKeys at every request and tap, src/store/predictionStore.ts
+forgetStaleSupportAside on a change made here, and forgetSupportAsideNotIn after every
+successful load of the answered predictions, which is where a change that arrived by sync
+is first seen (round two). All are cleared by sign-out, Erase and account deletion in
+authStore through eraseSupportAside (round two: sign-out and deletion as Erase does, so a
+settings record that can't be read is replaced), also when that runs before the settings
+have been read: §3, §7);
+src/components/stats/SupportSurface.tsx SUPPORT_ASIDE_NOTE, SUPPORT_UPDATED_NOTE ("Other
+words matched too, so this message changed.") and "Back to Coach";
 src/components/account/SignInView.tsx USAGE_NOTE and USAGE_OFF_NOTE with
 src/components/settings/UsageStatsSwitch.tsx (the sign-in screen's switch: §2.3);
 src/ai/crisisFilter.ts TERRITORY_LIFELINE_CONTACT (no sentence here names a helpline).
@@ -258,7 +335,10 @@ Public pages read 2026-11-18:
   (https://developers.openai.com/api/docs/guides/your-data): API data "is not used to
   train or improve OpenAI models" unless the customer opts in; "abuse monitoring logs
   are generated for all API feature usage and retained for up to 30 days", longer where
-  the law requires or to protect against harm.
+  the law requires or to protect against harm. §3 now gives the exception in the words
+  the policy audit of 2026-11-19 took from that page, "unless longer retention is required
+  by law, or is reasonably necessary to protect its services"; the docs sweep that put
+  them in made no network request, so re-read the page before publishing.
 -->
 
 # Fairly Sure Privacy Policy
@@ -299,9 +379,9 @@ count how many people start and finish the warm-up, log, answer, share and
 practise, are sent to us, but only after the warm-up's first screen has shown
 you a line saying so and what they're for (to see how the app is used), with a
 switch to turn them off (the same switch as You → Usage stats). Until then they
-wait on the phone. On a launch where the app asks Apple for an age range
-(below), they also wait for Apple's answer, and if the range is under 13 none
-are kept for sending and none are sent (§9). They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
+wait on the phone. On a launch where the app doesn't yet hold an age range of
+13 or over from Apple (below), they also wait for Apple's answer, and if the
+range is under 13 none are kept for sending and none are sent (§9). They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
 event's own id with a one-way scrambled version of it and keeps only the day the
 event happened, not the time. Like any request over the internet, they reach our
 hosting provider with your IP address, which its logs may keep for up to 7 days
@@ -314,24 +394,47 @@ Usage stats: that deletes the ones still on the device and stops all of them.
 
 To know whether you have Fairly Sure Plus, the app asks RevenueCat, the
 service that manages subscriptions, each time it starts. On a launch where it
-asks Apple for an age range (below), it waits for Apple's answer first, or for
-at most 5 seconds if you open the Plus screen sooner; if the range is under 13,
-it never contacts RevenueCat (§9). Without an account
+doesn't yet hold an age range of 13 or over from Apple (below), it waits for
+Apple's answer first, however long that takes: if you open the Plus screen
+sooner, the plans don't load until the answer is in. If that answer is under
+13, RevenueCat isn't started, on that launch or any later one while the range
+stays under 13 (§9). On an iPhone that had already shared a range of 13 or
+over, the app starts RevenueCat at launch as usual; if Apple's answer then
+turns out to be under 13, the app asks RevenueCat for nothing more (a request
+already on its way completes), but RevenueCat's code stays running until the
+app is next closed, and can refresh its purchase information on its own
+meanwhile; it isn't started again from the next launch. If you signed out
+while RevenueCat wasn't running, the app signs that account out of RevenueCat
+the next time it starts RevenueCat, before reading whether you have Plus, so
+an earlier account's Plus can't show for someone who isn't signed in. Without an account
 that request carries a random identifier RevenueCat makes for this install,
 not your name, email or anything you typed, along with the technical details
 any app request carries (such as your IP address, the app version and
 language). None of your predictions are sent.
 
-On an iPhone running iOS 26 or later, the app may ask Apple for an age range
-once its first screen is up: at each launch until you share one, and, while
-the range it has is under 13, at each launch and when you come back to the app
-a day or more after it last asked. If you share one, only the age band — a
+On an iPhone running iOS 26 or later, the app asks Apple for an age range
+once its first screen is up, at each launch, and, while it holds a range or
+the under-13 rule applies (§9), again when you come back to the app a day or
+more after it last asked. Apple, not the app, decides whether you see its
+question again or it answers from what you chose before. The app asks each
+time because the range it stores belongs to this copy of the app, not to an
+Apple Account: an iPhone handed to someone else, or set up from a backup,
+would otherwise keep the earlier range. If you share one, only the age band — a
 lower and an upper bound, not your birthday — is stored on the device. It is
-not sent to us. A band under 13 turns off signing in, backup, usage counts,
-the Coach and Fairly Sure Plus (§9); any other band, or none, changes nothing.
-If you decline, a band you shared before stays. Erase and account deletion
-remove it with the rest of the on-device data, and the app then asks again at
-the next launch.
+not sent to us. A band that includes ages under 13 turns off signing in,
+backup, usage counts, the Coach and Fairly Sure Plus (§9) as soon as it
+arrives, stopping a backup or a send of usage counts that is under way before
+its next request; any other band, or none, changes nothing. If you decline, or
+Apple can't answer, a band you shared before stays. If the stored band can't
+be read, the app treats the iPhone as under 13 until Apple answers with a band
+of 13 or over. While the app is waiting for Apple's answer and doesn't yet
+hold a band of 13 or over, signing in waits up to 5 seconds and is then
+refused for the moment ("Sign-in isn't ready yet. Try again in a moment."),
+and the Coach sends nothing until the answer is in.
+Erase and account deletion remove the band with the rest of the on-device
+data. For the rest of that session the app stores no band, even if Apple
+answers a question that was already under way (an under-13 answer still
+turns everything off for that session), and it asks again at the next launch.
 
 ### If you create an account
 
@@ -432,19 +535,26 @@ then forwards the summary, without your account id or email, to OpenAI to
 generate the feedback. OpenAI's published API data controls (read
 November 18, 2026) say that data sent to its API isn't used to train its models
 unless the customer opts in, and that OpenAI keeps abuse-monitoring logs of API
-use for up to 30 days, longer where the law requires it or to protect against
-harm.
+use for up to 30 days, unless longer retention is required by law, or is
+reasonably necessary to protect its services.
 
 Before any Coach request, the app checks your predictions and reflections **on
 your device** for signs of distress. If it finds any, it shows you support resources instead of
 contacting the Coach. That check never sends your text anywhere.
 
-If that support message doesn't fit, **Back to Coach** sets it aside. The app
-then remembers, on this phone only, which predictions it came up for, each by
-its id and a short code worked out from its words (never the words
-themselves), at most 200 of them, and shows the message again only for new
-words that match: another prediction, or a changed note. That list is
-never sent. Signing out, Erase and account deletion clear it.
+If that support message doesn't fit, **Back to Coach** sets it aside. When you
+tap it, the app first runs the same on-device check again over your
+predictions as they are then. If nothing matches any more, the message goes
+and nothing is remembered. If words match on a subject whose message you
+haven't been shown yet (even words in the same note), the app shows that
+message first, says the message changed, and sets nothing aside. Otherwise
+the app remembers, on this phone only, which predictions the message came up
+for, each by its id and a short code worked out from its words (never the
+words themselves), at most 2,000 of them, and shows the message again only
+for new words that match: another prediction, or a changed title or note. An
+entry is dropped when that prediction's words change or the prediction is
+deleted, on this phone or, once the change has synced, on another. That list
+is never sent. Signing out, Erase and account deletion clear it.
 
 ## 4. Who else handles your data
 
@@ -528,7 +638,8 @@ In the app: **You → Delete account** (at the bottom). This permanently deletes
   practice answers, the age band, a prediction you were still typing, the list
   of support messages you set aside (§3), and the
   exported files, card images and pictures the app left in the phone's cache. Your settings (switches and reminder times), which hold
-  nothing you wrote, stay.
+  nothing you wrote, stay (unless they can't be read at that moment; then they
+  are replaced, as described under Erase below).
 
 We also ask RevenueCat to delete its record for your account. That step is
 best effort: if RevenueCat can't be reached, your account is still deleted.
@@ -587,13 +698,17 @@ phone no longer holds anything that could use the session; it ends the next
 time you sign out with a connection, or when you delete your account. If even
 this phone can't end the session, you stay signed in, and the app says so. If
 your data had already been removed from the phone, what was backed up comes
-back from our server; what you agreed to lose, above, doesn't.
+back from our server; what you agreed to lose, above, doesn't. (On an iPhone
+whose age range is under 13, what was backed up stays on our server and
+doesn't come back to the phone while that lasts, and the app says so, §9.)
 
 Signing back in brings back your predictions and reflections from our server.
 Category names, icons and hiding are kept only on the phone, so they don't come
 back, and neither do the time-zone offsets in §2.2 unless your version of the
 app backs them up. Your warm-up, daily practice and age band belong to the
-phone rather than the account, and stay, as do your settings. Reminders for the
+phone rather than the account, and stay, as do your settings (unless they
+can't be read when you sign out; then they are replaced, as described under
+Erase below). Reminders for the
 account's predictions stop, and any on the lock screen showing a prediction's
 words are cleared.
 
@@ -602,10 +717,17 @@ out on a different phone, that phone keeps its copy of your data, out of view,
 until you sign in and out again there, use Erase there, or delete the app there.
 
 Without an account, **You → Erase your data on this phone** removes everything
-Fairly Sure keeps on the phone, whoever's account it was under, except three
+Fairly Sure keeps on the phone, whoever's account it was under, except four
 things that hold nothing you wrote: your settings (switches and reminder times),
-whether this phone has Fairly Sure Plus, and the ids of accounts that signed out
-here, which stop an old sign-in from coming back. So it removes predictions and
+whether this phone has Fairly Sure Plus, the random install identifier
+RevenueCat's code keeps on the phone (§2), and the ids of accounts that signed
+out here, which stop an old sign-in from coming back. (If the saved settings
+can't be read when you erase, they are replaced with the ones the app is using
+then, with each privacy choice on its more private setting.) Before it starts,
+the app counts any changes that accounts signed in here before never sent to
+our server, and says how many would be lost, or, if it can't count them, that
+there may be some. If any part of the erase doesn't complete, the app says it
+couldn't finish, and you can run it again. So it removes predictions and
 reflections, categories and their icons, warm-up and practice answers, the age
 band, a prediction you were still typing, usage events not yet sent, the list of
 support messages you set aside (§3), the counts of deleted, late-changed and
@@ -618,12 +740,23 @@ You can also email tapjason-dev@gmail.com to request deletion or a copy of your 
 
 ## 8. Your rights
 
-Depending on where you live (for example, under the GDPR in the EU/UK or the
-CCPA in California), you may have the right to access, correct, export, or
-delete your personal data, and to object to or restrict its processing. You can
-export your predictions yourself as CSV or ask us for a copy at
-tapjason-dev@gmail.com. We'll respond within 30 days. We don't sell personal
-information as the CCPA defines it.
+Depending on where you live, you may have the right to see the personal data
+we hold about you, to have it corrected, to get a copy of it and to have it
+deleted. Examples are the CCPA in California, PIPEDA in Canada, and the
+Privacy Acts of Australia and New Zealand. You can export your predictions
+yourself as CSV (You → Export predictions), delete your account in the app
+(§7), or ask us for any of these at tapjason-dev@gmail.com. We'll respond
+within 20 working days. We don't sell personal information as the CCPA
+defines it.
+
+Your data is stored in the United States (§4), which may be outside the
+country you live in.
+
+If you have a complaint about how we handle your data, please write to us
+first, at the same address. If you aren't satisfied with our answer, you can
+complain to the Office of the Privacy Commissioner of Canada, the Office of
+the Australian Information Commissioner, or New Zealand's Office of the
+Privacy Commissioner.
 
 ## 9. Children
 
@@ -633,11 +766,27 @@ their personal information.
 If the age range an iPhone shares with Fairly Sure (§2) includes ages under 13
 (this policy calls that "under 13"), the app keeps what you log on the phone.
 There is no signing in, no backup, no usage counts and no Coach, and Fairly Sure
-Plus isn't offered, so the app never contacts RevenueCat. It doesn't ask for an
-App Store rating either. Everything else works as usual, and You → Export
-predictions keeps a copy. The app explains this in You without saying an age.
-If the range shared later is 13 or over, the app goes back to working as the
-rest of this policy describes.
+Plus isn't offered, so RevenueCat isn't started (§2 says what happens if it was
+already running when the range arrived). It doesn't ask for an App Store rating
+either. Everything else works as usual, and You → Export predictions keeps a
+copy. The app explains this in You without saying an age. If the range shared
+later is 13 or over, the app goes back to working as the rest of this policy
+describes.
+
+"Includes ages under 13" is read widely, so that the rule errs on the side of
+sending nothing. Apple's ranges can differ by region. Where they have no
+boundary at 13, a range such as "15 or under" or "17 or under" counts as under
+13 too, so in those regions people aged 13 to 15, or to 17, get the same
+on-phone-only app.
+
+The app checks the range before a sign-in starts and again when Apple's or
+Google's sign-in sheet closes, before anything is sent to our server. Two gaps
+remain, both only when an under-13 range arrives during a sign-in on an iPhone
+that had shared a range of 13 or over before: a sign-in with an email address
+and password that was already sent goes through, and with Google, our sign-in
+service has already created or found the account by the time Google's sheet
+closes, so the account exists on our server even though the app refuses to use
+it.
 
 If an account was already signed in on that iPhone, it stays signed in but is
 frozen: nothing new is backed up, nothing is deleted from our server, and its
@@ -645,10 +794,12 @@ predictions stay on the phone. What was backed up before stays on our server
 until the account is deleted, and Sign out and Delete account still work; since
 nothing can be backed up, signing out says how many changes haven't reached our
 server and asks before removing them (§7). Apart from those two, one thing
-still reaches our server: when the app starts and that
-account's sign-in has expired, it may renew it once. That sends the sign-in's
-refresh token and, like any request, the phone's IP address (which our sign-in
-service records, as in §2.1), and none of your predictions.
+still reaches our server: each time the app starts and that account's sign-in
+has expired, the app renews it. That sends the sign-in's refresh token and,
+like any request, the phone's IP address (which our sign-in service records,
+as in §2.1), and none of your predictions. The same renewal can happen for any
+signed-in account at a launch where the app is still waiting for Apple's
+answer.
 
 If you believe a child has created an account, contact us and we'll delete it.
 
@@ -686,7 +837,8 @@ Apple's crash reports, the country in request logs, and after round 6 the 13 mon
 usage counts and what an offset can say about where you are; after the policy re-audit,
 "Precise location" in "What we never collect", and no "time zone" for RevenueCat; for D70 and
 D71, the under-13 rule in §2 and §9, the sign-in screen's switch, and the support message's
-set-aside list) and changes what signing out
+set-aside list; after the D70/D71 review, the sign-in renewals and the two sign-in gaps in
+§9, and §8 rewritten for the four launch storefronts) and changes what signing out
 does (it now removes the account's data from the phone, all but the counts only the phone
 keeps, and asks first about categories kept only there) and what Erase does (it now removes
 everything the app keeps on the phone, those counts included). The app isn't on the App Store yet, so

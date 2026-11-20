@@ -6,11 +6,13 @@
 import type { PendingTombstone, Prediction, PredictionWireRow } from '@/types';
 
 import { getDb, setDbForTests, withTransaction } from './client';
+import { LOCAL_GUEST_USER_ID } from './migrateGuestData';
 
 import {
   answerSkippedPrediction,
   correctPredictionOutcome,
   countUnsynced,
+  countUnsyncedForAccounts,
   deletePrediction,
   getPrediction,
   getPredictionUpdatedAt,
@@ -1000,6 +1002,57 @@ describe('countUnsynced', () => {
 
     await upsertPredictionFromRemote(sampleWire({ id: 'pulled' }));
     expect(await countUnsynced('u1')).toBe(1);
+  });
+});
+
+// Record audit 2026-11-19: guest Erase removes rows under every account id,
+// so its confirmation counts what accounts never pushed.
+describe('countUnsyncedForAccounts', () => {
+  it("doesn't count the guest's rows, which never sync", async () => {
+    await insertPrediction(samplePrediction({ id: 'g1', user_id: LOCAL_GUEST_USER_ID }));
+    await insertPrediction(samplePrediction({ id: 'g2', user_id: LOCAL_GUEST_USER_ID }));
+    await deletePrediction('g2');
+    expect(await countUnsyncedForAccounts()).toBe(0);
+  });
+
+  it('counts dirty rows and deletions not yet pushed under every account id', async () => {
+    await insertPrediction(samplePrediction({ id: 'a1', user_id: 'acct-a' }));
+    await insertPrediction(samplePrediction({ id: 'a2', user_id: 'acct-a' }));
+    await deletePrediction('a2');
+    await insertPrediction(samplePrediction({ id: 'b1', user_id: 'acct-b' }));
+    await insertPrediction(samplePrediction({ id: 'b2', user_id: 'acct-b' }));
+    await deletePrediction('b2');
+    await insertPrediction(samplePrediction({ id: 'g1', user_id: LOCAL_GUEST_USER_ID }));
+
+    // a1 and b1 dirty, a2 and b2 waiting to be deleted on the server.
+    expect(await countUnsyncedForAccounts()).toBe(4);
+    expect((await countUnsynced('acct-a')) + (await countUnsynced('acct-b'))).toBe(4);
+  });
+
+  it("doesn't count what reached the server", async () => {
+    await insertPrediction(samplePrediction({ id: 'a1', user_id: 'acct-a' }));
+    await insertPrediction(samplePrediction({ id: 'b1', user_id: 'acct-b' }));
+    await insertPrediction(samplePrediction({ id: 'b2', user_id: 'acct-b' }));
+    await deletePrediction('b2');
+    expect(await countUnsyncedForAccounts()).toBe(3);
+
+    const a1 = await getRawRow('a1');
+    await markPredictionSynced('a1', a1!.updated_at);
+    const b1 = await getRawRow('b1');
+    await markPredictionSynced('b1', b1!.updated_at);
+    await markDeletionPushed('b2');
+    expect(await countUnsyncedForAccounts()).toBe(0);
+  });
+
+  it('counts a change made after a push again', async () => {
+    await insertPrediction(samplePrediction({ id: 'a1', user_id: 'acct-a' }));
+    const a1 = await getRawRow('a1');
+    await markPredictionSynced('a1', a1!.updated_at);
+    expect(await countUnsyncedForAccounts()).toBe(0);
+
+    await new Promise((r) => setTimeout(r, 2));
+    await resolvePrediction('a1', 'resolved_yes');
+    expect(await countUnsyncedForAccounts()).toBe(1);
   });
 });
 

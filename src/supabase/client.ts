@@ -8,16 +8,22 @@
 // and the engine's predicate) only — never other stores, the engine, or DB
 // helpers.
 //
-// The under-13 rule (roadmap D70): a client made while the phone is local-only
-// is made with the session's auto-refresh off, so supabase-js neither
-// refreshes a stored session as it starts nor runs its refresh timer.
+// The under-13 rule (roadmap D70): a client made before uploads may start
+// (while the phone is local-only, or while Apple's age answer is still pending
+// on a launch that asks) is made with the session's auto-refresh off, so
+// supabase-js runs neither its refresh timer nor its own start-up refresh of
+// an expiring session (`_recoverAndRefresh`). It still renews a stored session
+// already expired, or within 90 s of expiry, when the client is made and at
+// `getSession()`: any session read does (the residual described on
+// `getSupabaseClient` below, pinned in auth.localOnly.test.ts).
 // src/supabase/auth.ts pauses and resumes the timer on a client that already
-// exists (`pauseSessionRefresh`, `resumeSessionRefresh`).
+// exists (`pauseSessionRefresh`, `resumeSessionRefresh`), and
+// src/age/localOnly.ts resumes it the moment uploads may start.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
-import { isLocalOnly } from '@/store/ageStore';
+import { uploadsMayStart } from '@/store/ageStore';
 
 import { createSessionStorage, supabaseStorageKey, type KeychainDeps } from './sessionStorage';
 
@@ -40,14 +46,26 @@ let client: SupabaseClient | null = null;
  * key is passed explicitly, the one supabase-js would pick itself, so the
  * storage's launch check reads the same keys the client does.
  *
- * `autoRefreshToken` is off when the client is made under the under-13 rule
- * (D70). With it on, auth-js 2.106 refreshes an expiring stored session as
- * soon as the client starts (GoTrueClient `_recoverAndRefresh`) and, outside a
- * browser, starts its refresh timer (`_handleVisibilityChange`); with it off,
- * neither happens. A `getSession()` on a session within its expiry margin
- * still refreshes it (`__loadSession` calls `_callRefreshToken` whatever the
- * setting): that is the residual the design discloses, and it is what keeps
- * Sign out and Delete account working for an account frozen by the rule.
+ * `autoRefreshToken` is on only when uploads may start (`uploadsMayStart`):
+ * off under the under-13 rule (D70), and off while Apple's age answer is still
+ * pending on a launch that asks, since the client is made at launch (authStore
+ * `initialize`) before the answer can come. With it on, auth-js 2.106
+ * refreshes an expiring stored session in its own start-up
+ * (GoTrueClient `_recoverAndRefresh`) and, outside a browser, starts its
+ * refresh timer (`_handleVisibilityChange`); with it off, neither happens, and
+ * src/age/localOnly.ts starts the timer once uploads may start
+ * (`resumeSessionRefresh`), whose first tick refreshes a session near expiry.
+ *
+ * What the setting does not stop (the residual the design discloses, checked
+ * against the installed library in auth.localOnly.test.ts): any read of a
+ * session within 90 s of expiry refreshes it (`__loadSession` calls
+ * `_callRefreshToken` whatever the setting). That includes supabase-js's own
+ * constructor, which subscribes to `onAuthStateChange` (`_listenForAuthEvents`)
+ * and so reads the session for INITIAL_SESSION: a stored session already
+ * expired at launch is refreshed as the client is made, before Apple answers
+ * and under the rule, and so is one read by authStore's `getSession`. It is
+ * also what keeps Sign out and Delete account working for an account frozen
+ * by the rule.
  */
 export function getSupabaseClient(): SupabaseClient {
   if (client) return client;
@@ -76,7 +94,7 @@ export function getSupabaseClient(): SupabaseClient {
         keychain: loadKeychain(),
       }),
       storageKey,
-      autoRefreshToken: !isLocalOnly(),
+      autoRefreshToken: uploadsMayStart(),
       persistSession: true,
       // PKCE flow is required for native OAuth — the implicit flow's URL
       // fragment doesn't survive the redirect back into the app.

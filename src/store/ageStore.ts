@@ -10,15 +10,25 @@
 // nothing before the band arrives.
 //
 // The gate fails closed. Within a run it is lifted only by Apple's own answer
-// of a band that isn't under 13, once that band is saved (`accept`): reading
-// the stored band again (`load`) never lifts it, an under-13 answer that
-// couldn't be saved still applies for the run, and Erase or account deletion,
+// of a band that isn't under 13, once that band is saved (`accept`): a stored
+// band that couldn't be read closes it (`loadUnknown`), reading the stored
+// band again (`load`) never lifts it, an under-13 answer that couldn't be
+// saved still applies for the run, and Erase or account deletion,
 // which clear the stored band, leave it on for the run (`forgetBand`, call 4:
 // the next launch asks Apple again before anything can be sent).
 //
+// After Erase or account deletion nothing is saved for the rest of the run
+// (re-review round two, 2026-11-19): an ask still in flight when the band was
+// forgotten, or any later one, closes the gate for an under-13 answer and
+// lifts nothing, and its band never reaches the phone's storage, so Erase
+// removes the band whatever an ask was doing. A save already running when
+// the band is forgotten is undone once it lands.
+//
 // Defaults, `{ bucket: null, localOnly: false, settled: true }`, are today's
-// app: where the question isn't asked (web, Jest, Android, iOS before 26, a
-// stored band that isn't under 13) nothing waits and nothing changes.
+// app: where the question isn't asked (web, Jest, Android, iOS before 26)
+// nothing waits and nothing changes. Wherever the API runs, Apple is asked at
+// every launch, whatever is stored (src/age/ageRange.ts); `settled` is false
+// only while uploads wait for that ask (`willAsk`).
 //
 // Layer rule: L4, and a leaf. Imports zustand, @/db/ageBucket,
 // @/engine/ageBand and @/types only, so other stores and the services can
@@ -27,7 +37,7 @@
 
 import { create } from 'zustand';
 
-import { saveAgeBucket } from '@/db/ageBucket';
+import { clearAgeBucket, saveAgeBucket } from '@/db/ageBucket';
 import { isUnder13Band } from '@/engine/ageBand';
 import type { AgeBucket } from '@/types';
 
@@ -51,9 +61,12 @@ export const AGE_ANSWER_WAIT_MS = 5000;
 /** What `load` is told about this launch. */
 export interface AgeLoadOptions {
   /**
-   * This launch will ask Apple (iOS 26 with no stored band, or a stored band
-   * under 13): `settled` stays false until `markSettled`, so automatic
-   * uploads wait for the answer.
+   * Uploads wait for this launch's ask: it can ask Apple (iOS 26, the module
+   * present) and the stored band is none, under 13, or couldn't be read.
+   * `settled` stays false until `markSettled`, so automatic uploads wait for
+   * the answer. False when the launch can't ask, and when it asks about a
+   * stored band of 13 or over: that ask still runs, in the background, with
+   * nothing waiting for it.
    */
   willAsk: boolean;
 }
@@ -64,37 +77,64 @@ interface AgeState {
   /** The under-13 rule applies: nothing may leave the phone. Read through `isLocalOnly()`. */
   localOnly: boolean;
   /**
-   * Apple has answered on this launch, or this launch doesn't ask. False only
-   * between `load(…, { willAsk: true })` and `markSettled()`.
+   * Apple has answered on this launch, or uploads don't wait for this
+   * launch's ask (it can't ask, or asks about a stored band of 13 or over in
+   * the background). False only between `load(…, { willAsk: true })` and
+   * `markSettled()`.
    */
   settled: boolean;
 
   /**
    * The stored band at launch (`hydrateAgeGate`, src/age/ageRange.ts), before
    * anything can upload: the bucket, `localOnly` from it, and `settled` false
-   * when this launch will ask. Fails closed: it turns the gate on, never off
-   * (a gate already on in this run stays on until `accept` lifts it).
+   * when uploads wait for this launch's ask (`willAsk`). Fails closed: it
+   * turns the gate on, never off (a gate already on in this run stays on
+   * until `accept` lifts it).
    */
   load: (bucket: AgeBucket | null, opts: AgeLoadOptions) => void;
+  /**
+   * The stored band couldn't be read at launch (the read threw, or the row
+   * isn't a band; `closeGateForUnknownBand`, src/age/ageRange.ts): no band
+   * known, the gate closed for the run, and `settled` false when uploads wait
+   * for this launch's ask. One write, so no subscriber sees the gate open on
+   * the way. Only a later `accept` of a band that isn't under 13, once saved,
+   * lifts it, as for any gate.
+   */
+  loadUnknown: (opts: AgeLoadOptions) => void;
   /**
    * Apple's answer: a valid band (src/age/ageRange.ts checks the response).
    * Saved through `saveAgeBucket`, and `localOnly` follows it. An under-13
    * band closes the gate at once, before the save, and keeps it closed for
-   * the run even if the save fails. A band that isn't under 13 lifts the gate
-   * only once it is saved, and only if no later band or `forgetBand` came in
-   * meanwhile: a save that fails lifts nothing, since the stored band (which
-   * may be under 13) still stands. Never throws; true when the band was saved.
+   * the run even if the save fails or is skipped: closing is never skipped.
+   * A band that isn't under 13 lifts the gate only once it is saved, and
+   * only if no later band or `forgetBand` came in meanwhile: a save that
+   * fails lifts nothing, since the stored band (which may be under 13) still
+   * stands.
+   *
+   * Once `forgetBand` has run in this process (Erase, account deletion),
+   * nothing is saved and nothing lifted for the rest of the run, whenever the
+   * ask began (re-review round two, 2026-11-19): an under-13 answer still
+   * closes the gate, in memory. And a save already running when `forgetBand`
+   * comes in is undone: the band it wrote is cleared again once it lands.
+   *
+   * Never throws; true when the band was saved and stays saved.
    */
   accept: (bucket: AgeBucket) => Promise<boolean>;
   /** Apple has answered, or won't on this launch: anything waiting in `whenAgeSettled` goes on. */
   markSettled: () => void;
   /**
    * The stored band was cleared (guest Erase, a confirmed account deletion):
-   * `bucket` goes to null, and `localOnly` stays as it is for the rest of the
-   * run (call 4). The next launch reads no band and asks Apple again before
-   * anything can be sent.
+   * `bucket` goes to null at once, and `localOnly` stays as it is for the
+   * rest of the run (call 4); from now on `accept` saves nothing. The next
+   * launch reads no band and asks Apple again before anything can be sent.
+   *
+   * When an answer was saved in this run, the caller's wipe may have run
+   * before that save landed (re-review round two, 2026-11-19), so the stored
+   * band is cleared once more here: true once it is (or when there was
+   * nothing to clear), false when that clear failed. The memory change never
+   * waits on it. Never throws.
    */
-  forgetBand: () => void;
+  forgetBand: () => Promise<boolean>;
 }
 
 const INITIAL = {
@@ -104,10 +144,32 @@ const INITIAL = {
 };
 
 /**
- * Bumped by every change of band (`load`, `accept`, `forgetBand`), so a save
- * that finishes after a later change lifts nothing.
+ * Bumped by every change of band (`load`, `loadUnknown`, `accept`,
+ * `forgetBand`), so a save that finishes after a later change lifts nothing.
  */
 let bandVersion = 0;
+/**
+ * How many times `forgetBand` has run in this process. Above 0, `accept`
+ * saves nothing; a change while a save runs undoes that save.
+ */
+let forgets = 0;
+/**
+ * Whether `accept` has started a save in this process: only then can a band
+ * be on the phone after the caller's wipe, and `forgetBand` clear it again.
+ */
+let savedThisRun = false;
+
+/** Clear the stored band. True once cleared. Never throws; never logs the band. */
+async function clearStoredBand(): Promise<boolean> {
+  try {
+    await clearAgeBucket();
+    return true;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[age] could not clear the age range:', e instanceof Error ? e.message : 'unknown error');
+    return false;
+  }
+}
 
 export const useAgeStore = create<AgeState>((set, get) => ({
   ...INITIAL,
@@ -121,12 +183,23 @@ export const useAgeStore = create<AgeState>((set, get) => ({
     });
   },
 
+  loadUnknown: ({ willAsk }) => {
+    bandVersion += 1;
+    set({ bucket: null, localOnly: true, settled: !willAsk });
+  },
+
   accept: async (bucket) => {
     const mine = ++bandVersion;
     const under13 = isUnder13Band(bucket);
     // The gate closes before the save: an upload must not slip through while
-    // the band is being written.
+    // the band is being written. Never skipped, whatever follows.
     if (under13) set({ bucket, localOnly: true });
+    // The band was forgotten in this run (Erase, account deletion): the ask
+    // this answers may have begun before that, and nothing it says reaches
+    // the phone's storage or lifts the gate until the next launch asks again.
+    if (forgets > 0) return false;
+    const forgetsBefore = forgets;
+    savedThisRun = true;
     try {
       await saveAgeBucket(bucket);
     } catch (e) {
@@ -134,6 +207,12 @@ export const useAgeStore = create<AgeState>((set, get) => ({
       // other lifts nothing. The message only, never the band.
       // eslint-disable-next-line no-console
       console.warn('[age] could not keep the age range:', e instanceof Error ? e.message : 'unknown error');
+      return false;
+    }
+    if (forgets !== forgetsBefore) {
+      // Forgotten while the save ran: the band it wrote goes again, and
+      // nothing lifts.
+      await clearStoredBand();
       return false;
     }
     if (!under13 && mine === bandVersion) set({ bucket, localOnly: false });
@@ -144,9 +223,13 @@ export const useAgeStore = create<AgeState>((set, get) => ({
     if (!get().settled) set({ settled: true });
   },
 
-  forgetBand: () => {
+  forgetBand: async () => {
     bandVersion += 1;
+    forgets += 1;
     set({ bucket: null });
+    // A save of this run may have landed after the caller's wipe; with none
+    // started, the wipe left nothing to clear.
+    return savedThisRun ? clearStoredBand() : true;
   },
 }));
 
@@ -157,8 +240,8 @@ export function isLocalOnly(): boolean {
 
 /**
  * Whether automatic uploads at launch (the guest flush, billing's configure)
- * may start: Apple has answered, or this launch doesn't ask, and the rule
- * doesn't apply.
+ * may start: Apple has answered, or uploads don't wait for this launch's ask
+ * (`settled`), and the rule doesn't apply.
  */
 export function uploadsMayStart(): boolean {
   const { settled, localOnly } = useAgeStore.getState();
@@ -170,7 +253,8 @@ const MAX_TIMER_MS = 2_147_483_647;
 
 /**
  * Resolves once Apple has answered on this launch (at once when it already
- * has, or doesn't ask), or after `maxWaitMs` at the latest. With no cap (or a
+ * has, or when uploads don't wait for this launch's ask), or after
+ * `maxWaitMs` at the latest. With no cap (or a
  * cap that isn't a finite number) it waits for `markSettled` alone. A cap of
  * 0 or less resolves at once. Never rejects, and leaves no timer or
  * subscription behind once it has resolved. Says nothing about the answer:
@@ -207,5 +291,7 @@ export function __resetAgeStoreForTests(): void {
     throw new Error('__resetAgeStoreForTests is only allowed when NODE_ENV=test');
   }
   bandVersion = 0;
+  forgets = 0;
+  savedThisRun = false;
   useAgeStore.setState({ ...INITIAL });
 }

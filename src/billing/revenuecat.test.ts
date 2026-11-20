@@ -8,7 +8,9 @@ import {
   entitlementFromCustomerInfo,
   fetchEntitlement,
   fetchPlans,
+  fetchTrialStatus,
   isBillingAvailable,
+  logOutBilling,
   plansFromOfferings,
   purchasePlan,
   restorePurchases,
@@ -398,6 +400,201 @@ describe('configureBilling', () => {
       }),
     );
     await expect(configureBilling('u1')).resolves.toBe(false);
+  });
+});
+
+// Review 2026-11-19, round 2, item 1. `Purchases.configure` with a null app
+// user id keeps the id the SDK cached (purchases-ios IdentityManager: the
+// configured id, else the cached one, else a new anonymous one). A sign-out
+// RevenueCat never heard of (it hadn't started) left the old account cached,
+// so a later signed-out start read that account's Plus into the guest's
+// mirror, and the next person's purchases would have landed on it. This fake
+// keeps an identity the way the SDK does.
+describe('a signed-out start with an account still cached', () => {
+  const ANON = '$RCAnonymousID:install';
+  const FRESH = '$RCAnonymousID:fresh';
+  const isAnon = (id: string) => id.startsWith('$RCAnonymousID:');
+
+  /**
+   * A fake SDK with an identity: `cached` is what an earlier run left, and
+   * the old account owns Plus. `logOut` rejects for an anonymous user, as the
+   * SDK does. `log` records each call in order.
+   */
+  function sdkWithIdentity(opts: {
+    cached: string | null;
+    logOutKeepsIdentity?: boolean;
+    isAnonymousThrows?: boolean;
+  }) {
+    const log: string[] = [];
+    let current = opts.cached ?? ANON;
+    const infoFor = (id: string) => (id === 'old-account' ? customerInfo({}) : customerInfo(null));
+    const deps = fakeDeps({
+      configure: jest.fn(async (_key: string, appUserId: string | null) => {
+        log.push('configure');
+        current = appUserId ?? opts.cached ?? ANON;
+      }),
+      isAnonymous: jest.fn(async () => {
+        log.push('isAnonymous');
+        if (opts.isAnonymousThrows) throw new Error('not configured');
+        return isAnon(current);
+      }),
+      logOut: jest.fn(async () => {
+        log.push('logOut');
+        if (isAnon(current)) throw new Error('LogOut was called but the current user is anonymous');
+        if (!opts.logOutKeepsIdentity) current = FRESH;
+      }),
+      logIn: jest.fn(async (id: string) => {
+        log.push(`logIn:${id}`);
+        current = id;
+      }),
+      getCustomerInfo: jest.fn(async () => {
+        log.push(`getCustomerInfo:${current}`);
+        return infoFor(current);
+      }),
+      purchasePackage: jest.fn(async () => {
+        log.push(`purchasePackage:${current}`);
+        return infoFor(current);
+      }),
+      restorePurchases: jest.fn(async () => {
+        log.push(`restorePurchases:${current}`);
+        return infoFor(current);
+      }),
+      getOfferings: jest.fn(async () => {
+        log.push('getOfferings');
+        return OFFERINGS;
+      }),
+    });
+    return { deps, log, current: () => current };
+  }
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('logs the cached account out before the first entitlement read', async () => {
+    const sdk = sdkWithIdentity({ cached: 'old-account' });
+    __setBillingDepsForTests(sdk.deps);
+
+    await expect(configureBilling(null)).resolves.toBe(true);
+    await expect(fetchEntitlement()).resolves.toEqual(FREE_ENTITLEMENT);
+
+    expect(sdk.log).toEqual([
+      'configure',
+      'isAnonymous',
+      'logOut',
+      'isAnonymous',
+      `getCustomerInfo:${FRESH}`,
+    ]);
+  });
+
+  it('a read started while the start is still logging out waits for it', async () => {
+    const sdk = sdkWithIdentity({ cached: 'old-account' });
+    __setBillingDepsForTests(sdk.deps);
+
+    const [configured, entitlement, trial] = await Promise.all([
+      configureBilling(null),
+      fetchEntitlement(),
+      fetchTrialStatus(),
+    ]);
+
+    expect(configured).toBe(true);
+    expect(entitlement).toEqual(FREE_ENTITLEMENT);
+    expect(trial).toBeNull();
+    expect(sdk.log.filter((c) => c.startsWith('getCustomerInfo'))).toEqual([
+      `getCustomerInfo:${FRESH}`,
+      `getCustomerInfo:${FRESH}`,
+    ]);
+    expect(sdk.log.indexOf('logOut')).toBeLessThan(sdk.log.indexOf(`getCustomerInfo:${FRESH}`));
+  });
+
+  it('an anonymous user stays as it is: no log-out, and a guest purchase still reads', async () => {
+    const sdk = sdkWithIdentity({ cached: null });
+    __setBillingDepsForTests(sdk.deps);
+
+    await expect(configureBilling(null)).resolves.toBe(true);
+    await fetchEntitlement();
+
+    expect(sdk.deps.logOut).not.toHaveBeenCalled();
+    expect(sdk.log).toEqual(['configure', 'isAnonymous', `getCustomerInfo:${ANON}`]);
+    expect(sdk.current()).toBe(ANON);
+  });
+
+  it('a signed-in start asks nothing about anonymity and logs nothing out', async () => {
+    const sdk = sdkWithIdentity({ cached: 'old-account' });
+    __setBillingDepsForTests(sdk.deps);
+
+    await expect(configureBilling('user-2')).resolves.toBe(true);
+
+    expect(sdk.deps.isAnonymous).not.toHaveBeenCalled();
+    expect(sdk.deps.logOut).not.toHaveBeenCalled();
+    expect(sdk.current()).toBe('user-2');
+  });
+
+  it.each([
+    ['the SDK still holds the account after logging out', { logOutKeepsIdentity: true }],
+    ['the SDK cannot say who it holds', { isAnonymousThrows: true }],
+  ])(
+    '%s: nothing is read, bought or restored on it until a sign-in',
+    async (_name, failure) => {
+      const sdk = sdkWithIdentity({ cached: 'old-account', ...failure });
+      __setBillingDepsForTests(sdk.deps);
+
+      await expect(configureBilling(null)).resolves.toBe(false);
+      await expect(fetchEntitlement()).resolves.toBeNull();
+      await expect(fetchTrialStatus()).resolves.toBeUndefined();
+      await expect(fetchPlans()).resolves.toEqual([]);
+      await expect(purchasePlan(`pkg_${PRODUCT_IDS.annual}`)).resolves.toEqual({ status: 'unavailable' });
+      await expect(restorePurchases()).resolves.toEqual({ status: 'unavailable' });
+
+      expect(sdk.deps.getCustomerInfo).not.toHaveBeenCalled();
+      expect(sdk.deps.getOfferings).not.toHaveBeenCalled();
+      expect(sdk.deps.purchasePackage).not.toHaveBeenCalled();
+      expect(sdk.deps.restorePurchases).not.toHaveBeenCalled();
+
+      // A sign-in moves RevenueCat onto the account the app means: reads go on.
+      await expect(configureBilling('user-2')).resolves.toBe(true);
+      await expect(fetchEntitlement()).resolves.toEqual(FREE_ENTITLEMENT);
+      expect(sdk.log.at(-1)).toBe('getCustomerInfo:user-2');
+    },
+  );
+
+  it('a sign-in that comes while the start is still logging out runs after it, and stays', async () => {
+    const sdk = sdkWithIdentity({ cached: 'old-account' });
+    __setBillingDepsForTests(sdk.deps);
+
+    await Promise.all([configureBilling(null), configureBilling('user-2')]);
+
+    expect(sdk.deps.configure).toHaveBeenCalledTimes(1);
+    expect(sdk.log).toEqual(['configure', 'isAnonymous', 'logOut', 'isAnonymous', 'logIn:user-2']);
+    expect(sdk.current()).toBe('user-2');
+  });
+
+  it('a sign-out that leaves the SDK identified holds reads too; one that works lets them go on', async () => {
+    const stuck = sdkWithIdentity({ cached: null, logOutKeepsIdentity: true });
+    __setBillingDepsForTests(stuck.deps);
+    await configureBilling('old-account');
+    await logOutBilling();
+    await expect(fetchEntitlement()).resolves.toBeNull();
+    expect(stuck.deps.getCustomerInfo).not.toHaveBeenCalled();
+
+    const works = sdkWithIdentity({ cached: null });
+    __setBillingDepsForTests(works.deps);
+    await configureBilling('old-account');
+    await logOutBilling();
+    await expect(fetchEntitlement()).resolves.toEqual(FREE_ENTITLEMENT);
+    expect(works.log.at(-1)).toBe(`getCustomerInfo:${FRESH}`);
+  });
+
+  it('a configure that fails reads as unknown, never as the cached account', async () => {
+    const sdk = sdkWithIdentity({ cached: 'old-account' });
+    (sdk.deps.configure as jest.Mock).mockImplementationOnce(async () => {
+      throw new Error('sdk exploded');
+    });
+    __setBillingDepsForTests(sdk.deps);
+
+    await expect(configureBilling(null)).resolves.toBe(false);
+    await expect(fetchEntitlement()).resolves.toBeNull();
+    expect(sdk.deps.getCustomerInfo).not.toHaveBeenCalled();
   });
 });
 

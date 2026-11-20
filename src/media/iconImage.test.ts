@@ -140,7 +140,7 @@ describe('sweepIconImageFiles', () => {
     ]);
   });
 
-  it('never throws', async () => {
+  it('never throws: a cache it cannot list resolves false', async () => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     __setIconImageDepsForTests({
       pick: async () => null,
@@ -149,7 +149,70 @@ describe('sweepIconImageFiles', () => {
         throw new Error('no dir');
       },
     });
-    await expect(sweepIconImageFiles()).resolves.toBeUndefined();
+    await expect(sweepIconImageFiles()).resolves.toBe(false);
+  });
+
+  // Round two, 2026-11-19: Erase awaits the sweep and reports a leftover.
+  describe('what it resolves', () => {
+    const PICKED_NAME = '0F8FAD5B-D9CB-469F-A165-70867728950E.jpeg';
+    const SAVED_NAME = '7C9E6679-7425-40DE-944B-E07FC1F90AE7.png';
+
+    /** The two folders in memory: `stuck` uris a discard leaves in place without throwing (the real one refuses a file outside them so). */
+    function folders(entries: Array<{ name: string; uri: string }>, stuck: readonly string[] = []) {
+      const files = new Map(entries.map((entry) => [entry.uri, entry.name]));
+      const discard = jest.fn(async (uri: string) => {
+        if (!stuck.includes(uri)) files.delete(uri);
+      });
+      __setIconImageDepsForTests({
+        pick: async () => null,
+        squarePng: async () => 'AAAA',
+        listCached: async () => [...files].map(([uri, name]) => ({ name, uri })),
+        discard,
+      });
+      return { files, discard };
+    }
+
+    it('true with nothing to remove, other files left alone', async () => {
+      const { files, discard } = folders([{ name: 'keep-me.txt', uri: 'file:///c/ImagePicker/keep-me.txt' }]);
+
+      await expect(sweepIconImageFiles()).resolves.toBe(true);
+      expect(discard).not.toHaveBeenCalled();
+      expect(files.size).toBe(1);
+    });
+
+    it('true once every picture is gone', async () => {
+      const { files } = folders([
+        { name: PICKED_NAME, uri: 'file:///c/ImagePicker/a.jpeg' },
+        { name: SAVED_NAME, uri: 'file:///c/ImageManipulator/b.png' },
+      ]);
+
+      await expect(sweepIconImageFiles()).resolves.toBe(true);
+      expect(files.size).toBe(0);
+    });
+
+    it('false when a discard returns but the file is still there, or it throws; a retry that works is true', async () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      folders([{ name: PICKED_NAME, uri: 'file:///c/ImagePicker/a.jpeg' }], ['file:///c/ImagePicker/a.jpeg']);
+      await expect(sweepIconImageFiles()).resolves.toBe(false);
+
+      const { files, discard } = folders([{ name: PICKED_NAME, uri: 'file:///c/ImagePicker/a.jpeg' }]);
+      discard.mockImplementationOnce(async () => {
+        throw new Error('busy');
+      });
+      await expect(sweepIconImageFiles()).resolves.toBe(false);
+      expect(files.size).toBe(1);
+      await expect(sweepIconImageFiles()).resolves.toBe(true);
+      expect(files.size).toBe(0);
+    });
+
+    it('false when the seam cannot discard', async () => {
+      __setIconImageDepsForTests({
+        pick: async () => null,
+        squarePng: async () => 'AAAA',
+        listCached: async () => [{ name: PICKED_NAME, uri: 'file:///c/ImagePicker/a.jpeg' }],
+      });
+      await expect(sweepIconImageFiles()).resolves.toBe(false);
+    });
   });
 
   it('does nothing on web, where the picker writes no file', async () => {
@@ -157,7 +220,7 @@ describe('sweepIconImageFiles', () => {
     Object.defineProperty(Platform, 'OS', { get: () => 'web', configurable: true });
     try {
       __setIconImageDepsForTests(null);
-      await expect(sweepIconImageFiles()).resolves.toBeUndefined();
+      await expect(sweepIconImageFiles()).resolves.toBe(true);
     } finally {
       Object.defineProperty(Platform, 'OS', { get: () => original, configurable: true });
     }

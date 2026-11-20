@@ -90,11 +90,15 @@ export default function RootLayout() {
         // screen paints in it; native builds embed the font. Never rejects.
         await Promise.all([initDb(), loadFonts()]);
         // The under-13 rule (roadmap D70): the stored age band into the age
-        // store, and whether this launch will ask Apple, before the auth store
-        // initialises. The Supabase client and the first sync are made there,
-        // and each checks the rule. A read that fails reads as no band; it
-        // never rejects. Then the housekeeping for the rule coming on or off
-        // (the queued counts, the session refresh, the Coach), at once when a
+        // store, and whether automatic uploads wait for this launch's ask of
+        // Apple, before the auth store initialises. The Supabase client and
+        // the first sync are made there, and each checks the rule. No stored
+        // row is no band. A stored band that can't be read keeps the gate shut
+        // for the run unless Apple answers 13 or over. Where Apple's API can't
+        // run at all (web, Android, iOS before 26) no band can have been
+        // stored, so a read that fails there is treated as no band. Never
+        // rejects. Then the housekeeping for the rule coming on or off (the
+        // queued counts, the session refresh, the Coach), at once when a
         // stored band already puts it on; never throws.
         await hydrateAgeGate();
         initLocalOnly();
@@ -221,13 +225,17 @@ export default function RootLayout() {
 
   // Age assurance, once the first screen is up. Not part of the ready gate:
   // Apple's sheet needs a view controller, and a missing API, a decline, or
-  // a throw must not hold the splash. One attempt per launch; a stored band
-  // means it is not asked again. The promise never rejects. It waits for the
-  // app lock (D64): Apple's sheet shouldn't open under the lock screen. This
-  // runs again on each unlock, and `ensureAgeBucket` still asks once per launch.
-  // While a stored band keeps the phone local-only (D70, call 5), an unlock
-  // after a day or more asks again (`recheckAgeBucketIfDue`: silent, Apple
-  // answers from its cache; nothing before the launch's own ask is done).
+  // a throw must not hold the splash. Apple is asked once at every launch
+  // where the API runs, whatever band is stored; with a stored band of 13 or
+  // over the ask runs in the background and nothing waits for it. The promise
+  // never rejects. It waits for the app lock (D64): Apple's sheet shouldn't
+  // open under the lock screen. This runs again on each unlock, and
+  // `ensureAgeBucket` still asks once per launch. While the rule applies, or
+  // a band of 13 or over is known (stored, or Apple's latest answer), an
+  // unlock a day or more after this run's last ask asks again (D70, call 5;
+  // `recheckAgeBucketIfDue`: silent, Apple answers from its cache; nothing
+  // before the launch's own ask is done). With no band (declined, not
+  // available) the next launch asks instead.
   const locked = useLockStore((s) => s.locked);
   useEffect(() => {
     if (!launched || locked) return;
@@ -245,8 +253,9 @@ export default function RootLayout() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
-      // The under-13 rule's ask, again after a day or more in a long run
-      // (D70, call 5), for a guest too. Not under the app lock: Apple's sheet
+      // Apple's age-range ask, again after a day or more in a long run (D70,
+      // call 5), while the rule applies or a band of 13 or over is known, for
+      // a guest too. Not under the app lock: Apple's sheet
       // would open over the lock screen; the unlock above asks instead.
       // Never rejects.
       if (!useLockStore.getState().locked) void recheckAgeBucketIfDue();

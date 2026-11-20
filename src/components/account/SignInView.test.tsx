@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Platform, StyleSheet } from 'react-native';
 
+import { WARMUP_USAGE_NOTE } from '@/components/warmup/UsageStatsNotice';
 import { colors } from '@/constants/theme';
+import { countUnsyncedEvents, enqueueEvent } from '@/db/analytics';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
 import { useAuthStore } from '@/store/authStore';
@@ -477,8 +479,18 @@ describe('SignInView — what signing in sends', () => {
   it('says usage counts go with the account, and how to turn them off', () => {
     render(<SignInView onDone={jest.fn()} />);
     expect(screen.getByTestId('account-usage-note')).toHaveTextContent(
-      'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn this off here or in You, under Usage stats.',
+      'Once you’re signed in, a record of which features you use, including what’s already on this phone, is sent with your account, to see how the app is used: numbers, yes/no values and fixed labels such as which screen, never the words of your predictions or notes. You can turn this off here or in You, under Usage stats.',
     );
+  });
+
+  // Review 2026-11-19 (UK and Apple rules): the purpose is said where the
+  // choice is made, in the Warm-up line's own words for it, so the two agree.
+  it('says what the counts are for, in the Warm-up line’s words', () => {
+    const purpose = 'to see how the app is used';
+    expect(WARMUP_USAGE_NOTE).toContain(purpose);
+    expect(USAGE_NOTE).toContain(`is sent with your account, ${purpose}: numbers`);
+    render(<SignInView onDone={jest.fn()} />);
+    expect(screen.getByTestId('account-usage-note')).toHaveTextContent(new RegExp(purpose));
   });
 
   // Policy audit F7 (2026-11-18): the paywall's and the share events carry a
@@ -522,17 +534,36 @@ describe('SignInView — what signing in sends', () => {
 
   it('turns usage stats off and on in the same setting as You', async () => {
     __setPersistenceForTests({ load: async () => null, save: async () => {} });
-    // Off deletes what's queued, from the database.
+    // Off deletes what's queued, from the database (the settings store's
+    // setAnalyticsEnabled, which the switch calls).
     setDbForTests(await createTestDb());
     try {
+      const queued = (id: string) =>
+        enqueueEvent({
+          id,
+          user_id: 'local-user-v1',
+          name: 'warmup_started',
+          props: {},
+          created_at: '2026-11-19T12:00:00.000Z',
+        });
+      await expect(queued('e1')).resolves.toBe(true);
+      await expect(queued('e2')).resolves.toBe(true);
+      expect(await countUnsyncedEvents()).toBe(2);
+
       render(<SignInView onDone={jest.fn()} />);
       fireEvent.press(screen.getByTestId('account-usage-row'));
       await waitFor(() => expect(useSettingsStore.getState().analyticsEnabled).toBe(false));
       expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_OFF_NOTE);
+      // The queue went with the switch, not just what comes later.
+      await waitFor(async () => expect(await countUnsyncedEvents()).toBe(0));
 
+      // On again brings nothing back, and clears nothing new.
+      await expect(queued('e3')).resolves.toBe(true);
       fireEvent.press(screen.getByTestId('account-usage-row'));
       await waitFor(() => expect(useSettingsStore.getState().analyticsEnabled).toBe(true));
       expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_NOTE);
+      await act(async () => {});
+      expect(await countUnsyncedEvents()).toBe(1);
     } finally {
       __setPersistenceForTests(null);
       setDbForTests(null);

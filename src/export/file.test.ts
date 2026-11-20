@@ -277,7 +277,7 @@ describe('sweepExportFiles', () => {
     expect(EXPORT_FILE_NAME.test(csvFileName(new Date('2026-11-18T10:00:00.000Z')))).toBe(true);
   });
 
-  it('never throws, and goes on past a file that will not go', async () => {
+  it('never throws, and goes on past a file that will not go, saying so', async () => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     const deleteCacheFile = jest.fn(async (name: string) => {
       if (name.startsWith('calibrate')) throw new Error('busy');
@@ -288,11 +288,82 @@ describe('sweepExportFiles', () => {
         deleteCacheFile,
       }),
     );
-    await expect(sweepExportFiles()).resolves.toBeUndefined();
+    await expect(sweepExportFiles()).resolves.toBe(false);
     expect(deleteCacheFile).toHaveBeenCalledTimes(2);
 
     __setFileExportDepsForTests(deps({ listCacheFiles: jest.fn(async () => { throw new Error('no dir'); }) }));
-    await expect(sweepExportFiles()).resolves.toBeUndefined();
+    await expect(sweepExportFiles()).resolves.toBe(false);
+  });
+
+  // Round two, 2026-11-19: Erase awaits the sweep and reports a leftover, so
+  // it says true only when no export is left.
+  describe('what it resolves', () => {
+    /** A cache folder in memory: `stuck` names a delete leaves in place without throwing. */
+    function folder(initial: string[], stuck: readonly string[] = []) {
+      const files = new Set(initial);
+      return {
+        files,
+        d: deps({
+          listCacheFiles: jest.fn(async () => [...files]),
+          deleteCacheFile: jest.fn(async (name: string) => {
+            if (!stuck.includes(name)) files.delete(name);
+          }),
+        }),
+      };
+    }
+
+    it('true with nothing to remove, other files left alone', async () => {
+      const { d, files } = folder(['notes.csv']);
+      __setFileExportDepsForTests(d);
+
+      await expect(sweepExportFiles()).resolves.toBe(true);
+      expect(d.deleteCacheFile).not.toHaveBeenCalled();
+      expect([...files]).toEqual(['notes.csv']);
+    });
+
+    it('true once every export is gone', async () => {
+      const { d, files } = folder(['fairly-sure-2026-11-18.csv', 'calibrate-2026-09-07.csv', 'notes.csv']);
+      __setFileExportDepsForTests(d);
+
+      await expect(sweepExportFiles()).resolves.toBe(true);
+      expect([...files]).toEqual(['notes.csv']);
+    });
+
+    it('false when a delete returns but the file is still there', async () => {
+      const { d } = folder(['fairly-sure-2026-11-18.csv'], ['fairly-sure-2026-11-18.csv']);
+      __setFileExportDepsForTests(d);
+
+      await expect(sweepExportFiles()).resolves.toBe(false);
+    });
+
+    it('false when the seam cannot delete, or the second listing fails', async () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      __setFileExportDepsForTests(deps({ listCacheFiles: jest.fn(async () => ['fairly-sure-2026-11-18.csv']) }));
+      await expect(sweepExportFiles()).resolves.toBe(false);
+
+      const { d } = folder(['fairly-sure-2026-11-18.csv']);
+      (d.listCacheFiles as jest.Mock)
+        .mockImplementationOnce(async () => ['fairly-sure-2026-11-18.csv'])
+        .mockImplementationOnce(async () => {
+          throw new Error('no dir');
+        });
+      __setFileExportDepsForTests(d);
+      await expect(sweepExportFiles()).resolves.toBe(false);
+    });
+
+    it('a failure, then a retry that works', async () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const { d, files } = folder(['fairly-sure-2026-11-18.csv']);
+      (d.deleteCacheFile as jest.Mock).mockImplementationOnce(async () => {
+        throw new Error('busy');
+      });
+      __setFileExportDepsForTests(d);
+
+      await expect(sweepExportFiles()).resolves.toBe(false);
+      expect(files.size).toBe(1);
+      await expect(sweepExportFiles()).resolves.toBe(true);
+      expect(files.size).toBe(0);
+    });
   });
 
   // The web build writes no file: the real deps touch no file system there.
@@ -301,7 +372,7 @@ describe('sweepExportFiles', () => {
     Object.defineProperty(Platform, 'OS', { get: () => 'web', configurable: true });
     try {
       __setFileExportDepsForTests(null);
-      await expect(sweepExportFiles()).resolves.toBeUndefined();
+      await expect(sweepExportFiles()).resolves.toBe(true);
       await expect(shareTextFile('fairly-sure-2026-11-18.csv', 'x', 'text/csv', 'Export')).resolves.toBe(
         'unavailable',
       );

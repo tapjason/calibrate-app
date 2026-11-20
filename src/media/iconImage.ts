@@ -167,28 +167,52 @@ export async function pickIconImage(): Promise<PickIconImageResult> {
 /**
  * Delete what the picker and the manipulator left in their cache folders
  * (`ICON_CACHE_FOLDERS`): files named as `ICON_CACHE_FILE_NAME` says, nothing
- * else. For Erase and account deletion. Never throws.
+ * else. For Erase and account deletion. Never throws. True only when none is
+ * left (none there to begin with counts): the folders were listed, every
+ * delete went, and a second listing finds none (the real `discard` refuses a
+ * file outside the two folders without throwing, so only the listing can
+ * tell). False otherwise. Erase awaits it and reports a false (round two,
+ * 2026-11-19); account deletion doesn't wait.
  */
-export async function sweepIconImageFiles(): Promise<void> {
-  let files: Array<{ name: string; uri: string }>;
+export async function sweepIconImageFiles(): Promise<boolean> {
+  const doomed = (files: ReadonlyArray<{ name: string; uri: string }>) =>
+    files.filter((file) => ICON_CACHE_FILE_NAME.test(file.name));
+  const before = await listCachedQuietly();
+  if (before === null) return false;
+  const targets = doomed(before);
+  if (targets.length === 0) return true;
+  let deleted = true;
+  for (const file of targets) {
+    if (!(await discardQuietly(file.uri))) deleted = false;
+  }
+  const after = await listCachedQuietly();
+  return deleted && after !== null && doomed(after).length === 0;
+}
+
+/**
+ * The files in the two cache folders, or null when they can't be listed. A
+ * seam with no list (an older test fake) has nothing to sweep.
+ */
+async function listCachedQuietly(): Promise<Array<{ name: string; uri: string }> | null> {
   try {
-    files = (await deps.listCached?.()) ?? [];
+    return (await deps.listCached?.()) ?? [];
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[iconImage] could not list the cache:', messageOf(e));
-    return;
-  }
-  for (const file of files) {
-    if (ICON_CACHE_FILE_NAME.test(file.name)) await discardQuietly(file.uri);
+    return null;
   }
 }
 
-async function discardQuietly(uri: string): Promise<void> {
+/** Delete one file. Never throws. True when the delete went; false when it threw or the seam can't delete. */
+async function discardQuietly(uri: string): Promise<boolean> {
+  if (!deps.discard) return false;
   try {
-    await deps.discard?.(uri);
+    await deps.discard(uri);
+    return true;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[iconImage] could not delete a cached picture:', messageOf(e));
+    return false;
   }
 }
 

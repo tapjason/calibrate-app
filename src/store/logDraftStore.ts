@@ -98,16 +98,27 @@ interface LogDraftState {
   hydrate: (now?: Date) => Promise<void>;
   /** Keep this draft (a blank title clears it). */
   save: (draft: Omit<LogDraft, 'savedAt'>, now?: Date) => Promise<void>;
-  clear: () => Promise<void>;
+  /**
+   * Drop the draft: from memory at once, and from storage. True once the
+   * stored copy is removed; false when that write failed, and the draft (the
+   * person's half-typed words) is still on the phone, offered back at the
+   * next launch within its day. Erase reports a false as a step that didn't
+   * finish (review round two, 2026-11-19); a save or a discard can ignore it.
+   * Never throws.
+   */
+  clear: () => Promise<boolean>;
 }
 
-async function write(draft: LogDraft | null): Promise<void> {
+/** Store the draft, or remove it (null). True when the write landed. Never throws. */
+async function write(draft: LogDraft | null): Promise<boolean> {
   try {
     await persistence.save(draft);
+    return true;
   } catch (e) {
     // Non-critical, like settings: the form works without it.
     // eslint-disable-next-line no-console
     console.warn('[log-draft] save failed:', e);
+    return false;
   }
 }
 
@@ -142,6 +153,6 @@ export const useLogDraftStore = create<LogDraftState>((set) => ({
 
   clear: async () => {
     set({ draft: null });
-    await write(null);
+    return write(null);
   },
 }));

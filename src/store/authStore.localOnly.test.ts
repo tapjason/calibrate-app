@@ -6,6 +6,10 @@
 
 jest.mock('@/supabase/auth', () => ({
   ...jest.requireActual('@/supabase/auth'),
+  // The real service, counted: a refusal in the store never calls it.
+  signInWithEmail: jest.fn((email: string, password: string) =>
+    jest.requireActual('@/supabase/auth').signInWithEmail(email, password),
+  ),
   signOut: jest.fn(async () => ({ ok: true })),
   signOutLocal: jest.fn(async () => ({ ok: true })),
   reauthenticateWithApple: jest.fn(async () => null),
@@ -59,13 +63,19 @@ import { __resetAuthMarkersForTests, type MarkerStorage } from '@/supabase/authM
 import { setSupabaseClientForTests } from '@/supabase/client';
 
 import { __resetAgeStoreForTests, useAgeStore } from './ageStore';
-import { LOCAL_ONLY_SIGN_IN, syncForUser, useAuthStore } from './authStore';
+import {
+  LOCAL_ONLY_SIGN_IN,
+  SIGN_OUT_FAILED_AFTER_WIPE,
+  SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY,
+  syncForUser,
+  useAuthStore,
+} from './authStore';
 import { useCategoryStore } from './categoryStore';
 import { useLogDraftStore } from './logDraftStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
 import { useResolveRunStore } from './resolveRunStore';
-import { __setPersistenceForTests } from './settingsStore';
+import { __setPersistenceForTests, useSettingsStore } from './settingsStore';
 import { useStatsStore } from './statsStore';
 import { useWarmupStore } from './warmupStore';
 
@@ -198,8 +208,8 @@ beforeEach(async () => {
     loadResolved: jest.fn(async () => {}),
   });
   useStatsStore.setState({ loadForUser: jest.fn(async () => {}), recomputeForUser: jest.fn(async () => {}) });
-  useLogDraftStore.setState({ clear: jest.fn(async () => {}) });
-  useResolveRunStore.setState({ clear: jest.fn() });
+  useLogDraftStore.setState({ clear: jest.fn(async () => true) });
+  useResolveRunStore.setState({ clear: jest.fn(), forget: jest.fn(async () => true) });
   useWarmupStore.setState({ retake: jest.fn(async () => {}) });
   usePracticeStore.setState({ clear: jest.fn(async () => {}) });
 });
@@ -273,7 +283,9 @@ describe('sign-in and sign-up under the rule (D70)', () => {
     expect(useAuthStore.getState().pending).toBe(false);
   });
 
-  it('on a launch that asks, goes on after 5 s with no answer', async () => {
+  // Policy audit, 2026-11-19: no account goes ahead before the app knows. It
+  // went on as today after 5 s until then.
+  it('on a launch that asks, refuses after 5 s with no answer, before any service or client is touched', async () => {
     jest.useFakeTimers();
     useAgeStore.getState().load(null, { willAsk: true });
     const { client, touched } = throwingClient();
@@ -281,11 +293,68 @@ describe('sign-in and sign-up under the rule (D70)', () => {
 
     const call = useAuthStore.getState().signInWithEmail('a@b.co', 'a-long-enough-password');
     await jest.advanceTimersByTimeAsync(4999);
-    expect(touched).toEqual([]);
+    expect(useAuthStore.getState().pending).toBe(true);
     await jest.advanceTimersByTimeAsync(1);
+
+    await expect(call).resolves.toEqual({ ok: false, error: auth.AGE_PENDING_SIGN_IN });
+    expect(auth.AGE_PENDING_SIGN_IN).toBe("Sign-in isn't ready yet. Try again in a moment.");
+    // Refused in the store: the service was never called.
+    expect(mockedAuth.signInWithEmail).not.toHaveBeenCalled();
+    expect(touched).toEqual([]);
+    expect(jest.getTimerCount()).toBe(0);
+    expect(useAuthStore.getState()).toMatchObject({ pending: false, status: 'loading' });
+  });
+
+  it('every sign(In|Up) action refuses the same while the answer is pending', async () => {
+    jest.useFakeTimers();
+    useAgeStore.getState().load(null, { willAsk: true });
+    const { client, touched } = throwingClient();
+    setSupabaseClientForTests(client);
+
+    for (const [name, action] of signInActions()) {
+      const call = action('a@b.co', 'a-long-enough-password');
+      await jest.advanceTimersByTimeAsync(5000);
+      await expect({ name, outcome: await call }).toEqual({
+        name,
+        outcome: { ok: false, error: auth.AGE_PENDING_SIGN_IN },
+      });
+    }
+    expect(touched).toEqual([]);
+  });
+
+  it('on a launch that asks, an answer of 13 or over within the wait lets the sign-in go on', async () => {
+    useAgeStore.getState().load(null, { willAsk: true });
+    const { client, touched } = throwingClient();
+    setSupabaseClientForTests(client);
+
+    const call = useAuthStore.getState().signInWithEmail('a@b.co', 'a-long-enough-password');
+    expect(useAuthStore.getState().pending).toBe(true);
+    await useAgeStore.getState().accept({ lowerBound: 18, upperBound: null });
+    useAgeStore.getState().markSettled();
     const outcome = await call;
 
+    expect(outcome).toMatchObject({ ok: false });
     expect(outcome).not.toEqual(REFUSED);
+    expect(outcome).not.toEqual({ ok: false, error: auth.AGE_PENDING_SIGN_IN });
+    expect(touched.length).toBeGreaterThan(0);
+  });
+
+  // The default store (web, Jest, iOS before 26, a stored 13+ band) is
+  // settled from the start: the sign-in starts in the same pass as the tap.
+  it('a launch settled from the start shows no wait and no refusal', async () => {
+    jest.useFakeTimers();
+    expect(useAgeStore.getState()).toMatchObject({ localOnly: false, settled: true });
+    const { client, touched } = throwingClient();
+    setSupabaseClientForTests(client);
+
+    const call = useAuthStore.getState().signInWithEmail('a@b.co', 'a-long-enough-password');
+    // No 5 s timer was set, and none needs to run for the call to finish.
+    expect(jest.getTimerCount()).toBe(0);
+    const outcome = await call;
+
+    expect(mockedAuth.signInWithEmail).toHaveBeenCalledTimes(1);
+    expect(outcome).not.toEqual(REFUSED);
+    expect(outcome).not.toEqual({ ok: false, error: auth.AGE_PENDING_SIGN_IN });
     expect(touched.length).toBeGreaterThan(0);
   });
 });
@@ -363,7 +432,79 @@ describe('an account signed in under the rule is frozen, not signed out', () => 
   });
 });
 
+// The session couldn't end after the account's rows had gone: under the rule
+// no sync runs, so the backed-up predictions don't come back, and the words
+// say so instead of promising they will.
+describe('a frozen account whose sign-out fails after the wipe', () => {
+  it('says backup is off, and starts no sync', async () => {
+    underTheRule();
+    await launch(sessionFor('user-1'));
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      error: SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY,
+    });
+    expect(SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY).toBe(
+      "Couldn't finish signing you out, so you're still signed in. Backup is off on this phone, so your " +
+        "backed-up predictions stay on our server for now; anything you agreed to lose is gone.",
+    );
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
+    expect(sync().syncNow).not.toHaveBeenCalled();
+    expect(useAuthStore.getState()).toMatchObject({ userId: 'user-1', status: 'authenticated' });
+    expect(useAgeStore.getState().localOnly).toBe(true);
+  });
+
+  it('goes by the rule when the error is given: one that came on during the sign-out counts', async () => {
+    await launch(sessionFor('user-1'));
+    sync().syncNow.mockClear();
+    wipe.mockImplementationOnce(async () => {
+      underTheRule();
+    });
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      error: SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY,
+    });
+    expect(sync().syncNow).not.toHaveBeenCalled();
+  });
+
+  it('without the rule, the usual words, and the sync that brings them back starts', async () => {
+    await launch(sessionFor('user-1'));
+    sync().syncNow.mockClear();
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({
+      ok: false,
+      error: SIGN_OUT_FAILED_AFTER_WIPE,
+    });
+    expect(sync().syncNow).toHaveBeenCalledWith('user-1', expect.anything());
+  });
+
+  it("when the wipe didn't go either, the session's own error, under the rule too", async () => {
+    underTheRule();
+    await launch(sessionFor('user-1'));
+    wipe.mockRejectedValueOnce(new Error('disk'));
+    mockedAuth.signOut.mockResolvedValueOnce({ ok: false, error: 'x' });
+
+    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: false, error: 'x' });
+  });
+
+  it('is plain text and names no age', () => {
+    expect(SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY).not.toMatch(new RegExp(String.fromCharCode(0x2014)));
+    expect(SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY).not.toMatch(/[‘’“”]/);
+    expect(SIGN_OUT_FAILED_AFTER_WIPE_LOCAL_ONLY).not.toMatch(/\d|under|child|kid|young|age range/i);
+  });
+});
+
 describe('guest Erase under the rule', () => {
+  // The settings read, as by the time anyone can tap Erase: a settings write
+  // before then is held, and Erase reports it as a step that didn't finish.
+  beforeEach(async () => {
+    await useSettingsStore.getState().hydrate();
+  });
+
   it('forgets the band after the wipe, and keeps the gate on for the run', async () => {
     await useAgeStore.getState().accept(UNDER_13);
     useAuthStore.setState({ userId: LOCAL_GUEST_USER_ID, status: 'guest', hasAppleIdentity: false });

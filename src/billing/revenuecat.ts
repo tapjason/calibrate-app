@@ -13,6 +13,12 @@
 // entitlement mirror already on the phone is left as it is (entitlementStore;
 // `fetchEntitlement`'s null never overwrites it).
 //
+// A signed-out start (review 2026-11-19, round 2, item 1): RevenueCat keeps
+// the app user id it cached, so one configured with no user after a sign-out
+// it never heard of would still be the old account. `configureBilling(null)`
+// logs such an account out before anything reads entitlements or buys, and
+// every read and purchase waits for that (`identity`).
+//
 // Two properties everything below is built around:
 //
 //   1. **Fail to free, always** (CLAUDE.md). Absence of the native module, a
@@ -212,10 +218,32 @@ export interface BillingDeps {
    * can leave it out; the real SDK always has it.
    */
   introEligibleProducts?(productIds: string[]): Promise<ReadonlySet<string>>;
+  /**
+   * Whether the SDK's current app user id is one it made itself (anonymous)
+   * rather than one this app gave it (`Purchases.isAnonymous`). Optional so a
+   * test fake can leave it out, which is taken as anonymous (as before this
+   * check existed); the real SDK always has it.
+   */
+  isAnonymous?(): Promise<boolean>;
 }
 
 let deps: BillingDeps | null = null;
+/** `configure` has been called (set before it resolves; cleared if it fails). */
 let configured = false;
+
+/**
+ * Whether RevenueCat's identity is the one the app means, for every read and
+ * purchase below (review 2026-11-19, round 2, item 1). Each identity change
+ * (the first configure, a log-in, a log-out) replaces it with a promise that
+ * runs after the one before it, and every read and purchase waits for the
+ * latest, so none reads entitlements, or buys, while a signed-out start is
+ * still logging out an account the SDK had cached. False when that couldn't
+ * be done (the SDK still reports an identified user, or a configure failed):
+ * reads then say "couldn't find out" (null, the mirror left as it is) and
+ * purchases "unavailable", until a sign-in (`logIn`) or the next launch tries
+ * again. Never rejects.
+ */
+let identity: Promise<boolean> = Promise.resolve(true);
 
 /** How a RevenueCat Test Store key starts (an App Store key starts "appl_"). */
 const TEST_STORE_PREFIX = 'test_';
@@ -296,6 +324,9 @@ function defaultDeps(): BillingDeps | null {
     async restorePurchases() {
       return (await Purchases.restorePurchases()) as unknown as RcCustomerInfo;
     },
+    async isAnonymous() {
+      return await Purchases.isAnonymous();
+    },
     async introEligibleProducts(productIds) {
       const result = await Purchases.checkTrialOrIntroductoryPriceEligibility(productIds);
       const eligible = Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE;
@@ -327,11 +358,13 @@ export function __setBillingDepsForTests(next: BillingDeps | null): void {
   }
   deps = next;
   configured = false;
+  identity = Promise.resolve(true);
 }
 
 /** Whether billing can run at all: SDK present and an API key configured. */
 export function isBillingAvailable(): boolean {
-  return getDeps() !== null && apiKeyForPlatform() !== '';
+  // The key first: on a local-only phone the SDK module isn't even loaded.
+  return apiKeyForPlatform() !== '' && getDeps() !== null;
 }
 
 // ---------------------------------------------------------------------------
@@ -492,44 +525,147 @@ export function plansFromOfferings(
  * Pass **null** for a signed-out user. Never a placeholder: the app's guest id
  * is one shared constant across every install, and RevenueCat treats the app
  * user id as the account — one guest's purchase would then read as active for
- * every other guest device on earth. Null makes the SDK mint a per-install
- * anonymous id, which `logIn()` later aliases onto the real account.
+ * every other guest device on earth. Null gives this install's anonymous id
+ * (minted on first use), which `logIn()` later aliases onto the real account;
+ * an account id the SDK still holds from before a sign-out is logged out
+ * first (`dropCachedAccount`), before anything reads entitlements.
+ *
+ * True when RevenueCat is configured for the identity asked for; false when
+ * billing isn't available, the configure or log-in failed, or a signed-out
+ * start couldn't drop a cached account (reads and purchases then wait, see
+ * `identity`).
  */
 export async function configureBilling(userId: string | null): Promise<boolean> {
-  const d = getDeps();
   const apiKey = apiKeyForPlatform();
-  if (!d || !apiKey) return false;
-  try {
-    if (!configured) {
-      await d.configure(apiKey, userId);
-      configured = true;
-    } else if (userId) {
-      // Already configured (as a guest, or for a previous account) — move the
-      // purchase history onto this user id rather than reconfiguring.
+  if (!apiKey) return false;
+  const d = getDeps();
+  if (!d) return false;
+  if (!configured) {
+    // Set before the first await, so a log-in or log-out that comes while
+    // this runs queues behind it (`changeIdentity`) instead of configuring
+    // a second time.
+    configured = true;
+    const start = (async (): Promise<boolean> => {
+      try {
+        await d.configure(apiKey, userId);
+      } catch (e) {
+        configured = false;
+        // eslint-disable-next-line no-console
+        console.warn('[billing] configure failed:', e);
+        return false;
+      }
+      return userId === null ? await dropCachedAccount(d) : true;
+    })();
+    identity = start;
+    return await start;
+  }
+  if (!userId) return await identity;
+  // Already configured (as a guest, or for a previous account): move the
+  // purchase history onto this user id rather than reconfiguring. After any
+  // identity change still running, so it can't be undone by one.
+  let loggedIn = false;
+  await changeIdentity(async (before) => {
+    try {
       await d.logIn(userId);
+      loggedIn = true;
+      return true;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[billing] configure failed:', e);
+      // The SDK is still whoever it was: reads go on as they did.
+      return before;
     }
-    return true;
+  });
+  return loggedIn;
+}
+
+/**
+ * Run an identity change after the one before it, and make reads and
+ * purchases wait for it. Never rejects: a change that throws reads as an
+ * identity that can't be trusted.
+ */
+function changeIdentity(change: (before: boolean) => Promise<boolean>): Promise<boolean> {
+  const next = identity.then(change).catch((e: unknown) => {
+    // eslint-disable-next-line no-console
+    console.warn('[billing] identity change failed:', e);
+    return false;
+  });
+  identity = next;
+  return next;
+}
+
+/** The SDK's own answer to "is the current user anonymous?", or null when it gave none. */
+async function sdkSaysAnonymous(d: BillingDeps): Promise<boolean | null> {
+  if (!d.isAnonymous) return null;
+  try {
+    const anonymous: unknown = await d.isAnonymous();
+    return typeof anonymous === 'boolean' ? anonymous : null;
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn('[billing] configure failed:', e);
-    return false;
+    console.warn('[billing] could not tell whether the RevenueCat user is anonymous:', e);
+    return null;
   }
+}
+
+/**
+ * For a start with no signed-in user (review 2026-11-19, round 2, item 1):
+ * make sure RevenueCat isn't still identified as an account this phone signed
+ * out of. `configure` with a null app user id keeps the id the SDK cached
+ * (purchases-ios `IdentityManager`: the configured id, else the cached one,
+ * else a new anonymous id), so a sign-out RevenueCat never heard of (it
+ * hadn't started: Apple's age answer pending, a local-only phone, a build
+ * without a key, or an earlier run) would otherwise leave the previous
+ * account's Plus readable here and land the next person's purchases on that
+ * account's customer. Logs out when the SDK reports an identified user (or
+ * can't say: `logOut` rejects for an anonymous one, which is harmless), then
+ * asks again. True once the SDK reports an anonymous user. A seam with no
+ * `isAnonymous` (a test fake) is taken as anonymous, as before.
+ */
+async function dropCachedAccount(d: BillingDeps): Promise<boolean> {
+  if (!d.isAnonymous) return true;
+  if ((await sdkSaysAnonymous(d)) === true) return true;
+  try {
+    await d.logOut();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[billing] could not log out a previous account:', e);
+  }
+  return anonymousOrWarn(await sdkSaysAnonymous(d));
+}
+
+/** True for an anonymous user; otherwise warns that reads and purchases wait, and is false. */
+function anonymousOrWarn(anonymous: boolean | null): boolean {
+  if (anonymous === true) return true;
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[billing] RevenueCat may still hold a signed-out account: purchases and entitlement reads ' +
+      'wait for a sign-in or the next launch',
+  );
+  return false;
 }
 
 /**
  * Drop the RevenueCat identity on sign-out, so whoever uses this device next
  * starts anonymous instead of inheriting the previous account's purchases.
- * No-op when billing was never configured.
+ * No-op when billing was never configured. After any identity change still
+ * running; reads and purchases wait for it, and stay held if the SDK still
+ * reports an identified user afterwards (a seam with no `isAnonymous` is
+ * taken at its word, as before).
  */
 export async function logOutBilling(): Promise<void> {
+  if (!apiKeyForPlatform() || !configured) return;
   const d = getDeps();
-  if (!d || !apiKeyForPlatform() || !configured) return;
-  try {
-    await d.logOut();
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[billing] logout failed:', e);
-  }
+  if (!d) return;
+  await changeIdentity(async () => {
+    try {
+      await d.logOut();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[billing] logout failed:', e);
+    }
+    if (!d.isAnonymous) return true;
+    return anonymousOrWarn(await sdkSaysAnonymous(d));
+  });
 }
 
 /**
@@ -544,8 +680,11 @@ export async function logOutBilling(): Promise<void> {
  * itself starts free and expires itself (entitlementStore).
  */
 export async function fetchEntitlement(): Promise<Entitlement | null> {
+  if (!apiKeyForPlatform()) return null;
   const d = getDeps();
-  if (!d || !apiKeyForPlatform()) return null;
+  if (!d) return null;
+  // After any identity change still running; never a signed-out account's.
+  if (!(await identity)) return null;
   try {
     // The SDK serves its own cached CustomerInfo when offline, so a throw here
     // is a genuine "no answer", not merely "no network".
@@ -563,8 +702,10 @@ export async function fetchEntitlement(): Promise<Entitlement | null> {
  * reminder alone rather than cancel it on a bad connection.
  */
 export async function fetchTrialStatus(): Promise<TrialStatus | null | undefined> {
+  if (!apiKeyForPlatform()) return undefined;
   const d = getDeps();
-  if (!d || !apiKeyForPlatform()) return undefined;
+  if (!d) return undefined;
+  if (!(await identity)) return undefined;
   try {
     return trialStatusFromCustomerInfo(await d.getCustomerInfo());
   } catch (e) {
@@ -598,8 +739,11 @@ async function trialEligibility(
 
 /** The purchasable plans. Empty when billing is unavailable or offerings fail. */
 export async function fetchPlans(): Promise<PlusPlan[]> {
+  if (!apiKeyForPlatform()) return [];
   const d = getDeps();
-  if (!d || !apiKeyForPlatform()) return [];
+  if (!d) return [];
+  // The trial check is per customer, and a plan shown must be buyable.
+  if (!(await identity)) return [];
   try {
     const offerings = await d.getOfferings();
     return plansFromOfferings(offerings, await trialEligibility(d, offerings));
@@ -612,8 +756,11 @@ export async function fetchPlans(): Promise<PlusPlan[]> {
 
 /** Buy a plan. The returned entitlement is whatever RevenueCat reports after. */
 export async function purchasePlan(packageId: string): Promise<PurchaseResult> {
+  if (!apiKeyForPlatform()) return { status: 'unavailable' };
   const d = getDeps();
-  if (!d || !apiKeyForPlatform()) return { status: 'unavailable' };
+  if (!d) return { status: 'unavailable' };
+  // Never onto a signed-out account's customer.
+  if (!(await identity)) return { status: 'unavailable' };
   try {
     // Re-reading the offering rather than holding the package object from
     // fetchPlans keeps the SDK's own object — which carries fields we don't
@@ -640,8 +787,10 @@ export async function purchasePlan(packageId: string): Promise<PurchaseResult> {
 
 /** Restore purchases made on another device or before a reinstall. */
 export async function restorePurchases(): Promise<RestoreResult> {
+  if (!apiKeyForPlatform()) return { status: 'unavailable' };
   const d = getDeps();
-  if (!d || !apiKeyForPlatform()) return { status: 'unavailable' };
+  if (!d) return { status: 'unavailable' };
+  if (!(await identity)) return { status: 'unavailable' };
   try {
     const entitlement = entitlementFromCustomerInfo(await d.restorePurchases());
     if (!entitlement.is_plus) return { status: 'nothing_to_restore' };

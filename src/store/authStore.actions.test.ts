@@ -69,12 +69,12 @@ import { setSupabaseClientForTests } from '@/supabase/client';
 import { SIGN_OUT_FAILED_AFTER_WIPE, useAuthStore } from './authStore';
 import { useCategoryStore } from './categoryStore';
 import { useCoachStore } from './coachStore';
-import { useLogDraftStore } from './logDraftStore';
+import { __setLogDraftPersistenceForTests, useLogDraftStore } from './logDraftStore';
 import { usePracticeStore } from './practiceStore';
 import { usePredictionStore } from './predictionStore';
-import { useResolveRunStore } from './resolveRunStore';
+import { __setResolveRunPersistenceForTests, useResolveRunStore } from './resolveRunStore';
 import { useStatsStore } from './statsStore';
-import { useSettingsStore } from './settingsStore';
+import { __setPersistenceForTests, useSettingsStore } from './settingsStore';
 import { useWarmupStore } from './warmupStore';
 
 const mocked = auth as jest.Mocked<typeof auth>;
@@ -82,13 +82,24 @@ const server = serverAccount as jest.Mocked<typeof serverAccount>;
 const wipe = (localAccount as jest.Mocked<typeof localAccount>).wipeLocalUserData;
 const wipeAll = (localAccount as jest.Mocked<typeof localAccount>).wipeEverythingOnDevice;
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   useAuthStore.getState().reset();
+  // Storage in memory, as the app has it by the time anyone can tap Erase:
+  // Erase reports a write that didn't land (re-review round two,
+  // 2026-11-19), and AsyncStorage is absent here. The settings are read
+  // first, as at launch: a settings write before then is held, not made.
+  __setPersistenceForTests({ load: async () => null, save: async () => {} });
+  await useSettingsStore.getState().hydrate();
+  __setLogDraftPersistenceForTests({ load: async () => null, save: async () => {} });
+  __setResolveRunPersistenceForTests({ load: async () => null, save: async () => {} });
 });
 
 afterEach(() => {
+  __setPersistenceForTests(null);
+  __setLogDraftPersistenceForTests(null);
+  __setResolveRunPersistenceForTests(null);
   jest.restoreAllMocks();
 });
 
@@ -808,7 +819,7 @@ describe('authStore.signOut always ends the session on this phone', () => {
       loadResolved: jest.fn(async () => {}),
     });
     useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
-    clearDraft = jest.fn(async () => {});
+    clearDraft = jest.fn(async () => true);
     useLogDraftStore.setState({ clear: clearDraft });
     clearRun = jest.fn();
     useResolveRunStore.setState({ clear: clearRun });
@@ -884,7 +895,7 @@ describe("the Coach's cards follow the signed-in account", () => {
       loadResolved: jest.fn(async () => {}),
     });
     useStatsStore.setState({ loadForUser: jest.fn(async () => {}) });
-    useLogDraftStore.setState({ clear: jest.fn(async () => {}) });
+    useLogDraftStore.setState({ clear: jest.fn(async () => true) });
   });
 
   afterEach(() => {

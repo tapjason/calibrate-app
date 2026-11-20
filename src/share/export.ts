@@ -222,27 +222,49 @@ export async function shareCard(ref: RefObject<unknown>): Promise<ShareOutcome> 
 /**
  * Delete every capture left in react-native-view-shot's folder
  * (`captureDirectoryUri`): files named as `CAPTURE_FILE_NAME` says, nothing
- * else. For Erase and account deletion. Never throws.
+ * else. For Erase and account deletion. Never throws. True only when none is
+ * left (none there to begin with counts): the folder was listed, every delete
+ * went, and a second listing finds none. False otherwise. Erase awaits it and
+ * reports a false (round two, 2026-11-19); account deletion doesn't wait.
  */
-export async function sweepShareCaptures(): Promise<void> {
+export async function sweepShareCaptures(): Promise<boolean> {
   const d = getDeps();
-  let files: Array<{ name: string; uri: string }>;
-  try {
-    files = (await d.listCaptures?.()) ?? [];
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[share] could not list captures:', messageOf(e));
-    return;
-  }
-  for (const file of files) {
-    if (!CAPTURE_FILE_NAME.test(file.name)) continue;
+  const doomed = (files: ReadonlyArray<{ name: string; uri: string }>) =>
+    files.filter((file) => CAPTURE_FILE_NAME.test(file.name));
+  const before = await listCapturesQuietly(d);
+  if (before === null) return false;
+  const targets = doomed(before);
+  if (targets.length === 0) return true;
+  let deleted = true;
+  for (const file of targets) {
+    if (!d.deleteCapture) {
+      deleted = false;
+      continue;
+    }
     try {
-      await d.deleteCapture?.(file.uri);
+      await d.deleteCapture(file.uri);
     } catch (e) {
       // One that won't go doesn't keep the rest.
+      deleted = false;
       // eslint-disable-next-line no-console
       console.warn('[share] could not delete a capture:', messageOf(e));
     }
+  }
+  const after = await listCapturesQuietly(d);
+  return deleted && after !== null && doomed(after).length === 0;
+}
+
+/**
+ * The files in the capture folder, or null when it can't be listed. A seam
+ * with no list (an older test fake) has nothing to sweep.
+ */
+async function listCapturesQuietly(d: ShareDeps): Promise<Array<{ name: string; uri: string }> | null> {
+  try {
+    return (await d.listCaptures?.()) ?? [];
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[share] could not list captures:', messageOf(e));
+    return null;
   }
 }
 

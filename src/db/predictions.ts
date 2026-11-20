@@ -799,6 +799,31 @@ export async function countUnsynced(userId: string): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
+/**
+ * Changes accounts made on this phone that never reached the server: every
+ * dirty prediction row and every deletion not yet pushed, under any user id
+ * but the guest's (`countUnsynced` counts the same for one account). For
+ * Erase's confirmation (record audit, 2026-11-19): guest Erase removes rows
+ * under every account id (`wipeEverythingOnDevice`), changes an earlier
+ * account never pushed included (a sign-out on a build from before D69, a
+ * session that ended by itself, a deletion sign-out kept waiting under its
+ * account), and those can't come back. The guest's own rows never sync, so
+ * they aren't counted. Read once every queued transaction has settled, so a
+ * write still running is counted whole.
+ */
+export async function countUnsyncedForAccounts(): Promise<number> {
+  const row = await afterQueuedTransactions(() =>
+    getDb().get<{ n: number }>(
+      `SELECT
+         (SELECT COUNT(*) FROM predictions WHERE user_id != ? AND dirty = 1)
+         + (SELECT COUNT(*) FROM prediction_deletions WHERE user_id != ? AND pushed_at IS NULL)
+         AS n`,
+      [LOCAL_GUEST_USER_ID, LOCAL_GUEST_USER_ID],
+    ),
+  );
+  return Number(row?.n ?? 0);
+}
+
 /** Deletions not yet pushed for `userId`, oldest first (roadmap D25). */
 export async function listPendingDeletions(userId: string): Promise<string[]> {
   const rows = await getDb().all<{ id: string }>(

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { appLocked } from '@/components/ui/appLocked';
@@ -6,6 +6,7 @@ import { appLocked } from '@/components/ui/appLocked';
 // the browser's confirm on web (shared with sign-out in You since D69 (a)).
 import { askToConfirm } from '@/components/ui/askToConfirm';
 import { Button } from '@/components/ui/Button';
+import { localCount } from '@/components/ui/count';
 import { APP_NAME, PLUS_NAME } from '@/constants/app';
 import { colors, type } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
@@ -16,6 +17,37 @@ const MANAGE_SUBSCRIPTIONS_URL =
   Platform.OS === 'android'
     ? 'https://play.google.com/store/account/subscriptions'
     : 'https://apps.apple.com/account/subscriptions';
+
+/**
+ * How long Erase waits for the count of what accounts never pushed before it
+ * asks anyway, as if the count couldn't be read: the read waits behind queued
+ * database work, and the question must not hang on it (re-review 2026-11-19).
+ */
+export const ERASE_COUNT_WAIT_MS = 3000;
+
+/**
+ * The guest Erase confirmation's message. `lost` is how many changes accounts
+ * made on this phone never reached the server (`countUnsyncedAccountChanges`,
+ * record audit 2026-11-19): Erase removes them with everything else and they
+ * can't come back, so a count above zero is named. Zero leaves the message as
+ * it always was. A count that couldn't be read (null, a throw, or no answer in
+ * `ERASE_COUNT_WAIT_MS`) says such changes may exist, as sign-out stops in the
+ * same case (re-review 2026-11-19); so does anything that isn't a whole
+ * number of zero or more, which no read gives. Exported for tests.
+ */
+export function eraseConfirmMessage(lost: number | null): string {
+  const lead = 'Nothing here has another copy unless an account backed it up.';
+  const end = "This can't be undone.";
+  if (lost === 0) return `${lead} ${end}`;
+  if (lost === null || !Number.isInteger(lost) || lost < 0) {
+    return `${lead} Changes an account made on this phone may not have reached our server; if so, they will be lost. ${end}`;
+  }
+  const changes =
+    lost === 1
+      ? '1 change an account made on this phone never reached our server and will be lost.'
+      : `${localCount(lost)} changes an account made on this phone never reached our server and will be lost.`;
+  return `${lead} ${changes} ${end}`;
+}
 
 /**
  * Delete the account (signed in) or erase this device (guest) —
@@ -39,7 +71,24 @@ export function DeleteAccountView({
   const pending = useAuthStore((s) => s.pending);
   const deleteAccount = useAuthStore((s) => s.deleteAccount);
   const eraseDeviceData = useAuthStore((s) => s.eraseDeviceData);
+  const countUnsyncedAccountChanges = useAuthStore((s) => s.countUnsyncedAccountChanges);
   const entitlement = useEntitlementStore((s) => s.entitlement);
+  // A guest's tap while the count is still being read opens no second alert:
+  // the ref at once, the state for the button's disabled look.
+  const counting = useRef(false);
+  const [countingShown, setCountingShown] = useState(false);
+  // Ends the wait for the count early, as unreadable: set while it waits.
+  const stopWaiting = useRef<(() => void) | null>(null);
+  // Left before the count came back: no alert for a screen that's gone, and
+  // the wait's timer goes with it.
+  const live = useRef(true);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      stopWaiting.current?.();
+    };
+  }, []);
 
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
@@ -111,7 +160,33 @@ export function DeleteAccountView({
     else setError(outcome.error);
   };
 
-  const confirmFirst = () => {
+  // The count, or null when it can't be read: a throw (the store's action
+  // never throws), no answer within ERASE_COUNT_WAIT_MS, or the screen
+  // leaving first. Settles once; a count that comes back later is dropped.
+  // The timer is cleared on every path. Never rejects.
+  const readCount = () =>
+    new Promise<number | null>((resolve) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let done = false;
+      const finish = (lost: number | null) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        stopWaiting.current = null;
+        resolve(lost);
+      };
+      timer = setTimeout(() => finish(null), ERASE_COUNT_WAIT_MS);
+      stopWaiting.current = () => finish(null);
+      void (async () => {
+        try {
+          finish(await countUnsyncedAccountChanges());
+        } catch {
+          finish(null);
+        }
+      })();
+    });
+
+  const confirmFirst = async () => {
     if (wasSignedIn) {
       const store = Platform.OS === 'android' ? 'Google Play' : 'Apple';
       askToConfirm(
@@ -122,16 +197,23 @@ export function DeleteAccountView({
         'Delete account',
         () => void onConfirm(),
       );
-    } else {
-      // "Unless an account backed it up": what an account signed in here
-      // before left behind may have a copy on our server.
-      askToConfirm(
-        'Erase everything on this phone?',
-        "Nothing here has another copy unless an account backed it up. This can't be undone.",
-        'Erase',
-        () => void onConfirm(),
-      );
+      return;
     }
+    // "Unless an account backed it up": what an account signed in here
+    // before left behind may have a copy on our server. What never reached
+    // it is counted at the tap itself, just before the question, never at
+    // mount and never kept: it can change while this screen is open (a
+    // sign-out on an older build, a pull), and a second tap counts again.
+    // The button is off while it reads, and the question comes after
+    // ERASE_COUNT_WAIT_MS at the latest.
+    if (counting.current) return;
+    counting.current = true;
+    setCountingShown(true);
+    const lost = await readCount();
+    counting.current = false;
+    if (!live.current) return;
+    setCountingShown(false);
+    askToConfirm('Erase everything on this phone?', eraseConfirmMessage(lost), 'Erase', () => void onConfirm());
   };
 
   return (
@@ -155,13 +237,14 @@ export function DeleteAccountView({
             // guest's, and anything an account signed in here before left,
             // such as predictions left by a sign-out on an older build and
             // the counts sign-out keeps. Such an account may have a copy on
-            // our server, hence "unless an account backed it up".
+            // our server, hence "unless an account backed it up". What stays
+            // is named too: the settings and the Plus mirror (D71 (a)).
             `This permanently erases everything ${APP_NAME} keeps on this phone, including ` +
             'anything left by an account that was signed in here before: ' +
             'every prediction and reflection, ' +
             'your categories and their icons, your Warmup and practice answers, a ' +
             'prediction you were still typing, your age range and usage stats not yet ' +
-            'sent. Settings, like reminder times, stay. ' +
+            `sent. Settings, like reminder times, and whether this phone has ${PLUS_NAME} stay. ` +
             "You aren't signed in, so nothing here has another copy unless an account backed it up. It can't be undone."}
       </Text>
 
@@ -222,8 +305,10 @@ export function DeleteAccountView({
               : 'Erase everything'
         }
         variant="danger"
-        disabled={pending}
-        onPress={confirmFirst}
+        // Off while the count is read too, keeping its own label, not
+        // "Erasing…": nothing is erased until the question is answered.
+        disabled={pending || countingShown}
+        onPress={() => void confirmFirst()}
         testID="delete-confirm-button"
       />
       {/* The server call can wait 45 seconds, then the app asks once more

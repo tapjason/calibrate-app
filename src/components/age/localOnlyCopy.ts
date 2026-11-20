@@ -16,9 +16,13 @@ export const LOCAL_ONLY_GUEST_ROW = 'Kept on this phone';
 /** You, the account group, a guest: the footer's first line. */
 export const LOCAL_ONLY_GUEST_FOOTER = `Because of the age range this iPhone shares with ${APP_NAME}, everything you log stays on this phone. Accounts, backup, usage counts, Coach and Plus are off. Your predictions, score, badges and cards work as usual, and Export predictions keeps a copy.`;
 
-/** You, the account group, a guest: the footer's second line, where the age range is seen. */
+/**
+ * You, the account group, a guest: the footer's second line, where the age
+ * range is seen. The path in words, as Delete account gives Sign in with
+ * Apple's, with no arrows (DESIGN_SYSTEM: no "→" in text).
+ */
 export const LOCAL_ONLY_GUEST_WHERE =
-  "The age range comes from this iPhone's Apple Account. To see it: Settings → your name → Personal Information → Age Range for Apps.";
+  "The age range comes from this iPhone's Apple Account. To see it, open Settings, tap your name, then Personal Information, then Age Range for Apps.";
 
 /** You, the account group, signed in: the footer of a frozen account (Sign out and Delete account stay). */
 export const LOCAL_ONLY_FROZEN_FOOTER = `Backup is off on this phone because of the age range it shares with ${APP_NAME}, so new changes stay here. What was backed up before stays on our server until you delete the account. Signing out removes your predictions from this phone, so export them first if you want a copy.`;
@@ -30,9 +34,17 @@ export const LOCAL_ONLY_COACH = `Coach is off on this phone because of the age r
 export const LOCAL_ONLY_PAYWALL_TITLE = "Plus isn't offered on this phone";
 export const LOCAL_ONLY_PAYWALL_BODY = `Because of the age range this iPhone shares with ${APP_NAME}, purchases are off here. Your score, chart, badges and cards are free.`;
 
-/** The account route. */
+/** The account route, a guest. */
 export const LOCAL_ONLY_ACCOUNT_TITLE = 'No account on this phone';
 export const LOCAL_ONLY_ACCOUNT_BODY = `Because of the age range this iPhone shares with ${APP_NAME}, your predictions stay on this phone. To keep a copy, use Export predictions in You.`;
+
+/**
+ * The account route, an account signed in before the rule came on (frozen; a
+ * deep link is the only way there): "No account on this phone" would be
+ * untrue. Its body is `LOCAL_ONLY_FROZEN_FOOTER`, You's words for the same
+ * account (review 2026-11-19).
+ */
+export const LOCAL_ONLY_FROZEN_ACCOUNT_TITLE = 'Backup is off on this phone';
 
 /** The one button on either route's page. */
 export const LOCAL_ONLY_CLOSE = 'Close';

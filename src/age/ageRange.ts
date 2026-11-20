@@ -10,23 +10,37 @@
 //
 //   hydrateAgeGate()   At launch, after the database opens and before the
 //                      auth store initialises: the stored band goes into the
-//                      age store, and the store learns whether this launch
-//                      will ask Apple (iOS 26 with no stored band, or a stored
-//                      band under 13). Until it has asked, automatic uploads
-//                      at launch wait (`uploadsMayStart`).
+//                      age store, and the store learns whether automatic
+//                      uploads at launch wait for this launch's ask
+//                      (`uploadsMayStart`): on iOS 26 with no stored band, a
+//                      stored band under 13, or a stored band that couldn't
+//                      be read. A stored band that couldn't be read (the read
+//                      threw twice in a row, or the row isn't a band) closes
+//                      the gate for the run: only Apple's own answer of 13 or
+//                      over lifts it. Where Apple's API can never run (web,
+//                      Android, iOS before 26: no band can have been stored),
+//                      a read that throws is no band instead; a row that isn't
+//                      a band still closes the gate there.
 //   ensureAgeBucket()  One ask per process, after the first screen is up and
-//                      the app lock is open. Asks when there is no stored band
-//                      or the stored band is under 13; a stored band that
-//                      isn't under 13 is never asked again. A valid answer is
-//                      accepted (saved, and the gate follows it); a decline,
-//                      "not available", a throw or an answer that isn't a band
-//                      keeps the stored band. Always ends in `markSettled`.
+//                      the app lock is open, wherever the API can run,
+//                      whatever is stored. A stored band of 13 or over is
+//                      asked about too, in the background: nothing waits for
+//                      that ask, since the band belongs to the install and not
+//                      to the Apple Account (a parent's phone handed to a
+//                      child by switching accounts, or an app restored from a
+//                      backup, keeps the adult band). A valid answer is
+//                      accepted (saved, and the gate follows it; the same
+//                      band as the one stored, with the gate open, changes
+//                      and writes nothing); a decline, "not available", a
+//                      throw or an answer that isn't a band keeps the stored
+//                      band. Always ends in `markSettled`.
 //   recheckAgeBucketIfDue(now)
 //                      On return to the foreground in a long run: while the
-//                      rule applies, asks again once 24 hours have passed
-//                      since the last ask (`AGE_RECHECK_MIN_MS`, in memory).
-//                      Apple caches the answer and prompts only on its
-//                      anniversary, so the repeat is silent.
+//                      rule applies or a band of 13 or over is known, asks
+//                      again once 24 hours have passed since the last ask
+//                      (`AGE_RECHECK_MIN_MS`, in memory). Apple caches the
+//                      answer and prompts only on its anniversary, so the
+//                      repeat is silent.
 //
 // Everywhere the API cannot run (web, Android, iOS before 26, the native
 // module missing) nothing is asked, nothing waits and the app goes on as
@@ -63,6 +77,14 @@ export const AGE_RECHECK_MIN_MS = 24 * 60 * 60 * 1000;
 export interface AgeRangeDeps {
   /** False when this device cannot actually ask Apple. */
   isAvailable(): boolean;
+  /**
+   * False where this device's OS can never ask Apple (web, Android, iOS
+   * before 26), so no band can ever have been stored here: a stored-band read
+   * that fails is then no band, not unknown (review round 2, item 2). True on
+   * iOS 26 even with the module missing, where an earlier build may have
+   * stored one. Optional: a seam without it is read by `isAvailable`.
+   */
+  couldEverAsk?(): boolean;
   /** The raw API response. May carry fields we must not store. */
   request(): Promise<unknown>;
 }
@@ -70,6 +92,8 @@ export interface AgeRangeDeps {
 let override: AgeRangeDeps | null = null;
 /** The launch's one read of the stored band (`hydrateAgeGate`), once started. */
 let hydrating: Promise<void> | null = null;
+/** What the launch's read found, once it has, for `run` to fall back on. */
+let launchRead: StoredBand | null = null;
 /** The launch's one ask (`ensureAgeBucket`), once started. */
 let pending: Promise<AgeBucket | null> | null = null;
 /** A foreground re-ask still running (`recheckAgeBucketIfDue`). */
@@ -85,19 +109,31 @@ function iosMajor(): number | null {
   return Number.isFinite(major) ? major : null;
 }
 
-function loadModule(): { requestAgeRangeAsync?: (options: typeof AGE_GATES) => Promise<unknown> } | null {
+/**
+ * The package's own types (erased at build: nothing is loaded by this line),
+ * so the request below is checked against the installed `expo-age-range`.
+ * Its response shape is pinned in ageRangeResponse.test.ts (review round 2,
+ * item 3). Partial: the export is checked at run time too.
+ */
+type AgeRangeModule = Partial<Pick<typeof import('expo-age-range'), 'requestAgeRangeAsync'>>;
+
+function loadModule(): AgeRangeModule | null {
   try {
     // Lazy require: the package is absent in Jest, and on web its entry
     // returns a fake adult instead of failing. Callers check the OS first.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('expo-age-range') as {
-      requestAgeRangeAsync?: (options: typeof AGE_GATES) => Promise<unknown>;
-    };
+    return require('expo-age-range') as AgeRangeModule;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[age] module unavailable:', messageOf(e));
     return null;
   }
+}
+
+/** iOS 26 or later: the first OS with Declared Age Range. */
+function osCanAsk(): boolean {
+  const major = iosMajor();
+  return major !== null && major >= 26;
 }
 
 function defaultDeps(): AgeRangeDeps {
@@ -106,10 +142,14 @@ function defaultDeps(): AgeRangeDeps {
       // iOS 26 is the first OS with Declared Age Range. Earlier versions
       // (and web, and Android) must not be asked: the SDK answers those
       // with a synthetic 18, which is not the person's age.
-      const major = iosMajor();
-      if (major === null || major < 26) return false;
+      if (!osCanAsk()) return false;
       const mod = loadModule();
       return typeof mod?.requestAgeRangeAsync === 'function';
+    },
+    couldEverAsk() {
+      // The OS alone: an iOS 26 build missing the module may follow one that
+      // had it and stored a band.
+      return osCanAsk();
     },
     async request() {
       const mod = loadModule();
@@ -133,6 +173,22 @@ function canAsk(): boolean {
     // eslint-disable-next-line no-console
     console.warn('[age] availability check failed:', messageOf(e));
     return false;
+  }
+}
+
+/**
+ * Whether a band can ever have been stored on this device (`couldEverAsk`, or
+ * the seam's `isAvailable` without it). A seam that throws reads as yes: the
+ * side that keeps a failed read unknown.
+ */
+function bandCouldBeStored(): boolean {
+  try {
+    const deps = getDeps();
+    return deps.couldEverAsk ? deps.couldEverAsk() : deps.isAvailable();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[age] availability check failed:', messageOf(e));
+    return true;
   }
 }
 
@@ -171,42 +227,107 @@ function bucketFromResponse(raw: unknown): AgeBucket | null {
   return { lowerBound: lower, upperBound: upper };
 }
 
-/** The stored band, or null for none, for one that isn't a band, or when it can't be read. */
-async function readStoredBand(): Promise<AgeBucket | null> {
+/**
+ * What the phone holds: a band, no row at all, or something that can't be
+ * known: the read threw (`unreadable`), or the row isn't a band (`invalid`,
+ * which only a damaged database could hold: every write is a checked band).
+ */
+type StoredBand =
+  | { kind: 'band'; band: AgeBucket }
+  | { kind: 'none' }
+  | { kind: 'unknown'; why: 'unreadable' | 'invalid' };
+
+/** The stored row, read once more if the first read throws. Throws when both do. */
+async function readRowTwice(): Promise<AgeBucket | null> {
   try {
-    return bucketFromResponse(await getAgeBucket());
+    return await getAgeBucket();
   } catch (e) {
-    // Reads as no band (call 7). A launch that asks then asks Apple, whose
-    // cached answer brings the band back for this run.
+    // A momentary failure (a busy database) shouldn't close the gate for the
+    // run, with what closing it does (review round 2, item 2): once more.
     // eslint-disable-next-line no-console
-    console.warn('[age] read failed:', messageOf(e));
-    return null;
+    console.warn('[age] read failed, reading once more:', messageOf(e));
+    return await getAgeBucket();
   }
 }
 
-/** Whether a launch with this stored band asks Apple: none, or one under 13. */
-function bandIsAskedAbout(stored: AgeBucket | null): boolean {
-  return stored === null || isUnder13Band(stored);
+/**
+ * The stored band. Never throws. A read that fails twice is `unknown`, not
+ * `none`, wherever a band could have been stored; where Apple's API can never
+ * run (`bandCouldBeStored`: web, Android, iOS before 26) it is `none`, since
+ * no band can be there. A row that isn't a band is `unknown` everywhere.
+ */
+async function readStoredBand(): Promise<StoredBand> {
+  let raw: AgeBucket | null;
+  try {
+    raw = await readRowTwice();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[age] read failed:', messageOf(e));
+    if (!bandCouldBeStored()) return { kind: 'none' };
+    // Not "no band": a row that may say under 13 couldn't be read. The gate
+    // stays shut for the run unless Apple answers 13 or over.
+    return { kind: 'unknown', why: 'unreadable' };
+  }
+  if (raw === null) return { kind: 'none' };
+  const band = bucketFromResponse(raw);
+  return band ? { kind: 'band', band } : { kind: 'unknown', why: 'invalid' };
+}
+
+/** The band a stored read gives, or null for none or unknown. */
+function bandOf(stored: StoredBand): AgeBucket | null {
+  return stored.kind === 'band' ? stored.band : null;
+}
+
+/**
+ * Whether automatic uploads at launch wait for this launch's ask: no stored
+ * band, one under 13, or one that couldn't be read. A stored band of 13 or
+ * over is asked about in the background, with nothing waiting.
+ */
+function uploadsWaitForTheAsk(stored: StoredBand): boolean {
+  return stored.kind !== 'band' || isUnder13Band(stored.band);
+}
+
+/**
+ * Close the gate for a stored band that couldn't be read, through the age
+ * store's `loadUnknown`: one write (no band, the gate closed, `settled` false
+ * when `willAsk`), so no subscriber ever sees the gate open with `settled`
+ * true. With `willAsk` null (`run`, after the launch's read), `settled` stays
+ * as it is. Only Apple's own answer of 13 or over lifts it (`accept`).
+ */
+function closeGateForUnknownBand(willAsk: boolean | null): void {
+  const age = useAgeStore.getState();
+  age.loadUnknown({ willAsk: willAsk ?? !age.settled });
+}
+
+/** Two bands with the same bounds. */
+function sameBand(a: AgeBucket, b: AgeBucket): boolean {
+  return a.lowerBound === b.lowerBound && a.upperBound === b.upperBound;
 }
 
 /**
  * Put the stored band into the age store, before anything can upload. Called
  * once at launch, after the database opens and before the auth store
- * initialises (app/_layout.tsx). A read that fails reads as no band. When this
- * launch will ask Apple (it can, and the stored band is none or under 13), the
- * store stays unsettled until `ensureAgeBucket` has asked, so the guest flush
- * and RevenueCat wait for the answer. Once per process: a second call returns
- * the first one's promise (a later `load` would leave the store waiting for an
- * ask that has already happened). Never throws or rejects.
+ * initialises (app/_layout.tsx). A stored band that can't be read closes the
+ * gate for the run (`closeGateForUnknownBand`); no row at all is no band.
+ * When this launch's ask is one uploads wait for (it can ask, and the stored
+ * band is none, under 13 or unknown), the store stays unsettled until
+ * `ensureAgeBucket` has asked, so the guest flush and RevenueCat wait for the
+ * answer. A stored band of 13 or over is settled at once: its ask runs in the
+ * background. Once per process: a second call returns the first one's promise
+ * (a later `load` would leave the store waiting for an ask that has already
+ * happened). Never throws or rejects.
  */
 export function hydrateAgeGate(): Promise<void> {
   if (!hydrating) {
     hydrating = (async () => {
       try {
         const stored = await readStoredBand();
+        launchRead = stored;
         // Not once the launch's ask has started: its answer is newer.
         if (pending !== null) return;
-        useAgeStore.getState().load(stored, { willAsk: canAsk() && bandIsAskedAbout(stored) });
+        const willAsk = canAsk() && uploadsWaitForTheAsk(stored);
+        if (stored.kind === 'unknown') closeGateForUnknownBand(willAsk);
+        else useAgeStore.getState().load(bandOf(stored), { willAsk });
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[age] could not load the age range:', messageOf(e));
@@ -219,12 +340,13 @@ export function hydrateAgeGate(): Promise<void> {
 /**
  * Ask Apple once and apply a valid answer through the age store's `accept`
  * (saved, and the gate follows it: an under-13 band closes it at once, any
- * other lifts it only once saved). Returns the band this run now goes by: the
- * answer when it applies (an under-13 one even if it couldn't be saved), or
- * else `stored`. A decline, "not available", a throw or a response that isn't
- * a band keeps `stored`.
+ * other lifts it only once saved). An answer equal to `known` while the gate
+ * is open changes nothing and writes nothing. Returns the band this run now
+ * goes by: the answer when it applies (an under-13 one even if it couldn't be
+ * saved), or else `known`. A decline, "not available", a throw or a response
+ * that isn't a band keeps `known`, and the gate as it is.
  */
-async function askApple(stored: AgeBucket | null): Promise<AgeBucket | null> {
+async function askApple(known: AgeBucket | null): Promise<AgeBucket | null> {
   lastAskAt = Date.now();
   let raw: unknown;
   try {
@@ -234,25 +356,47 @@ async function askApple(stored: AgeBucket | null): Promise<AgeBucket | null> {
     // (ERR_AGE_RANGE_NOT_AVAILABLE), or a bug.
     // eslint-disable-next-line no-console
     console.warn('[age] request failed:', messageOf(e));
-    return stored;
+    return known;
   }
   const bucket = bucketFromResponse(raw);
-  if (!bucket) return stored;
+  if (!bucket) return known;
+  if (known !== null && sameBand(bucket, known) && !useAgeStore.getState().localOnly) return bucket;
   const saved = await useAgeStore.getState().accept(bucket);
-  return saved || isUnder13Band(bucket) ? bucket : stored;
+  return saved || isUnder13Band(bucket) ? bucket : known;
+}
+
+/**
+ * What `run` goes by when its own read can't tell: a read that fails here,
+ * after this launch's own read found a band, goes by that band (between the
+ * two only `accept`, which writes what it holds, or Erase, which clears the
+ * store's band too, could have changed it); one that throws after the
+ * launch's read found no row goes by that (review round 2, item 2: no write
+ * between them could have added a row, `accept` running only later, in
+ * `askApple`). Otherwise the read stands.
+ */
+function storedForRun(read: StoredBand): StoredBand {
+  if (read.kind !== 'unknown') return read;
+  const known = useAgeStore.getState().bucket;
+  if (known !== null) return { kind: 'band', band: known };
+  if (read.why === 'unreadable' && launchRead?.kind === 'none') return { kind: 'none' };
+  return read;
 }
 
 async function run(): Promise<AgeBucket | null> {
-  const stored = await readStoredBand();
-  // A stored under-13 band applies even if `hydrateAgeGate` didn't run first
-  // (it turns the gate on, never off, and leaves `settled` as it is).
-  if (isUnder13Band(stored) && !useAgeStore.getState().localOnly) {
-    useAgeStore.getState().load(stored, { willAsk: !useAgeStore.getState().settled });
+  const stored = storedForRun(await readStoredBand());
+  // A stored under-13 band, or one that can't be read, applies even if
+  // `hydrateAgeGate` didn't run first (it turns the gate on, never off, and
+  // leaves `settled` as it is).
+  if (!useAgeStore.getState().localOnly) {
+    if (stored.kind === 'unknown') closeGateForUnknownBand(null);
+    else if (stored.kind === 'band' && isUnder13Band(stored.band)) {
+      useAgeStore.getState().load(stored.band, { willAsk: !useAgeStore.getState().settled });
+    }
   }
-  // Any other stored band is never asked about again (call 5).
-  if (!bandIsAskedAbout(stored)) return stored;
-  if (!canAsk()) return stored;
-  return await askApple(stored);
+  if (!canAsk()) return bandOf(stored);
+  // Whatever is stored, a band of 13 or over included (in the background:
+  // nothing waits for it, see `uploadsWaitForTheAsk`).
+  return await askApple(bandOf(stored));
 }
 
 /** The launch has its answer, or won't get one: what waits for it goes on. Never throws. */
@@ -266,11 +410,12 @@ function settle(): void {
 }
 
 /**
- * The launch's one ask. Asks when there is no stored band or the stored band
- * is under 13, and never again in this process (a second call returns the
- * first one's promise). Always resolves, and always ends in the age store's
- * `markSettled`, on every path, a throw included. Returns the band this run
- * goes by (see `askApple`), or null for none.
+ * The launch's one ask, wherever the API can run, whatever is stored (a band
+ * of 13 or over in the background, with the store already settled), and never
+ * again in this process (a second call returns the first one's promise).
+ * Always resolves, and always ends in the age store's `markSettled`, on every
+ * path, a throw included. Returns the band this run goes by (see `askApple`),
+ * or null for none or unknown.
  */
 export function ensureAgeBucket(): Promise<AgeBucket | null> {
   if (!pending) {
@@ -290,14 +435,27 @@ export function ensureAgeBucket(): Promise<AgeBucket | null> {
 }
 
 /**
- * Ask Apple again while the rule applies, at most once per
- * `AGE_RECHECK_MIN_MS` since this run's last ask (call 5): for a return to
- * the foreground in a long run. Call it only when the app is active and the
- * app lock is open (Apple's sheet must not open under the lock screen). Does
- * nothing before the launch's own ask has finished, while a re-ask is
- * running, when the rule doesn't apply, or where the API can't run. A valid
- * answer is accepted (a band that isn't under 13 lifts the gate once saved);
- * anything else keeps the band. Resolves true when it asked. Never rejects.
+ * Whether a foreground re-ask applies: the rule is on, or the run knows a band
+ * of 13 or over (stored, or Apple's latest answer), which a change of Apple
+ * Account on this phone would make stale. Not with no band (declined, not
+ * available): that is asked again at the next launch.
+ */
+function recheckApplies(): boolean {
+  const { localOnly, bucket } = useAgeStore.getState();
+  return localOnly || (bucket !== null && !isUnder13Band(bucket));
+}
+
+/**
+ * Ask Apple again while the rule applies or a band of 13 or over is known, at
+ * most once per `AGE_RECHECK_MIN_MS` since this run's last ask (call 5): for a
+ * return to the foreground in a long run. Call it only when the app is active
+ * and the app lock is open (Apple's sheet must not open under the lock
+ * screen). Does nothing before the launch's own ask has finished, while a
+ * re-ask is running, with no band and no rule, or where the API can't run. A
+ * valid answer is accepted (an under-13 band closes the gate at once; one that
+ * isn't lifts it once saved; the band already known, with the gate open,
+ * changes nothing); anything else keeps the band. Nothing waits for it.
+ * Resolves true when it asked. Never rejects.
  */
 export function recheckAgeBucketIfDue(now: Date | number = Date.now()): Promise<boolean> {
   if (recheckRunning) return recheckRunning;
@@ -307,7 +465,7 @@ export function recheckAgeBucketIfDue(now: Date | number = Date.now()): Promise<
       return Promise.resolve(false);
     }
     if (nowMs - lastAskAt < AGE_RECHECK_MIN_MS) return Promise.resolve(false);
-    if (!useAgeStore.getState().localOnly) return Promise.resolve(false);
+    if (!recheckApplies()) return Promise.resolve(false);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[age] recheck failed:', messageOf(e));
@@ -318,7 +476,7 @@ export function recheckAgeBucketIfDue(now: Date | number = Date.now()): Promise<
     try {
       // The launch's ask first: one request at a time.
       await launchAsk;
-      if (!useAgeStore.getState().localOnly || !canAsk()) return false;
+      if (!recheckApplies() || !canAsk()) return false;
       await askApple(useAgeStore.getState().bucket);
       return true;
     } catch (e) {
@@ -339,6 +497,7 @@ export function __setAgeRangeDepsForTests(next: AgeRangeDeps | null): void {
   }
   override = next;
   hydrating = null;
+  launchRead = null;
   pending = null;
   recheckRunning = null;
   lastAskAt = null;

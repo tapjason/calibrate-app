@@ -64,6 +64,49 @@ describe('ratingStore (roadmap D15)', () => {
     expect(requestReview).not.toHaveBeenCalled();
   });
 
+  // Review 2026-11-19: while this launch waits for Apple's age answer,
+  // `localOnly` may not say yet, so nothing is asked and the moment is kept.
+  it('keeps the moment, unasked, while this launch waits for Apple’s answer, then asks once it is in', async () => {
+    useAgeStore.getState().load(null, { willAsk: true });
+    try {
+      useRatingStore.getState().noteMoment();
+      await expect(useRatingStore.getState().askIfDue(now)).resolves.toBe(false);
+      expect(requestReview).not.toHaveBeenCalled();
+      expect(useRatingStore.getState().moment).toBe(true);
+
+      useAgeStore.getState().markSettled();
+      await expect(useRatingStore.getState().askIfDue(now)).resolves.toBe(true);
+      expect(requestReview).toHaveBeenCalledTimes(1);
+      expect(useRatingStore.getState().moment).toBe(false);
+    } finally {
+      __resetAgeStoreForTests();
+    }
+  });
+
+  it('spends the kept moment, unasked, once the answer puts the phone under the rule', async () => {
+    // A stored band under 13 asked about again: local-only, and unsettled.
+    useAgeStore.getState().load({ lowerBound: null, upperBound: 12 }, { willAsk: true });
+    try {
+      useRatingStore.getState().noteMoment();
+      await expect(useRatingStore.getState().askIfDue(now)).resolves.toBe(false);
+      expect(useRatingStore.getState().moment).toBe(true);
+
+      useAgeStore.getState().markSettled();
+      await expect(useRatingStore.getState().askIfDue(now)).resolves.toBe(false);
+      expect(useRatingStore.getState().moment).toBe(false);
+      expect(requestReview).not.toHaveBeenCalled();
+      expect(useSettingsStore.getState().ratingAskedAt).toBeNull();
+    } finally {
+      __resetAgeStoreForTests();
+    }
+  });
+
+  it('with no question this launch (the default), asks at once as before', async () => {
+    expect(useAgeStore.getState().settled).toBe(true);
+    useRatingStore.getState().noteMoment();
+    await expect(useRatingStore.getState().askIfDue(now)).resolves.toBe(true);
+  });
+
   // Roadmap D70, call 6: a local-only phone is never asked.
   it('never asks on a local-only phone, and spends the moment', async () => {
     useAgeStore.getState().load({ lowerBound: null, upperBound: 12 }, { willAsk: false });

@@ -460,11 +460,19 @@ export const LOCAL_ONLY_BELOW_AGE = 13;
 /**
  * The most support-card set-asides the phone keeps (`supportAsideKey`,
  * src/engine/supportAside.ts); the oldest go first. One per answered
- * prediction whose words matched the Coach's crisis pre-filter, so far more
- * than a record holds in practice; a key dropped by the cap only brings the
- * card back, the safe way to be wrong.
+ * prediction whose words matched the Coach's crisis pre-filter. Not what
+ * keeps the list short: every key is dropped once its words are no longer in
+ * the loaded list (at every Coach request and tap, and every load of the
+ * answered list that worked), so the list never holds more than the matching
+ * answered predictions. The cap only guards against a damaged record. 200
+ * until re-review round two (2026-11-19, the main session's call): past it,
+ * one key was always left out, and the card came back at every request for
+ * someone with more matching predictions than that (a recurring title that
+ * trips the filter, logged again and again, could get there). A key dropped
+ * by the cap only brings the card back, the safe way to be wrong. About 40
+ * bytes a key in the settings record.
  */
-export const SUPPORT_ASIDE_MAX_KEYS = 200;
+export const SUPPORT_ASIDE_MAX_KEYS = 2000;
 
 // ---- Coach agent (Plus). Authoritative shapes: COACH_AGENT.md §4 and §6. ----
 

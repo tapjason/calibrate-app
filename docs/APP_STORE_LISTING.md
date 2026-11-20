@@ -4,7 +4,9 @@
 `CLAUDE.md` and the shipped code (the 2026 age-rating answers and review notes from the policy
 audits of 2026-11-14 and 2026-11-15; the review notes, the Google sentence and the age-range
 lines revised after the security and policy review of 2026-11-18, and the age-assurance answer
-and the review notes' age-range lines again for the under-13 rule, D70, on 2026-11-19). Every
+and the review notes' age-range lines again for the under-13 rule, D70, on 2026-11-19, and
+once more that day after the D70/D71 review: asked at every launch, sign-in and plans
+waiting for the answer). Every
 feature claimed below exists in `master`, except the under-13 rule, which is on
 `builder/owner-decisions` (uncommitted on 2026-11-19) until it merges; ✨ Refine
 is cut and appears nowhere.
@@ -100,7 +102,7 @@ the reason:
 | Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms, the support page). |
 | Mature or suggestive themes | None | The app shows no such content. The Coach's support surface (a helpline pointer when someone's own text signals distress) isn't a depiction of trauma or abuse; if Apple's wording counts it, "infrequent" is 9+: the owner's call on the day. |
 | Advertising | No | There are no ads. |
-| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once per launch until a band is stored, so after a decline it asks again at the next launch, and while the stored band is under 13 it asks at each launch and again after 24 hours in a long run (`src/age/ageRange.ts`: one ask per launch; a decline stores nothing and keeps a stored band). **The result gates services** (the under-13 rule, D70, 2026-11-19; `docs/design/research/under-13-2026-11.md`): a band that includes ages under 13 makes the app local-only, with no sign-in, backup, usage counts, Coach or RevenueCat, and Plus not offered (`useAgeStore.localOnly`). Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services": accounts, backup, the Coach and purchases are those services here, so "Yes" is plainly true of a build that carries D70. A build without it asked and gated nothing (policy audit, 2026-11-14). Counsel is still to be asked about the state acts' duties (`SHIP_READINESS.md` decision 2). |
+| In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once at every launch, whatever band is stored (since the D70/D71 review, 2026-11-19: the band belongs to the install, not to the Apple Account), and again on a return to the app 24 hours after the last ask while the rule applies or a band of 13 or over is known (`src/age/ageRange.ts`: one ask per launch; a decline stores nothing and keeps a stored band). **The result gates services** (the under-13 rule, D70, 2026-11-19; `docs/design/research/under-13-2026-11.md`): a band that can include someone under 13 makes the app local-only, with no sign-in, backup, usage counts, Coach or RevenueCat, and Plus not offered (`useAgeStore.localOnly`). Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services": accounts, backup, the Coach and purchases are those services here, so "Yes" is plainly true of a build that carries D70. A build without it asked and gated nothing (policy audit, 2026-11-14). Counsel is still to be asked about the state acts' duties (`SHIP_READINESS.md` decision 2). |
 | Social media; social media disabled under 13 (asked since July 2026, required from September) | No | No feed, profiles, followers or posts. |
 | Shared location; dating and relationships (descriptors from 2026-11-16, all apps by 2027-01-12) | No | The app reads no location and matches nobody. |
 | Gambling; simulated gambling; contests; loot boxes (asked one by one) | None | No stakes, odds, currency, prizes or chance mechanics. Nobody competes: a friend comparison, if ever built, would change the contests answer. |
@@ -161,7 +163,7 @@ leaves that judgement to the developer), so getting it right first time matters.
 > Turn your per-category results into a card, or get a weekly and yearly recap
 > of your forecasting. Sharing is always free.
 >
-> **PRIVATE BY DEFAULT**
+> **PRIVATE BY DESIGN**
 > The whole free app works offline, without an account. Sign in only if you
 > want a backup or the Coach. No ads, no tracking. Lock the app with Face ID or
 > your passcode if you share your phone.
@@ -239,11 +241,12 @@ at level 2 (same features, so this only orders upgrades and downgrades).
 > arrive.
 >
 > After the first screen appears, the app asks Apple's Declared Age Range API
-> for an age band, once per launch until one is shared; after a decline it asks
-> again at the next launch. Declining changes nothing. If the band is under 13,
-> the app keeps everything on the phone: no sign-in, backup, usage counts or
-> Coach, and Plus isn't offered; You explains it under "Kept on this phone", and
-> the app asks again at each launch in case the band has changed. To
+> for an age band, once at each launch, in case the band has changed. Declining
+> changes nothing. If the band includes ages under 13, the app keeps everything
+> on the phone: no sign-in, backup, usage counts or Coach, and Plus isn't
+> offered; You explains it under "Kept on this phone". Until Apple has answered
+> on a first launch, sign-in ("Sign-in isn't ready yet. Try again in a moment.")
+> and the Plus plans wait. To
 > see it, set the device's Sandbox Apple Account to Under 13 (Settings →
 > Developer → Sandbox Apple Account → Manage → Age Assurance), then You → Erase
 > your data on this phone if a band was already shared, and relaunch.
@@ -261,10 +264,19 @@ Authentication → Configuration → Audit Logs → "Write audit logs to the dat
 purged `auth.audit_log_entries`; until then each sign-in keeps the Google name there
 (`docs/APP_PRIVACY.md`, the Name row). If those steps aren't done, end the sentence at "(no
 Google SDK is in the app)." The age-range lines follow `src/age/ageRange.ts` (one ask per
-process, nothing stored on a decline); whether iOS shows its sheet again after a decline
-is iOS's decision, so say "asks", not "shows". The under-13 lines hold only for a build that
-carries D70 (2026-11-19) and quote `LOCAL_ONLY_GUEST_ROW` ("Kept on this phone",
-`src/components/age/localOnlyCopy.ts`). The sandbox path is from
+process, whatever band is stored, since the D70/D71 review of 2026-11-19; nothing stored
+on a decline); whether iOS shows its sheet again, after a decline or for a band already
+shared, is iOS's decision, so say "asks", not "shows". The under-13 lines hold only for a
+build that carries D70 and the D70/D71 review's fixes (2026-11-19) and quote
+`LOCAL_ONLY_GUEST_ROW` ("Kept on this phone", `src/components/age/localOnlyCopy.ts`),
+`AGE_PENDING_SIGN_IN` (`src/supabase/auth.ts`) and the paywall's no-plans line
+(`noPlansText`, `src/components/paywall/paywallCopy.ts`: "Plus plans couldn't load. Check
+your connection, then open this again."). The wait matters to a reviewer: on a fresh
+install a sign-in tapped while Apple's sheet is still unanswered is refused for the
+moment, and works once the sheet is answered or declined. If a request to Apple can stay
+unresolved on a review device, sign-in and the plans stay unavailable for that run
+(`docs/design/research/under-13-2026-11.md`, "What only the iPhone can show"); check D4 on
+the owner's iPhone before submitting. The sandbox path is from
 `docs/design/research/under-13-2026-11.md` ("What only the iPhone can show": it needs
 Developer Mode, a Sandbox Apple Account and iOS 26.2 or later); confirm it on the owner's
 iPhone (`HUMAN_VERIFICATION.md` D4) before pasting, and leave the last sentence out if it
@@ -288,7 +300,9 @@ from the build that carries D71 (d) (`UsageStatsSwitch` on the sign-in screen).
 >
 > If a user's own prediction text signals distress, the Coach gives no
 > feedback and the app shows helpline information instead. That check runs on
-> the device; the text is not sent anywhere.
+> the device; the text is not sent anywhere. The person can set the message
+> aside ("Back to Coach") if it doesn't fit; it comes back for new matching
+> words.
 >
 > There is no gambling, no stakes and no currency. Predictions are private
 > notes about the user's own life ("I'll finish the report by Friday").
