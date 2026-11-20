@@ -524,8 +524,10 @@ export function skippedLine(skipped: number, _scored?: number): string {
  * day it was logged (owner decision 2026-11-19, review round 7; from the eve
  * of its due day until then, D61), a rewording since changing nothing; or an
  * open one already due, even on the day it was logged (a time-zone change, a
- * synced row). Tombstones don't sync, so the count is this phone's, and the
- * line says so.
+ * synced row). A Can't tell is counted as an open one is (owner's list item
+ * 20, 2026-11-19), and the words hold for it unchanged: counted only after
+ * the day it was logged or once due. Tombstones don't sync, so the count is
+ * this phone's, and the line says so.
  */
 export function deletedLine(count: number): string {
   return count === 1

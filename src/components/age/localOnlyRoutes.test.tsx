@@ -4,6 +4,7 @@
 // route itself draws the local-only page and never mounts PaywallView or
 // SignInView. Tested from here: a test file under app/ would be a route.
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Text } from 'react-native';
 
 import { track } from '@/analytics/track';
 import { ensureBillingStarted } from '@/billing/init';
@@ -18,6 +19,7 @@ import {
   LOCAL_ONLY_FROZEN_ACCOUNT_TITLE,
   LOCAL_ONLY_FROZEN_FOOTER,
   LOCAL_ONLY_PAYWALL_BODY,
+  LOCAL_ONLY_PAYWALL_MANAGE,
   LOCAL_ONLY_PAYWALL_TITLE,
 } from './localOnlyCopy';
 
@@ -91,6 +93,26 @@ describe('the paywall route', () => {
       expect(mockPaywallMounts).not.toHaveBeenCalled();
       expect(ensure).not.toHaveBeenCalled();
       expect(trackMock).not.toHaveBeenCalled();
+    });
+
+    it('says where an existing subscription is managed, between the body and Close, with no plans or purchase buttons', () => {
+      render(<PaywallScreen />);
+      expect(screen.getByText(LOCAL_ONLY_PAYWALL_MANAGE)).toBeTruthy();
+      // Reading order: title, body, the line, Close (the page's text, in tree order).
+      const order = screen
+        .UNSAFE_getAllByType(Text)
+        .map((n) => n.props.children)
+        .filter((c): c is string => typeof c === 'string');
+      const i = (s: string) => order.indexOf(s);
+      expect(i(LOCAL_ONLY_PAYWALL_TITLE)).toBeGreaterThan(-1);
+      expect(i(LOCAL_ONLY_PAYWALL_BODY)).toBeGreaterThan(i(LOCAL_ONLY_PAYWALL_TITLE));
+      expect(i(LOCAL_ONLY_PAYWALL_MANAGE)).toBeGreaterThan(i(LOCAL_ONLY_PAYWALL_BODY));
+      expect(i('Close')).toBeGreaterThan(i(LOCAL_ONLY_PAYWALL_MANAGE));
+      // Plain text: nothing to press but the two ways out.
+      expect(screen.queryByRole('link')).toBeNull();
+      expect(screen.queryByTestId('paywall-view')).toBeNull();
+      expect(screen.queryByTestId('purchase-button')).toBeNull();
+      expect(screen.queryByText(/restore/i)).toBeNull();
     });
 
     it('closes from Close and from the ×, back where it came from', () => {

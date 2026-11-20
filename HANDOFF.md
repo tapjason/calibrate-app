@@ -1,6 +1,19 @@
 # Handoff
 
-**Branch:** `master`. `builder/owner-decisions` is merged into it (fast-forward) and
+**Branch:** `builder/owner-list-19-30`, on top of `master` (`44612ca`). **Not merged, not
+pushed.** It holds D72: three of the owner's-list items the owner agreed to on 2026-11-19
+("Agree with the entire owners list"; then "Start building your items and I will work on
+mine in parallel"), built 2026-11-20 as steps 202 to 204 and **unreviewed**:
+- **202, D72 (a):** deleting a "Can't tell" is counted like deleting an open prediction.
+  No screen offers that delete; the route that existed was a details sheet left open on a
+  copy another phone then marked "Can't tell".
+- **203, D72 (b):** Usage stats start off on a phone set to Canada until the person turns
+  them on. The held privacy policy's §1, §2 and §2.3 say so, and its header's step 12 ties
+  publishing to a build that carries it and to the device check (the app reads the region
+  from the JS engine's locale; no iPhone has shown that it follows the Region setting).
+- **204, D72 (c):** the local-only Plus page says where a subscription is managed.
+
+**Before this branch, `master`:** `builder/owner-decisions` is merged into it (fast-forward) and
 pushed, 2026-11-19, on the owner's words that day: "Use all your recommendations for the
 open decisions, and review, push, and merge.", then, with the review two rounds in,
 "continue with next steps". Four commits came with it: `e77431e` (D70 and D71 as first
@@ -10,16 +23,22 @@ D70/D71 review is **finished**: three rounds, the most allowed.
 
 **What the next session does first, in order**
 
-1. Put `docs/SHIP_READINESS.md` "The owner's list" items 19 to 30 to the owner. The ones
-   that can't wait: **26** (Utah and Louisiana may already apply: Apple's own post gives
-   2026 dates where this repo said 2027; for counsel), **19** (his nod on the two
-   corrected recommendations), **21** (Usage stats starting off on phones set to Canada:
-   his decision, not built, and a submission blocker) and **20** (deleting a "Can't tell"
-   isn't counted).
-2. Build what he says yes to, each as a small step (`/step`): 20, 21, 23 and 27 (the
-   support card's referral lines, each number checked on the organisation's own page
-   first), 29, 30.
-3. The next builds are his: a new development build and TestFlight build from `master`
+1. **The support card, items 23 and 27: wait for the owner's answer.** He agreed to the
+   list, then said on 2026-11-20: "The purpose of my app is not to connect people to these
+   helplines". The main session's recommendation, put to him and not yet answered: drop
+   both items, leave the card as built (988 on a US phone, the line with no number
+   elsewhere), and mark messages 1 to 3 in `docs/OWNER_MESSAGES.md` as not needed. A
+   `design-analyst` run on the two items was started before he said it; nothing is built
+   from its report unless he says so.
+2. **The server checklist, with him** (`supabase/README.md`). The agent runs the read-only
+   checks through `npx supabase db query --remote --read-only`; he applies the migrations
+   and runs the test statements (they write and roll back), unless he tells the agent to.
+   Done 2026-11-20: 010 applied by him; its 2a to 2f all pass (72 guest rows, all hashed
+   and cut to the day); 011's "look first" 1a to 1d all clear. Open: 010's T1 to T3; apply
+   011 and its checks; pg_cron; 012 and its checks; the three redeploys.
+3. **A review of this branch, when he calls it**, with item 30's billing fix inside it.
+   Then merge, and the web build's look at step 204's line at 320 pt.
+4. The next builds are his: a new development build and TestFlight build from `master`
    (`expo-secure-store` and `expo-crypto` are native), after `supabase/README.md`'s
    checklist. The public pages stay as they are: the hold below still applies, and
    nothing in this merge touched the `include` list in `docs/_config.yml`.
@@ -104,7 +123,7 @@ D70/D71 review is **finished**: three rounds, the most allowed.
   local-only; the two billing races.
 - **The owner's decisions (2026-11-19):** every recommendation in
   `docs/SHIP_READINESS.md` "The owner's list" is adopted. **Two were wrong and are
-  corrected there, awaiting his nod:** item 7 (the UK is left out with the EU, since it
+  corrected there, and he agreed to both as corrected the same day:** item 7 (the UK is left out with the EU, since it
   needs a UK representative and policy content; launch storefronts are the US, Canada,
   Australia and New Zealand) and item 10 (stored IP addresses are declared as Diagnostics →
   Other Diagnostic Data). The agent's proposed rule after that mistake: a legal or
@@ -371,8 +390,8 @@ judgment work and for the reviews he calls, Sonnet for well-specified, low-stake
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run
-  (2026-11-19, on the tree that was merged, after the D70/D71 review's round-three fixes):
-  247 suites, 5,796 tests, exit 0. `check.sh --release` last
+  (2026-11-20, on `builder/owner-list-19-30` with steps 202 to 204): 250 suites, 5,887
+  tests, exit 0. `check.sh --release` last
   passed on the review's round 7 tree with the two new native packages: expo-doctor 20/20, iOS export
   7.58 MB (bundle 7.17 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;

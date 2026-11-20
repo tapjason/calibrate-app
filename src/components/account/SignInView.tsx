@@ -173,8 +173,10 @@ export function SignInView({ onDone }: { onDone: () => void }) {
         moves into your account, notes included, so another phone can restore it.
         We don't read or share it.
       </Text>
-      {/* Usage stats are on unless the person turned them off, and from
-          sign-in they go up with the account: said here, before the account
+      {/* Usage stats are on unless the person turned them off (on a phone
+          whose region is Canada, off until they turn them on: owner,
+          2026-11-19; USAGE_OFF_NOTE reads true for someone who never chose),
+          and from sign-in they go up with the account: said here, before the account
           exists (guideline 5.1.1(ii); policy audit, 2026-11-14), with the
           switch beside it, as on the Warm-up's first screen (decision 9,
           2026-11-19). The longer line holds the space, so a flip moves none

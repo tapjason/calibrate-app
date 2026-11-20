@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
+import { __setDeviceLocaleForTests } from '@/constants/locale';
 import { colors, type } from '@/constants/theme';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
@@ -15,7 +16,7 @@ import {
 import { useWarmupStore } from '@/store/warmupStore';
 
 import { usageCountsMayGoUp } from './usageNotice';
-import { UsageStatsNotice, WARMUP_USAGE_NOTE } from './UsageStatsNotice';
+import { UsageStatsNotice, WARMUP_USAGE_NOTE, WARMUP_USAGE_OFF_NOTE } from './UsageStatsNotice';
 
 // D69 (b): a line and a switch for usage counts on the Warm-up's first
 // screen, before anything is sent (guideline 5.1.1(ii)).
@@ -177,5 +178,91 @@ describe('UsageStatsNotice under the under-13 rule', () => {
     expect(screen.queryByTestId('warmup-usage-row')).toBeNull();
     expect(useSettingsStore.getState().usageNoticeShownAt).toBeNull();
     expect(saved).toHaveLength(0);
+  });
+});
+
+// The owner's decision, 2026-11-19: on a phone whose region is Canada, Usage
+// stats start off until the person turns them on, and the line says so; once
+// on, the line above is true again and shown. The stamp is written all the
+// same: nothing goes up until the switch is on as well.
+describe('UsageStatsNotice on a phone in Canada', () => {
+  beforeEach(() => {
+    __setDeviceLocaleForTests('en-CA');
+    // A fresh install's: nothing chosen (the outer beforeEach set the switch's value only).
+    useSettingsStore.setState({ analyticsEnabled: true, analyticsChosen: false });
+  });
+  afterEach(() => __setDeviceLocaleForTests(null));
+
+  it('says the counts are off until turned on, word for word, with the switch off', () => {
+    expect(WARMUP_USAGE_OFF_NOTE).toBe(
+      'Fairly Sure can send a few usage counts, with no account or device id, to see how the app is used. They’re off until you turn them on, here or in You.',
+    );
+    render(<UsageStatsNotice />);
+    const row = screen.getByTestId('warmup-usage-row');
+    expect(row.props.accessibilityState).toMatchObject({ checked: false });
+    expect(row.props.accessibilityHint).toBe(WARMUP_USAGE_OFF_NOTE);
+    expect(screen.getByTestId('warmup-usage-switch', { includeHiddenElements: true }).props.value).toBe(false);
+    expect(screen.getByTestId('warmup-usage-note')).toHaveTextContent(WARMUP_USAGE_OFF_NOTE);
+    // Nothing on screen says counts are being sent.
+    expect(screen.getByTestId('warmup-usage-note')).not.toHaveTextContent(/sends/);
+  });
+
+  it('shows the line that counts are sent once the person turns them on, and the off line again if turned off', async () => {
+    render(<UsageStatsNotice />);
+    const row = screen.getByTestId('warmup-usage-row');
+    await waitFor(() => expect(row).toBeEnabled());
+    fireEvent.press(row);
+    await waitFor(() => expect(useSettingsStore.getState().analyticsChosen).toBe(true));
+    expect(useSettingsStore.getState().analyticsEnabled).toBe(true);
+    expect(screen.getByTestId('warmup-usage-row').props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId('warmup-usage-note')).toHaveTextContent(WARMUP_USAGE_NOTE);
+    expect(saved.at(-1)).toMatchObject({ analyticsEnabled: true, analyticsChosen: true });
+
+    await waitFor(() => expect(screen.getByTestId('warmup-usage-row')).toBeEnabled());
+    fireEvent.press(screen.getByTestId('warmup-usage-row'));
+    await waitFor(() => expect(useSettingsStore.getState().analyticsEnabled).toBe(false));
+    expect(screen.getByTestId('warmup-usage-note')).toHaveTextContent(WARMUP_USAGE_OFF_NOTE);
+  });
+
+  it('stamps that the line was shown, though the switch is off', async () => {
+    render(<UsageStatsNotice />);
+    await waitFor(() => expect(useSettingsStore.getState().usageNoticeShownAt).not.toBeNull());
+    await waitFor(() => expect(saved).toHaveLength(1));
+    // The stamp alone lets nothing up: the switch is still off.
+    expect(useSettingsStore.getState().analyticsChosen).toBe(false);
+    expect(saved[0]).not.toHaveProperty('analyticsChosen');
+  });
+
+  // The longer of the two lines holds the space, so turning the switch moves
+  // nothing under it.
+  it('keeps the longer line’s space in both states', () => {
+    expect(WARMUP_USAGE_OFF_NOTE.length).toBeGreaterThan(WARMUP_USAGE_NOTE.length);
+    render(<UsageStatsNotice />);
+    expect(screen.queryByTestId('warmup-usage-spacer', { includeHiddenElements: true })).toBeNull();
+    act(() => useSettingsStore.setState({ analyticsChosen: true }));
+    const spacer = screen.getByTestId('warmup-usage-spacer', { includeHiddenElements: true });
+    expect(spacer).toHaveTextContent(WARMUP_USAGE_OFF_NOTE);
+    expect(StyleSheet.flatten(spacer.props.style)).toMatchObject({ opacity: 0 });
+    expect(screen.getByTestId('warmup-usage-note')).toHaveTextContent(WARMUP_USAGE_NOTE);
+  });
+});
+
+describe('UsageStatsNotice elsewhere', () => {
+  afterEach(() => __setDeviceLocaleForTests(null));
+
+  it.each(['en-US', 'en'])('shows the line that counts are sent, with the switch on, before any choice (%s)', (tag) => {
+    __setDeviceLocaleForTests(tag);
+    useSettingsStore.setState({ analyticsEnabled: true, analyticsChosen: false });
+    render(<UsageStatsNotice />);
+    expect(screen.getByTestId('warmup-usage-row').props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId('warmup-usage-note')).toHaveTextContent(WARMUP_USAGE_NOTE);
+  });
+
+  it('keeps the same line when turned off, as before', () => {
+    __setDeviceLocaleForTests('en-US');
+    useSettingsStore.setState({ analyticsEnabled: false, analyticsChosen: true });
+    render(<UsageStatsNotice />);
+    expect(screen.getByTestId('warmup-usage-note')).toHaveTextContent(WARMUP_USAGE_NOTE);
+    expect(screen.queryByTestId('warmup-usage-spacer', { includeHiddenElements: true })).toBeNull();
   });
 });

@@ -7,7 +7,11 @@ import { track } from '@/analytics/track';
 import { PAYWALL_SOURCES, type PaywallSource } from '@/analytics/events';
 import { ensureBillingStarted } from '@/billing/init';
 import { LocalOnlyPage } from '@/components/age/LocalOnlyPage';
-import { LOCAL_ONLY_PAYWALL_BODY, LOCAL_ONLY_PAYWALL_TITLE } from '@/components/age/localOnlyCopy';
+import {
+  LOCAL_ONLY_PAYWALL_BODY,
+  LOCAL_ONLY_PAYWALL_MANAGE,
+  LOCAL_ONLY_PAYWALL_TITLE,
+} from '@/components/age/localOnlyCopy';
 import { PaywallView } from '@/components/paywall/PaywallView';
 import { useAgeStore } from '@/store/ageStore';
 
@@ -68,6 +72,7 @@ export default function PaywallScreen() {
         <LocalOnlyPage
           title={LOCAL_ONLY_PAYWALL_TITLE}
           body={LOCAL_ONLY_PAYWALL_BODY}
+          note={LOCAL_ONLY_PAYWALL_MANAGE}
           onClose={close}
           testID="paywall-local-only"
         />

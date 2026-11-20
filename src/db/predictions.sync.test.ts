@@ -1164,7 +1164,9 @@ describe('reconcileTombstoneWithRemote', () => {
     const ANSWERED_AT = '2099-01-01T08:00:00.000Z';
     async function deletedAnswer(status: 'resolved_yes' | 'resolved_no' | 'skipped' = 'resolved_no') {
       await insertPrediction(samplePrediction({ status, resolved_at: ANSWERED_AT }));
-      await deletePrediction('p1', { counted: status !== 'skipped' });
+      // A Can't tell's delete is counted too, on an open one's days (the
+      // owner's list item 20); this sample was logged before today.
+      await deletePrediction('p1', { counted: true });
     }
 
     it('keeps the tombstone for the same answer, however the server writes the time', async () => {

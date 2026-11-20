@@ -24,12 +24,14 @@ import { create } from 'zustand';
 
 import { clearEvents } from '@/db/analytics';
 import { DEFAULT_THEME } from '@/constants/cardThemes';
+import { deviceRegion } from '@/constants/locale';
 import {
   foldSupportAsideKeeps,
   supportAsideKeyStands,
   withSupportAsideKeys,
   type SupportAsideKeep,
 } from '@/engine/supportAside';
+import { usageStatsOffByRegion, usageStatsOn, usageStatsStartOff } from '@/engine/usageStats';
 import { CATEGORIES, isCategory, type Category } from '@/types';
 
 export interface StoredSettings {
@@ -56,9 +58,27 @@ export interface StoredSettings {
   coachEnabled: boolean;
   /**
    * Anonymous product analytics — a closed list of events with no freetext
-   * (src/analytics/events.ts). On by default; turning it off clears the queue.
+   * (src/analytics/events.ts). Stored on by default; turning it off clears the
+   * queue. Never read on its own: whether Usage stats are on is
+   * `selectUsageStatsOn`, which reads it with `analyticsChosen` and the
+   * phone's region (on a phone in Canada they start off, owner 2026-11-19).
    */
   analyticsEnabled: boolean;
+  /**
+   * Whether the person has set the Usage stats switch themselves (owner,
+   * 2026-11-19): on the Warm-up's first screen, in You or on the sign-in
+   * screen, all through `setAnalyticsEnabled`. Until then the switch follows
+   * the phone's region: off in Canada, on elsewhere (src/engine/usageStats.ts).
+   * Once set, the stored value wins in every region.
+   *
+   * Written only when true: a record with nothing chosen leaves it out, so it
+   * keeps the shape earlier builds wrote, and a record from an earlier build
+   * (which never has it) reads as not chosen. That is safe for those records:
+   * a stored off still reads as off (`usageStatsOn`), and a stored on reads as
+   * on everywhere but Canada, as before. Always present in the store's state.
+   * Kept by Erase, account deletion and sign-out, like `analyticsEnabled`.
+   */
+  analyticsChosen?: boolean;
   /**
    * The streak and the daily goal, shown or not (step 173, aggregate B5). On
    * by default. Off hides the streak row and its goal dots, the checkpoints
@@ -223,6 +243,8 @@ export interface SettingsPersistence {
 interface SettingsState extends StoredSettings {
   /** The support card's set-asides (`StoredSettings.supportAsideKeys`): none is an empty list here. */
   supportAsideKeys: string[];
+  /** Whether the person set Usage stats (`StoredSettings.analyticsChosen`): false here when not. */
+  analyticsChosen: boolean;
   /** True once hydrate() has run (whether or not stored values existed). */
   hydrated: boolean;
   /**
@@ -373,9 +395,15 @@ interface SettingsState extends StoredSettings {
 // counted list of which screens got used, with no freetext and nothing derived
 // about the person. Off by default would produce a sample skewed toward
 // whoever reads settings screens, which is not a sample worth deciding the
-// business model on.
-/** The settings as the store holds them: every value present, none set aside an empty list. */
-type HeldSettings = StoredSettings & { supportAsideKeys: string[] };
+// business model on. The exception is a phone whose region is Canada (owner,
+// 2026-11-19: Quebec's law asks for the most private setting by default):
+// there the stored on reads as off until the person turns the switch on
+// (`analyticsChosen`, `selectUsageStatsOn`).
+/**
+ * The settings as the store holds them: every value present, none set aside
+ * an empty list, nothing chosen `analyticsChosen: false`.
+ */
+type HeldSettings = StoredSettings & { supportAsideKeys: string[]; analyticsChosen: boolean };
 
 const DEFAULTS: HeldSettings = {
   notificationsEnabled: true,
@@ -387,6 +415,7 @@ const DEFAULTS: HeldSettings = {
   aiRefineEnabled: true,
   coachEnabled: false,
   analyticsEnabled: true,
+  analyticsChosen: false,
   streakShown: true,
   reminderWords: false,
   hideTitles: false,
@@ -666,6 +695,25 @@ function resetCoach(): void {
   }
 }
 
+/** The Usage stats setting in `state`, as the engine reads it. */
+function usageSetting(state: Pick<StoredSettings, 'analyticsEnabled' | 'analyticsChosen'>) {
+  return { analyticsEnabled: state.analyticsEnabled, analyticsChosen: state.analyticsChosen === true };
+}
+
+/**
+ * Clear the queued usage counts when Usage stats are off only because the
+ * phone's region starts them off (`usageStatsOffByRegion`): stored on, never
+ * chosen, in Canada. Off means what it does when the switch is turned off:
+ * nothing waits on the phone to go up later. Counts queued while the phone's
+ * region was elsewhere, and Usage stats on by default, would otherwise go up
+ * the moment the person turned them on, though they were recorded before the
+ * choice. Nothing is queued while they are off (`track`), so after the first
+ * launch this clears an empty queue. clearEvents swallows its own errors.
+ */
+async function dropQueueIfOffByRegion(state: StoredSettings): Promise<void> {
+  if (usageStatsOffByRegion(usageSetting(state), deviceRegion())) await clearEvents();
+}
+
 /**
  * Persist the current toggle values, swallowing storage errors. True when
  * the write landed.
@@ -698,7 +746,13 @@ function fromStored(stored: Partial<StoredSettings>): HeldSettings {
     digestTime: validTime(stored.digestTime) ?? DEFAULTS.digestTime,
     aiRefineEnabled: stored.aiRefineEnabled ?? DEFAULTS.aiRefineEnabled,
     coachEnabled: stored.coachEnabled ?? DEFAULTS.coachEnabled,
-    analyticsEnabled: stored.analyticsEnabled ?? DEFAULTS.analyticsEnabled,
+    analyticsEnabled:
+      typeof stored.analyticsEnabled === 'boolean'
+        ? stored.analyticsEnabled
+        : DEFAULTS.analyticsEnabled,
+    // Chosen only when the record says so: a record from an earlier build
+    // has no such value, and reads as not chosen (`StoredSettings`).
+    analyticsChosen: stored.analyticsChosen === true,
     streakShown:
       typeof stored.streakShown === 'boolean' ? stored.streakShown : DEFAULTS.streakShown,
     reminderWords:
@@ -868,6 +922,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       } finally {
         set({ hydrated: true });
       }
+      // Usage stats off only because this phone's region starts them off
+      // (owner, 2026-11-19): the queued counts go, as when the switch is
+      // turned off. Not while the record can't be read: off is then a guess.
+      if (!get().loadFailed) await dropQueueIfOffByRegion(get());
       // A clear of the set-asides asked for before the record was read (a
       // wipe retried at launch: `eraseSupportAside`, or `clearSupportAside`),
       // applied over it now, as the call would have been with the record
@@ -897,6 +955,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       // fresh install).
       if (!stored || !get().loadFailed) return;
       if (adopt(stored)) await persist(snapshot(get()));
+      // The record read at last: as at launch (`hydrate`).
+      await dropQueueIfOffByRegion(get());
     },
 
     resetToDefaults: async () => {
@@ -972,7 +1032,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     },
 
     setAnalyticsEnabled: async (enabled) => {
-      change(() => ({ analyticsEnabled: enabled }));
+      // The person's own choice, from any of the three switches: from now on
+      // it wins over the region's default (`analyticsChosen`).
+      change(() => ({ analyticsEnabled: enabled, analyticsChosen: true }));
       await save('explicit');
       // Opting out means what it says: the queue of what was already recorded
       // goes too, not just future events. clearEvents swallows its own errors.
@@ -1128,6 +1190,33 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
   };
 });
 
+/**
+ * Whether Usage stats are on (owner, 2026-11-19): the one read of the
+ * setting, for everything that sends, queues or shows it (track, the flush,
+ * the three switches and their lines). Never read `analyticsEnabled` on its
+ * own: on a phone whose region is Canada, a stored on that the person never
+ * chose reads as off. The rules are `usageStatsOn` (src/engine/usageStats.ts);
+ * the region is the phone's locale's (`deviceRegion`, the one the Coach's
+ * support card reads), read once per launch, so a region changed in Settings
+ * counts from the next launch. A region that can't be read counts as not
+ * Canada. A selector: `useSettingsStore(selectUsageStatsOn)` in a component,
+ * `selectUsageStatsOn(useSettingsStore.getState())` elsewhere.
+ */
+export function selectUsageStatsOn(
+  state: Pick<StoredSettings, 'analyticsEnabled' | 'analyticsChosen'>,
+): boolean {
+  return usageStatsOn(usageSetting(state), deviceRegion());
+}
+
+/**
+ * Whether Usage stats start off on this phone until the person turns them on:
+ * its region is Canada (`usageStatsStartOff`). The Warm-up's line says so
+ * while they are off there.
+ */
+export function usageStatsStartOffHere(): boolean {
+  return usageStatsStartOff(deviceRegion());
+}
+
 /** A stored day of the week, if it is one: 0 (Sunday) to 6. */
 function validDay(value: unknown): number | null {
   return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 6
@@ -1179,12 +1268,17 @@ function snapshot(state: StoredSettings): StoredSettings {
   const aside = state.supportAsideKeys ?? [];
   return {
     ...settingsValues(state),
+    // Only once chosen (`StoredSettings.analyticsChosen`), after the switch's
+    // value, as earlier builds wrote it.
+    ...(state.analyticsChosen === true ? { analyticsChosen: true } : {}),
     ...(aside.length > 0 ? { supportAsideKeys: aside } : {}),
   };
 }
 
-/** Every stored value but the set-asides. */
-function settingsValues(state: StoredSettings): Omit<StoredSettings, 'supportAsideKeys'> {
+/** Every stored value but the set-asides and whether Usage stats were chosen. */
+function settingsValues(
+  state: StoredSettings,
+): Omit<StoredSettings, 'supportAsideKeys' | 'analyticsChosen'> {
   return {
     notificationsEnabled: state.notificationsEnabled,
     remindersEnabled: state.remindersEnabled,

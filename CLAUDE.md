@@ -451,7 +451,9 @@ many answers were "Can't tell", which the rating leaves out, under "More about y
   prediction.
 - **Deleted calls are counted.** Tombstones are kept after the push, marked
   `counted` when the deletion hid something: a scored Yes or No (inside its
-  24-hour window), or an open prediction deleted on any day after the day it was made
+  24-hour window), or an open prediction, or one answered "Can't tell" (D72 (a),
+  2026-11-20: no screen deletes a "Can't tell", but a details sheet left open on a copy
+  another phone has since marked can), deleted on any day after the day it was made
   (D69, 2026-11-19; D61 counted only from the eve: with "Answer it now" an outcome can be
   known at any time), except on the day it was logged (read in its logging offset) while it
   isn't due yet (one logged today and already due is counted); a rewording doesn't restart
@@ -737,7 +739,14 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
 - **Usage counts wait for consent**: a guest's counts go up only after the Warm-up's first
   screen has shown its line and switch (`usageNoticeShownAt`); the switch is in You too,
   and on the sign-in screen, where counts become tied to an account (D71 (d)).
-  Kept on the server 13 months (migration 012).
+  Kept on the server 13 months (migration 012). **On a phone set to Canada the switch
+  starts off** (D72 (b), 2026-11-20, for Quebec's privacy-by-default rule): until the
+  person turns it on, nothing is queued or sent, and the Warm-up's line says "…can send a
+  few usage counts… They're off until you turn them on, here or in You." A choice, once
+  made on any of the three switches, holds whatever the region becomes; an off stored by
+  an earlier build stays off. `usageStatsOn` (`src/engine/usageStats.ts`) is the rule and
+  `selectUsageStatsOn` the one place it is read. A region that can't be read counts as
+  not Canada.
 - **Erase means everything** (D71 (a)): guest Erase removes all that Fairly Sure keeps on
   the phone, whoever's account it was under, the counts sign-out keeps included
   (`wipeEverythingOnDevice`); settings, the Plus mirror and the ids of accounts signed out
@@ -808,7 +817,9 @@ Re-verify before relying on a revenue number. The go-to-market sequence and its 
 GROWTH §0 and §7.
 
 Rule: the paywall never touches the core loop or anything shareable. On a phone the
-under-13 rule applies to (D70), Plus isn't offered at all.
+under-13 rule applies to (D70), Plus isn't offered at all; the page that says so adds
+where an existing subscription is managed ("…in the Settings app: tap your name, then
+Subscriptions.", D72 (c)).
 
 ---
 

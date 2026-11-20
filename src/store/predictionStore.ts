@@ -848,8 +848,11 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     ) {
       throw new Error(PAST_WINDOW);
     }
-    // Counted on Insights when it hides something scored, or an open call
-    // from a day after it was logged (D45, owner decision 2026-11-19).
+    // Counted on Insights when it hides something scored, or an open call or
+    // a Can't tell from a day after it was logged (D45, owner decisions
+    // 2026-11-19). Read from the row as it is now: an open copy on screen
+    // that another phone has since marked Can't tell is counted by the same
+    // days, so the confirmation's words still hold.
     const counted = deletionCounts(target, new Date());
     // Deleting a resolved prediction changes calibration, streak, and per-
     // category counts — recompute inside the same transaction so the stats
@@ -1085,12 +1088,13 @@ export function skipAnswerBy(p: Prediction, now: Date = new Date()): Date | null
 /**
  * Whether deleting this one now would be counted on Insights (D45), for the
  * delete confirmation to say so first. The engine's rule (`deletionCounts`):
- * a scored Yes or No (not a same-day answer, not "Can't tell"); an open one
- * deleted on any day after the day it was logged (owner decision
+ * a scored Yes or No (not a same-day answer); an open one or a "Can't tell"
+ * deleted on any day after the day it was logged (owner decisions
  * 2026-11-19), read where it was logged, a rewording since changing nothing;
- * or an open one already due, even on the day it was logged. For an open
- * one, `!canRenumber(p, now)` says which: true means it was logged before
- * today; false (still the day it was logged) means it is already due.
+ * or an open one or a Can't tell already due, even on the day it was logged.
+ * For an open one, `!canRenumber(p, now)` says which: true means it was
+ * logged before today; false (still the day it was logged) means it is
+ * already due. Not for a Can't tell, which `canRenumber` always refuses.
  */
 export function deleteIsCounted(p: Prediction, now: Date = new Date()): boolean {
   return deletionCounts(p, now);

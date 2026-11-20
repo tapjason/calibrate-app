@@ -1055,3 +1055,46 @@ describe('SettingsView — export', () => {
     expect(screen.getByTestId('settings-export')).toHaveTextContent('Export predictions (CSV)');
   });
 });
+
+// The owner's decision, 2026-11-19: on a phone whose region is Canada, Usage
+// stats start off until the person turns them on. The row's caption says what
+// the switch does, not that anyone turned it off, so it stays as it is.
+describe('SettingsView — usage stats on a phone in Canada', () => {
+  /* eslint-disable @typescript-eslint/no-var-requires */
+  const { __setDeviceLocaleForTests } = require('@/constants/locale') as typeof import('@/constants/locale');
+  /* eslint-enable @typescript-eslint/no-var-requires */
+
+  beforeEach(() => {
+    act(() => useSettingsStore.setState({ analyticsEnabled: true, analyticsChosen: false }));
+  });
+  afterEach(() => __setDeviceLocaleForTests(null));
+
+  it('shows the switch off before any choice, with the same caption', () => {
+    __setDeviceLocaleForTests('en-CA');
+    render(<SettingsView />);
+    const row = screen.getByTestId('toggle-analytics-row');
+    expect(row.props.accessibilityState).toMatchObject({ checked: false });
+    expect(row.props.accessibilityHint).toBe(USAGE_STATS_DESCRIPTION);
+  });
+
+  it('turns them on: stored as the person’s choice, and on whatever the region', async () => {
+    __setDeviceLocaleForTests('en-CA');
+    render(<SettingsView />);
+    const row = screen.getByTestId('toggle-analytics-row');
+    await waitFor(() => expect(row).toBeEnabled());
+    fireEvent.press(row);
+    await waitFor(() => expect(useSettingsStore.getState().analyticsChosen).toBe(true));
+    expect(useSettingsStore.getState().analyticsEnabled).toBe(true);
+    expect(screen.getByTestId('toggle-analytics-row').props.accessibilityState).toMatchObject({
+      checked: true,
+    });
+  });
+
+  it('elsewhere, shows the switch on before any choice, as before', () => {
+    __setDeviceLocaleForTests('en-US');
+    render(<SettingsView />);
+    expect(screen.getByTestId('toggle-analytics-row').props.accessibilityState).toMatchObject({
+      checked: true,
+    });
+  });
+});

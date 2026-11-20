@@ -21,8 +21,9 @@
 //   - Only while `uploadsMayStart()` (src/store/ageStore.ts; roadmap D70):
 //     Apple has answered on a launch that asks, and the phone isn't
 //     local-only under the under-13 rule.
-//   - With Usage stats on (`analyticsEnabled`): the switch can be turned off
-//     on the sign-in screen while a flush is reading its queue.
+//   - With Usage stats on (`selectUsageStatsOn`: off by default on a phone
+//     whose region is Canada, until the person turns them on): the switch can
+//     be turned off on the sign-in screen while a flush is reading its queue.
 //   - A guest's, only once the line about usage counts has been shown on this
 //     phone (`usageNoticeShownAt`, D69 (b)). The root layout checked it
 //     before each flush (`usageCountsMayGoUp`); here it holds for any caller,
@@ -37,7 +38,7 @@ import {
 } from '@/db/analytics';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import { uploadsMayStart } from '@/store/ageStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { selectUsageStatsOn, useSettingsStore } from '@/store/settingsStore';
 import { getSupabaseClient, isSupabaseConfigured } from '@/supabase/client';
 
 import { GUEST_EVENT_NAMES } from './events';
@@ -93,9 +94,9 @@ let inflight: Promise<number> | null = null;
  */
 function maySend(guest: boolean): boolean {
   if (!uploadsMayStart()) return false;
-  const { analyticsEnabled, usageNoticeShownAt } = useSettingsStore.getState();
-  if (!analyticsEnabled) return false;
-  return !(guest && usageNoticeShownAt === null);
+  const settings = useSettingsStore.getState();
+  if (!selectUsageStatsOn(settings)) return false;
+  return !(guest && settings.usageNoticeShownAt === null);
 }
 
 /**

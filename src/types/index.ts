@@ -346,10 +346,10 @@ export interface PredictionDeletion {
   /** When the server got the deletion, or null while it waits. */
   pushed_at: string | null;
   /**
-   * Whether Insights counts it (D45): a scored Yes or No, or an open one
-   * deleted on any day after the day it was logged, or already due (owner
-   * decision 2026-11-19, `deletionCounts`). Decided at delete time by the
-   * engine.
+   * Whether Insights counts it (D45): a scored Yes or No, or an open one or
+   * a Can't tell deleted on any day after the day it was logged, or already
+   * due (owner decisions 2026-11-19, `deletionCounts`). Decided at delete
+   * time by the engine.
    */
   counted: boolean;
 }

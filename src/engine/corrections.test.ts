@@ -98,13 +98,111 @@ describe('which deletions are counted (roadmap D45)', () => {
     expect(deletionCounts({ ...scored, status: 'resolved_yes' }, now)).toBe(true);
   });
 
-  it("doesn't count a same-day answer or a skip, which were never scored", () => {
+  it("doesn't count a same-day answer, which was never scored", () => {
     const sameDay = answered({
       created_at: local(4, 9).toISOString(),
       resolved_at: local(4, 19).toISOString(),
     });
     expect(deletionCounts(sameDay, now)).toBe(false);
-    expect(deletionCounts(answered({ status: 'skipped' }), now)).toBe(false);
+    expect(deletionCounts({ ...sameDay, status: 'resolved_yes' }, now)).toBe(false);
+  });
+
+  // Owner decision 2026-11-19 (the owner's list item 20): a Can't tell is
+  // counted exactly as an open one is. Until then it was never counted, so
+  // tapping Can't tell first let any delete leave no trace.
+  describe("a Can't tell", () => {
+    const skip = (over: Partial<Prediction> = {}): Prediction =>
+      answered({
+        status: 'skipped',
+        created_at: local(1, 9).toISOString(),
+        due_date: local(3, 12).toISOString(),
+        resolved_at: local(3, 19).toISOString(),
+        ...over,
+      });
+    // The same prediction, still open: the rule it now follows.
+    const asOpen = (p: Prediction): Prediction => ({ ...p, status: 'pending', resolved_at: null });
+
+    it('is counted on any day after the day it was logged, as an open one is', () => {
+      for (const at of [local(2, 0), local(3, 19), local(5, 12)]) {
+        expect(deletionCounts(skip(), at)).toBe(true);
+        expect(deletionCounts(asOpen(skip()), at)).toBe(true);
+      }
+      // Skipped early, by Answer it now, two days after it was logged and long
+      // before its due day: counted, as the open one would be.
+      const early = skip({ due_date: local(30, 12).toISOString(), resolved_at: local(3, 10).toISOString() });
+      expect(deletionCounts(early, local(3, 11))).toBe(true);
+      expect(deletionCounts(asOpen(early), local(3, 11))).toBe(true);
+    });
+
+    it('is counted however old the skip, past its answer week too', () => {
+      const old = skip();
+      const monthLater = local(30, 12);
+      expect(canAnswerSkip(old, monthLater)).toBe(false);
+      expect(deletionCounts(old, monthLater)).toBe(true);
+    });
+
+    it("isn't counted on the day it was logged while it isn't due yet", () => {
+      // Logged on the 5th, due the 6th, skipped through Answer it now that day.
+      const sameDay = skip({
+        created_at: local(5, 9).toISOString(),
+        due_date: local(6, 12).toISOString(),
+        resolved_at: local(5, 10).toISOString(),
+      });
+      expect(deletionCounts(sameDay, local(5, 11))).toBe(false);
+      expect(deletionCounts(asOpen(sameDay), local(5, 11))).toBe(false);
+      // Last thing that day: still not; first thing the next: counted.
+      expect(deletionCounts(sameDay, new Date(2026, 10, 5, 23, 59, 59, 999))).toBe(false);
+      expect(deletionCounts(sameDay, local(6, 0))).toBe(true);
+    });
+
+    it('is counted on the day it was logged once it is due', () => {
+      const dueToday = skip({
+        created_at: local(5, 9).toISOString(),
+        due_date: local(5, 12).toISOString(),
+        resolved_at: local(5, 10).toISOString(),
+      });
+      expect(deletionCounts(dueToday, local(5, 11))).toBe(true);
+      expect(deletionCounts(asOpen(dueToday), local(5, 11))).toBe(true);
+    });
+
+    it('is counted when it was logged earlier and reworded today: new words do not move that day', () => {
+      const reworded = skip({
+        created_at: local(1, 9).toISOString(),
+        title_edited_at: local(5, 10).toISOString(),
+        due_date: local(30, 12).toISOString(),
+        resolved_at: local(5, 11).toISOString(),
+      });
+      expect(deletionCounts(reworded, now)).toBe(true);
+      expect(deletionCounts(asOpen(reworded), now)).toBe(true);
+      // Reworded the day it was logged: still that day, still not counted.
+      const fresh = { ...reworded, created_at: local(5, 9).toISOString() };
+      expect(deletionCounts(fresh, now)).toBe(false);
+    });
+
+    it('reads the day it was logged in its logging offset, as an open one does', () => {
+      // A skip logged Wed Nov 18 at 23:00 in New York (Thu 04:00 UTC), due
+      // later; read here in the suite's own zone, the offset decides.
+      const p = skip({
+        created_at: '2026-11-19T04:00:00.000Z',
+        created_utc_offset_min: -300,
+        due_date: '2026-11-25T12:00:00.000Z',
+        resolved_at: '2026-11-19T04:10:00.000Z',
+      });
+      // 23:30 Wednesday in New York: the day it was logged, not counted.
+      const halfHour = new Date('2026-11-19T04:30:00.000Z');
+      expect(deletionCounts(p, halfHour)).toBe(false);
+      expect(deletionCounts(asOpen(p), halfHour)).toBe(false);
+      // 00:30 Thursday in New York: counted.
+      expect(deletionCounts(p, new Date('2026-11-19T05:30:00.000Z'))).toBe(true);
+    });
+
+    it('is counted when its logging time cannot be read, the side that counts', () => {
+      expect(deletionCounts(skip({ created_at: 'nope' }), now)).toBe(true);
+    });
+  });
+
+  it("counts nothing for a status that isn't one", () => {
+    expect(deletionCounts(answered({ status: 'archived' as Prediction['status'] }), now)).toBe(false);
   });
 
   // Owner decision 2026-11-19 (review round 7): an open one is counted on any

@@ -6,7 +6,7 @@ import { APP_NAME } from '@/constants/app';
 import { space } from '@/constants/theme';
 import { useAgeStore } from '@/store/ageStore';
 import { useLockStore } from '@/store/lockStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { useSettingsStore, usageStatsStartOffHere } from '@/store/settingsStore';
 
 /**
  * What the Warm-up's first screen says about usage counts (D69 (b)), with
@@ -14,6 +14,15 @@ import { useSettingsStore } from '@/store/settingsStore';
  * purpose isn't informed).
  */
 export const WARMUP_USAGE_NOTE = `${APP_NAME} sends a few usage counts, with no account or device id, to see how the app is used. You can turn this off here or in You.`;
+
+/**
+ * The same line while Usage stats are off on a phone whose region starts them
+ * off, Canada (owner, 2026-11-19: Quebec's law asks for the most private
+ * setting by default). It doesn't say counts are being sent: none are until
+ * the person turns the switch on, and then `WARMUP_USAGE_NOTE` is true again
+ * and shown instead.
+ */
+export const WARMUP_USAGE_OFF_NOTE = `${APP_NAME} can send a few usage counts, with no account or device id, to see how the app is used. They’re off until you turn them on, here or in You.`;
 
 /**
  * The line about usage counts on the Warm-up's first screen, with the same
@@ -33,6 +42,12 @@ export const WARMUP_USAGE_NOTE = `${APP_NAME} sends a few usage counts, with no 
  *
  * The line and the switch are `UsageStatsSwitch`, shared with the sign-in
  * screen so the two can't drift.
+ *
+ * On a phone whose region is Canada, Usage stats start off until the person
+ * turns them on (owner, 2026-11-19), and while they are off the line says so
+ * (`WARMUP_USAGE_OFF_NOTE`). The stamp is written all the same: it records
+ * that the line was shown, and nothing goes up there until the switch is on
+ * as well. Everywhere else the line is the same in both states, as before.
  */
 export function UsageStatsNotice() {
   const markShown = useSettingsStore((s) => s.markUsageNoticeShown);
@@ -49,9 +64,12 @@ export function UsageStatsNotice() {
 
   if (localOnly) return null;
 
+  // Read once per launch, like the region it comes from.
+  const noteOff = usageStatsStartOffHere() ? WARMUP_USAGE_OFF_NOTE : WARMUP_USAGE_NOTE;
+
   return (
     <View style={styles.wrap}>
-      <UsageStatsSwitch noteOn={WARMUP_USAGE_NOTE} testID="warmup-usage" />
+      <UsageStatsSwitch noteOn={WARMUP_USAGE_NOTE} noteOff={noteOff} testID="warmup-usage" />
     </View>
   );
 }

@@ -42,11 +42,12 @@ describe('scoringCopy (roadmap step 29)', () => {
 
   // Review round 7 (owner decision 2026-11-19): an open prediction deleted on
   // any day after the day it was logged is counted, not only from the eve;
-  // and, on the day it was logged too, one already due (`deletionCounts`).
+  // and, on the day it was logged too, one already due (`deletionCounts`). A
+  // Can't tell is counted the same way (the owner's list item 20).
   it('says which deletions Insights counts, by the round 7 rule', () => {
     const text = allText();
     expect(text).toContain(
-      'If it had a scored answer, or was still open and either logged before the day it was deleted or already due, Insights says how many were, so a deleted miss is still counted.',
+      "If it had a scored answer, or was still open or Can't tell and either logged before the day it was deleted or already due, Insights says how many were, so a deleted miss is still counted.",
     );
     expect(text).not.toContain('was due that day or the next');
   });

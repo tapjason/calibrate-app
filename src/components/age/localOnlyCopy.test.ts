@@ -22,6 +22,7 @@ describe('localOnlyCopy', () => {
         'LOCAL_ONLY_GUEST_ROW',
         'LOCAL_ONLY_GUEST_WHERE',
         'LOCAL_ONLY_PAYWALL_BODY',
+        'LOCAL_ONLY_PAYWALL_MANAGE',
         'LOCAL_ONLY_PAYWALL_TITLE',
         'LOCAL_ONLY_SIGN_IN',
       ].sort(),
@@ -59,6 +60,9 @@ describe('localOnlyCopy', () => {
     expect(copy.LOCAL_ONLY_PAYWALL_TITLE).toBe("Plus isn't offered on this phone");
     expect(copy.LOCAL_ONLY_PAYWALL_BODY).toBe(
       'Because of the age range this iPhone shares with Fairly Sure, purchases are off here. Your score, chart, badges and cards are free.',
+    );
+    expect(copy.LOCAL_ONLY_PAYWALL_MANAGE).toBe(
+      'If you already subscribe to Fairly Sure Plus, you manage it in the Settings app: tap your name, then Subscriptions.',
     );
     expect(copy.LOCAL_ONLY_ACCOUNT_TITLE).toBe('No account on this phone');
     expect(copy.LOCAL_ONLY_ACCOUNT_BODY).toBe(

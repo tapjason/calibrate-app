@@ -6,7 +6,8 @@
 //     Callers use `void track(...)` and move on; a failure here must be
 //     invisible everywhere, exactly like the AI layer.
 //   - It records nothing when the user has opted out, and clears what was
-//     already queued the moment they do.
+//     already queued the moment they do. Nor while Usage stats are off by
+//     default, on a phone whose region is Canada (`selectUsageStatsOn`).
 //   - It can only record events declared in events.ts, with properties
 //     declared for that event. Freetext cannot reach it.
 //   - It records nothing while the phone is local-only under the under-13
@@ -20,7 +21,7 @@
 import { enqueueEvent, type QueuedEvent } from '@/db/analytics';
 import { isLocalOnly } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
-import { useSettingsStore } from '@/store/settingsStore';
+import { selectUsageStatsOn, useSettingsStore } from '@/store/settingsStore';
 
 import { sanitizeProps, type EventName, type EventProps } from './events';
 
@@ -38,7 +39,9 @@ export async function track(name: EventName, props?: EventProps): Promise<void> 
     // uploads may start (flush.ts), and an under-13 answer clears the queue
     // (src/age/localOnly.ts, `enter`), so none of it ever goes up.
     if (isLocalOnly()) return;
-    if (!useSettingsStore.getState().analyticsEnabled) return;
+    // Usage stats on, as the one read of the setting says (on a phone in
+    // Canada they start off until the person turns them on, owner 2026-11-19).
+    if (!selectUsageStatsOn(useSettingsStore.getState())) return;
 
     const userId = useAuthStore.getState().userId;
     // No identity yet means the app is still starting. An event with no owner

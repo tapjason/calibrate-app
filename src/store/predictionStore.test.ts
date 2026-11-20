@@ -31,6 +31,7 @@ import {
   openRepeatOf,
   openTwinFor,
   rewordedLater,
+  skipAnswerBy,
   usePredictionStore,
 } from './predictionStore';
 import {
@@ -2868,6 +2869,145 @@ describe('which deletes are counted', () => {
         deleted_resolved_at: answered.resolved_at,
       }),
     ]);
+  });
+
+  // The owner's list item 20 (2026-11-19): a Can't tell is counted exactly as
+  // an open one is. Until then, tapping Can't tell first let any delete leave
+  // no trace, and the delete took it off Insights' Can't tell count too.
+  describe("a Can't tell", () => {
+    const skip = (id: string) => usePredictionStore.getState().resolve(id, 'skipped');
+    const skipCount = async () => {
+      await usePredictionStore.getState().loadResolved();
+      return usePredictionStore.getState().resolved.filter((p) => p.status === 'skipped').length;
+    };
+    const counts = async () => {
+      await usePredictionStore.getState().loadResolved();
+      const s = usePredictionStore.getState();
+      return { moved: s.refiledCount, late: s.postponedCount, deleted: s.deletedCount };
+    };
+
+    it('counts one deleted after the day it was logged, however old the skip, exactly once', async () => {
+      const userId = useAuthStore.getState().userId!;
+      // Logged and skipped a month ago, due the next day: long past its week.
+      const p = await loggedEarlier(async () => {
+        const made = await create('Parked a month ago', 1);
+        await skip(made.id);
+        return made;
+      }, 30);
+      const shown = (await usePredictionStore.getState().getById(p.id))!;
+      expect(shown.status).toBe('skipped');
+      expect(skipAnswerBy(shown)).toBeNull();
+      expect(await skipCount()).toBe(1);
+      expect(await deleted()).toBe(0);
+      // What a push would have sent: the server holds this Can't tell.
+      const onServer = (await listDirtyPredictions(userId)).find((r) => r.id === p.id)!;
+      expect(onServer).toMatchObject({ status: 'skipped', resolved_at: shown.resolved_at });
+
+      await usePredictionStore.getState().remove(p.id, shown);
+      expect(await deleted()).toBe(1);
+      expect(await skipCount()).toBe(0);
+      expect(await listDeletions(userId)).toEqual([
+        expect.objectContaining({ id: p.id, counted: true }),
+      ]);
+      // Sync treats it as any deleted answer: the tombstone records the Can't
+      // tell it deleted, so the server's copy is covered and removed, and the
+      // pull keeps the tombstone, still counted once.
+      const [tomb] = await listPendingTombstonesSettled(userId);
+      expect(tomb).toMatchObject({
+        id: p.id,
+        deleted_status: 'skipped',
+        deleted_resolved_at: shown.resolved_at,
+      });
+      expect(tombstoneCovers(tomb, onServer)).toBe(true);
+      expect(await reconcileTombstoneWithRemote(onServer)).toBe('kept');
+      expect(await deleted()).toBe(1);
+    });
+
+    it("doesn't count one skipped and deleted the day it was logged, before it is due", async () => {
+      const userId = useAuthStore.getState().userId!;
+      // Answer it now, Can't tell, then delete, all on the day it was logged.
+      const p = await create('Skipped the day it was logged', 30);
+      await skip(p.id);
+      await usePredictionStore.getState().remove(p.id);
+      expect(await deleted()).toBe(0);
+      expect(await listDeletions(userId)).toEqual([
+        expect.objectContaining({ id: p.id, counted: false }),
+      ]);
+    });
+
+    it('counts one deleted the day it was logged once it is due', async () => {
+      const userId = useAuthStore.getState().userId!;
+      const now = new Date().toISOString();
+      await insertPrediction({
+        id: 'due-skip',
+        user_id: userId,
+        title: 'Due today, skipped',
+        category: 'work',
+        confidence: 70,
+        created_at: now,
+        due_date: now,
+        status: 'skipped',
+        resolved_at: now,
+        reflection: null,
+        integrity_bonus: false,
+      });
+      await usePredictionStore.getState().remove('due-skip');
+      expect(await deleted()).toBe(1);
+    });
+
+    it('counts one logged earlier, reworded today and then skipped: new words do not move that day', async () => {
+      const p = await loggedEarlier(() => create('Old words', 30));
+      await usePredictionStore.getState().update(p.id, {
+        title: 'New words entirely',
+        category: 'work',
+        due_date: p.due_date,
+      });
+      await skip(p.id);
+      await usePredictionStore.getState().remove(p.id);
+      expect(await deleted()).toBe(1);
+    });
+
+    // Never twice for one prediction: as for an open one, a late due-date
+    // move stays on the late-changes line (it outlives the delete) and the
+    // delete adds one deletion. The Can't tell between them adds nothing.
+    it.each([
+      ['left open', false],
+      ["marked Can't tell", true],
+    ])('counts a late move then a delete once on each line, %s', async (_label, skipped) => {
+      // Logged two days ago, due today: moving it later is counted.
+      const p = await loggedEarlier(() => create('Moved, then dropped', 2), 2);
+      await usePredictionStore.getState().update(p.id, {
+        title: p.title,
+        category: 'work',
+        due_date: new Date(Date.now() + 5 * DAY).toISOString(),
+      });
+      expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 0 });
+      if (skipped) await skip(p.id);
+      await usePredictionStore.getState().remove(p.id);
+      expect(await counts()).toEqual({ moved: 0, late: 1, deleted: 1 });
+    });
+
+    // A category moved early is remembered (round 6), but a Can't tell is
+    // never on the moved-answers line; deleted, it is counted once, as a
+    // deletion, and its remembered category goes with it.
+    it('counts an early category move, Can’t tell, then a delete once, as a deletion', async () => {
+      const userId = useAuthStore.getState().userId!;
+      const p = await loggedEarlier(() => create('Moved early', 5));
+      await usePredictionStore.getState().update(p.id, {
+        title: p.title,
+        category: 'health',
+        due_date: p.due_date,
+      });
+      expect(usePredictionStore.getState().categoryOrigins[p.id]).toMatchObject({
+        from_category: 'work',
+        counted_late: false,
+      });
+      await skip(p.id);
+      expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 0 });
+      await usePredictionStore.getState().remove(p.id);
+      expect(await counts()).toEqual({ moved: 0, late: 0, deleted: 1 });
+      expect(await listCategoryOrigins(userId)).toEqual([]);
+    });
   });
 
   it('records the open copy "Use another number" replaced', async () => {

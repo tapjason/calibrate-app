@@ -283,16 +283,16 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     *Recommendation: the agent pins all three in the first maintenance release, on the
     owner's yes to a dependency change; none is exploitable today.*
 
-**Added by the D70/D71 review (2026-11-19), not yet put to the owner one by one**
+**Added by the D70/D71 review (2026-11-19). The owner agreed to every recommendation in items 19 to 30 the same day ("Agree with the entire owners list")**
 
 19. **Items 7 and 10 as corrected** (no UK at launch; a line for stored IP addresses).
-    *They replace recommendations the owner adopted, so they need his nod.*
-20. **Deleting a "Can't tell" isn't counted** (older than this review; the record
+    *They replace recommendations the owner adopted. He agreed to both as corrected, 2026-11-19.*
+20. **Built 2026-11-20 (D72 (a), BUILT_LOG row 202).** **Deleting a "Can't tell" isn't counted** (older than this review; the record
     re-audit). Tapping "Can't tell" and then deleting leaves no trace on either Insights
     line, one tap round D69's count. *Recommendation: count it like deleting an open
     prediction (`deletionCounts` in `src/engine/corrections.ts`, with the delete note and How
     scoring works saying so), as the next small step, before the release gate.*
-21. **Usage stats on phones set to Canada.** *Recommendation: the agent makes them start
+21. **Built 2026-11-20 (D72 (b), BUILT_LOG row 203).** **Usage stats on phones set to Canada.** *Recommendation: the agent makes them start
     off until chosen there before submission (item 8), unless counsel says Quebec's s. 9.1
     doesn't reach the app.*
 22. **In App Store Connect:** declare trader status as "not a trader" (still required
@@ -314,7 +314,7 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     (`setPredictionReflection` writes outside the queue; older than this review); the
     lock-screen dismissal at Erase is not awaited (the 2026-11-15 review's rule).
 
-**Added by the review's third round (2026-11-19)**
+**Added by the review's third round (2026-11-19); agreed with the rest**
 
 26. **Utah and Louisiana may already apply.** Decision 2 above first gave 2027 dates from
     secondary sources. Apple's own post of 2026-02-24 says age categories are shared for
@@ -336,7 +336,7 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     Treatment Information" is the owner's answer on the day, against the questionnaire's
     own wording. *Recommendation: answer for the card as it is, helpline information shown
     rarely, and note the answer in `APP_STORE_LISTING.md`.*
-29. **A Plus subscriber whose phone becomes local-only** keeps Trends and the themes but
+29. **Built 2026-11-20 (D72 (c), BUILT_LOG row 204).** **A Plus subscriber whose phone becomes local-only** keeps Trends and the themes but
     loses the Coach and has no route in the app to restore or manage the subscription
     (it is managed in Settings → Apple Account → Subscriptions, and comes back when the
     rule lifts). Rare. *Recommendation: one line on the local-only Plus page saying where
@@ -389,7 +389,7 @@ and the two function deploys); Google sign-in set up and on (step 192, migration
    the owner's iPhone 17 is not that size and there is no simulator; the web build renders
    that size as drafts (`APP_STORE_LISTING.md` §5).
 6. **Due before the public release:** "The owner's list" above, items 6 to 15, all decided
-   2026-11-19 (7 and 10 as corrected there, awaiting the owner's nod). Built that day: 2
+   2026-11-19 (7 and 10 as corrected there, agreed by the owner the same day). Built that day: 2
    (the under-13 rule, D70), 9 (the sign-in switch) and the interim half of 13 (D71).
 7. **Read the exit criteria** (`docs/TESTFLIGHT_PLAN.md`); a row in "stop and fix" gets a fix
    and another week.

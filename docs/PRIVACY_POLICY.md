@@ -9,8 +9,9 @@ Published at https://tapjason.github.io/calibrate-app/privacy/
 If the app's name changes, update it here. Not legal advice.
 
 DO NOT PUSH THIS VERSION UNTIL THE OWNER HAS DONE STEPS 1-9 AND THE SANDBOX CHECK IN
-STEP 10. The rest of step 10 (counsel), 11 and 12 are not preconditions for pushing: each
-changes the text below when it happens. (Revised 2026-11-18
+STEP 10. The rest of step 10 (counsel) and 11 are not preconditions for pushing: each
+changes the text below when it happens. Step 12 names one more thing the build in step 7
+must carry. (Revised 2026-11-18
 after the security and policy review, and 2026-11-19 after its rounds 5, 6 and 7, the
 policy re-audit's W1-W4, the under-13 rule and Erase, D70 and D71, and the D70/D71
 review of the same day, its third round included.) The text
@@ -121,13 +122,15 @@ in step 3b below.
    and add a section with the legal basis for each purpose, the legitimate interests
    behind usage counts, the transfer of data to the United States, and the right to
    complain to the ICO or an EU supervisory authority (UK GDPR Art 13 and its EU twin).
-12. Canada: the owner's decision of 2026-11-19 is that, before submission, Usage stats
-   start off until chosen on phones set to Canada (Quebec's s. 9.1), unless counsel says
-   otherwise. Not built when this was written. When it is, §2's and §2.3's "with a switch
-   to turn them off" need a sentence saying that on a phone set to Canada none are sent
-   until you turn them on.
-Once 1-9 and step 10's sandbox check are done, push. Delete the rest of 10, and 11 and
-12, one by one as each is done; the evidence notes below can stay.
+12. Canada: the owner's decision of 2026-11-19 is that Usage stats start off until
+   chosen on phones set to Canada (Quebec's s. 9.1), unless counsel says otherwise. Built
+   2026-11-20 (D72 (b), src/engine/usageStats.ts; JavaScript only), and §1, §2 and §2.3
+   say so. Those sentences are true only of a build that carries it, so publish with, or
+   after, that build (step 7), and after the device check in docs/HUMAN_VERIFICATION.md
+   D6: the app reads the region from the JavaScript engine's locale, which should follow
+   Settings → General → Language & Region → Region, and no iPhone has shown that yet.
+Once 1-9, step 10's sandbox check and step 12's device check are done, push. Delete the
+rest of 10, and 11, one by one as each is done; the evidence notes below can stay.
 
 Evidence for each claim (2026-11-18): src/analytics/events.ts (catalogue, props),
 src/analytics/flush.ts (guest rows carry no user id), supabase/migrations/007 and 010
@@ -357,8 +360,10 @@ to be read, not skimmed past.
 - **Without an account, your predictions stay on your phone.** We never receive
   them. You can log, resolve, score, and share predictions entirely offline. A
   few usage counts are sent, with no account, device or install identifier, once
-  the warm-up has told you so; you can turn them off there or in You (§2). None
-  are sent if Apple says this iPhone's age range is under 13 (§9).
+  the warm-up has told you so; you can turn them off there or in You (§2). On an
+  iPhone whose region is set to Canada they start off, and none are sent unless
+  you turn them on. None are sent if Apple says this iPhone's age range is under
+  13 (§9).
 - **With an account, your predictions are backed up to our server** so they
   survive a new phone. That includes their text. Signing out removes them from
   the phone; signing back in brings back what was backed up (§7).
@@ -382,7 +387,9 @@ count how many people start and finish the warm-up, log, answer, share and
 practise, are sent to us, but only after the warm-up's first screen has shown
 you a line saying so and what they're for (to see how the app is used), with a
 switch to turn them off (the same switch as You → Usage stats). Until then they
-wait on the phone. On an iPhone running iOS 26 or later, on a launch where the
+wait on the phone. On an iPhone whose region is set to Canada that switch starts
+off: no usage events are kept for sending and none are sent until you turn it
+on, there, in You or on the sign-in screen, and the warm-up's line says so. On an iPhone running iOS 26 or later, on a launch where the
 app doesn't yet hold an age range of 13 or over from Apple (below), they also
 wait for Apple's answer, and if the
 range is under 13 none are kept for sending and none are sent (§9). They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
@@ -490,7 +497,9 @@ was shared. They tell us whether the app works for people. The full list:
 These are linked to your account. The sign-in screen says so before you sign
 in, including that events recorded before you signed in and still on the phone
 go with your account, and it has a switch to turn them off (the same switch as
-You → Usage stats); while they're off, it says none are sent. **You can turn
+You → Usage stats); while they're off, it says none are sent. On an iPhone
+whose region is set to Canada the switch starts off, so none are sent, before
+or after you sign in, until you turn it on. **You can turn
 them off** there or in You → Usage stats. (The few sent before you sign in
 carry no account, device or install identifier, as described above, so they
 can't be found or deleted as yours.)

@@ -34,6 +34,9 @@ export const LOCAL_ONLY_COACH = `Coach is off on this phone because of the age r
 export const LOCAL_ONLY_PAYWALL_TITLE = "Plus isn't offered on this phone";
 export const LOCAL_ONLY_PAYWALL_BODY = `Because of the age range this iPhone shares with ${APP_NAME}, purchases are off here. Your score, chart, badges and cards are free.`;
 
+/** The paywall route, under the body: where an existing subscription is managed (text only; the Plus mirror can be stale, so always shown). */
+export const LOCAL_ONLY_PAYWALL_MANAGE = `If you already subscribe to ${APP_NAME} Plus, you manage it in the Settings app: tap your name, then Subscriptions.`;
+
 /** The account route, a guest. */
 export const LOCAL_ONLY_ACCOUNT_TITLE = 'No account on this phone';
 export const LOCAL_ONLY_ACCOUNT_BODY = `Because of the age range this iPhone shares with ${APP_NAME}, your predictions stay on this phone. To keep a copy, use Export predictions in You.`;

@@ -57,7 +57,7 @@ import { useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { useLockStore } from '@/store/lockStore';
-import { useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
+import { selectUsageStatsOn, useSettingsStore, type PracticeReminderTime } from '@/store/settingsStore';
 
 /**
  * The You tab (roadmap D3): settings as a grouped inset list (DESIGN_SYSTEM
@@ -125,7 +125,9 @@ export function SettingsView({
   const setAiRefineEnabled = useSettingsStore((s) => s.setAiRefineEnabled);
   const coachEnabled = useSettingsStore((s) => s.coachEnabled);
   const setCoachEnabled = useSettingsStore((s) => s.setCoachEnabled);
-  const analyticsEnabled = useSettingsStore((s) => s.analyticsEnabled);
+  // Usage stats as the one read of the setting says: off by default on a
+  // phone whose region is Canada, until the person turns them on.
+  const usageStatsOn = useSettingsStore(selectUsageStatsOn);
   const setAnalyticsEnabled = useSettingsStore((s) => s.setAnalyticsEnabled);
   const streakShown = useSettingsStore((s) => s.streakShown);
   const setStreakShown = useSettingsStore((s) => s.setStreakShown);
@@ -325,7 +327,7 @@ export function SettingsView({
             // (APP_PRIVACY.md declares them linked), so the label mustn't say so.
             label="Usage stats"
             description={USAGE_STATS_DESCRIPTION}
-            value={analyticsEnabled}
+            value={usageStatsOn}
             onValueChange={(v) => void setAnalyticsEnabled(v)}
             testID="toggle-analytics"
           />

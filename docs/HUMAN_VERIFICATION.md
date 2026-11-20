@@ -1595,6 +1595,33 @@ this section has been run on the iPhone.
       used to show no number on a territory phone): the same two lines. Set
       Region back and remove the notes.
 
+### D6. D72's three items (2026-11-20; JS only, a reload of the development build)
+- [ ] **Usage stats start off in Canada (D72 (b)):** Erase in the app (or a fresh
+      install), then Settings → General → Language & Region → Region → Canada, and
+      open the app. The Warm-up's first screen reads "Fairly Sure can send a few usage
+      counts, with no account or device id, to see how the app is used. They’re off
+      until you turn them on, here or in You." with the switch **off**. You → Usage
+      stats is off too, and so is the switch on the sign-in screen ("Usage stats are
+      off, so no record of which features you use is sent. …"). Turn it on in You:
+      all three now show on, and the Warm-up's usual line would show. Set the Region
+      back to the United States and relaunch: the switch is still on (a choice
+      holds). **This is the check that the app reads the Region setting at all:** if
+      the switch is on at the first step, tell the agent.
+- [ ] **And off stays off elsewhere:** with the Region on the United States, turn
+      Usage stats off in You, set the Region to Canada and back, relaunching each
+      time: it stays off throughout.
+- [ ] **The local-only Plus page (D72 (c)):** with the sandbox account set to Under
+      13 (D4), open the Plus page (Insights' Plus card): under "Plus isn't offered on
+      this phone" and its paragraph, "If you already subscribe to Fairly Sure Plus,
+      you manage it in the Settings app: tap your name, then Subscriptions.", then
+      Close. With VoiceOver: title, paragraph, that line, Close, in that order. At the
+      largest text size nothing is cut off.
+- [ ] **A stale sheet's delete is counted (D72 (a)), two phones only:** skip unless a
+      second signed-in device is to hand. Open an open prediction's details on phone
+      A (logged on an earlier day) and leave the sheet up; on phone B answer it
+      "Can't tell"; let A sync; on A tap Delete and confirm ("Insights will count it
+      as deleted"). Insights → More about your record on A counts one deletion.
+
 ---
 
 ## Batch E — Ship (needs everything above)

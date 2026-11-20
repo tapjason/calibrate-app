@@ -279,6 +279,50 @@ describe('PredictionDetails (roadmap D25)', () => {
         expect.objectContaining({ id: 'p1', deleted_status: 'pending', deleted_resolved_at: null }),
       ]);
     });
+
+    // The owner's list item 20 (2026-11-19): a Can't tell is counted on an
+    // open one's days. Marked Can't tell on another phone while this
+    // confirmation was up, the delete is recorded as the words said; until
+    // then the screen promised a count the store didn't keep.
+    describe("marked Can't tell on another phone meanwhile", () => {
+      const skippedElsewhere = async (shown: Prediction) => {
+        await upsertPredictionFromRemote({
+          ...shown,
+          status: 'skipped',
+          resolved_at: new Date(Date.now() - 60_000).toISOString(),
+          updated_at: '2099-01-01T00:00:00.000Z',
+        });
+        expect((await getPrediction('p1'))?.status).toBe('skipped');
+      };
+      const deleteWhenReady = async () => {
+        await waitFor(() => expect(screen.getByTestId('details-delete-yes')).toBeEnabled());
+        return deleteAndReadCounted();
+      };
+
+      it('records the count it promised, logged before today', async () => {
+        const shown = open();
+        await insertPrediction(shown);
+        renderDetails();
+        await askToDelete();
+        expect(screen.getByTestId('details-delete-text')).toHaveTextContent(DELETE_LOGGED_EARLIER);
+        await skippedElsewhere(shown);
+        expect(await deleteWhenReady()).toBe(true);
+        expect(await listDeletions(USER)).toHaveLength(1);
+      });
+
+      it('records none on the day it was logged, before it is due, as it said', async () => {
+        const shown = open({
+          created_at: new Date().toISOString(),
+          due_date: new Date(Date.now() + 86_400_000).toISOString(),
+        });
+        await insertPrediction(shown);
+        renderDetails();
+        await askToDelete();
+        expect(screen.getByTestId('details-delete-text')).toHaveTextContent(DELETE_UNCOUNTED);
+        await skippedElsewhere(shown);
+        expect(await deleteWhenReady()).toBe(false);
+      });
+    });
   });
 
   // Step 181 (blind playtest 2026-11-14, finding 15): on the day it was logged

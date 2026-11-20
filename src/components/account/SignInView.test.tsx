@@ -614,3 +614,55 @@ describe('SignInView — what signing in sends', () => {
     expect(openBrowserAsync).toHaveBeenLastCalledWith(PRIVACY_POLICY_URL);
   });
 });
+
+// The owner's decision, 2026-11-19: on a phone whose region is Canada, Usage
+// stats start off until the person turns them on. The off line was already
+// there; it reads true for someone who never chose ("are off", not "you
+// turned them off").
+describe('SignInView — usage stats on a phone in Canada', () => {
+  /* eslint-disable @typescript-eslint/no-var-requires */
+  const { __setPersistenceForTests, useSettingsStore } = require('@/store/settingsStore') as typeof import('@/store/settingsStore');
+  const { __setDeviceLocaleForTests } = require('@/constants/locale') as typeof import('@/constants/locale');
+  /* eslint-enable @typescript-eslint/no-var-requires */
+
+  beforeEach(() => {
+    __setPersistenceForTests({ load: async () => null, save: async () => {} });
+    act(() => useSettingsStore.setState({ analyticsEnabled: true, analyticsChosen: false }));
+  });
+  afterEach(() => {
+    __setDeviceLocaleForTests(null);
+    act(() => __setPersistenceForTests(null));
+  });
+
+  it('shows the switch off, with the off line, before any choice', () => {
+    __setDeviceLocaleForTests('en-CA');
+    render(<SignInView onDone={jest.fn()} />);
+    const row = screen.getByTestId('account-usage-row');
+    expect(row.props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByTestId('account-usage-switch', { includeHiddenElements: true }).props.value).toBe(false);
+    expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_OFF_NOTE);
+    expect(USAGE_OFF_NOTE).toBe(
+      'Usage stats are off, so no record of which features you use is sent. You can turn them on here or in You, under Usage stats.',
+    );
+    expect(USAGE_OFF_NOTE).not.toMatch(/you turned/i);
+  });
+
+  it('turns them on there: the choice is stored and the line says they go with the account', async () => {
+    __setDeviceLocaleForTests('en-CA');
+    render(<SignInView onDone={jest.fn()} />);
+    const row = screen.getByTestId('account-usage-row');
+    await waitFor(() => expect(row).toBeEnabled());
+    fireEvent.press(row);
+    await waitFor(() => expect(useSettingsStore.getState().analyticsChosen).toBe(true));
+    expect(useSettingsStore.getState().analyticsEnabled).toBe(true);
+    expect(screen.getByTestId('account-usage-row').props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_NOTE);
+  });
+
+  it('elsewhere, shows them on before any choice, as before', () => {
+    __setDeviceLocaleForTests('en-US');
+    render(<SignInView onDone={jest.fn()} />);
+    expect(screen.getByTestId('account-usage-row').props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId('account-usage-note')).toHaveTextContent(USAGE_NOTE);
+  });
+});

@@ -21,11 +21,14 @@ import { LOCAL_ONLY_CLOSE } from './localOnlyCopy';
 export function LocalOnlyPage({
   title,
   body,
+  note,
   onClose,
   testID,
 }: {
   title: string;
   body: string;
+  /** An optional second paragraph, plain text, between the body and Close. */
+  note?: string;
   onClose: () => void;
   testID: string;
 }) {
@@ -38,7 +41,8 @@ export function LocalOnlyPage({
         <Text accessibilityRole="header" style={styles.title}>
           {title}
         </Text>
-        <Text style={styles.body}>{body}</Text>
+        <Text style={note ? styles.bodyBeforeNote : styles.body}>{body}</Text>
+        {note ? <Text style={styles.body}>{note}</Text> : null}
         <Button label={LOCAL_ONLY_CLOSE} onPress={onClose} testID={`${testID}-close`} />
       </ScrollView>
     </View>
@@ -53,4 +57,7 @@ const styles = StyleSheet.create({
   content: { gap: space.md, padding: space.xxl },
   title: { ...type.title2, color: colors.textPrimary },
   body: { ...type.subhead, color: colors.textSecondary, marginBottom: space.sm },
+  // Without the bottom margin: the note after it carries it, so the gap to
+  // Close is the same with or without a note.
+  bodyBeforeNote: { ...type.subhead, color: colors.textSecondary },
 });

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { colors, space, type } from '@/constants/theme';
-import { useSettingsStore } from '@/store/settingsStore';
+import { selectUsageStatsOn, useSettingsStore } from '@/store/settingsStore';
 
 interface UsageStatsSwitchProps {
   /** What the line says while usage stats are on. */
@@ -17,7 +17,7 @@ interface UsageStatsSwitchProps {
 
 /**
  * A line about usage counts beside the Usage stats switch: the same setting
- * as You's switch (`analyticsEnabled`), for the Warm-up's first screen
+ * as You's switch (`selectUsageStatsOn`), for the Warm-up's first screen
  * (`UsageStatsNotice`, D69 (b)) and the sign-in screen (decision 9,
  * 2026-11-19), so the two can't drift. It follows the settings store, so a
  * record that couldn't be read shows it off, as the store holds it then.
@@ -38,7 +38,9 @@ export function UsageStatsSwitch({
   size = 'footnote',
   testID,
 }: UsageStatsSwitchProps) {
-  const on = useSettingsStore((s) => s.analyticsEnabled);
+  // Whether they are on, as the one read of the setting says: off by default
+  // on a phone whose region is Canada, until the person turns them on.
+  const on = useSettingsStore(selectUsageStatsOn);
   const setOn = useSettingsStore((s) => s.setAnalyticsEnabled);
   const note = on ? noteOn : noteOff;
   const change = (next: boolean) => void setOn(next);

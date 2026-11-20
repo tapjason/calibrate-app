@@ -1,6 +1,7 @@
 // How long an answer stays open to correction (roadmap D34, decided
 // 2026-11-01), how long a "Can't tell" stays open to an answer, and which
-// deletions are counted (both D45, decided 2026-11-06).
+// deletions are counted (both D45, decided 2026-11-06; a deleted Can't tell
+// since 2026-11-19).
 //
 // Layer rule: L3, imports from @/types and sibling engine modules only.
 
@@ -82,22 +83,31 @@ export function canAnswerSkip(p: Prediction, now: Date): boolean {
  * (owner decision 2026-11-19, review round 7; D61 counted only from the eve
  * of its due day, and an open call deleted two days early left no trace).
  *
+ * A "Can't tell" is counted exactly as an open one is (owner decision
+ * 2026-11-19, the owner's list item 20): same days, same exemption, however
+ * old the skip, past its answer week too. It was never counted, so tapping
+ * Can't tell first made any delete leave no trace, and the delete took it off
+ * Insights' Can't tell count as well. It still counts toward nothing scored.
+ *
  * Not on the day it was logged (`isOnLoggedDay`: that day and today both
  * read in the offset stored when it was logged), when nothing has happened
  * since: a slip fixed by deleting and logging again isn't a hidden outcome.
  * New words don't move that day: one logged earlier and reworded today is
  * counted. Even on that day, one already due is counted (a clock or
  * time-zone change, a synced row; record audit 2026-11-15), as before. An
- * unreadable logging time doesn't exempt it. Not a skip or a same-day
- * answer: neither was scored.
+ * unreadable logging time doesn't exempt it. Not a same-day answer: it was
+ * never scored.
  */
 export function deletionCounts(p: Prediction, now: Date): boolean {
   if (p.status === 'resolved_yes' || p.status === 'resolved_no') return !isSameDayAnswer(p);
-  if (p.status !== 'pending') return false;
+  if (p.status !== 'pending' && p.status !== 'skipped') return false;
   return !isOnLoggedDay(p, now) || isDueBy(p, now);
 }
 
-/** Whether an open prediction's due day (the phone's day) is today or past. */
+/**
+ * Whether an open prediction's or a Can't tell's due day (the phone's day) is
+ * today or past.
+ */
 function isDueBy(p: Prediction, now: Date): boolean {
   const due = new Date(p.due_date);
   if (Number.isNaN(due.getTime())) return false;
@@ -123,7 +133,7 @@ export function refileCounts(p: Prediction): boolean {
  * rewording (D62), shared with a counted due-date move: by then the outcome
  * may be known, while a change on the day it was made is a slip fixed, not a
  * hidden outcome. (A delete used it until round 7; it is counted from the
- * day after it was logged now, `deletionCounts`.)
+ * day after it was logged now, a Can't tell's too, `deletionCounts`.)
  *
  * The window (the eve, the due day) is the phone's day, as the due date is
  * shown. "Made today" is the same-day rule's reading (`isOnMadeDay`): the day

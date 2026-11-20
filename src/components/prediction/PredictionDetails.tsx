@@ -343,7 +343,9 @@ export function PredictionDetails({
   // move that day. On the day it was logged, only once it's due. The text
   // gives the reason that holds, told apart as the store's contract says:
   // counted and still the day it was logged (`canRenumber`) means it's due.
-  // One clock for both, so midnight can't fall between them.
+  // One clock for both, so midnight can't fall between them. Marked Can't
+  // tell on another phone while this is up, it is counted on the same days
+  // (owner's list item 20), so the words still hold.
   const deleteNow = new Date();
   const deleteText = !deleteIsCounted(prediction, deleteNow)
     ? "Delete this prediction? It won't count anywhere, and it can't be undone."

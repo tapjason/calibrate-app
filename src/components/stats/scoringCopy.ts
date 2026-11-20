@@ -142,8 +142,10 @@ export function scoringSections(): ScoringSection[] {
         // a prediction was logged is never counted, and that sentence says so
         // for them too. A due date moved, or new words, on the day of a later
         // rewording isn't counted either; left unsaid, which only ever warns
-        // of more than is counted (Edit says it exactly, before Save).
-        "A deleted prediction leaves the score. If it had a scored answer, or was still open and either logged before the day it was deleted or already due, Insights says how many were, so a deleted miss is still counted. The same goes for a due date moved later, new words or another category, from the day before the due day. Insights also counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged; a category change made while it was open, that close to the due day, is counted once, as a late change. A change on the day a prediction was logged isn't counted while it isn't due yet: that's fixing a slip. Only this phone keeps these counts; erasing your data here, deleting your account or deleting the app clears them.",
+        // of more than is counted (Edit says it exactly, before Save). A
+        // Can't tell is deleted on the open one's terms (owner's list item
+        // 20, 2026-11-19), so the sentence names it beside "still open".
+        "A deleted prediction leaves the score. If it had a scored answer, or was still open or Can't tell and either logged before the day it was deleted or already due, Insights says how many were, so a deleted miss is still counted. The same goes for a due date moved later, new words or another category, from the day before the due day. Insights also counts a scored answer that ends up in a different category from the one it had at the end of the day it was logged; a category change made while it was open, that close to the due day, is counted once, as a late change. A change on the day a prediction was logged isn't counted while it isn't due yet: that's fixing a slip. Only this phone keeps these counts; erasing your data here, deleting your account or deleting the app clears them.",
       ],
     },
   ];
