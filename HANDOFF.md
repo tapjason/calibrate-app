@@ -6,7 +6,28 @@ everything passes then merge and push". The review ran its three rounds (step 20
 The push also published the privacy page without its on-device-scan paragraph. The branch
 held D72, three of the owner's-list items the owner agreed to on 2026-11-19 ("Agree with
 the entire owners list"; then "Start building your items and I will work on mine in
-parallel"), built 2026-11-20 as steps 202 to 205, then D73 (206) and the review (207):
+parallel"), built 2026-11-20 as steps 202 to 205, then D73 (206) and the review (207).
+
+**After the merge, the same day (docs only, pushed):**
+- **No beta stage.** The owner: "I dont want to add beta testers, the beta testing stage
+  completely." No external TestFlight; stages 2 and 3 and their exit criteria don't run
+  (`docs/TESTFLIGHT_PLAN.md`, `docs/SHIP_READINESS.md` "Open, in order" item 4). The path is
+  now: builds from `master` → his phone checks (D4, D6, D5, D7) → the held privacy policy
+  published → the store record → `/release-gate` → submit. Real newcomers' return and
+  sharing are first read after launch.
+- **The held privacy policy is refined, still held** (his "Refine the held privacy policy,
+  then commit and push"; the main session read that as not yet publishing, since he kept
+  the word "held" and its two phone checks haven't run). Its header has "Where this
+  stands"; both OWNER comments are out of the text and resolved in the header (OpenAI's
+  addendum changes one sentence when he has executed it; no in-app notice is needed for
+  this version, since nobody is under the earlier one); three long sentences reflowed, no
+  wording changed. No reviewer has read those edits. **To publish:** D4 and D6 on a build
+  from `master`, then the date and the one-commit switch in `docs/_config.yml`.
+- **Guidance while logging** is recorded as a post-launch idea (the owner's list item 36),
+  not designed, not built.
+- **The three redeploys are done** and checked (item 1 below).
+
+What the branch held:
 - **202, D72 (a):** deleting a "Can't tell" is counted like deleting an open prediction.
   No screen offers that delete; the route that existed was a details sheet left open on a
   copy another phone then marked "Can't tell".
@@ -61,8 +82,8 @@ parallel"), built 2026-11-20 as steps 202 to 205, then D73 (206) and the review 
     the language's region is CA; the held policy's words say so. No iPhone has shown how
     it reports either (`HUMAN_VERIFICATION.md` D6).
   - *Left, in `SHIP_READINESS.md`:* items 33 (RevenueCat's Restore setting), 34 (Quebec
-    by region, for counsel), 35 (**no build to outside testers before the held privacy
-    policy is published**), and the small ones in item 25.
+    by region, for counsel), 35 (moot as worded since there are no outside testers: the held policy must be published
+    before submission), and the small ones in item 25.
 
 **Before this branch, `master`:** `builder/owner-decisions` is merged into it (fast-forward) and
 pushed, 2026-11-19, on the owner's words that day: "Use all your recommendations for the
@@ -86,8 +107,11 @@ D70/D71 review is **finished**: three rounds, the most allowed.
    test row is left. 7c and 7d need the owner role: the read-only route runs as
    `supabase_read_only_user`, which 012 bars from `usage_counts_cutoff`. Not run: the
    optional T4, T7, T9 and T13. **Open:** 7e the day after (the purge's first run, 09:17
-   UTC; read-only), the weekly 7f, and his three redeploys (`delete-account`,
-   `revenuecat-webhook`, `coach`, from `master`). `UTC_OFFSET_SYNC` stays off for 1.0.
+   UTC; read-only) and the weekly 7f. **The three redeploys are done** (the owner,
+   2026-11-20, from `master` at `defdeb0`): `delete-account` version 13,
+   `revenuecat-webhook` 14, `coach` 17 (`functions list`); the webhook's test event gives
+   200 `ignored event type TEST`; a POST with no token gets 401 from `delete-account` and
+   `coach`; on his phone the Coach answers and a throwaway account deletes. `UTC_OFFSET_SYNC` stays off for 1.0.
 2. Done 2026-11-20: the review of steps 202 to 206 with item 30's billing fix inside it,
    the merge and the push; the web build's look at steps 204 and 206 passed (320 and 393
    pt, both appearances; guest Erase; no support card).
@@ -415,7 +439,7 @@ Done: the secret rename, both function deploys and the trial move (above).
 `SHIP_READINESS.md` decisions 6 and 12); counsel and the sandbox check for the under-13
 rule; his nod on the two corrected recommendations (no UK at launch; the IP address line);
 the messages in `docs/OWNER_MESSAGES.md` (decisions 8 and 13);
-the beta app description and review information before outside testers. Everything open, with who does it, is in
+(the beta app description is no longer needed: no beta stage). Everything open, with who does it, is in
 `docs/SHIP_READINESS.md` "Open work".
 
 ## Notes that still hold

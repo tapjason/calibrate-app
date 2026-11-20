@@ -19,6 +19,20 @@ below is written for the state AFTER them; before them, §2.1, §2 (guest counts
 are not true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true
 only of the build in step 7.
 
+WHERE THIS STANDS (2026-11-20). The owner decided that day that there is no beta stage: no
+outside TestFlight testers, so the only builds anyone holds are on his own phone, and the
+first other readers of this page are App Review and people who install from the App Store.
+What that changes here: the timing notes in steps 7, 8 and 9 about TestFlight testers now
+concern his phone alone and ask nothing of anyone; and this page must be the published one
+before the app is submitted, since the published page (docs/PRIVACY_POLICY.live.md) is
+written for builds 2 to 4. Done: the server steps 1 to 3b (HANDOFF.md's record of the
+checklist; 7e the day after and the weekly 7f remain), the three redeploys, and both OWNER
+comments in the text (resolved 2026-11-20 and removed: see the two notes at the end of this
+list). Still to do before the switch, in order: a development build and a production build
+from master on his phone (step 7); the sandbox "Under 13" check (step 10) and the Canada
+check (step 12) on it; then step 5's date and the one-commit switch in docs/_config.yml.
+Counsel (the rest of step 10) changes the text when it happens and is not a precondition.
+
 The owner's database steps are one checklist: supabase/README.md, section "2026-11-19:
 migrations 011 and 012, three redeploys, and the sandbox Plus rows", "Every owner step, in
 order" (it includes the 2026-11-18 section's steps). Steps 1-3b below are its items 1-10
@@ -140,6 +154,27 @@ in step 3b below.
    build; set the page's effective date to the day of the push if it isn't 2026-11-20.
 Once 1-9, step 10's sandbox check and step 12's device check are done, push. Delete the
 rest of 10, and 11, one by one as each is done; the evidence notes below can stay.
+
+The two OWNER comments that stood in the text, resolved 2026-11-20 (main session, on the
+owner's "Refine the held privacy policy"; each is his to overturn):
+(a) OpenAI's Data Processing Addendum (§4). The text says only what OpenAI's public
+   data-controls page says, and names Supabase and RevenueCat alone as handling data on our
+   behalf; that is accurate with or without the addendum, so nothing in the text waits on
+   it. When the owner has executed the addendum from the platform account that holds the
+   Coach's key (SHIP_READINESS "The owner's list" item 9; it could not be read on
+   2026-11-18, HTTP 403), add OpenAI to §4's "on our behalf" sentence. Apple Guideline
+   5.1.1(i) asks the policy to confirm that every third party gives the same or equal
+   protection, which is why it is worth doing before submission.
+(b) §11's promise of an in-app notice. This version adds disclosures (sign-in logs,
+   session IP addresses, retention, the warm-up and practice tallies, the warm-up notice,
+   the time-zone offsets, Apple's crash reports, the country in request logs, the 13
+   months for usage counts, the under-13 rule, the sign-in screen's switch, the sign-in
+   renewals and the two sign-in gaps in §9, §8 for the four launch storefronts), removes
+   one (D73: the on-device check before a Coach request) and changes what signing out and
+   Erase do. No in-app notice is needed for it: the app isn't on the App Store and, since
+   the owner's decision of 2026-11-20, has no testers, so nobody is under the earlier
+   version. §11 promises a notice for later changes that matter; the first one after
+   release needs that built.
 
 Evidence for each claim (2026-11-18): src/analytics/events.ts (catalogue, props),
 src/analytics/flush.ts (guest rows carry no user id), supabase/migrations/007 and 010
@@ -357,9 +392,9 @@ to be read, not skimmed past.
   them. You can log, resolve, score, and share predictions entirely offline. A
   few usage counts are sent, with no account, device or install identifier, once
   the warm-up has told you so; you can turn them off there or in You (§2). On an
-  iPhone whose Region is set to Canada, or whose language is a Canadian one such as English (Canada), they start off, and none are sent unless
-  you turn them on. None are sent if Apple says this iPhone's age range is under
-  13 (§9).
+  iPhone whose Region is set to Canada, or whose language is a Canadian one such
+  as English (Canada), they start off, and none are sent unless you turn them
+  on. None are sent if Apple says this iPhone's age range is under 13 (§9).
 - **With an account, your predictions are backed up to our server** so they
   survive a new phone. That includes their text. Signing out removes them from
   the phone; signing back in brings back what was backed up (§7).
@@ -383,13 +418,15 @@ count how many people start and finish the warm-up, log, answer, share and
 practise, are sent to us, but only after the warm-up's first screen has shown
 you a line saying so and what they're for (to see how the app is used), with a
 switch to turn them off (the same switch as You → Usage stats). Until then they
-wait on the phone. On an iPhone whose Region is set to Canada, or whose language is a Canadian one such as English (Canada), that switch starts
-off: no usage events are kept for sending and none are sent until you turn it
-on, there, in You or on the sign-in screen, and the warm-up's line says so. On an iPhone running iOS 26 or later, on a launch where the
-app doesn't yet hold an age range of 13 or over from Apple (below), they also
-wait for Apple's answer, and if the
-range is under 13 none are kept for sending and none are sent (§9). They carry the event's details (§2.3) and no account, device or install identifier. Our server replaces each
-event's own id with a one-way scrambled version of it and keeps only the day the
+wait on the phone. On an iPhone whose Region is set to Canada, or whose language
+is a Canadian one such as English (Canada), that switch starts off: no usage
+events are kept for sending and none are sent until you turn it on, there, in
+You or on the sign-in screen, and the warm-up's line says so. On an iPhone
+running iOS 26 or later, on a launch where the app doesn't yet hold an age range
+of 13 or over from Apple (below), they also wait for Apple's answer, and if the
+range is under 13 none are kept for sending and none are sent (§9). They carry
+the event's details (§2.3) and no account, device or install identifier. Our
+server replaces each event's own id with a one-way scrambled version of it and keeps only the day the
 event happened, not the time. Like any request over the internet, they reach our
 hosting provider with your IP address, which its logs may keep for up to 7 days
 (§6); the counts themselves don't store it. Because they carry no account,
@@ -494,9 +531,10 @@ These are linked to your account. The sign-in screen says so before you sign
 in, including that events recorded before you signed in and still on the phone
 go with your account, and it has a switch to turn them off (the same switch as
 You → Usage stats); while they're off, it says none are sent. On an iPhone
-whose Region is set to Canada, or whose language is a Canadian one such as English (Canada), the switch starts off, so none are sent, before
-or after you sign in, until you turn it on. **You can turn
-them off** there or in You → Usage stats. (The few sent before you sign in
+whose Region is set to Canada, or whose language is a Canadian one such as
+English (Canada), the switch starts off, so none are sent, before or after you
+sign in, until you turn it on. **You can turn them off** there or in You →
+Usage stats. (The few sent before you sign in
 carry no account, device or install identifier, as described above, so they
 can't be found or deleted as yours.)
 
@@ -568,13 +606,6 @@ hold any company they rely on to terms no less protective. OpenAI handles the
 Coach summary under its API terms, as described in §3. Apple and Google handle
 payments and sign-in as independent companies, under their own privacy
 policies.
-
-<!-- OWNER: confirm whether OpenAI's Data Processing Addendum covers this account
-(https://openai.com/policies/data-processing-addendum/; it could not be read on
-2026-11-18, HTTP 403, and older versions had to be signed through OpenAI's form). Once it
-does, add OpenAI to the "on our behalf" sentence above; until then the policy states only
-what OpenAI's public data-controls page says. Apple Guideline 5.1.1(i) asks the policy to
-confirm that every third party gives the same or equal protection. -->
 
 ## 5. Notifications
 
@@ -825,22 +856,6 @@ passcode, and nothing about the check is sent to us.
 If this policy changes in a way that matters, we'll say so in the app before it
 takes effect. The effective date at the top always reflects the current
 version.
-
-<!-- OWNER: this version adds disclosures (sign-in logs, session IP addresses, retention,
-the warm-up and practice tallies; on 2026-11-19 the warm-up notice, the time-zone offsets,
-Apple's crash reports, the country in request logs, and after round 6 the 13 months for
-usage counts and what an offset can say about where you are; after the policy re-audit,
-"Precise location" in "What we never collect", and no "time zone" for RevenueCat; for D70 and
-D71, the under-13 rule in §2 and §9 and the sign-in screen's switch; after the D70/D71
-review, the sign-in renewals and the two sign-in gaps in §9, and §8 rewritten for the four
-launch storefronts), removes one (for D73, 2026-11-20: the on-device check of predictions
-before a Coach request and the list of support messages set aside; the published page's
-§3 paragraph about that check was removed the same day) and changes what signing out
-does (it now removes the account's data from the phone, all but the counts only the phone
-keeps, and asks first about categories kept only there) and what Erase does (it now removes
-everything the app keeps on the phone, those counts included). The app isn't on the App Store yet, so
-no in-app notice seems needed for it; confirm, and remember that §11 promises one for
-later changes. -->
 
 ## 12. Contact
 

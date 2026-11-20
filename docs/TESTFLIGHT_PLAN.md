@@ -1,5 +1,15 @@
 # Fairly Sure — TestFlight plan
 
+**No beta stage (the owner, 2026-11-20):** "I dont want to add beta testers, the beta testing
+stage completely." There is no external TestFlight: stages 2 and 3 don't run, nobody but the
+owner holds a build, and the app goes from his own phone checks to the store record, the
+release gate and submission. What that gives up, by this plan's own account (below): the day-1 and
+day-7 return of real newcomers and whether anyone shares unasked are first read after
+launch, at the six-week gates (GROWTH §7), not before it. TestFlight itself stays, as the
+way a production build reaches his phone.
+Everything below about stages 2 and 3, the beta app description and the exit criteria is
+kept as the plan that was not run.
+
 **As of:** 2026-11-16 · `master` holds steps 1–187 (pushed); TestFlight 1.0.0 (build 2, steps
 through 186) is on the owner's iPhone, and stage 1 has begun. This plan follows
 `docs/SHIP_READINESS.md`, which says why the next evidence has to come from real people.

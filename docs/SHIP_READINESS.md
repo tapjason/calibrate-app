@@ -195,7 +195,8 @@ owner's confirmed command, the password reset in 4 once mail works, the off-unti
 switch in 8 before any EU launch, the screenshots in 15 once the name is cleared, and the
 three pins in 18 in the first maintenance release (the owner's yes is given).
 
-**Before strangers get a build (external TestFlight)**
+**Before anyone else gets a build** (since 2026-11-20 there is no external TestFlight, so
+this means before submission; see "What stands between here and the store")
 
 1. **The server checklist** in `supabase/README.md` (2026-11-19 section): the audit-log
    setting and purge, migrations 010, 011, 012 with their checks, `pg_cron`, the three
@@ -424,7 +425,10 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     points). Usage stats start off by the phone's Region or language region, which misses
     a Quebec resident whose phone is set to neither. *Recommendation: ask counsel whether
     the region is an acceptable proxy before the Canadian release.*
-35. **No build to outside testers before the held privacy policy is published** (the
+35. **Moot as worded since the owner dropped the beta stage (2026-11-20): there are no
+    outside testers. What stays true: the held privacy policy must be the published one
+    before the app is submitted**, after the new build's D4 and D6 checks (its header's
+    "Where this stands"). **No build to outside testers before the held privacy policy is published** (the
     policy audit, three rounds). The published page isn't complete even for builds 2 to
     4: it lists crash reports among what is never collected, and TestFlight shares a
     tester's crash reports whatever their settings; and it leaves out the IP addresses
@@ -432,6 +436,18 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     `master` since D70 and D71 (its §2 says the age range locks no feature, and its §7 is
     wrong about Erase) and for the Canada default. The held policy has all of it; its
     header lists what publishing waits on. Your own phone is fine.
+
+**After launch, from the owner (2026-11-20)**
+
+36. **Guidance while logging.** The owner, after testing the Coach on his phone: "the
+    current coach framework does not provide any sort of guidance when the user is
+    creating a new prediction log"; then "For now avoid it, but I think it would be a
+    helpful feature to have in the future." Not built and not designed. When it is taken
+    up, it starts with `/design`: the Coach itself on Log would send typed words to a
+    model (D73's bar), put a network call and Plus inside the core loop, and risk
+    anchoring the number; an app-written line naming the person's lean at that
+    confidence, from numbers already on the phone, avoids all three, and Log's lines are
+    counts only, never a lean, by decision (D57), so that is the question to settle.
 
 ## What stands between here and the store
 
@@ -456,16 +472,20 @@ and the two function deploys); Google sign-in set up and on (step 192, migration
    180's round 2 has been reviewed (steps 183–196 and the cleanup), and that stretch holds
    sign-in, account deletion, the Coach's Plus check and two record changes. Then
    `bash scripts/check.sh --release`.
-3. **Mail before outside testers.** The custom mail sender in Supabase (decision 6), then the
+3. **Mail before submission.** (Was "before outside testers".) The custom mail sender in Supabase (decision 6), then the
    password reset (decision 12, the agent). Until the sender works, a stranger who signs up
    by email gets no confirmation mail, and "Confirm email" has to stay on for Google
    sign-in. Apple and Google sign-in work without it.
-4. **TestFlight external testing:** the beta app description and beta review information
+4. **Dropped by the owner 2026-11-20: no beta stage** ("I dont want to add beta testers,
+   the beta testing stage completely"). No external TestFlight, no stage 2 or 3, and the
+   exit criteria in 7 aren't read. What it gives up: real newcomers' day-1 and day-7
+   return and unasked sharing are first seen after launch (the six-week gates, GROWTH
+   §7). As planned until then: **TestFlight external testing:** the beta app description and beta review information
    (text in `docs/TESTFLIGHT_PLAN.md`), TestFlight App Review, then stage 2 (5 to 8 people,
    about a week, two or three first uses watched) and stage 3 (20 to 50 people, 14 days).
    Fixes go out in batches, one build every two or three days in stage 2 and one a week in
    stage 3.
-5. **During stage 3, the store record:** the listing (`docs/APP_STORE_LISTING.md`), the
+5. **The store record** (was "during stage 3"; now straight after the phone checks): the listing (`docs/APP_STORE_LISTING.md`), the
    age-rating questions, the App Privacy labels (`docs/APP_PRIVACY.md`, with the Coach's
    answers checked against OpenAI's current retention), the three products submitted for
    review with version 1.0.0 (Apple reviews an app's first in-app purchases with an app
@@ -477,7 +497,7 @@ and the two function deploys); Google sign-in set up and on (step 192, migration
    2026-11-19 (7 and 10 as corrected there, agreed by the owner the same day). Built that day: 2
    (the under-13 rule, D70), 9 (the sign-in switch) and the interim half of 13 (D71). D73
    (2026-11-20) added 31 and 32, and the owner closed both the same day.
-7. **Read the exit criteria** (`docs/TESTFLIGHT_PLAN.md`); a row in "stop and fix" gets a fix
+7. Not run since 2026-11-20 (no beta stage). **Read the exit criteria** (`docs/TESTFLIGHT_PLAN.md`); a row in "stop and fix" gets a fix
    and another week.
 8. **The release gate** (`/release-gate`): the release, policy and record audits over the
    whole app, `check.sh --release`, then the last production build.
@@ -504,7 +524,7 @@ what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step chec
 
 - **Build 3**, then Sessions 2 and 3 (owner). An agent runs `eas build` only after the owner
   confirms the exact command, and never `eas submit`.
-- **Before outside testers:** the beta app description and beta review information in App
+- Not needed since 2026-11-20 (no outside testers). **Before outside testers:** the beta app description and beta review information in App
   Store Connect (owner; the text is in `docs/TESTFLIGHT_PLAN.md`, "Ready-to-use text").
 - **A sandbox tester and the In-App Purchase key:** confirm a sandbox tester exists and the
   `.p8` In-App Purchase key is on RevenueCat's App Store app (owner). A sandbox purchase

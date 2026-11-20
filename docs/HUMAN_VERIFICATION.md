@@ -1638,7 +1638,7 @@ in [`APP_PRIVACY.md`](./APP_PRIVACY.md); export compliance was declared at the f
 - [ ] **The rest of the App Store Connect record** (added 2026-11-16): the listing text, the
       App Privacy answers (`APP_PRIVACY.md`), the review notes and a demo account that has
       Plus (`APP_STORE_LISTING.md` §4).
-- [ ] **Before outside testers** (added 2026-11-16): the beta app description and beta review
+- [ ] Not needed since 2026-11-20: the owner dropped the beta stage. **Before outside testers** (added 2026-11-16): the beta app description and beta review
       information (`TESTFLIGHT_PLAN.md`, "Ready-to-use text").
 - [ ] Install from TestFlight and re-run Batch C on the real build.
 
