@@ -1,9 +1,12 @@
 # Handoff
 
-**Branch:** `builder/owner-list-19-30`, on top of `master` (`44612ca`). **Not merged, not
-pushed.** It holds D72: three of the owner's-list items the owner agreed to on 2026-11-19
-("Agree with the entire owners list"; then "Start building your items and I will work on
-mine in parallel"), built 2026-11-20 as steps 202 to 205 and **unreviewed**:
+**Branch:** `master`. `builder/owner-list-19-30` is merged into it (fast-forward) and
+pushed, 2026-11-20, on the owner's words that day: "Review steps 202 through 206. If
+everything passes then merge and push". The review ran its three rounds (step 207 below).
+The push also published the privacy page without its on-device-scan paragraph. The branch
+held D72, three of the owner's-list items the owner agreed to on 2026-11-19 ("Agree with
+the entire owners list"; then "Start building your items and I will work on mine in
+parallel"), built 2026-11-20 as steps 202 to 205, then D73 (206) and the review (207):
 - **202, D72 (a):** deleting a "Can't tell" is counted like deleting an open prediction.
   No screen offers that delete; the route that existed was a details sheet left open on a
   copy another phone then marked "Can't tell".
@@ -17,7 +20,7 @@ mine in parallel"), built 2026-11-20 as steps 202 to 205 and **unreviewed**:
   line, no helpline page in You, no line per country) and messages 1 to 3 in
   `docs/OWNER_MESSAGES.md`: "The purpose of my app is not to connect people to these
   helplines" (2026-11-20). **Superseded the same day by 206.**
-- **206, D73 (unreviewed):** the Coach's distress check is removed whole.
+- **206, D73:** the Coach's distress check is removed whole.
   The owner asked for the policy checker's results to be reviewed, "especially those
   related to suicide hotline that I do not think is relevant at all to the app, and should
   be excluded", and, asked how far, chose "Remove the whole check". Gone: the on-device
@@ -42,6 +45,24 @@ mine in parallel"), built 2026-11-20 as steps 202 to 205 and **unreviewed**:
   review: Erase, sign-out and deletion no longer replace a settings record that can't be
   read (they did only for the set-aside keys), and `forgetUsageNoticeShown` is now the
   write that makes Erase report failure (`docs/ACCOUNT_SPEC.md` §3.5).
+- **207, the review of 202 to 206** (three rounds, the most allowed; every builder and
+  reviewer on Opus at `xhigh`; BUILT_LOG row 207). No blocker in any round.
+  - *Record:* holds. *Code, steps 202 to 206:* clean.
+  - *Policy:* the code passed each round; eight stale doc lines over the three rounds,
+    all fixed as worded. Its last round's one line (the owner's list item 35) was fixed
+    in the merge commit and is unread by a reviewer, as a last round's fixes always are.
+  - *Built inside it, billing (item 30's first race):* every identity change advances a
+    generation; an answer, purchase or restore that began under another identity is
+    dropped and asked again; a purchase that lands on another account says so on the
+    paywall (`purchased_elsewhere`) and writes nothing; a log-out RevenueCat never saw
+    while the under-13 rule was on is settled before the next request in the same run.
+    Paywall notices are spoken and cleared when the paywall opens.
+  - *Built inside it, Canada:* Usage stats start off when either the Region setting or
+    the language's region is CA; the held policy's words say so. No iPhone has shown how
+    it reports either (`HUMAN_VERIFICATION.md` D6).
+  - *Left, in `SHIP_READINESS.md`:* items 33 (RevenueCat's Restore setting), 34 (Quebec
+    by region, for counsel), 35 (**no build to outside testers before the held privacy
+    policy is published**), and the small ones in item 25.
 
 **Before this branch, `master`:** `builder/owner-decisions` is merged into it (fast-forward) and
 pushed, 2026-11-19, on the owner's words that day: "Use all your recommendations for the
@@ -67,8 +88,9 @@ D70/D71 review is **finished**: three rounds, the most allowed.
    optional T4, T7, T9 and T13. **Open:** 7e the day after (the purge's first run, 09:17
    UTC; read-only), the weekly 7f, and his three redeploys (`delete-account`,
    `revenuecat-webhook`, `coach`, from `master`). `UTC_OFFSET_SYNC` stays off for 1.0.
-2. **A review of this branch, when he calls it**, with item 30's billing fix inside it.
-   Then merge, and the web build's look at step 204's line at 320 pt.
+2. Done 2026-11-20: the review of steps 202 to 206 with item 30's billing fix inside it,
+   the merge and the push; the web build's look at steps 204 and 206 passed (320 and 393
+   pt, both appearances; guest Erase; no support card).
 3. The next builds are his: a new development build and TestFlight build from `master`
    (`expo-secure-store` and `expo-crypto` are native), after `supabase/README.md`'s
    checklist. The public pages stay as they are: the hold below still applies, and
@@ -152,7 +174,8 @@ D70/D71 review is **finished**: three rounds, the most allowed.
   never resolves gets no plans, purchase, restore or sign-in for that run; a signed-in
   account's sync goes ahead after 60 s without Apple's answer; a sign-out RevenueCat never
   saw stays in its cache on the phone; a stored age row that can't be read keeps an adult
-  local-only; the two billing races.
+  local-only; the second billing race (the slow paywall after a sign-out; the first was
+  fixed in step 207).
 - **The owner's decisions (2026-11-19):** every recommendation in
   `docs/SHIP_READINESS.md` "The owner's list" is adopted. **Two were wrong and are
   corrected there, and he agreed to both as corrected the same day:** item 7 (the UK is left out with the EU, since it
@@ -360,9 +383,10 @@ the iPhone: migrations 010–012 are proven only by the README's checks, the nat
 by the next development build, and the under-13 rule by the sandbox "Under 13" check
 (`docs/HUMAN_VERIFICATION.md` D4). In the web build the local-only screens, both routes, the
 sign-in switch and Erase's words were looked at on 2026-11-19 (`/dev/seed` has a
-development-only control that sets an under-13 band). **Step 206 (D73) is unreviewed**
-and has run only in Jest: it cuts through the settings store, Erase, sign-out and the
-prediction store, so it belongs in the review of this branch.
+development-only control that sets an under-13 band). **Steps 202 to 207 have had their
+three rounds** (2026-11-20). Unread by any reviewer: round three's own doc fixes. Nothing
+from 202 to 207 has run on the iPhone; in the web build the local-only Plus line, the
+Coach panel's sign-in state and guest Erase were looked at that day.
 
 ## Owner to-dos, in order
 
@@ -427,10 +451,10 @@ judgment work and for the reviews he calls, Sonnet for well-specified, low-stake
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run
-  (2026-11-20, on `builder/owner-list-19-30` with steps 202 to 206): 248
-  suites, 5,178 tests, exit 0 (250 and 5,923 before 206 took out the distress check's
-  tests). `check.sh --release` passed on the same tree that day: expo-doctor 20/20,
-  dependencies up to date, iOS export 7.63 MB (bundle 7.22 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
+  (2026-11-20, with steps 202 to 207): 249 suites, 5,256 tests, exit 0 (250 and 5,923
+  before 206 took out the distress check's tests). `check.sh --release` passed on the
+  same tree that day: expo-doctor 20/20, dependencies up to date, iOS export 7.63 MB
+  (bundle 7.22 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;
   restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED` (it does, 2026-11-19).

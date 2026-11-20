@@ -24,7 +24,11 @@ interface EntitlementState {
   hydrated: boolean;
   /** Load the mirrored entitlement from SQLite. Safe to call once at startup. */
   hydrate: () => Promise<void>;
-  /** Push a new entitlement (from RevenueCat in L5); updates memory + mirror. */
+  /**
+   * Push a new entitlement (from RevenueCat in L5); updates memory + mirror.
+   * Nothing at all when billing's check says it answers for an identity the
+   * app has since left (`setStaleEntitlementCheck`).
+   */
   setEntitlement: (e: Entitlement) => Promise<void>;
 }
 
@@ -44,6 +48,21 @@ export function isEntitlementActive(e: Entitlement, now: Date = new Date()): boo
   const expiry = Date.parse(e.expires_at);
   if (Number.isNaN(expiry)) return false;
   return expiry > now.getTime();
+}
+
+/**
+ * Billing's word on whether an entitlement handed in is an answer for an
+ * identity the app has since left (step 207: a RevenueCat read under way when
+ * a sign-out came back with the old account's Plus). Registered by L5
+ * (src/billing/init.ts), so this store knows nothing about billing; it only
+ * asks, right before it writes, in the same synchronous run as the write, so
+ * no identity change can come between the answer and the write.
+ */
+let staleCheck: ((e: Entitlement) => boolean) | null = null;
+
+/** For billing (L5): register, or with null clear, the check above. */
+export function setStaleEntitlementCheck(check: ((e: Entitlement) => boolean) | null): void {
+  staleCheck = check;
 }
 
 export const useEntitlementStore = create<EntitlementState>((set) => ({
@@ -79,6 +98,11 @@ export const useEntitlementStore = create<EntitlementState>((set) => ({
     // persisted row disagree: the mirror would say is_plus while gating said
     // free. The clock only gets a vote in hydrate(), where there is nothing
     // fresher to trust.
+    //
+    // An answer for an identity the app has left is dropped, memory and mirror
+    // alike: the identity change writes its own (free on a sign-out), and the
+    // old account's Plus must not land on whoever is here now.
+    if (staleCheck?.(e)) return;
     set({ entitlement: e, isPlus: e.is_plus });
     try {
       await upsertEntitlement(e);

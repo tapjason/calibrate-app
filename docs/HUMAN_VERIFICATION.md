@@ -1554,6 +1554,13 @@ The support card's checks for D71 (b) and (c) were removed with the card (D73,
       back to the United States and relaunch: the switch is still on (a choice
       holds). **This is the check that the app reads the Region setting at all:** if
       the switch is on at the first step, tell the agent.
+- [ ] **Canada by Region with another language (the review of 2026-11-20):** Erase,
+      then set iPhone Language to English (UK) and Region to Canada, and open the app.
+      Pass: the Warm-up's first screen shows the "They’re off until you turn them on"
+      line with the switch **off**. Then the other way round: Language Français (Canada)
+      or English (Canada) with the Region on the United States, after another Erase:
+      also off (either reading is enough). If either starts on, tell the agent: it means
+      the phone reports its region some other way.
 - [ ] **And off stays off elsewhere:** with the Region on the United States, turn
       Usage stats off in You, set the Region to Canada and back, relaunching each
       time: it stays off throughout.
@@ -1575,6 +1582,14 @@ The support card's checks for D71 (b) and (c) were removed with the card (D73,
       breaking down." Insights → Get feedback. Pass: ordinary feedback, or one of the
       Coach's usual lines, and no support card, helpline or "Back to Coach". Remove the
       note afterwards.
+- [ ] **The paywall's messages are spoken (step 207):** with VoiceOver on, open the
+      paywall as a guest and tap Restore purchases with nothing to restore. Pass:
+      VoiceOver reads the message that appears without you having to find it. Close and
+      reopen the paywall: the message is gone.
+- [ ] **A sandbox purchase still lands (step 207):** signed in, buy a plan in sandbox.
+      Pass: "You're on Plus" as before, and Plus stays after closing and reopening the
+      app. Then sign out: Plus is gone at once and stays gone after bringing the app
+      back from the background.
 
 ---
 

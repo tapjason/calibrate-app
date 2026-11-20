@@ -24,8 +24,13 @@ import { create } from 'zustand';
 
 import { clearEvents } from '@/db/analytics';
 import { DEFAULT_THEME } from '@/constants/cardThemes';
-import { deviceRegion } from '@/constants/locale';
-import { usageStatsOffByRegion, usageStatsOn, usageStatsStartOff } from '@/engine/usageStats';
+import { deviceRegion, deviceRegionSetting } from '@/constants/locale';
+import {
+  usageStatsOffByRegion,
+  usageStatsOn,
+  usageStatsStartOff,
+  type PhoneRegions,
+} from '@/engine/usageStats';
 import { CATEGORIES, isCategory, type Category } from '@/types';
 
 export interface StoredSettings {
@@ -549,6 +554,16 @@ function usageSetting(state: Pick<StoredSettings, 'analyticsEnabled' | 'analytic
 }
 
 /**
+ * The phone's two region readings, as the Usage stats rule takes them: the
+ * Region setting (`deviceRegionSetting`) and the language's region
+ * (`deviceRegion`), each read once per launch. Every Usage stats rule here
+ * reads the region through this, so none of them goes by one reading alone.
+ */
+function phoneRegions(): PhoneRegions {
+  return { regionSetting: deviceRegionSetting(), languageRegion: deviceRegion() };
+}
+
+/**
  * Clear the queued usage counts when Usage stats are off only because the
  * phone's region starts them off (`usageStatsOffByRegion`): stored on, never
  * chosen, in Canada. Off means what it does when the switch is turned off:
@@ -559,7 +574,7 @@ function usageSetting(state: Pick<StoredSettings, 'analyticsEnabled' | 'analytic
  * launch this clears an empty queue. clearEvents swallows its own errors.
  */
 async function dropQueueIfOffByRegion(state: StoredSettings): Promise<void> {
-  if (usageStatsOffByRegion(usageSetting(state), deviceRegion())) await clearEvents();
+  if (usageStatsOffByRegion(usageSetting(state), phoneRegions())) await clearEvents();
 }
 
 /**
@@ -969,25 +984,30 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
  * setting, for everything that sends, queues or shows it (track, the flush,
  * the three switches and their lines). Never read `analyticsEnabled` on its
  * own: on a phone whose region is Canada, a stored on that the person never
- * chose reads as off. The rules are `usageStatsOn` (src/engine/usageStats.ts);
- * the region is the phone's locale's (`deviceRegion`), read once per launch,
- * so a region changed in Settings counts from the next launch. A region that
- * can't be read counts as not Canada. A selector: `useSettingsStore(selectUsageStatsOn)` in a component,
+ * chose reads as off. The rules are `usageStatsOn` (src/engine/usageStats.ts).
+ * The phone is in Canada when either of two readings says so (`phoneRegions`):
+ * its Region setting (`deviceRegionSetting`, expo-localization) or the region
+ * in its language tag (`deviceRegion`); where the Region setting can't be read
+ * (web, tests, a build without the module), the tag decides. Both are read
+ * once per launch, so a region changed in Settings counts from the next
+ * launch. A region that can't be read at all counts as not Canada. A selector:
+ * `useSettingsStore(selectUsageStatsOn)` in a component,
  * `selectUsageStatsOn(useSettingsStore.getState())` elsewhere.
  */
 export function selectUsageStatsOn(
   state: Pick<StoredSettings, 'analyticsEnabled' | 'analyticsChosen'>,
 ): boolean {
-  return usageStatsOn(usageSetting(state), deviceRegion());
+  return usageStatsOn(usageSetting(state), phoneRegions());
 }
 
 /**
  * Whether Usage stats start off on this phone until the person turns them on:
- * its region is Canada (`usageStatsStartOff`). The Warm-up's line says so
- * while they are off there.
+ * its Region setting or its language's region is Canada (`usageStatsStartOff`,
+ * the same readings as `selectUsageStatsOn`). The Warm-up's line says so while
+ * they are off there.
  */
 export function usageStatsStartOffHere(): boolean {
-  return usageStatsStartOff(deviceRegion());
+  return usageStatsStartOff(phoneRegions());
 }
 
 /** A stored day of the week, if it is one: 0 (Sunday) to 6. */

@@ -7,7 +7,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { __setDeviceLocaleForTests } from '@/constants/locale';
+import { __setDeviceLocaleForTests, __setPhoneRegionForTests } from '@/constants/locale';
 import { countUnsyncedEvents, enqueueEvent } from '@/db/analytics';
 import { setDbForTests } from '@/db/client';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
@@ -39,9 +39,18 @@ function recordingClient(): { client: SupabaseClient; sent: string[] } {
   return { client, sent };
 }
 
-/** Launch with this settings record on a phone whose locale is `tag`. */
-async function launch(tag: string, record: Partial<StoredSettings> | null): Promise<void> {
+/**
+ * Launch with this settings record on a phone whose locale is `tag` and whose
+ * Region setting is `regionSetting` (null: can't be read, as on a build
+ * without expo-localization).
+ */
+async function launch(
+  tag: string,
+  record: Partial<StoredSettings> | null,
+  regionSetting: string | null = null,
+): Promise<void> {
   __setDeviceLocaleForTests(tag);
+  __setPhoneRegionForTests(regionSetting);
   let stored = record;
   __setPersistenceForTests({
     load: async () => stored,
@@ -66,6 +75,7 @@ beforeEach(async () => {
 afterEach(() => {
   __setPersistenceForTests(null);
   __setDeviceLocaleForTests(null);
+  __setPhoneRegionForTests(undefined);
   __resetAgeStoreForTests();
   setDbForTests(null);
   jest.restoreAllMocks();
@@ -139,6 +149,55 @@ describe('usage counts on a Canadian phone that hasn’t chosen', () => {
     const { client, sent } = recordingClient();
     await expect(flushEvents(USER, { client })).resolves.toBe(1);
     expect(sent).toHaveLength(1);
+  });
+});
+
+// Policy audit of step 203: English (UK) on a phone whose Region setting is
+// Canada can reach the JavaScript engine as "en-GB". Canada by either reading
+// is Canada.
+describe('usage counts by the Region setting as well as the language', () => {
+  it('queue nothing and send nothing in English (UK) with the Region set to Canada', async () => {
+    await launch('en-GB', null, 'CA');
+
+    await track('share_completed', { surface: 'card' });
+    await track('prediction_logged', { confidence: 70 });
+    await expect(countUnsyncedEvents()).resolves.toBe(0);
+
+    const { client, sent } = recordingClient();
+    await expect(flushEvents(USER, { client })).resolves.toBe(0);
+    expect(sent).toEqual([]);
+
+    // Turned on, counts go up as anywhere else.
+    await turnUsageStats(true);
+    await track('share_completed', { surface: 'card' });
+    await expect(flushEvents(USER, { client })).resolves.toBe(1);
+  });
+
+  it('queue nothing in Canadian English with the Region set to the US', async () => {
+    await launch('en-CA', null, 'US');
+    await track('share_completed', { surface: 'card' });
+    await expect(countUnsyncedEvents()).resolves.toBe(0);
+  });
+
+  it('are queued and sent in US English with the Region set to the US', async () => {
+    await launch('en-US', null, 'US');
+    await track('share_completed', { surface: 'card' });
+    const { client, sent } = recordingClient();
+    await expect(flushEvents(USER, { client })).resolves.toBe(1);
+    expect(sent).toHaveLength(1);
+  });
+
+  it('queued before the Region was set to Canada are cleared at the next launch, the language unchanged', async () => {
+    await launch('en-GB', null, 'GB');
+    await track('share_completed', { surface: 'card' });
+    await track('prediction_logged', { confidence: 60 });
+    await expect(countUnsyncedEvents()).resolves.toBe(2);
+
+    await launch('en-GB', { analyticsEnabled: true }, 'CA');
+    const { client, sent } = recordingClient();
+    await expect(flushEvents(USER, { client })).resolves.toBe(0);
+    expect(sent).toEqual([]);
+    await expect(countUnsyncedEvents()).resolves.toBe(0);
   });
 });
 

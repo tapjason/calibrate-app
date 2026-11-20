@@ -127,6 +127,37 @@ function phoneTwelveHour(): boolean | null {
 
 let readPhoneClock: () => boolean | null = phoneTwelveHour;
 
+/** Two letters, upper case ("CA"), or null for anything else ("001", "", none). */
+function twoLetterRegion(value: unknown): string | null {
+  return typeof value === 'string' && /^[a-z]{2}$/i.test(value) ? value.toUpperCase() : null;
+}
+
+/**
+ * The phone's Region setting (Settings → General → Language & Region →
+ * Region), null where it can't be read (web, tests, a build from before
+ * expo-localization). Not the language's region: English (UK) on a phone set
+ * to Canada can give the JavaScript engine "en-GB" while this reads "CA"
+ * (policy audit of step 203). Asked for the way that answers null before the
+ * package is loaded, as `phoneTwelveHour` is.
+ */
+function phoneRegionSetting(): string | null {
+  try {
+    if (Platform.OS === 'web') return null;
+    if (!requireOptionalNativeModule('ExpoLocalization')) return null;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('expo-localization') as {
+      getLocales?: () => ReadonlyArray<{ regionCode?: string | null }> | undefined;
+    };
+    return twoLetterRegion(mod.getLocales?.()?.[0]?.regionCode);
+  } catch {
+    return null;
+  }
+}
+
+let readPhoneRegion: () => string | null = phoneRegionSetting;
+/** The Region setting as read at launch; undefined until it is read. */
+let cachedRegionSetting: string | null | undefined;
+
 function current(): Resolved {
   if (cached !== null) return cached;
   try {
@@ -159,11 +190,29 @@ export function countLocale(): string {
 
 /**
  * The region of the phone's locale ("US", "GB"), or null when the locale
- * names none. It is the region of the phone's language setting, read on the
- * phone and sent nowhere.
+ * names none. It is the region in the JavaScript engine's default locale,
+ * which follows the phone's language setting ("en-GB" for English (UK)), and
+ * may differ from the Region setting, which is `deviceRegionSetting`. Read on
+ * the phone once per launch and sent nowhere.
  */
 export function deviceRegion(): string | null {
   return current().region;
+}
+
+/**
+ * The phone's Region setting, two letters ("CA"), or null where it can't be
+ * read: web, tests, a build without expo-localization. Not the language's
+ * region (`deviceRegion`). Read on the phone once per launch and sent nowhere.
+ */
+export function deviceRegionSetting(): string | null {
+  if (cachedRegionSetting === undefined) {
+    try {
+      cachedRegionSetting = twoLetterRegion(readPhoneRegion());
+    } catch {
+      cachedRegionSetting = null;
+    }
+  }
+  return cachedRegionSetting;
 }
 
 /**
@@ -200,4 +249,18 @@ export function __setPhoneClockForTests(twelveHourClock: boolean | null | undefi
   }
   readPhoneClock = twelveHourClock === undefined ? phoneTwelveHour : () => twelveHourClock;
   cached = null;
+}
+
+/**
+ * Test-only: what the phone's Region setting says ("CA"), null for one that
+ * can't be read, or undefined to read it the real way again. Forgets the
+ * Region setting read at launch; the language's region is
+ * `__setDeviceLocaleForTests`'s.
+ */
+export function __setPhoneRegionForTests(region: string | null | undefined): void {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('__setPhoneRegionForTests is only allowed when NODE_ENV=test');
+  }
+  readPhoneRegion = region === undefined ? phoneRegionSetting : () => region;
+  cachedRegionSetting = undefined;
 }

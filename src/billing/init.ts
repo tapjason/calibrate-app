@@ -33,7 +33,9 @@
 import {
   configureBilling,
   isBillingAvailable,
+  isStaleEntitlement,
   logOutBilling,
+  settleOwedLogOut,
 } from '@/billing/revenuecat';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
 import {
@@ -44,7 +46,7 @@ import {
   whenAgeSettled,
 } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
-import { useEntitlementStore } from '@/store/entitlementStore';
+import { setStaleEntitlementCheck, useEntitlementStore } from '@/store/entitlementStore';
 import { usePaywallStore } from '@/store/paywallStore';
 import { FREE_ENTITLEMENT } from '@/types';
 
@@ -89,9 +91,17 @@ async function syncIdentity(userId: string | null): Promise<void> {
  * the mirror, only once uploads may start (never on a local-only phone, never
  * while Apple's answer is pending on a launch that asks), and only on a build
  * with the SDK and a key. True when RevenueCat is started (now or before).
+ *
+ * Already started (the rule lifting in a long run, or the paywall opening): a
+ * sign-out RevenueCat missed while the rule kept billing off is told now,
+ * before anything reads or buys (`settleOwedLogOut`, review round 1, item 2;
+ * every read, purchase and restore also waits for it).
  */
 function startBilling(): boolean {
-  if (started) return true;
+  if (started) {
+    if (!isLocalOnly()) settleOwedLogOut();
+    return true;
+  }
   if (!initialized || isLocalOnly() || !uploadsMayStart()) return false;
   if (!isBillingAvailable()) {
     if (!warnedUnavailable) {
@@ -119,6 +129,11 @@ export async function initBilling(): Promise<void> {
   if (initialized) return;
   initialized = true;
 
+  // An answer RevenueCat gives for an identity the app has since left (a read
+  // or purchase still out when a sign-out came) never reaches the store or
+  // the mirror (step 207): the store asks this right before every write.
+  setStaleEntitlementCheck(isStaleEntitlement);
+
   // The mirror first, and unconditionally: it is what gates Plus offline, in
   // Expo Go, and on web, where the SDK doesn't exist at all. This is a local
   // SQLite read and the only thing here worth awaiting.
@@ -139,7 +154,15 @@ export async function initBilling(): Promise<void> {
   // mirror). A start later configures whoever is signed in then; with no one
   // signed in, `configureBilling(null)` logs out the account the SDK still
   // has cached from that sign-out (or from one in an earlier run) before
-  // anything reads entitlements or buys (review round 2, item 1).
+  // anything reads entitlements or buys (review round 2, item 1). After it
+  // started, with the rule on since, `logOutBilling` can't reach RevenueCat:
+  // the log-out is owed and told once billing is usable again, before any
+  // read or purchase (`settleOwedLogOut`, review round 1, item 2).
+  //
+  // Each transition reaches `configureBilling` or `logOutBilling` in this
+  // listener's synchronous run, so an answer still out for the identity being
+  // left is stale from the moment the userId changes, and is dropped whenever
+  // it comes back (step 207, `identityGeneration` in revenuecat.ts).
   authUnsub = useAuthStore.subscribe((state, prev) => {
     if (state.userId === prev.userId) return;
     const next = appUserIdFor(state.userId);
@@ -224,6 +247,7 @@ export function __resetBillingInitForTests(): void {
   authUnsub = null;
   ageUnsub?.();
   ageUnsub = null;
+  setStaleEntitlementCheck(null);
   initialized = false;
   started = false;
   configuring = null;

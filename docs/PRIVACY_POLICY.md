@@ -126,8 +126,9 @@ in step 3b below.
    2026-11-20 (D72 (b), src/engine/usageStats.ts; JavaScript only), and §1, §2 and §2.3
    say so. Those sentences are true only of a build that carries it, so publish with, or
    after, that build (step 7), and after the device check in docs/HUMAN_VERIFICATION.md
-   D6: the app reads the region from the JavaScript engine's locale, which should follow
-   Settings → General → Language & Region → Region, and no iPhone has shown that yet.
+   D6: the app counts a phone as Canada when either the Region setting (expo-localization's
+   regionCode) or the region of the language (the JavaScript engine's locale) is CA, since
+   the review of 2026-11-20, and no iPhone has shown how it reports either yet.
 13. D73 (2026-11-20, step 206; JavaScript only): the app no longer checks predictions and
    notes on the phone before a Coach request, shows no support message and keeps no list
    of messages set aside. §3 says nothing of that check, and §7 no longer lists that list
@@ -356,7 +357,7 @@ to be read, not skimmed past.
   them. You can log, resolve, score, and share predictions entirely offline. A
   few usage counts are sent, with no account, device or install identifier, once
   the warm-up has told you so; you can turn them off there or in You (§2). On an
-  iPhone whose region is set to Canada they start off, and none are sent unless
+  iPhone whose Region is set to Canada, or whose language is a Canadian one such as English (Canada), they start off, and none are sent unless
   you turn them on. None are sent if Apple says this iPhone's age range is under
   13 (§9).
 - **With an account, your predictions are backed up to our server** so they
@@ -382,7 +383,7 @@ count how many people start and finish the warm-up, log, answer, share and
 practise, are sent to us, but only after the warm-up's first screen has shown
 you a line saying so and what they're for (to see how the app is used), with a
 switch to turn them off (the same switch as You → Usage stats). Until then they
-wait on the phone. On an iPhone whose region is set to Canada that switch starts
+wait on the phone. On an iPhone whose Region is set to Canada, or whose language is a Canadian one such as English (Canada), that switch starts
 off: no usage events are kept for sending and none are sent until you turn it
 on, there, in You or on the sign-in screen, and the warm-up's line says so. On an iPhone running iOS 26 or later, on a launch where the
 app doesn't yet hold an age range of 13 or over from Apple (below), they also
@@ -493,7 +494,7 @@ These are linked to your account. The sign-in screen says so before you sign
 in, including that events recorded before you signed in and still on the phone
 go with your account, and it has a switch to turn them off (the same switch as
 You → Usage stats); while they're off, it says none are sent. On an iPhone
-whose region is set to Canada the switch starts off, so none are sent, before
+whose Region is set to Canada, or whose language is a Canadian one such as English (Canada), the switch starts off, so none are sent, before
 or after you sign in, until you turn it on. **You can turn
 them off** there or in You → Usage stats. (The few sent before you sign in
 carry no account, device or install identifier, as described above, so they
@@ -833,8 +834,8 @@ usage counts and what an offset can say about where you are; after the policy re
 D71, the under-13 rule in §2 and §9 and the sign-in screen's switch; after the D70/D71
 review, the sign-in renewals and the two sign-in gaps in §9, and §8 rewritten for the four
 launch storefronts), removes one (for D73, 2026-11-20: the on-device check of predictions
-before a Coach request and the list of support messages set aside, which the published
-page still describes in §3) and changes what signing out
+before a Coach request and the list of support messages set aside; the published page's
+§3 paragraph about that check was removed the same day) and changes what signing out
 does (it now removes the account's data from the phone, all but the counts only the phone
 keeps, and asks first about categories kept only there) and what Erase does (it now removes
 everything the app keeps on the phone, those counts included). The app isn't on the App Store yet, so

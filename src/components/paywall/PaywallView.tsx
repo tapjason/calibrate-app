@@ -1,6 +1,13 @@
 import { openBrowserAsync } from 'expo-web-browser';
-import { useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { Button } from '@/components/ui/Button';
@@ -71,8 +78,29 @@ export function PaywallView({
   const loadPlans = usePaywallStore((s) => s.loadPlans);
   const purchase = usePaywallStore((s) => s.purchase);
   const restore = usePaywallStore((s) => s.restore);
+  const clearNotice = usePaywallStore((s) => s.clearNotice);
   // Waiting for RevenueCat to start reads as loading the plans.
   const loading = loadingPlans || !billingReady;
+
+  // A notice is the outcome of something done on this visit. One still in the
+  // store when the paywall opens is from an earlier visit ("Your purchase
+  // went through…" long after), so it goes before the first paint. Only on
+  // opening: one that arrives during the visit, billing starting and the
+  // plans loading included, stays (review round 2, item 2).
+  useLayoutEffect(() => {
+    clearNotice();
+  }, [clearNotice]);
+
+  // Said aloud when it appears, as SignInView says its errors: a line that
+  // appears posts nothing to VoiceOver. Once per change, and not for the
+  // stale one the screen opened with (review round 2, item 1).
+  const spokenNotice = useRef(notice);
+  useEffect(() => {
+    if (notice === spokenNotice.current) return;
+    spokenNotice.current = notice;
+    const words = noticeText(notice);
+    if (words) AccessibilityInfo.announceForAccessibility(words);
+  }, [notice]);
 
   // Before the first paint: loadPlans marks the plans as loading at once, so
   // a first open shows the spinner rather than a frame of "couldn't load".

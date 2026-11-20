@@ -203,10 +203,10 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
    exist only in the repo. *Recommendation: do it next, in one sitting, in the order
    written; `coach` is deployed from `master`, never from `6830354`.* Then say "the server
    steps are done" and the agent publishes the rewritten privacy and support pages (one
-   commit: `docs/_config.yml`) with that day as the effective date. Since D73 the held policy
-   no longer describes the Coach's on-device check, so it goes up only once a build without
-   the check (step 206) has reached anyone, TestFlight included; until then the published
-   page keeps its sentence about the check, which every earlier build makes true (the held
+   commit: `docs/_config.yml`) with that day as the effective date. Since D73 neither the held policy
+   nor the published page describes the Coach's on-device check: the published page's
+   paragraph was removed in the same change and goes live with the push to `master`, with
+   nothing to time against a build, since the check sent and collected nothing (the held
    policy's header, step 13).
 2. **A new development build and TestFlight build** (two native packages). The agent runs
    `eas build` once the owner confirms the command. The phone checks are in `HANDOFF.md`.
@@ -330,7 +330,21 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     guest Erase, Done lands on an empty Today and the Warm-up comes back only at the next
     launch, since the first-run route is decided at launch (`app/_layout.tsx`; seen in the
     web build 2026-11-20, older than step 206; usage counts still wait for the Warm-up's
-    line).
+    line); Restore doesn't schedule the trial-ending reminder (`restore()` never calls
+    `refreshTrialReminder`), so after a Restore that finds a trial it is set only at the
+    next launch (the policy audit, 2026-11-20; older than this review). From the review's
+    last round, left as found: the paywall keeps the last visit's plans with a working
+    button while new ones load (`busy` leaves out `loadingPlans`; older than the branch),
+    so after a failed owed log-out a tap can stack "Plus isn't available on this build
+    yet." on "Plus plans couldn't load…"; no test pins that a notice equal to the one the
+    paywall opened with is spoken when it comes again (the code does it); a second
+    `/paywall` opened over the first by a link clears the first one's notice; and iOS
+    may drop the paywall's spoken notice when the store sheet closes (`HUMAN_VERIFICATION.md`
+    D7 checks it; `announceForAccessibilityWithOptions` with `queue` is the fix if so).
+    And the paywall says "That didn't go through. Nothing was charged." whenever the
+    purchase call throws, which is false if Apple has already charged, for example when
+    the receipt couldn't be sent to RevenueCat (the policy audit's last round; older than
+    the branch; needs words that don't promise it).
 
 **Added by the review's third round (2026-11-19); agreed with the rest**
 
@@ -367,7 +381,11 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     (it is managed in Settings → Apple Account → Subscriptions, and comes back when the
     rule lifts). Rare. *Recommendation: one line on the local-only Plus page saying where
     subscriptions are managed; a small step, not built.*
-30. **Two small billing races, left as found** (the code review; no review round was left
+30. **The first is fixed, 2026-11-20 (step 207, inside the review of steps 202 to 206):**
+    an answer, purchase or restore that began under one identity is never written to the
+    next one's Plus, and a log-out RevenueCat never saw while the under-13 rule was on is
+    applied when billing is usable again in the same run. The second (the slow paywall
+    after a sign-out) stays as recorded: delay only. **Two small billing races, left as found** (the code review; no review round was left
     to read a billing change): a customer-info read under way at sign-out can write the
     old account's Plus into the guest's mirror until the next foreground refresh, and a
     paywall opened right after a sign-out on a slow network waits for the SDK
@@ -392,6 +410,28 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     read the usage policies (a revision effective 2026-11-20) and the Under-18 guidance before
     the build ships, and tell the agent if either asks anything of an app that sends a
     model numbers only.*
+
+**Added by the review of steps 202 to 206 (2026-11-20)**
+
+33. **RevenueCat's Restore behaviour setting** (the dashboard; the code review). It
+    decides whether a guest's Restore can move a purchase off another account: under
+    "Transfer" it does; under "Transfer if there are no active subscriptions" it doesn't
+    move an active Plus subscription; under "Keep with original" it fails with "That
+    didn't go through. Nothing was charged." *Recommendation: look at what it is set to before the public
+    release and tell the agent; the paywall's words for a purchase that landed on another
+    account (step 207) send the person to sign in first, which works under any of them.*
+34. **Quebec by the phone's region** (the policy audit; for counsel, with the nine
+    points). Usage stats start off by the phone's Region or language region, which misses
+    a Quebec resident whose phone is set to neither. *Recommendation: ask counsel whether
+    the region is an acceptable proxy before the Canadian release.*
+35. **No build to outside testers before the held privacy policy is published** (the
+    policy audit, three rounds). The published page isn't complete even for builds 2 to
+    4: it lists crash reports among what is never collected, and TestFlight shares a
+    tester's crash reports whatever their settings; and it leaves out the IP addresses
+    kept in request logs and sign-in sessions. It is further off for any build from
+    `master` since D70 and D71 (its §2 says the age range locks no feature, and its §7 is
+    wrong about Erase) and for the Canada default. The held policy has all of it; its
+    header lists what publishing waits on. Your own phone is fine.
 
 ## What stands between here and the store
 

@@ -6,7 +6,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
-import { __setDeviceLocaleForTests } from '@/constants/locale';
+import { __setDeviceLocaleForTests, __setPhoneRegionForTests } from '@/constants/locale';
 import { countUnsyncedEvents, enqueueEvent } from '@/db/analytics';
 import { setDbForTests } from '@/db/client';
 import { createTestDb } from '@/db/testing';
@@ -43,9 +43,14 @@ function makeRecord(
   };
 }
 
-/** The phone's region, by its locale ("en-CA" is Canada; "en" names none). */
-function phoneIn(tag: 'en-CA' | 'fr-CA' | 'en-US' | 'en-GB' | 'en'): void {
+/**
+ * The phone's region: its language tag ("en-CA" is Canada; "en" names none)
+ * and its Region setting ("CA"), null where that can't be read (web, a build
+ * without expo-localization), which is the default here.
+ */
+function phoneIn(tag: 'en-CA' | 'fr-CA' | 'en-US' | 'en-GB' | 'en', regionSetting: string | null = null): void {
   __setDeviceLocaleForTests(tag);
+  __setPhoneRegionForTests(regionSetting);
 }
 
 const on = (): boolean => selectUsageStatsOn(useSettingsStore.getState());
@@ -69,6 +74,7 @@ beforeEach(async () => {
 afterEach(() => {
   __setPersistenceForTests(null);
   __setDeviceLocaleForTests(null);
+  __setPhoneRegionForTests(undefined);
   setDbForTests(null);
   jest.restoreAllMocks();
 });
@@ -179,6 +185,104 @@ describe('Usage stats: a region change', () => {
     __setPersistenceForTests(makeRecord(stored).persistence);
     await useSettingsStore.getState().hydrate();
     expect(on()).toBe(true);
+  });
+});
+
+// Policy audit of step 203: the language tag's region is not the Region
+// setting. English (UK) on a phone whose Region is Canada can reach the
+// JavaScript engine as "en-GB", which read as Britain and started Usage stats
+// on. The phone is in Canada when either reading says so; where the Region
+// setting can't be read, the tag decides.
+describe('Usage stats: the Region setting and the language tag', () => {
+  type Tag = Parameters<typeof phoneIn>[0];
+
+  it.each<[string, Tag, string | null, boolean]>([
+    ['language en-GB, Region Canada', 'en-GB', 'CA', false],
+    ['language en-CA, Region US', 'en-CA', 'US', false],
+    ['language en-US, Region US', 'en-US', 'US', true],
+    ['language en (no region), Region Canada', 'en', 'CA', false],
+    ['language en-GB, Region GB', 'en-GB', 'GB', true],
+    ['language en-CA, Region unreadable', 'en-CA', null, false],
+    ['language en-US, Region unreadable', 'en-US', null, true],
+    ['language en (no region), Region unreadable', 'en', null, true],
+  ])('a fresh install, %s', async (_label, tag, regionSetting, expected) => {
+    phoneIn(tag, regionSetting);
+    __setPersistenceForTests(makeRecord(null).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(on()).toBe(expected);
+    // The Warm-up's line goes by the same readings.
+    expect(usageStatsStartOffHere()).toBe(!expected);
+  });
+
+  it('keeps a choice once made, on every pair of readings', async () => {
+    const pairs: Array<[Tag, string | null]> = [
+      ['en-GB', 'CA'],
+      ['en-CA', 'US'],
+      ['en-US', 'US'],
+      ['en-CA', null],
+      ['en-US', null],
+      ['en', null],
+    ];
+    for (const value of [true, false]) {
+      for (const [tag, regionSetting] of pairs) {
+        phoneIn(tag, regionSetting);
+        __setPersistenceForTests(makeRecord({ analyticsEnabled: value, analyticsChosen: true }).persistence);
+        await useSettingsStore.getState().hydrate();
+        expect(on()).toBe(value);
+      }
+    }
+  });
+
+  it('follows a change of the Region setting while nothing is chosen, and the choice once made', async () => {
+    phoneIn('en-GB', 'GB');
+    __setPersistenceForTests(makeRecord({ analyticsEnabled: true }).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(on()).toBe(true);
+
+    // The Region set to Canada, the language left as English (UK).
+    phoneIn('en-GB', 'CA');
+    expect(on()).toBe(false);
+
+    await useSettingsStore.getState().setAnalyticsEnabled(true);
+    for (const [tag, regionSetting] of [['en-GB', 'GB'], ['en-GB', 'CA'], ['en-CA', 'US']] as const) {
+      phoneIn(tag, regionSetting);
+      expect(on()).toBe(true);
+    }
+  });
+
+  it('clears what was queued at launch on a phone in English (UK) with its Region set to Canada', async () => {
+    await queue(3);
+    phoneIn('en-GB', 'CA');
+    __setPersistenceForTests(makeRecord({ analyticsEnabled: true }).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(on()).toBe(false);
+    await expect(countUnsyncedEvents()).resolves.toBe(0);
+  });
+
+  it('clears it once a record that couldn’t be read reads, on the same phone', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await queue(2);
+    phoneIn('en-GB', 'CA');
+    let failing = true;
+    __setPersistenceForTests(makeRecord({ analyticsEnabled: true }, { loadThrows: () => failing }).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(useSettingsStore.getState().loadFailed).toBe(true);
+    await expect(countUnsyncedEvents()).resolves.toBe(2);
+
+    failing = false;
+    await useSettingsStore.getState().retryLoad();
+    expect(useSettingsStore.getState().loadFailed).toBe(false);
+    expect(on()).toBe(false);
+    await expect(countUnsyncedEvents()).resolves.toBe(0);
+  });
+
+  it('keeps the queue on a phone in US English with its Region set to the US', async () => {
+    await queue(2);
+    phoneIn('en-US', 'US');
+    __setPersistenceForTests(makeRecord({ analyticsEnabled: true }).persistence);
+    await useSettingsStore.getState().hydrate();
+    expect(on()).toBe(true);
+    await expect(countUnsyncedEvents()).resolves.toBe(2);
   });
 });
 

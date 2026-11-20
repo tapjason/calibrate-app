@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 
 import type { PlusPlan } from '@/billing/revenuecat';
 import { PRIVACY_POLICY_URL } from '@/constants/app';
@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { FREE_ENTITLEMENT } from '@/types';
 
 import { PaywallView } from './PaywallView';
+import { noticeText } from './paywallCopy';
 
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
@@ -355,12 +356,30 @@ describe('PaywallView', () => {
     expect(screen.queryByTestId('paywall-unavailable')).toBeNull();
   });
 
+  // The notice is set after the screen opens: one already there when it
+  // opens is from an earlier visit, and is cleared (review round 2, item 2).
   it('surfaces the outcome notice', () => {
-    seed({ notice: 'failed' });
+    seed();
     render(<PaywallView />);
+    act(() => usePaywallStore.setState({ notice: 'failed' }));
     expect(screen.getByTestId('paywall-notice').props.children).toMatch(
       /[Nn]othing was charged/,
     );
+  });
+
+  // Review round 1, item 1: Apple charged, but the account on the phone
+  // changed while the purchase finished, so it went to the other account.
+  it('says where a purchase went when the account changed while it finished, in the same place', () => {
+    seed();
+    render(<PaywallView />);
+    act(() => usePaywallStore.setState({ notice: 'purchased_elsewhere' }));
+    expect(screen.getByTestId('paywall-notice').props.children).toBe(
+      'Your purchase went through, but the account on this phone changed while it finished. ' +
+        "Sign in to the account you were using to get Plus. If it doesn't show, tap Restore purchases.",
+    );
+    // Nothing is Plus on this account, so the offer stays.
+    expect(screen.getByTestId('paywall')).toBeTruthy();
+    expect(screen.queryByTestId('paywall-active')).toBeNull();
   });
 
   it('shows the subscriber state instead of the offer to an existing Plus user', () => {
@@ -461,5 +480,117 @@ describe('PaywallView — before billing has started', () => {
     expect(screen.queryByTestId('paywall-loading')).toBeNull();
     // No plans came back: today's line for that.
     expect(screen.getByTestId('paywall-unavailable')).toBeTruthy();
+  });
+});
+
+// Review round 2, item 1: the notice under the button was shown and never
+// said, so VoiceOver heard nothing after a purchase, a restore or a failure.
+describe('PaywallView — the notice is said aloud', () => {
+  let spy: jest.SpyInstance;
+  // The preset's AccessibilityInfo is already a mock, so the spy is that mock
+  // and keeps earlier tests' calls: cleared here, for each test.
+  const spyAnnounce = () => {
+    spy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    spy.mockClear();
+    return spy;
+  };
+  afterEach(() => spy?.mockRestore());
+
+  it.each([
+    'purchased',
+    'purchased_elsewhere',
+    'restored',
+    'nothing_to_restore',
+    'unavailable',
+    'failed',
+  ] as const)('says "%s" once when it appears, in the words shown', (notice) => {
+    seed();
+    const announce = spyAnnounce();
+    render(<PaywallView />);
+    expect(announce).not.toHaveBeenCalled();
+
+    act(() => usePaywallStore.setState({ notice }));
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(noticeText(notice));
+  });
+
+  it('says it once for one change, not again on a re-render', () => {
+    seed();
+    const announce = spyAnnounce();
+    render(<PaywallView />);
+    act(() => usePaywallStore.setState({ notice: 'failed' }));
+    // Another plan chosen: the screen draws again, the notice unchanged.
+    fireEvent.press(screen.getByTestId('plan-monthly'));
+    fireEvent.press(screen.getByTestId('plan-annual'));
+    expect(announce).toHaveBeenCalledTimes(1);
+  });
+
+  it('says each new outcome, and nothing when the notice clears', () => {
+    seed();
+    const announce = spyAnnounce();
+    render(<PaywallView />);
+    act(() => usePaywallStore.setState({ notice: 'failed' }));
+    // A second try clears it, then fails again.
+    act(() => usePaywallStore.setState({ notice: null }));
+    expect(announce).toHaveBeenCalledTimes(1);
+    act(() => usePaywallStore.setState({ notice: 'failed' }));
+    act(() => usePaywallStore.setState({ notice: 'restored' }));
+    expect(announce.mock.calls).toEqual([
+      [noticeText('failed')],
+      [noticeText('failed')],
+      [noticeText('restored')],
+    ]);
+  });
+
+  it('says nothing for a notice already there when the screen opens', () => {
+    seed({ notice: 'purchased_elsewhere' });
+    const announce = spyAnnounce();
+    render(<PaywallView />);
+    expect(announce).not.toHaveBeenCalled();
+  });
+});
+
+// Review round 2, item 2: a notice was cleared only by the next purchase or
+// restore, so a later open in the same run still said "Your purchase went
+// through…" about a visit long gone.
+describe('PaywallView — a notice belongs to the visit it came on', () => {
+  it('clears a notice left from an earlier visit when it opens, before anything is drawn', () => {
+    seed({ notice: 'purchased_elsewhere' });
+    render(<PaywallView />);
+    expect(screen.queryByTestId('paywall-notice')).toBeNull();
+    expect(usePaywallStore.getState().notice).toBeNull();
+  });
+
+  it('clears it while billing is still starting, too', () => {
+    seed({ notice: 'restored', plans: [] });
+    render(<PaywallView billingReady={false} />);
+    expect(screen.queryByTestId('paywall-notice')).toBeNull();
+  });
+
+  it('keeps a notice that arrives during the visit, through billing starting and the plans loading', async () => {
+    seed({ plans: [] });
+    // A purchase started on an earlier visit, still in flight.
+    usePaywallStore.setState({ purchasing: 'pkg_annual' });
+    const { rerender } = render(<PaywallView billingReady={false} />);
+
+    act(() => usePaywallStore.setState({ purchasing: null, notice: 'purchased_elsewhere' }));
+    rerender(<PaywallView billingReady />);
+    act(() => usePaywallStore.setState({ plans: PLANS }));
+    await act(async () => {});
+
+    expect(screen.getByTestId('paywall-notice').props.children).toBe(
+      noticeText('purchased_elsewhere'),
+    );
+  });
+
+  it('clears it again on the next open', () => {
+    seed();
+    const first = render(<PaywallView />);
+    act(() => usePaywallStore.setState({ notice: 'restored' }));
+    expect(screen.getByTestId('paywall-notice')).toBeTruthy();
+    first.unmount();
+
+    render(<PaywallView />);
+    expect(screen.queryByTestId('paywall-notice')).toBeNull();
   });
 });

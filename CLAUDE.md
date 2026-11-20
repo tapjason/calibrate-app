@@ -745,8 +745,10 @@ the app on a day nothing is due (`docs/design/research/retention-2026-10.md` §2
   few usage counts… They're off until you turn them on, here or in You." A choice, once
   made on any of the three switches, holds whatever the region becomes; an off stored by
   an earlier build stays off. `usageStatsOn` (`src/engine/usageStats.ts`) is the rule and
-  `selectUsageStatsOn` the one place it is read. A region that can't be read counts as
-  not Canada.
+  `selectUsageStatsOn` the one place it is read. A phone counts as Canada when either its
+  Region setting or the region of its language says so (the review of 2026-11-20: the
+  language alone could miss English (UK) with the Region on Canada); a region that can't be
+  read counts as not Canada.
 - **Erase means everything** (D71 (a)): guest Erase removes all that Fairly Sure keeps on
   the phone, whoever's account it was under, the counts sign-out keeps included
   (`wipeEverythingOnDevice`); settings, the Plus mirror and the ids of accounts signed out

@@ -1,6 +1,5 @@
 import { wipeLocalUserData } from '@/db/account';
-import { getDb, setDbForTests, withTransaction } from '@/db/client';
-import * as predictionsDb from '@/db/predictions';
+import { getDb, setDbForTests } from '@/db/client';
 import {
   countRefiles,
   getPrediction,
@@ -18,7 +17,6 @@ import {
 import { getUserStat, listCategoryStats } from '@/db/stats';
 import { createTestDb } from '@/db/testing';
 import { __setTimeZoneForTests } from '@/engine/localTime';
-import type { Prediction } from '@/types';
 
 import { useAuthStore } from './authStore';
 import {

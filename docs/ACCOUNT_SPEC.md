@@ -854,8 +854,10 @@ account's rows in the middle of it: "Couldn't finish erasing your data. Try agai
      usage line's reset, `forgetUsageNoticeShown`, is the write that stands for all three
      and makes Erase report failure when it doesn't land. A settings record that can't be
      read is no longer replaced by Erase, sign-out or deletion, which did so only for the
-     keys: the three resets are held and applied once it reads, and sign-out writes no
-     settings at all);
+     keys: the three resets are held in memory and applied if it reads later in the same
+     run, and lost if it reads only at a later launch (the old usage-line stamp then comes
+     back; Erase also resets the Warm-up, whose first screen shows the usage line again, so
+     the review of 2026-11-20 left it). Sign-out writes no settings at all);
    - the stores reload for the guest;
    - delivered notifications are dismissed and the Coach's cards cleared, neither waited
      on;

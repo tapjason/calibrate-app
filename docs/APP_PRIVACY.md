@@ -36,8 +36,11 @@ audit afterwards and await his nod):
   `src/engine/usageStats.ts`, read through `selectUsageStatsOn` by `track.ts`,
   `flush.ts` and the three switches); counts queued before the phone was set to Canada
   are cleared at the next launch. The form's answers don't change: the data type is
-  still collected elsewhere, and in Canada once someone turns it on. The region is the
-  JavaScript engine's locale region; `HUMAN_VERIFICATION.md` D6 checks it on the phone.
+  still collected elsewhere, and in Canada once someone turns it on. A phone counts as
+  Canada when either its Region setting (`deviceRegionSetting`, `expo-localization`'s
+  `regionCode`) or the region of its language (the JavaScript engine's locale) is CA
+  (`phoneRegions` in `src/store/settingsStore.ts`, the review of 2026-11-20);
+  `HUMAN_VERIFICATION.md` D6 checks both on the phone.
 - **Age assurance on the age-rating form:** Yes, true only from a build that carries D70
   (`docs/APP_STORE_LISTING.md` §1, the age-rating table).
 
@@ -415,8 +418,9 @@ you turn on its lock."), set by the package's config plugin in `app.json`.
 Nothing to declare on the App Privacy form for it.
 
 `expo-localization` reads the phone's measurement system and Region setting to
-choose feet and miles in the Warm-up's answer key. Read on the phone, sent
-nowhere, stored nowhere.
+choose feet and miles in the Warm-up's answer key, and the Region setting to decide
+whether Usage stats start off (Canada, above). Read on the phone, sent nowhere,
+stored nowhere.
 
 ## 5. Policy text this implies
 

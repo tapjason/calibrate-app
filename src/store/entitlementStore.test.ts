@@ -3,7 +3,7 @@ import { getEntitlement, upsertEntitlement } from '@/db/entitlements';
 import { createTestDb } from '@/db/testing';
 import { FREE_ENTITLEMENT, type Entitlement } from '@/types';
 
-import { isEntitlementActive, useEntitlementStore } from './entitlementStore';
+import { isEntitlementActive, setStaleEntitlementCheck, useEntitlementStore } from './entitlementStore';
 
 const PLUS: Entitlement = {
   is_plus: true,
@@ -93,6 +93,40 @@ describe('entitlementStore', () => {
     await useEntitlementStore.getState().setEntitlement(graced);
     expect(useEntitlementStore.getState().isPlus).toBe(true);
     await expect(getEntitlement()).resolves.toEqual(graced);
+  });
+
+  // Step 207: billing registers a check for an answer given for an identity the
+  // app has since left; the store asks it right before writing.
+  describe('with a stale-answer check registered', () => {
+    afterEach(() => setStaleEntitlementCheck(null));
+
+    it('drops a stale answer: memory and mirror stay as they were', async () => {
+      const stale: Entitlement = { ...PLUS };
+      setStaleEntitlementCheck((e) => e === stale);
+
+      await useEntitlementStore.getState().setEntitlement(stale);
+
+      expect(useEntitlementStore.getState().isPlus).toBe(false);
+      expect(useEntitlementStore.getState().entitlement).toEqual(FREE_ENTITLEMENT);
+      await expect(getEntitlement()).resolves.toEqual(FREE_ENTITLEMENT);
+    });
+
+    it('writes everything else, the free entitlement a sign-out hands in included', async () => {
+      setStaleEntitlementCheck(() => false);
+      await useEntitlementStore.getState().setEntitlement(PLUS);
+      await expect(getEntitlement()).resolves.toEqual(PLUS);
+
+      await useEntitlementStore.getState().setEntitlement(FREE_ENTITLEMENT);
+      expect(useEntitlementStore.getState().isPlus).toBe(false);
+      await expect(getEntitlement()).resolves.toEqual(FREE_ENTITLEMENT);
+    });
+
+    it('with the check cleared, writes as before', async () => {
+      setStaleEntitlementCheck(() => true);
+      setStaleEntitlementCheck(null);
+      await useEntitlementStore.getState().setEntitlement(PLUS);
+      expect(useEntitlementStore.getState().isPlus).toBe(true);
+    });
   });
 
   it('fails to free (never Plus) when the read throws', async () => {

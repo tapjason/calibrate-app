@@ -4,8 +4,10 @@ import { join } from 'path';
 import {
   __setDeviceLocaleForTests,
   __setPhoneClockForTests,
+  __setPhoneRegionForTests,
   dateLocale,
   deviceRegion,
+  deviceRegionSetting,
   englishFor,
   localTime,
   regionOf,
@@ -55,6 +57,38 @@ describe('regionOf and deviceRegion', () => {
     expect(deviceRegion()).toBe('BE');
     __setDeviceLocaleForTests('ja');
     expect(deviceRegion()).toBeNull();
+  });
+});
+
+// Policy audit of step 203: the Region setting is read on its own, beside
+// the language's region, which stays what it was for its callers.
+describe("deviceRegionSetting: the phone's Region setting", () => {
+  afterEach(() => {
+    __setPhoneRegionForTests(undefined);
+    __setDeviceLocaleForTests(null);
+  });
+
+  it('is two letters in upper case, or null', () => {
+    __setPhoneRegionForTests('CA');
+    expect(deviceRegionSetting()).toBe('CA');
+    __setPhoneRegionForTests('ca');
+    expect(deviceRegionSetting()).toBe('CA');
+    for (const odd of [null, '', '001', 'CAN']) {
+      __setPhoneRegionForTests(odd);
+      expect(deviceRegionSetting()).toBeNull();
+    }
+  });
+
+  it("can't be read in tests, where expo-localization's native module is absent", () => {
+    __setPhoneRegionForTests(undefined);
+    expect(deviceRegionSetting()).toBeNull();
+  });
+
+  it("leaves deviceRegion as the language's region", () => {
+    __setDeviceLocaleForTests('en-GB');
+    __setPhoneRegionForTests('CA');
+    expect(deviceRegion()).toBe('GB');
+    expect(deviceRegionSetting()).toBe('CA');
   });
 });
 

@@ -226,6 +226,15 @@ describe('noticeText', () => {
   it('says nothing was charged when a purchase fails', () => {
     expect(noticeText('failed')).toMatch(/[Nn]othing was charged/);
   });
+
+  // Charged, but to the account that was signed in when it started.
+  it('says a purchase went through when the account changed while it finished', () => {
+    expect(noticeText('purchased_elsewhere')).toBe(
+      'Your purchase went through, but the account on this phone changed while it finished. ' +
+        "Sign in to the account you were using to get Plus. If it doesn't show, tap Restore purchases.",
+    );
+    expect(noticeText('purchased_elsewhere')).not.toMatch(/[Nn]othing was charged/);
+  });
 });
 
 describe('plan selector copy', () => {

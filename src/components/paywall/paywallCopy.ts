@@ -3,6 +3,7 @@
 // the screen where an over-promise turns into a refund.
 
 import type { PlanId, PlusPlan, TrialUnit } from '@/billing/revenuecat';
+import type { PaywallNotice } from '@/store/paywallStore';
 
 /** Plan names, as the user sees them. */
 export const PLAN_LABELS: Record<PlanId, string> = {
@@ -218,12 +219,18 @@ export function trialTermsLine(plans: readonly PlusPlan[]): string {
 }
 
 /** The message shown after an action, or null when there is nothing to say. */
-export function noticeText(
-  notice: 'purchased' | 'restored' | 'nothing_to_restore' | 'unavailable' | 'failed' | null,
-): string | null {
+export function noticeText(notice: PaywallNotice): string | null {
   switch (notice) {
     case 'purchased':
       return "You're on Plus. Coach is under You when you want it.";
+    // Apple charged, but the purchase went to the account signed in when it
+    // started: the one on the phone changed while it finished (review round
+    // 1, item 1). Decided copy.
+    case 'purchased_elsewhere':
+      return (
+        'Your purchase went through, but the account on this phone changed while it finished. ' +
+        "Sign in to the account you were using to get Plus. If it doesn't show, tap Restore purchases."
+      );
     case 'restored':
       return 'Your purchase is restored.';
     case 'nothing_to_restore':
@@ -232,7 +239,9 @@ export function noticeText(
       return "Plus isn't available on this build yet.";
     case 'failed':
       return "That didn't go through. Nothing was charged.";
-    default:
+    // No default: a notice added without words here fails to compile
+    // (review round 2, item 6).
+    case null:
       return null;
   }
 }

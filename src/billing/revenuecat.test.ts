@@ -10,6 +10,7 @@ import {
   fetchPlans,
   fetchTrialStatus,
   isBillingAvailable,
+  isStaleEntitlement,
   logOutBilling,
   plansFromOfferings,
   purchasePlan,
@@ -595,6 +596,170 @@ describe('a signed-out start with an account still cached', () => {
     await expect(configureBilling(null)).resolves.toBe(false);
     await expect(fetchEntitlement()).resolves.toBeNull();
     expect(sdk.deps.getCustomerInfo).not.toHaveBeenCalled();
+  });
+});
+
+// Step 207 (residual 11 of the under-13 notes): an SDK call answers for the
+// identity it started under, so one still out when an identity change is
+// asked for comes back with the old identity's customer info.
+describe('an answer that comes back after an identity change', () => {
+  const FRESH = '$RCAnonymousID:fresh';
+
+  /**
+   * A fake SDK with an identity: `owners` own Plus (in a trial when `trial`).
+   * `hold()` makes the next customer-info read wait for its release, still
+   * answering for the identity it started under.
+   */
+  function heldSdk(opts: { owners: string[]; trial?: boolean }) {
+    let current = '$RCAnonymousID:install';
+    let gate: Promise<void> | null = null;
+    const reads: string[] = [];
+    const infoFor = (id: string) =>
+      opts.owners.includes(id)
+        ? customerInfo(opts.trial ? { periodType: 'TRIAL', expirationDate: '2026-12-01T00:00:00.000Z' } : {})
+        : customerInfo(null);
+    const deps = fakeDeps({
+      configure: jest.fn(async (_key: string, id: string | null) => {
+        current = id ?? current;
+      }),
+      logIn: jest.fn(async (id: string) => {
+        current = id;
+      }),
+      logOut: jest.fn(async () => {
+        current = FRESH;
+      }),
+      getCustomerInfo: jest.fn(async () => {
+        const asked = current;
+        reads.push(asked);
+        const held = gate;
+        gate = null;
+        if (held) await held;
+        return infoFor(asked);
+      }),
+      getOfferings: jest.fn(async () => {
+        const held = gate;
+        gate = null;
+        if (held) await held;
+        return OFFERINGS;
+      }),
+    });
+    return {
+      deps,
+      reads,
+      hold(): () => void {
+        let release: () => void = () => {};
+        gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return release;
+      },
+    };
+  }
+
+  /** Let the calls already made reach the SDK. */
+  const tick = async () => {
+    for (let i = 0; i < 5; i += 1) await new Promise((r) => setImmediate(r));
+  };
+
+  it("hands on the new identity's answer, asked again, never the old one's", async () => {
+    const sdk = heldSdk({ owners: ['account-a'] });
+    __setBillingDepsForTests(sdk.deps);
+    await configureBilling('account-a');
+
+    const release = sdk.hold();
+    const reading = fetchEntitlement();
+    await tick();
+    await logOutBilling();
+    release();
+
+    await expect(reading).resolves.toEqual(FREE_ENTITLEMENT);
+    expect(sdk.reads).toEqual(['account-a', FRESH]);
+  });
+
+  it("the trial reminder never gets the signed-out account's trial", async () => {
+    const sdk = heldSdk({ owners: ['account-a'], trial: true });
+    __setBillingDepsForTests(sdk.deps);
+    await configureBilling('account-a');
+
+    const release = sdk.hold();
+    const reading = fetchTrialStatus();
+    await tick();
+    await logOutBilling();
+    release();
+
+    await expect(reading).resolves.toBeNull();
+  });
+
+  it('a read overtaken again and again gives up as "couldn\'t find out", not as anyone\'s answer', async () => {
+    const sdk = heldSdk({ owners: ['account-a', 'account-b', 'account-c'] });
+    __setBillingDepsForTests(sdk.deps);
+    await configureBilling('account-a');
+
+    const releaseFirst = sdk.hold();
+    const reading = fetchEntitlement();
+    await tick();
+    await configureBilling('account-b');
+    // The read asked again as B is held too, and overtaken in its turn.
+    const releaseSecond = sdk.hold();
+    releaseFirst();
+    await tick();
+    await configureBilling('account-c');
+    releaseSecond();
+
+    await expect(reading).resolves.toBeNull();
+    expect(sdk.reads).toEqual(['account-a', 'account-b']);
+  });
+
+  it('a purchase whose identity changes while the offering loads never opens the store sheet', async () => {
+    const sdk = heldSdk({ owners: [] });
+    __setBillingDepsForTests(sdk.deps);
+    await configureBilling('account-a');
+
+    const release = sdk.hold();
+    const buying = purchasePlan(`pkg_${PRODUCT_IDS.annual}`);
+    await tick();
+    await logOutBilling();
+    release();
+
+    await expect(buying).resolves.toEqual({ status: 'failed' });
+    expect(sdk.deps.purchasePackage).not.toHaveBeenCalled();
+  });
+
+  it('isStaleEntitlement: an answer read before a change is stale, a fresh one and the shared free one never are', async () => {
+    const sdk = heldSdk({ owners: ['account-a'] });
+    __setBillingDepsForTests(sdk.deps);
+    await configureBilling('account-a');
+
+    const before = await fetchEntitlement();
+    if (!before) throw new Error('no answer');
+    expect(before).toMatchObject({ is_plus: true });
+    expect(isStaleEntitlement(before)).toBe(false);
+
+    await logOutBilling();
+    expect(isStaleEntitlement(before)).toBe(true);
+    const after = await fetchEntitlement();
+    if (!after) throw new Error('no answer');
+    expect(after).toEqual(FREE_ENTITLEMENT);
+    expect(isStaleEntitlement(after)).toBe(false);
+    // What a sign-out writes is never this module's answer.
+    expect(isStaleEntitlement(FREE_ENTITLEMENT)).toBe(false);
+  });
+
+  it('a sign-out RevenueCat is never told of (billing off by then) still makes an answer under way stale', async () => {
+    const sdk = heldSdk({ owners: ['account-a'] });
+    __setBillingDepsForTests(sdk.deps);
+    await configureBilling('account-a');
+
+    const release = sdk.hold();
+    const reading = fetchEntitlement();
+    await tick();
+    delete process.env[KEY_VAR];
+    await logOutBilling();
+    release();
+
+    await expect(reading).resolves.toBeNull();
+    expect(sdk.deps.logOut).not.toHaveBeenCalled();
+    expect(sdk.reads).toEqual(['account-a']);
   });
 });
 

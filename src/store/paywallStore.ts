@@ -32,6 +32,8 @@ import { useEntitlementStore } from './entitlementStore';
 export type PaywallNotice =
   | null
   | 'purchased'
+  /** Charged, but the account on the phone changed while it finished (review round 1, item 1). */
+  | 'purchased_elsewhere'
   | 'restored'
   | 'nothing_to_restore'
   | 'unavailable'
@@ -119,6 +121,17 @@ export const usePaywallStore = create<PaywallState>((set) => ({
         trial: result.entitlement.source === 'trial',
       });
       return true;
+    }
+
+    if (result.status === 'purchased_elsewhere') {
+      // Apple charged, but the purchase went to the account that was signed
+      // in when it started (the one on the phone changed while it finished).
+      // Nothing is written: no entitlement on this identity, so no trial
+      // reminder either (`refreshTrialReminder` isn't called). Not a backed-out
+      // purchase, so not `purchase_abandoned`, and the event catalogue is
+      // closed: nothing is counted for it.
+      set({ purchasing: null, notice: 'purchased_elsewhere' });
+      return false;
     }
 
     // 'cancelled' leaves no notice: the user chose to back out.

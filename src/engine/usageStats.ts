@@ -24,11 +24,20 @@
 //     everywhere else. Worked out on every read, so a phone whose region
 //     changes before any choice follows its region.
 //
-// A region that can't be read (null) is treated as not Canada, so the switch
-// starts on there as before. That is a call the owner may want to reverse:
-// it would take `null` into `usageStatsStartOff` below.
+// The phone's region is read two ways (`PhoneRegions`), and the phone counts
+// as Canada when either says so (the main session's call, policy audit of
+// step 203): the Region setting, and the region in the language tag. English
+// (UK) on a phone whose Region is Canada can reach the JavaScript engine as
+// "en-GB", so the tag alone read it as Britain and started Usage stats on.
+// Either reading alone is enough, which errs toward off, the private side.
+// Where the Region setting can't be read (web, tests, a build without the
+// module), the tag decides, as before.
 //
-// Layer rule: L3. Pure: the region is passed in, never read here.
+// A region that can't be read at all (both null) is treated as not Canada, so
+// the switch starts on there as before. That is a call the owner may want to
+// reverse: it would take two nulls into `usageStatsStartOff` below.
+//
+// Layer rule: L3. Pure: the regions are passed in, never read here.
 
 /** The Usage stats setting as the settings store holds it. */
 export interface UsageStatsSetting {
@@ -38,29 +47,48 @@ export interface UsageStatsSetting {
   analyticsChosen: boolean;
 }
 
+/** The two readings of the phone's region, each two letters ("CA") or null. */
+export interface PhoneRegions {
+  /**
+   * Settings → General → Language & Region → Region, or null where it can't
+   * be read (web, tests, a build without expo-localization).
+   */
+  regionSetting: string | null;
+  /** The region in the phone's language tag ("en-GB" gives "GB"), or null. */
+  languageRegion: string | null;
+}
+
 /**
  * The regions where Usage stats start off (owner, 2026-11-19): Canada. Two
- * letters, as the phone's locale names them ("CA").
+ * letters, as the phone's Region setting and its language tag name them
+ * ("CA").
  */
 export const USAGE_STATS_START_OFF_REGIONS: ReadonlySet<string> = new Set(['CA']);
 
-/**
- * Whether Usage stats start off in `region` until the person turns them on.
- * A region that can't be read (null, or not two letters) is not Canada: false.
- */
-export function usageStatsStartOff(region: string | null): boolean {
+/** Whether one reading names a start-off region; one that can't be read doesn't. */
+function startsOffIn(region: unknown): boolean {
   if (typeof region !== 'string' || !/^[a-z]{2}$/i.test(region)) return false;
   return USAGE_STATS_START_OFF_REGIONS.has(region.toUpperCase());
 }
 
 /**
- * Whether Usage stats are on, for the stored `setting` on a phone in `region`
- * (the rules at the top of this file).
+ * Whether Usage stats start off on a phone with these `regions` until the
+ * person turns them on: either reading is Canada. A reading that can't be
+ * read (null, or not two letters) is not Canada, so with both unreadable:
+ * false.
  */
-export function usageStatsOn(setting: UsageStatsSetting, region: string | null): boolean {
+export function usageStatsStartOff(regions: PhoneRegions): boolean {
+  return startsOffIn(regions.regionSetting) || startsOffIn(regions.languageRegion);
+}
+
+/**
+ * Whether Usage stats are on, for the stored `setting` on a phone with these
+ * `regions` (the rules at the top of this file).
+ */
+export function usageStatsOn(setting: UsageStatsSetting, regions: PhoneRegions): boolean {
   if (setting.analyticsEnabled !== true) return false;
   if (setting.analyticsChosen === true) return true;
-  return !usageStatsStartOff(region);
+  return !usageStatsStartOff(regions);
 }
 
 /**
@@ -70,10 +98,10 @@ export function usageStatsOn(setting: UsageStatsSetting, region: string | null):
  * while the phone's region was elsewhere and Usage stats were on by default
  * never go up, even after the person turns them on.
  */
-export function usageStatsOffByRegion(setting: UsageStatsSetting, region: string | null): boolean {
+export function usageStatsOffByRegion(setting: UsageStatsSetting, regions: PhoneRegions): boolean {
   return (
     setting.analyticsEnabled === true &&
     setting.analyticsChosen !== true &&
-    usageStatsStartOff(region)
+    usageStatsStartOff(regions)
   );
 }

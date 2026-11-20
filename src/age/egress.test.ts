@@ -77,7 +77,8 @@ const NETWORK_MARKER_COUNTS: Readonly<Record<string, Readonly<Record<string, num
   'src/ai/refine.ts': { '.functions': 1, 'functions.invoke(': 1, 'getSupabaseClient(': 1 },
   'src/analytics/flush.ts': { '.from(…)': 1, 'getSupabaseClient(': 1 },
   // 13 since round 2, item 1: `Purchases.isAnonymous()` (a local read in the
-  // SDK), reached only through configureBilling and logOutBilling.
+  // SDK), reached only through configureBilling, logOutBilling and
+  // settleOwedLogOut.
   'src/billing/revenuecat.ts': { Purchases: 13, "require('react-native-purchases')": 1 },
   'src/store/authStore.ts': { '.getSession(': 1, '.onAuthStateChange(': 1, 'getSupabaseClient(': 1 },
   'src/supabase/account.ts': {
