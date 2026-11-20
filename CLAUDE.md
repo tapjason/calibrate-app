@@ -1098,18 +1098,32 @@ The reviewing agents read and report; the builder agents write code in their lay
 delegated; the main session owns the branch, the commits and `HANDOFF.md`. Each reviewing agent
 ends with "Needs you" and "Not verified". Browser agents run one at a time.
 
-**Who does what.** All implementation (code and tests, however small) and every
-owner-called review go to Opus subagents, spawned with `model: "opus"` and
-`effort: "xhigh"`. Fable, the main session, keeps design, delegation, evaluating
-screenshots and bugs, and designing playtests, and never implements directly. Design
-subagents (`design-analyst`, `Plan`) run on Fable at `effort: "medium"`, or `"high"` when
-the question touches the record, money, privacy or data loss.
+**Who does what.** Fable, the main session, always does design and orchestration: deciding
+what to build, writing the briefs, choosing each brief's model, evaluating screenshots and
+bugs, and designing playtests. It never implements directly: all code and tests, however
+small, go to a subagent. The subagent's model is weighed for each task (owner, 2026-11-19)
+and passed as the Agent tool's `model`:
+
+- **Opus, at `effort: "xhigh"`**, where a mistake could be silent or costly: the record
+  (the engine, scores, badges, leans, counts, what is scored), sync, migrations and
+  anything that can lose data, sign-in, privacy and the under-13 gate, billing, the Coach's
+  validator and pre-filter; work across layers or many files; a bug whose cause the brief
+  can't pin down; and every owner-called review.
+- **Sonnet, at its usual effort**, where the brief says exactly what to do and a mistake
+  would show in `check.sh` or a screenshot: decided copy going into one screen, a contained
+  style or layout fix, tests for behaviour already specified, mechanical renames and moves,
+  `/new-content`, and searches that only report back.
+- In doubt, Opus. Work from Sonnet that fails the check or looks unsure is re-briefed on
+  Opus. The report says which model each task went to.
+
+Design subagents (`design-analyst`, `Plan`) run on Fable at `effort: "medium"`, or `"high"`
+when the question touches the record, money, privacy or data loss.
 
 | Stage | Subagent | Use it when |
 |---|---|---|
 | Decide | `design-analyst` | Before building a feature, a tuning change, a finding that needs the owner, or an open D number (`/design`) |
 | Decide | `platform-api-checker` | Before relying on an Expo, RN, Supabase, RevenueCat or Apple API, config, entitlement or limit the repo doesn't use yet |
-| Build | `core-domain`, `services`, `mobile-ui` | Code and tests in L1–L4, L5 or L6, spawned on Opus at `xhigh` |
+| Build | `core-domain`, `services`, `mobile-ui` | Code and tests in L1–L4, L5 or L6, spawned on Opus at `xhigh` or on Sonnet, by "Who does what" |
 | Build | `code-reviewer` | Only when the owner calls for a review (he calls one after several features at once, not after every task); inside that review, re-run after fixes (up to 3 rounds); release mode at the gate |
 | Build | `record-auditor` | Inside an owner-called review, when the changes compute, show or explain a score, badge, lean or count, a card or recap, or the Coach context; for `/design` when an option touches the record; the whole app at the gate |
 | Build | `policy-auditor` | Inside an owner-called review, when the changes touch sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy; `/design`'s policy questions; release mode at the gate |
@@ -1119,7 +1133,7 @@ the question touches the record, money, privacy or data loss.
 | Ship | `live-ops-analyst` | After launch only (`/live-review`) |
 
 Don't use a subagent for a quick lookup in this repo or anything the main session already
-knows. Code changes, however small, go to an Opus builder.
+knows. Code changes, however small, go to a builder subagent, never the main session.
 
 ### The iPhone
 

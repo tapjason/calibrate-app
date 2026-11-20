@@ -19,11 +19,17 @@ session.
   and tests in their layer when the main session delegates. Every other agent **reads and
   reports**: it never edits files, never builds, never submits. The main session owns the branch,
   the commits and `HANDOFF.md`; the owner makes the calls marked "your call".
-- **Who does what.** All implementation (code and tests, however small) and every review the owner
-  calls go to Opus subagents, spawned with `model: "opus"` and `effort: "xhigh"`. Fable, the main
-  session, keeps design, delegation, evaluating screenshots and bugs, and designing playtests, and
-  never implements directly. Design subagents (`design-analyst`, `Plan`) run on Fable at `medium`
-  effort, or `high` when the question touches the record, money, privacy or data loss.
+- **Who does what.** Fable, the main session, always does design and orchestration (deciding what
+  to build, the briefs, each brief's model, evaluating screenshots and bugs, designing playtests)
+  and never implements directly: all code and tests, however small, go to a subagent. The model is
+  weighed for each task (owner, 2026-11-19; the criteria are in `CLAUDE.md`, "Who does what"):
+  Opus, spawned with `model: "opus"` and `effort: "xhigh"`, where a mistake could be silent or
+  costly (the record, sync and migrations, sign-in and privacy, billing, the Coach's validator),
+  for work across layers, for a bug with no pinned cause and for every review the owner calls;
+  Sonnet, at its usual effort, where the brief says exactly what to do and a mistake would show in
+  `check.sh` or a screenshot. In doubt, Opus. Design subagents (`design-analyst`, `Plan`) run on
+  Fable at `medium` effort, or `high` when the question touches the record, money, privacy or data
+  loss.
 - **Reviews when the owner calls them.** The code-reviewer and the two auditors run when the owner
   asks for a review (he calls one after several features at once), again on the fixed result
   inside that review (up to three rounds), and in release mode at `/release-gate`; never after
@@ -59,7 +65,7 @@ session.
 | --- | --- | --- | --- | --- | --- |
 | 1 Decide | Before a feature, a tuning change, a playtest finding that needs the owner, or an open D number | `design-analyst` | Is it worth building, and which option? | Options ranked, a draft decision row, "your call" items | `/design` |
 | 1 Decide | Before code relies on an Expo, RN, Supabase, RevenueCat or Apple API, config, entitlement or limit the repo doesn't use yet | `platform-api-checker` | What do the version-matched docs say, and does it need a new build? | Verified / partly verified / not documented | `/design`, `/step` |
-| 2 Build | Any code or tests in one layer, however small (on Opus at `xhigh`) | `core-domain`, `services`, `mobile-ui` | (They build, then hand back) | Code and tests | `/step` |
+| 2 Build | Any code or tests in one layer, however small (on Opus at `xhigh` or on Sonnet, weighed per task) | `core-domain`, `services`, `mobile-ui` | (They build, then hand back) | Code and tests | `/step` |
 | 2 Build | A review the owner calls of changes to `app/`, `src/`, `supabase/` or config (after several features at once), again after fixes (up to three rounds) | `code-reviewer` | What breaks on a real iPhone? | BLOCKER / should-fix / nit | The owner, `/release-gate` |
 | 2 Build | Inside a review the owner calls, a change to anything that computes, shows or explains a score, badge, lean or count, a card or recap, or the Coach context | `record-auditor` | Is the record still honest? | HOLDS / BROKEN / NEEDS HUMAN | The owner, `/design`, `/release-gate` |
 | 2 Build | Inside a review the owner calls, a change to sign-in, notifications, data leaving the phone, analytics, the Coach, permissions, the paywall, age assurance or store copy | `policy-auditor` | Does it break an Apple or project rule? | PASS / FAIL / NEEDS HUMAN | The owner, `/design`, `/release-gate` |
@@ -163,8 +169,8 @@ invoked by the model; the rest have `disable-model-invocation: true` (the user s
 - **`/design <D number | finding | idea>`:** `design-analyst`, then the checker and auditors on
   what it raises; the owner picks (AskUserQuestion); the pick becomes a D-number row in
   UI_ROADMAP §2 and, if it's to be built, an item in SHIP_READINESS "Open work".
-- **`/step <n | topic>`:** a `builder/<topic>` branch; verify APIs, implement through an Opus
-  builder, check, look, record in BUILT_LOG, the decision row, SHIP_READINESS "Open work" and
+- **`/step <n | topic>`:** a `builder/<topic>` branch; verify APIs, implement through a builder
+  subagent (Opus or Sonnet, weighed per task), check, look, record in BUILT_LOG, the decision row, SHIP_READINESS "Open work" and
   HANDOFF (the step listed as unreviewed), commit once the check exits 0; then the owner's iPhone
   checks. No review unless the owner asks for one.
 - **`/playtest`:** the web server, `web-playtester`, then one `blind-playtester` run per persona,

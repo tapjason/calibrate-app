@@ -344,10 +344,11 @@ the beta app description and review information before outside testers. Everythi
 
 ## Working rules
 
-Reviews only on the owner's call. All code and tests, and the reviews he calls, are done by
-Opus subagents at `xhigh` effort; design, evaluation of screenshots and bugs, playtest design
-and delegation are done by Fable (the main session), which doesn't implement directly (owner,
-2026-11-16).
+Reviews only on the owner's call. Design, evaluation of screenshots and bugs, playtest design
+and orchestration are always done by Fable (the main session), which doesn't implement
+directly (owner, 2026-11-16). All code and tests go to subagents, the model weighed per task
+(owner, 2026-11-19; `CLAUDE.md`, "Who does what"): Opus at `xhigh` effort for risky or
+judgment work and for the reviews he calls, Sonnet for well-specified, low-stakes work.
 
 ## Checks
 
