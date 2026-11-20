@@ -1,6 +1,7 @@
 // fetchCoachInsights must never throw, never call out for a free user, and
-// never let distress freetext reach the network. The Supabase client is faked
-// end-to-end — the real SDK and the network are never touched.
+// send nothing but the computed context (D73: no scan of the person's words,
+// and none of them taken in). The Supabase client is faked end-to-end — the
+// real SDK and the network are never touched.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -67,7 +68,7 @@ describe('fetchCoachInsights — gating', () => {
 
     const out = await fetchCoachInsights(CONTEXT, false, { client });
 
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
+    expect(out).toEqual({ insights: [], safe: true, ok: false });
     expect(calls).toHaveLength(0);
   });
 
@@ -84,7 +85,6 @@ describe('fetchCoachInsights — gating', () => {
     expect(out).toEqual({
       insights: [],
       safe: true,
-      crisisTopic: null,
       ok: false,
       failure: 'nothing_scored',
     });
@@ -113,47 +113,24 @@ describe('fetchCoachInsights — gating', () => {
 
   it('returns empty when Supabase is unavailable', async () => {
     const out = await fetchCoachInsights(CONTEXT, true, { client: null });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
+    expect(out).toEqual({ insights: [], safe: true, ok: false });
   });
 });
 
-// COACH_AGENT.md §5.5 — the pre-filter runs BEFORE the coaching call, so
-// distress content never becomes coaching input in the first place.
-describe('fetchCoachInsights — crisis pre-filter', () => {
-  it('suppresses the request entirely when freetext signals distress', async () => {
+// D73 (2026-11-20): no on-device scan and no support surface. The module
+// takes the computed context alone, sends it alone, and returns an answer as
+// an answer: there is no topic to name.
+describe('fetchCoachInsights — the computed context only (D73)', () => {
+  it('sends the context and nothing else, and names no topic', async () => {
     const { client, calls } = ok({ insights: [INSIGHT], safe: true });
 
-    const out = await fetchCoachInsights(CONTEXT, true, {
-      client,
-      freetext: ['Ship the beta', 'I want to die'],
-    });
-
-    expect(out.safe).toBe(false);
-    expect(out.insights).toEqual([]);
-    expect(out.crisisTopic).toBe('self_harm');
-    // The load-bearing assertion: nothing left the device.
-    expect(calls).toHaveLength(0);
-  });
-
-  it('names the topic so the caller can pick the right support resource', async () => {
-    const { client } = ok({ insights: [], safe: true });
-    const out = await fetchCoachInsights(CONTEXT, true, {
-      client,
-      freetext: ['I will starve myself until the weigh-in'],
-    });
-    expect(out.crisisTopic).toBe('eating_disorder');
-  });
-
-  it('proceeds normally on ordinary freetext', async () => {
-    const { client, calls } = ok({ insights: [INSIGHT], safe: true });
-
-    const out = await fetchCoachInsights(CONTEXT, true, {
-      client,
-      freetext: ['Ship the beta by Friday'],
-    });
+    const out = await fetchCoachInsights(CONTEXT, true, { client });
 
     expect(calls).toHaveLength(1);
+    expect(calls[0].body).toEqual({ context: CONTEXT });
+    expect(out).toMatchObject({ safe: true, ok: true });
     expect(out.insights).toHaveLength(1);
+    expect(out).not.toHaveProperty('crisisTopic');
   });
 });
 
@@ -166,7 +143,6 @@ describe('fetchCoachInsights — happy path', () => {
     expect(calls[0].name).toBe('coach');
     expect(calls[0].body).toEqual({ context: CONTEXT });
     expect(out.insights).toHaveLength(1);
-    expect(out.crisisTopic).toBeNull();
   });
 
   // The server validates too, but the client is the last thing between a bad
@@ -183,10 +159,12 @@ describe('fetchCoachInsights — happy path', () => {
     expect(out.insights[0].evidence).toBe(80);
   });
 
-  it('passes a server-side unsafe verdict through', async () => {
-    const { client } = ok({ insights: [], safe: false });
+  // D73: only the model could still send one. An answer with no insights,
+  // which the store and the panel show as one with nothing to say.
+  it('passes a server-side unsafe verdict through as an answer with no insights', async () => {
+    const { client } = ok({ insights: [INSIGHT], safe: false });
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out.safe).toBe(false);
+    expect(out).toEqual({ insights: [], safe: false, ok: true });
   });
 
   // An empty answer and a missing answer look identical in `insights`, so
@@ -194,7 +172,7 @@ describe('fetchCoachInsights — happy path', () => {
   it('treats zero insights as an ordinary answer, not an absence', async () => {
     const { client } = ok({ insights: [], safe: true });
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: true });
+    expect(out).toEqual({ insights: [], safe: true, ok: true });
   });
 
   // Item 12 (2026-11-19): an answer whose insights were all dropped is told
@@ -207,7 +185,6 @@ describe('fetchCoachInsights — happy path', () => {
       await expect(fetchCoachInsights(CONTEXT, true, { client })).resolves.toEqual({
         insights: [],
         safe: true,
-        crisisTopic: null,
         ok: true,
         droppedAll: true,
       });
@@ -242,7 +219,7 @@ describe('fetchCoachInsights — happy path', () => {
       expect(await fetchCoachInsights(CONTEXT, true, { client })).not.toHaveProperty('droppedAll');
     });
 
-    it('never marks the crisis path', async () => {
+    it('never marks an answer marked safe: false', async () => {
       const { client } = ok({ insights: [BAD], safe: false, dropped: 1 });
       const out = await fetchCoachInsights(CONTEXT, true, { client });
       expect(out.safe).toBe(false);
@@ -269,7 +246,7 @@ describe('fetchCoachInsights — failure modes', () => {
       error: { message: 'rate limited' },
     }));
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
+    expect(out).toEqual({ insights: [], safe: true, ok: false });
   });
 
   it('returns empty on a malformed body', async () => {
@@ -283,7 +260,7 @@ describe('fetchCoachInsights — failure modes', () => {
       throw new Error('network down');
     });
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
+    expect(out).toEqual({ insights: [], safe: true, ok: false });
   });
 
   it('returns empty when the request times out', async () => {
@@ -294,7 +271,7 @@ describe('fetchCoachInsights — failure modes', () => {
       client,
       timeoutMs: 10,
     });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
+    expect(out).toEqual({ insights: [], safe: true, ok: false });
   });
 
   it('never throws, whatever the endpoint does', async () => {
@@ -329,7 +306,6 @@ describe('fetchCoachInsights — the server could not confirm Plus', () => {
       await expect(fetchCoachInsights(CONTEXT, true, { client })).resolves.toEqual({
         insights: [],
         safe: true,
-        crisisTopic: null,
         ok: false,
         failure: 'not_entitled',
       });
@@ -339,7 +315,7 @@ describe('fetchCoachInsights — the server could not confirm Plus', () => {
   it.each([401, 429, 500, 502])('leaves a %i unnamed', async (status) => {
     const { client } = httpError(status);
     const out = await fetchCoachInsights(CONTEXT, true, { client });
-    expect(out).toEqual({ insights: [], safe: true, crisisTopic: null, ok: false });
+    expect(out).toEqual({ insights: [], safe: true, ok: false });
     expect(out.failure).toBeUndefined();
   });
 

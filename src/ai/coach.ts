@@ -16,17 +16,17 @@
 // Gating, in the order it is applied:
 //   1. Plus entitlement — the caller passes `isPlus`; false means no request
 //      is made at all, not a request that gets rejected.
-//   2. Crisis pre-filter (§5.5) — runs BEFORE the network call, so distress
-//      content never becomes coaching input. Returns `safe: false` and the
-//      caller shows the support surface instead.
-//   3. The under-13 rule (roadmap D70) — on a local-only phone the Coach is
+//   2. The under-13 rule (roadmap D70) — on a local-only phone the Coach is
 //      off, and on a launch that asks Apple it waits for the answer
 //      (`uploadsMayStart`, as sign-in, billing and sync do; review round 2,
-//      item 4): the empty result, before any client is built. After the
-//      crisis pre-filter, which sends nothing, so the support surface still
-//      shows if a Coach panel is ever asked on such a phone.
-//   4. Minimum-N — a user with no scored answer gets no request either
+//      item 4): the empty result, before any client is built.
+//   3. Minimum-N — a user with no scored answer gets no request either
 //      (`failure: 'nothing_scored'`).
+//
+// No words of the person's reach this module (D73, 2026-11-20): it takes the
+// computed context and nothing else, and buildCoachContext has no freetext
+// channel. There is no on-device scan of titles or notes and no support
+// surface; the Coach answers everyone the same way.
 //
 // The server validates too. This module validates again on the way back
 // because the client is the last thing between a bad payload and the screen.
@@ -38,7 +38,6 @@ import { getSupabaseClient, isSupabaseConfigured } from '@/supabase/client';
 import type { CoachContext, CoachOutput } from '@/types';
 
 import { validateCoachOutput } from './coachValidate';
-import { scanForCrisis, type CrisisTopic } from './crisisFilter';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 
@@ -52,7 +51,6 @@ const DEFAULT_TIMEOUT_MS = 12_000;
 const empty = (): CoachResult => ({
   insights: [],
   safe: true,
-  crisisTopic: null,
   ok: false,
 });
 
@@ -66,11 +64,6 @@ const empty = (): CoachResult => ({
 export type CoachFailure = 'not_entitled' | 'nothing_scored';
 
 export interface CoachResult extends CoachOutput {
-  /**
-   * Set when the crisis pre-filter tripped. The caller renders the support
-   * surface for this topic instead of any coaching (§5.5).
-   */
-  crisisTopic: CrisisTopic | null;
   /**
    * Whether this is an answer or an absence.
    *
@@ -97,12 +90,6 @@ export interface CoachDeps {
   client?: SupabaseClient | null;
   /** Timeout in ms; default 12000. */
   timeoutMs?: number;
-  /**
-   * Freetext to screen before making the call. Empty by default, because §4
-   * excludes freetext from the payload — this exists so a caller that has
-   * reflections on hand can have them screened even though they are never sent.
-   */
-  freetext?: ReadonlyArray<string | null | undefined>;
 }
 
 /**
@@ -120,18 +107,12 @@ export async function fetchCoachInsights(
   //    network call to intercept and no cost to incur.
   if (!isPlus) return empty();
 
-  // 2. Crisis pre-filter, before anything leaves the device.
-  const scan = scanForCrisis(deps.freetext ?? []);
-  if (!scan.safe) {
-    return { insights: [], safe: false, crisisTopic: scan.topic, ok: true };
-  }
-
-  // 3. The under-13 rule (D70): nothing leaves the phone, so no request, and
+  // 2. The under-13 rule (D70): nothing leaves the phone, so no request, and
   //    no client is built; nor while Apple's answer is still pending on a
   //    launch that asks (a fail-silent no-op, like any other absence).
   if (!uploadsMayStart()) return empty();
 
-  // 4. Nothing answered means nothing to interpret. Skipping the call here
+  // 3. Nothing answered means nothing to interpret. Skipping the call here
   //    saves a round trip that could only ever return "keep logging". Named,
   //    so the panel says why instead of "unavailable" (step 189): on a fresh
   //    install whose only answer was same-day, that read as an outage.
@@ -157,7 +138,9 @@ export async function fetchCoachInsights(
     }
 
     const validated = validateCoachOutput(result.data, context);
-    const out: CoachResult = { ...validated, crisisTopic: null, ok: true };
+    // An answer marked `safe: false` comes back with no insights (the
+    // validator's rule), and is shown as one with nothing to say (D73).
+    const out: CoachResult = { ...validated, ok: true };
     if (allDropped(result.data, validated)) out.droppedAll = true;
     return out;
   } catch (e) {

@@ -11,7 +11,7 @@ If the app's name changes, update it here. Not legal advice.
 
 # Fairly Sure Privacy Policy
 
-**Effective:** November 18, 2026 · **Contact:** tapjason-dev@gmail.com
+**Effective:** November 20, 2026 · **Contact:** tapjason-dev@gmail.com
 
 Fairly Sure ("the app") is made by Jason Zou. This policy says what
 the app collects, why, who else handles it, and how to delete it. It's written
@@ -114,10 +114,6 @@ reflections, no email address.**
 Our server forwards that summary to OpenAI to generate the feedback. OpenAI
 processes it under its API terms, which state that API data isn't used to train
 their models by default.
-
-Before any Coach request, the app checks your predictions and reflections **on
-your device** for signs of distress. If it finds any, it shows you support resources instead of
-contacting the Coach. That check never sends your text anywhere.
 
 ## 4. Who else handles your data
 

@@ -30,7 +30,7 @@ const CONTEXT: CoachContext = {
   patterns: [{ kind: 'weakest_day_score', value: 58 }],
 };
 
-const EMPTY = { insights: [], safe: true, crisisTopic: null, ok: false };
+const EMPTY = { insights: [], safe: true, ok: false };
 
 /** A client whose every property access throws, and the properties tried. */
 function throwingClient(): { client: SupabaseClient; touched: string[] } {
@@ -72,19 +72,6 @@ describe('the Coach under the rule (D70)', () => {
     expect(own.touched).toEqual([]);
   });
 
-  // The crisis pre-filter sends nothing, so it still runs: the support
-  // surface shows if the Coach is ever asked on such a phone.
-  it('still shows the support surface for distress words, sending nothing', async () => {
-    useAgeStore.getState().load(UNDER_13, { willAsk: false });
-    const { client, touched } = throwingClient();
-
-    const out = await fetchCoachInsights(CONTEXT, true, { client, freetext: ['I want to kill myself'] });
-
-    expect(out).toMatchObject({ safe: false, insights: [] });
-    expect(out.crisisTopic).not.toBeNull();
-    expect(touched).toEqual([]);
-  });
-
   it('without the rule, the same call reaches the client', async () => {
     const { client, touched } = throwingClient();
 
@@ -113,16 +100,6 @@ describe("the AI clients while Apple's answer is pending", () => {
     useAgeStore.getState().markSettled();
     await fetchCoachInsights(CONTEXT, true, { client: passed.client });
     expect(passed.touched).toContain('functions');
-  });
-
-  it('the Coach still shows the support surface for distress words, sending nothing', async () => {
-    useAgeStore.getState().load(null, { willAsk: true });
-    const { client, touched } = throwingClient();
-
-    const out = await fetchCoachInsights(CONTEXT, true, { client, freetext: ['I want to kill myself'] });
-
-    expect(out).toMatchObject({ safe: false, insights: [] });
-    expect(touched).toEqual([]);
   });
 
   it('an under-13 answer then keeps the Coach off', async () => {

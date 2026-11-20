@@ -149,14 +149,14 @@ alone.
 **Layer 5 — Services.** `src/supabase/` (client, auth, sync, account deletion),
 `src/notifications/` (due-day reminders, the weekly digest, the practice and
 trial-ending reminders, the permission ask), `src/ai/` (the Coach client, its context,
-validator and crisis pre-filter; the dormant `refine.ts`), `src/billing/` (RevenueCat
+validator; the dormant `refine.ts`), `src/billing/` (RevenueCat
 behind a deps seam), `src/analytics/`, `src/share/`, `src/export/`, `src/review/`,
 `src/age/`, `src/media/`, `src/lock/`; on the server, `supabase/migrations/` and the
 Edge Functions in `supabase/functions/`. Rules: every service fails silently; every
 Edge Function verifies the caller's JWT (the webhook a shared secret), rate-limits per
 user and caps input and `max_tokens` (`CLAUDE.md` "Backend Proxy Architecture"); the
-Coach checks Plus server-side and runs the crisis pre-filter before any model call
-(`COACH_AGENT.md` §5).
+Coach checks Plus server-side and sends the model numbers only, never words the person
+typed (`COACH_AGENT.md` §4, §5; the on-device distress check was removed by D73).
 
 **Layer 6 — Presentation.** `app/` (expo-router: the tabs Today, Insights, History and
 You; Log, Resolve, Prediction, Practice, Share, Categories and How scoring works as

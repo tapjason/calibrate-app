@@ -22,7 +22,7 @@ Always re-read the current rules for the areas in scope before judging; they cha
 
 Apple rules that always hold for this app:
 
-1. **1.1 / 1.4:** our copy, the Coach's prompts and its validated output give no medical, financial or legal advice and no numeric diet or exercise targets; the crisis pre-filter routes distress to the support surface, never to the model.
+1. **1.1 / 1.4:** our copy, the Coach's prompts and its validated output give no medical, financial or legal advice, no numeric diet or exercise targets and no referrals; no words the person typed reach the model. The app has no distress check and names no helpline (D73, the owner, 2026-11-20): don't raise that as a finding unless a law or Apple rule requires one, cited, as NEEDS HUMAN.
 2. **2.3 Accurate metadata:** screenshots and copy show what ships; the age rating is truthful (AI features count toward content frequency; age assurance answered Yes on a build that asks Declared Age Range).
 3. **3.1.1 / 3.1.2 In-app purchase and subscriptions:** Plus is sold only through IAP (RevenueCat over StoreKit); Restore Purchases is reachable; the paywall states the price, the period, that the trial converts, and how to cancel (24 hours before renewal); links to the Terms of Use and the privacy policy are on the paywall; no link-out checkout.
 4. **4.5.4 Notifications:** local only, not required for the app to work, no marketing, asked in context; the trial reminder (D16) carries no offer.

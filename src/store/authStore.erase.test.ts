@@ -1,8 +1,8 @@
 // Guest Erase removes everything on the phone, whoever's it was (main
 // session decision 2026-11-19), and what else is kept per account goes with
-// it; and the support card's set-asides go with Erase, a confirmed account
-// deletion and sign-out (2026-11-19). The services are mocked; the store and
-// the account markers run for real.
+// it; the settings stay, but for the few Erase and a confirmed account
+// deletion reset, and sign-out writes none. The services are mocked; the
+// store and the account markers run for real.
 
 jest.mock('@/supabase/auth', () => ({
   signInWithEmail: jest.fn(),
@@ -55,7 +55,6 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 
 import * as localAccount from '@/db/account';
 import { LOCAL_GUEST_USER_ID } from '@/db/migrateGuestData';
-import { supportAsideKey } from '@/engine/supportAside';
 import * as serverAccount from '@/supabase/account';
 import * as auth from '@/supabase/auth';
 import {
@@ -131,22 +130,36 @@ async function launch(stored: Session | null): Promise<void> {
   await useAuthStore.getState().initialize();
 }
 
-const KEY = supportAsideKey({ id: 'p1', title: 'I want to die before this ships', reflection: null });
+/**
+ * A settings record holding a choice of the person's that nothing here resets
+ * (Notifications off) and the three Erase and a confirmed deletion reset: the
+ * card's left-off categories, the streak moment's day and when the line about
+ * usage counts was shown.
+ */
+const RECORD: Partial<StoredSettings> = {
+  notificationsEnabled: false,
+  cardHiddenCategories: ['work'],
+  streakMomentDay: 'Thu Nov 19 2026',
+  usageNoticeShownAt: '2026-11-01T09:00:00.000Z',
+};
+/** The three after Erase or a confirmed deletion. */
+const RESET = { cardHiddenCategories: [], streakMomentDay: null, usageNoticeShownAt: null };
 
 let markerStorage: MemoryStorage;
 let saves: StoredSettings[];
 
-/** Settings read from a record holding one set-aside, and every write after. */
-async function settingsWithOneSetAside(): Promise<void> {
+/** Settings read from RECORD, and every write after. */
+async function settingsRead(): Promise<void> {
   saves = [];
   __setPersistenceForTests({
-    load: async () => ({ supportAsideKeys: [KEY], notificationsEnabled: false }),
+    load: async () => ({ ...RECORD }),
     save: async (s) => {
       saves.push(s);
     },
   });
   await useSettingsStore.getState().hydrate();
-  expect(useSettingsStore.getState().supportAsideKeys).toEqual([KEY]);
+  expect(useSettingsStore.getState()).toMatchObject(RECORD);
+  expect(saves).toHaveLength(0);
 }
 
 const guest = () =>
@@ -158,7 +171,7 @@ beforeEach(async () => {
   useAuthStore.getState().reset();
   markerStorage = new MemoryStorage();
   __resetAuthMarkersForTests(markerStorage);
-  await settingsWithOneSetAside();
+  await settingsRead();
   wipe.mockResolvedValue(undefined);
   wipeAll.mockResolvedValue([]);
   mockedAuth.signOut.mockResolvedValue({ ok: true });
@@ -223,7 +236,9 @@ describe('guest Erase takes everything on the phone', () => {
     expect(owedWipes()).toEqual([{ userId: 'owed-sign-out', reason: 'signOut' }]);
     expect(clearCursor()).not.toHaveBeenCalled();
     expect(useWarmupStore.getState().retake).not.toHaveBeenCalled();
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([KEY]);
+    // Nothing after the wipe ran: the settings are as they were, unwritten.
+    expect(useSettingsStore.getState()).toMatchObject(RECORD);
+    expect(saves).toHaveLength(0);
   });
 
   it('waits while a sign-in is under way, touching nothing', async () => {
@@ -241,55 +256,64 @@ describe('guest Erase takes everything on the phone', () => {
     expect(wipeAll).toHaveBeenCalledTimes(1);
   });
 
-  it('forgets the support card’s set-asides', async () => {
+  it('resets the card choices, the streak moment and the usage line, and keeps every other setting', async () => {
     guest();
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
-    expect(saves[saves.length - 1]).not.toHaveProperty('supportAsideKeys');
-    // Settings themselves stay.
-    expect(useSettingsStore.getState().notificationsEnabled).toBe(false);
+    expect(useSettingsStore.getState()).toMatchObject({ ...RESET, notificationsEnabled: false });
+    expect(saves[saves.length - 1]).toMatchObject({ ...RESET, notificationsEnabled: false });
   });
 });
 
-describe('the support card’s set-asides leave with the account’s rows', () => {
-  it('a confirmed account deletion forgets them', async () => {
+// D73 (2026-11-20): with the support card's set-asides gone, sign-out writes
+// no settings, and a confirmed deletion writes only the three it resets.
+describe('the settings when the account’s rows leave', () => {
+  it('a confirmed account deletion resets the three, and keeps every other setting', async () => {
     useAuthStore.setState({ userId: 'user-1', email: 'a@b.co', status: 'authenticated', hasAppleIdentity: false });
     server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(useSettingsStore.getState()).toMatchObject({ ...RESET, notificationsEnabled: false });
+    expect(saves[saves.length - 1]).toMatchObject({ ...RESET, notificationsEnabled: false });
   });
 
-  it('a deletion the server refused keeps them', async () => {
+  it('a deletion the server refused writes no settings', async () => {
     useAuthStore.setState({ userId: 'user-1', email: 'a@b.co', status: 'authenticated', hasAppleIdentity: false });
     server.deleteAccountOnServer.mockResolvedValue({ ok: false, error: 'nope' });
 
     await useAuthStore.getState().deleteAccount();
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([KEY]);
+    expect(useSettingsStore.getState()).toMatchObject(RECORD);
+    expect(saves).toHaveLength(0);
   });
 
-  it('sign-out forgets them: each key hashes the words', async () => {
+  it('sign-out writes no settings', async () => {
     await launch(sessionFor('user-1'));
 
     await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(wipe).toHaveBeenCalledWith('user-1', { deviceData: false, keepIntegrityCounts: true });
+    expect(useSettingsStore.getState()).toMatchObject(RECORD);
+    expect(saves).toHaveLength(0);
   });
 
-  it('a sign-out that stops to ask first keeps them', async () => {
+  it('a sign-out that stops to ask first writes none either', async () => {
     const { countUnsynced } = jest.requireMock('@/db/predictions') as { countUnsynced: jest.Mock };
     countUnsynced.mockResolvedValueOnce(2);
     await launch(sessionFor('user-1'));
 
     await expect(useAuthStore.getState().signOut()).resolves.toMatchObject({ ok: false, unsynced: 2 });
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([KEY]);
+    expect(useSettingsStore.getState()).toMatchObject(RECORD);
+    expect(saves).toHaveLength(0);
   });
 
   // The auth store starts before the settings are read (app/_layout.tsx): a
-  // wipe retried at launch must not store the defaults over the record, and
-  // (review, 2026-11-19) its clear is applied as soon as the record is read.
-  it('a wipe retried at launch writes no settings before they are read, and clears the keys right after', async () => {
+  // wipe retried at launch must not store the defaults over the record. Once
+  // read, a record a development build left holding the retired set-asides is
+  // rewritten without them, as read.
+  it('a sign-out’s wipe retried at launch writes no settings, and the read then drops only the retired set-asides', async () => {
     const save = jest.fn(async (_s: StoredSettings) => {});
-    __setPersistenceForTests({ load: async () => ({ supportAsideKeys: [KEY], notificationsEnabled: false }), save });
+    __setPersistenceForTests({
+      load: async () => ({ ...RECORD, supportAsideKeys: ['p1#0123456789abcdef'] }) as Partial<StoredSettings>,
+      save,
+    });
     expect(useSettingsStore.getState().hydrated).toBe(false);
     await addOwedWipe('signed-out-earlier', 'signOut');
 
@@ -298,164 +322,92 @@ describe('the support card’s set-asides leave with the account’s rows', () =
     expect(wipe).toHaveBeenCalledWith('signed-out-earlier', { deviceData: false, keepIntegrityCounts: true });
     expect(save).not.toHaveBeenCalled();
     await useSettingsStore.getState().hydrate();
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
     expect(save).toHaveBeenCalledTimes(1);
-    expect(save.mock.calls[0]![0]).toMatchObject({ notificationsEnabled: false });
+    expect(save.mock.calls[0]![0]).toMatchObject(RECORD);
     expect(save.mock.calls[0]![0]).not.toHaveProperty('supportAsideKeys');
   });
 
-  it('an owed deletion’s wipe retried at launch clears them too, once the settings are read', async () => {
+  it('an owed deletion’s wipe retried at launch writes no settings, before the read or after', async () => {
     const save = jest.fn(async (_s: StoredSettings) => {});
-    __setPersistenceForTests({ load: async () => ({ supportAsideKeys: [KEY] }), save });
+    __setPersistenceForTests({ load: async () => ({ ...RECORD }), save });
     await addOwedWipe('deleted-earlier', 'deletion');
 
     await launch(null);
     expect(save).not.toHaveBeenCalled();
     await useSettingsStore.getState().hydrate();
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(save).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState()).toMatchObject(RECORD);
   });
 });
 
-// Review 2026-11-19, item 3: guest Erase with a settings record that can't be
-// read used to clear the keys in memory only, leaving them on disk.
-describe('guest Erase with a settings record that cannot be read', () => {
-  it('replaces the record, so no key stays on disk, with every privacy choice on its private side', async () => {
-    let stored: Partial<StoredSettings> | null = { supportAsideKeys: [KEY], notificationsEnabled: false };
-    saves = [];
-    __setPersistenceForTests({
-      load: async () => {
-        throw new Error('read failed');
-      },
-      save: async (s) => {
-        saves.push(s);
-        stored = s;
-      },
-    });
-    await useSettingsStore.getState().hydrate();
-    expect(useSettingsStore.getState().loadFailed).toBe(true);
-    guest();
-
-    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
-
-    expect(stored).not.toHaveProperty('supportAsideKeys');
-    expect(stored).toMatchObject({ appLock: true, hideTitles: true, reminderWords: false, analyticsEnabled: false });
-    expect(useSettingsStore.getState().loadFailed).toBe(false);
-  });
-
-  it('keeps a record that reads at the second try, without the keys', async () => {
-    let readable = false;
-    let stored: Partial<StoredSettings> = { supportAsideKeys: [KEY], notificationsEnabled: false };
-    __setPersistenceForTests({
-      load: async () => {
-        if (!readable) throw new Error('read failed');
-        return stored;
-      },
-      save: async (s) => {
-        stored = s;
-      },
-    });
-    await useSettingsStore.getState().hydrate();
-    readable = true;
-    guest();
-
-    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
-
-    expect(stored).toMatchObject({ notificationsEnabled: false });
-    expect(stored).not.toHaveProperty('supportAsideKeys');
-  });
-});
-
-// Re-review round two, 2026-11-19, item 4: sign-out and account deletion
-// only held the clear in memory while the settings record couldn't be read,
-// so a record that read again after a restart brought the hashes back. They
-// replace it now, as guest Erase does (main session's call).
-describe('sign-out and account deletion with a settings record that cannot be read', () => {
-  const PRIVATE = { appLock: true, hideTitles: true, reminderWords: false, analyticsEnabled: false };
-
-  /** A record holding a set-aside that can't be read until heal(). */
+// A settings record that can't be read is left in place (D73): Erase's and a
+// confirmed deletion's changes are automatic ones, held in memory and applied
+// over the record once it reads; sign-out has none. Until 2026-11-20 each
+// replaced the record, for the support card's set-asides it might hold.
+describe('a settings record that cannot be read', () => {
+  /** RECORD, unreadable until heal(). */
   function unreadableRecord() {
-    let stored: Partial<StoredSettings> | null = { supportAsideKeys: [KEY], notificationsEnabled: false };
+    let stored: Partial<StoredSettings> | null = { ...RECORD };
     let readable = false;
+    const written: StoredSettings[] = [];
     __setPersistenceForTests({
       load: async () => {
         if (!readable) throw new Error('read failed');
         return stored;
       },
-      save: async (s) => {
-        stored = s;
+      save: async (next) => {
+        written.push(next);
+        stored = next;
       },
     });
     return {
       stored: () => stored,
+      written,
       heal: () => {
         readable = true;
       },
     };
   }
 
-  /** A later launch that reads the record. */
-  async function restartAndRead(rec: ReturnType<typeof unreadableRecord>): Promise<void> {
-    rec.heal();
-    await useSettingsStore.getState().hydrate();
-    expect(useSettingsStore.getState().loadFailed).toBe(false);
-  }
-
-  it('sign-out replaces the record, private sides on, so no key comes back', async () => {
+  it('guest Erase finishes, writes nothing over it, and its changes land once it reads', async () => {
     const rec = unreadableRecord();
     await useSettingsStore.getState().hydrate();
     expect(useSettingsStore.getState().loadFailed).toBe(true);
-    await launch(sessionFor('user-1'));
+    guest();
 
-    await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
+    await expect(useAuthStore.getState().eraseDeviceData()).resolves.toEqual({ ok: true });
+    expect(rec.written).toHaveLength(0);
+    expect(rec.stored()).toEqual(RECORD);
 
-    expect(rec.stored()).not.toHaveProperty('supportAsideKeys');
-    expect(rec.stored()).toMatchObject(PRIVATE);
+    rec.heal();
+    await useSettingsStore.getState().retryLoad();
     expect(useSettingsStore.getState().loadFailed).toBe(false);
-    await restartAndRead(rec);
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(rec.stored()).toMatchObject({ ...RESET, notificationsEnabled: false });
   });
 
-  it('a confirmed account deletion replaces it too', async () => {
+  it('a confirmed account deletion does the same', async () => {
     const rec = unreadableRecord();
     await useSettingsStore.getState().hydrate();
     useAuthStore.setState({ userId: 'user-1', email: 'a@b.co', status: 'authenticated', hasAppleIdentity: false });
     server.deleteAccountOnServer.mockResolvedValue({ ok: true, appleRevoked: false });
 
     await expect(useAuthStore.getState().deleteAccount()).resolves.toEqual({ ok: true, appleNotRevoked: false });
+    expect(rec.written).toHaveLength(0);
 
-    expect(rec.stored()).not.toHaveProperty('supportAsideKeys');
-    expect(rec.stored()).toMatchObject(PRIVATE);
-    await restartAndRead(rec);
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    rec.heal();
+    await useSettingsStore.getState().retryLoad();
+    expect(rec.stored()).toMatchObject({ ...RESET, notificationsEnabled: false });
   });
 
-  it('a record that reads at the second try keeps its settings, without the keys', async () => {
+  it('sign-out leaves it as it is', async () => {
     const rec = unreadableRecord();
     await useSettingsStore.getState().hydrate();
     await launch(sessionFor('user-1'));
-    rec.heal();
 
     await expect(useAuthStore.getState().signOut()).resolves.toEqual({ ok: true });
-
-    expect(rec.stored()).toMatchObject({ notificationsEnabled: false });
-    expect(rec.stored()).not.toHaveProperty('supportAsideKeys');
-  });
-
-  it('a sign-out’s wipe retried at launch, before a read that fails: replaced once the read has failed', async () => {
-    const rec = unreadableRecord();
-    expect(useSettingsStore.getState().hydrated).toBe(false);
-    await addOwedWipe('signed-out-earlier', 'signOut');
-
-    await launch(null);
-    // Nothing written before the record has been read.
-    expect(rec.stored()).toHaveProperty('supportAsideKeys', [KEY]);
-
-    await useSettingsStore.getState().hydrate();
-    expect(rec.stored()).not.toHaveProperty('supportAsideKeys');
-    expect(rec.stored()).toMatchObject(PRIVATE);
-    expect(useSettingsStore.getState().loadFailed).toBe(false);
-    await restartAndRead(rec);
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(rec.written).toHaveLength(0);
+    expect(rec.stored()).toEqual(RECORD);
+    expect(useSettingsStore.getState().loadFailed).toBe(true);
   });
 });
 
@@ -484,7 +436,7 @@ describe('guest Erase finishes its cleanup when one step throws', () => {
     expect(useLogDraftStore.getState().clear).toHaveBeenCalledTimes(1);
     expect(usePracticeStore.getState().clear).toHaveBeenCalledTimes(1);
     expect(useResolveRunStore.getState().forget).toHaveBeenCalledTimes(1);
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(useSettingsStore.getState()).toMatchObject(RESET);
     expect(usePredictionStore.getState().loadResolved).toHaveBeenCalled();
     expect(dismissAll()).toHaveBeenCalledTimes(1);
     expect(sweepExports()).toHaveBeenCalledTimes(1);
@@ -503,7 +455,7 @@ describe('guest Erase finishes its cleanup when one step throws', () => {
     } finally {
       useSettingsStore.setState({ setCardHiddenCategories: real });
     }
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(useSettingsStore.getState()).toMatchObject({ streakMomentDay: null, usageNoticeShownAt: null });
     expect(dismissAll()).toHaveBeenCalledTimes(1);
     expect(sweepExports()).toHaveBeenCalledTimes(1);
   });
@@ -548,7 +500,7 @@ describe('guest Erase finishes its cleanup when one step throws', () => {
     expect(stored).not.toBeNull();
     expect(wipeAll).toHaveBeenCalledTimes(1);
     expect(sweepExports()).toHaveBeenCalledTimes(1);
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(useSettingsStore.getState()).toMatchObject(RESET);
   });
 
   it('a draft removed from storage counts as done', async () => {
@@ -577,15 +529,15 @@ describe('guest Erase finishes its cleanup when one step throws', () => {
     guest();
 
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toMatchObject({ ok: false });
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(useSettingsStore.getState()).toMatchObject(RESET);
     expect(dismissAll()).toHaveBeenCalledTimes(1);
     expect(sweepExports()).toHaveBeenCalledTimes(1);
   });
 
-  it('the settings write that fails is reported (the set-asides and the card choices with it), and the rest runs', async () => {
+  it('the settings write that fails is reported (the card choices, the streak moment and the usage line with it), and the rest runs', async () => {
     let writes = 0;
     __setPersistenceForTests({
-      load: async () => ({ supportAsideKeys: [KEY], cardHiddenCategories: ['work'] }),
+      load: async () => ({ ...RECORD }),
       save: async () => {
         writes += 1;
         throw new Error('storage');
@@ -597,7 +549,7 @@ describe('guest Erase finishes its cleanup when one step throws', () => {
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toMatchObject({ ok: false });
     expect(writes).toBeGreaterThan(0);
     // Gone from memory for this run all the same.
-    expect(useSettingsStore.getState()).toMatchObject({ supportAsideKeys: [], cardHiddenCategories: [] });
+    expect(useSettingsStore.getState()).toMatchObject(RESET);
     expect(usePredictionStore.getState().loadResolved).toHaveBeenCalled();
     expect(dismissAll()).toHaveBeenCalledTimes(1);
   });
@@ -620,7 +572,7 @@ describe('guest Erase finishes its cleanup when one step throws', () => {
     guest();
 
     await expect(useAuthStore.getState().eraseDeviceData()).resolves.toMatchObject({ ok: false });
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
+    expect(useSettingsStore.getState()).toMatchObject(RESET);
     expect(sweepExports()).toHaveBeenCalledTimes(1);
   });
 

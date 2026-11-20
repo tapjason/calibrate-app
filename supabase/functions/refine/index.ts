@@ -18,9 +18,10 @@
 //   3. A body cap read before parsing: Content-Length checked, the stream
 //      counted (see coach/contract.ts readBodyCapped). req.json() below reads
 //      a body of any size before the 500-character check.
-//   4. The crisis pre-filter (src/ai/crisisFilter.ts) run on the client
-//      before any title is sent, as the Coach runs it before its call
-//      (COACH_AGENT.md §5.5): distress text must never reach the model.
+//   4. A decision on screening the words it sends. The client's crisis
+//      pre-filter was removed on 2026-11-20 (D73), with the Coach's support
+//      card: the Coach sends no words, so it has nothing to screen. Refine
+//      would send a title, so reviving it needs its own decision first.
 //   5. Output checks before the reply is shown: one line, no links,
 //      addresses, phone numbers or markup, no invented specifics (a number or
 //      a date the input didn't hold), as the Coach's validator does.

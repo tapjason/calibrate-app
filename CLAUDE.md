@@ -836,37 +836,32 @@ deployed. A vague prediction can't be made checkable without information only th
 has, so a model either invents specifics (a number, a deadline) or returns the input with
 the hedging stripped. That is a product decision, not a prompt fix, so it waits. The
 client (`src/ai/refine.ts`), the function and their tests are kept intact and dormant.
-Reviving it means: fix the prompt against fixtures, flip the flag, deploy.
+Reviving it means: fix the prompt against fixtures, decide how the words it sends are
+screened (the on-device check it named as a precondition was removed by D73), flip the
+flag, deploy.
 
 ### B. Coach agent (Plus)
 A bounded, read-only agent that interprets the user's computed calibration numbers and
 returns 0–3 short grounded insights. **`COACH_AGENT.md` is the authoritative spec** —
-grounding rules, injection defense, crisis pre-filter, min-N gating, tone constraints,
-and eval fixtures all live there. Do not implement the Coach from this summary alone.
+grounding rules, injection defense, min-N gating, tone constraints and eval fixtures
+all live there. Do not implement the Coach from this summary alone.
 
 Hard constraints carried here for visibility:
 - The app computes every statistic; the model only interprets. Every insight cites an
   `evidence` number that a validator checks against the input, or it is dropped.
 - No diagnosis, no personality inference, no medical/financial/legal advice, no numeric
   diet or exercise targets.
-- Freetext (titles, reflections) is **not** sent by default.
-- Distress-signalling freetext is caught by a pre-filter *before* any coaching call and
-  routed to a support surface, never to the model. The surface names one helpline,
-  988, on a US phone on every topic (D72 (d), 2026-11-20: the owner wants fewer helplines
-  in the app, whose purpose isn't to connect people to them, and the eating-disorder line
-  it named alone is staffed on weekdays only), and for anywhere else a line that names no
-  number and no website (alone on a phone set to another region; after the 988 line on a
-  US phone or when the region can't be read) (step 182). No emergency-number line, no
-  helpline page in You and no line per country: asked for by a policy audit, costed, and
-  dropped by the owner the same day. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988
-  line on every topic, the one line confirmed there, and then "If 988 doesn't connect
-  where you are: search for a local crisis line, or call your local emergency number."
-  (D71 (c)). **The card can be set aside** (D71 (b)): it
-  says why it came up and offers "Back to Coach", which sets aside the predictions that
-  matched (ids and a hash, on this phone only); new matching words bring it back. The tap
-  checks again first: a topic whose card hasn't been shown yet gets its card ("Other words
-  matched too, so this message changed.") before anything is set aside, and a key goes
-  when its words change or the prediction is deleted.
+- **No words the person typed reach the model, nothing scans them, and the app names no
+  helpline** (D73, the owner, 2026-11-20; step 206). The context is numbers, built-in
+  category ids and allowlisted keys, and the server refuses anything else. The on-device
+  check of titles and notes before a Coach request, the support card it showed and
+  "Back to Coach" are removed; the Coach answers everyone the same way. The policy check
+  that day found no App Store guideline or age-rating question that requires a distress
+  check or crisis resources, and the AI-companion laws in force, on a plain reading, don't
+  reach a feature that takes no words and returns cards about numbers (the owner closed
+  the question that day; a text box, a follow-up question or a chat would reopen it). Both validators and the prompt still drop medical, referral, helpline and
+  mental-state wording from the output. Any future feature that sends free text to a
+  model needs its own decision on screening first.
 
 ### Backend Proxy Architecture
 API keys never live in the client. All AI calls go through Supabase Edge Functions, and
@@ -1121,7 +1116,7 @@ and passed as the Agent tool's `model`:
 - **Opus, at `effort: "xhigh"`**, where a mistake could be silent or costly: the record
   (the engine, scores, badges, leans, counts, what is scored), sync, migrations and
   anything that can lose data, sign-in, privacy and the under-13 gate, billing, the Coach's
-  validator and pre-filter; work across layers or many files; a bug whose cause the brief
+  context and validators; work across layers or many files; a bug whose cause the brief
   can't pin down; and every owner-called review.
 - **Sonnet, at its usual effort**, where the brief says exactly what to do and a mistake
   would show in `check.sh` or a screenshot: decided copy going into one screen, a contained

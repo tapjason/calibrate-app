@@ -495,7 +495,7 @@ const DISCLAIMERS =
 /**
  * Out-of-domain direction the Coach must never give (§5.3, §5.4): medical,
  * financial or legal advice, numeric diet, sleep or exercise targets,
- * referrals and helplines (the support surface does that, never the model),
+ * referrals and helplines (the app makes no referrals either, D73),
  * product names, and claims about the person's mind. A prompt is a request; a
  * validator is a guarantee: "move 40% into bonds" cites a real number whenever
  * 40 appears in the context. These only ever drop a card. Read on the
@@ -1757,7 +1757,8 @@ function judgeInsight(
 /**
  * Validate the model's answer against the context it was given. At most
  * three insights; anything unparseable, ungrounded, under a gate, off-lean or
- * unsafe is dropped. `safe: false` returns no insights at all. When insights
+ * unsafe is dropped. `safe: false` returns no insights at all (the app shows
+ * that as an answer with nothing to say, D73). When insights
  * were dropped, `dropped` says how many (the app words an all-dropped answer
  * apart from an empty one).
  */

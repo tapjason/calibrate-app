@@ -28,8 +28,8 @@ refused (§1), an account already signed in is frozen and can still sign out or 
 (§2, "Under the under-13 rule"), and Erase and deletion clearing the band leave the gate on
 for the run (§3.2 step 7, §3.5). D71: guest Erase empties every account's rows, not only the
 guest's (§3.4, §3.5); the support card's set-asides are forgotten by sign-out, Erase and
-deletion (§2 step 5, §3.2 step 7, §3.5); the sign-in screen carries the Usage stats
-switch (§1). Unit-tested; nothing run on the iPhone.
+deletion (removed by D73, 2026-11-20, with the card); the sign-in screen carries the Usage
+stats switch (§1). Unit-tested; nothing run on the iPhone.
 
 **The D70/D71 review (2026-11-19, the same branch, its fixes uncommitted when this was
 written; JavaScript only)** changed what this spec says in these places: a band counts as
@@ -43,7 +43,7 @@ frozen account's sign-in is renewed each time the app starts with it expired, no
 clears the Log draft first, runs every later step whatever the others do, and counts in
 its confirmation what earlier accounts never pushed (§3.5). **The re-review's round two**
 (the same day) added: sign-out and deletion clear the support card's set-asides as Erase
-does, the stored record included (§2 step 5); a signed-out start logs a stale account out
+does, the stored record included (removed by D73 with the card); a signed-out start logs a stale account out
 of RevenueCat before reading any entitlement (§2 step 7); a cleanup write that fails
 silently fails Erase, the cache sweep is a step Erase waits for, and Erase's alert has a
 third message for a count that can't be read (§3.5).
@@ -314,19 +314,8 @@ decision.
    also sync's tombstones, the late changes, the moved answers and the categories
    remembered for them stay, so signing out and back in can't empty Insights' "Only this
    phone keeps this count" lines), then the sync cursor cleared and the caches swept,
-   whether or not the wipe went. Before the wipe, the support card's set-asides are
-   forgotten (D71 (b), `forgetSupportAside`: each key holds a prediction's id and a hash of
-   its words, so none outlasts the rows). Since the re-review's round two it clears them
-   the way guest Erase does (`eraseSupportAside`, §3.5), the stored record included: a
-   settings record that can't be read, which may hold keys, is read once more and, if it
-   still can't be, replaced with the settings this run holds, every privacy choice on its
-   private side. Before that, sign-out and deletion used `clearSupportAside`, which only
-   held the clear in memory for such a record, so one that read again after a restart
-   brought the hashes back. A wipe retried at launch runs before the settings
-   have been read, when a write would store the defaults over the person's record: the
-   settings store then holds the erase and applies it, in the same way, as soon as it has
-   read the record or failed to (the D70/D71 review; until then such a wipe left the
-   keys). A wipe
+   whether or not the wipe went. (Until D73, 2026-11-20, the support card's set-asides were
+   cleared here too; the card and its keys are removed.) A wipe
    that went settles the mark this sign-out made (an
    earlier deletion's waits for the session to end); one that failed stays owed, and
    `initialize()` retries it at the next launch. Then the account is remembered as signed
@@ -656,7 +645,7 @@ From [Offering account deletion in your app](https://developer.apple.com/support
    deleted user, an `AuthApiError` with status 403 and code `user_not_found`, counts as
    gone; the function may have finished while its 200 was lost, and every retry would then
    get a 401. Then (`eraseAccountHere(userId, 'confirmedDeletion')`, with the account in
-   `wipesInHand`): the Coach's cards, the support card's set-asides (D71 (b)), the card's
+   `wipesInHand`): the Coach's cards, the card's
    left-off categories and the streak moment day are cleared, the account's sync is stopped
    and waited for, the device is wiped (§3.4, with the device data; when that wipe went, the
    age store forgets the band, `forgetBand`, and the under-13 gate, if on, stays on for the
@@ -845,7 +834,7 @@ account's rows in the middle of it: "Couldn't finish erasing your data. Try agai
    erasing your data. Try again." and is safe to run again. **A cleanup write that fails
    silently counts as a failed step too** (the re-review's round two, `eraseStep`): the
    helpers that swallow their own storage errors now say whether the write landed (the Log
-   draft's `clear`, the answer run's `forget`, the settings' `eraseSupportAside`, the age
+   draft's `clear`, the answer run's `forget`, the age
    store's `forgetBand`, `forgetAccountsAfterErase`), and a `false` makes Erase report
    failure so the person can run it again. In order:
    - the age store forgets the band (`forgetBand`); the under-13 gate, if on, stays on in
@@ -859,12 +848,14 @@ account's rows in the middle of it: "Couldn't finish erasing your data. Try agai
    - the Warm-up and practice stores, the answer run, the card's left-off categories, the
      streak moment day and the usage line's stamp (so the line shows again before
      anything goes up) are cleared;
-   - the support card's set-asides (D71 (b)) are cleared, on disk too
-     (`eraseSupportAside`): a settings record that can't be read, which may hold keys, is
-     read once more and, if it still can't be, replaced with the settings this run holds,
-     every privacy choice on its private side and no keys. Its write is the whole settings
-     record, so it stands for the three settings changes before it, and a write that
-     doesn't land fails the step;
+   - (removed by D73, 2026-11-20, step 206: the support card's set-asides, cleared here on
+     disk by `eraseSupportAside`, are gone with the card. Until then that write of the
+     whole settings record also stood for the three settings changes before it. Now the
+     usage line's reset, `forgetUsageNoticeShown`, is the write that stands for all three
+     and makes Erase report failure when it doesn't land. A settings record that can't be
+     read is no longer replaced by Erase, sign-out or deletion, which did so only for the
+     keys: the three resets are held and applied once it reads, and sign-out writes no
+     settings at all);
    - the stores reload for the guest;
    - delivered notifications are dismissed and the Coach's cards cleared, neither waited
      on;
@@ -937,8 +928,8 @@ RevenueCat doesn't retry.
 - Erase (D71 (a)): `wipeEverythingOnDevice` in `src/db/account.test.ts` (every account
   id's rows, the device data and practice); `src/store/authStore.erase.test.ts` (owed wipes
   settled, the signed-out list kept, every cursor cleared, a failed wipe changing nothing,
-  Erase waiting while a sign-in is under way, and the set-asides forgotten by Erase,
-  sign-out and a confirmed deletion but not by a refused one).
+  Erase waiting while a sign-in is under way; until D73 also the set-asides forgotten by
+  Erase, sign-out and a confirmed deletion but not by a refused one).
 - The under-13 rule (D70): `src/store/authStore.localOnly.test.ts` (every sign-in and
   sign-up action refused, a frozen account kept signed in and sending nothing, guest Erase
   under the rule), `src/supabase/auth.localOnly.test.ts` (the services' refusal, the

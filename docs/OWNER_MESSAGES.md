@@ -6,10 +6,13 @@ When an answer comes back, tell the agent and it updates the app and the docs.
 
 **Messages 1 to 3 are not needed (the owner, 2026-11-20).** The app names no helpline
 directory, and a US phone's support card names 988 on every topic (D72 (d)), so there is
-nothing to ask ThroughLine or the two hotlines. They are kept below for the record. What
-is left to send or do: **4** (RevenueCat) and **5** (OpenAI's addendum).
+nothing to ask ThroughLine or the two hotlines. They are kept below for the record.
+**Moot since D73 (2026-11-20):** the Coach's distress check and its support card are
+removed, so the app shows no support message and names no helpline at all; what the three
+messages describe no longer exists. What is left to send or do: **4** (RevenueCat) and
+**5** (OpenAI's addendum).
 
-## 1. Not needed: ThroughLine (Find A Helpline): permission to name the directory (decision 8)
+## 1. Not needed, moot since D73: ThroughLine (Find A Helpline): permission to name the directory (decision 8)
 
 To: the contact on findahelpline.com/terms. Why: their terms need written permission for
 commercial use, and the Coach is a paid feature.
@@ -33,7 +36,7 @@ commercial use, and the Coach is a paid feature.
 > Thank you,
 > [name], [support email]
 
-## 2. Not needed: National Domestic Violence Hotline: US territories (decision 13)
+## 2. Not needed, moot since D73: National Domestic Violence Hotline: US territories (decision 13)
 
 To: the hotline's general or media contact (thehotline.org).
 
@@ -53,7 +56,7 @@ To: the hotline's general or media contact (thehotline.org).
 > Thank you,
 > [name], [support email]
 
-## 3. Not needed: National Alliance for Eating Disorders: US territories (decision 13)
+## 3. Not needed, moot since D73: National Alliance for Eating Disorders: US territories (decision 13)
 
 To: the Alliance's contact (allianceforeatingdisorders.com).
 

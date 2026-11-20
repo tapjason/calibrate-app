@@ -16,7 +16,32 @@ mine in parallel"), built 2026-11-20 as steps 202 to 205 and **unreviewed**:
   numbers are gone from the app. The owner dropped items 23 and 27 (no emergency-number
   line, no helpline page in You, no line per country) and messages 1 to 3 in
   `docs/OWNER_MESSAGES.md`: "The purpose of my app is not to connect people to these
-  helplines" (2026-11-20).
+  helplines" (2026-11-20). **Superseded the same day by 206.**
+- **206, D73 (unreviewed):** the Coach's distress check is removed whole.
+  The owner asked for the policy checker's results to be reviewed, "especially those
+  related to suicide hotline that I do not think is relevant at all to the app, and should
+  be excluded", and, asked how far, chose "Remove the whole check". Gone: the on-device
+  scan of titles and notes (`src/ai/crisisFilter.ts`), the support card, every helpline
+  line (988 included), "Back to Coach" and its stored set-asides
+  (`src/engine/supportAside.ts`; a stored record that still holds them is rewritten
+  without them when settings load). Stays: no words the person typed reach the model; the
+  validators and the prompt still drop medical, referral and helpline wording from the
+  Coach's output; the server's behaviour and the wire field `safe` (comments only changed
+  under `supabase/`, so no redeploy depends on it). A `policy-auditor` run first (Opus,
+  `xhigh`): no Apple rule read that day requires the check, and the AI-companion laws in
+  force define a companion by conversation or a simulated relationship; read partly in
+  secondary sources, and OpenAI's usage policies couldn't be opened. Both went to him as
+  owner's list items 31 and 32 and he closed both the same day ("Definitely does not
+  fall under the definition"; "The usage policies will definitely pass"): 31 reopens only
+  if the Coach ever takes words, asks questions or holds a conversation. Helplines and
+  distress detection are now out of scope for reviewers (`docs/app-profile.md` §7,
+  `policy-auditor` rule 1). **The live privacy page's on-device-scan paragraph is removed
+  in this change** (his yes, 2026-11-20): the check sent nothing, so the page is true of
+  every build without it. It goes live on the next push of `master`; set its effective
+  date to that day if it isn't 2026-11-20 (the held policy's header, step 13). Device check: `HUMAN_VERIFICATION.md` D7. For the
+  review: Erase, sign-out and deletion no longer replace a settings record that can't be
+  read (they did only for the set-aside keys), and `forgetUsageNoticeShown` is now the
+  write that makes Erase report failure (`docs/ACCOUNT_SPEC.md` §3.5).
 
 **Before this branch, `master`:** `builder/owner-decisions` is merged into it (fast-forward) and
 pushed, 2026-11-19, on the owner's words that day: "Use all your recommendations for the
@@ -58,8 +83,9 @@ D70/D71 review is **finished**: three rounds, the most allowed.
   residuals and nine points for counsel; `src/age/egress.test.ts` fails when a new upload
   path forgets the gate and pins each listed file's count of network calls.
 - **D71:** Erase removes everything on the phone, whoever's account it was under; the
-  Coach's support card can be set aside ("Back to Coach"); a US-territory phone gets 988 on
-  every topic; the sign-in screen carries the usage-stats switch.
+  sign-in screen carries the usage-stats switch. Its other two parts (the support card's
+  "Back to Coach", 988 on a US-territory phone) left the app with D73, and so did every
+  support-card and set-aside fix the review bullets below describe.
 - **The D70/D71 review (2026-11-19), rounds one and two.** Four reviewers in round one
   (two `code-reviewer`, `record-auditor`, `policy-auditor`), three in round two (two
   `code-reviewer`, `record-auditor`); no blocker in either. `docs/design/BUILT_LOG.md` row
@@ -140,7 +166,9 @@ D70/D71 review is **finished**: three rounds, the most allowed.
   checks; two referral calls on the support card; the frozen account's server data, for
   counsel; a few smaller ones), and 26 to 30 by its third (Utah and Louisiana; helplines
   for Canada, Australia and New Zealand; the age-rating answer for the support card; a
-  Plus subscriber on a local-only phone; the two billing races).
+  Plus subscriber on a local-only phone; the two billing races), and 31 and 32 by D73
+  (the AI-companion laws; OpenAI's usage policies), both closed by him the same day. Every helpline item (decisions 8 and 13, items 13, 23,
+  27, 28) is closed or moot.
   `docs/OWNER_MESSAGES.md` has what only he can send: since 2026-11-20 only message 4 (RevenueCat) and the OpenAI addendum. JS only: no new native
   package beyond the earlier review's two.
 
@@ -332,7 +360,9 @@ the iPhone: migrations 010–012 are proven only by the README's checks, the nat
 by the next development build, and the under-13 rule by the sandbox "Under 13" check
 (`docs/HUMAN_VERIFICATION.md` D4). In the web build the local-only screens, both routes, the
 sign-in switch and Erase's words were looked at on 2026-11-19 (`/dev/seed` has a
-development-only control that sets an under-13 band); the support card was not.
+development-only control that sets an under-13 band). **Step 206 (D73) is unreviewed**
+and has run only in Jest: it cuts through the settings store, Erase, sign-out and the
+prediction store, so it belongs in the review of this branch.
 
 ## Owner to-dos, in order
 
@@ -350,7 +380,8 @@ development-only control that sets an under-13 band); the support card was not.
 6. Then `docs/SHIP_READINESS.md`, "The owner's list": the server checklist, the new builds
    (the D70/D71 review is finished and merged), the mail sender, external
    TestFlight, the store record, the gate. On the next development build, the under-13
-   and support-card checks in `docs/HUMAN_VERIFICATION.md` D4 and D5; the two that matter
+   checks in `docs/HUMAN_VERIFICATION.md` D4, what is left of D5, and D7 (no support
+   card); the two that matter
    most: a guest can load plans, buy and restore on a fresh install, and a second launch
    with an adult age range shows no Apple sheet.
 
@@ -396,10 +427,10 @@ judgment work and for the reviews he calls, Sonnet for well-specified, low-stake
 ## Checks
 
 - `bash scripts/check.sh` must end in `CHECK PASSED`. Last full run
-  (2026-11-20, on `builder/owner-list-19-30` with steps 202 to 205): 250 suites, 5,923
-  tests, exit 0. `check.sh --release` last
-  passed on the review's round 7 tree with the two new native packages: expo-doctor 20/20, iOS export
-  7.58 MB (bundle 7.17 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
+  (2026-11-20, on `builder/owner-list-19-30` with steps 202 to 206): 248
+  suites, 5,178 tests, exit 0 (250 and 5,923 before 206 took out the distress check's
+  tests). `check.sh --release` passed on the same tree that day: expo-doctor 20/20,
+  dependencies up to date, iOS export 7.63 MB (bundle 7.22 MB), both public pages 200. Commit only after `check.sh` itself exits 0: piping it through `tail` once hid a
   failure. If `tsc` reports three typed-route errors, the generated route types are a stub;
   restart the web server after edits under `app/` (`docs/tooling-notes.md`).
 - `bash scripts/check-harness.sh` must end in `HARNESS CHECK PASSED` (it does, 2026-11-19).

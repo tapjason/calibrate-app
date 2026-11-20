@@ -97,16 +97,21 @@ the reason:
 |---|---|---|
 | Content (violence, mature themes, profanity, gambling, …) | None | Nothing of the kind ships. Predictions are the user's own text and stay on their device and account. |
 | Medical or wellness topics | None | "Health" is only a label the user puts on their own predictions. The app gives no medical or wellness information, and the Coach is forbidden from medical advice and numeric diet or exercise targets (`COACH_AGENT.md`). |
-| AI assistant / chatbot | Count the Coach in. Its output carries no sensitive content: insights are schema-validated, cite numbers from the input or are dropped, and distress-signalling text never reaches the model. | Apple asks for AI features to be included when judging how often sensitive content appears. |
+| AI assistant / chatbot | Count the Coach in. Its output carries no sensitive content: no words the person typed reach the model (it reads computed numbers only), and every insight is schema-validated, cites a number from the input and passes the content checks, or is dropped. | Apple asks for AI features to be included when judging how often sensitive content appears. |
 | User-generated content, messaging, chat | No | No user-to-user interaction. Shared cards go out through the OS share sheet, which Apple doesn't count as in-app user-generated content. |
 | Unrestricted web access | No | The only links open fixed pages (privacy policy, store terms, the support page). |
-| Mature or suggestive themes | None | The app shows no such content. The Coach's support surface (a helpline pointer when someone's own text signals distress) isn't a depiction of trauma or abuse; if Apple's wording counts it, "infrequent" is 9+: the owner's call on the day. |
+| Mature or suggestive themes | None | The app shows no such content. |
 | Advertising | No | There are no ads. |
 | In-app controls (parental controls, age assurance) | **Yes** for age assurance. No parental controls. | The build asks Apple's Declared Age Range API once at every launch, whatever band is stored (since the D70/D71 review, 2026-11-19: the band belongs to the install, not to the Apple Account), and again on a return to the app 24 hours after the last ask while the rule applies or a band of 13 or over is known (`src/age/ageRange.ts`: one ask per launch; a decline stores nothing and keeps a stored band). **The result gates services** (the under-13 rule, D70, 2026-11-19; `docs/design/research/under-13-2026-11.md`): a band that can include someone under 13 makes the app local-only, with no sign-in, backup, usage counts, Coach or RevenueCat, and Plus not offered (`useAgeStore.localOnly`). Apple defines age assurance as a mechanism that confirms an age "meets the age requirement for accessing specific content or services": accounts, backup, the Coach and purchases are those services here, so "Yes" is plainly true of a build that carries D70. A build without it asked and gated nothing (policy audit, 2026-11-14). Counsel is still to be asked about the state acts' duties (`SHIP_READINESS.md` decision 2). |
 | Social media; social media disabled under 13 (asked since July 2026, required from September) | No | No feed, profiles, followers or posts. |
 | Shared location; dating and relationships (descriptors from 2026-11-16, all apps by 2027-01-12) | No | The app reads no location and matches nobody. |
 | Gambling; simulated gambling; contests; loot boxes (asked one by one) | None | No stakes, odds, currency, prizes or chance mechanics. Nobody competes: a friend comparison, if ever built, would change the contests answer. |
-| Medical or treatment information | None | The Coach's support surface points to a helpline when someone's own text signals distress. That is a referral, not treatment information. If Apple's wording counts it, "infrequent" is 13+: the owner's call on the day. |
+| Medical or treatment information | None | The app gives no medical or treatment information, and the Coach's validators drop medical advice and referrals from its output. |
+
+**The owner checks in App Store Connect** (D73, 2026-11-20): whether the review notes ever
+carried the paragraph about the Coach's support card, or the age rating an "Infrequent"
+answer for it on Mature or suggestive themes or Medical or treatment information. If
+either was entered, correct it with the build that removes the card.
 
 Read the questions as App Store Connect words them on the day; if one doesn't
 map onto this table, ask rather than guess. A rating that's later found to be
@@ -297,12 +302,6 @@ from the build that carries D71 (d) (`UsageStatsSwitch` on the sign-in screen).
 > only use of Face ID. It is not account sign-in, and nothing requires it. On a
 > device with no passcode the switch explains that one must be set and does
 > not turn on.
->
-> If a user's own prediction text signals distress, the Coach gives no
-> feedback and the app shows helpline information instead. That check runs on
-> the device; the text is not sent anywhere. The person can set the message
-> aside ("Back to Coach") if it doesn't fit; it comes back for new matching
-> words.
 >
 > There is no gambling, no stakes and no currency. Predictions are private
 > notes about the user's own life ("I'll finish the report by Friday").

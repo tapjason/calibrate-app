@@ -81,7 +81,7 @@ function stopWaitingForSettings(): void {
 }
 
 /** Forget the usage-notice stamp, once the settings have been read. */
-function forgetUsageNoticeWhenRead(): Promise<void> | undefined {
+function forgetUsageNoticeWhenRead(): Promise<boolean> | undefined {
   const settings = useSettingsStore.getState();
   if (settings.hydrated) {
     return settings.usageNoticeShownAt !== null ? settings.forgetUsageNoticeShown() : undefined;

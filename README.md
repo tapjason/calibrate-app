@@ -99,7 +99,7 @@ The engine (`src/engine/`) is **pure** — plain objects in, plain objects out, 
 
 - **No API keys in the client.** The OpenAI key lives only in Supabase Edge Function secrets.
 - **Every user-facing Edge Function verifies the caller's JWT.** The Coach also checks Plus server-side (`public.entitlements`), rate-limits per user, and keeps a daily cost ceiling. The RevenueCat webhook has no user, so it is gated by a shared secret instead.
-- **Freetext never reaches the model.** The Coach is sent aggregated numbers only, and distress-signalling text is caught by an on-device pre-filter first.
+- **Freetext never reaches the model.** The Coach is sent aggregated numbers only (built-in category ids and allowlisted keys; the server refuses anything else), and its output is validated before it is shown. Nothing on the phone scans the person's words (D73).
 - **Row-Level Security** on Postgres scopes every row to its owning user (`auth.uid() = user_id`). The shipped anon key is safe to expose by design — protection comes from RLS, not secret-keeping.
 
 ---
@@ -117,7 +117,7 @@ src/
   store/                  Zustand stores, one per file
   supabase/               Client, auth, background sync, account deletion
   notifications/          Due-day reminders, weekly digest, practice and trial reminders
-  ai/                     Coach client, context builder, validator, crisis pre-filter
+  ai/                     Coach client, context builder, validator
                           (and the dormant refine client)
   billing/                RevenueCat wrapper and startup wiring
   analytics/              Closed event catalogue, recorder, flush

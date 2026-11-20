@@ -544,8 +544,10 @@ describe('validateCoachOutput — out of domain', () => {
   });
 });
 
-// COACH_AGENT.md §5.5 — the crisis path suppresses everything.
-describe('validateCoachOutput — crisis path', () => {
+// `safe: false` stays in the wire contract (D73): an answer marked so carries
+// no insights, whatever else it holds, and the app shows it as one with
+// nothing to say.
+describe('validateCoachOutput — safe: false', () => {
   it('returns no insights when the response is marked unsafe', () => {
     const out = validateCoachOutput(
       { insights: [GOOD_INSIGHT], safe: false },

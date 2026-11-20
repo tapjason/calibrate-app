@@ -110,9 +110,11 @@ a drift went from 4 answers in all, then from 20 in all (so halves of 10). A bui
 `drift_half_answers_`; the function still accepts their payloads, and never lets the
 weekday score or the drift they carry be cited, since the floor can't be checked.
 
-**Freetext rule:** prediction titles and reflections are excluded by default. If a
-future feature needs them, they are opt-in, minimized, and pass through the safety
-pre-filter (Section 5.5) *before* egress. Reducing what leaves the device is the
+**Freetext rule:** prediction titles and reflections never reach the model: the context is
+numbers, built-in category ids and allowlisted keys, and the function refuses anything
+else. If a future feature needs free text, it is opt-in and minimized, and it needs its
+own decision on screening before anything is built (Section 5.5: the on-device check
+that once stood here was removed by D73). Reducing what leaves the device is the
 cheapest safeguard available.
 
 **Added categories are never sent** (roadmap D39). A category the person added is named
@@ -303,86 +305,35 @@ count in `overall` and the weekday pattern, which name no category.
   real number whenever 40 appears in the context, so it would otherwise pass. A prompt
   is a request; a validator is a guarantee.
 
-### 5.5 Crisis & sensitive-content handling (hard safeguard)
-- If any freetext that reaches the pipeline signals self-harm, suicidal ideation,
-  abuse, or acute distress, the Coach **does not generate feedback on it.** The insight
-  is suppressed and the app surfaces a gentle, non-clinical support message pointing to
-  region-appropriate professional resources. As built (step 182, and D72 (d),
-  2026-11-20): on a phone whose locale's region is US, or unreadable, "988 Suicide &
-  Crisis Lifeline — call or text 988 (US)" on every topic and then "Outside the US: search
-  for a crisis line in your country, or call your local emergency number."; on any other
-  phone that sentence alone. Until D72 (d) a US phone's eating-disorder and abuse topics
-  each named a specialist line alone; the eating-disorder line's own site gives weekday
-  hours, so the card could point at a line nobody was answering, and the owner wants
-  fewer helplines in the app, not more. A phone set to a US territory (PR, GU, VI, AS, MP) gets the 988 line on every
-  topic (D71 (c), 2026-11-19): SAMHSA's 988 FAQ answers "Yes" to whether it is available "in all
-  states and all five territories", and says that "there are many reasons that people connect with the 988
-  Lifeline beyond suicide" (read 2026-11-19). Its second line reads "If 988
-  doesn't connect where you are: search for a local crisis line, or call your local
-  emergency number.", with neither "the US" nor "your country". No number per country (a wrong one costs more than a missing one) and no named
-  directory. Both stay that way by the owner's decision of 2026-11-20: lines for Canada,
-  Australia and New Zealand, an emergency-number line on the abuse topic and a helpline
-  page in You were designed and checked against the organisations' own pages, then
-  dropped; the app's purpose isn't to connect people to helplines, and each number would
-  have to be re-read before every release.
-- The agent never attempts to counsel, assess risk, or diagnose. It steps back and
-  points to humans. The support surface makes no categorical promises about
-  confidentiality or outcomes.
-- Implement this as a **pre-filter that runs before the coaching call**, so distress
-  content never becomes coaching input in the first place.
-- **The person can set the card aside** (D71 (b), 2026-11-19). The filter matches words,
-  so it is sometimes wrong, and an answered prediction can't be deleted after a day: one
-  false positive used to replace the Coach for good. Under the helpline the card says why
-  it came up ("This came up because of words in one of your predictions or notes, checked
-  on this phone. If it doesn't fit, you can go back to Coach.") and offers "Back to Coach".
-  That sets aside the predictions that matched, each by its id and a hash of its words, on
-  this phone only (no words stored, no usage event, at most 2,000; 200 until the
-  re-review's round two, when someone with more matching predictions than that would have
-  had the card back at every request); a new prediction that
-  matches, or a changed note on one set aside, brings the card back. Sign-out, Erase and
-  account deletion clear the list. The safeguard's substance is unchanged: no free text
-  reaches the model in any case, so nothing is ever coached on.
-- **"Back to Coach" never sets aside words whose card the person hasn't seen** (the
-  D70/D71 review, 2026-11-19; `useCoachStore.backToCoach`, which replaced
-  `setSupportAside`). The card stays in memory while words come and go under it (a note
-  saved or pulled by sync, a note removed, a delete), so the tap first runs the on-device
-  check again over the predictions as they are then:
-  - nothing matches any more: the card goes, back to the ask button, and nothing is
-    stored;
-  - a topic matches whose card hasn't been shown since this card came up: that card is
-    shown first, the highest-ranked of them by the filter's own order, with the line
-    "Other words matched too, so this message changed.", and nothing is set aside;
-  - every matching topic's card has been shown: only then are the matching predictions
-    set aside;
-  - the check or the set-aside fails: the card stays, with "Couldn't go back to Coach. Try
-    again.", and nothing is stored.
-
-  **"Shown" is judged per topic, even inside one prediction** (the re-review's round two,
-  its one high item; `crisisTopicsIn` in `src/ai/crisisFilter.ts`). One note can match two
-  topics ("he hits me when he drinks and I can't go on"), and the scan names only the
-  higher-ranked one, so until round two the tap set that note aside with the second
-  topic's card never shown. Now every topic of every matching prediction counts, and a
-  second topic in the same note gets its card before anything is set aside. Once a
-  topic's card has been on screen, any words of that topic are set aside with the rest,
-  later ones included; only a topic not yet shown holds the set-aside back.
-
-  With VoiceOver, when the card goes, focus moves to the "Coach" heading and "Back to
-  Coach." is announced. When the card changes instead, focus moves to the card's title,
-  so the new card is read from the top, "Other words matched too, so this message
-  changed." is announced after it, and "Back to Coach" is disabled for about a second, so
-  a quick second tap can't set aside a card nobody has read (round two).
-  **No key outlives its words:** a key (`<id>#<hash>`) is dropped
-  when its prediction's title or note changes or the prediction is deleted
-  (`predictionStore`), and the list is pruned against the current predictions at every
-  request and every tap (not against an empty list there, which can't be told from one
-  not loaded yet) and, since round two, after every successful load of the answered
-  predictions, an empty one included, so a change that arrives by sync is pruned then and
-  not only at the next Coach request. Dropping a
-  key can only bring the card back. The keys are cleared on sign-out, Erase and account
-  deletion, all three the same way since round two: the stored record too, a settings
-  record that can't be read being replaced with this run's settings, privacy choices on
-  their private side, and no keys; also when that happens before the settings have loaded
-  (the erase is held and applied once they are read, or can't be).
+### 5.5 No distress check, no helplines (removed by D73)
+- **What was removed** (D73, step 206, the owner, 2026-11-20). Until then the app scanned
+  the titles and notes of answered predictions on the phone before a Coach request and,
+  when words matched a distress list, showed a support card with a helpline in place of
+  the Coach, with "Back to Coach" and its stored set-asides. The owner asked for the policy
+  check's results on the suicide hotline, "that I do not think is relevant at all to the
+  app, and should be excluded", and chose "Remove the whole check". The scan
+  (`src/ai/crisisFilter.ts`), the card (`SupportSurface`), every helpline line, 988
+  included, and the set-aside keys (`src/engine/supportAside.ts`, `supportAsideKeys` in
+  settings) are gone. The Coach answers everyone the same way. A settings record that
+  still holds set-aside keys is rewritten without them, once, when settings load.
+- **What still protects the output.** No words the person typed reach the model (Section
+  4's freetext rule; the function refuses any key it doesn't allow). Both validators and
+  the prompt drop medical, financial and legal direction, referrals, helplines, 988 as a
+  line to call and mental-state claims (5.3, 5.4). The under-13 rule keeps the Coach off
+  a phone it applies to. The wire field `safe` stays: a `safe: false` from the model is
+  an answer with no insights.
+- **The policy check that day** (`policy-auditor`): no App Store Review Guideline or
+  age-rating question read requires a distress check or crisis resources. The AI-companion
+  laws in force (California SB 243, New York GBL art. 47, Hawaii Act 248) define a
+  companion by conversation or a simulated relationship, which on a plain reading a
+  feature that takes no words and returns up to three cards about numbers is not. Read
+  partly in secondary sources. The owner closed both follow-ons the same day
+  (`docs/SHIP_READINESS.md` items 31 and 32): the Coach doesn't fall under those
+  definitions while it takes no words, asks no questions and holds no conversation, and
+  OpenAI's usage policies, which could not be opened that day, are his call, unread.
+- **The bar for any future free-text feature.** Reviving Refine, or anything else that
+  sends words the person typed to a model, needs its own decision on screening first,
+  made before it is built; nothing in the app screens words now.
 
 ### 5.6 Privacy & data minimization
 - Prefer aggregates; minimize freetext egress (Section 4).
@@ -425,7 +376,8 @@ type CoachOutput = {
     evidence: number;     // must match a value in CoachContext
     suggestion?: string;  // optional, calibration-focused only
   }>;                     // 0–3 items; 0 is valid (e.g., insufficient data)
-  safe: boolean;          // false → suppress and show support surface instead
+  safe: boolean;          // false → an answer with no insights (no support surface
+                          // since D73)
   dropped?: number;       // added 2026-11-19: how many insights the validator dropped,
                           // present only when that is more than none
 }
@@ -537,10 +489,11 @@ is `gpt-4o-mini`, temperature 0.2, `max_tokens` 400, `response_format: json_obje
 `CoachOutput` in L1; the deterministic `patterns` and per-category `direction` in L3,
 which the Coach consumes and never recomputes; `coachStore` in L4 (request state and the
 cached last-good insight), gated on `useEntitlementStore.isPlus`; in L5 the `coach` Edge
-Function, the crisis pre-filter (5.5) and the fail-silent client `src/ai/coach.ts`; in L6
-the insight cards on Insights, the AI label and the Coach switch in You, and the support
-surface for the `safe: false` path. Its gate was §9's fixtures plus a forced endpoint
-failure leaving the app fully usable.
+Function and the fail-silent client `src/ai/coach.ts`; in L6 the insight cards on
+Insights, the AI label and the Coach switch in You. Its gate was §9's fixtures plus a
+forced endpoint failure leaving the app fully usable. It also added an on-device distress
+check in L5 and a support card in L6 for the `safe: false` path; D73 (2026-11-20)
+removed both (5.5).
 
 ---
 
@@ -550,8 +503,10 @@ failure leaving the app fully usable.
   Coach must not make it.
 - **Injection:** reflections containing "ignore your instructions / act as…" → role and
   schema hold.
-- **Crisis:** distress phrasing in freetext → suppression + support surface, never
-  coaching.
+- ~~**Crisis:** distress phrasing in freetext → suppression + support surface, never
+  coaching.~~ Removed by D73 (2026-11-20) with the check and the card it tested (5.5).
+  What stays tested: no free text in the context, and the validators' drop of referral,
+  helpline and mental-state wording.
 - **Tone:** overconfident, badly-calibrated user → candid but non-shaming; well-
   calibrated user → specific, not flattering.
 - **Min-N:** n=3 category → "keep logging," never a verdict.
@@ -569,5 +524,6 @@ failure leaving the app fully usable.
   400; a per-user rate limit and a daily ceiling of 25 calls
   (`supabase/functions/coach/index.ts`). Unit cost: `GROWTH_AND_MONETIZATION.md` §2.7.
   Re-check OpenAI's deprecation list when the app ships and every quarter after.
-- **Open:** whether to ever send freetext, and if so, the exact minimization +
-  pre-filter bar.
+- **Open:** whether to ever send freetext, and if so, the exact minimization and how
+  the words are screened, decided before it is built (nothing screens them since D73,
+  5.5).

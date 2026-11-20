@@ -1082,7 +1082,7 @@ the control reads the chosen category.)
   again" fills it. The tab keeps its scroll offset otherwise, and on a short phone the
   next visit opened on an empty "—%" with the title field out of sight.
 
-### 7.13 Coach cards and the support surface
+### 7.13 Coach cards
 
 Sources: HIG Generative AI (updated 2026-06), Google PAIR Explainability + Trust.
 Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
@@ -1099,46 +1099,10 @@ Behaviour is governed by `COACH_AGENT.md`; this section is only its look.
   it; feedback is always voluntary, with no follow-up prompt.
 - No celebration motion, no `oracleGold`; calibration hues only for the direction the
   card describes.
-- **Support surface:** stays plain and visually unlike an insight: no AI chip, no
-  evidence number, no feedback buttons, no card chrome shared with Coach. A
-  `surfaceSunken` block, `radius.md`, no border: the title in `headline`, the body in
-  `subhead` `textSecondary`, the contact lines in `subhead` `textPrimary` at weight 600,
-  selectable. A US-territory phone's contact is 988 and its own second line on every
-  topic (D71 (c)); a US phone's is 988 and the line for elsewhere on every topic (D72 (d)),
-  so only the title and body differ between topics.
-- **The way back to Coach** (D71 (b), 2026-11-19): under the contact lines, one note in
-  `footnote` `textSecondary`, "This came up because of words in one of your predictions
-  or notes, checked on this phone. If it doesn't fit, you can go back to Coach."
-  (`SUPPORT_ASIDE_NOTE`), then a secondary capsule, **Back to Coach**, with `onSunken`
-  (its edge in `textTertiary`, §2.2). No icon, no colour; disabled while it saves. It
-  sets the card aside and the panel returns to its first state, Get feedback. The note
-  speaks of where the words were checked, never of the person.
-- **What the tap did, when the card stays** (the D70/D71 review, 2026-11-19): the tap
-  checks the predictions again first, so the card can stay up in two cases, each said in
-  one line between the note and the button, in `subhead` `textPrimary` (the body's size,
-  full ink, so it reads over the note; no red on this card, no icon), and announced.
-  Words matched on a topic whose card hadn't been shown, a second topic of the very note
-  on screen included (the re-review's round two): that topic's card takes this
-  one's place, nothing is set aside, and the line reads "Other words matched too, so this
-  message changed." (`SUPPORT_UPDATED_NOTE`); it goes with the next change of card. The
-  tap couldn't be done: "Couldn't go back to Coach. Try again." (`SUPPORT_ASIDE_FAILED`),
-  cleared by the next tap. The button is offered again in both.
-- **When the card changes under the button** (the re-review's round two): the new card has
-  other words (the contact is the same on every topic since D72 (d)) while VoiceOver is
-  still on the button. So VoiceOver's focus is
-  moved to the card's title ("Support is available"), the new card is read from the top,
-  and "Other words matched too, so this message changed." is announced after it, queued
-  behind what is being read (600 ms after the focus move, `ANNOUNCE_AFTER_FOCUS_MS`). And
-  **Back to Coach** is disabled for about a second after the change
-  (`SUPPORT_CHANGED_HOLD_MS`, 1000 ms; a change inside the second starts it again), so a
-  quick second tap, or VoiceOver's next double-tap, can't set the new card aside before
-  anyone has read or heard it.
-- **Focus when the card goes** (the same review): the focused button leaves with the
-  card, so VoiceOver's focus is moved to the panel's "Coach" heading, which stays mounted
-  through the change, and "Back to Coach." is announced after a short pause
-  (`BACK_TO_COACH_SPOKEN`, `CoachPanel`). The same when the tap finds nothing matching
-  any more and the card simply goes. Not confirmed on the iPhone
-  (`HUMAN_VERIFICATION.md` D5).
+- **No support surface** (D73, the owner, 2026-11-20): the card that replaced Coach when
+  words in a prediction or note matched a distress list, its helpline lines and its way
+  back to Coach are removed, with the on-device scan behind them. The panel shows the
+  Coach's cards, its empty line or nothing, for everyone alike.
 
 ### 7.14 Wrapped
 

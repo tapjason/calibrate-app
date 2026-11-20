@@ -18,7 +18,7 @@ usable when any of them is unavailable.
   `due_date`), `digest.ts` (Sunday weekly digest). Local notifications
   only; there is no push server.
 - `src/ai/**` — `coach.ts` (Plus-gated call to `/functions/v1/coach`),
-  `coachContext.ts`, `coachValidate.ts`, `crisisFilter.ts`. `COACH_AGENT.md`
+  `coachContext.ts`, `coachValidate.ts`. `COACH_AGENT.md`
   is the authoritative spec for all of them. `refine.ts` is dormant:
   Refine is cut from v1 (`REFINE_ENABLED = false`).
 - `src/billing/**` — RevenueCat behind a deps seam; every failure reads

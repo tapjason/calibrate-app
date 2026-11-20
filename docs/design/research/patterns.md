@@ -85,8 +85,8 @@ means most.
 
 Keep it optional and after the answer, not before (typing first delays the only
 required tap). One line, placeholder in the user's voice ("What surprised you?").
-Reflections are freetext and not sent to Coach by default (`COACH_AGENT.md` §5.6), and
-the crisis pre-filter reads them; no visual change needed.
+Reflections are freetext and never sent to Coach (`COACH_AGENT.md` §4, §5.6); nothing
+on the phone scans them since D73. No visual change needed.
 
 ---
 
@@ -191,8 +191,8 @@ Other rules that follow:
   needs somewhere to go (analytics event); if it has nowhere, ship dismiss only.
 - Coach cards never use the calibration hues for anything but the direction they
   describe, and never use `oracleGold` or celebration motion.
-- The support surface (`SupportSurface.tsx`) stays deliberately plain: no AI chip, no
-  card chrome shared with insights, no feedback buttons. Its current comment is right.
+- The support surface (`SupportSurface.tsx`) was removed by D73 (2026-11-20) with the
+  on-device distress check; nothing replaces it.
 
 ---
 

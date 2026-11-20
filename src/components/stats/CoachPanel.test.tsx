@@ -1,28 +1,23 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 
 import { LOCAL_ONLY_COACH } from '@/components/age/localOnlyCopy';
-import { __setDeviceLocaleForTests } from '@/constants/locale';
-import { colors, type as typeTokens } from '@/constants/theme';
 import { __resetAgeStoreForTests, useAgeStore } from '@/store/ageStore';
 import { useAuthStore } from '@/store/authStore';
 import { useCategoryStore } from '@/store/categoryStore';
-import { useCoachStore, type SupportAsideOutcome } from '@/store/coachStore';
+import { useCoachStore } from '@/store/coachStore';
 import { useEntitlementStore } from '@/store/entitlementStore';
 import { usePredictionStore } from '@/store/predictionStore';
-import { __setPersistenceForTests, useSettingsStore } from '@/store/settingsStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { useStatsStore } from '@/store/statsStore';
+import { setSupabaseClientForTests } from '@/supabase/client';
 import { FREE_ENTITLEMENT, type CoachInsight, type Prediction, type UserStat } from '@/types';
 
-import { BACK_TO_COACH_ANNOUNCE_MS, CoachPanel } from './CoachPanel';
-import {
-  ANNOUNCE_AFTER_FOCUS_MS,
-  BACK_TO_COACH_SPOKEN,
-  SUPPORT_ASIDE_FAILED,
-  SUPPORT_ASIDE_NOTE,
-  SUPPORT_CHANGED_HOLD_MS,
-  SUPPORT_UPDATED_NOTE,
-} from './SupportSurface';
+import { CoachPanel } from './CoachPanel';
+
+// What a request records is coachStore's to test; here it only stays off the
+// database.
+jest.mock('@/analytics/track', () => ({ track: jest.fn(async () => undefined) }));
 
 const USER_STAT: UserStat = {
   user_id: 'u1',
@@ -72,7 +67,6 @@ function seed({
   usePredictionStore.setState({ pending: [], resolved: [] });
   useCoachStore.setState({
     insights: [],
-    crisisTopic: null,
     loading: false,
     lastAnsweredAt: null,
     lastRequestFailed: false,
@@ -80,16 +74,6 @@ function seed({
     lastDroppedAll: false,
   });
 }
-
-afterEach(() => __setDeviceLocaleForTests(null));
-
-/** The support card's contact on a US phone, on every topic (the owner, 2026-11-20). */
-const US_SUPPORT_CONTACT =
-  '988 Suicide & Crisis Lifeline — call or text 988 (US)\nOutside the US: search for a crisis line in your country, or call your local emergency number.';
-/** The eating-disorder and abuse cards' own words, above that contact. */
-const EATING_DISORDER_BODY =
-  'If your relationship with food or your body is weighing on you, there are people who can help.';
-const ABUSE_BODY = 'If someone is hurting you or you feel unsafe, there are people you can talk to.';
 
 describe('CoachPanel — gating', () => {
   it('shows an upsell and no ask button for a free user', () => {
@@ -398,88 +382,7 @@ describe('CoachPanel — rendering insights', () => {
   });
 });
 
-// §5.5 — the support surface replaces coaching entirely.
-describe('CoachPanel — crisis path', () => {
-  it('renders support instead of insights', () => {
-    seed();
-    useCoachStore.setState({ insights: [INSIGHT], crisisTopic: 'self_harm' });
-    render(<CoachPanel />);
-
-    expect(screen.getByTestId('coach-support-surface')).toBeTruthy();
-    expect(screen.queryByTestId('coach-insight-finance')).toBeNull();
-  });
-
-  // Main session, 2026-11-19: with "Back to Coach" on the card, a second
-  // button that only rescans and brings the same card back read as a dead
-  // end. The card is the whole panel while it is up, under the heading.
-  it('shows no ask button, and no loading, failure or caveat line, while the card is up', () => {
-    seed();
-    useCoachStore.setState({
-      insights: [INSIGHT],
-      crisisTopic: 'self_harm',
-      loading: true,
-      lastRequestFailed: true,
-      lastFailure: null,
-      lastAnsweredAt: '2026-08-29T12:00:00.000Z',
-    });
-    try {
-      render(<CoachPanel />);
-
-      expect(screen.getByTestId('coach-support-surface')).toBeTruthy();
-      expect(screen.queryByTestId('coach-ask')).toBeNull();
-      expect(screen.queryByText('Get feedback')).toBeNull();
-      expect(screen.queryByText('Reading your numbers…')).toBeNull();
-      for (const id of [
-        'coach-unavailable',
-        'coach-not-confirmed',
-        'coach-nothing-scored',
-        'coach-nothing-to-say',
-        'coach-nothing-backed',
-        'coach-caveat',
-        'coach-disclosure',
-      ]) {
-        expect(screen.queryByTestId(id)).toBeNull();
-      }
-      // The heading and the AI label stay.
-      expect(screen.getByText('Coach')).toBeTruthy();
-      expect(screen.getByText('AI')).toBeTruthy();
-      screen.unmount();
-    } finally {
-      useCoachStore.setState({
-        insights: [],
-        crisisTopic: null,
-        loading: false,
-        lastRequestFailed: false,
-        lastAnsweredAt: null,
-      });
-    }
-  });
-
-  // The topic's own words, and 988 under them on a US phone whatever the
-  // topic (the owner, 2026-11-20).
-  it.each([
-    ['eating_disorder', EATING_DISORDER_BODY],
-    ['abuse', ABUSE_BODY],
-  ] as const)('shows the %s card’s own words over the 988 line', (topic, body) => {
-    seed();
-    // A US phone, whatever the machine running the tests is set to.
-    __setDeviceLocaleForTests('en-US');
-    useCoachStore.setState({ crisisTopic: topic });
-    render(<CoachPanel />);
-
-    expect(screen.getByText(body)).toBeTruthy();
-    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
-  });
-
-  it('offers no statistic or suggestion on the support surface', () => {
-    seed();
-    useCoachStore.setState({ crisisTopic: 'distress' });
-    render(<CoachPanel />);
-
-    expect(screen.queryByText(/\d+%/)).toBeNull();
-    expect(screen.queryByTestId('coach-insight-finance')).toBeNull();
-  });
-
+describe('CoachPanel — the upsell', () => {
   // The upsell is the only Plus surface a free user meets on Stats, and it
   // sits below their own numbers — the score, curve, badges and share card
   // above it are free and already rendered.
@@ -526,434 +429,102 @@ describe('CoachPanel — control and trust', () => {
   });
 });
 
-// Main session decision 2026-11-19: the support card can be set aside, since
-// an answered prediction can't be deleted after its 24 hours and one false
-// match would otherwise replace the Coach for good.
-describe('CoachPanel — setting the support card aside', () => {
-  const answered = (id: string, title: string): Prediction => ({
-    id,
+// D73 (2026-11-20): no scan of the person's words and no support card. The
+// panel asks through the real store and Coach client, against a fake Supabase
+// client that keeps each request body as it would go over the wire.
+describe("CoachPanel — the person's words and an answer marked unsafe (D73)", () => {
+  const TITLE = 'Finish the tax return by Friday';
+  const NOTE = "I can't go on";
+
+  /** Answered, with a note the old filter would have caught. */
+  const ANSWERED: Prediction = {
+    id: 'p-note',
     user_id: 'u1',
-    title,
-    category: 'work',
-    confidence: 70,
+    title: TITLE,
+    category: 'finance',
+    confidence: 80,
     created_at: '2026-11-01T12:00:00.000Z',
-    due_date: '2026-11-03T12:00:00.000Z',
+    due_date: '2026-11-05T12:00:00.000Z',
     status: 'resolved_yes',
-    resolved_at: '2026-11-03T19:00:00.000Z',
-    reflection: null,
+    resolved_at: '2026-11-05T19:00:00.000Z',
+    reflection: NOTE,
     integrity_bonus: false,
-  });
-  const RESOLVED = [
-    answered('a1', 'Finish the report by Friday'),
-    answered('t1', 'I want to die before the launch'),
-  ];
-  const realBackToCoach = useCoachStore.getState().backToCoach;
+  };
+
+  /** Grounded in the overall count, so the validators keep it. */
+  const OVERALL_INSIGHT = {
+    type: 'pattern',
+    category: 'overall',
+    message: 'You have 40 scored answers in total.',
+    evidence: 40,
+  };
+
+  function serverAnswering(data: unknown): string[] {
+    const bodies: string[] = [];
+    setSupabaseClientForTests({
+      functions: {
+        invoke: async (_name: string, opts: { body: unknown }) => {
+          bodies.push(JSON.stringify(opts.body));
+          return { data, error: null };
+        },
+      },
+    } as unknown as SupabaseClient);
+    return bodies;
+  }
+
+  /** Nothing of the support card the panel used to draw. */
+  function expectNoSupportCard(): void {
+    expect(screen.queryByTestId('coach-support-surface')).toBeNull();
+    expect(screen.queryByText(/Support is available|988|Back to Coach|crisis line/)).toBeNull();
+  }
+
+  // The store's own action, taken when the tests are collected: a test above
+  // puts a stand-in in its place.
   const realRequestInsights = useCoachStore.getState().requestInsights;
-
-  /** The button, as it is now. */
-  const back = () => screen.getByTestId('support-back-to-coach');
-  /** Every host element with a testID, in the order they are drawn. */
-  type Node = { type: unknown; props: { testID?: unknown } };
-  const drawnOrder = (): string[] =>
-    screen.UNSAFE_root
-      .findAll((n: Node) => typeof n.type === 'string' && typeof n.props.testID === 'string')
-      .map((n: Node) => n.props.testID as string);
-
-  let focus: jest.SpyInstance;
-  let announce: jest.SpyInstance;
-  let announceQueued: jest.SpyInstance;
-
-  beforeEach(() => {
-    __setPersistenceForTests({ load: async () => null, save: async () => {} });
-    seed();
-    // The store's own memory of which topics were shown starts afresh.
-    useCoachStore.getState().reset();
-    usePredictionStore.setState({ pending: [], resolved: RESOLVED });
-    useCoachStore.setState({ crisisTopic: 'self_harm' });
-    focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent');
-    announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
-    announceQueued = jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions');
-  });
+  beforeEach(() => useCoachStore.setState({ requestInsights: realRequestInsights }));
 
   afterEach(() => {
-    focus.mockRestore();
-    announce.mockRestore();
-    announceQueued.mockRestore();
-    // In act: the panel is still on screen here.
-    act(() => {
-      useCoachStore.setState({
-        backToCoach: realBackToCoach,
-        requestInsights: realRequestInsights,
-        crisisTopic: null,
-      });
-      useSettingsStore.setState({ supportAsideKeys: [] });
-      __setPersistenceForTests(null);
-    });
+    setSupabaseClientForTests(null);
+    useCoachStore.getState().reset();
   });
 
-  /**
-   * VoiceOver was moved to the panel's heading, once, and told "Back to
-   * Coach." a moment later, queued behind what it was reading.
-   */
-  async function expectBackToCoachSaid() {
-    await waitFor(() => expect(focus).toHaveBeenCalledTimes(1));
-    const [node, kind] = focus.mock.calls[0] as [{ props: Record<string, unknown> }, string];
-    expect(kind).toBe('focus');
-    expect(node.props).toMatchObject({ accessibilityRole: 'header', children: 'Coach' });
-    await waitFor(() => expect(announceQueued).toHaveBeenCalledWith(BACK_TO_COACH_SPOKEN, { queue: true }));
-    expect(BACK_TO_COACH_SPOKEN).toBe('Back to Coach.');
-    expect(announceQueued).toHaveBeenCalledTimes(1);
-    expect(BACK_TO_COACH_ANNOUNCE_MS).toBe(600);
-  }
-
-  /**
-   * After 'updated': VoiceOver was moved to the card's title (the new card is
-   * read from the top), `times` times in all, and the line about other words
-   * said as often, queued behind what is being read.
-   */
-  async function expectCardReadFromTheTop(times: number) {
-    await waitFor(() => expect(focus).toHaveBeenCalledTimes(times));
-    for (const [node, kind] of focus.mock.calls as [{ props: Record<string, unknown> }, string][]) {
-      expect(kind).toBe('focus');
-      expect(node.props.testID).toBe('support-title');
-      expect(node.props.children).toBe(screen.getByTestId('support-title').props.children);
-    }
-    await waitFor(() => expect(announceQueued).toHaveBeenCalledTimes(times));
-    expect(announceQueued.mock.calls).toEqual(
-      Array.from({ length: times }, () => [SUPPORT_UPDATED_NOTE, { queue: true }]),
-    );
-  }
-
-  it('says why it came up under the contact line, quietly, with a way back to Coach', () => {
-    render(<CoachPanel />);
-    const card = screen.getByTestId('coach-support-surface');
-    const note = screen.getByTestId('support-aside-note');
-    expect(note.props.children).toBe(
-      "This came up because of words in one of your predictions or notes, checked on this phone. If it doesn't fit, you can go back to Coach.",
-    );
-    expect(note.props.children).toBe(SUPPORT_ASIDE_NOTE);
-    expect(StyleSheet.flatten(note.props.style)).toMatchObject({
-      fontSize: typeTokens.footnote.fontSize,
-      color: colors.textSecondary,
-    });
-    expect(card).toContainElement(note);
-    expect(card).toContainElement(screen.getByTestId('support-back-to-coach'));
-    expect(screen.getByText('Back to Coach')).toBeTruthy();
-    // The helpline line stays above it, and stays selectable.
-    const contact = screen.getByTestId('support-contact');
-    expect(contact.props.selectable).toBe(true);
-    const texts = screen.UNSAFE_getAllByType(Text).map((t) => t.props.testID);
-    expect(texts.indexOf('support-contact')).toBeLessThan(texts.indexOf('support-aside-note'));
-  });
-
-  it('asks with the same list of answered predictions the panel asks the Coach with', async () => {
-    const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => 'failed');
-    const requestInsights = jest.fn(async () => {});
-    useCoachStore.setState({ backToCoach, requestInsights });
+  it('asks as for anyone, shows the insights, and sends neither the title nor the note', async () => {
+    seed();
+    usePredictionStore.setState({ pending: [], resolved: [ANSWERED] });
+    const bodies = serverAnswering({ insights: [OVERALL_INSIGHT], safe: true });
     render(<CoachPanel />);
 
-    fireEvent.press(back());
-    await waitFor(() => expect(backToCoach).toHaveBeenCalledTimes(1));
-    expect(backToCoach).toHaveBeenCalledWith(RESOLVED);
-
-    // The very array the request is given, asked once the card has gone
-    // (there is no ask button under it).
-    await waitFor(() => expect(back().props.accessibilityState.disabled).toBe(false));
-    act(() => useCoachStore.setState({ crisisTopic: null }));
     fireEvent.press(screen.getByTestId('coach-ask'));
-    await waitFor(() => expect(requestInsights).toHaveBeenCalledTimes(1));
-    const request = (requestInsights.mock.calls[0] as unknown as [{ resolved: unknown }])[0];
-    expect((backToCoach.mock.calls[0] as unknown as [unknown])[0]).toBe(request.resolved);
+
+    expect(await screen.findByTestId('coach-insight-overall')).toBeTruthy();
+    expect(screen.getByText('You have 40 scored answers in total.')).toBeTruthy();
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).not.toContain(TITLE);
+    expect(bodies[0]).not.toContain('go on');
+    expectNoSupportCard();
+    expect(screen.getByTestId('coach-ask')).toBeTruthy();
   });
 
-  // 'aside': every topic that trips has been shown, so the store sets the
-  // tripping predictions aside and the panel is back to its first state.
-  it('goes back to the ask button once the card is set aside, and moves VoiceOver to the heading', async () => {
-    // The store's own action, on a record whose second title trips the check.
+  it('shows an answer marked safe: false as one with nothing to say, the cards before it gone', async () => {
+    seed();
+    usePredictionStore.setState({ pending: [], resolved: [ANSWERED] });
+    useCoachStore.setState({ insights: [INSIGHT], lastAnsweredAt: '2026-08-29T12:00:00.000Z' });
+    const bodies = serverAnswering({ insights: [OVERALL_INSIGHT], safe: false });
     render(<CoachPanel />);
-    expect(screen.queryByTestId('coach-ask')).toBeNull();
-    fireEvent.press(back());
+    expect(screen.getByTestId('coach-insight-finance')).toBeTruthy();
 
-    await waitFor(() => expect(screen.queryByTestId('coach-support-surface')).toBeNull());
-    expect(screen.getByTestId('coach-ask').props.accessibilityState.disabled).toBe(false);
-    // The first idle state: the disclosure before a first request, no line about an answer.
-    expect(screen.getByTestId('coach-disclosure')).toBeTruthy();
-    expect(screen.queryByTestId('coach-nothing-to-say')).toBeNull();
-    expect(useCoachStore.getState().crisisTopic).toBeNull();
-    // Remembered on this phone: one key, for the one tripping prediction.
-    expect(useSettingsStore.getState().supportAsideKeys).toHaveLength(1);
-    await expectBackToCoachSaid();
-    // Neither of the card's own lines was said.
-    expect(announce).not.toHaveBeenCalled();
-  });
+    fireEvent.press(screen.getByTestId('coach-ask'));
 
-  // 'cleared': the words that put the card up are gone (a note removed, a
-  // delete), so the card goes and nothing is set aside.
-  it('goes back to Coach, setting nothing aside, when the words that put the card up are gone', async () => {
-    usePredictionStore.setState({ resolved: [RESOLVED[0]!] });
-    render(<CoachPanel />);
-    fireEvent.press(back());
-
-    await waitFor(() => expect(screen.queryByTestId('coach-support-surface')).toBeNull());
-    expect(useCoachStore.getState().crisisTopic).toBeNull();
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
-    expect(screen.getByTestId('coach-ask').props.accessibilityState.disabled).toBe(false);
-    expect(screen.getByTestId('coach-disclosure')).toBeTruthy();
-    await expectBackToCoachSaid();
-    expect(announce).not.toHaveBeenCalled();
-  });
-
-  // 'updated': other words matched too, of a topic not yet shown; the store
-  // has put that card up instead, and nothing was set aside.
-  it('says when other words changed the card, above the button, until the card changes again', async () => {
-    // A US phone, so the contact line is 988 and the line for elsewhere.
-    __setDeviceLocaleForTests('en-US');
-    const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
-      useCoachStore.setState({ crisisTopic: 'eating_disorder' });
-      return 'updated';
-    });
-    useCoachStore.setState({ backToCoach });
-    render(<CoachPanel />);
-    expect(screen.queryByTestId('support-updated-note')).toBeNull();
-
-    fireEvent.press(back());
-    const line = await screen.findByTestId('support-updated-note');
-    expect(line.props.children).toBe('Other words matched too, so this message changed.');
-    expect(line.props.children).toBe(SUPPORT_UPDATED_NOTE);
-    // VoiceOver goes to the card's title, so the new card is read from the
-    // top, and the line is said a moment later, queued behind it; never at once.
-    await expectCardReadFromTheTop(1);
-    expect(announce).not.toHaveBeenCalled();
-    // Plain ink in the body's size: no colour on this card.
-    expect(StyleSheet.flatten(line.props.style)).toMatchObject({
-      fontSize: typeTokens.subhead.fontSize,
-      color: colors.textPrimary,
-    });
-    // The new topic's card, still up, under the same heading: its own words,
-    // over the same 988 line; the button offered again, above which the line
-    // sits; no ask button.
-    expect(screen.getByText(EATING_DISORDER_BODY)).toBeTruthy();
-    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
-    await waitFor(() => expect(back().props.accessibilityState.disabled).toBe(false));
-    const order = drawnOrder();
-    expect(order).toEqual(
-      expect.arrayContaining(['support-aside-note', 'support-updated-note', 'support-back-to-coach']),
+    expect(await screen.findByTestId('coach-nothing-to-say')).toBeTruthy();
+    expect(bodies).toHaveLength(1);
+    expect(screen.queryByTestId('coach-insight-finance')).toBeNull();
+    expect(screen.queryByTestId('coach-insight-overall')).toBeNull();
+    expect(screen.queryByTestId('coach-caveat')).toBeNull();
+    expect(screen.queryByTestId('coach-unavailable')).toBeNull();
+    expectNoSupportCard();
+    await waitFor(() =>
+      expect(screen.getByTestId('coach-ask').props.accessibilityState.disabled).toBe(false),
     );
-    expect(order.indexOf('support-aside-note')).toBeLessThan(order.indexOf('support-updated-note'));
-    expect(order.indexOf('support-updated-note')).toBeLessThan(order.indexOf('support-back-to-coach'));
-    expect(screen.queryByTestId('coach-ask')).toBeNull();
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
-    // Moved once, to the title: not to the heading, which is for the card going.
-    expect(focus).toHaveBeenCalledTimes(1);
-    expect(announceQueued).not.toHaveBeenCalledWith(BACK_TO_COACH_SPOKEN, expect.anything());
-
-    // A tap that fails after it: the card didn't change, so the line stays,
-    // and focus stays on the button, which stayed.
-    backToCoach.mockImplementationOnce(async () => 'failed');
-    fireEvent.press(back());
-    await screen.findByTestId('support-aside-failed');
-    expect(screen.getByTestId('support-updated-note')).toBeTruthy();
-    expect(focus).toHaveBeenCalledTimes(1);
-
-    // The card changes again: the line goes with the change, and the button
-    // rests its second for that change too, wherever it came from.
-    act(() => useCoachStore.setState({ crisisTopic: 'abuse' }));
-    expect(screen.getByText(ABUSE_BODY)).toBeTruthy();
-    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
-    expect(screen.queryByTestId('support-updated-note')).toBeNull();
-    expect(screen.queryByTestId('support-aside-failed')).toBeNull();
-    expect(back().props.accessibilityState.disabled).toBe(true);
-    await waitFor(() => expect(back().props.accessibilityState.disabled).toBe(false));
-  });
-
-  // Re-review 2026-11-19: after 'updated' the card had changed (perhaps to
-  // another helpline) while VoiceOver stayed on the button and heard only the
-  // line about other words, so the next double-tap set the new card aside
-  // unheard; a quick second tap did the same, the button back in the same frame.
-  it('reads the new card from its title and rests the button a second before it can set it aside', async () => {
-    jest.useFakeTimers();
-    try {
-      __setDeviceLocaleForTests('en-US');
-      const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
-        useCoachStore.setState({ crisisTopic: 'eating_disorder' });
-        return 'updated';
-      });
-      useCoachStore.setState({ backToCoach });
-      render(<CoachPanel />);
-
-      fireEvent.press(back());
-      await act(async () => {});
-      expect(screen.getByTestId('support-updated-note')).toBeTruthy();
-      expect(screen.getByText(EATING_DISORDER_BODY)).toBeTruthy();
-      expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
-
-      // Focus is on the title at once: the new card is read from its top.
-      expect(focus).toHaveBeenCalledTimes(1);
-      const [node, kind] = focus.mock.calls[0] as [{ props: Record<string, unknown> }, string];
-      expect(kind).toBe('focus');
-      expect(node.props.testID).toBe('support-title');
-      // The line waits behind it, then is queued, not said over it.
-      expect(announceQueued).not.toHaveBeenCalled();
-      act(() => jest.advanceTimersByTime(ANNOUNCE_AFTER_FOCUS_MS - 1));
-      expect(announceQueued).not.toHaveBeenCalled();
-      act(() => jest.advanceTimersByTime(1));
-      expect(announceQueued).toHaveBeenCalledWith(SUPPORT_UPDATED_NOTE, { queue: true });
-      expect(announceQueued).toHaveBeenCalledTimes(1);
-      expect(announce).not.toHaveBeenCalled();
-      expect(ANNOUNCE_AFTER_FOCUS_MS).toBe(600);
-      expect(BACK_TO_COACH_ANNOUNCE_MS).toBe(ANNOUNCE_AFTER_FOCUS_MS);
-
-      // The button stays off for the second: a quick second tap does nothing.
-      expect(back().props.accessibilityState.disabled).toBe(true);
-      fireEvent.press(back());
-      await act(async () => {});
-      expect(backToCoach).toHaveBeenCalledTimes(1);
-      act(() => jest.advanceTimersByTime(SUPPORT_CHANGED_HOLD_MS - ANNOUNCE_AFTER_FOCUS_MS - 1));
-      expect(back().props.accessibilityState.disabled).toBe(true);
-      act(() => jest.advanceTimersByTime(1));
-      expect(back().props.accessibilityState.disabled).toBe(false);
-      expect(SUPPORT_CHANGED_HOLD_MS).toBe(1000);
-
-      // Then it works again, for the card now shown.
-      fireEvent.press(back());
-      await act(async () => {});
-      expect(backToCoach).toHaveBeenCalledTimes(2);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('says nothing when the card goes inside that moment: its timer goes with it', async () => {
-    jest.useFakeTimers();
-    try {
-      __setDeviceLocaleForTests('en-US');
-      const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
-        useCoachStore.setState({ crisisTopic: 'eating_disorder' });
-        return 'updated';
-      });
-      useCoachStore.setState({ backToCoach });
-      render(<CoachPanel />);
-
-      fireEvent.press(back());
-      await act(async () => {});
-      expect(focus).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
-      // The card goes before the line is said (the words were removed elsewhere).
-      act(() => useCoachStore.setState({ crisisTopic: null }));
-      expect(screen.queryByTestId('coach-support-surface')).toBeNull();
-      act(() => jest.advanceTimersByTime(SUPPORT_CHANGED_HOLD_MS * 2));
-      expect(announceQueued).not.toHaveBeenCalled();
-      expect(announce).not.toHaveBeenCalled();
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('says it again when another tap changes the card again', async () => {
-    __setDeviceLocaleForTests('en-US');
-    const topics = ['eating_disorder', 'abuse'] as const;
-    let next = 0;
-    const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
-      useCoachStore.setState({ crisisTopic: topics[next++]! });
-      return 'updated';
-    });
-    useCoachStore.setState({ backToCoach });
-    render(<CoachPanel />);
-
-    fireEvent.press(back());
-    await screen.findByTestId('support-updated-note');
-    await expectCardReadFromTheTop(1);
-    await waitFor(() => expect(back().props.accessibilityState.disabled).toBe(false));
-    fireEvent.press(back());
-    await waitFor(() => expect(useCoachStore.getState().crisisTopic).toBe('abuse'));
-    // Each change moves focus to the title again, and says the line again, queued.
-    await expectCardReadFromTheTop(2);
-    expect(screen.getByTestId('support-updated-note')).toBeTruthy();
-    expect(announce).not.toHaveBeenCalled();
-    // The abuse card's own words, over the same 988 line.
-    expect(screen.getByText(ABUSE_BODY)).toBeTruthy();
-    expect(screen.getByTestId('support-contact').props.children).toBe(US_SUPPORT_CONTACT);
-  });
-
-  // The store's own 'updated': a card for distress is up, and the record
-  // holds words of self-harm, a topic whose card hasn't been shown.
-  it('puts the other topic’s card up through the store’s own action, then sets both aside', async () => {
-    useCoachStore.setState({ crisisTopic: 'distress' });
-    render(<CoachPanel />);
-
-    fireEvent.press(back());
-    expect(await screen.findByTestId('support-updated-note')).toBeTruthy();
-    expect(useCoachStore.getState().crisisTopic).toBe('self_harm');
-    expect(useSettingsStore.getState().supportAsideKeys).toEqual([]);
-    await expectCardReadFromTheTop(1);
-
-    // Every topic that trips has been shown now: the next tap sets it aside.
-    await waitFor(() => expect(back().props.accessibilityState.disabled).toBe(false));
-    // From here, only what the card's going does.
-    focus.mockClear();
-    announceQueued.mockClear();
-    fireEvent.press(back());
-    await waitFor(() => expect(screen.queryByTestId('coach-support-surface')).toBeNull());
-    expect(useSettingsStore.getState().supportAsideKeys).toHaveLength(1);
-    expect(screen.queryByTestId('support-updated-note')).toBeNull();
-    await expectBackToCoachSaid();
-  });
-
-  // 'failed': the card stays as it was, the button comes back, and the line
-  // says so, shown and said.
-  it('leaves the card up when it fails, says so, and offers its button again', async () => {
-    let finish: (value: SupportAsideOutcome) => void = () => {};
-    const backToCoach = jest.fn(
-      () =>
-        new Promise<SupportAsideOutcome>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    useCoachStore.setState({ backToCoach });
-    render(<CoachPanel />);
-
-    fireEvent.press(back());
-    // While it runs, a second press does nothing.
-    await waitFor(() => expect(back().props.accessibilityState.disabled).toBe(true));
-    fireEvent.press(back());
-    expect(backToCoach).toHaveBeenCalledTimes(1);
-
-    await act(async () => finish('failed'));
-    expect(screen.getByTestId('coach-support-surface')).toBeTruthy();
-    expect(back().props.accessibilityState.disabled).toBe(false);
-    expect(screen.queryByTestId('coach-ask')).toBeNull();
-    const line = screen.getByTestId('support-aside-failed');
-    expect(line.props.children).toBe("Couldn't go back to Coach. Try again.");
-    expect(line.props.children).toBe(SUPPORT_ASIDE_FAILED);
-    expect(StyleSheet.flatten(line.props.style)).toMatchObject({ color: colors.textPrimary });
-    expect(announce).toHaveBeenCalledWith(SUPPORT_ASIDE_FAILED);
-    const order = drawnOrder();
-    expect(order).toEqual(expect.arrayContaining(['support-aside-note', 'support-aside-failed']));
-    expect(order.indexOf('support-aside-note')).toBeLessThan(order.indexOf('support-aside-failed'));
-    expect(order.indexOf('support-aside-failed')).toBeLessThan(order.indexOf('support-back-to-coach'));
-    expect(screen.queryByTestId('support-updated-note')).toBeNull();
-    expect(focus).not.toHaveBeenCalled();
-
-    // Tried again: the old line goes at the tap, and a second failure is said again.
-    fireEvent.press(back());
-    await waitFor(() => expect(screen.queryByTestId('support-aside-failed')).toBeNull());
-    await act(async () => finish('failed'));
-    expect(screen.getByTestId('support-aside-failed')).toBeTruthy();
-    expect(announce).toHaveBeenCalledTimes(2);
-  });
-
-  it('reads an action that throws as a failure', async () => {
-    const backToCoach = jest.fn(async (): Promise<SupportAsideOutcome> => {
-      throw new Error('disk');
-    });
-    useCoachStore.setState({ backToCoach });
-    render(<CoachPanel />);
-
-    fireEvent.press(back());
-    expect(await screen.findByTestId('support-aside-failed')).toBeTruthy();
-    expect(back().props.accessibilityState.disabled).toBe(false);
-    expect(screen.getByTestId('coach-support-surface')).toBeTruthy();
-    expect(announce).toHaveBeenCalledWith(SUPPORT_ASIDE_FAILED);
   });
 });
 

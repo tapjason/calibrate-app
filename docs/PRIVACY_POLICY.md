@@ -14,7 +14,7 @@ changes the text below when it happens. Step 12 names one more thing the build i
 must carry. (Revised 2026-11-18
 after the security and policy review, and 2026-11-19 after its rounds 5, 6 and 7, the
 policy re-audit's W1-W4, the under-13 rule and Erase, D70 and D71, and the D70/D71
-review of the same day, its third round included.) The text
+review of the same day, its third round included; and 2026-11-20 for D72 (b) and D73.) The text
 below is written for the state AFTER them; before them, §2.1, §2 (guest counts) and §6
 are not true, and §2 (the warm-up notice), §7 (signing out) and §10 (the Keychain) are true
 only of the build in step 7.
@@ -84,13 +84,12 @@ in step 3b below.
    the Apple revocation check live. D70 and D71 (commits e77431e and b2557b0, plus
    round three's fixes; JavaScript only, no new native package)
    are true only of a build that carries them: §1's and §2's lines on the age range,
-   RevenueCat and usage counts, §2.3's switch on the sign-in screen, §3's "Back to Coach",
-   §6's and §7's Erase, and §9. Publish with, or after, that build too. The D70/D71
+   RevenueCat and usage counts, §2.3's switch on the sign-in screen, §6's and §7's Erase,
+   and §9. Publish with, or after, that build too. The D70/D71
    review's fixes (2026-11-19, in the same commits; JavaScript only) are part of what
    those sections say: the age range asked at every
-   launch, RevenueCat and sign-in waiting for Apple's answer with no "then goes on", the
-   check again at the tap on "Back to Coach", and the wider meaning of "under 13" in §9.
-   A build made before them doesn't match §2, §3 or §9.
+   launch, RevenueCat and sign-in waiting for Apple's answer with no "then goes on", and
+   the wider meaning of "under 13" in §9. A build made before them doesn't match §2 or §9.
 8. Settled 2026-11-19 (policy re-audit L4; kept so the numbering holds). The warm-up
    notice (§2, "only after the warm-up's first screen has shown you a line saying so") is
    a saved stamp: UsageStatsNotice writes usageNoticeShownAt in the settings store when it
@@ -129,6 +128,15 @@ in step 3b below.
    after, that build (step 7), and after the device check in docs/HUMAN_VERIFICATION.md
    D6: the app reads the region from the JavaScript engine's locale, which should follow
    Settings → General → Language & Region → Region, and no iPhone has shown that yet.
+13. D73 (2026-11-20, step 206; JavaScript only): the app no longer checks predictions and
+   notes on the phone before a Coach request, shows no support message and keeps no list
+   of messages set aside. §3 says nothing of that check, and §7 no longer lists that list
+   among what sign-out, Erase and account deletion clear. The published page's
+   paragraph about the check is removed in the same change (the owner, 2026-11-20): the
+   check sent and collected nothing, so a page that doesn't mention it is true of every
+   build, while a page that describes it is false of every build from step 206 on. It
+   goes live when that change is pushed to `master`, with nothing to time against a
+   build; set the page's effective date to the day of the push if it isn't 2026-11-20.
 Once 1-9, step 10's sandbox check and step 12's device check are done, push. Delete the
 rest of 10, and 11, one by one as each is done; the evidence notes below can stay.
 
@@ -266,26 +274,13 @@ count that can't be read says "Changes an account made on this phone may not hav
 our server; if so, they will be lost."; eraseStep in authStore: a cleanup write that
 doesn't land, the Log draft's, the answer run's, the settings' or the age band's, makes
 Erase report that it couldn't finish, so it can be run again);
-src/engine/supportAside.ts, src/store/coachStore.ts backToCoach and
-src/store/settingsStore.ts supportAsideKeys (a prediction id and a 64-bit FNV-1a hash of
-its title and note per entry, at most 2,000 (SUPPORT_ASIDE_MAX_KEYS in src/types/index.ts;
-200 until the re-review's round two), stored with the settings and never sent. The tap
-on "Back to Coach" runs the check again first: nothing matching clears the card and stores
-nothing; a topic not yet shown puts its card up and stores nothing, a second topic matched
-by the same note included (crisisTopicsIn in src/ai/crisisFilter.ts, round two); otherwise
-the matching predictions are set aside. A key goes when its prediction's words change or it
-is deleted: retainSupportAsideKeys at every request and tap, src/store/predictionStore.ts
-forgetStaleSupportAside on a change made here, and forgetSupportAsideNotIn after every
-successful load of the answered predictions, which is where a change that arrived by sync
-is first seen (round two). All are cleared by sign-out, Erase and account deletion in
-authStore through eraseSupportAside (round two: sign-out and deletion as Erase does, so a
-settings record that can't be read is replaced), also when that runs before the settings
-have been read: §3, §7);
-src/components/stats/SupportSurface.tsx SUPPORT_ASIDE_NOTE, SUPPORT_UPDATED_NOTE ("Other
-words matched too, so this message changed.") and "Back to Coach";
 src/components/account/SignInView.tsx USAGE_NOTE and USAGE_OFF_NOTE with
-src/components/settings/UsageStatsSwitch.tsx (the sign-in screen's switch: §2.3);
-src/ai/crisisFilter.ts TERRITORY_LIFELINE_CONTACT (no sentence here names a helpline).
+src/components/settings/UsageStatsSwitch.tsx (the sign-in screen's switch: §2.3).
+2026-11-20, D73 (step 206, builder/owner-list-19-30): src/ai/crisisFilter.ts,
+src/engine/supportAside.ts and src/components/stats/SupportSurface.tsx removed, so nothing
+checks titles or notes before a Coach request and no set-aside list is kept;
+supportAsideKeys gone from src/store/settingsStore.ts, and a stored settings record that
+still holds it is rewritten without it when settings load (§3, §7).
 Public pages read 2026-11-19:
 - RevenueCat, Apple App Privacy (https://www.revenuecat.com/docs/platform-resources/
   apple-platform-resources/apple-app-privacy): "RevenueCat does not collect precise or
@@ -552,24 +547,6 @@ unless the customer opts in, and that OpenAI keeps abuse-monitoring logs of API
 use for up to 30 days, unless longer retention is required by law, or is
 reasonably necessary to protect its services.
 
-Before any Coach request, the app checks your predictions and reflections **on
-your device** for signs of distress. If it finds any, it shows you support resources instead of
-contacting the Coach. That check never sends your text anywhere.
-
-If that support message doesn't fit, **Back to Coach** sets it aside. When you
-tap it, the app first runs the same on-device check again over your
-predictions as they are then. If nothing matches any more, the message goes
-and nothing is remembered. If words match on a subject whose message you
-haven't been shown yet (even words in the same note), the app shows that
-message first, says the message changed, and sets nothing aside. Otherwise
-the app remembers, on this phone only, which predictions the message came up
-for, each by its id and a short code worked out from its words (never the
-words themselves), at most 2,000 of them, and shows the message again only
-for new words that match: another prediction, or a changed title or note. An
-entry is dropped when that prediction's words change or the prediction is
-deleted, on this phone or, once the change has synced, on another. That list
-is never sent. Signing out, Erase and account deletion clear it.
-
 ## 4. Who else handles your data
 
 | Service | What it receives | Why |
@@ -649,8 +626,7 @@ In the app: **You → Delete account** (at the bottom). This permanently deletes
 - your usage events, purchase status and Coach usage count on our server,
 - and this phone's copy of your data: predictions, categories and their icons,
   the counts of deleted, late-changed and moved predictions, warm-up and
-  practice answers, the age band, a prediction you were still typing, the list
-  of support messages you set aside (§3), and the
+  practice answers, the age band, a prediction you were still typing, and the
   exported files, card images and pictures the app left in the phone's cache. Your settings (switches and reminder times), which hold
   nothing you wrote, stay (unless they can't be read at that moment; then they
   are replaced, as described under Erase below).
@@ -699,9 +675,8 @@ the app stops and asks again.
 
 Then your account's data is removed from this phone: its predictions and
 reflections, the categories you added and any names, icons or hiding you set
-for categories, usage events not yet sent and the list of support messages you
-set aside (§3), along with the exported files, card images and pictures the
-app left in the phone's cache. If that can't
+for categories, and usage events not yet sent, along with the exported files, card
+images and pictures the app left in the phone's cache. If that can't
 finish at once, the app tries again the next time it opens. The counts of
 deleted, late-changed and moved predictions that only this phone keeps (they
 hold no words) stay on the phone, so signing out and back in doesn't clear them.
@@ -745,8 +720,8 @@ our server, and says how many would be lost, or, if it can't count them, that
 there may be some. If any part of the erase doesn't complete, the app says it
 couldn't finish, and you can run it again. So it removes predictions and
 reflections, categories and their icons, warm-up and practice answers, the age
-band, a prediction you were still typing, usage events not yet sent, the list of
-support messages you set aside (§3), the counts of deleted, late-changed and
+band, a prediction you were still typing, usage events not yet sent, the counts of
+deleted, late-changed and
 moved predictions that signing out leaves, and anything else an account signed
 in here before left behind, along with the exported files, card images and
 pictures the app left in the phone's cache. What an account backed up stays on
@@ -855,9 +830,11 @@ the warm-up and practice tallies; on 2026-11-19 the warm-up notice, the time-zon
 Apple's crash reports, the country in request logs, and after round 6 the 13 months for
 usage counts and what an offset can say about where you are; after the policy re-audit,
 "Precise location" in "What we never collect", and no "time zone" for RevenueCat; for D70 and
-D71, the under-13 rule in §2 and §9, the sign-in screen's switch, and the support message's
-set-aside list; after the D70/D71 review, the sign-in renewals and the two sign-in gaps in
-§9, and §8 rewritten for the four launch storefronts) and changes what signing out
+D71, the under-13 rule in §2 and §9 and the sign-in screen's switch; after the D70/D71
+review, the sign-in renewals and the two sign-in gaps in §9, and §8 rewritten for the four
+launch storefronts), removes one (for D73, 2026-11-20: the on-device check of predictions
+before a Coach request and the list of support messages set aside, which the published
+page still describes in §3) and changes what signing out
 does (it now removes the account's data from the phone, all but the counts only the phone
 keeps, and asks first about categories kept only there) and what Erase does (it now removes
 everything the app keeps on the phone, those counts included). The app isn't on the App Store yet, so

@@ -1469,50 +1469,8 @@ this section has been run on the iPhone.
       and one Close button; no sign-in form. Send a screenshot.
 
 ### D5. D71's four calls (2026-11-19; JS only, a reload of the development build)
-- [ ] **The support card's "Back to Coach" (D71 (b)):** signed in with Plus and
-      Coach on, open an answered prediction in History and Add a note: "The car
-      keeps breaking down." (the filter reads "breaking down" as distress, a
-      known false match). Insights → Get feedback: the support card, then "This
-      came up because of words in one of your predictions or notes, checked on
-      this phone. If it doesn't fit, you can go back to Coach." and a **Back to
-      Coach** button. Tap it: the panel shows Get feedback again; tap that:
-      feedback, or one of the Coach's usual lines, not the card. Change the note to
-      "The car keeps breaking down again.": Get feedback shows the card again.
-      Remove the note afterwards.
-- [ ] **"Back to Coach" checks again at the tap (review):** put the card up as
-      above ("The car keeps breaking down." on one answered prediction, Get
-      feedback). Leave it up, go to History and add the note "The slump hits me
-      at 3." to a different answered prediction (a second topic). Back on
-      Insights tap **Back to Coach**: the card stays but its middle line
-      changes (to "If someone is hurting you or you feel unsafe, there are
-      people you can talk to." and the matching contact line), with "Other
-      words matched too, so this message changed." above the button, and
-      nothing is set aside yet. **Back to Coach** is greyed out for about a
-      second after the change (round two): tap it at once and nothing happens.
-      Then tap **Back to Coach** again: the card goes and
-      Get feedback is back. Then the other way: put a card up, remove the note
-      that caused it in History, come back and tap **Back to Coach**: the card
-      simply goes. Remove the notes afterwards.
-- [ ] **Two topics in one note (round two):** on one answered prediction add
-      the note "he hits me when he drinks and I can't go on" (the filter reads
-      two topics in it) and Get feedback: the card's middle line is "If someone
-      is hurting you or you feel unsafe, there are people you can talk to."
-      Tap **Back to Coach**: the card stays and changes to "If things feel like
-      a lot right now, talking to someone can help.", with "Other words matched
-      too, so this message changed." above the button; nothing is set aside.
-      Wait a second, tap **Back to Coach** again: the card goes and Get
-      feedback is back; tap that: no card. Remove the note afterwards.
-- [ ] **The support card with VoiceOver (review, round two):** with VoiceOver
-      on, repeat the two-topic check (either one). After the first tap, focus
-      lands on the card's title, "Support is available" (not left on the
-      button), the new card is read from there, and "Other words matched too,
-      so this message changed." is heard after it. A double-tap on **Back to
-      Coach** within the second after the change does nothing (VoiceOver reads
-      it as dimmed). After the next double-tap once it is back, focus lands on
-      the "Coach" heading (not lost at the top of the screen) and VoiceOver
-      says "Back to Coach." If a tap ever fails, the card shows and VoiceOver
-      says "Couldn't go back to Coach. Try again." Report what was spoken, in
-      what order, and where focus landed each time.
+The support card's checks for D71 (b) and (c) were removed with the card (D73,
+2026-11-20); D7 has the one check that replaces them.
 - [ ] **Erase removes everything (D71 (a)):** on an account whose Insights →
       More about your record shows a count only this phone keeps (for example
       "1 scored answer was moved to another category…", item 21), sign out,
@@ -1583,17 +1541,6 @@ this section has been run on the iPhone.
       whole line shows with nothing cut off or overlapping the switch, the
       switch stays reachable, and the sign-in buttons are still reachable by
       scrolling. Send a screenshot of each.
-- [ ] **A US-territory phone gets 988 (D71 (c)):** iPhone Settings → General →
-      Language & Region → Region → Puerto Rico. Add a note "The old printer is
-      breaking down." to an answered prediction (new words, so nothing set aside
-      in the first check hides them), then Get
-      feedback: the card's contact reads "988 Suicide &
-      Crisis Lifeline — call or text 988" with no "(US)", then "If 988 doesn't
-      connect where you are: search for a local crisis line, or call your local
-      emergency number." For a second topic, add a note "The slump hits me at
-      3." to another answered prediction (read as the abuse topic, whose card
-      used to show no number on a territory phone): the same two lines. Set
-      Region back and remove the notes.
 
 ### D6. D72's three items (2026-11-20; JS only, a reload of the development build)
 - [ ] **Usage stats start off in Canada (D72 (b)):** Erase in the app (or a fresh
@@ -1616,17 +1563,18 @@ this section has been run on the iPhone.
       you manage it in the Settings app: tap your name, then Subscriptions.", then
       Close. With VoiceOver: title, paragraph, that line, Close, in that order. At the
       largest text size nothing is cut off.
-- [ ] **988 on every topic (D72 (d)):** with the Region on the United States, repeat
-      D5's two-topic check: on the "someone is hurting you" card and on the "things
-      feel like a lot" card alike, the contact reads "988 Suicide & Crisis Lifeline —
-      call or text 988 (US)" and then "Outside the US: search for a crisis line in
-      your country, or call your local emergency number." No other number appears on
-      any card.
 - [ ] **A stale sheet's delete is counted (D72 (a)), two phones only:** skip unless a
       second signed-in device is to hand. Open an open prediction's details on phone
       A (logged on an earlier day) and leave the sheet up; on phone B answer it
       "Can't tell"; let A sync; on A tap Delete and confirm ("Insights will count it
       as deleted"). Insights → More about your record on A counts one deletion.
+
+### D7. D73: no distress check (2026-11-20; JS only, a reload of the development build)
+- [ ] **The Coach answers whatever the notes say (D73):** signed in with Plus and Coach
+      on, open an answered prediction in History and Add a note: "The car keeps
+      breaking down." Insights → Get feedback. Pass: ordinary feedback, or one of the
+      Coach's usual lines, and no support card, helpline or "Back to Coach". Remove the
+      note afterwards.
 
 ---
 

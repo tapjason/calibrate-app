@@ -87,9 +87,7 @@ Status: filled in 2026-11-08
   `docs/ACCOUNT_SPEC.md` §2); a guest's Erase takes every account id's rows, those counts
   included, with the age band, the Warm-up and practice; settings and the entitlement mirror
   stay (D71 (a), `wipeEverythingOnDevice`), and so does the install id RevenueCat's SDK
-  keeps. The support card's set-asides
-  (an id and a hash of the words per prediction, D71 (b)) live in the settings record,
-  never synced; a key goes when its prediction's words change or it is deleted.
+  keeps.
 - **The under-13 rule (D70) decides whether anything leaves the phone:** one predicate
   (`isUnder13Band`, `src/engine/ageBand.ts`: any band that can include someone under 13,
   so (none, 15) and (none, 17) count too), one field (`useAgeStore.localOnly`,
@@ -120,8 +118,8 @@ Status: filled in 2026-11-08
   out of RevenueCat before reading any entitlement (`dropCachedAccount`); if the SDK can't
   say whether its user is anonymous, reads report "couldn't find out" and purchases
   "unavailable" until a sign-in or the next launch.
-- **OpenAI** (through the `coach` Edge Function only): reads computed numbers, never titles or
-  reflections by default (`COACH_AGENT.md`).
+- **OpenAI** (through the `coach` Edge Function only): reads computed numbers, built-in
+  category ids and allowlisted keys, never titles or reflections (`COACH_AGENT.md` §4).
 - **Never on the client:** service-role keys, the OpenAI key, the RevenueCat `sk_` key, the webhook
   secret. The client holds only `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` and
   `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (the App Store `appl_` key in the EAS `production` environment;
@@ -148,7 +146,7 @@ Layers, lowest first (`BUILD_PLAN.md`; an import arrow only points downward; L6 
 - **L3 engine:** `src/engine/` pure functions (`calibration.ts`, `chance.ts`, `direction.ts`,
   `sameDay.ts`, `corrections.ts`, `streak.ts`, `localTime.ts`, `patterns.ts`, `trends.ts`,
   `wrapped.ts`, `warmup.ts`, `practice.ts`, `coverageNudge.ts`, `milestones.ts`, `pastOutcomes.ts`,
-  `categories.ts`, `ageBand.ts`, `supportAside.ts`). The engine takes `now` as an argument and
+  `categories.ts`, `ageBand.ts`). The engine takes `now` as an argument and
   never reads the clock.
 - **L4 state:** `src/store/*Store.ts` (Zustand; state and actions, no business math; every
   mutation and its stats recompute in one `withTransaction`).
@@ -211,18 +209,15 @@ Each one restates a rule in `CLAUDE.md`, which is authoritative.
 - **The Coach** (Plus, sign-in, opt-in that discloses a third-party AI service before the
   first send, Guideline 5.1.2(i); the privacy policy names OpenAI): `COACH_AGENT.md` is
   authoritative. No diagnosis, no personality inference, no
-  medical, financial or legal advice, no numeric diet or exercise targets. Freetext isn't sent by
-  default.
-- **Crisis-adjacent text:** `src/ai/crisisFilter.ts` catches distress signals before any coaching
-  call and routes to `src/components/stats/SupportSurface.tsx`, never to the model. The card
-  says why it came up and offers "Back to Coach", which sets aside the predictions that
-  matched, on this phone only, until new matching words appear (D71 (b),
-  `src/engine/supportAside.ts`). The tap checks again first: nothing matching any more
-  takes the card away with nothing stored, and a topic whose card hasn't been shown gets
-  its card first ("Other words matched too, so this message changed."), nothing set aside
-  (`useCoachStore.backToCoach`); that holds per topic even inside one note, and "Back to
-  Coach" rests for about a second after the card changes. A US-territory phone gets 988 on every topic (D71 (c)), and so does a US phone (D72 (d)): 988 is the only helpline the app names.
-  The Coach is off on a local-only phone (D70).
+  medical, financial or legal advice, no numeric diet or exercise targets. The Coach reads no
+  words: no title or note reaches the model, and nothing on the phone scans them (D73). Both
+  validators drop referral, helpline and mental-state wording from its output. The Coach is
+  off on a local-only phone (D70).
+- **Helplines and distress detection are out of scope** (D73, the owner, 2026-11-20). The
+  on-device check, the support card, its helpline lines and "Back to Coach" were removed in
+  step 206. A review or design run doesn't raise their absence or propose adding one, unless
+  a law or an Apple rule requires it; then it reports that once, with the citation, as the
+  owner's call (NEEDS HUMAN).
 - **Social:** cooperative only, after v1 (D44): nothing ranks, scores one person against another
   or names a winner.
 

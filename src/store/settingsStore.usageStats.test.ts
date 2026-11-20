@@ -205,23 +205,27 @@ describe('Usage stats: what is stored', () => {
     expect(record.saved.at(-1)).toMatchObject({ analyticsEnabled: value, analyticsChosen: true });
   });
 
-  // Erase, sign-out and account deletion keep the settings: their one write
-  // (`eraseSupportAside`) stores the whole record, the choice included.
+  // Erase, sign-out and account deletion keep the settings. Erase's writes
+  // (the card choices, the streak moment, then the usage line's,
+  // `forgetUsageNoticeShown`, the one it reports) each store the whole
+  // record, the choice included.
   it('keeps the choice through Erase’s write of the record', async () => {
     phoneIn('en-CA');
     const record = makeRecord({ analyticsEnabled: true, analyticsChosen: true });
     __setPersistenceForTests(record.persistence);
     await useSettingsStore.getState().hydrate();
 
-    await expect(useSettingsStore.getState().eraseSupportAside()).resolves.toBe(true);
+    await useSettingsStore.getState().setCardHiddenCategories([]);
+    await useSettingsStore.getState().setStreakMomentDay(null);
+    await expect(useSettingsStore.getState().forgetUsageNoticeShown()).resolves.toBe(true);
     expect(record.saved.at(-1)).toMatchObject({ analyticsEnabled: true, analyticsChosen: true });
     expect(on()).toBe(true);
   });
 
   // A record that can't be read: usage stats take their private side, off in
-  // every region, and a record replaced by Erase (or by the person's change of
-  // another setting) stores that off, with no choice, so it stays off until
-  // the person turns them on.
+  // every region, and a record replaced by the person's change of another
+  // setting stores that off, with no choice, so it stays off until the person
+  // turns them on.
   it('reads off in every region while the record can’t be read, and stores that off when replaced', async () => {
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     phoneIn('en-US');
@@ -231,7 +235,8 @@ describe('Usage stats: what is stored', () => {
     expect(useSettingsStore.getState().loadFailed).toBe(true);
     expect(on()).toBe(false);
 
-    await expect(useSettingsStore.getState().eraseSupportAside()).resolves.toBe(true);
+    await useSettingsStore.getState().setStreakShown(false);
+    expect(useSettingsStore.getState().loadFailed).toBe(false);
     const replaced = record.saved.at(-1)!;
     expect(replaced).toMatchObject({ analyticsEnabled: false });
     expect(replaced).not.toHaveProperty('analyticsChosen');

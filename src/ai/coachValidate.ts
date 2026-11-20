@@ -302,7 +302,7 @@ const DISCLAIMERS =
 /**
  * Out-of-domain direction the Coach must never give (§5.3, §5.4): medical,
  * financial or legal advice, numeric diet, sleep or exercise targets,
- * referrals and helplines (the support surface does that, never the model),
+ * referrals and helplines (the app makes no referrals either, D73),
  * product names, and claims about the person's mind. A prompt is a request; a
  * validator is a guarantee: "move 40% into bonds" cites a real number whenever
  * 40 appears in the context. These only ever drop a card. Read on the
@@ -1628,8 +1628,9 @@ function judgeInsight(
  * renders nothing, which is the intended fail-safe (§5.8). Messages and
  * suggestions come back NFKC-normalised, as they were checked.
  *
- * A response marked `safe: false` — the crisis path — returns no insights at
- * all, regardless of what else it contains.
+ * A response marked `safe: false` returns no insights at all, regardless of
+ * what else it contains; the app shows it as an answer with nothing to say
+ * (D73).
  */
 export function validateCoachOutput(raw: unknown, context: CoachContext): CoachOutput {
   if (!isObject(raw)) return empty();

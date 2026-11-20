@@ -25,12 +25,6 @@ import { create } from 'zustand';
 import { clearEvents } from '@/db/analytics';
 import { DEFAULT_THEME } from '@/constants/cardThemes';
 import { deviceRegion } from '@/constants/locale';
-import {
-  foldSupportAsideKeeps,
-  supportAsideKeyStands,
-  withSupportAsideKeys,
-  type SupportAsideKeep,
-} from '@/engine/supportAside';
 import { usageStatsOffByRegion, usageStatsOn, usageStatsStartOff } from '@/engine/usageStats';
 import { CATEGORIES, isCategory, type Category } from '@/types';
 
@@ -193,29 +187,21 @@ export interface StoredSettings {
    * before anything goes up; kept by sign-out, which keeps the Warm-up too.
    */
   usageNoticeShownAt: string | null;
-  /**
-   * The Coach's support card, set aside (main session decision 2026-11-19):
-   * one key per answered prediction whose words matched the crisis
-   * pre-filter when the person set the card aside (`supportAsideKey`,
-   * src/engine/supportAside.ts: the id and a hash of its title and note, no
-   * words), oldest first, at most `SUPPORT_ASIDE_MAX_KEYS` (2,000). The Coach
-   * store leaves those predictions out of its scan, so the card comes back
-   * only for new matching words. Like the cooldowns, a memory, not a
-   * preference. A record that can't be read holds none (the card shows: the
-   * safe way to be wrong). Cleared by Erase, account deletion and sign-out:
-   * a key carries a hash of the words, and that it exists says the filter
-   * matched them. For the same reason a key goes when its prediction's title
-   * or note changes or the prediction is deleted, and whenever the Coach, or
-   * a successful load of the answered list (predictionStore), finds it no
-   * longer matches anything in that list (`retainSupportAsideKeys`). Erase,
-   * sign-out and account deletion clear the record on disk too, replacing
-   * one that can't be read (`eraseSupportAside`).
-   *
-   * Written only when there is one: an empty list is left out of the stored
-   * record (absent reads as none), so a record with nothing set aside keeps
-   * the shape earlier builds wrote. Always present in the store's state.
-   */
-  supportAsideKeys?: string[];
+}
+
+/**
+ * What a development build before 2026-11-20 stored for the Coach's support
+ * card, set aside: one key per answered prediction, its id and a hash of its
+ * title and note. The card and the scan behind it are gone (D73), so nothing
+ * reads it: a record that still has it is rewritten without it once it is
+ * read (`hydrate`, `retryLoad`), and no write carries it, since a write is
+ * always the whole snapshot, which has no such value.
+ */
+const RETIRED_SUPPORT_ASIDE_KEY = 'supportAsideKeys';
+
+/** Whether a stored record still holds the retired set-asides. */
+function holdsRetiredValues(stored: Partial<StoredSettings>): boolean {
+  return Object.prototype.hasOwnProperty.call(stored, RETIRED_SUPPORT_ASIDE_KEY);
 }
 
 /** The share card's shape: Post (3:4) or Story (9:16). */
@@ -241,8 +227,6 @@ export interface SettingsPersistence {
 }
 
 interface SettingsState extends StoredSettings {
-  /** The support card's set-asides (`StoredSettings.supportAsideKeys`): none is an empty list here. */
-  supportAsideKeys: string[];
   /** Whether the person set Usage stats (`StoredSettings.analyticsChosen`): false here when not. */
   analyticsChosen: boolean;
   /** True once hydrate() has run (whether or not stored values existed). */
@@ -324,62 +308,13 @@ interface SettingsState extends StoredSettings {
    * kept, and a second call writes nothing.
    */
   markUsageNoticeShown: () => Promise<void>;
-  /** Forget that the line was shown (Erase, account deletion), so it is shown again first. */
-  forgetUsageNoticeShown: () => Promise<void>;
   /**
-   * Remember support-card set-asides (`useCoachStore.backToCoach`): the
-   * keys are added at the newest end, the oldest dropped past
-   * `SUPPORT_ASIDE_MAX_KEYS` (2,000). Anything that isn't a key is ignored.
+   * Forget that the line was shown (Erase, account deletion), so it is shown
+   * again first. Resolves as a change's write does (`save`): false only when
+   * the write of the whole record didn't land, which Erase reports as a step
+   * that didn't finish. Never throws.
    */
-  addSupportAsideKeys: (keys: readonly string[]) => Promise<void>;
-  /**
-   * Keep only the set-asides `keep` accepts (2026-11-19): a prediction's title
-   * or note changed, or it was deleted (`supportAsideKeysStandingAfter`), or
-   * the Coach's loaded list no longer has the words a key was made from
-   * (`supportAsideKeysStandingWith`). A key `keep` throws on is dropped:
-   * dropping one only brings the card back. With the record read, applied and
-   * written only when it drops something. While the record can't be read it
-   * is held, like any automatic change, and applied over the record's own
-   * keys once it reads; one retain is held at a time (review round three,
-   * 2026-11-19), a newer one taking the held one's place, folded with it so
-   * the keys left are those the two would leave in turn
-   * (`foldSupportAsideKeeps`). Before the record has been read, memory only
-   * (a write would store the defaults over it). Never throws.
-   */
-  retainSupportAsideKeys: (keep: SupportAsideKeep) => Promise<void>;
-  /**
-   * Forget every set-aside, as an automatic change: the card shows again for
-   * any match. While the record can't be read the clear is held in memory and
-   * applied over the record once it reads, so a record that reads again after
-   * a restart still holds its keys. Not used by the app since re-review round
-   * two (2026-11-19): sign-out, account deletion and guest Erase all use
-   * `eraseSupportAside`. Before the settings have been read, nothing is
-   * written, which would store the defaults over the record: the clear is
-   * held and applied as soon as `hydrate()` has read it.
-   */
-  clearSupportAside: () => Promise<void>;
-  /**
-   * Forget every set-aside, the record on disk included (D71 (a) for guest
-   * Erase; re-review round two, 2026-11-19, for sign-out and account deletion
-   * too): the card shows again for any match, and a record that couldn't be
-   * read (`loadFailed`), which may hold keys, doesn't keep them on disk. It
-   * is read once more: one that reads now has the clear applied over it, with
-   * every change held since, and is stored, the person's other settings kept;
-   * one that still can't be read, or is gone, is replaced by the settings
-   * this run holds (every privacy choice on its private side, none set
-   * aside), and the failed state ends.
-   *
-   * Before the settings have been read (the auth store starts first, and a
-   * sign-out's or deletion's wipe owed from an earlier run is retried then),
-   * nothing is written, which would store the defaults over the record: the
-   * erase is held and applied, in this same way, as soon as `hydrate()` has
-   * read the record or failed to.
-   *
-   * True once the stored record holds no key; false when the write failed or
-   * is still held for `hydrate()` (Erase reports either as a step that didn't
-   * finish). Never throws.
-   */
-  eraseSupportAside: () => Promise<boolean>;
+  forgetUsageNoticeShown: () => Promise<boolean>;
   /** What the permission read found (null: unknown). Held in memory only, never stored. */
   setNotificationPermission: (permission: NotificationPermission | null) => void;
 }
@@ -400,10 +335,10 @@ interface SettingsState extends StoredSettings {
 // there the stored on reads as off until the person turns the switch on
 // (`analyticsChosen`, `selectUsageStatsOn`).
 /**
- * The settings as the store holds them: every value present, none set aside
- * an empty list, nothing chosen `analyticsChosen: false`.
+ * The settings as the store holds them: every value present, nothing chosen
+ * `analyticsChosen: false`.
  */
-type HeldSettings = StoredSettings & { supportAsideKeys: string[]; analyticsChosen: boolean };
+type HeldSettings = StoredSettings & { analyticsChosen: boolean };
 
 const DEFAULTS: HeldSettings = {
   notificationsEnabled: true,
@@ -433,7 +368,6 @@ const DEFAULTS: HeldSettings = {
   practiceReminderOfferDismissedAt: null,
   streakMomentDay: null,
   usageNoticeShownAt: null,
-  supportAsideKeys: [],
 };
 
 const STORAGE_KEY = 'calibrate:settings';
@@ -497,13 +431,6 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                choice of this very setting.
  *                setPracticeReminder: choosePracticeReminder, from You or
  *                from the practice sheet's offer; the person picks the time.
- *                eraseSupportAside: guest Erase, the person's own choice to
- *                remove everything the app keeps; the one setting it changes
- *                is the set-asides (D71 (a), 2026-11-19). And sign-out and
- *                account deletion, the person's own choices to take the
- *                account's data off the phone, which no set-aside may outlast
- *                on disk (re-review round two, 2026-11-19, main session's
- *                call): an unreadable record is replaced as for Erase.
  *   automatic  everything else. Held in memory only while the record can't
  *              be read, then applied over it once it reads.
  *                markCoverageNudgeShown, markRatingAsked, setStreakMomentDay
@@ -514,13 +441,6 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  *                is drawn, forgotten at Erase and account deletion. Held, it
  *                is applied over the record once it reads, and a stamp the
  *                record already has is kept);
- *                addSupportAsideKeys, retainSupportAsideKeys,
- *                clearSupportAside (the support card set aside on Insights,
- *                its keys dropped when their words change or go; the app no
- *                longer calls clearSupportAside. Held, an addition is merged
- *                into the record's keys once it reads, a retain filters them
- *                and a clear empties them; one retain is held at a time,
- *                `holdChange`);
  *                dismissReminderPrompt, dismissBackupNudge,
  *                dismissWelcomeBack, dismissPracticeReminderOffer ("Not now"
  *                on Today's cards and the practice sheet's);
@@ -534,72 +454,12 @@ type SettingsChange = (current: StoredSettings) => Partial<StoredSettings>;
  */
 type ChangeKind = 'explicit' | 'automatic';
 
-/**
- * A change held while the record can't be read: what it sets, and for the
- * support card's set-asides what it is, so a newer retain can take an older
- * one's place (`holdChange`).
- */
-interface HeldChange {
-  update: SettingsChange;
-  /** A retain of the set-asides: its check. At most one held change has one. */
-  retain?: SupportAsideKeep;
-  /** An addition of set-asides: the keys it adds. */
-  added?: readonly string[];
-}
-
 /** The changes made since the record couldn't be read, in order. */
-let heldChanges: HeldChange[] = [];
-/**
- * A clear of the support card's set-asides asked for before the settings had
- * been read, and how it is to be stored: 'explicit' for `eraseSupportAside`
- * (a record that can't be read is replaced), 'automatic' for
- * `clearSupportAside` (held until it reads); null for none. Applied right
- * after `hydrate()` reads the record or fails to, so a wipe retried at launch
- * leaves no key behind.
- */
-let supportAsideClearOnHydrate: ChangeKind | null = null;
+let heldChanges: SettingsChange[] = [];
 /** Bumped by every change, so a save can tell whether one came in meanwhile. */
 let changeCount = 0;
 /** The foreground listener while the record can't be read, or null. */
 let foregroundWatch: { remove?: () => void } | null = null;
-
-/** A retain of the set-asides as a change: the keys `keep` doesn't say stand go. */
-function retainUpdate(keep: SupportAsideKeep): SettingsChange {
-  return (s) => ({
-    supportAsideKeys: (s.supportAsideKeys ?? []).filter((key) => supportAsideKeyStands(keep, key)),
-  });
-}
-
-/**
- * Hold a change while the record can't be read, after those held already.
- * A retain of the set-asides is held once at most (review round three,
- * 2026-11-19): each list reload, Coach request and edit asks for one, and
- * each held its own check, a key for every answered prediction, until the
- * record read, which in a run where it never does was never. A newer retain
- * takes the held one's place: the held one leaves the queue and one retain,
- * the two folded (`foldSupportAsideKeeps`), joins it at the end, where the
- * newer one would have. Applied over the record, that leaves the keys the
- * queue left before. Nothing else held reads the set-asides, so moving the
- * retain past them changes nothing; an addition between the two is judged by
- * the newer check only, as it was; and a clear or an erase between them
- * empties the list either way, so what the two would drop before it is moved
- * to after it, where every key was added after the clear. Kept small: a list
- * reload's or the Coach's check carries its keys (`only`), so the fold is one
- * list of keys. Only checks without them, an edit's (`supportAsideKeysStandingAfter`,
- * an id and a key), are held together.
- */
-function holdChange(held: HeldChange): void {
-  const at = held.retain ? heldChanges.findIndex((h) => h.retain !== undefined) : -1;
-  const older = at >= 0 ? heldChanges[at]?.retain : undefined;
-  if (!held.retain || !older) {
-    heldChanges.push(held);
-    return;
-  }
-  const addedBetween = heldChanges.slice(at + 1).flatMap((h) => h.added ?? []);
-  const folded = foldSupportAsideKeeps(older, addedBetween, held.retain);
-  heldChanges.splice(at, 1);
-  heldChanges.push({ update: retainUpdate(folded), retain: folded });
-}
 
 /**
  * Try the record again each time the app comes back to the foreground, until
@@ -642,7 +502,6 @@ export function __setPersistenceForTests(next: SettingsPersistence | null): void
   persistence = next ?? defaultPersistence();
   heldChanges = [];
   changeCount = 0;
-  supportAsideClearOnHydrate = null;
   stopWatchingForeground();
   useSettingsStore.setState({
     ...DEFAULTS,
@@ -650,17 +509,6 @@ export function __setPersistenceForTests(next: SettingsPersistence | null): void
     loadFailed: false,
     notificationPermission: null,
   });
-}
-
-/**
- * Test-only: how many changes are held while the record can't be read, and
- * how many of them are retains of the set-asides.
- */
-export function __heldChangesForTests(): { total: number; retains: number } {
-  if (process.env.NODE_ENV !== 'test') {
-    throw new Error('__heldChangesForTests is only allowed when NODE_ENV=test');
-  }
-  return { total: heldChanges.length, retains: heldChanges.filter((h) => h.retain).length };
 }
 
 /**
@@ -785,23 +633,15 @@ function fromStored(stored: Partial<StoredSettings>): HeldSettings {
     // Anything that isn't a time reads as never shown: the line is shown
     // again, and nothing goes up from a guest until it is.
     usageNoticeShownAt: validStamp(stored.usageNoticeShownAt) ?? DEFAULTS.usageNoticeShownAt,
-    // Keys only, each once, the newest `SUPPORT_ASIDE_MAX_KEYS` (2,000);
-    // anything else reads as none set aside, so the card shows.
-    supportAsideKeys: Array.isArray(stored.supportAsideKeys)
-      ? withSupportAsideKeys(stored.supportAsideKeys)
-      : DEFAULTS.supportAsideKeys,
   };
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => {
-  /**
-   * Apply a change in memory, and hold it while the record can't be read
-   * (`holdChange`); `about` says what a set-aside change is.
-   */
-  const change = (update: SettingsChange, about: Omit<HeldChange, 'update'> = {}): void => {
+  /** Apply a change in memory, and hold it while the record can't be read. */
+  const change = (update: SettingsChange): void => {
     changeCount += 1;
     set(update(snapshot(get())));
-    if (get().loadFailed) holdChange({ ...about, update });
+    if (get().loadFailed) heldChanges.push(update);
   };
 
   /** The record is readable, or replaced: nothing held, nothing to watch for. */
@@ -818,7 +658,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
    */
   const adopt = (stored: Partial<StoredSettings>): boolean => {
     let next = fromStored(stored);
-    for (const held of heldChanges) next = { ...next, ...held.update(next) };
+    for (const update of heldChanges) next = { ...next, ...update(next) };
     const applied = heldChanges.length > 0;
     set(next);
     endFailure();
@@ -885,8 +725,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
           stored = await loadStored();
         }
         // Changes held from an earlier failed read (a second hydrate) are
-        // applied over the record, and then stored.
-        if (stored && adopt(stored)) await persist(snapshot(get()));
+        // applied over the record, and then stored. So is a record that still
+        // holds the retired set-asides (D73): rewritten once without them,
+        // every other value as read.
+        if (stored && (adopt(stored) || holdsRetiredValues(stored))) {
+          await persist(snapshot(get()));
+        }
       } catch (e) {
         // Fall back to defaults — never block startup on a settings read. But
         // not for the privacy choices: the record that couldn't be read may
@@ -926,19 +770,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       // (owner, 2026-11-19): the queued counts go, as when the switch is
       // turned off. Not while the record can't be read: off is then a guess.
       if (!get().loadFailed) await dropQueueIfOffByRegion(get());
-      // A clear of the set-asides asked for before the record was read (a
-      // wipe retried at launch: `eraseSupportAside`, or `clearSupportAside`),
-      // applied over it now, as the call would have been with the record
-      // read: an erase replaces a record that still can't be read. Nothing
-      // to write when it holds none and was read.
-      const pendingClear = supportAsideClearOnHydrate;
-      if (pendingClear !== null) {
-        supportAsideClearOnHydrate = null;
-        if (get().loadFailed || get().supportAsideKeys.length > 0) {
-          change(() => ({ supportAsideKeys: [] }));
-          await save(pendingClear);
-        }
-      }
     },
 
     retryLoad: async () => {
@@ -954,7 +785,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       // in You writes one (or the next launch, which reads no record as a
       // fresh install).
       if (!stored || !get().loadFailed) return;
-      if (adopt(stored)) await persist(snapshot(get()));
+      // As at launch: stored when changes were held, or when the record still
+      // holds the retired set-asides (`hydrate`).
+      if (adopt(stored) || holdsRetiredValues(stored)) await persist(snapshot(get()));
       // The record read at last: as at launch (`hydrate`).
       await dropQueueIfOffByRegion(get());
     },
@@ -1121,66 +954,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
 
     forgetUsageNoticeShown: async () => {
       change(() => ({ usageNoticeShownAt: null }));
-      await save('automatic');
-    },
-
-    addSupportAsideKeys: async (keys) => {
-      const added = withSupportAsideKeys([], keys);
-      if (added.length === 0) return;
-      // Merged into whatever it is applied to: memory now, the record later
-      // if it couldn't be read.
-      change((s) => ({ supportAsideKeys: withSupportAsideKeys(s.supportAsideKeys ?? [], added) }), {
-        added,
-      });
-      await save('automatic');
-    },
-
-    retainSupportAsideKeys: async (keep) => {
-      // A key the check can't judge is dropped: the card comes back, the safe way.
-      const stands = (key: string): boolean => supportAsideKeyStands(keep, key);
-      const held = get().supportAsideKeys;
-      if (!get().hydrated) {
-        // Not read yet: a write now would store the defaults over the record.
-        // Memory only; the next retain after the read drops what the record
-        // holds.
-        if (!held.every(stands)) set({ supportAsideKeys: held.filter(stands) });
-        return;
-      }
-      // With the record read, nothing to drop is nothing to write. While it
-      // can't be read, memory holds none of its keys, so the change is held
-      // all the same and filters the record's own once it reads, in the place
-      // of a retain held already (`holdChange`).
-      if (!get().loadFailed && held.every(stands)) return;
-      change(retainUpdate(keep), { retain: keep });
-      await save('automatic');
-    },
-
-    clearSupportAside: async () => {
-      if (!get().hydrated) {
-        // Not read yet: a write now would store the defaults over the record.
-        // Held, and applied as soon as hydrate() has read it (an erase held
-        // already stays an erase).
-        if (supportAsideClearOnHydrate === null) supportAsideClearOnHydrate = 'automatic';
-        set({ supportAsideKeys: [] });
-        return;
-      }
-      change(() => ({ supportAsideKeys: [] }));
-      await save('automatic');
-    },
-
-    eraseSupportAside: async () => {
-      if (!get().hydrated) {
-        // Not read yet: a write now would store the defaults over the record.
-        // Held as an erase, and applied as soon as hydrate() has read the
-        // record or failed to. Nothing is on disk yet.
-        supportAsideClearOnHydrate = 'explicit';
-        set({ supportAsideKeys: [] });
-        return false;
-      }
-      change(() => ({ supportAsideKeys: [] }));
-      // Explicit: a record that can't be read is read once more, and replaced
-      // if it still can't be (`save`), so no key stays in it on disk.
-      return save('explicit');
+      return save('automatic');
     },
 
     // No persist: the phone's state, read again at every launch.
@@ -1196,10 +970,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
  * the three switches and their lines). Never read `analyticsEnabled` on its
  * own: on a phone whose region is Canada, a stored on that the person never
  * chose reads as off. The rules are `usageStatsOn` (src/engine/usageStats.ts);
- * the region is the phone's locale's (`deviceRegion`, the one the Coach's
- * support card reads), read once per launch, so a region changed in Settings
- * counts from the next launch. A region that can't be read counts as not
- * Canada. A selector: `useSettingsStore(selectUsageStatsOn)` in a component,
+ * the region is the phone's locale's (`deviceRegion`), read once per launch,
+ * so a region changed in Settings counts from the next launch. A region that
+ * can't be read counts as not Canada. A selector: `useSettingsStore(selectUsageStatsOn)` in a component,
  * `selectUsageStatsOn(useSettingsStore.getState())` elsewhere.
  */
 export function selectUsageStatsOn(
@@ -1261,24 +1034,20 @@ function validTime(value: unknown): PracticeReminderTime | null {
 /**
  * The persistable slice of the store. Each setter writes the whole snapshot
  * after updating state, so adding a toggle no longer means editing every
- * other setter — the bug that shape invited. The support card's set-asides
- * only when there is one (`StoredSettings.supportAsideKeys`).
+ * other setter — the bug that shape invited. Only the values listed here:
+ * the retired set-asides (`RETIRED_SUPPORT_ASIDE_KEY`) are never carried.
  */
 function snapshot(state: StoredSettings): StoredSettings {
-  const aside = state.supportAsideKeys ?? [];
   return {
     ...settingsValues(state),
     // Only once chosen (`StoredSettings.analyticsChosen`), after the switch's
     // value, as earlier builds wrote it.
     ...(state.analyticsChosen === true ? { analyticsChosen: true } : {}),
-    ...(aside.length > 0 ? { supportAsideKeys: aside } : {}),
   };
 }
 
-/** Every stored value but the set-asides and whether Usage stats were chosen. */
-function settingsValues(
-  state: StoredSettings,
-): Omit<StoredSettings, 'supportAsideKeys' | 'analyticsChosen'> {
+/** Every stored value but whether Usage stats were chosen. */
+function settingsValues(state: StoredSettings): Omit<StoredSettings, 'analyticsChosen'> {
   return {
     notificationsEnabled: state.notificationsEnabled,
     remindersEnabled: state.remindersEnabled,

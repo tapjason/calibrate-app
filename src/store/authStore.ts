@@ -251,9 +251,8 @@ interface AuthState {
    * read again: anything new since stops the sign-out the same way, the
    * account kept as it was (round 6, N2). 4. The account's rows are wiped
    * (its predictions, stats and categories; not this phone's integrity counts,
-   * the Warm-up, the age band or practice), its sync cursor cleared, the
-   * cached copies swept and the support card's set-asides forgotten (keys
-   * that hash the words, 2026-11-19). 5. The session ends, online or on this
+   * the Warm-up, the age band or practice), its sync cursor cleared and the
+   * cached copies swept. 5. The session ends, online or on this
    * phone alone as before (`localOnly`), and the account is remembered as
    * signed out here, so a stale copy of its session coming back is ignored.
    * 6. Then
@@ -289,14 +288,12 @@ interface AuthState {
    * integrity counts and sync markers included), the age band, the Warm-up
    * and practice (`wipeEverythingOnDevice`); then wipes owed for any account
    * are settled and every account's sync cursor cleared, the Log draft, the
-   * answer run, the card and streak-moment choices, the usage line's stamp
-   * and the support card's set-asides forgotten, the stores reloaded, the lock
-   * screen and the cache cleared and the Coach dropped. The "signed out here"
-   * list stays (ids only; it keeps a stale session from coming back), and so
-   * do the entitlement mirror and the settings (a settings record that can't
-   * be read, which may hold set-asides, is replaced: `eraseSupportAside`).
-   * Nothing to call — it never left the phone. Refused while a sign-in is
-   * under way.
+   * answer run, the card and streak-moment choices and the usage line's stamp
+   * forgotten, the stores reloaded, the lock screen and the cache cleared and
+   * the Coach dropped. The "signed out here" list stays (ids only; it keeps a
+   * stale session from coming back), and so do the entitlement mirror and the
+   * settings. Nothing to call — it never left the phone. Refused while a
+   * sign-in is under way.
    *
    * The Log draft (the person's words) goes before the wipe; every step after
    * it runs in its own try, so one that throws can't leave the others undone
@@ -427,10 +424,6 @@ async function sweepCachedCopies(): Promise<boolean> {
  *   account's rows, the Warm-up and the age band (the wipe's
  *   default), then the age store's band (D70), the Warm-up and practice
  *   stores.
- *
- * Every kind also forgets the support card's set-asides, the stored record
- * included (an unreadable one is replaced): at once, or as soon as the
- * settings have been read (`forgetSupportAside`).
  */
 type EraseKind = 'signOut' | 'accountRows' | 'confirmedDeletion';
 
@@ -448,12 +441,6 @@ function eraseKindFor(reason: markers.WipeReason): EraseKind {
  * swept whether or not the wipe went through.
  */
 async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolean> {
-  // The Coach's support card set aside (main session, 2026-11-19), whatever
-  // took the account's rows: each key holds a prediction's id and a hash of
-  // its words, and that one exists says the crisis filter matched them, so
-  // none outlasts the rows. Signing back in shows the card once more, and
-  // one tap sets it aside again. Never throws.
-  await forgetSupportAside();
   if (kind === 'confirmedDeletion') {
     try {
       // The categories left off the card were about the erased record: any
@@ -511,34 +498,6 @@ async function eraseAccountHere(userId: string, kind: EraseKind): Promise<boolea
   // Not waited on: no wipe here waits on the file system (guest Erase does).
   void sweepCachedCopies();
   return wiped;
-}
-
-/**
- * Forget every support-card set-aside (settingsStore), the stored record
- * included: `eraseSupportAside`, as guest Erase does (re-review round two,
- * 2026-11-19, main session's call). A settings record that can't be read,
- * which may hold keys, is read once more and, if it still can't be, replaced
- * with this run's settings, every privacy choice on its private side; until
- * then `clearSupportAside` only held the clear in memory, and a record that
- * read again after a restart brought the hashes back. Never throws.
- *
- * The auth store initializes before the settings hydrate (app/_layout.tsx),
- * and a write before then would store the defaults over the person's record.
- * So a wipe retried at launch (an owed sign-out's or deletion's) doesn't
- * write: the settings store holds the erase and applies it, in the same way,
- * as soon as it has read the record or failed to, so no key outlasts the
- * rows.
- */
-async function forgetSupportAside(): Promise<void> {
-  try {
-    if (!(await useSettingsStore.getState().eraseSupportAside()) && useSettingsStore.getState().hydrated) {
-      // eslint-disable-next-line no-console
-      console.warn('[auth] the support card set-asides were forgotten, but the settings write did not land');
-    }
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('[auth] could not forget the support card set aside:', errorForLog(e));
-  }
 }
 
 /**
@@ -1273,19 +1232,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // As after account deletion: the choice was about the erased record,
         // and so was the day a streak checkpoint's moment played (step 194).
         // A fresh start shows the line about usage counts again, with the
-        // Warm-up, before anything goes up (D69 (b)). These three swallow a
-        // failed write; the step after them writes the whole record and
-        // reports it, so it stands for them too.
+        // Warm-up, before anything goes up (D69 (b)). The first two swallow a
+        // failed write; the last of the three writes the whole record, the
+        // two changes above included, and resolves false when that write
+        // didn't land, so it stands for them too.
         ['the card choices', () => useSettingsStore.getState().setCardHiddenCategories([])],
         ['the streak moment', () => useSettingsStore.getState().setStreakMomentDay(null)],
         ['the usage line', () => useSettingsStore.getState().forgetUsageNoticeShown()],
-        // And the support card's set-asides: keys of predictions now gone,
-        // the record on disk too if it couldn't be read (D71 (a)). After the
-        // other settings, and last of them: its write is the whole record,
-        // the three changes above included (or, with a record that couldn't
-        // be read, replaces it with them), and it resolves false when that
-        // write didn't land.
-        ['the support card set-asides', () => useSettingsStore.getState().eraseSupportAside()],
         ['the reload', () => reloadForUser(LOCAL_GUEST_USER_ID)],
         // And what's already on the lock screen was about it too. After the
         // reload, which cancels the reminders still to come, and not awaited:
@@ -1323,7 +1276,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  * it throws, or when it resolves to `false`: the helpers that swallow their
  * own storage errors say so that way (re-review round two, 2026-11-19: the
  * Log draft's `clear`, the answer run's `forget`, the settings'
- * `eraseSupportAside`, the age store's `forgetBand`, and
+ * `forgetUsageNoticeShown`, the age store's `forgetBand`, and
  * `forgetAccountsAfterErase` here). Any other value, `undefined` included,
  * is a step that went. A failure is logged by the step's name and the
  * error's code and message (errorForLog), never thrown, so the next step

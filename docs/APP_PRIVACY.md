@@ -1,6 +1,6 @@
 # Fairly Sure — App Privacy declarations
 
-**As of:** 2026-11-19 (revised after the D70/D71 review of that day, its third round included, whose fixes are committed on `builder/owner-decisions` (`e77431e`, `b2557b0` and the round-three commit), and for the owner's decisions of that day on the form's IP address, Name and Location rows and on the launch storefronts; revised for the under-13 rule, D70, and D71's Erase, support-card set-aside and sign-in switch, in the same commits; revised after round 7 of the security review and the policy re-audit's W1–W4, uncommitted on `builder/review-2026-11-18` that day; revised after round 6, whose code was uncommitted on `builder/review-2026-11-18` that day, and after round 5, commit `7b5b0ea`; revised after the security and policy review of 2026-11-18; checked against the code after step 187; policy audit of step 180 on 2026-11-15; first written 2026-09-24) · Derived from the code, not from intent.
+**As of:** 2026-11-20 (revised for D73, step 206, on `builder/owner-list-19-30`: the on-device scan of titles and notes before a Coach request and the support card's set-aside list are removed; revised 2026-11-19 after the D70/D71 review of that day, its third round included, whose fixes are committed on `builder/owner-decisions` (`e77431e`, `b2557b0` and the round-three commit), and for the owner's decisions of that day on the form's IP address, Name and Location rows and on the launch storefronts; revised for the under-13 rule, D70, and D71's Erase, support-card set-aside and sign-in switch, in the same commits; revised after round 7 of the security review and the policy re-audit's W1–W4, uncommitted on `builder/review-2026-11-18` that day; revised after round 6, whose code was uncommitted on `builder/review-2026-11-18` that day, and after round 5, commit `7b5b0ea`; revised after the security and policy review of 2026-11-18; checked against the code after step 187; policy audit of step 180 on 2026-11-15; first written 2026-09-24) · Derived from the code, not from intent.
 
 **Answers that depend on owner steps or a build** (2026-11-19): the guest counts carry a
 hashed id and day-only times only once migration 010 is applied, and wait for the
@@ -233,25 +233,10 @@ send a prediction's text, because the payload it is built from has nowhere to
 put one** (`src/ai/coachContext.ts`; `CoachContext` in `src/types/index.ts`).
 That is a structural property, not a policy.
 
-Related: freetext *is* scanned on-device by the crisis pre-filter before any
-Coach call, and a match routes the user to a support surface instead of the
-model — the text still never leaves the device (`src/ai/crisisFilter.ts`).
-"Back to Coach" on that surface (D71 (b)) keeps a set-aside list on the phone only: per
-entry a prediction id and a 64-bit FNV-1a hash of its title and note, at most 2,000
-(`SUPPORT_ASIDE_MAX_KEYS`; 200 until the re-review's round two), in the
-settings record (`supportAsideKeys`, `src/store/settingsStore.ts`;
-`src/engine/supportAside.ts`). The tap runs the on-device check again first
-(`useCoachStore.backToCoach`): if nothing matches any more the card goes and nothing is
-stored; if a topic matches whose card hasn't been shown, a second topic of the same note
-included, that card is shown first and nothing is stored; only otherwise are the matching
-predictions set aside. A key is dropped when its prediction's words change or the
-prediction is deleted, and the list is pruned against the current predictions at every
-request and tap and after every successful load of the answered predictions, which is
-when a change that arrived by sync is first seen. Never sent, no analytics event;
-sign-out, Erase and account deletion all clear it the same way (`eraseSupportAside`, from
-`src/store/authStore.ts`): the stored record too, a record that can't be read being
-replaced, and also when that happens before the settings have been read. Nothing to
-declare. The Coach makes no
+Nothing on the phone scans titles or notes for the Coach (D73, 2026-11-20, step 206: the
+on-device distress check, its support card and the "Back to Coach" set-aside list in the
+settings record are removed; a stored record that still holds set-aside keys is rewritten
+without them when settings load). Nothing to declare. The Coach makes no
 request on a local-only phone (D70, `src/ai/coach.ts`).
 
 ### RevenueCat — subscriptions

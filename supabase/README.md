@@ -1994,8 +1994,8 @@ Plus-gated, and non-essential by design: `src/ai/coach.ts` turns every failure
 into an empty result, so the surface simply doesn't render.
 
 `COACH_AGENT.md` is the authoritative spec for this function. Its safeguards —
-grounding, minimum-N, out-of-domain, and the crisis pre-filter — are not
-optional extras; read §5 before changing anything here.
+grounding, minimum-N and out-of-domain (the crisis pre-filter was removed by
+D73, 2026-11-20) — are not optional extras; read §5 before changing anything here.
 
 **One-time setup**
 

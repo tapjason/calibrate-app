@@ -76,7 +76,8 @@ the EU first; and, as corrected after that day's policy audit, outside the UK, w
 awaits his nod: "The owner's list" item 7), 8 and the rest of 13 (send the messages; the app names nothing until an
 answer comes), 9 (the switch is enough outside the EU) and 12 (after the mail sender).
 **Nothing is left to decide;** what is left to do, and who does it, is in "The owner's
-list" below.
+list" below. 8 and 13 are moot since D73 (2026-11-20): the Coach's distress check and
+support card are removed.
 
 1. **The native batch (step 180).** Answered yes; built 2026-11-15 as step 180 (roadmap D64):
    an optional lock with Face ID and the passcode, and `expo-localization` for units by Region.
@@ -94,7 +95,7 @@ list" below.
    **Recommendation:** adopt the local-only rule before a US launch; ask counsel about the
    state-law duties. **Built 2026-11-19 as D70** on `builder/owner-decisions`, the agent's
    call on the owner's delegation: `docs/design/research/under-13-2026-11.md` has the rule,
-   what it gates and the points for counsel (nine since the review). Left for the owner: the sandbox "Under
+   what it gates and the points for counsel (ten since D73, 2026-11-20). Left for the owner: the sandbox "Under
    13" check on the iPhone, and counsel.
 3. **Guest usage counts.** Answered yes; built 2026-11-16 as step 186, after the owner applied
    Supabase migrations 007 and 008. A guest's eight funnel events go up with no id, as the
@@ -118,6 +119,7 @@ list" below.
    name it once they agree. Until then the app names nothing. **Closed 2026-11-20 by the
    owner:** no directory is named and the message isn't sent ("The purpose of my app is
    not to connect people to these helplines").
+   Moot since D73, 2026-11-20: the check and card are removed.
 9. **Usage stats at sign-in: notice, or a switch.** The sign-in screen now says what is
    sent and how to turn it off (notice and opt-out). Guideline 5.1.1(ii) says "secure user
    consent"; the policy audit reads the notice as enough for App Review and can't settle it
@@ -173,6 +175,7 @@ Added 2026-11-15 (the second review of step 182 and its policy check):
     line, or call your local emergency number." The two emails are drafted in
     `docs/OWNER_MESSAGES.md`; the other two numbers go on a territory phone only when those
     organisations confirm.
+    Moot since D73, 2026-11-20: the check and card are removed.
 
 ## The owner's list (2026-11-19), with the agent's recommendation for each
 
@@ -186,7 +189,7 @@ wrong and are corrected below, so they still need the owner's nod:** 7 (the poli
 found the UK needs a UK representative and policy content the draft lacks, so the UK is
 left out with the EU) and 10 (stored IP addresses do get a line on the App Privacy form).
 What remains otherwise is doing, not deciding. Only the owner can do: 1, the domain in 4, the Pro plan in 5 (before the public
-release), the sandbox check and the lawyer in 6, 9, the messages in 12 and 13, 14 and 17.
+release), the sandbox check and the lawyer in 6, 9, the message in 12, 14, 17, 31 and 32.
 The agent does, when its turn comes: the page switch after 1, `eas build` in 2 on the
 owner's confirmed command, the password reset in 4 once mail works, the off-until-chosen
 switch in 8 before any EU launch, the screenshots in 15 once the name is cleared, and the
@@ -200,7 +203,11 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
    exist only in the repo. *Recommendation: do it next, in one sitting, in the order
    written; `coach` is deployed from `master`, never from `6830354`.* Then say "the server
    steps are done" and the agent publishes the rewritten privacy and support pages (one
-   commit: `docs/_config.yml`) with that day as the effective date.
+   commit: `docs/_config.yml`) with that day as the effective date. Since D73 the held policy
+   no longer describes the Coach's on-device check, so it goes up only once a build without
+   the check (step 206) has reached anyone, TestFlight included; until then the published
+   page keeps its sentence about the check, which every earlier build makes true (the held
+   policy's header, step 13).
 2. **A new development build and TestFlight build** (two native packages). The agent runs
    `eas build` once the owner confirms the command. The phone checks are in `HANDOFF.md`.
 3. **A review of D70 and D71** before that build goes to anyone else. *Recommendation:
@@ -271,6 +278,7 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     alliance). Nothing waits on the answers: the app names nothing it hasn't confirmed.*
     **Closed 2026-11-20 by the owner:** none of the three is sent. A US phone's card names
     988 on every topic (D72 (d)), so neither organisation's number is in the app.
+    Moot since D73, 2026-11-20: the check and card are removed.
 14. **The name.** *Recommendation: have counsel run the clearance search before screenshots
     and the listing are made, since a rename after that costs the most.*
 15. **Screenshots.** *Recommendation: marketing frames composed from the web build at
@@ -308,6 +316,7 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     "Support resources" entry in You so the helplines can be found again after "Back to
     Coach". *Recommendation: yes to both, after the wording and 911's coverage of the five
     territories are checked against primary sources; not built.*
+    Moot since D73, 2026-11-20: the check and card are removed.
 24. **The frozen account's server data** (counsel's point 2, first on the list): the FTC's
     COPPA FAQ says to delete or get consent once a user is known to be a child; the app
     keeps the rows until the person taps Delete account. *Recommendation: ask counsel
@@ -339,11 +348,16 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     1737. *Recommendation: add each country's line once it is confirmed against the
     organisation's own page and its coverage and hours are known, with item 23; not
     built.*
+    Moot since D73, 2026-11-20: the check and card are removed.
 28. **The age-rating form and the support card.** Whether the card counts as "Mature or
     Suggestive Themes" (Apple lists "psychological trauma or abuse") or "Medical or
     Treatment Information" is the owner's answer on the day, against the questionnaire's
     own wording. *Recommendation: answer for the card as it is, helpline information shown
     rarely, and note the answer in `APP_STORE_LISTING.md`.*
+    **Closed 2026-11-20 (D73):** the card is removed, so None on both rows. The owner still
+    checks in App Store Connect whether an "Infrequent" answer or the review-note paragraph
+    about the card was ever entered, and corrects it with the build that removes the card
+    (`APP_STORE_LISTING.md` §1).
 29. **Built 2026-11-20 (D72 (c), BUILT_LOG row 204).** **A Plus subscriber whose phone becomes local-only** keeps Trends and the themes but
     loses the Coach and has no route in the app to restore or manage the subscription
     (it is managed in Settings → Apple Account → Subscriptions, and comes back when the
@@ -355,6 +369,25 @@ three pins in 18 in the first maintenance release (the owner's yes is given).
     paywall opened right after a sign-out on a slow network waits for the SDK
     (`research/under-13-2026-11.md`, residual 11). *Recommendation: fix the first with a
     counter in `changeIdentity`, inside the next review the owner calls.*
+
+**Added by D73 (2026-11-20, step 206: the Coach's distress check and support card removed)**
+
+31. **Closed 2026-11-20 by the owner** ("Definitely does not fall under the definition");
+    not put to counsel. It holds while the Coach takes no words, asks no questions, keeps
+    no memory of earlier requests and returns cards about numbers; a text box, a
+    follow-up question or a chat would reopen it. **The Coach and the AI-companion laws.** Whether the Coach falls under the
+    companion or conversational-AI definitions: California SB 243, New York GBL art. 47 and
+    Hawaii Act 248 now, Colorado from 2027-01-01, others in 2027, and Australia's Phase 2
+    codes. The policy check of 2026-11-20 read them, partly in secondary sources, as
+    defining a companion by conversation or a simulated relationship, which a feature that
+    takes no words and returns up to three cards about numbers is not on a plain reading.
+    *Recommendation: add it to the hour with counsel in item 6 (point 10 in
+    `research/under-13-2026-11.md`).*
+32. **Closed 2026-11-20 by the owner** ("The usage policies will definitely pass"), on
+    his word: no agent has read the pages. **OpenAI's usage policies.** The policy check couldn't open them (403). *Recommendation:
+    read the usage policies (a revision effective 2026-11-20) and the Under-18 guidance before
+    the build ships, and tell the agent if either asks anything of an app that sends a
+    model numbers only.*
 
 ## What stands between here and the store
 
@@ -398,7 +431,8 @@ and the two function deploys); Google sign-in set up and on (step 192, migration
    that size as drafts (`APP_STORE_LISTING.md` §5).
 6. **Due before the public release:** "The owner's list" above, items 6 to 15, all decided
    2026-11-19 (7 and 10 as corrected there, agreed by the owner the same day). Built that day: 2
-   (the under-13 rule, D70), 9 (the sign-in switch) and the interim half of 13 (D71).
+   (the under-13 rule, D70), 9 (the sign-in switch) and the interim half of 13 (D71). D73
+   (2026-11-20) added 31 and 32, and the owner closed both the same day.
 7. **Read the exit criteria** (`docs/TESTFLIGHT_PLAN.md`); a row in "stop and fix" gets a fix
    and another week.
 8. **The release gate** (`/release-gate`): the release, policy and record audits over the
@@ -434,7 +468,7 @@ what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step chec
 
 **Before submission (owner)**
 
-- **Decision 13** settled.
+- **Decision 13:** Moot since D73, 2026-11-20: the check and card are removed.
 - **App Store Connect:** the listing, the age-rating answers, the App Privacy answers,
   screenshots from the device (the agent prepares the list, `docs/APP_STORE_LISTING.md` §5)
   and the review notes (§4 there).
@@ -452,8 +486,8 @@ what's built is in `docs/design/BUILT_LOG.md`, and the owner's step-by-step chec
   account is hidden in the app (D69 (c)); existing email accounts still sign in.
 - **The under-13 local-only rule** (decision 2): built 2026-11-19 (D70); counsel and the
   sandbox check are the owner's.
-- **Decisions 5 and 8** (the EU, a helpline directory) and the rest of 13: "The owner's
-  list" above.
+- **Decision 5** (the EU): "The owner's list" above. Decision 8 (a helpline directory) and
+  the rest of 13: Moot since D73, 2026-11-20: the check and card are removed.
 - **`APP_STORE_PROVIDER_TOKEN`:** once App Store Connect shows analytics, the owner creates one
   campaign link and copies its `pt=` number (`docs/HUMAN_VERIFICATION.md` B2); the agent sets
   the constant. Until then text shares link to the App Store with no campaign token, so

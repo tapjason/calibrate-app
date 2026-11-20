@@ -8,7 +8,7 @@ import { create } from 'zustand';
 
 import { track } from '@/analytics/track';
 
-import { afterQueuedTransactions, withTransaction } from '@/db/client';
+import { withTransaction } from '@/db/client';
 import { buildDemoPredictions } from '@/db/demoData';
 import {
   answerCountedAsMoved,
@@ -38,11 +38,6 @@ import {
   scoredFromOffset,
 } from '@/engine/sameDay';
 import { checkpointReached, returnAfterGap, streakStatus } from '@/engine/streak';
-import {
-  supportAsideKeyId,
-  supportAsideKeysStandingAfter,
-  supportAsideKeysStandingWith,
-} from '@/engine/supportAside';
 import { tallyAnswers } from '@/engine/wrapped';
 import {
   correctPredictionOutcome,
@@ -81,7 +76,6 @@ import type {
 } from '@/types';
 
 import { useAuthStore } from './authStore';
-import { useSettingsStore } from './settingsStore';
 import { useStatsStore, type HeldStats } from './statsStore';
 
 interface CreatePredictionInput {
@@ -344,99 +338,6 @@ async function getByIdOrHeld(
 }
 
 /**
- * After a prediction's title or note changed, or it was deleted (2026-11-19):
- * forget any set-aside of the Coach's support card kept for it under words it
- * no longer has. A key is its id and a hash of its words, and that one exists
- * says the crisis filter matched them, so none outlives them (a short note
- * could be found again by trying words against the hash); with the words
- * unchanged, the key stays. `read` gives the prediction as it now stands, or
- * null once it is gone; when it can't be read, every key for it goes (the
- * card comes back if its words still match: the safe way to be wrong).
- *
- * After the write, never part of it: it never throws, and nothing here can
- * fail the change the person made. With nothing kept for the id and the
- * settings read, nothing is read or written.
- *
- * The read takes its turn in the transaction queue (`afterQueuedTransactions`,
- * re-review round two, 2026-11-19): there is one connection, and a read
- * outside the queue could see a sync transaction's rows before it commits or
- * rolls back, and keep a key for words that never landed. So this is never
- * called from inside a `withTransaction` callback, which would wait on itself.
- */
-async function forgetStaleSupportAside(
-  id: string,
-  read: () => Promise<Prediction | null>,
-): Promise<void> {
-  try {
-    const settings = useSettingsStore.getState();
-    if (!settings.loadFailed && !settings.supportAsideKeys.some((key) => supportAsideKeyId(key) === id)) {
-      return;
-    }
-    let current: Prediction | null;
-    try {
-      current = await afterQueuedTransactions(read);
-    } catch {
-      current = null;
-    }
-    await useSettingsStore.getState().retainSupportAsideKeys(supportAsideKeysStandingAfter(id, current));
-  } catch (e) {
-    // The message only: never the words.
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[predictions] could not forget a support card set-aside:',
-      e instanceof Error ? e.message : 'unknown error',
-    );
-  }
-}
-
-/** The prediction gone: what `forgetStaleSupportAside` reads after a delete. */
-const gone = async (): Promise<Prediction | null> => null;
-
-/**
- * After a successful read of `userId`'s answered list (`loadResolved`):
- * forget every set-aside of the Coach's support card whose prediction isn't in
- * it with the same words (re-review round two, 2026-11-19). A note changed or
- * a prediction deleted on another phone reaches this phone by a sync pull,
- * which runs none of the hooks above (`forgetStaleSupportAside`), and the
- * reload after the pull is where its words are first seen. An empty list
- * drops every key: it is a read that worked, unlike the Coach's own check,
- * which can't tell an empty list from one not loaded yet. A read that failed
- * never gets here, and drops nothing.
- *
- * Only while `userId` is still the one signed in: a list read for an account
- * the app has left since (a sign-out or sign-in while the read ran) is not
- * this phone's list now, so it neither keeps nor drops anything; the next
- * load does. Sign-out and account deletion erase every key anyway
- * (authStore, `forgetSupportAside`), and a guest's keys carried into a
- * sign-in can only be dropped here, never kept by another account's words.
- *
- * Dropping a key only brings the card back. The settings store applies it in
- * memory at once and writes only when it drops something. Never throws: a
- * list reload never fails for this.
- *
- * With nothing set aside and the settings read, which is nearly always,
- * there is nothing to drop: no word is hashed and nothing is asked of the
- * settings store (review round three, 2026-11-19). While the settings record
- * can't be read its keys are unknown, so the retain goes ahead all the same;
- * the settings store holds one at a time.
- */
-async function forgetSupportAsideNotIn(userId: string, resolved: readonly Prediction[]): Promise<void> {
-  try {
-    if (useAuthStore.getState().userId !== userId) return;
-    const settings = useSettingsStore.getState();
-    if (!settings.loadFailed && settings.supportAsideKeys.length === 0) return;
-    await useSettingsStore.getState().retainSupportAsideKeys(supportAsideKeysStandingWith(resolved));
-  } catch (e) {
-    // The message only: never the words.
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[predictions] could not forget the support card set-asides no longer in the list:',
-      e instanceof Error ? e.message : 'unknown error',
-    );
-  }
-}
-
-/**
  * Inside an answer's transaction, after the write (review rounds 6 and 7):
  * for a prediction this phone remembers a category for, write where it was
  * answered and put it on the moved-answers line when it was given in another
@@ -550,9 +451,6 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       postponedCount: postponed,
       refiledCount: refiled,
     });
-    // A read that worked: set-asides whose words aren't in it go, an empty
-    // list included (re-review round two, 2026-11-19). Never throws.
-    await forgetSupportAsideNotIn(userId, resolved);
   },
 
   getById: async (id) => {
@@ -667,9 +565,6 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
         if (outcome !== 'skipped') await countAnswerAwayFromOrigin(userId, id, at);
         await useStatsStore.getState().recomputeForUser(userId);
       });
-      // A "Can't tell" answered with a note has new words: a support card
-      // set-aside kept for its old ones goes (2026-11-19). Never throws.
-      await forgetStaleSupportAside(id, () => getPrediction(id));
       // Refresh local lists from the source of truth. The answer is saved by
       // now: a failed reload is logged, never reported as a failed answer,
       // which could lead the person to answer again.
@@ -737,9 +632,6 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
     const text = reflection.trim();
     // A reflection changes no statistic, so no recompute — just the row.
     await setPredictionReflection(id, text.length > 0 ? text : null);
-    // A support card set-aside kept for the words before goes ("Remove
-    // note", "Change note"; 2026-11-19). Never throws.
-    await forgetStaleSupportAside(id, () => getPrediction(id));
     await get().loadResolved();
   },
 
@@ -760,8 +652,6 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       await deletePrediction(id, { counted: deletionCounts(current, now), seen: current });
       await useStatsStore.getState().recomputeForUser(userId);
     });
-    // The one replaced is gone, and so is any set-aside kept for it. Never throws.
-    await forgetStaleSupportAside(id, gone);
     await get().loadPending();
     set({ justSavedId: prediction.id });
     // No `prediction_logged`: the same prediction, at another number.
@@ -825,10 +715,6 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       }
       await useStatsStore.getState().recomputeForUser(userId);
     });
-    // New words: a support card set-aside kept for the old ones goes
-    // (2026-11-19). Read back, since the edit only lands on an open row.
-    // Never throws.
-    await forgetStaleSupportAside(id, () => getPrediction(id));
     await get().loadPending();
     if (late) set({ postponedCount: await countPostponements(userId) });
   },
@@ -863,9 +749,6 @@ export const usePredictionStore = create<PredictionState>((set, get) => ({
       await deletePrediction(id, { counted, seen: seen ?? target });
       await useStatsStore.getState().recomputeForUser(userId);
     });
-    // Gone, and so is any support card set-aside kept for its words
-    // (2026-11-19). Before the reloads, which may throw. Never throws.
-    await forgetStaleSupportAside(id, gone);
     await Promise.all([get().loadPending(), get().loadResolved()]);
   },
 
